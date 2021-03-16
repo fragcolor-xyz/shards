@@ -854,15 +854,13 @@ template <CBType CT> struct Variable : public Base {
     }
   }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Label", CBCCSTR("The label for this widget."),
-                        CoreInfo::StringOrNone),
-      ParamsInfo::Param(
-          "Variable",
-          CBCCSTR("The name of the variable that holds the input value."),
-          CoreInfo::StringOrNone));
+  static inline Parameters paramsInfo{
+      {"Label", CBCCSTR("The label for this widget."), CoreInfo::StringOrNone},
+      {"Variable",
+       CBCCSTR("The name of the variable that holds the input value."),
+       CoreInfo::StringOrNone}};
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return paramsInfo; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -1270,8 +1268,33 @@ struct TreeNode : public Base {
   }
 };
 
+template <CBType CBT> struct DragBase : public Variable<CBT> {
+  float _speed{1.0};
+
+  static inline Parameters paramsInfo{
+      Variable<CBT>::paramsInfo,
+      {{"Speed", CBCCSTR("The speed multiplier for this drag widget."),
+        CoreInfo::StringOrNone}}};
+
+  static CBParametersInfo parameters() { return paramsInfo; }
+
+  void setParam(int index, const CBVar &value) {
+    if (index < 2)
+      Variable<CBT>::setParam(index, value);
+    else
+      _speed = value.payload.floatValue;
+  }
+
+  CBVar getParam(int index) {
+    if (index < 2)
+      return Variable<CBT>::getParam(index);
+    else
+      return Var(_speed);
+  }
+};
+
 #define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                            \
-  struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
+  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                        \
     _T_ _tmp;                                                                  \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
@@ -1288,13 +1311,12 @@ struct TreeNode : public Base {
         }                                                                      \
       }                                                                        \
                                                                                \
-      float speed = 1.0;                                                       \
       if (_variable) {                                                         \
         ::ImGui::DragScalar(_label.c_str(), _IMT_,                             \
-                            (void *)&_variable->payload._VAL_, speed);         \
+                            (void *)&_variable->payload._VAL_, _speed);        \
         return *_variable;                                                     \
       } else {                                                                 \
-        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, speed);      \
+        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, _speed);     \
         return Var(_tmp);                                                      \
       }                                                                        \
     }                                                                          \
@@ -1304,7 +1326,7 @@ IMGUIDRAG(Int, int64_t, IntType, ImGuiDataType_S64, intValue);
 IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
 
 #define IMGUIDRAG2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                    \
-  struct _CBT_##Drag : public Variable<CBType::_CBT_> {                        \
+  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                        \
     CBVar _tmp;                                                                \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
@@ -1321,15 +1343,15 @@ IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
         }                                                                      \
       }                                                                        \
                                                                                \
-      float speed = 1.0;                                                       \
       if (_variable) {                                                         \
         ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
-                             (void *)&_variable->payload._VAL_, _CMP_, speed); \
+                             (void *)&_variable->payload._VAL_, _CMP_,         \
+                             _speed);                                          \
         return *_variable;                                                     \
       } else {                                                                 \
         _tmp.valueType = _CBT_;                                                \
         ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
-                             (void *)&_tmp.payload._VAL_, _CMP_, speed);       \
+                             (void *)&_tmp.payload._VAL_, _CMP_, _speed);      \
         return _tmp;                                                           \
       }                                                                        \
     }                                                                          \

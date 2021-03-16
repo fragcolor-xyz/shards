@@ -38,6 +38,57 @@
      (= platform "linux")
      (= platform "emscripten")) "glsl"))
 
+(defn FColor
+  [r g b a]
+  (Color (* 255 r) (* 255 g) (* 255 b) (* 255 a)))
+
+(defn applyStyle []
+  (-> (Float2 15 15) (GUI.Style GuiStyle.WindowPadding)
+      5.0 (GUI.Style GuiStyle.WindowRounding)
+      (Float2 5 5) (GUI.Style GuiStyle.FramePadding)
+      (Float2 12 8) (GUI.Style GuiStyle.ItemSpacing)
+      (Float2 8 6) (GUI.Style GuiStyle.ItemInnerSpacing)
+      25.0 (GUI.Style GuiStyle.IndentSpacing)
+      15.0 (GUI.Style GuiStyle.ScrollbarSize)
+      9.0 (GUI.Style GuiStyle.ScrollbarRounding)
+      5.0 (GUI.Style GuiStyle.GrabMinSize)
+      3.0 (GUI.Style GuiStyle.GrabRounding)
+      (FColor 0.80 0.80 0.83 1.00) (GUI.Style GuiStyle.TextColor)
+      (FColor 0.24 0.23 0.29 1.00) (GUI.Style GuiStyle.TextDisabledColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.WindowBgColor)
+      (FColor 0.07 0.07 0.09 1.00) (GUI.Style GuiStyle.ChildBgColor)
+      (FColor 0.07 0.07 0.09 1.00) (GUI.Style GuiStyle.PopupBgColor)
+      (FColor 0.80 0.80 0.83 0.88) (GUI.Style GuiStyle.BorderColor)
+      (FColor 0.92 0.91 0.88 0.00) (GUI.Style GuiStyle.BorderShadowColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.FrameBgColor)
+      (FColor 0.24 0.23 0.29 1.00) (GUI.Style GuiStyle.FrameBgHoveredColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.FrameBgActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.TitleBgColor)
+      (FColor 1.00 0.98 0.95 0.75) (GUI.Style GuiStyle.TitleBgCollapsedColor)
+      (FColor 0.07 0.07 0.09 1.00) (GUI.Style GuiStyle.TitleBgActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.MenuBarBgColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.ScrollbarBgColor)
+      (FColor 0.80 0.80 0.83 0.31) (GUI.Style GuiStyle.ScrollbarGrabColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.ScrollbarGrabHoveredColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.ScrollbarGrabActiveColor)
+      (FColor 0.80 0.80 0.83 0.31) (GUI.Style GuiStyle.CheckMarkColor)
+      (FColor 0.80 0.80 0.83 0.31) (GUI.Style GuiStyle.SliderGrabColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.SliderGrabActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.ButtonColor)
+      (FColor 0.24 0.23 0.29 1.00) (GUI.Style GuiStyle.ButtonHoveredColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.ButtonActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.HeaderColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.HeaderHoveredColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.HeaderActiveColor)
+      (FColor 0.00 0.00 0.00 0.00) (GUI.Style GuiStyle.ResizeGripColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.ResizeGripHoveredColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.ResizeGripActiveColor)
+      (FColor 0.40 0.39 0.38 0.63) (GUI.Style GuiStyle.PlotLinesColor)
+      (FColor 0.25 1.00 0.00 1.00) (GUI.Style GuiStyle.PlotLinesHoveredColor)
+      (FColor 0.40 0.39 0.38 0.63) (GUI.Style GuiStyle.PlotHistogramColor)
+      (FColor 0.25 1.00 0.00 1.00) (GUI.Style GuiStyle.PlotHistogramHoveredColor)
+      (FColor 0.25 1.00 0.00 0.43) (GUI.Style GuiStyle.TextSelectedBgColor)))
+
 (def test-chain
   (Chain
    "test-chain"
@@ -46,6 +97,7 @@
     :Title "SDL Window" :Width 1024 :Height 1024 :Debug true :Fullscreen true
     :Contents
     ~[(Setup
+       (applyStyle)
        (LoadImage "../../assets/drawing.png")
        (GFX.Texture2D) >= .image1
        (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
