@@ -67,3 +67,6 @@
 [submodule "deps/tinygltf"]
 	path = deps/tinygltf
 	url = https://github.com/chainblocks/tinygltf.git
+[submodule "deps/miniaudio"]
+	path = deps/miniaudio
+	url = https://github.com/chainblocks/miniaudio.git
