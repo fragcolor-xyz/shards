@@ -877,7 +877,7 @@ void registerCastingBlocks() {
   using BytesToString = ToString1<CBType::Bytes>;
   using IntsToBytes = ToBytes<CBType::Int>;
   REGISTER_CBLOCK("BytesToInts", BytesToInts);
-  REGISTER_CBLOCK("BytesToString!!", BytesToString);
+  REGISTER_CBLOCK("BytesToString", BytesToString);
   REGISTER_CBLOCK("IntsToBytes", IntsToBytes);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;

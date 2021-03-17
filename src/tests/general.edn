@@ -233,7 +233,7 @@
    ; need to strip serialization prefix
    (Slice 5)
    (IntsToBytes)
-   (BytesToString!!)
+   (BytesToString)
    (Assert.Is "My input 2" true)
 
    {"x" 10 "y" 20 "hello" "world"} >= .table-a
