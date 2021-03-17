@@ -291,6 +291,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/audio.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
@@ -341,6 +342,7 @@ set(
   -I${CHAINBLOCKS_DIR}/deps/cpp-taskflow
   -I${CHAINBLOCKS_DIR}/deps/pdqsort
   -I${CHAINBLOCKS_DIR}/deps/filesystem/include
+  -I${CHAINBLOCKS_DIR}/deps/miniaudio
   -I${CHAINBLOCKS_DIR}/deps/wasm3/source
   -I${CHAINBLOCKS_DIR}/deps/linalg
   )
@@ -490,6 +492,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
+    ${CHAINBLOCKS_DIR}/deps/miniaudio
     ${CHAINBLOCKS_DIR}/deps
     )
 
@@ -743,6 +746,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/audio.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
     ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
