@@ -741,12 +741,17 @@ if(NOT BUILD_CORE_ONLY)
   set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp)
   set_source_files_properties(${CHAINBLOCKS_DIR}/src/extra/brotli.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include/brotli/decode.h)
 
+  if(NOT IOS)
+    set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/audio.cpp)
+  else()
+    set(CB_EXTRAS ${CB_EXTRAS} ${CHAINBLOCKS_DIR}/src/extra/audio.mm)
+  endif()
+
   set(CB_EXTRAS
     ${CB_EXTRAS}
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
-    ${CHAINBLOCKS_DIR}/src/extra/audio.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
     ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
