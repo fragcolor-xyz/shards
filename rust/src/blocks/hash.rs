@@ -17,7 +17,8 @@ use core::time::Duration;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
-use tiny_keccak::{Hasher, Keccak, Sha3};
+// use tiny_keccak::{Hasher, Keccak, Sha3};
+use tiny_keccak::{Hasher, Keccak};
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![
@@ -92,9 +93,9 @@ macro_rules! add_hasher {
 }
 
 add_hasher!(Keccak256, "Hash.Keccak256", "Hash.Keccak256-rust-0x20200101", Keccak::v256, 32);
-add_hasher!(CBSha3, "Hash.Sha3", "Hash.Sha3-rust-0x20200101", Sha3::v256, 32);
+// add_hasher!(CBSha3, "Hash.Sha3", "Hash.Sha3-rust-0x20200101", Sha3::v256, 32);
 
 pub fn registerBlocks() {
   registerBlock::<Keccak256>();
-  registerBlock::<CBSha3>();
+  // registerBlock::<CBSha3>();
 }
