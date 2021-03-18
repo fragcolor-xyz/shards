@@ -13,7 +13,7 @@ crate-type = ["rlib", "staticlib"]
 approx = "0.4.0"
 lazy_static = "1.4.0"
 compile-time-crc32 = "0.1.2"
-tiny-keccak = { version = "2.0.2", features = ["keccak"], optional = true }
+tiny-keccak = { version = "2.0.2", features = ["keccak", "sha3"], optional = true }
 libsecp256k1 = { version = "0.3.5", optional = true }
 hex = { version = "0.4.2", optional = true }
 crossbeam = { version = "0.8", optional = true }

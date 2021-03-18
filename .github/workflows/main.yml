@@ -37,7 +37,7 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_LTO=1 -DRUST_USE_LTO=1 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |
