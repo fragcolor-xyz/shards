@@ -892,7 +892,7 @@ struct Var : public CBVar {
   }
 
   static Var ContextVar(const std::string &src) {
-    Var res;
+    Var res{};
     res.valueType = CBType::ContextVar;
     res.payload.stringValue = src.c_str();
     res.payload.stringLen = uint32_t(src.length());
@@ -907,6 +907,28 @@ struct Var : public CBVar {
   explicit Var(CBColor color) : CBVar() {
     valueType = Color;
     payload.colorValue = color;
+  }
+
+  static Var ColorFromInt(uint32_t rgba) {
+    Var res{};
+    res.valueType = CBType::Color;
+    res.payload.colorValue.r = uint8_t((rgba & 0xFF000000) >> 24);
+    res.payload.colorValue.g = uint8_t((rgba & 0x00FF0000) >> 16);
+    res.payload.colorValue.b = uint8_t((rgba & 0x0000FF00) >> 8);
+    res.payload.colorValue.a = uint8_t((rgba & 0x000000FF) >> 0);
+    return res;
+  }
+
+  uint32_t colorToInt() {
+    if (valueType != Color) {
+      throw InvalidVarTypeError("Invalid variable casting! expected Color");
+    }
+    uint32_t res = 0;
+    res |= (uint32_t(payload.colorValue.r) << 24);
+    res |= (uint32_t(payload.colorValue.g) << 16);
+    res |= (uint32_t(payload.colorValue.b) << 8);
+    res |= (uint32_t(payload.colorValue.a) << 0);
+    return res;
   }
 
   explicit Var(const CBVar *data, size_t size) : CBVar() {

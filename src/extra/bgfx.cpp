@@ -369,7 +369,11 @@ struct BaseWindow : public Base {
       {"Debug",
        CBCCSTR("If the device backing the window should be created with "
                "debug layers on."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"ClearColor",
+       CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
+               "new frame."),
+       {CoreInfo::ColorType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -390,6 +394,7 @@ struct BaseWindow : public Base {
   CBVar *_nativeWnd = nullptr;
   BlocksVar _blocks;
   OcornutImguiContext _imguiBgfxCtx;
+  CBColor _clearColor{0xC0, 0xC0, 0xAA, 0xFF};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -411,6 +416,9 @@ struct BaseWindow : public Base {
     case 5:
       _debug = value.payload.boolValue;
       break;
+    case 6:
+      _clearColor = value.payload.colorValue;
+      break;
     default:
       break;
     }
@@ -430,6 +438,8 @@ struct BaseWindow : public Base {
       return Var(_fsMode);
     case 5:
       return Var(_debug);
+    case 6:
+      return Var(_clearColor);
     default:
       return Var::Empty;
     }
@@ -822,7 +832,7 @@ struct MainWindow : public BaseWindow {
     bgfx::setViewRect(0, 0, 0, _rwidth, _rheight);
     bgfx::setViewClear(0,
                        BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-                       0xC0C0AAFF, 1.0f, 0);
+                       Var(_clearColor).colorToInt(), 1.0f, 0);
 
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
     _bgfxCtx = referenceVariable(context, "GFX.Context");
