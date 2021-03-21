@@ -2363,7 +2363,11 @@ struct RenderTarget : public BaseConsumer {
        CBCCSTR("If this render target should be able to render GUI blocks "
                "within. If false any GUI block inside will be rendered on the "
                "top level surface."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"ClearColor",
+       CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
+               "new frame."),
+       {CoreInfo::ColorType}}};
   static CBParametersInfo parameters() { return params; }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -2376,6 +2380,7 @@ struct RenderTarget : public BaseConsumer {
   CBVar *_bgfxContext{nullptr};
   bgfx::ViewId _viewId;
   std::optional<OcornutImguiContext> _imguiBgfxCtx;
+  CBColor _clearColor{0x30, 0x30, 0x30, 0xFF};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -2390,6 +2395,9 @@ struct RenderTarget : public BaseConsumer {
       break;
     case 3:
       _gui = value.payload.boolValue;
+      break;
+    case 4:
+      _clearColor = value.payload.colorValue;
       break;
     default:
       break;
@@ -2406,6 +2414,8 @@ struct RenderTarget : public BaseConsumer {
       return _blocks;
     case 3:
       return Var(_gui);
+    case 4:
+      return Var(_clearColor);
     default:
       throw InvalidParameterIndex();
     }
@@ -2453,7 +2463,7 @@ struct RenderTexture : public RenderTarget {
     bgfx::setViewRect(_viewId, 0, 0, _width, _height);
     bgfx::setViewClear(_viewId,
                        BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-                       0x303030FF, 1.0f, 0);
+                       Var(_clearColor).colorToInt(), 1.0f, 0);
 
     _blocks.warmup(context);
   }
