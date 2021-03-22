@@ -74,6 +74,10 @@ mergeInto(LibraryManager.library, {
           filename: "/shaders/include/implicit_shapes.h",
           operation: fetch("shaders/include/implicit_shapes.h")
         });
+        fetches.push({
+          filename: "/shaders/include/noise.h",
+          operation: fetch("shaders/include/noise.h")
+        });
         // /include from bgfx folders
         fetches.push({
           filename: "/shaders/include/bgfx_shader.h",
