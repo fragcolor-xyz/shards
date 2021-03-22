@@ -738,6 +738,13 @@ struct RunChain : public BaseRunner {
   }
 
   void warmup(CBContext *context) {
+    if constexpr (CHAIN_MODE == RunChainMode::Detached) {
+      if (chain->warmedUp) {
+        LOG(ERROR) << "Attempted to detach a chain multiple times, chain: "
+                   << chain->name;
+        throw WarmupError("Multiple chain detachments");
+      }
+    }
     ChainBase::warmup(context);
     doWarmup(context);
   }
