@@ -2151,18 +2151,16 @@ struct Draw : public BaseConsumer {
     return data.inputType;
   }
 
-  struct PosColorTexCoord0Vertex {
+  struct PosTexCoord0Vertex {
     float m_x;
     float m_y;
     float m_z;
-    uint32_t m_rgba;
     float m_u;
     float m_v;
 
     static void init() {
       ms_layout.begin()
           .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-          .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
           .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
           .end();
     }
@@ -2174,18 +2172,17 @@ struct Draw : public BaseConsumer {
 
   void setup() {
     if (!LayoutSetup) {
-      PosColorTexCoord0Vertex::init();
+      PosTexCoord0Vertex::init();
       LayoutSetup = true;
     }
   }
 
   void screenSpaceQuad(float width = 1.0f, float height = 1.0f) {
-    if (3 == bgfx::getAvailTransientVertexBuffer(
-                 3, PosColorTexCoord0Vertex::ms_layout)) {
+    if (3 ==
+        bgfx::getAvailTransientVertexBuffer(3, PosTexCoord0Vertex::ms_layout)) {
       bgfx::TransientVertexBuffer vb;
-      bgfx::allocTransientVertexBuffer(&vb, 3,
-                                       PosColorTexCoord0Vertex::ms_layout);
-      PosColorTexCoord0Vertex *vertex = (PosColorTexCoord0Vertex *)vb.data;
+      bgfx::allocTransientVertexBuffer(&vb, 3, PosTexCoord0Vertex::ms_layout);
+      PosTexCoord0Vertex *vertex = (PosTexCoord0Vertex *)vb.data;
 
       const float zz = 0.0f;
 
@@ -2203,21 +2200,18 @@ struct Draw : public BaseConsumer {
       vertex[0].m_x = minx;
       vertex[0].m_y = miny;
       vertex[0].m_z = zz;
-      vertex[0].m_rgba = 0xffffffff;
       vertex[0].m_u = minu;
       vertex[0].m_v = minv;
 
       vertex[1].m_x = maxx;
       vertex[1].m_y = miny;
       vertex[1].m_z = zz;
-      vertex[1].m_rgba = 0xffffffff;
       vertex[1].m_u = maxu;
       vertex[1].m_v = minv;
 
       vertex[2].m_x = maxx;
       vertex[2].m_y = maxy;
       vertex[2].m_z = zz;
-      vertex[2].m_rgba = 0xffffffff;
       vertex[2].m_u = maxu;
       vertex[2].m_v = maxv;
 
