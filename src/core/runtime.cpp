@@ -3134,8 +3134,14 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->schedule = [](CBNodeRef node, CBChainRef chain) noexcept {
-    auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
-    (*snode)->schedule(CBChain::sharedFromRef(chain));
+    try {
+      auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
+      (*snode)->schedule(CBChain::sharedFromRef(chain));
+    } catch (const std::exception &e) {
+      LOG(ERROR) << "Errors while scheduling: " << e.what();
+    } catch (...) {
+      LOG(ERROR) << "Errors while scheduling.";
+    }
   };
 
   result->unschedule = [](CBNodeRef node, CBChainRef chain) noexcept {

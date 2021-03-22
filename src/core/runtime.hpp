@@ -695,11 +695,11 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   template <class Observer>
   void schedule(Observer observer, const std::shared_ptr<CBChain> &chain,
                 CBVar input = Var::Empty, bool compose = true) {
-    // TODO do this better...
-    // this way does not work
-    // if (chain->node.lock())
-    //   throw chainblocks::CBException(
-    //       "schedule failed, chain was already scheduled!");
+    if (chain->warmedUp) {
+      LOG(ERROR) << "Attempted to schedule a chain multiple times, chain: "
+                 << chain->name;
+      throw CBException("Multiple chain schedule");
+    }
 
     // this is to avoid recursion during compose
     visitedChains.clear();
