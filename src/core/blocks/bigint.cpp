@@ -34,7 +34,7 @@ struct ToBigInt {
   std::vector<uint8_t> _buffer;
 
   static inline Types InputTypes{CoreInfo::IntType, CoreInfo::FloatType,
-                                 CoreInfo::StringType};
+                                 CoreInfo::StringType, CoreInfo::BytesType};
   static CBTypesInfo inputTypes() { return InputTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
@@ -49,6 +49,10 @@ struct ToBigInt {
     } break;
     case String: {
       bi = cpp_int(input.payload.stringValue);
+    } break;
+    case Bytes: {
+      import_bits(bi, input.payload.bytesValue,
+                  input.payload.bytesValue + input.payload.bytesSize);
     } break;
     default: {
       throw ActivationError("Invalid input type");
@@ -362,6 +366,21 @@ struct ToString {
   }
 };
 
+struct ToHex {
+  VarStringStream stream;
+  static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType,
+                                 CoreInfo::StringType};
+  static CBTypesInfo inputTypes() { return toHexTypes; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar fixedInput = input;
+    fixedInput.payload.bytesValue++;
+    fixedInput.payload.bytesSize--;
+    stream.tryWriteHex(fixedInput);
+    return Var(stream.str());
+  }
+};
+
 struct Abs {
   std::vector<uint8_t> _buffer;
 
@@ -390,6 +409,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.ToInt", ToInt);
   REGISTER_CBLOCK("BigInt.FromFloat", FromFloat);
   REGISTER_CBLOCK("BigInt.ToString", ToString);
+  REGISTER_CBLOCK("BigInt.ToHex", ToHex);
   REGISTER_CBLOCK("BigInt.Is", Is);
   REGISTER_CBLOCK("BigInt.IsNot", IsNot);
   REGISTER_CBLOCK("BigInt.IsMore", IsMore);
