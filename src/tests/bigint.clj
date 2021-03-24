@@ -23,6 +23,7 @@
    .1000x1e18 >> .bigseq
    .1000x1e18 >> .bigseq
    .bigseq (BigInt.Multiply .2) (Log)
+   (Take 0)
    (BigInt.ToHex) (Log)
    
    ))
