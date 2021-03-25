@@ -2,8 +2,10 @@
 extern crate reqwest;
 
 extern crate tiny_keccak;
+extern crate sha2;
 extern crate secp256k1;
 extern crate hex;
+extern crate bs58;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;
@@ -21,3 +23,5 @@ pub mod physics;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 pub mod browse;
+
+pub mod casting;
