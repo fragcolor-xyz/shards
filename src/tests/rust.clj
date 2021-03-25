@@ -23,6 +23,22 @@
   (IntsToBytes) (FromLEB128 :Signed false) (Log) (Assert.Is 128 true)
 
   -1000 (ToLEB128 :Signed true) (BytesToInts) (Log) (Assert.Is [152 120] true)
-  (IntsToBytes) (FromLEB128 :Signed true) (Log) (Assert.Is -1000 true)))
+  (IntsToBytes) (FromLEB128 :Signed true) (Log) (Assert.Is -1000 true)
+
+  "hello worlds\n" (ToHex) (HexToBytes) = .payload
+  (Count .payload) = .len
+  "0x1220" (HexToBytes) >= .a ; sha256 multihash
+  "0x0a" (HexToBytes) >> .b ; prefix 1
+  .len (ToLEB128 :Signed false) = .leblen
+  (Count .leblen) (Math.Multiply 2) = .lenX2
+  .len (Math.Add 4) (Math.Add .lenX2) (ToLEB128 :Signed false) >> .b
+  "0x080212" (HexToBytes) >> .b
+  .leblen >> .b
+  .payload >> .b
+  "0x18" (HexToBytes) >> .b
+  .leblen >> .b
+  .b (Hash.Sha2-256) (AppendTo .a)
+  .a (ToBase58) (Log) (Assert.Is "QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx" true)
+  ))
 
 (run Root)

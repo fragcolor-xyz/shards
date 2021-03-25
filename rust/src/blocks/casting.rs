@@ -67,7 +67,6 @@ impl Block for ToBase58 {
         self.output = bs58::encode(string).into_string();
       }
     }
-    self.output.push('\0');
     Ok(self.output.as_str().into())
   }
 }
