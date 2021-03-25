@@ -289,6 +289,7 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   #[cfg(not(target_arch = "wasm32"))]
   blocks::http::registerBlocks();
 
+  blocks::casting::registerBlocks();
   blocks::hash::registerBlocks();
   blocks::sign::registerBlocks();
   blocks::physics::simulation::registerBlocks();

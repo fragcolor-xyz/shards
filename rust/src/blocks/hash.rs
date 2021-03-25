@@ -10,6 +10,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BYTES_TYPES;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -20,13 +21,12 @@ use std::ffi::CStr;
 use tiny_keccak::{Hasher, Keccak, Sha3};
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![
+  pub static ref INPUT_TYPES: Vec<Type> = vec![
     common_type::bytes,
     common_type::bytezs,
     common_type::string,
     common_type::strings
   ];
-  static ref OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
 }
 
 macro_rules! add_hasher {
@@ -53,7 +53,7 @@ macro_rules! add_hasher {
         &INPUT_TYPES
       }
       fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-        &OUTPUT_TYPE
+        &BYTES_TYPES
       }
       fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
         let mut k = $algo();
@@ -91,8 +91,20 @@ macro_rules! add_hasher {
   };
 }
 
-add_hasher!(Keccak256, "Hash.Keccak256", "Hash.Keccak256-rust-0x20200101", Keccak::v256, 32);
-add_hasher!(CBSha3, "Hash.Sha3", "Hash.Sha3-rust-0x20200101", Sha3::v256, 32);
+add_hasher!(
+  Keccak256,
+  "Hash.Keccak256",
+  "Hash.Keccak256-rust-0x20200101",
+  Keccak::v256,
+  32
+);
+add_hasher!(
+  CBSha3,
+  "Hash.Sha3",
+  "Hash.Sha3-rust-0x20200101",
+  Sha3::v256,
+  32
+);
 
 pub fn registerBlocks() {
   registerBlock::<Keccak256>();
