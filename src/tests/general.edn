@@ -32,6 +32,10 @@
    (ToHex)
    (Log)
 
+   10
+   (ToHex)
+   (Assert.Is "0x0a" true)
+
    1 = .1-var
    2 = .2-var
 

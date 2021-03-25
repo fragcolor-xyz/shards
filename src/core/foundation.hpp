@@ -1197,7 +1197,8 @@ struct VarStringStream {
       cache.reset();
       std::ostream stream(&cache);
       if (var.valueType == Int) {
-        stream << "0x" << std::hex << std::setw(2) << var.payload.intValue;
+        stream << "0x" << std::hex << std::setw(2) << std::setfill('0')
+               << var.payload.intValue;
       } else if (var.valueType == Bytes) {
         stream << "0x" << std::hex;
         for (uint32_t i = 0; i < var.payload.bytesSize; i++)
