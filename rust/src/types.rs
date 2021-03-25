@@ -2255,6 +2255,7 @@ lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
   pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
   pub static ref STRING_TYPES: Vec<Type> = vec![common_type::string];
+  pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
   pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
   pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
   pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];

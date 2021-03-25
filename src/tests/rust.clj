@@ -17,6 +17,12 @@
   (ToHex)
   (Assert.Is "0xed6c11b0b5b808960df26f5bfc471d04c1995b0ffd2055925ad1be28d6baadfd" true)
   .hash (Sign.ECDSA "1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e")
-  (ToHex) (Log)))
+  (ToHex) (Log)
+
+  128 (ToLEB128 :Signed false) (BytesToInts) (Log) (Assert.Is [128 1] true)
+  (IntsToBytes) (FromLEB128 :Signed false) (Log) (Assert.Is 128 true)
+
+  -1000 (ToLEB128 :Signed true) (BytesToInts) (Log) (Assert.Is [152 120] true)
+  (IntsToBytes) (FromLEB128 :Signed true) (Log) (Assert.Is -1000 true)))
 
 (run Root)

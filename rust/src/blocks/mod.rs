@@ -6,6 +6,7 @@ extern crate sha2;
 extern crate secp256k1;
 extern crate hex;
 extern crate bs58;
+extern crate wasabi_leb128;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;

@@ -11,6 +11,7 @@ use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
 use crate::types::BYTES_TYPES;
+use crate::types::INT_TYPES;
 use crate::types::STRING_TYPES;
 use crate::CString;
 use crate::Types;
@@ -19,6 +20,7 @@ use core::time::Duration;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
+use wasabi_leb128::{ReadLeb128, WriteLeb128};
 
 lazy_static! {
   pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string,];
@@ -109,7 +111,157 @@ impl Block for FromBase58 {
   }
 }
 
+lazy_static! {
+  static ref LEB_PARAMETERS: Parameters = vec![(
+    cstr!("Signed"),
+    cbccstr!("If the integer to encode/decode is signed and can be negative."),
+    vec![common_type::bool]
+  )
+    .into()];
+}
+
+struct ToLEB128 {
+  output: Vec<u8>,
+  signed: bool,
+}
+
+impl Default for ToLEB128 {
+  fn default() -> Self {
+    ToLEB128 {
+      output: Vec::new(),
+      signed: false,
+    }
+  }
+}
+
+impl Block for ToLEB128 {
+  fn registerName() -> &'static str {
+    cstr!("ToLEB128")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("ToLEB128-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "ToLEB128"
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &INT_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &BYTES_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&LEB_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.signed = value.try_into().unwrap(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.signed.into(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    if self.signed {
+      let int_input: i64 = input.as_ref().try_into()?;
+      self.output.clear();
+      self
+        .output
+        .write_leb128(int_input)
+        .map_err(|_| "Failed to convert int to leb128")?;
+    } else {
+      let int_input: u64 = input.as_ref().try_into()?;
+      self.output.clear();
+      self
+        .output
+        .write_leb128(int_input)
+        .map_err(|_| "Failed to convert uint to leb128")?;
+    }
+    Ok(self.output.as_slice().into())
+  }
+}
+
+struct FromLEB128 {
+  signed: bool,
+}
+
+impl Default for FromLEB128 {
+  fn default() -> Self {
+    FromLEB128 { signed: false }
+  }
+}
+
+impl Block for FromLEB128 {
+  fn registerName() -> &'static str {
+    cstr!("FromLEB128")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("FromLEB128-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "FromLEB128"
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &BYTES_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &INT_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&LEB_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.signed = value.try_into().unwrap(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.signed.into(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    if self.signed {
+      let mut bytes: &[u8] = input.as_ref().try_into()?;
+      let value: (i64, usize)= bytes
+        .read_leb128()
+        .map_err(|_| "Failed to convert LEB128 bytes into integer")?;
+      Ok(value.0.into())
+    } else {
+      let mut bytes: &[u8] = input.as_ref().try_into()?;
+      let value: (u64, usize) = bytes
+        .read_leb128()
+        .map_err(|_| "Failed to convert LEB128 bytes into integer")?;
+      Ok(value.0.try_into()?)
+    }
+  }
+}
+
 pub fn registerBlocks() {
   registerBlock::<ToBase58>();
   registerBlock::<FromBase58>();
+  registerBlock::<ToLEB128>();
+  registerBlock::<FromLEB128>();
 }
