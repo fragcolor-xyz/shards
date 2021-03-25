@@ -93,11 +93,18 @@ macro_rules! add_hasher {
 }
 
 add_hasher!(
-  Keccak256,
-  "Hash.Keccak256",
-  "Hash.Keccak256-rust-0x20200101",
+  Keccak_256,
+  "Hash.Keccak-256",
+  "Hash.Keccak-256-rust-0x20200101",
   Keccak::v256,
   32
+);
+add_hasher!(
+  Keccak_512,
+  "Hash.Keccak-512",
+  "Hash.Keccak-512-rust-0x20200101",
+  Keccak::v512,
+  64
 );
 add_hasher!(
   CBSha3_256,
@@ -189,7 +196,8 @@ add_hasher2!(
 );
 
 pub fn registerBlocks() {
-  registerBlock::<Keccak256>();
+  registerBlock::<Keccak_256>();
+  registerBlock::<Keccak_512>();
   registerBlock::<CBSha3_256>();
   registerBlock::<CBSha3_512>();
   registerBlock::<CBSha2_256>();
