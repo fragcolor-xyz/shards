@@ -2,6 +2,7 @@
 extern crate reqwest;
 
 extern crate tiny_keccak;
+extern crate sha2;
 extern crate secp256k1;
 extern crate hex;
 extern crate bs58;
