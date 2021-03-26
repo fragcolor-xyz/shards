@@ -143,6 +143,10 @@ namespace edn {
 extern void registerBlocks();
 }
 
+namespace reflection {
+extern void registerBlocks();
+}
+
 #ifdef CB_WITH_EXTRAS
 extern void cbInitExtras();
 #endif
@@ -253,6 +257,7 @@ void registerCoreBlocks() {
   Wasm::registerBlocks();
   Http::registerBlocks();
   edn::registerBlocks();
+  reflection::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
@@ -2315,14 +2320,19 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
+std::unordered_set<const CBChain *> _gatheredChains;
+
+void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   // TODO out should be a set?
   switch (coll.index()) {
   case 0: {
     // chain
     auto chain = std::get<const CBChain *>(coll);
-    for (auto blk : chain->blocks) {
-      gatherBlocks(blk, out);
+    if (!_gatheredChains.count(chain)) {
+      _gatheredChains.insert(chain);
+      for (auto blk : chain->blocks) {
+        _gatherBlocks(blk, out);
+      }
     }
   } break;
   case 1: {
@@ -2338,13 +2348,13 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
       for (uint32_t j = 0; j < types.len; j++) {
         const auto &type = types.elements[j];
         if (type.basicType == Block) {
-          gatherBlocks(blk->getParam(blk, i), out);
+          _gatherBlocks(blk->getParam(blk, i), out);
           break;
         } else if (type.basicType == Seq) {
           const auto &stypes = type.seqTypes;
           for (uint32_t k = 0; k < stypes.len; k++) {
             if (stypes.elements[k].basicType == Block) {
-              gatherBlocks(blk->getParam(blk, i), out);
+              _gatherBlocks(blk->getParam(blk, i), out);
               break;
             }
           }
@@ -2357,28 +2367,32 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
     // Blocks seq
     auto bs = std::get<CBlocks>(coll);
     for (uint32_t i = 0; i < bs.len; i++) {
-      gatherBlocks(bs.elements[i], out);
+      _gatherBlocks(bs.elements[i], out);
     }
   } break;
   case 3: {
     // Var
     auto var = std::get<CBVar>(coll);
     if (var.valueType == Block) {
-      gatherBlocks(var.payload.blockValue, out);
+      _gatherBlocks(var.payload.blockValue, out);
     } else if (var.valueType == CBType::Chain) {
-      // TODO test this, how do we deal with multiple references of a chain??
       auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-      gatherBlocks(chain.get(), out);
+      _gatherBlocks(chain.get(), out);
     } else if (var.valueType == Seq) {
       auto bs = var.payload.seqValue;
       for (uint32_t i = 0; i < bs.len; i++) {
-        gatherBlocks(bs.elements[i], out);
+        _gatherBlocks(bs.elements[i], out);
       }
     }
   } break;
   default:
     LOG(FATAL) << "invalid state";
   }
+}
+
+void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
+  _gatheredChains.clear();
+  _gatherBlocks(coll, out);
 }
 
 thread_local std::unordered_set<CBChain *> tHashingChains;

@@ -1038,7 +1038,17 @@
   (Chain
    "LoadBinary"
    (ReadFile "testChain.bin")
-   (ExpectChain) >= .loadedChain (Log) (Hash) (Log "output chain hash")
+   (ExpectChain) >= .loadedChain 
+   (| (Reflect.Blocks) = .blocks 
+      (Count .blocks) (Log "blocks-count")
+      0 >= .loggers
+      .blocks (ForEach
+               (->
+                (Reflect.Name)
+                (When (Is "Log")
+                      (-> .loggers (Math.Inc) > .loggers))))
+      .loggers (Log "Log blocks"))
+   (Log) (Hash) (Log "output chain hash")
    (ChainRunner .loadedChain :Mode RunChainMode.Detached)
    (Wait .loadedChain)
    (Assert.Is "global1" true)
