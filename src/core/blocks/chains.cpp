@@ -915,7 +915,9 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    _onReloadBlocks.compose(data);
+    CBInstanceData data2 = data;
+    data2.inputType = CoreInfo::ChainType;
+    _onReloadBlocks.compose(data2);
     _onErrorBlocks.compose(data);
     return BaseLoader<ChainLoader>::compose(data);
   }
