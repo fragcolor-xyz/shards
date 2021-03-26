@@ -573,6 +573,26 @@ struct Mean {
 };
 
 template <class T> struct UnaryBin : public T {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  ParamVar _value{};
+
+  static inline Parameters params{
+      {"Value",
+       CBCCSTR("The value to increase/decrease."),
+       {CoreInfo::IntVarType, CoreInfo::Int2VarType, CoreInfo::Int3VarType,
+        CoreInfo::Int4VarType, CoreInfo::Int8VarType, CoreInfo::Int16VarType,
+        CoreInfo::FloatVarType, CoreInfo::Float2VarType,
+        CoreInfo::Float3VarType, CoreInfo::Float4VarType,
+        CoreInfo::ColorVarType, CoreInfo::AnyVarSeqType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) { _value = value; }
+
+  CBVar getParam(int index) { return _value; }
+
   void setOperand(CBType type) {
     switch (type) {
     case CBType::Int:
@@ -605,23 +625,42 @@ template <class T> struct UnaryBin : public T {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    switch (data.inputType.basicType) {
-    case Seq: {
-      if (data.inputType.seqTypes.len != 1)
-        throw ComposeError("Expected a Seq with just one type as input");
-      setOperand(data.inputType.seqTypes.elements[0].basicType);
-    } break;
-    default:
-      setOperand(data.inputType.basicType);
+    if (!_value.isVariable()) {
+      throw ComposeError("Math.Inc/Dec Expected a variable");
     }
-    return T::compose(data);
+
+    for (const auto &share : data.shared) {
+      if (!strcmp(share.name, _value->payload.stringValue)) {
+        switch (share.exposedType.basicType) {
+        case Seq: {
+          if (share.exposedType.seqTypes.len != 1)
+            throw ComposeError("Expected a Seq with just one type as input");
+          setOperand(share.exposedType.seqTypes.elements[0].basicType);
+        } break;
+        default:
+          setOperand(share.exposedType.basicType);
+        }
+        CBInstanceData data2 = data;
+        data2.inputType = share.exposedType;
+        return T::compose(data2);
+      }
+    }
+
+    throw ComposeError("Math.Inc/Dec variable not found");
+  }
+
+  void warmup(CBContext *context) { _value.warmup(context); }
+
+  void cleanup() { _value.cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    T::operateFast(T::_opType, _value.get(), _value.get(), T::_operand);
+    return input;
   }
 };
 
-struct Inc : public UnaryBin<Add> {};
-RUNTIME_BLOCK_TYPE(Math, Inc);
-struct Dec : public UnaryBin<Subtract> {};
-RUNTIME_BLOCK_TYPE(Math, Dec);
+using Inc = UnaryBin<Add>;
+using Dec = UnaryBin<Subtract>;
 
 struct MaxOp final {
   ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,

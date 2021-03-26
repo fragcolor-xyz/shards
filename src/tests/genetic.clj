@@ -77,7 +77,7 @@
        "evolveme"
        :Looped
        (Once (-> 0 >== .niters)) ;; global on purpose for testing
-       .niters (Math.Inc) > .niters
+       (Math.Inc .niters)
        (When (IsMore 10) (Stop))
        (Step (Chain "stepped" (Start state1)))
        (Mutant (Const 10) [0])
@@ -123,7 +123,7 @@
    "test"
    :Looped
    (Once (-> 0 >= .ntimes))
-   .ntimes (Math.Inc) > .ntimes
+   (Math.Inc .ntimes)
    (When (IsMore 7) (->
                      (Msg "STOP OK!")
                      (Stop)))
@@ -140,8 +140,7 @@
     :Coroutines 8)
    (Take 1)
    (ToJson false)
-   (Log)
-   ))
+   (Log)))
 
 (schedule Root evolveme)
 (run Root 0.1)

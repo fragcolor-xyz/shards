@@ -35,7 +35,7 @@
   (Chain
    "recur"
    (Log "depth")
-   (Math.Inc)
+   (Math.Add 1)
    (Cond
     [(-> (IsLess 5))
      (Do "recur")])
@@ -99,7 +99,7 @@
 (def Loop
   (Chain
    "Loop" :Looped
-   (Math.Inc)
+   (Math.Add 1)
    (Log)
    (Cond
     [(-> (Is 5))
@@ -173,7 +173,7 @@
   (Assert.Is "A" false)
 
   (Repeat (-> 10
-              (Expand 10 (defchain wide-test (Math.Inc)) :Threads 10)
+              (Expand 10 (defchain wide-test (Math.Add 1)) :Threads 10)
               (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
               (Log))
           :Times 10)
@@ -184,7 +184,7 @@
           :Times 10)
 
   10
-  (Expand 10 (defchain wide-test (Math.Inc)))
+  (Expand 10 (defchain wide-test (Math.Add 1)))
   (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
   (Log)
 
@@ -209,7 +209,7 @@
    "test-case-step"
    :Looped
    .x ?? 0
-   (Math.Inc) >= .x
+   (Math.Add 1) >= .x
    (Log "x")))
 
 (prepare test-case-step)

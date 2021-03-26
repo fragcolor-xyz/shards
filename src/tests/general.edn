@@ -760,13 +760,13 @@
    (Update "bytesTest")
    (Log)
 
-   1.0
-   (Math.Inc)
-   (Assert.Is 2.0 true)
+   1.0 >= .one
+   (Math.Inc .one)
+   .one (Assert.Is 2.0 true)
 
-   5
-   (Math.Dec)
-   (Assert.Is 4 true)
+   5 = .5
+   (Math.Dec .5)
+   .5 (Assert.Is 4 true)
 
                                         ; test stack ops
    (Push)
@@ -1039,14 +1039,14 @@
    "LoadBinary"
    (ReadFile "testChain.bin")
    (ExpectChain) >= .loadedChain 
-   (| (Reflect.Blocks) = .blocks 
+   (| (Reflect.Blocks) = .blocks
       (Count .blocks) (Log "blocks-count")
       0 >= .loggers
       .blocks (ForEach
                (->
                 (Reflect.Name)
                 (When (Is "Log")
-                      (-> .loggers (Math.Inc) > .loggers))))
+                      (-> (Math.Inc .loggers)))))
       .loggers (Log "Log blocks"))
    (Log) (Hash) (Log "output chain hash")
    (ChainRunner .loadedChain :Mode RunChainMode.Detached)
