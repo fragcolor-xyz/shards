@@ -2320,7 +2320,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-std::unordered_set<const CBChain *> _gatheredChains;
+thread_local std::unordered_set<const CBChain *> _gatheredChains;
 
 void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   // TODO out should be a set?
