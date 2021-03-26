@@ -631,10 +631,16 @@ template <class T> struct UnaryBin : public T {
 
     for (const auto &share : data.shared) {
       if (!strcmp(share.name, _value->payload.stringValue)) {
+        if (share.isProtected)
+          throw ComposeError("Math.Inc/Dec cannot write protected variables");
+        if (!share.isMutable)
+          throw ComposeError(
+              "Math.Inc/Dec attempt to write immutable variable");
         switch (share.exposedType.basicType) {
         case Seq: {
           if (share.exposedType.seqTypes.len != 1)
-            throw ComposeError("Expected a Seq with just one type as input");
+            throw ComposeError(
+                "Math.Inc/Dec expected a Seq with just one type as input");
           setOperand(share.exposedType.seqTypes.elements[0].basicType);
         } break;
         default:

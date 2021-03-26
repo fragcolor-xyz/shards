@@ -764,7 +764,7 @@
    (Math.Inc .one)
    .one (Assert.Is 2.0 true)
 
-   5 = .5
+   5 >= .5
    (Math.Dec .5)
    .5 (Assert.Is 4 true)
 
