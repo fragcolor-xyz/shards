@@ -78,6 +78,7 @@
        :Looped
        (Once (-> 0 >== .niters)) ;; global on purpose for testing
        (Math.Inc .niters)
+       .niters
        (When (IsMore 10) (Stop))
        (Step (Chain "stepped" (Start state1)))
        (Mutant (Const 10) [0])
@@ -124,6 +125,7 @@
    :Looped
    (Once (-> 0 >= .ntimes))
    (Math.Inc .ntimes)
+   .ntimes
    (When (IsMore 7) (->
                      (Msg "STOP OK!")
                      (Stop)))
