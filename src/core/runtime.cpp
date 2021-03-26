@@ -2345,22 +2345,22 @@ void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
     for (uint32_t i = 0; i < params.len; i++) {
       const auto &param = params.elements[i];
       const auto &types = param.valueTypes;
+      bool potential = false;
       for (uint32_t j = 0; j < types.len; j++) {
         const auto &type = types.elements[j];
-        if (type.basicType == Block) {
-          _gatherBlocks(blk->getParam(blk, i), out);
-          break;
+        if (type.basicType == Block || type.basicType == CBType::Chain) {
+          potential = true;
         } else if (type.basicType == Seq) {
           const auto &stypes = type.seqTypes;
           for (uint32_t k = 0; k < stypes.len; k++) {
             if (stypes.elements[k].basicType == Block) {
-              _gatherBlocks(blk->getParam(blk, i), out);
-              break;
+              potential = true;
             }
           }
-          break;
         }
       }
+      if (potential)
+        _gatherBlocks(blk->getParam(blk, i), out);
     }
   } break;
   case 2: {
