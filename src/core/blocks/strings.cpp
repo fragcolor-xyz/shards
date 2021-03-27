@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2019-2021 Giovanni Petrantoni */
 
+#include "../../../deps/utf8.h/utf8.h"
 #include "shared.hpp"
 #include <regex>
 
@@ -126,10 +127,30 @@ struct Replace : public Common {
   }
 };
 
+struct ToUpper {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    utf8upr(const_cast<char *>(input.payload.stringValue));
+    return input;
+  }
+};
+
+struct ToLower {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    utf8lwr(const_cast<char *>(input.payload.stringValue));
+    return input;
+  }
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Regex.Replace", Replace);
   REGISTER_CBLOCK("Regex.Search", Search);
   REGISTER_CBLOCK("Regex.Match", Match);
+  REGISTER_CBLOCK("String.ToUpper", ToUpper);
+  REGISTER_CBLOCK("String.ToLower", ToLower);
 }
 } // namespace Regex
 } // namespace chainblocks

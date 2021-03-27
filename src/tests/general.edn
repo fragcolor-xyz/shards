@@ -764,6 +764,9 @@
    (| (Take 1) (Assert.Is 2 true))
    (| (Take [1 2 3]) (Assert.Is [2 0 0] true))
 
+   "grüßEN" (String.ToUpper) (Assert.Is "GRÜßEN" true)
+   "grüßEN" (String.ToLower) (Assert.Is "grüßen" true)
+
    1.0 >= .one
    (Math.Inc .one)
    .one (Assert.Is 2.0 true)

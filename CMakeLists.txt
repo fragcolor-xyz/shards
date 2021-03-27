@@ -304,7 +304,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/serialization.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/strings.cpp
   ${CHAINBLOCKS_DIR}/src/core/edn/print.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/read.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
@@ -861,7 +861,7 @@ set(RUNTIME_SRC
   ${CHAINBLOCKS_DIR}/src/core/blocks/json.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/time.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/regex.cpp
+  ${CHAINBLOCKS_DIR}/src/core/blocks/strings.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
