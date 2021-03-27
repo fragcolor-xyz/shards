@@ -21,6 +21,7 @@ struct Uglify {
   }
 };
 
+#if 0
 struct Parse {
   std::vector<OwnedVar> _output;
 
@@ -87,8 +88,7 @@ struct Parse {
       tmp.valueType = CBType::Table;
       tmp.payload.tableValue.api = &Globals::TableInterface;
       tmp.payload.tableValue.opaque = &m;
-      OwnedVar r = tmp;
-      return r;
+      return tmp;
     }
     case form::SET:
       return to_var<form::FormWrapperSet>(std::get<form::FormWrapperSet>(form));
@@ -128,11 +128,14 @@ struct Render {
     return Var(_output);
   }
 };
+#endif
 
 void registerBlocks() {
   REGISTER_CBLOCK("EDN.Uglify", Uglify);
+#if 0
   REGISTER_CBLOCK("EDN.Parse", Parse);
   REGISTER_CBLOCK("EDN.Render", Render);
+#endif
 }
 } // namespace edn
 } // namespace chainblocks
