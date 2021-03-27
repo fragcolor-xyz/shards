@@ -948,42 +948,28 @@ struct Var : public CBVar {
         payload.seqValue.len > 0 ? const_cast<CBVar *>(data) : nullptr;
   }
 
-  explicit Var(const std::vector<CBVar> &vectorRef) : CBVar() {
-    valueType = Seq;
-    payload.seqValue.len = uint32_t(vectorRef.size());
-    payload.seqValue.elements = payload.seqValue.len > 0
-                                    ? const_cast<CBVar *>(vectorRef.data())
-                                    : nullptr;
-  }
-
-  explicit Var(const std::vector<Var> &vectorRef) : CBVar() {
-    valueType = Seq;
-    payload.seqValue.len = uint32_t(vectorRef.size());
-    payload.seqValue.elements = payload.seqValue.len > 0
-                                    ? const_cast<Var *>(vectorRef.data())
-                                    : nullptr;
-  }
-
-  template <size_t N>
-  explicit Var(const std::array<CBVar, N> &arrRef) : CBVar() {
-    valueType = Seq;
-    payload.seqValue.elements =
-        N > 0 ? const_cast<CBVar *>(arrRef.data()) : nullptr;
-    payload.seqValue.len = N;
-  }
-
-  template <size_t N> explicit Var(const std::array<Var, N> &arrRef) : CBVar() {
-    valueType = Seq;
-    payload.seqValue.elements =
-        N > 0 ? const_cast<Var *>(arrRef.data()) : nullptr;
-    payload.seqValue.len = N;
-  }
-
   template <size_t N>
   explicit Var(const std::array<uint8_t, N> &arrRef) : CBVar() {
     valueType = CBType::Bytes;
     payload.bytesValue = N > 0 ? const_cast<uint8_t *>(arrRef.data()) : nullptr;
     payload.bytesSize = N;
+  }
+
+  template <typename TVAR>
+  explicit Var(const std::vector<TVAR> &vectorRef) : CBVar() {
+    valueType = Seq;
+    payload.seqValue.len = uint32_t(vectorRef.size());
+    payload.seqValue.elements = payload.seqValue.len > 0
+                                    ? const_cast<TVAR *>(vectorRef.data())
+                                    : nullptr;
+  }
+
+  template <typename TVAR, size_t N>
+  explicit Var(const std::array<TVAR, N> &arrRef) : CBVar() {
+    valueType = Seq;
+    payload.seqValue.elements =
+        N > 0 ? const_cast<TVAR *>(arrRef.data()) : nullptr;
+    payload.seqValue.len = N;
   }
 
   Var(const Chain &chain);
