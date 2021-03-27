@@ -767,6 +767,9 @@
    "grüßEN" (String.ToUpper) (Assert.Is "GRÜßEN" true)
    "grüßEN" (String.ToLower) (Assert.Is "grüßen" true)
 
+   "A" (ParseInt :Base 16) (Assert.Is 10 true)
+   "2.1" (ParseFloat) (Assert.Is 2.1 true)
+   
    1.0 >= .one
    (Math.Inc .one)
    .one (Assert.Is 2.0 true)

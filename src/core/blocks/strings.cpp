@@ -145,12 +145,52 @@ struct ToLower {
   }
 };
 
+struct ParseInt {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  int _base{10};
+
+  static inline Parameters params{
+      {"Base",
+       CBCCSTR("Numerical base (radix) that determines the valid characters "
+               "and their interpretation."),
+       {CoreInfo::IntType}}};
+  CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    _base = value.payload.intValue;
+  }
+
+  CBVar getParam(int index) { return Var(_base); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    char *str = const_cast<char *>(input.payload.stringValue);
+    const auto len = CBSTRLEN(input);
+    auto v =
+        int64_t(std::stoul(str, reinterpret_cast<size_t *>(str + len), _base));
+    return Var(v);
+  }
+};
+
+struct ParseFloat {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    char *str = const_cast<char *>(input.payload.stringValue);
+    const auto len = CBSTRLEN(input);
+    return Var(std::stod(str, reinterpret_cast<size_t *>(str + len)));
+  }
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("Regex.Replace", Replace);
   REGISTER_CBLOCK("Regex.Search", Search);
   REGISTER_CBLOCK("Regex.Match", Match);
   REGISTER_CBLOCK("String.ToUpper", ToUpper);
   REGISTER_CBLOCK("String.ToLower", ToLower);
+  REGISTER_CBLOCK("ParseInt", ParseInt);
+  REGISTER_CBLOCK("ParseFloat", ParseFloat);
 }
 } // namespace Regex
 } // namespace chainblocks
