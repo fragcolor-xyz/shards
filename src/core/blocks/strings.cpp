@@ -145,7 +145,11 @@ struct ToLower {
   }
 };
 
-struct ParseInt {
+struct Parser {
+  std::string _cache;
+};
+
+struct ParseInt : public Parser {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
 
@@ -167,19 +171,20 @@ struct ParseInt {
   CBVar activate(CBContext *context, const CBVar &input) {
     char *str = const_cast<char *>(input.payload.stringValue);
     const auto len = CBSTRLEN(input);
-    auto v =
-        int64_t(std::stoul(str, reinterpret_cast<size_t *>(str + len), _base));
+    _cache.assign(str, len);
+    auto v = int64_t(std::stoul(_cache, nullptr, _base));
     return Var(v);
   }
 };
 
-struct ParseFloat {
+struct ParseFloat : public Parser {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     char *str = const_cast<char *>(input.payload.stringValue);
     const auto len = CBSTRLEN(input);
-    return Var(std::stod(str, reinterpret_cast<size_t *>(str + len)));
+    _cache.assign(str, len);
+    return Var(std::stod(_cache, nullptr));
   }
 };
 
