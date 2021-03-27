@@ -748,6 +748,8 @@
    (Regex.Replace #"a|e|i|o|u" "[$&]")
    (Log)
    (Assert.Is "Q[u][i]ck br[o]wn f[o]x" true)
+   (| (Take 1) (Assert.Is 91 true))
+   (| (Take [1 2 3]) (Assert.Is [91 117 93] true))
 
    "How many many do you see?"
    (Regex.Search #"many") = .2many
@@ -756,9 +758,11 @@
    (ToBytes)
    (Set "bytesTest")
    (Get "bytesTest")
-   (Log)
+   (Log "bytesTest")
    (Update "bytesTest")
    (Log)
+   (| (Take 1) (Assert.Is 2 true))
+   (| (Take [1 2 3]) (Assert.Is [2 0 0] true))
 
    1.0 >= .one
    (Math.Inc .one)
@@ -767,7 +771,6 @@
    5 >= .5
    (Math.Dec .5)
    .5 (Assert.Is 4 true)
-
                                         ; test stack ops
    (Push)
    (Pop)

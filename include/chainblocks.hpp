@@ -735,6 +735,16 @@ struct Var : public CBVar {
     payload.intValue = src;
   }
 
+  explicit Var(uint8_t src) : CBVar() {
+    valueType = Int;
+    payload.intValue = int64_t(src);
+  }
+
+  explicit Var(char src) : CBVar() {
+    valueType = Int;
+    payload.intValue = int64_t(src);
+  }
+
   explicit Var(unsigned int src) : CBVar() {
     valueType = Int;
     payload.intValue = int64_t(src);

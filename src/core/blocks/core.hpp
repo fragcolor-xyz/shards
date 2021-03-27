@@ -2471,9 +2471,17 @@ struct Take {
     } else if (data.inputType.basicType == Color) {
       // todo
     } else if (data.inputType.basicType == Bytes) {
-      // todo
+      if (_seqOutput) {
+        return CoreInfo::IntSeqType;
+      } else {
+        return CoreInfo::IntType;
+      }
     } else if (data.inputType.basicType == String) {
-      // todo
+      if (_seqOutput) {
+        return CoreInfo::StringSeqType;
+      } else {
+        return CoreInfo::StringType;
+      }
     } else if (data.inputType.basicType == Table) {
       if (data.inputType.table.keys.len > 0 &&
           (_indices.valueType == String || _indices.valueType == Seq)) {
@@ -2592,30 +2600,37 @@ struct Take {
     }
   }
 
-  ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {
-    const auto inputLen = input.payload.seqValue.len;
-    const auto &indices = _indicesVar ? *_indicesVar : _indices;
-
-    if (!_seqOutput) {
-      const auto index = indices.payload.intValue;
-      if (index >= inputLen || index < 0) {
-        throw OutOfRangeEx(inputLen, index);
-      }
-      return input.payload.seqValue.elements[index];
-    } else {
-      const uint32_t nindices = indices.payload.seqValue.len;
-      chainblocks::arrayResize(_cachedSeq, nindices);
-      for (uint32_t i = 0; nindices > i; i++) {
-        const auto index =
-            indices.payload.seqValue.elements[i].payload.intValue;
-        if (index >= inputLen || index < 0) {
-          throw OutOfRangeEx(inputLen, index);
-        }
-        _cachedSeq.elements[i] = input.payload.seqValue.elements[index];
-      }
-      return Var(_cachedSeq);
-    }
+#define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                         \
+  ALWAYS_INLINE CBVar __name__(CBContext *context, const CBVar &input) {       \
+    const auto inputLen = ssize_t(__len__);                                    \
+    const auto &indices = _indicesVar ? *_indicesVar : _indices;               \
+    if (likely(!_seqOutput)) {                                                 \
+      const auto index = indices.payload.intValue;                             \
+      if (index >= inputLen || index < 0) {                                    \
+        throw OutOfRangeEx(inputLen, index);                                   \
+      }                                                                        \
+      return __val__;                                                          \
+    } else {                                                                   \
+      const uint32_t nindices = indices.payload.seqValue.len;                  \
+      chainblocks::arrayResize(_cachedSeq, nindices);                          \
+      for (uint32_t i = 0; nindices > i; i++) {                                \
+        const auto index =                                                     \
+            indices.payload.seqValue.elements[i].payload.intValue;             \
+        if (index >= inputLen || index < 0) {                                  \
+          throw OutOfRangeEx(inputLen, index);                                 \
+        }                                                                      \
+        _cachedSeq.elements[i] = __val__;                                      \
+      }                                                                        \
+      return Var(_cachedSeq);                                                  \
+    }                                                                          \
   }
+
+  ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len,
+                     input.payload.seqValue.elements[index])
+  ACTIVATE_INDEXABLE(activateString, CBSTRLEN(input),
+                     Var(input.payload.stringValue[index]))
+  ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize,
+                     Var(input.payload.bytesValue[index]))
 
   CBVar activateTable(CBContext *context, const CBVar &input) {
     // TODO, if the strings are static at compose time, make sure to cache the
