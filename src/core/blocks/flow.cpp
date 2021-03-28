@@ -11,7 +11,7 @@ static Type condBlockSeqs = Type::SeqOf(CoreInfo::BlocksOrNone);
 static ParamsInfo condParamsInfo = ParamsInfo(
     ParamsInfo::Param(
         "Chains",
-        CBCCSTR("A sequence of chains, interleaving condition test predicate "
+        CBCCSTR("A sequence of blocks, interleaving condition test predicate "
                 "and action to execute if the condition matches."),
         condBlockSeqs),
     ParamsInfo::Param(

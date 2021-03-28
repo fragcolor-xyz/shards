@@ -9,6 +9,47 @@ namespace chainblocks {
 namespace edn {
 struct Uglify {
   std::string _output;
+  std::vector<OwnedVar> _cases;
+  std::vector<BlocksVar> _actions;
+  std::vector<CBVar> _full;
+
+  static inline Parameters params{
+      {"Hooks",
+       CBCCSTR("A list of pairs to hook, [<symbol name> <blocks to execute>], "
+               "blocks will have as input the contents of the symbols's list."),
+       {CoreInfo::AnySeqType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    _cases.clear();
+    _actions.clear();
+    _full.clear();
+    if (value.valueType == CBType::Seq) {
+      auto counter = value.payload.seqValue.len;
+      if (counter % 2)
+        throw CBException("EDN.Uglify Hooks expected a sequence of pairs");
+      _cases.resize(counter / 2);
+      _actions.resize(counter / 2);
+      _full.resize(counter);
+      auto idx = 0;
+      for (uint32_t i = 0; i < counter; i += 2) {
+        _cases[idx] = value.payload.seqValue.elements[i];
+        _actions[idx] = value.payload.seqValue.elements[i + 1];
+        _full[i] = _cases[idx];
+        _full[i + 1] = _actions[idx];
+        idx++;
+      }
+    }
+  }
+
+  CBVar getParam(int index) {
+    if (_full.size() == 0) {
+      return Var::Empty;
+    } else {
+      return Var(_full);
+    }
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -16,7 +57,9 @@ struct Uglify {
         input.payload.stringLen > 0
             ? std::string(input.payload.stringValue, input.payload.stringLen)
             : std::string(input.payload.stringValue);
-    _output.assign(print(read(s)));
+    auto forms = read(s);
+    // edit them
+    _output.assign(print(forms));
     return Var(_output);
   }
 };
