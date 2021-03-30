@@ -52,13 +52,78 @@ struct Uglify {
 
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  bool find_symbols(token::Token &token) {
+    if (token.value.index() == token::value::STRING &&
+        token.type == token::type::SYMBOL) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  template <class T> void find_symbols(T &seq, bool list) {
+    bool first = true;
+    BOOST_FOREACH (auto &item, seq) {
+      if (first && find_symbols(item) && list) {
+        // execute blocks here
+        const auto &token = std::get<token::Token>(item.form);
+        const auto &name = std::get<std::string>(token.value);
+        LOG(DEBUG) << "Found symbol: " << name;
+      }
+      first = false;
+    }
+  }
+
+  bool find_symbols(form::FormWrapper formWrapper) {
+    return find_symbols(formWrapper.form);
+  }
+
+  void find_symbols(form::FormWrapperMap &map) {
+    BOOST_FOREACH (auto &item, map) { find_symbols(item.second.form); }
+  }
+
+  bool find_symbols(form::Form form) {
+    switch (form.index()) {
+    case form::SPECIAL: {
+      auto error = std::get<form::Special>(form);
+      LOG(ERROR) << "EDN parsing error: " << error.message;
+      throw ActivationError("EDN parsing error");
+    }
+    case form::TOKEN:
+      return find_symbols(std::get<token::Token>(form));
+    case form::LIST:
+      find_symbols<std::list<form::FormWrapper>>(
+          std::get<std::list<form::FormWrapper>>(form), true);
+      break;
+    case form::VECTOR:
+      find_symbols<std::vector<form::FormWrapper>>(
+          std::get<std::vector<form::FormWrapper>>(form), false);
+      break;
+    case form::MAP:
+      find_symbols(std::get<form::FormWrapperMap>(form));
+      break;
+    case form::SET:
+      find_symbols<form::FormWrapperSet>(std::get<form::FormWrapperSet>(form),
+                                         false);
+      break;
+    }
+    return false;
+  }
+
+  void find_symbols(const std::list<form::Form> &forms) {
+    for (auto &form : forms) {
+      find_symbols(form);
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto s =
         input.payload.stringLen > 0
             ? std::string(input.payload.stringValue, input.payload.stringLen)
             : std::string(input.payload.stringValue);
     auto forms = read(s);
-    // edit them
+    // find_symbols(forms);
     _output.assign(print(forms));
     return Var(_output);
   }
