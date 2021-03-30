@@ -53,9 +53,11 @@ struct Uglify {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
+  bool find_symbols(std::string &s) { return true; }
+
   bool find_symbols(token::Token &token) {
     if (token.value.index() == token::value::STRING &&
-        token.type == token::type::SYMBOL) {
+        token.type >= token::type::SYMBOL) {
       return true;
     } else {
       return false;
@@ -65,11 +67,19 @@ struct Uglify {
   template <class T> void find_symbols(T &seq, bool list) {
     bool first = true;
     BOOST_FOREACH (auto &item, seq) {
-      if (first && find_symbols(item) && list) {
+      // always run find_symbols
+      if (find_symbols(item) && first && list) {
         // execute blocks here
         const auto &token = std::get<token::Token>(item.form);
         const auto &name = std::get<std::string>(token.value);
-        LOG(DEBUG) << "Found symbol: " << name;
+        for (auto &case_ : _cases) {
+          if (case_.valueType == CBType::String) {
+            auto cs = CBSTRVIEW(case_);
+            if (name == cs) {
+              LOG(DEBUG) << "Found symbol: " << name;
+            }
+          }
+        }
       }
       first = false;
     }
@@ -123,7 +133,8 @@ struct Uglify {
             ? std::string(input.payload.stringValue, input.payload.stringLen)
             : std::string(input.payload.stringValue);
     auto forms = read(s);
-    // find_symbols(forms);
+    if (_cases.size())
+      find_symbols(forms);
     _output.assign(print(forms));
     return Var(_output);
   }

@@ -65,8 +65,6 @@ inline std::string pr_str(document &doc, form::FormWrapper formWrapper) {
   return pr_str(doc, formWrapper.form);
 }
 
-inline std::string pr_str(document &doc, std::string &s) { return s; }
-
 template <class T> inline std::string pr_str(document &doc, T &list) {
   std::string s;
   BOOST_FOREACH (auto &item, list) {

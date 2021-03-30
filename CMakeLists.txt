@@ -892,7 +892,6 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
-    ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
     )
 
   if(WIN32)

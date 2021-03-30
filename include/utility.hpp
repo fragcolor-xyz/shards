@@ -19,6 +19,8 @@ namespace chainblocks {
   (_v_.payload.stringLen > 0 ? _v_.payload.stringLen                           \
                              : strlen(_v_.payload.stringValue))
 
+#define CBSTRVIEW(_v_) std::string_view(_v_.payload.stringValue, CBSTRLEN(_v_))
+
 // compile time CRC32
 constexpr uint32_t crc32(std::string_view str) {
   constexpr uint32_t crc_table[] = {
