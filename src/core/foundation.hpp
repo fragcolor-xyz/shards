@@ -47,7 +47,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <boost/align/aligned_allocator.hpp>
 
 // TODO make it into a run-time param
-#define CB_STACK_SIZE 128 * 1024
+#define CB_BASE_STACK_SIZE 128 * 1024
 
 #ifndef __EMSCRIPTEN__
 // For coroutines/context switches
@@ -56,10 +56,11 @@ typedef boost::context::continuation CBCoro;
 #else
 #include <emscripten/fiber.h>
 struct CBCoro {
-  static constexpr int stack_size = CB_STACK_SIZE;
+  size_t stack_size;
   static constexpr int as_stack_size = 32770;
 
-  CBCoro() {}
+  CBCoro() : stack_size(CB_BASE_STACK_SIZE) {}
+  CBCoro(size_t size) : stack_size(size) {}
   ~CBCoro() {
     if (c_stack)
       ::operator delete[](c_stack, std::align_val_t{16});
@@ -235,10 +236,10 @@ private:
 
 #ifndef __EMSCRIPTEN__
 struct CBStackAllocator {
+  size_t size{CB_BASE_STACK_SIZE};
   uint8_t *mem{nullptr};
 
   boost::context::stack_context allocate() {
-    constexpr auto size = CB_STACK_SIZE;
     boost::context::stack_context ctx;
     ctx.size = size;
     ctx.sp = mem + size;
@@ -356,7 +357,8 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
       variables;
 
   // this is the eventual coroutine stack memory buffer
-  uint8_t *stack_mem{nullptr};
+  uint8_t *stackMem{nullptr};
+  size_t stackSize{CB_BASE_STACK_SIZE};
 
   static std::shared_ptr<CBChain> sharedFromRef(CBChainRef ref) {
     return *reinterpret_cast<std::shared_ptr<CBChain> *>(ref);

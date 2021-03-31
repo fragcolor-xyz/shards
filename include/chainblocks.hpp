@@ -1120,6 +1120,7 @@ public:
 
   Chain &looped(bool looped);
   Chain &unsafe(bool unsafe);
+  Chain &stackSize(size_t size);
   Chain &name(std::string_view name);
 
   CBChain *operator->() { return _chain.get(); }

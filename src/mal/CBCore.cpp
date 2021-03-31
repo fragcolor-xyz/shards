@@ -101,6 +101,8 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
   // Chain params
   env->set(":Looped", mal::keyword(":Looped"));
   env->set(":Unsafe", mal::keyword(":Unsafe"));
+  env->set(":LStack", mal::keyword(":LStack"));
+  env->set(":SStack", mal::keyword(":SStack"));
   // CBType
   env->set(":None", mal::keyword(":None"));
   env->set(":Any", mal::keyword(":Any"));
@@ -1324,6 +1326,10 @@ BUILTIN("Chain") {
         chain->looped = true;
       } else if (v->value() == ":Unsafe") {
         chain->unsafe = true;
+      } else if (v->value() == ":LStack") {
+        chain->stackSize = 1024 * 1024;     // 1mb
+      } else if (v->value() == ":SStack") { // default is 128kb
+        chain->stackSize = 32 * 1024;       // 32kb
       }
     } else {
       auto blks = chainify(pbegin, argsEnd);

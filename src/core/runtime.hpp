@@ -487,16 +487,16 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
 #endif
 
 #ifndef __EMSCRIPTEN__
-  if (!chain->stack_mem) {
-    chain->stack_mem = new (std::align_val_t{16}) uint8_t[CB_STACK_SIZE];
+  if (!chain->stackMem) {
+    chain->stackMem = new (std::align_val_t{16}) uint8_t[chain->stackSize];
   }
   chain->coro = boost::context::callcc(
-      std::allocator_arg, CBStackAllocator{chain->stack_mem},
+      std::allocator_arg, CBStackAllocator{chain->stackSize, chain->stackMem},
       [chain, flow](boost::context::continuation &&sink) {
         return run(chain, flow, std::move(sink));
       });
 #else
-  chain->coro.emplace();
+  chain->coro.emplace(chain->stackSize);
   chain->coro->init([=]() { run(chain, flow, &(*chain->coro)); });
   chain->coro->resume();
 #endif

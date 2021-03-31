@@ -1844,6 +1844,11 @@ Chain &Chain::unsafe(bool unsafe) {
   return *this;
 }
 
+Chain &Chain::stackSize(size_t stackSize) {
+  _chain->stackSize = stackSize;
+  return *this;
+}
+
 Chain &Chain::name(std::string_view name) {
   _chain->name = name;
   return *this;
@@ -2712,9 +2717,9 @@ void CBChain::reset() {
   }
   node.reset();
 
-  if (stack_mem) {
-    ::operator delete[](stack_mem, std::align_val_t{16});
-    stack_mem = nullptr;
+  if (stackMem) {
+    ::operator delete[](stackMem, std::align_val_t{16});
+    stackMem = nullptr;
   }
 
   resumer = nullptr;
