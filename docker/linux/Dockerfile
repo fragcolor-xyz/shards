@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update
 RUN apt-get -y install tzdata
-RUN apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev valgrind xorg-dev libdbus-1-dev libssl-dev lcov
+RUN apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev valgrind xorg-dev libdbus-1-dev libssl-dev lcov ca-certificates
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
