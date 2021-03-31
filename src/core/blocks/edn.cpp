@@ -89,6 +89,7 @@ struct Uglify {
         rewrite(*it, val);
         it++;
       }
+      idx++;
     }
   }
 
@@ -284,7 +285,7 @@ struct Uglify {
     dataCopy.inputType = CoreInfo::AnySeqType;
     for (auto &action : _actions) {
       if (action)
-        action.compose(data);
+        action.compose(dataCopy);
     }
 
     return data.inputType;

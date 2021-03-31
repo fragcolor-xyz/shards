@@ -3,7 +3,17 @@
 (defchain uglify
   "general.edn"
   (FS.Read)
-  (EDN.Uglify ["WriteFile" (-> (Log))]) = .ugly1
+  (EDN.Uglify ["WriteFile" 
+               (->
+                = .input
+                (Sequence .output)
+                .input
+                (ForEach
+                 (->
+                  (ExpectString)
+                  (Match ["test.bin" (-> "testfile.bin" >> .output)
+                          nil (-> >> .output)])))
+                .output)]) = .ugly1
   ;; (EDN.Parse) (Log)
   "general.ugly.edn"
   (FS.Write .ugly1 :Overwrite true)
