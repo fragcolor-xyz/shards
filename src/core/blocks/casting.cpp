@@ -776,9 +776,10 @@ struct ToBase64 {
           output.data(), input.payload.bytesValue, input.payload.bytesSize);
       output.resize(written);
     } else {
-      const auto len = input.payload.stringLen > 0
-                           ? input.payload.stringLen
-                           : strlen(input.payload.stringValue);
+      const auto len =
+          input.payload.stringLen > 0 || input.payload.stringValue == nullptr
+              ? input.payload.stringLen
+              : strlen(input.payload.stringValue);
       auto req = boost::beast::detail::base64::encoded_size(len);
       output.resize(req);
       auto written = boost::beast::detail::base64::encode(
@@ -795,8 +796,10 @@ struct FromBase64 {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     output.clear();
-    auto len = input.payload.stringLen > 0 ? input.payload.stringLen
-                                           : strlen(input.payload.stringValue);
+    auto len =
+        input.payload.stringLen > 0 || input.payload.stringValue == nullptr
+            ? input.payload.stringLen
+            : strlen(input.payload.stringValue);
     auto req = boost::beast::detail::base64::decoded_size(len);
     output.resize(req);
     auto [written, _] = boost::beast::detail::base64::decode(

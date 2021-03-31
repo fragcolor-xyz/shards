@@ -16,8 +16,9 @@
 namespace chainblocks {
 // CBVar strings can have an optional len field populated
 #define CBSTRLEN(_v_)                                                          \
-  (_v_.payload.stringLen > 0 ? _v_.payload.stringLen                           \
-                             : strlen(_v_.payload.stringValue))
+  (_v_.payload.stringLen > 0 || _v_.payload.stringValue == nullptr             \
+       ? _v_.payload.stringLen                                                 \
+       : strlen(_v_.payload.stringValue))
 
 #define CBSTRVIEW(_v_) std::string_view(_v_.payload.stringValue, CBSTRLEN(_v_))
 

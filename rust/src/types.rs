@@ -870,13 +870,19 @@ impl From<String> for &str {
 impl<'a> From<&'a str> for Var {
   #[inline(always)]
   fn from(v: &'a str) -> Self {
+    let len = v.len();
+    let p = if len > 0 {
+      v.as_ptr()
+    } else {
+      core::ptr::null()
+    };
     CBVar {
       valueType: CBType_String,
       payload: CBVarPayload {
         __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
           __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
-            stringValue: v.as_ptr() as *const i8,
-            stringLen: v.len() as u32,
+            stringValue: p as *const i8,
+            stringLen: len as u32,
             stringCapacity: 0,
           },
         },

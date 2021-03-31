@@ -1207,7 +1207,7 @@ struct VarStringStream {
       } else if (var.valueType == String) {
         stream << "0x" << std::hex;
         auto len = var.payload.stringLen;
-        if (len == 0) {
+        if (len == 0 && var.payload.stringValue) {
           len = strlen(var.payload.stringValue);
         }
         for (uint32_t i = 0; i < len; i++)

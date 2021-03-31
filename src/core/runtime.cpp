@@ -2146,9 +2146,10 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   case Path:
   case ContextVar:
   case String: {
-    auto srcSize = src.payload.stringLen > 0
-                       ? src.payload.stringLen
-                       : uint32_t(strlen(src.payload.stringValue));
+    auto srcSize =
+        src.payload.stringLen > 0 || src.payload.stringValue == nullptr
+            ? src.payload.stringLen
+            : uint32_t(strlen(src.payload.stringValue));
     if ((dst.valueType != String && dst.valueType != ContextVar) ||
         dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
@@ -2431,10 +2432,11 @@ void hash_update(const CBVar &var, void *state) {
   case CBType::Path:
   case CBType::ContextVar:
   case CBType::String: {
-    error = XXH3_64bits_update(hashState, var.payload.stringValue,
-                               size_t(var.payload.stringLen > 0
-                                          ? var.payload.stringLen
-                                          : strlen(var.payload.stringValue)));
+    error = XXH3_64bits_update(
+        hashState, var.payload.stringValue,
+        size_t(var.payload.stringLen > 0 || var.payload.stringValue == nullptr
+                   ? var.payload.stringLen
+                   : strlen(var.payload.stringValue)));
     assert(error == XXH_OK);
   } break;
   case CBType::Image: {

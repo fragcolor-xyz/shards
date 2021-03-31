@@ -331,7 +331,8 @@ struct Write {
       }
       std::ofstream file(p.string(), flags);
       if (contents.valueType == String) {
-        auto len = contents.payload.stringLen > 0
+        auto len = contents.payload.stringLen > 0 ||
+                           contents.payload.stringValue == nullptr
                        ? contents.payload.stringLen
                        : strlen(contents.payload.stringValue);
         file.write((const char *)contents.payload.stringValue, len);

@@ -892,7 +892,8 @@ struct Var : public CBVar {
   explicit Var(const char *src, size_t len = 0) : CBVar() {
     valueType = CBType::String;
     payload.stringValue = src;
-    payload.stringLen = uint32_t(len == 0 ? strlen(src) : len);
+    payload.stringLen =
+        uint32_t(len == 0 && src != nullptr ? strlen(src) : len);
   }
 
   explicit Var(const std::string &src) : CBVar() {

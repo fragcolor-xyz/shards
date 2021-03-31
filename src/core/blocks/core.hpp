@@ -2085,7 +2085,8 @@ struct Count : SeqUser {
     } else if (_cell->valueType == Bytes) {
       return Var(int64_t(_cell->payload.bytesSize));
     } else if (_cell->valueType == String) {
-      return Var(int64_t(_cell->payload.stringLen > 0
+      return Var(int64_t(_cell->payload.stringLen > 0 ||
+                                 _cell->payload.stringValue == nullptr
                              ? _cell->payload.stringLen
                              : strlen(_cell->payload.stringValue)));
     } else {
@@ -2998,9 +2999,10 @@ struct Slice {
       _toVar = referenceVariable(context, _to.payload.stringValue);
     }
 
-    const auto inputLen = input.payload.stringLen > 0
-                              ? input.payload.stringLen
-                              : uint32_t(strlen(input.payload.stringValue));
+    const auto inputLen =
+        input.payload.stringLen > 0 || input.payload.stringValue == nullptr
+            ? input.payload.stringLen
+            : uint32_t(strlen(input.payload.stringValue));
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
