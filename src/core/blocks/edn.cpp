@@ -73,7 +73,7 @@ struct Uglify {
       token.value = std::string(sv);
     } break;
     default:
-      LOG(ERROR) << "Type not handled: " << v.valueType;
+      LOG(ERROR) << "Type not handled: " << type2Name(v.valueType);
       throw ActivationError("Type not handled");
     }
   }
