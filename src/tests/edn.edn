@@ -3,7 +3,7 @@
 (defchain uglify
   "general.edn"
   (FS.Read)
-  (EDN.Uglify ["WriteFile" nil]) = .ugly1
+  (EDN.Uglify ["WriteFile" (-> (Log))]) = .ugly1
   ;; (EDN.Parse) (Log)
   "general.ugly.edn"
   (FS.Write .ugly1 :Overwrite true)

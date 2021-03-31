@@ -12,6 +12,7 @@ struct Uglify {
   std::vector<OwnedVar> _cases;
   std::vector<BlocksVar> _actions;
   std::vector<CBVar> _full;
+  CBContext *_context{nullptr};
 
   static inline Parameters params{
       {"Hooks",
@@ -53,6 +54,81 @@ struct Uglify {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
+  void rewrite(token::Token &token, CBVar &v) {
+    switch (v.valueType) {
+    case CBType::Bool:
+      token.value = v.payload.boolValue;
+      break;
+    case CBType::Int:
+      if (token::value::CHAR)
+        token.value = char(v.payload.intValue);
+      else
+        token.value = v.payload.intValue;
+      break;
+    case CBType::Float:
+      token.value = v.payload.floatValue;
+      break;
+    case CBType::String: {
+      auto sv = CBSTRVIEW(v);
+      token.value = std::string(sv);
+    } break;
+    default:
+      LOG(ERROR) << "Type not handled: " << v.valueType;
+      throw ActivationError("Type not handled");
+    }
+  }
+
+  template <class T> void rewrite(T &seq, CBVar &v) {
+    auto idx = 0;
+    for (auto it = seq.begin(); it != seq.end();) {
+      auto &val = *(begin(v) + idx);
+      if (val.valueType == CBType::None) {
+        // we want to remove this token
+        it = seq.erase(it);
+      } else {
+        rewrite(*it, val);
+        it++;
+      }
+    }
+  }
+
+  void rewrite(form::FormWrapper &formWrapper, CBVar &v) {
+    rewrite(formWrapper.form, v);
+  }
+
+  void rewrite(form::FormWrapperMap &map, CBVar &v) {
+    BOOST_FOREACH (auto &item, map) {
+      // rewrite(item.second.form);
+    }
+  }
+
+  void rewrite(form::Form &form, CBVar &v) {
+    switch (form.index()) {
+    case form::SPECIAL: {
+      auto &error = std::get<form::Special>(form);
+      LOG(ERROR) << "EDN parsing error: " << error.message;
+      throw ActivationError("EDN parsing error");
+    }
+    case form::TOKEN:
+      rewrite(std::get<token::Token>(form), v);
+      break;
+    case form::LIST:
+      rewrite<std::list<form::FormWrapper>>(
+          std::get<std::list<form::FormWrapper>>(form), v);
+      break;
+    case form::VECTOR:
+      rewrite<std::vector<form::FormWrapper>>(
+          std::get<std::vector<form::FormWrapper>>(form), v);
+      break;
+    case form::MAP:
+      rewrite(std::get<form::FormWrapperMap>(form), v);
+      break;
+    case form::SET:
+      rewrite<form::FormWrapperSet>(std::get<form::FormWrapperSet>(form), v);
+      break;
+    }
+  }
+
   OwnedVar to_var(token::Token &token) {
     switch (token.value.index()) {
     case token::value::BOOL:
@@ -76,7 +152,7 @@ struct Uglify {
     return Var(vars);
   }
 
-  OwnedVar to_var(form::FormWrapper formWrapper) {
+  OwnedVar to_var(form::FormWrapper &formWrapper) {
     return to_var(formWrapper.form);
   }
 
@@ -95,7 +171,7 @@ struct Uglify {
   OwnedVar to_var(form::Form form) {
     switch (form.index()) {
     case form::SPECIAL: {
-      auto error = std::get<form::Special>(form);
+      auto &error = std::get<form::Special>(form);
       LOG(ERROR) << "EDN parsing error: " << error.message;
       throw ActivationError("EDN parsing error");
     }
@@ -121,8 +197,6 @@ struct Uglify {
     return Var::Empty;
   }
 
-  bool find_symbols(std::string &s) { return true; }
-
   bool find_symbols(token::Token &token) {
     if (token.value.index() == token::value::STRING &&
         token.type >= token::type::SYMBOL) {
@@ -140,20 +214,30 @@ struct Uglify {
         // execute blocks here
         const auto &token = std::get<token::Token>(item.form);
         const auto &name = std::get<std::string>(token.value);
+        auto idx = 0;
         for (auto &case_ : _cases) {
           if (case_.valueType == CBType::String) {
             auto cs = CBSTRVIEW(case_);
             if (name == cs) {
-              LOG(DEBUG) << "Found symbol: " << name;
+              auto v = to_var(seq);
+              LOG(DEBUG) << "Found symbol: " << name << ": " << v;
+              if (_actions[idx]) {
+                CBVar output = v;
+                const auto state = _actions[idx].activate(_context, v, output);
+                if (state == CBChainState::Continue) {
+                  rewrite(seq, output);
+                }
+              }
             }
           }
+          idx++;
         }
       }
       first = false;
     }
   }
 
-  bool find_symbols(form::FormWrapper formWrapper) {
+  bool find_symbols(form::FormWrapper &formWrapper) {
     return find_symbols(formWrapper.form);
   }
 
@@ -161,10 +245,10 @@ struct Uglify {
     BOOST_FOREACH (auto &item, map) { find_symbols(item.second.form); }
   }
 
-  bool find_symbols(form::Form form) {
+  bool find_symbols(form::Form &form) {
     switch (form.index()) {
     case form::SPECIAL: {
-      auto error = std::get<form::Special>(form);
+      auto &error = std::get<form::Special>(form);
       LOG(ERROR) << "EDN parsing error: " << error.message;
       throw ActivationError("EDN parsing error");
     }
@@ -189,13 +273,39 @@ struct Uglify {
     return false;
   }
 
-  void find_symbols(const std::list<form::Form> &forms) {
+  void find_symbols(std::list<form::Form> &forms) {
     for (auto &form : forms) {
       find_symbols(form);
     }
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    CBInstanceData dataCopy = data;
+    dataCopy.inputType = CoreInfo::AnySeqType;
+    for (auto &action : _actions) {
+      if (action)
+        action.compose(data);
+    }
+
+    return data.inputType;
+  }
+
+  void warmup(CBContext *context) {
+    for (auto &action : _actions) {
+      if (action)
+        action.warmup(context);
+    }
+  }
+
+  void cleanup() {
+    for (auto &action : _actions) {
+      if (action)
+        action.cleanup();
+    }
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
+    _context = context;
     const auto s =
         input.payload.stringLen > 0
             ? std::string(input.payload.stringValue, input.payload.stringLen)
