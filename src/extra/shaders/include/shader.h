@@ -7,8 +7,9 @@
 #include "bgfx_shader.h"
 #include "shaderlib.h"
 
-uniform vec4 u_private_time4; // we might change this in the future, use yzw for other stuff
+uniform vec4 u_private_time4; // w is unused
 #define u_timeDelta u_private_time4.x
 #define u_timeAbs u_private_time4.y
+#define u_frameIdx u_private_time4.z
 
 #endif

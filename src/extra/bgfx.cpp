@@ -675,6 +675,7 @@ struct MainWindow : public BaseWindow {
 
   ProcessClock _absTimer;
   ProcessClock _deltaTimer;
+  uint32_t _frameCounter{0};
 
   void warmup(CBContext *context) {
     // do not touch parameter values
@@ -861,6 +862,9 @@ struct MainWindow : public BaseWindow {
         bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
     _deltaTimer.Start = std::chrono::high_resolution_clock::now();
 
+    // reset frame counter
+    _frameCounter = 0;
+
     // init blocks after we initialize the system
     _blocks.warmup(context);
   }
@@ -965,7 +969,7 @@ struct MainWindow : public BaseWindow {
     std::chrono::duration<float> ddt = tnow - _deltaTimer.Start;
     _deltaTimer.Start = tnow; // reset timer
     std::chrono::duration<float> adt = tnow - _absTimer.Start;
-    float time[4] = {ddt.count(), adt.count(), 0.0, 0.0};
+    float time[4] = {ddt.count(), adt.count(), float(_frameCounter++), 0.0};
     bgfx::setUniform(_timeUniformHandle, time, 1);
 
     if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
