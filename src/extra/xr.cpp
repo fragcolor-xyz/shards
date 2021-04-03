@@ -525,10 +525,10 @@ struct RenderXR : public BGFX::BaseConsumer {
           _blocks.activate(context, input, output);
         }
       } else {
-        LOG_EVERY_N(200, INFO) << "XR pose not available.";
+        // LOG_EVERY_N(200, INFO) << "XR pose not available.";
       }
     } else {
-      LOG_EVERY_N(200, INFO) << "Skipping XR rendering, not initialized.";
+      // LOG_EVERY_N(200, INFO) << "Skipping XR rendering, not initialized.";
     }
 #endif
 
