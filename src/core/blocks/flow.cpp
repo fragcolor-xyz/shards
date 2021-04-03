@@ -375,17 +375,32 @@ struct Maybe : public BaseSubFlow {
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
-    if (index == 0)
+    switch (index) {
+    case 0:
       _blocks = value;
-    else
+      break;
+    case 1:
       _elseBlks = value;
+      break;
+    case 2:
+      _silent = value.payload.boolValue;
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
   }
 
   CBVar getParam(int index) {
-    if (index == 0)
+    switch (index) {
+    case 0:
       return _blocks;
-    else
+    case 1:
       return _elseBlks;
+    case 2:
+      return Var(_silent);
+    default:
+      throw InvalidParameterIndex();
+    }
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -435,10 +450,24 @@ struct Maybe : public BaseSubFlow {
     CBVar output{};
     if (likely(_blocks)) {
       try {
+        if (_silent) {
+          spdlog::set_level(spdlog::level::off);
+        }
+        DEFER({
+          if (_silent) {
+#ifdef NDEBUG
+            spdlog::set_level(spdlog::level::info);
+#else
+            spdlog::set_level(spdlog::level::trace);
+#endif
+          }
+        });
         _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
         if (likely(!context->onLastResume)) {
-          CBLOG_WARNING("Maybe block Ignored an error: {}", ex.what());
+          if (!_silent) {
+            CBLOG_WARNING("Maybe block Ignored an error: {}", ex.what());
+          }
           context->resetCancelFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
@@ -452,11 +481,17 @@ struct Maybe : public BaseSubFlow {
 
 private:
   BlocksVar _elseBlks{};
+  bool _silent{false};
   static inline Parameters _params{
       BaseSubFlow::_params,
       {{"Else",
         CBCCSTR("The blocks to activate on failure."),
-        {CoreInfo::BlocksOrNone}}}};
+        {CoreInfo::BlocksOrNone}},
+       {"Silent",
+        CBCCSTR("If logging should be disabled while running the blocks (this "
+                "will also disable (Log) and (Msg) blocks) and no warning "
+                "message should be printed on failure."),
+        {CoreInfo::BoolType}}}};
 };
 
 struct Await : public BaseSubFlow {
