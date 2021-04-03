@@ -191,13 +191,13 @@ void registerCoreBlocks() {
   if (Globals::ExePath.size() > 0) {
     auto pluginPath = fs::absolute(Globals::ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
-    CBLOG_DEBUG("Adding dll path: {}", pluginPathStr);
+    CBLOG_DEBUG("Adding dll path: {}", pluginPath.string());
     AddDllDirectory(pluginPathStr.c_str());
   }
   if (Globals::RootPath.size() > 0) {
     auto pluginPath = fs::absolute(Globals::RootPath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
-    CBLOG_DEBUG("Adding dll path: {}", pluginPathStr);
+    CBLOG_DEBUG("Adding dll path: {}", pluginPath.string());
     AddDllDirectory(pluginPathStr.c_str());
   }
 #endif

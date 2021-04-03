@@ -8,6 +8,8 @@
 #include "./bgfx.cpp"
 #endif
 
+#include <fstream>
+
 #ifdef CHECK
 #undef CHECK
 #endif

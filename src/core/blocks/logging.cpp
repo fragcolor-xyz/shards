@@ -48,9 +48,9 @@ struct Log : public LoggingBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto current = context->chainStack.back();
     if (msg.size() > 0) {
-      CBLOG_INFO("{{}} {}: {}", current->name, msg, input);
+      CBLOG_INFO("[{}] {}: {}", current->name, msg, input);
     } else {
-      CBLOG_INFO("{{}} {}", current->name, input);
+      CBLOG_INFO("[{}] {}", current->name, input);
     }
     return input;
   }
@@ -91,7 +91,7 @@ struct Msg : public LoggingBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto current = context->chainStack.back();
-    CBLOG_INFO("{{}} {}", current->name, msg);
+    CBLOG_INFO("[{}] {}", current->name, msg);
     return input;
   }
 };
