@@ -208,7 +208,7 @@ void registerCoreBlocks() {
   spdlog::set_level(spdlog::level::trace);
 #endif
 
-  spdlog::set_pattern("[%L] [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
 
   CBLOG_DEBUG("Registering blocks");
 
