@@ -1631,8 +1631,9 @@ extern Shared<boost::asio::thread_pool, int, 4> SharedThreadPool;
 extern Shared<boost::asio::thread_pool> SharedThreadPool;
 #endif
 
-template <typename FUNC>
-inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
+template <typename FUNC, typename CANCELLATION>
+inline CBVar awaitne(CBContext *context, FUNC &&func,
+                     CANCELLATION &&cancel) noexcept {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
@@ -1654,9 +1655,11 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
       break;
   }
 
-  // TODO figure out cancellations inside parallel tasks...
-  while (!complete) {
-    std::this_thread::yield();
+  if (unlikely(!complete)) {
+    cancel();
+    while (!complete) {
+      std::this_thread::yield();
+    }
   }
 
   if (exp) {
@@ -1673,7 +1676,8 @@ inline CBVar awaitne(CBContext *context, FUNC &&func) noexcept {
 #endif
 }
 
-template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
+template <typename FUNC, typename CANCELLATION>
+inline void await(CBContext *context, FUNC &&func, CANCELLATION &&cancel) {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
@@ -1694,9 +1698,11 @@ template <typename FUNC> inline void await(CBContext *context, FUNC &&func) {
       break;
   }
 
-  // TODO figure out cancellations inside parallel tasks...
-  while (!complete) {
-    std::this_thread::yield();
+  if (unlikely(!complete)) {
+    cancel();
+    while (!complete) {
+      std::this_thread::yield();
+    }
   }
 
   if (exp) {

@@ -1251,103 +1251,109 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return awaitne(context, [&]() {
-      if (_reset) {
-        loadModule();
-      }
+    return awaitne(
+        context,
+        [&]() {
+          if (_reset) {
+            loadModule();
+          }
 
-      // reset streams
-      _sout.reset();
-      _serr.reset();
-      std::ostream sout{&_sout};
-      std::ostream serr{&_serr};
-      StringStreamBuf sinbuf{input.payload.stringLen > 0
-                                 ? std::string_view(input.payload.stringValue,
-                                                    input.payload.stringLen)
-                                 : std::string_view(input.payload.stringValue)};
-      std::istream sin{&sinbuf};
+          // reset streams
+          _sout.reset();
+          _serr.reset();
+          std::ostream sout{&_sout};
+          std::ostream serr{&_serr};
+          StringStreamBuf sinbuf{
+              input.payload.stringLen > 0
+                  ? std::string_view(input.payload.stringValue,
+                                     input.payload.stringLen)
+                  : std::string_view(input.payload.stringValue)};
+          std::istream sin{&sinbuf};
 
-      _data.sin = &sin;
-      _data.serr = &serr;
-      _data.sout = &sout;
+          _data.sin = &sin;
+          _data.serr = &serr;
+          _data.sout = &sout;
 
-      M3Result result;
+          M3Result result;
 
-      // WASI modules need this
-      if (_entryPoint != "_start") {
-        _argsArray.clear();
-        // add any arguments we have
-        auto argsVar = _arguments.get();
-        if (argsVar.valueType == Seq) {
-          for (auto &arg : argsVar) {
-            if (arg.payload.stringLen > 0) {
-              _argsArray.emplace_back(arg.payload.stringValue);
-            } else {
-              // if really empty likely it's an error
-              if (strlen(arg.payload.stringValue) == 0) {
-                throw ActivationError(
-                    "Empty argument passed, this most likely is a mistake.");
-              } else {
-                _argsArray.emplace_back(arg.payload.stringValue);
+          // WASI modules need this
+          if (_entryPoint != "_start") {
+            _argsArray.clear();
+            // add any arguments we have
+            auto argsVar = _arguments.get();
+            if (argsVar.valueType == Seq) {
+              for (auto &arg : argsVar) {
+                if (arg.payload.stringLen > 0) {
+                  _argsArray.emplace_back(arg.payload.stringValue);
+                } else {
+                  // if really empty likely it's an error
+                  if (strlen(arg.payload.stringValue) == 0) {
+                    throw ActivationError("Empty argument passed, this most "
+                                          "likely is a mistake.");
+                  } else {
+                    _argsArray.emplace_back(arg.payload.stringValue);
+                  }
+                }
               }
             }
-          }
-        }
 
-        result = m3_CallArgv(_mainFunc, _argsArray.size(), &_argsArray[0]);
-      } else {
-        // assume wasi
-        _data.args.clear();
-        _data.args.push_back(_moduleFileName.c_str());
-        // add any arguments we have
-        auto argsVar = _arguments.get();
-        if (argsVar.valueType == Seq) {
-          for (auto &arg : argsVar) {
-            if (arg.payload.stringLen > 0) {
-              _data.args.emplace_back(arg.payload.stringValue);
-            } else {
-              // if really empty likely it's an error
-              if (strlen(arg.payload.stringValue) == 0) {
-                throw ActivationError(
-                    "Empty argument passed, this most likely is a mistake.");
-              } else {
-                _data.args.emplace_back(arg.payload.stringValue);
+            result = m3_CallArgv(_mainFunc, _argsArray.size(), &_argsArray[0]);
+          } else {
+            // assume wasi
+            _data.args.clear();
+            _data.args.push_back(_moduleFileName.c_str());
+            // add any arguments we have
+            auto argsVar = _arguments.get();
+            if (argsVar.valueType == Seq) {
+              for (auto &arg : argsVar) {
+                if (arg.payload.stringLen > 0) {
+                  _data.args.emplace_back(arg.payload.stringValue);
+                } else {
+                  // if really empty likely it's an error
+                  if (strlen(arg.payload.stringValue) == 0) {
+                    throw ActivationError("Empty argument passed, this most "
+                                          "likely is a mistake.");
+                  } else {
+                    _data.args.emplace_back(arg.payload.stringValue);
+                  }
+                }
               }
             }
+
+            result = m3_CallArgv(_mainFunc, 0, nullptr);
           }
-        }
 
-        result = m3_CallArgv(_mainFunc, 0, nullptr);
-      }
+          if (result == m3Err_trapExit) {
+            if (_data.exit_code != 0) {
+              _serr.done();
+              _sout.done();
+              CBLOG_INFO(_sout.str());
+              CBLOG_ERROR(_serr.str());
+              std::string emsg("Wasm module run failed, exit code: " +
+                               std::to_string(_data.exit_code));
+              throw ActivationError(emsg);
+            }
+          } else if (result) {
+            _serr.done();
+            _sout.done();
+            CBLOG_INFO(_sout.str());
+            CBLOG_ERROR(_serr.str());
+            CBLOG_ERROR(_runtime->error_message);
+            CHECK_ACTIVATION_ERR(result);
+          }
 
-      if (result == m3Err_trapExit) {
-        if (_data.exit_code != 0) {
           _serr.done();
+          if (_serr.data.size() > 0) {
+            // print anyway this stream too
+            CBLOG_INFO("(stderr) ", _serr.str());
+          }
+          const auto len = _sout.data.size();
           _sout.done();
-          CBLOG_INFO(_sout.str());
-          CBLOG_ERROR(_serr.str());
-          std::string emsg("Wasm module run failed, exit code: " +
-                           std::to_string(_data.exit_code));
-          throw ActivationError(emsg);
-        }
-      } else if (result) {
-        _serr.done();
-        _sout.done();
-        CBLOG_INFO(_sout.str());
-        CBLOG_ERROR(_serr.str());
-        CBLOG_ERROR(_runtime->error_message);
-        CHECK_ACTIVATION_ERR(result);
-      }
-
-      _serr.done();
-      if (_serr.data.size() > 0) {
-        // print anyway this stream too
-        CBLOG_INFO("(stderr) ", _serr.str());
-      }
-      const auto len = _sout.data.size();
-      _sout.done();
-      return Var(_sout.str(), len);
-    });
+          return Var(_sout.str(), len);
+        },
+        [] {
+          // TODO CANCELLATION
+        });
   }
 };
 

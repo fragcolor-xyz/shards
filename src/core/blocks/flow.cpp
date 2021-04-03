@@ -509,11 +509,14 @@ struct Await : public BaseSubFlow {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return awaitne(context, [&] {
-      CBVar output{};
-      _blocks.activate(context, input, output);
-      return output;
-    });
+    return awaitne(
+        context,
+        [&] {
+          CBVar output{};
+          _blocks.activate(context, input, output);
+          return output;
+        },
+        [] {});
   }
 };
 
