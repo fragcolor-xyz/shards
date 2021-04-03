@@ -284,7 +284,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
         }
       }
     } else {
-      CBLOG_ERROR("Http request failed with status:  {}", buffer)
+      CBLOG_ERROR("Http request failed with status: {}", buffer);
       throw ActivationError("Http request failed");
     }
   }
@@ -391,7 +391,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
         }
       }
     } else {
-      CBLOG_ERROR("Http request failed with status:  {}", buffer)
+      CBLOG_ERROR("Http request failed with status: {}", buffer);
       throw ActivationError("Http request failed");
     }
   }
