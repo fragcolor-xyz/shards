@@ -958,6 +958,11 @@ if(USE_LIBBACKTRACE)
   include_directories(${CHAINBLOCKS_DIR}/deps/libbacktrace/build/include)
 endif()
 
+# workaround issues under windows in debug mode
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp PROPERTIES COMPILE_FLAGS -O1)
+endif()
+
 ### mal
 add_executable(
   cbl
