@@ -1238,7 +1238,7 @@ struct Draw : public BGFX::BaseConsumer {
           bgfx::setTransform(mat);
 
           if (handle.idx == bgfx::kInvalidHandle) {
-            const std::string *matName;
+            std::string *matName = nullptr;
             if (prims.material) {
               const auto &material = (*prims.material).get();
               matName = &material.name;

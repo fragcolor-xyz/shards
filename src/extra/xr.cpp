@@ -223,7 +223,7 @@ struct RenderXR : public BGFX::BaseConsumer {
                 xr.call<emscripten::val>("isSessionSupported",
                                          emscripten::val("immersive-vr")));
             xrSupported = supported.as<bool>();
-            CBLOG_INFO("WebXR session supported:  {}", xrSupported)
+            CBLOG_INFO("WebXR session supported: {}", xrSupported);
           } else {
             CBLOG_INFO("WebXR navigator.xr not available");
           }
