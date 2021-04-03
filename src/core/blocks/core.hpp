@@ -365,7 +365,7 @@ struct Comment {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // We are a NOOP block
-    LOG(FATAL) << "invalid state";
+    CBLOG_FATAL("invalid state");
     return input;
   }
 };
@@ -428,7 +428,7 @@ struct OnCleanup {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // We are a NOOP block
-    LOG(FATAL) << "invalid state";
+    CBLOG_FATAL("invalid state");
     return input;
   }
 };
@@ -685,19 +685,19 @@ struct SetBase : public VariableBase {
                              _name);
         }
         if (!_isTable && !reference.isMutable) {
-          LOG(ERROR) << "Error with variable: " << _name;
+          CBLOG_ERROR("Error with variable: {}", _name);
           throw ComposeError(
               "Set/Ref/Update, attempted to write an immutable variable.");
         }
         if (!_isTable && reference.isProtected) {
-          LOG(ERROR) << "Error with variable: " << _name;
+          CBLOG_ERROR("Error with variable: {}", _name);
           throw ComposeError(
               "Set/Ref/Update, attempted to write a protected variable.");
         }
         if (!_isTable && warnIfExists) {
-          LOG(INFO) << "Set - Warning: setting an already exposed variable, "
-                       "use Update to avoid this warning, variable: "
-                    << _name;
+          CBLOG_INFO("Set - Warning: setting an already exposed variable, use "
+                     "Update to avoid this warning, variable: {}",
+                     _name);
         }
       }
     }
@@ -1149,9 +1149,9 @@ struct Get : public VariableBase {
     auto warn = false;
     DEFER({
       if (warn) {
-        LOG(INFO) << "Get found a variable but it's using the default value "
-                     "because "
-                     "the type found did not match with the default type.";
+        CBLOG_INFO(
+            "Get found a variable but it's using the default value because the "
+            "type found did not match with the default type.");
       }
     });
     if (value.valueType != _defaultValue.valueType)
@@ -2488,7 +2488,7 @@ struct Take {
           (_indices.valueType == String || _indices.valueType == Seq)) {
         // we can fully reconstruct a type in this case
         if (data.inputType.table.keys.len != data.inputType.table.types.len) {
-          LOG(ERROR) << "Table input type: " << data.inputType;
+          CBLOG_ERROR("Table input type: {}", data.inputType);
           throw ComposeError("Take: Expected same number of types for numer of "
                              "keys in table input.");
         }
@@ -2498,8 +2498,8 @@ struct Take {
           for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
             auto &record = _indices.payload.seqValue.elements[j];
             if (record.valueType != String) {
-              LOG(ERROR) << "Expected a sequence of strings, but found: "
-                         << _indices;
+              CBLOG_ERROR("Expected a sequence of strings, but found: {}",
+                          _indices);
               throw ComposeError(
                   "Take: Expected a sequence of strings as keys.");
             }
@@ -2513,8 +2513,8 @@ struct Take {
           }
           // if types is 0 we did not match any
           if (_seqOutputTypes.size() == 0) {
-            LOG(ERROR) << "Table input type: " << data.inputType
-                       << " missing keys: " << _indices;
+            CBLOG_ERROR("Table input type: {} missing keys: {}", data.inputType,
+                        _indices);
             throw ComposeError(
                 "Take: Failed to find a matching keys in the input type table");
           }
@@ -2529,8 +2529,8 @@ struct Take {
             }
           }
           // we didn't match any key... error
-          LOG(ERROR) << "Table input type: " << data.inputType
-                     << " missing key: " << _indices.payload.stringValue;
+          CBLOG_ERROR("Table input type: {} missing key: {}", data.inputType,
+                      _indices.payload.stringValue);
           throw ComposeError(
               "Take: Failed to find a matching key in the input type table");
         }
@@ -2591,7 +2591,7 @@ struct Take {
   struct OutOfRangeEx : public ActivationError {
     OutOfRangeEx(int64_t len, int64_t index)
         : ActivationError("Take out of range!") {
-      LOG(ERROR) << "Out of range! len: " << len << " wanted index: " << index;
+      CBLOG_ERROR("Out of range! len: {} wanted index: {}", len, index);
     }
   };
 
@@ -2943,8 +2943,7 @@ struct Slice {
   struct OutOfRangeEx : public ActivationError {
     OutOfRangeEx(int64_t len, int64_t from, int64_t to)
         : ActivationError("Slice out of range!") {
-      LOG(ERROR) << "Out of range! from: " << from << " to: " << to
-                 << " len: " << len;
+      CBLOG_ERROR("Out of range! from: {} to: {} len: {}", from, to, len);
     }
   };
 
@@ -3132,8 +3131,8 @@ struct Limit {
     if (_max == 1) {
       auto index = 0;
       if (index >= inputLen) {
-        LOG(ERROR) << "Limit out of range! len:" << inputLen
-                   << " wanted index: " << index;
+        CBLOG_ERROR("Limit out of range! len: {} wanted index: {}", inputLen,
+                    index);
         throw ActivationError("Limit out of range!");
       }
       return input.payload.seqValue.elements[index];

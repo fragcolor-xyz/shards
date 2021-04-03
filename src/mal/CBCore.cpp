@@ -17,6 +17,8 @@
 #endif
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <ostream>
 #include <set>
 #include <thread>
 
@@ -86,8 +88,8 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
     chainblocks::Globals::ExePath = exePath;
     chainblocks::Globals::RootPath = scriptPath;
 
-    LOG(DEBUG) << "Exe path: " << exePath;
-    LOG(DEBUG) << "Script path: " << scriptPath;
+    CBLOG_DEBUG("Exe path: {}", exePath);
+    CBLOG_DEBUG("Script path: {}", scriptPath);
 
 #ifndef __EMSCRIPTEN__
     chainblocks::installSignalHandlers();
@@ -214,7 +216,7 @@ protected:
 class malCBChain : public malValue, public malRoot {
 public:
   malCBChain(const MalString &name) {
-    LOG(TRACE) << "Created a CBChain - " << name;
+    CBLOG_TRACE("Created a CBChain - {}", name);
     auto chain = CBChain::make(name);
     m_chain = chain->newRef();
     chainblocks::Globals::GlobalChains[name] = chain;
@@ -234,7 +236,7 @@ public:
     }
 
     // delref
-    LOG(TRACE) << "Deleting a CBChain - " << cp->name;
+    CBLOG_TRACE("Deleting a CBChain - {}", cp->name);
     CBChain::deleteRef(m_chain);
   }
 
@@ -309,7 +311,7 @@ private:
 
 class malCBNode : public malValue, public malRoot {
 public:
-  malCBNode() : m_node(CBNode::make()) { LOG(TRACE) << "Created a CBNode"; }
+  malCBNode() : m_node(CBNode::make()) { CBLOG_TRACE("Created a CBNode"); }
 
   malCBNode(const malCBNode &that, const malValuePtr &meta) = delete;
 
@@ -317,7 +319,7 @@ public:
     // Delete all refs first
     m_refs.clear();
     m_node->terminate();
-    LOG(TRACE) << "Deleted a CBNode";
+    CBLOG_TRACE("Deleted a CBNode");
   }
 
   virtual MalString print(bool readably) const {
@@ -429,7 +431,7 @@ struct ChainFileWatcher {
       }
 
       if (!fs::exists(p)) {
-        LOG(INFO) << "A ChainLoader loaded script path does not exist: " << p;
+        CBLOG_INFO("A ChainLoader loaded script path does not exist: {}", p);
       } else if (fs::is_regular_file(p) &&
                  fs::last_write_time(p) != lastWrite) {
         // make sure to store last write time
@@ -445,7 +447,7 @@ struct ChainFileWatcher {
         auto res = maleval(str.c_str(), env);
         auto var = varify(res);
         if (var->value().valueType != CBType::Chain) {
-          LOG(ERROR) << "Script did not return a CBChain";
+          CBLOG_ERROR("Script did not return a CBChain");
           return;
         }
 
@@ -468,8 +470,9 @@ struct ChainFileWatcher {
                            std::string(errorTxt);
                 throw chainblocks::CBException(msg);
               } else {
-                LOG(INFO) << "RunChain: warning during inner chain validation: "
-                          << errorTxt;
+                CBLOG_INFO(
+                    "RunChain: warning during inner chain validation: {}",
+                    errorTxt);
               }
             },
             nullptr, data);
@@ -486,8 +489,8 @@ struct ChainFileWatcher {
         CBChain *gchain;
         if (garbage.pop(gchain)) {
           auto &data = liveChains[gchain];
-          LOG(TRACE) << "Collecting hot chain " << gchain->name
-                     << " env refcount: " << std::get<0>(data)->refCount();
+          CBLOG_TRACE("Collecting hot chain {} env refcount: {}", gchain->name,
+                      std::get<0>(data)->refCount());
           liveChains.erase(gchain);
         }
       }
@@ -500,15 +503,15 @@ struct ChainFileWatcher {
       ChainLoadResult result = {true, "empty input exception", nullptr};
       results.push(result);
     } catch (malValuePtr &mv) {
-      LOG(ERROR) << mv->print(true);
+      CBLOG_ERROR(mv->print(true));
       ChainLoadResult result = {true, "script error", nullptr};
       results.push(result);
     } catch (MalString &s) {
-      LOG(ERROR) << s;
+      CBLOG_ERROR(s);
       ChainLoadResult result = {true, "parse error", nullptr};
       results.push(result);
     } catch (const std::exception &e) {
-      LOG(ERROR) << e.what();
+      CBLOG_ERROR(e.what());
       ChainLoadResult result = {true, "exception", nullptr};
       results.push(result);
     } catch (...) {
@@ -532,19 +535,19 @@ struct ChainFileWatcher {
         EVAL(this->autoexec, rootEnv);
       }
     } catch (malEmptyInputException &) {
-      LOG(ERROR) << "empty input exception.";
+      CBLOG_ERROR("empty input exception.");
       throw;
     } catch (malValuePtr &mv) {
-      LOG(ERROR) << "script error: " << mv->print(true);
+      CBLOG_ERROR("script error: {}", mv->print(true));
       throw;
     } catch (MalString &s) {
-      LOG(ERROR) << "parse error: " << s;
+      CBLOG_ERROR("parse error: {}", s)
       throw;
     } catch (const std::exception &e) {
-      LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
+      CBLOG_ERROR("Failed to init ChainFileWatcher: {}", e.what());
       throw;
     } catch (...) {
-      LOG(ERROR) << "Failed to init ChainFileWatcher.";
+      CBLOG_ERROR("Failed to init ChainFileWatcher.");
       throw;
     }
 #else
@@ -556,19 +559,19 @@ struct ChainFileWatcher {
           EVAL(this->autoexec, rootEnv);
         }
       } catch (malEmptyInputException &) {
-        LOG(ERROR) << "empty input exception.";
+        CBLOG_ERROR("empty input exception.");
         throw;
       } catch (malValuePtr &mv) {
-        LOG(ERROR) << "script error: " << mv->print(true);
+        CBLOG_ERROR("script error: {}", mv->print(true));
         throw;
       } catch (MalString &s) {
-        LOG(ERROR) << "parse error: " << s;
+        CBLOG_ERROR("parse error: {}", s);
         throw;
       } catch (const std::exception &e) {
-        LOG(ERROR) << "Failed to init ChainFileWatcher: " << e.what();
+        CBLOG_ERROR("Failed to init ChainFileWatcher: {}", e.what());
         throw;
       } catch (...) {
-        LOG(ERROR) << "Failed to init ChainFileWatcher.";
+        CBLOG_ERROR("Failed to init ChainFileWatcher.");
         throw;
       }
 
@@ -581,8 +584,8 @@ struct ChainFileWatcher {
         CBChain *gchain;
         if (garbage.pop(gchain)) {
           auto &data = liveChains[gchain];
-          LOG(TRACE) << "Collecting hot chain " << gchain->name
-                     << " env refcount: " << std::get<0>(data)->refCount();
+          CBLOG_TRACE("Collecting hot chain {} env refcount: {}", gchain->name,
+                      std::get<0>(data)->refCount());
           liveChains.erase(gchain);
         }
       }
@@ -931,9 +934,9 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
   // but print a diagnostic message
   else {
     if (malValue *v = DYNAMIC_CAST(malValue, arg)) {
-      LOG(INFO) << "Ignoring value inside a chain definition: "
-                << v->print(true)
-                << " ignore this warning if this was intentional.";
+      CBLOG_INFO("Ignoring value inside a chain definition: {} ignore this "
+                 "warning if this was intentional.",
+                 v->print(true));
     } else {
       throw chainblocks::CBException("Invalid argument for chain, not a value");
     }
@@ -1078,11 +1081,11 @@ void validationCallback(const CBlock *errorBlock, const char *errorTxt,
                         bool nonfatalWarning, void *userData) {
   auto block = const_cast<CBlock *>(errorBlock);
   if (!nonfatalWarning) {
-    LOG(ERROR) << "Parameter validation failed: " << errorTxt
-               << ", block: " << block->name(block);
+    CBLOG_ERROR("Parameter validation failed: {} block: {}", errorTxt,
+                block->name(block));
   } else {
-    LOG(INFO) << "Parameter validation warning: " << errorTxt
-              << ", block: " << block->name(block);
+    CBLOG_INFO("Parameter validation warning: {} block: {}", errorTxt,
+               block->name(block));
   }
 }
 
@@ -1104,15 +1107,14 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
       auto paramName = v->value().substr(1);
       auto idx = findParamIndex(paramName, params);
       if (unlikely(idx == -1)) {
-        LOG(ERROR) << "Parameter not found: " << paramName
-                   << " block: " << block->name(block);
+        CBLOG_ERROR("Parameter not found: {} block: {}", paramName,
+                    block->name(block));
         throw chainblocks::CBException("Parameter not found");
       } else {
         auto var = varify(value);
         if (!validateSetParam(block, idx, var->value(), validationCallback,
                               nullptr)) {
-          LOG(ERROR) << "Failed parameter: " << paramName
-                     << ", line: " << value->line;
+          CBLOG_ERROR("Failed parameter: {} line: {}", paramName, value->line);
           throw chainblocks::CBException("Parameter validation failed");
         }
         block->setParam(block, idx, &var->value());
@@ -1122,14 +1124,13 @@ void setBlockParameters(malCBlock *malblock, malValueIter begin,
       }
     } else if (pindex == -1) {
       // We expected a keyword! fail
-      LOG(ERROR) << "Keyword expected, block: " << block->name(block);
+      CBLOG_ERROR("Keyword expected, block: {}", block->name(block));
       throw chainblocks::CBException("Keyword expected");
     } else {
       auto var = varify(arg);
       if (!validateSetParam(block, pindex, var->value(), validationCallback,
                             nullptr)) {
-        LOG(ERROR) << "Failed parameter index: " << pindex
-                   << ", line: " << arg->line;
+        CBLOG_ERROR("Failed parameter index: {} line: {}", pindex, arg->line);
         throw chainblocks::CBException("Parameter validation failed");
       }
       block->setParam(block, pindex, &var->value());
@@ -1362,7 +1363,7 @@ static MalString printValues(malValueIter begin, malValueIter end,
 }
 
 BUILTIN("LOG") {
-  LOG(INFO) << printValues(argsBegin, argsEnd, " ", false);
+  CBLOG_INFO(printValues(argsBegin, argsEnd, " ", false));
   return mal::nilValue();
 }
 
@@ -1457,8 +1458,8 @@ BUILTIN("prepare") {
                      std::string(errorTxt);
           throw chainblocks::CBException(msg);
         } else {
-          LOG(INFO) << "RunChain: warning during inner chain validation: "
-                    << errorTxt;
+          CBLOG_INFO("RunChain: warning during inner chain validation: {}",
+                     errorTxt);
         }
       },
       nullptr, data);
@@ -1595,13 +1596,9 @@ BUILTIN("run") {
         CBDuration dsleep(sleepTime);
         // remove the time we took to tick from sleep
         CBDuration realSleepTime = dsleep - elapsed;
-        if (realSleepTime.count() <= 0.0) {
+        if (unlikely(realSleepTime.count() <= 0.0)) {
           // tick took too long!!!
-          // warn sometimes and skip sleeping, skipping callbacks too
-          LOG_EVERY_N(100, INFO)
-              << "Skipping frame sleep and callbacks, ticking nodes is taking "
-                 "more time than the wanted sleeptime! Consider using Await/|| "
-                 "or reduce complexity.";
+          // TODO warn sometimes and skip sleeping, skipping callbacks too
         } else {
           chainblocks::sleep(realSleepTime.count());
         }
@@ -1814,16 +1811,16 @@ BUILTIN("import") {
 
   // FIXME we are leaking libs
 #if _WIN32
-  LOG(INFO) << "Importing DLL: " << lib_name;
+  CBLOG_INFO("Importing DLL: {}", lib_name);
   auto handle = LoadLibraryA(lib_name);
   if (!handle) {
-    LOG(ERROR) << "LoadLibrary failed.";
+    CBLOG_ERROR("LoadLibrary failed.");
   }
 #elif defined(__linux__) || defined(__APPLE__)
-  LOG(INFO) << "Importing Shared Library: " << lib_name;
+  CBLOG_INFO("Importing Shared Library: {}", lib_name);
   auto handle = dlopen(lib_name, RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
-    LOG(ERROR) << "dlerror: " << dlerror();
+    CBLOG_ERROR("dlerror: {}", dlerror());
   }
 #else
   void *handle = nullptr;

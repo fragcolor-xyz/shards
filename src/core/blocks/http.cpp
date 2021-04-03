@@ -289,7 +289,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
         }
       }
     } else {
-      LOG(ERROR) << "Http request failed with status: " << buffer;
+      CBLOG_ERROR("Http request failed with status:  {}", buffer)
       throw ActivationError("Http request failed");
     }
   }
@@ -396,7 +396,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
         }
       }
     } else {
-      LOG(ERROR) << "Http request failed with status: " << buffer;
+      CBLOG_ERROR("Http request failed with status:  {}", buffer)
       throw ActivationError("Http request failed");
     }
   }
@@ -524,7 +524,7 @@ struct Server {
     try {
       _ioc->poll();
     } catch (PeerError pe) {
-      LOG(INFO) << "Http request error: " << pe.ec.message();
+      CBLOG_INFO("Http request error: {}", pe.ec.message());
       stop(pe.peer->chain.get());
       _pool->release(pe.peer->shared_from_this());
     }
@@ -546,10 +546,10 @@ struct Server {
           [](const struct CBlock *errorBlock, const char *errorTxt,
              CBBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              LOG(ERROR) << errorTxt;
+              CBLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler chain compose failed");
             } else {
-              LOG(WARNING) << errorTxt;
+              CBLOG_WARNING(errorTxt);
             }
           },
           nullptr, data);

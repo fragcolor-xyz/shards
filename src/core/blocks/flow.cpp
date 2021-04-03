@@ -185,12 +185,12 @@ struct Cond {
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              LOG(ERROR) << "Cond: failed inner chain validation, error: "
-                         << errorTxt;
+              CBLOG_ERROR("Cond: failed inner chain validation, error: {}",
+                          errorTxt);
               throw CBException("Cond: failed inner chain validation.");
             } else {
-              LOG(INFO) << "Cond: warning during inner chain validation: "
-                        << errorTxt;
+              CBLOG_INFO("Cond: warning during inner chain validation: {}",
+                         errorTxt);
             }
           },
           this, data);
@@ -212,12 +212,12 @@ struct Cond {
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              LOG(ERROR) << "Cond: failed inner chain validation, error: "
-                         << errorTxt;
+              CBLOG_ERROR("Cond: failed inner chain validation, error: {}",
+                          errorTxt);
               throw CBException("Cond: failed inner chain validation.");
             } else {
-              LOG(INFO) << "Cond: warning during inner chain validation: "
-                        << errorTxt;
+              CBLOG_INFO("Cond: warning during inner chain validation: {}",
+                         errorTxt);
             }
           },
           this, data);
@@ -231,9 +231,9 @@ struct Cond {
           auto curlen = _chainValidation.exposedInfo.len;
           auto newlen = validation.exposedInfo.len;
           if (curlen != newlen) {
-            LOG(INFO) << "Cond: number of exposed variables between actions "
-                         "mismatch, "
-                         "variables won't be exposed, flow is unpredictable!";
+            CBLOG_INFO(
+                "Cond: number of exposed variables between actions mismatch, "
+                "variables won't be exposed, flow is unpredictable!");
             exposing = false;
           }
 
@@ -241,10 +241,9 @@ struct Cond {
             for (uint32_t i = 0; i < curlen; i++) {
               if (_chainValidation.exposedInfo.elements[i] !=
                   validation.exposedInfo.elements[i]) {
-                LOG(INFO)
-                    << "Cond: types of exposed variables between actions "
-                       "mismatch, "
-                       "variables won't be exposed, flow is unpredictable!";
+                CBLOG_INFO("Cond: types of exposed variables between actions "
+                           "mismatch, variables won't be exposed, flow is "
+                           "unpredictable!");
                 exposing = false;
                 break;
               }
@@ -439,7 +438,7 @@ struct Maybe : public BaseSubFlow {
         _blocks.activate(context, input, output);
       } catch (const ActivationError &ex) {
         if (likely(!context->onLastResume)) {
-          LOG(WARNING) << "Maybe block Ignored an error: " << ex.what();
+          CBLOG_WARNING("Maybe block Ignored an error: {}", ex.what());
           context->resetCancelFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);

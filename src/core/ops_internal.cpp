@@ -2,7 +2,7 @@
 #include "ops.hpp"
 #include <unordered_set>
 
-MAKE_LOGGABLE(CBVar, var, os) {
+std::ostream &operator<<(std::ostream &os, const CBVar &var) {
   switch (var.valueType) {
   case EndOfBlittableTypes:
     break;
@@ -200,7 +200,7 @@ MAKE_LOGGABLE(CBVar, var, os) {
   return os;
 }
 
-MAKE_LOGGABLE(CBTypeInfo, t, os) {
+std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
   os << type2Name(t.basicType);
   if (t.basicType == CBType::Seq) {
     os << " [";
@@ -260,7 +260,7 @@ MAKE_LOGGABLE(CBTypeInfo, t, os) {
   return os;
 }
 
-MAKE_LOGGABLE(CBTypesInfo, ts, os) {
+std::ostream &operator<<(std::ostream &os, const CBTypesInfo &ts) {
   os << "[";
   for (uint32_t i = 0; i < ts.len; i++) {
     os << "(" << ts.elements[i] << ")";

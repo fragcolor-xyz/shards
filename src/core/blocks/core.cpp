@@ -473,7 +473,7 @@ struct Profile {
     const auto dur =
         std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
             .count();
-    LOG(INFO) << _label << " took " << dur << " microseconds.";
+    CBLOG_INFO("{} took {} microseconds.", dur);
     return output;
   }
 };
@@ -509,8 +509,8 @@ struct XpendTo : public XPendBase {
         } else {
           if (cons.exposedType.basicType != CBType::Seq &&
               cons.exposedType != data.inputType) {
-            LOG(ERROR) << "Input is: " << data.inputType
-                       << " variable is: " << cons.exposedType;
+            CBLOG_ERROR("Input is: {} variable is: {}", data.inputType,
+                        cons.exposedType);
             throw ComposeError("Input type not matching the variable.");
           }
         }

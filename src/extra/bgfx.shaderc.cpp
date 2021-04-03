@@ -108,7 +108,7 @@ struct EmscriptenShaderCompiler {
 
     const auto err = j["stderr"].get<std::string>();
     if (err.size() > 0) {
-      LOG(ERROR) << err;
+      CBLOG_ERROR(err)
     }
 
     if (j.contains("bytecode")) {
@@ -120,7 +120,7 @@ struct EmscriptenShaderCompiler {
           },
           res);
     } else {
-      LOG(INFO) << j["stdout"].get<std::string>();
+      CBLOG_INFO(j["stdout"].get<std::string>());
       throw ActivationError("Failed to compile a shader.");
     }
 
@@ -247,9 +247,9 @@ struct ShaderCompiler : public IShaderCompiler {
     }
 #else
     auto node = CBNode::make();
-    LOG(DEBUG) << "Shader compiler about to be scheduled.";
+    CBLOG_DEBUG("Shader compiler about to be scheduled");
     node->schedule(_chain, v_args);
-    LOG(DEBUG) << "Shader compiler chain scheduled and ready to run.";
+    CBLOG_DEBUG("Shader compiler chain scheduled and ready to run");
     while (!node->empty()) {
       if (!node->tick())
         break;
@@ -257,7 +257,7 @@ struct ShaderCompiler : public IShaderCompiler {
     auto errors = node->errors();
     if (errors.size() > 0) {
       for (auto &error : errors) {
-        LOG(ERROR) << error;
+        CBLOG_ERROR(error);
       }
       throw CBException(
           "Shader compiler failed to compile, check errors above.");

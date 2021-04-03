@@ -485,7 +485,7 @@ struct Load : public BGFX::BaseConsumer {
           _shadersPSEntry.assign(buffer.str());
         }
         if (failed) {
-          LOG(FATAL) << "shaders library is missing";
+          CBLOG_FATAL("shaders library is missing");
         }
       }
     }
@@ -518,10 +518,10 @@ struct Load : public BGFX::BaseConsumer {
       }
 
       if (!warn.empty()) {
-        LOG(WARNING) << "GLTF warning: " << warn;
+        CBLOG_WARNING("GLTF warning: {}", warn);
       }
       if (!err.empty()) {
-        LOG(ERROR) << "GLTF error: " << err;
+        CBLOG_ERROR("GLTF error: {}", err);
       }
       if (!success) {
         throw ActivationError("Failed to parse GLTF.");
@@ -624,9 +624,9 @@ struct Load : public BGFX::BaseConsumer {
                       varyings.append("vec4 a_color" + idxStr + " : COLOR" +
                                       idxStr + ";\n");
                     } else {
-                      // TODO JOINTS_ and WEIGHTS_
-                      LOG(WARNING)
-                          << "Ignored a primitive attribute: " << attributeName;
+                      // TODO JOINTS_ and WEIGHTS_ etc
+                      CBLOG_WARNING("Ignored a primitive attribute: {}",
+                                    attributeName);
                     }
                   }
 
@@ -764,7 +764,7 @@ struct Load : public BGFX::BaseConsumer {
                               buf[3] = 255;
                             } break;
                             default:
-                              LOG(FATAL) << "invalid state";
+                              CBLOG_FATAL("invalid state");
                               break;
                             }
                           } break;
@@ -796,13 +796,13 @@ struct Load : public BGFX::BaseConsumer {
                               memcpy(buf, chunk, 4);
                             } break;
                             default:
-                              LOG(FATAL) << "invalid state";
+                              CBLOG_FATAL("invalid state");
                               ;
                               break;
                             }
                           } break;
                           default:
-                            LOG(FATAL) << "invalid state";
+                            CBLOG_FATAL("invalid state");
                             ;
                             break;
                           }
@@ -863,7 +863,7 @@ struct Load : public BGFX::BaseConsumer {
                             buf[1] = float(chunk[1]) / float(255);
                           } break;
                           default:
-                            LOG(FATAL) << "invalid state";
+                            CBLOG_FATAL("invalid state");
                             ;
                             break;
                           }
@@ -940,7 +940,7 @@ struct Load : public BGFX::BaseConsumer {
                           FILL_INDEX;
                         } break;
                         default:
-                          LOG(FATAL) << "invalid state";
+                          CBLOG_FATAL("invalid state");
                           ;
                           break;
                         }
@@ -1243,12 +1243,13 @@ struct Draw : public BGFX::BaseConsumer {
               const auto &material = (*prims.material).get();
               matName = &material.name;
             }
-            LOG_EVERY_N(240, WARNING)
-                << "Rendering a primitive with invalid shader handle, "
-                   "mesh: "
-                << node.mesh->get().name << " material: "
-                << (matName ? matName->c_str() : "<no material>")
-                << " mats table: " << _materials.get();
+            CBLOG_ERROR("Rendering a primitive with invalid shader handle, "
+                        "mesh: {} material: {} mats table: {}",
+                        node.mesh->get().name,
+                        (matName ? matName->c_str() : "<no material>"),
+                        _materials.get());
+            throw ActivationError(
+                "Rendering a primitive with invalid shader handle");
           }
 
           bgfx::submit(currentView.id, handle);

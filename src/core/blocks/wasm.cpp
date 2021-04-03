@@ -269,7 +269,7 @@ m3ApiRawFunction(m3_wasi_unstable_args_get) {
   m3ApiGetArgMem(uint32_t *, argv);
   m3ApiGetArgMem(char *, argv_buf);
 
-  LOG(TRACE) << "WASI args_get";
+  CBLOG_TRACE("WASI args_get");
 
   auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
@@ -290,7 +290,7 @@ m3ApiRawFunction(m3_wasi_unstable_args_sizes_get) {
   m3ApiGetArgMem(__wasi_size_t *, argc);
   m3ApiGetArgMem(__wasi_size_t *, argv_buf_size);
 
-  LOG(TRACE) << "WASI args_sizes_get";
+  CBLOG_TRACE("WASI args_sizes_get");
 
   auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
@@ -310,7 +310,7 @@ m3ApiRawFunction(m3_wasi_unstable_environ_get) {
   m3ApiGetArgMem(uint32_t *, env);
   m3ApiGetArgMem(char *, env_buf);
 
-  LOG(TRACE) << "WASI environ_get";
+  CBLOG_TRACE("WASI environ_get");
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -324,7 +324,7 @@ m3ApiRawFunction(m3_wasi_unstable_environ_sizes_get) {
   m3ApiGetArgMem(__wasi_size_t *, env_count);
   m3ApiGetArgMem(__wasi_size_t *, env_buf_size);
 
-  LOG(TRACE) << "WASI environ_sizes_get";
+  CBLOG_TRACE("WASI environ_sizes_get");
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -343,7 +343,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_dir_name) {
   m3ApiGetArgMem(char *, path);
   m3ApiGetArg(__wasi_size_t, path_len);
 
-  LOG(TRACE) << "WASI fd_prestat_dir_name";
+  CBLOG_TRACE("WASI fd_prestat_dir_name");
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -361,7 +361,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_prestat_get) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArgMem(__wasi_prestat_t *, s);
 
-  LOG(TRACE) << "WASI fd_prestat_get";
+  CBLOG_TRACE("WASI fd_prestat_get");
 
   if (runtime == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -379,7 +379,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_get) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArgMem(__wasi_fdstat_t *, fdstat);
 
-  LOG(TRACE) << "WASI fd_fdstat_get";
+  CBLOG_TRACE("WASI fd_fdstat_get");
 
   if (runtime == NULL || fdstat == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -430,7 +430,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_filestat_get) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArgMem(__wasi_filestat_t *, filestat);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_fd_filestat_get";
+  CBLOG_TRACE("WASI m3_wasi_unstable_fd_filestat_get");
 
   if (runtime == NULL || filestat == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -461,7 +461,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
   m3ApiGetArg(uint32_t, path_len);
   m3ApiGetArgMem(__wasi_filestat_t *, filestat);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_path_filestat_get, path: " << path;
+  CBLOG_TRACE("WASI m3_wasi_unstable_path_filestat_get, path: {}", path);
 
   std::filesystem::path fp{path};
   std::filesystem::path rp{chainblocks::Globals::RootPath};
@@ -494,7 +494,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_set_flags) {
   m3ApiGetArg(__wasi_fd_t, fd);
   m3ApiGetArg(__wasi_fdflags_t, flags);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_fd_fdstat_set_flags";
+  CBLOG_TRACE("WASI m3_wasi_unstable_fd_fdstat_set_flags");
 
   // TODO
 
@@ -508,7 +508,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
   m3ApiGetArg(__wasi_whence_t, wasi_whence);
   m3ApiGetArgMem(__wasi_filesize_t *, result);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_fd_seek";
+  CBLOG_TRACE("WASI m3_wasi_unstable_fd_seek");
 
   if (runtime == NULL || result == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -605,7 +605,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
   m3ApiGetArg(__wasi_fdflags_t, fs_flags);
   m3ApiGetArgMem(__wasi_fd_t *, fd);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_path_open";
+  CBLOG_TRACE("WASI m3_wasi_unstable_path_open");
 
   if (path_len >= 512)
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -619,7 +619,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
   memcpy(host_path, path, path_len);
   host_path[path_len] = '\0'; // NULL terminator
 
-  LOG(TRACE) << "WASI path_open: " << std::string_view(host_path, path_len);
+  CBLOG_TRACE("WASI path_open: {}", std::string_view(host_path, path_len));
 
 #if defined(_WIN32)
   // TODO: This all needs a proper implementation
@@ -685,7 +685,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_read) {
   m3ApiGetArg(__wasi_size_t, iovs_len);
   m3ApiGetArgMem(__wasi_size_t *, nread);
 
-  LOG(TRACE) << "WASI fd_read, fd: " << fd;
+  CBLOG_TRACE("WASI fd_read, fd: {}", fd);
 
   if (runtime == NULL || nread == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -750,7 +750,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
   m3ApiGetArg(__wasi_size_t, iovs_len);
   m3ApiGetArgMem(__wasi_size_t *, nwritten);
 
-  LOG(TRACE) << "WASI fd_write, fd: " << fd;
+  CBLOG_TRACE("WASI fd_write, fd: {}", fd);
 
   if (runtime == NULL || nwritten == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -818,7 +818,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_close) {
   m3ApiReturnType(uint32_t);
   m3ApiGetArg(__wasi_fd_t, fd);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_fd_close";
+  CBLOG_TRACE("WASI m3_wasi_unstable_fd_close");
 
   int ret = close(fd);
   m3ApiReturn(ret == 0 ? __WASI_ERRNO_SUCCESS : ret);
@@ -828,7 +828,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_datasync) {
   m3ApiReturnType(uint32_t);
   m3ApiGetArg(__wasi_fd_t, fd);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_fd_datasync";
+  CBLOG_TRACE("WASI m3_wasi_unstable_fd_datasync");
 
 #if defined(_WIN32)
   int ret = _commit(fd);
@@ -848,7 +848,7 @@ m3ApiRawFunction(m3_wasi_unstable_random_get) {
   m3ApiGetArgMem(uint8_t *, buf);
   m3ApiGetArg(__wasi_size_t, buflen);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_random_get";
+  CBLOG_TRACE("WASI m3_wasi_unstable_random_get");
 
   while (1) {
     ssize_t retlen = 0;
@@ -890,7 +890,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_res_get) {
   m3ApiGetArg(__wasi_clockid_t, wasi_clk_id);
   m3ApiGetArgMem(__wasi_timestamp_t *, resolution);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_clock_res_get";
+  CBLOG_TRACE("WASI m3_wasi_unstable_clock_res_get");
 
   if (runtime == NULL || resolution == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -916,7 +916,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_time_get) {
   m3ApiGetArg(__wasi_timestamp_t, precision);
   m3ApiGetArgMem(__wasi_timestamp_t *, time);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_clock_time_get";
+  CBLOG_TRACE("WASI m3_wasi_unstable_clock_time_get");
 
   if (runtime == NULL || time == NULL) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
@@ -938,7 +938,7 @@ m3ApiRawFunction(m3_wasi_unstable_clock_time_get) {
 m3ApiRawFunction(m3_wasi_unstable_proc_exit) {
   m3ApiGetArg(uint32_t, code);
 
-  LOG(TRACE) << "WASI m3_wasi_unstable_proc_exit";
+  CBLOG_TRACE("WASI m3_wasi_unstable_proc_exit");
 
   auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
 
@@ -1324,8 +1324,8 @@ struct Run {
         if (_data.exit_code != 0) {
           _serr.done();
           _sout.done();
-          LOG(INFO) << _sout.str();
-          LOG(ERROR) << _serr.str();
+          CBLOG_INFO(_sout.str());
+          CBLOG_ERROR(_serr.str());
           std::string emsg("Wasm module run failed, exit code: " +
                            std::to_string(_data.exit_code));
           throw ActivationError(emsg);
@@ -1333,16 +1333,16 @@ struct Run {
       } else if (result) {
         _serr.done();
         _sout.done();
-        LOG(INFO) << _sout.str();
-        LOG(ERROR) << _serr.str();
-        LOG(ERROR) << _runtime->error_message;
+        CBLOG_INFO(_sout.str());
+        CBLOG_ERROR(_serr.str());
+        CBLOG_ERROR(_runtime->error_message);
         CHECK_ACTIVATION_ERR(result);
       }
 
       _serr.done();
       if (_serr.data.size() > 0) {
         // print anyway this stream too
-        LOG(INFO) << "(stderr) " << _serr.str();
+        CBLOG_INFO("(stderr) ", _serr.str());
       }
       const auto len = _sout.data.size();
       _sout.done();

@@ -137,15 +137,15 @@ struct Run {
         _errBuf = estr.get();
 
         if (cmd.exit_code() != 0) {
-          LOG(INFO) << _outBuf;
-          LOG(ERROR) << _errBuf;
+          CBLOG_INFO(_outBuf);
+          CBLOG_ERROR(_errBuf);
           std::string err("The process exited with a non-zero exit code: ");
           err += std::to_string(cmd.exit_code());
           throw ActivationError(err);
         } else {
           if (_errBuf.size() > 0) {
             // print anyway this stream too
-            LOG(INFO) << "(stderr) " << _errBuf;
+            CBLOG_INFO("(stderr) {}", _errBuf);
           }
           return Var(_outBuf);
         }

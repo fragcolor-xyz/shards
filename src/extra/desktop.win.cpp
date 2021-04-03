@@ -834,8 +834,7 @@ struct Tap : public MousePosBase {
     pinfo.pointerInfo.pointerFlags =
         POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
-      LOG(ERROR) << "InjectTouchInput (down) error: 0x" << std::hex
-                 << GetLastError() << std::dec;
+      CBLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
       throw ActivationError("InjectTouchInput failed.");
     }
 
@@ -849,8 +848,7 @@ struct Tap : public MousePosBase {
         pinfo.pointerInfo.pointerFlags =
             POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
         if (!GlobalInjector::InjectTouch(1, &pinfo)) {
-          LOG(ERROR) << "InjectTouchInput (down) error: 0x" << std::hex
-                     << GetLastError() << std::dec;
+          CBLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
           throw ActivationError("InjectTouchInput failed.");
         }
         CB_SUSPEND(context, 0.1);
@@ -860,8 +858,7 @@ struct Tap : public MousePosBase {
     // up
     pinfo.pointerInfo.pointerFlags = POINTER_FLAG_UP;
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
-      LOG(ERROR) << "InjectTouchInput (up) error: 0x" << std::hex
-                 << GetLastError() << std::dec;
+      CBLOG_ERROR("InjectTouchInput (up) error: {0:x}", GetLastError());
       throw ActivationError("InjectTouchInput failed.");
     }
 
@@ -932,8 +929,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     // down
     event.mi.dwFlags = event.mi.dwFlags | MBD;
     if (!SendInput(1, &event, sizeof(INPUT))) {
-      LOG(ERROR) << "SendInput (down) error: 0x" << std::hex << GetLastError()
-                 << std::dec;
+      CBLOG_ERROR("SendInput (down) error: {0:x}", GetLastError());
       throw ActivationError("LeftClick failed.");
     }
 
@@ -944,8 +940,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     // up
     event.mi.dwFlags = event.mi.dwFlags | MBU;
     if (!SendInput(1, &event, sizeof(INPUT))) {
-      LOG(ERROR) << "SendInput (up) error: 0x" << std::hex << GetLastError()
-                 << std::dec;
+      CBLOG_ERROR("SendInput (up) error: {0:x}", GetLastError());
       throw ActivationError("LeftClick failed.");
     }
 

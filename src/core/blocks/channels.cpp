@@ -475,7 +475,7 @@ struct Complete : public Base {
     assert(_mpchannel);
 
     if (_mpchannel->closed.exchange(true)) {
-      LOG(INFO) << "Complete called on an already closed channel: " << _name;
+      CBLOG_INFO("Complete called on an already closed channel: {}", _name);
     }
 
     return input;

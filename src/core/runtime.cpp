@@ -14,8 +14,6 @@
 #include <string.h>
 #include <unordered_set>
 
-INITIALIZE_EASYLOGGINGPP
-
 #ifdef __EMSCRIPTEN__
 // clang-format off
 EM_JS(void, cb_emscripten_init, (), {
@@ -107,10 +105,6 @@ namespace Assert {
 extern void registerBlocks();
 }
 
-namespace Python {
-extern void registerBlocks();
-}
-
 namespace Genetic {
 extern void registerBlocks();
 }
@@ -166,26 +160,23 @@ void loadExternalBlocks(std::string from) {
       if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
         auto filename = p.path().filename();
         auto dllstr = p.path().string();
-        LOG(INFO) << "Loading external dll: " << filename
-                  << " path: " << dllstr;
+        CBLOG_INFO("Loading external dll: {} path: {}", filename, dllstr);
 #if _WIN32
         auto handle = LoadLibraryExA(dllstr.c_str(), NULL,
                                      LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
         if (!handle) {
-          LOG(ERROR) << "LoadLibrary failed, error: " << GetLastError();
+          CBLOG_ERROR("LoadLibrary failed, error: {}", GetLastError());
         }
 #elif defined(__linux__) || defined(__APPLE__)
         auto handle = dlopen(dllstr.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (!handle) {
-          LOG(ERROR) << "dlerror: " << dlerror();
+          CBLOG_ERROR("LoadLibrary failed, error: {}", dlerror());
         }
 #endif
       }
     }
   }
 }
-
-el::Configurations LogsDefaultConf;
 
 void registerCoreBlocks() {
   if (globalRegisterDone)
@@ -200,26 +191,26 @@ void registerCoreBlocks() {
   if (Globals::ExePath.size() > 0) {
     auto pluginPath = fs::absolute(Globals::ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
-    LOG(DEBUG) << "Adding dll path: " << pluginPathStr;
+    CBLOG_DEBUG("Adding dll path: {}", pluginPathStr);
     AddDllDirectory(pluginPathStr.c_str());
   }
   if (Globals::RootPath.size() > 0) {
     auto pluginPath = fs::absolute(Globals::RootPath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
-    LOG(DEBUG) << "Adding dll path: " << pluginPathStr;
+    CBLOG_DEBUG("Adding dll path: {}", pluginPathStr);
     AddDllDirectory(pluginPathStr.c_str());
   }
 #endif
 
-  LogsDefaultConf.setToDefault();
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  LogsDefaultConf.setGlobally(el::ConfigurationType::Format,
-                              "[%datetime %level] %msg");
+#ifdef NDEBUG
+  spdlog::set_level(spdlog::level::info);
 #else
-  LogsDefaultConf.setGlobally(el::ConfigurationType::Format,
-                              "[%datetime %level %thread] %msg");
+  spdlog::set_level(spdlog::level::trace);
 #endif
-  el::Loggers::reconfigureAllLoggers(LogsDefaultConf);
+
+  spdlog::set_pattern("[%L] [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+
+  CBLOG_DEBUG("Registering blocks");
 
   // at this point we might have some auto magical static linked block already
   // keep them stored here and re-register them
@@ -264,7 +255,6 @@ void registerCoreBlocks() {
   registerProcessBlocks();
   Genetic::registerBlocks();
   registerNetworkBlocks();
-  Python::registerBlocks();
   WS::registerBlocks();
 #endif
 
@@ -464,10 +454,9 @@ void registerBlock(std::string_view name, CBBlockConstructor constructor,
   auto findIt = Globals::BlocksRegister.find(name);
   if (findIt == Globals::BlocksRegister.end()) {
     Globals::BlocksRegister.insert(std::make_pair(name, constructor));
-    // LOG(TRACE) << "added block: " << cname;
   } else {
     Globals::BlocksRegister[name] = constructor;
-    LOG(INFO) << "overridden block: " << name;
+    CBLOG_INFO("Overriding block: {}", name);
   }
 
   Globals::BlockNamesToFullTypeNames[name] = fullTypeName;
@@ -486,10 +475,9 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
   auto findIt = Globals::ObjectTypesRegister.find(id);
   if (findIt == Globals::ObjectTypesRegister.end()) {
     Globals::ObjectTypesRegister.insert(std::make_pair(id, info));
-    // LOG(TRACE) << "added object type: " << typeName;
   } else {
     Globals::ObjectTypesRegister[id] = info;
-    LOG(INFO) << "overridden object type: " << typeName;
+    CBLOG_INFO("Overriding object type: {}", typeName);
   }
 
   for (auto &pobs : Globals::Observers) {
@@ -506,10 +494,9 @@ void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   auto findIt = Globals::ObjectTypesRegister.find(id);
   if (findIt == Globals::ObjectTypesRegister.end()) {
     Globals::EnumTypesRegister.insert(std::make_pair(id, info));
-    // LOG(TRACE) << "added enum type: " << typeName;
   } else {
     Globals::EnumTypesRegister[id] = info;
-    LOG(INFO) << "overridden enum type: " << typeName;
+    CBLOG_INFO("Overriding enum type: {}", typeName);
   }
 
   for (auto &pobs : Globals::Observers) {
@@ -577,8 +564,8 @@ CBVar *referenceGlobalVariable(CBContext *ctx, const char *name) {
   CBVar &v = node->variables[name];
   v.refcount++;
   if (v.refcount == 1) {
-    LOG(TRACE) << "Creating a global variable, chain: "
-               << ctx->chainStack.back()->name << " name: " << name;
+    CBLOG_TRACE("Creating a global variable, chain: {} name: {}",
+                ctx->chainStack.back()->name, name);
   }
   v.flags |= CBVAR_FLAGS_REF_COUNTED;
   return &v;
@@ -629,8 +616,8 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
   }
 
   // worst case create in current top chain!
-  LOG(TRACE) << "Creating a variable, chain: " << ctx->chainStack.back()->name
-             << " name: " << name;
+  CBLOG_TRACE("Creating a variable, chain: {} name: {}",
+              ctx->chainStack.back()->name, name);
   CBVar &cv = ctx->chainStack.back()->variables[name];
   cv.refcount++;
   cv.flags |= CBVAR_FLAGS_REF_COUNTED;
@@ -647,8 +634,8 @@ void releaseVariable(CBVar *variable) {
 
   variable->refcount--;
   if (variable->refcount == 0) {
-    LOG(TRACE) << "Destroying a variable (0 ref count), type: "
-               << type2Name(variable->valueType);
+    CBLOG_TRACE("Destroying a variable (0 ref count), type: {}",
+                type2Name(variable->valueType));
     destroyVar(*variable);
   }
 }
@@ -698,7 +685,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     len = blocks.size();
   } else {
     len = 0;
-    LOG(FATAL) << "Unreachable blocksActivation case";
+    CBLOG_FATAL("Unreachable blocksActivation case");
   }
   for (size_t i = 0; i < len; i++) {
     CBlockPtr blk;
@@ -710,7 +697,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       blk = blocks[i];
     } else {
       blk = nullptr;
-      LOG(FATAL) << "Unreachable blocksActivation case";
+      CBLOG_FATAL("Unreachable blocksActivation case");
     }
     try {
       output = activateBlock(blk, context, input);
@@ -737,17 +724,16 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
         }
       }
     } catch (const std::exception &e) {
-      LOG(ERROR) << "Block activation error, failed block: "
-                 << std::string(blk->name(blk));
-      LOG(ERROR) << e.what();
-      // failure from exceptions need uptdate on context
+      CBLOG_ERROR("Block activation error, failed block: {}, error: {}",
+                  blk->name(blk), e.what());
+      // failure from exceptions need update on context
       if (!context->failed()) {
         context->cancelFlow(e.what());
       }
       throw; // bubble up
     } catch (...) {
-      LOG(ERROR) << "Block activation error (...), failed block: "
-                 << std::string(blk->name(blk));
+      CBLOG_ERROR("Block activation error, failed block: {}, error: generic",
+                  blk->name(blk));
       if (!context->failed()) {
         context->cancelFlow("foreign exception failure, check logs");
       }
@@ -1057,8 +1043,8 @@ void validateConnection(ValidationContext &ctx) {
         }
       }
     } else {
-      LOG(ERROR) << "Block needs to implement the compose method: "
-                 << ctx.bottom->name(ctx.bottom);
+      CBLOG_ERROR("Block {} needs to implement the compose method",
+                  ctx.bottom->name(ctx.bottom));
       throw ComposeError("Block has multiple possible output types and is "
                          "missing the compose method");
     }
@@ -1763,32 +1749,32 @@ void error_handler(int err_sig) {
   switch (err_sig) {
   case SIGINT:
   case SIGTERM:
-    LOG(INFO) << "Exiting due to INT/TERM signal";
+    CBLOG_INFO("Exiting due to INT/TERM signal");
     chainblocks::Globals::SigIntTerm++;
     if (chainblocks::Globals::SigIntTerm > 5)
       std::exit(-1);
     break;
   case SIGFPE:
-    LOG(ERROR) << "Fatal SIGFPE";
+    CBLOG_ERROR("Fatal SIGFPE");
     printTrace = true;
     break;
   case SIGILL:
-    LOG(ERROR) << "Fatal SIGILL";
+    CBLOG_ERROR("Fatal SIGILL");
     printTrace = true;
     break;
   case SIGABRT:
-    LOG(ERROR) << "Fatal SIGABRT";
+    CBLOG_ERROR("Fatal SIGABRT");
     printTrace = true;
     break;
   case SIGSEGV:
-    LOG(ERROR) << "Fatal SIGSEGV";
+    CBLOG_ERROR("Fatal SIGSEGV");
     printTrace = true;
     break;
   }
 
   if (printTrace) {
 #ifndef __EMSCRIPTEN__
-    LOG(ERROR) << boost::stacktrace::stacktrace();
+    CBLOG_ERROR(boost::stacktrace::stacktrace());
 #endif
   }
 
@@ -1807,7 +1793,7 @@ void installSignalHandlers() {
 Blocks &Blocks::block(std::string_view name, std::vector<Var> params) {
   auto blk = createBlock(name.data());
   if (!blk) {
-    LOG(ERROR) << "The block " << name << " was not found.";
+    CBLOG_ERROR("Block {} was not found", name);
     throw CBException("Block not found");
   }
 
@@ -1857,7 +1843,7 @@ Chain &Chain::name(std::string_view name) {
 Chain &Chain::block(std::string_view name, std::vector<Var> params) {
   auto blk = createBlock(name.data());
   if (!blk) {
-    LOG(ERROR) << "The block " << name << " was not found.";
+    CBLOG_ERROR("Block {} was not found", name);
     throw CBException("Block not found");
   }
 
@@ -1907,7 +1893,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
       return {context->getFlowStorage(), Stopped};
     case CBChainState::Rebase:
       // Handled inside blocksActivation
-      LOG(FATAL) << "invalid state";
+      CBLOG_FATAL("invalid state");
     case CBChainState::Continue:
       break;
     }
@@ -1932,7 +1918,7 @@ boost::context::continuation run(CBChain *chain, CBFlow *flow,
 void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #endif
 {
-  LOG(TRACE) << "chain " << chain->name << " rolling.";
+  CBLOG_TRACE("chain {} rolling", chain->name);
 
   auto running = true;
 
@@ -1971,7 +1957,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   } catch (...) {
     // inside warmup we re-throw, we handle logging and such there
     chain->state = CBChain::State::Failed;
-    LOG(ERROR) << "chain " << chain->name << " warmup failed.";
+    CBLOG_ERROR("Chain {} warmup failed", chain->name);
     goto endOfChain;
   }
 
@@ -1982,11 +1968,11 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
   context.continuation->yield();
 #endif
 
-  LOG(TRACE) << "chain " << chain->name << " starting.";
+  CBLOG_TRACE("chain {} starting", chain->name);
 
   if (context.shouldStop()) {
     // We might have stopped before even starting!
-    LOG(ERROR) << "chain " << chain->name << " stopped before starting.";
+    CBLOG_ERROR("Chain {} stopped before starting", chain->name);
     goto endOfChain;
   }
 
@@ -2005,12 +1991,12 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 
     auto runRes = runChain(chain, &context, chain->rootTickInput);
     if (unlikely(runRes.state == Failed)) {
-      LOG(DEBUG) << "chain " << chain->name << " failed.";
+      CBLOG_DEBUG("Chain {} failed", chain->name);
       chain->state = CBChain::State::Failed;
       context.stopFlow(runRes.output);
       break;
     } else if (unlikely(runRes.state == Stopped)) {
-      LOG(DEBUG) << "chain " << chain->name << " stopped.";
+      CBLOG_DEBUG("Chain {} stopped", chain->name);
       context.stopFlow(runRes.output);
       // also replace the previous output with actual output
       // as it's likely coming from flowStorage of context!
@@ -2032,7 +2018,7 @@ void run(CBChain *chain, CBFlow *flow, CBCoro *coro)
 #endif
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
-        LOG(DEBUG) << "chain " << chain->name << " aborted on resume.";
+        CBLOG_DEBUG("Chain {} aborted on resume", chain->name);
         break;
       }
     }
@@ -2053,7 +2039,7 @@ endOfChain:
   if (chain->state != CBChain::State::Failed)
     chain->state = CBChain::State::Ended;
 
-  LOG(TRACE) << "chain " << chain->name << " ended.";
+  CBLOG_TRACE("chain {} ended", chain->name);
 
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
@@ -2096,8 +2082,7 @@ NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
 
   if (min_cap > UINT32_MAX) {
     // this is the case for now for many reasons, but should be just fine
-    LOG(FATAL) << "Int array overflow, we don't support more then UINT32_MAX.";
-    abort();
+    CBLOG_FATAL("Int array overflow, we don't support more then UINT32_MAX.");
   }
   arr.cap = uint32_t(min_cap);
 }
@@ -2392,7 +2377,7 @@ void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
     }
   } break;
   default:
-    LOG(FATAL) << "invalid state";
+    CBLOG_FATAL("invalid state");
   }
 }
 
@@ -2699,8 +2684,7 @@ void CBChain::reset() {
   // find dangling variables, notice but do not destroy
   for (auto var : variables) {
     if (var.second.refcount > 0) {
-      LOG(ERROR) << "Found a dangling variable: " << var.first
-                 << " in chain: " << name;
+      CBLOG_ERROR("Found a dangling variable: {}, chain: {}", var.first, name);
     }
   }
   variables.clear();
@@ -2727,7 +2711,7 @@ void CBChain::reset() {
 
 void CBChain::warmup(CBContext *context) {
   if (!warmedUp) {
-    LOG(DEBUG) << "Running warmup on chain: " << name;
+    CBLOG_DEBUG("Running warmup on chain: {}", name);
 
     // we likely need this early!
     node = context->main->node;
@@ -2743,17 +2727,17 @@ void CBChain::warmup(CBContext *context) {
           throw chainblocks::WarmupError(context->getErrorMessage());
         }
       } catch (const std::exception &e) {
-        LOG(ERROR) << "Block warmup error, failed block: "
-                   << std::string(blk->name(blk));
-        LOG(ERROR) << e.what();
+        CBLOG_ERROR("Block warmup error, failed block: {}",
+                    std::string(blk->name(blk)));
+        CBLOG_ERROR(e.what());
         // if the failure is from an exception context might not be uptodate
         if (!context->failed()) {
           context->cancelFlow(e.what());
         }
         throw;
       } catch (...) {
-        LOG(ERROR) << "Block warmup error, failed block: "
-                   << std::string(blk->name(blk));
+        CBLOG_ERROR("Block warmup error, failed block: {}",
+                    std::string(blk->name(blk)));
         if (!context->failed()) {
           context->cancelFlow("foreign exception failure, check logs");
         }
@@ -2761,14 +2745,14 @@ void CBChain::warmup(CBContext *context) {
       }
     }
 
-    LOG(DEBUG) << "Ran warmup on chain: " << name;
+    CBLOG_DEBUG("Ran warmup on chain: {}", name);
   }
 }
 
 void CBChain::cleanup(bool force) {
   if (warmedUp && (force || chainUsers.size() == 0)) {
-    LOG(DEBUG) << "Running cleanup on chain: " << name
-               << " users count: " << chainUsers.size();
+    CBLOG_DEBUG("Running cleanup on chain: {} users count: {}", name,
+                chainUsers.size());
 
     warmedUp = false;
 
@@ -2785,20 +2769,19 @@ void CBChain::cleanup(bool force) {
       }
 #endif
       catch (const std::exception &e) {
-        LOG(ERROR) << "Block cleanup error, failed block: "
-                   << std::string(blk->name(blk));
-        LOG(ERROR) << e.what();
+        CBLOG_ERROR("Block cleanup error, failed block: {}, error: {}",
+                    std::string(blk->name(blk)), e.what());
       } catch (...) {
-        LOG(ERROR) << "Block cleanup error, failed block: "
-                   << std::string(blk->name(blk));
+        CBLOG_ERROR("Block cleanup error, failed block: {}",
+                    std::string(blk->name(blk)));
       }
     }
 
     // Also clear all variables reporting dangling ones
     for (auto var : variables) {
       if (var.second.refcount > 0) {
-        LOG(ERROR) << "Found a dangling variable: " << var.first
-                   << " in chain: " << name;
+        CBLOG_ERROR("Found a dangling variable: {} in chain: {}", var.first,
+                    name);
       }
     }
     variables.clear();
@@ -2812,7 +2795,7 @@ void CBChain::cleanup(bool force) {
 
     resumer = nullptr;
 
-    LOG(DEBUG) << "Ran cleanup on chain: " << name;
+    CBLOG_DEBUG("Ran cleanup on chain: {}", name);
   }
 }
 
@@ -2825,7 +2808,7 @@ void cbRegisterAllBlocks() { chainblocks::registerCoreBlocks(); }
     try {                                                                      \
       _block_                                                                  \
     } catch (const std::exception &ex) {                                       \
-      LOG(ERROR) << #_name_ " failed, error: " << ex.what();                   \
+      CBLOG_ERROR(#_name_ " failed, error: {}", ex.what());                    \
     }                                                                          \
   }
 
@@ -2842,12 +2825,12 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   try {
     chainblocks::registerCoreBlocks();
   } catch (const std::exception &ex) {
-    LOG(ERROR) << "Failed to register core blocks, error: " << ex.what();
+    CBLOG_ERROR("Failed to register core blocks, error: {}", ex.what());
     return nullptr;
   }
 
   if (CHAINBLOCKS_CURRENT_ABI != abi_version) {
-    LOG(ERROR) << "A plugin requested an invalid ABI version.";
+    CBLOG_ERROR("A plugin requested an invalid ABI version.");
     return nullptr;
   }
 
@@ -2912,7 +2895,7 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     try {
       return chainblocks::suspend(context, seconds);
     } catch (const chainblocks::ActivationError &ex) {
-      LOG(ERROR) << ex.what();
+      CBLOG_ERROR(ex.what());
       return CBChainState::Stop;
     }
   };
@@ -3064,12 +3047,10 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     return info;
   };
 
-  result->log = [](const char *msg) noexcept { LOG(INFO) << msg; };
+  result->log = [](const char *msg) noexcept { CBLOG_INFO(msg); };
 
   result->setLoggingOptions = [](CBLoggingOptions options) noexcept {
-    chainblocks::LogsDefaultConf.setGlobally(
-        el::ConfigurationType::MaxLogFileSize, std::to_string(options.maxSize));
-    el::Loggers::reconfigureAllLoggers(chainblocks::LogsDefaultConf);
+    // TODO
   };
 
   result->createBlock = [](const char *name) noexcept {
@@ -3159,9 +3140,9 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
       auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
       (*snode)->schedule(CBChain::sharedFromRef(chain));
     } catch (const std::exception &e) {
-      LOG(ERROR) << "Errors while scheduling: " << e.what();
+      CBLOG_ERROR("Errors while scheduling: {}", e.what());
     } catch (...) {
-      LOG(ERROR) << "Errors while scheduling.";
+      CBLOG_ERROR("Errors while scheduling");
     }
   };
 

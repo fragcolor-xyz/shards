@@ -106,12 +106,12 @@ struct Evolve {
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "Evolve: failed subject chain validation, error: "
-                       << errorTxt;
+            CBLOG_ERROR("Evolve: failed subject chain validation, error: {}",
+                        errorTxt);
             throw CBException("Evolve: failed subject chain validation");
           } else {
-            LOG(INFO) << "Evolve: warning during subject chain validation: "
-                      << errorTxt;
+            CBLOG_INFO("Evolve: warning during subject chain validation: {}",
+                       errorTxt);
           }
         },
         this, vdata);
@@ -124,12 +124,12 @@ struct Evolve {
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "Evolve: failed fitness chain validation, error: "
-                       << errorTxt;
+            CBLOG_ERROR("Evolve: failed fitness chain validation, error: {}",
+                        errorTxt);
             throw CBException("Evolve: failed fitness chain validation");
           } else {
-            LOG(INFO) << "Evolve: warning during fitness chain validation: "
-                      << errorTxt;
+            CBLOG_INFO("Evolve: warning during fitness chain validation: {}",
+                       errorTxt);
           }
         },
         this, vdata);
@@ -196,7 +196,7 @@ struct Evolve {
       // We reuse those chains for every era
       // Only the DNA changes
       if (_population.size() == 0) {
-        LOG(TRACE) << "Evolve, first run, init";
+        CBLOG_TRACE("Evolve, first run, init");
 
         Serialization serial;
         std::stringstream chainStream;
@@ -243,7 +243,7 @@ struct Evolve {
 
         _era = 0;
       } else {
-        LOG(TRACE) << "Evolve, crossover";
+        CBLOG_TRACE("Evolve, crossover");
 
         // do crossover here, populating tasks properly
         tf::Taskflow crossoverFlow;
@@ -315,7 +315,7 @@ struct Evolve {
       // We run chains up to completion
       // From validation to end, every iteration/era
       // We run in such a way to allow coroutines + threads properly
-      LOG(TRACE) << "Evolve, schedule chains";
+      CBLOG_TRACE("Evolve, schedule chains");
       {
         tf::Taskflow flow;
 
@@ -332,7 +332,7 @@ struct Evolve {
 
         _exec->run(flow).get();
       }
-      LOG(TRACE) << "Evolve, run chains";
+      CBLOG_TRACE("Evolve, run chains");
       {
         tf::Taskflow flow;
 
@@ -358,7 +358,7 @@ struct Evolve {
                         })
             .get();
       }
-      LOG(TRACE) << "Evolve, schedule fitness";
+      CBLOG_TRACE("Evolve, schedule fitness");
       {
         tf::Taskflow flow;
 
@@ -378,7 +378,7 @@ struct Evolve {
 
         _exec->run(flow).get();
       }
-      LOG(TRACE) << "Evolve, run fitness";
+      CBLOG_TRACE("Evolve, run fitness");
       {
         tf::Taskflow flow;
 
@@ -435,7 +435,7 @@ struct Evolve {
         _exec->run(runFlow).get();
       }
 #endif
-      LOG(TRACE) << "Evolve, stopping all chains";
+      CBLOG_TRACE("Evolve, stopping all chains");
       { // Stop all the population chains
         tf::Taskflow flow;
 
@@ -454,7 +454,7 @@ struct Evolve {
         _exec->run(flow).get();
       }
 
-      LOG(TRACE) << "Evolve, sorting";
+      CBLOG_TRACE("Evolve, sorting");
       // remove non normal fitness (sort needs this or crashes will happen)
       std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
                     [](auto &i) {
@@ -466,7 +466,7 @@ struct Evolve {
           _sortedPopulation.begin(), _sortedPopulation.end(),
           [](const auto &a, const auto &b) { return a->fitness > b->fitness; });
 
-      LOG(TRACE) << "Evolve, resetting flags";
+      CBLOG_TRACE("Evolve, resetting flags");
       // reset flags
       std::for_each(_sortedPopulation.begin(),
                     _sortedPopulation.end() - _nkills, [](auto &i) {
@@ -481,7 +481,7 @@ struct Evolve {
                       i->parent1Idx = -1;
                     });
 
-      LOG(TRACE) << "Evolve, run mutations";
+      CBLOG_TRACE("Evolve, run mutations");
       // Do mutations at end, yet when contexts are still valid!
       // since we might need them
       {
@@ -497,7 +497,7 @@ struct Evolve {
         _exec->run(mutFlow).get();
       }
 
-      LOG(TRACE) << "Evolve, era done";
+      CBLOG_TRACE("Evolve, era done");
       _result.clear();
       _result.emplace_back(Var(_sortedPopulation.front()->fitness));
       _result.emplace_back(_sortedPopulation.front()->chain);

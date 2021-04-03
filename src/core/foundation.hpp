@@ -25,7 +25,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <chainblocks.hpp>
 
 // Included 3rdparty
-#include "easylogging++.h"
+#include "spdlog/spdlog.h"
 
 #include <algorithm>
 #include <atomic>
@@ -33,6 +33,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <deque>
 #include <iomanip>
 #include <list>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -93,6 +94,17 @@ struct CBCoro {
   ::chainblocks::setCompiledCompressedString(                                  \
       ::chainblocks::constant<::chainblocks::crc32(_str_)>::value, _str_)
 #endif
+
+#define CBLOG_TRACE SPDLOG_TRACE
+#define CBLOG_DEBUG SPDLOG_DEBUG
+#define CBLOG_INFO SPDLOG_INFO
+#define CBLOG_WARNING SPDLOG_WARN
+#define CBLOG_ERROR SPDLOG_ERROR
+#define CBLOG_FATAL(...)                                                       \
+  {                                                                            \
+    SPDLOG_CRITICAL(__VA_ARGS__);                                              \
+    std::abort();                                                              \
+  }
 
 namespace chainblocks {
 #ifdef CB_COMPRESSED_STRINGS
@@ -287,7 +299,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
       __tsan_destroy_fiber(tsan_coro);
     }
 #endif
-    LOG(TRACE) << "~CBChain() " << name;
+    CBLOG_TRACE("Destroying chain {}", name);
   }
 
   void warmup(CBContext *context);
@@ -366,8 +378,8 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   static void deleteRef(CBChainRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
-    LOG(TRACE) << (*pref)->name
-               << " chain deleteRef - use_count: " << pref->use_count();
+    CBLOG_TRACE("{} chain deleteRef - use_count: {}", (*pref)->name,
+                pref->use_count());
     delete pref;
   }
 
@@ -383,8 +395,8 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   static CBChainRef addRef(CBChainRef ref) {
     auto cref = sharedFromRef(ref);
-    LOG(TRACE) << cref->name
-               << " chain addRef - use_count: " << cref.use_count();
+    CBLOG_TRACE("{} chain addRef - use_count: {}", cref->name,
+                cref.use_count());
     auto res = new std::shared_ptr<CBChain>(cref);
     return reinterpret_cast<CBChainRef>(res);
   }
@@ -394,10 +406,10 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
 private:
   CBChain(std::string_view chain_name) : name(chain_name) {
-    LOG(TRACE) << "CBChain() " << name;
+    CBLOG_TRACE("Creating chain: {}", name);
   }
 
-  CBChain() { LOG(TRACE) << "CBChain() (no name)"; }
+  CBChain() { CBLOG_TRACE("Creating chain"); }
 
   void reset();
 };
@@ -442,7 +454,7 @@ struct Globals {
       .tableGetIterator =
           [](CBTable table, CBTableIterator *outIter) {
             if (outIter == nullptr)
-              LOG(FATAL) << "tableGetIterator - outIter was nullptr";
+              CBLOG_FATAL("tableGetIterator - outIter was nullptr");
             chainblocks::CBMap *map =
                 reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             chainblocks::CBMapIt *mapIt =
@@ -453,7 +465,7 @@ struct Globals {
           [](CBTable table, CBTableIterator *inIter, CBString *outKey,
              CBVar *outVar) {
             if (inIter == nullptr)
-              LOG(FATAL) << "tableGetIterator - inIter was nullptr";
+              CBLOG_FATAL("tableGetIterator - inIter was nullptr");
             chainblocks::CBMap *map =
                 reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             chainblocks::CBMapIt *mapIt =
@@ -509,7 +521,7 @@ struct Globals {
       .setGetIterator =
           [](CBSet cbset, CBSetIterator *outIter) {
             if (outIter == nullptr)
-              LOG(FATAL) << "setGetIterator - outIter was nullptr";
+              CBLOG_FATAL("setGetIterator - outIter was nullptr");
             chainblocks::CBHashSet *set =
                 reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             chainblocks::CBHashSetIt *setIt =
@@ -519,7 +531,7 @@ struct Globals {
       .setNext =
           [](CBSet cbset, CBSetIterator *inIter, CBVar *outVar) {
             if (inIter == nullptr)
-              LOG(FATAL) << "setGetIterator - inIter was nullptr";
+              CBLOG_FATAL("setGetIterator - inIter was nullptr");
             chainblocks::CBHashSet *set =
                 reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             chainblocks::CBHashSetIt *setIt =
@@ -927,7 +939,7 @@ struct InternalCore {
 
   static void expTypesFree(CBExposedTypesInfo &arr) { arrayFree(arr); }
 
-  static void log(const char *msg) { LOG(INFO) << msg; }
+  static void log(const char *msg) { CBLOG_INFO(msg); }
 
   static void registerEnumType(int32_t vendorId, int32_t enumId,
                                CBEnumInfo info) {

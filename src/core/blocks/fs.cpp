@@ -3,6 +3,7 @@
 
 #include "shared.hpp"
 #include <boost/algorithm/string.hpp>
+#include <fstream>
 
 #ifdef WIN32
 // windows mingw has bugged copy/copyfile
@@ -225,7 +226,7 @@ struct Read {
     _buffer.clear();
     fs::path p(input.payload.stringValue);
     if (!fs::exists(p)) {
-      LOG(ERROR) << "File is missing: " << p;
+      CBLOG_ERROR("File is missing: {}", p);
       throw ActivationError("FS.Read, file does not exist.");
     }
 
@@ -424,14 +425,14 @@ struct Copy {
         (!fs::exists(dst) || fs::is_regular_file(dst))) {
       fs::copy_file(src, dst, options, err);
       if (err) {
-        LOG(ERROR) << "copy error: " << err.message();
+        CBLOG_ERROR("copy error: {}", err.message());
         throw ActivationError("Copy failed.");
       }
     } else {
       options |= fs::copy_options::recursive;
       fs::copy(src, dst, options, err);
       if (err) {
-        LOG(ERROR) << "copy error: " << err.message();
+        CBLOG_ERROR("copy error: {}", err.message());
         throw ActivationError("Copy failed.");
       }
     }
