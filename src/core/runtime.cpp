@@ -3175,7 +3175,11 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->asyncActivate = [](auto context, auto data, auto call) {
-    return chainblocks::awaitne(context, [&] { return call(context, data); });
+    return chainblocks::awaitne(
+        context, [&] { return call(context, data); },
+        [] {
+          // TODO CANCELLATION
+        });
   };
 
   result->getBlocks = []() {

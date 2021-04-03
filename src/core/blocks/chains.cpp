@@ -1084,10 +1084,13 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     if (_chainHash == 0 || _chainHash != chain->composedHash ||
         _chainPtr != chain.get()) {
       // Compose and hash in a thread
-      await(context, [this, context, chainVar]() {
-        doCompose(context);
-        chain->composedHash = chainblocks::hash(chainVar);
-      });
+      await(
+          context,
+          [this, context, chainVar]() {
+            doCompose(context);
+            chain->composedHash = chainblocks::hash(chainVar);
+          },
+          [] {});
 
       _chainHash = chain->composedHash;
       _chainPtr = chain.get();

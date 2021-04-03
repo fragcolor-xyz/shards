@@ -118,45 +118,64 @@ struct Client {
 
   void connect(CBContext *context) {
     try {
-      await(context, [&] {
-        boost::asio::io_context ioc;
-        tcp::resolver resolver{ioc};
-        auto resolved =
-            resolver.resolve(host.get().payload.stringValue,
-                             std::to_string(port.get().payload.intValue));
+      boost::asio::io_context ioc;
+      tcp::resolver resolver{ioc};
+      await(
+          context,
+          [&] {
+            boost::system::error_code error;
+            auto resolved = resolver.resolve(
+                host.get().payload.stringValue,
+                std::to_string(port.get().payload.intValue), error);
 
-        // Make the connection on the IP address we get from a lookup
-        auto ep = net::connect(get_lowest_layer(ws->get()), resolved);
-        std::string h = host.get().payload.stringValue;
-        h += ':' + std::to_string(ep.port());
+            if (error) {
+              throw ActivationError("Failed to resolve host");
+            }
 
-        if (ssl) {
-          // Perform the SSL handshake
-          ws->get().next_layer().handshake(ssl::stream_base::client);
-        }
+            CBLOG_TRACE("Websocket resolved remote host");
 
-        // Set a decorator to change the User-Agent of the handshake
-        ws->get().set_option(
-            websocket::stream_base::decorator([](websocket::request_type &req) {
-              req.set(http::field::user_agent,
-                      std::string(BOOST_BEAST_VERSION_STRING) +
-                          " websocket-client-coro");
-            }));
+            // Make the connection on the IP address we get from a lookup
+            auto ep = net::connect(get_lowest_layer(ws->get()), resolved);
+            std::string h = host.get().payload.stringValue;
+            h += ':' + std::to_string(ep.port());
 
-        websocket::stream_base::timeout timeouts{
-            std::chrono::seconds(30), // handshake timeout
-            std::chrono::seconds(30), // idle timeout
-            true                      // send ping at half idle timeout
-        };
-        ws->get().set_option(timeouts);
+            CBLOG_TRACE("Websocket connected with the remote host");
 
-        CBLOG_DEBUG("WebSocket handshake with:  {}", h);
+            // Set a decorator to change the User-Agent of the handshake
+            ws->get().set_option(websocket::stream_base::decorator(
+                [](websocket::request_type &req) {
+                  req.set(http::field::user_agent,
+                          std::string(BOOST_BEAST_VERSION_STRING) +
+                              " websocket-client-coro");
+                }));
 
-        // Perform the websocket handshake
-        ws->get().handshake(h, target.get().payload.stringValue);
+            websocket::stream_base::timeout timeouts{
+                std::chrono::seconds(30), // handshake timeout
+                std::chrono::seconds(30), // idle timeout
+                true                      // send ping at half idle timeout
+            };
+            ws->get().set_option(timeouts);
 
-        connected = true;
-      });
+            if (ssl) {
+              // Perform the SSL handshake
+              ws->get().next_layer().handshake(ssl::stream_base::client);
+              CBLOG_TRACE("Websocket performed SSL handshake");
+            }
+
+            CBLOG_DEBUG("WebSocket handshake with: {}", h);
+
+            // Perform the websocket handshake
+            ws->get().handshake(h, target.get().payload.stringValue);
+
+            CBLOG_TRACE("Websocket performed handshake");
+
+            connected = true;
+          },
+          [&] {
+            CBLOG_DEBUG("Cancelling WebSocket connection");
+            resolver.cancel();
+            ws->close();
+          });
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
@@ -281,7 +300,8 @@ struct WriteString : public User {
     }
 
     try {
-      await(context, [&]() { _ws->get().write(net::buffer(payload)); });
+      await(
+          context, [&]() { _ws->get().write(net::buffer(payload)); }, [] {});
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
