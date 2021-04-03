@@ -73,7 +73,7 @@ struct Uglify {
       token.value = std::string(sv);
     } break;
     default:
-      LOG(ERROR) << "Type not handled: " << type2Name(v.valueType);
+      CBLOG_ERROR("Type not handled: {}", type2Name(v.valueType));
       throw ActivationError("Type not handled");
     }
   }
@@ -107,7 +107,7 @@ struct Uglify {
     switch (form.index()) {
     case form::SPECIAL: {
       auto &error = std::get<form::Special>(form);
-      LOG(ERROR) << "EDN parsing error: " << error.message;
+      CBLOG_ERROR("EDN parsing error: {}", error.message);
       throw ActivationError("EDN parsing error");
     }
     case form::TOKEN:
@@ -173,7 +173,7 @@ struct Uglify {
     switch (form.index()) {
     case form::SPECIAL: {
       auto &error = std::get<form::Special>(form);
-      LOG(ERROR) << "EDN parsing error: " << error.message;
+      CBLOG_ERROR("EDN parsing error: {}", error.message);
       throw ActivationError("EDN parsing error");
     }
     case form::TOKEN:
@@ -221,7 +221,7 @@ struct Uglify {
             auto cs = CBSTRVIEW(case_);
             if (name == cs) {
               auto v = to_var(seq);
-              LOG(DEBUG) << "Found symbol: " << name << ": " << v;
+              CBLOG_DEBUG("Found symbol: {} value: {}", name, v);
               if (_actions[idx]) {
                 CBVar output = v;
                 const auto state = _actions[idx].activate(_context, v, output);
@@ -250,7 +250,7 @@ struct Uglify {
     switch (form.index()) {
     case form::SPECIAL: {
       auto &error = std::get<form::Special>(form);
-      LOG(ERROR) << "EDN parsing error: " << error.message;
+      CBLOG_ERROR("EDN parsing error: {}", error.message);
       throw ActivationError("EDN parsing error");
     }
     case form::TOKEN:
@@ -369,7 +369,7 @@ struct Parse {
     switch (form.index()) {
     case form::SPECIAL: {
       auto error = std::get<form::Special>(form);
-      LOG(ERROR) << "EDN parsing error: " << error.message;
+      CBLOG_ERROR("EDN parsing error: {}", error.message);
       throw ActivationError("EDN parsing error");
     }
     case form::TOKEN:

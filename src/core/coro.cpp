@@ -5,7 +5,7 @@ thread_local emscripten_fiber_t em_main_coro{};
 thread_local uint8_t em_asyncify_main_stack[CBCoro::as_stack_size];
 
 [[noreturn]] static void action(void *p) {
-  LOG(TRACE) << "EM FIBER ACTION RUN";
+  CBLOG_TRACE("EM FIBER ACTION RUN");
   auto coro = reinterpret_cast<CBCoro *>(p);
   coro->func();
   // If entry_func returns, the entire program will end, as if main had
@@ -14,7 +14,7 @@ thread_local uint8_t em_asyncify_main_stack[CBCoro::as_stack_size];
 }
 
 void CBCoro::init(const std::function<void()> &func) {
-  LOG(TRACE) << "EM FIBER INIT";
+  CBLOG_TRACE("EM FIBER INIT");
   this->func = func;
   c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
   emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size,
@@ -22,10 +22,11 @@ void CBCoro::init(const std::function<void()> &func) {
 }
 
 NO_INLINE void CBCoro::resume() {
-  LOG(TRACE) << "EM FIBER SWAP RESUME " << (void *)(&em_fiber);
+  CBLOG_TRACE("EM FIBER SWAP RESUME {}",
+              reinterpret_cast<uintptr_t>(&em_fiber));
   // ensure local thread is setup
   if (!em_main_coro.stack_ptr) {
-    LOG(DEBUG) << "CBCoro - initialization of new thread";
+    CBLOG_DEBUG("CBCoro - initialization of new thread");
     emscripten_fiber_init_from_current_context(
         &em_main_coro, em_asyncify_main_stack, CBCoro::as_stack_size);
   }
@@ -40,7 +41,7 @@ NO_INLINE void CBCoro::resume() {
 }
 
 NO_INLINE void CBCoro::yield() {
-  LOG(TRACE) << "EM FIBER SWAP YIELD " << (void *)(&em_fiber);
+  CBLOG_TRACE("EM FIBER SWAP YIELD {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // always yields to main
   assert(em_parent_fiber);
   em_local_coro = em_parent_fiber;

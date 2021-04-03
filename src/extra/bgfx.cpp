@@ -477,7 +477,7 @@ struct MainWindow : public BaseWindow {
         bx::vsnprintf(out + len, total - len, _format, _argList);
       }
       out[total] = '\0';
-      LOG(DEBUG) << "(bgfx): " << out;
+      CBLOG_DEBUG("(bgfx): {}", out);
     }
 
     virtual void profilerBegin(const char * /*_name*/, uint32_t /*_abgr*/,
@@ -505,7 +505,7 @@ struct MainWindow : public BaseWindow {
                             uint32_t _height, uint32_t _pitch,
                             const void *_data, uint32_t _size,
                             bool _yflip) override {
-      LOG(DEBUG) << "Screenshot requested for path: " << _filePath;
+      CBLOG_DEBUG("Screenshot requested for path:  {}", _filePath);
 
       // For now.. TODO as might be not true
       assert(_pitch == (_width * 4));
@@ -621,8 +621,8 @@ struct MainWindow : public BaseWindow {
 
     if (_sdlWinVar) {
       if (_sdlWinVar->refcount > 1) {
-        LOG(ERROR)
-            << "MainWindow: Found a dangling reference to GFX.CurrentWindow.";
+        CBLOG_ERROR(
+            "MainWindow: Found a dangling reference to GFX.CurrentWindow");
       }
       memset(_sdlWinVar, 0x0, sizeof(CBVar));
       _sdlWinVar = nullptr;
@@ -630,7 +630,7 @@ struct MainWindow : public BaseWindow {
 
     if (_bgfxCtx) {
       if (_bgfxCtx->refcount > 1) {
-        LOG(ERROR) << "MainWindow: Found a dangling reference to GFX.Context.";
+        CBLOG_ERROR("MainWindow: Found a dangling reference to GFX.Context");
       }
       memset(_bgfxCtx, 0x0, sizeof(CBVar));
       _bgfxCtx = nullptr;
@@ -638,7 +638,7 @@ struct MainWindow : public BaseWindow {
 
     if (_imguiCtx) {
       if (_imguiCtx->refcount > 1) {
-        LOG(ERROR) << "MainWindow: Found a dangling reference to GUI.Context.";
+        CBLOG_ERROR("MainWindow: Found a dangling reference to GUI.Context");
       }
       memset(_imguiCtx, 0x0, sizeof(CBVar));
       _imguiCtx = nullptr;
@@ -684,7 +684,7 @@ struct MainWindow : public BaseWindow {
 
     auto initErr = SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
     if (initErr != 0) {
-      LOG(ERROR) << "Failed to initialize SDL " << SDL_GetError();
+      CBLOG_ERROR("Failed to initialize SDL {}", SDL_GetError());
       throw ActivationError("Failed to initialize SDL");
     }
 
@@ -727,8 +727,7 @@ struct MainWindow : public BaseWindow {
       // get the window size again to ensure it's correct
       SDL_GetWindowSize(_window, &_rwidth, &_rheight);
 
-      LOG(DEBUG) << "GFX.MainWindow, width: " << _rwidth
-                 << ", height: " << _rheight;
+      CBLOG_DEBUG("GFX.MainWindow width: {} height: {}", _rwidth, _rheight);
 
 #ifdef __APPLE__
       _metalView = SDL_Metal_CreateView(_window);
@@ -788,11 +787,11 @@ struct MainWindow : public BaseWindow {
     }
 
 #ifdef BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION
-    LOG(INFO) << "Renderer version: "
-              << bgfx::getRendererName(bgfx::RendererType::OpenGL);
+    CBLOG_INFO("Renderer version: {}",
+               bgfx::getRendererName(bgfx::RendererType::OpenGL));
 #elif BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION
-    LOG(INFO) << "Renderer version: "
-              << bgfx::getRendererName(bgfx::RendererType::OpenGLES);
+    CBLOG_INFO("Renderer version: {}",
+               bgfx::getRendererName(bgfx::RendererType::OpenGLES));
 #endif
 
     // _imguiContext.Reset();
@@ -936,8 +935,8 @@ struct MainWindow : public BaseWindow {
           // get the window size again to ensure it's correct
           SDL_GetWindowSize(_window, &_rwidth, &_rheight);
 
-          LOG(DEBUG) << "GFX.MainWindow resized, width: " << _rwidth
-                     << ", height: " << _rheight;
+          CBLOG_DEBUG("GFX.MainWindow resized width: {} height: {}", _rwidth,
+                      _rheight);
 #ifdef __APPLE__
           int real_w, real_h;
           SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
@@ -1535,9 +1534,8 @@ struct Model : public BaseConsumer {
         }
 
         if (elem.valueType != expected) {
-          LOG(ERROR) << "Expected vertex element of type: "
-                     << type2Name(expected)
-                     << " got instead: " << type2Name(elem.valueType);
+          CBLOG_ERROR("Expected vertex element of type: {} got instead: {}",
+                      type2Name(expected), type2Name(elem.valueType));
           throw ActivationError("Invalid vertex buffer element type");
         }
 

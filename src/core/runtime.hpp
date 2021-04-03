@@ -508,7 +508,7 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
 
 inline void start(CBChain *chain, CBVar input = {}) {
   if (chain->state != CBChain::State::Prepared) {
-    LOG(ERROR) << "Attempted to start a chain not ready for running!";
+    CBLOG_ERROR("Attempted to start a chain not ready for running!");
     return;
   }
 
@@ -532,7 +532,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     return true;
   }
 
-  LOG(TRACE) << "stopping chain: " << chain->name;
+  CBLOG_TRACE("stopping chain: {}", chain->name);
 
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
@@ -704,8 +704,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   void schedule(Observer observer, const std::shared_ptr<CBChain> &chain,
                 CBVar input = Var::Empty, bool compose = true) {
     if (chain->warmedUp) {
-      LOG(ERROR) << "Attempted to schedule a chain multiple times, chain: "
-                 << chain->name;
+      CBLOG_ERROR("Attempted to schedule a chain multiple times, chain: {}",
+                  chain->name);
       throw CBException("Multiple chain schedule");
     }
 
@@ -732,8 +732,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
               throw ComposeError(std::string(errorTxt) + ", input block: " +
                                  std::string(blk->name(blk)));
             } else {
-              LOG(INFO) << "Validation warning: " << errorTxt
-                        << " input block: " << blk->name(blk);
+              CBLOG_INFO("Validation warning: {} input block: {}", errorTxt,
+                         blk->name(blk));
             }
           },
           this, data);
@@ -806,7 +806,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     // find dangling variables and notice
     for (auto var : variables) {
       if (var.second.refcount > 0) {
-        LOG(ERROR) << "Found a dangling global variable: " << var.first;
+        CBLOG_ERROR("Found a dangling global variable: {}", var.first);
       }
     }
     variables.clear();
@@ -1150,8 +1150,8 @@ struct Serialization {
       // search if we already have this chain!
       auto cit = chains.find(&buf[0]);
       if (cit != chains.end()) {
-        LOG(TRACE) << "Skipping deserializing chain: "
-                   << CBChain::sharedFromRef(cit->second)->name;
+        CBLOG_TRACE("Skipping deserializing chain: {}",
+                    CBChain::sharedFromRef(cit->second)->name);
         output.payload.chainValue = CBChain::addRef(cit->second);
         break;
       }
@@ -1159,7 +1159,7 @@ struct Serialization {
       auto chain = CBChain::make(&buf[0]);
       output.payload.chainValue = chain->newRef();
       chains.emplace(chain->name, CBChain::addRef(output.payload.chainValue));
-      LOG(TRACE) << "Deserializing chain: " << chain->name;
+      CBLOG_TRACE("Deserializing chain: {}", chain->name);
       read((uint8_t *)&chain->looped, 1);
       read((uint8_t *)&chain->unsafe, 1);
       // blocks len
@@ -1457,11 +1457,11 @@ struct Serialization {
 
       // stop here if we had it already
       if (chains.count(chain->name) > 0) {
-        LOG(TRACE) << "Skipping serializing chain: " << chain->name;
+        CBLOG_TRACE("Skipping serializing chain: {}", chain->name);
         break;
       }
 
-      LOG(TRACE) << "Serializing chain: " << chain->name;
+      CBLOG_TRACE("Serializing chain: {}", chain->name);
       chains.emplace(chain->name, CBChain::addRef(input.payload.chainValue));
 
       { // Looped & Unsafe
@@ -1497,8 +1497,8 @@ struct Serialization {
       for (auto &var : chain->variables) {
         if ((var.second.flags & CBVAR_FLAGS_SHOULD_SERIALIZE) ==
             CBVAR_FLAGS_SHOULD_SERIALIZE) {
-          LOG(DEBUG) << "Serializing chain: " << chain->name
-                     << " variable: " << var.first << " value: " << var.second;
+          CBLOG_DEBUG("Serializing chain: {} variable: {} value: {}",
+                      chain->name, var.first, var.second);
           uint32_t len = uint32_t(var.first.size());
           write((const uint8_t *)&len, sizeof(uint32_t));
           total += sizeof(uint32_t);

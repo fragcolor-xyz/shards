@@ -39,12 +39,12 @@ struct Socket {
 
   void close() {
     if (socket.is_open()) {
-      LOG(DEBUG) << "Closing WebSocket";
+      CBLOG_DEBUG("Closing WebSocket");
       try {
         socket.close(websocket::close_code::normal);
       } catch (const std::exception &ex) {
-        LOG(WARNING) << "Ignored an exception during WebSocket close: "
-                     << ex.what();
+        CBLOG_WARNING("Ignored an exception during WebSocket close: {}",
+                      ex.what());
       }
     }
   }
@@ -150,7 +150,7 @@ struct Client {
         };
         ws->get().set_option(timeouts);
 
-        LOG(DEBUG) << "WebSocket handshake with: " << h;
+        CBLOG_DEBUG("WebSocket handshake with:  {}", h);
 
         // Perform the websocket handshake
         ws->get().handshake(h, target.get().payload.stringValue);
@@ -160,7 +160,7 @@ struct Client {
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(WARNING) << "WebSocket connection failed: " << ex.what();
+      CBLOG_WARNING("WebSocket connection failed: {}", ex.what());
       throw ActivationError("WebSocket connection failed.");
     }
   }
@@ -285,7 +285,7 @@ struct WriteString : public User {
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
-      LOG(WARNING) << "WebSocket write failed: " << ex.what();
+      CBLOG_WARNING("WebSocket write failed: {}", ex.what());
       throw ActivationError("WebSocket write failed.");
     }
 
