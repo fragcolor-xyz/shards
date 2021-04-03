@@ -64,7 +64,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash1 = hash(n1);
     auto hash2 = hash(n2);
     REQUIRE(hash1 == hash2);
-    CBLOG_INFO(n1) // logging coverage
+    CBLOG_INFO(n1); // logging coverage
   }
 
   SECTION("Bool") {
@@ -84,7 +84,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash1 = hash(t);
     auto hash2 = hash(t1);
     REQUIRE(hash1 == hash2);
-    CBLOG_INFO(t) // logging coverage
+    CBLOG_INFO(t); // logging coverage
   }
 
   SECTION("Object") {
@@ -106,7 +106,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(o3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(o1) // logging coverage
+    CBLOG_INFO(o1); // logging coverage
   }
 
   SECTION("Enum") {
@@ -134,7 +134,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(o3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(o1) // logging coverage
+    CBLOG_INFO(o1); // logging coverage
   }
 
   SECTION("Float") {
@@ -161,7 +161,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(f1) // logging coverage
+    CBLOG_INFO(f1); // logging coverage
   }
 
 #define CBVECTOR_TESTS                                                         \
@@ -261,7 +261,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(f1) // logging coverage
+    CBLOG_INFO(f1); // logging coverage
   }
 
   SECTION("Int2") {
@@ -352,7 +352,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(c3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(c1)
+    CBLOG_INFO(c1);
   }
 
   SECTION("String") {
@@ -382,7 +382,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(s3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(s1) // logging coverage
+    CBLOG_INFO(s1); // logging coverage
   }
 
   SECTION("std::vector-Var") {
@@ -502,7 +502,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
 
-    CBLOG_INFO(v1)
+    CBLOG_INFO(v1);
   }
 
   SECTION("std::vector-CBVar") {
@@ -545,7 +545,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(s2 >= s5);
     REQUIRE(v2 >= v5);
 
-    CBLOG_INFO(v1)
+    CBLOG_INFO(v1);
   }
 
   SECTION("std::array-Var") {
@@ -577,7 +577,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v2 >= v4);
     REQUIRE(v2 >= v5);
 
-    CBLOG_INFO(v1)
+    CBLOG_INFO(v1);
   }
 
   SECTION("std::array-CBVar") {
@@ -609,7 +609,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v2 >= v4);
     REQUIRE(v2 >= v5);
 
-    CBLOG_INFO(v1)
+    CBLOG_INFO(v1);
   }
 
   SECTION("Bytes") {
@@ -676,7 +676,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
 
-    CBLOG_INFO(v1)
+    CBLOG_INFO(v1);
   }
 
   SECTION("Block") {
@@ -1064,5 +1064,5 @@ struct HandTable : public GamePadTable {
 TEST_CASE("TableVar") {
   HandTable hand;
   hand.buttons.push_back(Var(0.6, 1.0, 1.0));
-  CBLOG_INFO(hand)
+  CBLOG_INFO(hand);
 }
