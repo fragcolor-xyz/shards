@@ -541,7 +541,7 @@ struct ChainFileWatcher {
       CBLOG_ERROR("script error: {}", mv->print(true));
       throw;
     } catch (MalString &s) {
-      CBLOG_ERROR("parse error: {}", s)
+      CBLOG_ERROR("parse error: {}", s);
       throw;
     } catch (const std::exception &e) {
       CBLOG_ERROR("Failed to init ChainFileWatcher: {}", e.what());
