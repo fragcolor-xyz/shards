@@ -87,12 +87,10 @@ if (NOT DEFINED CHAINBLOCKS_DIR)
 endif()
 
 add_compile_definitions(
-  ELPP_DEFAULT_LOG_FILE="chainblocks.log"
   BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 add_compile_options(-Wall)
 
 if(NOT EMSCRIPTEN)
-  add_compile_definitions(ELPP_THREAD_SAFE)
 else()
   # MinSizeRel is better for release builds and RelWithDebInfo for debug
   # check github actions CI for config command line
@@ -134,11 +132,13 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options(-static)
   endif()
 
-  add_compile_definitions(ELPP_DISABLE_TRACE_LOGS)
   if(NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    add_compile_definitions(ELPP_DISABLE_DEBUG_LOGS)
+    add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
+  else()
+    add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO)
   endif()
 else()
+  add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
   if(NOT WIN32 AND NOT EMSCRIPTEN)
     add_compile_options(-fsanitize=undefined)
     add_link_options(-fsanitize=undefined)
@@ -285,7 +285,6 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/struct.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/channels.cpp
-  ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/genetic.hpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
@@ -332,7 +331,7 @@ set(
   -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
   -I${CHAINBLOCKS_DIR}/deps/replxx/include
-  -I${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
+  -I${CHAINBLOCKS_DIR}/deps/spdlog/include
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   -I${CHAINBLOCKS_DIR}/deps/stb
   -I${CHAINBLOCKS_DIR}/deps/kcp
@@ -442,7 +441,7 @@ endif()
 ### runtime
 include_directories(
   ${CHAINBLOCKS_DIR}/deps/replxx/include
-  ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src
+  ${CHAINBLOCKS_DIR}/deps/spdlog/include
   ${CHAINBLOCKS_DIR}/deps/SPSCQueue/include
   ${CHAINBLOCKS_DIR}/deps/stb
   ${CHAINBLOCKS_DIR}/deps/xxHash
@@ -845,7 +844,6 @@ set(replxx-source-patterns ${CHAINBLOCKS_DIR}/deps/replxx/src/*.cpp ${CHAINBLOCK
 file(GLOB replxx-sources ${replxx-source-patterns})
 
 set(RUNTIME_SRC
-  ${CHAINBLOCKS_DIR}/deps/easyloggingpp/src/easylogging++.cc
   ${replxx-sources}
   ${CHAINBLOCKS_DIR}/src/core/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/ops_internal.cpp
@@ -890,7 +888,6 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/process.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/os.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/network.cpp
-    ${CHAINBLOCKS_DIR}/src/core/blocks/python.cpp
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
     )
 
@@ -959,6 +956,11 @@ if(USE_LIBBACKTRACE)
   set(EXTRA_LIBS ${EXTRA_LIBS} ${CHAINBLOCKS_DIR}/deps/libbacktrace/build/lib/libbacktrace.a)
   add_compile_definitions(BOOST_STACKTRACE_USE_BACKTRACE)
   include_directories(${CHAINBLOCKS_DIR}/deps/libbacktrace/build/include)
+endif()
+
+# workaround issues under windows in debug mode
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp PROPERTIES COMPILE_FLAGS -O1)
 endif()
 
 ### mal

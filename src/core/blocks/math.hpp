@@ -165,8 +165,8 @@ template <class OP> struct BinaryOperation : public BinaryBase {
         // something changed, avoid leaking
         // this should happen only here, because compose of SeqSeq is loose
         // we are going from an seq to a regular value, this could be expensive!
-        LOG(DEBUG) << "Changing type of output during Math operation, this is "
-                      "ok but potentially slow.";
+        CBLOG_DEBUG("Changing type of output during Math operation, this is ok "
+                    "but potentially slow");
         destroyVar(output);
       }
       operateFast(opType, output, a, b);

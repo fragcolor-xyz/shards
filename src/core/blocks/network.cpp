@@ -61,12 +61,12 @@ struct NetworkBase {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
             g = boost::asio::make_work_guard(_io_context);
         try {
-          // LOG(DEBUG) << "Boost asio context running...";
+          // CBLOG_DEBUG("Boost asio context running...");
           _io_context.run();
         } catch (...) {
-          LOG(ERROR) << "Boost asio context run failed.";
+          CBLOG_ERROR("Boost asio context run failed.");
         }
-        // LOG(DEBUG) << "Boost asio context exiting...";
+        // CBLOG_DEBUG("Boost asio context exiting...");
       });
       worker.detach();
     }

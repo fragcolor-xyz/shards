@@ -60,8 +60,7 @@ struct Base {
 struct Is : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input != value) {
-      LOG(ERROR) << "Failed assertion Is, input: " << input
-                 << " expected: " << value;
+      CBLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, value);
       if (aborting)
         abort();
       else
@@ -75,8 +74,8 @@ struct Is : public Base {
 struct IsNot : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input == value) {
-      LOG(ERROR) << "Failed assertion IsNot, input: " << input
-                 << " not expected: " << value;
+      CBLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input,
+                  value);
       if (aborting)
         abort();
       else

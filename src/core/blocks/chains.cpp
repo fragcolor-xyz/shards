@@ -71,7 +71,7 @@ struct ChainBase {
         chain = Globals::GlobalChains[chainref->payload.stringValue];
       } else {
         chain = nullptr;
-        LOG(DEBUG) << "ChainBase::compose on a null chain";
+        CBLOG_DEBUG("ChainBase::compose on a null chain");
       }
     }
 
@@ -82,9 +82,9 @@ struct ChainBase {
     assert(data.chain);
 
     if (chain.get() == data.chain) {
-      LOG(DEBUG)
-          << "ChainBase::compose early return, data.chain == chain, name: "
-          << chain->name;
+      CBLOG_DEBUG(
+          "ChainBase::compose early return, data.chain == chain, name: {}",
+          chain->name);
       return data.inputType; // we don't know yet...
     }
 
@@ -102,30 +102,29 @@ struct ChainBase {
 
     // avoid stackoverflow
     if (chain->isRoot || visiting.count(chain.get())) {
-      LOG(DEBUG)
-          << "ChainBase::compose early return, chain is being visited, name: "
-          << chain->name;
+      CBLOG_DEBUG(
+          "ChainBase::compose early return, chain is being visited, name: {}",
+          chain->name);
       return data.inputType; // we don't know yet...
     }
 
-    LOG(TRACE) << "ChainBase::compose, source: " << data.chain->name
-               << " composing: " << chain->name
-               << " input type: " << data.inputType;
+    CBLOG_TRACE("ChainBase::compose, source: {} composing: {} inputType: {}",
+                data.chain->name, chain->name, data.inputType);
 
     // we can add early in this case!
     // useful for Resume/Start
     if (passthrough) {
       auto [_, done] = node->visitedChains.emplace(chain.get(), data.inputType);
       if (done) {
-        LOG(TRACE) << "Pre-Marking as composed: " << chain->name
-                   << " ptr: " << chain.get();
+        CBLOG_TRACE("Pre-Marking as composed: {} ptr: {}", chain->name,
+                    (void *)chain.get());
       }
     } else if (mode == Stepped) {
       auto [_, done] =
           node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
       if (done) {
-        LOG(TRACE) << "Pre-Marking as composed: " << chain->name
-                   << " ptr: " << chain.get();
+        CBLOG_TRACE("Pre-Marking as composed: {} ptr: {}", chain->name,
+                    (void *)chain.get());
       }
     }
 
@@ -153,18 +152,18 @@ struct ChainBase {
     CBTypeInfo chainOutput;
     // make sure to compose only once...
     if (chain->composedHash == 0) {
-      LOG(TRACE) << "Running " << chain->name << " compose.";
+      CBLOG_TRACE("Running {} compose", chain->name);
       chainValidation = composeChain(
           chain.get(),
           [](const CBlock *errorBlock, const char *errorTxt,
              bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              LOG(ERROR) << "RunChain: failed inner chain validation, error: "
-                         << errorTxt;
+              CBLOG_ERROR("RunChain: failed inner chain validation, error: {}",
+                          errorTxt);
               throw ComposeError("RunChain: failed inner chain validation");
             } else {
-              LOG(INFO) << "RunChain: warning during inner chain validation: "
-                        << errorTxt;
+              CBLOG_INFO("RunChain: warning during inner chain validation: {}",
+                         errorTxt);
             }
           },
           this, dataCopy);
@@ -176,14 +175,14 @@ struct ChainBase {
           exposing.begin(),
           std::remove_if(exposing.begin(), exposing.end(),
                          [](CBExposedTypeInfo &x) { return !x.global; }));
-      LOG(TRACE) << "Chain " << chain->name << " composed.";
+      CBLOG_TRACE("Chain {} composed", chain->name);
     } else {
-      LOG(TRACE) << "Skipping " << chain->name << " compose.";
+      CBLOG_TRACE("Skipping {} compose", chain->name);
       // verify input type
       if (!passthrough && mode != Stepped &&
           data.inputType != chain->inputType) {
-        LOG(ERROR) << "Previous chain composed type " << *chain->inputType
-                   << " requested call type " << data.inputType;
+        CBLOG_ERROR("Previous chain composed type {} requested call type {}",
+                    *chain->inputType, data.inputType);
         throw ComposeError("Attempted to call an already composed chain with a "
                            "different input type! chain: " +
                            chain->name);
@@ -224,9 +223,10 @@ struct ChainBase {
     if (!passthrough && mode != Stepped) {
       auto [_, done] = node->visitedChains.emplace(chain.get(), outputType);
       if (done) {
-        LOG(TRACE) << "Marking as composed: " << chain->name
-                   << " ptr: " << chain.get() << " inputType "
-                   << *chain->inputType << " outputType " << chain->outputType;
+        CBLOG_TRACE(
+            "Marking as composed: {} ptr: {} inputType: {} outputType: {}",
+            chain->name, (void *)chain.get(), *chain->inputType,
+            chain->outputType);
       }
     }
 
@@ -243,7 +243,7 @@ struct ChainBase {
     if (chain) {
       return Var(chain);
     } else {
-      LOG(TRACE) << "getState no chain was avail";
+      CBLOG_TRACE("getState no chain was avail");
       return Var::Empty;
     }
   }
@@ -317,7 +317,7 @@ struct Wait : public ChainBase {
     }
 
     if (unlikely(!chain)) {
-      LOG(WARNING) << "Wait's chain is void.";
+      CBLOG_WARNING("Wait's chain is void");
       return input;
     } else {
       while (isRunning(chain.get())) {
@@ -358,10 +358,10 @@ struct StopChain : public ChainBase {
   void composed(const CBChain *chain, const CBComposeResult *result) {
     if (!chain && chainref->valueType == None &&
         _inputType != result->outputType) {
-      LOG(ERROR)
-          << "Stop input and chain output type mismatch, Stop input must be "
-             "the same type of the chain's output (regular flow), chain: "
-          << chain->name << " expected: " << chain->outputType;
+      CBLOG_ERROR("Stop input and chain output type mismatch, Stop input must "
+                  "be the same type of the chain's output (regular flow), "
+                  "chain: {} expected: {}",
+                  chain->name, chain->outputType);
       throw ComposeError("Stop input and chain output type mismatch");
     }
   }
@@ -952,8 +952,8 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
     if (unlikely(_provider->updated(_provider))) {
       auto update = _provider->acquire(_provider);
       if (unlikely(update.error != nullptr)) {
-        LOG(ERROR) << "Failed to reload a chain via ChainLoader, reason: "
-                   << update.error;
+        CBLOG_ERROR("Failed to reload a chain via ChainLoader, reason: {}",
+                    update.error);
         CBVar output{};
         _onErrorBlocks.activate(context, Var(update.error), output);
       } else {
@@ -966,7 +966,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         chain.reset(update.chain,
                     [&](auto &x) { _provider->release(_provider, x); });
         doWarmup(context);
-        LOG(INFO) << "Chain " << update.chain->name << " has been reloaded.";
+        CBLOG_INFO("Chain {} has been reloaded", update.chain->name);
         CBVar output{};
         _onReloadBlocks.activate(context, Var(chain), output);
       }
@@ -1060,12 +1060,12 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "RunChain: failed inner chain validation, error: "
-                       << errorTxt;
+            CBLOG_ERROR("RunChain: failed inner chain validation, error: {}",
+                        errorTxt);
             throw CBException("RunChain: failed inner chain validation");
           } else {
-            LOG(INFO) << "RunChain: warning during inner chain validation: "
-                      << errorTxt;
+            CBLOG_INFO("RunChain: warning during inner chain validation: {}",
+                       errorTxt);
           }
         },
         this, data);
@@ -1084,10 +1084,13 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     if (_chainHash == 0 || _chainHash != chain->composedHash ||
         _chainPtr != chain.get()) {
       // Compose and hash in a thread
-      await(context, [this, context, chainVar]() {
-        doCompose(context);
-        chain->composedHash = chainblocks::hash(chainVar);
-      });
+      await(
+          context,
+          [this, context, chainVar]() {
+            doCompose(context);
+            chain->composedHash = chainblocks::hash(chainVar);
+          },
+          [] {});
 
       _chainHash = chain->composedHash;
       _chainPtr = chain.get();
@@ -1203,10 +1206,10 @@ struct ParallelBase : public ChainBase {
           [](const struct CBlock *errorBlock, const char *errorTxt,
              CBBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              LOG(ERROR) << errorTxt;
+              CBLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler chain compose failed");
             } else {
-              LOG(WARNING) << errorTxt;
+              CBLOG_WARNING(errorTxt);
             }
           },
           nullptr, data);
@@ -1566,10 +1569,10 @@ struct Spawn : public ChainBase {
           [](const struct CBlock *errorBlock, const char *errorTxt,
              CBBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              LOG(ERROR) << errorTxt;
+              CBLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler chain compose failed");
             } else {
-              LOG(WARNING) << errorTxt;
+              CBLOG_WARNING(errorTxt);
             }
           },
           nullptr, data);
@@ -1647,12 +1650,12 @@ struct Branch {
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "Branch: failed inner chain validation, error: "
-                       << errorTxt;
+            CBLOG_ERROR("Branch: failed inner chain validation, error: {}",
+                        errorTxt);
             throw ComposeError("RunChain: failed inner chain validation");
           } else {
-            LOG(INFO) << "Branch: warning during inner chain validation: "
-                      << errorTxt;
+            CBLOG_INFO("Branch: warning during inner chain validation: {}",
+                       errorTxt);
           }
         },
         this, dataCopy);

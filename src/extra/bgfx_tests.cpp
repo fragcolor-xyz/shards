@@ -8,6 +8,8 @@
 #include "./bgfx.cpp"
 #endif
 
+#include <fstream>
+
 #ifdef CHECK
 #undef CHECK
 #endif
@@ -136,7 +138,7 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
-      LOG(ERROR) << "Compose error: " << ex.what();
+      CBLOG_ERROR("Compose error: {}", ex.what());
       failed = true;
     }
     REQUIRE(failed);
@@ -173,7 +175,7 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
-      LOG(ERROR) << "Compose error: " << ex.what();
+      CBLOG_ERROR("Compose error: {}", ex.what());
       failed = true;
     }
     REQUIRE(failed);
@@ -210,7 +212,7 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
-      LOG(ERROR) << "Compose error: " << ex.what();
+      CBLOG_ERROR("Compose error: {}", ex.what());
       failed = true;
     }
     REQUIRE(failed);
@@ -250,7 +252,7 @@ void testModel() {
     try {
       node->schedule(chain);
     } catch (const ComposeError &ex) {
-      LOG(ERROR) << "Compose error: " << ex.what();
+      CBLOG_ERROR("Compose error: {}", ex.what());
       failed = true;
     }
     REQUIRE(failed);
@@ -286,7 +288,7 @@ void testModel() {
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
     auto errors = node->errors();
-    LOG(ERROR) << errors[0];
+    CBLOG_ERROR(errors[0]);
     REQUIRE(errors[0] == "Invalid vertex buffer element type");
   }
 
@@ -319,7 +321,7 @@ void testModel() {
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
     auto errors = node->errors();
-    LOG(ERROR) << errors[0];
+    CBLOG_ERROR(errors[0]);
     REQUIRE(errors[0] == "Invalid amount of vertex buffer elements");
   }
 
@@ -353,7 +355,7 @@ void testModel() {
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
     auto errors = node->errors();
-    LOG(ERROR) << errors[0];
+    CBLOG_ERROR(errors[0]);
     REQUIRE(errors[0] == "Vertex index out of range");
   }
 
@@ -387,7 +389,7 @@ void testModel() {
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
     auto errors = node->errors();
-    LOG(ERROR) << errors[0];
+    CBLOG_ERROR(errors[0]);
     REQUIRE(errors[0] == "Vertex index out of range");
   }
 }

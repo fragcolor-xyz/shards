@@ -195,7 +195,7 @@ class BuiltIn {
 public:
   virtual Value apply(const std::shared_ptr<Environment> &env,
                       std::vector<Value> &args, int line) {
-    LOG(FATAL) << "invalid state";
+    CBLOG_FATAL("invalid state");
     return args[0]; // fake value should not happen
   }
 };

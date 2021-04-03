@@ -295,7 +295,7 @@ struct Texture {
           bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);          \
       break;                                                                   \
     default:                                                                   \
-      LOG(FATAL) << "invalid state";                                           \
+      CBLOG_FATAL("invalid state");                                            \
       break;                                                                   \
     }                                                                          \
   } else if (_bits == 16) {                                                    \
@@ -320,7 +320,7 @@ struct Texture {
                                 bgfx::TextureFormat::RGBA16U);                 \
       break;                                                                   \
     default:                                                                   \
-      LOG(FATAL) << "invalid state";                                           \
+      CBLOG_FATAL("invalid state");                                            \
       break;                                                                   \
     }                                                                          \
   } else if (_bits == 32) {                                                    \
@@ -346,7 +346,7 @@ struct Texture {
                                 bgfx::TextureFormat::RGBA32F);                 \
       break;                                                                   \
     default:                                                                   \
-      LOG(FATAL) << "invalid state";                                           \
+      CBLOG_FATAL("invalid state");                                            \
       break;                                                                   \
     }                                                                          \
   }

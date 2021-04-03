@@ -106,12 +106,12 @@ struct Evolve {
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "Evolve: failed subject chain validation, error: "
-                       << errorTxt;
+            CBLOG_ERROR("Evolve: failed subject chain validation, error: {}",
+                        errorTxt);
             throw CBException("Evolve: failed subject chain validation");
           } else {
-            LOG(INFO) << "Evolve: warning during subject chain validation: "
-                      << errorTxt;
+            CBLOG_INFO("Evolve: warning during subject chain validation: {}",
+                       errorTxt);
           }
         },
         this, vdata);
@@ -124,12 +124,12 @@ struct Evolve {
         [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
            void *userData) {
           if (!nonfatalWarning) {
-            LOG(ERROR) << "Evolve: failed fitness chain validation, error: "
-                       << errorTxt;
+            CBLOG_ERROR("Evolve: failed fitness chain validation, error: {}",
+                        errorTxt);
             throw CBException("Evolve: failed fitness chain validation");
           } else {
-            LOG(INFO) << "Evolve: warning during fitness chain validation: "
-                      << errorTxt;
+            CBLOG_INFO("Evolve: warning during fitness chain validation: {}",
+                       errorTxt);
           }
         },
         this, vdata);
@@ -191,318 +191,330 @@ struct Evolve {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return awaitne(context, [&]() {
-      // Init on the first run!
-      // We reuse those chains for every era
-      // Only the DNA changes
-      if (_population.size() == 0) {
-        LOG(TRACE) << "Evolve, first run, init";
+    return awaitne(
+        context,
+        [&]() {
+          // Init on the first run!
+          // We reuse those chains for every era
+          // Only the DNA changes
+          if (_population.size() == 0) {
+            CBLOG_TRACE("Evolve, first run, init");
 
-        Serialization serial;
-        std::stringstream chainStream;
-        Writer w1(chainStream);
-        serial.reset();
-        serial.serialize(_baseChain, w1);
-        auto chainStr = chainStream.str();
+            Serialization serial;
+            std::stringstream chainStream;
+            Writer w1(chainStream);
+            serial.reset();
+            serial.serialize(_baseChain, w1);
+            auto chainStr = chainStream.str();
 
-        std::stringstream fitnessStream;
-        Writer w2(fitnessStream);
-        serial.reset();
-        serial.serialize(_fitnessChain, w2);
-        auto fitnessStr = fitnessStream.str();
+            std::stringstream fitnessStream;
+            Writer w2(fitnessStream);
+            serial.reset();
+            serial.serialize(_fitnessChain, w2);
+            auto fitnessStr = fitnessStream.str();
 
-        _population.resize(_popsize);
-        _nkills = size_t(double(_popsize) * _extinction);
-        _nelites = size_t(double(_popsize) * _elitism);
+            _population.resize(_popsize);
+            _nkills = size_t(double(_popsize) * _extinction);
+            _nelites = size_t(double(_popsize) * _elitism);
 
-        tf::Taskflow initFlow;
-        initFlow.for_each_dynamic(
-            _population.begin(), _population.end(), [&](Individual &i) {
-              Serialization deserial;
-              std::stringstream i1Stream(chainStr);
-              Reader r1(i1Stream);
-              deserial.reset();
-              deserial.deserialize(r1, i.chain);
-              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              gatherMutants(chain.get(), i.mutants);
-              resetState(i);
+            tf::Taskflow initFlow;
+            initFlow.for_each_dynamic(
+                _population.begin(), _population.end(), [&](Individual &i) {
+                  Serialization deserial;
+                  std::stringstream i1Stream(chainStr);
+                  Reader r1(i1Stream);
+                  deserial.reset();
+                  deserial.deserialize(r1, i.chain);
+                  auto chain =
+                      CBChain::sharedFromRef(i.chain.payload.chainValue);
+                  gatherMutants(chain.get(), i.mutants);
+                  resetState(i);
 
-              std::stringstream i2Stream(fitnessStr);
-              Reader r2(i2Stream);
-              deserial.reset();
-              deserial.deserialize(r2, i.fitnessChain);
-            });
-        _exec->run(initFlow).get();
+                  std::stringstream i2Stream(fitnessStr);
+                  Reader r2(i2Stream);
+                  deserial.reset();
+                  deserial.deserialize(r2, i.fitnessChain);
+                });
+            _exec->run(initFlow).get();
 
-        size_t idx = 0;
-        for (auto &i : _population) {
-          i.idx = idx;
-          _sortedPopulation.emplace_back(&i);
-          idx++;
-        }
+            size_t idx = 0;
+            for (auto &i : _population) {
+              i.idx = idx;
+              _sortedPopulation.emplace_back(&i);
+              idx++;
+            }
 
-        _era = 0;
-      } else {
-        LOG(TRACE) << "Evolve, crossover";
+            _era = 0;
+          } else {
+            CBLOG_TRACE("Evolve, crossover");
 
-        // do crossover here, populating tasks properly
-        tf::Taskflow crossoverFlow;
-        _crossingOver.clear();
-        int currentIdx = 0;
-        for (auto &ind : _sortedPopulation) {
-          ind->crossoverTask.reset();
-          if (Random::nextDouble() < _crossover) {
-            // In this case this individual
-            // becomes the child between two other individuals
-            // there is a chance also to keep current values
-            // so this is effectively tree way crossover
-            // Select from high fitness individuals
-            const auto parent0Idx =
-                int(std::pow(Random::nextDouble(), 4) * double(_popsize));
-            auto parent0 = _sortedPopulation[parent0Idx];
+            // do crossover here, populating tasks properly
+            tf::Taskflow crossoverFlow;
+            _crossingOver.clear();
+            int currentIdx = 0;
+            for (auto &ind : _sortedPopulation) {
+              ind->crossoverTask.reset();
+              if (Random::nextDouble() < _crossover) {
+                // In this case this individual
+                // becomes the child between two other individuals
+                // there is a chance also to keep current values
+                // so this is effectively tree way crossover
+                // Select from high fitness individuals
+                const auto parent0Idx =
+                    int(std::pow(Random::nextDouble(), 4) * double(_popsize));
+                auto parent0 = _sortedPopulation[parent0Idx];
 
-            const auto parent1Idx =
-                int(std::pow(Random::nextDouble(), 4) * double(_popsize));
-            auto parent1 = _sortedPopulation[parent1Idx];
+                const auto parent1Idx =
+                    int(std::pow(Random::nextDouble(), 4) * double(_popsize));
+                auto parent1 = _sortedPopulation[parent1Idx];
 
-            if (currentIdx != parent0Idx && currentIdx != parent1Idx &&
-                parent0Idx != parent1Idx && parent0->parent0Idx != currentIdx &&
-                parent0->parent1Idx != currentIdx &&
-                parent1->parent0Idx != currentIdx &&
-                parent1->parent1Idx != currentIdx) {
-              ind->crossoverTask =
-                  crossoverFlow.emplace([this, ind, parent0, parent1]() {
-                    crossover(*ind, *parent0, *parent1);
-                  });
+                if (currentIdx != parent0Idx && currentIdx != parent1Idx &&
+                    parent0Idx != parent1Idx &&
+                    parent0->parent0Idx != currentIdx &&
+                    parent0->parent1Idx != currentIdx &&
+                    parent1->parent0Idx != currentIdx &&
+                    parent1->parent1Idx != currentIdx) {
+                  ind->crossoverTask =
+                      crossoverFlow.emplace([this, ind, parent0, parent1]() {
+                        crossover(*ind, *parent0, *parent1);
+                      });
 #if 0
               ind.get().crossoverTask.name(std::to_string(currentIdx) + " = " +
                                            std::to_string(parent0Idx) + " + " +
                                            std::to_string(parent1Idx));
 #endif
-              _crossingOver.emplace_back(ind, parent0, parent1);
-              ind->parent0Idx = parent0Idx;
-              ind->parent1Idx = parent1Idx;
+                  _crossingOver.emplace_back(ind, parent0, parent1);
+                  ind->parent0Idx = parent0Idx;
+                  ind->parent1Idx = parent1Idx;
+                }
+              }
+              currentIdx++;
             }
-          }
-          currentIdx++;
-        }
 
-        for (auto [a, b, c] : _crossingOver) {
-          auto &atask = a->crossoverTask;
-          auto &btask = b->crossoverTask;
-          auto &ctask = c->crossoverTask;
-          if (!btask.empty())
-            btask.precede(atask);
-          if (!ctask.empty())
-            ctask.precede(atask);
-        }
+            for (auto [a, b, c] : _crossingOver) {
+              auto &atask = a->crossoverTask;
+              auto &btask = b->crossoverTask;
+              auto &ctask = c->crossoverTask;
+              if (!btask.empty())
+                btask.precede(atask);
+              if (!ctask.empty())
+                ctask.precede(atask);
+            }
 #if 0
         crossoverFlow.dump(std::cout);
 #endif
-        _exec->run(crossoverFlow).get();
+            _exec->run(crossoverFlow).get();
 
-        _era++;
+            _era++;
 
-        // hack/fix
-        // it is likely possible that the best chain we outputted
-        // was used and so warmedup
-        auto best = CBChain::sharedFromRef(
-            _sortedPopulation.front()->chain.payload.chainValue);
-        best->cleanup(true);
-      }
+            // hack/fix
+            // it is likely possible that the best chain we outputted
+            // was used and so warmedup
+            auto best = CBChain::sharedFromRef(
+                _sortedPopulation.front()->chain.payload.chainValue);
+            best->cleanup(true);
+          }
 
 #if 1
-      // We run chains up to completion
-      // From validation to end, every iteration/era
-      // We run in such a way to allow coroutines + threads properly
-      LOG(TRACE) << "Evolve, schedule chains";
-      {
-        tf::Taskflow flow;
+          // We run chains up to completion
+          // From validation to end, every iteration/era
+          // We run in such a way to allow coroutines + threads properly
+          CBLOG_TRACE("Evolve, schedule chains");
+          {
+            tf::Taskflow flow;
 
-        flow.for_each_dynamic(
-            _era == 0 ? _sortedPopulation.begin()
-                      : _sortedPopulation.begin() + _nelites,
-            _sortedPopulation.end(),
-            [](auto &i) {
-              // Evaluate our brain chain
-              auto chain = CBChain::sharedFromRef(i->chain.payload.chainValue);
-              i->node->schedule(chain);
-            },
-            _coros);
+            flow.for_each_dynamic(
+                _era == 0 ? _sortedPopulation.begin()
+                          : _sortedPopulation.begin() + _nelites,
+                _sortedPopulation.end(),
+                [](auto &i) {
+                  // Evaluate our brain chain
+                  auto chain =
+                      CBChain::sharedFromRef(i->chain.payload.chainValue);
+                  i->node->schedule(chain);
+                },
+                _coros);
 
-        _exec->run(flow).get();
-      }
-      LOG(TRACE) << "Evolve, run chains";
-      {
-        tf::Taskflow flow;
+            _exec->run(flow).get();
+          }
+          CBLOG_TRACE("Evolve, run chains");
+          {
+            tf::Taskflow flow;
 
-        flow.for_each_dynamic(
-            _era == 0 ? _sortedPopulation.begin()
-                      : _sortedPopulation.begin() + _nelites,
-            _sortedPopulation.end(),
-            [](auto &i) {
-              if (!i->node->empty())
-                i->node->tick();
-            },
-            _coros);
+            flow.for_each_dynamic(
+                _era == 0 ? _sortedPopulation.begin()
+                          : _sortedPopulation.begin() + _nelites,
+                _sortedPopulation.end(),
+                [](auto &i) {
+                  if (!i->node->empty())
+                    i->node->tick();
+                },
+                _coros);
 
-        _exec
-            ->run_until(flow,
-                        [&]() {
-                          size_t ended = 0;
-                          for (auto &p : _population) {
-                            if (p.node->empty())
-                              ended++;
-                          }
-                          return ended == _population.size();
-                        })
-            .get();
-      }
-      LOG(TRACE) << "Evolve, schedule fitness";
-      {
-        tf::Taskflow flow;
+            _exec
+                ->run_until(flow,
+                            [&]() {
+                              size_t ended = 0;
+                              for (auto &p : _population) {
+                                if (p.node->empty())
+                                  ended++;
+                              }
+                              return ended == _population.size();
+                            })
+                .get();
+          }
+          CBLOG_TRACE("Evolve, schedule fitness");
+          {
+            tf::Taskflow flow;
 
-        flow.for_each_dynamic(
-            _era == 0 ? _sortedPopulation.begin()
-                      : _sortedPopulation.begin() + _nelites,
-            _sortedPopulation.end(),
-            [](auto &i) {
-              // compute the fitness
-              TickObserver obs{*i};
-              auto fitchain =
-                  CBChain::sharedFromRef(i->fitnessChain.payload.chainValue);
-              auto chain = CBChain::sharedFromRef(i->chain.payload.chainValue);
-              i->node->schedule(obs, fitchain, chain->finishedOutput);
-            },
-            _coros);
+            flow.for_each_dynamic(
+                _era == 0 ? _sortedPopulation.begin()
+                          : _sortedPopulation.begin() + _nelites,
+                _sortedPopulation.end(),
+                [](auto &i) {
+                  // compute the fitness
+                  TickObserver obs{*i};
+                  auto fitchain = CBChain::sharedFromRef(
+                      i->fitnessChain.payload.chainValue);
+                  auto chain =
+                      CBChain::sharedFromRef(i->chain.payload.chainValue);
+                  i->node->schedule(obs, fitchain, chain->finishedOutput);
+                },
+                _coros);
 
-        _exec->run(flow).get();
-      }
-      LOG(TRACE) << "Evolve, run fitness";
-      {
-        tf::Taskflow flow;
+            _exec->run(flow).get();
+          }
+          CBLOG_TRACE("Evolve, run fitness");
+          {
+            tf::Taskflow flow;
 
-        flow.for_each_dynamic(
-            _era == 0 ? _sortedPopulation.begin()
-                      : _sortedPopulation.begin() + _nelites,
-            _sortedPopulation.end(),
-            [](auto &i) {
-              if (!i->node->empty()) {
-                TickObserver obs{*i};
-                i->node->tick(obs);
-              }
-            },
-            _coros);
+            flow.for_each_dynamic(
+                _era == 0 ? _sortedPopulation.begin()
+                          : _sortedPopulation.begin() + _nelites,
+                _sortedPopulation.end(),
+                [](auto &i) {
+                  if (!i->node->empty()) {
+                    TickObserver obs{*i};
+                    i->node->tick(obs);
+                  }
+                },
+                _coros);
 
-        _exec
-            ->run_until(flow,
-                        [&]() {
-                          size_t ended = 0;
-                          for (auto &p : _population) {
-                            if (p.node->empty())
-                              ended++;
-                          }
-                          return ended == _population.size();
-                        })
-            .get();
-      }
+            _exec
+                ->run_until(flow,
+                            [&]() {
+                              size_t ended = 0;
+                              for (auto &p : _population) {
+                                if (p.node->empty())
+                                  ended++;
+                              }
+                              return ended == _population.size();
+                            })
+                .get();
+          }
 #else
-      // The following is for reference and for full TSAN runs
+          // The following is for reference and for full TSAN runs
 
-      // We run chains up to completion
-      // From validation to end, every iteration/era
-      {
-        tf::Taskflow runFlow;
-        runFlow.for_each_dynamic(
-            _population.begin(), _population.end(), [&](Individual &i) {
-              TickObserver obs{i};
+          // We run chains up to completion
+          // From validation to end, every iteration/era
+          {
+            tf::Taskflow runFlow;
+            runFlow.for_each_dynamic(
+                _population.begin(), _population.end(), [&](Individual &i) {
+                  TickObserver obs{i};
 
-              // Evaluate our brain chain
-              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              i.node->schedule(chain);
-              while (!node.empty()) {
-                i.node->tick();
-              }
+                  // Evaluate our brain chain
+                  auto chain =
+                      CBChain::sharedFromRef(i.chain.payload.chainValue);
+                  i.node->schedule(chain);
+                  while (!node.empty()) {
+                    i.node->tick();
+                  }
 
-              // compute the fitness
-              auto fitchain =
-                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              i.node->schedule(obs, fitchain, chain->finishedOutput);
-              while (!i.node->empty()) {
-                i.node->tick(obs);
-              }
-            });
-        _exec->run(runFlow).get();
-      }
+                  // compute the fitness
+                  auto fitchain =
+                      CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+                  i.node->schedule(obs, fitchain, chain->finishedOutput);
+                  while (!i.node->empty()) {
+                    i.node->tick(obs);
+                  }
+                });
+            _exec->run(runFlow).get();
+          }
 #endif
-      LOG(TRACE) << "Evolve, stopping all chains";
-      { // Stop all the population chains
-        tf::Taskflow flow;
+          CBLOG_TRACE("Evolve, stopping all chains");
+          { // Stop all the population chains
+            tf::Taskflow flow;
 
-        flow.for_each_dynamic(
-            _population.begin(), _population.end(), [](Individual &i) {
-              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-              auto fitchain =
-                  CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-              stop(chain.get());
-              chain->composedHash = 0;
-              stop(fitchain.get());
-              fitchain->composedHash = 0;
-              i.node->terminate();
-            });
+            flow.for_each_dynamic(
+                _population.begin(), _population.end(), [](Individual &i) {
+                  auto chain =
+                      CBChain::sharedFromRef(i.chain.payload.chainValue);
+                  auto fitchain =
+                      CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+                  stop(chain.get());
+                  chain->composedHash = 0;
+                  stop(fitchain.get());
+                  fitchain->composedHash = 0;
+                  i.node->terminate();
+                });
 
-        _exec->run(flow).get();
-      }
+            _exec->run(flow).get();
+          }
 
-      LOG(TRACE) << "Evolve, sorting";
-      // remove non normal fitness (sort needs this or crashes will happen)
-      std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
-                    [](auto &i) {
-                      if (!std::isnormal(i->fitness)) {
-                        i->fitness = -std::numeric_limits<float>::max();
-                      }
-                    });
-      pdqsort(
-          _sortedPopulation.begin(), _sortedPopulation.end(),
-          [](const auto &a, const auto &b) { return a->fitness > b->fitness; });
+          CBLOG_TRACE("Evolve, sorting");
+          // remove non normal fitness (sort needs this or crashes will happen)
+          std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
+                        [](auto &i) {
+                          if (!std::isnormal(i->fitness)) {
+                            i->fitness = -std::numeric_limits<float>::max();
+                          }
+                        });
+          pdqsort(_sortedPopulation.begin(), _sortedPopulation.end(),
+                  [](const auto &a, const auto &b) {
+                    return a->fitness > b->fitness;
+                  });
 
-      LOG(TRACE) << "Evolve, resetting flags";
-      // reset flags
-      std::for_each(_sortedPopulation.begin(),
-                    _sortedPopulation.end() - _nkills, [](auto &i) {
-                      i->extinct = false;
-                      i->parent0Idx = -1;
-                      i->parent1Idx = -1;
-                    });
-      std::for_each(_sortedPopulation.end() - _nkills, _sortedPopulation.end(),
-                    [](auto &i) {
-                      i->extinct = true;
-                      i->parent0Idx = -1;
-                      i->parent1Idx = -1;
-                    });
+          CBLOG_TRACE("Evolve, resetting flags");
+          // reset flags
+          std::for_each(_sortedPopulation.begin(),
+                        _sortedPopulation.end() - _nkills, [](auto &i) {
+                          i->extinct = false;
+                          i->parent0Idx = -1;
+                          i->parent1Idx = -1;
+                        });
+          std::for_each(_sortedPopulation.end() - _nkills,
+                        _sortedPopulation.end(), [](auto &i) {
+                          i->extinct = true;
+                          i->parent0Idx = -1;
+                          i->parent1Idx = -1;
+                        });
 
-      LOG(TRACE) << "Evolve, run mutations";
-      // Do mutations at end, yet when contexts are still valid!
-      // since we might need them
-      {
-        tf::Taskflow mutFlow;
-        mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites,
-                                 _sortedPopulation.end(), [&](auto &i) {
-                                   // reset the individual if extinct
-                                   if (i->extinct) {
-                                     resetState(*i);
-                                   }
-                                   mutate(*i);
-                                 });
-        _exec->run(mutFlow).get();
-      }
+          CBLOG_TRACE("Evolve, run mutations");
+          // Do mutations at end, yet when contexts are still valid!
+          // since we might need them
+          {
+            tf::Taskflow mutFlow;
+            mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites,
+                                     _sortedPopulation.end(), [&](auto &i) {
+                                       // reset the individual if extinct
+                                       if (i->extinct) {
+                                         resetState(*i);
+                                       }
+                                       mutate(*i);
+                                     });
+            _exec->run(mutFlow).get();
+          }
 
-      LOG(TRACE) << "Evolve, era done";
-      _result.clear();
-      _result.emplace_back(Var(_sortedPopulation.front()->fitness));
-      _result.emplace_back(_sortedPopulation.front()->chain);
-      return Var(_result);
-    });
+          CBLOG_TRACE("Evolve, era done");
+          _result.clear();
+          _result.emplace_back(Var(_sortedPopulation.front()->fitness));
+          _result.emplace_back(_sortedPopulation.front()->chain);
+          return Var(_result);
+        },
+        [] {
+          // TODO CANCELLATION
+        });
   }
 
 private:

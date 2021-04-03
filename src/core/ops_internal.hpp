@@ -4,11 +4,14 @@
 #ifndef CB_OPS_INTERNAL_HPP
 #define CB_OPS_INTERNAL_HPP
 
-#include <easylogging++.h>
 #include <ops.hpp>
 
-MAKE_LOGGABLE(CBVar, var, os);
-MAKE_LOGGABLE(CBTypeInfo, t, os);
-MAKE_LOGGABLE(CBTypesInfo, ts, os);
+#include <spdlog/spdlog.h>
+
+#include "spdlog/fmt/ostr.h" // must be included
+
+std::ostream &operator<<(std::ostream &os, const CBVar &var);
+std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t);
+std::ostream &operator<<(std::ostream &os, const CBTypesInfo &ts);
 
 #endif

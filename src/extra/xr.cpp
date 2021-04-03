@@ -223,12 +223,12 @@ struct RenderXR : public BGFX::BaseConsumer {
                 xr.call<emscripten::val>("isSessionSupported",
                                          emscripten::val("immersive-vr")));
             xrSupported = supported.as<bool>();
-            LOG(INFO) << "WebXR session supported: " << xrSupported;
+            CBLOG_INFO("WebXR session supported: {}", xrSupported);
           } else {
-            LOG(INFO) << "WebXR navigator.xr not available.";
+            CBLOG_INFO("WebXR navigator.xr not available");
           }
         } else {
-          LOG(INFO) << "WebXR navigator not available.";
+          CBLOG_INFO("WebXR navigator not available");
         }
         if (xrSupported) {
           const auto dialog =
@@ -267,7 +267,7 @@ struct RenderXR : public BGFX::BaseConsumer {
         throw ActivationError("Failed to request reference space.");
       }
 
-      LOG(INFO) << "Entering immersive VR mode.";
+      CBLOG_INFO("Entering immersive VR mode");
 
       // this call should stop the regular run loop
       // and start requesting XR frames via requestAnimationFrame
@@ -278,7 +278,7 @@ struct RenderXR : public BGFX::BaseConsumer {
       // to do so we simply yield here once
       suspend(context, 0);
 
-      LOG(INFO) << "Entered immersive VR mode.";
+      CBLOG_INFO("Entered immersive VR mode");
 
       // we should be resuming inside the VR loop
       _glLayer =
@@ -336,7 +336,7 @@ struct RenderXR : public BGFX::BaseConsumer {
           _views[1], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
           0xC0FFEEFF, 1.0f, 0);
 
-      LOG(INFO) << "Started immersive VR rendering.";
+      CBLOG_INFO("Started immersive VR rendering");
     }
 #endif
   }
@@ -525,10 +525,10 @@ struct RenderXR : public BGFX::BaseConsumer {
           _blocks.activate(context, input, output);
         }
       } else {
-        LOG_EVERY_N(200, INFO) << "XR pose not available.";
+        // LOG_EVERY_N(200, INFO) << "XR pose not available.";
       }
     } else {
-      LOG_EVERY_N(200, INFO) << "Skipping XR rendering, not initialized.";
+      // LOG_EVERY_N(200, INFO) << "Skipping XR rendering, not initialized.";
     }
 #endif
 

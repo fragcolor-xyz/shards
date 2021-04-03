@@ -662,8 +662,8 @@ struct ToJson {
       j = nullptr;
     } break;
     default: {
-      LOG(ERROR) << "Unexpected type for pure JSON conversion: "
-                 << type2Name(input.valueType);
+      CBLOG_ERROR("Unexpected type for pure JSON conversion: {}",
+                  type2Name(input.valueType));
       throw ActivationError("Type not supported for pure JSON conversion");
     }
     }

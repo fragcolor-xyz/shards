@@ -605,7 +605,7 @@ template <CBType ET> struct ExpectX {
   CBTypesInfo outputTypes() { return outputType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != ET)) {
-      LOG(ERROR) << "Unexpected value: " << input;
+      CBLOG_ERROR("Unexpected value: {}", input);
       throw ActivationError("Expected type " + type2Name(ET) + " got instead " +
                             type2Name(input.valueType));
     }
@@ -659,14 +659,13 @@ template <Type &ET> struct ExpectXComplex {
   CBVar activate(CBContext *context, const CBVar &input) {
     const static CBTypeInfo info = ET;
     if (unlikely(input.valueType != info.basicType)) {
-      LOG(ERROR) << "Unexpected value: " << input << " expected type: " << info;
+      CBLOG_ERROR("Unexpected value: {} expected type: {}", input, info);
       throw ActivationError("Expected type " + type2Name(info.basicType) +
                             " got instead " + type2Name(input.valueType));
     } else if (!_unsafe) {
       auto inputTypeHash = deriveTypeHash(input);
       if (unlikely(inputTypeHash != ExpectedHash)) {
-        LOG(ERROR) << "Unexpected value: " << input
-                   << " expected type: " << info;
+        CBLOG_ERROR("Unexpected value: {} expected type: {}", input, info);
         throw ActivationError("Expected type " + type2Name(info.basicType) +
                               " got instead " + type2Name(input.valueType));
       }
@@ -742,19 +741,15 @@ struct ExpectLike {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != _expectedType.basicType)) {
-      LOG(ERROR) << "Unexpected value: " << input
-                 << " expected type: " << _expectedType;
-      throw ActivationError("Expected type " +
-                            type2Name(_expectedType.basicType) +
-                            " got instead " + type2Name(input.valueType));
+      CBLOG_ERROR("Unexpected value: {} expected type: {}", input,
+                  _expectedType);
+      throw ActivationError("Unexpected input type");
     } else if (!_unsafe) {
       auto inputTypeHash = deriveTypeHash(input);
       if (unlikely(inputTypeHash != _outputTypeHash)) {
-        LOG(ERROR) << "Unexpected value: " << input
-                   << " expected type: " << _expectedType;
-        throw ActivationError("Expected type " +
-                              type2Name(_expectedType.basicType) +
-                              " got instead " + type2Name(input.valueType));
+        CBLOG_ERROR("Unexpected value: {} expected type: {}", input,
+                    _expectedType);
+        throw ActivationError("Unexpected input type");
       }
     }
     return input;

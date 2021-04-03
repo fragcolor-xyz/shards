@@ -6,6 +6,7 @@
 
 #include "shared.hpp"
 #include <filesystem>
+#include <fstream>
 #include <future>
 #include <stb_image.h>
 #include <stb_image_write.h>

@@ -76,83 +76,89 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    return awaitne(context, [&]() {
-      // add any arguments we have
-      std::vector<std::string> argsArray;
-      auto argsVar = _arguments.get();
-      if (argsVar.valueType == Seq) {
-        for (auto &arg : argsVar) {
-          if (arg.payload.stringLen > 0) {
-            argsArray.emplace_back(arg.payload.stringValue,
-                                   arg.payload.stringLen);
-          } else {
-            // if really empty likely it's an error (also windows will fail
-            // converting to utf16) if not maybe the string just didn't have len
-            // set
-            if (strlen(arg.payload.stringValue) == 0) {
-              throw ActivationError(
-                  "Empty argument passed, this most likely is a mistake.");
-            } else {
-              argsArray.emplace_back(arg.payload.stringValue);
+    return awaitne(
+        context,
+        [&]() {
+          // add any arguments we have
+          std::vector<std::string> argsArray;
+          auto argsVar = _arguments.get();
+          if (argsVar.valueType == Seq) {
+            for (auto &arg : argsVar) {
+              if (arg.payload.stringLen > 0) {
+                argsArray.emplace_back(arg.payload.stringValue,
+                                       arg.payload.stringLen);
+              } else {
+                // if really empty likely it's an error (also windows will fail
+                // converting to utf16) if not maybe the string just didn't have
+                // len set
+                if (strlen(arg.payload.stringValue) == 0) {
+                  throw ActivationError(
+                      "Empty argument passed, this most likely is a mistake.");
+                } else {
+                  argsArray.emplace_back(arg.payload.stringValue);
+                }
+              }
             }
           }
-        }
-      }
 
-      // use async asio to avoid deadlocks
-      boost::asio::io_service ios;
-      std::future<std::string> ostr;
-      std::future<std::string> estr;
-      boost::process::opstream ipipe;
+          // use async asio to avoid deadlocks
+          boost::asio::io_service ios;
+          std::future<std::string> ostr;
+          std::future<std::string> estr;
+          boost::process::opstream ipipe;
 
-      // try PATH first
-      auto exePath = boost::filesystem::path(_moduleName);
-      if (!boost::filesystem::exists(exePath)) {
-        // fallback to searching PATH
-        exePath = boost::process::search_path(_moduleName);
-      }
-
-      if (exePath.empty()) {
-        throw ActivationError("Executable not found");
-      }
-
-      exePath = exePath.make_preferred();
-
-      boost::process::child cmd(
-          exePath, argsArray, boost::process::std_out > ostr,
-          boost::process::std_err > estr, boost::process::std_in < ipipe, ios);
-
-      if (!ipipe) {
-        throw ActivationError("Failed to open streams for child process");
-      }
-
-      ipipe << input.payload.stringValue << std::endl;
-      ipipe.pipe().close(); // send EOF
-
-      ios.run_for(std::chrono::seconds(_timeout));
-
-      // we still need to wait termination
-      if (cmd.wait_for(std::chrono::seconds(5))) {
-        _outBuf = ostr.get();
-        _errBuf = estr.get();
-
-        if (cmd.exit_code() != 0) {
-          LOG(INFO) << _outBuf;
-          LOG(ERROR) << _errBuf;
-          std::string err("The process exited with a non-zero exit code: ");
-          err += std::to_string(cmd.exit_code());
-          throw ActivationError(err);
-        } else {
-          if (_errBuf.size() > 0) {
-            // print anyway this stream too
-            LOG(INFO) << "(stderr) " << _errBuf;
+          // try PATH first
+          auto exePath = boost::filesystem::path(_moduleName);
+          if (!boost::filesystem::exists(exePath)) {
+            // fallback to searching PATH
+            exePath = boost::process::search_path(_moduleName);
           }
-          return Var(_outBuf);
-        }
-      } else {
-        throw ActivationError("Timed out");
-      }
-    });
+
+          if (exePath.empty()) {
+            throw ActivationError("Executable not found");
+          }
+
+          exePath = exePath.make_preferred();
+
+          boost::process::child cmd(exePath, argsArray,
+                                    boost::process::std_out > ostr,
+                                    boost::process::std_err > estr,
+                                    boost::process::std_in < ipipe, ios);
+
+          if (!ipipe) {
+            throw ActivationError("Failed to open streams for child process");
+          }
+
+          ipipe << input.payload.stringValue << std::endl;
+          ipipe.pipe().close(); // send EOF
+
+          ios.run_for(std::chrono::seconds(_timeout));
+
+          // we still need to wait termination
+          if (cmd.wait_for(std::chrono::seconds(5))) {
+            _outBuf = ostr.get();
+            _errBuf = estr.get();
+
+            if (cmd.exit_code() != 0) {
+              CBLOG_INFO(_outBuf);
+              CBLOG_ERROR(_errBuf);
+              std::string err("The process exited with a non-zero exit code: ");
+              err += std::to_string(cmd.exit_code());
+              throw ActivationError(err);
+            } else {
+              if (_errBuf.size() > 0) {
+                // print anyway this stream too
+                CBLOG_INFO("(stderr) {}", _errBuf);
+              }
+              return Var(_outBuf);
+            }
+          } else {
+            throw ActivationError("Timed out");
+          }
+        },
+        [] {
+          // TODO CANCELLATION
+        });
   }
 };
 
