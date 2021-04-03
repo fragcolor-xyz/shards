@@ -108,7 +108,7 @@ struct EmscriptenShaderCompiler {
 
     const auto err = j["stderr"].get<std::string>();
     if (err.size() > 0) {
-      CBLOG_ERROR(err)
+      CBLOG_ERROR(err);
     }
 
     if (j.contains("bytecode")) {
