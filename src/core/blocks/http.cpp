@@ -792,7 +792,6 @@ struct SendFile {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
-    _response.clear();
 
     std::filesystem::path p{Globals::RootPath};
     p += input.payload.stringValue;
@@ -816,6 +815,7 @@ struct SendFile {
 
       return input;
     } else {
+      _response.clear();
       _response.result(http::status::ok);
       _response.set(http::field::content_type,
                     mime_type(input.payload.stringValue));
