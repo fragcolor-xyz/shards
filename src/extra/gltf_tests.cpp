@@ -197,34 +197,6 @@ void testLoad() {
     REQUIRE(errors.size() == 0);
   }
 
-  SECTION("Cube1-Text") {
-    DefChain(test_chain)
-        .Looped()
-        .GFX_MainWindow("window",
-                        Once(
-                            // load the model
-                            let("../deps/tinygltf/models/Cube/Cube.gltf")
-                                .GLTF_Load_NoShaders() Ref(model)
-                                .Log())
-                            .let(0.0, 0.0, 10.0) SetTable(cam, "Position")
-                            .let(0.0, 0.0, 0.0) SetTable(cam, "Target")
-                            .Get(cam)
-                            .GFX_Camera()
-                            .let(identity)
-                            .GLTF_Draw(model));
-    auto node = CBNode::make();
-    node->schedule(test_chain);
-    auto count = 50;
-    while (count--) {
-      REQUIRE(node->tick());
-      if (node->empty())
-        break;
-      sleep(0.1);
-    }
-    auto errors = node->errors();
-    REQUIRE(errors.size() == 0);
-  }
-
   testGLTFModel("Cube-Text", "../deps/tinygltf/models/Cube/Cube.gltf",
                 "../deps/bgfx/examples/06-bump/fieldstone-rgba.tga",
                 "../deps/bgfx/examples/06-bump/fieldstone-n.tga", "Cube",
