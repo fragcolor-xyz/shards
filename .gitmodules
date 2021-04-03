@@ -73,3 +73,6 @@
 [submodule "deps/utf8.h"]
 	path = deps/utf8.h
 	url = https://github.com/chainblocks/utf8.h.git
+[submodule "deps/spdlog"]
+	path = deps/spdlog
+	url = https://github.com/chainblocks/spdlog.git
