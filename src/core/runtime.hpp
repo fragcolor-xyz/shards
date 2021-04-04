@@ -26,7 +26,9 @@
 #include <unordered_set>
 #include <vector>
 using CBClock = std::chrono::high_resolution_clock;
+using CBTime = decltype(CBClock::now());
 using CBDuration = std::chrono::duration<double>;
+using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
 
 // For sleep
 #if _WIN32

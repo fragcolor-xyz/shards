@@ -1570,10 +1570,10 @@ BUILTIN("run") {
   CBDuration dsleep(sleepTime);
 
   if (node) {
+    auto now = CBClock::now();
+    auto next = now + dsleep;
     while (!node->empty()) {
-      const auto pre = CBClock::now();
       const auto noErrors = node->tick();
-      const auto elapsed = CBClock::now() - pre;
 
       // other chains might be not in error tho...
       // so return only if empty
@@ -1596,11 +1596,14 @@ BUILTIN("run") {
         chainblocks::sleep(-1.0);
       } else {
         // remove the time we took to tick from sleep
-        CBDuration realSleepTime = dsleep - elapsed;
+        now = CBClock::now();
+        CBDuration realSleepTime = next - now;
         if (unlikely(realSleepTime.count() <= 0.0)) {
           // tick took too long!!!
           // TODO warn sometimes and skip sleeping, skipping callbacks too
+          next = now + dsleep;
         } else {
+          next = next + dsleep;
           chainblocks::sleep(realSleepTime.count());
         }
       }

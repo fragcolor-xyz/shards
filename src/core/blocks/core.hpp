@@ -3297,6 +3297,10 @@ struct Once {
     ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
   } _clock;
 
+  CBTime current;
+  CBTimeDiff next;
+  CBDuration dsleep;
+
   BlocksVar _blks;
   ExposedInfo _requiredInfo{};
   CBComposeResult _validation{};
@@ -3313,7 +3317,12 @@ struct Once {
       self->inlineBlockId = NotInline;
   }
 
-  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
+  void warmup(CBContext *ctx) {
+    _blks.warmup(ctx);
+    current = CBClock::now();
+    dsleep = CBDuration(_repeatTime);
+    next = current + CBDuration(0.0);
+  }
 
   static inline Parameters params{
       {"Action", CBCCSTR("The blocks to execute."), {CoreInfo::Blocks}},
@@ -3376,10 +3385,8 @@ struct Once {
   ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {
     if (_repeat) {
       // monitor and reset timer if expired
-      auto tnow = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> t(_repeatTime);
-      auto dt = tnow - _clock.Start;
-      if (dt > t) {
+      current = CBClock::now();
+      if (current >= next) {
         _done = false;
       }
     }
@@ -3392,7 +3399,7 @@ struct Once {
         // let's cheat in this case and stop triggering this call
         self->inlineBlockId = NoopBlock;
       } else {
-        _clock.Start = std::chrono::high_resolution_clock::now();
+        next = next + dsleep;
       }
     }
 

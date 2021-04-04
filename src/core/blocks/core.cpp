@@ -1623,11 +1623,24 @@ LOGIC_OP_DESC(AnyLessEqual);
 LOGIC_OP_DESC(AllLessEqual);
 
 CBVar unreachableActivation(const CBVar &input) { throw; }
+
 CBVar exitProgramActivation(const CBVar &input) {
   exit(input.payload.intValue);
 }
+
 CBVar hashActivation(const CBVar &input) {
   return Var(chainblocks::hash(input));
+}
+
+CBVar blockingSleepActivation(const CBVar &input) {
+  if (input.valueType == CBType::Int) {
+    sleep(double(input.payload.intValue) / 1000.0, false);
+  } else if (input.valueType == CBType::Float) {
+    sleep(input.payload.floatValue, false);
+  } else {
+    throw ActivationError("Expected either Int (ms) or Float (seconds)");
+  }
+  return input;
 }
 
 #ifdef __EMSCRIPTEN__
@@ -1785,6 +1798,10 @@ void registerBlocksCoreBlocks() {
   using HasherBlock =
       LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::IntType>;
   REGISTER_CBLOCK("Hash", HasherBlock);
+
+  using BlockingSleepBlock = LambdaBlock<blockingSleepActivation,
+                                         CoreInfo::AnyType, CoreInfo::AnyType>;
+  REGISTER_CBLOCK("SleepBlocking!", BlockingSleepBlock);
 
 #ifdef __EMSCRIPTEN__
   using EmscriptenEvalBlock =
