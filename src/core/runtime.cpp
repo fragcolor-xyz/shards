@@ -3,6 +3,9 @@
 
 #include "runtime.hpp"
 #include "blocks/shared.hpp"
+#include "spdlog/sinks/dist_sink.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "utility.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/stacktrace.hpp>
@@ -201,6 +204,22 @@ void registerCoreBlocks() {
     AddDllDirectory(pluginPathStr.c_str());
   }
 #endif
+
+  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+
+  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  dist_sink->add_sink(sink1);
+
+#ifndef __EMSCRIPTEN__
+  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+      "chainblocks.log", 1048576, 3, false);
+  dist_sink->add_sink(sink2);
+#endif
+
+  auto logger =
+      std::make_shared<spdlog::logger>("chainblocks_logger", dist_sink);
+  logger->flush_on(spdlog::level::err);
+  spdlog::set_default_logger(logger);
 
 #ifdef NDEBUG
   spdlog::set_level(spdlog::level::info);
@@ -1753,6 +1772,7 @@ void error_handler(int err_sig) {
     chainblocks::Globals::SigIntTerm++;
     if (chainblocks::Globals::SigIntTerm > 5)
       std::exit(-1);
+    spdlog::shutdown();
     break;
   case SIGFPE:
     CBLOG_ERROR("Fatal SIGFPE");

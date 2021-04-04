@@ -1567,6 +1567,8 @@ BUILTIN("run") {
     dec = true;
   }
 
+  CBDuration dsleep(sleepTime);
+
   if (node) {
     while (!node->empty()) {
       const auto pre = CBClock::now();
@@ -1593,7 +1595,6 @@ BUILTIN("run") {
       if (sleepTime <= 0.0) {
         chainblocks::sleep(-1.0);
       } else {
-        CBDuration dsleep(sleepTime);
         // remove the time we took to tick from sleep
         CBDuration realSleepTime = dsleep - elapsed;
         if (unlikely(realSleepTime.count() <= 0.0)) {
