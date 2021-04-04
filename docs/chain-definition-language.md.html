@@ -13,12 +13,12 @@ Basically load, define the chain and return a ready to run node from it.
 ### Example
 
 ``` lisp
-(Chain 
+(Chain
   :Name "Test Chain 1"
   :Looped true
   ("Hello world!")
   (Log))
-  
+
 (Chain
   :Name "Test Chain 2"
   (2.0 1.0) ; Float2
