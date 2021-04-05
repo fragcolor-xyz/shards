@@ -100,6 +100,7 @@ impl Block for CastRay {
       f32::MAX,
       true,                     // TODO
       InteractionGroups::all(), // TODO
+      None,                     // TODO
     );
 
     if let Some(closest) = closest {

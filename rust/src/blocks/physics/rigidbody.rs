@@ -187,7 +187,7 @@ impl RigidBody {
           let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
           let shape = shapeInfo.shape.as_ref().unwrap().clone();
           let mut collider = ColliderBuilder::new(shape)
-            .position(shapeInfo.position.unwrap())
+            .position_wrt_parent(shapeInfo.position.unwrap())
             .build();
           collider.user_data = self.user_data;
           self.collider = Some(simulation.colliders.insert(
@@ -200,7 +200,7 @@ impl RigidBody {
         let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
         let shape = shapeInfo.shape.as_ref().unwrap().clone();
         let mut collider = ColliderBuilder::new(shape)
-          .position(shapeInfo.position.unwrap())
+          .position_wrt_parent(shapeInfo.position.unwrap())
           .build();
         collider.user_data = self.user_data;
         self.collider = Some(simulation.colliders.insert(

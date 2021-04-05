@@ -12,7 +12,9 @@ use crate::types::ParamVar;
 use crate::types::Seq;
 use crate::types::Type;
 use crate::Var;
-use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet};
+use rapier3d::dynamics::{
+  CCDSolver, IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet,
+};
 use rapier3d::geometry::SharedShape;
 use rapier3d::geometry::{
   BroadPhase, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase,
@@ -75,6 +77,7 @@ struct Simulation {
   bodies: RigidBodySet,
   colliders: ColliderSet,
   joints: JointSet,
+  ccd_solver: CCDSolver,
   contacts_channel: crossbeam::channel::Receiver<ContactEvent>,
   intersections_channel: crossbeam::channel::Receiver<IntersectionEvent>,
   event_handler: ChannelEventCollector,
@@ -88,7 +91,7 @@ struct RigidBody {
   collider: Option<ColliderHandle>,
   position: ParamVar,
   rotation: ParamVar,
-  user_data: u128
+  user_data: u128,
 }
 
 struct BaseShape {
@@ -161,8 +164,8 @@ fn mat3_from_seq(var: &Seq) -> Matrix3<f32> {
   }
 }
 
+pub mod forces;
+pub mod queries;
 pub mod rigidbody;
 pub mod shapes;
 pub mod simulation;
-pub mod queries;
-pub mod forces;
