@@ -42,19 +42,19 @@ jobs:
     - name: Test
       run: |
         cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js cbl-mt.js
         node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js
         mkdir cbl
-        cp cbl.wasm cbl/
-        cp cbl.js cbl/
-        cp cbl.worker.js cbl/
+        cp cbl-mt.wasm cbl/
+        cp cbl-mt.js cbl/
+        cp cbl-mt.worker.js cbl/
     - uses: actions/upload-artifact@master
       with:
         name: cbl-wasm-mt
         path: |
-          build/cbl.wasm
-          build/cbl.js
-          build/cbl.worker.js
+          build/cbl-mt.wasm
+          build/cbl-mt.js
+          build/cbl-mt.worker.js
     - uses: chainblocks/ipfs-action@master
       with:
         path: build/cbl/
@@ -92,11 +92,11 @@ jobs:
     - name: Test
       run: |
         cd build
-        node ../src/tests/test_cbl.js
+        node ../src/tests/test_cbl.js cbl-st.js
         node ../src/tests/test_runtime.js
         mkdir cbl
-        cp cbl.wasm cbl/
-        cp cbl.js cbl/
+        cp cbl-st.wasm cbl/
+        cp cbl-st.js cbl/
     - name: Copy Shaders
       run: |
         cp deps/bgfx/src/bgfx_shader.sh src/extra/shaders/include/bgfx_shader.h
@@ -106,8 +106,8 @@ jobs:
       with:
         name: cbl-wasm
         path: |
-          build/cbl.wasm
-          build/cbl.js
+          build/cbl-st.wasm
+          build/cbl-st.js
     - uses: chainblocks/ipfs-action@master
       name: Upload cbl to IPFS
       with:
