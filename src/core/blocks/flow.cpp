@@ -456,7 +456,11 @@ struct Maybe : public BaseSubFlow {
         DEFER({
           if (_silent) {
 #ifdef NDEBUG
+#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
+            spdlog::set_level(spdlog::level::debug);
+#else
             spdlog::set_level(spdlog::level::info);
+#endif
 #else
             spdlog::set_level(spdlog::level::trace);
 #endif

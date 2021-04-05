@@ -931,6 +931,10 @@ struct MainWindow : public BaseWindow {
         if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
           // stop the current chain on close
           throw ActivationError("Window closed, aborting chain.");
+        } else if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+          int w, h;
+          SDL_GetWindowSize(_window, &w, &h);
+          CBLOG_DEBUG("GFX.MainWindow size changed width: {} height: {}", w, h);
         } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           // get the window size again to ensure it's correct
           SDL_GetWindowSize(_window, &_rwidth, &_rheight);
@@ -950,6 +954,25 @@ struct MainWindow : public BaseWindow {
         }
       }
     }
+
+#ifdef __EMSCRIPTEN__
+    double canvasWidth, canvasHeight;
+    EMSCRIPTEN_RESULT res =
+        emscripten_get_element_css_size("#canvas", &canvasWidth, &canvasHeight);
+    if (res != EMSCRIPTEN_RESULT_SUCCESS) {
+      throw ActivationError("Failed to callemscripten_get_element_css_size");
+    }
+    int canvasW = int(canvasWidth);
+    int canvasH = int(canvasHeight);
+    if (canvasW != _rwidth || canvasH != _rheight) {
+      CBLOG_DEBUG("GFX.MainWindow canvas size changed width: {} height: {}",
+                  canvasW, canvasH);
+      SDL_SetWindowSize(_window, canvasW, canvasH);
+      _rwidth = canvasW;
+      _rheight = canvasH;
+      bgfx::reset(_rwidth, _rheight, BgfxFlags);
+    }
+#endif
 
     // now that we settled inputs and possible resize push GUI
 

@@ -133,9 +133,9 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif()
 
   if(NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
-  else()
     add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO)
+  else()
+    add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
   endif()
 else()
   add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
@@ -891,8 +891,9 @@ if(NOT EMSCRIPTEN)
     ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
     )
 
-  if(WIN32)
+  if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp PROPERTIES COMPILE_FLAGS -O1)
+    set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp PROPERTIES COMPILE_FLAGS -O1)
   endif()
 else()
   set(
@@ -958,11 +959,6 @@ if(USE_LIBBACKTRACE)
   include_directories(${CHAINBLOCKS_DIR}/deps/libbacktrace/build/include)
 endif()
 
-# workaround issues under windows in debug mode
-if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set_source_files_properties(${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp PROPERTIES COMPILE_FLAGS -O1)
-endif()
-
 ### mal
 add_executable(
   cbl
@@ -985,6 +981,11 @@ if(EMSCRIPTEN)
   em_link_js_library(cbl ${CHAINBLOCKS_DIR}/src/core/blocks/core.js)
   if(NOT BUILD_CORE_ONLY)
     em_link_js_library(cbl ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.js)
+  endif()
+  if(EMSCRIPTEN_PTHREADS)
+    set_target_properties(cbl PROPERTIES SUFFIX "-mt.js")
+  else()
+    set_target_properties(cbl PROPERTIES SUFFIX "-st.js")
   endif()
 endif()
 ###
