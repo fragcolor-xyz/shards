@@ -13,12 +13,9 @@
 
 ## Vision
 Building a programming tool for the future.
+A future where the current *Screen* or *Desktop*, *Mouse* and *Keyboard* are replaced by virtual interfaces within a *VR/MR/AR* environment.
 
-A future where the current *Screen* or *Desktop* is replaced by virtual interfaces within a *VR/MR/AR* environment.
-
-A future that is driven by Artificial Intelligence that wants to become general intelligence, but to make it happen the first step is to focus on Automation and Machine Learning.
-
-To achieve that we build a scripting tool that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
+We introduce a low code way of producing high performance and multi-platform apps in the form of a scripting tool that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
 
 ## Goals
 * Automation scripting for everyone
@@ -54,36 +51,40 @@ To achieve that we build a scripting tool that can be both visual and textual at
 
 #### Textual version - using a clojure like language (more in the pipeline)
 
+[Read more about the textual language](https://github.com/sinkingsugar/chainblocks/wiki/Chain-definition-language)
+
 ```clojure
-(def action
-  (Chain
-   "buttonAction"
-   (Pause 2.0)
-   (Msg "This happened 2 seconds later")))
+(defchain action
+  (Pause 2.0)
+  (Msg "This happened 2 seconds later"))
 
-(def Root (Node))
+(defnode main)
 
-(schedule
- Root
- (Chain
-  "MainLoop" :Looped
-  (BGFX.MainWindow :Title "My Window"
-                   :Width 400 :Height 200)
-  (ImGui.Window "My ImGui Window"
-                :Width 400 :Height 200
-                :PosX 0 :PosY 0
-                :Contents
-                ~["Hello world"   (ImGui.Text)
-                  "Hello world 2" (ImGui.Text)
-                  "Hello world 3" (ImGui.Text)
-                  "Hello world 4" (ImGui.SameLine) (ImGui.Text)
-                  (ImGui.Button "Push me!" ~[(Msg "Action!")
-                                             (Detach action)])
-                  (ImGui.CheckBox)
-                  (When (Is true) ~["Hello optional world" (ImGui.Text)])])
-  (BGFX.Draw)))
+(defloop main-loop
+  (GFX.MainWindow
+   :Title "My Window"
+   :Width 400 :Height 200
+   :Contents
+   (->
+    (GUI.Window
+     "My GUI Window"
+     :Width 400 :Height 200
+     :Pos (Int2 0 0)
+     :Contents
+     (->
+      "Hello world"   (GUI.Text)
+      "Hello world 2" (GUI.Text)
+      "Hello world 3" (GUI.Text)
+      "Hello world 4" (GUI.SameLine) (GUI.Text)
+      (GUI.Button "Push me!" (->
+                              (Msg "Action!")
+                              (Detach action)))
+      (GUI.CheckBox)
+      (When (Is true) (->
+                       "Hello optional world" (GUI.Text))))))))
 
-(run Root 0.02)
+(schedule main main-loop)
+(run main 0.02)
 ```
 
 #### Visual version - using a SwiftUI iOS app
