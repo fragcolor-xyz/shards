@@ -160,6 +160,8 @@ jobs:
         rustup update
         rustup default nightly
     - name: Build
+      env:
+        CARGO_INCREMENTAL: 0
       run: |
         mkdir build
         cd build
@@ -237,6 +239,8 @@ jobs:
         cp ../../src/extra/shaders/gltf/*.* lib/gltf/
         cp ../../src/extra/shaders/include/shader.h include/shader.h
     - name: Build
+      env:
+        CARGO_INCREMENTAL: 0
       run: |
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
