@@ -832,7 +832,7 @@ if(NOT BUILD_CORE_ONLY)
     rust_blocks
     COMMAND ${RUSTFLAGS}
     COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
-    WORKING_DIRECTORY ${CHAINBLOCKS_DIR}
+    WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
   add_library(cb_rust_static STATIC IMPORTED GLOBAL)

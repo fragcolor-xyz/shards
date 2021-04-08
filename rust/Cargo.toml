@@ -41,6 +41,3 @@ dummy = []
 blocks = ["reqwest", "tiny-keccak", "libsecp256k1", "hex", "rapier3d", "crossbeam", "webbrowser", "bs58", "sha2", "wasabi_leb128"]
 dllblock = ["dlopen"]
 run_bindgen = ["bindgen"]
-
-[profile.release]
-panic = "abort"

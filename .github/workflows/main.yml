@@ -159,13 +159,15 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
         rustup update
         rustup default nightly
+        cd rust
+        cargo build --features run_bindgen
     - name: Build
       env:
         CARGO_INCREMENTAL: 0
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DSKIP_RUST_BINDGEN=1 -DCODE_COVERAGE=1 ..
         ninja rust_blocks && ninja cbl
     - name: Test
       env:
