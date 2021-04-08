@@ -158,6 +158,7 @@ jobs:
         sudo apt-get -y update
         sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
         rustup update
+        rustup default nightly
     - name: Build
       run: |
         mkdir build
