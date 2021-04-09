@@ -107,9 +107,9 @@ struct File {
     case 1:
       return Var(_channels);
     case 2:
-      return Var(int64_t(_sampleRate));
+      return Var(_sampleRate);
     case 3:
-      return Var(_nsamples);
+      return Var(int64_t(_nsamples));
     case 4:
       return Var(_looped);
     case 5:
