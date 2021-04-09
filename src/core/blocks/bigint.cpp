@@ -6,9 +6,9 @@
 #include "math.h"
 #include "shared.hpp"
 
-#include <boost/multiprecision/cpp_int.hpp>
-// keep separately
+#include <boost/core/nvp.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 using namespace boost::multiprecision;
 
