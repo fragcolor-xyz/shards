@@ -1100,6 +1100,39 @@ struct Serialization {
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
     }
+    case CBType::Audio: {
+      size_t currentSize = 0;
+      if (recycle) {
+        currentSize = output.payload.audioValue.nsamples *
+                      output.payload.audioValue.channels * sizeof(float);
+      }
+
+      read((uint8_t *)&output.payload.audioValue.nsamples,
+           sizeof(output.payload.audioValue.nsamples));
+      read((uint8_t *)&output.payload.audioValue.channels,
+           sizeof(output.payload.audioValue.channels));
+      read((uint8_t *)&output.payload.audioValue.sampleRate,
+           sizeof(output.payload.audioValue.sampleRate));
+
+      size_t size = output.payload.audioValue.nsamples *
+                    output.payload.audioValue.channels * sizeof(float);
+
+      if (currentSize > 0 && currentSize < size) {
+        // delete first & alloc
+        delete[] output.payload.audioValue.samples;
+        output.payload.audioValue.samples =
+            new float[output.payload.audioValue.nsamples *
+                      output.payload.audioValue.channels];
+      } else if (currentSize == 0) {
+        // just alloc
+        output.payload.audioValue.samples =
+            new float[output.payload.audioValue.nsamples *
+                      output.payload.audioValue.channels];
+      }
+
+      read((uint8_t *)output.payload.audioValue.samples, size);
+      break;
+    }
     case CBType::Block: {
       CBlock *blk;
       uint32_t len;
@@ -1390,6 +1423,26 @@ struct Serialization {
                   input.payload.imageValue.height *
                   input.payload.imageValue.width * pixsize;
       write((const uint8_t *)input.payload.imageValue.data, size);
+      total += size;
+      break;
+    }
+    case CBType::Audio: {
+      write((const uint8_t *)&input.payload.audioValue.nsamples,
+            sizeof(input.payload.audioValue.nsamples));
+      total += sizeof(input.payload.audioValue.nsamples);
+
+      write((const uint8_t *)&input.payload.audioValue.channels,
+            sizeof(input.payload.audioValue.channels));
+      total += sizeof(input.payload.audioValue.channels);
+
+      write((const uint8_t *)&input.payload.audioValue.sampleRate,
+            sizeof(input.payload.audioValue.sampleRate));
+      total += sizeof(input.payload.audioValue.sampleRate);
+
+      auto size = input.payload.audioValue.nsamples *
+                  input.payload.audioValue.channels * sizeof(float);
+
+      write((const uint8_t *)input.payload.audioValue.samples, size);
       total += size;
       break;
     }

@@ -34,6 +34,7 @@ struct Flatten {
     case ContextVar:
     case Path:
     case Image:
+    case Audio:
     case Int:
     case Float:
     case Bytes:
@@ -100,6 +101,7 @@ struct Flatten {
     case Path:
     case ContextVar:
     case Image:
+    case Audio:
     case Int:
     case Float:
     case Bytes:

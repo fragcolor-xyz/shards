@@ -2210,7 +2210,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       dst.payload.imageValue.data = new uint8_t[srcImgSize];
     }
 
-    dst.payload.imageValue.flags = dst.payload.imageValue.flags;
+    dst.payload.imageValue.flags = src.payload.imageValue.flags;
     dst.payload.imageValue.height = src.payload.imageValue.height;
     dst.payload.imageValue.width = src.payload.imageValue.width;
     dst.payload.imageValue.channels = src.payload.imageValue.channels;
@@ -2220,6 +2220,29 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
 
     memcpy(dst.payload.imageValue.data, src.payload.imageValue.data,
            srcImgSize);
+  } break;
+  case Audio: {
+    size_t srcSize = src.payload.audioValue.nsamples *
+                     src.payload.audioValue.channels * sizeof(float);
+    size_t dstCapacity = dst.payload.audioValue.nsamples *
+                         dst.payload.audioValue.channels * sizeof(float);
+    if (dst.valueType != Audio || srcSize > dstCapacity) {
+      destroyVar(dst);
+      dst.valueType = Audio;
+      dst.payload.audioValue.samples =
+          new float[dst.payload.audioValue.nsamples *
+                    dst.payload.audioValue.channels];
+    }
+
+    dst.payload.audioValue.sampleRate = src.payload.audioValue.sampleRate;
+    dst.payload.audioValue.nsamples = src.payload.audioValue.nsamples;
+    dst.payload.audioValue.channels = src.payload.audioValue.channels;
+
+    if (src.payload.audioValue.samples == dst.payload.audioValue.samples)
+      return;
+
+    memcpy(dst.payload.audioValue.samples, src.payload.audioValue.samples,
+           srcSize);
   } break;
   case Table: {
     CBMap *map;
@@ -2469,6 +2492,15 @@ void hash_update(const CBVar &var, void *state) {
                var.payload.imageValue.height * pixsize));
     assert(error == XXH_OK);
   } break;
+  case CBType::Audio: {
+    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
+    assert(error == XXH_OK);
+    error = XXH3_64bits_update(hashState, var.payload.audioValue.samples,
+                               size_t(var.payload.audioValue.channels *
+                                      var.payload.audioValue.nsamples *
+                                      sizeof(float)));
+    assert(error == XXH_OK);
+  } break;
   case CBType::Seq: {
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       hash_update(var.payload.seqValue.elements[i], state);
@@ -2653,6 +2685,10 @@ void Serialization::varFree(CBVar &output) {
   }
   case CBType::Image: {
     delete[] output.payload.imageValue.data;
+    break;
+  }
+  case CBType::Audio: {
+    delete[] output.payload.audioValue.samples;
     break;
   }
   case CBType::Block: {

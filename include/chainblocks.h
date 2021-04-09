@@ -40,7 +40,8 @@ enum CBType : uint8_t {
   Chain,
   Object,
   Array, // Notice: of just bilttable types/WIP!
-  Set
+  Set,
+  Audio
 };
 
 enum CBChainState : uint8_t {
@@ -575,7 +576,6 @@ struct CBVarPayload {
 
     struct CBImage imageValue;
 
-    // TODO
     struct CBAudio audioValue;
 
     CBChainRef chainValue;
