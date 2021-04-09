@@ -32,12 +32,12 @@ struct File {
   bool _initialized{false};
 
   ma_uint32 _channels{2};
+  ma_uint64 _nsamples{1024};
   ma_uint32 _sampleRate{44100};
   // what to do when not looped ends? throw?
   bool _looped{false};
   ParamVar _fromSample;
   ParamVar _toSample;
-  ParamVar _nsamples{Var(1024)};
   ParamVar _filename;
 
   std::vector<float> _buffer;
@@ -57,13 +57,59 @@ struct File {
        {CoreInfo::IntType}},
       {"Samples",
        CBCCSTR("The desired number of samples in the output."),
-       {CoreInfo::IntType, CoreInfo::IntVarType}},
+       {CoreInfo::IntType}},
       {"From",
        CBCCSTR("The starting sample index."),
        {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}},
       {"To",
        CBCCSTR("The final sample index (excluding)."),
        {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _filename = value;
+      break;
+    case 1:
+      _channels = ma_uint32(value.payload.intValue);
+      break;
+    case 2:
+      _sampleRate = ma_uint32(value.payload.intValue);
+      break;
+    case 3:
+      _nsamples = ma_uint64(value.payload.intValue);
+      break;
+    case 4:
+      _fromSample = value;
+      break;
+    case 5:
+      _toSample = value;
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _filename;
+    case 1:
+      return Var(_channels);
+    case 2:
+      return Var(_sampleRate);
+    case 3:
+      return Var(_nsamples);
+    case 4:
+      return _fromSample;
+    case 5:
+      return _toSample;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
 
   void initFile(const std::string_view &filename) {
     ma_decoder_config config =
@@ -75,17 +121,47 @@ struct File {
     }
   }
 
+  void deinitFile() { ma_decoder_uninit(&_decoder); }
+
   void warmup(CBContext *context) {
+    _fromSample.warmup(context);
+    _toSample.warmup(context);
     _filename.warmup(context);
 
     if (!_filename.isVariable() && _filename->valueType == CBType::String) {
       const auto fname = CBSTRVIEW(_filename.get());
       initFile(fname);
+      _buffer.resize(size_t(_channels) * size_t(_nsamples));
       _initialized = true;
+    }
+  }
+
+  void cleanup() {
+    _fromSample.cleanup();
+    _toSample.cleanup();
+    _filename.cleanup();
+
+    if (_initialized) {
+      deinitFile();
+      _initialized = false;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // read pcm data every iteration
+    ma_uint64 framesRead =
+        ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), _nsamples);
+    if (framesRead < _nsamples) {
+      // Reached the end.
+      return Var(CBAudio{_sampleRate, uint16_t(framesRead), uint16_t(_channels),
+                         _buffer.data()});
+    } else {
+      return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels),
+                         _buffer.data()});
     }
   }
 };
 
-void registerBlocks() {}
+void registerBlocks() { REGISTER_CBLOCK("Audio.File", File); }
 } // namespace Audio
 } // namespace chainblocks

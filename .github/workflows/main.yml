@@ -158,6 +158,8 @@ jobs:
         sudo apt-get -y update
         sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
         rustup update
+        mkdir external && cd external
+        wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
     - name: Build
       run: |
         mkdir build
@@ -368,6 +370,8 @@ jobs:
         sudo xcode-select --switch /Applications/Xcode.app
         brew install boost cmake ninja clang-format
         rustup update
+        mkdir external && cd external
+        wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
     - name: Build
       run: |
         git submodule update --init --recursive
