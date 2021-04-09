@@ -164,6 +164,8 @@ jobs:
     - name: Build
       env:
         CARGO_INCREMENTAL: 0
+        CC: /usr/bin/clang
+        CXX: /usr/bin/clang++
       run: |
         mkdir build
         cd build
@@ -172,8 +174,6 @@ jobs:
     - name: Test
       env:
         RUST_BACKTRACE: 1
-        CC: /usr/bin/clang
-        CXX: /usr/bin/clang++
       run: |
         cd build
         ./cbl ../src/tests/general.edn
