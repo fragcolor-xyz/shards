@@ -30,12 +30,40 @@ another iteration
 struct File {
   ma_decoder _decoder;
   bool _initialized{false};
+
   ma_uint32 _channels{2};
   ma_uint32 _sampleRate{44100};
+  // what to do when not looped ends? throw?
+  bool _looped{false};
+  ParamVar _fromSample;
+  ParamVar _toSample;
+  ParamVar _nsamples{Var(1024)};
   ParamVar _filename;
+
+  std::vector<float> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
+
+  static inline Parameters params{
+      {"File",
+       CBCCSTR("The audio file to read from (wav,ogg,mp3,flac)."),
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Channels",
+       CBCCSTR("The number of desired output audio channels."),
+       {CoreInfo::IntType}},
+      {"SampleRate",
+       CBCCSTR("The desired output sampling rate."),
+       {CoreInfo::IntType}},
+      {"Samples",
+       CBCCSTR("The desired number of samples in the output."),
+       {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"From",
+       CBCCSTR("The starting sample index."),
+       {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}},
+      {"To",
+       CBCCSTR("The final sample index (excluding)."),
+       {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}}};
 
   void initFile(const std::string_view &filename) {
     ma_decoder_config config =

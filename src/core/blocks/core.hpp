@@ -2799,7 +2799,8 @@ struct RTake : public Take {
 struct Slice {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(
       ParamsInfo::Param("From", CBCCSTR("From index."), CoreInfo::IntsVar),
-      ParamsInfo::Param("To", CBCCSTR("To index."), CoreInfo::IntsVarOrNone),
+      ParamsInfo::Param("To", CBCCSTR("To index (excluding)."),
+                        CoreInfo::IntsVarOrNone),
       ParamsInfo::Param("Step", CBCCSTR("The increment between each index."),
                         CoreInfo::IntType));
 
