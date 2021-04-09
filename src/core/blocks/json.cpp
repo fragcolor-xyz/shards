@@ -22,6 +22,9 @@ void _releaseMemory(CBVar &var) {
   case CBType::Image:
     delete[] var.payload.imageValue.data;
     break;
+  case CBType::Audio:
+    delete[] var.payload.audioValue.samples;
+    break;
   case CBType::Bytes:
     delete[] var.payload.bytesValue;
     break;
@@ -163,6 +166,23 @@ void to_json(json &j, const CBVar &var) {
                {"channels", var.payload.imageValue.channels},
                {"flags", var.payload.imageValue.flags},
                {"data", buffer}};
+    } else {
+      j = json{{"type", 0}, {"value", int(Continue)}};
+    }
+    break;
+  }
+  case CBType::Audio: {
+    if (var.payload.audioValue.samples) {
+      auto size =
+          var.payload.audioValue.nsamples * var.payload.audioValue.channels;
+      std::vector<float> buffer;
+      buffer.resize(size);
+      memcpy(&buffer[0], var.payload.audioValue.samples, size * sizeof(float));
+      j = json{{"type", valType},
+               {"sampleRate", var.payload.audioValue.sampleRate},
+               {"nsamples", var.payload.audioValue.nsamples},
+               {"channels", var.payload.audioValue.channels},
+               {"samples", buffer}};
     } else {
       j = json{{"type", 0}, {"value", int(Continue)}};
     }
@@ -430,6 +450,18 @@ void from_json(const json &j, CBVar &var) {
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     var.payload.bytesValue = new uint8_t[buffer.size()];
     memcpy(var.payload.bytesValue, &buffer[0], buffer.size());
+    break;
+  }
+  case CBType::Audio: {
+    var.valueType = CBType::Audio;
+    var.payload.audioValue.sampleRate = j.at("sampleRate").get<float>();
+    var.payload.audioValue.nsamples = j.at("nsamples").get<uint16_t>();
+    var.payload.audioValue.channels = j.at("channels").get<uint16_t>();
+    auto size =
+        var.payload.audioValue.nsamples * var.payload.audioValue.channels;
+    var.payload.audioValue.samples = new float[size];
+    auto buffer = j.at("samples").get<std::vector<float>>();
+    memcpy(var.payload.audioValue.samples, &buffer[0], size * sizeof(float));
     break;
   }
   case CBType::Array: {

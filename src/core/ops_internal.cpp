@@ -150,6 +150,12 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     os << " Height: " << var.payload.imageValue.height;
     os << " Channels: " << (int)var.payload.imageValue.channels;
     break;
+  case Audio:
+    os << "Audio";
+    os << " SampleRate: " << var.payload.audioValue.sampleRate;
+    os << " Samples: " << var.payload.audioValue.nsamples;
+    os << " Channels: " << var.payload.audioValue.channels;
+    break;
   case Seq:
     os << "[";
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {

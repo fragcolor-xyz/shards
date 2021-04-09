@@ -1615,6 +1615,9 @@ struct Sequence : public SeqBase {
     case BasicTypes::Image:
       inner._types.emplace_back(CoreInfo::ImageType);
       break;
+    case BasicTypes::Audio:
+      inner._types.emplace_back(CoreInfo::AudioType);
+      break;
     }
   }
 
@@ -1891,6 +1894,9 @@ struct TableDecl : public VariableBase {
       break;
     case BasicTypes::Image:
       inner._types.emplace_back(CoreInfo::ImageType);
+      break;
+    case BasicTypes::Audio:
+      inner._types.emplace_back(CoreInfo::AudioType);
       break;
     }
   }

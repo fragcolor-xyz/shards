@@ -767,6 +767,8 @@ malValuePtr typeToKeyword(CBType type) {
     return mal::keyword(":Path");
   case CBType::Image:
     return mal::keyword(":Image");
+  case CBType::Audio:
+    return mal::keyword(":Audio");
   case CBType::Bytes:
     return mal::keyword(":Bytes");
   case CBType::Seq:

@@ -861,6 +861,9 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   case Image:
     delete[] var.payload.imageValue.data;
     break;
+  case Audio:
+    delete[] var.payload.audioValue.samples;
+    break;
   case Bytes:
     delete[] var.payload.bytesValue;
     break;

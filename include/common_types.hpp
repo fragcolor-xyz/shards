@@ -32,7 +32,8 @@ enum class BasicTypes {
   Block,
   Bytes,
   String,
-  Image
+  Image,
+  Audio
 };
 
 struct CoreInfo {
@@ -73,6 +74,8 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(String);
   CB_CORE_TYPE_DEF(Path);
   CB_CORE_TYPE_DEF(Image);
+  CB_CORE_TYPE_DEF(Set);
+  CB_CORE_TYPE_DEF(Audio);
 
   static inline Type Float4x4Type{{CBType::Seq, {.seqTypes = Float4Type}, 4}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);

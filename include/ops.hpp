@@ -85,6 +85,9 @@ inline std::string type2Name(CBType type) {
   case Image:
     name = "Image";
     break;
+  case Audio:
+    name = "Audio";
+    break;
   case Seq:
     name = "Seq";
     break;
@@ -270,6 +273,15 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
             (memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
                     a.payload.imageValue.channels * a.payload.imageValue.width *
                         a.payload.imageValue.height * apixsize) == 0));
+  }
+  case Audio: {
+    return a.payload.audioValue.nsamples == b.payload.audioValue.nsamples &&
+           a.payload.audioValue.channels == b.payload.audioValue.channels &&
+           a.payload.audioValue.sampleRate == b.payload.audioValue.sampleRate &&
+           (a.payload.audioValue.samples == b.payload.audioValue.samples ||
+            (memcmp(a.payload.audioValue.samples, b.payload.audioValue.samples,
+                    a.payload.audioValue.channels *
+                        a.payload.audioValue.nsamples * sizeof(float)) == 0));
   }
   case Seq:
     return _seqEq(a, b);
