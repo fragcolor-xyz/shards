@@ -823,7 +823,7 @@ struct HexToBytes {
     output.clear();
     auto src = input.payload.stringValue;
     // allow 0x prefix
-    if (src[0] == '0' && src[1] == 'x' || src[1] == 'X')
+    if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X'))
       src += 2;
     while (*src && src[1]) {
       output.emplace_back(char2int(*src) * 16 + char2int(src[1]));
