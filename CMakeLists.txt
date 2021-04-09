@@ -76,11 +76,9 @@ set(CMAKE_CXX_FLAGS_UBSAN
 ### SANITIZERS
 
 if(CODE_COVERAGE)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_compile_options(-fprofile-arcs -ftest-coverage -fno-default-inline -fno-inline)
-    add_link_options(-fprofile-arcs -ftest-coverage -fno-default-inline -fno-inline)
-    set(RUST_CODECOV_OPTIONS "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort ")
-  endif()
+  add_compile_options(-fprofile-arcs -ftest-coverage -fno-default-inline -fno-inline)
+  add_link_options(-fprofile-arcs -ftest-coverage -fno-default-inline -fno-inline)
+  set(RUST_CODECOV_OPTIONS "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort ")
 endif()
 
 if (NOT DEFINED CHAINBLOCKS_DIR)

@@ -172,6 +172,8 @@ jobs:
     - name: Test
       env:
         RUST_BACKTRACE: 1
+        CC: /usr/bin/clang
+        CXX: /usr/bin/clang++
       run: |
         cd build
         ./cbl ../src/tests/general.edn
@@ -245,6 +247,8 @@ jobs:
     - name: Build
       env:
         CARGO_INCREMENTAL: 0
+        CC: /usr/bin/clang
+        CXX: /usr/bin/clang++
       run: |
         cd build
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DSKIP_RUST_BINDGEN=1 -DBUILD_INTERNAL_TESTS=1 ..
