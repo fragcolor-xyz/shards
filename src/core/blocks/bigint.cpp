@@ -6,7 +6,8 @@
 #include "math.h"
 #include "shared.hpp"
 
-#include <boost/core/nvp.hpp>
+#include <boost/serialization/nvp.hpp>
+
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
