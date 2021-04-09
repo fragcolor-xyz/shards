@@ -856,6 +856,11 @@ struct Var : public CBVar {
     payload.seqValue = seq;
   }
 
+  explicit Var(CBAudio audio) : CBVar() {
+    valueType = Audio;
+    payload.audioValue = audio;
+  }
+
   explicit Var(CBChainRef chain) : CBVar() {
     valueType = CBType::Chain;
     payload.chainValue = chain;

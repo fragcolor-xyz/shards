@@ -295,7 +295,7 @@ struct CBImage {
 };
 
 struct CBAudio {
-  float sampleRate;
+  uint32_t sampleRate;
   uint16_t nsamples;
   uint16_t channels;
   float *samples;
