@@ -52,6 +52,7 @@ TEST_CASE("CBType-type2Name", "[ops]") {
   REQUIRE(type2Name(CBType::Table) == "Table");
   REQUIRE(type2Name(CBType::Set) == "Set");
   REQUIRE(type2Name(CBType::Array) == "Array");
+  REQUIRE(type2Name(CBType::Audio) == "Audio");
 }
 
 TEST_CASE("CBVar-comparison", "[ops]") {
@@ -107,6 +108,34 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
     CBLOG_INFO(o1); // logging coverage
+  }
+
+  SECTION("Audio") {
+    std::vector<float> b1(1024);
+    std::vector<float> b2(1024);
+    std::vector<float> b3(1024);
+    CBVar x{.payload = {.audioValue = {44100.0, 512, 2, b1.data()}},
+            .valueType = CBType::Audio};
+    CBVar y{.payload = {.audioValue = {44100.0, 512, 2, b2.data()}},
+            .valueType = CBType::Audio};
+    CBVar z{.payload = {.audioValue = {44100.0, 1024, 1, b3.data()}},
+            .valueType = CBType::Audio};
+    auto empty = Var::Empty;
+    REQUIRE(x == y);
+    REQUIRE(x != z);
+    REQUIRE(y != z);
+    REQUIRE_THROWS(x > y);
+    REQUIRE_THROWS(x >= z);
+    REQUIRE(x != empty);
+    auto hash1 = hash(x);
+    auto hash2 = hash(y);
+    auto hash3 = hash(z);
+    REQUIRE(hash1 == hash2);
+    REQUIRE_FALSE(hash1 == hash3);
+    CBLOG_INFO(x); // logging coverage
+    CBVar xx{};
+    cloneVar(xx, x);
+    destroyVar(xx);
   }
 
   SECTION("Enum") {

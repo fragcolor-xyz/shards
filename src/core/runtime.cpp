@@ -2230,8 +2230,8 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
       destroyVar(dst);
       dst.valueType = Audio;
       dst.payload.audioValue.samples =
-          new float[dst.payload.audioValue.nsamples *
-                    dst.payload.audioValue.channels];
+          new float[src.payload.audioValue.nsamples *
+                    src.payload.audioValue.channels];
     }
 
     dst.payload.audioValue.sampleRate = src.payload.audioValue.sampleRate;
@@ -2477,7 +2477,9 @@ void hash_update(const CBVar &var, void *state) {
     assert(error == XXH_OK);
   } break;
   case CBType::Image: {
-    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
+    CBImage i = var.payload.imageValue;
+    i.data = nullptr;
+    error = XXH3_64bits_update(hashState, &i, sizeof(CBImage));
     assert(error == XXH_OK);
     auto pixsize = 1;
     if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
@@ -2493,7 +2495,9 @@ void hash_update(const CBVar &var, void *state) {
     assert(error == XXH_OK);
   } break;
   case CBType::Audio: {
-    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
+    CBAudio a = var.payload.audioValue;
+    a.samples = nullptr;
+    error = XXH3_64bits_update(hashState, &a, sizeof(CBAudio));
     assert(error == XXH_OK);
     error = XXH3_64bits_update(hashState, var.payload.audioValue.samples,
                                size_t(var.payload.audioValue.channels *
