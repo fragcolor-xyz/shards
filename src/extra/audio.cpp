@@ -41,6 +41,7 @@ struct File {
   ParamVar _filename;
 
   std::vector<float> _buffer;
+  bool _done{false};
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
@@ -58,6 +59,10 @@ struct File {
       {"Samples",
        CBCCSTR("The desired number of samples in the output."),
        {CoreInfo::IntType}},
+      {"Looped",
+       CBCCSTR("If the file should be played in loop or should stop the chain "
+               "when it ends."),
+       {CoreInfo::BoolType}},
       {"From",
        CBCCSTR("The starting sample index."),
        {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}},
@@ -82,9 +87,12 @@ struct File {
       _nsamples = ma_uint64(value.payload.intValue);
       break;
     case 4:
-      _fromSample = value;
+      _looped = value.payload.boolValue;
       break;
     case 5:
+      _fromSample = value;
+      break;
+    case 6:
       _toSample = value;
       break;
     default:
@@ -99,12 +107,14 @@ struct File {
     case 1:
       return Var(_channels);
     case 2:
-      return Var(_sampleRate);
+      return Var(int64_t(_sampleRate));
     case 3:
       return Var(_nsamples);
     case 4:
-      return _fromSample;
+      return Var(_looped);
     case 5:
+      return _fromSample;
+    case 6:
       return _toSample;
     default:
       throw InvalidParameterIndex();
@@ -134,6 +144,8 @@ struct File {
       _buffer.resize(size_t(_channels) * size_t(_nsamples));
       _initialized = true;
     }
+
+    _done = false;
   }
 
   void cleanup() {
@@ -148,11 +160,24 @@ struct File {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (unlikely(_done)) {
+      if (_looped) {
+        ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, 0);
+        if (res != MA_SUCCESS) {
+          throw ActivationError("Failed to seek");
+        }
+        _done = false;
+      } else {
+        context->stopFlow(Var::Empty);
+      }
+    }
+
     // read pcm data every iteration
     ma_uint64 framesRead =
         ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), _nsamples);
     if (framesRead < _nsamples) {
       // Reached the end.
+      _done = true;
       return Var(CBAudio{_sampleRate, uint16_t(framesRead), uint16_t(_channels),
                          _buffer.data()});
     } else {
