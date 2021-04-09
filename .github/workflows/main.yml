@@ -232,6 +232,7 @@ jobs:
         rustup default nightly
         cd rust
         cargo build --features run_bindgen
+        cd -
         mkdir external && cd external
         git clone --depth 1 https://github.com/KhronosGroup/glTF-Sample-Models.git
         cd -
