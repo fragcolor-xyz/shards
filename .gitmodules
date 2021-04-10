@@ -73,3 +73,6 @@
 [submodule "deps/spdlog"]
 	path = deps/spdlog
 	url = https://github.com/chainblocks/spdlog.git
+[submodule "deps/kissfft"]
+	path = deps/kissfft
+	url = https://github.com/chainblocks/kissfft.git
