@@ -58,7 +58,7 @@ struct Reader {
   rs.reset();                                                                  \
   rs.deserialize(r, output);                                                   \
   REQUIRE(_source_ == output);                                                 \
-  rs.varFree(output);
+  rs.varFree(output)
 
 TEST_CASE("CBType-type2Name", "[ops]") {
   REQUIRE_THROWS(type2Name(CBType::EndOfBlittableTypes));
@@ -102,6 +102,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash2 = hash(n2);
     REQUIRE(hash1 == hash2);
     CBLOG_INFO(n1); // logging coverage
+    TEST_SERIALIZATION(n1);
   }
 
   SECTION("Bool") {
@@ -122,6 +123,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash2 = hash(t1);
     REQUIRE(hash1 == hash2);
     CBLOG_INFO(t); // logging coverage
+    TEST_SERIALIZATION(t);
   }
 
   SECTION("Object") {
@@ -171,8 +173,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     CBLOG_INFO(x); // logging coverage
     CBVar xx{};
     cloneVar(xx, x);
-    destroyVar(xx);
     TEST_SERIALIZATION(xx);
+    destroyVar(xx);
   }
 
   SECTION("Enum") {
@@ -201,6 +203,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
     CBLOG_INFO(o1); // logging coverage
+    TEST_SERIALIZATION(o1);
   }
 
   SECTION("Float") {
@@ -228,6 +231,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
     CBLOG_INFO(f1); // logging coverage
+    TEST_SERIALIZATION(f1);
   }
 
 #define CBVECTOR_TESTS                                                         \
@@ -259,7 +263,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
   auto hash3 = hash(f3);                                                       \
   REQUIRE(hash1 == hash2);                                                     \
   REQUIRE_FALSE(hash1 == hash3);                                               \
-  CBLOG_INFO(f1)
+  CBLOG_INFO(f1);                                                              \
+  TEST_SERIALIZATION(f1)
 
   SECTION("Float2") {
     auto f1 = Var(10.0, 2.0);
