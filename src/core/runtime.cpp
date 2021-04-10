@@ -187,6 +187,9 @@ void registerCoreBlocks() {
 
   globalRegisterDone = true;
 
+  // set root path as current directory
+  std::filesystem::current_path(Globals::RootPath);
+
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
@@ -320,9 +323,6 @@ void registerCoreBlocks() {
   if (Globals::RootPath != Globals::ExePath) {
     loadExternalBlocks(Globals::RootPath);
   }
-
-  // set root path as current directory
-  std::filesystem::current_path(Globals::RootPath);
 
 #ifdef __EMSCRIPTEN__
   cb_emscripten_init();

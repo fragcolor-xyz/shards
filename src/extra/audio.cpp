@@ -202,12 +202,13 @@ struct File {
     if (framesRead < _nsamples) {
       // Reached the end.
       _done = true;
-      return Var(CBAudio{_sampleRate, uint16_t(framesRead), uint16_t(_channels),
-                         _buffer.data()});
-    } else {
-      return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels),
-                         _buffer.data()});
+      // zero anything that was not used
+      const auto remains = _nsamples - framesRead;
+      memset(_buffer.data() + framesRead, 0x0, sizeof(float) * remains);
     }
+
+    return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels),
+                       _buffer.data()});
   }
 };
 
