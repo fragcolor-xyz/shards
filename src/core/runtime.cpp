@@ -738,6 +738,9 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     try {
       output = activateBlock(blk, context, input);
       if (unlikely(!context->shouldContinue())) {
+        // TODO #64 try and benchmark: remove this switch and state
+        // Replace with preallocated exceptions like StopChainException
+        // removing this should make every block activate faster, 1 check less
         switch (context->getState()) {
         case CBChainState::Return:
           if (handlesReturn)
