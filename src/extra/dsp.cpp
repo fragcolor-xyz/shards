@@ -50,7 +50,7 @@ struct FFT : public FFTBase {
       len = int(input.payload.seqValue.len);
     } else {
       // Audio
-      len = input.payload.audioValue.nsamples;
+      len = int(input.payload.audioValue.nsamples);
       if (input.payload.audioValue.channels != 1) {
         throw ActivationError("FFT expects a single channel audio buffer");
       }
@@ -118,8 +118,132 @@ struct IFFT : public FFTBase {
   } // complex numbers
 
   static CBTypesInfo outputTypes() { return FloatTypes; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    const auto &nextTypes = data.outputTypes;
+    if (nextTypes.len == 1) {
+      // alright we can pick the type properly
+      if (nextTypes.elements[0].basicType == CBType::Audio) {
+        OVERRIDE_ACTIVATE(data, activateAudio);
+        return CoreInfo::AudioType;
+      } else if (nextTypes.elements[0].basicType == CBType::Seq) {
+        if (nextTypes.elements[0].seqTypes.elements[0].basicType ==
+            CBType::Float) {
+          OVERRIDE_ACTIVATE(data, activateFloat);
+          return CoreInfo::FloatSeqType;
+        } else {
+          OVERRIDE_ACTIVATE(data, activate);
+          return CoreInfo::Float2SeqType;
+        }
+      }
+    }
+    // use generic complex
+    OVERRIDE_ACTIVATE(data, activate);
+    return CoreInfo::Float2SeqType;
+  }
+
+  CBVar activateFloat(CBContext *context, const CBVar &input) {
+    const int len = int(input.payload.seqValue.len);
+    if (len <= 0) {
+      throw ActivationError("Expected a positive input length");
+    }
+
+    if (unlikely(_currentWindow != len)) {
+      cleanup();
+
+      _currentWindow = len;
+      _cscratch.resize(len);
+      _fscratch.resize(len);
+      _vscratch.resize(len);
+      _rstate = kiss_fftr_alloc(len, 1, 0, 0);
+
+      for (int i = 0; i < len; i++) {
+        _vscratch[i].valueType = CBType::Float;
+      }
+    }
+
+    int idx = 0;
+    for (const auto &vf : input) {
+      _cscratch[idx++] = {float(vf.payload.float2Value[0]),
+                          float(vf.payload.float2Value[1])};
+    }
+
+    kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
+
+    for (int i = 0; i < len; i++) {
+      _vscratch[i].payload.floatValue = double(_fscratch[i]);
+    }
+
+    return Var(_vscratch);
+  }
+
+  CBVar activateAudio(CBContext *context, const CBVar &input) {
+    const int len = int(input.payload.seqValue.len);
+    if (len <= 0) {
+      throw ActivationError("Expected a positive input length");
+    }
+
+    if (unlikely(_currentWindow != len)) {
+      cleanup();
+
+      _currentWindow = len;
+      _cscratch.resize(len);
+      _fscratch.resize(len);
+      _rstate = kiss_fftr_alloc(len, 1, 0, 0);
+    }
+
+    int idx = 0;
+    for (const auto &vf : input) {
+      _cscratch[idx++] = {float(vf.payload.float2Value[0]),
+                          float(vf.payload.float2Value[1])};
+    }
+
+    kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
+
+    return Var(
+        CBAudio{0, uint16_t(_currentWindow), uint16_t(1), _fscratch.data()});
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const int len = int(input.payload.seqValue.len);
+    if (len <= 0) {
+      throw ActivationError("Expected a positive input length");
+    }
+
+    if (unlikely(_currentWindow != len)) {
+      cleanup();
+
+      _currentWindow = len;
+      _cscratch.resize(len);
+      _cscratch2.resize(len);
+      _vscratch.resize(len);
+      _state = kiss_fft_alloc(len, 1, 0, 0);
+
+      for (int i = 0; i < len; i++) {
+        _vscratch[i].valueType = CBType::Float2;
+      }
+    }
+
+    int idx = 0;
+    for (const auto &vf : input) {
+      _cscratch[idx++] = {float(vf.payload.float2Value[0]),
+                          float(vf.payload.float2Value[1])};
+    }
+
+    kiss_fft(_state, _cscratch.data(), _cscratch2.data());
+
+    for (int i = 0; i < len; i++) {
+      _vscratch[i].payload.float2Value[0] = _cscratch2[i].r;
+      _vscratch[i].payload.float2Value[1] = _cscratch2[i].i;
+    }
+
+    return Var(_vscratch);
+  }
 };
 
-void registerBlocks() { REGISTER_CBLOCK("DSP.FFT", FFT); }
+void registerBlocks() {
+  REGISTER_CBLOCK("DSP.FFT", FFT);
+  REGISTER_CBLOCK("DSP.IFFT", IFFT);
+}
 } // namespace DSP
 } // namespace chainblocks

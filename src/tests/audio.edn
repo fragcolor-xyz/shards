@@ -12,6 +12,7 @@
 (defloop play-file-fft
   (Audio.File "../../external/file_example_OOG_1MG.ogg" :Channels 1 :From 1.0 :To 1.023219954648526)
   (DSP.FFT)
+  (DSP.IFFT)
   (Log))
 
 (schedule main play-file-fft)
