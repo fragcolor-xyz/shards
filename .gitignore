@@ -50,3 +50,4 @@ examples/shaderc/bgfx_shader.sh
 src/tests/loader.ugly.clj
 src/tests/general.ugly.edn
 src/tests/bgfx.ugly.clj
+src/tests/example.wav
