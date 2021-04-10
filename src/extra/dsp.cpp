@@ -60,7 +60,7 @@ struct FFT : public FFTBase {
       throw ActivationError("Expected a positive input length");
     }
 
-    int flen = (len / 2) + 1;
+    int flen = len;
 
     if (unlikely(_currentWindow != len)) {
       cleanup();
@@ -74,8 +74,10 @@ struct FFT : public FFTBase {
                      CBType::Float) {
         _rstate = kiss_fftr_alloc(len, 0, 0, 0);
         _fscratch.resize(len);
+        flen = (len / 2) + 1;
       } else {
         _rstate = kiss_fftr_alloc(len, 0, 0, 0);
+        flen = (len / 2) + 1;
       }
       _currentWindow = len;
       _cscratch.resize(flen);
@@ -133,15 +135,12 @@ struct IFFT : public FFTBase {
             CBType::Float) {
           OVERRIDE_ACTIVATE(data, activateFloat);
           return CoreInfo::FloatSeqType;
-        } else {
-          OVERRIDE_ACTIVATE(data, activate);
-          return CoreInfo::Float2SeqType;
         }
       }
     }
     // use generic complex
-    OVERRIDE_ACTIVATE(data, activateFloat);
-    return CoreInfo::FloatSeqType;
+    OVERRIDE_ACTIVATE(data, activate);
+    return CoreInfo::Float2SeqType;
   }
 
   CBVar activateFloat(CBContext *context, const CBVar &input) {
@@ -215,19 +214,18 @@ struct IFFT : public FFTBase {
     if (len <= 0) {
       throw ActivationError("Expected a positive input length");
     }
-    const int olen = len * 2 - 2;
 
-    if (unlikely(_currentWindow != olen)) {
+    if (unlikely(_currentWindow != len)) {
       cleanup();
 
-      _currentWindow = olen;
+      _currentWindow = len;
       _cscratch.resize(len);
-      _cscratch2.resize(olen);
-      _vscratch.resize(olen);
-      _state = kiss_fft_alloc(olen, 1, 0, 0);
-      CBLOG_TRACE("IFFT Float2 alloc window {}", olen);
+      _cscratch2.resize(len);
+      _vscratch.resize(len);
+      _state = kiss_fft_alloc(len, 1, 0, 0);
+      CBLOG_TRACE("IFFT Float2 alloc window {}", len);
 
-      for (int i = 0; i < olen; i++) {
+      for (int i = 0; i < len; i++) {
         _vscratch[i].valueType = CBType::Float2;
       }
     }
@@ -240,7 +238,7 @@ struct IFFT : public FFTBase {
 
     kiss_fft(_state, _cscratch.data(), _cscratch2.data());
 
-    for (int i = 0; i < olen; i++) {
+    for (int i = 0; i < len; i++) {
       _vscratch[i].payload.float2Value[0] = _cscratch2[i].r;
       _vscratch[i].payload.float2Value[1] = _cscratch2[i].i;
     }
