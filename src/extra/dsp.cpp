@@ -60,6 +60,8 @@ struct FFT : public FFTBase {
       throw ActivationError("Expected a positive input length");
     }
 
+    int flen = (len / 2) + 1;
+
     if (unlikely(_currentWindow != len)) {
       cleanup();
 
@@ -76,10 +78,10 @@ struct FFT : public FFTBase {
         _rstate = kiss_fftr_alloc(len, 0, 0, 0);
       }
       _currentWindow = len;
-      _cscratch.resize(len);
-      _vscratch.resize(len);
+      _cscratch.resize(flen);
+      _vscratch.resize(flen);
 
-      for (int i = 0; i < len; i++) {
+      for (int i = 0; i < flen; i++) {
         _vscratch[i].valueType = CBType::Float2;
       }
     }
@@ -103,7 +105,7 @@ struct FFT : public FFTBase {
       kiss_fftr(_rstate, input.payload.audioValue.samples, _cscratch.data());
     }
 
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < flen; i++) {
       _vscratch[i].payload.float2Value[0] = _cscratch[i].r;
       _vscratch[i].payload.float2Value[1] = _cscratch[i].i;
     }
@@ -138,8 +140,8 @@ struct IFFT : public FFTBase {
       }
     }
     // use generic complex
-    OVERRIDE_ACTIVATE(data, activate);
-    return CoreInfo::Float2SeqType;
+    OVERRIDE_ACTIVATE(data, activateFloat);
+    return CoreInfo::FloatSeqType;
   }
 
   CBVar activateFloat(CBContext *context, const CBVar &input) {
@@ -147,17 +149,19 @@ struct IFFT : public FFTBase {
     if (len <= 0) {
       throw ActivationError("Expected a positive input length");
     }
+    const int olen = len * 2 - 2;
 
-    if (unlikely(_currentWindow != len)) {
+    if (unlikely(_currentWindow != olen)) {
       cleanup();
 
-      _currentWindow = len;
+      _currentWindow = olen;
       _cscratch.resize(len);
-      _fscratch.resize(len);
-      _vscratch.resize(len);
-      _rstate = kiss_fftr_alloc(len, 1, 0, 0);
+      _fscratch.resize(olen);
+      _vscratch.resize(olen);
+      _rstate = kiss_fftr_alloc(olen, 1, 0, 0);
+      CBLOG_TRACE("IFFT Float alloc window {}", olen);
 
-      for (int i = 0; i < len; i++) {
+      for (int i = 0; i < olen; i++) {
         _vscratch[i].valueType = CBType::Float;
       }
     }
@@ -170,7 +174,7 @@ struct IFFT : public FFTBase {
 
     kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < olen; i++) {
       _vscratch[i].payload.floatValue = double(_fscratch[i]);
     }
 
@@ -182,14 +186,16 @@ struct IFFT : public FFTBase {
     if (len <= 0) {
       throw ActivationError("Expected a positive input length");
     }
+    const int olen = len * 2 - 2;
 
-    if (unlikely(_currentWindow != len)) {
+    if (unlikely(_currentWindow != olen)) {
       cleanup();
 
-      _currentWindow = len;
+      _currentWindow = olen;
       _cscratch.resize(len);
-      _fscratch.resize(len);
-      _rstate = kiss_fftr_alloc(len, 1, 0, 0);
+      _fscratch.resize(olen);
+      _rstate = kiss_fftr_alloc(olen, 1, 0, 0);
+      CBLOG_TRACE("IFFT Audio alloc window {}", olen);
     }
 
     int idx = 0;
@@ -209,17 +215,19 @@ struct IFFT : public FFTBase {
     if (len <= 0) {
       throw ActivationError("Expected a positive input length");
     }
+    const int olen = len * 2 - 2;
 
-    if (unlikely(_currentWindow != len)) {
+    if (unlikely(_currentWindow != olen)) {
       cleanup();
 
-      _currentWindow = len;
+      _currentWindow = olen;
       _cscratch.resize(len);
-      _cscratch2.resize(len);
-      _vscratch.resize(len);
-      _state = kiss_fft_alloc(len, 1, 0, 0);
+      _cscratch2.resize(olen);
+      _vscratch.resize(olen);
+      _state = kiss_fft_alloc(olen, 1, 0, 0);
+      CBLOG_TRACE("IFFT Float2 alloc window {}", olen);
 
-      for (int i = 0; i < len; i++) {
+      for (int i = 0; i < olen; i++) {
         _vscratch[i].valueType = CBType::Float2;
       }
     }
@@ -232,7 +240,7 @@ struct IFFT : public FFTBase {
 
     kiss_fft(_state, _cscratch.data(), _cscratch2.data());
 
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < olen; i++) {
       _vscratch[i].payload.float2Value[0] = _cscratch2[i].r;
       _vscratch[i].payload.float2Value[1] = _cscratch2[i].i;
     }
