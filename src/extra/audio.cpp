@@ -168,7 +168,7 @@ struct File {
         }
         _done = false;
       } else {
-        context->stopFlow(Var::Empty);
+        CB_STOP();
       }
     }
 

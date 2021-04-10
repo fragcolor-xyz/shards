@@ -426,6 +426,13 @@ using CBMap = std::unordered_map<
                                         16>>;
 using CBMapIt = CBMap::iterator;
 
+struct StopChainException : public CBException {
+  StopChainException() : CBException("The chain has been stopped") {}
+};
+struct RestartChainException : public CBException {
+  RestartChainException() : CBException("The chain has been restarted") {}
+};
+
 struct Globals {
   static inline int SigIntTerm{0};
   static inline std::unordered_map<std::string_view, CBBlockConstructor>
@@ -446,6 +453,9 @@ struct Globals {
 
   static inline std::string RootPath;
   static inline std::string ExePath;
+
+  static inline std::exception_ptr StopChainEx;
+  static inline std::exception_ptr RestartChainEx;
 
   static inline std::unordered_map<uint32_t, CBOptionalString>
       *CompressedStrings{nullptr};

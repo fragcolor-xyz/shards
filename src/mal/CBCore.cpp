@@ -1625,6 +1625,8 @@ BUILTIN("run") {
     }
   }
 
+  spdlog::default_logger()->flush();
+
   return mal::boolean(true);
 }
 
