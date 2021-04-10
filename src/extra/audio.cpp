@@ -27,7 +27,7 @@ another iteration
 
 */
 
-struct File {
+struct ReadFile {
   ma_decoder _decoder;
   bool _initialized{false};
 
@@ -180,6 +180,7 @@ struct File {
       const auto sfrom =
           ma_uint64(double(_sampleRate) * from.payload.floatValue);
       ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, sfrom);
+      _progress = sfrom;
       if (res != MA_SUCCESS) {
         throw ActivationError("Failed to seek");
       }
@@ -188,7 +189,7 @@ struct File {
     auto reading = _nsamples;
     const auto to = _toSample.get();
     if (unlikely(to.valueType == CBType::Float)) {
-      const auto sto = ma_uint64(double(_sampleRate) * from.payload.floatValue);
+      const auto sto = ma_uint64(double(_sampleRate) * to.payload.floatValue);
       const auto until = _progress + reading;
       if (sto < until) {
         reading = reading - (until - sto);
@@ -212,6 +213,106 @@ struct File {
   }
 };
 
-void registerBlocks() { REGISTER_CBLOCK("Audio.File", File); }
+struct WriteFile {
+  ma_encoder _encoder;
+  bool _initialized{false};
+
+  ma_uint32 _channels{2};
+  ma_uint32 _sampleRate{44100};
+  ma_uint64 _progress{0};
+  ParamVar _filename;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
+
+  static inline Parameters params{
+      {"File",
+       CBCCSTR("The audio file to read from (wav,ogg,mp3,flac)."),
+       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Channels",
+       CBCCSTR("The number of desired output audio channels."),
+       {CoreInfo::IntType}},
+      {"SampleRate",
+       CBCCSTR("The desired output sampling rate."),
+       {CoreInfo::IntType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _filename = value;
+      break;
+    case 1:
+      _channels = ma_uint32(value.payload.intValue);
+      break;
+    case 2:
+      _sampleRate = ma_uint32(value.payload.intValue);
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _filename;
+    case 1:
+      return Var(_channels);
+    case 2:
+      return Var(_sampleRate);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  void initFile(const std::string_view &filename) {
+    ma_encoder_config config = ma_encoder_config_init(
+        ma_resource_format_wav, ma_format_f32, _channels, _sampleRate);
+    ma_result res = ma_encoder_init_file(filename.data(), &config, &_encoder);
+    if (res != MA_SUCCESS) {
+      CBLOG_ERROR("Failed to open audio encoder on file {}", filename);
+      throw ActivationError("Failed to open encoder on file");
+    }
+  }
+
+  void deinitFile() { ma_encoder_uninit(&_encoder); }
+
+  void warmup(CBContext *context) {
+    _filename.warmup(context);
+
+    if (!_filename.isVariable() && _filename->valueType == CBType::String) {
+      const auto fname = CBSTRVIEW(_filename.get());
+      initFile(fname);
+      _initialized = true;
+    }
+
+    _progress = 0;
+  }
+
+  void cleanup() {
+    _filename.cleanup();
+
+    if (_initialized) {
+      deinitFile();
+      _initialized = false;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.payload.audioValue.channels != _channels) {
+      throw ActivationError("Input has an invalid number of audio channels");
+    }
+    ma_encoder_write_pcm_frames(&_encoder, input.payload.audioValue.samples,
+                                input.payload.audioValue.nsamples);
+    return input;
+  }
+};
+
+void registerBlocks() {
+  REGISTER_CBLOCK("Audio.ReadFile", ReadFile);
+  REGISTER_CBLOCK("Audio.WriteFile", WriteFile);
+}
 } // namespace Audio
 } // namespace chainblocks
