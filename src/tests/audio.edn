@@ -1,8 +1,18 @@
 (defnode main)
+
 (defloop play-files
   (Audio.File "../../external/file_example_OOG_1MG.ogg" :From 1.0 :To 1.023219954648526)
   (Log))
+
 (schedule main play-files)
 (run main)
 (schedule main play-files)
+(run main)
+
+(defloop play-file-fft
+  (Audio.File "../../external/file_example_OOG_1MG.ogg" :Channels 1 :From 1.0 :To 1.023219954648526)
+  (DSP.FFT)
+  (Log))
+
+(schedule main play-file-fft)
 (run main)

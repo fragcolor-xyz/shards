@@ -941,11 +941,11 @@ add_dependencies(cb_static libwasm3)
 add_dependencies(cb_shared libwasm3)
 set(EXTRA_LIBS ${EXTRA_LIBS} libwasm3)
 
-add_dependencies(cb_static libkissfft)
-add_dependencies(cb_shared libkissfft)
-set(EXTRA_LIBS ${EXTRA_LIBS} libkissfft)
-
 if(NOT BUILD_CORE_ONLY)
+  add_dependencies(cb_static libkissfft)
+  add_dependencies(cb_shared libkissfft)
+  set(EXTRA_LIBS ${EXTRA_LIBS} libkissfft)
+
   add_dependencies(cb_static cb_rust_static)
   add_dependencies(cb_shared cb_rust_static)
   set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
