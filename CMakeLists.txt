@@ -322,6 +322,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/reflection.cpp
   ${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp
   ${CHAINBLOCKS_DIR}/src/core/cbccstrings.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/dsp.cpp
   )
 
 #### Header paths for tidy
@@ -664,6 +665,21 @@ if(NOT BUILD_CORE_ONLY)
       )
   endif()
 
+  # kissfft
+  ExternalProject_Add(kissfft
+    URL ${CHAINBLOCKS_DIR}/deps/kissfft
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/kissfft-deps
+    BUILD_IN_SOURCE True
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} ${EXTRA_CMAKE_ARGS} -DKISSFFT_ARCH_FLAGS=${ARCH_FLAGS} -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
+    BUILD_COMMAND cmake --build .
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/kissfft-deps/src/kissfft/libkissfft-float.a
+  )
+
+  add_library(libkissfft STATIC IMPORTED GLOBAL)
+  set_target_properties(libkissfft PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/kissfft-deps/src/kissfft/libkissfft-float.a)
+  add_dependencies(libkissfft kissfft)
+
   ExternalProject_Add(snappy_a
     GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
     GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
@@ -754,6 +770,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/dsp.cpp
     ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
     ${CHAINBLOCKS_DIR}/src/extra/inputs.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image.cpp
@@ -923,6 +940,10 @@ target_link_libraries(cb_shared ${BOOST_LIBS} ${EXTRA_LIBS} ${CB_PLATFORM_LIBS} 
 add_dependencies(cb_static libwasm3)
 add_dependencies(cb_shared libwasm3)
 set(EXTRA_LIBS ${EXTRA_LIBS} libwasm3)
+
+add_dependencies(cb_static libkissfft)
+add_dependencies(cb_shared libkissfft)
+set(EXTRA_LIBS ${EXTRA_LIBS} libkissfft)
 
 if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_static cb_rust_static)
