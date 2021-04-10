@@ -1,6 +1,6 @@
 (defnode main)
 (defloop play-files
-  (Audio.File "../../external/file_example_OOG_1MG.ogg")
+  (Audio.File "../../external/file_example_OOG_1MG.ogg" :From 1.0 :To 1.023219954648526)
   (Log))
 (schedule main play-files)
 (run main)

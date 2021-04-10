@@ -34,6 +34,7 @@ struct File {
   ma_uint32 _channels{2};
   ma_uint64 _nsamples{1024};
   ma_uint32 _sampleRate{44100};
+  ma_uint64 _progress{0};
   // what to do when not looped ends? throw?
   bool _looped{false};
   ParamVar _fromSample;
@@ -64,11 +65,11 @@ struct File {
                "when it ends."),
        {CoreInfo::BoolType}},
       {"From",
-       CBCCSTR("The starting sample index."),
-       {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}},
+       CBCCSTR("The starting time in seconds."),
+       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}},
       {"To",
-       CBCCSTR("The final sample index (excluding)."),
-       {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}}};
+       CBCCSTR("The end time in seconds."),
+       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -146,6 +147,7 @@ struct File {
     }
 
     _done = false;
+    _progress = 0;
   }
 
   void cleanup() {
@@ -167,14 +169,36 @@ struct File {
           throw ActivationError("Failed to seek");
         }
         _done = false;
+        _progress = 0;
       } else {
         CB_STOP();
       }
     }
 
+    const auto from = _fromSample.get();
+    if (unlikely(from.valueType == CBType::Float && _progress == 0)) {
+      const auto sfrom =
+          ma_uint64(double(_sampleRate) * from.payload.floatValue);
+      ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, sfrom);
+      if (res != MA_SUCCESS) {
+        throw ActivationError("Failed to seek");
+      }
+    }
+
+    auto reading = _nsamples;
+    const auto to = _toSample.get();
+    if (unlikely(to.valueType == CBType::Float)) {
+      const auto sto = ma_uint64(double(_sampleRate) * from.payload.floatValue);
+      const auto until = _progress + reading;
+      if (sto < until) {
+        reading = reading - (until - sto);
+      }
+    }
+
     // read pcm data every iteration
     ma_uint64 framesRead =
-        ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), _nsamples);
+        ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading);
+    _progress += framesRead;
     if (framesRead < _nsamples) {
       // Reached the end.
       _done = true;
