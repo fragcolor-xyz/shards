@@ -3,4 +3,6 @@
   (Audio.File "../../external/file_example_OOG_1MG.ogg")
   (Log))
 (schedule main play-files)
-(run main 0.01)
+(run main)
+(schedule main play-files)
+(run main)

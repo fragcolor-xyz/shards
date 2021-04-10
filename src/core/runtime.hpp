@@ -55,6 +55,10 @@ using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
   if (_suspend_state != CBChainState::Continue)                                \
   return Var::Empty
 
+#define CB_STOP() std::rethrow_exception(chainblocks::Globals::StopChainEx);
+#define CB_RESTART()                                                           \
+  std::rethrow_exception(chainblocks::Globals::RestartChainEx);
+
 struct CBContext {
   CBContext(
 #ifndef __EMSCRIPTEN__

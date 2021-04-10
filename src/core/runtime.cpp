@@ -235,6 +235,19 @@ void registerCoreBlocks() {
 
   CBLOG_DEBUG("Registering blocks");
 
+  // precap some exceptions to avoid allocations
+  try {
+    throw StopChainException();
+  } catch (...) {
+    Globals::StopChainEx = std::current_exception();
+  }
+
+  try {
+    throw RestartChainException();
+  } catch (...) {
+    Globals::RestartChainEx = std::current_exception();
+  }
+
   // at this point we might have some auto magical static linked block already
   // keep them stored here and re-register them
   // as we assume the observers were setup in this call caller so too late for
@@ -746,6 +759,10 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
           break;
         }
       }
+    } catch (const StopChainException &ex) {
+      return CBChainState::Stop;
+    } catch (const RestartChainException &ex) {
+      return CBChainState::Restart;
     } catch (const std::exception &e) {
       CBLOG_ERROR("Block activation error, failed block: {}, error: {}",
                   blk->name(blk), e.what());
