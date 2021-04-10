@@ -24,6 +24,42 @@ int main(int argc, char *argv[]) {
 
 using namespace chainblocks;
 
+struct Writer {
+  std::vector<uint8_t> &_buffer;
+  Writer(std::vector<uint8_t> &stream) : _buffer(stream) {}
+  void operator()(const uint8_t *buf, size_t size) {
+    _buffer.insert(_buffer.end(), buf, buf + size);
+  }
+};
+
+struct Reader {
+  const CBVar &_bytesVar;
+  size_t _offset;
+  Reader(const CBVar &var) : _bytesVar(var), _offset(0) {}
+  void operator()(uint8_t *buf, size_t size) {
+    if (_bytesVar.payload.bytesSize < _offset + size) {
+      throw ActivationError("FromBytes buffer underrun");
+    }
+
+    memcpy(buf, _bytesVar.payload.bytesValue + _offset, size);
+    _offset += size;
+  }
+};
+
+#define TEST_SERIALIZATION(_source_)                                           \
+  Serialization ws;                                                            \
+  std::vector<uint8_t> buffer;                                                 \
+  Writer w{buffer};                                                            \
+  ws.serialize(_source_, w);                                                   \
+  Var serialized(buffer.data(), buffer.size());                                \
+  CBVar output{};                                                              \
+  Serialization rs;                                                            \
+  Reader r(serialized);                                                        \
+  rs.reset();                                                                  \
+  rs.deserialize(r, output);                                                   \
+  REQUIRE(_source_ == output);                                                 \
+  rs.varFree(output);
+
 TEST_CASE("CBType-type2Name", "[ops]") {
   REQUIRE_THROWS(type2Name(CBType::EndOfBlittableTypes));
   REQUIRE(type2Name(CBType::None) == "None");
@@ -136,6 +172,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     CBVar xx{};
     cloneVar(xx, x);
     destroyVar(xx);
+    TEST_SERIALIZATION(xx);
   }
 
   SECTION("Enum") {
