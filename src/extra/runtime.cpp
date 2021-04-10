@@ -44,6 +44,10 @@ namespace Audio {
 extern void registerBlocks();
 }
 
+namespace DSP {
+extern void registerBlocks();
+}
+
 #ifdef __EMSCRIPTEN__
 extern void registerEmscriptenShaderCompiler();
 #endif
@@ -61,6 +65,7 @@ void cbInitExtras() {
   gltf::registerBlocks();
   Inputs::registerBlocks();
   Audio::registerBlocks();
+  DSP::registerBlocks();
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif
