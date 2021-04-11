@@ -120,6 +120,21 @@
   (Math.Rotation) (Log) 
   ; TODO float precision-less asserts
   ;; (Sub (-> (ToString) (Assert.Is "[(0, 0, -1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)]" true)))
+  
+  (Float3 -1.0 1.0 2.0) (Math.Normalize :Positive false) (Log)
+  [-1.0 1.0 2.0] (Math.Normalize :Positive false) (Log)
+  (Float3 -1.0 1.0 2.0) (Math.Normalize :Positive true) (Log)
+  [-1.0 1.0 2.0] (Math.Normalize :Positive true) (Log)
+
+  (Float2 -1.0 1.0) (Math.Normalize :Positive false) (Log)
+  [-1.0 1.0] (Math.Normalize :Positive false) (Log)
+  (Float2 -1.0 1.0) (Math.Normalize :Positive true) (Log)
+  [-1.0 1.0] (Math.Normalize :Positive true) (Log)
+
+  (Float2 20.0 30.0) (Math.Normalize :Positive false) (Log)
+  [20.0 30.0] (Math.Normalize :Positive false) (Log)
+  (Float2 20.0 30.0) (Math.Normalize :Positive true) (Log)
+  [20.0 30.0] (Math.Normalize :Positive true) (Log)
 
   (Msg "Done!")
 ))

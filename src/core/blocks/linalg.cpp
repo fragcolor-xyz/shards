@@ -201,8 +201,41 @@ struct Length : public VectorUnaryBase {
 };
 
 struct Normalize : public VectorUnaryBase {
+  std::vector<CBVar> _output;
+  bool _positiveOnly{false};
+
+  // Normalize also supports Float seqs
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1 &&
+        data.inputType.seqTypes.elements[0].basicType == Float) {
+      OVERRIDE_ACTIVATE(data, activateFloatSeq);
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
+    }
+    return data.inputType;
+  }
+
+  static inline Parameters Params{
+      {"Positive",
+       CBCCSTR(
+           "If the output should be in the range 0.0~1.0 instead of -1.0~1.0."),
+       {CoreInfo::BoolType}}};
+
+  CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, const CBVar &value) {
+    _positiveOnly = value.payload.boolValue;
+  }
+
+  CBVar getParam(int index) { return Var(_positiveOnly); }
+
   struct Operation {
+    bool positiveOnly;
     Length::Operation lenOp;
+
     void operator()(CBVar &output, const CBVar &input) {
       CBVar len{};
       lenOp(len, input);
@@ -210,31 +243,43 @@ struct Normalize : public VectorUnaryBase {
       switch (input.valueType) {
       case Float2: {
         output.valueType = Float2;
-        if (len.payload.floatValue > 0) {
+        if (len.payload.floatValue > 0 || !positiveOnly) {
           CBFloat2 vlen = {len.payload.floatValue, len.payload.floatValue};
           output.payload.float2Value = input.payload.float2Value / vlen;
+          if (positiveOnly) {
+            output.payload.float2Value += 1.0;
+            output.payload.float2Value /= 2.0;
+          }
         } else {
           output.payload.float2Value = input.payload.float2Value;
         }
       } break;
       case Float3: {
         output.valueType = Float3;
-        if (len.payload.floatValue > 0) {
+        if (len.payload.floatValue > 0 || !positiveOnly) {
           CBFloat3 vlen = {float(len.payload.floatValue),
                            float(len.payload.floatValue),
                            float(len.payload.floatValue)};
           output.payload.float3Value = input.payload.float3Value / vlen;
+          if (positiveOnly) {
+            output.payload.float3Value += 1.0;
+            output.payload.float3Value /= 2.0;
+          }
         } else {
           output.payload.float3Value = input.payload.float3Value;
         }
       } break;
       case Float4: {
         output.valueType = Float4;
-        if (len.payload.floatValue > 0) {
+        if (len.payload.floatValue > 0 || !positiveOnly) {
           CBFloat4 vlen = {
               float(len.payload.floatValue), float(len.payload.floatValue),
               float(len.payload.floatValue), float(len.payload.floatValue)};
           output.payload.float4Value = input.payload.float4Value / vlen;
+          if (positiveOnly) {
+            output.payload.float4Value += 1.0;
+            output.payload.float4Value /= 2.0;
+          }
         } else {
           output.payload.float4Value = input.payload.float4Value;
         }
@@ -246,8 +291,36 @@ struct Normalize : public VectorUnaryBase {
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    const Operation op;
+    const Operation op{_positiveOnly};
     return doActivate(context, input, op);
+  }
+
+  CBVar activateFloatSeq(CBContext *context, const CBVar &input) {
+    const auto len = input.payload.seqValue.len;
+    _output.resize(len, CBVar{.valueType = CBType::Float});
+    float vlen = 0.0;
+    for (uint32_t i = 0; i < len; i++) {
+      const auto f = input.payload.seqValue.elements[i].payload.floatValue;
+      vlen += f * f;
+    }
+    vlen = __builtin_sqrt(vlen);
+    if (vlen > 0 || !_positiveOnly) {
+      // better branching here
+      if (!_positiveOnly) {
+        for (uint32_t i = 0; i < len; i++) {
+          const auto f = input.payload.seqValue.elements[i].payload.floatValue;
+          _output[i].payload.floatValue = f / vlen;
+        }
+      } else {
+        for (uint32_t i = 0; i < len; i++) {
+          const auto f = input.payload.seqValue.elements[i].payload.floatValue;
+          _output[i].payload.floatValue = ((f / vlen) + 1.0) / 2.0;
+        }
+      }
+      return Var(_output);
+    } else {
+      return input;
+    }
   }
 };
 
