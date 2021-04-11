@@ -7,8 +7,9 @@
 #include "../../deps/kissfft/kiss_fft.h"
 #include "../../deps/kissfft/kiss_fftr.h"
 
-// TODO optimize.. too many branches repeating.
-// Also too many copies/conversions.. optimize this if perf is required
+// TODO optimize.
+// Best would be to introduce our CBVar packing in kissfft fork
+// Just like linalg, so to use our types directly
 
 namespace chainblocks {
 namespace DSP {
@@ -138,30 +139,60 @@ struct FFT : public FFTBase {
 };
 
 struct IFFT : public FFTBase {
+  bool _asAudio{false};
+  bool _complex{false};
+
   static CBTypesInfo inputTypes() {
     return CoreInfo::Float2SeqType;
   } // complex numbers
 
   static CBTypesInfo outputTypes() { return FloatTypes; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    const auto &nextTypes = data.outputTypes;
-    if (nextTypes.len == 1) {
-      // alright we can pick the type properly
-      if (nextTypes.elements[0].basicType == CBType::Audio) {
-        OVERRIDE_ACTIVATE(data, activateAudio);
-        return CoreInfo::AudioType;
-      } else if (nextTypes.elements[0].basicType == CBType::Seq) {
-        if (nextTypes.elements[0].seqTypes.elements[0].basicType ==
-            CBType::Float) {
-          OVERRIDE_ACTIVATE(data, activateFloat);
-          return CoreInfo::FloatSeqType;
-        }
-      }
+  static inline Parameters Params{
+      {"Audio",
+       CBCCSTR("If the output should be an Audio chunk."),
+       {CoreInfo::BoolType}},
+      {"Complex",
+       CBCCSTR("If the output should be complex numbers (only if not Audio)."),
+       {CoreInfo::BoolType}}};
+
+  CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _asAudio = value.payload.boolValue;
+      break;
+    case 1:
+      _complex = value.payload.boolValue;
+      break;
+    default:
+      throw InvalidParameterIndex();
     }
-    // use generic complex
-    OVERRIDE_ACTIVATE(data, activate);
-    return CoreInfo::Float2SeqType;
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_asAudio);
+    case 1:
+      return Var(_complex);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_asAudio) {
+      OVERRIDE_ACTIVATE(data, activateAudio);
+      return CoreInfo::AudioType;
+    } else if (!_complex) {
+      OVERRIDE_ACTIVATE(data, activateFloat);
+      return CoreInfo::FloatSeqType;
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
+      return CoreInfo::Float2SeqType;
+    }
   }
 
   template <CBType OTYPE>
@@ -178,20 +209,21 @@ struct IFFT : public FFTBase {
 
       _currentWindow = len;
       _cscratch.resize(len);
-      if constexpr (OTYPE == CBType::Float2 || OTYPE == CBType::Float) {
-        _vscratch.resize(len, CBVar{.valueType = OTYPE});
+      if constexpr (OTYPE == CBType::Float) {
+        _vscratch.resize(olen, CBVar{.valueType = OTYPE});
       }
       if constexpr (OTYPE == CBType::Float2) {
         _cscratch2.resize(len);
+        _vscratch.resize(len, CBVar{.valueType = OTYPE});
       }
       if constexpr (OTYPE == CBType::Audio || OTYPE == CBType::Float) {
         _fscratch.resize(olen);
         _rstate = kiss_fftr_alloc(olen, 1, 0, 0);
+        CBLOG_TRACE("IFFT alloc window {}", olen);
       } else {
         _state = kiss_fft_alloc(len, 1, 0, 0);
+        CBLOG_TRACE("IFFT alloc window {}", len);
       }
-
-      CBLOG_TRACE("IFFT alloc window {}", len);
     }
 
     int idx = 0;

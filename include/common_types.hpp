@@ -99,6 +99,9 @@ struct CoreInfo {
 
   static inline Types FloatVectors{{Float2Type, Float2SeqType, Float3Type,
                                     Float3SeqType, Float4Type, Float4SeqType}};
+  static inline Types FloatVectorsOrFloatSeq{
+      {FloatSeqType, Float2Type, Float2SeqType, Float3Type, Float3SeqType,
+       Float4Type, Float4SeqType}};
   static inline Types FloatVectorsOrVar{FloatVectors,
                                         {Float2VarType, Float2VarSeqType,
                                          Float3VarType, Float3VarSeqType,
