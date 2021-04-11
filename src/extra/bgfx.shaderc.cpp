@@ -180,7 +180,7 @@ struct ShaderCompiler : public IShaderCompiler {
         .ToHex() Set(shader_hash_filename)
         .let("shaders/cache/") PrependTo(shader_hash_filename) //
         .Get(shader_hash_filename)
-        .Maybe( // try to load from cache
+        .MaybeSilently( // try to load from cache
             FS_Read_Bytes().Brotli_Decompress(),
             // if cache fails compile and cache
             // write temporary files

@@ -36,6 +36,8 @@
 #define Is(_value) block("Is", _value)
 #define IsNot(_value) block("IsNot", _value)
 #define Maybe(_do, _else) block("Maybe", Blocks()._do, Blocks()._else)
+#define MaybeSilently(_do, _else)                                              \
+  block("Maybe", Blocks()._do, Blocks()._else, true)
 
 #define Once(_blocks) block("Once", Blocks()._blocks)
 #define Log() block("Log")
