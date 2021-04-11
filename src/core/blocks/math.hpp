@@ -345,7 +345,9 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
+#if 0
 // Not used for now...
+
 #define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                                 \
   struct NAME##UnaryFuncD {                                                    \
     ALWAYS_INLINE double operator()(double x) { return FUNCD(x); }             \
@@ -412,8 +414,22 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
 };
 // End of not used for now
 
+#endif
+
 #define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                \
   struct NAME : public UnaryBase {                                             \
+    CBTypeInfo compose(const CBInstanceData &data) {                           \
+      if (data.inputType.basicType == CBType::Seq) {                           \
+        OVERRIDE_ACTIVATE(data, activateSeq);                                  \
+        static_cast<CBlock *>(data.block)->inlineBlockId = NotInline;          \
+      } else {                                                                 \
+        OVERRIDE_ACTIVATE(data, activateSingle);                               \
+        static_cast<CBlock *>(data.block)->inlineBlockId =                     \
+            CBInlineBlocks::Math##NAME;                                        \
+      }                                                                        \
+      return data.inputType;                                                   \
+    }                                                                          \
+                                                                               \
     ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {            \
       switch (input.valueType) {                                               \
       case Float:                                                              \
@@ -444,21 +460,26 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
       }                                                                        \
     }                                                                          \
                                                                                \
-    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      if (unlikely(input.valueType == Seq)) {                                  \
-        _result.valueType = Seq;                                               \
-        chainblocks::arrayResize(_result.payload.seqValue, 0);                 \
-        for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {            \
-          CBVar scratch;                                                       \
-          operate(scratch, input.payload.seqValue.elements[i]);                \
-          chainblocks::arrayPush(_result.payload.seqValue, scratch);           \
-        }                                                                      \
-        return _result;                                                        \
-      } else {                                                                 \
+    ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {  \
+      _result.valueType = Seq;                                                 \
+      chainblocks::arrayResize(_result.payload.seqValue, 0);                   \
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {              \
         CBVar scratch;                                                         \
-        operate(scratch, input);                                               \
-        return scratch;                                                        \
+        operate(scratch, input.payload.seqValue.elements[i]);                  \
+        chainblocks::arrayPush(_result.payload.seqValue, scratch);             \
       }                                                                        \
+      return _result;                                                          \
+    }                                                                          \
+                                                                               \
+    ALWAYS_INLINE CBVar activateSingle(CBContext *context,                     \
+                                       const CBVar &input) {                   \
+      CBVar scratch;                                                           \
+      operate(scratch, input);                                                 \
+      return scratch;                                                          \
+    }                                                                          \
+                                                                               \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
+      throw ActivationError("Invalid activation function");                    \
     }                                                                          \
   };                                                                           \
   RUNTIME_BLOCK_TYPE(Math, NAME);

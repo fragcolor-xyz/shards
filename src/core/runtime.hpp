@@ -334,125 +334,125 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   }
   case MathAbs: {
     auto cblock = reinterpret_cast<chainblocks::Math::AbsRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
 #if 0
   case MathExp: {
     auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathExp2: {
     auto cblock = reinterpret_cast<chainblocks::Math::Exp2Runtime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathExpm1: {
     auto cblock = reinterpret_cast<chainblocks::Math::Expm1Runtime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathLog: {
     auto cblock = reinterpret_cast<chainblocks::Math::LogRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathLog10: {
     auto cblock = reinterpret_cast<chainblocks::Math::Log10Runtime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathLog2: {
     auto cblock = reinterpret_cast<chainblocks::Math::Log2Runtime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathLog1p: {
     auto cblock = reinterpret_cast<chainblocks::Math::Log1pRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathSqrt: {
     auto cblock = reinterpret_cast<chainblocks::Math::SqrtRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathCbrt: {
     auto cblock = reinterpret_cast<chainblocks::Math::CbrtRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathSin: {
     auto cblock = reinterpret_cast<chainblocks::Math::SinRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathCos: {
     auto cblock = reinterpret_cast<chainblocks::Math::CosRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathTan: {
     auto cblock = reinterpret_cast<chainblocks::Math::TanRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathAsin: {
     auto cblock = reinterpret_cast<chainblocks::Math::AsinRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathAcos: {
     auto cblock = reinterpret_cast<chainblocks::Math::AcosRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathAtan: {
     auto cblock = reinterpret_cast<chainblocks::Math::AtanRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathSinh: {
     auto cblock = reinterpret_cast<chainblocks::Math::SinhRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathCosh: {
     auto cblock = reinterpret_cast<chainblocks::Math::CoshRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathTanh: {
     auto cblock = reinterpret_cast<chainblocks::Math::TanhRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathAsinh: {
     auto cblock = reinterpret_cast<chainblocks::Math::AsinhRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathAcosh: {
     auto cblock = reinterpret_cast<chainblocks::Math::AcoshRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathAtanh: {
     auto cblock = reinterpret_cast<chainblocks::Math::AtanhRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathErf: {
     auto cblock = reinterpret_cast<chainblocks::Math::ErfRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathErfc: {
     auto cblock = reinterpret_cast<chainblocks::Math::ErfcRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathTGamma: {
     auto cblock = reinterpret_cast<chainblocks::Math::TGammaRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathLGamma: {
     auto cblock = reinterpret_cast<chainblocks::Math::LGammaRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
 #endif
   case MathCeil: {
     auto cblock = reinterpret_cast<chainblocks::Math::CeilRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathFloor: {
     auto cblock = reinterpret_cast<chainblocks::Math::FloorRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathTrunc: {
     auto cblock = reinterpret_cast<chainblocks::Math::TruncRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   case MathRound: {
     auto cblock = reinterpret_cast<chainblocks::Math::RoundRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    return cblock->core.activateSingle(context, input);
   }
   default: {
     // NotInline
