@@ -269,6 +269,9 @@ struct IFFT : public FFTBase {
   }
 };
 
+#if 0
+// TODO this works but we need to add more types, specifically orthogonal ones
+// TODO also add coverage of all cases
 struct WTBase {
   template <typename MAIN, typename FVARPAYLOAD> union BigFatFloat {
     MAIN v;
@@ -515,12 +518,15 @@ struct IWT : public WTBase {
     }
   }
 };
+#endif
 
 void registerBlocks() {
   REGISTER_CBLOCK("DSP.FFT", FFT);
   REGISTER_CBLOCK("DSP.IFFT", IFFT);
+#if 0
   REGISTER_CBLOCK("DSP.Wavelet", WT);
   REGISTER_CBLOCK("DSP.InverseWavelet", IWT);
+#endif
 }
 } // namespace DSP
 } // namespace chainblocks
