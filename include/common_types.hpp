@@ -99,6 +99,9 @@ struct CoreInfo {
 
   static inline Types FloatVectors{{Float2Type, Float2SeqType, Float3Type,
                                     Float3SeqType, Float4Type, Float4SeqType}};
+  static inline Types FloatSeqs{
+      {FloatSeqType, Float2SeqType, Float3SeqType, Float4SeqType}};
+  static inline Types FloatSeqsOrAudio{FloatSeqs, {AudioType}};
   static inline Types FloatVectorsOrFloatSeq{
       {FloatSeqType, Float2Type, Float2SeqType, Float3Type, Float3SeqType,
        Float4Type, Float4SeqType}};

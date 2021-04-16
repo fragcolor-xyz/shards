@@ -269,9 +269,258 @@ struct IFFT : public FFTBase {
   }
 };
 
+struct WTBase {
+  template <typename MAIN, typename FVARPAYLOAD> union BigFatFloat {
+    MAIN v;
+    FVARPAYLOAD f;
+  };
+
+  /**
+   *  fwt97 - Forward biorthogonal 9/7 wavelet transform (lifting
+   * implementation)
+   *
+   *  x is an input signal, which will be replaced by its output transform.
+   *  n is the length of the signal, and must be a power of 2.
+   *
+   *  The first half part of the output signal contains the approximation
+   * coefficients. The second half part contains the detail coefficients (aka.
+   * the wavelets coefficients).
+   *
+   *  See also iwt97.
+   */
+  template <typename MAIN, typename FVARPAYLOAD>
+  void fwt97(BigFatFloat<MAIN, FVARPAYLOAD> *x, int n) {
+    static thread_local std::vector<BigFatFloat<MAIN, FVARPAYLOAD>> tempbank;
+    tempbank.resize(n, {.f = FVARPAYLOAD(0.0)});
+
+    BigFatFloat<MAIN, FVARPAYLOAD> a{.f = FVARPAYLOAD(0.0)};
+    int i;
+
+    // Predict 1
+    a.f = -1.586134342;
+    for (i = 1; i < n - 2; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[n - 1].f += FVARPAYLOAD(2.0) * a.f * x[n - 2].f;
+
+    // Update 1
+    a.f = -0.05298011854;
+    for (i = 2; i < n; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[0].f += FVARPAYLOAD(2.0) * a.f * x[1].f;
+
+    // Predict 2
+    a.f = 0.8829110762;
+    for (i = 1; i < n - 2; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[n - 1].f += FVARPAYLOAD(2.0) * a.f * x[n - 2].f;
+
+    // Update 2
+    a.f = 0.4435068522;
+    for (i = 2; i < n; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[0].f += FVARPAYLOAD(2.0) * a.f * x[1].f;
+
+    // Scale
+    a.f = 1 / 1.149604398;
+    for (i = 0; i < n; i++) {
+      if (i % 2)
+        x[i].f *= a.f;
+      else
+        x[i].f /= a.f;
+    }
+
+    for (i = 0; i < n; i++) {
+      if (i % 2 == 0)
+        tempbank[i / 2] = x[i];
+      else
+        tempbank[n / 2 + i / 2] = x[i];
+    }
+    for (i = 0; i < n; i++)
+      x[i].f = tempbank[i].f;
+  }
+
+  /**
+   *  iwt97 - Inverse biorthogonal 9/7 wavelet transform
+   *
+   *  This is the inverse of fwt97 so that iwt97(fwt97(x,n),n)=x for every
+   * signal x of length n.
+   *
+   *  See also fwt97.
+   */
+  template <typename MAIN, typename FVARPAYLOAD>
+  void iwt97(BigFatFloat<MAIN, FVARPAYLOAD> *x, int n) {
+    static thread_local std::vector<BigFatFloat<MAIN, FVARPAYLOAD>> tempbank;
+    tempbank.resize(n, {.f = FVARPAYLOAD(0.0)});
+
+    BigFatFloat<MAIN, FVARPAYLOAD> a{.f = FVARPAYLOAD(0.0)};
+    int i;
+
+    // Unpack
+    for (i = 0; i < n / 2; i++) {
+      tempbank[i * 2] = x[i];
+      tempbank[i * 2 + 1] = x[i + n / 2];
+    }
+    for (i = 0; i < n; i++)
+      x[i].f = tempbank[i].f;
+
+    // Undo scale
+    a.f = 1.149604398;
+    for (i = 0; i < n; i++) {
+      if (i % 2)
+        x[i].f *= a.f;
+      else
+        x[i].f /= a.f;
+    }
+
+    // Undo update 2
+    a.f = -0.4435068522;
+    for (i = 2; i < n; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[0].f += FVARPAYLOAD(2.0) * a.f * x[1].f;
+
+    // Undo predict 2
+    a.f = -0.8829110762;
+    for (i = 1; i < n - 2; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[n - 1].f += FVARPAYLOAD(2.0) * a.f * x[n - 2].f;
+
+    // Undo update 1
+    a.f = 0.05298011854;
+    for (i = 2; i < n; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[0].f += FVARPAYLOAD(2.0) * a.f * x[1].f;
+
+    // Undo predict 1
+    a.f = 1.586134342;
+    for (i = 1; i < n - 2; i += 2) {
+      x[i].f += a.f * (x[i - 1].f + x[i + 1].f);
+    }
+    x[n - 1].f += FVARPAYLOAD(2.0) * a.f * x[n - 2].f;
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqsOrAudio; }
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatSeqsOrAudio; }
+
+  CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
+};
+
+struct WT : public WTBase {
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Computes in-place (so replacing the input values, keep a copy if "
+        "needed) the biorthogonal 9/7 wavelet transform of the input sequence. "
+        "Outputs the same sequence where the first half part of the output "
+        "signal contains the approximation coefficients. The second half part "
+        "contains the detail coefficients (aka. the wavelets coefficients).");
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.valueType == CBType::Audio) {
+      fwt97(reinterpret_cast<BigFatFloat<float, float> *>(
+                &input.payload.audioValue.samples[0]),
+            input.payload.audioValue.nsamples);
+      return input;
+    } else {
+      if (input.payload.seqValue.len == 0)
+        return input;
+
+      if (input.payload.seqValue.len % 2) {
+        throw ActivationError("Input sequence must be dividible by two.");
+      }
+
+      switch (input.payload.seqValue.elements[0].valueType) {
+      case CBType::Float:
+        fwt97(reinterpret_cast<BigFatFloat<CBVar, FloatVarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      case CBType::Float2:
+        fwt97(reinterpret_cast<BigFatFloat<CBVar, Float2VarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      case CBType::Float3:
+        fwt97(reinterpret_cast<BigFatFloat<CBVar, Float3VarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      case CBType::Float4:
+        fwt97(reinterpret_cast<BigFatFloat<CBVar, Float4VarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      default:
+        throw ActivationError("Invalid input type");
+      }
+    }
+  }
+};
+
+struct IWT : public WTBase {
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Computes in-place (so replacing the input values, keep a copy if "
+        "needed) the inverse biorthogonal 9/7 wavelet transform of the "
+        "input sequence. Outputs the same sequence where the first half "
+        "part of the output signal contains the approximation "
+        "coefficients. The second half part contains the detail "
+        "coefficients (aka. the wavelets coefficients).");
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.valueType == CBType::Audio) {
+      iwt97(reinterpret_cast<BigFatFloat<float, float> *>(
+                &input.payload.audioValue.samples[0]),
+            input.payload.audioValue.nsamples);
+      return input;
+    } else {
+      if (input.payload.seqValue.len == 0)
+        return input;
+
+      if (input.payload.seqValue.len % 2) {
+        throw ActivationError("Input sequence must be dividible by two.");
+      }
+
+      switch (input.payload.seqValue.elements[0].valueType) {
+      case CBType::Float:
+        iwt97(reinterpret_cast<BigFatFloat<CBVar, FloatVarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      case CBType::Float2:
+        iwt97(reinterpret_cast<BigFatFloat<CBVar, Float2VarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      case CBType::Float3:
+        iwt97(reinterpret_cast<BigFatFloat<CBVar, Float3VarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      case CBType::Float4:
+        iwt97(reinterpret_cast<BigFatFloat<CBVar, Float4VarPayload> *>(
+                  &input.payload.seqValue.elements[0]),
+              input.payload.seqValue.len);
+        return input;
+      default:
+        throw ActivationError("Invalid input type");
+      }
+    }
+  }
+};
+
 void registerBlocks() {
   REGISTER_CBLOCK("DSP.FFT", FFT);
   REGISTER_CBLOCK("DSP.IFFT", IFFT);
+  REGISTER_CBLOCK("DSP.Wavelet", WT);
+  REGISTER_CBLOCK("DSP.InverseWavelet", IWT);
 }
 } // namespace DSP
 } // namespace chainblocks

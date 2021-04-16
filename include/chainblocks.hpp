@@ -264,18 +264,27 @@ struct Parameters {
 #define CB_PAYLOAD_CTORS0(CBPAYLOAD_TYPE, __inner_type__, __item__)            \
   constexpr static size_t Width{1};                                            \
   CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
-  CBPAYLOAD_TYPE(std::initializer_list<__inner_type__> l) : CBVarPayload() {   \
-    const __inner_type__ *p = l.begin();                                       \
-    this->__item__ = p[0];                                                     \
+  template <typename NUMBER> CBPAYLOAD_TYPE(NUMBER n) : CBVarPayload() {       \
+    this->__item__ = __inner_type__(n);                                        \
+  }                                                                            \
+  template <typename NUMBER>                                                   \
+  CBPAYLOAD_TYPE(std::initializer_list<NUMBER> l) : CBVarPayload() {           \
+    const NUMBER *p = l.begin();                                               \
+    this->__item__ = __inner_type__(p[0]);                                     \
   }
 
 #define CB_PAYLOAD_CTORS1(CBPAYLOAD_TYPE, __inner_type__, __item__, _width_)   \
   constexpr static size_t Width{_width_};                                      \
   CBPAYLOAD_TYPE() : CBVarPayload() {}                                         \
-  CBPAYLOAD_TYPE(std::initializer_list<__inner_type__> l) : CBVarPayload() {   \
-    const __inner_type__ *p = l.begin();                                       \
+  template <typename NUMBER> CBPAYLOAD_TYPE(NUMBER n) : CBVarPayload() {       \
+    for (size_t i = 0; i < _width_; ++i)                                       \
+      this->__item__[i] = __inner_type__(n);                                   \
+  }                                                                            \
+  template <typename NUMBER>                                                   \
+  CBPAYLOAD_TYPE(std::initializer_list<NUMBER> l) : CBVarPayload() {           \
+    const NUMBER *p = l.begin();                                               \
     for (size_t i = 0; i < l.size(); ++i) {                                    \
-      this->__item__[i] = p[i];                                                \
+      this->__item__[i] = __inner_type__(p[i]);                                \
     }                                                                          \
   }
 
@@ -303,6 +312,22 @@ struct Parameters {
     CBPAYLOAD_TYPE res;                                                        \
     res.__item__ = __item__ / b.__item__;                                      \
     return res;                                                                \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE &operator+=(const CBPAYLOAD_TYPE &b) {   \
+    __item__ += b.__item__;                                                    \
+    return *this;                                                              \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE &operator-=(const CBPAYLOAD_TYPE &b) {   \
+    __item__ -= b.__item__;                                                    \
+    return *this;                                                              \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE &operator*=(const CBPAYLOAD_TYPE &b) {   \
+    __item__ *= b.__item__;                                                    \
+    return *this;                                                              \
+  }                                                                            \
+  ALWAYS_INLINE inline CBPAYLOAD_TYPE &operator/=(const CBPAYLOAD_TYPE &b) {   \
+    __item__ /= b.__item__;                                                    \
+    return *this;                                                              \
   }
 
 #define CB_PAYLOAD_MATH_OPS_INT(CBPAYLOAD_TYPE, __item__)                      \
@@ -373,30 +398,6 @@ struct Parameters {
   }
 
 #define CB_PAYLOAD_MATH_OPS_SIMPLE(CBPAYLOAD_TYPE, __item__)                   \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(int32_t i) {                             \
-    using t = decltype(__item__);                                              \
-    __item__ = t(i);                                                           \
-  }                                                                            \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(int64_t i) {                             \
-    using t = decltype(__item__);                                              \
-    __item__ = t(i);                                                           \
-  }                                                                            \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(uint32_t i) {                            \
-    using t = decltype(__item__);                                              \
-    __item__ = t(i);                                                           \
-  }                                                                            \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(uint64_t i) {                            \
-    using t = decltype(__item__);                                              \
-    __item__ = t(i);                                                           \
-  }                                                                            \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(float f) {                               \
-    using t = decltype(__item__);                                              \
-    __item__ = t(f);                                                           \
-  }                                                                            \
-  ALWAYS_INLINE inline CBPAYLOAD_TYPE(double f) {                              \
-    using t = decltype(__item__);                                              \
-    __item__ = t(f);                                                           \
-  }                                                                            \
   ALWAYS_INLINE inline bool operator<=(const CBPAYLOAD_TYPE &b) const {        \
     return __item__ <= b.__item__;                                             \
   }                                                                            \

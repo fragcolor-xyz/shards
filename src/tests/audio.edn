@@ -13,12 +13,21 @@
   (Audio.ReadFile "../../external/file_example_OOG_1MG.ogg" :Channels 1 :From 5.0 :To 6.0)
   (DSP.FFT) = .freq-domain
   (DSP.IFFT :Audio true)
-  (Audio.WriteFile "example.wav" :Channels 1)
+  (Audio.WriteFile "example-fft.wav" :Channels 1)
   .freq-domain (DSP.IFFT :Complex true) (DSP.FFT) ; FOR COVERAGE
-  .freq-domain (DSP.IFFT :Complex false) 
+  .freq-domain (DSP.IFFT :Complex false)
   (Math.Normalize :Positive true)
-  (FloatsToImage 32 32 1) (WritePNG "example.wav.png")
+  (FloatsToImage 32 32 1) (WritePNG "example.wav.png") ; again, just for coverage
   (Log))
 
 (schedule main play-file-fft)
+(run main)
+
+(defloop play-file-dwt
+  (Audio.ReadFile "../../external/file_example_OOG_1MG.ogg" :Channels 1 :From 5.0 :To 6.0)
+  (DSP.Wavelet)
+  (DSP.InverseWavelet)
+  (Audio.WriteFile "example-dwt.wav" :Channels 1))
+
+(schedule main play-file-dwt)
 (run main)
