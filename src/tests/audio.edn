@@ -1,6 +1,7 @@
 (defnode main)
 
 (defloop play-files
+  (Audio.Device) ; just for testing
   (Audio.ReadFile "../../external/file_example_OOG_1MG.ogg" :From 1.0 :To 1.023219954648526)
   (Log))
 
@@ -31,3 +32,17 @@
 
 ;; (schedule main play-file-dwt)
 ;; (run main)
+
+;; WIP
+;; (defloop sine-rt
+;;   440.0 = .hz
+;;   (Audio.Channel
+;;    :Inputs 0 :Outputs 1
+;;    :Contents
+;;    (->
+;;     ; this runs at a different pace then the parent loop
+;;     ; specifically runs in the audio real time thread
+;;     ; pauses are not allowed in fact
+;;     ; shared variables are syncronized behind the scene
+;;     ; in fact they are copies
+;;     .hz (Audio.SineWave))))

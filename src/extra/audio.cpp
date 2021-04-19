@@ -7,6 +7,10 @@
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
 
+#ifdef __APPLE__
+#define MA_NO_RUNTIME_LINKING
+#endif
+
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
@@ -26,6 +30,63 @@ references to the same chain would be possible and they would just produce
 another iteration
 
 */
+
+struct Device {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  ma_device _device;
+  bool _open{false};
+  bool _started{false};
+
+  static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
+                          ma_uint32 frameCount) {}
+
+  void warmup(CBContext *context) {
+    ma_device_config deviceConfig{};
+    deviceConfig = ma_device_config_init(ma_device_type_playback);
+    deviceConfig.playback.format = ma_format_f32;
+    deviceConfig.playback.channels = 2;
+    deviceConfig.sampleRate = 48000;
+    deviceConfig.periodSizeInFrames = 1024;
+    deviceConfig.periods = 1;
+    deviceConfig.performanceProfile = ma_performance_profile_low_latency;
+    deviceConfig.dataCallback = pcmCallback;
+    deviceConfig.pUserData = this;
+
+    if (ma_device_init(NULL, &deviceConfig, &_device) != MA_SUCCESS) {
+      throw WarmupError("Failed to open default audio device");
+    }
+
+    _open = true;
+  }
+
+  void cleanup() {
+    if (_open) {
+      ma_device_uninit(&_device);
+    }
+
+    _open = false;
+    _started = false;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_started) {
+      if (ma_device_start(&_device) != MA_SUCCESS) {
+        throw ActivationError("Failed to start audio device");
+      }
+      _started = true;
+    }
+    return input;
+  }
+};
+
+struct Channel {
+  // Must be able to handle device inputs, being an instrument, Aux, busses
+  // re-route and send
+};
+
+struct SineWave {};
 
 struct ReadFile {
   ma_decoder _decoder;
@@ -311,6 +372,7 @@ struct WriteFile {
 };
 
 void registerBlocks() {
+  REGISTER_CBLOCK("Audio.Device", Device);
   REGISTER_CBLOCK("Audio.ReadFile", ReadFile);
   REGISTER_CBLOCK("Audio.WriteFile", WriteFile);
 }
