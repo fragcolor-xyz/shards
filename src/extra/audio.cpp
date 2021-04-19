@@ -32,6 +32,8 @@ another iteration
 */
 
 struct Device {
+  // TODO add blocks used as insert for the final mix
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
