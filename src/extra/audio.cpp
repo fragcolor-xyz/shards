@@ -4,7 +4,7 @@
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 
-#define BUILD_PARETO_WITH_PMR
+// #define BUILD_PARETO_WITH_PMR
 #include <pareto/front.h>
 
 #define STB_VORBIS_HEADER_ONLY
