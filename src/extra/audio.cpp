@@ -4,6 +4,9 @@
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 
+#define BUILD_PARETO_WITH_PMR
+#include <pareto/front.h>
+
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
 
@@ -31,7 +34,16 @@ another iteration
 
 */
 
+struct ChannelData {
+  uint64_t inputSignature; // has of input channel name + channels requested
+};
+
 struct Device {
+  static constexpr uint32_t DeviceCC = 'sndd';
+
+  static inline Type ObjType{
+      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = DeviceCC}}}};
+
   // TODO add blocks used as insert for the final mix
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -41,8 +53,21 @@ struct Device {
   bool _open{false};
   bool _started{false};
 
+  // (bus, channels hash)
+  mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
+
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
-                          ma_uint32 frameCount) {}
+                          ma_uint32 frameCount) {
+    auto device = reinterpret_cast<Device *>(pDevice->pUserData);
+    // depth-first search O(1)
+    // ensures lowest latency from ADC to DAC
+    for (auto &[nbus, channels] : device->channels) {
+      // build the buffer with whatever we need as input
+      // run activations of all channels that need such input
+      for (auto channel : channels) {
+      }
+    }
+  }
 
   void warmup(CBContext *context) {
     ma_device_config deviceConfig{};
@@ -70,6 +95,7 @@ struct Device {
 
     _open = false;
     _started = false;
+    channels.clear();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -84,6 +110,24 @@ struct Device {
 };
 
 struct Channel {
+  ChannelData _data{};
+  CBVar *_device{nullptr};
+
+  void warmup(CBContext *context) {
+    _device = referenceVariable(context, "Audio.Device");
+    const auto *d = reinterpret_cast<Device *>(_device->payload.objectValue);
+    const auto channelsHash = 0; // todo
+    d->channels(0, channelsHash).emplace_back(&_data);
+  }
+
+  void cleanup() {
+    if (_device) {
+      releaseVariable(_device);
+      _device = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {}
   // Must be able to handle device inputs, being an instrument, Aux, busses
   // re-route and send
 };

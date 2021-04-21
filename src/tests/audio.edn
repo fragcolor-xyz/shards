@@ -35,9 +35,11 @@
 
 ;; WIP
 ;; (defloop sine-rt
+;;   (Audio.Device)
 ;;   440.0 = .hz
 ;;   (Audio.Channel
-;;    :Inputs 0 :Outputs 1
+;;    :Outputs {"output" [0 1]} ; output is main output channels mix
+;;    :Volume 0.5
 ;;    :Contents
 ;;    (->
 ;;     ; this runs at a different pace then the parent loop

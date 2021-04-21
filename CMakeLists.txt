@@ -458,6 +458,7 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/wasm3/source
   ${CHAINBLOCKS_DIR}/deps/xxhash
   ${CHAINBLOCKS_DIR}/deps/linalg
+  ${CHAINBLOCKS_DIR}/deps/pareto/source
   )
 
 # wasm3
