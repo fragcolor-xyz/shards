@@ -38,7 +38,8 @@
 ;;   (Audio.Device)
 ;;   440.0 = .hz
 ;;   (Audio.Channel
-;;    :Outputs {"output" [0 1]} ; output is main output channels mix
+;;    ; no inputs
+;;    :Outputs [0 1] ; L R of bus 0 (default)
 ;;    :Volume 0.5
 ;;    :Contents
 ;;    (->

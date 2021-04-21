@@ -35,7 +35,7 @@ another iteration
 */
 
 struct ChannelData {
-  uint64_t inputSignature; // has of input channel name + channels requested
+  float *outputBuffer;
 };
 
 struct Device {
@@ -55,10 +55,18 @@ struct Device {
 
   // (bus, channels hash)
   mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
+  mutable pareto::spatial_map<uint64_t, 2, std::vector<float>> outputBuffers;
+  ma_uint32 bufferSize{1024};
 
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
                           ma_uint32 frameCount) {
     auto device = reinterpret_cast<Device *>(pDevice->pUserData);
+
+    // clear all output buffers as from now we will += to them
+    for (auto &[_, buffer] : device->outputBuffers) {
+      memset(buffer.data(), 0x0, buffer.size() * sizeof(float));
+    }
+
     // depth-first search O(1)
     // ensures lowest latency from ADC to DAC
     for (auto &[nbus, channels] : device->channels) {
@@ -75,7 +83,7 @@ struct Device {
     deviceConfig.playback.format = ma_format_f32;
     deviceConfig.playback.channels = 2;
     deviceConfig.sampleRate = 48000;
-    deviceConfig.periodSizeInFrames = 1024;
+    deviceConfig.periodSizeInFrames = bufferSize;
     deviceConfig.periods = 1;
     deviceConfig.performanceProfile = ma_performance_profile_low_latency;
     deviceConfig.dataCallback = pcmCallback;
@@ -112,12 +120,48 @@ struct Device {
 struct Channel {
   ChannelData _data{};
   CBVar *_device{nullptr};
+  uint64_t _inBusNumber;
+  OwnedVar _inChannels;
+  uint64_t _outBusNumber;
+  OwnedVar _outChannels;
 
   void warmup(CBContext *context) {
     _device = referenceVariable(context, "Audio.Device");
     const auto *d = reinterpret_cast<Device *>(_device->payload.objectValue);
-    const auto channelsHash = 0; // todo
-    d->channels(0, channelsHash).emplace_back(&_data);
+    {
+      XXH3_state_s hashState;
+      XXH3_INITSTATE(&hashState);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(_inBusNumber));
+      if (_inChannels.valueType == CBType::Seq) {
+        for (auto &channel : _inChannels) {
+          XXH3_64bits_update(&hashState, &channel.payload.intValue,
+                             sizeof(CBInt));
+        }
+      }
+      const auto channelsHash = XXH3_64bits_digest(&hashState);
+      d->channels(_inBusNumber, channelsHash).emplace_back(&_data);
+    }
+    {
+      XXH3_state_s hashState;
+      XXH3_INITSTATE(&hashState);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(_outBusNumber));
+      uint32_t nchannels = 0;
+      if (_outChannels.valueType == CBType::Seq) {
+        nchannels = _outChannels.payload.seqValue.len;
+        for (auto &channel : _outChannels) {
+          XXH3_64bits_update(&hashState, &channel.payload.intValue,
+                             sizeof(CBInt));
+        }
+      }
+      const auto channelsHash = XXH3_64bits_digest(&hashState);
+      d->outputBuffers(_outBusNumber, channelsHash)
+          .resize(d->bufferSize * nchannels);
+      _data.outputBuffer = d->outputBuffers(_outBusNumber, channelsHash).data();
+    }
   }
 
   void cleanup() {
@@ -127,7 +171,7 @@ struct Channel {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {}
+  CBVar activate(CBContext *context, const CBVar &input) { return input; }
   // Must be able to handle device inputs, being an instrument, Aux, busses
   // re-route and send
 };
