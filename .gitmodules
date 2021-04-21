@@ -76,3 +76,6 @@
 [submodule "deps/kissfft"]
 	path = deps/kissfft
 	url = https://github.com/chainblocks/kissfft.git
+[submodule "deps/pareto"]
+	path = deps/pareto
+	url = https://github.com/chainblocks/pareto.git
