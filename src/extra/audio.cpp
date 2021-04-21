@@ -56,7 +56,10 @@ struct Device {
   // (bus, channels hash)
   mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
   mutable pareto::spatial_map<uint64_t, 2, std::vector<float>> outputBuffers;
+  mutable std::unordered_map<uint64_t, uint32_t> nInputChannels;
   ma_uint32 bufferSize{1024};
+  std::vector<float> inputScratch;
+  uint64_t inputHash;
 
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
                           ma_uint32 frameCount) {
@@ -71,6 +74,27 @@ struct Device {
     // ensures lowest latency from ADC to DAC
     for (auto &[nbus, channels] : device->channels) {
       // build the buffer with whatever we need as input
+      const auto nchannels = device->nInputChannels[nbus[1]];
+
+      // TODO, review, this one occasionally allocates mem
+      device->inputScratch.resize(device->bufferSize * nchannels);
+
+      if (nbus[0] == 0 && nbus[1] == device->inputHash) {
+        // this is the full device input, just copy it
+        memcpy(device->inputScratch.data(), pInput,
+               sizeof(float) * nchannels * frameCount);
+      } else {
+        // TODO, review, this one occasionally allocates mem
+        const auto inputBuffer = device->outputBuffers[nbus];
+        if (inputBuffer.size() != 0) {
+          std::copy(inputBuffer.begin(), inputBuffer.end(),
+                    device->inputScratch.begin());
+        } else {
+          memset(device->inputScratch.data(), 0x0,
+                 device->inputScratch.size() * sizeof(float));
+        }
+      }
+
       // run activations of all channels that need such input
       for (auto channel : channels) {
       }
@@ -82,6 +106,8 @@ struct Device {
     deviceConfig = ma_device_config_init(ma_device_type_playback);
     deviceConfig.playback.format = ma_format_f32;
     deviceConfig.playback.channels = 2;
+    deviceConfig.capture.format = ma_format_f32;
+    deviceConfig.capture.channels = 2;
     deviceConfig.sampleRate = 48000;
     deviceConfig.periodSizeInFrames = bufferSize;
     deviceConfig.periods = 1;
@@ -92,6 +118,18 @@ struct Device {
     if (ma_device_init(NULL, &deviceConfig, &_device) != MA_SUCCESS) {
       throw WarmupError("Failed to open default audio device");
     }
+
+    uint64_t inChannels = uint64_t(deviceConfig.capture.channels);
+    XXH3_state_s hashState;
+    XXH3_INITSTATE(&hashState);
+    XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                 XXH_SECRET_DEFAULT_SIZE);
+    XXH3_64bits_update(&hashState, &inChannels, sizeof(uint64_t));
+    for (CBInt i = 0; i < CBInt(inChannels); i++) {
+      XXH3_64bits_update(&hashState, &i, sizeof(CBInt));
+    }
+
+    inputHash = XXH3_64bits_digest(&hashState);
 
     _open = true;
   }
@@ -133,14 +171,17 @@ struct Channel {
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                    XXH_SECRET_DEFAULT_SIZE);
-      XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(_inBusNumber));
+      XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(uint64_t));
+      uint32_t nchannels = 0;
       if (_inChannels.valueType == CBType::Seq) {
+        nchannels = _inChannels.payload.seqValue.len;
         for (auto &channel : _inChannels) {
           XXH3_64bits_update(&hashState, &channel.payload.intValue,
                              sizeof(CBInt));
         }
       }
       const auto channelsHash = XXH3_64bits_digest(&hashState);
+      d->nInputChannels[channelsHash] = nchannels;
       d->channels(_inBusNumber, channelsHash).emplace_back(&_data);
     }
     {
@@ -148,7 +189,7 @@ struct Channel {
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                    XXH_SECRET_DEFAULT_SIZE);
-      XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(_outBusNumber));
+      XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(uint64_t));
       uint32_t nchannels = 0;
       if (_outChannels.valueType == CBType::Seq) {
         nchannels = _outChannels.payload.seqValue.len;
