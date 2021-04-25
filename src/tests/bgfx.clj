@@ -173,6 +173,7 @@
                            nil (-> "No Box")]
                           :Passthrough false) (GUI.Text)
 
+                   (Window.Size) (GUI.Text)
                    "Hello world"   (GUI.Text)
                    "Hello world 2" (GUI.Text)
                    "Hello world 3" (GUI.SameLine) (GUI.Text)

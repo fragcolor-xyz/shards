@@ -139,6 +139,50 @@ struct MousePos : public Base {
   }
 };
 
+struct WindowSize : public Base {
+  CBVar *_sdlWinVar{nullptr};
+  Uint32 _windowId{0};
+  int _width;
+  int _height;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    // sdlEvents is not thread safe
+    Base::compose(data);
+    return CoreInfo::Int2Type;
+  }
+
+  void warmup(CBContext *context) {
+    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
+    const auto window =
+        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    _windowId = SDL_GetWindowID(window);
+    SDL_GetWindowSize(window, &_width, &_height);
+  }
+
+  void cleanup() {
+    if (_sdlWinVar) {
+      releaseVariable(_sdlWinVar);
+      _sdlWinVar = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    for (const auto &event : BGFX::Context::sdlEvents) {
+      if (event.type == SDL_WINDOWEVENT &&
+          event.window.event == SDL_WINDOWEVENT_RESIZED &&
+          event.window.windowID == _windowId) {
+        const auto window =
+            reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+        SDL_GetWindowSize(window, &_width, &_height);
+      }
+    }
+    return Var(_width, _height);
+  }
+};
+
 struct Mouse : public Base {
   ParamVar _hidden{Var(false)};
   bool _isHidden{false};
@@ -363,6 +407,7 @@ using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
 using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
 
 void registerBlocks() {
+  REGISTER_CBLOCK("Window.Size", WindowSize);
   REGISTER_CBLOCK("Inputs.MousePixelPos", MousePixelPos);
   REGISTER_CBLOCK("Inputs.MousePos", MousePos);
   REGISTER_CBLOCK("Inputs.MouseDelta", MouseDelta);
