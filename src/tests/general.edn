@@ -980,6 +980,11 @@
    (Replace ["y" "x"] "a")
    (Assert.Is "a was a a." true)
 
+   (Float2 10 20) >> .m
+   (Math.Multiply (Float2 -1 -1))
+   (| (Take 0) >= .d (Assert.Is -10.0 true))
+   (| (Take 1) >= .c (Assert.Is -20.0 true))
+
    [1 2 3 4 5]
    (Replace [4 3 2 1] [5 4 3 2])
    (Assert.Is [2 3 4 5 5] true)

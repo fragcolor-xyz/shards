@@ -36,6 +36,8 @@ another iteration
 
 struct ChannelData {
   float *outputBuffer;
+  std::vector<uint32_t> inChannels;
+  std::vector<uint32_t> outChannels;
 };
 
 struct Device {
@@ -56,7 +58,6 @@ struct Device {
   // (bus, channels hash)
   mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
   mutable pareto::spatial_map<uint64_t, 2, std::vector<float>> outputBuffers;
-  mutable std::unordered_map<uint64_t, uint32_t> nInputChannels;
   ma_uint32 bufferSize{1024};
   std::vector<float> inputScratch;
   uint64_t inputHash;
@@ -73,16 +74,30 @@ struct Device {
     // depth-first search O(1)
     // ensures lowest latency from ADC to DAC
     for (auto &[nbus, channels] : device->channels) {
+      if (channels.size() == 0)
+        continue;
+
       // build the buffer with whatever we need as input
-      const auto nchannels = device->nInputChannels[nbus[1]];
+      const auto nchannels = channels[0]->inChannels.size();
 
       // TODO, review, this one occasionally allocates mem
       device->inputScratch.resize(device->bufferSize * nchannels);
 
-      if (nbus[0] == 0 && nbus[1] == device->inputHash) {
-        // this is the full device input, just copy it
-        memcpy(device->inputScratch.data(), pInput,
-               sizeof(float) * nchannels * frameCount);
+      if (nbus[0] == 0) {
+        if (nbus[1] == device->inputHash) {
+          // this is the full device input, just copy it
+          memcpy(device->inputScratch.data(), pInput,
+                 sizeof(float) * nchannels * frameCount);
+        } else {
+          auto *finput = reinterpret_cast<const float *>(pInput);
+          // need to properly compose the input
+          for (uint32_t c = 0; c < nchannels; c++) {
+            for (ma_uint32 i = 0; i < frameCount; i++) {
+              device->inputScratch[(i * nchannels) + c] =
+                  finput[(i * nchannels) + channels[0]->inChannels[c]];
+            }
+          }
+        }
       } else {
         // TODO, review, this one occasionally allocates mem
         const auto inputBuffer = device->outputBuffers[nbus];
@@ -178,10 +193,10 @@ struct Channel {
         for (auto &channel : _inChannels) {
           XXH3_64bits_update(&hashState, &channel.payload.intValue,
                              sizeof(CBInt));
+          _data.inChannels.emplace_back(channel.payload.intValue);
         }
       }
       const auto channelsHash = XXH3_64bits_digest(&hashState);
-      d->nInputChannels[channelsHash] = nchannels;
       d->channels(_inBusNumber, channelsHash).emplace_back(&_data);
     }
     {
@@ -196,6 +211,7 @@ struct Channel {
         for (auto &channel : _outChannels) {
           XXH3_64bits_update(&hashState, &channel.payload.intValue,
                              sizeof(CBInt));
+          _data.outChannels.emplace_back(channel.payload.intValue);
         }
       }
       const auto channelsHash = XXH3_64bits_digest(&hashState);

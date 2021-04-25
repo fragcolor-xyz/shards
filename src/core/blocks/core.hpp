@@ -2672,7 +2672,7 @@ struct Take {
         throw OutOfRangeEx(inputLen, index);
       }
 
-      switch (_vectorInputLen) {
+      switch (input.valueType) {
       case Float2:
         return Var(input.payload.float2Value[index]);
       case Float3:
