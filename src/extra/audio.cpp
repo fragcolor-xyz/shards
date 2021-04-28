@@ -66,6 +66,7 @@ struct Device {
   ma_uint32 sampleRate{44100};
   std::vector<float> inputScratch;
   uint64_t inputHash;
+  uint64_t outputHash;
   CBFlow dpsFlow{};
   CBCoro dspStubCoro{};
   std::shared_ptr<CBChain> dspChain = CBChain::make("Audio-DSP-Chain");
@@ -75,6 +76,8 @@ struct Device {
   CBContext dspContext{&dspStubCoro, dspChain.get(), &dpsFlow};
 #endif
   bool stopped{false};
+  std::atomic_bool hasErrors{false};
+  std::string errorMessage;
 
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
                           ma_uint32 frameCount) {
@@ -134,17 +137,38 @@ struct Device {
                             uint16_t(nchannels),          //
                             device->inputScratch.data()};
         Var inputVar(inputPacket);
-        CBVar output{};
 
         // run activations of all channels that need such input
         for (auto channel : channels) {
+          CBVar output{};
+          device->dspChain->currentInput = inputVar;
           if (channel->blocks.activate(&device->dspContext, inputVar, output,
                                        false) == CBChainState::Stop) {
             device->stopped = true;
             return;
           }
+          if (output.valueType == CBType::Audio) {
+            if (output.payload.audioValue.nsamples != device->bufferSize) {
+              device->errorMessage = "Invalid output audio buffer size";
+              device->stopped = true;
+              // this atomic will be read at the next iteration
+              device->hasErrors = true;
+              return;
+            }
+            auto &a = output.payload.audioValue;
+            for (uint32_t i = 0; i < a.channels * a.nsamples; i++) {
+              channel->outputBuffer[i] +=
+                  a.samples[i] * channel->volume.get().payload.floatValue;
+            }
+          }
         }
       }
+    }
+
+    // finally bake the device buffer
+    auto &output = device->outputBuffers[0][device->outputHash];
+    if (output.size() > 0) {
+      memcpy(pOutput, output.data(), output.size() * sizeof(float));
     }
   }
 
@@ -156,7 +180,7 @@ struct Device {
     _deviceVar->payload.objectValue = this;
 
     ma_device_config deviceConfig{};
-    deviceConfig = ma_device_config_init(ma_device_type_playback);
+    deviceConfig = ma_device_config_init(ma_device_type_duplex);
     deviceConfig.playback.format = ma_format_f32;
     deviceConfig.playback.channels = 2;
     deviceConfig.capture.format = ma_format_f32;
@@ -172,17 +196,35 @@ struct Device {
       throw WarmupError("Failed to open default audio device");
     }
 
-    uint64_t inChannels = uint64_t(deviceConfig.capture.channels);
-    XXH3_state_s hashState;
-    XXH3_INITSTATE(&hashState);
-    XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                                 XXH_SECRET_DEFAULT_SIZE);
-    XXH3_64bits_update(&hashState, &inChannels, sizeof(uint64_t));
-    for (CBInt i = 0; i < CBInt(inChannels); i++) {
-      XXH3_64bits_update(&hashState, &i, sizeof(CBInt));
+    {
+      uint64_t inChannels = uint64_t(deviceConfig.capture.channels);
+      uint32_t bus{0};
+      XXH3_state_s hashState;
+      XXH3_INITSTATE(&hashState);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
+      for (CBInt i = 0; i < CBInt(inChannels); i++) {
+        XXH3_64bits_update(&hashState, &i, sizeof(CBInt));
+      }
+
+      inputHash = XXH3_64bits_digest(&hashState);
     }
 
-    inputHash = XXH3_64bits_digest(&hashState);
+    {
+      uint64_t outChannels = uint64_t(deviceConfig.playback.channels);
+      uint32_t bus{0};
+      XXH3_state_s hashState;
+      XXH3_INITSTATE(&hashState);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
+      for (CBInt i = 0; i < CBInt(outChannels); i++) {
+        XXH3_64bits_update(&hashState, &i, sizeof(CBInt));
+      }
+
+      outputHash = XXH3_64bits_digest(&hashState);
+    }
 
     _open = true;
     stopped = false;
@@ -205,6 +247,7 @@ struct Device {
 
     _started = false;
     stopped = false;
+    hasErrors = false;
     channels.clear();
   }
 
@@ -218,6 +261,11 @@ struct Device {
       }
       _started = true;
     }
+
+    if (hasErrors) {
+      throw ActivationError(errorMessage);
+    }
+
     return input;
   }
 };
@@ -229,12 +277,32 @@ struct Channel {
   ChannelData _data{};
   CBVar *_device{nullptr};
   Device *d{nullptr};
-  uint64_t _inBusNumber;
+  uint32_t _inBusNumber{0};
   OwnedVar _inChannels;
-  uint64_t _outBusNumber;
+  uint32_t _outBusNumber{0};
   OwnedVar _outChannels;
 
+  void setup() {
+    std::array<CBVar, 2> stereo;
+    stereo[0] = Var(0);
+    stereo[1] = Var(1);
+    _inChannels = Var(stereo);
+    _outChannels = Var(stereo);
+  }
+
   static inline Parameters Params{
+      {"InputBus",
+       CBCCSTR("The input bus number, 0 is the audio device ADC."),
+       {CoreInfo::IntType}},
+      {"InputChannels",
+       CBCCSTR("The list of input channels to pass as input to Blocks."),
+       {CoreInfo::IntSeqType}},
+      {"OutputBus",
+       CBCCSTR("The output bus number, 0 is the audio device DAC."),
+       {CoreInfo::IntType}},
+      {"OutputChannels",
+       CBCCSTR("The list of output channels to write from Blocks's output."),
+       {CoreInfo::IntSeqType}},
       {"Volume",
        CBCCSTR("The volume of this channel."),
        {CoreInfo::FloatType, CoreInfo::FloatVarType}},
@@ -247,9 +315,21 @@ struct Channel {
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
-      _data.volume = value;
+      _inBusNumber = uint32_t(value.payload.intValue);
       break;
     case 1:
+      _inChannels = value;
+      break;
+    case 2:
+      _outBusNumber = uint32_t(value.payload.intValue);
+      break;
+    case 3:
+      _outChannels = value;
+      break;
+    case 4:
+      _data.volume = value;
+      break;
+    case 5:
       _data.blocks = value;
       break;
     default:
@@ -260,8 +340,16 @@ struct Channel {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _data.volume;
+      return Var(int64_t(_inBusNumber));
     case 1:
+      return _inChannels;
+    case 2:
+      return Var(int64_t(_outBusNumber));
+    case 3:
+      return _outChannels;
+    case 4:
+      return _data.volume;
+    case 5:
       return _data.blocks;
     default:
       throw InvalidParameterIndex();
@@ -281,7 +369,7 @@ struct Channel {
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                    XXH_SECRET_DEFAULT_SIZE);
-      XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(uint64_t));
+      XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(uint32_t));
       if (_inChannels.valueType == CBType::Seq) {
         for (auto &channel : _inChannels) {
           XXH3_64bits_update(&hashState, &channel.payload.intValue,
@@ -298,7 +386,7 @@ struct Channel {
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                    XXH_SECRET_DEFAULT_SIZE);
-      XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(uint64_t));
+      XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(uint32_t));
       uint32_t nchannels = 0;
       if (_outChannels.valueType == CBType::Seq) {
         nchannels = _outChannels.payload.seqValue.len;

@@ -52,8 +52,7 @@
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks
-                 (-> 1 = .1)))
+  (Audio.Channel :Blocks (-> (Input))))
 
 (schedule main device-test)
 (run main 0.1 50)
