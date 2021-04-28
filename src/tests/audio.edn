@@ -49,3 +49,11 @@
 ;;     ; shared variables are syncronized behind the scene
 ;;     ; in fact they are copies
 ;;     .hz (Audio.SineWave))))
+
+(defloop device-test
+  (Audio.Device)
+  (Audio.Channel :Blocks
+                 (-> 1 = .1)))
+
+(schedule main device-test)
+(run main 0.1 50)

@@ -56,6 +56,7 @@ struct Device {
   ma_device _device;
   bool _open{false};
   bool _started{false};
+  CBVar *_deviceVar{nullptr};
 
   // (bus, channels hash)
   mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
@@ -64,10 +65,22 @@ struct Device {
   ma_uint32 sampleRate{44100};
   std::vector<float> inputScratch;
   uint64_t inputHash;
+  CBFlow dpsFlow{};
+  CBCoro dspStubCoro{};
+  std::shared_ptr<CBChain> dspChain = CBChain::make("Audio-DSP-Chain");
+#ifndef __EMSCRIPTEN__
+  CBContext dspContext{std::move(dspStubCoro), dspChain.get(), &dpsFlow};
+#else
+  CBContext dspContext{&dspStubCoro, dspChain.get(), &dpsFlow};
+#endif
+  bool stopped{false};
 
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
                           ma_uint32 frameCount) {
     auto device = reinterpret_cast<Device *>(pDevice->pUserData);
+
+    if (device->stopped)
+      return;
 
     // clear all output buffers as from now we will += to them
     for (auto &[_, buffer] : device->outputBuffers) {
@@ -118,15 +131,26 @@ struct Device {
                           uint16_t(nchannels),          //
                           device->inputScratch.data()};
       Var inputVar(inputPacket);
+      CBVar output{};
 
       // run activations of all channels that need such input
       for (auto channel : channels) {
-        // channel->blocks.activate()
+        if (channel->blocks.activate(&device->dspContext, inputVar, output,
+                                     false) == CBChainState::Stop) {
+          device->stopped = true;
+          return;
+        }
       }
     }
   }
 
   void warmup(CBContext *context) {
+    _deviceVar = referenceVariable(context, "Audio.Device");
+    _deviceVar->valueType = CBType::Object;
+    _deviceVar->payload.objectVendorId = CoreCC;
+    _deviceVar->payload.objectTypeId = DeviceCC;
+    _deviceVar->payload.objectValue = this;
+
     ma_device_config deviceConfig{};
     deviceConfig = ma_device_config_init(ma_device_type_playback);
     deviceConfig.playback.format = ma_format_f32;
@@ -157,6 +181,7 @@ struct Device {
     inputHash = XXH3_64bits_digest(&hashState);
 
     _open = true;
+    stopped = false;
   }
 
   void cleanup() {
@@ -164,12 +189,21 @@ struct Device {
       ma_device_uninit(&_device);
     }
 
+    if (_deviceVar) {
+      releaseVariable(_deviceVar);
+      _deviceVar = nullptr;
+    }
+
     _open = false;
     _started = false;
+    stopped = false;
     channels.clear();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    // refresh this
+    _deviceVar->payload.objectValue = this;
+
     if (!_started) {
       if (ma_device_start(&_device) != MA_SUCCESS) {
         throw ActivationError("Failed to start audio device");
@@ -181,6 +215,9 @@ struct Device {
 };
 
 struct Channel {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
   ChannelData _data{};
   CBVar *_device{nullptr};
   uint64_t _inBusNumber;
@@ -220,6 +257,11 @@ struct Channel {
     default:
       throw InvalidParameterIndex();
     }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _data.blocks.compose(data);
+    return data.inputType;
   }
 
   void warmup(CBContext *context) {
@@ -568,6 +610,7 @@ struct WriteFile {
 
 void registerBlocks() {
   REGISTER_CBLOCK("Audio.Device", Device);
+  REGISTER_CBLOCK("Audio.Channel", Channel);
   REGISTER_CBLOCK("Audio.ReadFile", ReadFile);
   REGISTER_CBLOCK("Audio.WriteFile", WriteFile);
 }
