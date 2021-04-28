@@ -858,7 +858,7 @@ struct Var : public CBVar {
   }
 
   explicit Var(CBAudio audio) : CBVar() {
-    valueType = Audio;
+    valueType = CBType::Audio;
     payload.audioValue = audio;
   }
 

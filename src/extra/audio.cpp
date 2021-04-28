@@ -38,6 +38,8 @@ struct ChannelData {
   float *outputBuffer;
   std::vector<uint32_t> inChannels;
   std::vector<uint32_t> outChannels;
+  BlocksVar blocks;
+  ParamVar volume{Var(0.7)};
 };
 
 struct Device {
@@ -59,6 +61,7 @@ struct Device {
   mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
   mutable pareto::spatial_map<uint64_t, 2, std::vector<float>> outputBuffers;
   ma_uint32 bufferSize{1024};
+  ma_uint32 sampleRate{44100};
   std::vector<float> inputScratch;
   uint64_t inputHash;
 
@@ -110,8 +113,15 @@ struct Device {
         }
       }
 
+      CBAudio inputPacket{uint32_t(device->sampleRate), //
+                          uint16_t(device->bufferSize), //
+                          uint16_t(nchannels),          //
+                          device->inputScratch.data()};
+      Var inputVar(inputPacket);
+
       // run activations of all channels that need such input
       for (auto channel : channels) {
+        // channel->blocks.activate()
       }
     }
   }
@@ -123,7 +133,7 @@ struct Device {
     deviceConfig.playback.channels = 2;
     deviceConfig.capture.format = ma_format_f32;
     deviceConfig.capture.channels = 2;
-    deviceConfig.sampleRate = 48000;
+    deviceConfig.sampleRate = sampleRate;
     deviceConfig.periodSizeInFrames = bufferSize;
     deviceConfig.periods = 1;
     deviceConfig.performanceProfile = ma_performance_profile_low_latency;
@@ -178,6 +188,40 @@ struct Channel {
   uint64_t _outBusNumber;
   OwnedVar _outChannels;
 
+  static inline Parameters Params{
+      {"Volume",
+       CBCCSTR("The volume of this channel."),
+       {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Blocks",
+       CBCCSTR("The blocks that will process audio data."),
+       {CoreInfo::BlocksOrNone}}};
+
+  CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _data.volume = value;
+      break;
+    case 1:
+      _data.blocks = value;
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _data.volume;
+    case 1:
+      return _data.blocks;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
   void warmup(CBContext *context) {
     _device = referenceVariable(context, "Audio.Device");
     const auto *d = reinterpret_cast<Device *>(_device->payload.objectValue);
@@ -187,9 +231,7 @@ struct Channel {
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                    XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(uint64_t));
-      uint32_t nchannels = 0;
       if (_inChannels.valueType == CBType::Seq) {
-        nchannels = _inChannels.payload.seqValue.len;
         for (auto &channel : _inChannels) {
           XXH3_64bits_update(&hashState, &channel.payload.intValue,
                              sizeof(CBInt));
@@ -219,6 +261,9 @@ struct Channel {
           .resize(d->bufferSize * nchannels);
       _data.outputBuffer = d->outputBuffers(_outBusNumber, channelsHash).data();
     }
+
+    _data.blocks.warmup(context);
+    _data.volume.warmup(context);
   }
 
   void cleanup() {
@@ -226,6 +271,9 @@ struct Channel {
       releaseVariable(_device);
       _device = nullptr;
     }
+
+    _data.blocks.cleanup();
+    _data.volume.cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) { return input; }

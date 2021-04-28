@@ -41,7 +41,7 @@
 ;;    ; no inputs
 ;;    :Outputs [0 1] ; L R of bus 0 (default)
 ;;    :Volume 0.5
-;;    :Contents
+;;    :Blocks
 ;;    (->
 ;;     ; this runs at a different pace then the parent loop
 ;;     ; specifically runs in the audio real time thread
