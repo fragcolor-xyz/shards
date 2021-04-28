@@ -8,6 +8,10 @@
 #include "core.hpp"
 #include <variant>
 
+#define _PC
+#include "../../extra/shaders/include/ShaderFastMathLib.h"
+#undef _PC
+
 namespace chainblocks {
 namespace Math {
 struct Base {
@@ -493,6 +497,8 @@ MATH_UNARY_OPERATION(Log10, __builtin_log10, __builtin_log10f);
 MATH_UNARY_OPERATION(Log2, __builtin_log2, __builtin_log2f);
 MATH_UNARY_OPERATION(Log1p, __builtin_log1p, __builtin_log1pf);
 MATH_UNARY_OPERATION(Sqrt, __builtin_sqrt, __builtin_sqrtf);
+MATH_UNARY_OPERATION(FastSqrt, fastSqrtNR2, fastSqrtNR2);
+MATH_UNARY_OPERATION(FastInvSqrt, fastRcpSqrtNR2, fastRcpSqrtNR2);
 MATH_UNARY_OPERATION(Cbrt, __builtin_cbrt, __builtin_cbrt);
 MATH_UNARY_OPERATION(Sin, __builtin_sin, __builtin_sinf);
 MATH_UNARY_OPERATION(Cos, __builtin_cos, __builtin_cosf);
@@ -774,6 +780,8 @@ inline void registerBlocks() {
   REGISTER_CBLOCK("Math.Log2", Log2);
   REGISTER_CBLOCK("Math.Log1p", Log1p);
   REGISTER_CBLOCK("Math.Sqrt", Sqrt);
+  REGISTER_CBLOCK("Math.FastSqrt", FastSqrt);
+  REGISTER_CBLOCK("Math.FastInvSqrt", FastInvSqrt);
   REGISTER_CBLOCK("Math.Cbrt", Cbrt);
   REGISTER_CBLOCK("Math.Sin", Sin);
   REGISTER_CBLOCK("Math.Cos", Cos);

@@ -23,8 +23,8 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
-        ./emsdk install 2.0.16
-        ./emsdk activate 2.0.16
+        ./emsdk install 2.0.18
+        ./emsdk activate 2.0.18
         cd .. && mkdir external && cd external
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
@@ -37,7 +37,7 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |
@@ -74,8 +74,8 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
-        ./emsdk install 2.0.16
-        ./emsdk activate 2.0.16
+        ./emsdk install 2.0.18
+        ./emsdk activate 2.0.18
         cd .. && mkdir external && cd external
         wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
         tar xzf boost_1_74_0.tar.gz
@@ -87,7 +87,7 @@ jobs:
         source emsdk/emsdk_env.sh
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_LTO=1 -DRUST_USE_LTO=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       run: |
@@ -378,7 +378,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
+        cmake -G Ninja -DFORCE_CORE2=1 -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       env:
