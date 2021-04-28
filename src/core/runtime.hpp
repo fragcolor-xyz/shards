@@ -336,6 +336,15 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     auto cblock = reinterpret_cast<chainblocks::Math::AbsRuntime *>(blk);
     return cblock->core.activateSingle(context, input);
   }
+  case MathFastSqrt: {
+    auto cblock = reinterpret_cast<chainblocks::Math::FastSqrtRuntime *>(blk);
+    return cblock->core.activateSingle(context, input);
+  }
+  case MathFastInvSqrt: {
+    auto cblock =
+        reinterpret_cast<chainblocks::Math::FastInvSqrtRuntime *>(blk);
+    return cblock->core.activateSingle(context, input);
+  }
 #if 0
   case MathExp: {
     auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);

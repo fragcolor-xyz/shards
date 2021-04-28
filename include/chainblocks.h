@@ -108,6 +108,8 @@ enum CBInlineBlocks : uint32_t {
   MathLog2,
   MathLog1p,
   MathSqrt,
+  MathFastSqrt,
+  MathFastInvSqrt,
   MathCbrt,
   MathSin,
   MathCos,

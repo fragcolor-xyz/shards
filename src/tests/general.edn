@@ -154,6 +154,14 @@
    (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
    (Log)
 
+   (Float4 4 4 4 4)
+   (Math.FastSqrt)
+   (| (ToString)
+      (Assert.Is "(1.99999, 1.99999, 1.99999, 1.99999)" true))
+   (Math.FastInvSqrt)
+   (| (ToString)
+      (Assert.Is "(0.707108, 0.707108, 0.707108, 0.707108)" true))
+
    10
    (Push "list1")
    20
