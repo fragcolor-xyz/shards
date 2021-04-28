@@ -4,9 +4,6 @@
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
 
-// #define BUILD_PARETO_WITH_PMR
-#include <pareto/front.h>
-
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
 
@@ -59,8 +56,12 @@ struct Device {
   CBVar *_deviceVar{nullptr};
 
   // (bus, channels hash)
-  mutable pareto::spatial_map<uint64_t, 2, std::vector<ChannelData *>> channels;
-  mutable pareto::spatial_map<uint64_t, 2, std::vector<float>> outputBuffers;
+  mutable std::unordered_map<
+      uint32_t, std::unordered_map<uint64_t, std::vector<ChannelData *>>>
+      channels;
+  mutable std::unordered_map<uint32_t,
+                             std::unordered_map<uint64_t, std::vector<float>>>
+      outputBuffers;
   ma_uint32 bufferSize{1024};
   ma_uint32 sampleRate{44100};
   std::vector<float> inputScratch;
@@ -83,62 +84,65 @@ struct Device {
       return;
 
     // clear all output buffers as from now we will += to them
-    for (auto &[_, buffer] : device->outputBuffers) {
-      memset(buffer.data(), 0x0, buffer.size() * sizeof(float));
+    for (auto &[_, buffers] : device->outputBuffers) {
+      for (auto &[_, buffer] : buffers) {
+        memset(buffer.data(), 0x0, buffer.size() * sizeof(float));
+      }
     }
 
-    // depth-first search O(1)
-    // ensures lowest latency from ADC to DAC
-    for (auto &[nbus, channels] : device->channels) {
-      if (channels.size() == 0)
-        continue;
+    // batch by output layout
+    for (auto &[nbus, channelKinds] : device->channels) {
+      for (auto &[kind, channels] : channelKinds) {
+        if (channels.size() == 0)
+          continue;
 
-      // build the buffer with whatever we need as input
-      const auto nchannels = channels[0]->inChannels.size();
+        // build the buffer with whatever we need as input
+        const auto nchannels = channels[0]->inChannels.size();
 
-      // TODO, review, this one occasionally allocates mem
-      device->inputScratch.resize(device->bufferSize * nchannels);
+        // TODO, review, this one occasionally allocates mem
+        device->inputScratch.resize(device->bufferSize * nchannels);
 
-      if (nbus[0] == 0) {
-        if (nbus[1] == device->inputHash) {
-          // this is the full device input, just copy it
-          memcpy(device->inputScratch.data(), pInput,
-                 sizeof(float) * nchannels * frameCount);
-        } else {
-          auto *finput = reinterpret_cast<const float *>(pInput);
-          // need to properly compose the input
-          for (uint32_t c = 0; c < nchannels; c++) {
-            for (ma_uint32 i = 0; i < frameCount; i++) {
-              device->inputScratch[(i * nchannels) + c] =
-                  finput[(i * nchannels) + channels[0]->inChannels[c]];
+        if (nbus == 0) {
+          if (kind == device->inputHash) {
+            // this is the full device input, just copy it
+            memcpy(device->inputScratch.data(), pInput,
+                   sizeof(float) * nchannels * frameCount);
+          } else {
+            auto *finput = reinterpret_cast<const float *>(pInput);
+            // need to properly compose the input
+            for (uint32_t c = 0; c < nchannels; c++) {
+              for (ma_uint32 i = 0; i < frameCount; i++) {
+                device->inputScratch[(i * nchannels) + c] =
+                    finput[(i * nchannels) + channels[0]->inChannels[c]];
+              }
             }
           }
-        }
-      } else {
-        // TODO, review, this one occasionally allocates mem
-        const auto inputBuffer = device->outputBuffers[nbus];
-        if (inputBuffer.size() != 0) {
-          std::copy(inputBuffer.begin(), inputBuffer.end(),
-                    device->inputScratch.begin());
         } else {
-          memset(device->inputScratch.data(), 0x0,
-                 device->inputScratch.size() * sizeof(float));
+          // TODO, review, this one occasionally allocates mem
+          const auto inputBuffer = device->outputBuffers[nbus][kind];
+          if (inputBuffer.size() != 0) {
+            std::copy(inputBuffer.begin(), inputBuffer.end(),
+                      device->inputScratch.begin());
+          } else {
+            memset(device->inputScratch.data(), 0x0,
+                   device->inputScratch.size() * sizeof(float));
+          }
         }
-      }
 
-      CBAudio inputPacket{uint32_t(device->sampleRate), //
-                          uint16_t(device->bufferSize), //
-                          uint16_t(nchannels),          //
-                          device->inputScratch.data()};
-      Var inputVar(inputPacket);
-      CBVar output{};
+        CBAudio inputPacket{uint32_t(device->sampleRate), //
+                            uint16_t(device->bufferSize), //
+                            uint16_t(nchannels),          //
+                            device->inputScratch.data()};
+        Var inputVar(inputPacket);
+        CBVar output{};
 
-      // run activations of all channels that need such input
-      for (auto channel : channels) {
-        if (channel->blocks.activate(&device->dspContext, inputVar, output,
-                                     false) == CBChainState::Stop) {
-          device->stopped = true;
-          return;
+        // run activations of all channels that need such input
+        for (auto channel : channels) {
+          if (channel->blocks.activate(&device->dspContext, inputVar, output,
+                                       false) == CBChainState::Stop) {
+            device->stopped = true;
+            return;
+          }
         }
       }
     }
@@ -281,7 +285,8 @@ struct Channel {
         }
       }
       const auto channelsHash = XXH3_64bits_digest(&hashState);
-      d->channels(_inBusNumber, channelsHash).emplace_back(&_data);
+      auto &bus = d->channels[_inBusNumber];
+      bus[channelsHash].emplace_back(&_data);
     }
     {
       XXH3_state_s hashState;
@@ -299,9 +304,10 @@ struct Channel {
         }
       }
       const auto channelsHash = XXH3_64bits_digest(&hashState);
-      d->outputBuffers(_outBusNumber, channelsHash)
-          .resize(d->bufferSize * nchannels);
-      _data.outputBuffer = d->outputBuffers(_outBusNumber, channelsHash).data();
+      auto &bus = d->outputBuffers[_outBusNumber];
+      auto &buffer = bus[channelsHash];
+      buffer.resize(d->bufferSize * nchannels);
+      _data.outputBuffer = buffer.data();
     }
 
     _data.blocks.warmup(context);
