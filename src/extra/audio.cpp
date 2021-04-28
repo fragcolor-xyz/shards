@@ -188,17 +188,21 @@ struct Device {
     stopped = false;
   }
 
-  void cleanup() {
+  void stop() {
     if (_open) {
       ma_device_uninit(&_device);
+      _open = false;
     }
+  }
+
+  void cleanup() {
+    stop();
 
     if (_deviceVar) {
       releaseVariable(_deviceVar);
       _deviceVar = nullptr;
     }
 
-    _open = false;
     _started = false;
     stopped = false;
     channels.clear();
@@ -224,6 +228,7 @@ struct Channel {
 
   ChannelData _data{};
   CBVar *_device{nullptr};
+  Device *d{nullptr};
   uint64_t _inBusNumber;
   OwnedVar _inChannels;
   uint64_t _outBusNumber;
@@ -270,7 +275,7 @@ struct Channel {
 
   void warmup(CBContext *context) {
     _device = referenceVariable(context, "Audio.Device");
-    const auto *d = reinterpret_cast<Device *>(_device->payload.objectValue);
+    d = reinterpret_cast<Device *>(_device->payload.objectValue);
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
@@ -315,6 +320,13 @@ struct Channel {
   }
 
   void cleanup() {
+    if (d) {
+      // every device user needs to try and stop it!
+      // else we risk to mess with the audio thread
+      d->stop();
+      d = nullptr;
+    }
+
     if (_device) {
       releaseVariable(_device);
       _device = nullptr;
