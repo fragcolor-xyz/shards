@@ -463,7 +463,129 @@ struct Channel {
   // re-route and send
 };
 
-struct SineWave {};
+struct Oscillator {
+  ma_waveform _wave;
+
+  ma_uint32 _channels{2};
+  ma_uint64 _nsamples{1024};
+  ma_uint32 _sampleRate{44100};
+
+  std::vector<float> _buffer;
+
+  CBVar *_device{nullptr};
+  Device *d{nullptr};
+
+  ParamVar _amplitude{Var(0.4)};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
+
+  static inline Parameters params{
+      {"Type", CBCCSTR("The waveform type to oscillate."), {CoreInfo::IntType}},
+      {"Amplitude",
+       CBCCSTR("The waveform amplitude."),
+       {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Channels",
+       CBCCSTR("The number of desired output audio channels."),
+       {CoreInfo::IntType}},
+      {"SampleRate",
+       CBCCSTR("The desired output sampling rate. Ignored if inside an "
+               "Audio.Channel."),
+       {CoreInfo::IntType}},
+      {"Samples",
+       CBCCSTR("The desired number of samples in the output. Ignored if inside "
+               "an Audio.Channel."),
+       {CoreInfo::IntType}}};
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      break;
+    case 1:
+      _amplitude = value;
+      break;
+    case 2:
+      _channels = ma_uint32(value.payload.intValue);
+      break;
+    case 3:
+      _sampleRate = ma_uint32(value.payload.intValue);
+      break;
+    case 4:
+      _nsamples = ma_uint64(value.payload.intValue);
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(0);
+    case 1:
+      return _amplitude;
+    case 2:
+      return Var(_channels);
+    case 3:
+      return Var(_sampleRate);
+    case 4:
+      return Var(int64_t(_nsamples));
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  void initWave() {
+    ma_waveform_config config = ma_waveform_config_init(
+        ma_format_f32, _channels, _sampleRate, ma_waveform_type_sine, 0.0, 1.0);
+    ma_result res = ma_waveform_init(&config, &_wave);
+    if (res != MA_SUCCESS) {
+      throw ActivationError("Failed to init waveform");
+    }
+  }
+
+  void warmup(CBContext *context) {
+    _amplitude.warmup(context);
+
+    _device = referenceVariable(context, "Audio.Device");
+    if (_device->valueType == CBType::Object) {
+      d = reinterpret_cast<Device *>(_device->payload.objectValue);
+      // we have a device! override SR and BS
+      _sampleRate = d->sampleRate;
+      _nsamples = d->bufferSize; // this might be less
+    }
+
+    initWave();
+    _buffer.resize(_channels * _nsamples);
+  }
+
+  void cleanup() {
+    _amplitude.cleanup();
+
+    if (_device) {
+      releaseVariable(_device);
+      _device = nullptr;
+      d = nullptr;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (d) {
+      // if a device is connected override this value
+      _nsamples = d->actualBufferSize;
+    }
+
+    ma_waveform_set_amplitude(&_wave, _amplitude.get().payload.floatValue);
+    ma_waveform_set_frequency(&_wave, input.payload.floatValue);
+
+    ma_waveform_read_pcm_frames(&_wave, _buffer.data(), _nsamples);
+
+    return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels),
+                       _buffer.data()});
+  }
+};
 
 struct ReadFile {
   ma_decoder _decoder;
@@ -775,6 +897,7 @@ struct WriteFile {
 void registerBlocks() {
   REGISTER_CBLOCK("Audio.Device", Device);
   REGISTER_CBLOCK("Audio.Channel", Channel);
+  REGISTER_CBLOCK("Audio.Oscillator", Oscillator);
   REGISTER_CBLOCK("Audio.ReadFile", ReadFile);
   REGISTER_CBLOCK("Audio.WriteFile", WriteFile);
 }
