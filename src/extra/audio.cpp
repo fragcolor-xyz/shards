@@ -482,10 +482,12 @@ struct ReadFile {
        CBCCSTR("The number of desired output audio channels."),
        {CoreInfo::IntType}},
       {"SampleRate",
-       CBCCSTR("The desired output sampling rate."),
+       CBCCSTR("The desired output sampling rate. This is ignored if inside an "
+               "Audio.Channel."),
        {CoreInfo::IntType}},
       {"Samples",
-       CBCCSTR("The desired number of samples in the output."),
+       CBCCSTR("The desired number of samples in the output. This is ignored "
+               "if inside an Audio.Channel."),
        {CoreInfo::IntType}},
       {"Looped",
        CBCCSTR("If the file should be played in loop or should stop the chain "
