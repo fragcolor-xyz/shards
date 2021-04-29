@@ -11,9 +11,10 @@
 #define MA_NO_RUNTIME_LINKING
 #endif
 
-#ifndef NDEBUG
-#define MA_LOG_LEVEL MA_LOG_LEVEL_INFO
-#endif
+// #ifndef NDEBUG
+// #define MA_LOG_LEVEL MA_LOG_LEVEL_WARNING
+// #define MA_DEBUG_OUTPUT 1
+// #endif
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
