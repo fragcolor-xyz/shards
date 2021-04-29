@@ -1,7 +1,6 @@
 (defnode main)
 
 (defloop play-files
-  (Audio.Device) ; just for testing
   (Audio.ReadFile "../../external/file_example_OOG_1MG.ogg" :From 1.0 :To 1.023219954648526)
   (Log))
 

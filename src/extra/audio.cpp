@@ -11,6 +11,9 @@
 #define MA_NO_RUNTIME_LINKING
 #endif
 
+#ifndef NDEBUG
+#define MA_LOG_LEVEL MA_LOG_LEVEL_INFO
+#endif
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
@@ -84,6 +87,9 @@ struct Device {
 
   static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
                           ma_uint32 frameCount) {
+    assert(pDevice->capture.format == ma_format_f32);
+    assert(pDevice->playback.format == ma_format_f32);
+
     auto device = reinterpret_cast<Device *>(pDevice->pUserData);
 
     if (device->stopped)
@@ -105,7 +111,6 @@ struct Device {
         // build the buffer with whatever we need as input
         const auto nchannels = channels[0]->inChannels.size();
 
-        // TODO, review, this one occasionally allocates mem
         device->inputScratch.resize(frameCount * nchannels);
 
         if (nbus == 0) {
@@ -124,7 +129,6 @@ struct Device {
             }
           }
         } else {
-          // TODO, review, this one occasionally allocates mem
           const auto inputBuffer = device->outputBuffers[nbus][kind];
           if (inputBuffer.size() != 0) {
             std::copy(inputBuffer.begin(), inputBuffer.end(),
@@ -136,7 +140,7 @@ struct Device {
         }
 
         CBAudio inputPacket{uint32_t(device->sampleRate), //
-                            uint16_t(device->bufferSize), //
+                            uint16_t(frameCount),         //
                             uint16_t(nchannels),          //
                             device->inputScratch.data()};
         Var inputVar(inputPacket);
@@ -148,14 +152,18 @@ struct Device {
           if (channel->blocks.activate(&device->dspContext, inputVar, output,
                                        false) == CBChainState::Stop) {
             device->stopped = true;
+            // always cleanup or we risk to break someone's ears
+            memset(pOutput, 0x0, frameCount * sizeof(float));
             return;
           }
           if (output.valueType == CBType::Audio) {
-            if (output.payload.audioValue.nsamples != device->bufferSize) {
+            if (output.payload.audioValue.nsamples != frameCount) {
               device->errorMessage = "Invalid output audio buffer size";
               device->stopped = true;
               // this atomic will be read at the next iteration
               device->hasErrors = true;
+              // always cleanup or we risk to break someone's ears
+              memset(pOutput, 0x0, frameCount * sizeof(float));
               return;
             }
             auto &a = output.payload.audioValue;
@@ -172,6 +180,9 @@ struct Device {
     auto &output = device->outputBuffers[0][device->outputHash];
     if (output.size() > 0) {
       memcpy(pOutput, output.data(), frameCount * sizeof(float));
+    } else {
+      // always cleanup or we risk to break someone's ears
+      memset(pOutput, 0x0, frameCount * sizeof(float));
     }
   }
 
@@ -184,20 +195,29 @@ struct Device {
 
     ma_device_config deviceConfig{};
     deviceConfig = ma_device_config_init(ma_device_type_duplex);
+    deviceConfig.playback.pDeviceID = NULL;
     deviceConfig.playback.format = ma_format_f32;
     deviceConfig.playback.channels = 2;
+    deviceConfig.capture.pDeviceID = NULL;
     deviceConfig.capture.format = ma_format_f32;
     deviceConfig.capture.channels = 2;
+    deviceConfig.capture.shareMode = ma_share_mode_shared;
     deviceConfig.sampleRate = sampleRate;
     deviceConfig.periodSizeInFrames = bufferSize;
     deviceConfig.periods = 1;
     deviceConfig.performanceProfile = ma_performance_profile_low_latency;
+    deviceConfig.noPreZeroedOutputBuffer = 1; // we do that only if needed
     deviceConfig.dataCallback = pcmCallback;
     deviceConfig.pUserData = this;
+#ifdef __APPLE__
+    deviceConfig.coreaudio.allowNominalSampleRateChange = 1;
+#endif
 
     if (ma_device_init(NULL, &deviceConfig, &_device) != MA_SUCCESS) {
       throw WarmupError("Failed to open default audio device");
     }
+
+    inputScratch.resize(bufferSize * deviceConfig.capture.channels);
 
     {
       uint64_t inChannels = uint64_t(deviceConfig.capture.channels);
