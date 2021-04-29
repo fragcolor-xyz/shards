@@ -62,6 +62,9 @@ struct Device {
   mutable std::unordered_map<uint32_t,
                              std::unordered_map<uint64_t, std::vector<float>>>
       outputBuffers;
+  // we don't want to use this inside our operation callback
+  // miniaudio does not follow the same value on certain platforms
+  // it's basically a max
   ma_uint32 bufferSize{1024};
   ma_uint32 sampleRate{44100};
   std::vector<float> inputScratch;
@@ -103,7 +106,7 @@ struct Device {
         const auto nchannels = channels[0]->inChannels.size();
 
         // TODO, review, this one occasionally allocates mem
-        device->inputScratch.resize(device->bufferSize * nchannels);
+        device->inputScratch.resize(frameCount * nchannels);
 
         if (nbus == 0) {
           if (kind == device->inputHash) {
@@ -168,7 +171,7 @@ struct Device {
     // finally bake the device buffer
     auto &output = device->outputBuffers[0][device->outputHash];
     if (output.size() > 0) {
-      memcpy(pOutput, output.data(), output.size() * sizeof(float));
+      memcpy(pOutput, output.data(), frameCount * sizeof(float));
     }
   }
 
