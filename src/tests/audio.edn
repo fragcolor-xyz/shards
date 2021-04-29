@@ -49,9 +49,18 @@
 ;;     ; in fact they are copies
 ;;     .hz (Audio.SineWave))))
 
+;; (defloop device-test
+;;   (Audio.Device)
+;;   (Audio.Channel :Blocks (-> (Input))))
+
+;; (schedule main device-test)
+;; (run main 0.1 50)
+
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> (Input))))
+  (Audio.Channel :Blocks (-> (Audio.ReadFile "../../external/file_example_OOG_1MG.ogg"
+                                             :Channels 2
+                                             :From 4.0 :To 6.0))))
 
 (schedule main device-test)
-(run main 0.1 50)
+(run main)

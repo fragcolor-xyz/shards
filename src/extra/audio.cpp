@@ -70,7 +70,10 @@ struct Device {
   // miniaudio does not follow the same value on certain platforms
   // it's basically a max
   ma_uint32 bufferSize{1024};
+  ma_uint32 actualBufferSize{1024};
   ma_uint32 sampleRate{44100};
+  ma_uint32 inChannels{2};
+  ma_uint32 outChannels{2};
   std::vector<float> inputScratch;
   uint64_t inputHash;
   uint64_t outputHash;
@@ -82,7 +85,7 @@ struct Device {
 #else
   CBContext dspContext{&dspStubCoro, dspChain.get(), &dpsFlow};
 #endif
-  bool stopped{false};
+  std::atomic_bool stopped{false};
   std::atomic_bool hasErrors{false};
   std::string errorMessage;
 
@@ -95,6 +98,8 @@ struct Device {
 
     if (device->stopped)
       return;
+
+    device->actualBufferSize = frameCount;
 
     // clear all output buffers as from now we will += to them
     for (auto &[_, buffers] : device->outputBuffers) {
@@ -160,9 +165,9 @@ struct Device {
           if (output.valueType == CBType::Audio) {
             if (output.payload.audioValue.nsamples != frameCount) {
               device->errorMessage = "Invalid output audio buffer size";
-              device->stopped = true;
               // this atomic will be read at the next iteration
               device->hasErrors = true;
+              device->stopped = true;
               // always cleanup or we risk to break someone's ears
               memset(pOutput, 0x0, frameCount * sizeof(float));
               return;
@@ -180,10 +185,11 @@ struct Device {
     // finally bake the device buffer
     auto &output = device->outputBuffers[0][device->outputHash];
     if (output.size() > 0) {
-      memcpy(pOutput, output.data(), frameCount * sizeof(float));
+      memcpy(pOutput, output.data(),
+             frameCount * sizeof(float) * device->outChannels);
     } else {
       // always cleanup or we risk to break someone's ears
-      memset(pOutput, 0x0, frameCount * sizeof(float));
+      memset(pOutput, 0x0, frameCount * sizeof(float) * device->outChannels);
     }
   }
 
@@ -198,10 +204,10 @@ struct Device {
     deviceConfig = ma_device_config_init(ma_device_type_duplex);
     deviceConfig.playback.pDeviceID = NULL;
     deviceConfig.playback.format = ma_format_f32;
-    deviceConfig.playback.channels = 2;
+    deviceConfig.playback.channels = outChannels;
     deviceConfig.capture.pDeviceID = NULL;
     deviceConfig.capture.format = ma_format_f32;
-    deviceConfig.capture.channels = 2;
+    deviceConfig.capture.channels = inChannels;
     deviceConfig.capture.shareMode = ma_share_mode_shared;
     deviceConfig.sampleRate = sampleRate;
     deviceConfig.periodSizeInFrames = bufferSize;
@@ -288,6 +294,10 @@ struct Device {
 
     if (hasErrors) {
       throw ActivationError(errorMessage);
+    }
+
+    if (stopped) {
+      CB_STOP();
     }
 
     return input;
@@ -472,6 +482,9 @@ struct ReadFile {
   std::vector<float> _buffer;
   bool _done{false};
 
+  CBVar *_device{nullptr};
+  Device *d{nullptr};
+
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
 
@@ -483,12 +496,12 @@ struct ReadFile {
        CBCCSTR("The number of desired output audio channels."),
        {CoreInfo::IntType}},
       {"SampleRate",
-       CBCCSTR("The desired output sampling rate. This is ignored if inside an "
+       CBCCSTR("The desired output sampling rate. Ignored if inside an "
                "Audio.Channel."),
        {CoreInfo::IntType}},
       {"Samples",
-       CBCCSTR("The desired number of samples in the output. This is ignored "
-               "if inside an Audio.Channel."),
+       CBCCSTR("The desired number of samples in the output. Ignored if inside "
+               "an Audio.Channel."),
        {CoreInfo::IntType}},
       {"Looped",
        CBCCSTR("If the file should be played in loop or should stop the chain "
@@ -565,6 +578,14 @@ struct ReadFile {
   void deinitFile() { ma_decoder_uninit(&_decoder); }
 
   void warmup(CBContext *context) {
+    _device = referenceVariable(context, "Audio.Device");
+    if (_device->valueType == CBType::Object) {
+      d = reinterpret_cast<Device *>(_device->payload.objectValue);
+      // we have a device! override SR and BS
+      _sampleRate = d->sampleRate;
+      _nsamples = d->bufferSize; // this might be less
+    }
+
     _fromSample.warmup(context);
     _toSample.warmup(context);
     _filename.warmup(context);
@@ -589,9 +610,20 @@ struct ReadFile {
       deinitFile();
       _initialized = false;
     }
+
+    if (_device) {
+      releaseVariable(_device);
+      _device = nullptr;
+      d = nullptr;
+    }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (d) {
+      // if a device is connected override this value
+      _nsamples = d->actualBufferSize;
+    }
+
     if (unlikely(_done)) {
       if (_looped) {
         ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, 0);
