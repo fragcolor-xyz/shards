@@ -26,8 +26,8 @@ jobs:
         ./emsdk install 2.0.18
         ./emsdk activate 2.0.18
         cd .. && mkdir external && cd external
-        wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
-        tar xzf boost_1_74_0.tar.gz
+        wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+        tar xzf boost_1_76_0.tar.gz
         rustup update
         rustup default nightly
         rustup component add rust-src --toolchain nightly
@@ -77,8 +77,8 @@ jobs:
         ./emsdk install 2.0.18
         ./emsdk activate 2.0.18
         cd .. && mkdir external && cd external
-        wget -nv https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz
-        tar xzf boost_1_74_0.tar.gz
+        wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+        tar xzf boost_1_76_0.tar.gz
         rustup update
         rustup default nightly
         rustup target add wasm32-unknown-emscripten
