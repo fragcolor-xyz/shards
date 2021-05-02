@@ -58,6 +58,7 @@ struct Device {
   bool _open{false};
   bool _started{false};
   CBVar *_deviceVar{nullptr};
+  CBVar *_deviceVarDsp{nullptr};
 
   // (bus, channels hash)
   mutable std::unordered_map<
@@ -79,6 +80,7 @@ struct Device {
   uint64_t outputHash;
   CBFlow dpsFlow{};
   CBCoro dspStubCoro{};
+  std::shared_ptr<CBNode> dspNode = CBNode::make();
   std::shared_ptr<CBChain> dspChain = CBChain::make("Audio-DSP-Chain");
 #ifndef __EMSCRIPTEN__
   CBContext dspContext{std::move(dspStubCoro), dspChain.get(), &dpsFlow};
@@ -194,11 +196,19 @@ struct Device {
   }
 
   void warmup(CBContext *context) {
+    dspChain->node = dspNode;
+
     _deviceVar = referenceVariable(context, "Audio.Device");
     _deviceVar->valueType = CBType::Object;
     _deviceVar->payload.objectVendorId = CoreCC;
     _deviceVar->payload.objectTypeId = DeviceCC;
     _deviceVar->payload.objectValue = this;
+
+    _deviceVarDsp = referenceVariable(&dspContext, "Audio.Device");
+    _deviceVarDsp->valueType = CBType::Object;
+    _deviceVarDsp->payload.objectVendorId = CoreCC;
+    _deviceVarDsp->payload.objectTypeId = DeviceCC;
+    _deviceVarDsp->payload.objectValue = this;
 
     ma_device_config deviceConfig{};
     deviceConfig = ma_device_config_init(ma_device_type_duplex);
@@ -273,6 +283,11 @@ struct Device {
     if (_deviceVar) {
       releaseVariable(_deviceVar);
       _deviceVar = nullptr;
+    }
+
+    if (_deviceVarDsp) {
+      releaseVariable(_deviceVarDsp);
+      _deviceVarDsp = nullptr;
     }
 
     _started = false;
@@ -437,7 +452,7 @@ struct Channel {
       _data.outputBuffer = buffer.data();
     }
 
-    _data.blocks.warmup(context);
+    _data.blocks.warmup(&d->dspContext);
     _data.volume.warmup(context);
   }
 
