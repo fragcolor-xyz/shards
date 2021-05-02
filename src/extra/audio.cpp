@@ -464,6 +464,12 @@ struct Channel {
 };
 
 struct Oscillator {
+  enum class Waveform { Sine, Square, Triangle, Sawtooth };
+  static constexpr uint32_t WaveformCC = 'wave';
+  static inline EnumInfo<Waveform> WaveformEnumInfo{"Waveform", CoreCC,
+                                                    WaveformCC};
+  static inline Type WaveformType = Type::Enum(CoreCC, WaveformCC);
+
   ma_waveform _wave;
 
   ma_uint32 _channels{2};
@@ -476,12 +482,13 @@ struct Oscillator {
   Device *d{nullptr};
 
   ParamVar _amplitude{Var(0.4)};
+  Waveform _type{Waveform::Sine};
 
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
 
   static inline Parameters params{
-      {"Type", CBCCSTR("The waveform type to oscillate."), {CoreInfo::IntType}},
+      {"Type", CBCCSTR("The waveform type to oscillate."), {WaveformType}},
       {"Amplitude",
        CBCCSTR("The waveform amplitude."),
        {CoreInfo::FloatType, CoreInfo::FloatVarType}},
@@ -502,6 +509,7 @@ struct Oscillator {
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
+      _type = Waveform(value.payload.enumValue);
       break;
     case 1:
       _amplitude = value;
@@ -523,7 +531,7 @@ struct Oscillator {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(0);
+      return Var::Enum(_type, CoreCC, WaveformCC);
     case 1:
       return _amplitude;
     case 2:
@@ -538,8 +546,23 @@ struct Oscillator {
   }
 
   void initWave() {
+    ma_waveform_type wtype;
+    switch (_type) {
+    case Waveform::Sine:
+      wtype = ma_waveform_type_sine;
+      break;
+    case Waveform::Square:
+      wtype = ma_waveform_type_square;
+      break;
+    case Waveform::Triangle:
+      wtype = ma_waveform_type_triangle;
+      break;
+    case Waveform::Sawtooth:
+      wtype = ma_waveform_type_sawtooth;
+      break;
+    }
     ma_waveform_config config = ma_waveform_config_init(
-        ma_format_f32, _channels, _sampleRate, ma_waveform_type_sine, 0.0, 1.0);
+        ma_format_f32, _channels, _sampleRate, wtype, 0.0, 1.0);
     ma_result res = ma_waveform_init(&config, &_wave);
     if (res != MA_SUCCESS) {
       throw ActivationError("Failed to init waveform");

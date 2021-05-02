@@ -37,7 +37,7 @@
   (Audio.Channel :Blocks (-> (Input))))
 
 (schedule main device-test)
-(run main 0.1 50)
+(run main 0.1 25)
 
 (defloop device-test
   (Audio.Device)
@@ -53,4 +53,25 @@
   (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator))))
 
 (schedule main device-test)
-(run main 0.1 50)
+(run main 0.1 25)
+
+(defloop device-test
+  (Audio.Device)
+  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator Waveform.Triangle))))
+
+(schedule main device-test)
+(run main 0.1 25)
+
+(defloop device-test
+  (Audio.Device)
+  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator Waveform.Square))))
+
+(schedule main device-test)
+(run main 0.1 25)
+
+(defloop device-test
+  (Audio.Device)
+  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator Waveform.Sawtooth))))
+
+(schedule main device-test)
+(run main 0.1 25)
