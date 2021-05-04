@@ -752,8 +752,9 @@
    (Log)
    (Assert.Is ["baz.dat" "baz" "dat"] true)
 
+   "[$&]" = .replacementVar
    "Quick brown fox"
-   (Regex.Replace #"a|e|i|o|u" "[$&]")
+   (Regex.Replace #"a|e|i|o|u" .replacementVar)
    (Log)
    (Assert.Is "Q[u][i]ck br[o]wn f[o]x" true)
    (| (Take 1) (Assert.Is 91 true))

@@ -8,8 +8,8 @@
 namespace chainblocks {
 namespace Regex {
 struct Common {
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Regex", CBCCSTR("The regular expression."), CoreInfo::StringType));
+  static inline Parameters params{
+      {"Regex", CBCCSTR("The regular expression."), {CoreInfo::StringType}}};
 
   std::regex _re;
   std::string _re_str;
@@ -88,22 +88,24 @@ struct Search : public Common {
 };
 
 struct Replace : public Common {
-  std::string _replacement;
+  ParamVar _replacement;
+  std::string _replacementStr;
   std::string _output;
 
-  static inline ParamsInfo params = ParamsInfo(
+  static inline Parameters params{
       Common::params,
-      ParamsInfo::Param("Replacement", CBCCSTR("The replacement expression."),
-                        CoreInfo::StringType));
+      {{"Replacement",
+        CBCCSTR("The replacement expression."),
+        {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static CBParametersInfo parameters() { return params; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 1:
-      _replacement = value.payload.stringValue;
+      _replacement = value;
       break;
     default:
       Common::setParam(index, value);
@@ -114,15 +116,21 @@ struct Replace : public Common {
   CBVar getParam(int index) {
     switch (index) {
     case 1:
-      return Var(_replacement);
+      return _replacement;
     default:
       return Common::getParam(index);
     }
   }
 
+  void warmup(CBContext *context) { _replacement.warmup(context); }
+
+  void cleanup() { _replacement.cleanup(); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     _subject.assign(input.payload.stringValue, CBSTRLEN(input));
-    _output.assign(std::regex_replace(_subject, _re, _replacement));
+    _replacementStr.assign(_replacement.get().payload.stringValue,
+                           CBSTRLEN(_replacement.get()));
+    _output.assign(std::regex_replace(_subject, _re, _replacementStr));
     return Var(_output);
   }
 };
