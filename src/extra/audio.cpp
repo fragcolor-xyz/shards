@@ -3,6 +3,7 @@
 
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
+#include <boost/lockfree/queue.hpp>
 
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
@@ -43,6 +44,15 @@ struct ChannelData {
   ParamVar volume{Var(0.7)};
 };
 
+struct ChannelDesc {
+  uint32_t inBus;
+  uint64_t inHash;
+  uint32_t outBus;
+  uint64_t outHash;
+  uint32_t outChannels;
+  ChannelData *data;
+};
+
 struct Device {
   static constexpr uint32_t DeviceCC = 'sndd';
 
@@ -54,19 +64,22 @@ struct Device {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  ma_device _device;
-  bool _open{false};
+  mutable ma_device _device;
+  mutable bool _open{false};
   bool _started{false};
   CBVar *_deviceVar{nullptr};
   CBVar *_deviceVarDsp{nullptr};
 
   // (bus, channels hash)
-  mutable std::unordered_map<
-      uint32_t, std::unordered_map<uint64_t, std::vector<ChannelData *>>>
+  // don't use those when auto thread is running
+  std::unordered_map<uint32_t,
+                     std::unordered_map<uint64_t, std::vector<ChannelData *>>>
       channels;
-  mutable std::unordered_map<uint32_t,
-                             std::unordered_map<uint64_t, std::vector<float>>>
+  std::unordered_map<uint32_t, std::unordered_map<uint64_t, std::vector<float>>>
       outputBuffers;
+
+  mutable boost::lockfree::queue<ChannelDesc> newChannels{16};
+
   // we don't want to use this inside our operation callback
   // miniaudio does not follow the same value on certain platforms
   // it's basically a max
@@ -100,6 +113,25 @@ struct Device {
 
     if (device->stopped)
       return;
+
+    // add any new channels
+    ChannelDesc c;
+    while (device->newChannels.pop(c)) {
+      // Inside here, if happens, there might be syscalls
+      // Allocations and such... we need to refactor if we start
+      // Noticing audio cracks
+      {
+        auto &bus = device->channels[c.inBus];
+        bus[c.inHash].emplace_back(c.data);
+      }
+      {
+        auto &bus = device->outputBuffers[c.outBus];
+        auto &buffer = bus[c.outHash];
+        buffer.resize(frameCount * c.outChannels);
+        c.data->outputBuffer = buffer.data();
+      }
+      c.data->blocks.warmup(&device->dspContext);
+    }
 
     device->actualBufferSize = frameCount;
 
@@ -270,7 +302,7 @@ struct Device {
     stopped = false;
   }
 
-  void stop() {
+  void stop() const {
     if (_open) {
       ma_device_uninit(&_device);
       _open = false;
@@ -325,7 +357,7 @@ struct Channel {
 
   ChannelData _data{};
   CBVar *_device{nullptr};
-  Device *d{nullptr};
+  const Device *d{nullptr};
   uint32_t _inBusNumber{0};
   OwnedVar _inChannels;
   uint32_t _outBusNumber{0};
@@ -412,7 +444,10 @@ struct Channel {
 
   void warmup(CBContext *context) {
     _device = referenceVariable(context, "Audio.Device");
-    d = reinterpret_cast<Device *>(_device->payload.objectValue);
+    d = reinterpret_cast<const Device *>(_device->payload.objectValue);
+    uint64_t inHash = 0;
+    uint64_t outHash = 0;
+    uint32_t outChannels = 0;
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
@@ -426,9 +461,7 @@ struct Channel {
           _data.inChannels.emplace_back(channel.payload.intValue);
         }
       }
-      const auto channelsHash = XXH3_64bits_digest(&hashState);
-      auto &bus = d->channels[_inBusNumber];
-      bus[channelsHash].emplace_back(&_data);
+      inHash = XXH3_64bits_digest(&hashState);
     }
     {
       XXH3_state_s hashState;
@@ -436,23 +469,22 @@ struct Channel {
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                    XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(uint32_t));
-      uint32_t nchannels = 0;
       if (_outChannels.valueType == CBType::Seq) {
-        nchannels = _outChannels.payload.seqValue.len;
+        outChannels = _outChannels.payload.seqValue.len;
         for (auto &channel : _outChannels) {
           XXH3_64bits_update(&hashState, &channel.payload.intValue,
                              sizeof(CBInt));
           _data.outChannels.emplace_back(channel.payload.intValue);
         }
       }
-      const auto channelsHash = XXH3_64bits_digest(&hashState);
-      auto &bus = d->outputBuffers[_outBusNumber];
-      auto &buffer = bus[channelsHash];
-      buffer.resize(d->bufferSize * nchannels);
-      _data.outputBuffer = buffer.data();
+      outHash = XXH3_64bits_digest(&hashState);
     }
 
-    _data.blocks.warmup(&d->dspContext);
+    ChannelDesc cd{_inBusNumber, inHash,      _outBusNumber,
+                   outHash,      outChannels, &_data};
+    d->newChannels.push(cd);
+
+    // blocks warmup done in audio thread!
     _data.volume.warmup(context);
   }
 
