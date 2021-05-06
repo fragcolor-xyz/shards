@@ -22,6 +22,8 @@ bs58 = { version = "0.4.0", optional = true }
 sha2 = { version = "0.9.3", optional = true }
 wasabi_leb128 = { version = "0.4.0", optional = true }
 resvg = { version = "0.14.1", optional = true }
+usvg = { version = "0.14.1", optional = true }
+tiny-skia = { version = "0.5.1", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
@@ -39,7 +41,7 @@ bindgen = { version = "0.58.0", optional = true }
 [features]
 default = []
 dummy = []
-blocks = ["reqwest", "tiny-keccak", "libsecp256k1", "hex", "rapier3d", "crossbeam", "webbrowser", "bs58", "sha2", "wasabi_leb128", "resvg"]
+blocks = ["reqwest", "tiny-keccak", "libsecp256k1", "hex", "rapier3d", "crossbeam", "webbrowser", "bs58", "sha2", "wasabi_leb128", "usvg", "resvg", "tiny-skia"]
 dllblock = ["dlopen"]
 run_bindgen = ["bindgen"]
 
