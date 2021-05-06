@@ -7,6 +7,9 @@ extern crate secp256k1;
 extern crate hex;
 extern crate bs58;
 extern crate wasabi_leb128;
+extern crate resvg;
+extern crate usvg;
+extern crate tiny_skia;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;
@@ -26,3 +29,5 @@ pub mod physics;
 pub mod browse;
 
 pub mod casting;
+
+pub mod svg;

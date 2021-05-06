@@ -385,6 +385,7 @@ pub mod common_type {
   use crate::types::CBType_Float2;
   use crate::types::CBType_Float3;
   use crate::types::CBType_Float4;
+  use crate::types::CBType_Image;
   use crate::types::CBType_Object;
 
   const fn base_info() -> CBTypeInfo {
@@ -515,6 +516,15 @@ pub mod common_type {
     bytes_var,
     bytes_table,
     bytes_table_var
+  );
+  cbtype!(
+    make_image,
+    CBType_Image,
+    image,
+    images,
+    image_var,
+    image_table,
+    images_table_var
   );
   cbtype!(
     make_int,
