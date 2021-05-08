@@ -187,8 +187,14 @@ void registerCoreBlocks() {
 
   globalRegisterDone = true;
 
-  // set root path as current directory
-  std::filesystem::current_path(Globals::RootPath);
+  if (Globals::RootPath.size() > 0) {
+    // set root path as current directory
+    std::filesystem::current_path(Globals::RootPath);
+  } else {
+    // set current path as root path
+    auto cp = std::filesystem::current_path();
+    Globals::RootPath = cp.string();
+  }
 
 // UTF8 on windows
 #ifdef _WIN32
