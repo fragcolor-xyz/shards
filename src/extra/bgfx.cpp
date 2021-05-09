@@ -2244,7 +2244,7 @@ struct Draw : public BaseConsumer {
     }
   }
 
-  CBVar activateSingle(CBContext *context, const CBVar &input) {
+  void render() {
     auto *ctx = reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
     auto shader =
         reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
@@ -2252,22 +2252,7 @@ struct Draw : public BaseConsumer {
     auto model =
         reinterpret_cast<ModelHandle *>(_model.get().payload.objectValue);
 
-    if (input.payload.seqValue.len != 4) {
-      throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
-    }
-
     const auto &currentView = ctx->currentView();
-
-    float mat[16];
-    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
-           sizeof(float) * 4);
-    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
-           sizeof(float) * 4);
-    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
-           sizeof(float) * 4);
-    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
-           sizeof(float) * 4);
-    bgfx::setTransform(mat);
 
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
 
@@ -2335,7 +2320,6 @@ struct Draw : public BaseConsumer {
       default:
         break;
       }
-
     } else {
       screenSpaceQuad();
     }
@@ -2358,12 +2342,65 @@ struct Draw : public BaseConsumer {
 
     // Submit primitive for rendering to the current view.
     bgfx::submit(currentView.id, shader->handle);
+  }
+
+  CBVar activateSingle(CBContext *context, const CBVar &input) {
+    if (input.payload.seqValue.len != 4) {
+      throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
+    }
+
+    float mat[16];
+    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
+           sizeof(float) * 4);
+    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
+           sizeof(float) * 4);
+    bgfx::setTransform(mat);
+
+    render();
 
     return input;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    throw ActivationError("Invalid activation path.");
+    const auto instances = input.payload.seqValue.len;
+    constexpr uint16_t stride = 64; // matrix 4x4
+    if (bgfx::getAvailInstanceDataBuffer(instances, stride) != instances) {
+      throw ActivationError("Instance buffer overflow");
+    }
+
+    bgfx::InstanceDataBuffer idb;
+    bgfx::allocInstanceDataBuffer(&idb, instances, stride);
+    uint8_t *data = idb.data;
+
+    for (uint32_t i = 0; i < instances; i++) {
+      float *mat = reinterpret_cast<float *>(data);
+      CBVar &vmat = input.payload.seqValue.elements[i];
+
+      if (vmat.payload.seqValue.len != 4) {
+        throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
+      }
+
+      memcpy(&mat[0], &vmat.payload.seqValue.elements[0].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[4], &vmat.payload.seqValue.elements[1].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[8], &vmat.payload.seqValue.elements[2].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[12], &vmat.payload.seqValue.elements[3].payload.float4Value,
+             sizeof(float) * 4);
+
+      data += stride;
+    }
+
+    bgfx::setInstanceDataBuffer(&idb);
+
+    render();
+
+    return input;
   }
 };
 
