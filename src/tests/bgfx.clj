@@ -120,12 +120,21 @@
        (FS.Read :Bytes true) >= .fs_bytes
        (GFX.Shader :VertexShader .vs_bytes
                    :PixelShader .fs_bytes) >= .shader
+
        (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
        (FS.Read :Bytes true) > .vs_bytes
        (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
        (FS.Read :Bytes true) > .fs_bytes
        (GFX.Shader :VertexShader .vs_bytes
                    :PixelShader .fs_bytes) >= .bump-shader
+
+       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_instancing.bin")
+       (FS.Read :Bytes true) > .vs_bytes
+       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_instancing.bin")
+       (FS.Read :Bytes true) > .fs_bytes
+       (GFX.Shader :VertexShader .vs_bytes
+                   :PixelShader .fs_bytes) >= .instancing-shader
+
        false (Set "checkBoxie")
        (Inputs.Mouse :Hidden true :Capture true :Relative true)
        (Physics.Ball :Radius 0.5) = .ball-pshape
@@ -241,7 +250,7 @@
                                        {"Position" (Float3 0 0 2)
                                         "Target" (Float3 0 0 0)} (GFX.Camera)
                                        ; this model is not really idea, vertex layout is not correct
-                                       [identity pos1] (GFX.Draw :Shader .shader
+                                       [identity pos1] (GFX.Draw :Shader .instancing-shader
                                                                  :Model .cube)))
                    (GUI.Image (Float2 1.0 1.0))
 
