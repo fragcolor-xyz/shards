@@ -30,6 +30,12 @@
    (Float4 0 0 1 0)
    (Float4 0 0 0 1)])
 
+(def pos1
+  [(Float4 1 0 0 0)
+   (Float4 0 1 0 0)
+   (Float4 0 0 1 0)
+   (Float4 0 2 0 1)])
+
 (def shaders-folder
   (cond
     (= platform "windows") "dx11"
@@ -235,8 +241,8 @@
                                        {"Position" (Float3 0 0 2)
                                         "Target" (Float3 0 0 0)} (GFX.Camera)
                                        ; this model is not really idea, vertex layout is not correct
-                                       identity (GFX.Draw :Shader .shader
-                                                          :Model .cube)))
+                                       [identity pos1] (GFX.Draw :Shader .shader
+                                                                 :Model .cube)))
                    (GUI.Image (Float2 1.0 1.0))
 
                    (GUI.ChildWindow
