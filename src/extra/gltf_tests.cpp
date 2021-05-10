@@ -30,6 +30,13 @@ namespace GLTF_Tests {
 std::vector<Var> identity = {Var(1.0, 0.0, 0.0, 0.0), Var(0.0, 1.0, 0.0, 0.0),
                              Var(0.0, 0.0, 1.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
 
+std::vector<Var> pos1 = {Var(1.0, 0.0, 0.0, 1.0), Var(0.0, 1.0, 0.0, 0.0),
+                         Var(0.0, 0.0, 1.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
+std::vector<Var> pos2 = {Var(1.0, 0.0, 0.0, 2.0), Var(0.0, 1.0, 0.0, 0.0),
+                         Var(0.0, 0.0, 1.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
+std::vector<Var> pos3 = {Var(1.0, 0.0, 0.0, 3.0), Var(0.0, 1.0, 0.0, 0.0),
+                         Var(0.0, 0.0, 1.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
+
 std::vector<Var> scale10 = {Var(10.0, 0.0, 0.0, 0.0), Var(0.0, 10.0, 0.0, 0.0),
                             Var(0.0, 0.0, 10.0, 0.0), Var(0.0, 0.0, 0.0, 1.0)};
 
@@ -145,6 +152,41 @@ void testGLTFModel(CBString name, CBString modelPath, Var camera_pos,
   }
 }
 
+void testGLTFModelInstanced(CBString name, CBString modelPath, Var camera_pos,
+                            const std::vector<Var> &btransform = identity,
+                            const std::vector<Var> &atransform = identity) {
+  SECTION(name) {
+    DefChain(test_chain)
+        .Looped()
+        .GFX_MainWindow(
+            "window", Once(let(modelPath)
+                               .GLTF_Load_WithTransforms(btransform, atransform)
+                                   Ref(model)
+                               .Log())
+                          .let(camera_pos) SetTable(cam, "Position")
+                          .let(0.0, 0.0, 0.0) SetTable(cam, "Target")
+                          .Get(cam)
+                          .GFX_Camera()
+                          .let(identity) Push(locs)
+                          .let(pos1) Push(locs)
+                          .let(pos2) Push(locs)
+                          .let(pos3) Push(locs)
+                          .Get(locs)
+                          .GLTF_Draw(model));
+    auto node = CBNode::make();
+    node->schedule(test_chain);
+    auto count = 100;
+    while (count--) {
+      REQUIRE(node->tick());
+      if (node->empty())
+        break;
+      sleep(0.1);
+    }
+    auto errors = node->errors();
+    REQUIRE(errors.size() == 0);
+  }
+}
+
 void testLoad() {
   SECTION("Fail-Not-Existing") {
     DefChain(test_chain)
@@ -229,6 +271,11 @@ void testLoad() {
 
   testGLTFModel(
       "Avocado-Bin-2",
+      "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
+      Var(1.0, 1.0, 1.0), scale10);
+
+  testGLTFModelInstanced(
+      "Avocado-Bin-2-Instanced",
       "../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb",
       Var(1.0, 1.0, 1.0), scale10);
 

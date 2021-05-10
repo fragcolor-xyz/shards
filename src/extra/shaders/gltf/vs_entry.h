@@ -22,6 +22,7 @@ void main() {
 	model[1] = i_data1;
 	model[2] = i_data2;
 	model[3] = i_data3;
+	model = mul(model, u_model[0]);
 #else
 	#define model u_model[0]
 #endif
