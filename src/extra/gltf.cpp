@@ -37,15 +37,24 @@ TODO; GLTF.Animate - to play animations
 namespace chainblocks {
 namespace gltf {
 struct GFXShader {
-  GFXShader(bgfx::ProgramHandle handle) : handle(handle) {}
+  GFXShader(bgfx::ProgramHandle handle, bgfx::ProgramHandle instanced)
+      : handle(handle), handleInstanced(instanced) {}
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle handleInstanced = BGFX_INVALID_HANDLE;
 
-  GFXShader(GFXShader &&other) { std::swap(handle, other.handle); }
+  GFXShader(GFXShader &&other) {
+    std::swap(handle, other.handle);
+    std::swap(handleInstanced, other.handleInstanced);
+  }
 
   ~GFXShader() {
     if (handle.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(handle);
+    }
+
+    if (handleInstanced.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handleInstanced);
     }
   }
 };
@@ -419,6 +428,11 @@ struct Load : public BGFX::BaseConsumer {
       for (const auto &define : shaderDefines) {
         shaderDefinesStr += define + ";";
       }
+      std::string instancedVaryings = varyings;
+      instancedVaryings.append("vec4 i_data0 : TEXCOORD7;\n");
+      instancedVaryings.append("vec4 i_data1 : TEXCOORD6;\n");
+      instancedVaryings.append("vec4 i_data2 : TEXCOORD5;\n");
+      instancedVaryings.append("vec4 i_data3 : TEXCOORD4;\n");
       auto hash = ShadersCache::hashShader(shaderDefinesStr);
       auto shader = _shadersCache().find(hash);
       if (!shader) {
@@ -432,6 +446,16 @@ struct Load : public BGFX::BaseConsumer {
                                 bytecode.payload.bytesSize);
           vsh = bgfx::createShader(mem);
         }
+        // vertex - instanced
+        bgfx::ShaderHandle ivsh;
+        {
+          auto bytecode = _shaderCompiler->compile(
+              instancedVaryings, _shadersVSEntry, "v",
+              shaderDefinesStr += "CB_INSTANCED;", context);
+          auto mem = bgfx::copy(bytecode.payload.bytesValue,
+                                bytecode.payload.bytesSize);
+          ivsh = bgfx::createShader(mem);
+        }
         // pixel
         bgfx::ShaderHandle psh;
         {
@@ -442,7 +466,8 @@ struct Load : public BGFX::BaseConsumer {
           psh = bgfx::createShader(mem);
         }
         shader =
-            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true));
+            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true),
+                                        bgfx::createProgram(ivsh, psh, true));
         _shadersCache().add(hash, shader);
       }
       material.shader = shader;
@@ -1155,15 +1180,8 @@ struct Draw : public BGFX::BaseConsumer {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    throw ActivationError("Not yet implemented.");
-    return input;
-  }
-
-  void renderNode(BGFX::Context *ctx, const Node &node,
-                  const linalg::aliases::float4x4 &parentTransform,
-                  const CBTable *mats) {
-    const auto transform = linalg::mul(parentTransform, node.transform);
+  void renderNodeSubmit(BGFX::Context *ctx, const Node &node,
+                        const CBTable *mats, bool instanced) {
     if (node.mesh) {
       for (const auto &primsRef : node.mesh->get().primitives) {
         const auto &prims = primsRef.get();
@@ -1232,7 +1250,8 @@ struct Draw : public BGFX::BaseConsumer {
                   pshader->payload.objectValue);
               handle = shader->handle;
             } else if (material.shader) {
-              handle = material.shader->handle;
+              handle = instanced ? material.shader->handleInstanced
+                                 : material.shader->handle;
             }
 
             // if textures are empty, use the ones we loaded during Load
@@ -1260,13 +1279,6 @@ struct Draw : public BGFX::BaseConsumer {
             }
           }
 
-          float mat[16];
-          memcpy(&mat[0], &transform.x, sizeof(float) * 4);
-          memcpy(&mat[4], &transform.y, sizeof(float) * 4);
-          memcpy(&mat[8], &transform.z, sizeof(float) * 4);
-          memcpy(&mat[12], &transform.w, sizeof(float) * 4);
-          bgfx::setTransform(mat);
-
           if (handle.idx == bgfx::kInvalidHandle) {
             const std::string *matName;
             if (prims.material) {
@@ -1288,10 +1300,74 @@ struct Draw : public BGFX::BaseConsumer {
         }
       }
     }
+  }
+
+  void renderNode(BGFX::Context *ctx, const Node &node,
+                  const linalg::aliases::float4x4 &parentTransform,
+                  const CBTable *mats, bool instanced) {
+    const auto transform = linalg::mul(parentTransform, node.transform);
+    float mat[16];
+    memcpy(&mat[0], &transform.x, sizeof(float) * 4);
+    memcpy(&mat[4], &transform.y, sizeof(float) * 4);
+    memcpy(&mat[8], &transform.z, sizeof(float) * 4);
+    memcpy(&mat[12], &transform.w, sizeof(float) * 4);
+    bgfx::setTransform(mat);
+
+    renderNodeSubmit(ctx, node, mats, instanced);
 
     for (const auto &snode : node.children) {
-      renderNode(ctx, snode, transform, mats);
+      renderNode(ctx, snode, transform, mats, instanced);
     }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto instances = input.payload.seqValue.len;
+    constexpr uint16_t stride = 64; // matrix 4x4
+    if (bgfx::getAvailInstanceDataBuffer(instances, stride) != instances) {
+      throw ActivationError("Instance buffer overflow");
+    }
+
+    bgfx::InstanceDataBuffer idb;
+    bgfx::allocInstanceDataBuffer(&idb, instances, stride);
+    uint8_t *data = idb.data;
+
+    for (uint32_t i = 0; i < instances; i++) {
+      float *mat = reinterpret_cast<float *>(data);
+      CBVar &vmat = input.payload.seqValue.elements[i];
+
+      if (vmat.payload.seqValue.len != 4) {
+        throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
+      }
+
+      memcpy(&mat[0], &vmat.payload.seqValue.elements[0].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[4], &vmat.payload.seqValue.elements[1].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[8], &vmat.payload.seqValue.elements[2].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[12], &vmat.payload.seqValue.elements[3].payload.float4Value,
+             sizeof(float) * 4);
+
+      data += stride;
+    }
+
+    bgfx::setInstanceDataBuffer(&idb);
+
+    auto *ctx =
+        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+
+    const auto &modelVar = _model.get();
+    const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
+    const auto &matsVar = _materials.get();
+    const auto mats = matsVar.valueType != CBType::None
+                          ? &matsVar.payload.tableValue
+                          : nullptr;
+
+    auto rootTransform = Mat4::Identity();
+    for (const auto &nodeRef : model->rootNodes) {
+      renderNode(ctx, nodeRef.get(), rootTransform, mats, true);
+    }
+    return input;
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
@@ -1308,7 +1384,7 @@ struct Draw : public BGFX::BaseConsumer {
     auto rootTransform =
         reinterpret_cast<Mat4 *>(&input.payload.seqValue.elements[0]);
     for (const auto &nodeRef : model->rootNodes) {
-      renderNode(ctx, nodeRef.get(), *rootTransform, mats);
+      renderNode(ctx, nodeRef.get(), *rootTransform, mats, false);
     }
     return input;
   }

@@ -38,6 +38,15 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return res;
   }
 
+  static Mat4 Identity() {
+    Mat4 res;
+    res[0] = {1, 0, 0, 0};
+    res[1] = {0, 1, 0, 0};
+    res[2] = {0, 0, 1, 0};
+    res[3] = {0, 0, 0, 1};
+    return res;
+  }
+
   Mat4 &operator=(linalg::aliases::float4x4 &&mat) {
     (*this)[0] = std::move(mat[0]);
     (*this)[1] = std::move(mat[1]);
