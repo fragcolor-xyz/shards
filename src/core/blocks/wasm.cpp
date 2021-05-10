@@ -271,7 +271,7 @@ m3ApiRawFunction(m3_wasi_unstable_args_get) {
 
   CBLOG_TRACE("WASI args_get");
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+  auto pd = reinterpret_cast<PlatformData *>(m3_GetUserData(runtime));
 
   for (u32 i = 0; i < pd->args.size(); ++i) {
     m3ApiWriteMem32(&argv[i], m3ApiPtrToOffset(argv_buf));
@@ -292,7 +292,7 @@ m3ApiRawFunction(m3_wasi_unstable_args_sizes_get) {
 
   CBLOG_TRACE("WASI args_sizes_get");
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+  auto pd = reinterpret_cast<PlatformData *>(m3_GetUserData(runtime));
 
   __wasi_size_t buflen = 0;
   for (u32 i = 0; i < pd->args.size(); ++i) {
@@ -514,7 +514,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_seek) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+  auto pd = reinterpret_cast<PlatformData *>(m3_GetUserData(runtime));
 
   if (fd == 0) {
     // stdio
@@ -691,7 +691,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_read) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+  auto pd = reinterpret_cast<PlatformData *>(m3_GetUserData(runtime));
 
   if (fd == 0) {
     ssize_t res = 0;
@@ -756,7 +756,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_write) {
     m3ApiReturn(__WASI_ERRNO_INVAL);
   }
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+  auto pd = reinterpret_cast<PlatformData *>(m3_GetUserData(runtime));
 
   if (fd == 1) {
     ssize_t res = 0;
@@ -940,7 +940,7 @@ m3ApiRawFunction(m3_wasi_unstable_proc_exit) {
 
   CBLOG_TRACE("WASI m3_wasi_unstable_proc_exit");
 
-  auto pd = reinterpret_cast<PlatformData *>(runtime->userdata);
+  auto pd = reinterpret_cast<PlatformData *>(m3_GetUserData(runtime));
 
   pd->exit_code = code;
   m3ApiTrap(m3Err_trapExit);
@@ -1202,10 +1202,10 @@ struct Run {
 
     _env.reset(m3_NewEnvironment(), &m3_FreeEnvironment);
     assert(_env.get());
-    _runtime.reset(m3_NewRuntime(_env.get(), _stackSize, &_data),
-                   &m3_FreeRuntime);
+    auto rt = m3_NewRuntime(_env.get(), _stackSize, &_data);
+    _runtime.reset(rt, &m3_FreeRuntime);
     assert(_runtime.get());
-    assert(_runtime->userdata);
+    assert(m3_GetUserData(_runtime.get()));
 
     std::ifstream wasmFile(p.string(), std::ios::binary);
     // apparently if we use std::copy we need to make sure this is set
@@ -1221,10 +1221,10 @@ struct Run {
     err = m3_LoadModule(_runtime.get(), pmodule);
     CHECK_COMPOSE_ERR(err);
 
-    err = WASI::m3_LinkWASI(_runtime->modules);
+    err = WASI::m3_LinkWASI(pmodule);
     CHECK_COMPOSE_ERR(err);
 
-    err = m3_LinkLibC(_runtime->modules);
+    err = m3_LinkLibC(pmodule);
     CHECK_COMPOSE_ERR(err);
 
     err = m3_FindFunction(&_mainFunc, _runtime.get(), _entryPoint.c_str());
