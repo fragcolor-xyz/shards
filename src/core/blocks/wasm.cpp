@@ -1294,6 +1294,7 @@ struct Run {
                     _argsArray.emplace_back(arg.payload.stringValue);
                   }
                 }
+                CBLOG_TRACE("WASM entrypoint argument: {}", _argsArray.back());
               }
             }
 
@@ -1317,6 +1318,7 @@ struct Run {
                     _data.args.emplace_back(arg.payload.stringValue);
                   }
                 }
+                CBLOG_TRACE("WASM WASI argument: {}", _data.args.back());
               }
             }
 
