@@ -3232,6 +3232,22 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     return CBOptionalString{str, crc};
   };
 
+  result->isEqualVar = [](const CBVar *v1, const CBVar *v2) -> CBBool {
+    return *v1 == *v2;
+  };
+
+  result->isEqualType = [](const CBTypeInfo *t1,
+                           const CBTypeInfo *t2) -> CBBool {
+    return *t1 == *t2;
+  };
+
+  result->deriveTypeInfo = [](const CBVar *v,
+                              const struct CBInstanceData *data) -> CBTypeInfo {
+    return deriveTypeInfo(*v, *data);
+  };
+
+  result->freeDerivedTypeInfo = [](CBTypeInfo *t) { freeDerivedInfo(*t); };
+
   return result;
 }
 };

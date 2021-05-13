@@ -10,12 +10,15 @@ use crate::blocks::physics::SHAPES_VAR_TYPE;
 use crate::blocks::physics::SHAPE_TYPE;
 use crate::blocks::physics::SHAPE_VAR_TYPE;
 use crate::blocks::physics::SIMULATION_TYPE;
+use crate::core::deriveType;
 use crate::core::registerBlock;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::FLOAT4X4orS_TYPES;
+use crate::types::InstanceData;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
@@ -23,6 +26,7 @@ use crate::types::Type;
 use crate::types::ANY_TYPES;
 use crate::types::FLOAT4X2_TYPE;
 use crate::types::FLOAT4X2_TYPES;
+use crate::types::FLOAT4X4S_TYPE;
 use crate::types::FLOAT4X4_TYPE;
 use crate::types::FLOAT4X4_TYPES;
 use crate::types::NONE_TYPES;
@@ -62,19 +66,19 @@ lazy_static! {
       .into(),
     (
       cstr!("Position"),
-      cbccstr!("The initial position of this rigid body."),
+      cbccstr!("The initial position of this rigid body. Can be updated in the case of a kinematic rigid body."),
       vec![common_type::float3, common_type::float3_var]
     )
       .into(),
     (
       cstr!("Rotation"),
-      cbccstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4"),
+      cbccstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body."),
       vec![common_type::float4, common_type::float4_var]
     )
       .into(),
     (
       cstr!("Name"),
-      cbccstr!("The optional name of the variable that will be exposed to identify, apply forces and control this rigid body."),
+      cbccstr!("The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body."),
       vec![common_type::string, common_type::none]
     )
       .into()
@@ -86,8 +90,8 @@ impl Default for RigidBody {
     let mut r = RigidBody {
       simulation_var: ParamVar::new(().into()),
       shape_var: ParamVar::new(().into()),
-      rigid_body: None,
-      collider: None,
+      rigid_body: Vec::new(),
+      collider: Vec::new(),
       position: ParamVar::new((0.0, 0.0, 0.0).into()),
       rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
       user_data: 0,
@@ -116,10 +120,37 @@ impl RigidBody {
     }
   }
 
+  fn _compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    let pvt = {
+      if self.position.isVariable() {
+        deriveType(&self.position.getParam(), data)
+      } else {
+        deriveType(&self.position.get(), data)
+      }
+    };
+
+    let rvt = {
+      if self.rotation.isVariable() {
+        deriveType(&self.rotation.getParam(), data)
+      } else {
+        deriveType(&self.rotation.get(), data)
+      }
+    };
+
+    if pvt.0 == *FLOAT4X4_TYPE && rvt.0 == *FLOAT4X4_TYPE {
+      Ok(*FLOAT4X4_TYPE)
+    } else if pvt.0 == *FLOAT4X4S_TYPE && rvt.0 == *FLOAT4X4S_TYPE {
+      Ok(*FLOAT4X4S_TYPE)
+    } else {
+      Err("Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
+    }
+  }
+
   fn _cleanup(&mut self) {
     if let Some(rigid_body) = self.rigid_body {
       let sim_var = self.simulation_var.get();
-      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
+      let simulation =
+        Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
       simulation.bodies.remove(
         rigid_body,
         &mut simulation.colliders,
@@ -142,15 +173,15 @@ impl RigidBody {
     self.user_data = user_data;
   }
 
-  fn _populate(&mut self, status: BodyStatus) -> Result<(RigidBodyHandle, Var, Var), &str> {
-    let p = self.position.get();
-    let r = self.rotation.get();
+  fn _populate(&mut self, status: BodyStatus) -> Result<(RigidBodyHandle, &Var, &Var), &str> {
+    let p = &self.position.get();
+    let r = &self.rotation.get();
     if self.rigid_body.is_none() {
       let pos = {
         if p.is_none() {
           Vector3::new(0.0, 0.0, 0.0)
         } else {
-          let (tx, ty, tz): (f32, f32, f32) = p.as_ref().try_into()?;
+          let (tx, ty, tz): (f32, f32, f32) = p.try_into()?;
           Vector3::new(tx, ty, tz)
         }
       };
@@ -159,7 +190,7 @@ impl RigidBody {
         if r.is_none() {
           Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
         } else {
-          let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
+          let quaternion: Result<(f32, f32, f32, f32), &str> = r.try_into();
           if let Ok(quaternion) = quaternion {
             let quaternion =
               Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
@@ -367,7 +398,15 @@ impl Block for DynamicRigidBody {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &FLOAT4X4_TYPES
+    &FLOAT4X4orS_TYPES
+  }
+
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    Rc::get_mut(&mut self.rb).unwrap()._compose(data)
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -489,7 +528,15 @@ impl Block for KinematicRigidBody {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &FLOAT4X4_TYPES
+    &FLOAT4X4orS_TYPES
+  }
+
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    Rc::get_mut(&mut self.rb).unwrap()._compose(data)
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

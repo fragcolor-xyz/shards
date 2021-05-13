@@ -48,6 +48,7 @@ use crate::chainblocksc::CBType_None;
 use crate::chainblocksc::CBType_Object;
 use crate::chainblocksc::CBType_Path;
 use crate::chainblocksc::CBType_Seq;
+use crate::chainblocksc::CBType_Set;
 use crate::chainblocksc::CBType_String;
 use crate::chainblocksc::CBType_Table;
 use crate::chainblocksc::CBTypesInfo;
@@ -95,6 +96,16 @@ pub type ParameterInfo = CBParameterInfo;
 #[derive(PartialEq)]
 pub struct String(pub CBString);
 pub struct OptionalString(pub CBOptionalString);
+pub struct DerivedType(pub Type);
+
+impl Drop for DerivedType {
+fn drop(&mut self) {
+  let ti = &mut self.0;
+  unsafe {
+    (*Core).freeDerivedTypeInfo.unwrap()(ti as *mut _);
+  }
+ }
+}
 
 #[derive(PartialEq)]
 pub enum ChainState {
@@ -1571,7 +1582,7 @@ impl ParamVar {
     }
   }
 
-  pub fn get(&mut self) -> Var {
+  pub fn get(&self) -> Var {
     // avoid reading refcount
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe { *self.pointee }
@@ -1581,11 +1592,11 @@ impl ParamVar {
     self.parameter = value.into();
   }
 
-  pub fn getParam(&mut self) -> Var {
+  pub fn getParam(&self) -> Var {
     self.parameter.0
   }
 
-  pub fn isVariable(&mut self) -> bool {
+  pub fn isVariable(&self) -> bool {
     self.parameter.0.valueType == CBType_ContextVar
   }
 
@@ -1594,7 +1605,7 @@ impl ParamVar {
     self.parameter.0.valueType = CBType_ContextVar;
   }
 
-  pub fn getName(&mut self) -> *const i8 {
+  pub fn getName(&self) -> *const i8 {
     (&self.parameter.0).try_into().unwrap()
   }
 }
@@ -2037,230 +2048,19 @@ impl PartialEq for Var {
       false
     } else {
       unsafe {
-        match self.valueType {
-          CBType_Enum => {
-            self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
-              == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId
-              && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
-                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId
-              && self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
-                == other.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
-          }
-          CBType_Bool => {
-            self.payload.__bindgen_anon_1.boolValue == other.payload.__bindgen_anon_1.boolValue
-          }
-          CBType_Int => {
-            self.payload.__bindgen_anon_1.intValue == other.payload.__bindgen_anon_1.intValue
-          }
-          CBType_Int2 => {
-            self.payload.__bindgen_anon_1.int2Value == other.payload.__bindgen_anon_1.int2Value
-          }
-          CBType_Int3 => {
-            self.payload.__bindgen_anon_1.int3Value == other.payload.__bindgen_anon_1.int3Value
-          }
-          CBType_Int4 => {
-            self.payload.__bindgen_anon_1.int4Value == other.payload.__bindgen_anon_1.int4Value
-          }
-          CBType_Int8 => {
-            self.payload.__bindgen_anon_1.int8Value == other.payload.__bindgen_anon_1.int8Value
-          }
-          CBType_Int16 => {
-            self.payload.__bindgen_anon_1.int16Value == other.payload.__bindgen_anon_1.int16Value
-          }
-          CBType_Float => abs_diff_eq!(
-            self.payload.__bindgen_anon_1.floatValue,
-            other.payload.__bindgen_anon_1.floatValue
-          ),
-          CBType_Float2 => {
-            abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float2Value[0],
-              other.payload.__bindgen_anon_1.float2Value[0]
-            ) && abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float2Value[1],
-              other.payload.__bindgen_anon_1.float2Value[1]
-            )
-          }
-          CBType_Float3 => {
-            abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float3Value[0],
-              other.payload.__bindgen_anon_1.float3Value[0]
-            ) && abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float3Value[1],
-              other.payload.__bindgen_anon_1.float3Value[1]
-            ) && abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float3Value[2],
-              other.payload.__bindgen_anon_1.float3Value[2]
-            )
-          }
-          CBType_Float4 => {
-            abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float4Value[0],
-              other.payload.__bindgen_anon_1.float4Value[0]
-            ) && abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float4Value[1],
-              other.payload.__bindgen_anon_1.float4Value[1]
-            ) && abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float4Value[2],
-              other.payload.__bindgen_anon_1.float4Value[2]
-            ) && abs_diff_eq!(
-              self.payload.__bindgen_anon_1.float4Value[3],
-              other.payload.__bindgen_anon_1.float4Value[3]
-            )
-          }
-          CBType_Color => {
-            self.payload.__bindgen_anon_1.colorValue.r
-              == other.payload.__bindgen_anon_1.colorValue.r
-              && self.payload.__bindgen_anon_1.colorValue.g
-                == other.payload.__bindgen_anon_1.colorValue.g
-              && self.payload.__bindgen_anon_1.colorValue.b
-                == other.payload.__bindgen_anon_1.colorValue.b
-              && self.payload.__bindgen_anon_1.colorValue.a
-                == other.payload.__bindgen_anon_1.colorValue.a
-          }
-          CBType_Block => {
-            self.payload.__bindgen_anon_1.blockValue == other.payload.__bindgen_anon_1.blockValue
-          }
-          CBType_Bytes => {
-            self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-              == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize
-              && (self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                == other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
-                || {
-                  let aslice = slice::from_raw_parts(
-                    self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue as *const u8,
-                    self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
-                  );
-                  let bslice = slice::from_raw_parts(
-                    other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue as *const u8,
-                    other.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
-                  );
+        (*Core).isEqualVar.unwrap()(self as *const _, other as *const _)
+      }
+    }
+  }
+}
 
-                  aslice == bslice
-                })
-          }
-          CBType_String | CBType_Path | CBType_ContextVar => {
-            self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-              == other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue
-              || {
-                let astr = CStr::from_ptr(
-                  self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
-                );
-
-                let bstr = CStr::from_ptr(
-                  other.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
-                );
-
-                astr == bstr
-              }
-          }
-          CBType_Image => {
-            let aflags: u32 = self.payload.__bindgen_anon_1.imageValue.flags.into();
-            let bflags: u32 = other.payload.__bindgen_anon_1.imageValue.flags.into();
-            let apixsize = if (aflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
-              2
-            } else if (aflags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT {
-              4
-            } else {
-              1
-            };
-            let bpixsize = if (bflags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT {
-              2
-            } else if (bflags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT {
-              4
-            } else {
-              1
-            };
-
-            apixsize == bpixsize
-              && self.payload.__bindgen_anon_1.imageValue.channels
-                == other.payload.__bindgen_anon_1.imageValue.channels
-              && self.payload.__bindgen_anon_1.imageValue.width
-                == other.payload.__bindgen_anon_1.imageValue.width
-              && self.payload.__bindgen_anon_1.imageValue.height
-                == other.payload.__bindgen_anon_1.imageValue.height
-              && (self.payload.__bindgen_anon_1.imageValue.data
-                == other.payload.__bindgen_anon_1.imageValue.data
-                || {
-                  let aslice = slice::from_raw_parts(
-                    self.payload.__bindgen_anon_1.imageValue.data,
-                    self.payload.__bindgen_anon_1.imageValue.channels as usize
-                      * self.payload.__bindgen_anon_1.imageValue.width as usize
-                      * self.payload.__bindgen_anon_1.imageValue.height as usize
-                      * apixsize,
-                  );
-                  let bslice = slice::from_raw_parts(
-                    other.payload.__bindgen_anon_1.imageValue.data,
-                    other.payload.__bindgen_anon_1.imageValue.channels as usize
-                      * other.payload.__bindgen_anon_1.imageValue.width as usize
-                      * other.payload.__bindgen_anon_1.imageValue.height as usize
-                      * bpixsize,
-                  );
-
-                  aslice == bslice
-                })
-          }
-          CBType_Seq => {
-            if self.payload.__bindgen_anon_1.seqValue.elements
-              == other.payload.__bindgen_anon_1.seqValue.elements
-            {
-              true
-            } else if self.payload.__bindgen_anon_1.seqValue.len
-              != other.payload.__bindgen_anon_1.seqValue.len
-            {
-              false
-            } else {
-              let aseq: Seq = self.try_into().unwrap();
-              let bseq: Seq = other.try_into().unwrap();
-              aseq.into_iter().eq(bseq.into_iter())
-            }
-          }
-          CBType_Table => {
-            let atab: Table = self.try_into().unwrap();
-            let btab: Table = other.try_into().unwrap();
-            atab.iter().eq(btab.iter())
-          }
-          CBType_Chain => {
-            self.payload.__bindgen_anon_1.chainValue == other.payload.__bindgen_anon_1.chainValue
-          }
-          CBType_Object => {
-            self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
-              == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
-              && self
-                .payload
-                .__bindgen_anon_1
-                .__bindgen_anon_1
-                .objectVendorId
-                == other
-                  .payload
-                  .__bindgen_anon_1
-                  .__bindgen_anon_1
-                  .objectVendorId
-              && self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
-                == other.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId
-          }
-          CBType_Array => {
-            self.payload.__bindgen_anon_1.arrayValue.len
-              == other.payload.__bindgen_anon_1.arrayValue.len
-              && self.innerType == other.innerType
-              && (self.payload.__bindgen_anon_1.arrayValue.elements
-                == other.payload.__bindgen_anon_1.arrayValue.elements
-                || {
-                  let aslice = slice::from_raw_parts(
-                    self.payload.__bindgen_anon_1.arrayValue.elements as *const u8,
-                    self.payload.__bindgen_anon_1.arrayValue.len as usize
-                      * std::mem::size_of::<CBVarPayload>(),
-                  );
-                  let bslice = slice::from_raw_parts(
-                    other.payload.__bindgen_anon_1.arrayValue.elements as *const u8,
-                    other.payload.__bindgen_anon_1.arrayValue.len as usize
-                      * std::mem::size_of::<CBVarPayload>(),
-                  );
-
-                  aslice == bslice
-                })
-          }
-          _ => true,
-        }
+impl PartialEq for Type {
+  fn eq(&self, other: &Type) -> bool {
+    if self.basicType != other.basicType {
+      false
+    } else {
+      unsafe {
+        (*Core).isEqualType.unwrap()(self as *const _, other as *const _)
       }
     }
   }
@@ -2282,6 +2082,7 @@ lazy_static! {
   };
   pub static ref FLOAT4X4_TYPES: Vec<Type> = vec![*FLOAT4X4_TYPE];
   pub static ref FLOAT4X4S_TYPE: Type = Type::seq(&FLOAT4X4_TYPES);
+  pub static ref FLOAT4X4orS_TYPES: Vec<Type> = vec![*FLOAT4X4_TYPE, *FLOAT4X4S_TYPE];
   pub static ref FLOAT3X3_TYPE: Type = {
     let mut t = common_type::float3s;
     t.fixedSize = 3;

@@ -87,8 +87,8 @@ struct Simulation {
 struct RigidBody {
   simulation_var: ParamVar,
   shape_var: ParamVar,
-  rigid_body: Option<RigidBodyHandle>,
-  collider: Option<ColliderHandle>,
+  rigid_body: Vec<RigidBodyHandle>,
+  collider: Vec<ColliderHandle>,
   position: ParamVar,
   rotation: ParamVar,
   user_data: u128,

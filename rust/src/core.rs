@@ -13,6 +13,8 @@ use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
 use crate::types::ChainState;
 use crate::types::Context;
+use crate::types::DerivedType;
+use crate::types::InstanceData;
 use crate::types::ParameterInfo;
 use crate::types::Parameters;
 use crate::types::Var;
@@ -224,6 +226,11 @@ pub fn readCachedString1(id: u32) -> CBOptionalString {
 
 pub fn writeCachedString1(id: u32, string: &'static str) -> CBOptionalString {
   unsafe { (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const i8) }
+}
+
+pub fn deriveType(var: &Var, data: &InstanceData) -> DerivedType {
+  let t = unsafe { (*Core).deriveTypeInfo.unwrap()(var as *const _, data as *const _) };
+  DerivedType(t)
 }
 
 macro_rules! cbccstr {
