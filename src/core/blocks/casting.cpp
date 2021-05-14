@@ -28,7 +28,7 @@ struct FromImage {
       const int c = int(input.payload.imageValue.channels);
       const int flatsize = w * h * c * pixsize;
 
-      output.resize(flatsize);
+      output.resize(flatsize, Var(0.0));
 
       if (pixsize == 1) {
         for (int i = 0; i < flatsize; i++) {
