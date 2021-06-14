@@ -244,7 +244,7 @@ impl Block for FromLEB128 {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     if self.signed {
       let mut bytes: &[u8] = input.as_ref().try_into()?;
-      let value: (i64, usize)= bytes
+      let value: (i64, usize) = bytes
         .read_leb128()
         .map_err(|_| "Failed to convert LEB128 bytes into integer")?;
       Ok(value.0.into())

@@ -1,7 +1,7 @@
-use crate::chainblocksc::CBOptionalString;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
+use crate::chainblocksc::CBOptionalString;
 use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
 use crate::chainblocksc::CBSeq;
@@ -134,9 +134,9 @@ unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> CBOptionalStrin
   let blk = arg1 as *mut BlockWrapper<T>;
   let help = (*blk).block.help();
   (*blk).help = Some(CString::new(help).expect("CString::new failed"));
-  CBOptionalString{
+  CBOptionalString {
     string: (*blk).help.as_ref().unwrap().as_ptr(),
-    crc: 0
+    crc: 0,
   }
 }
 

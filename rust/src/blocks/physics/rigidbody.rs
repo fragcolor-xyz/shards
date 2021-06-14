@@ -119,7 +119,8 @@ impl RigidBody {
   fn _cleanup(&mut self) {
     if let Some(rigid_body) = self.rigid_body {
       let sim_var = self.simulation_var.get();
-      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
+      let simulation =
+        Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
       simulation.bodies.remove(
         rigid_body,
         &mut simulation.colliders,

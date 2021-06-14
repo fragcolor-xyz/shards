@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use crate::blocks::physics::RigidBody;
 use crate::blocks::physics::Simulation;
 use crate::blocks::physics::EXPOSED_SIMULATION;
@@ -27,6 +26,7 @@ use rapier3d::geometry::{
 use rapier3d::na::{Point3, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 use std::convert::TryInto;
+use std::rc::Rc;
 
 lazy_static! {
   pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::float3];
@@ -138,10 +138,10 @@ impl Block for Impulse {
         let (x, y, z) = input.as_ref().try_into()?;
         rb.apply_impulse(Vector3::new(x, y, z), true);
       } else {
-        return Err("Rigidbody not found in the simulation")
+        return Err("Rigidbody not found in the simulation");
       }
     } else {
-      return Err("Rigidbody not valid")
+      return Err("Rigidbody not valid");
     }
 
     Ok(*input)
