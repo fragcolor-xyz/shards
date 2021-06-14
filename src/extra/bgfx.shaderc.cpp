@@ -177,7 +177,9 @@ struct ShaderCompiler : public IShaderCompiler {
         // hash the shader code and other parameters
         .Get(shader_hashing)
         .Hash()
-        .ToHex() Set(shader_hash_filename)
+        .ToHex()
+        .HexToBytes()
+        .ToBase58() Set(shader_hash_filename)
         .let("shaders/cache/") PrependTo(shader_hash_filename) //
         .Get(shader_hash_filename)
         .MaybeSilently( // try to load from cache

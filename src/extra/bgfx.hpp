@@ -271,28 +271,28 @@ struct Texture {
 };
 
 // utility macro to load textures of different sizes
-#define BGFX_TEXTURE2D_CREATE(_bits, _components, _texture, _srgb)             \
+#define BGFX_TEXTURE2D_CREATE(_bits, _components, _texture)                    \
   if (_bits == 8) {                                                            \
     switch (_components) {                                                     \
     case 1:                                                                    \
-      _texture->handle = bgfx::createTexture2D(                                \
-          _texture->width, _texture->height, false, 1,                         \
-          bgfx::TextureFormat::R8, _srgb ? BGFX_TEXTURE_SRGB : 0);             \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::R8);                      \
       break;                                                                   \
     case 2:                                                                    \
-      _texture->handle = bgfx::createTexture2D(                                \
-          _texture->width, _texture->height, false, 1,                         \
-          bgfx::TextureFormat::RG8, _srgb ? BGFX_TEXTURE_SRGB : 0);            \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RG8);                     \
       break;                                                                   \
     case 3:                                                                    \
-      _texture->handle = bgfx::createTexture2D(                                \
-          _texture->width, _texture->height, false, 1,                         \
-          bgfx::TextureFormat::RGB8, _srgb ? BGFX_TEXTURE_SRGB : 0);           \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RGB8);                    \
       break;                                                                   \
     case 4:                                                                    \
-      _texture->handle = bgfx::createTexture2D(                                \
-          _texture->width, _texture->height, false, 1,                         \
-          bgfx::TextureFormat::RGBA8, _srgb ? BGFX_TEXTURE_SRGB : 0);          \
+      _texture->handle =                                                       \
+          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
+                                bgfx::TextureFormat::RGBA8);                   \
       break;                                                                   \
     default:                                                                   \
       CBLOG_FATAL("invalid state");                                            \
@@ -303,12 +303,12 @@ struct Texture {
     case 1:                                                                    \
       _texture->handle =                                                       \
           bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::R16U);                    \
+                                bgfx::TextureFormat::R16);                     \
       break;                                                                   \
     case 2:                                                                    \
       _texture->handle =                                                       \
           bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RG16U);                   \
+                                bgfx::TextureFormat::RG16);                    \
       break;                                                                   \
     case 3:                                                                    \
       throw ActivationError("Format not supported, it seems bgfx has no "      \
@@ -317,7 +317,7 @@ struct Texture {
     case 4:                                                                    \
       _texture->handle =                                                       \
           bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RGBA16U);                 \
+                                bgfx::TextureFormat::RGBA16);                  \
       break;                                                                   \
     default:                                                                   \
       CBLOG_FATAL("invalid state");                                            \

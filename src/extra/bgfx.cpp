@@ -1015,22 +1015,7 @@ struct MainWindow : public BaseWindow {
 };
 
 struct Texture2D : public BaseConsumer {
-  static inline Parameters params{
-      {"sRGB",
-       CBCCSTR("If the texture should be loaded as an sRGB format (only valid "
-               "for 8 bit per color textures)."),
-       {CoreInfo::BoolType}}};
-
-  static CBParametersInfo parameters() { return params; }
-
-  void setParam(int index, const CBVar &value) {
-    _srgb = value.payload.boolValue;
-  }
-
-  CBVar getParam(int index) { return Var(_srgb); }
-
   Texture *_texture{nullptr};
-  bool _srgb{false};
 
   void cleanup() {
     if (_texture) {
@@ -1072,7 +1057,10 @@ struct Texture2D : public BaseConsumer {
       _texture->channels = input.payload.imageValue.channels;
       _texture->bpp = bpp;
 
-      BGFX_TEXTURE2D_CREATE(bpp * 8, _texture->channels, _texture, _srgb);
+      BGFX_TEXTURE2D_CREATE(bpp * 8, _texture->channels, _texture);
+
+      if (_texture->handle.idx == bgfx::kInvalidHandle)
+        throw ActivationError("Failed to create texture");
     }
 
     // we copy because bgfx is multithreaded
