@@ -15,11 +15,11 @@ use crate::CString;
 use crate::Types;
 use crate::Var;
 use core::time::Duration;
+use sha2::{Digest, Sha256, Sha512};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use tiny_keccak::{Hasher, Keccak, Sha3};
-use sha2::{Sha256, Sha512, Digest};
 
 lazy_static! {
   pub static ref INPUT_TYPES: Vec<Type> = vec![
