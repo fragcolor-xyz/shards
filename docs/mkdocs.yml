@@ -1,3 +1,5 @@
 site_name: My Docs
+site_url:
 theme:
   name: material
+use_directory_urls: False
