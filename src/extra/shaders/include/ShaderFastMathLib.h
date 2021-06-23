@@ -61,8 +61,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 
 // Define switch for PC compilation
 #ifdef _PC
-#define asint(_x) *reinterpret_cast<int *>(&_x);
-#define asfloat(_x) *reinterpret_cast<float *>(&_x);
+#include <stdint.h>
+union FloatOrInt {
+  float as_float;
+  int32_t as_int;
+};
+#define asint(_x) FloatOrInt{.as_float = _x}.as_int
+#define asfloat(_x) FloatOrInt{.as_int = _x}.as_float
 #include <math.h>
 #define SHADER_FAST_INLINE inline
 #else
