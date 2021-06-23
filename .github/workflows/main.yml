@@ -284,7 +284,7 @@ jobs:
         mkdir build
         docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
     - uses: chainblocks/Publish-Docker-Github-Action@master
-      if: github.ref == 'refs/heads/devel'
+      if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
       name: Build and upload to hub runtime image
       with:
         name: chainblocks/cbl
