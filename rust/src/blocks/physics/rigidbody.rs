@@ -31,7 +31,7 @@ use crate::Types;
 use crate::Var;
 use rapier3d::dynamics::RigidBodyBuilder;
 use rapier3d::dynamics::{
-  BodyStatus, IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet,
+  IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet, RigidBodyType,
 };
 use rapier3d::geometry::{
   BroadPhase, ColliderBuilder, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent,
@@ -123,6 +123,7 @@ impl RigidBody {
         Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
       simulation.bodies.remove(
         rigid_body,
+        &mut simulation.islands_manager,
         &mut simulation.colliders,
         &mut simulation.joints,
       );
@@ -143,7 +144,7 @@ impl RigidBody {
     self.user_data = user_data;
   }
 
-  fn _populate(&mut self, status: BodyStatus) -> Result<(RigidBodyHandle, Var, Var), &str> {
+  fn _populate(&mut self, status: RigidBodyType) -> Result<(RigidBodyHandle, Var, Var), &str> {
     let p = self.position.get();
     let r = self.rotation.get();
     if self.rigid_body.is_none() {
@@ -188,10 +189,10 @@ impl RigidBody {
           let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
           let shape = shapeInfo.shape.as_ref().unwrap().clone();
           let mut collider = ColliderBuilder::new(shape)
-            .position_wrt_parent(shapeInfo.position.unwrap())
+            .position(shapeInfo.position.unwrap())
             .build();
           collider.user_data = self.user_data;
-          self.collider = Some(simulation.colliders.insert(
+          self.collider = Some(simulation.colliders.insert_with_parent(
             collider,
             rigid_body,
             &mut simulation.bodies,
@@ -201,10 +202,10 @@ impl RigidBody {
         let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
         let shape = shapeInfo.shape.as_ref().unwrap().clone();
         let mut collider = ColliderBuilder::new(shape)
-          .position_wrt_parent(shapeInfo.position.unwrap())
+          .position(shapeInfo.position.unwrap())
           .build();
         collider.user_data = self.user_data;
-        self.collider = Some(simulation.colliders.insert(
+        self.collider = Some(simulation.colliders.insert_with_parent(
           collider,
           rigid_body,
           &mut simulation.bodies,
@@ -325,7 +326,7 @@ impl Block for StaticRigidBody {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      ._populate(BodyStatus::Static)?;
+      ._populate(RigidBodyType::Static)?;
     Ok(*input)
   }
 }
@@ -444,7 +445,7 @@ impl Block for DynamicRigidBody {
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let (rigid_body, _, _) = rbData._populate(BodyStatus::Dynamic)?;
+    let (rigid_body, _, _) = rbData._populate(RigidBodyType::Dynamic)?;
     let rb = simulation.bodies.get(rigid_body).unwrap();
     let mat: Matrix4<f32> = rb.position().to_matrix();
     fill_seq_from_mat4(&mut self.output, &mat);
@@ -566,7 +567,7 @@ impl Block for KinematicRigidBody {
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let (rigid_body, p, r) = rbData._populate(BodyStatus::Kinematic)?;
+    let (rigid_body, p, r) = rbData._populate(RigidBodyType::KinematicPositionBased)?; // TODO KinematicVelocityBased as well
     let rb = simulation.bodies.get_mut(rigid_body).unwrap();
 
     // this guy will read constantly pos and rotations from variable values

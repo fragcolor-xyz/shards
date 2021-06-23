@@ -4,7 +4,7 @@ extern crate reqwest;
 extern crate bs58;
 extern crate hex;
 extern crate resvg;
-extern crate secp256k1;
+extern crate libsecp256k1;
 extern crate sha2;
 extern crate tiny_keccak;
 extern crate tiny_skia;
