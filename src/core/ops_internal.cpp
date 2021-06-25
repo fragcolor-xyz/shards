@@ -222,8 +222,7 @@ std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
       }
     }
     os << "]";
-  }
-  if (t.basicType == CBType::Set) {
+  } else if (t.basicType == CBType::Set) {
     os << " [";
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
       // avoid recursive types
@@ -262,6 +261,20 @@ std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
       }
       os << "]";
     }
+  } else if (t.basicType == CBType::ContextVar) {
+    os << " [";
+    for (uint32_t i = 0; i < t.contextVarTypes.len; i++) {
+      // avoid recursive types
+      if (t.contextVarTypes.elements[i].recursiveSelf) {
+        os << "(Self)";
+      } else {
+        os << "(" << t.contextVarTypes.elements[i] << ")";
+      }
+      if (i < (t.contextVarTypes.len - 1)) {
+        os << " ";
+      }
+    }
+    os << "]";
   }
   return os;
 }
