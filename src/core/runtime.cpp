@@ -3081,8 +3081,10 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->log = [](const char *msg) noexcept { CBLOG_INFO(msg); };
 
-  result->setLoggingOptions = [](CBLoggingOptions options) noexcept {
-    // TODO
+  result->logLevel = [](int level, const char *msg) noexcept {
+    spdlog::default_logger_raw()->log(
+        spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION},
+        (spdlog::level::level_enum)level, msg);
   };
 
   result->createBlock = [](const char *name) noexcept {

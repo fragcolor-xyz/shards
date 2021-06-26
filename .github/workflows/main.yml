@@ -236,7 +236,7 @@ jobs:
         cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
         cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
         cp ../../src/extra/shaders/gltf/*.* lib/gltf/
-        cp ../../src/extra/shaders/include/shader.h include/shader.h
+        cp ../../src/extra/shaders/include/*.* include/
     - name: Build
       run: |
         cd build
@@ -284,7 +284,7 @@ jobs:
         mkdir build
         docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
     - uses: chainblocks/Publish-Docker-Github-Action@master
-      if: github.ref == 'refs/heads/devel'
+      if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
       name: Build and upload to hub runtime image
       with:
         name: chainblocks/cbl

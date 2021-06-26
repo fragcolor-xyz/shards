@@ -902,6 +902,7 @@ typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
 #endif
 
 typedef void(__cdecl *CBLog)(CBString msg);
+typedef void(__cdecl *CBLogLevel)(int level, CBString msg);
 
 typedef struct CBlock *(__cdecl *CBCreateBlock)(CBString name);
 
@@ -980,13 +981,7 @@ struct CBChainInfo {
   CBBool isRunning;
 };
 
-struct CBLoggingOptions {
-  uint32_t maxSize;
-};
-
 typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
-
-typedef void(__cdecl *CBSetLoggingOptions)(struct CBLoggingOptions options);
 
 // id is generally a crc32 value
 // use this when the cache is compiled
@@ -1018,7 +1013,7 @@ typedef struct _CBCore {
 
   // Logging
   CBLog log;
-  CBSetLoggingOptions setLoggingOptions;
+  CBLogLevel logLevel;
 
   // Chain creation
   CBCreateBlock createBlock;

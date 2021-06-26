@@ -17,6 +17,7 @@ use rapier3d::dynamics::{CCDSolver, IntegrationParameters, JointSet, RigidBodySe
 use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
 use rapier3d::na::Vector3;
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsHooks, PhysicsPipeline, QueryPipeline};
+use rapier3d::prelude::IslandManager;
 use std::convert::TryInto;
 
 lazy_static! {
@@ -34,6 +35,7 @@ impl Default for Simulation {
     let (intersection_send, intersection_recv) = crossbeam::channel::unbounded();
     let mut res = Simulation {
       pipeline: PhysicsPipeline::new(),
+      islands_manager: IslandManager::new(),
       query_pipeline: QueryPipeline::new(),
       gravity: Vector3::new(0.0, -9.81, 0.0),
       integration_parameters: IntegrationParameters::default(),
@@ -117,6 +119,7 @@ impl Block for Simulation {
     self.pipeline.step(
       &self.gravity,
       &self.integration_parameters,
+      &mut self.islands_manager,
       &mut self.broad_phase,
       &mut self.narrow_phase,
       &mut self.bodies,
@@ -126,7 +129,9 @@ impl Block for Simulation {
       &(),
       &self.event_handler,
     );
-    self.query_pipeline.update(&self.bodies, &self.colliders);
+    self
+      .query_pipeline
+      .update(&self.islands_manager, &self.bodies, &self.colliders);
     Ok(*input)
   }
 }

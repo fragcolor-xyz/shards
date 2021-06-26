@@ -1,21 +1,21 @@
 #[cfg(not(target_arch = "wasm32"))]
 extern crate reqwest;
 
-extern crate tiny_keccak;
-extern crate sha2;
-extern crate secp256k1;
-extern crate hex;
 extern crate bs58;
-extern crate wasabi_leb128;
+extern crate hex;
 extern crate resvg;
-extern crate usvg;
+extern crate libsecp256k1;
+extern crate sha2;
+extern crate tiny_keccak;
 extern crate tiny_skia;
+extern crate usvg;
+extern crate wasabi_leb128;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;
 
-use crate::types::Type;
 use crate::types::common_type;
+use crate::types::Type;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod http;

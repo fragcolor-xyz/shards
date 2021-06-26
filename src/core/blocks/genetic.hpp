@@ -313,6 +313,8 @@ struct Evolve {
             auto best = CBChain::sharedFromRef(
                 _sortedPopulation.front()->chain.payload.chainValue);
             best->cleanup(true);
+            best->composedHash = 0;
+            best->chainUsers.clear();
           }
 
 #if 1
@@ -507,6 +509,16 @@ struct Evolve {
           }
 
           CBLOG_TRACE("Evolve, era done");
+
+          // hack/fix
+          // it is likely possible that the best chain we outputted
+          // was used and so warmedup
+          auto best = CBChain::sharedFromRef(
+              _sortedPopulation.front()->chain.payload.chainValue);
+          best->cleanup(true);
+          best->composedHash = 0;
+          best->chainUsers.clear();
+
           _result.clear();
           _result.emplace_back(Var(_sortedPopulation.front()->fitness));
           _result.emplace_back(_sortedPopulation.front()->chain);

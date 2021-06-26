@@ -107,7 +107,7 @@
        (LoadImage "../../assets/drawing.png")
        (GFX.Texture2D) >= .image1
        (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
-       (GFX.Texture2D :sRGB true) >> .bump-textures
+       (GFX.Texture2D) >> .bump-textures
        (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
        (GFX.Texture2D) >> .bump-textures
        cube (GFX.Model

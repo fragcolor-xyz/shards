@@ -21,6 +21,7 @@ use rapier3d::geometry::{
 };
 use rapier3d::na::{Isometry3, Matrix3, Matrix4, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
+use rapier3d::prelude::IslandManager;
 
 lazy_static! {
   static ref SIMULATION_TYPE: Type = {
@@ -69,6 +70,7 @@ lazy_static! {
 
 struct Simulation {
   pipeline: PhysicsPipeline,
+  islands_manager: IslandManager,
   query_pipeline: QueryPipeline,
   gravity: Vector3<f32>,
   integration_parameters: IntegrationParameters,

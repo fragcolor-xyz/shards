@@ -44,6 +44,8 @@
 #define Hash() block("Hash")
 #define ToString() block("ToString")
 #define ToHex() block("ToHex")
+#define HexToBytes() block("HexToBytes")
+#define ToBase58() block("ToBase58")
 
 #define PrependTo(_var) .block("PrependTo", Var::ContextVar(#_var))
 #define AppendTo(_var) .block("AppendTo", Var::ContextVar(#_var))
@@ -73,12 +75,12 @@
 
 #define GLTF_Load() block("GLTF.Load")
 #define GLTF_Load_WithTransformBefore(_transform)                              \
-  block("GLTF.Load", Var::Any, Var::Any, Var::Any, _transform)
+  block("GLTF.Load", Var::Any, Var::Any, _transform)
 #define GLTF_Load_WithTransformAfter(_transform)                               \
-  block("GLTF.Load", Var::Any, Var::Any, Var::Any, Var::Any, _transform)
+  block("GLTF.Load", Var::Any, Var::Any, Var::Any, _transform)
 #define GLTF_Load_WithTransforms(_before, _after)                              \
-  block("GLTF.Load", Var::Any, Var::Any, Var::Any, _before, _after)
-#define GLTF_Load_NoShaders() block("GLTF.Load", Var::Any, Var::Any, false)
+  block("GLTF.Load", Var::Any, Var::Any, _before, _after)
+#define GLTF_Load_NoShaders() block("GLTF.Load", Var::Any, false)
 #define GLTF_Draw(_model) block("GLTF.Draw", Var::ContextVar(#_model))
 #define GLTF_Draw_WithMaterials(_model, _mats)                                 \
   block("GLTF.Draw", Var::ContextVar(#_model), Var::ContextVar(#_mats))

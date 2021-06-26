@@ -103,7 +103,7 @@ impl Block for ECDSA {
     let key = {
       let key: Result<&[u8], &str> = key_var.as_ref().try_into();
       if let Ok(key) = key {
-        secp256k1::SecretKey::parse_slice(key).map_err(|e| {
+        libsecp256k1::SecretKey::parse_slice(key).map_err(|e| {
           cblog!("{}", e);
           "Failed to parse secret key"
         })
@@ -114,7 +114,7 @@ impl Block for ECDSA {
             cblog!("{}", e);
             "Failed to parse key's hex string"
           })?;
-          secp256k1::SecretKey::parse_slice(key.as_slice()).map_err(|e| {
+          libsecp256k1::SecretKey::parse_slice(key.as_slice()).map_err(|e| {
             cblog!("{}", e);
             "Failed to parse secret key"
           })
@@ -124,12 +124,12 @@ impl Block for ECDSA {
       }
     }?;
 
-    let msg = secp256k1::Message::parse_slice(bytes).map_err(|e| {
+    let msg = libsecp256k1::Message::parse_slice(bytes).map_err(|e| {
       cblog!("{}", e);
       "Failed to parse input message hash"
     })?;
 
-    let signed = secp256k1::sign(&msg, &key);
+    let signed = libsecp256k1::sign(&msg, &key);
 
     self.output = Some(signed.0.serialize());
     let output: &[u8] = &self.output.unwrap();
