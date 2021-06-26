@@ -1,0 +1,46 @@
+# Audio.Channel
+
+```clojure
+(Audio.Channel
+  :InputBus [(Int)]
+  :InputChannels [(Seq [(Int)])]
+  :OutputBus [(Int)]
+  :OutputChannels [(Seq [(Int)])]
+  :Volume [(Float) (ContextVar [(Float)])]
+  :Blocks [(Block) (Seq [(Block)]) (None)]
+)
+```
+
+## Definition
+
+
+## Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| InputBus | `[(Int)]` |  | The input bus number, 0 is the audio device ADC. |
+| InputChannels | `[(Seq [(Int)])]` |  | The list of input channels to pass as input to Blocks. |
+| OutputBus | `[(Int)]` |  | The output bus number, 0 is the audio device DAC. |
+| OutputChannels | `[(Seq [(Int)])]` |  | The list of output channels to write from Blocks's output. |
+| Volume | `[(Float) (ContextVar [(Float)])]` |  | The volume of this channel. |
+| Blocks | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks that will process audio data. |
+
+
+## Input
+| Type | Description |
+|------|-------------|
+| `[(Any)]` |  |
+
+
+## Output
+| Type | Description |
+|------|-------------|
+| `[(Any)]` |  |
+
+
+## Examples
+
+```clojure
+(Audio.Channel
+
+)
+```

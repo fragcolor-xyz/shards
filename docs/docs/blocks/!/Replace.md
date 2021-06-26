@@ -1,0 +1,38 @@
+# Replace
+
+```clojure
+(Replace
+  :Patterns [(None) (Seq [(String)]) (ContextVar [(Seq [(String)])]) (ContextVar [(Seq [(Any)])]) (Seq [(Any)])]
+  :Replacements [(None) (Any) (ContextVar [(Any)]) (Seq [(Any)]) (ContextVar [(Seq [(Any)])])]
+)
+```
+
+## Definition
+
+
+## Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| Patterns | `[(None) (Seq [(String)]) (ContextVar [(Seq [(String)])]) (ContextVar [(Seq [(Any)])]) (Seq [(Any)])]` |  | The patterns to find. |
+| Replacements | `[(None) (Any) (ContextVar [(Any)]) (Seq [(Any)]) (ContextVar [(Seq [(Any)])])]` |  | The replacements to apply to the input, if a single value is provided every match will be replaced with that single value. |
+
+
+## Input
+| Type | Description |
+|------|-------------|
+| `[(Seq [(Any)]) (String)]` |  |
+
+
+## Output
+| Type | Description |
+|------|-------------|
+| `[(Seq [(Any)]) (String)]` |  |
+
+
+## Examples
+
+```clojure
+(Replace
+
+)
+```
