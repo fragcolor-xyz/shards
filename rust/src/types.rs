@@ -99,12 +99,12 @@ pub struct OptionalString(pub CBOptionalString);
 pub struct DerivedType(pub Type);
 
 impl Drop for DerivedType {
-fn drop(&mut self) {
-  let ti = &mut self.0;
-  unsafe {
-    (*Core).freeDerivedTypeInfo.unwrap()(ti as *mut _);
+  fn drop(&mut self) {
+    let ti = &mut self.0;
+    unsafe {
+      (*Core).freeDerivedTypeInfo.unwrap()(ti as *mut _);
+    }
   }
- }
 }
 
 #[derive(PartialEq)]
@@ -418,7 +418,7 @@ pub mod common_type {
   pub static none: CBTypeInfo = base_info();
 
   macro_rules! cbtype {
-    ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $name_table:ident, $name_table_var:ident) => {
+    ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $names_var:ident, $name_table:ident, $name_table_var:ident) => {
       const fn $fname() -> CBTypeInfo {
         let mut res = base_info();
         res.basicType = $type;
@@ -476,6 +476,20 @@ pub mod common_type {
         recursiveSelf: false,
       };
 
+      pub static $names_var: CBTypeInfo = CBTypeInfo {
+        basicType: CBType_ContextVar,
+        details: CBTypeInfo_Details {
+          contextVarTypes: CBTypesInfo {
+            elements: &$names as *const CBTypeInfo as *mut CBTypeInfo,
+            len: 1,
+            cap: 0,
+          },
+        },
+        fixedSize: 0,
+        innerType: CBType_None,
+        recursiveSelf: false,
+      };
+
       pub static $name_table_var: CBTypeInfo = CBTypeInfo {
         basicType: CBType_ContextVar,
         details: CBTypeInfo_Details {
@@ -498,6 +512,7 @@ pub mod common_type {
     any,
     anys,
     any_var,
+    anys_var,
     any_table,
     any_table_var
   );
@@ -507,6 +522,7 @@ pub mod common_type {
     object,
     objects,
     object_var,
+    objects_var,
     object_table,
     object_table_var
   );
@@ -516,6 +532,7 @@ pub mod common_type {
     string,
     strings,
     string_var,
+    strings_var,
     string_table,
     string_table_var
   );
@@ -525,6 +542,7 @@ pub mod common_type {
     bytes,
     bytezs,
     bytes_var,
+    bytess_var,
     bytes_table,
     bytes_table_var
   );
@@ -534,6 +552,7 @@ pub mod common_type {
     image,
     images,
     image_var,
+    images_var,
     image_table,
     images_table_var
   );
@@ -543,6 +562,7 @@ pub mod common_type {
     int,
     ints,
     int_var,
+    ints_var,
     int_table,
     int_table_var
   );
@@ -552,6 +572,7 @@ pub mod common_type {
     float,
     floats,
     float_var,
+    floats_var,
     float_table,
     float_table_var
   );
@@ -561,6 +582,7 @@ pub mod common_type {
     float2,
     float2s,
     float2_var,
+    float2s_var,
     float2_table,
     float2_table_var
   );
@@ -570,6 +592,7 @@ pub mod common_type {
     float3,
     float3s,
     float3_var,
+    float3s_var,
     float3_table,
     float3_table_var
   );
@@ -579,6 +602,7 @@ pub mod common_type {
     float4,
     float4s,
     float4_var,
+    float4s_var,
     float4_table,
     float4_table_var
   );
@@ -588,6 +612,7 @@ pub mod common_type {
     bool,
     bools,
     bool_var,
+    bools_var,
     bool_table,
     bool_table_var
   );
@@ -597,6 +622,7 @@ pub mod common_type {
     block,
     blocks,
     block_var,
+    blocks_var,
     block_table,
     block_table_var
   );
@@ -606,6 +632,7 @@ pub mod common_type {
     chain,
     chains,
     chain_var,
+    chains_var,
     chain_table,
     chain_table_var
   );
@@ -615,6 +642,7 @@ pub mod common_type {
     path,
     paths,
     path_var,
+    paths_var,
     path_table,
     path_table_var
   );
@@ -2047,9 +2075,7 @@ impl PartialEq for Var {
     if self.valueType != other.valueType {
       false
     } else {
-      unsafe {
-        (*Core).isEqualVar.unwrap()(self as *const _, other as *const _)
-      }
+      unsafe { (*Core).isEqualVar.unwrap()(self as *const _, other as *const _) }
     }
   }
 }
@@ -2059,9 +2085,7 @@ impl PartialEq for Type {
     if self.basicType != other.basicType {
       false
     } else {
-      unsafe {
-        (*Core).isEqualType.unwrap()(self as *const _, other as *const _)
-      }
+      unsafe { (*Core).isEqualType.unwrap()(self as *const _, other as *const _) }
     }
   }
 }

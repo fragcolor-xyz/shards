@@ -51,6 +51,7 @@ use rapier3d::na::{
   Vector3, U3,
 };
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
+use rapier3d::prelude::Collider;
 use std::convert::TryInto;
 use std::rc::Rc;
 
@@ -67,13 +68,13 @@ lazy_static! {
     (
       cstr!("Position"),
       cbccstr!("The initial position of this rigid body. Can be updated in the case of a kinematic rigid body."),
-      vec![common_type::float3, common_type::float3_var]
+      vec![common_type::float3, common_type::float3_var, common_type::float3s, common_type::float3s_var]
     )
       .into(),
     (
       cstr!("Rotation"),
       cbccstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body."),
-      vec![common_type::float4, common_type::float4_var]
+      vec![common_type::float4, common_type::float4_var, common_type::float4s, common_type::float4s_var]
     )
       .into(),
     (
@@ -162,6 +163,63 @@ impl RigidBody {
     self.user_data = user_data;
   }
 
+  fn make_rigid_body<'a>(
+    simulation: &mut Simulation,
+    user_data: u128,
+    status: RigidBodyType,
+    p: &Var,
+    r: &Var,
+  ) -> Result<RigidBodyHandle, &'a str> {
+    let pos = {
+      if p.is_none() {
+        Vector3::new(0.0, 0.0, 0.0)
+      } else {
+        let (tx, ty, tz): (f32, f32, f32) = p.try_into()?;
+        Vector3::new(tx, ty, tz)
+      }
+    };
+
+    let iso = {
+      if r.is_none() {
+        Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
+      } else {
+        let quaternion: Result<(f32, f32, f32, f32), &str> = r.try_into();
+        if let Ok(quaternion) = quaternion {
+          let quaternion = Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
+          let quaternion = UnitQuaternion::from_quaternion(quaternion);
+          let pos = Translation::from(pos);
+          Isometry3::from_parts(pos, quaternion)
+        } else {
+          // if setParam validation is correct this is impossible
+          panic!("unexpected branch")
+        }
+      }
+    };
+
+    let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
+    rigid_body.user_data = user_data;
+    Ok(simulation.bodies.insert(rigid_body))
+  }
+
+  fn make_collider(
+    simulation: &mut Simulation,
+    user_data: u128,
+    shape: Var,
+    rigid_body: RigidBodyHandle,
+  ) -> Result<ColliderHandle, &str> {
+    let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
+    let shape = shapeInfo.shape.as_ref().unwrap().clone();
+    let mut collider = ColliderBuilder::new(shape)
+      .position(shapeInfo.position.unwrap())
+      .build();
+    collider.user_data = user_data;
+    Ok(
+      simulation
+        .colliders
+        .insert_with_parent(collider, rigid_body, &mut simulation.bodies),
+    )
+  }
+
   fn populate_single(
     &mut self,
     status: RigidBodyType,
@@ -170,70 +228,39 @@ impl RigidBody {
   ) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
     if self.rigid_bodies.is_empty() {
       // init if array is empty
-      let pos = {
-        if p.is_none() {
-          Vector3::new(0.0, 0.0, 0.0)
-        } else {
-          let (tx, ty, tz): (f32, f32, f32) = p.try_into()?;
-          Vector3::new(tx, ty, tz)
-        }
+      let rigid_body = {
+        let simulation =
+          Var::from_object_ptr_mut_ref::<Simulation>(self.simulation_var.get(), &SIMULATION_TYPE)?;
+        let rigid_body = Self::make_rigid_body(simulation, self.user_data, status, p, r)?;
+        self.rigid_bodies.push(rigid_body);
+        rigid_body
       };
-
-      let iso = {
-        if r.is_none() {
-          Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
-        } else {
-          let quaternion: Result<(f32, f32, f32, f32), &str> = r.try_into();
-          if let Ok(quaternion) = quaternion {
-            let quaternion =
-              Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
-            let quaternion = UnitQuaternion::from_quaternion(quaternion);
-            let pos = Translation::from(pos);
-            Isometry3::from_parts(pos, quaternion)
-          } else {
-            // if setParam validation is correct this is impossible
-            panic!("unexpected branch")
-          }
-        }
-      };
-
-      let simulation = self.simulation_var.get();
-      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
-
-      let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
-      rigid_body.user_data = self.user_data;
-      let rigid_body = simulation.bodies.insert(rigid_body);
 
       let shape = self.shape_var.get();
       if shape.is_seq() {
         let shapes: Seq = shape.try_into().unwrap();
         for shape in shapes {
-          let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
-          let shape = shapeInfo.shape.as_ref().unwrap().clone();
-          let mut collider = ColliderBuilder::new(shape)
-            .position(shapeInfo.position.unwrap())
-            .build();
-          collider.user_data = self.user_data;
-          self.colliders.push(simulation.colliders.insert_with_parent(
-            collider,
+          let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
+            self.simulation_var.get(),
+            &SIMULATION_TYPE,
+          )?;
+          self.colliders.push(Self::make_collider(
+            simulation,
+            self.user_data,
+            shape,
             rigid_body,
-            &mut simulation.bodies,
-          ));
+          )?);
         }
       } else {
-        let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
-        let shape = shapeInfo.shape.as_ref().unwrap().clone();
-        let mut collider = ColliderBuilder::new(shape)
-          .position(shapeInfo.position.unwrap())
-          .build();
-        collider.user_data = self.user_data;
-        self.colliders.push(simulation.colliders.insert_with_parent(
-          collider,
+        let simulation =
+          Var::from_object_ptr_mut_ref::<Simulation>(self.simulation_var.get(), &SIMULATION_TYPE)?;
+        self.colliders.push(Self::make_collider(
+          simulation,
+          self.user_data,
+          shape,
           rigid_body,
-          &mut simulation.bodies,
-        ));
+        )?);
       }
-      self.rigid_bodies.push(rigid_body);
     }
     Ok((self.rigid_bodies.as_slice(), *p, *r))
   }
