@@ -265,11 +265,70 @@ impl RigidBody {
     Ok((self.rigid_bodies.as_slice(), *p, *r))
   }
 
+  fn populate_multi(
+    &mut self,
+    status: RigidBodyType,
+    p: &Var,
+    r: &Var,
+  ) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
+    if self.rigid_bodies.is_empty() {
+      let p: Seq = p.try_into()?;
+      for (idx, p) in p.iter().enumerate() {
+        // init if array is empty
+        let rigid_body = {
+          let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
+            self.simulation_var.get(),
+            &SIMULATION_TYPE,
+          )?;
+          if r.is_seq() {
+            let r: Seq = r.try_into()?;
+            let rigid_body = Self::make_rigid_body(simulation, self.user_data, status, &p, &r[idx])?;
+            self.rigid_bodies.push(rigid_body);
+            rigid_body
+          } else {
+            let rigid_body = Self::make_rigid_body(simulation, self.user_data, status, &p, r)?;
+            self.rigid_bodies.push(rigid_body);
+            rigid_body
+          }
+        };
+
+        let shape = self.shape_var.get();
+        if shape.is_seq() {
+          let shapes: Seq = shape.try_into().unwrap();
+          for shape in shapes {
+            let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
+              self.simulation_var.get(),
+              &SIMULATION_TYPE,
+            )?;
+            self.colliders.push(Self::make_collider(
+              simulation,
+              self.user_data,
+              shape,
+              rigid_body,
+            )?);
+          }
+        } else {
+          let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
+            self.simulation_var.get(),
+            &SIMULATION_TYPE,
+          )?;
+          self.colliders.push(Self::make_collider(
+            simulation,
+            self.user_data,
+            shape,
+            rigid_body,
+          )?);
+        }
+      }
+    }
+    Ok((self.rigid_bodies.as_slice(), *p, *r))
+  }
+
   fn _populate(&mut self, status: RigidBodyType) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
     let p = &self.position.get();
     let r = &self.rotation.get();
     if p.is_seq() {
-      unimplemented!()
+      self.populate_multi(status, p, r)
     } else {
       self.populate_single(status, p, r)
     }

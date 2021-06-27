@@ -1217,6 +1217,22 @@ impl Var {
     }
   }
 
+  pub fn from_object_ptr_ref<T>(var: Var, info: &Type) -> Result<&T, &str> {
+    // used to use the object once, when it comes from a Rc
+    unsafe {
+      if var.valueType != CBType_Object
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+          != info.details.object.vendorId
+        || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+      {
+        Err("Failed to cast Var into custom &mut T object")
+      } else {
+        let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut T;
+        Ok(&*aptr)
+      }
+    }
+  }
+
   pub fn push<T: Into<Var>>(&mut self, _val: T) {
     unimplemented!();
   }
