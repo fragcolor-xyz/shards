@@ -122,12 +122,12 @@ impl RigidBody {
   }
 
   fn _compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    // we need to derive the position parameter type, because if it's a sequence we should create multiple RigidBodies
+    // TODO we should also use input type to determine the output if dynamic
     let pvt = deriveType(&self.position.getParam(), data);
-    let rvt = deriveType(&self.rotation.getParam(), data);
-
-    if pvt.0 == common_type::float3 && rvt.0 == common_type::float4 {
+    if pvt.0 == common_type::float3 {
       Ok(*FLOAT4X4_TYPE)
-    } else if pvt.0 == common_type::float3s && rvt.0 == common_type::float4s {
+    } else if pvt.0 == common_type::float3s {
       Ok(*FLOAT4X4S_TYPE)
     } else {
       Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
@@ -138,6 +138,7 @@ impl RigidBody {
     let sim_var = self.simulation_var.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
     for rigid_body in &self.rigid_bodies {
+      // this removes both RigidBodies and colliders attached.
       simulation.bodies.remove(
         *rigid_body,
         &mut simulation.islands_manager,
@@ -146,6 +147,7 @@ impl RigidBody {
       );
     }
 
+    // clear, it's crucial as it signals we need to re-populate when running again
     self.rigid_bodies.clear();
     self.colliders.clear();
 
@@ -163,6 +165,7 @@ impl RigidBody {
     self.user_data = user_data;
   }
 
+  // Utility - makes a single RigidBody
   fn make_rigid_body<'a>(
     simulation: &mut Simulation,
     user_data: u128,
@@ -201,6 +204,7 @@ impl RigidBody {
     Ok(simulation.bodies.insert(rigid_body))
   }
 
+  // Utility - makes a collider or a compound from preset variables shapes
   fn make_collider(
     simulation: &mut Simulation,
     user_data: u128,
@@ -220,6 +224,8 @@ impl RigidBody {
     )
   }
 
+  // make and populate in the self.rigid_bodies list a new RigidBody
+  // this is called every frame so it must check if empty, if not empty just passthrough
   fn populate_single(
     &mut self,
     status: RigidBodyType,
@@ -229,6 +235,7 @@ impl RigidBody {
     if self.rigid_bodies.is_empty() {
       // init if array is empty
       let rigid_body = {
+        // Mut borrow - this is repeated a lot sadly - TODO figure out
         let simulation =
           Var::from_object_ptr_mut_ref::<Simulation>(self.simulation_var.get(), &SIMULATION_TYPE)?;
         let rigid_body = Self::make_rigid_body(simulation, self.user_data, status, p, r)?;
@@ -240,6 +247,7 @@ impl RigidBody {
       if shape.is_seq() {
         let shapes: Seq = shape.try_into().unwrap();
         for shape in shapes {
+          // Mut borrow - this is repeated a lot sadly - TODO figure out
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
             self.simulation_var.get(),
             &SIMULATION_TYPE,
@@ -252,6 +260,7 @@ impl RigidBody {
           )?);
         }
       } else {
+        // Mut borrow - this is repeated a lot sadly - TODO figure out
         let simulation =
           Var::from_object_ptr_mut_ref::<Simulation>(self.simulation_var.get(), &SIMULATION_TYPE)?;
         self.colliders.push(Self::make_collider(
@@ -265,6 +274,8 @@ impl RigidBody {
     Ok((self.rigid_bodies.as_slice(), *p, *r))
   }
 
+  // make and populate in the self.rigid_bodies list multiple RigidBodies
+  // this is called every frame so it must check if empty, if not empty just passthrough
   fn populate_multi(
     &mut self,
     status: RigidBodyType,
@@ -276,13 +287,15 @@ impl RigidBody {
       for (idx, p) in p.iter().enumerate() {
         // init if array is empty
         let rigid_body = {
+          // Mut borrow - this is repeated a lot sadly - TODO figure out
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
             self.simulation_var.get(),
             &SIMULATION_TYPE,
           )?;
           if r.is_seq() {
             let r: Seq = r.try_into()?;
-            let rigid_body = Self::make_rigid_body(simulation, self.user_data, status, &p, &r[idx])?;
+            let rigid_body =
+              Self::make_rigid_body(simulation, self.user_data, status, &p, &r[idx])?;
             self.rigid_bodies.push(rigid_body);
             rigid_body
           } else {
@@ -296,6 +309,7 @@ impl RigidBody {
         if shape.is_seq() {
           let shapes: Seq = shape.try_into().unwrap();
           for shape in shapes {
+            // Mut borrow - this is repeated a lot sadly - TODO figure out
             let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
               self.simulation_var.get(),
               &SIMULATION_TYPE,
@@ -308,6 +322,7 @@ impl RigidBody {
             )?);
           }
         } else {
+          // Mut borrow - this is repeated a lot sadly - TODO figure out
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
             self.simulation_var.get(),
             &SIMULATION_TYPE,
@@ -442,6 +457,7 @@ impl Block for StaticRigidBody {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    // just hit populate, it will be a noop if already populated, nothing else to do here
     Rc::get_mut(&mut self.rb)
       .unwrap()
       ._populate(RigidBodyType::Static)?;
@@ -568,6 +584,8 @@ impl Block for DynamicRigidBody {
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
+    // dynamic will use parameter position and rotation only the first time
+    // after that will be driven by the physics engine so what we do is get the new matrix and output it
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
@@ -578,6 +596,7 @@ impl Block for DynamicRigidBody {
       fill_seq_from_mat4(&mut self.output, &mat);
       Ok(self.output.as_ref().into())
     } else {
+      // TODO multiple RigidBodies
       Err("Unsupported RigidBody sequence")
     }
   }
@@ -702,6 +721,8 @@ impl Block for KinematicRigidBody {
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
+    // kinematic pos/rot will be updated every frame by reading the parameters which should be variables
+    // it will also output a properly interpolated matrix
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
