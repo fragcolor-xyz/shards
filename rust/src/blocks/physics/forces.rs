@@ -32,7 +32,7 @@ lazy_static! {
   pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::float3];
   pub static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::float3];
   static ref PARAMETERS: Parameters = vec![(
-    cstr!("Rigidbody"),
+    cstr!("RigidBody"),
     cbccstr!("The rigidbody to apply the impulse to."),
     vec![*RIGIDBODY_VAR_TYPE, common_type::none]
   )
@@ -130,18 +130,16 @@ impl Block for Impulse {
 
     let rb = self.rb.get();
     let rb = Var::from_object_mut_ref::<RigidBody>(rb, &RIGIDBODY_TYPE)
-      .map_err(|_| "Rigidbody not found")?;
+      .map_err(|_| "RigidBody not found")?;
 
-    if let Some(rb) = rb.rigid_body {
-      let rb = simulation.bodies.get_mut(rb);
+    for rb in &rb.rigid_bodies {
+      let rb = simulation.bodies.get_mut(*rb);
       if let Some(rb) = rb {
         let (x, y, z) = input.as_ref().try_into()?;
         rb.apply_impulse(Vector3::new(x, y, z), true);
       } else {
-        return Err("Rigidbody not found in the simulation");
+        return Err("RigidBody not found in the simulation");
       }
-    } else {
-      return Err("Rigidbody not valid");
     }
 
     Ok(*input)

@@ -991,6 +991,15 @@ typedef CBOptionalString(__cdecl *CBReadCachedString)(uint32_t id);
 typedef CBOptionalString(__cdecl *CBWriteCachedString)(uint32_t id,
                                                        const char *str);
 
+typedef CBBool(__cdecl *CBIsEqualVar)(const struct CBVar *v1,
+                                      const struct CBVar *v2);
+typedef CBBool(__cdecl *CBIsEqualType)(const struct CBTypeInfo *t1,
+                                       const struct CBTypeInfo *t2);
+
+typedef struct CBTypeInfo(__cdecl *CBDeriveTypeInfo)(
+    const struct CBVar *v, const struct CBInstanceData *data);
+typedef void(__cdecl *CBFreeDerivedTypeInfo)(struct CBTypeInfo *t);
+
 typedef struct _CBCore {
   // CBTable interface
   CBTableNew tableNew;
@@ -1081,6 +1090,12 @@ typedef struct _CBCore {
   // Compressed strings utility
   CBReadCachedString readCachedString;
   CBWriteCachedString writeCachedString;
+
+  // equality utilities
+  CBIsEqualVar isEqualVar;
+  CBIsEqualType isEqualType;
+  CBDeriveTypeInfo deriveTypeInfo;
+  CBFreeDerivedTypeInfo freeDerivedTypeInfo;
 
   // Utility to deal with CBSeqs
   CB_ARRAY_PROCS(CBSeq, seq);
