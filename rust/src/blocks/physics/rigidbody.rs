@@ -121,28 +121,15 @@ impl RigidBody {
   }
 
   fn _compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    let pvt = {
-      if self.position.isVariable() {
-        deriveType(&self.position.getParam(), data)
-      } else {
-        deriveType(&self.position.get(), data)
-      }
-    };
+    let pvt = deriveType(&self.position.getParam(), data);
+    let rvt = deriveType(&self.rotation.getParam(), data);
 
-    let rvt = {
-      if self.rotation.isVariable() {
-        deriveType(&self.rotation.getParam(), data)
-      } else {
-        deriveType(&self.rotation.get(), data)
-      }
-    };
-
-    if pvt.0 == *FLOAT4X4_TYPE && rvt.0 == *FLOAT4X4_TYPE {
+    if pvt.0 == common_type::float3 && rvt.0 == common_type::float4 {
       Ok(*FLOAT4X4_TYPE)
-    } else if pvt.0 == *FLOAT4X4S_TYPE && rvt.0 == *FLOAT4X4S_TYPE {
+    } else if pvt.0 == common_type::float3s && rvt.0 == common_type::float4s {
       Ok(*FLOAT4X4S_TYPE)
     } else {
-      Err("Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
+      Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
     }
   }
 
@@ -181,43 +168,59 @@ impl RigidBody {
     p: &Var,
     r: &Var,
   ) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
-    let pos = {
-      if p.is_none() {
-        Vector3::new(0.0, 0.0, 0.0)
-      } else {
-        let (tx, ty, tz): (f32, f32, f32) = p.try_into()?;
-        Vector3::new(tx, ty, tz)
-      }
-    };
-
-    let iso = {
-      if r.is_none() {
-        Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
-      } else {
-        let quaternion: Result<(f32, f32, f32, f32), &str> = r.try_into();
-        if let Ok(quaternion) = quaternion {
-          let quaternion = Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
-          let quaternion = UnitQuaternion::from_quaternion(quaternion);
-          let pos = Translation::from(pos);
-          Isometry3::from_parts(pos, quaternion)
+    if self.rigid_bodies.is_empty() {
+      // init if array is empty
+      let pos = {
+        if p.is_none() {
+          Vector3::new(0.0, 0.0, 0.0)
         } else {
-          // if setParam validation is correct this is impossible
-          panic!("unexpected branch")
+          let (tx, ty, tz): (f32, f32, f32) = p.try_into()?;
+          Vector3::new(tx, ty, tz)
         }
-      }
-    };
+      };
 
-    let simulation = self.simulation_var.get();
-    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
+      let iso = {
+        if r.is_none() {
+          Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
+        } else {
+          let quaternion: Result<(f32, f32, f32, f32), &str> = r.try_into();
+          if let Ok(quaternion) = quaternion {
+            let quaternion =
+              Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
+            let quaternion = UnitQuaternion::from_quaternion(quaternion);
+            let pos = Translation::from(pos);
+            Isometry3::from_parts(pos, quaternion)
+          } else {
+            // if setParam validation is correct this is impossible
+            panic!("unexpected branch")
+          }
+        }
+      };
 
-    let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
-    rigid_body.user_data = self.user_data;
-    let rigid_body = simulation.bodies.insert(rigid_body);
+      let simulation = self.simulation_var.get();
+      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)?;
 
-    let shape = self.shape_var.get();
-    if shape.is_seq() {
-      let shapes: Seq = shape.try_into().unwrap();
-      for shape in shapes {
+      let mut rigid_body = RigidBodyBuilder::new(status).position(iso).build();
+      rigid_body.user_data = self.user_data;
+      let rigid_body = simulation.bodies.insert(rigid_body);
+
+      let shape = self.shape_var.get();
+      if shape.is_seq() {
+        let shapes: Seq = shape.try_into().unwrap();
+        for shape in shapes {
+          let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
+          let shape = shapeInfo.shape.as_ref().unwrap().clone();
+          let mut collider = ColliderBuilder::new(shape)
+            .position(shapeInfo.position.unwrap())
+            .build();
+          collider.user_data = self.user_data;
+          self.colliders.push(simulation.colliders.insert_with_parent(
+            collider,
+            rigid_body,
+            &mut simulation.bodies,
+          ));
+        }
+      } else {
         let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
         let shape = shapeInfo.shape.as_ref().unwrap().clone();
         let mut collider = ColliderBuilder::new(shape)
@@ -230,20 +233,8 @@ impl RigidBody {
           &mut simulation.bodies,
         ));
       }
-    } else {
-      let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(shape, &SHAPE_TYPE)?;
-      let shape = shapeInfo.shape.as_ref().unwrap().clone();
-      let mut collider = ColliderBuilder::new(shape)
-        .position(shapeInfo.position.unwrap())
-        .build();
-      collider.user_data = self.user_data;
-      self.colliders.push(simulation.colliders.insert_with_parent(
-        collider,
-        rigid_body,
-        &mut simulation.bodies,
-      ));
+      self.rigid_bodies.push(rigid_body);
     }
-    self.rigid_bodies.push(rigid_body);
     Ok((self.rigid_bodies.as_slice(), *p, *r))
   }
 
@@ -629,7 +620,6 @@ impl Block for KinematicRigidBody {
     let sim_var = rbData.simulation_var.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
     let (rbs, p, r) = rbData._populate(RigidBodyType::KinematicPositionBased)?; // TODO KinematicVelocityBased as well
-
     if rbs.len() == 1 {
       let rb = simulation.bodies.get_mut(rbs[0]).unwrap();
       // this guy will read constantly pos and rotations from variable values
