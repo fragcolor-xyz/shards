@@ -16,11 +16,11 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Size | `[(Int)]` |  | The maximum expansion size. |
-| Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` |  | The chain to spawn and try to run many times concurrently. |
-| Policy | `[(Enum)]` |  | The execution policy in terms of chains success. |
-| Threads | `[(Int)]` |  | The number of cpu threads to use. |
-| Coroutines | `[(Int)]` |  | The number of coroutines to run on each thread. |
+| Size | `[(Int)]` | `10` | The maximum expansion size. |
+| Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` | `None` | The chain to spawn and try to run many times concurrently. |
+| Policy | `[(Enum)]` | `Enum: 1 vendor: 0x73696e6b type: 0x7472794d` | The execution policy in terms of chains success. |
+| Threads | `[(Int)]` | `1` | The number of cpu threads to use. |
+| Coroutines | `[(Int)]` | `1` | The number of coroutines to run on each thread. |
 
 
 ## Input

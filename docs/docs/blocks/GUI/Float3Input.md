@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Label | `[(String) (None)]` |  | The label for this widget. |
-| Variable | `[(String) (None)]` |  | The name of the variable that holds the input value. |
+| Label | `[(String) (None)]` | `None` | The label for this widget. |
+| Variable | `[(String) (None)]` | `None` | The name of the variable that holds the input value. |
 
 
 ## Input

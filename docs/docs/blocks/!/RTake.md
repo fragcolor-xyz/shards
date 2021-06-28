@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Indices | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])])]` |  | One or multiple indices to extract from a sequence. |
+| Indices | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])])]` | `None` | One or multiple indices to extract from a sequence. |
 
 
 ## Input

@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Chain | `[(Chain) (String) (None)]` |  | The name of the chain to switch to. |
+| Chain | `[(Chain) (String) (None)]` | `None` | The name of the chain to switch to. |
 
 
 ## Input

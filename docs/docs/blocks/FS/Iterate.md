@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Recursive | `[(Bool)]` |  | If the iteration should be recursive, following sub-directories. |
+| Recursive | `[(Bool)]` | `true` | If the iteration should be recursive, following sub-directories. |
 
 
 ## Input

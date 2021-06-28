@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Window | `[(Object) (None)]` |  | The window variable name to use as coordinate origin. |
+| Window | `[(Object) (None)]` | `None` | The window variable name to use as coordinate origin. |
 
 
 ## Input

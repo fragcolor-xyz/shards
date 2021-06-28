@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Blocks | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks to execute in the sub flow. |
+| Blocks | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks to execute in the sub flow. |
 
 
 ## Input

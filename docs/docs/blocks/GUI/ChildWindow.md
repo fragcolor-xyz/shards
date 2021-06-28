@@ -15,10 +15,10 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Width | `[(Int) (None)]` |  | The width of the child window to create |
-| Height | `[(Int) (None)]` |  | The height of the child window to create. |
-| Border | `[(Bool)]` |  | If we want to draw a border frame around the child window. |
-| Contents | `[(Block) (Seq [(Block)]) (None)]` |  | The inner contents blocks. |
+| Width | `[(Int) (None)]` | `None` | The width of the child window to create |
+| Height | `[(Int) (None)]` | `None` | The height of the child window to create. |
+| Border | `[(Bool)]` | `false` | If we want to draw a border frame around the child window. |
+| Contents | `[(Block) (Seq [(Block)]) (None)]` | `None` | The inner contents blocks. |
 
 
 ## Input

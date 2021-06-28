@@ -1913,6 +1913,11 @@ BUILTIN("info") {
       std::stringstream ss;
       ss << params.elements[i].valueTypes;
       pmap[":types"] = mal::string(ss.str());
+      {
+        std::ostringstream ss;
+        ss << block->getParam(block, (int)i);
+        pmap[":default"] = mal::string(ss.str());
+      }
       pvec.emplace_back(mal::hash(pmap));
     }
     map[":parameters"] = mal::list(pvec.begin(), pvec.end());

@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Max | `[(None) (Float)]` |  | The maximum (if integer, not including) value to output. |
+| Max | `[(None) (Float)]` | `None` | The maximum (if integer, not including) value to output. |
 
 
 ## Input

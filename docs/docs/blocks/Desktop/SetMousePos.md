@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Window | `[(Object) (None)]` |  | None or a window variable we wish to use as relative origin. |
+| Window | `[(Object) (None)]` | `None` | None or a window variable we wish to use as relative origin. |
 
 
 ## Input

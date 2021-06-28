@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Title | `[(String)]` |  | The title of the window to look for. |
-| Class | `[(String)]` |  | An optional and platform dependent window class. |
+| Title | `[(String)]` | `""` | The title of the window to look for. |
+| Class | `[(String)]` | `""` | An optional and platform dependent window class. |
 
 
 ## Input

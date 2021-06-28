@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Chain | `[(Chain) (String) (None)]` |  | The chain to run. |
+| Chain | `[(Chain) (String) (None)]` | `None` | The chain to run. |
 
 
 ## Input

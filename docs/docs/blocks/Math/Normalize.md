@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Positive | `[(Bool)]` |  | If the output should be in the range 0.0~1.0 instead of -1.0~1.0. |
+| Positive | `[(Bool)]` | `false` | If the output should be in the range 0.0~1.0 instead of -1.0~1.0. |
 
 
 ## Input

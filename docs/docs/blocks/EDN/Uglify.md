@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Hooks | `[(Seq [(Any)])]` |  | A list of pairs to hook, [<symbol name> <blocks to execute>], blocks will have as input the contents of the symbols's list. |
+| Hooks | `[(Seq [(Any)])]` | `None` | A list of pairs to hook, [<symbol name> <blocks to execute>], blocks will have as input the contents of the symbols's list. |
 
 
 ## Input

@@ -15,10 +15,10 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Width | `[(Int) (Float)]` |  | Width size. |
-| Height | `[(Int) (Float)]` |  | Height size. |
-| Near | `[(Int) (Float)]` |  | Near plane. |
-| Far | `[(Int) (Float)]` |  | Far plane. |
+| Width | `[(Int) (Float)]` | `1280` | Width size. |
+| Height | `[(Int) (Float)]` | `720` | Height size. |
+| Near | `[(Int) (Float)]` | `0` | Near plane. |
+| Far | `[(Int) (Float)]` | `1000` | Far plane. |
 
 
 ## Input

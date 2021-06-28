@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Prefix | `[(String)]` |  | The prefix message to the value to log. |
+| Prefix | `[(String)]` | `""` | The prefix message to the value to log. |
 
 
 ## Input

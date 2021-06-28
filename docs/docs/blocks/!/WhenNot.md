@@ -15,9 +15,9 @@ Conditonal block that only executes the action if the predicate is false.
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Predicate | `[(Block) (Seq [(Block)]) (None)]` |  | The predicate to evaluate in order to trigger `Action` (when `false`). |
-| Action | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks to activate on when `Predicate` is `false`. |
-| Passthrough | `[(Bool)]` | `false` | The output of this block will be its input. |
+| Predicate | `[(Block) (Seq [(Block)]) (None)]` | `None` | The predicate to evaluate in order to trigger Action. |
+| Action | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks to activate on when Predicate is true for When and false for WhenNot. |
+| Passthrough | `[(Bool)]` | `true` | The input of this block will be the output. |
 
 
 ## Input

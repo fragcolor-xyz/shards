@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| File | `[(String) (ContextVar [(String)]) (None)]` |  | The file to read/write from. |
+| File | `[(String) (ContextVar [(String)]) (None)]` | `None` | The file to read/write from. |
 
 
 ## Input

@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Window | `[(Object) (None)]` |  | None or a window variable we wish to use as relative origin. |
-| Natural | `[(Bool)]` |  | Small pauses will be injected after click events down & up. |
+| Window | `[(Object) (None)]` | `None` | None or a window variable we wish to use as relative origin. |
+| Natural | `[(Bool)]` | `true` | Small pauses will be injected after click events down & up. |
 
 
 ## Input

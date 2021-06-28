@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| X | `[(Int)]` |  | The desired horizontal coordinates. |
-| Y | `[(Int)]` |  | The desired vertical coordinates. |
+| X | `[(Int)]` | `0` | The desired horizontal coordinates. |
+| Y | `[(Int)]` | `0` | The desired vertical coordinates. |
 
 
 ## Input

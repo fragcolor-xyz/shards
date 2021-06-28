@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Bytes | `[(Bool)]` |  | If the output should be Bytes instead of String. |
+| Bytes | `[(Bool)]` | `false` | If the output should be Bytes instead of String. |
 
 
 ## Input

@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| By | `[(Int) (ContextVar [(Int)])]` |  | The shift is of the decimal point, i.e. of powers of ten, and is to the left if n is negative or to the right if n is positive. |
+| By | `[(Int) (ContextVar [(Int)])]` | `0` | The shift is of the decimal point, i.e. of powers of ten, and is to the left if n is negative or to the right if n is positive. |
 
 
 ## Input

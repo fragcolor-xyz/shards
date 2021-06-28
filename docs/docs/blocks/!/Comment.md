@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Text | `[(String)]` |  | The comment's text. |
+| Text | `[(String)]` | `""` | The comment's text. |
 
 
 ## Input

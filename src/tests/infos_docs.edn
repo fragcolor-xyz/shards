@@ -97,9 +97,10 @@
                                                 p_help (get param :help)
                                                 p_name (get param :name)
                                                 p_types (get param :types)
+                                                p_default (get param :default)
                                             ]
                                             (str
-                                                "| " p_name " | `" p_types "` |  | " p_help " |\r\n"
+                                                "| " p_name " | `" p_types "` | `" p_default "` | " p_help " |\r\n"
                                             )
                                         )
                                     )

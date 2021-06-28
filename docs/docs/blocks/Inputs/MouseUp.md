@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Left | `[(Block) (Seq [(Block)]) (None)]` |  | The action to perform when the left mouse button is pressed down. |
-| Right | `[(Block) (Seq [(Block)]) (None)]` |  | The action to perform when the right mouse button is pressed down. |
-| Middle | `[(Block) (Seq [(Block)]) (None)]` |  | The action to perform when the middle mouse button is pressed down. |
+| Left | `[(Block) (Seq [(Block)]) (None)]` | `None` | The action to perform when the left mouse button is pressed down. |
+| Right | `[(Block) (Seq [(Block)]) (None)]` | `None` | The action to perform when the right mouse button is pressed down. |
+| Middle | `[(Block) (Seq [(Block)]) (None)]` | `None` | The action to perform when the middle mouse button is pressed down. |
 
 
 ## Input

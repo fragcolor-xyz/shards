@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Key | `[(Bytes) (ContextVar [(Bytes)]) (String) (ContextVar [(String)])]` |  | The private key to be used to sign the hashed message input. |
+| Key | `[(Bytes) (ContextVar [(Bytes)]) (String) (ContextVar [(String)])]` | `None` | The private key to be used to sign the hashed message input. |
 
 
 ## Input

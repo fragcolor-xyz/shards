@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Contents | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks expressing the contents to render. |
-| Near | `[(Float)]` |  | The distance from the near clipping plane. |
-| Far | `[(Float)]` |  | The distance from the far clipping plane. |
+| Contents | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks expressing the contents to render. |
+| Near | `[(Float)]` | `0.1` | The distance from the near clipping plane. |
+| Far | `[(Float)]` | `1000` | The distance from the far clipping plane. |
 
 
 ## Input

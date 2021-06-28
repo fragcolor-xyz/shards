@@ -15,10 +15,10 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Block | `[(Block)]` |  | The block to mutate. |
-| Indices | `[(Seq [(Int)])]` |  | The parameter indices to mutate of the inner block. |
-| Mutations | `[(Seq [(Block) (Seq [(Block)]) (None)])]` |  | Optional chains of blocks (or Nones) to call when mutating one of the parameters, if empty a default operator will be used. |
-| Options | `[(None) (Table [(Any)])]` |  | Mutation options table - a table with mutation options. |
+| Block | `[(Block)]` | `None` | The block to mutate. |
+| Indices | `[(Seq [(Int)])]` | `None` | The parameter indices to mutate of the inner block. |
+| Mutations | `[(Seq [(Block) (Seq [(Block)]) (None)])]` | `None` | Optional chains of blocks (or Nones) to call when mutating one of the parameters, if empty a default operator will be used. |
+| Options | `[(None) (Table [(Any)])]` | `None` | Mutation options table - a table with mutation options. |
 
 
 ## Input

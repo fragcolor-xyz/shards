@@ -12,7 +12,7 @@ A branch is a child node that runs and is ticked when this block is activated, c
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Chains | `[(Chain) (Seq [(Chain)]) (None)]` |  | The chains to schedule and run on this branch. |
+| Chains | `[(Chain) (Seq [(Chain)]) (None)]` | `None` | The chains to schedule and run on this branch. |
 
 
 ## Input

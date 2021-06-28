@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Operand | `[(Int) (ContextVar [(Int)])]` |  | The integer operand, can be a variable |
+| Operand | `[(Int) (ContextVar [(Int)])]` | `None` | The integer operand, can be a variable |
 
 
 ## Input

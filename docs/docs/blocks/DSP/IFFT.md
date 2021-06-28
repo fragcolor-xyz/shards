@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Audio | `[(Bool)]` |  | If the output should be an Audio chunk. |
-| Complex | `[(Bool)]` |  | If the output should be complex numbers (only if not Audio). |
+| Audio | `[(Bool)]` | `false` | If the output should be an Audio chunk. |
+| Complex | `[(Bool)]` | `false` | If the output should be complex numbers (only if not Audio). |
 
 
 ## Input

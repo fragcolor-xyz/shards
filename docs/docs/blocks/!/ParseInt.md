@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Base | `[(Int)]` |  | Numerical base (radix) that determines the valid characters and their interpretation. |
+| Base | `[(Int)]` | `10` | Numerical base (radix) that determines the valid characters and their interpretation. |
 
 
 ## Input

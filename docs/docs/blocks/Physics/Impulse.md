@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| RigidBody | `[(ContextVar [(Object)]) (None)]` |  | The rigidbody to apply the impulse to. |
+| RigidBody | `[(ContextVar [(Object)]) (None)]` | `None` | The rigidbody to apply the impulse to. |
 
 
 ## Input

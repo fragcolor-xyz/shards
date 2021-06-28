@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Max | `[(None) (Int)]` |  | The maximum (if integer, not including) value to output. |
+| Max | `[(None) (Int)]` | `None` | The maximum (if integer, not including) value to output. |
 
 
 ## Input

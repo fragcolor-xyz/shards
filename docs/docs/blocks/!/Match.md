@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Cases | `[(Seq [(Any)])]` |  | The cases to match the input against, a nil/None case will match anything. |
-| Passthrough | `[(Bool)]` |  | The input of this block will be the output. (default: true) |
+| Cases | `[(Seq [(Any)])]` | `[]` | The cases to match the input against, a nil/None case will match anything. |
+| Passthrough | `[(Bool)]` | `true` | The input of this block will be the output. |
 
 
 ## Input

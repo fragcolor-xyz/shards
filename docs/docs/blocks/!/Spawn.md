@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` |  | The chain to spawn and try to run many times concurrently. |
+| Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` | `None` | The chain to spawn and try to run many times concurrently. |
 
 
 ## Input

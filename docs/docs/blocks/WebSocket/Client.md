@@ -16,11 +16,11 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Name | `[(String)]` |  | The name of this websocket instance. |
-| Host | `[(String) (ContextVar [(String)])]` |  | The remote host address or IP. |
-| Target | `[(String) (ContextVar [(String)])]` |  | The remote host target path. |
-| Port | `[(Int) (ContextVar [(Int)])]` |  | The remote host port. |
-| Secure | `[(Bool)]` |  | If the connection should be secured. |
+| Name | `[(String)]` | `""` | The name of this websocket instance. |
+| Host | `[(String) (ContextVar [(String)])]` | `"echo.websocket.org"` | The remote host address or IP. |
+| Target | `[(String) (ContextVar [(String)])]` | `"/"` | The remote host target path. |
+| Port | `[(Int) (ContextVar [(Int)])]` | `443` | The remote host port. |
+| Secure | `[(Bool)]` | `true` | If the connection should be secured. |
 
 
 ## Input

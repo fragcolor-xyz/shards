@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Blocks | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks to activate. |
-| Else | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks to activate on failure. |
-| Silent | `[(Bool)]` |  | If logging should be disabled while running the blocks (this will also disable (Log) and (Msg) blocks) and no warning message should be printed on failure. |
+| Blocks | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks to activate. |
+| Else | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks to activate on failure. |
+| Silent | `[(Bool)]` | `false` | If logging should be disabled while running the blocks (this will also disable (Log) and (Msg) blocks) and no warning message should be printed on failure. |
 
 
 ## Input

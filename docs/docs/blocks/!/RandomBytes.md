@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Size | `[(Int)]` |  | The amount of bytes to output. |
+| Size | `[(Int)]` | `32` | The amount of bytes to output. |
 
 
 ## Input

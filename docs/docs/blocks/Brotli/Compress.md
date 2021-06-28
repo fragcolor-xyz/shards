@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Quality | `[(Int)]` |  | Compression quality, higher is better but slower, valid values from 1 to 11. |
+| Quality | `[(Int)]` | `11` | Compression quality, higher is better but slower, valid values from 1 to 11. |
 
 
 ## Input

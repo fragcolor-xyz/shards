@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Indices | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])]) (String) (Seq [(String)]) (ContextVar [(String)]) (ContextVar [(Seq [(String)])])]` |  | One or multiple indices/keys to extract from a sequence/table. |
+| Indices | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])]) (String) (Seq [(String)]) (ContextVar [(String)]) (ContextVar [(Seq [(String)])])]` | `None` | One or multiple indices/keys to extract from a sequence/table. |
 
 
 ## Input

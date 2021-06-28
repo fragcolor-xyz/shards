@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Status | `[(Int)]` |  | The HTTP status code to return. |
-| Headers | `[(Table [(String)]) (ContextVar [(Table [(String)])]) (None)]` |  | The headers to attach to this response. |
+| Status | `[(Int)]` | `200` | The HTTP status code to return. |
+| Headers | `[(Table [(String)]) (ContextVar [(Table [(String)])]) (None)]` | `None` | The headers to attach to this response. |
 
 
 ## Input

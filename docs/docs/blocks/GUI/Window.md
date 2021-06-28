@@ -19,14 +19,14 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Title | `[(String)]` |  | The title of the window to create. |
-| Pos | `[(Int2) (Float2) (None)]` |  | The x/y position of the window to create. If the value is a Float2, it will be interpreted as relative to the container window size. |
-| Width | `[(Int) (Float)]` |  | The width of the window to create. If the value is a Float, it will be interpreted as relative to the container window size. |
-| Height | `[(Int) (Float)]` |  | The height of the window to create. If the value is a Float, it will be interpreted as relative to the container window size. |
-| Contents | `[(Block) (Seq [(Block)]) (None)]` |  | The inner contents blocks. |
-| AllowMove | `[(Bool)]` |  | If the window can be moved. |
-| AllowResize | `[(Bool)]` |  | If the window can be resized. |
-| AllowCollapse | `[(Bool)]` |  | If the window can be collapsed. |
+| Title | `[(String)]` | `""` | The title of the window to create. |
+| Pos | `[(Int2) (Float2) (None)]` | `None` | The x/y position of the window to create. If the value is a Float2, it will be interpreted as relative to the container window size. |
+| Width | `[(Int) (Float)]` | `1` | The width of the window to create. If the value is a Float, it will be interpreted as relative to the container window size. |
+| Height | `[(Int) (Float)]` | `1` | The height of the window to create. If the value is a Float, it will be interpreted as relative to the container window size. |
+| Contents | `[(Block) (Seq [(Block)]) (None)]` | `None` | The inner contents blocks. |
+| AllowMove | `[(Bool)]` | `false` | If the window can be moved. |
+| AllowResize | `[(Bool)]` | `false` | If the window can be resized. |
+| AllowCollapse | `[(Bool)]` | `false` | If the window can be collapsed. |
 
 
 ## Input

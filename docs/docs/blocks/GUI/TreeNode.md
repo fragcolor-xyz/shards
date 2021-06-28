@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Label | `[(String)]` |  | The label of this node. |
-| Contents | `[(Block) (Seq [(Block)]) (None)]` |  | The contents of this node. |
-| StartOpen | `[(Bool)]` |  | If this node should start in the open state. |
+| Label | `[(String)]` | `""` | The label of this node. |
+| Contents | `[(Block) (Seq [(Block)]) (None)]` | `None` | The contents of this node. |
+| StartOpen | `[(Bool)]` | `true` | If this node should start in the open state. |
 
 
 ## Input

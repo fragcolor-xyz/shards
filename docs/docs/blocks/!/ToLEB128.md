@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Signed | `[(Bool)]` |  | If the integer to encode/decode is signed and can be negative. |
+| Signed | `[(Bool)]` | `false` | If the integer to encode/decode is signed and can be negative. |
 
 
 ## Input

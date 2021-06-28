@@ -17,12 +17,12 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| InputBus | `[(Int)]` |  | The input bus number, 0 is the audio device ADC. |
-| InputChannels | `[(Seq [(Int)])]` |  | The list of input channels to pass as input to Blocks. |
-| OutputBus | `[(Int)]` |  | The output bus number, 0 is the audio device DAC. |
-| OutputChannels | `[(Seq [(Int)])]` |  | The list of output channels to write from Blocks's output. |
-| Volume | `[(Float) (ContextVar [(Float)])]` |  | The volume of this channel. |
-| Blocks | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks that will process audio data. |
+| InputBus | `[(Int)]` | `0` | The input bus number, 0 is the audio device ADC. |
+| InputChannels | `[(Seq [(Int)])]` | `None` | The list of input channels to pass as input to Blocks. |
+| OutputBus | `[(Int)]` | `0` | The output bus number, 0 is the audio device DAC. |
+| OutputChannels | `[(Seq [(Int)])]` | `None` | The list of output channels to write from Blocks's output. |
+| Volume | `[(Float) (ContextVar [(Float)])]` | `0.7` | The volume of this channel. |
+| Blocks | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks that will process audio data. |
 
 
 ## Input

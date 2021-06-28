@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Title | `[(String)]` |  | The title of the window to look for. |
+| Title | `[(String)]` | `""` | The title of the window to look for. |
 
 
 ## Input

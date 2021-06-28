@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Size | `[(Float2)]` |  | The drawing size of the image. |
-| TrueSize | `[(Bool)]` |  | If the given size is in true image pixels. |
+| Size | `[(Float2)]` | `(1, 1)` | The drawing size of the image. |
+| TrueSize | `[(Bool)]` | `false` | If the given size is in true image pixels. |
 
 
 ## Input

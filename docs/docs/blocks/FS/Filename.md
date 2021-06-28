@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| NoExtension | `[(Bool)]` |  | If the extension should be stripped from the result. |
+| NoExtension | `[(Bool)]` | `false` | If the extension should be stripped from the result. |
 
 
 ## Input

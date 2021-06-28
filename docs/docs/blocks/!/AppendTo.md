@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Collection | `[(ContextVar [(Seq [(Any)])]) (ContextVar [(String)]) (ContextVar [(Bytes)])]` |  | The collection to add the input to. |
+| Collection | `[(ContextVar [(Seq [(Any)])]) (ContextVar [(String)]) (ContextVar [(Bytes)])]` | `None` | The collection to add the input to. |
 
 
 ## Input

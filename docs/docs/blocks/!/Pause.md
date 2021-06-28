@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Time | `[(None) (Float) (Int) (ContextVar [(Float)]) (ContextVar [(Int)])]` |  | The amount of time in seconds (can be fractional) to pause this chain. |
+| Time | `[(None) (Float) (Int) (ContextVar [(Float)]) (ContextVar [(Int)])]` | `None` | The amount of time in seconds (can be fractional) to pause this chain. |
 
 
 ## Input

@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Value | `[(Any)]` |  | The value to test against for equality. |
+| Value | `[(Any)]` | `None` | The value to test against for equality. |
 
 
 ## Input

@@ -15,10 +15,10 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| From | `[(ContextVar [(Seq [(Any)])])]` |  | The name of the sequence variable to edit in place. |
-| Join | `[(ContextVar [(Seq [(Any)])]) (Seq [(ContextVar [(Seq [(Any)])])])]` |  | Other columns to join sort/filter using the input (they must be of the same length). |
-| Predicate | `[(Block) (Seq [(Block)])]` |  | The blocks to use as predicate, if true the item will be popped from the sequence. |
-| Unordered | `[(Bool)]` |  | Turn on to remove items very quickly but will not preserve the sequence items order. |
+| From | `[(ContextVar [(Seq [(Any)])])]` | `None` | The name of the sequence variable to edit in place. |
+| Join | `[(ContextVar [(Seq [(Any)])]) (Seq [(ContextVar [(Seq [(Any)])])])]` | `None` | Other columns to join sort/filter using the input (they must be of the same length). |
+| Predicate | `[(Block) (Seq [(Block)])]` | `None` | The blocks to use as predicate, if true the item will be popped from the sequence. |
+| Unordered | `[(Bool)]` | `false` | Turn on to remove items very quickly but will not preserve the sequence items order. |
 
 
 ## Input

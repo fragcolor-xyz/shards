@@ -15,10 +15,10 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Label | `[(String)]` |  | The plot's label. |
-| Color | `[(None) (Color)]` |  | The plot's color. |
-| Width | `[(Float)]` |  | The width of each bar |
-| Horizontal | `[(Bool)]` |  | If the bar should be horiziontal rather than vertical |
+| Label | `[(String)]` | `""` | The plot's label. |
+| Color | `[(None) (Color)]` | `None` | The plot's color. |
+| Width | `[(Float)]` | `None` | The width of each bar |
+| Horizontal | `[(Bool)]` | `0.67` | If the bar should be horiziontal rather than vertical |
 
 
 ## Input

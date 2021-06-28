@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Apply | `[(Block) (Seq [(Block)])]` |  | The function to apply to each item of the sequence. |
+| Apply | `[(Block) (Seq [(Block)])]` | `None` | The function to apply to each item of the sequence. |
 
 
 ## Input

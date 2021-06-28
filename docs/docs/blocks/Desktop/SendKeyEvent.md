@@ -16,7 +16,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Window | `[(Object) (None)]` |  | None or a window variable if we wish to send the event only to a specific target window. |
+| Window | `[(Object) (None)]` | `None` | None or a window variable if we wish to send the event only to a specific target window. |
 
 
 ## Input

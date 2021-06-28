@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Message | `[(String)]` |  | The message to log. |
+| Message | `[(String)]` | `""` | The message to log. |
 
 
 ## Input

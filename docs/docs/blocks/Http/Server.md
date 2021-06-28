@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Handler | `[(Chain) (None)]` |  | The chain that will be spawned and handle a remote request. |
-| Endpoint | `[(String)]` |  | The URL from where your service can be accessed by a client. |
-| Port | `[(Int)]` |  | The port this service will use. |
+| Handler | `[(Chain) (None)]` | `None` | The chain that will be spawned and handle a remote request. |
+| Endpoint | `[(String)]` | `"0.0.0.0"` | The URL from where your service can be accessed by a client. |
+| Port | `[(Int)]` | `7070` | The port this service will use. |
 
 
 ## Input

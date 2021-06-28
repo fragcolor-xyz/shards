@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Socket | `[(ContextVar [(Object)])]` |  | The websocket instance variable. |
+| Socket | `[(ContextVar [(Object)])]` | `None` | The websocket instance variable. |
 
 
 ## Input

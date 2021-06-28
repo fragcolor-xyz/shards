@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Label | `[(String)]` |  | The plot's label. |
-| Color | `[(None) (Color)]` |  | The plot's color. |
+| Label | `[(String)]` | `""` | The plot's label. |
+| Color | `[(None) (Color)]` | `None` | The plot's color. |
 
 
 ## Input

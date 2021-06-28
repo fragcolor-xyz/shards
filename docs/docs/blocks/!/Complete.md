@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Name | `[(String)]` |  | The name of the channel. |
-| Buffer | `[(Int)]` |  | The amount of values to buffer before outputting them. |
+| Name | `[(String)]` | `""` | The name of the channel. |
+| Buffer | `[(Int)]` | `false` | The amount of values to buffer before outputting them. |
 
 
 ## Input

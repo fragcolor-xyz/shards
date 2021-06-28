@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Style | `[(Enum)]` |  | A style key to set. |
+| Style | `[(Enum)]` | `Enum: 0 vendor: 0x73696e6b type: 0x67756953` | A style key to set. |
 
 
 ## Input

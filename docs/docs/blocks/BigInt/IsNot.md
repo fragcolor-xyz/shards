@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Operand | `[(ContextVar [(Bytes)])]` |  | The bytes variable representing the operand |
+| Operand | `[(ContextVar [(Bytes)])]` | `None` | The bytes variable representing the operand |
 
 
 ## Input

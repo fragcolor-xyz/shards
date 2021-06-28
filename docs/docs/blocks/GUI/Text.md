@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Label | `[(String) (None)]` |  | An optional label for the value. |
-| Color | `[(Color) (None)]` |  | The optional color of the text. |
+| Label | `[(String) (None)]` | `None` | An optional label for the value. |
+| Color | `[(Color) (None)]` | `None` | The optional color of the text. |
 
 
 ## Input

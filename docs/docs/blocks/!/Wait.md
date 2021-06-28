@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` |  | The chain to wait. |
-| Passthrough | `[(Bool)]` |  | The input of this block will be the output. |
+| Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` | `None` | The chain to wait. |
+| Passthrough | `[(Bool)]` | `false` | The input of this block will be the output. |
 
 
 ## Input

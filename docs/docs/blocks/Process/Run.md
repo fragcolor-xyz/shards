@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Executable | `[(Path) (String)]` |  | The executable to run. |
-| Arguments | `[(None) (Seq [(String)]) (ContextVar [(Seq [(String)])])]` |  | The arguments to pass to the executable. |
-| Timeout | `[(Int)]` |  | The maximum time to wait for the executable to finish in seconds. |
+| Executable | `[(Path) (String)]` | `""` | The executable to run. |
+| Arguments | `[(None) (Seq [(String)]) (ContextVar [(Seq [(String)])])]` | `None` | The arguments to pass to the executable. |
+| Timeout | `[(Int)]` | `30` | The maximum time to wait for the executable to finish in seconds. |
 
 
 ## Input

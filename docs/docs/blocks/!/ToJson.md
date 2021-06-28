@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Pure | `[(Bool)]` |  | If the input string is generic pure json rather then chainblocks flavored json. |
-| Indent | `[(Int)]` |  | How many spaces to use as json prettify indent. |
+| Pure | `[(Bool)]` | `true` | If the input string is generic pure json rather then chainblocks flavored json. |
+| Indent | `[(Int)]` | `0` | How many spaces to use as json prettify indent. |
 
 
 ## Input

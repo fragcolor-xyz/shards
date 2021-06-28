@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Label | `[(String) (None)]` |  | The label for this widget. |
-| Variable | `[(String) (None)]` |  | The name of the variable that holds the input value. |
-| Speed | `[(String) (None)]` |  | The speed multiplier for this drag widget. |
+| Label | `[(String) (None)]` | `None` | The label for this widget. |
+| Variable | `[(String) (None)]` | `None` | The name of the variable that holds the input value. |
+| Speed | `[(String) (None)]` | `1` | The speed multiplier for this drag widget. |
 
 
 ## Input

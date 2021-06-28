@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Action | `[(Block) (Seq [(Block)])]` |  | The action blocks to profile. |
-| Label | `[(String)]` |  | The label to print when outputting time data. |
+| Action | `[(Block) (Seq [(Block)])]` | `None` | The action blocks to profile. |
+| Label | `[(String)]` | `"<no label>"` | The label to print when outputting time data. |
 
 
 ## Input

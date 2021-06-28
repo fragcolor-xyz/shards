@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| File | `[(String) (ContextVar [(String)])]` |  | The audio file to read from (wav,ogg,mp3,flac). |
-| Channels | `[(Int)]` |  | The number of desired output audio channels. |
-| SampleRate | `[(Int)]` |  | The desired output sampling rate. |
+| File | `[(String) (ContextVar [(String)])]` | `None` | The audio file to read from (wav,ogg,mp3,flac). |
+| Channels | `[(Int)]` | `2` | The number of desired output audio channels. |
+| SampleRate | `[(Int)]` | `44100` | The desired output sampling rate. |
 
 
 ## Input

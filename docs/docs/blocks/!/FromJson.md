@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Pure | `[(Bool)]` |  | If the input string is generic pure json rather then chainblocks flavored json. |
+| Pure | `[(Bool)]` | `true` | If the input string is generic pure json rather then chainblocks flavored json. |
 
 
 ## Input

@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Layout | `[(Seq [(Enum)])]` |  | The vertex layout of this model. |
-| Dynamic | `[(Bool)]` |  | If the model is dynamic and will be optimized to change as often as every frame. |
-| CullMode | `[(Enum)]` |  | Triangles facing the specified direction are not drawn. |
+| Layout | `[(Seq [(Enum)])]` | `[]` | The vertex layout of this model. |
+| Dynamic | `[(Bool)]` | `false` | If the model is dynamic and will be optimized to change as often as every frame. |
+| CullMode | `[(Enum)]` | `Enum: 2 vendor: 0x73696e6b type: 0x67667843` | Triangles facing the specified direction are not drawn. |
 
 
 ## Input

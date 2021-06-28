@@ -16,7 +16,7 @@ static ParamsInfo condParamsInfo = ParamsInfo(
         condBlockSeqs),
     ParamsInfo::Param(
         "Passthrough",
-        CBCCSTR("The input of this block will be the output. (default: true)"),
+        CBCCSTR("The input of this block will be the output."),
         CoreInfo::BoolType),
     ParamsInfo::Param(
         "Threading",
@@ -38,6 +38,12 @@ struct Cond {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBParametersInfo parameters() {
     return CBParametersInfo(condParamsInfo);
+  }
+
+  static CBOptionalString help() {
+    return CBCCSTR(
+      "Takes a sequence of conditions and predicates. "
+      "Evaluates each condition one by one and if one matches, executes the associated action.");
   }
 
   void warmup(CBContext *ctx) {
@@ -634,7 +640,7 @@ private:
                "false for WhenNot."),
        {CoreInfo::BlocksOrNone}},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output. (default: true)"),
+       CBCCSTR("The input of this block will be the output."),
        {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _action{};
@@ -733,7 +739,7 @@ private:
       {"Else", CBCCSTR("The blocks to activate when Predicate is false."),
        CoreInfo::BlocksOrNone},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output. (default: true)"),
+       CBCCSTR("The input of this block will be the output."),
        {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _then{};
@@ -751,7 +757,7 @@ struct Match {
                "match anything."),
        {CoreInfo::AnySeqType}},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output. (default: true)"),
+       CBCCSTR("The input of this block will be the output."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 

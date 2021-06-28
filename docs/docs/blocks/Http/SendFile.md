@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Headers | `[(Table [(String)]) (ContextVar [(Table [(String)])]) (None)]` |  | The headers to attach to this response. |
+| Headers | `[(Table [(String)]) (ContextVar [(Table [(String)])]) (None)]` | `None` | The headers to attach to this response. |
 
 
 ## Input

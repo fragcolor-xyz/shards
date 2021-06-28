@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Time | `[(None) (Int) (ContextVar [(Int)])]` |  | The amount of time in milliseconds to pause this chain. |
+| Time | `[(None) (Int) (ContextVar [(Int)])]` | `None` | The amount of time in milliseconds to pause this chain. |
 
 
 ## Input

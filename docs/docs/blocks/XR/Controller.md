@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Hand | `[(Enum)]` |  | Which hand we want to track. |
-| Inverse | `[(Bool)]` |  | If the output should be the inverse transformation matrix. |
+| Hand | `[(Enum)]` | `Enum: 0 vendor: 0x73696e6b type: 0x78726861` | Which hand we want to track. |
+| Inverse | `[(Bool)]` | `false` | If the output should be the inverse transformation matrix. |
 
 
 ## Input

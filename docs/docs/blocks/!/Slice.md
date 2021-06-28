@@ -14,9 +14,9 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| From | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])])]` |  | From index. |
-| To | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])]) (None)]` |  | To index (excluding). |
-| Step | `[(Int)]` |  | The increment between each index. |
+| From | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])])]` | `0` | From index. |
+| To | `[(Int) (Seq [(Int)]) (ContextVar [(Int)]) (ContextVar [(Seq [(Int)])]) (None)]` | `None` | To index (excluding). |
+| Step | `[(Int)]` | `1` | The increment between each index. |
 
 
 ## Input

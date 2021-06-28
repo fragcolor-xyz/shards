@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Max | `[(Int)]` |  | How many maximum elements to take from the input sequence. |
+| Max | `[(Int)]` | `0` | How many maximum elements to take from the input sequence. |
 
 
 ## Input

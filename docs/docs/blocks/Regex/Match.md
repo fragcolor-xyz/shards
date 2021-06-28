@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Regex | `[(String)]` |  | The regular expression. |
+| Regex | `[(String)]` | `""` | The regular expression. |
 
 
 ## Input

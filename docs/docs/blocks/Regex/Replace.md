@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Regex | `[(String)]` |  | The regular expression. |
-| Replacement | `[(String) (ContextVar [(String)])]` |  | The replacement expression. |
+| Regex | `[(String)]` | `""` | The regular expression. |
+| Replacement | `[(String) (ContextVar [(String)])]` | `None` | The replacement expression. |
 
 
 ## Input

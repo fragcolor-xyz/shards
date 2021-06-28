@@ -16,9 +16,9 @@ Evaluates a predicate and executes an action.
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Predicate | `[(Block) (Seq [(Block)]) (None)]` |  | The predicate to evaluate in order to trigger `Then` (when `true`) or `Else` (when `false`). |
-| Then | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks to activate when `Predicate` is `true`.|
-| Else | `[(Block) (Seq [(Block)]) (None)]` |  | The blocks to activate when `Predicate` is `false`." |
+| Predicate | `[(Block) (Seq [(Block)]) (None)]` | `None` | The predicate to evaluate in order to trigger `Then` (when `true`) or `Else` (when `false`). |
+| Then | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks to activate when `Predicate` is `true`.|
+| Else | `[(Block) (Seq [(Block)]) (None)]` | `None` | The blocks to activate when `Predicate` is `false`." |
 | Passthrough | `[(Bool)]` | `false` | The output of this block will be its input. |
 
 

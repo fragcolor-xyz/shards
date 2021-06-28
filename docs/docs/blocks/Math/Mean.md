@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Kind | `[(Enum)]` |  | The kind of Pythagorean means. |
+| Kind | `[(Enum)]` | `Enum: 0 vendor: 0x73696e6b type: 0x6d65616e` | The kind of Pythagorean means. |
 
 
 ## Input

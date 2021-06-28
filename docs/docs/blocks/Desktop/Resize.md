@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Width | `[(Int)]` |  | The desired width. |
-| Height | `[(Int)]` |  | The desired height. |
+| Width | `[(Int)]` | `0` | The desired width. |
+| Height | `[(Int)]` | `0` | The desired height. |
 
 
 ## Input

@@ -12,7 +12,7 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| ComputeShader | `[(Bytes) (ContextVar [(Bytes)])]` |  | The compute shader bytecode. |
+| ComputeShader | `[(Bytes) (ContextVar [(Bytes)])]` | `None` | The compute shader bytecode. |
 
 
 ## Input

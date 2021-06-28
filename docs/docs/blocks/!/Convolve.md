@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Radius | `[(Int)]` |  | The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and so on. |
-| Step | `[(Int)]` |  | How many pixels to advance each activation. |
+| Radius | `[(Int)]` | `1` | The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and so on. |
+| Step | `[(Int)]` | `1` | How many pixels to advance each activation. |
 
 
 ## Input

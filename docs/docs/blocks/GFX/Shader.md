@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| VertexShader | `[(Bytes) (ContextVar [(Bytes)])]` |  | The vertex shader bytecode. |
-| PixelShader | `[(Bytes) (ContextVar [(Bytes)])]` |  | The pixel shader bytecode. |
+| VertexShader | `[(Bytes) (ContextVar [(Bytes)])]` | `None` | The vertex shader bytecode. |
+| PixelShader | `[(Bytes) (ContextVar [(Bytes)])]` | `None` | The pixel shader bytecode. |
 
 
 ## Input

@@ -13,8 +13,8 @@
 ## Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| Value | `[(Any)]` |  | The value to test against for equality. |
-| Abort | `[(Bool)]` |  | If we should abort the process on failure. |
+| Value | `[(Any)]` | `None` | The value to test against for equality. |
+| Abort | `[(Bool)]` | `false` | If we should abort the process on failure. |
 
 
 ## Input
