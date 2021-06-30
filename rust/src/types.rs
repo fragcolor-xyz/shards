@@ -92,11 +92,20 @@ pub type ComposeResult = CBComposeResult;
 pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
 pub type ParameterInfo = CBParameterInfo;
+pub type RawString = CBString;
 
 #[derive(PartialEq)]
 pub struct String(pub CBString);
 pub struct OptionalString(pub CBOptionalString);
 pub struct DerivedType(pub Type);
+
+#[macro_export]
+macro_rules! cbstr {
+  ($text:expr) => {{
+    const cbstr: RawString = concat!($text, "\0").as_ptr() as *const i8;
+    cbstr
+  }};
+}
 
 impl Drop for DerivedType {
   fn drop(&mut self) {
@@ -1168,6 +1177,7 @@ impl Var {
 
   pub fn from_object_as_clone<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
     // use this to store the smart pointer in order to keep it alive
+    // this will not allow mutable references btw
     unsafe {
       if var.valueType != CBType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
@@ -1177,10 +1187,18 @@ impl Var {
         Err("Failed to cast Var into custom Rc<T> object")
       } else {
         let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut Rc<T>;
-        let at = (*aptr).clone();
+        let at = Rc::clone(&*aptr);
         Ok(at)
       }
     }
+  }
+
+  // This pattern is often used in blocks storing Rcs of Vars
+  pub fn get_mut_from_clone<'a, T>(c: &Option<Rc<Option<T>>>) -> Result<&'a mut T, &'a str> {
+    let c = c.as_ref().ok_or("No Var reference found")?;
+    let c = Rc::as_ptr(c) as *mut Option<T>;
+    let c = unsafe { (*c).as_mut().ok_or("Failed to unwrap Rc-ed reference")? };
+    Ok(c)
   }
 
   pub fn from_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {

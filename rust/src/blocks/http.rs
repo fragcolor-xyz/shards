@@ -1,5 +1,4 @@
 use crate::block::Block;
-use crate::chainblocksc::CBString;
 use crate::core::activate_blocking;
 use crate::core::do_blocking;
 use crate::core::log;
@@ -10,6 +9,7 @@ use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ParamVar;
 use crate::types::Parameters;
+use crate::types::RawString;
 use crate::types::Table;
 use crate::types::Type;
 use crate::CString;
@@ -23,11 +23,7 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGE
 use std::convert::TryInto;
 use std::ffi::CStr;
 
-const _status_key: CBString = b"status\0".as_ptr() as *const i8;
-const _headers_key: CBString = b"headers\0".as_ptr() as *const i8;
-const _body_key: CBString = b"body\0".as_ptr() as *const i8;
-
-const FULL_OUTPUT_KEYS: &[CBString] = &[_status_key, _headers_key, _body_key];
+const FULL_OUTPUT_KEYS: &[RawString] = &[cbstr!("status"), cbstr!("headers"), cbstr!("body")];
 
 lazy_static! {
   static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::none, common_type::string_table];
