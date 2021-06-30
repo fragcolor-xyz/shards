@@ -7,10 +7,10 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
   case EndOfBlittableTypes:
     break;
   case None:
-    os << "*None*";
+    os << "None";
     break;
   case CBType::Any:
-    os << "*Any*";
+    os << "Any";
     break;
   case Object:
     os << "Object: 0x" << std::hex
@@ -136,7 +136,10 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     os << "Block: " << var.payload.blockValue->name(var.payload.blockValue);
     break;
   case CBType::String:
-    os << var.payload.stringValue;
+    if (var.payload.stringValue == nullptr)
+      os << "NULL";
+    else
+      os << "\"" << var.payload.stringValue << "\"";
     break;
   case ContextVar:
     os << "ContextVariable: " << var.payload.stringValue;
