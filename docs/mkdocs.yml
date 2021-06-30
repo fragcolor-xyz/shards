@@ -1,3 +1,6 @@
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
 site_name: My Docs
 site_url:
 theme:
