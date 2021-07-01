@@ -2534,11 +2534,9 @@ struct Take {
               return data.inputType.table.types.elements[i];
             }
           }
-          // we didn't match any key... error
-          CBLOG_ERROR("Table input type: {} missing key: {}", data.inputType,
-                      _indices.payload.stringValue);
-          throw ComposeError(
-              "Take: Failed to find a matching key in the input type table");
+          // we didn't match any key...
+          // and so we just return any type to allow extra keys
+          return CoreInfo::AnyType;
         }
       } else {
         if (_seqOutput) {

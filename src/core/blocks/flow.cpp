@@ -14,10 +14,9 @@ static ParamsInfo condParamsInfo = ParamsInfo(
         CBCCSTR("A sequence of blocks, interleaving condition test predicate "
                 "and action to execute if the condition matches."),
         condBlockSeqs),
-    ParamsInfo::Param(
-        "Passthrough",
-        CBCCSTR("The input of this block will be the output."),
-        CoreInfo::BoolType),
+    ParamsInfo::Param("Passthrough",
+                      CBCCSTR("The input of this block will be the output."),
+                      CoreInfo::BoolType),
     ParamsInfo::Param(
         "Threading",
         CBCCSTR("Will not short circuit after the first true test expression. "
@@ -41,9 +40,9 @@ struct Cond {
   }
 
   static CBOptionalString help() {
-    return CBCCSTR(
-      "Takes a sequence of conditions and predicates. "
-      "Evaluates each condition one by one and if one matches, executes the associated action.");
+    return CBCCSTR("Takes a sequence of conditions and predicates. "
+                   "Evaluates each condition one by one and if one matches, "
+                   "executes the associated action.");
   }
 
   void warmup(CBContext *ctx) {
