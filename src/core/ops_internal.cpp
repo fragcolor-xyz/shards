@@ -543,6 +543,9 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
     if (akeys != bkeys)
       return false;
 
+    if (atypes != akeys)
+      return false;
+
     // compare but allow different orders of elements
     for (uint32_t i = 0; i < atypes; i++) {
       for (uint32_t j = 0; j < btypes; j++) {
