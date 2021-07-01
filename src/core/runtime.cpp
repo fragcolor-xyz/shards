@@ -1062,8 +1062,8 @@ void validateConnection(ValidationContext &ctx) {
                (t.basicType == Seq && t.seqTypes.len == 1 &&
                 t.seqTypes.elements[0].basicType == CBType::Any &&
                 ctx.previousOutputType.basicType == Seq) || // any seq
-               (t.basicType == Seq && t.seqTypes.len == 1 &&
-                t.seqTypes.elements[0].basicType == CBType::Any &&
+               (t.basicType == Table &&
+                // TODO find Any in table types
                 ctx.previousOutputType.basicType == Table) || // any table
                t == ctx.previousOutputType;
       });
