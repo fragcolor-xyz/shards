@@ -1,0 +1,25 @@
+(defnode main)
+(defchain producer
+  (Sequence .sink :Types [Type.Any Type.Int] :Global true)
+  "Hi!" = .v
+  (Time.EpochMs) (Math.Add 2000) = .t
+  (Repeat (->
+           (Const [.v .t]) >> .sink)
+          :Times 4)
+  .sink (Log))
+
+
+(defloop consumer
+  (Setup
+   (Sequence .sink
+             :Types [Type.Any Type.Int]
+             ; to pick producer variable
+             :Global true
+             ; producer runs before us and then we will clear it!, avoid this data race
+             :Clear false))
+  (Time.Pop .sink)
+  (Log))
+
+(schedule main producer)
+(schedule main consumer)
+(run main 0.1 100)
