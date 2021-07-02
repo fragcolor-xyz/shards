@@ -58,8 +58,6 @@ echo "Running test: bgfx"
 ./cbl ../src/tests/bgfx.clj
 echo "Running test: wasm"
 ./cbl ../src/tests/wasm.clj
-echo "Running test: audio"
-./cbl ../src/tests/audio.edn
 echo "Running test: time"
 ./cbl ../src/tests/time.edn
 echo "Running test_runtime"
