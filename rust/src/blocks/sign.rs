@@ -20,7 +20,7 @@ use std::ffi::CStr;
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::bytes];
-  static ref OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
+  static ref OUTPUT_TYPE: Vec<Type> = vec![common_type::bytezs];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     cbccstr!("The private key to be used to sign the hashed message input."),
@@ -35,14 +35,14 @@ lazy_static! {
 }
 
 struct ECDSA {
-  output: Option<[u8; 64]>,
+  output: Seq,
   key: ParamVar,
 }
 
 impl Default for ECDSA {
   fn default() -> Self {
     ECDSA {
-      output: None,
+      output: Seq::new(),
       key: ParamVar::new(().into()),
     }
   }
@@ -89,6 +89,7 @@ impl Block for ECDSA {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.key.warmup(context);
+    self.output.set_len(2);
     Ok(())
   }
 
@@ -130,10 +131,10 @@ impl Block for ECDSA {
     })?;
 
     let signed = libsecp256k1::sign(&msg, &key);
-
-    self.output = Some(signed.0.serialize());
-    let output: &[u8] = &self.output.unwrap();
-    Ok(output.into())
+    let signature= signed.0.serialize();
+    self.output[0] = signature[..].into();
+    self.output[1] = signed.1.serialize().try_into()?;
+    Ok(self.output.as_ref().into())
   }
 }
 

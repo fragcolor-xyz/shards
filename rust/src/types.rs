@@ -876,6 +876,7 @@ macro_rules! var_try_from {
 
 var_from!(bool, boolValue, CBType_Bool);
 var_from!(i64, intValue, CBType_Int);
+var_try_from!(u8, intValue, CBType_Int);
 var_try_from!(u16, intValue, CBType_Int);
 var_from_into!(i32, intValue, CBType_Int);
 var_try_from!(usize, intValue, CBType_Int);
