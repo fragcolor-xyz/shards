@@ -352,6 +352,7 @@ void registerCoreBlocks() {
                   emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
   cbInterface.set("getGlobalChain", emscripten::val(reinterpret_cast<uintptr_t>(
                                         iface->getGlobalChain)));
+  emscripten_get_now(); // force emscripten to link this call
 #endif
 }
 
