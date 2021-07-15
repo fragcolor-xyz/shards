@@ -139,6 +139,12 @@ struct GFXMesh {
 
 using GFXMeshRef = std::reference_wrapper<GFXMesh>;
 
+struct GFXSkin {
+  GFXSkin(const Skin &skin) {}
+};
+
+using GFXSkinRef = std::reference_wrapper<GFXSkin>;
+
 struct Node;
 using NodeRef = std::reference_wrapper<Node>;
 
@@ -147,16 +153,23 @@ struct Node {
   Mat4 transform;
 
   std::optional<GFXMeshRef> mesh;
+  std::optional<GFXSkinRef> skin;
 
   std::vector<NodeRef> children;
 };
 
+struct GFXAnimation {
+  GFXAnimation(const Animation &anim) {}
+};
+
 struct Model {
   std::deque<Node> nodes;
-  std::deque<GFXMesh> gfxMeshes;
   std::deque<GFXPrimitive> gfxPrimitives;
-  std::deque<GFXMaterial> gfxMaterials;
+  std::unordered_map<uint32_t, GFXMesh> gfxMeshes;
+  std::unordered_map<uint32_t, GFXMaterial> gfxMaterials;
+  std::unordered_map<uint32_t, GFXSkin> gfxSkins;
   std::vector<NodeRef> rootNodes;
+  std::unordered_map<std::string_view, GFXAnimation> animations;
 };
 
 bool LoadImageData(GLTFImage *image, const int image_idx, std::string *err,
@@ -191,13 +204,18 @@ struct Load : public BGFX::BaseConsumer {
       {"TransformAfter",
        CBCCSTR("An optional global transformation matrix to apply after the "
                "model root nodes transformations."),
-       {CoreInfo::Float4x4Type, CoreInfo::NoneType}}};
+       {CoreInfo::Float4x4Type, CoreInfo::NoneType}},
+      {"Animations", // TODO this should be a Set...
+       CBCCSTR("A list of animations to load and prepare from the gltf file, "
+               "if not found an error is raised."),
+       {CoreInfo::StringSeqType, CoreInfo::NoneType}}};
   static CBParametersInfo parameters() { return Params; }
 
   Model *_model{nullptr};
   TinyGLTF _loader;
   bool _withTextures{true};
   bool _withShaders{true};
+  OwnedVar _animations;
   uint32_t _numLights{0};
   std::unique_ptr<IShaderCompiler> _shaderCompiler;
   std::optional<Mat4> _before;
@@ -296,6 +314,9 @@ struct Load : public BGFX::BaseConsumer {
         _after = m;
       }
       break;
+    case 4:
+      _animations = value;
+      break;
     default:
       break;
     }
@@ -317,6 +338,8 @@ struct Load : public BGFX::BaseConsumer {
         return *_after;
       else
         return Var::Empty;
+    case 4:
+      return _animations;
     default:
       throw InvalidParameterIndex();
     }
@@ -583,378 +606,392 @@ struct Load : public BGFX::BaseConsumer {
                   }
 
                   if (glnode.mesh != -1) {
-                    const auto &glmesh = gltf.meshes[glnode.mesh];
-                    GFXMesh mesh{glmesh.name};
-                    for (const auto &glprims : glmesh.primitives) {
-                      GFXPrimitive prims{};
-                      std::unordered_set<std::string> shaderDefines;
-                      std::string varyings = _shadersVarying;
-                      // we gotta do few things here
-                      // build a layout
-                      // populate vb and ib
-                      std::vector<std::pair<bgfx::Attrib::Enum,
-                                            std::reference_wrapper<Accessor>>>
-                          accessors;
-                      uint32_t vertexSize = 0;
-                      for (const auto &[attributeName, attributeIdx] :
-                           glprims.attributes) {
-                        if (attributeName == "POSITION") {
-                          accessors.emplace_back(bgfx::Attrib::Position,
-                                                 gltf.accessors[attributeIdx]);
-                          vertexSize += sizeof(float) * 3;
-                        } else if (attributeName == "NORMAL") {
-                          accessors.emplace_back(bgfx::Attrib::Normal,
-                                                 gltf.accessors[attributeIdx]);
-                          vertexSize += sizeof(float) * 3;
-                          shaderDefines.insert("CB_HAS_NORMAL");
-                          varyings.append("vec3 a_normal : NORMAL;\n");
-                        } else if (attributeName == "TANGENT") {
-                          accessors.emplace_back(bgfx::Attrib::Tangent,
-                                                 gltf.accessors[attributeIdx]);
-                          shaderDefines.insert("CB_HAS_TANGENT");
-                          varyings.append("vec4 a_tangent : TANGENT;\n");
-                          vertexSize += sizeof(float) * 4;
-                        } else if (boost::starts_with(attributeName,
-                                                      "TEXCOORD_")) {
-                          int strIndex = std::stoi(attributeName.substr(9));
-                          if (strIndex >= 8) {
-                            throw ActivationError(
-                                "GLTF TEXCOORD_ limit exceeded.");
+                    auto it = _model->gfxMeshes.find(glnode.mesh);
+                    if (it != _model->gfxMeshes.end()) {
+                      node.mesh = it->second;
+                    } else {
+                      const auto &glmesh = gltf.meshes[glnode.mesh];
+                      GFXMesh mesh{glmesh.name};
+                      for (const auto &glprims : glmesh.primitives) {
+                        GFXPrimitive prims{};
+                        std::unordered_set<std::string> shaderDefines;
+                        std::string varyings = _shadersVarying;
+                        // we gotta do few things here
+                        // build a layout
+                        // populate vb and ib
+                        std::vector<std::pair<bgfx::Attrib::Enum,
+                                              std::reference_wrapper<Accessor>>>
+                            accessors;
+                        uint32_t vertexSize = 0;
+                        for (const auto &[attributeName, attributeIdx] :
+                             glprims.attributes) {
+                          if (attributeName == "POSITION") {
+                            accessors.emplace_back(
+                                bgfx::Attrib::Position,
+                                gltf.accessors[attributeIdx]);
+                            vertexSize += sizeof(float) * 3;
+                          } else if (attributeName == "NORMAL") {
+                            accessors.emplace_back(
+                                bgfx::Attrib::Normal,
+                                gltf.accessors[attributeIdx]);
+                            vertexSize += sizeof(float) * 3;
+                            shaderDefines.insert("CB_HAS_NORMAL");
+                            varyings.append("vec3 a_normal : NORMAL;\n");
+                          } else if (attributeName == "TANGENT") {
+                            accessors.emplace_back(
+                                bgfx::Attrib::Tangent,
+                                gltf.accessors[attributeIdx]);
+                            shaderDefines.insert("CB_HAS_TANGENT");
+                            varyings.append("vec4 a_tangent : TANGENT;\n");
+                            vertexSize += sizeof(float) * 4;
+                          } else if (boost::starts_with(attributeName,
+                                                        "TEXCOORD_")) {
+                            int strIndex = std::stoi(attributeName.substr(9));
+                            if (strIndex >= 8) {
+                              throw ActivationError(
+                                  "GLTF TEXCOORD_ limit exceeded.");
+                            }
+                            auto texcoord = decltype(bgfx::Attrib::TexCoord0)(
+                                int(bgfx::Attrib::TexCoord0) + strIndex);
+                            accessors.emplace_back(
+                                texcoord, gltf.accessors[attributeIdx]);
+                            vertexSize += sizeof(float) * 2;
+                            shaderDefines.insert("CB_HAS_" + attributeName);
+                            auto idxStr = std::to_string(strIndex);
+                            varyings.append("vec2 a_texcoord" + idxStr +
+                                            " : TEXCOORD" + idxStr + ";\n");
+                          } else if (boost::starts_with(attributeName,
+                                                        "COLOR_")) {
+                            int strIndex = std::stoi(attributeName.substr(6));
+                            if (strIndex >= 4) {
+                              throw ActivationError(
+                                  "GLTF COLOR_ limit exceeded.");
+                            }
+                            auto color = decltype(bgfx::Attrib::Color0)(
+                                int(bgfx::Attrib::Color0) + strIndex);
+                            accessors.emplace_back(
+                                color, gltf.accessors[attributeIdx]);
+                            vertexSize += 4;
+                            shaderDefines.insert("CB_HAS_" + attributeName);
+                            auto idxStr = std::to_string(strIndex);
+                            varyings.append("vec4 a_color" + idxStr +
+                                            " : COLOR" + idxStr + ";\n");
+                          } else {
+                            // TODO JOINTS_ and WEIGHTS_ etc
+                            CBLOG_WARNING("Ignored a primitive attribute: {}",
+                                          attributeName);
                           }
-                          auto texcoord = decltype(bgfx::Attrib::TexCoord0)(
-                              int(bgfx::Attrib::TexCoord0) + strIndex);
-                          accessors.emplace_back(texcoord,
-                                                 gltf.accessors[attributeIdx]);
-                          vertexSize += sizeof(float) * 2;
-                          shaderDefines.insert("CB_HAS_" + attributeName);
-                          auto idxStr = std::to_string(strIndex);
-                          varyings.append("vec2 a_texcoord" + idxStr +
-                                          " : TEXCOORD" + idxStr + ";\n");
-                        } else if (boost::starts_with(attributeName,
-                                                      "COLOR_")) {
-                          int strIndex = std::stoi(attributeName.substr(6));
-                          if (strIndex >= 4) {
-                            throw ActivationError(
-                                "GLTF COLOR_ limit exceeded.");
-                          }
-                          auto color = decltype(bgfx::Attrib::Color0)(
-                              int(bgfx::Attrib::Color0) + strIndex);
-                          accessors.emplace_back(color,
-                                                 gltf.accessors[attributeIdx]);
-                          vertexSize += 4;
-                          shaderDefines.insert("CB_HAS_" + attributeName);
-                          auto idxStr = std::to_string(strIndex);
-                          varyings.append("vec4 a_color" + idxStr + " : COLOR" +
-                                          idxStr + ";\n");
-                        } else {
-                          // TODO JOINTS_ and WEIGHTS_ etc
-                          CBLOG_WARNING("Ignored a primitive attribute: {}",
-                                        attributeName);
                         }
-                      }
 
-                      // lay our data following enum order, pos, normals etc
-                      std::sort(accessors.begin(), accessors.end(),
-                                [](const auto &a, const auto &b) {
-                                  return a.first < b.first;
-                                });
+                        // lay our data following enum order, pos, normals etc
+                        std::sort(accessors.begin(), accessors.end(),
+                                  [](const auto &a, const auto &b) {
+                                    return a.first < b.first;
+                                  });
 
-                      if (accessors.size() > 0) {
-                        const auto &[_, ar] = accessors[0];
-                        const auto vertexCount = ar.get().count;
-                        const auto totalSize =
-                            uint32_t(vertexCount) * vertexSize;
-                        auto vbuffer = bgfx::alloc(totalSize);
-                        auto offsetSize = 0;
-                        prims.layout.begin();
-                        for (const auto &[attrib, accessorRef] : accessors) {
-                          const auto &accessor = accessorRef.get();
-                          const auto &view =
-                              gltf.bufferViews[accessor.bufferView];
-                          const auto &buffer = gltf.buffers[view.buffer];
-                          const auto dataBeg = buffer.data.begin() +
-                                               view.byteOffset +
-                                               accessor.byteOffset;
-                          const auto stride = accessor.ByteStride(view);
-                          switch (attrib) {
-                          case bgfx::Attrib::Position:
-                          case bgfx::Attrib::Normal: {
-                            const auto size = sizeof(float) * 3;
-                            auto vbufferOffset = offsetSize;
-                            offsetSize += size;
+                        if (accessors.size() > 0) {
+                          const auto &[_, ar] = accessors[0];
+                          const auto vertexCount = ar.get().count;
+                          const auto totalSize =
+                              uint32_t(vertexCount) * vertexSize;
+                          auto vbuffer = bgfx::alloc(totalSize);
+                          auto offsetSize = 0;
+                          prims.layout.begin();
+                          for (const auto &[attrib, accessorRef] : accessors) {
+                            const auto &accessor = accessorRef.get();
+                            const auto &view =
+                                gltf.bufferViews[accessor.bufferView];
+                            const auto &buffer = gltf.buffers[view.buffer];
+                            const auto dataBeg = buffer.data.begin() +
+                                                 view.byteOffset +
+                                                 accessor.byteOffset;
+                            const auto stride = accessor.ByteStride(view);
+                            switch (attrib) {
+                            case bgfx::Attrib::Position:
+                            case bgfx::Attrib::Normal: {
+                              const auto size = sizeof(float) * 3;
+                              auto vbufferOffset = offsetSize;
+                              offsetSize += size;
 
-                            if (accessor.componentType !=
-                                    TINYGLTF_COMPONENT_TYPE_FLOAT ||
-                                accessor.type != TINYGLTF_TYPE_VEC3) {
-                              throw ActivationError(
-                                  "Position/Normal vector data was not "
-                                  "a float32 vector of 3");
-                            }
+                              if (accessor.componentType !=
+                                      TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                                  accessor.type != TINYGLTF_TYPE_VEC3) {
+                                throw ActivationError(
+                                    "Position/Normal vector data was not "
+                                    "a float32 vector of 3");
+                              }
 
-                            size_t idx = 0;
-                            auto it = dataBeg;
-                            while (idx < vertexCount) {
-                              const uint8_t *chunk = &(*it);
-                              memcpy(vbuffer->data + vbufferOffset, chunk,
-                                     size);
+                              size_t idx = 0;
+                              auto it = dataBeg;
+                              while (idx < vertexCount) {
+                                const uint8_t *chunk = &(*it);
+                                memcpy(vbuffer->data + vbufferOffset, chunk,
+                                       size);
 
-                              vbufferOffset += vertexSize;
-                              it += stride;
-                              idx++;
-                            }
+                                vbufferOffset += vertexSize;
+                                it += stride;
+                                idx++;
+                              }
 
-                            // also update layout
-                            prims.layout.add(attrib, 3,
-                                             bgfx::AttribType::Float);
-                          } break;
-                            break;
-                          case bgfx::Attrib::Tangent: {
-                            // w is handedness
-                            const auto size = sizeof(float) * 4;
-                            auto vbufferOffset = offsetSize;
-                            offsetSize += size;
+                              // also update layout
+                              prims.layout.add(attrib, 3,
+                                               bgfx::AttribType::Float);
+                            } break;
+                              break;
+                            case bgfx::Attrib::Tangent: {
+                              // w is handedness
+                              const auto size = sizeof(float) * 4;
+                              auto vbufferOffset = offsetSize;
+                              offsetSize += size;
 
-                            if (accessor.componentType !=
-                                    TINYGLTF_COMPONENT_TYPE_FLOAT ||
-                                accessor.type != TINYGLTF_TYPE_VEC4) {
-                              throw ActivationError(
-                                  "Tangent vector data was not a "
-                                  "float32 vector of 4");
-                            }
+                              if (accessor.componentType !=
+                                      TINYGLTF_COMPONENT_TYPE_FLOAT ||
+                                  accessor.type != TINYGLTF_TYPE_VEC4) {
+                                throw ActivationError(
+                                    "Tangent vector data was not a "
+                                    "float32 vector of 4");
+                              }
 
-                            size_t idx = 0;
-                            auto it = dataBeg;
-                            while (idx < vertexCount) {
-                              const float *chunk = (float *)&(*it);
-                              memcpy(vbuffer->data + vbufferOffset, chunk,
-                                     size);
+                              size_t idx = 0;
+                              auto it = dataBeg;
+                              while (idx < vertexCount) {
+                                const float *chunk = (float *)&(*it);
+                                memcpy(vbuffer->data + vbufferOffset, chunk,
+                                       size);
 
-                              vbufferOffset += vertexSize;
-                              it += stride;
-                              idx++;
-                            }
+                                vbufferOffset += vertexSize;
+                                it += stride;
+                                idx++;
+                              }
 
-                            // also update layout
-                            prims.layout.add(attrib, 4,
-                                             bgfx::AttribType::Float);
-                          } break;
-                          case bgfx::Attrib::Color0:
-                          case bgfx::Attrib::Color1:
-                          case bgfx::Attrib::Color2:
-                          case bgfx::Attrib::Color3: {
-                            const auto elemSize = [&]() {
-                              if (accessor.componentType ==
-                                  TINYGLTF_COMPONENT_TYPE_FLOAT)
-                                return 4;
-                              else if (accessor.componentType ==
-                                       TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-                                return 2;
-                              else // BYTE
-                                return 1;
-                            }();
-                            const auto elemNum = [&]() {
-                              if (accessor.type == TINYGLTF_TYPE_VEC3)
-                                return 3;
-                              else // VEC4
-                                return 4;
-                            }();
-                            const auto osize = 4;
-                            auto vbufferOffset = offsetSize;
-                            offsetSize += osize;
+                              // also update layout
+                              prims.layout.add(attrib, 4,
+                                               bgfx::AttribType::Float);
+                            } break;
+                            case bgfx::Attrib::Color0:
+                            case bgfx::Attrib::Color1:
+                            case bgfx::Attrib::Color2:
+                            case bgfx::Attrib::Color3: {
+                              const auto elemSize = [&]() {
+                                if (accessor.componentType ==
+                                    TINYGLTF_COMPONENT_TYPE_FLOAT)
+                                  return 4;
+                                else if (accessor.componentType ==
+                                         TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                                  return 2;
+                                else // BYTE
+                                  return 1;
+                              }();
+                              const auto elemNum = [&]() {
+                                if (accessor.type == TINYGLTF_TYPE_VEC3)
+                                  return 3;
+                                else // VEC4
+                                  return 4;
+                              }();
+                              const auto osize = 4;
+                              auto vbufferOffset = offsetSize;
+                              offsetSize += osize;
 
-                            size_t idx = 0;
-                            auto it = dataBeg;
-                            while (idx < vertexCount) {
-                              switch (elemNum) {
-                              case 3: {
-                                switch (elemSize) {
-                                case 4: { // float
-                                  const float *chunk = (float *)&(*it);
-                                  uint8_t *buf = vbuffer->data + vbufferOffset;
-                                  buf[0] = uint8_t(chunk[0] * 255);
-                                  buf[1] = uint8_t(chunk[1] * 255);
-                                  buf[2] = uint8_t(chunk[2] * 255);
-                                  buf[3] = 255;
+                              size_t idx = 0;
+                              auto it = dataBeg;
+                              while (idx < vertexCount) {
+                                switch (elemNum) {
+                                case 3: {
+                                  switch (elemSize) {
+                                  case 4: { // float
+                                    const float *chunk = (float *)&(*it);
+                                    uint8_t *buf =
+                                        vbuffer->data + vbufferOffset;
+                                    buf[0] = uint8_t(chunk[0] * 255);
+                                    buf[1] = uint8_t(chunk[1] * 255);
+                                    buf[2] = uint8_t(chunk[2] * 255);
+                                    buf[3] = 255;
+                                  } break;
+                                  case 2: {
+                                    const uint16_t *chunk = (uint16_t *)&(*it);
+                                    uint8_t *buf =
+                                        vbuffer->data + vbufferOffset;
+                                    buf[0] = uint8_t(
+                                        (float(chunk[0]) / float(UINT16_MAX)) *
+                                        255);
+                                    buf[1] = uint8_t(
+                                        (float(chunk[1]) / float(UINT16_MAX)) *
+                                        255);
+                                    buf[2] = uint8_t(
+                                        (float(chunk[2]) / float(UINT16_MAX)) *
+                                        255);
+                                    buf[3] = 255;
+                                  } break;
+                                  case 1: {
+                                    const uint8_t *chunk = (uint8_t *)&(*it);
+                                    uint8_t *buf =
+                                        vbuffer->data + vbufferOffset;
+                                    memcpy(buf, chunk, 3);
+                                    buf[3] = 255;
+                                  } break;
+                                  default:
+                                    CBLOG_FATAL("invalid state");
+                                    break;
+                                  }
                                 } break;
-                                case 2: {
-                                  const uint16_t *chunk = (uint16_t *)&(*it);
-                                  uint8_t *buf = vbuffer->data + vbufferOffset;
-                                  buf[0] = uint8_t(
-                                      (float(chunk[0]) / float(UINT16_MAX)) *
-                                      255);
-                                  buf[1] = uint8_t(
-                                      (float(chunk[1]) / float(UINT16_MAX)) *
-                                      255);
-                                  buf[2] = uint8_t(
-                                      (float(chunk[2]) / float(UINT16_MAX)) *
-                                      255);
-                                  buf[3] = 255;
-                                } break;
-                                case 1: {
-                                  const uint8_t *chunk = (uint8_t *)&(*it);
-                                  uint8_t *buf = vbuffer->data + vbufferOffset;
-                                  memcpy(buf, chunk, 3);
-                                  buf[3] = 255;
-                                } break;
-                                default:
-                                  CBLOG_FATAL("invalid state");
-                                  break;
-                                }
-                              } break;
-                              case 4: {
-                                switch (elemSize) {
-                                case 4: { // float
-                                  const float *chunk = (float *)&(*it);
-                                  uint8_t *buf = vbuffer->data + vbufferOffset;
-                                  buf[0] = uint8_t(chunk[0] * 255);
-                                  buf[1] = uint8_t(chunk[1] * 255);
-                                  buf[2] = uint8_t(chunk[2] * 255);
-                                  buf[3] = uint8_t(chunk[3] * 255);
-                                } break;
-                                case 2: {
-                                  const uint16_t *chunk = (uint16_t *)&(*it);
-                                  uint8_t *buf = vbuffer->data + vbufferOffset;
-                                  buf[0] = uint8_t(
-                                      (float(chunk[0]) / float(UINT16_MAX)) *
-                                      255);
-                                  buf[1] = uint8_t(
-                                      (float(chunk[1]) / float(UINT16_MAX)) *
-                                      255);
-                                  buf[2] = uint8_t(
-                                      (float(chunk[2]) / float(UINT16_MAX)) *
-                                      255);
-                                  buf[3] = uint8_t(
-                                      (float(chunk[3]) / float(UINT16_MAX)) *
-                                      255);
-                                } break;
-                                case 1: {
-                                  const uint8_t *chunk = (uint8_t *)&(*it);
-                                  uint8_t *buf = vbuffer->data + vbufferOffset;
-                                  memcpy(buf, chunk, 4);
+                                case 4: {
+                                  switch (elemSize) {
+                                  case 4: { // float
+                                    const float *chunk = (float *)&(*it);
+                                    uint8_t *buf =
+                                        vbuffer->data + vbufferOffset;
+                                    buf[0] = uint8_t(chunk[0] * 255);
+                                    buf[1] = uint8_t(chunk[1] * 255);
+                                    buf[2] = uint8_t(chunk[2] * 255);
+                                    buf[3] = uint8_t(chunk[3] * 255);
+                                  } break;
+                                  case 2: {
+                                    const uint16_t *chunk = (uint16_t *)&(*it);
+                                    uint8_t *buf =
+                                        vbuffer->data + vbufferOffset;
+                                    buf[0] = uint8_t(
+                                        (float(chunk[0]) / float(UINT16_MAX)) *
+                                        255);
+                                    buf[1] = uint8_t(
+                                        (float(chunk[1]) / float(UINT16_MAX)) *
+                                        255);
+                                    buf[2] = uint8_t(
+                                        (float(chunk[2]) / float(UINT16_MAX)) *
+                                        255);
+                                    buf[3] = uint8_t(
+                                        (float(chunk[3]) / float(UINT16_MAX)) *
+                                        255);
+                                  } break;
+                                  case 1: {
+                                    const uint8_t *chunk = (uint8_t *)&(*it);
+                                    uint8_t *buf =
+                                        vbuffer->data + vbufferOffset;
+                                    memcpy(buf, chunk, 4);
+                                  } break;
+                                  default:
+                                    CBLOG_FATAL("invalid state");
+                                    ;
+                                    break;
+                                  }
                                 } break;
                                 default:
                                   CBLOG_FATAL("invalid state");
                                   ;
                                   break;
                                 }
-                              } break;
-                              default:
-                                CBLOG_FATAL("invalid state");
-                                ;
-                                break;
+
+                                vbufferOffset += vertexSize;
+                                it += stride;
+                                idx++;
                               }
 
-                              vbufferOffset += vertexSize;
-                              it += stride;
-                              idx++;
-                            }
+                              prims.layout.add(attrib, 4,
+                                               bgfx::AttribType::Uint8, true);
+                            } break;
+                            case bgfx::Attrib::TexCoord0:
+                            case bgfx::Attrib::TexCoord1:
+                            case bgfx::Attrib::TexCoord2:
+                            case bgfx::Attrib::TexCoord3:
+                            case bgfx::Attrib::TexCoord4:
+                            case bgfx::Attrib::TexCoord5:
+                            case bgfx::Attrib::TexCoord6:
+                            case bgfx::Attrib::TexCoord7: {
+                              const auto elemSize = [&]() {
+                                if (accessor.componentType ==
+                                    TINYGLTF_COMPONENT_TYPE_FLOAT)
+                                  return 4;
+                                else if (accessor.componentType ==
+                                         TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                                  return 2;
+                                else // BYTE
+                                  return 1;
+                              }();
+                              const auto osize = sizeof(float) * 2;
+                              auto vbufferOffset = offsetSize;
+                              offsetSize += osize;
 
-                            prims.layout.add(attrib, 4, bgfx::AttribType::Uint8,
-                                             true);
-                          } break;
-                          case bgfx::Attrib::TexCoord0:
-                          case bgfx::Attrib::TexCoord1:
-                          case bgfx::Attrib::TexCoord2:
-                          case bgfx::Attrib::TexCoord3:
-                          case bgfx::Attrib::TexCoord4:
-                          case bgfx::Attrib::TexCoord5:
-                          case bgfx::Attrib::TexCoord6:
-                          case bgfx::Attrib::TexCoord7: {
-                            const auto elemSize = [&]() {
-                              if (accessor.componentType ==
-                                  TINYGLTF_COMPONENT_TYPE_FLOAT)
-                                return 4;
-                              else if (accessor.componentType ==
-                                       TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-                                return 2;
-                              else // BYTE
-                                return 1;
-                            }();
-                            const auto osize = sizeof(float) * 2;
-                            auto vbufferOffset = offsetSize;
-                            offsetSize += osize;
+                              size_t idx = 0;
+                              auto it = dataBeg;
+                              while (idx < vertexCount) {
+                                switch (elemSize) {
+                                case 4: { // float
+                                  const float *chunk = (float *)&(*it);
+                                  float *buf =
+                                      (float *)(vbuffer->data + vbufferOffset);
+                                  buf[0] = chunk[0];
+                                  buf[1] = chunk[1];
+                                } break;
+                                case 2: {
+                                  const uint16_t *chunk = (uint16_t *)&(*it);
+                                  float *buf =
+                                      (float *)(vbuffer->data + vbufferOffset);
+                                  buf[0] = float(chunk[0]) / float(UINT16_MAX);
+                                  buf[1] = float(chunk[1]) / float(UINT16_MAX);
+                                } break;
+                                case 1: {
+                                  const uint8_t *chunk = (uint8_t *)&(*it);
+                                  float *buf =
+                                      (float *)(vbuffer->data + vbufferOffset);
+                                  buf[0] = float(chunk[0]) / float(255);
+                                  buf[1] = float(chunk[1]) / float(255);
+                                } break;
+                                default:
+                                  CBLOG_FATAL("invalid state");
+                                  ;
+                                  break;
+                                }
 
-                            size_t idx = 0;
-                            auto it = dataBeg;
-                            while (idx < vertexCount) {
-                              switch (elemSize) {
-                              case 4: { // float
-                                const float *chunk = (float *)&(*it);
-                                float *buf =
-                                    (float *)(vbuffer->data + vbufferOffset);
-                                buf[0] = chunk[0];
-                                buf[1] = chunk[1];
-                              } break;
-                              case 2: {
-                                const uint16_t *chunk = (uint16_t *)&(*it);
-                                float *buf =
-                                    (float *)(vbuffer->data + vbufferOffset);
-                                buf[0] = float(chunk[0]) / float(UINT16_MAX);
-                                buf[1] = float(chunk[1]) / float(UINT16_MAX);
-                              } break;
-                              case 1: {
-                                const uint8_t *chunk = (uint8_t *)&(*it);
-                                float *buf =
-                                    (float *)(vbuffer->data + vbufferOffset);
-                                buf[0] = float(chunk[0]) / float(255);
-                                buf[1] = float(chunk[1]) / float(255);
-                              } break;
-                              default:
-                                CBLOG_FATAL("invalid state");
-                                ;
-                                break;
+                                vbufferOffset += vertexSize;
+                                it += stride;
+                                idx++;
                               }
 
-                              vbufferOffset += vertexSize;
-                              it += stride;
-                              idx++;
+                              prims.layout.add(attrib, 2,
+                                               bgfx::AttribType::Float);
+                            } break;
+                            default:
+                              throw std::runtime_error("Invalid attribute.");
+                              break;
                             }
+                          }
+                          // wrap up layout
+                          prims.layout.end();
+                          assert(prims.layout.getSize(1) == vertexSize);
+                          prims.vb =
+                              bgfx::createVertexBuffer(vbuffer, prims.layout);
 
-                            prims.layout.add(attrib, 2,
-                                             bgfx::AttribType::Float);
-                          } break;
-                          default:
-                            throw std::runtime_error("Invalid attribute.");
-                            break;
-                          }
-                        }
-                        // wrap up layout
-                        prims.layout.end();
-                        assert(prims.layout.getSize(1) == vertexSize);
-                        prims.vb =
-                            bgfx::createVertexBuffer(vbuffer, prims.layout);
-
-                        // check if we have indices
-                        if (glprims.indices != -1) {
-                          // alright we also use the IB
-                          const auto &indices = gltf.accessors[glprims.indices];
-                          const auto count = indices.count;
-                          int esize;
-                          if (count < UINT16_MAX) {
-                            esize = 2;
-                          } else {
-                            esize = 4;
-                          }
-                          auto ibuffer = bgfx::alloc(esize * count);
-                          auto offset = 0;
-                          int gsize;
-                          // https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#indices
-                          if (indices.componentType ==
-                              TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-                            gsize = 4;
-                          } else if (indices.componentType ==
-                                     TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-                            gsize = 2;
-                          } else {
-                            gsize = 1;
-                          }
-                          const auto &view =
-                              gltf.bufferViews[indices.bufferView];
-                          const auto &buffer = gltf.buffers[view.buffer];
-                          const auto dataBeg = buffer.data.begin() +
-                                               view.byteOffset +
-                                               indices.byteOffset;
-                          const auto stride = indices.ByteStride(view);
+                          // check if we have indices
+                          if (glprims.indices != -1) {
+                            // alright we also use the IB
+                            const auto &indices =
+                                gltf.accessors[glprims.indices];
+                            const auto count = indices.count;
+                            int esize;
+                            if (count < UINT16_MAX) {
+                              esize = 2;
+                            } else {
+                              esize = 4;
+                            }
+                            auto ibuffer = bgfx::alloc(esize * count);
+                            auto offset = 0;
+                            int gsize;
+                            // https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#indices
+                            if (indices.componentType ==
+                                TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                              gsize = 4;
+                            } else if (indices.componentType ==
+                                       TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                              gsize = 2;
+                            } else {
+                              gsize = 1;
+                            }
+                            const auto &view =
+                                gltf.bufferViews[indices.bufferView];
+                            const auto &buffer = gltf.buffers[view.buffer];
+                            const auto dataBeg = buffer.data.begin() +
+                                                 view.byteOffset +
+                                                 indices.byteOffset;
+                            const auto stride = indices.ByteStride(view);
 
 #define FILL_INDEX                                                             \
   if (esize == 4) {                                                            \
@@ -964,58 +1001,85 @@ struct Load : public BGFX::BaseConsumer {
     uint16_t *ibuf = (uint16_t *)(ibuffer->data + offset);                     \
     *ibuf = uint16_t(*chunk);                                                  \
   }
-                          size_t idx = 0;
-                          auto it = dataBeg;
-                          while (idx < count) {
-                            switch (gsize) {
-                            case 4: {
-                              const uint32_t *chunk = (uint32_t *)&(*it);
-                              FILL_INDEX;
-                            } break;
-                            case 2: {
-                              const uint16_t *chunk = (uint16_t *)&(*it);
-                              FILL_INDEX;
-                            } break;
-                            case 1: {
-                              const uint8_t *chunk = (uint8_t *)&(*it);
-                              FILL_INDEX;
-                            } break;
-                            default:
-                              CBLOG_FATAL("invalid state");
-                              ;
-                              break;
+                            size_t idx = 0;
+                            auto it = dataBeg;
+                            while (idx < count) {
+                              switch (gsize) {
+                              case 4: {
+                                const uint32_t *chunk = (uint32_t *)&(*it);
+                                FILL_INDEX;
+                              } break;
+                              case 2: {
+                                const uint16_t *chunk = (uint16_t *)&(*it);
+                                FILL_INDEX;
+                              } break;
+                              case 1: {
+                                const uint8_t *chunk = (uint8_t *)&(*it);
+                                FILL_INDEX;
+                              } break;
+                              default:
+                                CBLOG_FATAL("invalid state");
+                                ;
+                                break;
+                              }
+
+                              offset += esize;
+                              it += stride;
+                              idx++;
                             }
-
-                            offset += esize;
-                            it += stride;
-                            idx++;
-                          }
 #undef FILL_INDEX
-                          prims.ib = bgfx::createIndexBuffer(
-                              ibuffer, esize == 4 ? BGFX_BUFFER_INDEX32 : 0);
-                        } else {
-                          prims.stateFlags = BGFX_STATE_PT_TRISTRIP;
-                        }
+                            prims.ib = bgfx::createIndexBuffer(
+                                ibuffer, esize == 4 ? BGFX_BUFFER_INDEX32 : 0);
+                          } else {
+                            prims.stateFlags = BGFX_STATE_PT_TRISTRIP;
+                          }
 
-                        const auto determinant =
-                            linalg::determinant(node.transform);
-                        if (!(determinant < 0.0)) {
-                          prims.stateFlags |= BGFX_STATE_FRONT_CCW;
-                        }
+                          const auto determinant =
+                              linalg::determinant(node.transform);
+                          if (!(determinant < 0.0)) {
+                            prims.stateFlags |= BGFX_STATE_FRONT_CCW;
+                          }
 
-                        if (glprims.material != -1) {
-                          prims.material = _model->gfxMaterials.emplace_back(
-                              processMaterial(context, gltf,
+                          if (glprims.material != -1) {
+                            auto it =
+                                _model->gfxMaterials.find(glprims.material);
+                            if (it != _model->gfxMaterials.end()) {
+                              prims.material = it->second;
+                            } else {
+                              prims.material =
+                                  _model->gfxMaterials
+                                      .emplace(
+                                          glprims.material,
+                                          processMaterial(
+                                              context, gltf,
                                               gltf.materials[glprims.material],
-                                              shaderDefines, varyings));
-                        }
+                                              shaderDefines, varyings))
+                                      .first->second;
+                            }
+                          }
 
-                        mesh.primitives.emplace_back(
-                            _model->gfxPrimitives.emplace_back(
-                                std::move(prims)));
+                          mesh.primitives.emplace_back(
+                              _model->gfxPrimitives.emplace_back(
+                                  std::move(prims)));
+                        }
                       }
+
+                      node.mesh = _model->gfxMeshes
+                                      .emplace(glnode.mesh, std::move(mesh))
+                                      .first->second;
                     }
-                    node.mesh = _model->gfxMeshes.emplace_back(std::move(mesh));
+                  }
+
+                  if (glnode.skin != -1) {
+                    auto it = _model->gfxSkins.find(glnode.skin);
+                    if (it != _model->gfxSkins.end()) {
+                      node.skin = it->second;
+                    } else {
+                      node.skin =
+                          _model->gfxSkins
+                              .emplace(glnode.skin, gltf.skins[glnode.skin])
+                              .first->second;
+                    }
                   }
 
                   for (const auto childIndex : glnode.children) {
@@ -1026,6 +1090,22 @@ struct Load : public BGFX::BaseConsumer {
                   return NodeRef(_model->nodes.emplace_back(std::move(node)));
                 };
             _model->rootNodes.emplace_back(processNode(glnode));
+          }
+
+          // process animations if needed
+          if (_animations.valueType == Seq &&
+              _animations.payload.seqValue.len > 0) {
+            std::unordered_set<std::string_view> names;
+            for (const auto &animation : _animations) {
+              names.insert(CBSTRVIEW(animation));
+            }
+            for (const auto &anim : gltf.animations) {
+              auto it = names.find(anim.name);
+              if (it != names.end()) {
+                // *it string memory is backed in _animations Var!
+                _model->animations.emplace(*it, anim);
+              }
+            }
           }
 
           return ModelVar.Get(_model);
