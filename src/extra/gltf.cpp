@@ -616,6 +616,8 @@ struct Load : public BGFX::BaseConsumer {
                         GFXPrimitive prims{};
                         std::unordered_set<std::string> shaderDefines;
                         std::string varyings = _shadersVarying;
+                        std::vector<int> weights;
+                        std::vector<int> joints;
                         // we gotta do few things here
                         // build a layout
                         // populate vb and ib
@@ -676,11 +678,37 @@ struct Load : public BGFX::BaseConsumer {
                             auto idxStr = std::to_string(strIndex);
                             varyings.append("vec4 a_color" + idxStr +
                                             " : COLOR" + idxStr + ";\n");
+                          } else if (boost::starts_with(attributeName,
+                                                        "JOINTS_")) {
+                            int strIndex = std::stoi(attributeName.substr(7));
+                            joints.emplace_back(strIndex);
+                            accessors.emplace_back(
+                                bgfx::Attrib::Indices,
+                                gltf.accessors[attributeIdx]);
+                          } else if (boost::starts_with(attributeName,
+                                                        "WEIGHTS_")) {
+                            int strIndex = std::stoi(attributeName.substr(8));
+                            weights.emplace_back(strIndex);
+                            accessors.emplace_back(
+                                bgfx::Attrib::Weight,
+                                gltf.accessors[attributeIdx]);
                           } else {
-                            // TODO JOINTS_ and WEIGHTS_ etc
                             CBLOG_WARNING("Ignored a primitive attribute: {}",
                                           attributeName);
                           }
+                        }
+
+                        if (joints.size() != weights.size()) {
+                          throw ActivationError(
+                              "Joints and weights must have the same size.");
+                        }
+
+                        if (joints.size() > 0 && joints.size() <= 4) {
+                          shaderDefines.insert("CB_HAS_BONES");
+                          varyings.append("uvec4 a_indices : BLENDINDICES;\n");
+                          vertexSize += sizeof(uint16_t) * 4;
+                          varyings.append("vec4 a_weight : BLENDWEIGHT;\n");
+                          vertexSize += sizeof(float) * 4;
                         }
 
                         // lay our data following enum order, pos, normals etc
@@ -870,13 +898,11 @@ struct Load : public BGFX::BaseConsumer {
                                   } break;
                                   default:
                                     CBLOG_FATAL("invalid state");
-                                    ;
                                     break;
                                   }
                                 } break;
                                 default:
                                   CBLOG_FATAL("invalid state");
-                                  ;
                                   break;
                                 }
 
@@ -937,7 +963,6 @@ struct Load : public BGFX::BaseConsumer {
                                 } break;
                                 default:
                                   CBLOG_FATAL("invalid state");
-                                  ;
                                   break;
                                 }
 
@@ -949,11 +974,63 @@ struct Load : public BGFX::BaseConsumer {
                               prims.layout.add(attrib, 2,
                                                bgfx::AttribType::Float);
                             } break;
+                            case bgfx::Attrib::Indices: {
+                              size_t elemSize =
+                                  accessor.componentType ==
+                                          TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT
+                                      ? 2
+                                      : 1;
+
+                              const auto size = sizeof(uint16_t) * 4;
+                              auto vbufferOffset = offsetSize;
+                              offsetSize += size;
+
+                              if (accessor.type != TINYGLTF_TYPE_VEC4) {
+                                throw ActivationError("Joints vector data was "
+                                                      "not a  vector of 4");
+                              }
+
+                              size_t idx = 0;
+                              auto it = dataBeg;
+                              while (idx < vertexCount) {
+                                switch (elemSize) {
+                                case 2: { // uint16_t
+                                  const uint16_t *chunk = (uint16_t *)&(*it);
+                                  uint16_t *buf = (uint16_t *)(vbuffer->data +
+                                                               vbufferOffset);
+                                  buf[0] = chunk[0];
+                                  buf[1] = chunk[1];
+                                } break;
+                                case 1: { // uint8_t
+                                  const uint8_t *chunk = (uint8_t *)&(*it);
+                                  uint16_t *buf = (uint16_t *)(vbuffer->data +
+                                                               vbufferOffset);
+                                  buf[0] = chunk[0];
+                                  buf[1] = chunk[1];
+                                } break;
+                                default:
+                                  CBLOG_FATAL("invalid state");
+                                  break;
+                                }
+
+                                vbufferOffset += vertexSize;
+                                it += stride;
+                                idx++;
+                              }
+
+                              prims.layout.add(attrib, 4,
+                                               bgfx::AttribType::Int16);
+                            } break;
+                            case bgfx::Attrib::Weight: {
+                              prims.layout.add(attrib, 4,
+                                               bgfx::AttribType::Float);
+                            } break;
                             default:
                               throw std::runtime_error("Invalid attribute.");
                               break;
                             }
                           }
+
                           // wrap up layout
                           prims.layout.end();
                           assert(prims.layout.getSize(1) == vertexSize);
