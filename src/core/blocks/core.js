@@ -7,7 +7,7 @@ mergeInto(LibraryManager.library, {
   now: function () {
     return Date.now() / 1000.0;
   },
-  _emscripten_get_now: now,
+  _emscripten_get_now: now, // work around for emscripten and rust crate "instant"
   emEval: function (code) {
     try {
       const scode = UTF8ToString(code);
