@@ -1,12 +1,15 @@
 /* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
 /* Copyright © 2021 Giovanni Petrantoni */
 
+const { now } = require("core-js/core/date");
+
 // emscripten related utilities
 
 mergeInto(LibraryManager.library, {
   now: function () {
     return Date.now() / 1000.0;
   },
+  _emscripten_get_now: now,
   emEval: function (code) {
     try {
       const scode = UTF8ToString(code);
