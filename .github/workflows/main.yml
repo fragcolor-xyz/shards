@@ -12,7 +12,6 @@ jobs:
   #         access_token: ${{ secrets.TOKEN }}
 
   wasm32-emscripten-mt:
-    # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -63,7 +62,6 @@ jobs:
         protocol: https
 
   wasm32-emscripten:
-    # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
