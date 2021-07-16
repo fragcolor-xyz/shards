@@ -12,7 +12,6 @@ jobs:
   #         access_token: ${{ secrets.TOKEN }}
 
   wasm32-emscripten-mt:
-    # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -23,8 +22,8 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
-        ./emsdk install 2.0.18
-        ./emsdk activate 2.0.18
+        ./emsdk install 2.0.25
+        ./emsdk activate 2.0.25
         cd .. && mkdir external && cd external
         wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
         tar xzf boost_1_76_0.tar.gz
@@ -63,7 +62,6 @@ jobs:
         protocol: https
 
   wasm32-emscripten:
-    # emsdk needs to be llvm 11 because of rust, so far 2.0.5 seems the best to use
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -74,8 +72,8 @@ jobs:
         sudo apt-get -y install build-essential git cmake wget ninja-build
         git clone https://github.com/emscripten-core/emsdk.git
         cd emsdk
-        ./emsdk install 2.0.18
-        ./emsdk activate 2.0.18
+        ./emsdk install 2.0.25
+        ./emsdk activate 2.0.25
         cd .. && mkdir external && cd external
         wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
         tar xzf boost_1_76_0.tar.gz
