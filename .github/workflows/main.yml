@@ -42,8 +42,8 @@ jobs:
     - name: Test
       run: |
         cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js cbl-mt.js
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js cbl-mt.js || [[ $? == 143 ]] || exit
+        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
         mkdir cbl
         cp cbl-mt.wasm cbl/
         cp cbl-mt.js cbl/
