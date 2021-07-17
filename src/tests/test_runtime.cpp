@@ -17,6 +17,8 @@ int main(int argc, char *argv[]) {
   int result = Catch::Session().run(argc, argv);
 #ifdef __EMSCRIPTEN_PTHREADS__
   // in this case we need to call exit our self
+  // exit does not work, raise sigterm instead
+  raise(143);
   exit(0);
 #endif
   return result;
