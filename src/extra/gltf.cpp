@@ -620,8 +620,6 @@ struct Load : public BGFX::BaseConsumer {
                         GFXPrimitive prims{};
                         std::unordered_set<std::string> shaderDefines;
                         std::string varyings = _shadersVarying;
-                        std::vector<int> weights;
-                        std::vector<int> joints;
                         // we gotta do few things here
                         // build a layout
                         // populate vb and ib
@@ -653,7 +651,10 @@ struct Load : public BGFX::BaseConsumer {
                           } else if (boost::starts_with(attributeName,
                                                         "TEXCOORD_")) {
                             int strIndex = std::stoi(attributeName.substr(9));
-                            if (strIndex >= 8) {
+                            if (strIndex >= 4) {
+                              // 4 because we use an extra 4 for instanced
+                              // matrix... also we might use those for extra
+                              // bones!
                               throw ActivationError(
                                   "GLTF TEXCOORD_ limit exceeded.");
                             }
@@ -685,34 +686,53 @@ struct Load : public BGFX::BaseConsumer {
                           } else if (boost::starts_with(attributeName,
                                                         "JOINTS_")) {
                             int strIndex = std::stoi(attributeName.substr(7));
-                            joints.emplace_back(strIndex);
-                            accessors.emplace_back(
-                                bgfx::Attrib::Indices,
-                                gltf.accessors[attributeIdx]);
+
+                            shaderDefines.insert("CB_HAS_JOINTS_" +
+                                                 std::to_string(strIndex));
+                            if (strIndex == 0) {
+                              varyings.append(
+                                  "uvec4 a_indices : BLENDINDICES;\n");
+                              accessors.emplace_back(
+                                  bgfx::Attrib::Indices,
+                                  gltf.accessors[attributeIdx]);
+                            } else if (strIndex == 1) {
+                              // TEXCOORD2
+                              varyings.append(
+                                  "uvec4 a_indices1 : TEXCOORD2;\n");
+                              accessors.emplace_back(
+                                  bgfx::Attrib::TexCoord2,
+                                  gltf.accessors[attributeIdx]);
+                            } else {
+                              throw ActivationError("Too many bones");
+                            }
+
+                            vertexSize += sizeof(uint16_t) * 4;
                           } else if (boost::starts_with(attributeName,
                                                         "WEIGHTS_")) {
                             int strIndex = std::stoi(attributeName.substr(8));
-                            weights.emplace_back(strIndex);
-                            accessors.emplace_back(
-                                bgfx::Attrib::Weight,
-                                gltf.accessors[attributeIdx]);
+
+                            shaderDefines.insert("CB_HAS_WEIGHT_" +
+                                                 std::to_string(strIndex));
+                            if (strIndex == 0) {
+                              varyings.append("vec4 a_weight : BLENDWEIGHT;\n");
+                              accessors.emplace_back(
+                                  bgfx::Attrib::Weight,
+                                  gltf.accessors[attributeIdx]);
+                            } else if (strIndex == 1) {
+                              // TEXCOORD3
+                              varyings.append("vec4 a_weight1 : TEXCOORD3;\n");
+                              accessors.emplace_back(
+                                  bgfx::Attrib::TexCoord3,
+                                  gltf.accessors[attributeIdx]);
+                            } else {
+                              throw ActivationError("Too many bones");
+                            }
+
+                            vertexSize += sizeof(float) * 4;
                           } else {
                             CBLOG_WARNING("Ignored a primitive attribute: {}",
                                           attributeName);
                           }
-                        }
-
-                        if (joints.size() != weights.size()) {
-                          throw ActivationError(
-                              "Joints and weights must have the same size.");
-                        }
-
-                        if (joints.size() > 0 && joints.size() <= 4) {
-                          shaderDefines.insert("CB_HAS_BONES");
-                          varyings.append("uvec4 a_indices : BLENDINDICES;\n");
-                          vertexSize += sizeof(uint16_t) * 4;
-                          varyings.append("vec4 a_weight : BLENDWEIGHT;\n");
-                          vertexSize += sizeof(float) * 4;
                         }
 
                         // lay our data following enum order, pos, normals etc
@@ -925,7 +945,8 @@ struct Load : public BGFX::BaseConsumer {
                             case bgfx::Attrib::TexCoord4:
                             case bgfx::Attrib::TexCoord5:
                             case bgfx::Attrib::TexCoord6:
-                            case bgfx::Attrib::TexCoord7: {
+                            case bgfx::Attrib::TexCoord7:
+                            case bgfx::Attrib::Weight: {
                               const auto elemSize = [&]() {
                                 if (accessor.componentType ==
                                     TINYGLTF_COMPONENT_TYPE_FLOAT)
@@ -933,10 +954,27 @@ struct Load : public BGFX::BaseConsumer {
                                 else if (accessor.componentType ==
                                          TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
                                   return 2;
-                                else // BYTE
+                                else if (accessor.componentType ==
+                                         TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
                                   return 1;
+                                else
+                                  throw ActivationError(
+                                      "TexCoord/Weight accessor invalid size");
                               }();
-                              const auto osize = sizeof(float) * 2;
+
+                              const auto vecSize = [&]() {
+                                if (accessor.type == TINYGLTF_TYPE_VEC4)
+                                  return 4;
+                                else if (accessor.type == TINYGLTF_TYPE_VEC3)
+                                  return 3;
+                                else if (accessor.type == TINYGLTF_TYPE_VEC2)
+                                  return 2;
+                                else
+                                  throw ActivationError(
+                                      "TexCoord/Weight accessor invalid type");
+                              }();
+
+                              const auto osize = sizeof(float) * vecSize;
                               auto vbufferOffset = offsetSize;
                               offsetSize += osize;
 
@@ -948,22 +986,26 @@ struct Load : public BGFX::BaseConsumer {
                                   const float *chunk = (float *)&(*it);
                                   float *buf =
                                       (float *)(vbuffer->data + vbufferOffset);
-                                  buf[0] = chunk[0];
-                                  buf[1] = chunk[1];
+                                  for (size_t i = 0; i < vecSize; i++) {
+                                    buf[i] = chunk[i];
+                                  }
                                 } break;
                                 case 2: {
                                   const uint16_t *chunk = (uint16_t *)&(*it);
                                   float *buf =
                                       (float *)(vbuffer->data + vbufferOffset);
-                                  buf[0] = float(chunk[0]) / float(UINT16_MAX);
-                                  buf[1] = float(chunk[1]) / float(UINT16_MAX);
+                                  for (size_t i = 0; i < vecSize; i++) {
+                                    buf[i] =
+                                        float(chunk[i]) / float(UINT16_MAX);
+                                  }
                                 } break;
                                 case 1: {
                                   const uint8_t *chunk = (uint8_t *)&(*it);
                                   float *buf =
                                       (float *)(vbuffer->data + vbufferOffset);
-                                  buf[0] = float(chunk[0]) / float(255);
-                                  buf[1] = float(chunk[1]) / float(255);
+                                  for (size_t i = 0; i < vecSize; i++) {
+                                    buf[i] = float(chunk[i]) / float(UINT8_MAX);
+                                  }
                                 } break;
                                 default:
                                   CBLOG_FATAL("invalid state");
@@ -975,7 +1017,7 @@ struct Load : public BGFX::BaseConsumer {
                                 idx++;
                               }
 
-                              prims.layout.add(attrib, 2,
+                              prims.layout.add(attrib, vecSize,
                                                bgfx::AttribType::Float);
                             } break;
                             case bgfx::Attrib::Indices: {
@@ -1004,6 +1046,8 @@ struct Load : public BGFX::BaseConsumer {
                                                                vbufferOffset);
                                   buf[0] = chunk[0];
                                   buf[1] = chunk[1];
+                                  buf[2] = chunk[2];
+                                  buf[3] = chunk[3];
                                 } break;
                                 case 1: { // uint8_t
                                   const uint8_t *chunk = (uint8_t *)&(*it);
@@ -1011,6 +1055,8 @@ struct Load : public BGFX::BaseConsumer {
                                                                vbufferOffset);
                                   buf[0] = chunk[0];
                                   buf[1] = chunk[1];
+                                  buf[2] = chunk[2];
+                                  buf[3] = chunk[3];
                                 } break;
                                 default:
                                   CBLOG_FATAL("invalid state");
@@ -1024,10 +1070,6 @@ struct Load : public BGFX::BaseConsumer {
 
                               prims.layout.add(attrib, 4,
                                                bgfx::AttribType::Int16);
-                            } break;
-                            case bgfx::Attrib::Weight: {
-                              prims.layout.add(attrib, 4,
-                                               bgfx::AttribType::Float);
                             } break;
                             default:
                               throw std::runtime_error("Invalid attribute.");
