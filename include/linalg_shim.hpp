@@ -38,6 +38,19 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return res;
   }
 
+  static Mat4 FromArrayUnsafe(const float *mat) {
+    // used by gltf
+    int idx = 0;
+    Mat4 res;
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        res[i][j] = mat[idx];
+        idx++;
+      }
+    }
+    return res;
+  }
+
   static Mat4 Identity() {
     Mat4 res;
     res[0] = {1, 0, 0, 0};

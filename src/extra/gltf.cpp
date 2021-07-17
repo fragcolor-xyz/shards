@@ -143,10 +143,30 @@ struct Node;
 using NodeRef = std::reference_wrapper<Node>;
 
 struct GFXSkin {
-  GFXSkin(const Skin &skin) {}
+  GFXSkin(const Skin &skin, const GLTFModel &gltf) {
+    if (skin.skeleton != -1) {
+      skeleton = skin.skeleton;
+    }
 
-  std::optional<NodeRef> skeleton;
-  std::vector<NodeRef> joints;
+    joints = skin.joints;
+
+    if (skin.inverseBindMatrices != -1) {
+      auto &mats_a = gltf.accessors[skin.inverseBindMatrices];
+      assert(mats_a.type == TINYGLTF_TYPE_MAT4);
+      assert(mats_a.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+      auto &view = gltf.bufferViews[mats_a.bufferView];
+      auto &buffer = gltf.buffers[view.buffer];
+      auto it = buffer.data.begin() + view.byteOffset + mats_a.byteOffset;
+      const auto stride = mats_a.ByteStride(view);
+      for (size_t i = 0; i < mats_a.count; i++) {
+        bindPoses.emplace_back(Mat4::FromArrayUnsafe((float *)&(*it)));
+        it += stride;
+      }
+    }
+  }
+
+  std::optional<int> skeleton;
+  std::vector<int> joints;
   std::vector<Mat4> bindPoses;
 };
 
@@ -438,6 +458,69 @@ struct Load : public BGFX::BaseConsumer {
       material.normalTexture =
           getOrLoadTexture(gltf, gltf.textures[glmaterial.normalTexture.index]);
       shaderDefines.insert("CB_NORMAL_TEXTURE");
+    }
+
+    if (_withShaders) {
+      std::string shaderDefinesStr;
+      for (const auto &define : shaderDefines) {
+        shaderDefinesStr += define + ";";
+      }
+      std::string instancedVaryings = varyings;
+      instancedVaryings.append("vec4 i_data0 : TEXCOORD7;\n");
+      instancedVaryings.append("vec4 i_data1 : TEXCOORD6;\n");
+      instancedVaryings.append("vec4 i_data2 : TEXCOORD5;\n");
+      instancedVaryings.append("vec4 i_data3 : TEXCOORD4;\n");
+      auto hash = ShadersCache::hashShader(shaderDefinesStr);
+      auto shader = _shadersCache().find(hash);
+      if (!shader) {
+        // compile or fetch cached shaders
+        // vertex
+        bgfx::ShaderHandle vsh;
+        {
+          auto bytecode = _shaderCompiler->compile(
+              varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
+          auto mem = bgfx::copy(bytecode.payload.bytesValue,
+                                bytecode.payload.bytesSize);
+          vsh = bgfx::createShader(mem);
+        }
+        // vertex - instanced
+        bgfx::ShaderHandle ivsh;
+        {
+          auto bytecode = _shaderCompiler->compile(
+              instancedVaryings, _shadersVSEntry, "v",
+              shaderDefinesStr += "CB_INSTANCED;", context);
+          auto mem = bgfx::copy(bytecode.payload.bytesValue,
+                                bytecode.payload.bytesSize);
+          ivsh = bgfx::createShader(mem);
+        }
+        // pixel
+        bgfx::ShaderHandle psh;
+        {
+          auto bytecode = _shaderCompiler->compile(
+              varyings, _shadersPSEntry, "f", shaderDefinesStr, context);
+          auto mem = bgfx::copy(bytecode.payload.bytesValue,
+                                bytecode.payload.bytesSize);
+          psh = bgfx::createShader(mem);
+        }
+        shader =
+            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true),
+                                        bgfx::createProgram(ivsh, psh, true));
+        _shadersCache().add(hash, shader);
+      }
+      material.shader = shader;
+    }
+
+    return material;
+  }
+
+  GFXMaterial defaultMaterial(CBContext *context, const GLTFModel &gltf,
+                              std::unordered_set<std::string> &shaderDefines,
+                              const std::string &varyings) {
+    GFXMaterial material{"DEFAULT", std::hash<std::string_view>()("DEFAULT"),
+                         false};
+
+    if (_numLights > 0) {
+      shaderDefines.insert("CB_NUM_LIGHTS" + std::to_string(_numLights));
     }
 
     if (_withShaders) {
@@ -986,7 +1069,7 @@ struct Load : public BGFX::BaseConsumer {
                                   const float *chunk = (float *)&(*it);
                                   float *buf =
                                       (float *)(vbuffer->data + vbufferOffset);
-                                  for (size_t i = 0; i < vecSize; i++) {
+                                  for (auto i = 0; i < vecSize; i++) {
                                     buf[i] = chunk[i];
                                   }
                                 } break;
@@ -994,7 +1077,7 @@ struct Load : public BGFX::BaseConsumer {
                                   const uint16_t *chunk = (uint16_t *)&(*it);
                                   float *buf =
                                       (float *)(vbuffer->data + vbufferOffset);
-                                  for (size_t i = 0; i < vecSize; i++) {
+                                  for (auto i = 0; i < vecSize; i++) {
                                     buf[i] =
                                         float(chunk[i]) / float(UINT16_MAX);
                                   }
@@ -1003,7 +1086,7 @@ struct Load : public BGFX::BaseConsumer {
                                   const uint8_t *chunk = (uint8_t *)&(*it);
                                   float *buf =
                                       (float *)(vbuffer->data + vbufferOffset);
-                                  for (size_t i = 0; i < vecSize; i++) {
+                                  for (auto i = 0; i < vecSize; i++) {
                                     buf[i] = float(chunk[i]) / float(UINT8_MAX);
                                   }
                                 } break;
@@ -1179,6 +1262,21 @@ struct Load : public BGFX::BaseConsumer {
                                               shaderDefines, varyings))
                                       .first->second;
                             }
+                          } else {
+                            // add default material here!
+                            auto it =
+                                _model->gfxMaterials.find(glprims.material);
+                            if (it != _model->gfxMaterials.end()) {
+                              prims.material = it->second;
+                            } else {
+                              prims.material =
+                                  _model->gfxMaterials
+                                      .emplace(glprims.material,
+                                               defaultMaterial(context, gltf,
+                                                               shaderDefines,
+                                                               varyings))
+                                      .first->second;
+                            }
                           }
 
                           mesh.primitives.emplace_back(
@@ -1200,7 +1298,8 @@ struct Load : public BGFX::BaseConsumer {
                     } else {
                       node.skin =
                           _model->gfxSkins
-                              .emplace(glnode.skin, gltf.skins[glnode.skin])
+                              .emplace(glnode.skin,
+                                       GFXSkin(gltf.skins[glnode.skin], gltf))
                               .first->second;
                     }
                   }

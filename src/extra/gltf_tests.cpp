@@ -293,6 +293,11 @@ void testLoad() {
       "../external/glTF-Sample-Models/2.0/BoxVertexColors/glTF-Binary/"
       "BoxVertexColors.glb",
       Var(1.0, 1.0, 1.0));
+
+  testGLTFModel(
+      "SimpleSkin",
+      "../external/glTF-Sample-Models/2.0/SimpleSkin/glTF/SimpleSkin.gltf",
+      Var(1.0, 1.0, 1.0));
 }
 } // namespace GLTF_Tests
 } // namespace chainblocks
