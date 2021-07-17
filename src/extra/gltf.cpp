@@ -139,14 +139,18 @@ struct GFXMesh {
 
 using GFXMeshRef = std::reference_wrapper<GFXMesh>;
 
+struct Node;
+using NodeRef = std::reference_wrapper<Node>;
+
 struct GFXSkin {
   GFXSkin(const Skin &skin) {}
+
+  std::optional<NodeRef> skeleton;
+  std::vector<NodeRef> joints;
+  std::vector<Mat4> bindPoses;
 };
 
 using GFXSkinRef = std::reference_wrapper<GFXSkin>;
-
-struct Node;
-using NodeRef = std::reference_wrapper<Node>;
 
 struct Node {
   std::string name;
