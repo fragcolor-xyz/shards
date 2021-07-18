@@ -1868,6 +1868,44 @@ BUILTIN("setenv") {
 #endif
 }
 
+BUILTIN("settings-try-set-min") {
+  std::unique_lock lock(Globals::SettingsMutex);
+  CHECK_ARGS_IS(2);
+  ARG(malString, key);
+  ARG(malCBVar, value);
+  auto &current = Globals::Settings[key->value()];
+  if (current.valueType != CBType::None) {
+    if (value->value() < current) {
+      current = value->value();
+      return mal::trueValue();
+    } else {
+      return mal::falseValue();
+    }
+  } else {
+    current = value->value();
+    return mal::trueValue();
+  }
+}
+
+BUILTIN("settings-try-set-max") {
+  std::unique_lock lock(Globals::SettingsMutex);
+  CHECK_ARGS_IS(2);
+  ARG(malString, key);
+  ARG(malCBVar, value);
+  auto &current = Globals::Settings[key->value()];
+  if (current.valueType != CBType::None) {
+    if (value->value() > current) {
+      current = value->value();
+      return mal::trueValue();
+    } else {
+      return mal::falseValue();
+    }
+  } else {
+    current = value->value();
+    return mal::trueValue();
+  }
+}
+
 BUILTIN("hasBlock?") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
