@@ -434,6 +434,9 @@ struct RestartChainException : public CBException {
 };
 
 struct Globals {
+  static inline std::mutex SettingsMutex;
+  static inline std::unordered_map<std::string, OwnedVar> Settings;
+
   static inline int SigIntTerm{0};
   static inline std::unordered_map<std::string_view, CBBlockConstructor>
       BlocksRegister;
