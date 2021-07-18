@@ -2337,16 +2337,18 @@ struct Draw : public BaseConsumer {
       throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
     }
 
-    float mat[16];
-    memcpy(&mat[0], &input.payload.seqValue.elements[0].payload.float4Value,
+    bgfx::Transform t;
+    // using allocTransform to avoid an extra copy
+    auto idx = bgfx::allocTransform(&t, 1);
+    memcpy(&t.data[0], &input.payload.seqValue.elements[0].payload.float4Value,
            sizeof(float) * 4);
-    memcpy(&mat[4], &input.payload.seqValue.elements[1].payload.float4Value,
+    memcpy(&t.data[4], &input.payload.seqValue.elements[1].payload.float4Value,
            sizeof(float) * 4);
-    memcpy(&mat[8], &input.payload.seqValue.elements[2].payload.float4Value,
+    memcpy(&t.data[8], &input.payload.seqValue.elements[2].payload.float4Value,
            sizeof(float) * 4);
-    memcpy(&mat[12], &input.payload.seqValue.elements[3].payload.float4Value,
+    memcpy(&t.data[12], &input.payload.seqValue.elements[3].payload.float4Value,
            sizeof(float) * 4);
-    bgfx::setTransform(mat);
+    bgfx::setTransform(idx, 1);
 
     render();
 

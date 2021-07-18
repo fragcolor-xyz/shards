@@ -1351,6 +1351,10 @@ struct Load : public BGFX::BaseConsumer {
                               .emplace(glnode.skin,
                                        GFXSkin(gltf.skins[glnode.skin], gltf))
                               .first->second;
+                      if (int(node.skin->get().joints.size()) > maxBones)
+                        throw ActivationError(
+                            "Too many bones in GLTF model, raise GLTF.MaxBones "
+                            "property value");
                     }
                   }
 
@@ -1391,12 +1395,38 @@ struct Load : public BGFX::BaseConsumer {
 struct Draw : public BGFX::BaseConsumer {
   ParamVar _model{};
   ParamVar _materials{};
-  BlocksVar _blocks{};
+  OwnedVar _rootChain{};
   CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 5> _required;
   std::unordered_map<size_t,
                      std::optional<std::pair<const CBVar *, const CBVar *>>>
       _matsCache;
+
+  struct AnimUniform {
+    bgfx::UniformHandle handle;
+
+    AnimUniform() {
+      // retreive the maxBones setting here
+      int maxBones = 0;
+      {
+        std::unique_lock lock(Globals::SettingsMutex);
+        auto &vmaxBones = Globals::Settings["GLTF.MaxBones"];
+        if (vmaxBones.valueType == CBType::None) {
+          vmaxBones = Var(32);
+        }
+        maxBones = int(Var(vmaxBones));
+      }
+
+      handle = bgfx::createUniform("u_anim", bgfx::UniformType::Mat4, maxBones);
+    }
+
+    ~AnimUniform() {
+      if (handle.idx != bgfx::kInvalidHandle) {
+        bgfx::destroy(handle);
+      }
+    }
+  };
+  Shared<AnimUniform> _animUniform{};
 
   static inline Types MaterialTableValues3{{BGFX::Texture::SeqType}};
   static inline std::array<CBString, 1> MaterialTableKeys3{"Textures"};
@@ -1440,9 +1470,9 @@ struct Draw : public BGFX::BaseConsumer {
         MaterialsTableType2, MaterialsTableVarType2, MaterialsTableType3,
         MaterialsTableVarType3}},
       {"Controller",
-       CBCCSTR(
-           "The animation controller blocks to use. Requires a skinned model."),
-       CoreInfo::BlocksOrNone}};
+       CBCCSTR("The animation controller chain to use. Requires a skinned "
+               "model. Will clone and run a copy of the chain."),
+       {CoreInfo::NoneType, CoreInfo::ChainType}}};
   static CBParametersInfo parameters() { return Params; }
 
   void setParam(int index, const CBVar &value) {
@@ -1454,7 +1484,7 @@ struct Draw : public BGFX::BaseConsumer {
       _materials = value;
       break;
     case 2:
-      _blocks = value;
+      _rootChain = value;
       break;
     default:
       break;
@@ -1468,7 +1498,7 @@ struct Draw : public BGFX::BaseConsumer {
     case 1:
       return _materials;
     case 2:
-      return _blocks;
+      return _rootChain;
     default:
       throw InvalidParameterIndex();
     }
@@ -1513,23 +1543,18 @@ struct Draw : public BGFX::BaseConsumer {
       OVERRIDE_ACTIVATE(data, activateSingle);
     }
 
-    auto result = _blocks.compose(data);
-    // TODO verify that the output structure is valid
-
     return data.inputType;
   }
 
   void warmup(CBContext *context) {
     _model.warmup(context);
     _materials.warmup(context);
-    _blocks.warmup(context);
     _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
     _matsCache.clear();
     _model.cleanup();
-    _blocks.cleanup();
     _materials.cleanup();
     if (_bgfxContext) {
       releaseVariable(_bgfxContext);
@@ -1663,12 +1688,15 @@ struct Draw : public BGFX::BaseConsumer {
                   const linalg::aliases::float4x4 &parentTransform,
                   const CBTable *mats, bool instanced) {
     const auto transform = linalg::mul(parentTransform, node.transform);
-    float mat[16];
-    memcpy(&mat[0], &transform.x, sizeof(float) * 4);
-    memcpy(&mat[4], &transform.y, sizeof(float) * 4);
-    memcpy(&mat[8], &transform.z, sizeof(float) * 4);
-    memcpy(&mat[12], &transform.w, sizeof(float) * 4);
-    bgfx::setTransform(mat);
+
+    bgfx::Transform t;
+    // using allocTransform to avoid an extra copy
+    auto idx = bgfx::allocTransform(&t, 1);
+    memcpy(&t.data[0], &transform.x, sizeof(float) * 4);
+    memcpy(&t.data[4], &transform.y, sizeof(float) * 4);
+    memcpy(&t.data[8], &transform.z, sizeof(float) * 4);
+    memcpy(&t.data[12], &transform.w, sizeof(float) * 4);
+    bgfx::setTransform(idx, 1);
 
     renderNodeSubmit(ctx, node, mats, instanced);
 
