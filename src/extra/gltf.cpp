@@ -713,7 +713,10 @@ struct Load : public BGFX::BaseConsumer {
                       for (const auto &glprims : glmesh.primitives) {
                         GFXPrimitive prims{};
                         std::unordered_set<std::string> shaderDefines;
-                        shaderDefines.insert("BGFX_CONFIG_MAX_BONES=" +
+                        // this is not used by us, but it's required by the
+                        // shader
+                        shaderDefines.insert("BGFX_CONFIG_MAX_BONES=1");
+                        shaderDefines.insert("CB_MAX_BONES=" +
                                              std::to_string(maxBones));
                         std::string varyings = _shadersVarying;
                         // we gotta do few things here
