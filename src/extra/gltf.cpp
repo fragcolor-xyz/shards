@@ -617,6 +617,7 @@ struct Load : public BGFX::BaseConsumer {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    std::atomic_bool canceled = false;
     return awaitne(
         context,
         [&]() {
@@ -671,6 +672,9 @@ struct Load : public BGFX::BaseConsumer {
 
           const auto &scene = gltf.scenes[gltf.defaultScene];
           for (const int gltfNodeIdx : scene.nodes) {
+            if (canceled) // abort if cancellation is flagged
+              return ModelVar.Get(_model);
+
             const auto &glnode = gltf.nodes[gltfNodeIdx];
             const std::function<NodeRef(const tinygltf::Node)> processNode =
                 [this, &gltf, &processNode, maxBones,
@@ -1379,6 +1383,9 @@ struct Load : public BGFX::BaseConsumer {
               names.insert(CBSTRVIEW(animation));
             }
             for (const auto &anim : gltf.animations) {
+              if (canceled) // abort if cancellation is flagged
+                return ModelVar.Get(_model);
+
               auto it = names.find(anim.name);
               if (it != names.end()) {
                 // *it string memory is backed in _animations Var!
@@ -1389,9 +1396,7 @@ struct Load : public BGFX::BaseConsumer {
 
           return ModelVar.Get(_model);
         },
-        [] {
-          // TODO CANCELLATION
-        });
+        [&canceled] { canceled = true; });
   }
 };
 
