@@ -24,7 +24,7 @@
 ## Output
 | Type | Description |
 |------|-------------|
-| `[(Bytes)]` |  |
+| `[(Seq [(Bytes)])]` |  |
 
 
 ## Examples

@@ -1,8 +1,27 @@
+edit_uri: edit/devel/docs/docs/
+repo_url: https://github.com/fragcolor-xyz/chainblocks/
+site_name: Fragcolor documentation
+site_url: 
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
-site_name: My Docs
-site_url:
 theme:
+  features:
+    - navigation.indexes # requires sponsorship
+    - navigation.tabs
+    - navigation.tabs.sticky # requires sponsorship
+    - navigation.top
+  language: en
   name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
 use_directory_urls: False
