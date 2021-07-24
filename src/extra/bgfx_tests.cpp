@@ -23,6 +23,7 @@
 #endif
 
 #include <catch2/catch_all.hpp>
+#include <chain_dsl.hpp>
 
 namespace chainblocks {
 namespace BGFX_Tests {
@@ -1045,6 +1046,23 @@ void testShaderCompiler() {
     auto compiler = makeShaderCompiler();
     auto bytes = compiler->compile(vastr, codestr, "v", "A=1;B=2;C=3", nullptr);
     REQUIRE(bytes.payload.bytesSize > 0);
+
+    DefChain(test_chain)
+        .Looped()
+        .let(vastr) SetTable(in, "varyings")
+        .let(codestr) SetTable(in, "code")
+        .let("A") Push(ds)
+        .let("B") Push(ds)
+        .Get(ds) SetTable(in, "defines")
+        .Get(in)
+        .GFX_CompileShader();
+    auto node = CBNode::make();
+    node->schedule(test_chain);
+    auto count = 100;
+    while (count--) {
+      REQUIRE(node->tick()); // false is chain errors happened
+      chainblocks::sleep(0.016);
+    }
   }
 }
 

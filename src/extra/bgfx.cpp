@@ -2879,6 +2879,61 @@ struct Unproject : public BaseConsumer {
   }
 };
 
+struct CompileShader {
+  enum class ShaderType { Vertex, Pixel, Compute };
+
+  std::unique_ptr<IShaderCompiler> _compiler = makeShaderCompiler();
+  ShaderType _type{ShaderType::Vertex};
+
+  static inline Types InputTableTypes{
+      {CoreInfo::StringType, CoreInfo::StringType, CoreInfo::StringSeqType}};
+  static inline std::array<CBString, 3> InputTableKeys{"varyings", "code",
+                                                       "defines"};
+  static inline Type InputTable =
+      Type::TableOf(InputTableTypes, InputTableKeys);
+
+  static constexpr uint32_t ShaderTypeCC = 'gfxS';
+  static inline EnumInfo<ShaderType> ShaderTypeEnumInfo{"ShaderType", CoreCC,
+                                                        ShaderTypeCC};
+  static inline Type ShaderTypeType = Type::Enum(CoreCC, ShaderTypeCC);
+
+  CBTypesInfo inputTypes() { return InputTable; }
+  CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  static inline Parameters Params{
+      {"Type", CBCCSTR("The type of shader to compile."), {ShaderTypeType}}};
+
+  static CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, CBVar value) {
+    _type = ShaderType(value.payload.enumValue);
+  }
+
+  CBVar getParam(int index) { return Var::Enum(_type, CoreCC, ShaderTypeCC); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto &tab = input.payload.tableValue;
+    auto vvaryings = tab.api->tableAt(tab, "varyings");
+    auto varyings = CBSTRVIEW((*vvaryings));
+    auto vcode = tab.api->tableAt(tab, "code");
+    auto code = CBSTRVIEW((*vcode));
+    auto vdefines = tab.api->tableAt(tab, "defines");
+    std::string defines;
+    if (vdefines->valueType != CBType::None) {
+      for (auto &define : *vdefines) {
+        auto d = CBSTRVIEW(define);
+        defines += std::string(d) + ";";
+      }
+    }
+
+    return _compiler->compile(varyings, code,
+                              _type == ShaderType::Vertex
+                                  ? "v"
+                                  : _type == ShaderType::Pixel ? "p" : "c",
+                              defines, context);
+  }
+};
+
 void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.MainWindow", MainWindow);
   REGISTER_CBLOCK("GFX.Texture2D", Texture2D);
@@ -2894,6 +2949,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.SetUniform", SetUniform);
   REGISTER_CBLOCK("GFX.Screenshot", Screenshot);
   REGISTER_CBLOCK("GFX.Unproject", Unproject);
+  REGISTER_CBLOCK("GFX.CompileShader", CompileShader);
 }
 }; // namespace BGFX
 
