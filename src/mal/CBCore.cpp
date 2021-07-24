@@ -446,6 +446,8 @@ struct ChainFileWatcher {
         auto fileNameOnly = p.filename();
         str = "(Chain \"" + fileNameOnly.string() + "\" " + str + ")";
 
+        CBLOG_DEBUG("Processing {}", fileNameOnly.string());
+
         malEnvPtr env(new malEnv(rootEnv));
         auto res = maleval(str.c_str(), env);
         auto var = varify(res);
@@ -462,6 +464,8 @@ struct ChainFileWatcher {
         data.shared = shared;
         data.chain = chain.get();
         data.chain->node = node;
+
+        CBLOG_TRACE("Processed {}", fileNameOnly.string());
 
         // run validation to infertypes and specialize
         auto chainValidation = composeChain(
@@ -480,6 +484,8 @@ struct ChainFileWatcher {
             },
             nullptr, data);
         chainblocks::arrayFree(chainValidation.exposedInfo);
+
+        CBLOG_TRACE("Validated {}", fileNameOnly.string());
 
         liveChains[chain.get()] = std::make_tuple(env, res);
 

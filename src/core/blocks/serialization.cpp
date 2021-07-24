@@ -128,6 +128,14 @@ struct WriteFile : public FileBase {
         return input;
       }
 
+      namespace fs = std::filesystem;
+
+      // make sure to create directories
+      fs::path p(filename);
+      auto parent_path = p.parent_path();
+      if (!parent_path.empty() && !fs::exists(parent_path))
+        fs::create_directories(p.parent_path());
+
       if (_append)
         _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
       else
