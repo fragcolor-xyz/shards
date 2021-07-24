@@ -443,6 +443,9 @@ struct ChainFileWatcher {
         std::string str((std::istreambuf_iterator<char>(lsp)),
                         std::istreambuf_iterator<char>());
 
+        auto fileNameOnly = p.filename();
+        str = "(Chain \"" + fileNameOnly.string() + "\" " + str + ")";
+
         malEnvPtr env(new malEnv(rootEnv));
         auto res = maleval(str.c_str(), env);
         auto var = varify(res);

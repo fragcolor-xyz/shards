@@ -1751,6 +1751,9 @@ struct Draw : public BGFX::BaseConsumer {
 
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
+    if (!model)
+      return input;
+
     const auto &matsVar = _materials.get();
     const auto mats = matsVar.valueType != CBType::None
                           ? &matsVar.payload.tableValue
@@ -1770,6 +1773,9 @@ struct Draw : public BGFX::BaseConsumer {
 
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
+    if (!model)
+      return input;
+
     const auto &matsVar = _materials.get();
     const auto mats = matsVar.valueType != CBType::None
                           ? &matsVar.payload.tableValue
