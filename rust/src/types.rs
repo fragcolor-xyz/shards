@@ -1879,6 +1879,29 @@ impl From<&Seq> for Var {
   }
 }
 
+impl TryFrom<&mut Var> for Seq {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(v: &mut Var) -> Result<Self, Self::Error> {
+    // in this case allow None type, we might be a new variable from a Table or Seq
+    if v.valueType == CBType_None {
+      v.valueType = CBType_Seq;
+    }
+
+    if v.valueType != CBType_Seq {
+      Err("Expected Seq variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(Seq {
+          s: v.payload.__bindgen_anon_1.seqValue,
+          owned: false,
+        })
+      }
+    }
+  }
+}
+
 impl TryFrom<&Var> for Seq {
   type Error = &'static str;
 
