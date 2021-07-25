@@ -1646,9 +1646,17 @@ impl ParamVar {
   }
 
   pub fn get(&self) -> Var {
-    // avoid reading refcount
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe { *self.pointee }
+  }
+
+  pub fn try_get(&self) -> Option<Var> {
+    if self.pointee.is_null() {
+      None
+    } else {
+      let v = unsafe { *self.pointee };
+      Some(v)
+    }
   }
 
   pub fn setParam(&mut self, value: &Var) {

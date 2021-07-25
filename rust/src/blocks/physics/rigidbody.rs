@@ -135,16 +135,18 @@ impl RigidBody {
   }
 
   fn _cleanup(&mut self) {
-    let sim_var = self.simulation_var.get();
-    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE).unwrap();
-    for rigid_body in &self.rigid_bodies {
-      // this removes both RigidBodies and colliders attached.
-      simulation.bodies.remove(
-        *rigid_body,
-        &mut simulation.islands_manager,
-        &mut simulation.colliders,
-        &mut simulation.joints,
-      );
+    if let Some(simulation) = self.simulation_var.try_get() {
+      let simulation =
+        Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE).unwrap();
+      for rigid_body in &self.rigid_bodies {
+        // this removes both RigidBodies and colliders attached.
+        simulation.bodies.remove(
+          *rigid_body,
+          &mut simulation.islands_manager,
+          &mut simulation.colliders,
+          &mut simulation.joints,
+        );
+      }
     }
 
     // clear, it's crucial as it signals we need to re-populate when running again
