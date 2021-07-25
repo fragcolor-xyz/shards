@@ -1,0 +1,38 @@
+(defnode Main)
+(defchain test
+  0 (BigInt) = .0
+  [.0 .0 .0 .0]
+  (Eth.EncodeCall "[{
+      \"inputs\": [
+        {
+          \"internalType\": \"uint160\",
+          \"name\": \"templateHash\",
+          \"type\": \"uint160\"
+        },
+        {
+          \"internalType\": \"bytes\",
+          \"name\": \"environment\",
+          \"type\": \"bytes\"
+        },
+        {
+          \"internalType\": \"bytes32\",
+          \"name\": \"cacheDirectoryCid\",
+          \"type\": \"bytes32\"
+        },
+        {
+          \"internalType\": \"uint256\",
+          \"name\": \"includeCost\",
+          \"type\": \"uint256\"
+        }
+      ],
+      \"name\": \"update\",
+      \"outputs\": [],
+      \"stateMutability\": \"nonpayable\",
+      \"type\": \"function\"
+    }]"
+                  "update")
+  (ToHex)
+  (Log)
+  (Assert.Is "0xd443e458000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000" true))
+(schedule Main test)
+(run Main)

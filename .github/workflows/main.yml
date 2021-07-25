@@ -199,6 +199,7 @@ jobs:
         ./cbl ../src/tests/branch.edn
         ./cbl ../src/tests/audio.edn
         ./cbl ../src/tests/time.edn
+        ./cbl ../src/tests/eth.edn
     - name: Test Headless
       uses: chainblocks/xvfb-action@v1
       with:
@@ -409,6 +410,7 @@ jobs:
         ./cbl ../src/tests/branch.edn
         ./cbl ../src/tests/audio.edn
         ./cbl ../src/tests/time.edn
+        ./cbl ../src/tests/eth.edn
         ./test_runtime
 
   iOS:

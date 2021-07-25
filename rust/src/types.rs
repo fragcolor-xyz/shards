@@ -1268,6 +1268,10 @@ impl Var {
     self.valueType == CBType_None
   }
 
+  pub fn is_string(&self) -> bool {
+    self.valueType == CBType_String
+  }
+
   pub fn is_path(&self) -> bool {
     self.valueType == CBType_Path
   }

@@ -52,5 +52,7 @@ echo "Running test: bgfx"
 ./cbl ../src/tests/bgfx.clj
 echo "Running test: wasm"
 ./cbl ../src/tests/wasm.clj
+echo "Running test: eth"
+./cbl ../src/tests/eth.edn
 echo "Running test_runtime"
 ./test_runtime

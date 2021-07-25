@@ -298,6 +298,7 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::physics::queries::registerBlocks();
   blocks::physics::forces::registerBlocks();
   blocks::svg::registerBlocks();
+  blocks::eth::registerBlocks();
 
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   blocks::browse::registerBlocks();
