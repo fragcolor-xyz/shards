@@ -50,7 +50,7 @@ impl Default for Simulation {
       event_handler: ChannelEventCollector::new(intersection_send, contact_send),
       self_obj: ParamVar::new(().into()),
     };
-    res.self_obj.setName("Physics.Simulation");
+    res.self_obj.set_name("Physics.Simulation");
     res
   }
 }

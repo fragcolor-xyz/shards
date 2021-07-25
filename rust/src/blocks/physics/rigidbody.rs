@@ -97,7 +97,7 @@ impl Default for RigidBody {
       rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
       user_data: 0,
     };
-    r.simulation_var.setName("Physics.Simulation");
+    r.simulation_var.set_name("Physics.Simulation");
     r
   }
 }
@@ -105,18 +105,18 @@ impl Default for RigidBody {
 impl RigidBody {
   fn _set_param(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.shape_var.setParam(value),
-      1 => self.position.setParam(value),
-      2 => self.rotation.setParam(value),
+      0 => self.shape_var.set_param(value),
+      1 => self.position.set_param(value),
+      2 => self.rotation.set_param(value),
       _ => unreachable!(),
     }
   }
 
   fn _get_param(&mut self, index: i32) -> Var {
     match index {
-      0 => self.shape_var.getParam(),
-      1 => self.position.getParam(),
-      2 => self.rotation.getParam(),
+      0 => self.shape_var.get_param(),
+      1 => self.position.get_param(),
+      2 => self.rotation.get_param(),
       _ => unreachable!(),
     }
   }
@@ -124,7 +124,7 @@ impl RigidBody {
   fn _compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // we need to derive the position parameter type, because if it's a sequence we should create multiple RigidBodies
     // TODO we should also use input type to determine the output if dynamic
-    let pvt = deriveType(&self.position.getParam(), data);
+    let pvt = deriveType(&self.position.get_param(), data);
     if pvt.0 == common_type::float3 {
       Ok(*FLOAT4X4_TYPE)
     } else if pvt.0 == common_type::float3s {
@@ -398,7 +398,7 @@ impl Block for StaticRigidBody {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
       3 => {
         if !value.is_none() {
-          self.self_obj.setName(value.try_into().unwrap())
+          self.self_obj.set_name(value.try_into().unwrap())
         }
       }
       _ => unreachable!(),
@@ -409,8 +409,8 @@ impl Block for StaticRigidBody {
     match index {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._get_param(index),
       3 => {
-        if self.self_obj.isVariable() {
-          self.self_obj.getName().into()
+        if self.self_obj.is_variable() {
+          self.self_obj.get_name().into()
         } else {
           ().into()
         }
@@ -424,11 +424,11 @@ impl Block for StaticRigidBody {
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    if self.self_obj.isVariable() {
+    if self.self_obj.is_variable() {
       self.exposing.clear();
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
-        name: self.self_obj.getName(),
+        name: self.self_obj.get_name(),
         help: cbccstr!("The exposed kinematic rigid body."),
         ..ExposedInfo::default()
       };
@@ -449,7 +449,7 @@ impl Block for StaticRigidBody {
     let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
-    if self.self_obj.isVariable() {
+    if self.self_obj.is_variable() {
       self.self_obj.set(obj);
     }
     Rc::get_mut(&mut self.rb)
@@ -525,7 +525,7 @@ impl Block for DynamicRigidBody {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
       3 => {
         if !value.is_none() {
-          self.self_obj.setName(value.try_into().unwrap())
+          self.self_obj.set_name(value.try_into().unwrap())
         }
       }
       _ => unreachable!(),
@@ -536,8 +536,8 @@ impl Block for DynamicRigidBody {
     match index {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._get_param(index),
       3 => {
-        if self.self_obj.isVariable() {
-          self.self_obj.getName().into()
+        if self.self_obj.is_variable() {
+          self.self_obj.get_name().into()
         } else {
           ().into()
         }
@@ -551,11 +551,11 @@ impl Block for DynamicRigidBody {
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    if self.self_obj.isVariable() {
+    if self.self_obj.is_variable() {
       self.exposing.clear();
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
-        name: self.self_obj.getName(),
+        name: self.self_obj.get_name(),
         help: cbccstr!("The exposed dynamic rigid body."),
         ..ExposedInfo::default()
       };
@@ -576,7 +576,7 @@ impl Block for DynamicRigidBody {
     let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
-    if self.self_obj.isVariable() {
+    if self.self_obj.is_variable() {
       self.self_obj.set(obj);
     }
     Rc::get_mut(&mut self.rb)
@@ -662,7 +662,7 @@ impl Block for KinematicRigidBody {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
       3 => {
         if !value.is_none() {
-          self.self_obj.setName(value.try_into().unwrap())
+          self.self_obj.set_name(value.try_into().unwrap())
         }
       }
       _ => unreachable!(),
@@ -673,8 +673,8 @@ impl Block for KinematicRigidBody {
     match index {
       0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._get_param(index),
       3 => {
-        if self.self_obj.isVariable() {
-          self.self_obj.getName().into()
+        if self.self_obj.is_variable() {
+          self.self_obj.get_name().into()
         } else {
           ().into()
         }
@@ -688,11 +688,11 @@ impl Block for KinematicRigidBody {
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    if self.self_obj.isVariable() {
+    if self.self_obj.is_variable() {
       self.exposing.clear();
       let exp_info = ExposedInfo {
         exposedType: *RIGIDBODY_TYPE,
-        name: self.self_obj.getName(),
+        name: self.self_obj.get_name(),
         help: cbccstr!("The exposed kinematic rigid body."),
         ..ExposedInfo::default()
       };
@@ -713,7 +713,7 @@ impl Block for KinematicRigidBody {
     let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
-    if self.self_obj.isVariable() {
+    if self.self_obj.is_variable() {
       self.self_obj.set(obj);
     }
     Rc::get_mut(&mut self.rb)

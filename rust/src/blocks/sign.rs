@@ -75,14 +75,14 @@ impl Block for ECDSA {
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.key.setParam(value),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.key.getParam(),
+      0 => self.key.get_param(),
       _ => unreachable!(),
     }
   }

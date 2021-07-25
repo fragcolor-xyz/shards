@@ -46,7 +46,7 @@ impl Default for CastRay {
       simulation_var: ParamVar::new(().into()),
       output: Seq::new(),
     };
-    r.simulation_var.setName("Physics.Simulation");
+    r.simulation_var.set_name("Physics.Simulation");
     r
   }
 }

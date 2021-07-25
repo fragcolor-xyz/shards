@@ -145,8 +145,8 @@ impl RequestBase {
 
   fn _setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.url.setParam(value),
-      1 => self.headers.setParam(value),
+      0 => self.url.set_param(value),
+      1 => self.headers.set_param(value),
       2 => self.timeout = value.try_into().unwrap(),
       3 => self.as_bytes = value.try_into().unwrap(),
       4 => self.full_response = value.try_into().unwrap(),
@@ -156,8 +156,8 @@ impl RequestBase {
 
   fn _getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.url.getParam(),
-      1 => self.headers.getParam(),
+      0 => self.url.get_param(),
+      1 => self.headers.get_param(),
       2 => self.timeout.try_into().expect("A valid integer in range"),
       3 => self.as_bytes.into(),
       4 => self.full_response.into(),

@@ -72,16 +72,16 @@ macro_rules! shape {
 
       fn setParam(&mut self, index: i32, value: &Var) {
         match index {
-          0 => self.position.setParam(value),
-          1 => self.rotation.setParam(value),
+          0 => self.position.set_param(value),
+          1 => self.rotation.set_param(value),
           _ => self._set_param(index, value),
         }
       }
 
       fn getParam(&mut self, index: i32) -> Var {
         match index {
-          0 => self.position.getParam(),
-          1 => self.rotation.getParam(),
+          0 => self.position.get_param(),
+          1 => self.rotation.get_param(),
           _ => self._get_param(index),
         }
       }
@@ -190,14 +190,14 @@ impl BallShape {
 
   fn _set_param(&mut self, index: i32, value: &Var) {
     match index {
-      2 => self.radius.setParam(value),
+      2 => self.radius.set_param(value),
       _ => unreachable!(),
     }
   }
 
   fn _get_param(&mut self, index: i32) -> Var {
     match index {
-      2 => self.radius.getParam(),
+      2 => self.radius.get_param(),
       _ => unreachable!(),
     }
   }
@@ -261,14 +261,14 @@ impl CubeShape {
 
   fn _set_param(&mut self, index: i32, value: &Var) {
     match index {
-      2 => self.half_extents.setParam(value),
+      2 => self.half_extents.set_param(value),
       _ => unreachable!(),
     }
   }
 
   fn _get_param(&mut self, index: i32) -> Var {
     match index {
-      2 => self.half_extents.getParam(),
+      2 => self.half_extents.get_param(),
       _ => unreachable!(),
     }
   }

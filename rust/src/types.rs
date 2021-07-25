@@ -1659,24 +1659,24 @@ impl ParamVar {
     }
   }
 
-  pub fn setParam(&mut self, value: &Var) {
+  pub fn set_param(&mut self, value: &Var) {
     self.parameter = value.into();
   }
 
-  pub fn getParam(&self) -> Var {
+  pub fn get_param(&self) -> Var {
     self.parameter.0
   }
 
-  pub fn isVariable(&self) -> bool {
+  pub fn is_variable(&self) -> bool {
     self.parameter.0.valueType == CBType_ContextVar
   }
 
-  pub fn setName(&mut self, name: &str) {
+  pub fn set_name(&mut self, name: &str) {
     self.parameter = name.into();
     self.parameter.0.valueType = CBType_ContextVar;
   }
 
-  pub fn getName(&self) -> *const i8 {
+  pub fn get_name(&self) -> *const i8 {
     (&self.parameter.0).try_into().unwrap()
   }
 }

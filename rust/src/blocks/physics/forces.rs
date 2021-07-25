@@ -52,7 +52,7 @@ impl Default for Impulse {
       rb: ParamVar::new(().into()),
       reqs: ExposedTypes::new(),
     };
-    r.simulation.setName("Physics.Simulation");
+    r.simulation.set_name("Physics.Simulation");
     r
   }
 }
@@ -80,7 +80,7 @@ impl Block for Impulse {
     match index {
       0 => {
         if !value.is_none() {
-          self.rb.setName(value.try_into().unwrap())
+          self.rb.set_name(value.try_into().unwrap())
         }
       }
       _ => unreachable!(),
@@ -89,8 +89,8 @@ impl Block for Impulse {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => {
-        if self.rb.isVariable() {
-          self.rb.getName().into()
+        if self.rb.is_variable() {
+          self.rb.get_name().into()
         } else {
           ().into()
         }
@@ -105,9 +105,9 @@ impl Block for Impulse {
       cbccstr!("The physics simulation subsystem."),
       *SIMULATION_TYPE,
     ));
-    if self.rb.isVariable() {
+    if self.rb.is_variable() {
       self.reqs.push(ExposedInfo::new_with_help_from_ptr(
-        self.rb.getName(),
+        self.rb.get_name(),
         cbccstr!("The required rigid_body."),
         *RIGIDBODY_TYPE,
       ));
