@@ -44,17 +44,18 @@ lazy_static! {
 
 fn var_to_token(var: Var, param_type: &ParamType) -> Result<Token, &'static str> {
   match param_type {
-    ParamType::Uint(256) => {
-      let bytes: &[u8] = var.as_ref().try_into()?;
-      let u: U256 = bytes.into();
-      let u: [u8; 32] = u.into();
-      Ok(Token::Uint(u.into()))
-    }
-    ParamType::Uint(160) => {
-      let bytes: &[u8] = var.as_ref().try_into()?;
-      let u: U256 = bytes.into();
-      let u: [u8; 32] = u.into();
-      Ok(Token::Uint(u.into()))
+    ParamType::Uint(size) => {
+      if *size > 64 && *size <= 256 {
+        let bytes: &[u8] = var.as_ref().try_into()?;
+        let u: U256 = bytes.into();
+        let u: [u8; 32] = u.into();
+        Ok(Token::Uint(u.into()))
+      } else if *size <= 64 {
+        let uint: u64 = var.as_ref().try_into()?;
+        Ok(Token::Uint(uint.into()))
+      } else {
+        Err("Invalid Uint size")
+      }
     }
     ParamType::Address => {
       let s: String = var.as_ref().try_into()?;
@@ -66,11 +67,12 @@ fn var_to_token(var: Var, param_type: &ParamType) -> Result<Token, &'static str>
       let bytes: &[u8] = var.as_ref().try_into()?;
       Ok(Token::Bytes(bytes.to_vec()))
     }
-    ParamType::FixedBytes(32) => {
+    ParamType::FixedBytes(size) => {
       let bytes: &[u8] = var.as_ref().try_into()?;
-      let u: U256 = bytes.into();
-      let u: [u8; 32] = u.into();
-      Ok(Token::FixedBytes(u.into()))
+      let mut u = Vec::new();
+      u.resize(*size, 0);
+      u[..bytes.len()].clone_from_slice(&bytes[..bytes.len()]);
+      Ok(Token::FixedBytes(u))
     }
     ParamType::String => {
       let s: String = var.as_ref().try_into()?;
