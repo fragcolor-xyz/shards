@@ -187,8 +187,8 @@ BIGINT_MATH_OP(Mod, %);
       cpp_int bia = from_var(input);                                           \
       auto op = getOperand();                                                  \
       cpp_int bib = from_var(op);                                              \
-      bool bres = bia __OP__ bib;                                              \
-      return Var(bres);                                                        \
+      bool res = bia __OP__ bib;                                               \
+      return Var(res);                                                         \
     }                                                                          \
   }
 
@@ -366,6 +366,20 @@ struct ToString {
   }
 };
 
+struct ToBytes {
+  std::string _buffer;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar fixedInput = input;
+    fixedInput.payload.bytesValue++;
+    fixedInput.payload.bytesSize--;
+    return fixedInput;
+  }
+};
+
 struct ToHex {
   VarStringStream stream;
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType,
@@ -409,6 +423,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("BigInt.ToInt", ToInt);
   REGISTER_CBLOCK("BigInt.FromFloat", FromFloat);
   REGISTER_CBLOCK("BigInt.ToString", ToString);
+  REGISTER_CBLOCK("BigInt.ToBytes", ToBytes);
   REGISTER_CBLOCK("BigInt.ToHex", ToHex);
   REGISTER_CBLOCK("BigInt.Is", Is);
   REGISTER_CBLOCK("BigInt.IsNot", IsNot);
