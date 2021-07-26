@@ -13,6 +13,7 @@ use crate::types::Type;
 use crate::CString;
 use crate::Types;
 use crate::Var;
+use core::convert::TryFrom;
 use ethabi::Contract;
 use ethabi::ParamType;
 use ethabi::Token;
@@ -21,6 +22,7 @@ use std::convert::TryInto;
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::any];
+  static ref DECODE_INPUT_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::bytes];
   static ref PARAMETERS: Parameters = vec![
     (
@@ -95,6 +97,30 @@ fn var_to_token(var: Var, param_type: &ParamType) -> Result<Token, &'static str>
       }
     }
     _ => Err("Failed to convert Var into Token - matched case not implemented"),
+  }
+}
+
+fn token_to_var(token: Token) -> Result<Var, &'static str> {
+  match token {
+    Token::Uint(uint) => {
+      let bytes: [u8; 32] = uint.into();
+      Ok(bytes[..].into())
+    }
+    Token::Address(address) => {
+      let hex = address.as_bytes();
+      let mut hex = hex::encode(hex);
+      hex.insert_str(0, "0x");
+      Ok(hex.as_str().into())
+    }
+    _ => Err("Failed to convert Token into Var - matched case not implemented"),
+  }
+}
+
+impl TryFrom<Token> for Var {
+  type Error = &'static str;
+
+  fn try_from(token: Token) -> Result<Var, &'static str> {
+    token_to_var(token)
   }
 }
 
@@ -210,6 +236,129 @@ impl Block for EncodeCall {
   }
 }
 
+#[derive(Default)]
+struct DecodeCall {
+  abi: ParamVar,
+  call_name: ParamVar,
+  current_abi: Option<ClonedVar>,
+  contract: Option<Contract>,
+  output: Seq,
+}
+
+impl Block for DecodeCall {
+  fn registerName() -> &'static str {
+    cstr!("Eth.DecodeCall")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("Eth.DecodeCall-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "Eth.DecodeCall"
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &DECODE_INPUT_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &INPUT_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.abi.set_param(value),
+      1 => self.call_name.set_param(value),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.abi.get_param(),
+      1 => self.call_name.get_param(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.abi.warmup(context);
+    self.call_name.warmup(context);
+    Ok(())
+  }
+
+  fn cleanup(&mut self) {
+    self.abi.cleanup();
+    self.call_name.cleanup();
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let abi = self.abi.get();
+    let call_name = self.call_name.get();
+
+    // process abi, create contract if needed
+    if let Some(current_abi) = &self.current_abi {
+      // abi might change on the fly, so we need to check it
+      if self.abi.is_variable() && abi != current_abi.0 {
+        self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
+          cblog!("{}", e);
+          "Failed to parse abi json string"
+        })?;
+        self.current_abi = Some(abi.into());
+      }
+    } else {
+      self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
+        cblog!("{}", e);
+        "Failed to parse abi json string"
+      })?;
+      self.current_abi = Some(abi.into());
+    }
+
+    // encode the call
+    if let Some(contract) = &self.contract {
+      let name: String = call_name.as_ref().try_into()?;
+      let func = &contract.functions[&name][0];
+
+      let decoded = {
+        let str_input: Result<&str, &str> = input.as_ref().try_into();
+        if let Ok(str_input) = str_input {
+          let bytes = hex::decode(str_input.trim_start_matches("0x").trim_start_matches("0X"))
+            .map_err(|e| {
+              cblog!("{}", e);
+              "Failed to parse input hex string"
+            })?;
+          func.decode_output(bytes.as_slice()).map_err(|e| {
+            cblog!("{}", e);
+            "Failed to parse input bytes"
+          })
+        } else {
+          let input: &[u8] = input.as_ref().try_into()?;
+          func.decode_output(input).map_err(|e| {
+            cblog!("{}", e);
+            "Failed to parse input bytes"
+          })
+        }
+      }?;
+
+      self.output.clear();
+
+      for token in decoded {
+        self.output.push(token.try_into()?);
+      }
+
+      Ok(self.output.as_ref().into())
+    } else {
+      Err("Contract is missing")
+    }
+  }
+}
+
 pub fn registerBlocks() {
   registerBlock::<EncodeCall>();
+  registerBlock::<DecodeCall>();
 }
