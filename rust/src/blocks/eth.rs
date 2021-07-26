@@ -24,6 +24,7 @@ lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::any];
   static ref DECODE_INPUT_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::bytes];
+  static ref DECODE_OUTPUT_TYPES: Vec<Type> = vec![common_type::anys];
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("ABI"),
@@ -100,7 +101,7 @@ fn var_to_token(var: Var, param_type: &ParamType) -> Result<Token, &'static str>
   }
 }
 
-fn token_to_var(token: Token) -> Result<Var, &'static str> {
+fn token_to_var(token: Token) -> Result<ClonedVar, &'static str> {
   match token {
     Token::Uint(uint) => {
       let bytes: [u8; 32] = uint.into();
@@ -112,14 +113,15 @@ fn token_to_var(token: Token) -> Result<Var, &'static str> {
       hex.insert_str(0, "0x");
       Ok(hex.as_str().into())
     }
+    Token::Bytes(bytes) | Token::FixedBytes(bytes) => Ok(bytes.as_slice().into()),
     _ => Err("Failed to convert Token into Var - matched case not implemented"),
   }
 }
 
-impl TryFrom<Token> for Var {
+impl TryFrom<Token> for ClonedVar {
   type Error = &'static str;
 
-  fn try_from(token: Token) -> Result<Var, &'static str> {
+  fn try_from(token: Token) -> Result<ClonedVar, &'static str> {
     token_to_var(token)
   }
 }
@@ -236,6 +238,20 @@ impl Block for EncodeCall {
   }
 }
 
+lazy_static! {
+  static ref DECODE_PARAMETERS: Parameters = {
+    let mut v = vec![(
+      cstr!("Input"),
+      cbccstr!("If the input is the actual function call transaction input rather than the result of the call."),
+      vec![common_type::bool],
+    )
+      .into()];
+    v.insert(0, (*PARAMETERS)[1]);
+    v.insert(0, (*PARAMETERS)[0]);
+    v
+  };
+}
+
 #[derive(Default)]
 struct DecodeCall {
   abi: ParamVar,
@@ -243,6 +259,7 @@ struct DecodeCall {
   current_abi: Option<ClonedVar>,
   contract: Option<Contract>,
   output: Seq,
+  is_input: bool,
 }
 
 impl Block for DecodeCall {
@@ -263,17 +280,18 @@ impl Block for DecodeCall {
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &INPUT_TYPES
+    &DECODE_OUTPUT_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PARAMETERS)
+    Some(&DECODE_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.abi.set_param(value),
       1 => self.call_name.set_param(value),
+      2 => self.is_input = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
@@ -282,6 +300,7 @@ impl Block for DecodeCall {
     match index {
       0 => self.abi.get_param(),
       1 => self.call_name.get_param(),
+      2 => self.is_input.into(),
       _ => unreachable!(),
     }
   }
@@ -326,7 +345,25 @@ impl Block for DecodeCall {
 
       let decoded = {
         let str_input: Result<&str, &str> = input.as_ref().try_into();
-        if let Ok(str_input) = str_input {
+        if self.is_input {
+          if let Ok(str_input) = str_input {
+            let bytes = hex::decode(str_input.trim_start_matches("0x").trim_start_matches("0X"))
+              .map_err(|e| {
+                cblog!("{}", e);
+                "Failed to parse input hex string"
+              })?;
+            func.decode_input(bytes.as_slice()).map_err(|e| {
+              cblog!("{}", e);
+              "Failed to parse input bytes"
+            })
+          } else {
+            let input: &[u8] = input.as_ref().try_into()?;
+            func.decode_input(input).map_err(|e| {
+              cblog!("{}", e);
+              "Failed to parse input bytes"
+            })
+          }
+        } else if let Ok(str_input) = str_input {
           let bytes = hex::decode(str_input.trim_start_matches("0x").trim_start_matches("0X"))
             .map_err(|e| {
               cblog!("{}", e);
@@ -348,7 +385,8 @@ impl Block for DecodeCall {
       self.output.clear();
 
       for token in decoded {
-        self.output.push(token.try_into()?);
+        let value: ClonedVar = token.try_into()?;
+        self.output.push(value.0);
       }
 
       Ok(self.output.as_ref().into())
