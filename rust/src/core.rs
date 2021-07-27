@@ -100,7 +100,7 @@ pub fn init() {
 #[inline(always)]
 pub fn log(s: &str) {
   unsafe {
-    (*Core).log.unwrap()(s.as_ptr() as *const i8);
+    (*Core).log.unwrap()(s.as_ptr() as *const std::os::raw::c_char);
   }
 }
 
@@ -215,7 +215,7 @@ pub fn readCachedString(id: u32) -> &'static str {
 
 pub fn writeCachedString(id: u32, string: &'static str) -> &'static str {
   unsafe {
-    let s = (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const i8);
+    let s = (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const std::os::raw::c_char);
     CStr::from_ptr(s.string).to_str().unwrap()
   }
 }
@@ -225,7 +225,7 @@ pub fn readCachedString1(id: u32) -> CBOptionalString {
 }
 
 pub fn writeCachedString1(id: u32, string: &'static str) -> CBOptionalString {
-  unsafe { (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const i8) }
+  unsafe { (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const std::os::raw::c_char) }
 }
 
 pub fn deriveType(var: &Var, data: &InstanceData) -> DerivedType {

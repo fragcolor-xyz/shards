@@ -94,7 +94,7 @@ macro_rules! blocks {
                 let mut piter = params.iter();
                 let idx = piter.position(|&x| -> bool {
                     unsafe {
-                        let cname = x.name as *const i8 as *mut i8;
+                        let cname = x.name as *const std::os::raw::c_char as *mut std::os::raw::c_char;
                         let cstr =  std::ffi::CString::from_raw(cname);
                         let s = cstr.to_str();
                         s.is_err() || s.unwrap() == param
