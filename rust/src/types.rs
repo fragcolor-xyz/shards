@@ -296,7 +296,7 @@ CBParameterInfo & co
 impl ParameterInfo {
   fn new(name: &'static str, types: Types) -> Self {
     CBParameterInfo {
-      name: name.as_ptr() as *mut i8,
+      name: name.as_ptr() as *mut std::os::raw::c_char,
       help: CBOptionalString {
         string: core::ptr::null(),
         crc: 0,
@@ -307,9 +307,9 @@ impl ParameterInfo {
 
   fn new1(name: &'static str, help: &'static str, types: Types) -> Self {
     CBParameterInfo {
-      name: name.as_ptr() as *mut i8,
+      name: name.as_ptr() as *mut std::os::raw::c_char,
       help: CBOptionalString {
-        string: help.as_ptr() as *mut i8,
+        string: help.as_ptr() as *mut std::os::raw::c_char,
         crc: 0,
       },
       valueTypes: internal_from_types(types),
@@ -318,7 +318,7 @@ impl ParameterInfo {
 
   fn new2(name: &'static str, help: CBOptionalString, types: Types) -> Self {
     CBParameterInfo {
-      name: name.as_ptr() as *mut i8,
+      name: name.as_ptr() as *mut std::os::raw::c_char,
       help,
       valueTypes: internal_from_types(types),
     }
@@ -1353,7 +1353,7 @@ impl TryFrom<&Var> for &CStr {
     } else {
       unsafe {
         Ok(CStr::from_ptr(
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8,
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char,
         ))
       }
     }
@@ -1412,7 +1412,7 @@ impl TryFrom<&Var> for &str {
     } else {
       unsafe {
         let cstr =
-          CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut i8);
+          CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char);
         cstr.to_str().map_err(|_| "UTF8 string conversion failed!")
       }
     }
