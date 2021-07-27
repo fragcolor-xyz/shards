@@ -11,117 +11,117 @@ jobs:
   #       with:
   #         access_token: ${{ secrets.TOKEN }}
 
-  wasm32-emscripten-mt:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-        sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget ninja-build
-        git clone https://github.com/emscripten-core/emsdk.git
-        cd emsdk
-        ./emsdk install 2.0.25
-        ./emsdk activate 2.0.25
-        cd .. && mkdir external && cd external
-        wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
-        tar xzf boost_1_76_0.tar.gz
-        rustup update
-        rustup default nightly
-        rustup component add rust-src --toolchain nightly
-        rustup target add wasm32-unknown-emscripten
-    - name: Build
-      run: |
-        source emsdk/emsdk_env.sh
-        cargo tree --features blocks --target=wasm32-unknown-emscripten
-        mkdir build
-        cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-        ninja rust_blocks && ninja cbl && ninja test_runtime
-    - name: Test
-      run: |
-        cd build
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js cbl-mt.js || [[ $? == 143 ]] || exit
-        node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
-        mkdir cbl
-        cp cbl-mt.wasm cbl/
-        cp cbl-mt.js cbl/
-        cp cbl-mt.worker.js cbl/
-    - uses: actions/upload-artifact@master
-      with:
-        name: cbl-wasm-mt
-        path: |
-          build/cbl-mt.wasm
-          build/cbl-mt.js
-          build/cbl-mt.worker.js
-    - uses: chainblocks/ipfs-action@master
-      with:
-        path: build/cbl/
-        service: infura
-        port: 5001
-        protocol: https
+  # wasm32-emscripten-mt:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Setup
+  #     run: |
+  #       git submodule update --init --recursive
+  #       sudo apt-get -y update
+  #       sudo apt-get -y install build-essential git cmake wget ninja-build
+  #       git clone https://github.com/emscripten-core/emsdk.git
+  #       cd emsdk
+  #       ./emsdk install 2.0.25
+  #       ./emsdk activate 2.0.25
+  #       cd .. && mkdir external && cd external
+  #       wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+  #       tar xzf boost_1_76_0.tar.gz
+  #       rustup update
+  #       rustup default nightly
+  #       rustup component add rust-src --toolchain nightly
+  #       rustup target add wasm32-unknown-emscripten
+  #   - name: Build
+  #     run: |
+  #       source emsdk/emsdk_env.sh
+  #       cargo tree --features blocks --target=wasm32-unknown-emscripten
+  #       mkdir build
+  #       cd build
+  #       cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+  #       ninja rust_blocks && ninja cbl && ninja test_runtime
+  #   - name: Test
+  #     run: |
+  #       cd build
+  #       node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_cbl.js cbl-mt.js || [[ $? == 143 ]] || exit
+  #       node --experimental-wasm-threads --experimental-wasm-bulk-memory ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
+  #       mkdir cbl
+  #       cp cbl-mt.wasm cbl/
+  #       cp cbl-mt.js cbl/
+  #       cp cbl-mt.worker.js cbl/
+  #   - uses: actions/upload-artifact@master
+  #     with:
+  #       name: cbl-wasm-mt
+  #       path: |
+  #         build/cbl-mt.wasm
+  #         build/cbl-mt.js
+  #         build/cbl-mt.worker.js
+  #   - uses: chainblocks/ipfs-action@master
+  #     with:
+  #       path: build/cbl/
+  #       service: infura
+  #       port: 5001
+  #       protocol: https
 
-  wasm32-emscripten:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-        sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget ninja-build
-        git clone https://github.com/emscripten-core/emsdk.git
-        cd emsdk
-        ./emsdk install 2.0.25
-        ./emsdk activate 2.0.25
-        cd .. && mkdir external && cd external
-        wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
-        tar xzf boost_1_76_0.tar.gz
-        rustup update
-        rustup default nightly
-        rustup target add wasm32-unknown-emscripten
-    - name: Build
-      run: |
-        source emsdk/emsdk_env.sh
-        cargo tree --features blocks --target=wasm32-unknown-emscripten
-        mkdir build
-        cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-        ninja rust_blocks && ninja cbl && ninja test_runtime
-    - name: Test
-      run: |
-        cd build
-        node ../src/tests/test_cbl.js cbl-st.js || [[ $? == 143 ]] || exit
-        node ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
-        mkdir cbl
-        cp cbl-st.wasm cbl/
-        cp cbl-st.js cbl/
-    - name: Copy Shaders
-      run: |
-        cp deps/bgfx/src/bgfx_shader.sh src/extra/shaders/include/bgfx_shader.h
-        cp deps/bgfx/src/bgfx_compute.sh src/extra/shaders/include/bgfx_compute.h
-        cp deps/bgfx/examples/common/shaderlib.sh src/extra/shaders/include/shaderlib.h
-    - uses: actions/upload-artifact@master
-      with:
-        name: cbl-wasm
-        path: |
-          build/cbl-st.wasm
-          build/cbl-st.js
-    - uses: chainblocks/ipfs-action@master
-      name: Upload cbl to IPFS
-      with:
-        path: build/cbl/
-        service: infura
-        port: 5001
-        protocol: https
-    - uses: chainblocks/ipfs-action@master
-      name: Upload shaders to IPFS
-      with:
-        path: src/extra/shaders/
-        service: infura
-        port: 5001
-        protocol: https
+  # wasm32-emscripten:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Setup
+  #     run: |
+  #       git submodule update --init --recursive
+  #       sudo apt-get -y update
+  #       sudo apt-get -y install build-essential git cmake wget ninja-build
+  #       git clone https://github.com/emscripten-core/emsdk.git
+  #       cd emsdk
+  #       ./emsdk install 2.0.25
+  #       ./emsdk activate 2.0.25
+  #       cd .. && mkdir external && cd external
+  #       wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
+  #       tar xzf boost_1_76_0.tar.gz
+  #       rustup update
+  #       rustup default nightly
+  #       rustup target add wasm32-unknown-emscripten
+  #   - name: Build
+  #     run: |
+  #       source emsdk/emsdk_env.sh
+  #       cargo tree --features blocks --target=wasm32-unknown-emscripten
+  #       mkdir build
+  #       cd build
+  #       cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=1 -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+  #       ninja rust_blocks && ninja cbl && ninja test_runtime
+  #   - name: Test
+  #     run: |
+  #       cd build
+  #       node ../src/tests/test_cbl.js cbl-st.js || [[ $? == 143 ]] || exit
+  #       node ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
+  #       mkdir cbl
+  #       cp cbl-st.wasm cbl/
+  #       cp cbl-st.js cbl/
+  #   - name: Copy Shaders
+  #     run: |
+  #       cp deps/bgfx/src/bgfx_shader.sh src/extra/shaders/include/bgfx_shader.h
+  #       cp deps/bgfx/src/bgfx_compute.sh src/extra/shaders/include/bgfx_compute.h
+  #       cp deps/bgfx/examples/common/shaderlib.sh src/extra/shaders/include/shaderlib.h
+  #   - uses: actions/upload-artifact@master
+  #     with:
+  #       name: cbl-wasm
+  #       path: |
+  #         build/cbl-st.wasm
+  #         build/cbl-st.js
+  #   - uses: chainblocks/ipfs-action@master
+  #     name: Upload cbl to IPFS
+  #     with:
+  #       path: build/cbl/
+  #       service: infura
+  #       port: 5001
+  #       protocol: https
+  #   - uses: chainblocks/ipfs-action@master
+  #     name: Upload shaders to IPFS
+  #     with:
+  #       path: src/extra/shaders/
+  #       service: infura
+  #       port: 5001
+  #       protocol: https
 
   # WASI-modules:
   #   runs-on: ubuntu-20.04
@@ -148,23 +148,20 @@ jobs:
   #       path: |
   #         deps/bgfx/.build/linux32_gcc/bin/shadercRelease.wasm
 
-  Linux-Coverage:
-    runs-on: ubuntu-20.04
+  Linux-ARM64:
+    runs-on: [self-hosted, Linux, ARM64]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
       run: |
         git submodule update --init --recursive
-        sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
-        rustup update
         mkdir external && cd external
         wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
     - name: Build
       run: |
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 ..
         ninja rust_blocks && ninja cbl
     - name: Test
       env:
@@ -200,239 +197,292 @@ jobs:
         ./cbl ../src/tests/audio.edn
         ./cbl ../src/tests/time.edn
         ./cbl ../src/tests/eth.edn
-    - name: Test Headless
-      uses: chainblocks/xvfb-action@v1
-      with:
-        working-directory: ./build
-        run: |
-          ./cbl ../src/tests/bgfx.clj
-    - name: CodeCov
-      run: |
-        mkdir coverage
-        lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
-        lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
-        genhtml coverage/coverage.f.info --output-directory coverage/output
-        bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
 
-  Linux-Coverage-Tests:
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        test-tags: ["[gfx]", "[gltf]"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      run: |
-        git submodule update --init --recursive
-        sudo apt-get -y update
-        sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils unzip
-        rustup update
-        mkdir external && cd external
-        git clone --depth 1 https://github.com/KhronosGroup/glTF-Sample-Models.git
-        cd -
-        mkdir -p build/shaders/include
-        mkdir -p build/shaders/lib/gltf
-        cd build/shaders
-        wget https://github.com/sinkingsugar/chainblocks/files/5938139/shadercRelease.zip
-        unzip shadercRelease.zip
-        cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
-        cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
-        cp ../../src/extra/shaders/gltf/*.* lib/gltf/
-        cp ../../src/extra/shaders/include/*.* include/
-    - name: Build
-      run: |
-        cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
-        ninja rust_blocks && ninja test_runtime && ninja test_extra
-    - name: Test
-      env:
-        RUST_BACKTRACE: 1
-      run: |
-        cd build
-        ./test_runtime
-    - name: Test Headless
-      uses: chainblocks/xvfb-action@v1
-      with:
-        working-directory: ./build
-        run: |
-          ./test_extra ${{ matrix.test-tags }}
-    - name: CodeCov
-      run: |
-        mkdir coverage
-        lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
-        lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
-        genhtml coverage/coverage.f.info --output-directory coverage/output
-        bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+  # Linux-Coverage:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Setup
+  #     run: |
+  #       git submodule update --init --recursive
+  #       sudo apt-get -y update
+  #       sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils
+  #       rustup update
+  #       mkdir external && cd external
+  #       wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
+  #   - name: Build
+  #     run: |
+  #       mkdir build
+  #       cd build
+  #       cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
+  #       ninja rust_blocks && ninja cbl
+  #   - name: Test
+  #     env:
+  #       RUST_BACKTRACE: 1
+  #     run: |
+  #       cd build
+  #       ./cbl ../src/tests/general.edn
+  #       ./cbl ../src/tests/variables.clj
+  #       ./cbl ../src/tests/subchains.clj
+  #       ./cbl ../src/tests/linalg.clj
+  #       ./cbl ../src/tests/loader.clj
+  #       ./cbl ../src/tests/network.clj
+  #       ./cbl ../src/tests/struct.clj
+  #       ./cbl ../src/tests/flows.clj
+  #       ./cbl ../src/tests/kdtree.clj
+  #       ./cbl ../src/tests/channels.clj
+  #       ./cbl ../src/tests/genetic.clj
+  #       ./cbl ../src/tests/imaging.clj
+  #       ./cbl ../src/tests/http.clj
+  #       ./cbl ../src/tests/ws.clj
+  #       ./cbl ../src/tests/bigint.clj
+  #       ./cbl ../src/tests/brotli.clj
+  #       ./cbl ../src/tests/snappy.clj
+  #       ./cbl ../src/tests/failures.clj
+  #       ./cbl ../src/tests/wasm.clj
+  #       ./cbl ../src/tests/shell.clj
+  #       ./cbl ../src/tests/blocks.clj
+  #       ./cbl ../src/tests/rust.clj
+  #       ./cbl ../src/tests/chain-macro.edn
+  #       ./cbl ../src/tests/edn.edn
+  #       ./cbl ../src/tests/const-vars.edn
+  #       ./cbl ../src/tests/branch.edn
+  #       ./cbl ../src/tests/audio.edn
+  #       ./cbl ../src/tests/time.edn
+  #       ./cbl ../src/tests/eth.edn
+  #   - name: Test Headless
+  #     uses: chainblocks/xvfb-action@v1
+  #     with:
+  #       working-directory: ./build
+  #       run: |
+  #         ./cbl ../src/tests/bgfx.clj
+  #   - name: CodeCov
+  #     run: |
+  #       mkdir coverage
+  #       lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
+  #       lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
+  #       genhtml coverage/coverage.f.info --output-directory coverage/output
+  #       bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
 
-  Linux-Release-Docker:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-      name: Checkout
-    - name: Fetch submodules
-      run: |
-        git submodule update --init --recursive
-    - uses: chainblocks/Publish-Docker-Github-Action@master
-      name: Build and upload to hub devel image
-      with:
-        name: chainblocks/devenv
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        dockerfile: docker/linux/Dockerfile
-        tags: "latest"
-    - name: Build and Test
-      run: |
-        docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
-        mkdir build
-        docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
-    - uses: chainblocks/Publish-Docker-Github-Action@master
-      if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
-      name: Build and upload to hub runtime image
-      with:
-        name: chainblocks/cbl
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        dockerfile: docker/linux/Dockerfile-runtime
-        tags: "latest"
+  # Linux-Coverage-Tests:
+  #   runs-on: ubuntu-20.04
+  #   strategy:
+  #     matrix:
+  #       test-tags: ["[gfx]", "[gltf]"]
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Setup
+  #     run: |
+  #       git submodule update --init --recursive
+  #       sudo apt-get -y update
+  #       sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov xvfb mesa-utils unzip
+  #       rustup update
+  #       mkdir external && cd external
+  #       git clone --depth 1 https://github.com/KhronosGroup/glTF-Sample-Models.git
+  #       cd -
+  #       mkdir -p build/shaders/include
+  #       mkdir -p build/shaders/lib/gltf
+  #       cd build/shaders
+  #       wget https://github.com/sinkingsugar/chainblocks/files/5938139/shadercRelease.zip
+  #       unzip shadercRelease.zip
+  #       cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
+  #       cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
+  #       cp ../../src/extra/shaders/gltf/*.* lib/gltf/
+  #       cp ../../src/extra/shaders/include/*.* include/
+  #   - name: Build
+  #     run: |
+  #       cd build
+  #       cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
+  #       ninja rust_blocks && ninja test_runtime && ninja test_extra
+  #   - name: Test
+  #     env:
+  #       RUST_BACKTRACE: 1
+  #     run: |
+  #       cd build
+  #       ./test_runtime
+  #   - name: Test Headless
+  #     uses: chainblocks/xvfb-action@v1
+  #     with:
+  #       working-directory: ./build
+  #       run: |
+  #         ./test_extra ${{ matrix.test-tags }}
+  #   - name: CodeCov
+  #     run: |
+  #       mkdir coverage
+  #       lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
+  #       lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
+  #       genhtml coverage/coverage.f.info --output-directory coverage/output
+  #       bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
 
-  Linux-Valgrind:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: |
-        git submodule update --init --recursive
-        docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
-    - name: Test
-      run: |
-        docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
+  # Linux-Release-Docker:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #     name: Checkout
+  #   - name: Fetch submodules
+  #     run: |
+  #       git submodule update --init --recursive
+  #   - uses: chainblocks/Publish-Docker-Github-Action@master
+  #     name: Build and upload to hub devel image
+  #     with:
+  #       name: chainblocks/devenv
+  #       username: ${{ secrets.DOCKER_USERNAME }}
+  #       password: ${{ secrets.DOCKER_PASSWORD }}
+  #       dockerfile: docker/linux/Dockerfile
+  #       tags: "latest"
+  #   - name: Build and Test
+  #     run: |
+  #       docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+  #       mkdir build
+  #       docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
+  #   - uses: chainblocks/Publish-Docker-Github-Action@master
+  #     if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
+  #     name: Build and upload to hub runtime image
+  #     with:
+  #       name: chainblocks/cbl
+  #       username: ${{ secrets.DOCKER_USERNAME }}
+  #       password: ${{ secrets.DOCKER_PASSWORD }}
+  #       dockerfile: docker/linux/Dockerfile-runtime
+  #       tags: "latest"
 
-  Windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      env:
-        RUSTUP_USE_CURL: 1
-      run: |
-        git submodule update --init --recursive
-        rustup update
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        release: false
-        path-type: inherit
-    - name: Build and Run
-      env:
-        RUST_BACKTRACE: 1
-      run: msys2 ./build-win.sh ${{ matrix.build-type }}
-    - uses: actions/upload-artifact@master
-      with:
-        name: cbl-win64 ${{ matrix.build-type }}
-        path: build/cbl.exe
+  # Linux-Valgrind:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Build
+  #     run: |
+  #       git submodule update --init --recursive
+  #       docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
+  #   - name: Test
+  #     run: |
+  #       docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
 
-  Windows-32bits:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Setup
-      env:
-        RUSTUP_USE_CURL: 1
-      run: |
-        git submodule update --init --recursive
-        rustup update
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW32
-        release: false
-        path-type: inherit
-    - name: Build 32Bits and Run
-      env:
-        RUST_BACKTRACE: 1
-      run: msys2 ./build-win32.sh ${{ matrix.build-type }}
-    - uses: actions/upload-artifact@master
-      with:
-        name: cbl-win32 ${{ matrix.build-type }}
-        path: build/cbl.exe
+  # Windows:
+  #   runs-on: windows-latest
+  #   strategy:
+  #     matrix:
+  #       build-type: ["Debug", "Release"]
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Setup
+  #     env:
+  #       RUSTUP_USE_CURL: 1
+  #     run: |
+  #       git submodule update --init --recursive
+  #       rustup update
+  #   - uses: msys2/setup-msys2@v2
+  #     with:
+  #       msystem: MINGW64
+  #       release: false
+  #       path-type: inherit
+  #   - name: Build and Run
+  #     env:
+  #       RUST_BACKTRACE: 1
+  #     run: msys2 ./build-win.sh ${{ matrix.build-type }}
+  #   - uses: actions/upload-artifact@master
+  #     with:
+  #       name: cbl-win64 ${{ matrix.build-type }}
+  #       path: build/cbl.exe
 
-  macOS:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Deps
-      run: |
-        sudo xcode-select --switch /Applications/Xcode.app
-        brew install boost cmake ninja clang-format
-        rustup update
-        mkdir external && cd external
-        wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
-    - name: Build
-      run: |
-        git submodule update --init --recursive
-        mkdir build
-        cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-        ninja rust_blocks && ninja cbl && ninja test_runtime
-    - name: Test
-      env:
-        RUST_BACKTRACE: 1
-      run: |
-        cd build
-        ./cbl ../src/tests/general.edn
-        ./cbl ../src/tests/variables.clj
-        ./cbl ../src/tests/subchains.clj
-        ./cbl ../src/tests/linalg.clj
-        ./cbl ../src/tests/loader.clj
-        ./cbl ../src/tests/network.clj
-        ./cbl ../src/tests/struct.clj
-        ./cbl ../src/tests/flows.clj
-        ./cbl ../src/tests/kdtree.clj
-        ./cbl ../src/tests/channels.clj
-        ./cbl ../src/tests/imaging.clj
-        ./cbl ../src/tests/http.clj
-        ./cbl ../src/tests/ws.clj
-        ./cbl ../src/tests/bigint.clj
-        ./cbl ../src/tests/brotli.clj
-        ./cbl ../src/tests/snappy.clj
-        ./cbl ../src/tests/wasm.clj
-        ./cbl ../src/tests/infos.clj
-        ./cbl ../src/tests/rust.clj
-        ./cbl ../src/tests/chain-macro.edn
-        ./cbl ../src/tests/branch.edn
-        ./cbl ../src/tests/audio.edn
-        ./cbl ../src/tests/time.edn
-        ./cbl ../src/tests/eth.edn
-        ./test_runtime
+  # Windows-32bits:
+  #   runs-on: windows-latest
+  #   strategy:
+  #     matrix:
+  #       build-type: ["Debug", "Release"]
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Setup
+  #     env:
+  #       RUSTUP_USE_CURL: 1
+  #     run: |
+  #       git submodule update --init --recursive
+  #       rustup update
+  #   - uses: msys2/setup-msys2@v2
+  #     with:
+  #       msystem: MINGW32
+  #       release: false
+  #       path-type: inherit
+  #   - name: Build 32Bits and Run
+  #     env:
+  #       RUST_BACKTRACE: 1
+  #     run: msys2 ./build-win32.sh ${{ matrix.build-type }}
+  #   - uses: actions/upload-artifact@master
+  #     with:
+  #       name: cbl-win32 ${{ matrix.build-type }}
+  #       path: build/cbl.exe
 
-  iOS:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Deps
-      run: |
-        sudo xcode-select --switch /Applications/Xcode.app
-        brew install boost cmake clang-format
-        git submodule update --init --recursive
-        rustup update
-        rustup target add x86_64-apple-ios
-        rustup target add aarch64-apple-ios
-    - name: Build Device
-      run: |
-        mkdir build
-        cd build
-        cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS ..
-        xcodebuild -target cb_static -sdk iphoneos -arch arm64
-    - name: Build Simulator x86
-      run: |
-        cd build
-        cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 ..
-        xcodebuild -target cb_static -sdk iphonesimulator -arch x86_64
+  # macOS:
+  #   runs-on: macos-latest
+  #   strategy:
+  #     matrix:
+  #       build-type: ["Debug", "Release"]
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Deps
+  #     run: |
+  #       sudo xcode-select --switch /Applications/Xcode.app
+  #       brew install boost cmake ninja clang-format
+  #       rustup update
+  #       mkdir external && cd external
+  #       wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
+  #   - name: Build
+  #     run: |
+  #       git submodule update --init --recursive
+  #       mkdir build
+  #       cd build
+  #       cmake -G Ninja -DFORCE_CORE2=1 -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
+  #       ninja rust_blocks && ninja cbl && ninja test_runtime
+  #   - name: Test
+  #     env:
+  #       RUST_BACKTRACE: 1
+  #     run: |
+  #       cd build
+  #       ./cbl ../src/tests/general.edn
+  #       ./cbl ../src/tests/variables.clj
+  #       ./cbl ../src/tests/subchains.clj
+  #       ./cbl ../src/tests/linalg.clj
+  #       ./cbl ../src/tests/loader.clj
+  #       ./cbl ../src/tests/network.clj
+  #       ./cbl ../src/tests/struct.clj
+  #       ./cbl ../src/tests/flows.clj
+  #       ./cbl ../src/tests/kdtree.clj
+  #       ./cbl ../src/tests/channels.clj
+  #       ./cbl ../src/tests/imaging.clj
+  #       ./cbl ../src/tests/http.clj
+  #       ./cbl ../src/tests/ws.clj
+  #       ./cbl ../src/tests/bigint.clj
+  #       ./cbl ../src/tests/brotli.clj
+  #       ./cbl ../src/tests/snappy.clj
+  #       ./cbl ../src/tests/wasm.clj
+  #       ./cbl ../src/tests/infos.clj
+  #       ./cbl ../src/tests/rust.clj
+  #       ./cbl ../src/tests/chain-macro.edn
+  #       ./cbl ../src/tests/branch.edn
+  #       ./cbl ../src/tests/audio.edn
+  #       ./cbl ../src/tests/time.edn
+  #       ./cbl ../src/tests/eth.edn
+  #       ./test_runtime
+
+  # iOS:
+  #   runs-on: macos-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Deps
+  #     run: |
+  #       sudo xcode-select --switch /Applications/Xcode.app
+  #       brew install boost cmake clang-format
+  #       git submodule update --init --recursive
+  #       rustup update
+  #       rustup target add x86_64-apple-ios
+  #       rustup target add aarch64-apple-ios
+  #   - name: Build Device
+  #     run: |
+  #       mkdir build
+  #       cd build
+  #       cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS ..
+  #       xcodebuild -target cb_static -sdk iphoneos -arch arm64
+  #   - name: Build Simulator x86
+  #     run: |
+  #       cd build
+  #       cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 ..
+  #       xcodebuild -target cb_static -sdk iphonesimulator -arch x86_64
