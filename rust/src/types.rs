@@ -102,7 +102,7 @@ pub struct DerivedType(pub Type);
 #[macro_export]
 macro_rules! cbstr {
   ($text:expr) => {{
-    const cbstr: RawString = concat!($text, "\0").as_ptr() as *const i8;
+    const cbstr: RawString = concat!($text, "\0").as_ptr() as *const std::os::raw::c_char;
     cbstr
   }};
 }
@@ -242,7 +242,7 @@ impl ExposedInfo {
   }
 
   pub const fn new_static(name: &'static str, ctype: CBTypeInfo) -> Self {
-    let cname = name.as_ptr() as *const i8;
+    let cname = name.as_ptr() as *const std::os::raw::c_char;
     let chelp = core::ptr::null();
     CBExposedTypeInfo {
       exposedType: ctype,
@@ -264,7 +264,7 @@ impl ExposedInfo {
     help: CBOptionalString,
     ctype: CBTypeInfo,
   ) -> Self {
-    let cname = name.as_ptr() as *const i8;
+    let cname = name.as_ptr() as *const std::os::raw::c_char;
     CBExposedTypeInfo {
       exposedType: ctype,
       name: cname,
@@ -328,7 +328,7 @@ impl ParameterInfo {
 impl From<&str> for OptionalString {
   fn from(s: &str) -> OptionalString {
     let cos = CBOptionalString {
-      string: s.as_ptr() as *const i8,
+      string: s.as_ptr() as *const std::os::raw::c_char,
       crc: 0, // TODO
     };
     OptionalString(cos)
@@ -338,7 +338,7 @@ impl From<&str> for OptionalString {
 impl From<&str> for CBOptionalString {
   fn from(s: &str) -> CBOptionalString {
     CBOptionalString {
-      string: s.as_ptr() as *const i8,
+      string: s.as_ptr() as *const std::os::raw::c_char,
       crc: 0, // TODO
     }
   }
@@ -940,7 +940,7 @@ impl<'a> From<&'a str> for Var {
       payload: CBVarPayload {
         __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
           __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
-            stringValue: p as *const i8,
+            stringValue: p as *const std::os::raw::c_char,
             stringLen: len as u32,
             stringCapacity: 0,
           },
@@ -1680,7 +1680,7 @@ impl ParamVar {
     self.parameter.0.valueType = CBType_ContextVar;
   }
 
-  pub fn get_name(&self) -> *const i8 {
+  pub fn get_name(&self) -> *const std::os::raw::c_char {
     (&self.parameter.0).try_into().unwrap()
   }
 }
@@ -1996,7 +1996,7 @@ impl Table {
 
   pub fn insert(&mut self, k: &CString, v: Var) -> Option<Var> {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
         let old = *p;
@@ -2012,7 +2012,7 @@ impl Table {
 
   pub fn insert_fast(&mut self, k: &CString, v: Var) {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
       cloneVar(&mut *p, &v);
     }
@@ -2020,7 +2020,7 @@ impl Table {
 
   pub fn insert_fast_static(&mut self, k: &'static str, v: Var) {
     unsafe {
-      let cstr = k.as_ptr() as *const i8;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
       let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
       cloneVar(&mut *p, &v);
     }
@@ -2028,7 +2028,7 @@ impl Table {
 
   pub fn get_mut(&self, k: &CString) -> Option<&mut Var> {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
         Some(&mut *p)
@@ -2040,21 +2040,21 @@ impl Table {
 
   pub fn get_mut_fast(&mut self, k: &CString) -> &mut Var {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
   }
 
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
     unsafe {
-      let cstr = k.as_ptr() as *const i8;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
   }
 
   pub fn get(&self, k: &CString) -> Option<&Var> {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const i8;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
         Some(&*p)
@@ -2066,7 +2066,7 @@ impl Table {
 
   pub fn get_fast_static(&mut self, k: &'static str) -> &Var {
     unsafe {
-      let cstr = k.as_ptr() as *const i8;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
   }
