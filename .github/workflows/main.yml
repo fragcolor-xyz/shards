@@ -148,6 +148,56 @@ jobs:
   #       path: |
   #         deps/bgfx/.build/linux32_gcc/bin/shadercRelease.wasm
 
+  Linux-ARM64:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup
+      run: |
+        git submodule update --init --recursive
+        mkdir external && cd external
+        wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 ..
+        ninja rust_blocks && ninja cbl
+    - name: Test
+      env:
+        RUST_BACKTRACE: 1
+      run: |
+        cd build
+        ./cbl ../src/tests/general.edn
+        ./cbl ../src/tests/variables.clj
+        ./cbl ../src/tests/subchains.clj
+        ./cbl ../src/tests/linalg.clj
+        ./cbl ../src/tests/loader.clj
+        ./cbl ../src/tests/network.clj
+        ./cbl ../src/tests/struct.clj
+        ./cbl ../src/tests/flows.clj
+        ./cbl ../src/tests/kdtree.clj
+        ./cbl ../src/tests/channels.clj
+        ./cbl ../src/tests/genetic.clj
+        ./cbl ../src/tests/imaging.clj
+        ./cbl ../src/tests/http.clj
+        ./cbl ../src/tests/ws.clj
+        ./cbl ../src/tests/bigint.clj
+        ./cbl ../src/tests/brotli.clj
+        ./cbl ../src/tests/snappy.clj
+        ./cbl ../src/tests/failures.clj
+        ./cbl ../src/tests/wasm.clj
+        ./cbl ../src/tests/shell.clj
+        ./cbl ../src/tests/blocks.clj
+        ./cbl ../src/tests/rust.clj
+        ./cbl ../src/tests/chain-macro.edn
+        ./cbl ../src/tests/edn.edn
+        ./cbl ../src/tests/const-vars.edn
+        ./cbl ../src/tests/branch.edn
+        ./cbl ../src/tests/audio.edn
+        ./cbl ../src/tests/time.edn
+        ./cbl ../src/tests/eth.edn
+
   Linux-Coverage:
     runs-on: ubuntu-20.04
     steps:
