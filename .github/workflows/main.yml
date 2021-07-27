@@ -149,7 +149,7 @@ jobs:
   #         deps/bgfx/.build/linux32_gcc/bin/shadercRelease.wasm
 
   Linux-ARM64:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux, ARM64]
     steps:
     - uses: actions/checkout@v2
     - name: Setup
