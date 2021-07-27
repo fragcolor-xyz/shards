@@ -476,8 +476,8 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = Globals::ObjectTypesRegister.find(id);
-  if (findIt == Globals::ObjectTypesRegister.end()) {
+  auto findIt = Globals::EnumTypesRegister.find(id);
+  if (findIt == Globals::EnumTypesRegister.end()) {
     Globals::EnumTypesRegister.insert(std::make_pair(id, info));
   } else {
     Globals::EnumTypesRegister[id] = info;
