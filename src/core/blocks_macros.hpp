@@ -44,6 +44,8 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->inputHelp = nullptr;                                               \
+    result->outputHelp = nullptr;                                              \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -86,6 +88,8 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->inputHelp = nullptr;                                               \
+    result->outputHelp = nullptr;                                              \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -129,6 +133,8 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->inputHelp = nullptr;                                               \
+    result->outputHelp = nullptr;                                              \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -172,6 +178,8 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
+    result->inputHelp = nullptr;                                               \
+    result->outputHelp = nullptr;                                              \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});

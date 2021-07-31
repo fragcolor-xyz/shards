@@ -746,6 +746,8 @@ struct CBlock {
   CBHashProc hash; // Returns the hash of the block, useful for serialization
   CBHelpProc help; // Returns the help text of the block, do not free the
                    // string, generally const
+  CBHelpProc inputHelp;  // optional help text for the input
+  CBHelpProc outputHelp; // optional help text for the output
 
   CBSetupProc setup;     // A one time construtor setup for the block
   CBDestroyProc destroy; // A one time finalizer for the block, blocks should

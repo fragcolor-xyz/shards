@@ -11,6 +11,8 @@ namespace chainblocks {
 CB_HAS_MEMBER_TEST(name);
 CB_HAS_MEMBER_TEST(hash);
 CB_HAS_MEMBER_TEST(help);
+CB_HAS_MEMBER_TEST(inputHelp);
+CB_HAS_MEMBER_TEST(outputHelp);
 CB_HAS_MEMBER_TEST(setup);
 CB_HAS_MEMBER_TEST(destroy);
 CB_HAS_MEMBER_TEST(inputTypes);
@@ -68,6 +70,26 @@ template <class T> struct BlockWrapper {
       });
     } else {
       result->help =
+          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
+    }
+
+    // inputHelp
+    if constexpr (has_inputHelp<T>::value) {
+      result->inputHelp = static_cast<CBHelpProc>([](CBlock *b) {
+        return reinterpret_cast<BlockWrapper<T> *>(b)->block.inputHelp();
+      });
+    } else {
+      result->inputHelp =
+          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
+    }
+
+    // outputHelp
+    if constexpr (has_outputHelp<T>::value) {
+      result->outputHelp = static_cast<CBHelpProc>([](CBlock *b) {
+        return reinterpret_cast<BlockWrapper<T> *>(b)->block.outputHelp();
+      });
+    } else {
+      result->outputHelp =
           static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
     }
 

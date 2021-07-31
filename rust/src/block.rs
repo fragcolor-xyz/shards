@@ -18,6 +18,7 @@ use crate::types::ComposeResult;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::Parameters;
 use crate::types::Table;
 use crate::types::Type;
@@ -35,15 +36,22 @@ pub trait Block {
   fn hash() -> u32;
 
   fn name(&mut self) -> &str;
-  fn help(&mut self) -> &str {
-    ""
+  fn help(&mut self) -> OptionalString {
+    OptionalString::default()
   }
 
   fn setup(&mut self) {}
   fn destroy(&mut self) {}
 
   fn inputTypes(&mut self) -> &Types;
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString::default()
+  }
+
   fn outputTypes(&mut self) -> &Types;
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString::default()
+  }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     None
@@ -132,12 +140,17 @@ unsafe extern "C" fn cblock_hash<T: Block>(_arg1: *mut CBlock) -> u32 {
 
 unsafe extern "C" fn cblock_help<T: Block>(arg1: *mut CBlock) -> CBOptionalString {
   let blk = arg1 as *mut BlockWrapper<T>;
-  let help = (*blk).block.help();
-  (*blk).help = Some(CString::new(help).expect("CString::new failed"));
-  CBOptionalString {
-    string: (*blk).help.as_ref().unwrap().as_ptr(),
-    crc: 0,
-  }
+  (*blk).block.help().0
+}
+
+unsafe extern "C" fn cblock_inputHelp<T: Block>(arg1: *mut CBlock) -> CBOptionalString {
+  let blk = arg1 as *mut BlockWrapper<T>;
+  (*blk).block.inputHelp().0
+}
+
+unsafe extern "C" fn cblock_outputHelp<T: Block>(arg1: *mut CBlock) -> CBOptionalString {
+  let blk = arg1 as *mut BlockWrapper<T>;
+  (*blk).block.outputHelp().0
 }
 
 unsafe extern "C" fn cblock_inputTypes<T: Block>(arg1: *mut CBlock) -> CBTypesInfo {
@@ -298,6 +311,8 @@ pub fn create<T: Default + Block>() -> BlockWrapper<T> {
       name: Some(cblock_name::<T>),
       hash: Some(cblock_hash::<T>),
       help: Some(cblock_help::<T>),
+      inputHelp: Some(cblock_inputHelp::<T>),
+      outputHelp: Some(cblock_outputHelp::<T>),
       inputTypes: Some(cblock_inputTypes::<T>),
       outputTypes: Some(cblock_outputTypes::<T>),
       setup: Some(cblock_setup::<T>),

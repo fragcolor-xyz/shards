@@ -96,6 +96,7 @@ pub type RawString = CBString;
 
 #[derive(PartialEq)]
 pub struct String(pub CBString);
+#[derive(Default)]
 pub struct OptionalString(pub CBOptionalString);
 pub struct DerivedType(pub Type);
 

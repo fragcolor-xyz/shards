@@ -21,7 +21,7 @@ use ethereum_types::U256;
 use std::convert::TryInto;
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![common_type::any];
+  static ref INPUT_TYPES: Vec<Type> = vec![common_type::anys];
   static ref DECODE_INPUT_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::bytes];
   static ref DECODE_OUTPUT_TYPES: Vec<Type> = vec![common_type::anys];
