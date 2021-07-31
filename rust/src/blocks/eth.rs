@@ -213,7 +213,15 @@ impl Block for EncodeCall {
     // encode the call
     if let Some(contract) = &self.contract {
       let name: String = call_name.as_ref().try_into()?;
-      let func = &contract.functions[&name][0];
+      let func = if let Some(func) = &contract.functions.get(&name) {
+        if !func.is_empty() {
+          Ok(&func[0])
+        } else {
+          Err("Function not found")
+        }
+      } else {
+        Err("Function not found")
+      }?;
 
       let inputs: Seq = input.try_into()?;
       if inputs.len() != func.inputs.len() {
@@ -341,7 +349,15 @@ impl Block for DecodeCall {
     // encode the call
     if let Some(contract) = &self.contract {
       let name: String = call_name.as_ref().try_into()?;
-      let func = &contract.functions[&name][0];
+      let func = if let Some(func) = &contract.functions.get(&name) {
+        if !func.is_empty() {
+          Ok(&func[0])
+        } else {
+          Err("Function not found")
+        }
+      } else {
+        Err("Function not found")
+      }?;
 
       let decoded = {
         let str_input: Result<&str, &str> = input.as_ref().try_into();
