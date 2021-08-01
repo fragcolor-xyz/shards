@@ -1945,8 +1945,11 @@ BUILTIN("info") {
     auto block = createBlock(blkname->ref().c_str());
     DEFER(block->destroy(block));
 
-    auto help = block->help(block);
-    map[":help"] = mal::string(help.string ? help.string : getString(help.crc));
+    {
+      auto help = block->help(block);
+      map[":help"] =
+          mal::string(help.string ? help.string : getString(help.crc));
+    }
 
     auto params = block->parameters(block);
     malValueVec pvec;
@@ -1973,12 +1976,18 @@ BUILTIN("info") {
       std::stringstream ss;
       ss << block->inputTypes(block);
       map[":inputTypes"] = mal::string(ss.str());
+      auto help = block->inputHelp(block);
+      map[":inputHelp"] =
+          mal::string(help.string ? help.string : getString(help.crc));
     }
 
     {
       std::stringstream ss;
       ss << block->outputTypes(block);
       map[":outputTypes"] = mal::string(ss.str());
+      auto help = block->outputHelp(block);
+      map[":outputHelp"] =
+          mal::string(help.string ? help.string : getString(help.crc));
     }
 
     return mal::hash(map);

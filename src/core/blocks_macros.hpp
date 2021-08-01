@@ -44,8 +44,10 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
-    result->inputHelp = nullptr;                                               \
-    result->outputHelp = nullptr;                                              \
+    result->inputHelp = static_cast<CBHelpProc>(                               \
+        [](CBlock *block) { return CBOptionalString(); });                     \
+    result->outputHelp = static_cast<CBHelpProc>(                              \
+        [](CBlock *block) { return CBOptionalString(); });                     \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -88,8 +90,10 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
-    result->inputHelp = nullptr;                                               \
-    result->outputHelp = nullptr;                                              \
+    result->inputHelp = static_cast<CBHelpProc>(                               \
+        [](CBlock *block) { return CBOptionalString(); });                     \
+    result->outputHelp = static_cast<CBHelpProc>(                              \
+        [](CBlock *block) { return CBOptionalString(); });                     \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -133,8 +137,10 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
-    result->inputHelp = nullptr;                                               \
-    result->outputHelp = nullptr;                                              \
+    result->inputHelp = static_cast<CBHelpProc>(                               \
+        [](CBlock *block) { return CBOptionalString(); });                     \
+    result->outputHelp = static_cast<CBHelpProc>(                              \
+        [](CBlock *block) { return CBOptionalString(); });                     \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -178,8 +184,10 @@
         [](CBlock *block, int index) { return CBVar(); });                     \
     result->compose = nullptr;                                                 \
     result->warmup = nullptr;                                                  \
-    result->inputHelp = nullptr;                                               \
-    result->outputHelp = nullptr;                                              \
+    result->inputHelp = static_cast<CBHelpProc>(                               \
+        [](CBlock *block) { return CBOptionalString(); });                     \
+    result->outputHelp = static_cast<CBHelpProc>(                              \
+        [](CBlock *block) { return CBOptionalString(); });                     \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
