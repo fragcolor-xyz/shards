@@ -125,7 +125,7 @@ static void makeArgv(malEnvPtr env, int argc, const char *argv[]) {
   for (int i = 0; i < argc; i++) {
     args->push_back(mal::string(argv[i]));
   }
-  env->set("*ARGV*", mal::list(args));
+  env->set("*command-line-args*", mal::list(args));
 }
 
 String rep(const String &input, malEnvPtr env) {
