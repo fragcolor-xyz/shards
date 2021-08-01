@@ -114,6 +114,14 @@ fn token_to_var(token: Token) -> Result<ClonedVar, &'static str> {
       Ok(hex.as_str().into())
     }
     Token::Bytes(bytes) | Token::FixedBytes(bytes) => Ok(bytes.as_slice().into()),
+    Token::Array(tokens) | Token::FixedArray(tokens) => {
+      let mut s = Seq::new();
+      for token in tokens {
+        let v = token_to_var(token)?;
+        s.push(v.0);
+      }
+      Ok(s.as_ref().into())
+    }
     _ => Err("Failed to convert Token into Var - matched case not implemented"),
   }
 }
