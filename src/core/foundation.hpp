@@ -862,7 +862,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src);
 ALWAYS_INLINE inline void destroyVar(CBVar &var) {
   switch (var.valueType) {
   case Table:
-  case Set:
+  case CBType::Set:
   case Seq:
     _destroyVarSlow(var);
     break;

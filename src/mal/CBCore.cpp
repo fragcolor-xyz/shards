@@ -222,6 +222,10 @@ public:
     chainblocks::Globals::GlobalChains[name] = chain;
   }
 
+  malCBChain(const std::shared_ptr<CBChain> &chain) : m_chain(chain->newRef()) {
+    CBLOG_TRACE("Loaded a CBChain - {}", chain->name);
+  }
+
   malCBChain(const malCBChain &that, const malValuePtr &meta) = delete;
 
   ~malCBChain() {
@@ -1396,6 +1400,62 @@ BUILTIN("Chain*") {
   } else {
     return malValuePtr(new malChainProvider(value->ref()));
   }
+}
+
+BUILTIN("eval-chain") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malString, value);
+
+  malEnvPtr env(new malEnv());
+  auto res = maleval(value->ref().c_str(), env);
+  auto var = varify(res);
+  if (var->value().valueType != CBType::Chain) {
+    CBLOG_ERROR("Script did not return a CBChain");
+    return mal::nilValue();
+  }
+
+  auto chainref = var->value().payload.chainValue;
+  auto chain = CBChain::sharedFromRef(chainref);
+
+  return malValuePtr(new malCBChain(chain));
+}
+
+static malValuePtr readVar(const CBVar &v) {
+  if (v.valueType == CBType::String) {
+    auto sv = CBSTRVIEW(v);
+    MalString s(sv);
+    return mal::string(s);
+  } else if (v.valueType == CBType::Int) {
+    return mal::number(double(v.payload.intValue), true);
+  } else if (v.valueType == CBType::Float) {
+    return mal::number(v.payload.floatValue, false);
+  } else if (v.valueType == CBType::Seq) {
+    auto vec = new malValueVec();
+    for (auto &sv : v) {
+      vec->emplace_back(readVar(sv));
+    }
+    return malValuePtr(new malList(vec));
+  } else if (v.valueType == CBType::Table) {
+    malHash::Map map;
+    auto &t = v.payload.tableValue;
+    CBTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    CBString k;
+    CBVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      map[k] = readVar(v);
+    }
+    return mal::hash(map);
+  } else {
+    throw "Invalid Var type";
+  }
+}
+
+BUILTIN("read-Var") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malCBVar, value);
+  auto &v = value->value();
+  return readVar(v);
 }
 
 BUILTIN("-->") {
