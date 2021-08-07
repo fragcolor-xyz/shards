@@ -1032,8 +1032,12 @@ struct Serialization {
         read((uint8_t *)&klen, sizeof(uint32_t));
         keyBuf.resize(klen);
         read((uint8_t *)keyBuf.c_str(), klen);
+        // TODO improve this, avoid allocations
+        CBVar tmp{};
+        deserialize(read, tmp);
         auto &dst = (*map)[keyBuf];
-        deserialize(read, dst);
+        dst = tmp;
+        varFree(tmp);
       }
       break;
     }
@@ -1059,9 +1063,11 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
+        // TODO improve this, avoid allocations
         CBVar dst{};
         deserialize(read, dst);
         (*set).emplace(dst);
+        varFree(dst);
       }
       break;
     }
