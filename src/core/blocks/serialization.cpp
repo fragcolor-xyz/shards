@@ -73,12 +73,16 @@ struct FileBase {
 struct WriteFile : public FileBase {
   std::ofstream _fileStream;
   bool _append = false;
+  bool _flush = false;
 
   static inline Parameters params{
       FileBase::params,
       {{"Append",
         CBCCSTR("If we should append to the file if existed already or "
                 "truncate. (default: false)."),
+        {CoreInfo::BoolType}},
+       {"Flush",
+        CBCCSTR("If the file should be flushed to disk after every write."),
         {CoreInfo::BoolType}}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -87,6 +91,9 @@ struct WriteFile : public FileBase {
     switch (index) {
     case 1:
       _append = value.payload.boolValue;
+      break;
+    case 2:
+      _flush = value.payload.boolValue;
       break;
     default:
       FileBase::setParam(index, value);
@@ -97,6 +104,8 @@ struct WriteFile : public FileBase {
     switch (index) {
     case 1:
       return Var(_append);
+    case 2:
+      return Var(_flush);
     default:
       return FileBase::getParam(index);
     }
@@ -146,6 +155,9 @@ struct WriteFile : public FileBase {
     Writer s(_fileStream);
     serial.reset();
     serial.serialize(input, s);
+    if (_flush) {
+      _fileStream.flush();
+    }
     return input;
   }
 };
