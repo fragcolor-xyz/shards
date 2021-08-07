@@ -108,14 +108,14 @@ float snoise3D(vec3 v){
   vec4 y = y_ *ns.x + ns.yyyy;
   vec4 h = 1.0 - abs(x) - abs(y);
 
-  vec4 b0 = vec4( x.xy, y.xy );
-  vec4 b1 = vec4( x.zw, y.zw );
+  vec4 b0 = vec4( x.xy, y.xy);
+  vec4 b1 = vec4( x.zw, y.zw);
 
   //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
   //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
   vec4 s0 = floor(b0)*2.0 + 1.0;
   vec4 s1 = floor(b1)*2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
+  vec4 sh = -step(h, vec4(0.0, 0.0, 0.0, 0.0));
 
   vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
   vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
@@ -141,9 +141,9 @@ vec4 grad4(float j, vec4 ip){
   const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);
   vec4 p,s;
 
-  p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;
+  p.xyz = floor( fract (vec3(j, j, j) * ip.xyz) * 7.0) * ip.z - 1.0;
   p.w = 1.5 - dot(abs(p.xyz), ones.xyz);
-  s = vec4(lessThan(p, vec4(0.0)));
+  s = vec4(lessThan(p, vec4(0.0, 0.0, 0.0, 0.0)));
   p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;
 
   return p;
@@ -155,7 +155,7 @@ float snoise4D(vec4 v){
                        -0.447213595499958); // -1 + 4 * G4
 
   // First corner
-  vec4 i  = floor(v + dot(v, vec4(F4)) );
+  vec4 i  = floor(v + dot(v, vec4(F4, F4, F4, F4)) );
   vec4 x0 = v -   i + dot(i, C.xxxx);
 
   // Other corners
@@ -227,8 +227,8 @@ float fsnoise      (vec2 c){return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43
 float fsnoiseDigits(vec2 c){return fract(sin(dot(c, vec2(0.129898, 0.78233))) * 437.585453);}
 vec3 hsv(float h, float s, float v){
     vec4 t = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(vec3(h) + t.xyz) * 6.0 - vec3(t.w));
-    return v * mix(vec3(t.x), clamp(p - vec3(t.x), 0.0, 1.0), s);
+    vec3 p = abs(fract(vec3(h, h, h) + t.xyz) * 6.0 - vec3(t.w, t.w, t.w));
+    return v * mix(vec3(t.x, t.x, t.x), clamp(p - vec3(t.x, t.x, t.x), 0.0, 1.0), s);
 }
 mat2 rotate2D(float r){
     return mat2(cos(r), sin(r), -sin(r), cos(r));
@@ -251,4 +251,4 @@ mat3 rotate3D(float angle, vec3 axis){
     );
 }
 const float PI = 3.141592653589793;
-const float PI2 = PI * 2.0;
+const float PI2 = 6.283185307179586;
