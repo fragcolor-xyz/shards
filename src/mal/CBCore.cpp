@@ -1750,6 +1750,19 @@ BUILTIN("String") {
   return malValuePtr(mvar);
 }
 
+BUILTIN("Bytes") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, value);
+  CBVar var{};
+  var.valueType = Bytes;
+  auto &s = value->ref();
+  var.payload.bytesValue = (uint8_t *)s.data();
+  var.payload.bytesSize = s.size();
+  auto mvar = new malCBVar(var);
+  mvar->reference(value);
+  return malValuePtr(mvar);
+}
+
 BUILTIN("ContextVar") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
