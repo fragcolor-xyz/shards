@@ -14,7 +14,9 @@ using namespace chainblocks;
 namespace BGFX {
 enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
 
-#if defined(__linux__) || defined(__EMSCRIPTEN__) ||                           \
+#if defined(BGFX_CONFIG_RENDERER_VULKAN)
+constexpr Renderer CurrentRenderer = Renderer::Vulkan;
+#elif defined(__linux__) || defined(__EMSCRIPTEN__) ||                         \
     defined(BGFX_CONFIG_RENDERER_OPENGL)
 constexpr Renderer CurrentRenderer = Renderer::OpenGL;
 #elif defined(_WIN32)
