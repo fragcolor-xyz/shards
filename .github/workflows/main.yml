@@ -295,36 +295,36 @@ jobs:
         dockerfile: docker/linux/Dockerfile-runtime
         tags: "latest"
 
-  Linux-Release-Docker-VK:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-      name: Checkout
-    - name: Fetch submodules
-      run: |
-        git submodule update --init --recursive
-    - uses: chainblocks/Publish-Docker-Github-Action@master
-      name: Build and upload to hub devel image
-      with:
-        name: chainblocks/devenv
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        dockerfile: docker/linux/Dockerfile
-        tags: "latest"
-    - name: Build and Test
-      run: |
-        docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_USE_VULKAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
-        mkdir build
-        docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
-    - uses: chainblocks/Publish-Docker-Github-Action@master
-      if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
-      name: Build and upload to hub runtime image
-      with:
-        name: chainblocks/cbl
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        dockerfile: docker/linux/Dockerfile-runtime
-        tags: "latest-vulkan"
+  # Linux-Release-Docker-VK:
+  #   runs-on: ubuntu-20.04
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #     name: Checkout
+  #   - name: Fetch submodules
+  #     run: |
+  #       git submodule update --init --recursive
+  #   - uses: chainblocks/Publish-Docker-Github-Action@master
+  #     name: Build and upload to hub devel image
+  #     with:
+  #       name: chainblocks/devenv
+  #       username: ${{ secrets.DOCKER_USERNAME }}
+  #       password: ${{ secrets.DOCKER_PASSWORD }}
+  #       dockerfile: docker/linux/Dockerfile
+  #       tags: "latest"
+  #   - name: Build and Test
+  #     run: |
+  #       docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_USE_VULKAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+  #       mkdir build
+  #       docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
+  #   - uses: chainblocks/Publish-Docker-Github-Action@master
+  #     if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
+  #     name: Build and upload to hub runtime image
+  #     with:
+  #       name: chainblocks/cbl
+  #       username: ${{ secrets.DOCKER_USERNAME }}
+  #       password: ${{ secrets.DOCKER_PASSWORD }}
+  #       dockerfile: docker/linux/Dockerfile-runtime
+  #       tags: "latest-vulkan"
 
   Linux-Valgrind:
     runs-on: ubuntu-20.04
