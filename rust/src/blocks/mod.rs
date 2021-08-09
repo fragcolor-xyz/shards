@@ -24,7 +24,7 @@ use crate::types::Type;
 pub mod http;
 
 pub mod hash;
-pub mod sign;
+pub mod ecdsa;
 
 pub mod physics;
 

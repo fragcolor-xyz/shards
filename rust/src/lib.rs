@@ -291,7 +291,7 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
 
   blocks::casting::registerBlocks();
   blocks::hash::registerBlocks();
-  blocks::sign::registerBlocks();
+  blocks::ecdsa::registerBlocks();
   blocks::physics::simulation::registerBlocks();
   blocks::physics::shapes::registerBlocks();
   blocks::physics::rigidbody::registerBlocks();
