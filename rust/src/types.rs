@@ -732,9 +732,11 @@ CBVar utility
  */
 
 #[repr(transparent)] // force it same size of original
+#[derive(Default)]
 pub struct ClonedVar(pub Var);
 
 #[repr(transparent)] // force it same size of original
+#[derive(Default)]
 pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
 impl<T> From<T> for ClonedVar
@@ -1412,8 +1414,9 @@ impl TryFrom<&Var> for &str {
       Err("Expected None, String, Path or ContextVar variable, but casting failed.")
     } else {
       unsafe {
-        let cstr =
-          CStr::from_ptr(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char);
+        let cstr = CStr::from_ptr(
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char,
+        );
         cstr.to_str().map_err(|_| "UTF8 string conversion failed!")
       }
     }

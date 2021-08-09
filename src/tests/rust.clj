@@ -16,7 +16,7 @@
   (Hash.Keccak-256) = .hash
   (ToHex)
   (Assert.Is "0xed6c11b0b5b808960df26f5bfc471d04c1995b0ffd2055925ad1be28d6baadfd" true)
-  .hash (Sign.ECDSA "1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e")
+  .hash (ECDSA.Sign "1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e")
   (Log "Signed")
   (Take 0)
   (ToHex) (Log "Signed Hex")
@@ -46,6 +46,16 @@
   (FS.Read :Bytes true)
   (SVG.ToImage)
   (WritePNG "svgtest.png")
-  ))
+
+  "7bf19806aa6d5b31d7b7ea9e833c202e51ff8ee6311df6a036f0261f216f09ef"
+  (| (ECDSA.PublicKey)
+     (| (ToHex) (Log))
+     (| (Slice :From 1)
+        (Hash.Keccak-256)
+        (Slice :From 12)
+        (ToHex)
+        (Log "Eth Address")
+        (Assert.Is "0x3db763bbbb1ac900eb2eb8b106218f85f9f64a13" true)))
+  (| (ECDSA.PublicKey true) (ToHex) (Log))))
 
 (run Root)
