@@ -1010,19 +1010,13 @@ struct Assoc : public VariableBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   CBExposedTypesInfo requiredVariables() {
-    if (_isTable) {
-      _requiredInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), CBCCSTR("The required table."),
-                                CoreInfo::AnyTableType));
-    } else {
-      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
-          _name.c_str(), CBCCSTR("The required sequence."),
-          CoreInfo::AnySeqType));
-    }
+    _requiredInfo = ExposedInfo(ExposedInfo::Variable(
+        _name.c_str(), CBCCSTR("The required variable."), CoreInfo::AnyType));
     return CBExposedTypesInfo(_requiredInfo);
   }
 
-  // TODO we need to verify we don't change types
+  // TODO we need to evaluate deeper and figure out we don't mutate types
+
   // CBTypeInfo compose(const CBInstanceData &data) {
   //   _exposedInfo = {};
 
