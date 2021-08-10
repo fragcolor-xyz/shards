@@ -1122,11 +1122,11 @@ struct Assoc : public VariableBase {
           throw ActivationError("Table is empty or does not exist yet.");
         }
       } else {
-        if (_target->valueType == Seq) {
+        if (_target->valueType == Seq || _target->valueType == Table) {
           // Pin fast cell
           _cell = _target;
         } else {
-          throw ActivationError("Sequence is empty or does not exist yet.");
+          throw ActivationError("Variable is empty or does not exist yet.");
         }
       }
       // recurse in, now that we have cell

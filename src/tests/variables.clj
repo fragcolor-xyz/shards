@@ -209,6 +209,15 @@
   true (When (Is true) ~[11.0 (Set .table-decl-2 "A")])
   (Get .table-decl-2 "A") (ExpectFloat) (Math.Add 2.0) (Assert.Is 13.0 true)
 
+
+  [1 2 3] = .assoc-test-seq
+  [1 22] (Assoc .assoc-test-seq)
+  .assoc-test-seq (Assert.Is [1 22 3] true)
+
+  {"x" 1 "y" 2 "z" 3} = .assoc-test-table
+  ["z" 33] (Assoc .assoc-test-table)
+  .assoc-test-table (Assert.Is {"x" 1 "y" 2 "z" 33} true)
+
   (Msg "Done!")))
 
 (if (tick node) nil (throw "failure"))
