@@ -664,7 +664,7 @@ struct SendKeyEvent : public SendKeyEventBase {
       }
 
       auto lparam = MapVirtualKey(vkCode, MAPVK_VK_TO_VSC) << 16;
-      lparam = lparam | (state == 0) ? 0x00000001 : 0xC0000001;
+      lparam = lparam | (state == 0 ? 0x00000001 : 0xC0000001);
       PostMessage(window, state == 0 ? WM_KEYDOWN : WM_KEYUP, vkCode, lparam);
     } else {
       INPUT keyboardEvent;

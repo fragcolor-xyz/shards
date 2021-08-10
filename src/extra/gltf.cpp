@@ -663,8 +663,8 @@ struct Load : public BGFX::BaseConsumer {
           // retreive the maxBones setting here
           int maxBones = 0;
           {
-            std::unique_lock lock(Globals::SettingsMutex);
-            auto &vmaxBones = Globals::Settings["GLTF.MaxBones"];
+            std::unique_lock lock(GetGlobals().SettingsMutex);
+            auto &vmaxBones = GetGlobals().Settings["GLTF.MaxBones"];
             if (vmaxBones.valueType == CBType::None) {
               vmaxBones = Var(32);
             }
@@ -1418,8 +1418,8 @@ struct Draw : public BGFX::BaseConsumer {
       // retreive the maxBones setting here
       int maxBones = 0;
       {
-        std::unique_lock lock(Globals::SettingsMutex);
-        auto &vmaxBones = Globals::Settings["GLTF.MaxBones"];
+        std::unique_lock lock(GetGlobals().SettingsMutex);
+        auto &vmaxBones = GetGlobals().Settings["GLTF.MaxBones"];
         if (vmaxBones.valueType == CBType::None) {
           vmaxBones = Var(32);
         }

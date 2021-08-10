@@ -188,7 +188,7 @@ struct Uglify {
       CBMap m = to_var(std::get<form::FormWrapperMap>(form));
       CBVar tmp{};
       tmp.valueType = CBType::Table;
-      tmp.payload.tableValue.api = &Globals::TableInterface;
+      tmp.payload.tableValue.api = &GetGlobals().TableInterface;
       tmp.payload.tableValue.opaque = &m;
       return tmp;
     }
@@ -384,7 +384,7 @@ struct Parse {
       CBMap m = to_var(std::get<form::FormWrapperMap>(form));
       CBVar tmp{};
       tmp.valueType = CBType::Table;
-      tmp.payload.tableValue.api = &Globals::TableInterface;
+      tmp.payload.tableValue.api = &GetGlobals().TableInterface;
       tmp.payload.tableValue.opaque = &m;
       return tmp;
     }

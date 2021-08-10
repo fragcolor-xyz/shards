@@ -16,7 +16,7 @@
 namespace chainblocks {
 namespace edn {
 
-std::string to_string(double d) {
+inline std::string to_string(double d) {
   std::ostringstream stm;
   stm << d;
   if (d == int64_t(d)) {

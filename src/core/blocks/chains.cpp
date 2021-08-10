@@ -68,7 +68,7 @@ struct ChainBase {
       if (chainref->valueType == CBType::Chain) {
         chain = CBChain::sharedFromRef(chainref->payload.chainValue);
       } else if (chainref->valueType == String) {
-        chain = Globals::GlobalChains[chainref->payload.stringValue];
+        chain = GetGlobals().GlobalChains[chainref->payload.stringValue];
       } else {
         chain = nullptr;
         CBLOG_DEBUG("ChainBase::compose on a null chain");
@@ -315,7 +315,7 @@ struct Wait : public ChainBase {
       if (vchain.valueType == CBType::Chain) {
         chain = CBChain::sharedFromRef(vchain.payload.chainValue);
       } else if (vchain.valueType == String) {
-        chain = Globals::GlobalChains[vchain.payload.stringValue];
+        chain = GetGlobals().GlobalChains[vchain.payload.stringValue];
       } else {
         chain = nullptr;
       }
@@ -425,7 +425,7 @@ struct StopChain : public ChainBase {
       if (vchain.valueType == CBType::Chain) {
         chain = CBChain::sharedFromRef(vchain.payload.chainValue);
       } else if (vchain.valueType == String) {
-        chain = Globals::GlobalChains[vchain.payload.stringValue];
+        chain = GetGlobals().GlobalChains[vchain.payload.stringValue];
       } else {
         chain = nullptr;
       }
@@ -966,7 +966,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
       data.shared = _sharedCopy;
       data.chain = context->chainStack.back();
       assert(data.chain->node.lock());
-      _provider->setup(_provider, Globals::RootPath.c_str(), data);
+      _provider->setup(_provider, GetGlobals().RootPath.c_str(), data);
     }
 
     if (unlikely(_provider->updated(_provider))) {

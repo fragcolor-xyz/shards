@@ -726,7 +726,7 @@ struct SetBase : public VariableBase {
 
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 
@@ -876,7 +876,7 @@ struct Ref : public SetBase {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 
@@ -1327,7 +1327,7 @@ struct SeqBase : public VariableBase {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 
@@ -1739,7 +1739,7 @@ struct TableDecl : public VariableBase {
       if (_target->valueType != Table) {
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 
@@ -1752,7 +1752,7 @@ struct TableDecl : public VariableBase {
         if (table->valueType != Table) {
           // Not initialized yet
           table->valueType = Table;
-          table->payload.tableValue.api = &Globals::TableInterface;
+          table->payload.tableValue.api = &GetGlobals().TableInterface;
           table->payload.tableValue.opaque = new CBMap();
         }
       } else {
@@ -1761,7 +1761,7 @@ struct TableDecl : public VariableBase {
     } else {
       if (_target->valueType != Table) {
         _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
       _cell = _target;
@@ -1779,7 +1779,7 @@ struct TableDecl : public VariableBase {
     if (table->valueType != Table) {
       // Not initialized yet
       table->valueType = Table;
-      table->payload.tableValue.api = &Globals::TableInterface;
+      table->payload.tableValue.api = &GetGlobals().TableInterface;
       table->payload.tableValue.opaque = new CBMap();
     }
   }
@@ -2020,7 +2020,7 @@ struct SeqUser : VariableBase {
         // We need to init this in order to fetch cell addr
         // Not initialized yet
         _target->valueType = Table;
-        _target->payload.tableValue.api = &Globals::TableInterface;
+        _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new CBMap();
       }
 

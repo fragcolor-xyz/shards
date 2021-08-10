@@ -1584,9 +1584,9 @@ struct Image : public Base {
       ImVec2 size = _size;
       size.x *= texture->width;
       size.y *= texture->height;
-      ::ImGui::Image(texture->handle, size);
+      ::ImGui::Image(ImTextureID(texture->handle.idx), size);
     } else {
-      ::ImGui::Image(texture->handle, _size);
+      ::ImGui::Image(ImTextureID(texture->handle.idx), _size);
     }
     return input;
   }

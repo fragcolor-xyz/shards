@@ -54,11 +54,14 @@ extern void registerEmscriptenShaderCompiler();
 
 void cbInitExtras() {
   registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
+
   Snappy::registerBlocks();
   Brotli::registerBlocks();
+  
 #ifdef __EMSCRIPTEN__
   registerEmscriptenShaderCompiler();
 #endif
+
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
   XR::registerBlocks();
@@ -66,6 +69,7 @@ void cbInitExtras() {
   Inputs::registerBlocks();
   Audio::registerBlocks();
   DSP::registerBlocks();
+  
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif

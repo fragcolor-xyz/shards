@@ -15,7 +15,7 @@
 #include <catch2/catch_all.hpp>
 
 int main(int argc, char *argv[]) {
-  chainblocks::Globals::RootPath = "./";
+  chainblocks::GetGlobals().RootPath = "./";
   registerCoreBlocks();
   int result = Catch::Session().run(argc, argv);
   return result;
@@ -833,7 +833,7 @@ TEST_CASE("CBMap") {
   CBVar vx{};
   vx.valueType = CBType::Table;
   vx.payload.tableValue.opaque = &x;
-  vx.payload.tableValue.api = &Globals::TableInterface;
+  vx.payload.tableValue.api = &GetGlobals().TableInterface;
 
   CBMap y;
   y.emplace("y", Var("Hello Set"));
@@ -842,7 +842,7 @@ TEST_CASE("CBMap") {
   CBVar vy{};
   vy.valueType = CBType::Table;
   vy.payload.tableValue.opaque = &y;
-  vy.payload.tableValue.api = &Globals::TableInterface;
+  vy.payload.tableValue.api = &GetGlobals().TableInterface;
 
   CBMap z;
   z.emplace("y", Var("Hello Set"));
@@ -851,7 +851,7 @@ TEST_CASE("CBMap") {
   CBVar vz{};
   vz.valueType = CBType::Table;
   vz.payload.tableValue.opaque = &z;
-  vz.payload.tableValue.api = &Globals::TableInterface;
+  vz.payload.tableValue.api = &GetGlobals().TableInterface;
 
   REQUIRE(vx == vy);
 
@@ -886,7 +886,7 @@ TEST_CASE("CBHashSet") {
   CBVar vx{};
   vx.valueType = CBType::Set;
   vx.payload.setValue.opaque = &x;
-  vx.payload.setValue.api = &Globals::SetInterface;
+  vx.payload.setValue.api = &GetGlobals().SetInterface;
 
   CBHashSet y;
   y.emplace(Var("Hello Set"));
@@ -895,7 +895,7 @@ TEST_CASE("CBHashSet") {
   CBVar vy{};
   vy.valueType = CBType::Set;
   vy.payload.setValue.opaque = &y;
-  vy.payload.setValue.api = &Globals::SetInterface;
+  vy.payload.setValue.api = &GetGlobals().SetInterface;
 
   CBHashSet z;
   z.emplace(Var("Hello Set"));
@@ -904,7 +904,7 @@ TEST_CASE("CBHashSet") {
   CBVar vz{};
   vz.valueType = CBType::Set;
   vz.payload.setValue.opaque = &z;
-  vz.payload.setValue.api = &Globals::SetInterface;
+  vz.payload.setValue.api = &GetGlobals().SetInterface;
 
   REQUIRE(vx == vy);
   REQUIRE(vx != vz);
