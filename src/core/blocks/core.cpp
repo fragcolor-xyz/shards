@@ -1022,36 +1022,39 @@ struct Assoc : public VariableBase {
     return CBExposedTypesInfo(_requiredInfo);
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _exposedInfo = {};
+  // TODO we need to verify we don't change types
+  // CBTypeInfo compose(const CBInstanceData &data) {
+  //   _exposedInfo = {};
 
-    if (_isTable) {
-      _tableTypes = Type::TableOf(data.inputType.seqTypes);
-      if (_global) {
-        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-            _name.c_str(), CBCCSTR("The exposed table."), _tableTypes, true));
-      } else {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), CBCCSTR("The exposed table."), _tableTypes, true));
-      }
-    } else {
-      if (_global) {
-        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-            _name.c_str(), CBCCSTR("The exposed sequence."), data.inputType,
-            true));
-      } else {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            _name.c_str(), CBCCSTR("The exposed sequence."), data.inputType,
-            true));
-      }
-    }
+  //   if (_isTable) {
+  //     _tableTypes = Type::TableOf(data.inputType.seqTypes);
+  //     if (_global) {
+  //       _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+  //           _name.c_str(), CBCCSTR("The exposed table."), _tableTypes,
+  //           true));
+  //     } else {
+  //       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+  //           _name.c_str(), CBCCSTR("The exposed table."), _tableTypes,
+  //           true));
+  //     }
+  //   } else {
+  //     if (_global) {
+  //       _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
+  //           _name.c_str(), CBCCSTR("The exposed sequence."), data.inputType,
+  //           true));
+  //     } else {
+  //       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
+  //           _name.c_str(), CBCCSTR("The exposed sequence."), data.inputType,
+  //           true));
+  //     }
+  //   }
 
-    return data.inputType;
-  }
+  //   return data.inputType;
+  // }
 
-  CBExposedTypesInfo exposedVariables() {
-    return CBExposedTypesInfo(_exposedInfo);
-  }
+  // CBExposedTypesInfo exposedVariables() {
+  //   return CBExposedTypesInfo(_exposedInfo);
+  // }
 
   void warmup(CBContext *context) {
     if (_global)

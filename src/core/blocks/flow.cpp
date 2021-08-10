@@ -427,6 +427,7 @@ struct Maybe : public BaseSubFlow {
 
     if (!nextIsNone && !elseComp.flowStopper &&
         _composition.outputType != elseComp.outputType) {
+      CBLOG_ERROR("{} != {}", _composition.outputType, elseComp.outputType);
       throw ComposeError(
           "Maybe: output types mismatch between the two possible flows!");
     }
