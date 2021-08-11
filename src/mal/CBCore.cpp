@@ -936,7 +936,8 @@ std::vector<malCBlockPtr> blockify(const malValuePtr &arg) {
     for (auto [k, v] : v->m_map) {
       auto cbv = varify(v);
       vars.emplace_back(cbv);
-      cbMap[unescape(k)] = cbv->value();
+      // key is either a quoted string or a keyword (starting with ':')
+      cbMap[k[0] == '"' ? unescape(k) : k.substr(1)] = cbv->value();
     }
     var.valueType = Table;
     var.payload.tableValue.api = &chainblocks::Globals::TableInterface;
@@ -1017,7 +1018,8 @@ malCBVarPtr varify(const malValuePtr &arg) {
     for (auto [k, v] : v->m_map) {
       auto cbv = varify(v);
       vars.emplace_back(cbv);
-      cbMap[unescape(k)] = cbv->value();
+      // key is either a quoted string or a keyword (starting with ':')
+      cbMap[k[0] == '"' ? unescape(k) : k.substr(1)] = cbv->value();
     }
     CBVar tmp{};
     tmp.valueType = Table;
