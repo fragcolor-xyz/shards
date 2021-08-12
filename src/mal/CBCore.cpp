@@ -201,6 +201,22 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
   rep("(defmacro! defblocks (fn* [name args & blocks] `(defn ~(symbol (str "
       "name)) ~args (chainify (vector ~@blocks)))))",
       env);
+
+  // overrides for some built-in types
+  rep("(def! Bytes bytes)", env);
+  rep("(def! Color color)", env);
+  rep("(def! ContextVar context-var)", env);
+  rep("(def! Enum enum)", env);
+  rep("(def! Float float)", env);
+  rep("(def! Float2 float2)", env);
+  rep("(def! Float3 float3)", env);
+  rep("(def! Float4 float4)", env);
+  rep("(def! Int int)", env);
+  rep("(def! Int2 int2)", env);
+  rep("(def! Int3 int3)", env);
+  rep("(def! Int4 int4)", env);
+  rep("(def! Path path)", env);
+  rep("(def! String string)", env);
 }
 
 class malRoot {
@@ -1714,7 +1730,7 @@ BUILTIN("override-root-path") {
   return mal::nilValue();
 }
 
-BUILTIN("Path") {
+BUILTIN("path") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   auto &s = value->ref();
@@ -1726,7 +1742,7 @@ BUILTIN("Path") {
   return malValuePtr(mvar);
 }
 
-BUILTIN("Enum") {
+BUILTIN("enum") {
   CHECK_ARGS_IS(3);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1739,7 +1755,7 @@ BUILTIN("Enum") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("String") {
+BUILTIN("string") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   CBVar var{};
@@ -1751,7 +1767,7 @@ BUILTIN("String") {
   return malValuePtr(mvar);
 }
 
-BUILTIN("Bytes") {
+BUILTIN("bytes") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   CBVar var{};
@@ -1764,7 +1780,7 @@ BUILTIN("Bytes") {
   return malValuePtr(mvar);
 }
 
-BUILTIN("ContextVar") {
+BUILTIN("context-var") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   CBVar var{};
@@ -1776,7 +1792,7 @@ BUILTIN("ContextVar") {
   return malValuePtr(mvar);
 }
 
-BUILTIN("Int") {
+BUILTIN("int") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
   CBVar var{};
@@ -1785,7 +1801,7 @@ BUILTIN("Int") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Int2") {
+BUILTIN("int2") {
   CHECK_ARGS_IS(2);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1796,7 +1812,7 @@ BUILTIN("Int2") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Int3") {
+BUILTIN("int3") {
   CHECK_ARGS_IS(3);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1809,7 +1825,7 @@ BUILTIN("Int3") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Int4") {
+BUILTIN("int4") {
   CHECK_ARGS_IS(4);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1824,7 +1840,7 @@ BUILTIN("Int4") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Color") {
+BUILTIN("color") {
   CHECK_ARGS_IS(4);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1839,7 +1855,7 @@ BUILTIN("Color") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Float") {
+BUILTIN("float") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
   CBVar var{};
@@ -1848,7 +1864,7 @@ BUILTIN("Float") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Float2") {
+BUILTIN("float2") {
   CHECK_ARGS_IS(2);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1859,7 +1875,7 @@ BUILTIN("Float2") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Float3") {
+BUILTIN("float3") {
   CHECK_ARGS_IS(3);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
@@ -1872,7 +1888,7 @@ BUILTIN("Float3") {
   return malValuePtr(new malCBVar(var));
 }
 
-BUILTIN("Float4") {
+BUILTIN("float4") {
   CHECK_ARGS_IS(4);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
