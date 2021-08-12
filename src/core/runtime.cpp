@@ -2327,8 +2327,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-struct ChainSet : public std::unordered_set<const CBChain *> {};
-ThreadShared<ChainSet> _gatheredChains;
+thread_local std::unordered_set<const CBChain *> _gatheredChains;
 
 void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   // TODO out should be a set?
@@ -2336,8 +2335,8 @@ void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   case 0: {
     // chain
     auto chain = std::get<const CBChain *>(coll);
-    if (!_gatheredChains().count(chain)) {
-      _gatheredChains().insert(chain);
+    if (!_gatheredChains.count(chain)) {
+      _gatheredChains.insert(chain);
       for (auto blk : chain->blocks) {
         _gatherBlocks(blk, out);
       }
@@ -2399,9 +2398,11 @@ void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }
 
 void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
-  _gatheredChains().clear();
+  _gatheredChains.clear();
   _gatherBlocks(coll, out);
 }
+
+thread_local std::unordered_set<CBChain *> tHashingChains;
 
 void hash_update(const CBVar &var, void *state);
 
@@ -2409,7 +2410,7 @@ uint64_t hash(const CBVar &var) {
   static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
                 "XXH64_hash_t is not uint64_t");
 
-  _gatheredChains().clear();
+  tHashingChains.clear();
 
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
@@ -2548,8 +2549,8 @@ void hash_update(const CBVar &var, void *state) {
   } break;
   case CBType::Chain: {
     auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-    if (_gatheredChains().count(chain.get()) == 0) {
-      _gatheredChains().insert(chain.get());
+    if (tHashingChains.count(chain.get()) == 0) {
+      tHashingChains.insert(chain.get());
 
       error = XXH3_64bits_update(hashState, chain->name.c_str(),
                                  chain->name.length());

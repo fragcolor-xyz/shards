@@ -130,8 +130,6 @@ private:
         if constexpr (OnDelete != nullptr) {
           OnDelete(*ptr);
         }
-        // check that we don't do double frees
-        assert(*ptr);
         // delete the internal object
         delete *ptr;
         // null the thread local
