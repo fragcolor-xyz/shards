@@ -78,6 +78,10 @@ mergeInto(LibraryManager.library, {
           filename: "/shaders/include/noise.h",
           operation: fetch("shaders/include/noise.h")
         });
+        fetches.push({
+          filename: "/shaders/include/ShaderFastMathLib.h",
+          operation: fetch("shaders/include/ShaderFastMathLib.h")
+        });
         // /include from bgfx folders
         fetches.push({
           filename: "/shaders/include/bgfx_shader.h",
