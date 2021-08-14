@@ -20,6 +20,7 @@ use crate::Var;
 use core::ptr::null_mut;
 use std::convert::TryInto;
 use tiny_skia::Pixmap;
+use usvg::ScreenSize;
 use usvg::SystemFontDB;
 
 impl From<&mut Pixmap> for Var {
@@ -45,11 +46,20 @@ impl From<&mut Pixmap> for Var {
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
   static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::image];
+  static ref PARAMETERS: Parameters = vec![(
+    cstr!("Size"),
+    cbccstr!(
+      "The desired output size, if not specified will default to the size defined in the svg data."
+    ),
+    vec![common_type::int2, common_type::none]
+  )
+    .into()];
 }
 
 #[derive(Default)]
 struct ToImage {
   pixmap: Option<Pixmap>,
+  size: (i64, i64),
 }
 
 impl Block for ToImage {
@@ -67,6 +77,27 @@ impl Block for ToImage {
   }
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &OUTPUT_TYPES
+  }
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&PARAMETERS)
+  }
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => {
+        if value.is_none() {
+          self.size = (0, 0);
+        } else {
+          self.size = value.try_into().unwrap();
+        }
+      }
+      _ => unreachable!(),
+    }
+  }
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.size.into(),
+      _ => unreachable!(),
+    }
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let mut opt = usvg::Options::default();
@@ -87,7 +118,22 @@ impl Block for ToImage {
       _ => Err("Invalid input type"),
     }?;
 
-    let pixmap_size = rtree.svg_node().size.to_screen_size();
+    let (w, h): (u32, u32) = (
+      self.size.0.try_into().map_err(|e| {
+        cblog!("{}", e);
+        "Invalid width"
+      })?,
+      self.size.1.try_into().map_err(|e| {
+        cblog!("{}", e);
+        "Invalid height"
+      })?,
+    );
+
+    let pixmap_size = if self.size.0 == 0 || self.size.1 == 0 {
+      Ok(rtree.svg_node().size.to_screen_size())
+    } else {
+      ScreenSize::new(w, h).ok_or("Invalid size")
+    }?;
 
     if self.pixmap.is_none() {
       self.pixmap = Some(
@@ -106,7 +152,7 @@ impl Block for ToImage {
 
     resvg::render(
       &rtree,
-      usvg::FitTo::Original,
+      usvg::FitTo::Size(w, h),
       self.pixmap.as_mut().unwrap().as_mut(),
     )
     .ok_or("Failed to render SVG")?;
