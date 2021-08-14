@@ -356,6 +356,8 @@ class malCBVar : public malValue, public malRoot {
 public:
   malCBVar(CBVar &var, bool cloned = false) : m_var(var), m_cloned(cloned) {}
 
+  malCBVar(const CBVar &var) : m_cloned(true) { cloneVar(m_var, var); }
+
   malCBVar(const malCBVar &that, const malValuePtr &meta)
       : malValue(meta), m_cloned(true) {
     m_var = CBVar();
@@ -1449,11 +1451,12 @@ static malValuePtr readVar(const CBVar &v) {
     }
     return mal::hash(map);
   } else {
-    throw "Invalid Var type";
+    // just return a variable in this case, but a cloned one
+    return malValuePtr(new malCBVar(v));
   }
 }
 
-BUILTIN("read-Var") {
+BUILTIN("read-var") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malCBVar, value);
   auto &v = value->value();
