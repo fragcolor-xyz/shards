@@ -451,6 +451,8 @@ struct IShaderCompiler {
                         std::string_view defines,  //
                         CBContext *context         //
                         ) = 0;
+
+  virtual void warmup(CBContext *context) = 0;
 };
 extern std::unique_ptr<IShaderCompiler> makeShaderCompiler();
 } // namespace chainblocks

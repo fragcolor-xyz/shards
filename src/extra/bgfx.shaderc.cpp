@@ -71,6 +71,7 @@ So we need to use an emscripten module and a bit of JS for now
 */
 
 extern "C" {
+void emFetchShadersLibrary();
 void emSetupShaderCompiler();
 // not sure if it's a bug but this can only return "number" or false
 // this implementation is blocking on the C side, promises and async did not
@@ -226,6 +227,15 @@ struct ShaderCompiler : public IShaderCompiler {
   } // namespace chainblocks
 
   virtual ~ShaderCompiler() {}
+
+  void warmup(CBContext *context) override {
+#ifdef __EMSCRIPTEN__
+    emFetchShadersLibrary();
+    const auto cb = emscripten::val::global("chainblocks");
+    const auto fetch = cb["emFetchShadersLibraryAsync"];
+    emscripten_wait<emscripten::val>(context, fetch());
+#endif
+  }
 
   CBVar compile(std::string_view varyings, //
                 std::string_view code,     //

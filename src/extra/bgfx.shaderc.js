@@ -4,50 +4,129 @@
 // emscripten related utilities
 
 mergeInto(LibraryManager.library, {
-  emSetupShaderCompiler: function () {
-    const ensureShaderCompilerDeps = async function () {
-      // load the JS part if needed
-      if (globalThis.shaderc === undefined) {
-        if (typeof importScripts === 'function') {
-          // when inside a worker (we are using threads)
-          // cache it at worker level
-          importScripts("shaders/shaderc.js");
-        } else {
-          var shadercLoaded = new Promise((resolve, _reject) => {
-            const shaderc = document.createElement("script");
-            shaderc.src = "shaders/shaderc.js";
-            shaderc.async = true;
-            shaderc.onload = async function () {
-              resolve();
-            };
-            document.body.appendChild(shaderc);
-          });
-          await shadercLoaded;
-        }
-      }
-
-      // also cache and load the wasm binary
-      if (globalThis.shaderc_binary === undefined) {
-        const response = await fetch("shaders/shaderc.wasm");
-        const buffer = await response.arrayBuffer();
-        globalThis.shaderc_binary = new Uint8Array(buffer);
-      }
+  emFetchShadersLibraryAsync: async function () {
+    if (globalThis.chainblocks === undefined) {
+      globalThis.chainblocks = {
+        shaderCompilerSetup: false
+      };
     }
 
+    if (!globalThis.chainblocks.shaderCompilerSetup) {
+      try {
+        if (globalThis.chainblocks.shadercBinary === undefined) {
+          const response = await fetch("shaders/shaderc.wasm");
+          const buffer = await response.arrayBuffer();
+          globalThis.chainblocks.shadercBinary = new Uint8Array(buffer);
+        }
+
+        // load the JS part if needed
+        if (globalThis.shaderc === undefined) {
+          if (typeof importScripts === 'function') {
+            // when inside a worker (we are using threads)
+            // cache it at worker level
+            importScripts("shaders/shaderc.js");
+          } else {
+            var shadercLoaded = new Promise((resolve, _reject) => {
+              const shaderc = document.createElement("script");
+              shaderc.src = "shaders/shaderc.js";
+              shaderc.async = true;
+              shaderc.onload = async function () {
+                resolve();
+              };
+              document.body.appendChild(shaderc);
+            });
+            await shadercLoaded;
+          }
+        }
+
+        FS.mkdir("/shaders/");
+        FS.mkdir("/shaders/include");
+        FS.mkdir("/shaders/lib");
+        FS.mkdir("/shaders/lib/gltf");
+        FS.mkdir("/shaders/cache");
+        FS.mkdir("/shaders/tmp");
+
+        var fetches = [];
+        // /include from our /include
+        fetches.push({
+          filename: "/shaders/include/shader.h",
+          operation: fetch("shaders/include/shader.h")
+        });
+        fetches.push({
+          filename: "/shaders/include/implicit_shapes.h",
+          operation: fetch("shaders/include/implicit_shapes.h")
+        });
+        fetches.push({
+          filename: "/shaders/include/noise.h",
+          operation: fetch("shaders/include/noise.h")
+        });
+        fetches.push({
+          filename: "/shaders/include/ShaderFastMathLib.h",
+          operation: fetch("shaders/include/ShaderFastMathLib.h")
+        });
+        // /include from bgfx folders
+        fetches.push({
+          filename: "/shaders/include/bgfx_shader.h",
+          operation: fetch("shaders/include/bgfx_shader.h")
+        });
+        fetches.push({
+          filename: "/shaders/include/shaderlib.h",
+          operation: fetch("shaders/include/shaderlib.h")
+        });
+        // /lib/gltf from our /gltf
+        fetches.push({
+          filename: "/shaders/lib/gltf/ps_entry.h",
+          operation: fetch("shaders/lib/gltf/ps_entry.h")
+        });
+        fetches.push({
+          filename: "/shaders/lib/gltf/vs_entry.h",
+          operation: fetch("shaders/lib/gltf/vs_entry.h")
+        });
+        fetches.push({
+          filename: "/shaders/lib/gltf/varying.txt",
+          operation: fetch("shaders/lib/gltf/varying.txt")
+        });
+
+        for (let i = 0; i < fetches.length; i++) {
+          const response = await fetches[i].operation;
+          const buffer = await response.arrayBuffer();
+          const view = new Uint8Array(buffer);
+          FS.writeFile(fetches[i].filename, view);
+        }
+
+        globalThis.chainblocks.shaderCompilerSetup = true;
+      } catch (e) {
+        console.log(e);
+        throw e;
+      }
+    }
+  },
+  emFetchShadersLibrary: function () {
+    globalThis.chainblocks.emFetchShadersLibraryAsync = _emFetchShadersLibraryAsync;
+    // return Asyncify.handleAsync(async () => {
+    //   await _emFetchShadersLibraryAsync();
+    //   return 0;
+    // });
+  },
+  emFetchShadersLibrary__deps: ['emFetchShadersLibraryAsync'],
+  emSetupShaderCompiler: function () {
     if (globalThis.chainblocks === undefined) {
       globalThis.chainblocks = {};
     }
 
     if (globalThis.chainblocks.compileShader === undefined) {
       globalThis.chainblocks.compileShader = async function (params) {
+        await _emFetchShadersLibraryAsync();
+
         var output = {
           stdout: "",
-          stderr: ""
+          stderr: "",
+          bytecode: null
         };
 
         const compiler = await shaderc({ // this must be preloaded
           noInitialRun: true,
-          wasmBinary: shaderc_binary, // this must be preloaded
+          wasmBinary: globalThis.chainblocks.shadercBinary,
           print: function (text) {
             output.stdout += text;
           },
@@ -131,7 +210,7 @@ mergeInto(LibraryManager.library, {
 
     if (globalThis.chainblocks.compileShaderFromJson === undefined) {
       globalThis.chainblocks.compileShaderFromJson = async function (json) {
-        await ensureShaderCompilerDeps();
+        await _emFetchShadersLibraryAsync();
 
         const params = JSON.parse(json);
 
@@ -143,7 +222,7 @@ mergeInto(LibraryManager.library, {
 
     if (globalThis.chainblocks.compileShaderFromObject === undefined) {
       globalThis.chainblocks.compileShaderFromObject = async function (params) {
-        await ensureShaderCompilerDeps();
+        await _emFetchShadersLibraryAsync();
 
         const output = await globalThis.chainblocks.compileShader(params);
 

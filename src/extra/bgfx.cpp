@@ -2927,9 +2927,9 @@ struct CompileShader {
     }
 
     return _compiler->compile(varyings, code,
-                              _type == ShaderType::Vertex  ? "v"
-                              : _type == ShaderType::Pixel ? "f"
-                                                           : "c",
+                              _type == ShaderType::Vertex
+                                  ? "v"
+                                  : _type == ShaderType::Pixel ? "f" : "c",
                               defines, context);
   }
 };
