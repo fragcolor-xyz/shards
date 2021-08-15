@@ -356,7 +356,9 @@ class malCBVar : public malValue, public malRoot {
 public:
   malCBVar(CBVar &var, bool cloned = false) : m_var(var), m_cloned(cloned) {}
 
-  malCBVar(const CBVar &var) : m_cloned(true) { cloneVar(m_var, var); }
+  malCBVar(const CBVar &var) : m_var({}), m_cloned(true) {
+    cloneVar(m_var, var);
+  }
 
   malCBVar(const malCBVar &that, const malValuePtr &meta)
       : malValue(meta), m_cloned(true) {
