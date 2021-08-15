@@ -1,0 +1,27 @@
+(defn logic [blocks]
+  (-> (Maybe blocks)))
+
+(defchain test-chain
+  (Take "input-x") = .x
+  (logic (-> {"x" .x "y" 20 "z" 30})))
+
+(defn template []
+  (-> {"input-x" 10} (Do test-chain)))
+
+(defn test []
+  (let [node (Node)
+        chain (Chain
+               "test"
+               (template) = .res
+               .res)
+        code (do
+               (schedule node chain)
+               (run node 0.1)
+                    ; stop returns the text code
+               (stop chain))
+        res (read-var code)]
+    res))
+
+(test)
+(test)
+(test)
