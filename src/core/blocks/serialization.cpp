@@ -396,51 +396,42 @@ struct WritePNG : public FileBase {
       int lineSize = w * 4;
       for (int ih = 0; ih < h; ih++) {
         for (int iw = 0; iw < w; iw++) {
+          int baseIdx = (ih * lineSize) + (iw * 4);
           if (pixsize == 1) {
-            uint8_t a =
-                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 3];
+            uint8_t a = input.payload.imageValue.data[baseIdx + 3];
             float fa = float(a) / 255.0f;
-            _scratch[(ih * lineSize) + (iw * 4) + 3] = a;
-            uint8_t r =
-                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 0];
-            _scratch[(ih * lineSize) + (iw * 4) + 0] =
-                uint8_t(float(r) / fa + 0.5);
-            uint8_t g =
-                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 1];
-            _scratch[(ih * lineSize) + (iw * 4) + 1] =
-                uint8_t(float(g) / fa + 0.5);
-            uint8_t b =
-                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 2];
-            _scratch[(ih * lineSize) + (iw * 4) + 2] =
-                uint8_t(float(b) / fa + 0.5);
+            _scratch[baseIdx + 3] = a;
+            uint8_t r = input.payload.imageValue.data[baseIdx + 0];
+            _scratch[baseIdx + 0] = uint8_t(float(r) / fa + 0.5);
+            uint8_t g = input.payload.imageValue.data[baseIdx + 1];
+            _scratch[baseIdx + 1] = uint8_t(float(g) / fa + 0.5);
+            uint8_t b = input.payload.imageValue.data[baseIdx + 2];
+            _scratch[baseIdx + 2] = uint8_t(float(b) / fa + 0.5);
           } else if (pixsize == 2) {
             uint16_t *source =
                 reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
             uint16_t *dest = reinterpret_cast<uint16_t *>(_scratch.data());
-            uint16_t a = source[(ih * lineSize) + (iw * 4) + 3];
+            uint16_t a = source[baseIdx + 3];
             float fa = float(a) / 65535.0f;
-            dest[(ih * lineSize) + (iw * 4) + 3] = a;
-            uint16_t r = source[(ih * lineSize) + (iw * 4) + 0];
-            dest[(ih * lineSize) + (iw * 4) + 0] =
-                uint16_t(float(r) / fa + 0.5);
-            uint16_t g = source[(ih * lineSize) + (iw * 4) + 1];
-            dest[(ih * lineSize) + (iw * 4) + 1] =
-                uint16_t(float(g) / fa + 0.5);
-            uint16_t b = source[(ih * lineSize) + (iw * 4) + 2];
-            dest[(ih * lineSize) + (iw * 4) + 2] =
-                uint16_t(float(b) / fa + 0.5);
+            dest[baseIdx + 3] = a;
+            uint16_t r = source[baseIdx + 0];
+            dest[baseIdx + 0] = uint16_t(float(r) / fa + 0.5);
+            uint16_t g = source[baseIdx + 1];
+            dest[baseIdx + 1] = uint16_t(float(g) / fa + 0.5);
+            uint16_t b = source[baseIdx + 2];
+            dest[baseIdx + 2] = uint16_t(float(b) / fa + 0.5);
           } else if (pixsize == 4) {
             float *source =
                 reinterpret_cast<float *>(input.payload.imageValue.data);
             float *dest = reinterpret_cast<float *>(_scratch.data());
-            float fa = source[(ih * lineSize) + (iw * 4) + 3];
-            dest[(ih * lineSize) + (iw * 4) + 3] = fa;
-            float r = source[(ih * lineSize) + (iw * 4) + 0];
-            dest[(ih * lineSize) + (iw * 4) + 0] = r / fa + 0.5;
-            float g = source[(ih * lineSize) + (iw * 4) + 1];
-            dest[(ih * lineSize) + (iw * 4) + 1] = g / fa + 0.5;
-            float b = source[(ih * lineSize) + (iw * 4) + 2];
-            dest[(ih * lineSize) + (iw * 4) + 2] = b / fa + 0.5;
+            float fa = source[baseIdx + 3];
+            dest[baseIdx + 3] = fa;
+            float r = source[baseIdx + 0];
+            dest[baseIdx + 0] = r / fa + 0.5;
+            float g = source[baseIdx + 1];
+            dest[baseIdx + 1] = g / fa + 0.5;
+            float b = source[baseIdx + 2];
+            dest[baseIdx + 2] = b / fa + 0.5;
           }
         }
       }
