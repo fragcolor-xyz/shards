@@ -51,7 +51,7 @@ lazy_static! {
     cbccstr!(
       "The desired output size, if not specified will default to the size defined in the svg data."
     ),
-    vec![common_type::int2, common_type::none]
+    vec![common_type::int2]
   )
     .into()];
 }
@@ -84,11 +84,7 @@ impl Block for ToImage {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => {
-        if value.is_none() {
-          self.size = (0, 0);
-        } else {
-          self.size = value.try_into().unwrap();
-        }
+        self.size = value.try_into().unwrap();
       }
       _ => unreachable!(),
     }
@@ -129,7 +125,7 @@ impl Block for ToImage {
       })?,
     );
 
-    let pixmap_size = if self.size.0 == 0 || self.size.1 == 0 {
+    let pixmap_size = if w == 0 && h == 0 {
       Ok(rtree.svg_node().size.to_screen_size())
     } else {
       ScreenSize::new(w, h).ok_or("Invalid size")
@@ -152,7 +148,7 @@ impl Block for ToImage {
 
     resvg::render(
       &rtree,
-      usvg::FitTo::Size(w, h),
+      usvg::FitTo::Size(pixmap_size.width(), pixmap_size.height()),
       self.pixmap.as_mut().unwrap().as_mut(),
     )
     .ok_or("Failed to render SVG")?;
