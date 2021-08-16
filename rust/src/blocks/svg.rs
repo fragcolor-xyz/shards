@@ -49,7 +49,7 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Size"),
     cbccstr!(
-      "The desired output size, if not specified will default to the size defined in the svg data."
+      "The desired output size, if (0, 0) will default to the size defined in the svg data."
     ),
     vec![common_type::int2]
   )
