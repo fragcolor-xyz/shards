@@ -50,8 +50,6 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin));                       \
   }
 
-MalString malpath() { return chainblocks::Globals::RootPath; }
-
 extern void cbRegisterAllBlocks();
 
 class malCBChain;
@@ -433,11 +431,6 @@ struct ChainFileWatcher {
 
     try {
       fs::path p(fileName);
-      if (path.size() > 0 && p.is_relative()) {
-        // complete path with current path if any
-        p = localRoot / p;
-      }
-
       if (!fs::exists(p)) {
         CBLOG_INFO("A ChainLoader loaded script path does not exist: {}", p);
       } else if (fs::is_regular_file(p) &&
@@ -1717,6 +1710,7 @@ BUILTIN("override-root-path") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   chainblocks::Globals::RootPath = value->ref();
+  std::filesystem::current_path(value->ref());
   return mal::nilValue();
 }
 
@@ -1898,10 +1892,6 @@ BUILTIN("import") {
   ARG(malString, value);
 
   auto filepath = std::filesystem::path(value->value());
-  auto currentPath = malpath();
-  if (currentPath.size() > 0 && filepath.is_relative()) {
-    filepath = std::filesystem::path(currentPath) / filepath;
-  }
 
   auto lib_name_str = filepath.string();
   auto lib_name = lib_name_str.c_str();

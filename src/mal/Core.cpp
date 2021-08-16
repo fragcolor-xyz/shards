@@ -461,10 +461,6 @@ BUILTIN("slurp") {
   ARG(malString, filename);
 
   auto filepath = std::filesystem::path(filename->value());
-  auto currentPath = malpath();
-  if (currentPath.size() > 0 && filepath.is_relative()) {
-    filepath = std::filesystem::path(currentPath) / filepath;
-  }
 
   std::ifstream file(filepath.c_str(), std::ios::binary);
   MAL_CHECK(!file.fail(), "Cannot open %s", filename->value().c_str());
