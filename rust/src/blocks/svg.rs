@@ -1,3 +1,4 @@
+use crate::chainblocksc::CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::block::Block;
 use crate::chainblocksc::CBImage;
 use crate::chainblocksc::CBVarPayload;
@@ -33,7 +34,7 @@ impl From<&mut Pixmap> for Var {
             width: pmap.width() as u16,
             height: pmap.height() as u16,
             channels: 4,
-            flags: 0,
+            flags: CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA as u8,
             data: pmap.as_mut().data_mut().as_mut_ptr(),
           },
         },

@@ -361,6 +361,8 @@ struct LoadImage : public FileBase {
 };
 
 struct WritePNG : public FileBase {
+  std::vector<uint8_t> _scratch;
+
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
@@ -385,9 +387,75 @@ struct WritePNG : public FileBase {
     int w = int(input.payload.imageValue.width);
     int h = int(input.payload.imageValue.height);
     int c = int(input.payload.imageValue.channels);
-    if (0 == stbi_write_png(filename.c_str(), w, h, c,
-                            input.payload.imageValue.data, w * c))
-      throw ActivationError("Failed to write PNG file.");
+
+    // demultiply alpha if needed, limited to 4 channels
+    if (c == 4 &&
+        (input.payload.imageValue.flags & CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
+            CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
+      _scratch.resize(w * h * 4 * pixsize);
+      int lineSize = w * 4;
+      for (int ih = 0; ih < h; ih++) {
+        for (int iw = 0; iw < w; iw++) {
+          if (pixsize == 1) {
+            uint8_t a =
+                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 3];
+            float fa = float(a) / 255.0f;
+            _scratch[(ih * lineSize) + (iw * 4) + 3] = a;
+            uint8_t r =
+                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 0];
+            _scratch[(ih * lineSize) + (iw * 4) + 0] =
+                uint8_t(float(r) / fa + 0.5);
+            uint8_t g =
+                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 1];
+            _scratch[(ih * lineSize) + (iw * 4) + 1] =
+                uint8_t(float(g) / fa + 0.5);
+            uint8_t b =
+                input.payload.imageValue.data[(ih * lineSize) + (iw * 4) + 2];
+            _scratch[(ih * lineSize) + (iw * 4) + 2] =
+                uint8_t(float(b) / fa + 0.5);
+          } else if (pixsize == 2) {
+            uint16_t *source =
+                reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+            uint16_t *dest = reinterpret_cast<uint16_t *>(_scratch.data());
+            uint16_t a = source[(ih * lineSize) + (iw * 4) + 3];
+            float fa = float(a) / 65535.0f;
+            dest[(ih * lineSize) + (iw * 4) + 3] = a;
+            uint16_t r = source[(ih * lineSize) + (iw * 4) + 0];
+            dest[(ih * lineSize) + (iw * 4) + 0] =
+                uint16_t(float(r) / fa + 0.5);
+            uint16_t g = source[(ih * lineSize) + (iw * 4) + 1];
+            dest[(ih * lineSize) + (iw * 4) + 1] =
+                uint16_t(float(g) / fa + 0.5);
+            uint16_t b = source[(ih * lineSize) + (iw * 4) + 2];
+            dest[(ih * lineSize) + (iw * 4) + 2] =
+                uint16_t(float(b) / fa + 0.5);
+          } else if (pixsize == 4) {
+            float *source =
+                reinterpret_cast<float *>(input.payload.imageValue.data);
+            float *dest = reinterpret_cast<float *>(_scratch.data());
+            float fa = source[(ih * lineSize) + (iw * 4) + 3];
+            dest[(ih * lineSize) + (iw * 4) + 3] = fa;
+            float r = source[(ih * lineSize) + (iw * 4) + 0];
+            dest[(ih * lineSize) + (iw * 4) + 0] = r / fa + 0.5;
+            float g = source[(ih * lineSize) + (iw * 4) + 1];
+            dest[(ih * lineSize) + (iw * 4) + 1] = g / fa + 0.5;
+            float b = source[(ih * lineSize) + (iw * 4) + 2];
+            dest[(ih * lineSize) + (iw * 4) + 2] = b / fa + 0.5;
+          }
+        }
+      }
+
+      // all done, write the file
+      if (0 ==
+          stbi_write_png(filename.c_str(), w, h, c, _scratch.data(), w * c))
+        throw ActivationError("Failed to write PNG file.");
+    } else {
+      // just write the file in this case straight
+      if (0 == stbi_write_png(filename.c_str(), w, h, c,
+                              input.payload.imageValue.data, w * c))
+        throw ActivationError("Failed to write PNG file.");
+    }
+
     return input;
   }
 };
