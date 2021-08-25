@@ -1,0 +1,38 @@
+{:filter  ["Linear", "Linear"]
+ :format  "RGBA8888"
+ :name    "skeleton.png"
+ :pma     false
+ :regions [{:bounds  [2, 42, 352, 785]
+            :index   -1
+            :name    "first animation test v1002"
+            :offsets [324, 162, 1000, 1149]
+            :pad     nil
+            :rotate  false
+            :split   nil
+            :uvs     [0.0009765625, 0.1728515625, 0.041015625, 0.8076171875]}
+           {:bounds  [356, 15, 339, 812]
+            :index   -1
+            :name    "first animation test v1000"
+            :offsets [324, 162, 1000, 1149]
+            :pad     nil
+            :rotate  false
+            :split   nil
+            :uvs     [0.173828125, 0.33935546875, 0.0146484375, 0.8076171875]}
+           {:bounds  [697, 2, 326, 825]
+            :index   -1
+            :name    "first animation test v1005"
+            :offsets [337, 162, 1000, 1149]
+            :pad     nil
+            :rotate  false
+            :split   nil
+            :uvs     [0.34033203125, 0.49951171875, 0.001953125, 0.8076171875]}
+           {:bounds  [1025, 15, 326, 812]
+            :index   -1
+            :name    "first animation test v1003"
+            :offsets [337, 162, 1000, 1149]
+            :pad     nil
+            :rotate  false
+            :split   nil
+            :uvs     [0.50048828125, 0.65966796875, 0.0146484375, 0.8076171875]}]
+ :repeat  ["ClampToEdge", "ClampToEdge"]
+ :size    [2048, 1024]}

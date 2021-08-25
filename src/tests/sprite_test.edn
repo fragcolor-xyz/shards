@@ -1,0 +1,8 @@
+(defnode main)
+(defchain sprite_test
+  (Setup
+   (read-string (slurp "data/skeleton.edn")) = .atlas
+   (Sprite.Sheet :Atlas .atlas) = .sheet))
+
+(schedule main sprite_test)
+(run main)
