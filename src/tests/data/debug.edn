@@ -1,0 +1,518 @@
+{:filter ["Nearest", "Nearest"]
+ :format "RGBA8888"
+ :name "debug.png"
+ :pma false
+ :regions [{:bounds [0, 0, 256, 256]
+            :index -1
+            :name "1"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.0, 0.125]}
+           {:bounds [256, 0, 256, 256]
+            :index -1
+            :name "2"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.0, 0.125]}
+           {:bounds [512, 0, 256, 256]
+            :index -1
+            :name "3"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.0, 0.125]}
+           {:bounds [768, 0, 256, 256]
+            :index -1
+            :name "4"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.0, 0.125]}
+           {:bounds [1024, 0, 256, 256]
+            :index -1
+            :name "5"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.0, 0.125]}
+           {:bounds [1280, 0, 256, 256]
+            :index -1
+            :name "6"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.0, 0.125]}
+           {:bounds [1536, 0, 256, 256]
+            :index -1
+            :name "7"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.0, 0.125]}
+           {:bounds [1792, 0, 256, 256]
+            :index -1
+            :name "8"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.0, 0.125]}
+           {:bounds [0, 256, 256, 256]
+            :index -1
+            :name "9"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.125, 0.25]}
+           {:bounds [256, 256, 256, 256]
+            :index -1
+            :name "10"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.125, 0.25]}
+           {:bounds [512, 256, 256, 256]
+            :index -1
+            :name "11"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.125, 0.25]}
+           {:bounds [768, 256, 256, 256]
+            :index -1
+            :name "12"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.125, 0.25]}
+           {:bounds [1024, 256, 256, 256]
+            :index -1
+            :name "13"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.125, 0.25]}
+           {:bounds [1280, 256, 256, 256]
+            :index -1
+            :name "14"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.125, 0.25]}
+           {:bounds [1536, 256, 256, 256]
+            :index -1
+            :name "15"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.125, 0.25]}
+           {:bounds [1792, 256, 256, 256]
+            :index -1
+            :name "16"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.125, 0.25]}
+           {:bounds [0, 512, 256, 256]
+            :index -1
+            :name "17"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.25, 0.375]}
+           {:bounds [256, 512, 256, 256]
+            :index -1
+            :name "18"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.25, 0.375]}
+           {:bounds [512, 512, 256, 256]
+            :index -1
+            :name "19"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.25, 0.375]}
+           {:bounds [768, 512, 256, 256]
+            :index -1
+            :name "20"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.25, 0.375]}
+           {:bounds [1024, 512, 256, 256]
+            :index -1
+            :name "21"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.25, 0.375]}
+           {:bounds [1280, 512, 256, 256]
+            :index -1
+            :name "22"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.25, 0.375]}
+           {:bounds [1536, 512, 256, 256]
+            :index -1
+            :name "23"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.25, 0.375]}
+           {:bounds [1792, 512, 256, 256]
+            :index -1
+            :name "24"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.25, 0.375]}
+           {:bounds [0, 768, 256, 256]
+            :index -1
+            :name "25"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.375, 0.5]}
+           {:bounds [256, 768, 256, 256]
+            :index -1
+            :name "26"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.375, 0.5]}
+           {:bounds [512, 768, 256, 256]
+            :index -1
+            :name "27"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.375, 0.5]}
+           {:bounds [768, 768, 256, 256]
+            :index -1
+            :name "28"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.375, 0.5]}
+           {:bounds [1024, 768, 256, 256]
+            :index -1
+            :name "29"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.375, 0.5]}
+           {:bounds [1280, 768, 256, 256]
+            :index -1
+            :name "30"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.375, 0.5]}
+           {:bounds [1536, 768, 256, 256]
+            :index -1
+            :name "31"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.375, 0.5]}
+           {:bounds [1792, 768, 256, 256]
+            :index -1
+            :name "32"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.375, 0.5]}
+           {:bounds [0, 1024, 256, 256]
+            :index -1
+            :name "33"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.5, 0.625]}
+           {:bounds [256, 1024, 256, 256]
+            :index -1
+            :name "34"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.5, 0.625]}
+           {:bounds [512, 1024, 256, 256]
+            :index -1
+            :name "35"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.5, 0.625]}
+           {:bounds [768, 1024, 256, 256]
+            :index -1
+            :name "36"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.5, 0.625]}
+           {:bounds [1024, 1024, 256, 256]
+            :index -1
+            :name "37"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.5, 0.625]}
+           {:bounds [1280, 1024, 256, 256]
+            :index -1
+            :name "38"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.5, 0.625]}
+           {:bounds [1536, 1024, 256, 256]
+            :index -1
+            :name "39"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.5, 0.625]}
+           {:bounds [1792, 1024, 256, 256]
+            :index -1
+            :name "40"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.5, 0.625]}
+           {:bounds [0, 1280, 256, 256]
+            :index -1
+            :name "41"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.625, 0.75]}
+           {:bounds [256, 1280, 256, 256]
+            :index -1
+            :name "42"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.625, 0.75]}
+           {:bounds [512, 1280, 256, 256]
+            :index -1
+            :name "43"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.625, 0.75]}
+           {:bounds [768, 1280, 256, 256]
+            :index -1
+            :name "44"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.625, 0.75]}
+           {:bounds [1024, 1280, 256, 256]
+            :index -1
+            :name "45"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.625, 0.75]}
+           {:bounds [1280, 1280, 256, 256]
+            :index -1
+            :name "46"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.625, 0.75]}
+           {:bounds [1536, 1280, 256, 256]
+            :index -1
+            :name "47"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.625, 0.75]}
+           {:bounds [1792, 1280, 256, 256]
+            :index -1
+            :name "48"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.625, 0.75]}
+           {:bounds [0, 1536, 256, 256]
+            :index -1
+            :name "49"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.75, 0.875]}
+           {:bounds [256, 1536, 256, 256]
+            :index -1
+            :name "50"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.75, 0.875]}
+           {:bounds [512, 1536, 256, 256]
+            :index -1
+            :name "51"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.75, 0.875]}
+           {:bounds [768, 1536, 256, 256]
+            :index -1
+            :name "52"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.75, 0.875]}
+           {:bounds [1024, 1536, 256, 256]
+            :index -1
+            :name "53"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.75, 0.875]}
+           {:bounds [1280, 1536, 256, 256]
+            :index -1
+            :name "54"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.75, 0.875]}
+           {:bounds [1536, 1536, 256, 256]
+            :index -1
+            :name "55"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.75, 0.875]}
+           {:bounds [1792, 1536, 256, 256]
+            :index -1
+            :name "56"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.75, 0.875]}
+           {:bounds [0, 1792, 256, 256]
+            :index -1
+            :name "57"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.0, 0.125, 0.875, 1.0]}
+           {:bounds [256, 1792, 256, 256]
+            :index -1
+            :name "58"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.125, 0.25, 0.875, 1.0]}
+           {:bounds [512, 1792, 256, 256]
+            :index -1
+            :name "59"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.25, 0.375, 0.875, 1.0]}
+           {:bounds [768, 1792, 256, 256]
+            :index -1
+            :name "60"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.375, 0.5, 0.875, 1.0]}
+           {:bounds [1024, 1792, 256, 256]
+            :index -1
+            :name "61"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.5, 0.625, 0.875, 1.0]}
+           {:bounds [1280, 1792, 256, 256]
+            :index -1
+            :name "62"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.625, 0.75, 0.875, 1.0]}
+           {:bounds [1536, 1792, 256, 256]
+            :index -1
+            :name "63"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.75, 0.875, 0.875, 1.0]}
+           {:bounds [1792, 1792, 256, 256]
+            :index -1
+            :name "64"
+            :offsets [0, 0, 256, 256]
+            :pad nil
+            :rotate false
+            :split nil
+            :uvs [0.875, 1.0, 0.875, 1.0]}]
+ :repeat ["ClampToEdge", "ClampToEdge"]
+ :size [2048, 2048]}
