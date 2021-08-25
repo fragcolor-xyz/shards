@@ -315,6 +315,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
   ${CHAINBLOCKS_DIR}/src/extra/inputs.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/sprite.cpp
   ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
@@ -780,6 +781,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/dsp.cpp
     ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
     ${CHAINBLOCKS_DIR}/src/extra/inputs.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/sprite.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image.cpp
     ${CHAINBLOCKS_DIR}/deps/bimg/src/image_gnf.cpp
     ${CHAINBLOCKS_DIR}/deps/bx/src/amalgamated.cpp

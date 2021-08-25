@@ -40,6 +40,10 @@ namespace Inputs {
 extern void registerBlocks();
 }
 
+namespace Sprite {
+extern void registerBlocks();
+}
+
 namespace Audio {
 extern void registerBlocks();
 }
@@ -64,6 +68,7 @@ void cbInitExtras() {
   XR::registerBlocks();
   gltf::registerBlocks();
   Inputs::registerBlocks();
+  Sprite::registerBlocks();
   Audio::registerBlocks();
   DSP::registerBlocks();
 #ifdef _WIN32
