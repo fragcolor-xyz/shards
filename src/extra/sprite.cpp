@@ -148,6 +148,11 @@ struct Draw {
     _texture.cleanup();
     _index.cleanup();
     _shader.cleanup();
+
+    if (_bgfxContext) {
+      releaseVariable(_bgfxContext);
+      _bgfxContext = nullptr;
+    }
   }
 
   void warmup(CBContext *context) {
