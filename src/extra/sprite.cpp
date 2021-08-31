@@ -64,9 +64,31 @@ struct Sheet {
       region.width = bounds.elements[2].payload.intValue;
       region.height = bounds.elements[3].payload.intValue;
 
-      auto uvs = api->tableAt(table, "uvs")->payload.seqValue;
-      for (uint32_t j = 0; j < uvs.len && j < 4; ++j) {
-        region.uvs[j] = (float)uvs.elements[j].payload.floatValue;
+      if (api->tableContains(table, "uvs")) {
+        auto uvs = api->tableAt(table, "uvs")->payload.seqValue;
+        for (uint32_t j = 0; j < uvs.len && j < 4; ++j) {
+          region.uvs[j] = (float)uvs.elements[j].payload.floatValue;
+        }
+      } else {
+        // calculate UVs
+        double x = bounds.elements[0].payload.intValue;
+        double y = bounds.elements[1].payload.intValue;
+        double u = x / (double)this->width;
+        double v = y / (double)this->height;
+        bool rotate = api->tableAt(table, "rotate")->payload.boolValue;
+        double u2, v2;
+        if (rotate) {
+          u2 = (x + region.height) / (double)this->width;
+          v2 = (y + region.width) / (double)this->height;
+        } else {
+          u2 = (x + region.width) / (double)this->width;
+          v2 = (y + region.height) / (double)this->height;
+        }
+
+        region.uvs[0] = (float)u;
+        region.uvs[1] = (float)u2;
+        region.uvs[2] = (float)v;
+        region.uvs[3] = (float)v2;
       }
 
       this->regions.push_back(region);
