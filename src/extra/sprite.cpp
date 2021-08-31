@@ -283,9 +283,15 @@ struct Draw {
     } break;
 
     default: {
-      state |= BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA,
-                                     BGFX_STATE_BLEND_INV_SRC_ALPHA) |
-               BGFX_STATE_BLEND_EQUATION(BGFX_STATE_BLEND_EQUATION_ADD);
+      if (sheet->premultiply) {
+        state |= BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_ONE,
+                                       BGFX_STATE_BLEND_INV_SRC_ALPHA) |
+                 BGFX_STATE_BLEND_EQUATION(BGFX_STATE_BLEND_EQUATION_ADD);
+      } else {
+        state |= BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA,
+                                       BGFX_STATE_BLEND_INV_SRC_ALPHA) |
+                 BGFX_STATE_BLEND_EQUATION(BGFX_STATE_BLEND_EQUATION_ADD);
+      }
     } break;
     }
 
