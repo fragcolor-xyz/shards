@@ -376,7 +376,7 @@ foreach(_file ${MY_PROJECT_SOURCE_FILES})
   if(CLANG_FORMAT_EXE)
     add_custom_command(
       OUTPUT ${_file}.formatted
-      COMMAND ${CLANG_FORMAT_EXE} -i -style=LLVM ${_file}
+      COMMAND ${CLANG_FORMAT_EXE} -i -style=file ${_file}
       )
     list(APPEND formatfied ${_file}.formatted)
   endif()
