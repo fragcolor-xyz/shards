@@ -315,6 +315,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
   ${CHAINBLOCKS_DIR}/src/extra/inputs.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/sprite.hpp
   ${CHAINBLOCKS_DIR}/src/extra/sprite.cpp
   ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp

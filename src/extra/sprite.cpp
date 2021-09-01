@@ -1,10 +1,8 @@
-#include "bgfx.hpp"
-#include "blocks/shared.hpp"
+#include "./sprite.hpp"
 
 namespace chainblocks {
 namespace Sprite {
 
-constexpr uint32_t SheetCC = 'shee';
 
 struct Sheet {
   static inline Type ObjType{
