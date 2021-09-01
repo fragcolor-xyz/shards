@@ -141,6 +141,12 @@ struct Draw {
     case 4:
       _blend = value;
       break;
+    case 5:
+      _hAlign = value;
+      break;
+    case 6:
+      _vAlign = value;
+      break;
 
     default:
       throw CBException("Parameter out of range.");
@@ -159,6 +165,10 @@ struct Draw {
       return _shader;
     case 4:
       return _blend;
+    case 5:
+      return _hAlign;
+    case 6:
+      return _vAlign;
     }
     throw CBException("Parameter out of range.");
   }
@@ -215,7 +225,9 @@ struct Draw {
     bgfx::TransientVertexBuffer vb;
     // FIXME: bound/size doesn't work if the sprite is rotated
     createQuad(&vb, region.width / (float)currentView.width,
-               region.height / (float)currentView.height);
+               region.height / (float)currentView.height,
+               Enums::HAlign(_hAlign.payload.enumValue),
+               Enums::VAlign(_vAlign.payload.enumValue));
     // step: apply texture coordinates
     auto *vertex = (PosTexCoord0Vertex *)vb.data;
     const auto &uvs = region.uvs;
@@ -335,8 +347,10 @@ struct Draw {
   };
 
   // note: modified from GFX.Draw in bgfx.cpp to be a real quad
-  void createQuad(bgfx::TransientVertexBuffer *vb, float width = 1.0f,
-                  float height = 1.0f) {
+  static void createQuad(bgfx::TransientVertexBuffer *vb, float width = 1.0f,
+                         float height = 1.0f,
+                         Enums::HAlign hAlign = Enums::HAlign::Left,
+                         Enums::VAlign vAlign = Enums::VAlign::Top) {
     if (6 ==
         bgfx::getAvailTransientVertexBuffer(6, PosTexCoord0Vertex::ms_layout)) {
       bgfx::allocTransientVertexBuffer(vb, 6, PosTexCoord0Vertex::ms_layout);
@@ -344,11 +358,12 @@ struct Draw {
 
       const float zz = 0.0f;
 
-      // note: anchored at the center
-      const float minx = -width / 2;
-      const float maxx = width / 2;
-      const float miny = -height / 2;
-      const float maxy = height / 2;
+      // note: alignments define the anchor point
+      const float minx = ((int)Enums::HAlign::Left - (int)hAlign) * width / 2;
+      const float maxx = ((int)Enums::HAlign::Right - (int)hAlign) * width / 2;
+      const float miny = ((int)Enums::VAlign::Top - (int)vAlign) * height / 2;
+      const float maxy =
+          ((int)Enums::VAlign::Bottom - (int)vAlign) * height / 2;
 
       const float minu = 0.0f;
       const float maxu = 1.0f;
@@ -415,7 +430,13 @@ private:
            "single table the state will be assigned to both RGB and Alpha, if "
            "2 tables are specified, the first will be RGB, the second Alpha."),
        {CoreInfo::NoneType, BGFX::Enums::BlendTable,
-        BGFX::Enums::BlendTableSeq}}};
+        BGFX::Enums::BlendTableSeq}},
+      {"HAlign",
+       CBCCSTR("Horizontal alignment of the sprite origin"),
+       {CoreInfo::NoneType, Enums::HAlignType}},
+      {"VAlign",
+       CBCCSTR("Vertical alignment of the sprite origin"),
+       {CoreInfo::NoneType, Enums::VAlignType}}};
 
   // params
   ParamVar _sheet{};
@@ -423,6 +444,8 @@ private:
   ParamVar _index{};
   ParamVar _shader{};
   OwnedVar _blend{};
+  OwnedVar _hAlign{};
+  OwnedVar _vAlign{};
 
   // misc
   CBVar *_bgfxContext{nullptr};

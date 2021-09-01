@@ -5,19 +5,21 @@
    (Float4 0 0 1 0)
    (Float4 0 0 0 1)])
 (defn shader
-  [name varying vs-code fs-code]
+  [varying vs-code fs-code]
   (->
    {"varyings" varying "code" vs-code "defines" [""]}
    (GFX.CompileShader ShaderType.Vertex) = .vs-bytes
    {"varyings" varying "code" fs-code "defines" [""]}
    (GFX.CompileShader ShaderType.Pixel) = .fs-bytes
-   (GFX.Shader :VertexShader .vs-bytes :PixelShader .fs-bytes) = name))
+   (GFX.Shader :VertexShader .vs-bytes :PixelShader .fs-bytes)))
 (defloop sprite_test
   (GFX.MainWindow
    :Title "SDL Window" :Width 640 :Height 480 :Debug false :Fullscreen false
    :Contents
    ~[(Setup
-      (LoadImage "data/skeleton.png") (GFX.Texture2D) = .texture
+      (LoadImage "data/skeleton.png") = .image
+      ;"data/C1.svg" (FS.Read :Bytes true) (SVG.ToImage (Int2 3543 2400)) = .image
+      .image (GFX.Texture2D) = .texture
       (read-string (slurp "data/skeleton.edn")) = .atlas
       (Sprite.Sheet :Atlas .atlas) = .sheet
       0 >= .index
@@ -26,16 +28,16 @@
       0.0 (Math.DegreesToRadians) (Math.AxisAngleZ) (Math.Rotation) = .r
       .t (Math.MatMul .r) (Math.MatMul .s) >= .transform
       ;identity >= .transform
-      (shader .shader
-              ; varying info
-              "
+      (shader
+       ; varying info
+       "
 vec2 v_uv        : TEXCOORD0 = vec2(0.0, 0.0);
 
 vec3 a_position  : POSITION;
 vec2 a_texcoord0 : TEXCOORD0;
 "
-              ; vertex shader
-              "
+       ; vertex shader
+       "
 $input a_position, a_texcoord0
 $output v_uv
 
@@ -47,8 +49,8 @@ void main()
        v_uv = a_texcoord0;
 }
 "
-              ; fragment shader
-              "
+       ; fragment shader
+       "
 $input v_uv
 
 #include <shader.h> //this is embedded
@@ -58,12 +60,13 @@ void main()
 {
 	gl_FragColor = texture2D(_sampler, v_uv);
 }
-"))
+") = .shader)
 
      nil (GFX.CameraOrtho)
-                    ; .transform
+     ; .transform
      .transform
      (Sprite.Draw :Sheet .sheet :Texture .texture :Index .index
+                  :HAlign HAlign.Center :VAlign VAlign.Center
                   :Shader .shader :Blend {"Src" Blend.SrcAlpha "Dst" Blend.InvSrcAlpha "Op" BlendOp.Add})]))
 
 (schedule main sprite_test)
