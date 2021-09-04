@@ -411,7 +411,7 @@ jobs:
         git submodule update --init --recursive
         mkdir build
         cd build
-        cmake -G Ninja -DFORCE_CORE2=1 -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
+        cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
         ninja rust_blocks && ninja cbl && ninja test_runtime
     - name: Test
       env:
@@ -443,6 +443,10 @@ jobs:
         ./cbl ../src/tests/time.edn
         ./cbl ../src/tests/eth.edn
         ./test_runtime
+    - uses: actions/upload-artifact@master
+      with:
+        name: cbl-macos ${{ matrix.build-type }}
+        path: build/cbl
 
   iOS:
     runs-on: macos-latest
