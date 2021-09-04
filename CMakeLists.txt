@@ -128,7 +128,7 @@ endif()
 
 ### general
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(WIN32)
+  if(WIN32 AND APPLE)
     add_link_options(-static)
   endif()
 
@@ -223,7 +223,16 @@ if(WIN32)
   set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto -lws2_32 -lmswsock -lSecur32 -lCrypt32 -lNcrypt)
 elseif(APPLE)
   if(NOT IOS)
-    set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+      # these have to be full path or cmake will revert to use -l resulting in dynamic linking
+      set(BOOST_LIBS
+      /usr/local/opt/boost/lib/libboost_context-mt.a
+      /usr/local/opt/boost/lib/libboost_filesystem-mt.a
+      /usr/local/opt/openssl/lib/libssl.a
+      /usr/local/opt/openssl/lib/libcrypto.a)
+    else()
+      set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
+    endif()
   endif()
   include_directories(
     /usr/local/include
@@ -232,13 +241,14 @@ elseif(APPLE)
   link_directories(
     /usr/local/lib
     /usr/local/opt/openssl/lib
+    /usr/local/opt/boost/lib
     )
 elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_75_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_76_0)
-elseif(UNIX)
+elseif(LINUX)
   set(BOOST_LIBS -lboost_context -lboost_filesystem -lssl -lcrypto -pthread -ldl -lrt)
 endif()
 
