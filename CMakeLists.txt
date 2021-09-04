@@ -248,7 +248,7 @@ elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_75_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_76_0)
-elseif(LINUX)
+elseif(UNIX)
   set(BOOST_LIBS -lboost_context -lboost_filesystem -lssl -lcrypto -pthread -ldl -lrt)
 endif()
 
