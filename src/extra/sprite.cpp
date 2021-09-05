@@ -3,7 +3,6 @@
 namespace chainblocks {
 namespace Sprite {
 
-
 struct Sheet {
   static inline Type ObjType{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = SheetCC}}}};
@@ -117,7 +116,7 @@ public:
   std::vector<Region> regions;
 };
 
-struct Draw {
+struct Draw : public BGFX::BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -179,19 +178,16 @@ struct Draw {
     _index.cleanup();
     _shader.cleanup();
 
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
+    BGFX::BaseConsumer::cleanup();
   }
 
   void warmup(CBContext *context) {
+    BGFX::BaseConsumer::warmup(context);
+
     _sheet.warmup(context);
     _texture.warmup(context);
     _index.warmup(context);
     _shader.warmup(context);
-
-    _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -202,7 +198,7 @@ struct Draw {
     auto *sheet = reinterpret_cast<Sheet *>(_sheet.get().payload.objectValue);
 
     auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
     // step: transform
@@ -446,9 +442,6 @@ private:
   OwnedVar _blend{};
   OwnedVar _hAlign{};
   OwnedVar _vAlign{};
-
-  // misc
-  CBVar *_bgfxContext{nullptr};
 };
 
 void registerBlocks() {
