@@ -4,142 +4,126 @@
 ; run with ./build/cbl.exe ./src/tests/infos_docs.edn
 (defnode main)
 (defn dump
-    [name content]
-    (schedule
-        main
-        (Chain
-            (str name)
-            name
-            (Maybe
-                (->
-                    (Regex.Match #"(\w+)\.(.*)")
-                    (| (Take 1) = .first)
-                    (| (Take 2) = .second)
-                    "../../docs/docs/blocks/" >= .filename
-                    .first (AppendTo .filename)
-                    "/" (AppendTo .filename)
-                    .second (AppendTo .filename)
-                    ".md" (AppendTo .filename)
-                    .filename
-                )
-                (->
-                    >= .filename
-                    "../../docs/docs/blocks/!/" (PrependTo .filename)
-                    ".md" (AppendTo .filename)
-                    .filename
-                )
-                true
-            )
-            (FS.Write content :Overwrite true)
-        )
-    )
-)
+  [name content]
+  (schedule
+   main
+   (Chain
+    (str name)
+    name
+    (Maybe
+     (->
+      (Regex.Match #"(\w+)\.(.*)")
+      (| (Take 1) = .first)
+      (| (Take 2) = .second)
+      "../../docs/docs/blocks/" >= .filename
+      .first (AppendTo .filename)
+      "/" (AppendTo .filename)
+      .second (AppendTo .filename)
+      ".md" (AppendTo .filename)
+      .filename)
+     (->
+      >= .filename
+      "../../docs/docs/blocks/!/" (PrependTo .filename)
+      ".md" (AppendTo .filename)
+      .filename)
+     true)
+    (FS.Write content :Overwrite true))))
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
 (map
-    (fn*
-        [name]
-        (let
-            [
-                record (info name)
-                help (get record :help)
-                inputTypes (get record :inputTypes)
-                outputTypes (get record :outputTypes)
-                parameters (get record :parameters)
-            ]
-            (dump
-                name
-                (str
-                    "# " name "\r\n\r\n"
+ (fn*
+  [name]
+  (let
+   [record (info name)
+    help (get record :help)
+    inputTypes (get record :inputTypes)
+    intputHelp (get record :inputHelp)
+    outputTypes (get record :outputTypes)
+    outputHelp (get record :outputHelp)
+    parameters (get record :parameters)]
+    (dump
+     name
+     (str
+      ; metadata (front matter)
+      "---\r\n"
+      "authors: Fragcolor & contributors\r\n"
+      "license: CC-BY-SA-4.0\r\n"
+      "---\r\n"
+      "\r\n\r\n"
 
-                    "```clojure\r\n"
-                    "(" name
-                    (if
-                        (> (count parameters) 0)
-                        "\r\n"
-                        ""
-                    )
-                    (apply
-                        str
-                        (map
-                            (fn*
-                                [param]
-                                (let
-                                    [
-                                        p_name (get param :name)
-                                        p_types (get param :types)
-                                    ]
-                                    (str
-                                        "  :" p_name " " p_types "\r\n"
-                                    )
-                                )
-                            )
-                            parameters
-                        )
-                    )
-                    ")\r\n"
-                    "```\r\n\r\n"
+      ; title
+      "# " name "\r\n\r\n"
 
-                    "## Definition\r\n"
-                    help "\r\n"
-                    "\r\n"
+      ; basic syntax
+      "```clojure\r\n"
+      "(" name
+      (if
+       (> (count parameters) 0)
+        "\r\n"
+        "")
+      (apply
+       str
+       (map
+        (fn*
+         [param]
+         (let
+          [p_name (get param :name)
+           p_types (get param :types)]
+           (str
+            "  :" p_name " " p_types "\r\n")))
+        parameters))
+      ")\r\n"
+      "```\r\n"
 
-                    (if
-                        (> (count parameters) 0)
-                        (str
-                            "## Parameters\r\n"
-                            "| Name | Type | Default | Description |\r\n"
-                            "|------|------|---------|-------------|\r\n"
-                            (apply
-                                str
-                                (map
-                                    (fn*
-                                        [param]
-                                        (let
-                                            [
-                                                p_help (get param :help)
-                                                p_name (get param :name)
-                                                p_types (get param :types)
-                                                p_default (get param :default)
-                                            ]
-                                            (str
-                                                "| " p_name " | `" p_types "` | `" p_default "` | " p_help " |\r\n"
-                                            )
-                                        )
-                                    )
-                                    parameters
-                                )
-                            )
+      "\r\n\r\n"
 
-                            "\r\n\r\n"
-                        )
-                        ""
-                    )
+      "## Definition\r\n\r\n"
+      help "\r\n"
 
-                    "## Input\r\n"
-                    "| Type | Description |\r\n"
-                    "|------|-------------|\r\n"
-                    "| `" inputTypes "` |  |\r\n"
+      "\r\n\r\n"
 
-                    "\r\n\r\n"
+      (if
+       (> (count parameters) 0)
+        (str
+         "## Parameters\r\n\r\n"
+         "| Name | Type | Default | Description |\r\n"
+         "|------|------|---------|-------------|\r\n"
+         (apply
+          str
+          (map
+           (fn*
+            [param]
+            (let
+             [p_help (get param :help)
+              p_name (get param :name)
+              p_types (get param :types)
+              p_default (get param :default)]
+              (str
+               "| " p_name " | `" p_types "` | `" p_default "` | " p_help " |\r\n")))
+           parameters))
 
-                    "## Output\r\n"
-                    "| Type | Description |\r\n"
-                    "|------|-------------|\r\n"
-                    "| `" outputTypes "` |  |\r\n"
+         "\r\n\r\n")
+        "")
 
-                    "\r\n\r\n"
+      "## Input\r\n\r\n"
+      "| Type | Description |\r\n"
+      "|------|-------------|\r\n"
+      "| `" inputTypes "` | " intputHelp " |\r\n"
 
-                    "## Examples\r\n\r\n"
+      "\r\n\r\n"
 
-                    "```clojure\r\n"
-                    "(" name "\r\n\r\n"
-                    ")\r\n"
-                    "```\r\n"
-                )
-            )
-        )
-    )
-    (blocks)
-)
+      "## Output\r\n\r\n"
+      "| Type | Description |\r\n"
+      "|------|-------------|\r\n"
+      "| `" outputTypes "` | " outputHelp " |\r\n"
+
+      "\r\n\r\n"
+
+      "## Examples\r\n\r\n"
+
+      "```clojure\r\n"
+      "(" name "\r\n\r\n"
+      ")\r\n"
+      "```\r\n"))))
+ (blocks))
 (run main)
