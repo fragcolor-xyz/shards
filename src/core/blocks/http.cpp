@@ -418,6 +418,7 @@ struct Peer : public std::enable_shared_from_this<Peer> {
 };
 
 struct PeerError {
+  std::string_view source;
   beast::error_code ec;
   Peer *peer;
 };
@@ -482,6 +483,12 @@ struct Server {
   // "Loop" forever accepting new connections.
   void accept_once(CBContext *context) {
     auto peer = _pool->acquire(_composer);
+    peer->chain->onStop.clear(); // we have a fresh recycled chain here
+    std::weak_ptr<Peer> weakPeer(peer);
+    peer->chain->onStop.emplace_back([this, weakPeer]() {
+      if (auto p = weakPeer.lock())
+        _pool->release(p);
+    });
     peer->socket.reset(new tcp::socket(*_ioc));
     _acceptor->async_accept(
         *peer->socket, [context, peer, this](beast::error_code ec) {
@@ -515,13 +522,14 @@ struct Server {
     accept_once(context);
   }
 
+  void cleanup() { _pool->stopAll(); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     try {
       _ioc->poll();
     } catch (PeerError pe) {
-      CBLOG_INFO("Http request error: {}", pe.ec.message());
+      CBLOG_INFO("Http request error: {} from {}", pe.ec.message(), pe.source);
       stop(pe.peer->chain.get());
-      _pool->release(pe.peer->shared_from_this());
     }
     return input;
   }
@@ -586,13 +594,17 @@ struct Read {
     request.clear();
     buffer.clear();
     http::async_read(*peer->socket, buffer, request,
-                     [&](beast::error_code ec, std::size_t nbytes) {
+                     [&, peer](beast::error_code ec, std::size_t nbytes) {
                        if (ec) {
-                         throw PeerError{ec, peer};
+                         // notice there is likehood of done not being valid
+                         // anymore here
+                         throw PeerError{"Read", ec, peer};
+                       } else {
+                         done = true;
                        }
-                       done = true;
                      });
 
+    // we suspend here, that's why we captured & above!!
     while (!done) {
       CB_SUSPEND(context, 0.0);
     }
@@ -694,9 +706,9 @@ struct Response {
     _response.prepare_payload();
 
     http::async_write(*peer->socket, _response,
-                      [&](beast::error_code ec, std::size_t nbytes) {
+                      [peer](beast::error_code ec, std::size_t nbytes) {
                         if (ec) {
-                          throw PeerError{ec, peer};
+                          throw PeerError{"Response", ec, peer};
                         }
                       });
     return input;
@@ -807,9 +819,9 @@ struct SendFile {
       _404_response.prepare_payload();
 
       http::async_write(*peer->socket, _404_response,
-                        [&](beast::error_code ec, std::size_t nbytes) {
+                        [peer](beast::error_code ec, std::size_t nbytes) {
                           if (ec) {
-                            throw PeerError{ec, peer};
+                            throw PeerError{"SendFile:1", ec, peer};
                           }
                         });
 
@@ -833,9 +845,9 @@ struct SendFile {
       _response.prepare_payload();
 
       http::async_write(*peer->socket, _response,
-                        [&](beast::error_code ec, std::size_t nbytes) {
+                        [peer](beast::error_code ec, std::size_t nbytes) {
                           if (ec) {
-                            throw PeerError{ec, peer};
+                            throw PeerError{"SendFile:2", ec, peer};
                           }
                         });
       return input;

@@ -1629,6 +1629,15 @@ template <typename T> struct ChainDoppelgangerPool {
     _chainStr = stream.str();
   }
 
+  // notice users should stop chains themselves, we might want chains to persist
+  // after this object lifetime
+  void stopAll() {
+    for (auto &item : _pool) {
+      stop(item->chain.get());
+      _avail.emplace(item);
+    }
+  }
+
   template <class Composer> std::shared_ptr<T> acquire(Composer &composer) {
     if (_avail.size() == 0) {
       Serialization serializer;
@@ -1644,13 +1653,12 @@ template <typename T> struct ChainDoppelgangerPool {
           fresh->chain->name + "-" + std::to_string(_pool.size());
       return fresh;
     } else {
-      auto res = _avail.back();
-      _avail.pop_back();
-      return res;
+      auto res = _avail.extract(_avail.begin());
+      return res.value();
     }
   }
 
-  void release(std::shared_ptr<T> chain) { _avail.emplace_back(chain); }
+  void release(std::shared_ptr<T> chain) { _avail.emplace(chain); }
 
 private:
   struct Writer {
@@ -1673,7 +1681,7 @@ private:
   // so users don't have to worry about lifetime
   // just release when possible
   std::deque<std::shared_ptr<T>> _pool;
-  std::vector<std::shared_ptr<T>> _avail;
+  std::unordered_set<std::shared_ptr<T>> _avail;
   std::string _chainStr;
 };
 
