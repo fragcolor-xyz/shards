@@ -28,11 +28,31 @@ struct Base {
   CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
   static CBTypesInfo inputTypes() { return MathTypes; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR(
+        "Any valid integer(s) or floating point number(s) supported by "
+        "this operation.");
+  }
 
   static CBTypesInfo outputTypes() { return MathTypes; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The result of the operation, usually in the same type as "
+                   "the input value.");
+  }
 };
 
-struct UnaryBase : public Base {};
+struct UnaryBase : public Base {
+  static inline Types FloatOrSeqTypes{
+      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
+       CoreInfo::Float4Type, CoreInfo::AnySeqType}};
+
+  static CBTypesInfo inputTypes() { return FloatOrSeqTypes; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Any valid floating point number(s) supported by "
+                   "this operation.");
+  }
+  static CBTypesInfo outputTypes() { return FloatOrSeqTypes; }
+};
 
 struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
@@ -142,6 +162,11 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
+  static CBOptionalString help() {
+    return CBCCSTR("Applies the binary operation on the input value and "
+                   "operand and returns its result, or a sequence of results "
+                   "if input and operand are sequences.");
+  }
   void operate(OpType opType, CBVar &output, const CBVar &a, const CBVar &b) {
     if (opType == SeqSeq) {
       if (output.valueType != Seq) {
@@ -204,6 +229,20 @@ template <class OP> struct BinaryOperation : public BinaryBase {
     operateFast(_opType, _result, input, operand);
     return _result;
   }
+};
+
+template <class OP> struct BinaryIntOperation : public BinaryOperation<OP> {
+  static inline Types IntOrSeqTypes{
+      {CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type,
+       CoreInfo::Int4Type, CoreInfo::Int8Type, CoreInfo::Int16Type,
+       CoreInfo::ColorType, CoreInfo::AnySeqType}};
+
+  static CBTypesInfo inputTypes() { return IntOrSeqTypes; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Any valid integer(s) supported by "
+                   "this operation.");
+  }
+  static CBTypesInfo outputTypes() { return IntOrSeqTypes; }
 };
 
 // TODO implement CBVar operators
@@ -284,7 +323,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 #define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
-  struct NAME##Op {                                                            \
+  struct NAME##Op final {                                                      \
     ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
                                   const CBVar &operand, void *) {              \
       switch (input.valueType) {                                               \
@@ -335,7 +374,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
       }                                                                        \
     }                                                                          \
   };                                                                           \
-  using NAME = BinaryOperation<NAME##Op>;                                      \
+  using NAME = BinaryIntOperation<NAME##Op>;                                   \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 MATH_BINARY_OPERATION(Add, +, 0);
@@ -422,6 +461,12 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
 
 #define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                \
   struct NAME : public UnaryBase {                                             \
+    static CBOptionalString help() {                                           \
+      return CBCCSTR("Calculates `" #NAME                                      \
+                     "()` on the input value and returns its result, or a "    \
+                     "sequence of results if input is a sequence.");           \
+    }                                                                          \
+                                                                               \
     CBTypeInfo compose(const CBInstanceData &data) {                           \
       if (data.inputType.basicType == CBType::Seq) {                           \
         OVERRIDE_ACTIVATE(data, activateSeq);                                  \
@@ -459,8 +504,8 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
         output.payload.float4Value[3] = FUNCF(input.payload.float4Value[3]);   \
         break;                                                                 \
       default:                                                                 \
-        throw ActivationError(                                                 \
-            #NAME " operation not supported between given types!");            \
+        throw ActivationError(#NAME                                            \
+                              " operation not supported on given types!");     \
       }                                                                        \
     }                                                                          \
                                                                                \
@@ -562,8 +607,21 @@ struct Mean {
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
   static inline EnumInfo<MeanKind> _meanEnum{"Mean", CoreCC, 'mean'};
 
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Calculates the mean of a sequence of floating point numbers.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("A sequence of floating point numbers.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The calculated mean.");
+  }
+
   static CBParametersInfo parameters() {
     static Type kind{{CBType::Enum, {.enumeration = {CoreCC, 'mean'}}}};
     static Parameters params{
