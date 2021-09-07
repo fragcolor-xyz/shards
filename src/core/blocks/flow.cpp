@@ -15,7 +15,7 @@ static ParamsInfo condParamsInfo = ParamsInfo(
                 "and action to execute if the condition matches."),
         condBlockSeqs),
     ParamsInfo::Param("Passthrough",
-                      CBCCSTR("The input of this block will be the output."),
+                      CBCCSTR("The output of this block will be its input."),
                       CoreInfo::BoolType),
     ParamsInfo::Param(
         "Threading",
@@ -33,16 +33,27 @@ struct Cond {
   bool _threading = false;
   CBComposeResult _chainValidation{};
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(condParamsInfo);
-  }
-
   static CBOptionalString help() {
     return CBCCSTR("Takes a sequence of conditions and predicates. "
                    "Evaluates each condition one by one and if one matches, "
                    "executes the associated action.");
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value that will be passed to each predicate and action "
+                   "to execute.");
+  }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR(
+        "The input of the block if `Passthrough` is `true`; otherwise, the "
+        "output of the action of the first matching condition.");
+  }
+
+  static CBParametersInfo parameters() {
+    return CBParametersInfo(condParamsInfo);
   }
 
   void warmup(CBContext *ctx) {
@@ -332,6 +343,10 @@ struct BaseSubFlow {
       return CoreInfo::AnyType;
     }
   }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR(
+        "Must match the input types of the first block in the sequence.");
+  }
 
   CBTypesInfo outputTypes() {
     if (_blocks) {
@@ -340,6 +355,10 @@ struct BaseSubFlow {
     } else {
       return CoreInfo::AnyType;
     }
+  }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR(
+        "Will match the output types of the first block of the sequence.");
   }
 
   static CBParametersInfo parameters() { return _params; }
@@ -377,6 +396,11 @@ protected:
 };
 
 struct Maybe : public BaseSubFlow {
+  static CBOptionalString help() {
+    return CBCCSTR("Attempts to activate a block or a sequence of blocks. Upon "
+                   "failure, activate another block or sequence of blocks.");
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -505,6 +529,11 @@ private:
 };
 
 struct Await : public BaseSubFlow {
+  static CBOptionalString help() {
+    return CBCCSTR("Executes a block or a sequence of blocks asynchronously "
+                   "and awaits their completion.");
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) { _blocks = value; }
@@ -560,8 +589,33 @@ struct ExposerFlow {
 };
 
 template <bool COND> struct When {
+  static CBOptionalString help() {
+    if constexpr (COND == true) {
+      return CBCCSTR("Conditonal block that only executes the action if the "
+                     "predicate is true.");
+    } else {
+      return CBCCSTR("Conditonal block that only executes the action if the "
+                     "predicate is false.");
+    }
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value that will be passed to the predicate.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    if constexpr (COND == true) {
+      return CBCCSTR(
+          "The input of the block if `Passthrough` is `true`, or the "
+          "`Predicate` is `false`; otherwise, the output of the `Action`.");
+    } else {
+      return CBCCSTR(
+          "The input of the block if `Passthrough` is `true`, or the "
+          "`Predicate` is `true`; otherwise, the output of the `Action`.");
+    }
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -640,7 +694,7 @@ private:
                "false for WhenNot."),
        {CoreInfo::BlocksOrNone}},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output."),
+       CBCCSTR("The output of this block will be its input."),
        {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _action{};
@@ -648,8 +702,21 @@ private:
 };
 
 struct IfBlock {
+  static CBOptionalString help() {
+    return CBCCSTR("Evaluates a predicate and executes an action.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value that will be passed to the predicate.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR(
+        "The input of the block if `Passthrough` is `true`; otherwise, the "
+        "output of the action that was performed (i.e. `Then` or `Else`).");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -732,14 +799,15 @@ struct IfBlock {
 private:
   static inline Parameters _params{
       {"Predicate",
-       CBCCSTR("The predicate to evaluate in order to trigger Action."),
+       CBCCSTR("The predicate to evaluate in order to trigger `Then` (when "
+               "`true`) or `Else` (when `false`)."),
        {CoreInfo::BlocksOrNone}},
-      {"Then", CBCCSTR("The blocks to activate when Predicate is true."),
+      {"Then", CBCCSTR("The blocks to activate when `Predicate` is `true`."),
        CoreInfo::BlocksOrNone},
-      {"Else", CBCCSTR("The blocks to activate when Predicate is false."),
+      {"Else", CBCCSTR("The blocks to activate when `Predicate` is `false`."),
        CoreInfo::BlocksOrNone},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output."),
+       CBCCSTR("The output of this block will be its input."),
        {CoreInfo::BoolType}}};
   BlocksVar _cond{};
   BlocksVar _then{};
@@ -748,8 +816,22 @@ private:
 };
 
 struct Match {
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Compares the input with specific cases and activate the corresponding "
+        "block. Cases are compared in declaring order.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value to compare against.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output of the matched block, or the same value as "
+                   "inoput when `Passthrough` is `true`.");
+  }
 
   static inline Parameters params{
       {"Cases",
@@ -757,7 +839,7 @@ struct Match {
                "match anything."),
        {CoreInfo::AnySeqType}},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output."),
+       CBCCSTR("The output of this block will be its input."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
@@ -892,9 +974,23 @@ struct Sub {
   BlocksVar _blocks{};
   CBComposeResult _composition{};
 
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Activates a block or a sequence of blocks independently, without "
+        "consuming the input. In other words, the ouput of the sub flow will "
+        "be its input regardless of the blocks activated in this sub flow.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR(
+        "The value given to the block or sequence of blocks in this sub flow.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output of this block will be its input.");
+  }
 
   static CBParametersInfo parameters() {
     static Parameters params{{"Blocks",
