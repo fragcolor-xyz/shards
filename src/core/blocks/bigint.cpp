@@ -37,6 +37,9 @@ struct ToBigInt {
                                  CoreInfo::StringType, CoreInfo::BytesType};
   static CBTypesInfo inputTypes() { return InputTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     cpp_int bi;
@@ -71,6 +74,10 @@ struct BigIntBinaryOp : public ::chainblocks::Math::BinaryOperation<T> {
       {CoreInfo::BytesType, CoreInfo::BytesSeqType}};
 
   static CBTypesInfo inputTypes() { return BigIntInputTypes; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Any valid big integer(s) represented as bytes supported by "
+                   "this operation.");
+  }
   static CBTypesInfo outputTypes() { return BigIntInputTypes; }
 
   CBParametersInfo parameters() {
@@ -110,7 +117,13 @@ struct BigOperandBase {
   std::vector<uint8_t> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
 
   CBParametersInfo parameters() {
     static Parameters params{
@@ -143,7 +156,13 @@ struct RegOperandBase {
   std::vector<uint8_t> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
 
   CBParametersInfo parameters() {
     static Parameters params{{"Operand",
@@ -183,6 +202,11 @@ BIGINT_MATH_OP(Mod, %);
 #define BIGINT_LOGIC_OP(__NAME__, __OP__)                                      \
   struct __NAME__ : public BigOperandBase {                                    \
     static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }            \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR(                                                          \
+          "A boolean value repesenting the result of the logic operation.");   \
+    }                                                                          \
+                                                                               \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       cpp_int bia = from_var(input);                                           \
       auto op = getOperand();                                                  \
@@ -263,7 +287,13 @@ struct Shift : public ShiftBase {
   std::vector<uint8_t> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
 
   CBParametersInfo parameters() {
     static Parameters params{
@@ -289,8 +319,20 @@ struct Shift : public ShiftBase {
 };
 
 struct ToFloat : public ShiftBase {
+  static CBOptionalString help() {
+    return CBCCSTR("Converts a big integer value to a floating point number.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR(
+        "Floating point number representation of the big integer value.");
+  }
 
   CBParametersInfo parameters() {
     static Parameters params{
@@ -316,8 +358,19 @@ struct ToFloat : public ShiftBase {
 };
 
 struct ToInt {
+  static CBOptionalString help() {
+    return CBCCSTR("Converts a big integer value to an integer.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Integer representation of the big integer value.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     cpp_int bi = from_var(input);
@@ -326,10 +379,19 @@ struct ToInt {
 };
 
 struct FromFloat : public ShiftBase {
-  std::vector<uint8_t> _buffer;
+  static CBOptionalString help() {
+    return CBCCSTR("Converts a floating point number to a big integer.");
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Floating point number.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
 
   CBParametersInfo parameters() {
     static Parameters params{
@@ -352,25 +414,42 @@ struct FromFloat : public ShiftBase {
 
     return to_var(bo, _buffer);
   }
+
+private:
+  std::vector<uint8_t> _buffer;
 };
 
 struct ToString {
-  std::string _buffer;
+  static CBOptionalString help() {
+    return CBCCSTR("Converts the value to a string representation.");
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("String representation of the big integer value.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     cpp_int bi = from_var(input);
     _buffer = bi.str();
     return Var(_buffer);
   }
+
+private:
+  std::string _buffer;
 };
 
 struct ToBytes {
   std::vector<uint8_t> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   CBParametersInfo parameters() {
@@ -415,31 +494,54 @@ struct ToBytes {
 };
 
 struct ToHex {
-  VarStringStream stream;
+  static CBOptionalString help() {
+    return CBCCSTR("Converts the value to a hexadecimal representation.");
+  }
+
   static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType,
                                  CoreInfo::StringType};
   static CBTypesInfo inputTypes() { return toHexTypes; }
+
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Hexadecimal representation of the integer value.");
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar fixedInput = input;
     fixedInput.payload.bytesValue++;
     fixedInput.payload.bytesSize--;
-    stream.tryWriteHex(fixedInput);
-    return Var(stream.str());
+    _stream.tryWriteHex(fixedInput);
+    return Var(_stream.str());
   }
+
+private:
+  VarStringStream _stream;
 };
 
 struct Abs {
-  std::vector<uint8_t> _buffer;
+  static CBOptionalString help() {
+    return CBCCSTR("Computes the absolute value of a big integer.");
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("Big integer represented as bytes.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     cpp_int bi = from_var(input);
     cpp_int abi = abs(bi);
     return to_var(abi, _buffer);
   }
+
+private:
+  std::vector<uint8_t> _buffer;
 };
 
 void registerBlocks() {
