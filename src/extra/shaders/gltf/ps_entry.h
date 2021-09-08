@@ -1,7 +1,7 @@
 $input v_normal, v_tangent, v_bitangent, v_texcoord0, v_texcoord1, v_color0, v_wpos, v_view
 
-/* SPDX-License-Identifier: BSD 3-Clause "New" or "Revised" License */
-/* Copyright © 2021 Giovanni Petrantoni */
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 #include <bgfx_shader.h>
 #include <shaderlib.h>

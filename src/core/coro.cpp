@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2020 Fragcolor Pte. Ltd. */
+
 #include "foundation.hpp"
 
 thread_local emscripten_fiber_t *em_local_coro{nullptr};
