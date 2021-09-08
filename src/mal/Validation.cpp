@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+/* Copyright © 2020 Fragcolor Pte. Ltd. */
+/* Copyright (C) 2015 Joel Martin <github@martintribe.org> */
+
 #include "Types.h"
 
 int checkArgsIs(const char *name, int expected, int got, malValuePtr val) {

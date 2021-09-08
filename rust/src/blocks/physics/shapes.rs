@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2021 Fragcolor Pte. Ltd. */
+
 // RigidBody and Collier are unique, Shapes can be shared
 
 use crate::blocks::physics::BaseShape;

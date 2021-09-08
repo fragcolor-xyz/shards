@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2019 Fragcolor Pte. Ltd.
+
 # fail on errors
 set -e
 

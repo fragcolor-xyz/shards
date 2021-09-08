@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
 ; example showing how to use a wasm tool to compile a shader and load it
 
 (def Root (Node))

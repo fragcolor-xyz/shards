@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
 ; valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes ./cblp ../../chainblocks/src/tests/cbperf.clj
 (def Root (Node))
 (schedule Root (Chain "analysis" ; :Looped

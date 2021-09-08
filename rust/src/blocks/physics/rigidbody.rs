@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2021 Fragcolor Pte. Ltd. */
+
 use crate::blocks::physics::fill_seq_from_mat4;
 use crate::blocks::physics::mat4_from_seq;
 use crate::blocks::physics::BaseShape;

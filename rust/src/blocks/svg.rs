@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2021 Fragcolor Pte. Ltd. */
+
 use crate::chainblocksc::CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::block::Block;
 use crate::chainblocksc::CBImage;

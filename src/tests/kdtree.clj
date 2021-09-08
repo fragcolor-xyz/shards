@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
 ;; not meant to be something to use in production
 ;; a (Algo.KDTree) can be implemented in the future for that
 ;; this is just a proof of concept and a test for the language efficiency

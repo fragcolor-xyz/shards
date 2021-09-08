@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
 (defn FColor
   [r g b a]
   (Color (* 255 r) (* 255 g) (* 255 b) (* 255 a)))
