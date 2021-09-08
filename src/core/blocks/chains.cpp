@@ -25,16 +25,16 @@ struct ChainBase {
 
   static inline Types ChainVarTypes{ChainTypes, {CoreInfo::ChainVarType}};
 
-  static inline Parameters WaitParamsInfo{
+  static inline Parameters waitParamsInfo{
       {"Chain", CBCCSTR("The chain to wait."), {ChainVarTypes}},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output."),
+       CBCCSTR("The output of this block will be its input."),
        {CoreInfo::BoolType}}};
 
   static inline Parameters stopChainParamsInfo{
-      {"Chain", CBCCSTR("The chain to wait."), {ChainVarTypes}},
+      {"Chain", CBCCSTR("The chain to stop."), {ChainVarTypes}},
       {"Passthrough",
-       CBCCSTR("The input of this block will be the output."),
+       CBCCSTR("The output of this block will be its input."),
        {CoreInfo::BoolType}}};
 
   static inline Parameters runChainParamsInfo{
@@ -256,6 +256,11 @@ struct ChainBase {
 };
 
 struct Wait : public ChainBase {
+  CBOptionalString help() {
+    return CBCCSTR("Waits for another chain to complete before resuming "
+                   "execution of the current chain.");
+  }
+
   // we don't need OwnedVar here
   // we keep the chain referenced!
   CBVar _output{};
@@ -267,7 +272,7 @@ struct Wait : public ChainBase {
     ChainBase::cleanup();
   }
 
-  static CBParametersInfo parameters() { return WaitParamsInfo; }
+  static CBParametersInfo parameters() { return waitParamsInfo; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -342,6 +347,11 @@ struct Wait : public ChainBase {
 };
 
 struct StopChain : public ChainBase {
+  CBOptionalString help() {
+    return CBCCSTR(
+        "Stops another chain. If no chain is given, stops the current chain.");
+  }
+
   void setup() { passthrough = true; }
 
   OwnedVar _output{};
@@ -438,6 +448,11 @@ struct StopChain : public ChainBase {
 };
 
 struct Resume : public ChainBase {
+  static CBOptionalString help() {
+    return CBCCSTR("Resumes a given chain and suspends the current one. In "
+                   "other words, switches flow execution to another chain.");
+  }
+
   void setup() {
     // we use those during ChainBase::compose
     passthrough = true;
@@ -515,6 +530,11 @@ struct Resume : public ChainBase {
 };
 
 struct Start : public Resume {
+  static CBOptionalString help() {
+    return CBCCSTR("Starts a given chain and suspends the current one. In "
+                   "other words, switches flow execution to another chain.");
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto current = context->chainStack.back();
 
