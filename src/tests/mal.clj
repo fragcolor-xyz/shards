@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
 (def chain (Chain "test" true))
 (def block1 (Do chain))
 (prn "Expect test chain deleted under")

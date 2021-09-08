@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
 ;; TODO FIXME this is failing but I think that should be OK
 ;; We store tab1 as just table var but we know nothing of the keys probably
 

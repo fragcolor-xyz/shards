@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
 (def identity [(Float4 1 0 0 0)
                (Float4 0 1 0 0)
                (Float4 0 0 1 0)

@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
 ;; Not the best subject for chainblocks at all
 ;; but still if competitive in this would be nice
 
