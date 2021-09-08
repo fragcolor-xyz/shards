@@ -1,3 +1,6 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
 (defmacro! defchain (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) (chainify (vector ~@blocks))))))
 (defmacro! defloop (fn* [name & blocks] `(def! ~(symbol (str name)) (Chain ~(str name) :Looped (chainify (vector ~@blocks))))))
 (defmacro! defblocks (fn* [name args & blocks] `(defn ~(symbol (str name)) ~args (chainify (vector ~@blocks)))))
