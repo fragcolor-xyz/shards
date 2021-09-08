@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+/* Copyright © 2019 Fragcolor Pte. Ltd. */
+/* Copyright (C) 2015 Joel Martin <github@martintribe.org> */
+
 #include "Environment.h"
 #include "MAL.h"
 #include "StaticList.h"

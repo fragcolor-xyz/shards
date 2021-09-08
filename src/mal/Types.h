@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+/* Copyright © 2019 Fragcolor Pte. Ltd. */
+/* Copyright (C) 2015 Joel Martin <github@martintribe.org> */
 
 #ifndef INCLUDE_TYPES_H
 #define INCLUDE_TYPES_H
