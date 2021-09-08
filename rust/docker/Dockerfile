@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2020 Fragcolor Pte. Ltd.
+
 FROM archlinux/base
 
 RUN pacman -Syu --noconfirm && pacman -S --noconfirm base-devel git curl cmake wget clang ninja boost
