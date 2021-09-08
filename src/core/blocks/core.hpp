@@ -846,21 +846,20 @@ struct Ref : public SetBase {
   }
 
   void cleanup() {
-    // this is a special case
-    // Ref will reference previous block result..
-    // And so we are almost sure the memory will be junk after this..
-    // so if we detect refcount > 1, we except signaling a dangling reference
     if (_target) {
-#ifndef NDEBUG // sometimes this is off but still good for debugging!
-      if (_target->refcount > 1 && !_isTable) {
-        // in the case of table multiple refs might happen,
-        // at some point TODO detect those too
-        throw CBException("Ref - detected a dangling reference: " + _name);
-      }
-#endif
+      // this is a special case
+      // Ref will reference previous block result..
+      // Let's cleanup our storage so that release, if calls destroy
+      // won't mangle the block's variable memory
+      const auto rc = _target->refcount;
+      const auto rcflag = _target->flags & CBVAR_FLAGS_REF_COUNTED;
       memset(_target, 0x0, sizeof(CBVar));
-      _target = nullptr;
+      _target->refcount = rc;
+      _target->flags |= rcflag;
+      releaseVariable(_target);
     }
+    _target = nullptr;
+
     _cell = nullptr;
     _key.cleanup();
   }
