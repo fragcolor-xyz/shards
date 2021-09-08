@@ -57,6 +57,9 @@ struct Match : public Common {
         _pool[i].assign(match[i].str());
         _output[i] = Var(_pool[i]);
       }
+    } else {
+      _pool.clear();
+      _output.clear();
     }
     return Var(CBSeq(_output));
   }
