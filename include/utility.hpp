@@ -389,7 +389,17 @@ public:
   void cleanup() {
     for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
       auto blk = *it;
-      blk->cleanup(blk);
+      try {
+        blk->cleanup(blk);
+      } catch (const std::exception &e) {
+        std::string msg = "Block cleanup error, failed block: " +
+                          std::string(blk->name(blk)) + ", error: " + e.what();
+        CB_CORE::log(msg.c_str());
+      } catch (...) {
+        std::string msg = "Block cleanup generic error, failed block: " +
+                          std::string(blk->name(blk));
+        CB_CORE::log(msg.c_str());
+      }
     }
   }
 

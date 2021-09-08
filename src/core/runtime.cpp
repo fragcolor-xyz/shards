@@ -2764,8 +2764,7 @@ void CBChain::warmup(CBContext *context) {
           throw chainblocks::WarmupError(context->getErrorMessage());
         }
       } catch (const std::exception &e) {
-        CBLOG_ERROR("Block warmup error, failed block: {}",
-                    std::string(blk->name(blk)));
+        CBLOG_ERROR("Block warmup error, failed block: {}", blk->name(blk));
         CBLOG_ERROR(e.what());
         // if the failure is from an exception context might not be uptodate
         if (!context->failed()) {
@@ -2773,8 +2772,7 @@ void CBChain::warmup(CBContext *context) {
         }
         throw;
       } catch (...) {
-        CBLOG_ERROR("Block warmup error, failed block: {}",
-                    std::string(blk->name(blk)));
+        CBLOG_ERROR("Block warmup error, failed block: {}", blk->name(blk));
         if (!context->failed()) {
           context->cancelFlow("foreign exception failure, check logs");
         }
@@ -2807,10 +2805,9 @@ void CBChain::cleanup(bool force) {
 #endif
       catch (const std::exception &e) {
         CBLOG_ERROR("Block cleanup error, failed block: {}, error: {}",
-                    std::string(blk->name(blk)), e.what());
+                    blk->name(blk), e.what());
       } catch (...) {
-        CBLOG_ERROR("Block cleanup error, failed block: {}",
-                    std::string(blk->name(blk)));
+        CBLOG_ERROR("Block cleanup error, failed block: {}", blk->name(blk));
       }
     }
 
