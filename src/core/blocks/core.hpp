@@ -2963,6 +2963,9 @@ struct Slice {
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
+    if (from < 0) {
+      from = inputLen + from;
+    }
     auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
@@ -3009,6 +3012,9 @@ struct Slice {
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
+    if (from < 0) {
+      from = inputLen + from;
+    }
     auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
@@ -3046,6 +3052,9 @@ struct Slice {
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
     auto from = vfrom.payload.intValue;
+    if (from < 0) {
+      from = inputLen + from;
+    }
     auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
