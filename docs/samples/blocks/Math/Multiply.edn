@@ -1,0 +1,5 @@
+(Int 5)
+(Math.Multiply
+ ;:Operand
+ 2)
+(Assert.Is 10 true)

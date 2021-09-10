@@ -1,0 +1,3 @@
+(Float3 -0.95 4.0 7.54)
+(Math.Floor)
+(Assert.Is (Float3 -1.0 4.0 7.0) true)

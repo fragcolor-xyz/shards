@@ -1,0 +1,3 @@
+(Int 4)
+(Math.LShift 2)
+(Assert.Is 16 true)

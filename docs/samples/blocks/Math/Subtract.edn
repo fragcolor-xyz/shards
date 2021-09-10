@@ -1,0 +1,5 @@
+(Int 7)
+(Math.Subtract
+ ;:Operand
+ 2)
+(Assert.Is 5 true)

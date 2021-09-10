@@ -1,0 +1,5 @@
+2.0
+(Math.Pow
+ ;:Operand
+ 3.0)
+(Assert.Is 8.0 true)

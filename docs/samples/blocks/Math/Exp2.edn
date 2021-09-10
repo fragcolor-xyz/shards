@@ -1,0 +1,3 @@
+(Float 5)
+(Math.Exp2)
+(Assert.Is (Float 32) true)
