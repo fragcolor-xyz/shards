@@ -367,16 +367,44 @@ struct ToString {
 };
 
 struct ToBytes {
-  std::string _buffer;
+  std::vector<uint8_t> _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
+  CBParametersInfo parameters() {
+    static Parameters params{{"Bits",
+                              CBCCSTR("The desired amount of bits for the "
+                                      "output or 0 for automatic packing."),
+                              {CoreInfo::IntType}}};
+    return params;
+  }
+
+  ParamVar _bits{Var(0)};
+
+  void setParam(int index, const CBVar &value) { _bits = value; }
+
+  CBVar getParam(int index) { return _bits; }
+
+  void warmup(CBContext *context) { _bits.warmup(context); }
+  void cleanup() { _bits.cleanup(); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
-    CBVar fixedInput = input;
-    fixedInput.payload.bytesValue++;
-    fixedInput.payload.bytesSize--;
-    return fixedInput;
+    const auto bits = _bits.get().payload.intValue;
+    if (bits <= 0) {
+      CBVar fixedInput = input;
+      fixedInput.payload.bytesValue++;
+      fixedInput.payload.bytesSize--;
+      return fixedInput;
+    } else {
+      _buffer.resize(bits / 8); // should memset to 0
+      CBVar fixedInput = input;
+      fixedInput.payload.bytesValue++;
+      fixedInput.payload.bytesSize--;
+      memcpy(_buffer.data(), fixedInput.payload.bytesValue,
+             std::min(_buffer.size(), size_t(fixedInput.payload.bytesSize)));
+      return Var(_buffer);
+    }
   }
 };
 

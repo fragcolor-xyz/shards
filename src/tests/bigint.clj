@@ -21,14 +21,16 @@
    (Assert.Is 1500.0 true)
    .1000x1e18 (BigInt.Subtract .500x1e18) (BigInt.ToFloat :ShiftedBy -18)
    (Assert.Is 500.0 true)
-   
+
    .1000x1e18 >> .bigseq
    .1000x1e18 >> .bigseq
    .1000x1e18 >> .bigseq
    .bigseq (BigInt.Multiply .2) (Log)
    (Take 0)
-   (BigInt.ToHex) (Log)
-   
+   (| (BigInt.ToHex) (Log))
+   (BigInt.ToBytes :Bits 8) (Log)
+  ;;  (ToHex) (Log) 
+  ;;  (Assert.Is "0x6c" true)
    ))
 
 (schedule Root test)
