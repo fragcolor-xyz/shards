@@ -325,12 +325,8 @@ void PushFont(Font::Enum _font) {
 } // namespace ImGui
 
 namespace BGFX {
-// delay this at end of file, otherwise we pull a header mess
-#if defined(_WIN32)
-HWND SDL_GetNativeWindowPtr(SDL_Window *window);
-#elif defined(__linux__)
 void *SDL_GetNativeWindowPtr(SDL_Window *window);
-#endif
+void *SDL_GetNativeDisplayPtr(SDL_Window *window);
 
 // DPI awareness fix
 #ifdef _WIN32
@@ -342,13 +338,9 @@ struct DpiAwareness {
 struct BaseWindow : public Base {
 #ifdef _WIN32
   static inline DpiAwareness DpiAware{};
-  HWND _sysWnd = nullptr;
-#elif defined(__APPLE__)
-  void *_sysWnd = nullptr;
-  SDL_MetalView _metalView{nullptr};
-#elif defined(__linux__) || defined(__EMSCRIPTEN__)
-  void *_sysWnd = nullptr;
 #endif
+
+  void* _sysWnd = nullptr;
 
   static inline Parameters params{
       {"Title",
@@ -755,9 +747,9 @@ struct MainWindow : public BaseWindow {
         _rwidth = real_w;
         _rheight = real_h;
       }
-      _sysWnd = SDL_Metal_GetLayer(_metalView);
+      _sysWnd = (void*)SDL_Metal_GetLayer(_metalView);
 #elif defined(_WIN32) || defined(__linux__)
-      _sysWnd = SDL_GetNativeWindowPtr(_window);
+      _sysWnd = (void*)SDL_GetNativeWindowPtr(_window);
 #elif defined(__EMSCRIPTEN__)
       _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
@@ -774,6 +766,7 @@ struct MainWindow : public BaseWindow {
     // set platform data this way.. or we will have issues if we re-init bgfx
     bgfx::PlatformData pdata{};
     pdata.nwh = _sysWnd;
+    // pdata.ndt = SDL_GetNativeDisplayPtr(_window);
     bgfx::setPlatformData(pdata);
 
     initInfo.resolution.width = _rwidth;
@@ -2957,15 +2950,10 @@ void registerBGFXBlocks() {
 #include "bgfx_tests.cpp"
 #endif
 
-#if defined(_WIN32) || defined(__linux__)
-#include "SDL_syswm.h"
 namespace BGFX {
-#if defined(_WIN32)
-HWND SDL_GetNativeWindowPtr(SDL_Window *window)
-#elif defined(__linux__)
-void *SDL_GetNativeWindowPtr(SDL_Window *window)
-#endif
-{
+#include "SDL_syswm.h"
+
+void *SDL_GetNativeWindowPtr(SDL_Window *window) {
   SDL_SysWMinfo winInfo{};
   SDL_version sdlVer{};
   SDL_VERSION(&sdlVer);
@@ -2977,7 +2965,23 @@ void *SDL_GetNativeWindowPtr(SDL_Window *window)
   return winInfo.info.win.window;
 #elif defined(__linux__)
   return (void *)winInfo.info.x11.window;
+#else
+  return nullptr;
+#endif
+}
+
+void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
+  SDL_SysWMinfo winInfo{};
+  SDL_version sdlVer{};
+  SDL_VERSION(&sdlVer);
+  winInfo.version = sdlVer;
+  if (!SDL_GetWindowWMInfo(window, &winInfo)) {
+    throw ActivationError("Failed to call SDL_GetWindowWMInfo");
+  }
+#if defined(__linux__)
+  return (void *)winInfo.info.x11.display;
+#else
+  return nullptr;
 #endif
 }
 } // namespace BGFX
-#endif
