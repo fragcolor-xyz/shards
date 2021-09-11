@@ -398,12 +398,16 @@ struct ToBytes {
       return fixedInput;
     } else {
       cpp_int bi = from_var(input);
-      // weird trick to force right size
-      cpp_int bi2 = cpp_int(1) << bits;
-      bi2 -= cpp_int(1) << bits;
-      bi2 += bi;
-      _buffer.resize(bits / 8); // should memset to 0
-      export_bits(bi2, std::back_inserter(_buffer), 8);
+      const auto usedBits = msb(bi) + 1;
+      if (usedBits > bits) {
+        throw ActivationError(
+            "The number of used bits is higher than the requested bits");
+      }
+      const auto padding = bits - usedBits;
+      _buffer.clear();
+      export_bits(bi, std::back_inserter(_buffer), 8);
+      // this is because we are using little endianess
+      _buffer.insert(_buffer.begin(), padding / 8, 0);
       return Var(_buffer);
     }
   }
