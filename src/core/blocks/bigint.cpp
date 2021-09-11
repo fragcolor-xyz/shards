@@ -397,12 +397,13 @@ struct ToBytes {
       fixedInput.payload.bytesSize--;
       return fixedInput;
     } else {
+      cpp_int bi = from_var(input);
+      // weird trick to force right size
+      cpp_int bi2 = cpp_int(1) << bits;
+      bi2 -= cpp_int(1) << bits;
+      bi2 += bi;
       _buffer.resize(bits / 8); // should memset to 0
-      CBVar fixedInput = input;
-      fixedInput.payload.bytesValue++;
-      fixedInput.payload.bytesSize--;
-      memcpy(_buffer.data(), fixedInput.payload.bytesValue,
-             std::min(_buffer.size(), size_t(fixedInput.payload.bytesSize)));
+      export_bits(bi2, std::back_inserter(_buffer), 8);
       return Var(_buffer);
     }
   }
