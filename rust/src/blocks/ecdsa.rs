@@ -117,7 +117,6 @@ impl Block for ECDSASign {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.key.warmup(context);
-    self.output.set_len(2);
     Ok(())
   }
 
@@ -136,11 +135,12 @@ impl Block for ECDSASign {
       "Failed to parse input message hash"
     })?;
 
+    self.output.clear();
     let signed = libsecp256k1::sign(&msg, &key);
     let signature = signed.0.serialize();
-    self.output[0] = signature[..].into();
+    self.output.push(signature[..].into());
     let rec_vec = vec![signed.1.serialize()];
-    self.output[1] = rec_vec.as_slice().into();
+    self.output.push(rec_vec.as_slice().into());
     Ok(self.output.as_ref().into())
   }
 }
