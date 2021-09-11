@@ -29,9 +29,8 @@
    (Take 0)
    (| (BigInt.ToHex) (Log))
    (BigInt.ToBytes :Bits 8) (Log)
-  ;;  (ToHex) (Log) 
-  ;;  (Assert.Is "0x6c" true)
-   ))
+   (ToHex) (Log)
+   (Assert.Is "0x6c" true)))
 
 (schedule Root test)
 (run Root 0.1 10)
