@@ -648,6 +648,7 @@
    .hexbytes-mut (ToHex) (Assert.Is "0xf00dc0ffee" true)
    "0x0BAD" (HexToBytes) (PrependTo .hexbytes-mut)
    .hexbytes-mut (ToHex) (Assert.Is "0x0badf00dc0ffee" true)
+   (StringToBytes) (BytesToString) (Assert.Is "0x0badf00dc0ffee" true)
 
    "test.txt" (FS.Write .text2 :Overwrite true)
    (FS.Read)

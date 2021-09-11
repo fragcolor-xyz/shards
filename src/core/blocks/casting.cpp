@@ -837,6 +837,16 @@ struct HexToBytes {
   }
 };
 
+struct StringToBytes {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    const auto len = CBSTRLEN(input);
+    return Var((uint8_t *)input.payload.stringValue, uint32_t(len));
+  }
+};
+
 void registerCastingBlocks() {
   REGISTER_CORE_BLOCK(ToInt);
   REGISTER_CORE_BLOCK(ToInt2);
@@ -881,6 +891,7 @@ void registerCastingBlocks() {
   REGISTER_CBLOCK("BytesToInts", BytesToInts);
   REGISTER_CBLOCK("BytesToString", BytesToString);
   REGISTER_CBLOCK("IntsToBytes", IntsToBytes);
+  REGISTER_CBLOCK("StringToBytes", StringToBytes);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_CBLOCK("ExpectFloatSeq", ExpectFloatSeq);
