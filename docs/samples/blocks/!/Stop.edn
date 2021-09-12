@@ -1,0 +1,11 @@
+(defloop Loop
+  (Math.Add 1)
+  (Log)
+  (Cond
+   [(-> (Is 5))
+    (Stop)])
+  (Restart))
+
+0
+(Do Loop)
+(Wait Loop)
