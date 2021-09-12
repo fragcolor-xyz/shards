@@ -237,6 +237,7 @@ BIGINT_REG_BINARY_OP(Pow, pow);
 
 #define BIGINT_UNARY_OP(__NAME__, __OP__)                                      \
   struct __NAME__ : public RegOperandBase {                                    \
+    CBParametersInfo parameters() { return {}; }                               \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       cpp_int bia = from_var(input);                                           \
       cpp_int bres = __OP__(bia);                                              \
