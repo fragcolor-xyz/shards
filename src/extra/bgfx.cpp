@@ -338,6 +338,8 @@ struct DpiAwareness {
 struct BaseWindow : public Base {
 #ifdef _WIN32
   static inline DpiAwareness DpiAware{};
+#elif defined(__APPLE__)
+  SDL_MetalView _metalView{nullptr};
 #endif
 
   void* _sysWnd = nullptr;
