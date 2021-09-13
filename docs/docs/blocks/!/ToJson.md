@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # ToJson
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Pure | `[(Bool)]` | `true` | If the input string is generic pure json rather then chainblocks flavored json. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |

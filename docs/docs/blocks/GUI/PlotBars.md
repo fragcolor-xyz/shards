@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # GUI.PlotBars
 
 ```clojure
@@ -9,10 +15,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Label | `[(String)]` | `""` | The plot's label. |
@@ -22,12 +32,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Float)]) (Seq [(Float2)])]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Float)]) (Seq [(Float2)])]` |  |

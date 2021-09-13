@@ -1,28 +1,39 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Math.Cbrt
 
 ```clojure
 (Math.Cbrt)
 ```
 
+
 ## Definition
+
+Calculates `Cbrt()` on the input value and returns its result, or a sequence of results if input is a sequence.
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
-| `[(Int) (Int2) (Int3) (Int4) (Int8) (Int16) (Float) (Float2) (Float3) (Float4) (Color) (Seq [(Any)])]` |  |
+| `[(Float) (Float2) (Float3) (Float4) (Seq [(Any)])]` | Any valid floating point number(s) supported by this operation. |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
-| `[(Int) (Int2) (Int3) (Int4) (Int8) (Int16) (Float) (Float2) (Float3) (Float4) (Color) (Seq [(Any)])]` |  |
+| `[(Float) (Float2) (Float3) (Float4) (Seq [(Any)])]` | The result of the operation, usually in the same type as the input value. |
 
 
 ## Examples
 
 ```clojure
-(Math.Cbrt
-
-)
+(Float3 -27.0 1.0 8.0)
+(Math.Cbrt)
+(Assert.Is (Float3 -3.0 1.0 2.0) true)
 ```

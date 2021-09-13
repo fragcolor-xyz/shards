@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Get
 
 ```clojure
@@ -10,10 +16,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Name | `[(String) (ContextVar [(Any)])]` | `""` | The name of the variable. |
@@ -24,12 +34,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |

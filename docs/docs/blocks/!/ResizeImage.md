@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # ResizeImage
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Width | `[(Int)]` | `32` | The target width. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Image)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Image)]` |  |

@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # TryMany
 
 ```clojure
@@ -9,10 +15,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Chain | `[(Chain) (String) (None) (ContextVar [(Chain)])]` | `None` | The chain to spawn and try to run many times concurrently. |
@@ -22,12 +32,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)])]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)])]` |  |
@@ -36,7 +48,18 @@
 ## Examples
 
 ```clojure
+(Const ["A" "B" "C"])
 (TryMany
-
-)
+ ;:Chain
+ (Chain
+  "print"
+  (Log)
+  "Ok")
+ ;:Policy
+ WaitUntil.AllSuccess
+ ;:Threads
+ 12
+ ;:Coroutine
+ 1)
+(Assert.Is ["Ok" "Ok" "Ok"] true)
 ```

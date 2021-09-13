@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Desktop.Move
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | X | `[(Int)]` | `0` | The desired horizontal coordinates. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Object)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Object)]` |  |

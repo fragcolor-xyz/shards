@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Http.Post
 
 ```clojure
@@ -10,10 +16,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | URL | `[(String) (ContextVar [(String)])]` | `""` | The url to request to. |
@@ -24,12 +34,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None) (Table [(String)]) (Bytes) (String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |

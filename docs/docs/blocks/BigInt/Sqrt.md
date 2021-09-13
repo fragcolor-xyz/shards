@@ -1,36 +1,41 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # BigInt.Sqrt
 
 ```clojure
-(BigInt.Sqrt
-  :Operand [(Int) (ContextVar [(Int)])]
-)
+(BigInt.Sqrt)
 ```
+
 
 ## Definition
 
 
-## Parameters
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| Operand | `[(Int) (ContextVar [(Int)])]` | `None` | The integer operand, can be a variable |
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
-| `[(Bytes)]` |  |
+| `[(Bytes)]` | Big integer represented as bytes. |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
-| `[(Bytes)]` |  |
+| `[(Bytes)]` | Big integer represented as bytes. |
 
 
 ## Examples
 
 ```clojure
-(BigInt.Sqrt
+2 (BigInt) = .expected
 
-)
+4 (BigInt)
+(BigInt.Sqrt)
+(BigInt.Is .expected) (Assert.Is true true)
 ```

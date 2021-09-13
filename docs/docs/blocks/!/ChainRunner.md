@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # ChainRunner
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Chain | `[(ContextVar [(Chain)])]` | `None` | The chain variable to compose and run. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
@@ -32,7 +44,18 @@
 ## Examples
 
 ```clojure
-(ChainRunner
+(def! testChain
+  (Chain
+   "testChain"
+   (Msg "Hello World from testChain!")))
+(Const testChain)
+(WriteFile "data/testChain.bin" :Flush true)
 
-)
+(ReadFile "data/testChain.bin")
+(ExpectChain) >= .loadedChain
+(ChainRunner
+ ;:Chain 
+ .loadedChain
+ ;:Mode
+ RunChainMode.Inline)
 ```

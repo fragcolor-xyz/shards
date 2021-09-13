@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Http.Server
 
 ```clojure
@@ -8,10 +14,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Handler | `[(Chain) (None)]` | `None` | The chain that will be spawned and handle a remote request. |
@@ -20,12 +30,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |

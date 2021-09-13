@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Replace
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Patterns | `[(None) (Seq [(String)]) (ContextVar [(Seq [(String)])]) (ContextVar [(Seq [(Any)])]) (Seq [(Any)])]` | `None` | The patterns to find. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)]) (String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)]) (String)]` |  |

@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # GUI.Window
 
 ```clojure
@@ -13,10 +19,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Title | `[(String)]` | `""` | The title of the window to create. |
@@ -30,12 +40,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |

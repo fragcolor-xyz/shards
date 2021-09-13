@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Regex.Match
 
 ```clojure
@@ -6,22 +12,28 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Regex | `[(String)]` | `""` | The regular expression. |
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(String)])]` |  |

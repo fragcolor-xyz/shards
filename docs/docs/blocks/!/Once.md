@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Once
 
 ```clojure
@@ -8,10 +14,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Action | `[(Block) (Seq [(Block)])]` | `None` | The blocks to execute. |
@@ -20,12 +30,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |

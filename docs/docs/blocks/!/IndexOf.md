@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # IndexOf
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Item | `[(Any)]` | `None` | The item to find the index of from the input, if it's a sequence it will try to match all the items in the sequence, in sequence. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)])]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Int)]` |  |

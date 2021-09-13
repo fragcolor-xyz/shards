@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # ChainLoader
 
 ```clojure
@@ -9,10 +15,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Provider | `[(Object) (None)]` | `None` | The chainblocks chain provider. |
@@ -22,12 +32,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
@@ -36,7 +48,17 @@
 ## Examples
 
 ```clojure
-(ChainLoader
+;; loadme.edn
+;; (Msg "Hello World from loadme.edn!")
+;; (Stop)
 
-)
+(defloop loader
+  (ChainLoader
+   ;:Provider
+   (Chain* "data/loadme.edn")
+   ;:Mode
+   RunChainMode.Inline))
+
+(Start loader)
+(Wait loader)
 ```

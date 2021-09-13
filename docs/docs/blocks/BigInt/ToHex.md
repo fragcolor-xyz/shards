@@ -1,28 +1,39 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # BigInt.ToHex
 
 ```clojure
 (BigInt.ToHex)
 ```
 
+
 ## Definition
+
+Converts the value to a hexadecimal representation.
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Int) (Bytes) (String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
-| `[(String)]` |  |
+| `[(String)]` | Hexadecimal representation of the integer value. |
 
 
 ## Examples
 
 ```clojure
-(BigInt.ToHex
-
-)
+42 (BigInt)
+(BigInt.ToHex)
+(Assert.Is "0x2a" true)
 ```

@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Physics.Ball
 
 ```clojure
@@ -8,10 +14,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Position | `[(Float3) (ContextVar [(Float3)])]` | `(0, 0, 0)` | The position wrt. the body it is attached to. |
@@ -20,12 +30,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Object)]` |  |

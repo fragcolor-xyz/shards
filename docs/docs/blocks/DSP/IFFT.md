@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # DSP.IFFT
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Audio | `[(Bool)]` | `false` | If the output should be an Audio chunk. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Float2)])]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Float)]) (Seq [(Float2)]) (Audio)]` |  |

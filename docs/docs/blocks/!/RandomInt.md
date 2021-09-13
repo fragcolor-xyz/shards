@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # RandomInt
 
 ```clojure
@@ -6,22 +12,28 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Max | `[(None) (Int)]` | `None` | The maximum (if integer, not including) value to output. |
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Int)]` |  |

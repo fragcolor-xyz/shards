@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # GFX.Camera
 
 ```clojure
@@ -12,10 +18,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Near | `[(Float)]` | `0.1` | The distance from the near clipping plane. |
@@ -28,12 +38,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None) (Table {"Position" (Float3) "Target" (Float3)})]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(None) (Table {"Position" (Float3) "Target" (Float3)})]` |  |

@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Remove
 
 ```clojure
@@ -9,10 +15,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | From | `[(ContextVar [(Seq [(Any)])])]` | `None` | The name of the sequence variable to edit in place. |
@@ -22,12 +32,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)])]` |  |

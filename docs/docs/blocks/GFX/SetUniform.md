@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # GFX.SetUniform
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Name | `[(String)]` | `""` | The name of the uniform shader variable. Uniforms are so named because they do not change from one shader invocation to the next within a particular rendering call thus their value is uniform among all invocations. Uniform names are unique. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Float4) (Seq [(Float4)]) (Seq [(Float3)]) (Seq [(Float4)]) (Seq [(Seq [(Float4)])]) (Seq [(Seq [(Float3)])])]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Float4) (Seq [(Float4)]) (Seq [(Float3)]) (Seq [(Float4)]) (Seq [(Seq [(Float4)])]) (Seq [(Seq [(Float3)])])]` |  |

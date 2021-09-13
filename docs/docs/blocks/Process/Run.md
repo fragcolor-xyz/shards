@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Process.Run
 
 ```clojure
@@ -8,10 +14,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Executable | `[(Path) (String)]` | `""` | The executable to run. |
@@ -20,12 +30,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |

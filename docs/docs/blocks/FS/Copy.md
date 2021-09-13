@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # FS.Copy
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Destination | `[(String) (ContextVar [(String)]) (None)]` | `None` | The destination path, can be a file or a directory. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |
