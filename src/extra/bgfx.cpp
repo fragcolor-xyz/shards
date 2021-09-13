@@ -768,7 +768,7 @@ struct MainWindow : public BaseWindow {
     // set platform data this way.. or we will have issues if we re-init bgfx
     bgfx::PlatformData pdata{};
     pdata.nwh = _sysWnd;
-    // pdata.ndt = SDL_GetNativeDisplayPtr(_window);
+    pdata.ndt = SDL_GetNativeDisplayPtr(_window);
     bgfx::setPlatformData(pdata);
 
     initInfo.resolution.width = _rwidth;
