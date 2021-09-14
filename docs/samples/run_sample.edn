@@ -1,0 +1,12 @@
+(def _args (eval (quasiquote (assoc {} ~@*command-line-args*))))
+(def _parameters {:samplefile (if (contains? _args "--file") (get _args "--file") "")})
+(def sampleFile (get _parameters :samplefile))
+
+(defnode main)
+(defn runSample [name]
+  (Chain
+   (str name)
+   (eval (read-string (str "(-> " (slurp name) ")")))))
+
+(schedule main (runSample sampleFile))
+(run main)

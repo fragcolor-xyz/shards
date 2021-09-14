@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # GFX.CameraOrtho
 
 ```clojure
@@ -15,10 +21,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Left | `[(Float)]` | `0` | The left of the projection. |
@@ -34,12 +44,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None) (Table {"Position" (Float3) "Target" (Float3)})]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(None) (Table {"Position" (Float3) "Target" (Float3)})]` |  |

@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Wasm.Run
 
 ```clojure
@@ -11,10 +17,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Module | `[(Path) (String)]` | `""` | The wasm module to run. |
@@ -26,12 +36,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |

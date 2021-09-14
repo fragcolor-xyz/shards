@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Physics.KinematicBody
 
 ```clojure
@@ -9,10 +15,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Shapes | `[(ContextVar [(Object)]) (ContextVar [(Object)]) (None)]` | `None` | The shape or shapes of this rigid body. |
@@ -22,12 +32,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Float4)]) (Seq [(Seq [(Float4)])])]` |  |

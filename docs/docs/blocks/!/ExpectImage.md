@@ -1,19 +1,30 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # ExpectImage
 
 ```clojure
 (ExpectImage)
 ```
 
+
 ## Definition
 
 
+
+
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Image)]` |  |

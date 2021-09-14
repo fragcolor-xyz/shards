@@ -1,0 +1,5 @@
+(Const [-1 0 1 2 5])
+(Max
+ ;:Operand
+ 3)
+(Assert.Is [3 3 3 3 5] true)

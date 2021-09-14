@@ -1,0 +1,3 @@
+(Float 0)
+(Math.Exp)
+(Assert.Is (Float 1) true)

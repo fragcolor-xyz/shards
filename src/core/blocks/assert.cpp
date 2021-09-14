@@ -20,9 +20,15 @@ struct Base {
 
   void destroy() { destroyVar(value); }
 
-  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input can be of any type.");
+  }
 
-  CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output will be the input (passthrough).");
+  }
 
   CBParametersInfo parameters() { return CBParametersInfo(assertParamsInfo); }
 
@@ -58,6 +64,11 @@ struct Base {
 };
 
 struct Is : public Base {
+  CBOptionalString help() {
+    return CBCCSTR("This assertion is used to check whether the input is equal "
+                   "to a given value.");
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input != value) {
       CBLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, value);
@@ -72,6 +83,10 @@ struct Is : public Base {
 };
 
 struct IsNot : public Base {
+  CBOptionalString help() {
+    return CBCCSTR("This assertion is used to check whether the input is "
+                   "different from a given value.");
+  }
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input == value) {
       CBLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input,

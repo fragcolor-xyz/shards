@@ -1,0 +1,5 @@
+3 (BigInt)
+(BigInt.ToFloat
+ ;:ShiftedBy
+ 1)
+(Assert.Is (Float 30.0) true)

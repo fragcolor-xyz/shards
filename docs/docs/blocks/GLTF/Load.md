@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # GLTF.Load
 
 ```clojure
@@ -10,10 +16,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Textures | `[(Bool)]` | `true` | If the textures linked to this model should be loaded. |
@@ -24,12 +34,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(String)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Object)]` |  |

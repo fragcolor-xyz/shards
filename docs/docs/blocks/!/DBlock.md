@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # DBlock
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
+
 A dynamic block.
 
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Name | `[(String)]` | `""` | The name of the block to wrap. |
@@ -18,12 +28,14 @@ A dynamic block.
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |

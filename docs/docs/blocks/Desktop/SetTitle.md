@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Desktop.SetTitle
 
 ```clojure
@@ -6,22 +12,28 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Title | `[(String)]` | `""` | The title of the window to look for. |
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Object)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Object)]` |  |

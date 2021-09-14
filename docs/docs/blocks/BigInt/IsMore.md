@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # BigInt.IsMore
 
 ```clojure
@@ -6,31 +12,41 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Operand | `[(ContextVar [(Bytes)])]` | `None` | The bytes variable representing the operand |
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
-| `[(Bytes)]` |  |
+| `[(Bytes)]` | Big integer represented as bytes. |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
-| `[(Bool)]` |  |
+| `[(Bool)]` | A boolean value repesenting the result of the logic operation. |
 
 
 ## Examples
 
 ```clojure
-(BigInt.IsMore
+11 (BigInt) = .expected
 
-)
+12 (BigInt)
+(BigInt.IsMore
+ ;:Operand
+ .expected)
+(Assert.Is true true)
 ```

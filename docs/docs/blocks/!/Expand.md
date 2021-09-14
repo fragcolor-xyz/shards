@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Expand
 
 ```clojure
@@ -10,10 +16,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Size | `[(Int)]` | `10` | The maximum expansion size. |
@@ -24,12 +34,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Any)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Seq [(Any)])]` |  |
@@ -38,7 +50,10 @@
 ## Examples
 
 ```clojure
+21
 (Expand
-
-)
+ :Size 10
+ :Chain (defchain wide-test (Math.Multiply 2))
+ :Threads 5)
+(Assert.Is [42 42 42 42 42 42 42 42 42 42] true)
 ```

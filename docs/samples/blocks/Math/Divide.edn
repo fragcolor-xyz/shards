@@ -1,0 +1,5 @@
+(Float 9)
+(Math.Divide
+ ;:Operand
+ 2.0)
+(Assert.Is 4.5 true)

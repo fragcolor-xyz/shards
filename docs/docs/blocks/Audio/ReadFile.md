@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Audio.ReadFile
 
 ```clojure
@@ -12,10 +18,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | File | `[(String) (ContextVar [(String)])]` | `None` | The audio file to read from (wav,ogg,mp3,flac). |
@@ -28,12 +38,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(None)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Audio)]` |  |

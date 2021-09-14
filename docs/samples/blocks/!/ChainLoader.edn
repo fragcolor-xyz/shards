@@ -1,0 +1,13 @@
+;; loadme.edn
+;; (Msg "Hello World from loadme.edn!")
+;; (Stop)
+
+(defloop loader
+  (ChainLoader
+   ;:Provider
+   (Chain* "data/loadme.edn")
+   ;:Mode
+   RunChainMode.Inline))
+
+(Start loader)
+(Wait loader)

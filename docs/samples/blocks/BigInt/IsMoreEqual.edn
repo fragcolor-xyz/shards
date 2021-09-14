@@ -1,0 +1,7 @@
+11 (BigInt) = .expected
+
+12 (BigInt)
+(BigInt.IsMoreEqual
+ ;:Operand
+ .expected)
+(Assert.Is true true)

@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # BigInt.FromFloat
 
 ```clojure
@@ -6,31 +12,38 @@
 )
 ```
 
+
 ## Definition
+
+Converts a floating point number to a big integer.
 
 
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | ShiftedBy | `[(Int)]` | `0` | The shift is of the decimal point, i.e. of powers of ten, and is to the left if n is negative or to the right if n is positive. |
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
-| `[(Float)]` |  |
+| `[(Float)]` | Floating point number. |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
-| `[(Bytes)]` |  |
+| `[(Bytes)]` | Big integer represented as bytes. |
 
 
 ## Examples
 
 ```clojure
-(BigInt.FromFloat
+42 (BigInt) = .expected
 
-)
+42.1 (BigInt.FromFloat)
+(BigInt.Is .expected) (Assert.Is true true)
 ```

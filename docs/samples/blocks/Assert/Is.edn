@@ -1,0 +1,6 @@
+8
+(Assert.Is
+ ;:Value
+ 8
+ ;:Abort
+ true)

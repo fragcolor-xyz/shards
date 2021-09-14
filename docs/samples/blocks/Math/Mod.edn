@@ -1,0 +1,5 @@
+(Int4 1 2 3 4)
+(Math.Mod
+ ;:Operand
+ (Int4 2 2 2 2))
+(Assert.Is (Int4 1 0 1 0) true)

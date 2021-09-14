@@ -1,0 +1,10 @@
+(defchain funcChain
+   (If
+    (-> (Is 10) (Or) (Is 20))
+    (Log)))
+
+10
+(Dispatch 
+ ;:Chain
+ funcChain)
+(Assert.Is 10 true)

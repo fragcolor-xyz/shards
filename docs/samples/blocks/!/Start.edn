@@ -1,0 +1,4 @@
+(defchain hello
+   (Msg "Hello"))
+
+(Start hello)

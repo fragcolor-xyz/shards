@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Convolve
 
 ```clojure
@@ -7,10 +13,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Radius | `[(Int)]` | `1` | The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and so on. |
@@ -18,12 +28,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Image)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Image)]` |  |

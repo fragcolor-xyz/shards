@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Math.Orthographic
 
 ```clojure
@@ -9,10 +15,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Width | `[(Int) (Float)]` | `1280` | Width size. |
@@ -22,15 +32,17 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
-| `[(None)]` |  |
+| `[(None)]` | Any valid floating point number(s) supported by this operation. |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
-| `[(Seq [(Float4)])]` |  |
+| `[(Seq [(Float4)])]` | The result of the operation, usually in the same type as the input value. |
 
 
 ## Examples

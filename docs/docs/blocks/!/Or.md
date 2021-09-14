@@ -1,19 +1,30 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Or
 
 ```clojure
 (Or)
 ```
 
+
 ## Definition
 
 
+
+
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Bool)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Bool)]` |  |

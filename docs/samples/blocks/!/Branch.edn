@@ -1,0 +1,10 @@
+(defchain c1
+  .msg1 (Log))
+(defchain c2
+  .msg2 (Log))
+(defchain branch
+  "Hello" = .msg1
+  "World" = .msg2
+  (Branch [c1 c2]))
+
+(Do branch)

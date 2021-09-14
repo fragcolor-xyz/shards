@@ -1,3 +1,9 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+
 # Audio.Oscillator
 
 ```clojure
@@ -10,10 +16,14 @@
 )
 ```
 
+
 ## Definition
 
 
+
+
 ## Parameters
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | Type | `[(Enum)]` | `Enum: 0 vendor: 0x73696e6b type: 0x77617665` | The waveform type to oscillate. |
@@ -24,12 +34,14 @@
 
 
 ## Input
+
 | Type | Description |
 |------|-------------|
 | `[(Float)]` |  |
 
 
 ## Output
+
 | Type | Description |
 |------|-------------|
 | `[(Audio)]` |  |
