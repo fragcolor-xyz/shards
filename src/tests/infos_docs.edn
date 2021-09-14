@@ -162,6 +162,9 @@
 
        "```clojure\r\n"
        (read-var (run-chain (getSample name)))
-       "```\r\n")))))
+       "```\r\n"
+
+       "\r\n\r\n"
+       "--8<-- \"includes/license.md\"\r\n")))))
  (blocks))
 (run main)

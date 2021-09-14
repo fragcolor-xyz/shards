@@ -1,3 +1,8 @@
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
 # Introduction
 
 Chainblocks aims to be a meta language or a visual language rather then a pure programming language. To nicely describe
@@ -150,3 +155,5 @@ Showing how we mix the Clojure-like language as a template language
 [info] [2021-04-04 21:05:50.121] [T-285088] [logging.cpp::53] [counter-0] 10
 [info] [2021-04-04 21:05:50.123] [T-285088] [logging.cpp::53] [counter-10] 20
 ```
+
+--8<-- "includes/license.md"
