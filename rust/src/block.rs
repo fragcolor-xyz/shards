@@ -56,6 +56,10 @@ pub trait Block {
     OptionalString::default()
   }
 
+  fn properties(&mut self) -> Option<&Table> {
+    None
+  }
+
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     None
   }
@@ -154,6 +158,15 @@ unsafe extern "C" fn cblock_inputHelp<T: Block>(arg1: *mut CBlock) -> CBOptional
 unsafe extern "C" fn cblock_outputHelp<T: Block>(arg1: *mut CBlock) -> CBOptionalString {
   let blk = arg1 as *mut BlockWrapper<T>;
   (*blk).block.outputHelp().0
+}
+
+unsafe extern "C" fn cblock_properties<T: Block>(arg1: *mut CBlock) -> *const CBTable {
+    let blk = arg1 as *mut BlockWrapper<T>;
+  if let Some(properties) = (*blk).block.properties() {
+    &properties.t as *const CBTable
+  } else {
+    core::ptr::null()
+  }
 }
 
 unsafe extern "C" fn cblock_inputTypes<T: Block>(arg1: *mut CBlock) -> CBTypesInfo {
@@ -316,6 +329,7 @@ pub fn create<T: Default + Block>() -> BlockWrapper<T> {
       help: Some(cblock_help::<T>),
       inputHelp: Some(cblock_inputHelp::<T>),
       outputHelp: Some(cblock_outputHelp::<T>),
+      properties: Some(cblock_properties::<T>),
       inputTypes: Some(cblock_inputTypes::<T>),
       outputTypes: Some(cblock_outputTypes::<T>),
       setup: Some(cblock_setup::<T>),

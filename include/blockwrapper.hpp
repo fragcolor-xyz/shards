@@ -13,6 +13,7 @@ CB_HAS_MEMBER_TEST(hash);
 CB_HAS_MEMBER_TEST(help);
 CB_HAS_MEMBER_TEST(inputHelp);
 CB_HAS_MEMBER_TEST(outputHelp);
+CB_HAS_MEMBER_TEST(properties);
 CB_HAS_MEMBER_TEST(setup);
 CB_HAS_MEMBER_TEST(destroy);
 CB_HAS_MEMBER_TEST(inputTypes);
@@ -54,7 +55,7 @@ template <class T> struct BlockWrapper {
       result->name = static_cast<CBNameProc>([](CBlock *b) { return name; });
     }
 
-    // name
+    // hash
     if constexpr (has_hash<T>::value) {
       result->hash = static_cast<CBHashProc>([](CBlock *b) {
         return reinterpret_cast<BlockWrapper<T> *>(b)->block.hash();
@@ -91,6 +92,17 @@ template <class T> struct BlockWrapper {
     } else {
       result->outputHelp =
           static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
+    }
+
+    // properties
+    if constexpr (has_properties<T>::value) {
+      result->properties =
+          static_cast<CBPropertiesProc>([](CBlock *b) -> const CBTable * {
+            return reinterpret_cast<BlockWrapper<T> *>(b)->block.properties();
+          });
+    } else {
+      result->properties = static_cast<CBPropertiesProc>(
+          [](CBlock *b) -> const CBTable * { return nullptr; });
     }
 
     // setup

@@ -145,6 +145,8 @@ impl From<CBChainState> for ChainState {
 unsafe impl Send for Var {}
 unsafe impl Send for Context {}
 unsafe impl Send for Block {}
+unsafe impl Send for Table {}
+unsafe impl Sync for Table {}
 
 /*
 CBTypeInfo & co
@@ -2012,7 +2014,7 @@ impl TryFrom<Var> for Seq {
 
 #[derive(Clone)]
 pub struct Table {
-  t: CBTable,
+  pub t: CBTable,
   owned: bool,
 }
 
