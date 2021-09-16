@@ -517,6 +517,29 @@ template <class CB_CORE> struct TTableVar : public CBVar {
 
   TTableVar(TTableVar &&other) : CBVar() { std::swap(*this, other); }
 
+  TTableVar(std::initializer_list<std::pair<std::string_view, CBVar>> pairs)
+      : TTableVar() {
+    for (auto &kv : pairs) {
+      auto &rdst = (*this)[kv.first];
+      CB_CORE::cloneVar(rdst, kv.second);
+    }
+  }
+
+  TTableVar(const TTableVar &others,
+            std::initializer_list<std::pair<std::string_view, CBVar>> pairs)
+      : TTableVar() {
+    const auto &table = others.payload.tableValue;
+    ForEach(table, [&](auto &key, auto &val) {
+      auto &rdst = (*this)[key];
+      CB_CORE::cloneVar(rdst, val);
+    });
+
+    for (auto &kv : pairs) {
+      auto &rdst = (*this)[kv.first];
+      CB_CORE::cloneVar(rdst, kv.second);
+    }
+  }
+
   TTableVar &operator=(TTableVar &&other) {
     std::swap(*this, other);
     memset(&other, 0x0, sizeof(CBVar));
