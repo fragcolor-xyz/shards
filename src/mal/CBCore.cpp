@@ -1442,7 +1442,7 @@ static malValuePtr readVar(const CBVar &v) {
     CBString k;
     CBVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      map[k] = readVar(v);
+      map[escape(k)] = readVar(v);
     }
     return mal::hash(map);
   } else {
