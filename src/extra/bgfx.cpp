@@ -342,7 +342,7 @@ struct BaseWindow : public Base {
   SDL_MetalView _metalView{nullptr};
 #endif
 
-  void* _sysWnd = nullptr;
+  void *_sysWnd = nullptr;
 
   static inline Parameters params{
       {"Title",
@@ -441,8 +441,8 @@ struct BaseWindow : public Base {
 };
 
 struct MainWindow : public BaseWindow {
-  struct CallbackStub : public bgfx::CallbackI {
-    virtual ~CallbackStub() {}
+  struct Callbacks : public bgfx::CallbackI {
+    virtual ~Callbacks() {}
 
     virtual void fatal(const char *_filePath, uint16_t _line,
                        bgfx::Fatal::Enum _code, const char *_str) override {
@@ -523,13 +523,18 @@ struct MainWindow : public BaseWindow {
 
       stbi_flip_vertically_on_write(_yflip);
       std::filesystem::path p(_filePath);
+      std::filesystem::path t = p;
+      t += ".tmp";
+      const auto tname = t.string();
       const auto ext = p.extension();
       if (ext == ".png" || ext == ".PNG") {
-        stbi_write_png(_filePath, _width, _height, 4, data.data(), _pitch);
+        stbi_write_png(tname.c_str(), _width, _height, 4, data.data(), _pitch);
       } else if (ext == ".jpg" || ext == ".JPG" || ext == ".jpeg" ||
                  ext == ".JPEG") {
-        stbi_write_jpg(_filePath, _width, _height, 4, data.data(), 95);
+        stbi_write_jpg(tname.c_str(), _width, _height, 4, data.data(), 95);
       }
+      // we do this to ensure p is a complete flushed file
+      std::filesystem::rename(t, p);
     }
 
     virtual void captureBegin(uint32_t /*_width*/, uint32_t /*_height*/,
@@ -544,9 +549,11 @@ struct MainWindow : public BaseWindow {
     virtual void captureFrame(const void * /*_data*/,
                               uint32_t /*_size*/) override {}
 
+    MainWindow *_mw;
     std::string fatalError;
-  } bgfxCallback;
+  };
 
+  Callbacks _bgfxCallback;
   Context _bgfxContext{};
   chainblocks::ImGui::Context _imguiContext{};
   int32_t _wheelScroll = 0;
@@ -691,7 +698,8 @@ struct MainWindow : public BaseWindow {
     });
 
     bgfx::Init initInfo{};
-    initInfo.callback = &bgfxCallback;
+    initInfo.callback = &_bgfxCallback;
+    _bgfxCallback._mw = this;
 
     // try to see if global native window is set
     _nativeWnd = referenceVariable(context, "fragcolor.gfx.nativewindow");
@@ -749,9 +757,9 @@ struct MainWindow : public BaseWindow {
         _rwidth = real_w;
         _rheight = real_h;
       }
-      _sysWnd = (void*)SDL_Metal_GetLayer(_metalView);
+      _sysWnd = (void *)SDL_Metal_GetLayer(_metalView);
 #elif defined(_WIN32) || defined(__linux__)
-      _sysWnd = (void*)SDL_GetNativeWindowPtr(_window);
+      _sysWnd = (void *)SDL_GetNativeWindowPtr(_window);
 #elif defined(__EMSCRIPTEN__)
       _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
 #endif
@@ -864,8 +872,8 @@ struct MainWindow : public BaseWindow {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!bgfxCallback.fatalError.empty()) {
-      throw ActivationError(bgfxCallback.fatalError);
+    if (!_bgfxCallback.fatalError.empty()) {
+      throw ActivationError(_bgfxCallback.fatalError);
     }
 
     // Deal with inputs first as we might resize etc
