@@ -60,6 +60,8 @@ int malmain(int argc, const char *argv[]) {
 
   malinit(replEnv, exePath.c_str(), scriptPath.c_str());
 
+  replEnv->set("*cbl*", mal::string(argv[0]));
+
   makeArgv(replEnv, argc - 2, argv + 2);
   bool failed = false;
 
