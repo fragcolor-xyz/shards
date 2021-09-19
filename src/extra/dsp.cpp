@@ -13,6 +13,8 @@
 
 namespace chainblocks {
 namespace DSP {
+static TableVar experimental{{"experimental", Var(true)}};
+
 struct FFTBase {
   kiss_fft_cfg _state{nullptr};
   kiss_fftr_cfg _rstate{nullptr};
@@ -44,6 +46,10 @@ struct FFT : public FFTBase {
   static CBTypesInfo outputTypes() {
     return CoreInfo::Float2SeqType;
   } // complex numbers
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.inputType.basicType == CBType::Audio) {
@@ -147,6 +153,10 @@ struct IFFT : public FFTBase {
   } // complex numbers
 
   static CBTypesInfo outputTypes() { return FloatTypes; }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
 
   static inline Parameters Params{
       {"Audio",
