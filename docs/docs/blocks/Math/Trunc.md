@@ -37,3 +37,6 @@ Calculates `Trunc()` on the input value and returns its result, or a sequence of
 (Math.Trunc)
 (Assert.Is (Float3 0 4 7) true)
 ```
+
+
+--8<-- "includes/license.md"

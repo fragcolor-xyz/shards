@@ -37,3 +37,6 @@ Calculates `Atan()` on the input value and returns its result, or a sequence of 
 (Math.Atan)
 (Assert.Is (Float3 -0.78539816 0.0 0.78539816) true)
 ```
+
+
+--8<-- "includes/license.md"

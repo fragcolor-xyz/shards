@@ -37,3 +37,6 @@ Converts the value to a string representation.
 (BigInt.ToString)
 (Assert.Is "4200000000000000000000" true)
 ```
+
+
+--8<-- "includes/license.md"

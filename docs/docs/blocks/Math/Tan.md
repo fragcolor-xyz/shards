@@ -37,3 +37,6 @@ Calculates `Tan()` on the input value and returns its result, or a sequence of r
 (Math.Tan)
 (Assert.Is (Float3 -1.5574077 0.0 1.5574077) true)
 ```
+
+
+--8<-- "includes/license.md"

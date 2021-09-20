@@ -37,3 +37,6 @@ Calculates `Cos()` on the input value and returns its result, or a sequence of r
 (Math.Cos)
 (Assert.Is (Float3 1.0 -1.0 1.0) true)
 ```
+
+
+--8<-- "includes/license.md"

@@ -45,3 +45,6 @@ license: CC-BY-SA-4.0
 (Log)
 (Assert.Is 987 true)
 ```
+
+
+--8<-- "includes/license.md"

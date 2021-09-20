@@ -51,3 +51,6 @@ license: CC-BY-SA-4.0
  hello)
 (Step hello)
 ```
+
+
+--8<-- "includes/license.md"

@@ -46,3 +46,6 @@ Executes a block or a sequence of blocks asynchronously and awaits their complet
  ;:Blocks
  (Log "Hello worker!"))
 ```
+
+
+--8<-- "includes/license.md"

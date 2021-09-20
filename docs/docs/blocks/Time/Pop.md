@@ -46,3 +46,6 @@ This blocks delays its output until one of the values of the sequence parameter 
 
 )
 ```
+
+
+--8<-- "includes/license.md"

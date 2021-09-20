@@ -56,3 +56,6 @@ Stops another chain. If no chain is given, stops the current chain.
 (Do Loop)
 (Wait Loop)
 ```
+
+
+--8<-- "includes/license.md"

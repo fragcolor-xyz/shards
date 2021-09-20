@@ -37,3 +37,6 @@ Calculates `Abs()` on the input value and returns its result, or a sequence of r
 (Math.Abs)
 (Assert.Is [0.1 0.2 0.4] true)
 ```
+
+
+--8<-- "includes/license.md"

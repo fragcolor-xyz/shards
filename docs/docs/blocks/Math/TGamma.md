@@ -37,3 +37,6 @@ Calculates `TGamma()` on the input value and returns its result, or a sequence o
 (Math.TGamma)
 (Assert.Is 362880.0 true)
 ```
+
+
+--8<-- "includes/license.md"

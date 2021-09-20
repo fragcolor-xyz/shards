@@ -50,3 +50,6 @@ license: CC-BY-SA-4.0
   (Wait .ccc)]
 (Assert.Is true true)
 ```
+
+
+--8<-- "includes/license.md"

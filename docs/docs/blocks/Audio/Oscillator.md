@@ -6,6 +6,8 @@ license: CC-BY-SA-4.0
 
 # Audio.Oscillator
 
+--8<-- "includes/experimental.md"
+
 ```clojure
 (Audio.Oscillator
   :Type [(Enum)]
@@ -54,3 +56,6 @@ license: CC-BY-SA-4.0
 
 )
 ```
+
+
+--8<-- "includes/license.md"

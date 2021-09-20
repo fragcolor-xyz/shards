@@ -48,3 +48,6 @@ A dynamic block.
 
 )
 ```
+
+
+--8<-- "includes/license.md"

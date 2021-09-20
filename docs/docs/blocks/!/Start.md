@@ -47,3 +47,6 @@ Starts a given chain and suspends the current one. In other words, switches flow
 
 (Start hello)
 ```
+
+
+--8<-- "includes/license.md"

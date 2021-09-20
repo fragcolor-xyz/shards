@@ -53,3 +53,6 @@ license: CC-BY-SA-4.0
  funcChain)
 (Assert.Is 10 true)
 ```
+
+
+--8<-- "includes/license.md"

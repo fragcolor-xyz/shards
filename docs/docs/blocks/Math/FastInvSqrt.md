@@ -37,3 +37,6 @@ Calculates `FastInvSqrt()` on the input value and returns its result, or a seque
 (Math.FastInvSqrt)
 (Assert.Is 0.4999978 true)
 ```
+
+
+--8<-- "includes/license.md"

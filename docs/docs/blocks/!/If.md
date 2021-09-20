@@ -57,3 +57,6 @@ Evaluates a predicate and executes an action.
  ;:Else
  (Msg "equal or greater than 2"))
 ```
+
+
+--8<-- "includes/license.md"

@@ -53,3 +53,6 @@ Takes a sequence of conditions and predicates. Evaluates each condition one by o
  ;:Passthrough
  false)
 ```
+
+
+--8<-- "includes/license.md"

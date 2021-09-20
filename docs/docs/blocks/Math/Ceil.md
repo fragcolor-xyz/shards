@@ -37,3 +37,6 @@ Calculates `Ceil()` on the input value and returns its result, or a sequence of 
 (Math.Ceil)
 (Assert.Is (Float3 0.0 4.0 8.0) true)
 ```
+
+
+--8<-- "includes/license.md"

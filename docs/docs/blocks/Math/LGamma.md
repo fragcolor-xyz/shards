@@ -37,3 +37,6 @@ Calculates `LGamma()` on the input value and returns its result, or a sequence o
 (Math.LGamma)
 (Assert.Is (Float3 0.0 0.572365 12.801827) true)
 ```
+
+
+--8<-- "includes/license.md"

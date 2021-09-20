@@ -37,3 +37,6 @@ Calculates `Asin()` on the input value and returns its result, or a sequence of 
 (Math.Asin)
 (Assert.Is (Float4 -1.5707963 0.0 0.52359878 1.5707963) true)
 ```
+
+
+--8<-- "includes/license.md"

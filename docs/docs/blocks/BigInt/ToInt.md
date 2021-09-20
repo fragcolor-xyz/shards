@@ -37,3 +37,6 @@ Converts a big integer value to an integer.
 (BigInt.ToInt)
 (Assert.Is (Int 42) true)
 ```
+
+
+--8<-- "includes/license.md"

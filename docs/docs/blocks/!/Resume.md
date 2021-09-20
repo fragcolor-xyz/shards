@@ -49,3 +49,6 @@ Resumes a given chain and suspends the current one. In other words, switches flo
 (Start hello)
 (Msg "World")
 ```
+
+
+--8<-- "includes/license.md"

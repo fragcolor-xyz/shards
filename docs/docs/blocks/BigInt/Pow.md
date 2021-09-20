@@ -50,3 +50,6 @@ license: CC-BY-SA-4.0
  3)
 (BigInt.Is .expected) (Assert.Is true true)
 ```
+
+
+--8<-- "includes/license.md"

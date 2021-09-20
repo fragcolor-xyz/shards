@@ -37,3 +37,6 @@ Calculates `Atanh()` on the input value and returns its result, or a sequence of
 (Math.Atanh)
 (Assert.Is (Float3 -0.54930614 0.0 0.54930614) true)
 ```
+
+
+--8<-- "includes/license.md"

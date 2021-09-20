@@ -6,6 +6,8 @@ license: CC-BY-SA-4.0
 
 # Audio.Channel
 
+--8<-- "includes/experimental.md"
+
 ```clojure
 (Audio.Channel
   :InputBus [(Int)]
@@ -56,3 +58,6 @@ license: CC-BY-SA-4.0
 
 )
 ```
+
+
+--8<-- "includes/license.md"

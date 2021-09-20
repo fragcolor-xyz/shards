@@ -37,3 +37,6 @@ Calculates `Tanh()` on the input value and returns its result, or a sequence of 
 (Math.Tanh)
 (Assert.Is (Float3 -0.76159416 0.0 0.76159416) true)
 ```
+
+
+--8<-- "includes/license.md"

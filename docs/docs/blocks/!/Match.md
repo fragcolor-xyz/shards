@@ -52,3 +52,6 @@ false
  ;:Passthrough
  false)
 ```
+
+
+--8<-- "includes/license.md"

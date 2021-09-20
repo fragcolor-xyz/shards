@@ -37,3 +37,6 @@ Converts the value to a hexadecimal representation.
 (BigInt.ToHex)
 (Assert.Is "0x2a" true)
 ```
+
+
+--8<-- "includes/license.md"

@@ -37,3 +37,6 @@ Calculates `Cbrt()` on the input value and returns its result, or a sequence of 
 (Math.Cbrt)
 (Assert.Is (Float3 -3.0 1.0 2.0) true)
 ```
+
+
+--8<-- "includes/license.md"

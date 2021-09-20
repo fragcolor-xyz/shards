@@ -48,3 +48,6 @@ Calculates the mean of a sequence of floating point numbers.
 Mean.Arithmetic)
 (Assert.Is 1.4 true)
 ```
+
+
+--8<-- "includes/license.md"

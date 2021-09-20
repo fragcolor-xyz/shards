@@ -37,3 +37,6 @@ Calculates `Erf()` on the input value and returns its result, or a sequence of r
 (Math.Erf)
 (Assert.Is (Float3 0.0 0.84270079 0.99532226) true)
 ```
+
+
+--8<-- "includes/license.md"

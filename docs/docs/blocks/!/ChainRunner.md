@@ -59,3 +59,6 @@ license: CC-BY-SA-4.0
  ;:Mode
  RunChainMode.Inline)
 ```
+
+
+--8<-- "includes/license.md"

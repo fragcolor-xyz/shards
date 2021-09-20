@@ -49,3 +49,6 @@ Applies the binary operation on the input value and operand and returns its resu
 .mutable
 (Assert.Is 9.0 true)
 ```
+
+
+--8<-- "includes/license.md"
