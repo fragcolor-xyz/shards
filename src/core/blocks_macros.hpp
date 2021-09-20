@@ -48,6 +48,8 @@
         [](CBlock *block) { return CBOptionalString(); });                     \
     result->outputHelp = static_cast<CBHelpProc>(                              \
         [](CBlock *block) { return CBOptionalString(); });                     \
+    result->properties = static_cast<CBPropertiesProc>(                        \
+        [](CBlock *block) -> const CBTable * { return nullptr; });             \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -94,6 +96,8 @@
         [](CBlock *block) { return CBOptionalString(); });                     \
     result->outputHelp = static_cast<CBHelpProc>(                              \
         [](CBlock *block) { return CBOptionalString(); });                     \
+    result->properties = static_cast<CBPropertiesProc>(                        \
+        [](CBlock *block) -> const CBTable * { return nullptr; });             \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -141,6 +145,8 @@
         [](CBlock *block) { return CBOptionalString(); });                     \
     result->outputHelp = static_cast<CBHelpProc>(                              \
         [](CBlock *block) { return CBOptionalString(); });                     \
+    result->properties = static_cast<CBPropertiesProc>(                        \
+        [](CBlock *block) -> const CBTable * { return nullptr; });             \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});
@@ -188,6 +194,8 @@
         [](CBlock *block) { return CBOptionalString(); });                     \
     result->outputHelp = static_cast<CBHelpProc>(                              \
         [](CBlock *block) { return CBOptionalString(); });                     \
+    result->properties = static_cast<CBPropertiesProc>(                        \
+        [](CBlock *block) -> const CBTable * { return nullptr; });             \
     result->nextFrame = nullptr;                                               \
     result->mutate = nullptr;                                                  \
     result->cleanup = static_cast<CBCleanupProc>([](CBlock *block) {});

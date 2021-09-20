@@ -2076,6 +2076,17 @@ BUILTIN("info") {
           mal::string(help.string ? help.string : getString(help.crc));
     }
 
+    {
+      auto properties = block->properties(block);
+      if (unlikely(properties != nullptr)) {
+        malHash::Map pmap;
+        ForEach(*properties, [&](auto &key, auto &val) {
+          pmap[escape(key)] = readVar(val);
+        });
+        map[":properties"] = mal::hash(pmap);
+      }
+    }
+
     return mal::hash(map);
   }
 }

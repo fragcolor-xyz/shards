@@ -53,3 +53,6 @@ Conditonal block that only executes the action if the predicate is true.
  ;:Action
  (Msg "More than 50"))
 ```
+
+
+--8<-- "includes/license.md"

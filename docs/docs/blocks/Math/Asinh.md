@@ -37,3 +37,6 @@ Calculates `Asinh()` on the input value and returns its result, or a sequence of
 (Math.Asinh)
 (Assert.Is (Float3 -0.88137359 0.0 0.88137359) true)
 ```
+
+
+--8<-- "includes/license.md"

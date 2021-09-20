@@ -55,3 +55,6 @@ license: CC-BY-SA-4.0
 (Do "dologic")
 (Assert.IsNot true true)
 ```
+
+
+--8<-- "includes/license.md"

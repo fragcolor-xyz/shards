@@ -37,3 +37,6 @@ Calculates `Floor()` on the input value and returns its result, or a sequence of
 (Math.Floor)
 (Assert.Is (Float3 -1.0 4.0 7.0) true)
 ```
+
+
+--8<-- "includes/license.md"

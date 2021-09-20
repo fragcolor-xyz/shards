@@ -37,3 +37,6 @@ Calculates `Exp()` on the input value and returns its result, or a sequence of r
 (Math.Exp)
 (Assert.Is (Float 1) true)
 ```
+
+
+--8<-- "includes/license.md"

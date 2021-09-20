@@ -49,3 +49,6 @@ Activates a block or a sequence of blocks independently, without consuming the i
   (ToString)
   (Assert.Is "3.14159" true)))
 ```
+
+
+--8<-- "includes/license.md"

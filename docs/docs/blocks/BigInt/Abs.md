@@ -39,3 +39,6 @@ Computes the absolute value of a big integer.
 (BigInt.Abs)
 (BigInt.Is .expected) (Assert.Is true true)
 ```
+
+
+--8<-- "includes/license.md"

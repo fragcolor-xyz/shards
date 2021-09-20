@@ -37,3 +37,6 @@ Calculates `Expm1()` on the input value and returns its result, or a sequence of
 (Math.Expm1)
 (Assert.Is (Float 0) true)
 ```
+
+
+--8<-- "includes/license.md"

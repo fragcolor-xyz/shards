@@ -51,3 +51,6 @@ This assertion is used to check whether the input is equal to a given value.
  ;:Abort
  true)
 ```
+
+
+--8<-- "includes/license.md"

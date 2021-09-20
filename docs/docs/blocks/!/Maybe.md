@@ -55,3 +55,6 @@ Attempts to activate a block or a sequence of blocks. Upon failure, activate ano
  ;:Silent
  true)
 ```
+
+
+--8<-- "includes/license.md"

@@ -37,3 +37,6 @@ Calculates `Sinh()` on the input value and returns its result, or a sequence of 
 (Math.Sinh)
 (Assert.Is (Float3 -1.1752012 0.0 1.1752012) true)
 ```
+
+
+--8<-- "includes/license.md"

@@ -174,10 +174,19 @@ mod dummy_block {
   use crate::core::Core;
   use crate::types::common_type;
   use crate::types::ClonedVar;
+  use crate::types::Table;
   use crate::types::Var;
   use core::convert::TryInto;
   use std::ffi::CStr;
   use std::ffi::CString;
+
+  lazy_static! {
+    static ref PROPERTIES: Table = {
+      let mut table = Table::default();
+      table.insert_fast_static(cstr!("experimental"), true.into());
+      table
+    };
+  }
 
   pub struct DummyBlock {
     inputTypes: Types,
@@ -205,6 +214,11 @@ mod dummy_block {
     fn outputTypes(&mut self) -> &Types {
       &self.outputTypes
     }
+
+    fn properties(&mut self) -> Option<&Table> {
+      Some(&PROPERTIES)
+    }
+
     fn activate(&mut self, context: &CBContext, _input: &Var) -> Result<Var, &str> {
       log("Dummy - activate: Ok!\0");
       let mut x: String = "Before...\0".to_string();

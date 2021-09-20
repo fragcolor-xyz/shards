@@ -47,3 +47,6 @@ Converts a floating point number to a big integer.
 42.1 (BigInt.FromFloat)
 (BigInt.Is .expected) (Assert.Is true true)
 ```
+
+
+--8<-- "includes/license.md"

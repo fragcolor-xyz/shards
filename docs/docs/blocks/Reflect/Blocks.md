@@ -37,3 +37,6 @@ Given a chain as input it will recurse deep inside it and gather all blocks in t
 
 )
 ```
+
+
+--8<-- "includes/license.md"

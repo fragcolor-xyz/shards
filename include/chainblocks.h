@@ -679,6 +679,7 @@ typedef void(__cdecl *CBCallback)();
 typedef CBString(__cdecl *CBNameProc)(struct CBlock *);
 typedef uint32_t(__cdecl *CBHashProc)(struct CBlock *);
 typedef CBOptionalString(__cdecl *CBHelpProc)(struct CBlock *);
+typedef const struct CBTable *(__cdecl *CBPropertiesProc)(struct CBlock *);
 
 // Construction/Destruction
 typedef void(__cdecl *CBSetupProc)(struct CBlock *);
@@ -746,8 +747,9 @@ struct CBlock {
   CBHashProc hash; // Returns the hash of the block, useful for serialization
   CBHelpProc help; // Returns the help text of the block, do not free the
                    // string, generally const
-  CBHelpProc inputHelp;  // optional help text for the input
-  CBHelpProc outputHelp; // optional help text for the output
+  CBHelpProc inputHelp;        // optional help text for the input
+  CBHelpProc outputHelp;       // optional help text for the output
+  CBPropertiesProc properties; // optional properties
 
   CBSetupProc setup;     // A one time construtor setup for the block
   CBDestroyProc destroy; // A one time finalizer for the block, blocks should

@@ -48,3 +48,6 @@ license: CC-BY-SA-4.0
 
 )
 ```
+
+
+--8<-- "includes/license.md"

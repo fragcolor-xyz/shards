@@ -62,3 +62,6 @@ license: CC-BY-SA-4.0
 (Start loader)
 (Wait loader)
 ```
+
+
+--8<-- "includes/license.md"

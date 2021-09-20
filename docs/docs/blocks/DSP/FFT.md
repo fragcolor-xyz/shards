@@ -6,6 +6,8 @@ license: CC-BY-SA-4.0
 
 # DSP.FFT
 
+--8<-- "includes/experimental.md"
+
 ```clojure
 (DSP.FFT)
 ```
@@ -37,3 +39,6 @@ license: CC-BY-SA-4.0
 
 )
 ```
+
+
+--8<-- "includes/license.md"

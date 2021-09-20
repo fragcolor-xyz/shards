@@ -46,3 +46,6 @@ Applies the binary operation on the input value and operand and returns its resu
 (Math.RShift 2)
 (Assert.Is 1 true)
 ```
+
+
+--8<-- "includes/license.md"

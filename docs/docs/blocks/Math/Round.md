@@ -37,3 +37,6 @@ Calculates `Round()` on the input value and returns its result, or a sequence of
 (Math.Round)
 (Assert.Is (Float3 -1.0 4.0 8.0) true)
 ```
+
+
+--8<-- "includes/license.md"

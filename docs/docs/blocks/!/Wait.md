@@ -57,3 +57,6 @@ Waits for another chain to complete before resuming execution of the current cha
  false)
 (Assert.Is "Positive" true)
 ```
+
+
+--8<-- "includes/license.md"

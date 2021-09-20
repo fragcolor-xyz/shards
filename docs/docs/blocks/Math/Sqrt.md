@@ -37,3 +37,6 @@ Calculates `Sqrt()` on the input value and returns its result, or a sequence of 
 (Math.Sqrt)
 (Assert.Is (Float3 1.0 1.4142136 2.0) true)
 ```
+
+
+--8<-- "includes/license.md"

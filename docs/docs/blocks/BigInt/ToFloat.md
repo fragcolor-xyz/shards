@@ -48,3 +48,6 @@ Converts a big integer value to a floating point number.
  1)
 (Assert.Is (Float 30.0) true)
 ```
+
+
+--8<-- "includes/license.md"

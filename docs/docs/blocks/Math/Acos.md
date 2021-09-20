@@ -37,3 +37,6 @@ Calculates `Acos()` on the input value and returns its result, or a sequence of 
 (Math.Acos)
 (Assert.Is (Float4 3.1415927 1.5707963 1.0471976 0.0) true)
 ```
+
+
+--8<-- "includes/license.md"

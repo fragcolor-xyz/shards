@@ -63,3 +63,6 @@ license: CC-BY-SA-4.0
  1)
 (Assert.Is ["Ok" "Ok" "Ok"] true)
 ```
+
+
+--8<-- "includes/license.md"

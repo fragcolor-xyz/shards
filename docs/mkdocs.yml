@@ -3,7 +3,12 @@ repo_url: https://github.com/fragcolor-xyz/chainblocks/
 site_name: Fragcolor documentation
 site_url: 
 markdown_extensions:
+  - admonition
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
   - pymdownx.highlight
+  - pymdownx.snippets
   - pymdownx.superfences
 theme:
   features:
@@ -16,11 +21,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
+      primary: purple
+      accent: purple
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: teal
+      accent: teal
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode

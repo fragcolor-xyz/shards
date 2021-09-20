@@ -49,3 +49,6 @@ license: CC-BY-SA-4.0
 (ToHex)
 (Assert.Is "0x002a" true)
 ```
+
+
+--8<-- "includes/license.md"

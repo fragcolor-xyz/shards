@@ -76,6 +76,7 @@
     intputHelp (get record :inputHelp)
     outputTypes (get record :outputTypes)
     outputHelp (get record :outputHelp)
+    properties (get record :properties)
     parameters (get record :parameters)]
 
     (schedule
@@ -93,13 +94,13 @@
       ; title
        "# " name "\r\n\r\n"
 
+       (if (get properties "experimental")
+         (str "--8<-- \"includes/experimental.md\"\r\n\r\n") "")
+
       ; basic syntax
        "```clojure\r\n"
        "(" name
-       (if
-        (> (count parameters) 0)
-         "\r\n"
-         "")
+       (if (> (count parameters) 0) "\r\n" "")
        (apply
         str
         (map
@@ -108,8 +109,7 @@
           (let
            [p_name (get param :name)
             p_types (get param :types)]
-            (str
-             "  :" p_name " " p_types "\r\n")))
+            (str "  :" p_name " " p_types "\r\n")))
          parameters))
        ")\r\n"
        "```\r\n"
@@ -121,8 +121,7 @@
 
        "\r\n\r\n"
 
-       (if
-        (> (count parameters) 0)
+       (if (> (count parameters) 0)
          (str
           "## Parameters\r\n\r\n"
           "| Name | Type | Default | Description |\r\n"
@@ -162,6 +161,9 @@
 
        "```clojure\r\n"
        (read-var (run-chain (getSample name)))
-       "```\r\n")))))
+       "```\r\n"
+
+       "\r\n\r\n"
+       "--8<-- \"includes/license.md\"\r\n")))))
  (blocks))
 (run main)

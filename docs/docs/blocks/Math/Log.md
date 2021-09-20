@@ -37,3 +37,6 @@ Calculates `Log()` on the input value and returns its result, or a sequence of r
 (Math.Log)
 (Assert.Is (Float3 0.0 -0.69314718 2.3025851) true)
 ```
+
+
+--8<-- "includes/license.md"

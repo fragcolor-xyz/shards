@@ -26,6 +26,7 @@
 
 namespace chainblocks {
 namespace Audio {
+static TableVar experimental{{"experimental", Var(true)}};
 
 /*
 
@@ -63,6 +64,10 @@ struct Device {
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
 
   mutable ma_device _device;
   mutable bool _open{false};
@@ -355,6 +360,10 @@ struct Channel {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
+
   ChannelData _data{};
   CBVar *_device{nullptr};
   const Device *d{nullptr};
@@ -534,6 +543,10 @@ struct Oscillator {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
 
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
+
   static inline Parameters params{
       {"Type", CBCCSTR("The waveform type to oscillate."), {WaveformType}},
       {"Amplitude",
@@ -679,6 +692,10 @@ struct ReadFile {
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
 
   static inline Parameters params{
       {"File",
@@ -878,6 +895,10 @@ struct WriteFile {
 
   static CBTypesInfo inputTypes() { return CoreInfo::AudioType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
+  }
 
   static inline Parameters params{
       {"File",

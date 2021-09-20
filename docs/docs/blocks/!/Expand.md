@@ -57,3 +57,6 @@ license: CC-BY-SA-4.0
  :Threads 5)
 (Assert.Is [42 42 42 42 42 42 42 42 42 42] true)
 ```
+
+
+--8<-- "includes/license.md"

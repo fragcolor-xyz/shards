@@ -48,3 +48,6 @@ Applies the binary operation on the input value and operand and returns its resu
  (Int4 3 3 3 3))
 (Assert.Is (Int4 0 2 0 0) true)
 ```
+
+
+--8<-- "includes/license.md"

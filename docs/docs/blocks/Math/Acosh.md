@@ -37,3 +37,6 @@ Calculates `Acosh()` on the input value and returns its result, or a sequence of
 (Math.Acosh)
 (Assert.Is (Float3 0 1.3169578 1.5667992) true)
 ```
+
+
+--8<-- "includes/license.md"

@@ -37,3 +37,6 @@ Calculates `Log1p()` on the input value and returns its result, or a sequence of
 
 )
 ```
+
+
+--8<-- "includes/license.md"
