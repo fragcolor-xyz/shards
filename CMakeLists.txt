@@ -128,8 +128,9 @@ endif()
 
 ### general
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(WIN32 AND APPLE)
+  if(WIN32 OR APPLE)
     add_link_options(-static)
+    link_libraries("-static")
   endif()
 
   if(NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
