@@ -1,0 +1,30 @@
+name: Documentation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0      
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+      - name: Install mkdocs
+        run: pip install mkdocs-material
+      - name: Build website
+        run: |
+          cd docs
+          mkdocs build
+      - name: Deploy to IPFS
+        uses: chainblocks/ipfs-action@master
+        with:
+          path: docs/site/
+          service: infura
+          port: 5001
+          protocol: https
