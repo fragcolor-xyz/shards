@@ -2981,6 +2981,9 @@ void *SDL_GetNativeWindowPtr(SDL_Window *window) {
 }
 
 void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
+#ifdef __EMSCRIPTEN__
+  return nullptr;
+#else
   SDL_SysWMinfo winInfo{};
   SDL_version sdlVer{};
   SDL_VERSION(&sdlVer);
@@ -2992,6 +2995,7 @@ void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
   return (void *)winInfo.info.x11.display;
 #else
   return nullptr;
+#endif
 #endif
 }
 } // namespace BGFX
