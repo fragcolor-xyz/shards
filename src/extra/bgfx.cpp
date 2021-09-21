@@ -758,10 +758,10 @@ struct MainWindow : public BaseWindow {
         _rheight = real_h;
       }
       _sysWnd = (void *)SDL_Metal_GetLayer(_metalView);
-#elif defined(_WIN32) || defined(__linux__)
-      _sysWnd = (void *)SDL_GetNativeWindowPtr(_window);
 #elif defined(__EMSCRIPTEN__)
       _sysWnd = (void *)("#canvas"); // SDL and emscripten use #canvas
+#elif defined(_WIN32) || defined(__linux__)
+      _sysWnd = (void *)SDL_GetNativeWindowPtr(_window);
 #endif
     }
 
