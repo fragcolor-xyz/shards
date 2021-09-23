@@ -21,7 +21,7 @@ The runtime itself is completely detached.
 
 === "Code"
 
-    ```clojure
+    ```clojure linenums="1"
     ; define a node
     (defnode main)
     ; define a simple hello world looped chain
@@ -53,7 +53,7 @@ The runtime itself is completely detached.
 
 === "Code"
 
-    ```clojure
+    ```clojure linenums="1"
     ; define a node
     (defnode main)
     ; define a simple counter looped chain
@@ -98,7 +98,7 @@ Showing how we mix the Clojure-like language as a template language
 
 === "Code"
 
-    ```clojure
+    ```clojure linenums="1"
     ; define a node
     (defnode main)
     ; define a counter template
