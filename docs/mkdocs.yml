@@ -2,6 +2,25 @@ edit_uri: edit/devel/docs/docs/
 repo_url: https://github.com/fragcolor-xyz/chainblocks/
 site_name: Fragcolor documentation
 site_url: 
+copyright: Copyright © 2021 Fragcolor Pte. Inc.
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/fragcolor-xyz
+      name: Fragcolor is on GitHub
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/c7mjxvYqd3
+      name: Join us on Discord
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/fragcolor
+      name: Follow us on Twitter
+    - icon: fontawesome/brands/facebook
+      link: https://www.facebook.com/fragcolor/
+      name: Follow us on Facebook
+    - icon: fontawesome/brands/linkedin-in
+      link: https://www.linkedin.com/company/fragcolor/
+      name: Company profile on LinkedIn
 markdown_extensions:
   - admonition
   - pymdownx.emoji:
@@ -10,13 +29,22 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.snippets
   - pymdownx.superfences
+  - toc:
+      permalink: true
 theme:
+  favicon: assets/images/favicon.svg
   features:
-    - navigation.indexes # requires sponsorship
+    # - navigation.indexes # disabled: looks like there are some bugs.
+    - navigation.instant
     - navigation.tabs
-    - navigation.tabs.sticky # requires sponsorship
+    - navigation.tabs.sticky
     - navigation.top
+    - search.suggest
+  font:
+    code: Fira Code
+    text: Montserrat
   language: en
+  logo: assets/images/logo.svg
   name: material
   palette:
     - media: "(prefers-color-scheme: light)"
@@ -33,4 +61,4 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
-use_directory_urls: False
+use_directory_urls: true
