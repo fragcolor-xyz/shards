@@ -464,7 +464,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
   CBLOG_TRACE("WASI m3_wasi_unstable_path_filestat_get, path: {}", path);
 
   std::filesystem::path fp{path};
-  std::filesystem::path rp{chainblocks::Globals::RootPath};
+  std::filesystem::path rp{chainblocks::GetGlobals().RootPath};
   std::filesystem::path p = rp / fp;
   auto ps = p.string();
 

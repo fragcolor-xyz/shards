@@ -55,9 +55,9 @@ using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
   if (_suspend_state != CBChainState::Continue)                                \
   return Var::Empty
 
-#define CB_STOP() std::rethrow_exception(chainblocks::Globals::StopChainEx);
+#define CB_STOP() std::rethrow_exception(chainblocks::GetGlobals().StopChainEx);
 #define CB_RESTART()                                                           \
-  std::rethrow_exception(chainblocks::Globals::RestartChainEx);
+  std::rethrow_exception(chainblocks::GetGlobals().RestartChainEx);
 
 struct CBContext {
   CBContext(
@@ -642,7 +642,7 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   if (runCallbacks) {
     CBDuration sleepTime(seconds);
     auto pre = CBClock::now();
-    for (auto &cbinfo : Globals::RunLoopHooks) {
+    for (auto &cbinfo : GetGlobals().RunLoopHooks) {
       if (cbinfo.second) {
         cbinfo.second();
       }
@@ -776,7 +776,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   bool tick(Observer observer, CBVar input = Var::Empty) {
     auto noErrors = true;
     _errors.clear();
-    if (Globals::SigIntTerm > 0) {
+    if (GetGlobals().SigIntTerm > 0) {
       terminate();
     } else {
       CBDuration now = CBClock::now().time_since_epoch();
@@ -1020,7 +1020,7 @@ struct Serialization {
 
       if (!map) {
         map = new CBMap();
-        output.payload.tableValue.api = &Globals::TableInterface;
+        output.payload.tableValue.api = &GetGlobals().TableInterface;
         output.payload.tableValue.opaque = map;
       }
 
@@ -1056,7 +1056,7 @@ struct Serialization {
 
       if (!set) {
         set = new CBHashSet();
-        output.payload.setValue.api = &Globals::SetInterface;
+        output.payload.setValue.api = &GetGlobals().SetInterface;
         output.payload.setValue.opaque = set;
       }
 
@@ -1246,8 +1246,8 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
       if (len > 0) {
-        auto it = Globals::ObjectTypesRegister.find(id);
-        if (it != Globals::ObjectTypesRegister.end()) {
+        auto it = GetGlobals().ObjectTypesRegister.find(id);
+        if (it != GetGlobals().ObjectTypesRegister.end()) {
           auto &info = it->second;
           auto size = size_t(len);
           std::vector<uint8_t> data;

@@ -434,36 +434,36 @@ struct RestartChainException : public CBException {
 };
 
 struct Globals {
-  static inline std::mutex SettingsMutex;
-  static inline std::unordered_map<std::string, OwnedVar> Settings;
+  std::mutex SettingsMutex;
+  std::unordered_map<std::string, OwnedVar> Settings;
 
-  static inline int SigIntTerm{0};
-  static inline std::unordered_map<std::string_view, CBBlockConstructor>
+  int SigIntTerm{0};
+  std::unordered_map<std::string_view, CBBlockConstructor>
       BlocksRegister;
-  static inline std::unordered_map<std::string_view, std::string_view>
+  std::unordered_map<std::string_view, std::string_view>
       BlockNamesToFullTypeNames;
-  static inline std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
-  static inline std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
+  std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
+  std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 
   // map = ordered! we need that for those
-  static inline std::map<std::string_view, CBCallback> RunLoopHooks;
-  static inline std::map<std::string_view, CBCallback> ExitHooks;
+  std::map<std::string_view, CBCallback> RunLoopHooks;
+  std::map<std::string_view, CBCallback> ExitHooks;
 
-  static inline std::unordered_map<std::string, std::shared_ptr<CBChain>>
+  std::unordered_map<std::string, std::shared_ptr<CBChain>>
       GlobalChains;
 
-  static inline std::list<std::weak_ptr<RuntimeObserver>> Observers;
+  std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
-  static inline std::string RootPath;
-  static inline std::string ExePath;
+  std::string RootPath;
+  std::string ExePath;
 
-  static inline std::exception_ptr StopChainEx;
-  static inline std::exception_ptr RestartChainEx;
+  std::exception_ptr StopChainEx;
+  std::exception_ptr RestartChainEx;
 
-  static inline std::unordered_map<uint32_t, CBOptionalString>
+  std::unordered_map<uint32_t, CBOptionalString>
       *CompressedStrings{nullptr};
 
-  static inline CBTableInterface TableInterface{
+  CBTableInterface TableInterface{
       .tableGetIterator =
           [](CBTable table, CBTableIterator *outIter) {
             if (outIter == nullptr)
@@ -530,7 +530,7 @@ struct Globals {
             delete map;
           }};
 
-  static inline CBSetInterface SetInterface{
+  CBSetInterface SetInterface{
       .setGetIterator =
           [](CBSet cbset, CBSetIterator *outIter) {
             if (outIter == nullptr)
@@ -595,6 +595,8 @@ struct Globals {
             delete set;
           }};
 };
+
+Globals& GetGlobals();
 
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);
@@ -919,14 +921,14 @@ struct InternalCore {
   // need to emulate dllblock Core a bit
   static CBTable tableNew() {
     CBTable res;
-    res.api = &chainblocks::Globals::TableInterface;
+    res.api = &chainblocks::GetGlobals().TableInterface;
     res.opaque = new chainblocks::CBMap();
     return res;
   }
 
   static CBSet setNew() {
     CBSet res;
-    res.api = &chainblocks::Globals::SetInterface;
+    res.api = &chainblocks::GetGlobals().SetInterface;
     res.opaque = new chainblocks::CBHashSet();
     return res;
   }

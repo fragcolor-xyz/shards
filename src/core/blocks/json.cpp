@@ -497,7 +497,7 @@ void from_json(const json &j, CBVar &var) {
   case CBType::Table: {
     auto map = new chainblocks::CBMap();
     var.valueType = CBType::Table;
-    var.payload.tableValue.api = &chainblocks::Globals::TableInterface;
+    var.payload.tableValue.api = &chainblocks::GetGlobals().TableInterface;
     var.payload.tableValue.opaque = map;
     auto items = j.at("values").get<std::vector<json>>();
     for (const auto &item : items) {
@@ -510,7 +510,7 @@ void from_json(const json &j, CBVar &var) {
   case CBType::Set: {
     auto set = new chainblocks::CBHashSet();
     var.valueType = CBType::Set;
-    var.payload.setValue.api = &chainblocks::Globals::SetInterface;
+    var.payload.setValue.api = &chainblocks::GetGlobals().SetInterface;
     var.payload.setValue.opaque = set;
     auto items = j.at("values").get<std::vector<json>>();
     for (const auto &item : items) {
@@ -569,8 +569,8 @@ void from_json(const json &j, CBVar &var) {
     var.payload.objectValue = nullptr;
     int64_t id =
         (int64_t)var.payload.objectVendorId << 32 | var.payload.objectTypeId;
-    auto it = chainblocks::Globals::ObjectTypesRegister.find(id);
-    if (it != chainblocks::Globals::ObjectTypesRegister.end()) {
+    auto it = chainblocks::GetGlobals().ObjectTypesRegister.find(id);
+    if (it != chainblocks::GetGlobals().ObjectTypesRegister.end()) {
       auto &info = it->second;
       auto data = j.at("data").get<std::vector<uint8_t>>();
       var.payload.objectValue = info.deserialize(&data.front(), data.size());
@@ -773,7 +773,7 @@ struct FromJson {
     } else if (j.is_object()) {
       storage.valueType = Table;
       auto map = new chainblocks::CBMap();
-      storage.payload.tableValue.api = &chainblocks::Globals::TableInterface;
+      storage.payload.tableValue.api = &chainblocks::GetGlobals().TableInterface;
       storage.payload.tableValue.opaque = map;
       for (auto &[key, value] : j.items()) {
         anyParse(value, (*map)[key]);

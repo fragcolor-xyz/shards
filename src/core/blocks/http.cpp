@@ -130,7 +130,7 @@ struct Base {
         CBVar empty{};
         empty.valueType = CBType::Table;
         empty.payload.tableValue.opaque = &m;
-        empty.payload.tableValue.api = &Globals::TableInterface;
+        empty.payload.tableValue.api = &GetGlobals().TableInterface;
         outMap["headers"] = empty;
       }
       break;
@@ -274,7 +274,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
         CBVar res{};
         res.valueType = CBType::Table;
         res.payload.tableValue.opaque = &outMap;
-        res.payload.tableValue.api = &Globals::TableInterface;
+        res.payload.tableValue.api = &GetGlobals().TableInterface;
         return res;
       } else {
         if (asBytes) {
@@ -381,7 +381,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
         CBVar res{};
         res.valueType = CBType::Table;
         res.payload.tableValue.opaque = &outMap;
-        res.payload.tableValue.api = &Globals::TableInterface;
+        res.payload.tableValue.api = &GetGlobals().TableInterface;
         return res;
       } else {
         if (asBytes) {
@@ -634,7 +634,7 @@ struct Read {
     auto res = CBVar();
     res.valueType = Table;
     res.payload.tableValue.opaque = &_output;
-    res.payload.tableValue.api = &Globals::TableInterface;
+    res.payload.tableValue.api = &GetGlobals().TableInterface;
     return res;
   }
 
@@ -805,7 +805,7 @@ struct SendFile {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
-    std::filesystem::path p{Globals::RootPath};
+    std::filesystem::path p{GetGlobals().RootPath};
     p += input.payload.stringValue;
 
     http::file_body::value_type file;

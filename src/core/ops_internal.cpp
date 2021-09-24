@@ -7,47 +7,47 @@
 
 std::ostream &operator<<(std::ostream &os, const CBVar &var) {
   switch (var.valueType) {
-  case EndOfBlittableTypes:
+  case CBType::EndOfBlittableTypes:
     break;
-  case None:
+  case CBType::None:
     os << "None";
     break;
   case CBType::Any:
     os << "Any";
     break;
-  case Object:
+  case CBType::Object:
     os << "Object: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
        << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId
        << std::dec;
     break;
-  case Chain:
+  case CBType::Chain:
     os << "Chain: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
     break;
-  case Bytes:
+  case CBType::Bytes:
     os << "Bytes: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.bytesValue)
        << " size: " << std::dec << var.payload.bytesSize;
     break;
-  case Array:
+  case CBType::Array:
     os << "Array: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements)
        << " size: " << std::dec << var.payload.arrayValue.len
        << " of: " << type2Name(var.innerType);
     break;
-  case Enum:
+  case CBType::Enum:
     os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x"
        << var.payload.enumVendorId << " type: 0x" << var.payload.enumTypeId
        << std::dec;
     break;
-  case Bool:
+  case CBType::Bool:
     os << (var.payload.boolValue ? "true" : "false");
     break;
-  case Int:
+  case CBType::Int:
     os << var.payload.intValue;
     break;
-  case Int2:
+  case CBType::Int2:
     os << "(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
@@ -57,7 +57,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Int3:
+  case CBType::Int3:
     os << "(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
@@ -67,7 +67,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Int4:
+  case CBType::Int4:
     os << "(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
@@ -77,7 +77,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Int8:
+  case CBType::Int8:
     os << "(";
     for (auto i = 0; i < 8; i++) {
       if (i == 0)
@@ -87,7 +87,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Int16:
+  case CBType::Int16:
     os << "(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
@@ -97,10 +97,10 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Float:
+  case CBType::Float:
     os << var.payload.floatValue;
     break;
-  case Float2:
+  case CBType::Float2:
     os << "(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
@@ -110,7 +110,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Float3:
+  case CBType::Float3:
     os << "(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
@@ -120,7 +120,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Float4:
+  case CBType::Float4:
     os << "(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
@@ -130,12 +130,12 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case Color:
+  case CBType::Color:
     os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g)
        << ", " << int(var.payload.colorValue.b) << ", "
        << int(var.payload.colorValue.a);
     break;
-  case Block:
+  case CBType::Block:
     os << "Block: " << var.payload.blockValue->name(var.payload.blockValue);
     break;
   case CBType::String:
@@ -144,25 +144,25 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     else
       os << "\"" << var.payload.stringValue << "\"";
     break;
-  case ContextVar:
+  case CBType::ContextVar:
     os << "ContextVariable: " << var.payload.stringValue;
     break;
   case CBType::Path:
     os << "Path: " << var.payload.stringValue;
     break;
-  case Image:
+  case CBType::Image:
     os << "Image";
     os << " Width: " << var.payload.imageValue.width;
     os << " Height: " << var.payload.imageValue.height;
     os << " Channels: " << (int)var.payload.imageValue.channels;
     break;
-  case Audio:
+  case CBType::Audio:
     os << "Audio";
     os << " SampleRate: " << var.payload.audioValue.sampleRate;
     os << " Samples: " << var.payload.audioValue.nsamples;
     os << " Channels: " << var.payload.audioValue.channels;
     break;
-  case Seq:
+  case CBType::Seq:
     os << "[";
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       const auto &v = var.payload.seqValue.elements[i];
@@ -191,7 +191,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << "}";
   } break;
-  case Set: {
+  case CBType::Set: {
     os << "{";
     auto &s = var.payload.setValue;
     bool first = true;
@@ -473,15 +473,15 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
   if (a.basicType != b.basicType)
     return false;
   switch (a.basicType) {
-  case Object:
+  case CBType::Object:
     if (a.object.vendorId != b.object.vendorId)
       return false;
     return a.object.typeId == b.object.typeId;
-  case Enum:
+  case CBType::Enum:
     if (a.enumeration.vendorId != b.enumeration.vendorId)
       return false;
     return a.enumeration.typeId == b.enumeration.typeId;
-  case Seq: {
+  case CBType::Seq: {
     if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
       return true;
 
@@ -508,7 +508,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
 
     return true;
   }
-  case Set: {
+  case CBType::Set: {
     if (a.setTypes.elements == nullptr && b.setTypes.elements == nullptr)
       return true;
 
@@ -535,7 +535,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
 
     return true;
   }
-  case Table: {
+  case CBType::Table: {
     auto atypes = a.table.types.len;
     auto btypes = b.table.types.len;
     if (atypes != btypes)

@@ -14,7 +14,7 @@
 #include <catch2/catch_all.hpp>
 
 int main(int argc, char *argv[]) {
-  chainblocks::Globals::RootPath = "./";
+  chainblocks::GetGlobals().RootPath = "./";
   registerCoreBlocks();
   int result = Catch::Session().run(argc, argv);
 #ifdef __EMSCRIPTEN_PTHREADS__

@@ -400,7 +400,7 @@ String malString::print(bool readably) const {
 malValuePtr malSymbol::eval(malEnvPtr env) {
   try {
     return env->get(value());
-  } catch(String &s) {
+  } catch (String &s) {
     s += ", line: " + std::to_string(line);
     throw;
   }

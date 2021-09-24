@@ -56,8 +56,8 @@ namespace chainblocks {
 CBOptionalString getCompiledCompressedString(uint32_t id) {
   static std::unordered_map<uint32_t, CBOptionalString>
       CompiledCompressedStrings;
-  if (Globals::CompressedStrings == nullptr)
-    Globals::CompressedStrings = &CompiledCompressedStrings;
+  if (GetGlobals().CompressedStrings == nullptr)
+    GetGlobals().CompressedStrings = &CompiledCompressedStrings;
   auto &val = CompiledCompressedStrings[id];
   val.crc = id; // make sure we return with crc to allow later lookups!
   return val;
@@ -66,8 +66,8 @@ CBOptionalString getCompiledCompressedString(uint32_t id) {
 CBOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
   static std::unordered_map<uint32_t, CBOptionalString>
       CompiledCompressedStrings;
-  if (Globals::CompressedStrings == nullptr)
-    Globals::CompressedStrings = &CompiledCompressedStrings;
+  if (GetGlobals().CompressedStrings == nullptr)
+    GetGlobals().CompressedStrings = &CompiledCompressedStrings;
   CBOptionalString ls{str, id};
   CompiledCompressedStrings[id] = ls;
   return ls;
@@ -187,27 +187,27 @@ void registerCoreBlocks() {
 
   globalRegisterDone = true;
 
-  if (Globals::RootPath.size() > 0) {
+  if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
-    std::filesystem::current_path(Globals::RootPath);
+    std::filesystem::current_path(GetGlobals().RootPath);
   } else {
     // set current path as root path
     auto cp = std::filesystem::current_path();
-    Globals::RootPath = cp.string();
+    GetGlobals().RootPath = cp.string();
   }
 
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
   namespace fs = std::filesystem;
-  if (Globals::ExePath.size() > 0) {
-    auto pluginPath = fs::absolute(Globals::ExePath) / "cblocks";
+  if (GetGlobals().ExePath.size() > 0) {
+    auto pluginPath = fs::absolute(GetGlobals().ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
     CBLOG_DEBUG("Adding dll path: {}", pluginPath.string());
     AddDllDirectory(pluginPathStr.c_str());
   }
-  if (Globals::RootPath.size() > 0) {
-    auto pluginPath = fs::absolute(Globals::RootPath) / "cblocks";
+  if (GetGlobals().RootPath.size() > 0) {
+    auto pluginPath = fs::absolute(GetGlobals().RootPath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
     CBLOG_DEBUG("Adding dll path: {}", pluginPath.string());
     AddDllDirectory(pluginPathStr.c_str());
@@ -248,13 +248,13 @@ void registerCoreBlocks() {
   try {
     throw StopChainException();
   } catch (...) {
-    Globals::StopChainEx = std::current_exception();
+    GetGlobals().StopChainEx = std::current_exception();
   }
 
   try {
     throw RestartChainException();
   } catch (...) {
-    Globals::RestartChainEx = std::current_exception();
+    GetGlobals().RestartChainEx = std::current_exception();
   }
 
   // at this point we might have some auto magical static linked block already
@@ -262,10 +262,10 @@ void registerCoreBlocks() {
   // as we assume the observers were setup in this call caller so too late for
   // them
   std::vector<std::pair<std::string_view, CBBlockConstructor>> earlyblocks;
-  for (auto &pair : Globals::BlocksRegister) {
+  for (auto &pair : GetGlobals().BlocksRegister) {
     earlyblocks.push_back(pair);
   }
-  Globals::BlocksRegister.clear();
+  GetGlobals().BlocksRegister.clear();
 
   static_assert(sizeof(CBVarPayload) == 16);
   static_assert(sizeof(CBVar) == 32);
@@ -304,10 +304,10 @@ void registerCoreBlocks() {
 #endif
 
   // Enums are auto registered we need to propagate them to observers
-  for (auto &einfo : Globals::EnumTypesRegister) {
+  for (auto &einfo : GetGlobals().EnumTypesRegister) {
     int32_t vendorId = (int32_t)((einfo.first & 0xFFFFFFFF00000000) >> 32);
     int32_t enumId = (int32_t)(einfo.first & 0x00000000FFFFFFFF);
-    for (auto &pobs : Globals::Observers) {
+    for (auto &pobs : GetGlobals().Observers) {
       if (pobs.expired())
         continue;
       auto obs = pobs.lock();
@@ -325,9 +325,9 @@ void registerCoreBlocks() {
   }
 
   // finally iterate cblock directory and load external dlls
-  loadExternalBlocks(Globals::ExePath);
-  if (Globals::RootPath != Globals::ExePath) {
-    loadExternalBlocks(Globals::RootPath);
+  loadExternalBlocks(GetGlobals().ExePath);
+  if (GetGlobals().RootPath != GetGlobals().ExePath) {
+    loadExternalBlocks(GetGlobals().RootPath);
   }
 
 #ifdef __EMSCRIPTEN__
@@ -357,8 +357,8 @@ void registerCoreBlocks() {
 }
 
 CBlock *createBlock(std::string_view name) {
-  auto it = Globals::BlocksRegister.find(name);
-  if (it == Globals::BlocksRegister.end()) {
+  auto it = GetGlobals().BlocksRegister.find(name);
+  if (it == GetGlobals().BlocksRegister.end()) {
     return nullptr;
   }
 
@@ -436,17 +436,17 @@ CBlock *createBlock(std::string_view name) {
 
 void registerBlock(std::string_view name, CBBlockConstructor constructor,
                    std::string_view fullTypeName) {
-  auto findIt = Globals::BlocksRegister.find(name);
-  if (findIt == Globals::BlocksRegister.end()) {
-    Globals::BlocksRegister.insert(std::make_pair(name, constructor));
+  auto findIt = GetGlobals().BlocksRegister.find(name);
+  if (findIt == GetGlobals().BlocksRegister.end()) {
+    GetGlobals().BlocksRegister.insert(std::make_pair(name, constructor));
   } else {
-    Globals::BlocksRegister[name] = constructor;
+    GetGlobals().BlocksRegister[name] = constructor;
     CBLOG_INFO("Overriding block: {}", name);
   }
 
-  Globals::BlockNamesToFullTypeNames[name] = fullTypeName;
+  GetGlobals().BlockNamesToFullTypeNames[name] = fullTypeName;
 
-  for (auto &pobs : Globals::Observers) {
+  for (auto &pobs : GetGlobals().Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
@@ -457,15 +457,15 @@ void registerBlock(std::string_view name, CBBlockConstructor constructor,
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = Globals::ObjectTypesRegister.find(id);
-  if (findIt == Globals::ObjectTypesRegister.end()) {
-    Globals::ObjectTypesRegister.insert(std::make_pair(id, info));
+  auto findIt = GetGlobals().ObjectTypesRegister.find(id);
+  if (findIt == GetGlobals().ObjectTypesRegister.end()) {
+    GetGlobals().ObjectTypesRegister.insert(std::make_pair(id, info));
   } else {
-    Globals::ObjectTypesRegister[id] = info;
+    GetGlobals().ObjectTypesRegister[id] = info;
     CBLOG_INFO("Overriding object type: {}", typeName);
   }
 
-  for (auto &pobs : Globals::Observers) {
+  for (auto &pobs : GetGlobals().Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
@@ -476,15 +476,15 @@ void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
-  auto findIt = Globals::EnumTypesRegister.find(id);
-  if (findIt == Globals::EnumTypesRegister.end()) {
-    Globals::EnumTypesRegister.insert(std::make_pair(id, info));
+  auto findIt = GetGlobals().EnumTypesRegister.find(id);
+  if (findIt == GetGlobals().EnumTypesRegister.end()) {
+    GetGlobals().EnumTypesRegister.insert(std::make_pair(id, info));
   } else {
-    Globals::EnumTypesRegister[id] = info;
-    CBLOG_INFO("Overriding enum type: {}", typeName);
+    GetGlobals().EnumTypesRegister[id] = info;
+    CBLOG_DEBUG("Overriding enum type: {}", typeName);
   }
 
-  for (auto &pobs : Globals::Observers) {
+  for (auto &pobs : GetGlobals().Observers) {
     if (pobs.expired())
       continue;
     auto obs = pobs.lock();
@@ -493,43 +493,43 @@ void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
 }
 
 void registerRunLoopCallback(std::string_view eventName, CBCallback callback) {
-  chainblocks::Globals::RunLoopHooks[eventName] = callback;
+  chainblocks::GetGlobals().RunLoopHooks[eventName] = callback;
 }
 
 void unregisterRunLoopCallback(std::string_view eventName) {
-  auto findIt = chainblocks::Globals::RunLoopHooks.find(eventName);
-  if (findIt != chainblocks::Globals::RunLoopHooks.end()) {
-    chainblocks::Globals::RunLoopHooks.erase(findIt);
+  auto findIt = chainblocks::GetGlobals().RunLoopHooks.find(eventName);
+  if (findIt != chainblocks::GetGlobals().RunLoopHooks.end()) {
+    chainblocks::GetGlobals().RunLoopHooks.erase(findIt);
   }
 }
 
 void registerExitCallback(std::string_view eventName, CBCallback callback) {
-  chainblocks::Globals::ExitHooks[eventName] = callback;
+  chainblocks::GetGlobals().ExitHooks[eventName] = callback;
 }
 
 void unregisterExitCallback(std::string_view eventName) {
-  auto findIt = chainblocks::Globals::ExitHooks.find(eventName);
-  if (findIt != chainblocks::Globals::ExitHooks.end()) {
-    chainblocks::Globals::ExitHooks.erase(findIt);
+  auto findIt = chainblocks::GetGlobals().ExitHooks.find(eventName);
+  if (findIt != chainblocks::GetGlobals().ExitHooks.end()) {
+    chainblocks::GetGlobals().ExitHooks.erase(findIt);
   }
 }
 
 void registerChain(CBChain *chain) {
   std::shared_ptr<CBChain> sc(chain);
-  chainblocks::Globals::GlobalChains[chain->name] = sc;
+  chainblocks::GetGlobals().GlobalChains[chain->name] = sc;
 }
 
 void unregisterChain(CBChain *chain) {
-  auto findIt = chainblocks::Globals::GlobalChains.find(chain->name);
-  if (findIt != chainblocks::Globals::GlobalChains.end()) {
-    chainblocks::Globals::GlobalChains.erase(findIt);
+  auto findIt = chainblocks::GetGlobals().GlobalChains.find(chain->name);
+  if (findIt != chainblocks::GetGlobals().GlobalChains.end()) {
+    chainblocks::GetGlobals().GlobalChains.erase(findIt);
   }
 }
 
 void callExitCallbacks() {
   // Iterate backwards
-  for (auto it = chainblocks::Globals::ExitHooks.begin();
-       it != chainblocks::Globals::ExitHooks.end(); ++it) {
+  for (auto it = chainblocks::GetGlobals().ExitHooks.begin();
+       it != chainblocks::GetGlobals().ExitHooks.end(); ++it) {
     it->second();
   }
 }
@@ -1746,8 +1746,8 @@ void error_handler(int err_sig) {
   case SIGINT:
   case SIGTERM:
     CBLOG_INFO("Exiting due to INT/TERM signal");
-    chainblocks::Globals::SigIntTerm++;
-    if (chainblocks::Globals::SigIntTerm > 5)
+    chainblocks::GetGlobals().SigIntTerm++;
+    if (chainblocks::GetGlobals().SigIntTerm > 5)
       std::exit(-1);
     spdlog::shutdown();
     break;
@@ -1778,13 +1778,32 @@ void error_handler(int err_sig) {
   std::raise(err_sig);
 }
 
+#if _WIN32
+#include "debugapi.h"
+static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
+#elif __APPLE__
+static bool isDebuggerPresent() { return false; }
+#else
+#include <sys/ptrace.h>
+#include <sys/types.h>
+static bool isDebuggerPresent() {
+  if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0)
+    return true;
+  else
+    ptrace(PTRACE_DETACH, 0, 1, 0);
+  return false;
+}
+#endif
+
 void installSignalHandlers() {
-  std::signal(SIGINT, &error_handler);
-  std::signal(SIGTERM, &error_handler);
-  std::signal(SIGFPE, &error_handler);
-  std::signal(SIGILL, &error_handler);
-  std::signal(SIGABRT, &error_handler);
-  std::signal(SIGSEGV, &error_handler);
+  if(!isDebuggerPresent()) {
+    std::signal(SIGINT, &error_handler);
+    std::signal(SIGTERM, &error_handler);
+    std::signal(SIGFPE, &error_handler);
+    std::signal(SIGILL, &error_handler);
+    std::signal(SIGABRT, &error_handler);
+    std::signal(SIGSEGV, &error_handler);
+  }
 }
 
 Blocks &Blocks::block(std::string_view name, std::vector<Var> params) {
@@ -2045,6 +2064,11 @@ endOfChain:
 #endif
 }
 
+Globals& GetGlobals() {
+  static Globals globals;
+  return globals;
+}
+
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
   // safety check to make sure this is not a borrowed foreign array!
@@ -2094,13 +2118,13 @@ NO_INLINE void _destroyVarSlow(CBVar &var) {
     chainblocks::arrayFree(var.payload.seqValue);
   } break;
   case Table: {
-    assert(var.payload.tableValue.api == &Globals::TableInterface);
+    assert(var.payload.tableValue.api == &GetGlobals().TableInterface);
     assert(var.payload.tableValue.opaque);
     auto map = (CBMap *)var.payload.tableValue.opaque;
     delete map;
   } break;
   case CBType::Set: {
-    assert(var.payload.setValue.api == &Globals::SetInterface);
+    assert(var.payload.setValue.api == &GetGlobals().SetInterface);
     assert(var.payload.setValue.opaque);
     auto set = (CBHashSet *)var.payload.setValue.opaque;
     delete set;
@@ -2222,13 +2246,13 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     if (dst.valueType == Table) {
       if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
         return;
-      assert(dst.payload.tableValue.api == &Globals::TableInterface);
+      assert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
       map = (CBMap *)dst.payload.tableValue.opaque;
       map->clear();
     } else {
       destroyVar(dst);
       dst.valueType = Table;
-      dst.payload.tableValue.api = &Globals::TableInterface;
+      dst.payload.tableValue.api = &GetGlobals().TableInterface;
       map = new CBMap();
       dst.payload.tableValue.opaque = map;
     }
@@ -2247,13 +2271,13 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     if (dst.valueType == CBType::Set) {
       if (src.payload.setValue.opaque == dst.payload.setValue.opaque)
         return;
-      assert(dst.payload.setValue.api == &Globals::SetInterface);
+      assert(dst.payload.setValue.api == &GetGlobals().SetInterface);
       set = (CBHashSet *)dst.payload.setValue.opaque;
       set->clear();
     } else {
       destroyVar(dst);
       dst.valueType = CBType::Set;
-      dst.payload.setValue.api = &Globals::SetInterface;
+      dst.payload.setValue.api = &GetGlobals().SetInterface;
       set = new CBHashSet();
       dst.payload.setValue.opaque = set;
     }
@@ -2693,15 +2717,15 @@ void Serialization::varFree(CBVar &output) {
 }
 
 CBString getString(uint32_t crc) {
-  assert(chainblocks::Globals::CompressedStrings);
-  auto s = (*chainblocks::Globals::CompressedStrings)[crc].string;
+  assert(chainblocks::GetGlobals().CompressedStrings);
+  auto s = (*chainblocks::GetGlobals().CompressedStrings)[crc].string;
   return s != nullptr ? s : "";
 }
 
 void setString(uint32_t crc, CBString str) {
-  assert(chainblocks::Globals::CompressedStrings);
-  (*chainblocks::Globals::CompressedStrings)[crc].string = str;
-  (*chainblocks::Globals::CompressedStrings)[crc].crc = crc;
+  assert(chainblocks::GetGlobals().CompressedStrings);
+  (*chainblocks::GetGlobals().CompressedStrings)[crc].string = str;
+  (*chainblocks::GetGlobals().CompressedStrings)[crc].crc = crc;
 }
 }; // namespace chainblocks
 
@@ -2850,7 +2874,7 @@ bool cb_current_interface_loaded{false};
 CBCore cb_current_interface{};
 
 extern "C" {
-EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
+CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   // for now we ignore abi_version
   if (cb_current_interface_loaded)
     return &cb_current_interface;
@@ -2989,14 +3013,14 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->tableNew = []() noexcept {
     CBTable res;
-    res.api = &chainblocks::Globals::TableInterface;
+    res.api = &chainblocks::GetGlobals().TableInterface;
     res.opaque = new chainblocks::CBMap();
     return res;
   };
 
   result->setNew = []() noexcept {
     CBSet res;
-    res.api = &chainblocks::Globals::SetInterface;
+    res.api = &chainblocks::GetGlobals().SetInterface;
     res.opaque = new chainblocks::CBHashSet();
     return res;
   };
@@ -3143,8 +3167,8 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->getGlobalChain = [](CBString name) noexcept {
-    auto it = chainblocks::Globals::GlobalChains.find(name);
-    if (it != chainblocks::Globals::GlobalChains.end()) {
+    auto it = chainblocks::GetGlobals().GlobalChains.find(name);
+    if (it != chainblocks::GetGlobals().GlobalChains.end()) {
       return CBChain::weakRef(it->second);
     } else {
       return (CBChainRef) nullptr;
@@ -3152,13 +3176,13 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->setGlobalChain = [](CBString name, CBChainRef chain) noexcept {
-    chainblocks::Globals::GlobalChains[name] = CBChain::sharedFromRef(chain);
+    chainblocks::GetGlobals().GlobalChains[name] = CBChain::sharedFromRef(chain);
   };
 
   result->unsetGlobalChain = [](CBString name) noexcept {
-    auto it = chainblocks::Globals::GlobalChains.find(name);
-    if (it != chainblocks::Globals::GlobalChains.end()) {
-      chainblocks::Globals::GlobalChains.erase(it);
+    auto it = chainblocks::GetGlobals().GlobalChains.find(name);
+    if (it != chainblocks::GetGlobals().GlobalChains.end()) {
+      chainblocks::GetGlobals().GlobalChains.erase(it);
     }
   };
 
@@ -3201,11 +3225,11 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->getRootPath = []() noexcept {
-    return chainblocks::Globals::RootPath.c_str();
+    return chainblocks::GetGlobals().RootPath.c_str();
   };
 
   result->setRootPath = [](const char *p) noexcept {
-    chainblocks::Globals::RootPath = p;
+    chainblocks::GetGlobals().RootPath = p;
     chainblocks::loadExternalBlocks(p);
     std::filesystem::current_path(p);
   };
@@ -3220,7 +3244,7 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->getBlocks = []() {
     CBStrings s{};
-    for (auto [name, _] : chainblocks::Globals::BlocksRegister) {
+    for (auto [name, _] : chainblocks::GetGlobals().BlocksRegister) {
       chainblocks::arrayPush(s, name.data());
     }
     return s;
