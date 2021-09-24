@@ -57,7 +57,7 @@ void cbInitExtras() {
 
   Snappy::registerBlocks();
   Brotli::registerBlocks();
-  
+
 #ifdef __EMSCRIPTEN__
   registerEmscriptenShaderCompiler();
 #endif
@@ -69,7 +69,7 @@ void cbInitExtras() {
   Inputs::registerBlocks();
   Audio::registerBlocks();
   DSP::registerBlocks();
-  
+
 #ifdef _WIN32
   Desktop::registerDesktopBlocks();
 #endif

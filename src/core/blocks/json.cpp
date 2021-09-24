@@ -773,7 +773,8 @@ struct FromJson {
     } else if (j.is_object()) {
       storage.valueType = Table;
       auto map = new chainblocks::CBMap();
-      storage.payload.tableValue.api = &chainblocks::GetGlobals().TableInterface;
+      storage.payload.tableValue.api =
+          &chainblocks::GetGlobals().TableInterface;
       storage.payload.tableValue.opaque = map;
       for (auto &[key, value] : j.items()) {
         anyParse(value, (*map)[key]);

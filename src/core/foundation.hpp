@@ -438,8 +438,7 @@ struct Globals {
   std::unordered_map<std::string, OwnedVar> Settings;
 
   int SigIntTerm{0};
-  std::unordered_map<std::string_view, CBBlockConstructor>
-      BlocksRegister;
+  std::unordered_map<std::string_view, CBBlockConstructor> BlocksRegister;
   std::unordered_map<std::string_view, std::string_view>
       BlockNamesToFullTypeNames;
   std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
@@ -449,8 +448,7 @@ struct Globals {
   std::map<std::string_view, CBCallback> RunLoopHooks;
   std::map<std::string_view, CBCallback> ExitHooks;
 
-  std::unordered_map<std::string, std::shared_ptr<CBChain>>
-      GlobalChains;
+  std::unordered_map<std::string, std::shared_ptr<CBChain>> GlobalChains;
 
   std::list<std::weak_ptr<RuntimeObserver>> Observers;
 
@@ -460,8 +458,7 @@ struct Globals {
   std::exception_ptr StopChainEx;
   std::exception_ptr RestartChainEx;
 
-  std::unordered_map<uint32_t, CBOptionalString>
-      *CompressedStrings{nullptr};
+  std::unordered_map<uint32_t, CBOptionalString> *CompressedStrings{nullptr};
 
   CBTableInterface TableInterface{
       .tableGetIterator =
@@ -596,7 +593,7 @@ struct Globals {
           }};
 };
 
-Globals& GetGlobals();
+Globals &GetGlobals();
 
 template <typename T>
 NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);

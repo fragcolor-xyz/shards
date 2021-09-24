@@ -1796,7 +1796,7 @@ static bool isDebuggerPresent() {
 #endif
 
 void installSignalHandlers() {
-  if(!isDebuggerPresent()) {
+  if (!isDebuggerPresent()) {
     std::signal(SIGINT, &error_handler);
     std::signal(SIGTERM, &error_handler);
     std::signal(SIGFPE, &error_handler);
@@ -2064,7 +2064,7 @@ endOfChain:
 #endif
 }
 
-Globals& GetGlobals() {
+Globals &GetGlobals() {
   static Globals globals;
   return globals;
 }
@@ -3176,7 +3176,8 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->setGlobalChain = [](CBString name, CBChainRef chain) noexcept {
-    chainblocks::GetGlobals().GlobalChains[name] = CBChain::sharedFromRef(chain);
+    chainblocks::GetGlobals().GlobalChains[name] =
+        CBChain::sharedFromRef(chain);
   };
 
   result->unsetGlobalChain = [](CBString name) noexcept {

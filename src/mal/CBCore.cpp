@@ -249,7 +249,8 @@ public:
     // remove from globals TODO some mutex maybe
     auto cp = CBChain::sharedFromRef(m_chain);
     auto it = chainblocks::GetGlobals().GlobalChains.find(cp.get()->name);
-    if (it != chainblocks::GetGlobals().GlobalChains.end() && it->second == cp) {
+    if (it != chainblocks::GetGlobals().GlobalChains.end() &&
+        it->second == cp) {
       chainblocks::GetGlobals().GlobalChains.erase(it);
     }
 
@@ -1725,10 +1726,10 @@ BUILTIN("sleep") {
 BUILTIN("override-root-path") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
-  
+
   chainblocks::GetGlobals().RootPath = value->ref();
   std::filesystem::current_path(value->ref());
-  
+
   return mal::nilValue();
 }
 
@@ -2142,8 +2143,8 @@ BUILTIN("decompress-strings") {
     auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue),
                                             str.payload.stringValue);
     auto &s = emplaced.first->second;
-    auto &val = (*chainblocks::GetGlobals().CompressedStrings)[uint32_t(
-        crc.payload.intValue)];
+    auto &val = (*chainblocks::GetGlobals()
+                      .CompressedStrings)[uint32_t(crc.payload.intValue)];
     val.string = s.c_str();
     val.crc = uint32_t(crc.payload.intValue);
   }

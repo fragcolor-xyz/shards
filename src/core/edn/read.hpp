@@ -9,13 +9,13 @@
 #include <cstdint>
 #include <list>
 #include <map>
+#include <optional>
 #include <regex>
 #include <set>
 #include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <optional>
 
 namespace chainblocks {
 namespace edn {
