@@ -62,7 +62,8 @@
    (->
     name (getFilename outputPath ".md") >= .filename)
    .filename
-   (FS.Write content :Overwrite true)))
+   (FS.Write content :Overwrite true)
+   (Msg "done.")))
 
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
