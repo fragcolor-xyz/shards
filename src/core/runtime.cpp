@@ -1780,14 +1780,13 @@ void error_handler(int err_sig) {
 
 #if _WIN32
 #include "debugapi.h"
-static bool isDebuggerPresent() {
-  return (bool)IsDebuggerPresent();
-}
+static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
+#elif __APPLE__
+static bool isDebuggerPresent() { return false; }
 #else
-#include <sys/types.h>
 #include <sys/ptrace.h>
-static bool isDebuggerPresent()
-{
+#include <sys/types.h>
+static bool isDebuggerPresent() {
   if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0)
     return true;
   else
