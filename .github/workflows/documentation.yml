@@ -6,13 +6,19 @@ on:
 jobs:
 
   #
-  # Build chainblocks x64 for Windows
+  # Build chainblocks for Windows
   #
-  Windows-64bits:
+  Windows:
     runs-on: windows-latest
     strategy:
       matrix:
         build-type: ["Release"]
+        bitness: [64bits]
+        include:
+          - bitness: 64bits
+            msystem: MINGW64
+            arch: x86_64
+            artifact: cbl-win64
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -22,22 +28,37 @@ jobs:
       - name: Set up rust
         env:
           RUSTUP_USE_CURL: 1
-        run: rustup update
+        run: |
+          rustup update
+          rustup default stable-${{ matrix.arch }}-pc-windows-gnu
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: ${{ matrix.msystem }}
           release: false
           path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-${{ matrix.arch }}-toolchain
+            mingw-w64-${{ matrix.arch }}-cmake
+            mingw-w64-${{ matrix.arch }}-boost
+            mingw-w64-${{ matrix.arch }}-ninja
+            mingw-w64-${{ matrix.arch }}-clang
+            mingw-w64-${{ matrix.arch }}-lld
+            wget
       - name: Build
         env:
           RUST_BACKTRACE: 1
+        shell: msys2 {0}
         run: |
-          msys2 ./build-win.sh ${{ matrix.build-type }}
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
+          ninja rust_blocks && ninja cbl
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: cbl-win64 ${{ matrix.build-type }}
+          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
           path: build/cbl.exe
           if-no-files-found: error
 
@@ -45,7 +66,7 @@ jobs:
   # Run blocks documentation samples
   #
   docs-samples:
-    needs: Windows-64bits
+    needs: Windows
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -70,7 +91,7 @@ jobs:
   # Generate blocks documentation (markdown)
   #
   docs-markdown:
-    needs: Windows-64bits
+    needs: Windows
     runs-on: windows-latest
     steps:
       - name: Checkout

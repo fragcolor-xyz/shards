@@ -414,13 +414,23 @@ jobs:
           docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCB_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DBUILD_CORE_ONLY=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
 
   #
-  # Build chainblocks x64 for Windows
+  # Build chainblocks for Windows
   #
-  Windows-64bits:
+  Windows:
     runs-on: windows-latest
     strategy:
       matrix:
         build-type: ["Debug", "Release"]
+        bitness: [32bits, 64bits]
+        include:
+          - bitness: 32bits
+            msystem: MINGW32
+            arch: i686
+            artifact: cbl-win32
+          - bitness: 64bits
+            msystem: MINGW64
+            arch: x86_64
+            artifact: cbl-win64
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -430,66 +440,162 @@ jobs:
       - name: Set up rust
         env:
           RUSTUP_USE_CURL: 1
-        run: rustup update
+        run: |
+          rustup update
+          rustup default stable-${{ matrix.arch }}-pc-windows-gnu
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: ${{ matrix.msystem }}
           release: false
           path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-${{ matrix.arch }}-toolchain
+            mingw-w64-${{ matrix.arch }}-cmake
+            mingw-w64-${{ matrix.arch }}-boost
+            mingw-w64-${{ matrix.arch }}-ninja
+            mingw-w64-${{ matrix.arch }}-clang
+            mingw-w64-${{ matrix.arch }}-lld
+            wget
+      - name: Build libtrace (64bits)
+        if: ${{ matrix.bitness == '64bits' }}
+        shell: msys2 {0}
+        run: |
+          cd deps/libbacktrace
+          mkdir build
+          ./configure --prefix=`pwd`/build
+          make && make install        
       - name: Build
         env:
           RUST_BACKTRACE: 1
+        shell: msys2 {0}
         run: |
-          msys2 ./build-win.sh ${{ matrix.build-type }}
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} -DSKIP_RUST_BINDGEN=${{ matrix.bitness == '32bits' }} ..
+          ninja rust_blocks && ninja cbl
+      - name: Test runtime (Debug)
+        if: ${{ matrix.build-type == 'Debug' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          ninja test_runtime
+          ./test_runtime
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: cbl-win64 ${{ matrix.build-type }}
+          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
           path: build/cbl.exe
           if-no-files-found: error
 
   #
-  # Build chainblocks x86 for Windows
+  # Test chainblocks for Windows
   #
-  Windows-32bits:
+  Windows-test:
+    needs: Windows
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         build-type: ["Debug", "Release"]
+        bitness: [32bits, 64bits]
+        include:
+          - bitness: 32bits
+            msystem: MINGW32
+            arch: i686
+            artifact: cbl-win32
+          - bitness: 64bits
+            msystem: MINGW64
+            arch: x86_64
+            artifact: cbl-win64
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-          submodules: recursive
-      - name: Set up rust
-        env:
-          RUSTUP_USE_CURL: 1
-        run: rustup update
-      - name: Set up MSYS2
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
+          path: build
+      - name: Set up MSYS2 (Release)
+        if: ${{ matrix.build-type == 'Release' }}
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW32
+          msystem: ${{ matrix.msystem }}
           release: false
           path-type: inherit
-      - name: Build
+      - name: Set up MSYS2 (Debug)
+        if: ${{ matrix.build-type == 'Debug' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-${{ matrix.arch }}-boost
+      - name: Test
         env:
           RUST_BACKTRACE: 1
+        shell: msys2 {0}
         run: |
-          msys2 ./build-win32.sh ${{ matrix.build-type }}
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-win32 ${{ matrix.build-type }}
-          path: build/cbl.exe
-          if-no-files-found: error
+          cd build
+          echo "Running test: general"
+          ./cbl ../src/tests/general.edn
+          echo "Running test: variables"
+          ./cbl ../src/tests/variables.clj
+          echo "Running test: subchains"
+          ./cbl ../src/tests/subchains.clj
+          echo "Running test: linalg"
+          ./cbl ../src/tests/linalg.clj
+          echo "Running test: loader"
+          ./cbl ../src/tests/loader.clj
+          echo "Running test: network"
+          ./cbl ../src/tests/network.clj
+          echo "Running test: struct"
+          ./cbl ../src/tests/struct.clj
+          echo "Running test: flows"
+          ./cbl ../src/tests/flows.clj
+          echo "Running test: kdtree"
+          ./cbl ../src/tests/kdtree.clj
+          echo "Running test: channels"
+          ./cbl ../src/tests/channels.clj
+          echo "Running test: http"
+          ./cbl ../src/tests/http.clj
+          echo "Running test: brotli"
+          ./cbl ../src/tests/brotli.clj
+          echo "Running test: snappy"
+          ./cbl ../src/tests/snappy.clj
+          # echo "Running test: ws"
+          # ./cbl ../src/tests/ws.clj
+          echo "Running test: bigint"
+          ./cbl ../src/tests/bigint.clj
+          echo "Running test: bgfx"
+          ./cbl ../src/tests/bgfx.clj
+          echo "Running test: wasm"
+          ./cbl ../src/tests/wasm.clj
+          echo "Running test: eth"
+          ./cbl ../src/tests/eth.edn
+      - name: Test (64bits)
+        if: ${{ matrix.bitness == '64bits' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          echo "Running test: genetic"
+          ./cbl ../src/tests/genetic.clj
+          echo "Running test: time"
+          ./cbl ../src/tests/time.edn
 
   #
   # Run blocks documentation samples
   #
   docs-samples:
-    needs: Windows-64bits
+    needs: Windows
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -514,7 +620,7 @@ jobs:
   # Generate blocks documentation (markdown)
   #
   docs-markdown:
-    needs: Windows-64bits
+    needs: Windows
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -616,13 +722,14 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja rust_blocks && ninja cbl && ninja test_runtime
-      - name: Test runtime
+          ninja rust_blocks && ninja cbl
+      - name: Test runtime (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
         run: |
           cd build
+          ninja test_runtime
           ./test_runtime
       - name: Upload artifact
         uses: actions/upload-artifact@v2
