@@ -816,6 +816,8 @@ using Min = BinaryOperation<MinOp>;
 
 MATH_BINARY_FLOAT_PROC(Pow, std::pow);
 using Pow = BinaryOperation<PowOp>;
+MATH_BINARY_FLOAT_PROC(FMod, std::fmod);
+using FMod = BinaryOperation<FModOp>;
 
 inline void registerBlocks() {
   REGISTER_CBLOCK("Math.Add", Add);
@@ -869,6 +871,7 @@ inline void registerBlocks() {
   REGISTER_CBLOCK("Max", Max);
   REGISTER_CBLOCK("Min", Min);
   REGISTER_CBLOCK("Math.Pow", Pow);
+  REGISTER_CBLOCK("Math.FMod", FMod);
 }
 
 }; // namespace Math
