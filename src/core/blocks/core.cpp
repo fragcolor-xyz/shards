@@ -509,8 +509,8 @@ struct XpendTo : public XPendBase {
         } else {
           if (cons.exposedType.basicType != CBType::Seq &&
               cons.exposedType != data.inputType) {
-            CBLOG_ERROR("Input is: {} variable is: {}", data.inputType,
-                        cons.exposedType);
+            CBLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}",
+                        data.inputType, cons.exposedType);
             throw ComposeError("Input type not matching the variable.");
           }
         }
