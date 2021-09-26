@@ -274,7 +274,7 @@ jobs:
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
           mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core.dir --directory build/src/mal/CMakeFiles/cbl.dir --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
@@ -335,7 +335,7 @@ jobs:
       - name: CodeCov
         run: |
           mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
