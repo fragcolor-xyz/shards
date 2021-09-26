@@ -81,11 +81,11 @@ endif()
 if(WIN32)
   target_link_libraries(chainblocks-core ssl crypto ws2_32 mswsock Secur32 Crypt32 NCrypt)
 elseif(APPLE)
-  target_link_directories(chainblocks-core PRIVATE 
+  target_link_directories(chainblocks-core PUBLIC 
     /usr/local/lib
     /usr/local/opt/openssl/lib
   )
-  target_include_directories(chainblocks-core PRIVATE 
+  target_include_directories(chainblocks-core PUBLIC 
     /usr/local/include
     /usr/local/opt/openssl/include
     /usr/local/include/boost
