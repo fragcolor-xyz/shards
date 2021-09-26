@@ -22,10 +22,11 @@ endif()
 
 if(EMSCRIPTEN)
   # Use builtin SDL2 port
-  target_compile_options(chainblocks-extra PRIVATE 
+  target_link_options(chainblocks-extra PUBLIC 
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
-    "SHELL:-s USE_SDL=2")
+    "SHELL:-s USE_SDL=2"
+  )
   target_include_directories(chainblocks-extra PRIVATE "SDL-include_wrapper")
 else()
   target_link_libraries(chainblocks-extra SDL2)
