@@ -528,7 +528,8 @@ struct Server {
     try {
       _ioc->poll();
     } catch (PeerError pe) {
-      CBLOG_INFO("Http request error: {} from {}", pe.ec.message(), pe.source);
+      CBLOG_DEBUG("Http request error: {} from {} - closing connection.",
+                  pe.ec.message(), pe.source);
       stop(pe.peer->chain.get());
     }
     return input;
@@ -591,6 +592,7 @@ struct Read {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     bool done = false;
+    request.body().clear();
     request.clear();
     buffer.clear();
     http::async_read(*peer->socket, buffer, request,
@@ -705,12 +707,23 @@ struct Response {
 
     _response.prepare_payload();
 
+    bool done = false;
     http::async_write(*peer->socket, _response,
-                      [peer](beast::error_code ec, std::size_t nbytes) {
+                      [&, peer](beast::error_code ec, std::size_t nbytes) {
                         if (ec) {
                           throw PeerError{"Response", ec, peer};
+                        } else {
+                          CBLOG_TRACE("Response: async_write bytes: {}",
+                                      nbytes);
+                          done = true;
                         }
                       });
+
+    // we suspend here, that's why we captured & above!!
+    while (!done) {
+      CB_SUSPEND(context, 0.0);
+    }
+
     return input;
   }
 
@@ -811,6 +824,7 @@ struct SendFile {
     http::file_body::value_type file;
     boost::beast::error_code ec;
     auto pstr = p.generic_string();
+    bool done = false;
     file.open(pstr.c_str(), boost::beast::file_mode::read, ec);
     if (unlikely(bool(ec))) {
       _404_response.clear();
@@ -819,13 +833,15 @@ struct SendFile {
       _404_response.prepare_payload();
 
       http::async_write(*peer->socket, _404_response,
-                        [peer](beast::error_code ec, std::size_t nbytes) {
+                        [&, peer](beast::error_code ec, std::size_t nbytes) {
                           if (ec) {
                             throw PeerError{"SendFile:1", ec, peer};
+                          } else {
+                            CBLOG_TRACE("SendFile:1: async_write bytes: {}",
+                                        nbytes);
+                            done = true;
                           }
                         });
-
-      return input;
     } else {
       _response.clear();
       _response.result(http::status::ok);
@@ -845,16 +861,25 @@ struct SendFile {
       _response.prepare_payload();
 
       http::async_write(*peer->socket, _response,
-                        [peer](beast::error_code ec, std::size_t nbytes) {
+                        [&, peer](beast::error_code ec, std::size_t nbytes) {
                           if (ec) {
                             throw PeerError{"SendFile:2", ec, peer};
+                          } else {
+                            CBLOG_TRACE("SendFile:2: async_write bytes: {}",
+                                        nbytes);
+                            done = true;
                           }
                         });
-      return input;
     }
+
+    // we suspend here, that's why we captured & above!!
+    while (!done) {
+      CB_SUSPEND(context, 0.0);
+    }
+
+    return input;
   }
 
-  http::status _status{200};
   CBVar *_peerVar{nullptr};
   ParamVar _headers{};
   http::response<http::file_body> _response;
