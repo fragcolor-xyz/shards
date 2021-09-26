@@ -114,6 +114,7 @@ elseif(EMSCRIPTEN)
   
   target_include_directories(chainblocks-core PUBLIC ${Boost_INCLUDE_DIRS})
 else()
+  set(Boost_USE_STATIC_LIBS ON)
   find_package(Boost REQUIRED COMPONENTS context filesystem)
   target_link_libraries(chainblocks-core Boost::context Boost::filesystem)
 endif()
