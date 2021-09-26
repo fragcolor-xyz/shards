@@ -29,7 +29,7 @@ if(EMSCRIPTEN)
   )
   target_include_directories(chainblocks-extra PRIVATE "SDL-include_wrapper")
 else()
-  target_link_libraries(chainblocks-extra SDL2)
+  target_link_libraries(chainblocks-extra SDL2-static)
 endif()
 
 target_link_libraries(chainblocks-extra
