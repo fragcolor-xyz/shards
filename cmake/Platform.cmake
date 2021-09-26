@@ -66,6 +66,13 @@ if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   SET(CMAKE_RANLIB llvm-ranlib)
 endif()
 
+if(LINUX)
+  add_link_options(-export-dynamic)
+  if(USE_VALGRIND)
+    add_compile_definitions(BOOST_USE_VALGRIND)
+  endif()
+endif()
+
 if(USE_GCC_ANALYZER)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     add_compile_options(-fanalyzer)
