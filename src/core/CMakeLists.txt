@@ -47,11 +47,30 @@ if(EMSCRIPTEN)
   target_compile_options(chainblocks-core PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
 endif()
 
-if(EMSCRIPTEN)
+if(IOS)
+  # FindBoost doesn't work on iOS
+  # Compile-in boost-context implementation
+  enable_language(ASM)
+  if(X86 OR X86_IOS_SIMULATOR)
+    set(BOOST_CONTEXT_SOURCES
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
+    )
+  else()
+    set(BOOST_CONTEXT_SOURCES
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_arm64_aapcs_macho_gas.S
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_arm64_aapcs_macho_gas.S
+      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_arm64_aapcs_macho_gas.S
+    )
+  endif()
+  add_library(boost-context STATIC ${BOOST_CONTEXT_SOURCES})
+  target_link_libraries(chainblocks-core boost-context)
+elseif(EMSCRIPTEN)
   # emcmake sets this, but can't find boost anymore, see https://github.com/emscripten-core/emscripten/issues/10078
   unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
-  
-  set(Boost_DEBUG ON)
 
   # Only need the headers
   find_package(Boost REQUIRED) 
