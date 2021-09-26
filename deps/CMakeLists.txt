@@ -1,3 +1,5 @@
+set(BUILD_SHARED_LIBS OFF)
+
 add_subdirectory(filesystem)
 add_subdirectory(json)
 add_subdirectory(kcp)
@@ -23,6 +25,7 @@ option(TF_BUILD_TESTS "" OFF)
 option(TF_BUILD_EXAMPLES "" OFF)
 add_subdirectory(cpp-taskflow)
 
+option(KISSFFT_STATIC "" ON)
 option(KISSFFT_TEST "" OFF)
 option(KISSFFT_TOOLS "" OFF)
 add_subdirectory(kissfft)
