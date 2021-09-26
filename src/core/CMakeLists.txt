@@ -47,6 +47,38 @@ if(EMSCRIPTEN)
   target_compile_options(chainblocks-core PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
 endif()
 
+if(APPLE)
+  target_link_libraries(chainblocks-core
+    "-framework Foundation"
+    "-framework CoreAudio"
+    "-framework AudioToolbox"
+    "-framework CoreVideo"
+    "-framework IOKit"
+    "-framework QuartzCore"
+    "-framework Metal"
+    "-framework Security"
+    -liconv
+  )
+
+  if(IOS)
+    target_link_libraries(chainblocks-core
+      "-framework hidapi"
+      "-framework AVFoundation"
+      "-framework GameController"
+      "-framework CoreMotion"
+      "-framework CoreGraphics"
+      "-framework CoreHaptics"
+      "-framework UIKit"
+    )
+  else()
+    target_link_libraries(chainblocks-core
+      "-framework Cocoa"
+      "-framework Carbon"
+      "-framework ForceFeedback"
+    )
+  endif()
+endif()
+
 if(IOS)
   # FindBoost doesn't work on iOS
   # Compile-in boost-context implementation
