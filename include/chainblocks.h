@@ -1143,7 +1143,6 @@ EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version);
 // For future proper use
 // Basically we want during development of chains to have those on
 // When baking exe/lib/release we turn them off
-#include <cassert>
 #define cbassert assert
 #ifndef NDEBUG
 #define CB_DEBUG_MODE 1

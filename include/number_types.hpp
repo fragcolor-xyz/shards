@@ -4,6 +4,7 @@
 #include "common_types.hpp"
 #include <vector>
 #include <map>
+#include <cassert>
 
 enum class NumberType {
   Float32,
