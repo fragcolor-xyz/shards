@@ -1175,21 +1175,21 @@ TEST_CASE("Number Types") {
   double d = 3.14;
   float f = 0.f;
   typeLookup.getConversion(NumberType::Float64, NumberType::Float32)
-      ->apply(&d, &f);
+      ->convertOne(&d, &f);
   CHECK(f == 3.14f);
 
   int32_t i32 = 0;
   typeLookup.getConversion(NumberType::Float32, NumberType::Int32)
-      ->apply(&f, &i32);
+      ->convertOne(&f, &i32);
   CHECK(i32 == 3);
 
   uint8_t u8 = 0;
   typeLookup.getConversion(NumberType::Float32, NumberType::UInt8)
-      ->apply(&f, &u8);
+      ->convertOne(&f, &u8);
   CHECK(u8 == 3);
 
   typeLookup.getConversion(NumberType::UInt8, NumberType::Float64)
-      ->apply(&u8, &d);
+      ->convertOne(&u8, &d);
   CHECK(d == 3.0);
 
   SECTION("Vector take") {
@@ -1199,14 +1199,14 @@ TEST_CASE("Number Types") {
     std::vector<Var> vec{Var(0)};
     Var seq = Var(vec);
     CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
-              ->take(float4v, float2v, 4, seq.payload.seqValue));
+              ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)1.1f);
     CHECK(float2v[1] == 0.0);
 
     vec = {Var(3), Var(1)};
     seq = Var(vec);
     CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
-              ->take(float4v, float2v, 4, seq.payload.seqValue));
+              ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)4.4f);
     CHECK(float2v[1] == (double)2.2f);
   }
@@ -1220,7 +1220,7 @@ TEST_CASE("Number Types") {
 
     // Should return false
     CHECK_THROWS_AS(typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
-              ->take(float2v0, float2v1, 2, seq.payload.seqValue), NumberTakeOutOfRangeEx);
+              ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue), NumberTakeOutOfRangeEx);
     CHECK(float2v1[0] == 0.f);
     CHECK(float2v1[1] == 0.f);
   }
