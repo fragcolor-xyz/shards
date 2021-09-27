@@ -1,0 +1,24 @@
+(def Root (Node))
+
+(schedule
+ Root
+ (Chain "test"
+        (Float3 1 2 3) >= .vec3
+        (Float 2.0) >= .flt
+
+        .vec3 (ToFloat2) (Assert.Is (Float2 1 2) true) (Log "Float2")
+        .vec3 (ToFloat4) (Assert.Is (Float4 1 2 3 0) true) (Log "Float4")
+        .vec3 (ToFloat) (Assert.Is (Float 1) true) (Log "Float")
+        .vec3 (ToInt) (Assert.Is (Int 1) true) (Log "Int")
+        .vec3 (ToInt4) (Assert.Is (Int4 1 2 3 0) true) (Log "Int4")
+
+        .vec3 (ToString) >= .vec3str (Log "Float3 to string")
+        .vec3str (ToFloat3) (Assert.Is (Float3 1 2 3) true) (Log "Float3 from string")
+
+        .vec3 (ToInt3) (ToString) >= .int3Str (Log "Int3 to string")
+        .int3Str (ToInt3) (Assert.Is (Int3 1 2 3) true) (Log "Int3 from string")
+        
+        [3.0 4.0 5.0] >= .vec3seq (Log "Float3 seq")
+        .vec3seq (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq")
+        ))
+(tick Root)
