@@ -9,7 +9,6 @@ set(extra_SOURCES
   inputs.cpp
   snappy.cpp
   brotli.cpp
-  audio.cpp
   gizmo.cpp
 )
 
@@ -47,6 +46,13 @@ target_link_libraries(chainblocks-extra
 if(WIN32)
   target_link_libraries(chainblocks-extra DXGI D3D11 ntdll)
   target_sources(chainblocks-extra PRIVATE desktop.win.cpp)
+endif()
+
+# Need to compile specific files as objective-c
+if(IOS)
+  target_sources(chainblocks-extra PRIVATE audio.mm)
+else()
+  target_sources(chainblocks-extra PRIVATE audio.cpp)
 endif()
 
 option(CHAINBLOCKS_EXTRA_BUILD_SHARED OFF "Build chainblocks extra as dynamic library")

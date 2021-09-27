@@ -80,6 +80,11 @@ if(APPLE)
 endif()
 
 if(IOS)
+  unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
+
+  set(Boost_DEBUG ON)
+  find_package(Boost) # Headers only
+
   # FindBoost doesn't work on iOS
   # Compile-in boost-context implementation
   enable_language(ASM)
@@ -99,18 +104,14 @@ if(IOS)
     )
   endif()
   add_library(boost-context STATIC ${BOOST_CONTEXT_SOURCES})
+  target_include_directories(boost-context PUBLIC ${CHAINBLOCKS_DIR}/deps/boost-context/include ${Boost_INCLUDE_DIRS})
   target_link_libraries(chainblocks-core boost-context)
 elseif(EMSCRIPTEN)
   # emcmake sets this, but can't find boost anymore, see https://github.com/emscripten-core/emscripten/issues/10078
   unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
 
   # Only need the headers
-  find_package(Boost REQUIRED) 
-  
-  message(STATUS "Boost_INCLUDE_DIRS ${Boost_INCLUDE_DIRS}")
-  if(NOT ${Boost_FOUND})
-      message(FATAL_ERROR "Boost was not found")
-  endif()
+  find_package(Boost REQUIRED)
   
   target_include_directories(chainblocks-core PUBLIC ${Boost_INCLUDE_DIRS})
 else()
