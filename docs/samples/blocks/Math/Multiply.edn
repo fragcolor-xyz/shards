@@ -1,4 +1,4 @@
-(Int 5)
+(int 5)
 (Math.Multiply
  ;:Operand
  2)

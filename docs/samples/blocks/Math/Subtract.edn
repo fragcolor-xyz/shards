@@ -1,4 +1,4 @@
-(Int 7)
+(int 7)
 (Math.Subtract
  ;:Operand
  2)

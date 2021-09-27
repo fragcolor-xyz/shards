@@ -2,4 +2,4 @@
 (BigInt.ToFloat
  ;:ShiftedBy
  1)
-(Assert.Is (Float 30.0) true)
+(Assert.Is (float 30.0) true)
