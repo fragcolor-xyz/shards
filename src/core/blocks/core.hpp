@@ -2701,6 +2701,16 @@ struct RTake : public Take {
 
   static CBTypesInfo inputTypes() { return CoreInfo::RIndexables; }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    CBTypeInfo result = Take::compose(data);
+    if(data.inputType.basicType == Seq) {
+      OVERRIDE_ACTIVATE(data, activate);
+    } else {
+      throw CBException("RTake is only supported on sequence types");
+    }
+    return result;
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto inputLen = input.payload.seqValue.len;
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
