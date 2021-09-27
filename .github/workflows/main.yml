@@ -685,18 +685,35 @@ jobs:
     needs: docs-website-build
     runs-on: ubuntu-latest
     steps:
+      - name: Set up node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - name: Install ipfs-car
+        run: |
+          npm install -g ipfs-car
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
           name: docs-website
           path: docs/site
-      - name: Publish to IPFS
-        uses: chainblocks/ipfs-action@master
-        with:
-          path: docs/site/
-          service: infura
-          port: 5001
-          protocol: https
+      - name: Publish to NFT storage
+        run: |
+          ipfs-car --pack docs/site --output chainblocks-docs.car
+          curl -X POST https://api.nft.storage/upload \
+               --data-binary @chainblocks-docs.car \
+               -H "Authorization: Bearer ${{ secrets.NFT_STORAGE_KEY }}" \
+               -H "Content-Type: application/car" \
+               > response.json
+          cat response.json
+          if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
+      - name: Sync Cloudflare
+        run: |
+          IPFS_CID=$(cat response.json | jq .value.cid)
+          curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/96d9b2a2e44b3bcabb158bd3ad0446f7" \
+               -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
+               -H "Content-Type:application/json" \
+               -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${IPFS_CID}/site\", \"ttl\": 1 }"
 
   #
   # Build chainblocks for macOS
