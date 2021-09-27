@@ -1,6 +1,7 @@
 #include "number_types.hpp"
-#include <type_traits>
 #include <algorithm>
+#include <type_traits>
+#include <cstdlib>
 
 std::map<CBType, NumberType> getCBTypeToNumberTypeMap() {
   // clang-format off
@@ -25,21 +26,19 @@ struct TNumberConversion : NumberConversion {
   TNumberConversion() {
     inStride = sizeof(TIn);
     outStride = sizeof(TOut);
-    apply = [](const void *src, void *dst) {
+    convertOne = [](const void *src, void *dst) {
       ((TOut *)dst)[0] = (TOut)((TIn *)src)[0];
     };
-    take = [](const void *src, void *dst, size_t srcLen,
+    convertMultipleSeq = [](const void *src, void *dst, size_t srcLen,
               const CBSeq &sequence) {
       for (size_t dstIndex = 0; dstIndex < sequence.len; dstIndex++) {
         CBInt srcIndex = sequence.elements[dstIndex].payload.intValue;
         if (srcIndex >= (CBInt)srcLen || srcIndex < 0) {
-          return false;
+          throw NumberTakeOutOfRangeEx(srcIndex);
         }
 
         ((TOut *)dst)[dstIndex] = (TOut)((TIn *)src)[srcIndex];
       }
-
-      return true;
     };
   }
 };
@@ -55,10 +54,55 @@ struct TNumberConversionTable : public NumberConversionTable {
     set(NumberType::Int32, TNumberConversion<TIn, int32_t>());
     set(NumberType::Int64, TNumberConversion<TIn, int64_t>());
   }
-  
-  void set(const NumberType& numberType, const NumberConversion& numberConversion) {
+
+  void set(const NumberType &numberType,
+           const NumberConversion &numberConversion) {
     conversions.resize(std::max(conversions.size(), size_t(numberType) + 1));
     conversions[size_t(numberType)] = numberConversion;
+  }
+};
+
+template <typename TIn> struct TNumberStringOperations {};
+
+template<> struct TNumberStringOperations<float> {
+  static void parse(float* out, const char* input, char** inputEnd) {
+    out[0] = std::strtof(input, inputEnd);
+  }
+};
+
+template<> struct TNumberStringOperations<double> {
+  static void parse(double* out, const char* input, char** inputEnd) {
+    out[0] = std::strtod(input, inputEnd);
+  }
+};
+
+template<> struct TNumberStringOperations<int64_t> {
+  static void parse(int64_t* out, const char* input, char** inputEnd) {
+    out[0] = std::strtoll(input, inputEnd, 10);
+  }
+};
+
+template<> struct TNumberStringOperations<int32_t> {
+  static void parse(int32_t* out, const char* input, char** inputEnd) {
+    out[0] = std::strtol(input, inputEnd, 10);
+  }
+};
+
+template<> struct TNumberStringOperations<int16_t> {
+  static void parse(int16_t* out, const char* input, char** inputEnd) {
+    out[0] = (int16_t)std::strtoul(input, inputEnd, 10);
+  }
+};
+
+template<> struct TNumberStringOperations<int8_t> {
+  static void parse(int8_t* out, const char* input, char** inputEnd) {
+    out[0] = (int8_t)std::strtol(input, inputEnd, 10);
+  }
+};
+
+template<> struct TNumberStringOperations<uint8_t> {
+  static void parse(uint8_t* out, const char* input, char** inputEnd) {
+    out[0] = (uint8_t)std::strtoul(input, inputEnd, 10);
   }
 };
 
@@ -72,6 +116,7 @@ template <NumberType Type> struct TNumberTypeTraits {};
       isInteger = std::is_integral<_CType>::value;                             \
       size = sizeof(_CType);                                                   \
       conversionTable = TNumberConversionTable<_CType>();                      \
+      convertParse = (NumberConvertParse)&TNumberStringOperations<_CType>::parse;                  \
     }                                                                          \
   };
 
@@ -87,6 +132,8 @@ NUMBER_TYPE_TRAITS(NumberType::Float32, float);
 
 template <CBType Type> struct TVectorTypeTraits {};
 
+#define EXPAND(_x) _x
+#define STRINGIFY(_x) EXPAND(#_x)
 #define VECTOR_TYPE_TRAITS(_CBType, _Dimension, _NumberType)                   \
   template <> struct TVectorTypeTraits<_CBType> : public VectorTypeTraits {    \
     typedef TNumberTypeTraits<_NumberType>::TInner TInner;                     \
@@ -94,7 +141,9 @@ template <CBType Type> struct TVectorTypeTraits {};
       dimension = _Dimension;                                                  \
       isInteger = std::is_integral<TInner>::value;                             \
       cbType = _CBType;                                                        \
+      type = chainblocks::CoreInfo::_CBType##Type;                             \
       numberType = _NumberType;                                                \
+      name = STRINGIFY(_CBType);                                               \
     }                                                                          \
   };
 
@@ -111,6 +160,8 @@ VECTOR_TYPE_TRAITS(Float4, 4, NumberType::Float32);
 VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);
 
 #undef VECTOR_TYPE_TRAITS
+#undef STRINGIFY
+#undef EXPAND
 
 VectorTypeLookup::VectorTypeLookup() {
   // clang-format off

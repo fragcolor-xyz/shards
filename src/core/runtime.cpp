@@ -1135,28 +1135,6 @@ void validateConnection(ValidationContext &ctx) {
     }
   }
 
-  // Take selector checks
-  // TODO move into Take compose, we know have block variable
-  if (strcmp(ctx.bottom->name(ctx.bottom), "Take") == 0) {
-    if (previousOutput.basicType == Seq) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeSeq;
-    } else if (previousOutput.basicType == Table) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeTable;
-    } else if (previousOutput.basicType >= Int2 &&
-               previousOutput.basicType <= Int16) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeInts;
-    } else if (previousOutput.basicType >= Float2 &&
-               previousOutput.basicType <= Float4) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeFloats;
-    } else if (previousOutput.basicType == Color) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeColor;
-    } else if (previousOutput.basicType == Bytes) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeBytes;
-    } else if (previousOutput.basicType == String) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeString;
-    }
-  }
-
   // Finally do checks on what we consume
   auto requiredVar = ctx.bottom->requiredVariables(ctx.bottom);
 

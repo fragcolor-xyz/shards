@@ -1,6 +1,7 @@
 #pragma once
 
 #include "chainblocks.h"
+#include "common_types.hpp"
 #include <vector>
 #include <map>
 
@@ -24,19 +25,26 @@ inline NumberType cbTypeToNumberType(CBType type) {
   return mapping[(size_t)type];
 }
 
+struct NumberTakeOutOfRangeEx {
+  int64_t index;
+  NumberTakeOutOfRangeEx(int64_t index) :index(index) {};
+};
+
 // Convers from one number type to another
-typedef void (*NumberConversionFunction)(const void *src, void *dst);
+typedef void (*NumberConvertOneFunction)(const void *src, void *dst);
 
 // Applies combined conversion and swizzle operation
-// returns false on out of range index
-typedef bool (*NumberTakeFunction)(const void *src, void *dst, size_t srcLen,
+// Throws NumberTakeOutOfRangeEx false on out of range index
+typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst, size_t srcLen,
                                    const CBSeq &sequence);
+
+typedef void (*NumberConvertParse)(void* dst, const char *input, char** inputEnd);
 
 struct NumberConversion {
   size_t inStride;
   size_t outStride;
-  NumberConversionFunction apply;
-  NumberTakeFunction take;
+  NumberConvertOneFunction convertOne;
+  NumberConvertMultipleSeqFunction convertMultipleSeq;
 };
 
 struct NumberConversionTable {
@@ -53,6 +61,7 @@ struct NumberTypeTraits {
   bool isInteger;
   size_t size;
   NumberConversionTable conversionTable;
+  NumberConvertParse convertParse;
 };
 
 struct NumberTypeLookup {
@@ -103,7 +112,9 @@ struct VectorTypeTraits {
   size_t dimension = 0;
   bool isInteger;
   CBType cbType;
+  chainblocks::Type type;
   NumberType numberType;
+  const char* name;
 };
 
 struct VectorTypeLookup {

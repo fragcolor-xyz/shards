@@ -9,6 +9,8 @@
 #include "chainblocks.h"
 #include "chainblocks.hpp"
 #include "common_types.hpp"
+#include "number_types.hpp"
+#include <sstream>
 #include <cassert>
 #include <cmath>
 
@@ -2341,9 +2343,12 @@ struct Take {
   ExposedInfo _exposedInfo{};
   bool _seqOutput{false};
   bool _tableOutput{false};
+  
   CBVar _vectorOutput{};
-  uint8_t _vectorInputLen{0};
-  uint8_t _vectorOutputLen{0};
+  const VectorTypeTraits *_vectorInputType;
+  const VectorTypeTraits *_vectorOutputType;
+  const NumberConversion* _vectorConversion;
+  
   Type _seqOutputType{};
   std::vector<CBTypeInfo> _seqOutputTypes;
 
@@ -2423,6 +2428,7 @@ struct Take {
       throw CBException("Take, invalid indices or malformed input.");
 
     if (data.inputType.basicType == Seq) {
+      OVERRIDE_ACTIVATE(data, activateSeq);
       if (_seqOutput) {
         // multiple values, leave Seq
         return data.inputType;
@@ -2433,120 +2439,112 @@ struct Take {
         // value from seq but not unique
         return CoreInfo::AnyType;
       }
-    } else if (data.inputType.basicType >= Int2 &&
-               data.inputType.basicType <= Int16) {
-      // int vector
-    } else if (data.inputType.basicType >= Float2 &&
-               data.inputType.basicType <= Float4) {
-      if (_indices.valueType == ContextVar)
-        throw CBException(
-            "A Take on a vector cannot have Indices as a variable.");
-
-      // Floats
-      switch (data.inputType.basicType) {
-      case Float2:
-        _vectorInputLen = 2;
-        break;
-      case Float3:
-        _vectorInputLen = 3;
-        break;
-      case Float4:
-      default:
-        _vectorInputLen = 4;
-        break;
-      }
-
-      if (!_seqOutput) {
-        _vectorOutputLen = 1;
-        return CoreInfo::FloatType;
-      } else {
-        _vectorOutputLen = (uint8_t)_indices.payload.seqValue.len;
-        switch (_vectorOutputLen) {
-        case 2:
-          _vectorOutput.valueType = Float2;
-          return CoreInfo::Float2Type;
-        case 3:
-          _vectorOutput.valueType = Float3;
-          return CoreInfo::Float3Type;
-        case 4:
-        default:
-          _vectorOutput.valueType = Float4;
-          return CoreInfo::Float4Type;
+    } else {
+      _vectorInputType =
+          VectorTypeLookup::getInstance().get(data.inputType.basicType);
+      if (_vectorInputType) {
+        if(_seqOutput)
+          OVERRIDE_ACTIVATE(data, activateVector);
+        else
+          OVERRIDE_ACTIVATE(data, activateNumber);
+        
+        uint8_t indexTableLength = _seqOutput ? (uint8_t)_indices.payload.seqValue.len : 1;
+        _vectorOutputType = VectorTypeLookup::getInstance().findCompatibleType(_vectorInputType->isInteger, indexTableLength);
+        if(!_vectorOutputType) {
+          std::stringstream errorMsgStream;
+          errorMsgStream << "Take: No " << (_vectorInputType->isInteger ? "integer" : "float") << " vector type exists that fits " << indexTableLength << "elements";
+          std::string errorMsg = errorMsgStream.str();
+            CBLOG_ERROR(errorMsg.c_str());
+            throw ComposeError(errorMsg);
         }
-      }
-    } else if (data.inputType.basicType == Color) {
-      // todo
-    } else if (data.inputType.basicType == Bytes) {
-      if (_seqOutput) {
-        return CoreInfo::IntSeqType;
-      } else {
-        return CoreInfo::IntType;
-      }
-    } else if (data.inputType.basicType == String) {
-      if (_seqOutput) {
-        return CoreInfo::StringSeqType;
-      } else {
-        return CoreInfo::StringType;
-      }
-    } else if (data.inputType.basicType == Table) {
-      if (data.inputType.table.keys.len > 0 &&
-          (_indices.valueType == String || _indices.valueType == Seq)) {
-        // we can fully reconstruct a type in this case
-        if (data.inputType.table.keys.len != data.inputType.table.types.len) {
-          CBLOG_ERROR("Table input type: {}", data.inputType);
-          throw ComposeError("Take: Expected same number of types for numer of "
-                             "keys in table input.");
+        
+        _vectorConversion = NumberTypeLookup::getInstance().getConversion(_vectorInputType->numberType, _vectorOutputType->numberType);
+        if(!_vectorConversion) {
+          std::stringstream errorMsgStream;
+          errorMsgStream << "Take: No conversion from " << _vectorInputType->name << " to " << _vectorOutputType->name << " exists";
+          std::string errorMsg = errorMsgStream.str();
+            CBLOG_ERROR(errorMsg.c_str());
+            throw ComposeError(errorMsg);
         }
-
+        
+        _vectorOutput.valueType  = _vectorOutputType->cbType;
+        return _vectorOutputType->type;
+      } else if (data.inputType.basicType == Bytes) {
+        OVERRIDE_ACTIVATE(data, activateBytes);
         if (_seqOutput) {
-          _seqOutputTypes.clear();
-          for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
-            auto &record = _indices.payload.seqValue.elements[j];
-            if (record.valueType != String) {
-              CBLOG_ERROR("Expected a sequence of strings, but found: {}",
-                          _indices);
-              throw ComposeError(
-                  "Take: Expected a sequence of strings as keys.");
-            }
-            for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
-              if (strcmp(record.payload.stringValue,
-                         data.inputType.table.keys.elements[i]) == 0) {
-                _seqOutputTypes.emplace_back(
-                    data.inputType.table.types.elements[i]);
+          return CoreInfo::IntSeqType;
+        } else {
+          return CoreInfo::IntType;
+        }
+      } else if (data.inputType.basicType == String) {
+        OVERRIDE_ACTIVATE(data, activateString);
+        if (_seqOutput) {
+          return CoreInfo::StringSeqType;
+        } else {
+          return CoreInfo::StringType;
+        }
+      } else if (data.inputType.basicType == Table) {
+        OVERRIDE_ACTIVATE(data, activateTable);
+        if (data.inputType.table.keys.len > 0 &&
+            (_indices.valueType == String || _indices.valueType == Seq)) {
+          // we can fully reconstruct a type in this case
+          if (data.inputType.table.keys.len != data.inputType.table.types.len) {
+            CBLOG_ERROR("Table input type: {}", data.inputType);
+            throw ComposeError(
+                "Take: Expected same number of types for numer of "
+                "keys in table input.");
+          }
+
+          if (_seqOutput) {
+            _seqOutputTypes.clear();
+            for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
+              auto &record = _indices.payload.seqValue.elements[j];
+              if (record.valueType != String) {
+                CBLOG_ERROR("Expected a sequence of strings, but found: {}",
+                            _indices);
+                throw ComposeError(
+                    "Take: Expected a sequence of strings as keys.");
+              }
+              for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
+                if (strcmp(record.payload.stringValue,
+                           data.inputType.table.keys.elements[i]) == 0) {
+                  _seqOutputTypes.emplace_back(
+                      data.inputType.table.types.elements[i]);
+                }
               }
             }
-          }
-          // if types is 0 we did not match any
-          if (_seqOutputTypes.size() == 0) {
-            CBLOG_ERROR("Table input type: {} missing keys: {}", data.inputType,
-                        _indices);
-            throw ComposeError(
-                "Take: Failed to find a matching keys in the input type table");
-          }
-          _seqOutputType = Type::SeqOf(CBTypesInfo{
-              _seqOutputTypes.data(), uint32_t(_seqOutputTypes.size()), 0});
-          return _seqOutputType;
-        } else {
-          for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
-            if (strcmp(_indices.payload.stringValue,
-                       data.inputType.table.keys.elements[i]) == 0) {
-              return data.inputType.table.types.elements[i];
+            // if types is 0 we did not match any
+            if (_seqOutputTypes.size() == 0) {
+              CBLOG_ERROR("Table input type: {} missing keys: {}",
+                          data.inputType, _indices);
+              throw ComposeError("Take: Failed to find a matching keys in the "
+                                 "input type table");
             }
+            _seqOutputType = Type::SeqOf(CBTypesInfo{
+                _seqOutputTypes.data(), uint32_t(_seqOutputTypes.size()), 0});
+            return _seqOutputType;
+          } else {
+            for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
+              if (strcmp(_indices.payload.stringValue,
+                         data.inputType.table.keys.elements[i]) == 0) {
+                return data.inputType.table.types.elements[i];
+              }
+            }
+            // we didn't match any key...
+            // and so we just return any type to allow extra keys
+            return CoreInfo::AnyType;
           }
-          // we didn't match any key...
-          // and so we just return any type to allow extra keys
-          return CoreInfo::AnyType;
-        }
-      } else {
-        if (_seqOutput) {
-          // multiple values, leave Seq
-          return CoreInfo::AnySeqType;
-        } else if (data.inputType.table.types.len == 1) {
-          // single unique seq type
-          return data.inputType.table.types.elements[0];
         } else {
-          // value from seq but not unique
-          return CoreInfo::AnyType;
+          if (_seqOutput) {
+            // multiple values, leave Seq
+            return CoreInfo::AnySeqType;
+          } else if (data.inputType.table.types.len == 1) {
+            // single unique seq type
+            return data.inputType.table.types.elements[0];
+          } else {
+            // value from seq but not unique
+            return CoreInfo::AnyType;
+          }
         }
       }
     }
@@ -2659,91 +2657,28 @@ struct Take {
     }
   }
 
-  CBVar activateFloats(CBContext *context, const CBVar &input) {
-    const auto inputLen = (int64_t)_vectorInputLen;
+  CBVar activateVector(CBContext *context, const CBVar &input) {
     const auto &indices = _indices;
-
-    if (!_seqOutput) {
-      const auto index = indices.payload.intValue;
-      if (index >= inputLen || index < 0) {
-        throw OutOfRangeEx(inputLen, index);
-      }
-
-      switch (input.valueType) {
-      case Float2:
-        return Var(input.payload.float2Value[index]);
-      case Float3:
-        return Var(input.payload.float3Value[index]);
-      case Float4:
-      default:
-        return Var(input.payload.float4Value[index]);
-      }
-    } else {
-      const uint64_t nindices = indices.payload.seqValue.len;
-      for (uint64_t i = 0; nindices > i; i++) {
-        const auto index =
-            indices.payload.seqValue.elements[i].payload.intValue;
-        if (index >= inputLen || index < 0 || nindices != _vectorOutputLen) {
-          throw OutOfRangeEx(inputLen, index);
-        }
-
-        switch (_vectorOutputLen) {
-        case 2:
-          switch (_vectorInputLen) {
-          case 2:
-            _vectorOutput.payload.float2Value[i] =
-                input.payload.float2Value[index];
-            break;
-          case 3:
-            _vectorOutput.payload.float2Value[i] =
-                input.payload.float3Value[index];
-            break;
-          case 4:
-          default:
-            _vectorOutput.payload.float2Value[i] =
-                input.payload.float4Value[index];
-            break;
-          }
-          break;
-        case 3:
-          switch (_vectorInputLen) {
-          case 2:
-            _vectorOutput.payload.float3Value[i] =
-                input.payload.float2Value[index];
-            break;
-          case 3:
-            _vectorOutput.payload.float3Value[i] =
-                input.payload.float3Value[index];
-            break;
-          case 4:
-          default:
-            _vectorOutput.payload.float3Value[i] =
-                input.payload.float4Value[index];
-            break;
-          }
-          break;
-        case 4:
-        default:
-          switch (_vectorInputLen) {
-          case 2:
-            _vectorOutput.payload.float4Value[i] =
-                input.payload.float2Value[index];
-            break;
-          case 3:
-            _vectorOutput.payload.float4Value[i] =
-                input.payload.float3Value[index];
-            break;
-          case 4:
-          default:
-            _vectorOutput.payload.float4Value[i] =
-                input.payload.float4Value[index];
-            break;
-          }
-          break;
-        }
-      }
-      return _vectorOutput;
+    
+    try {
+      _vectorConversion->convertMultipleSeq(&input.payload, &_vectorOutput.payload, _vectorInputType->dimension, indices.payload.seqValue);
+    } catch(const NumberTakeOutOfRangeEx& ex) {
+      throw OutOfRangeEx(_vectorInputType->dimension, ex.index);
     }
+    
+    return _vectorOutput;
+  }
+  
+  CBVar activateNumber(CBContext *context, const CBVar &input) {
+    CBInt index = _indices.payload.intValue;
+    if(index < 0 || index >= (CBInt)_vectorInputType->dimension) {
+      throw OutOfRangeEx(_vectorInputType->dimension, index);
+    }
+    
+    const uint8_t* inputPtr = (uint8_t*)&input.payload + _vectorConversion->inStride * index;
+    _vectorConversion->convertOne(inputPtr, &_vectorOutput.payload);
+
+    return _vectorOutput;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {

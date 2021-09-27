@@ -1198,14 +1198,14 @@ TEST_CASE("Number Types") {
 
     std::vector<Var> vec{Var(0)};
     Var seq = Var(vec);
-    CHECK(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+    CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
               ->take(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)1.1f);
     CHECK(float2v[1] == 0.0);
 
     vec = {Var(3), Var(1)};
     seq = Var(vec);
-    CHECK(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+    CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
               ->take(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)4.4f);
     CHECK(float2v[1] == (double)2.2f);
@@ -1219,8 +1219,8 @@ TEST_CASE("Number Types") {
     Var seq = Var(vec);
 
     // Should return false
-    CHECK(typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
-              ->take(float2v0, float2v1, 2, seq.payload.seqValue) == false);
+    CHECK_THROWS_AS(typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
+              ->take(float2v0, float2v1, 2, seq.payload.seqValue), NumberTakeOutOfRangeEx);
     CHECK(float2v1[0] == 0.f);
     CHECK(float2v1[1] == 0.f);
   }
