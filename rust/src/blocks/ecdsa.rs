@@ -44,6 +44,14 @@ lazy_static! {
     vec![common_type::bool]
   )
     .into()];
+  static ref SIG_PARAMETERS: Parameters = vec![(
+    cstr!("Signature"),
+    cbccstr!(
+      "The signature and recovery id generated signing the input message with the private key."
+    ),
+    vec![common_type::bytezs, common_type::bytess_var]
+  )
+    .into()];
 }
 
 fn get_key(input: Var) -> Result<libsecp256k1::SecretKey, &'static str> {
@@ -205,7 +213,96 @@ impl Block for ECDSAPubKey {
   }
 }
 
+#[derive(Default)]
+struct ECDSARecover {
+  output: ClonedVar,
+  signature: ParamVar,
+}
+
+impl Block for ECDSARecover {
+  fn registerName() -> &'static str {
+    cstr!("ECDSA.Recover")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("ECDSA.Recover-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "ECDSA.Recover"
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &INPUT_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &INPUT_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&SIG_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.signature.set_param(value),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.signature.get_param(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.signature.warmup(context);
+    Ok(())
+  }
+
+  fn cleanup(&mut self) {
+    self.signature.cleanup();
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let bytes: &[u8] = input.as_ref().try_into()?;
+
+    let signature = self.signature.get();
+    let signature_seq: Seq = signature.try_into()?;
+    let signature_slice: &[u8] = signature_seq[0].as_ref().try_into()?;
+    let signature =
+      libsecp256k1::Signature::parse_overflowing_slice(signature_slice).map_err(|e| {
+        cblog!("{}", e);
+        "Failed to parse signature"
+      })?;
+
+    let recovery_id: &[u8] = signature_seq[1].as_ref().try_into()?;
+    let recovery_id = libsecp256k1::RecoveryId::parse(recovery_id[0]).map_err(|e| {
+      cblog!("{}", e);
+      "Failed to parse recovery id"
+    })?;
+
+    let msg = libsecp256k1::Message::parse_slice(bytes).map_err(|e| {
+      cblog!("{}", e);
+      "Failed to parse input message hash"
+    })?;
+
+    let pub_key = libsecp256k1::recover(&msg, &signature, &recovery_id).map_err(|e| {
+      cblog!("{}", e);
+      "Failed to recover public key"
+    })?;
+
+    let key: [u8; 65] = pub_key.serialize();
+    self.output = key[..].into();
+    Ok(self.output.0)
+  }
+}
+
 pub fn registerBlocks() {
   registerBlock::<ECDSASign>();
   registerBlock::<ECDSAPubKey>();
+  registerBlock::<ECDSARecover>();
 }
