@@ -29,6 +29,7 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.tabbed
   - toc:
       permalink: true
 plugins:

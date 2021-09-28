@@ -17,10 +17,10 @@
 ;; path definitions
 (def basePath "../../docs/")
 (def outputPath (str basePath "docs/blocks/"))
-(def samplePath (str basePath "samples/blocks/"))
+(def samplePath "samples/blocks/")
 
 ;; computes the filename from the block name
-(defn getFilename [basePath extension]
+(defblocks getFilename [basePath extension]
   (Maybe
    (->
     (Regex.Match #"(\w+)\.(.*)")
@@ -39,26 +39,17 @@
     .filename)
    true))
 
-;; retrieves the content of the sample file (if any)
-(defn getSample [name]
+;; computes the path of the sample file
+(defn getSampleFile [name extension]
   (Chain
-   "getter"
+   (str "get-" name extension)
    (->
-    ;; (ExpectString) >= .name
-    name (getFilename samplePath ".edn") >= .sampleName)
-   (Maybe
-    ; read from a file
-    (-> .sampleName (FS.Read))
-    ; fallback to an empty sample
-    (-> (str
-         "(" name "\r\n\r\n"
-         ")\r\n"))
-    true)))
+    name (getFilename samplePath extension))))
 
 ;; dumps the generated content to the final file
 (defn dump [name content]
   (Chain
-   (str "dumper-" name)
+   (str "dump-" name)
    (->
     name (getFilename outputPath ".md") >= .filename)
    .filename
@@ -160,9 +151,10 @@
 
        "## Examples\r\n\r\n"
 
-       "```clojure\r\n"
-       (read-var (run-chain (getSample name)))
-       "```\r\n"
+       "=== \"Code\"\r\n\r\n"
+       "    ```clojure linenums=\"1\"\r\n"
+       "    --8<-- \"" (read-var (run-chain (getSampleFile name ".edn"))) "\"\r\n"
+       "    ```\r\n"
 
        "\r\n\r\n"
        "--8<-- \"includes/license.md\"\r\n")))))
