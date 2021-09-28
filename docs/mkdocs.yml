@@ -38,6 +38,7 @@ plugins:
   - awesome-pages:
       strict: false
 theme:
+  custom_dir: overrides
   favicon: assets/images/logo.svg
   features:
     # - navigation.indexes # disabled: looks like there are some bugs.
