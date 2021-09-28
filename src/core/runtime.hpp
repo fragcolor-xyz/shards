@@ -1496,6 +1496,9 @@ struct Serialization {
                                                          block->destroy(block);
                                                        }))
                 .first->second.get();
+        if (!model) {
+          CBLOG_FATAL("Could not create block: {}.", name);
+        }
         auto params = blk->parameters(blk);
         for (uint32_t i = 0; i < params.len; i++) {
           auto idx = int(i);
