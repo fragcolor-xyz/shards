@@ -1381,21 +1381,6 @@ RUNTIME_BLOCK_getParam(Sequence);
 RUNTIME_BLOCK_activate(Sequence);
 RUNTIME_BLOCK_END(Sequence);
 
-// Register TableDecl
-RUNTIME_CORE_BLOCK_FACTORY(TableDecl);
-RUNTIME_BLOCK_cleanup(TableDecl);
-RUNTIME_BLOCK_destroy(TableDecl);
-RUNTIME_BLOCK_warmup(TableDecl);
-RUNTIME_BLOCK_inputTypes(TableDecl);
-RUNTIME_BLOCK_outputTypes(TableDecl);
-RUNTIME_BLOCK_parameters(TableDecl);
-RUNTIME_BLOCK_compose(TableDecl);
-RUNTIME_BLOCK_exposedVariables(TableDecl);
-RUNTIME_BLOCK_setParam(TableDecl);
-RUNTIME_BLOCK_getParam(TableDecl);
-RUNTIME_BLOCK_activate(TableDecl);
-RUNTIME_BLOCK_END(TableDecl);
-
 // Register Pop
 RUNTIME_CORE_BLOCK_FACTORY(Pop);
 RUNTIME_BLOCK_cleanup(Pop);
@@ -1731,7 +1716,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CORE_BLOCK(Update);
   REGISTER_CORE_BLOCK(Push);
   REGISTER_CORE_BLOCK(Sequence);
-  chainblocks::registerBlock("Table", createBlockTableDecl);
   REGISTER_CORE_BLOCK(Clear);
   REGISTER_CORE_BLOCK(Pop);
   REGISTER_CORE_BLOCK(PopFront);
@@ -1777,6 +1761,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Reduce", Reduce);
   REGISTER_CBLOCK("Erase", Erase);
   REGISTER_CBLOCK("Once", Once);
+  REGISTER_CBLOCK("Table", TableDecl);
 
   REGISTER_CBLOCK("Pause", Pause);
   REGISTER_CBLOCK("PauseMs", PauseMs);

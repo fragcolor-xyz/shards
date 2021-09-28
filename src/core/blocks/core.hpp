@@ -1817,7 +1817,7 @@ struct TableDecl : public VariableBase {
   static inline ParamsInfo pushParams = ParamsInfo(
       variableParamsInfo,
       ParamsInfo::Param("Types",
-                        CBCCSTR("The sequence inner types to forward declare."),
+                        CBCCSTR("The table inner types to forward declare."),
                         CoreInfo2::BasicTypesTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
@@ -3439,7 +3439,6 @@ RUNTIME_CORE_BLOCK_TYPE(Slice);
 RUNTIME_CORE_BLOCK_TYPE(Limit);
 RUNTIME_CORE_BLOCK_TYPE(Push);
 RUNTIME_CORE_BLOCK_TYPE(Sequence);
-RUNTIME_CORE_BLOCK_TYPE(TableDecl);
 RUNTIME_CORE_BLOCK_TYPE(Pop);
 RUNTIME_CORE_BLOCK_TYPE(PopFront);
 RUNTIME_CORE_BLOCK_TYPE(Clear);
