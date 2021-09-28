@@ -413,11 +413,6 @@ struct Peer : public std::enable_shared_from_this<Peer> {
   static inline Type Info{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
 
-  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
-      "Http.Server.Socket", CBCCSTR("The open socket to send responses to."),
-      Peer::Info);
-  static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
-
   std::shared_ptr<CBChain> chain;
   std::shared_ptr<tcp::socket> socket;
 };
@@ -483,10 +478,6 @@ struct Server {
     // copy shared
     _sharedCopy = shared;
     return data.inputType;
-  }
-
-  CBExposedTypesInfo exposedVariables() {
-    return CBExposedTypesInfo(Peer::requiredInfo);
   }
 
   // "Loop" forever accepting new connections.
@@ -584,18 +575,15 @@ struct Server {
   std::unique_ptr<tcp::acceptor> _acceptor;
 };
 
-struct ServerUser {
-  CBExposedTypesInfo requiredVariables() {
-    return CBExposedTypesInfo(Peer::requiredInfo);
-  }
-};
-
-struct Read : public ServerUser {
+struct Read {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringTableType; }
 
   void warmup(CBContext *context) {
     _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == CBType::None) {
+      throw WarmupError("Socket variable not found in chain");
+    }
   }
 
   void cleanup() {
@@ -663,7 +651,7 @@ struct Read : public ServerUser {
   http::request<http::string_body> request;
 };
 
-struct Response : public ServerUser {
+struct Response {
   static inline Types PostInTypes{CoreInfo::StringType};
 
   static CBTypesInfo inputTypes() { return PostInTypes; }
@@ -697,6 +685,9 @@ struct Response : public ServerUser {
   void warmup(CBContext *context) {
     _headers.warmup(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == CBType::None) {
+      throw WarmupError("Socket variable not found in chain");
+    }
   }
 
   void cleanup() {
@@ -753,7 +744,7 @@ struct Response : public ServerUser {
   http::response<http::string_body> _response;
 };
 
-struct SendFile : public ServerUser {
+struct SendFile {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -772,6 +763,9 @@ struct SendFile : public ServerUser {
   void warmup(CBContext *context) {
     _headers.warmup(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == CBType::None) {
+      throw WarmupError("Socket variable not found in chain");
+    }
   }
 
   void cleanup() {
