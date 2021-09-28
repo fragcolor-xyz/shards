@@ -413,6 +413,11 @@ struct Peer : public std::enable_shared_from_this<Peer> {
   static inline Type Info{
       {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
 
+  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
+      "Http.Server.Socket", CBCCSTR("The open socket to send responses to."),
+      Peer::Info);
+  static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
+
   std::shared_ptr<CBChain> chain;
   std::shared_ptr<tcp::socket> socket;
 };
@@ -478,6 +483,10 @@ struct Server {
     // copy shared
     _sharedCopy = shared;
     return data.inputType;
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    return CBExposedTypesInfo(Peer::requiredInfo);
   }
 
   // "Loop" forever accepting new connections.
@@ -575,7 +584,13 @@ struct Server {
   std::unique_ptr<tcp::acceptor> _acceptor;
 };
 
-struct Read {
+struct ServerUser {
+  CBExposedTypesInfo requiredVariables() {
+    return CBExposedTypesInfo(Peer::requiredInfo);
+  }
+};
+
+struct Read : public ServerUser {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringTableType; }
 
@@ -589,6 +604,8 @@ struct Read {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_peerVar->valueType == Object);
+    assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     bool done = false;
@@ -646,7 +663,7 @@ struct Read {
   http::request<http::string_body> request;
 };
 
-struct Response {
+struct Response : public ServerUser {
   static inline Types PostInTypes{CoreInfo::StringType};
 
   static CBTypesInfo inputTypes() { return PostInTypes; }
@@ -689,12 +706,15 @@ struct Response {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_peerVar->valueType == Object);
+    assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
     _response.clear();
 
     _response.result(_status);
     _response.set(http::field::content_type, "application/json");
-    _response.body() = input.payload.stringValue;
+    auto input_view = CBSTRVIEW(input);
+    _response.body() = input_view;
 
     // add custom headers
     if (_headers.get().valueType == Table) {
@@ -733,7 +753,7 @@ struct Response {
   http::response<http::string_body> _response;
 };
 
-struct SendFile {
+struct SendFile : public ServerUser {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -816,6 +836,8 @@ struct SendFile {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_peerVar->valueType == Object);
+    assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     std::filesystem::path p{GetGlobals().RootPath};
