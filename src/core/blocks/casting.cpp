@@ -247,7 +247,11 @@ template <CBType ToType> struct ToNumber {
   const NumberTypeTraits *_outputNumberType{nullptr};
 
   CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  CBTypesInfo outputTypes() { return _outputVectorType->type; }
+  CBTypesInfo outputTypes() {
+    if(!_outputVectorType)
+      return CoreInfo::AnyType;
+    return _outputVectorType->type; 
+  }
   
   CBTypeInfo compose(const CBInstanceData &data) {
     _outputVectorType =
