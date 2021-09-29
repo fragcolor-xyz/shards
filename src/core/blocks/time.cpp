@@ -89,6 +89,7 @@ struct Pop {
   }
 
   ParamVar _pseq{};
+  OwnedVar _last{};
 
   CBParametersInfo parameters() { return Params; }
 
@@ -134,10 +135,11 @@ struct Pop {
         auto &v = seq.payload.seqValue.elements[idx];
         auto &time = v.payload.seqValue.elements[1]; // time ms in epoch here
         if (now >= time.payload.intValue) {
+          _last = v.payload.seqValue.elements[0];
           // remove the item fast as order does not matter, time deadline is the
           // only thing that matters)
           arrayDelFast(seq.payload.seqValue, idx);
-          return v.payload.seqValue.elements[0];
+          return _last;
         }
       }
       // if we are here means we need to wait

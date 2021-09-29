@@ -1124,7 +1124,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 enum class WaitUntil {
   FirstSuccess, // will wait until the first success and stop any other
                 // pending operation
-  AllSuccess,   // will wait untill all complete, will stop and fail on any
+  AllSuccess,   // will wait until all complete, will stop and fail on any
                 // failure
   SomeSuccess   // will wait until all complete but won't fail if some of the
                 // chains failed
