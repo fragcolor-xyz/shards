@@ -243,8 +243,8 @@ private:
 };
 
 template <CBType ToType> struct ToNumber {
-  const VectorTypeTraits *_outputVectorType;
-  const NumberTypeTraits *_outputNumberType;
+  const VectorTypeTraits *_outputVectorType{nullptr};
+  const NumberTypeTraits *_outputNumberType{nullptr};
 
   CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   CBTypesInfo outputTypes() { return _outputVectorType->type; }

@@ -2345,9 +2345,9 @@ struct Take {
   bool _tableOutput{false};
   
   CBVar _vectorOutput{};
-  const VectorTypeTraits *_vectorInputType;
-  const VectorTypeTraits *_vectorOutputType;
-  const NumberConversion* _vectorConversion;
+  const VectorTypeTraits *_vectorInputType{nullptr};
+  const VectorTypeTraits *_vectorOutputType{nullptr};
+  const NumberConversion* _vectorConversion{nullptr};
   
   Type _seqOutputType{};
   std::vector<CBTypeInfo> _seqOutputTypes;
