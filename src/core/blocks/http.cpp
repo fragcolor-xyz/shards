@@ -250,7 +250,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
       ForEach(htab, [&](auto key, auto &value) {
         auto sv_value = CBSTRVIEW(value);
         headersCArray.emplace_back(key);
-        headersCArray.emplace_back(sv_value);
+        headersCArray.emplace_back(sv_value.data());
       });
     }
     headersCArray.emplace_back(nullptr);
