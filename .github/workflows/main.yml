@@ -739,6 +739,7 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
           brew install boost cmake ninja clang-format
+          brew install openssl@1.1
           rustup update
       - name: Build
         run: |
@@ -835,6 +836,7 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
           brew install boost cmake clang-format
+          brew install openssl@1.1
           rustup update
           rustup target add x86_64-apple-ios
           rustup target add aarch64-apple-ios

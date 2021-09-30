@@ -228,21 +228,22 @@ elseif(APPLE)
       set(BOOST_LIBS
       /usr/local/opt/boost/lib/libboost_context-mt.a
       /usr/local/opt/boost/lib/libboost_filesystem-mt.a
-      /usr/local/opt/openssl/lib/libssl.a
-      /usr/local/opt/openssl/lib/libcrypto.a)
+      /usr/local/opt/openssl@1.1/lib/libssl.a
+      /usr/local/opt/openssl@1.1/lib/libcrypto.a)
     else()
       set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
     endif()
   endif()
+  
   include_directories(
     /usr/local/include
-    /usr/local/opt/openssl/include
-    )
+    /usr/local/opt/openssl@1.1/include
+  )
   link_directories(
     /usr/local/lib
-    /usr/local/opt/openssl/lib
+    /usr/local/opt/openssl@1.1/lib
     /usr/local/opt/boost/lib
-    )
+  )
 elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
