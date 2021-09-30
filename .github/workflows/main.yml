@@ -318,7 +318,7 @@ jobs:
       - name: Build
         run: |
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1 ..
           ninja test_runtime && ninja test_extra
       - name: Test
         env:
