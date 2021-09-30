@@ -9,7 +9,10 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(SDL)
 add_subdirectory(spdlog)
+
+OPTION(BUILD_NATIVE "" OFF)
 add_subdirectory(wasm3)
+
 add_subdirectory(Catch2)
 
 option(SNAPPY_BUILD_TESTS OFF "")
