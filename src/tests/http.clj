@@ -7,6 +7,11 @@
   (Chain
    "test"
    :Looped
+
+   "Hello world, this is an escaping test ////"
+   (String.EncodeURI) (Log)
+   (Assert.Is "Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F" true)
+
                                         ; params
    1 (ToString)
    (Set .params "postId")
