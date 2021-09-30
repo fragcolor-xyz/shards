@@ -81,9 +81,7 @@ endif()
 
 if(IOS)
   unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
-
-  set(Boost_DEBUG ON)
-  find_package(Boost) # Headers only
+  find_package(Boost REQUIRED)
 
   # FindBoost doesn't work on iOS
   # Compile-in boost-context implementation
