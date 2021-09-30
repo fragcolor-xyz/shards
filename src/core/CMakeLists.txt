@@ -113,7 +113,10 @@ elseif(EMSCRIPTEN)
   
   target_include_directories(chainblocks-core PUBLIC ${Boost_INCLUDE_DIRS})
 else()
-  set(Boost_USE_STATIC_LIBS ON)
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(Boost_USE_STATIC_LIBS ON)
+  endif()
+  
   find_package(Boost REQUIRED COMPONENTS context filesystem)
   target_link_libraries(chainblocks-core Boost::context Boost::filesystem)
 endif()
@@ -132,16 +135,28 @@ endif()
 if(WIN32)
   target_link_libraries(chainblocks-core ssl crypto ws2_32 mswsock Secur32 Crypt32 NCrypt)
 elseif(APPLE)
-  target_link_directories(chainblocks-core PUBLIC 
-    /usr/local/lib
-    /usr/local/opt/openssl/lib
-  )
+  if(NOT IOS)
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+      # these have to be full path or cmake will revert to use -l resulting in dynamic linking
+      target_link_libraries(chainblocks-core
+        /usr/local/opt/openssl/lib/libssl.a
+        /usr/local/opt/openssl/lib/libcrypto.a
+      )
+    else()
+      target_link_libraries(chainblocks-Core
+        -lssl -lcrypto
+      )
+    endif()
+  endif()
+  
   target_include_directories(chainblocks-core PUBLIC 
     /usr/local/include
     /usr/local/opt/openssl/include
-    /usr/local/include/boost
   )
-  target_link_libraries(chainblocks-core ssl crypto)
+  target_link_directories(chainblocks-core PUBLIC
+    /usr/local/lib
+    /usr/local/opt/openssl/lib
+  )
 elseif(UNIX AND NOT EMSCRIPTEN)
   target_link_libraries(chainblocks-core ssl crypto pthread dl rt)
 endif()
