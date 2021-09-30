@@ -139,11 +139,11 @@ elseif(APPLE)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
       # these have to be full path or cmake will revert to use -l resulting in dynamic linking
       target_link_libraries(chainblocks-core
-        /usr/local/opt/openssl/lib/libssl.a
-        /usr/local/opt/openssl/lib/libcrypto.a
+        /usr/local/opt/openssl@1.1/lib/libssl.a
+        /usr/local/opt/openssl@1.1/lib/libcrypto.a
       )
     else()
-      target_link_libraries(chainblocks-Core
+      target_link_libraries(chainblocks-core
         -lssl -lcrypto
       )
     endif()
@@ -151,11 +151,11 @@ elseif(APPLE)
   
   target_include_directories(chainblocks-core PUBLIC 
     /usr/local/include
-    /usr/local/opt/openssl/include
+    /usr/local/opt/openssl@1.1/include
   )
   target_link_directories(chainblocks-core PUBLIC
     /usr/local/lib
-    /usr/local/opt/openssl/lib
+    /usr/local/opt/openssl@1.1/lib
   )
 elseif(UNIX AND NOT EMSCRIPTEN)
   target_link_libraries(chainblocks-core ssl crypto pthread dl rt)
