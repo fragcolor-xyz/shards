@@ -34,7 +34,7 @@
     .filename)
    (->
     >= .filename
-    (str basePath "!/") (PrependTo .filename)
+    (str basePath "General/") (PrependTo .filename)
     extension (AppendTo .filename)
     .filename)
    true))
