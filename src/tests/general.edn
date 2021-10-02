@@ -782,6 +782,8 @@
 
    "A" (ParseInt :Base 16) (Assert.Is 10 true)
    "2.1" (ParseFloat) (Assert.Is 2.1 true)
+
+   "  3.14 " (String.Trim) (ParseFloat) (Assert.Is 3.14 true)
    
    1.0 >= .one
    (Math.Inc .one)
