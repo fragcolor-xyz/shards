@@ -63,6 +63,7 @@ blocks = ["reqwest",
           "serde_json"]
 dllblock = ["dlopen"]
 run_bindgen = ["bindgen"]
+cblisp = []
 
 [profile.release]
 panic = "abort"

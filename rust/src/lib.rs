@@ -309,6 +309,7 @@ mod dummy_block {
   }
 }
 
+#[cfg(feature = "cblisp")]
 mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
@@ -364,5 +365,6 @@ pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
 
 #[no_mangle]
 pub extern "C" fn runRuntimeTests() {
+  #[cfg(feature = "cblisp")]
   cblisp::test_cbl();
 }
