@@ -136,8 +136,10 @@ macro_rules! blocks {
             blk
     }};
 
-    (@block $a:expr) => { blocks!(@block Const $a); };
+    (@block . $a:expr) => { blocks!(@block Const $a); };
 
+    // this is the CORE evaluator takes a list of blocks expressions
+    // the current limit is that everything has to be between parenthesis (...)
     ($(($block:tt $($param:tt) *)) *) => {{
         let mut blks = Vec::<$crate::chainblocksc::CBlockPtr>::new();
         $(
@@ -249,7 +251,7 @@ mod dummy_block {
 
   fn macroTest() {
     blocks!(
-      (10)
+      (. 10)
       (Set .x)
       (Log)
       (ToString)
@@ -261,7 +263,7 @@ mod dummy_block {
       (Msg :Message "Done"));
 
     blocks!(
-      ("Hello")
+      (. "Hello")
       (Msg)
     );
   }
@@ -307,10 +309,45 @@ mod dummy_block {
   }
 }
 
+mod cblisp {
+  use crate::Var;
+  use std::convert::TryInto;
+  use std::ffi::CString;
+
+  extern "C" {
+    pub fn cbLispCreate(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void;
+    pub fn cbLispDestroy(env: *mut ::core::ffi::c_void);
+    pub fn cbLispEval(env: *mut ::core::ffi::c_void, code: *const ::std::os::raw::c_char) -> Var;
+  }
+
+  macro_rules! cbl {
+    ($code:expr) => {
+      unsafe {
+        let dir_path = env!("CARGO_MANIFEST_DIR");
+        let dir_path = CString::new(dir_path).expect("CString failed...");
+        let env = cbLispCreate(dir_path.as_ptr());
+        let code = CString::new($code).expect("CString failed...");
+        let res = cbLispEval(env, code.as_ptr());
+        cbLispDestroy(env);
+        res
+      }
+    };
+  }
+
+  #[test]
+  fn test_cbl() {
+    let res = cbl!(include_str!("test.edn"));
+    let res: &str = res.as_ref().try_into().unwrap();
+    assert_eq!(res, "Hello");
+  }
+}
+
 #[cfg(feature = "blocks")]
 #[no_mangle]
-pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
-  Core = core;
+pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
+  unsafe {
+    Core = core;
+  }
 
   #[cfg(not(target_arch = "wasm32"))]
   blocks::http::registerBlocks();

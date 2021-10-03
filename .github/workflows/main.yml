@@ -52,12 +52,11 @@ jobs:
           rustup target add wasm32-unknown-emscripten
       - name: Set up rust (mt)
         if: ${{ matrix.threading == 'mt' }}
-        run: |        
+        run: |
           rustup component add rust-src --toolchain nightly
       - name: Build
         run: |
           source emsdk/emsdk_env.sh
-          cargo tree --features blocks --target=wasm32-unknown-emscripten
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
@@ -239,7 +238,7 @@ jobs:
           ./cbl ../src/tests/branch.edn
           ./cbl ../src/tests/audio.edn
           ./cbl ../src/tests/time.edn
-          ./cbl ../src/tests/eth.edn 
+          ./cbl ../src/tests/eth.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ matrix.build-type == 'Debug' }}
@@ -465,7 +464,7 @@ jobs:
           cd deps/libbacktrace
           mkdir build
           ./configure --prefix=`pwd`/build
-          make && make install        
+          make && make install
       - name: Build
         env:
           RUST_BACKTRACE: 1

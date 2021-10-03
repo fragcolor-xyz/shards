@@ -2175,11 +2175,11 @@ __cdecl CBVar cbLispEval(void *env, const char *str) {
   try {
     auto res = maleval(str, *penv);
     auto mvar = varify(res);
-    // hack, increase count to not loose contents...
-    // TODO, improve as in the end this leaks basically
-    std::size_t sh = std::hash<const char *>{}(str);
-    (*penv)->set(std::to_string(sh), malValuePtr(mvar.ptr()));
-    return mvar->value();
+    auto scriptVal = mvar->value();
+    CBVar tmp{};
+    // assume users will call CBCore::destroyVar!
+    chainblocks::cloneVar(tmp, scriptVal);
+    return scriptVal;
   } catch (...) {
     return chainblocks::Var::Empty;
   }
