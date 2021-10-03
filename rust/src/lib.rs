@@ -323,23 +323,18 @@ mod cblisp {
   macro_rules! cbl {
     ($code:expr) => {
       unsafe {
-        let dir_path = env!("CARGO_MANIFEST_DIR");
-        let dir_path = CString::new(dir_path).expect("CString failed...");
-        let env = cbLispCreate(dir_path.as_ptr());
         let code = CString::new($code).expect("CString failed...");
-        let res = cbLispEval(env, code.as_ptr());
-        cbLispDestroy(env);
-        res
+        cbLispEval(::core::ptr::null_mut(), code.as_ptr())
       }
     };
   }
 
-  // pub fn test_cbl() {
-  //   // the string is stored at compile time, ideally we should compress them all!
-  //   let res = cbl!(include_str!("test.edn"));
-  //   let res: &str = res.as_ref().try_into().unwrap();
-  //   assert_eq!(res, "Hello");
-  // }
+  pub fn test_cbl() {
+    // the string is stored at compile time, ideally we should compress them all!
+    let res = cbl!(include_str!("test.edn"));
+    let res: &str = res.as_ref().try_into().unwrap();
+    assert_eq!(res, "Hello");
+  }
 }
 
 #[cfg(feature = "blocks")]
@@ -367,7 +362,7 @@ pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::browse::registerBlocks();
 }
 
-// #[no_mangle]
-// pub extern "C" fn runRuntimeTests() {
-//   cblisp::test_cbl();
-// }
+#[no_mangle]
+pub extern "C" fn runRuntimeTests() {
+  cblisp::test_cbl();
+}

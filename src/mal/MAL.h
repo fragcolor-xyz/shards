@@ -38,6 +38,7 @@ extern malValuePtr readStr(const String &input);
 // Extras
 extern void malinit(malEnvPtr env, const char *exePath, const char *scriptPath);
 extern malValuePtr maleval(const char *str, malEnvPtr env);
+extern malEnvPtr malenv();
 
 #define MAL_CHECK(condition, ...)                                              \
   if (!(condition)) {                                                          \

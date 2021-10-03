@@ -46,6 +46,10 @@ malValuePtr maleval(const char *str, malEnvPtr env) {
   return EVAL(READ(str), env);
 }
 
+extern malEnvPtr malenv() {
+  return currentEnv;
+}
+
 int malmain(int argc, const char *argv[]) {
   malEnvPtr replEnv(new malEnv());
 
