@@ -51,7 +51,7 @@ use std::ffi::CString;
 // cargo +nightly rustc --profile=check -- -Zunstable-options --pretty=expanded
 
 macro_rules! var {
-    ((--> $($param:tt) *)) => {{
+    ((-> $($param:tt) *)) => {{
         let blks = blocks!($($param) *);
         let mut vblks = Vec::<$crate::types::Var>::new();
         for blk in blks {
@@ -61,12 +61,13 @@ macro_rules! var {
         // but for now it's the easiest
         $crate::types::ClonedVar::from($crate::types::Var::from(&vblks))
     }};
+
     ($vexp:expr) => { $crate::types::WrappedVar($crate::types::Var::from($vexp)) }
 }
 
 macro_rules! blocks {
-    (@block Set :Name ..$var:ident) => { blocks!(@block Set (stringify!($var))); };
-    (@block Set ..$var:ident) => { blocks!(@block Set (stringify!($var))); };
+    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))); };
+    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))); };
     (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))); };
     (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))); };
 
@@ -247,14 +248,22 @@ mod dummy_block {
   }
 
   fn macroTest() {
-    blocks!((10)
-                (Log)
-                (Set :Name ..x)
-                (Repeat
-                 (-->
-                  (Msg "repeating...")
-                  (Log)))
-                (Msg :Message "Done"));
+    blocks!(
+      (10)
+      (Set .x)
+      (Log)
+      (ToString)
+      (Set :Name .x)
+      (Repeat
+        (->
+        (Msg "repeating...")
+        (Log)))
+      (Msg :Message "Done"));
+
+    blocks!(
+      ("Hello")
+      (Msg)
+    );
   }
 
   #[test]

@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::chainblocksc::CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::block::Block;
 use crate::chainblocksc::CBImage;
 use crate::chainblocksc::CBVarPayload;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1;
+use crate::chainblocksc::CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::chainblocksc::{CBType_Bytes, CBType_Image, CBType_String};
 use crate::core::do_blocking;
 use crate::core::log;

@@ -161,7 +161,7 @@ unsafe extern "C" fn cblock_outputHelp<T: Block>(arg1: *mut CBlock) -> CBOptiona
 }
 
 unsafe extern "C" fn cblock_properties<T: Block>(arg1: *mut CBlock) -> *const CBTable {
-    let blk = arg1 as *mut BlockWrapper<T>;
+  let blk = arg1 as *mut BlockWrapper<T>;
   if let Some(properties) = (*blk).block.properties() {
     &properties.t as *const CBTable
   } else {
