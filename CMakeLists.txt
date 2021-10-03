@@ -846,6 +846,10 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_FEATURES ${RUST_FEATURES} --features run_bindgen)
   endif()
 
+  if(RUST_CBLISP)
+    set(RUST_FEATURES ${RUST_FEATURES} --features cblisp)
+  endif()
+
   if(RUST_USE_LTO)
     set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
   endif()
