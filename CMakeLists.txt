@@ -234,7 +234,7 @@ elseif(APPLE)
       set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
     endif()
   endif()
-  
+
   include_directories(
     /usr/local/include
     /usr/local/opt/openssl@1.1/include
@@ -843,7 +843,7 @@ if(NOT BUILD_CORE_ONLY)
   if(NOT SKIP_RUST_BINDGEN)
     # So we got issues when building win32 and libclang...
     # let's bindgen on win64 only and the other OSs
-    set(RUST_BINDGEN ,run_bindgen)
+    set(RUST_FEATURES ${RUST_FEATURES} --features run_bindgen)
   endif()
 
   if(RUST_USE_LTO)
@@ -865,7 +865,7 @@ if(NOT BUILD_CORE_ONLY)
   add_custom_target(
     rust_blocks
     COMMAND ${RUSTFLAGS}
-    COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks ${RUST_FEATURES} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
@@ -1027,6 +1027,27 @@ if(EMSCRIPTEN)
     set_target_properties(cbl PROPERTIES SUFFIX "-st.js")
   endif()
 endif()
+###
+
+### mal as dll
+add_library(
+  libcb SHARED
+  "${CHAINBLOCKS_DIR}/src/mal/stepA_mal.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Core.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Environment.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Reader.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/ReadLine.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/String.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Types.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
+  )
+add_dependencies(libcb cb_static)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set_property(TARGET libcb PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT -DNO_MAL_MAIN")
+target_link_libraries(libcb ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
+set_target_properties(libcb PROPERTIES PREFIX "")
 ###
 
 ### our experimental edn eval
