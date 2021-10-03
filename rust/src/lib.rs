@@ -334,12 +334,12 @@ mod cblisp {
     };
   }
 
-  #[test]
-  fn test_cbl() {
-    let res = cbl!(include_str!("test.edn"));
-    let res: &str = res.as_ref().try_into().unwrap();
-    assert_eq!(res, "Hello");
-  }
+  // pub fn test_cbl() {
+  //   // the string is stored at compile time, ideally we should compress them all!
+  //   let res = cbl!(include_str!("test.edn"));
+  //   let res: &str = res.as_ref().try_into().unwrap();
+  //   assert_eq!(res, "Hello");
+  // }
 }
 
 #[cfg(feature = "blocks")]
@@ -366,3 +366,8 @@ pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   blocks::browse::registerBlocks();
 }
+
+// #[no_mangle]
+// pub extern "C" fn runRuntimeTests() {
+//   cblisp::test_cbl();
+// }
