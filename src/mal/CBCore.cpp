@@ -52,6 +52,8 @@ static StaticList<malBuiltIn *> handlers;
 
 extern void cbRegisterAllBlocks();
 
+extern "C" void runRuntimeTests();
+
 class malCBChain;
 class malCBlock;
 class malCBNode;
@@ -96,6 +98,11 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
     cbRegisterAllBlocks();
 
     initDoneOnce = true;
+
+#ifndef NDEBUG
+    // TODO fix running rust tests...
+    runRuntimeTests();
+#endif
   }
 
   // Chain params
@@ -2173,7 +2180,13 @@ __cdecl void cbLispDestroy(void *env) {
 __cdecl CBVar cbLispEval(void *env, const char *str) {
   auto penv = (malEnvPtr *)env;
   try {
-    auto res = maleval(str, *penv);
+    malValuePtr res;
+    if (penv) {
+      res = maleval(str, *penv);
+    } else {
+      auto cenv = malenv();
+      res = maleval(str, cenv);
+    }
     auto mvar = varify(res);
     auto scriptVal = mvar->value();
     CBVar tmp{};
