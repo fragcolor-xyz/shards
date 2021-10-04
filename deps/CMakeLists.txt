@@ -7,6 +7,8 @@ add_subdirectory(magic_enum)
 add_subdirectory(nameof)
 add_subdirectory(pareto)
 add_subdirectory(replxx)
+
+set(SDL_RENDER_DISABLED 1)
 add_subdirectory(SDL)
 add_subdirectory(spdlog)
 
@@ -35,6 +37,7 @@ add_subdirectory(kissfft)
 
 option(BGFX_BUILD_EXAMPLES "" OFF)
 option(BGFX_INSTALL "" OFF)
+option(BIMG_DECODE_ENABLE "" OFF)
 set(BX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bx)
 set(BIMG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bimg)
 set(BGFX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bgfx)
