@@ -89,6 +89,7 @@
 [submodule "deps/bgfx.cmake"]
 	path = deps/bgfx.cmake
 	url = https://github.com/chainblocks/bgfx.cmake.git
+	branch = chainblocks
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/chainblocks/brotli.git
