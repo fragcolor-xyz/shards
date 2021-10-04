@@ -80,3 +80,6 @@
 [submodule "deps/pareto"]
 	path = deps/pareto
 	url = https://github.com/chainblocks/pareto.git
+[submodule "deps/imguizmo"]
+	path = deps/imguizmo
+	url = https://github.com/chainblocks/ImGuizmo.git
