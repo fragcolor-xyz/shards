@@ -1,4 +1,4 @@
-(Int 3)
+(int 3)
 (Math.Add
  ;:Operand
  4)

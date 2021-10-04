@@ -658,7 +658,9 @@ jobs:
         with:
           python-version: 3.x
       - name: Install mkdocs
-        run: pip install mkdocs-material
+        run: |
+          pip install mkdocs-material
+          pip install mkdocs-awesome-pages-plugin
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:

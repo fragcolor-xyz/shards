@@ -1,7 +1,7 @@
-edit_uri: edit/devel/docs/docs/
+edit_uri: ''
 repo_url: https://github.com/fragcolor-xyz/chainblocks/
 site_name: Fragcolor documentation
-site_url: 
+site_url: https://docs.fragcolor.xyz
 copyright: Copyright © 2021 Fragcolor Pte. Inc.
 extra:
   generator: false
@@ -15,24 +15,31 @@ extra:
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/fragcolor
       name: Follow us on Twitter
-    - icon: fontawesome/brands/facebook
-      link: https://www.facebook.com/fragcolor/
-      name: Follow us on Facebook
+    # - icon: fontawesome/brands/facebook
+    #   link: https://www.facebook.com/fragcolor/
+    #   name: Follow us on Facebook
     - icon: fontawesome/brands/linkedin-in
       link: https://www.linkedin.com/company/fragcolor/
       name: Company profile on LinkedIn
 markdown_extensions:
   - admonition
+  - pymdownx.details
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
   - pymdownx.highlight
   - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.tabbed
   - toc:
       permalink: true
+plugins:
+  - search
+  - awesome-pages:
+      strict: false
 theme:
-  favicon: assets/images/favicon.svg
+  custom_dir: overrides
+  favicon: assets/images/logo.svg
   features:
     # - navigation.indexes # disabled: looks like there are some bugs.
     - navigation.instant
