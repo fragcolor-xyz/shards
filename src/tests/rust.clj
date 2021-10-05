@@ -71,6 +71,11 @@
   (CSV.Write)
   (Assert.Is "Boston,United States,4628910\nConcord,United States,42695\n" true)
 
+  "\"Free trip to A,B\",\"5.89\",\"Special rate \"\"1.79\"\"\"\n"
+  (CSV.Read :NoHeader true) (Log)
+  (CSV.Write :NoHeader true) (Log)
+  (Assert.Is "\"Free trip to A,B\",5.89,\"Special rate \"\"1.79\"\"\"\n" true)
+
   "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n"
   (CSV.Read :NoHeader true :Separator ";") (Log)
   (CSV.Write :NoHeader true :Separator ";")
