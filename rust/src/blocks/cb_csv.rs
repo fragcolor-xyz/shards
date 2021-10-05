@@ -19,6 +19,7 @@ use core::convert::TryFrom;
 use core::convert::TryInto;
 use csv::Reader;
 use csv::ReaderBuilder;
+use csv::WriterBuilder;
 
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![
@@ -128,6 +129,138 @@ impl Block for CSVRead {
   }
 }
 
+#[derive(Default)]
+struct CSVWrite {
+  output: ClonedVar,
+  no_header: bool,
+  separator: Option<CString>,
+}
+
+impl Block for CSVWrite {
+  fn registerName() -> &'static str {
+    cstr!("CSV.Write")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("CSV.Write-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "CSV.Write"
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &SEQ_OF_STRINGS_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &STRING_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.no_header = value.try_into().unwrap(),
+      1 => {
+        if value.is_none() {
+          self.separator = None;
+        } else {
+          self.separator = Some(value.try_into().unwrap());
+        }
+      }
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.no_header.into(),
+      1 => {
+        if let Some(ref separator) = self.separator {
+          separator.into()
+        } else {
+          ().into()
+        }
+      }
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let mut writer = WriterBuilder::new()
+      .has_headers(!self.no_header)
+      .delimiter({
+        if self.separator.is_some() {
+          self.separator.as_ref().unwrap().as_bytes()[0] as u8
+        } else {
+          b','
+        }
+      })
+      .from_writer(Vec::new());
+    let input: Seq = input.try_into()?;
+    for row in input.iter() {
+      let row: Seq = row.try_into()?;
+      let mut record = Vec::new();
+      for field in row.iter() {
+        let field: &str = field.as_ref().try_into()?;
+        record.push(field);
+      }
+      writer.write_record(&record).map_err(|e| {
+        cblog!("{}", e);
+        "Failed to write to CSV"
+      })?;
+    }
+    let output = writer.into_inner().map_err(|e| {
+      cblog!("{}", e);
+      "Failed to write to CSV"
+    })?;
+    let output = CString::new(output).map_err(|e| {
+      cblog!("{}", e);
+      "Failed to write to CSV"
+    })?;
+    self.output = output.as_ref().into();
+    Ok(self.output.0)
+  }
+}
+
+/* courtesy of copilot lol */
+// #[cfg(test)]
+// mod tests {
+//   use super::*;
+
+//   #[test]
+//   fn test_csv_read() {
+//     let mut block = CSVRead::default();
+//     block.activate(&Context::default(), &"a,b,c\n1,2,3\n4,5,6\n".into()).unwrap();
+//     assert_eq!(
+//       block.output.as_ref().try_into().unwrap(),
+//       vec![
+//         vec![cstr!("a"), cstr!("b"), cstr!("c")].into(),
+//         vec![cstr!("1"), cstr!("2"), cstr!("3")].into(),
+//         vec![cstr!("4"), cstr!("5"), cstr!("6")].into(),
+//       ]
+//     );
+//   }
+
+//   #[test]
+//   fn test_csv_write() {
+//     let mut block = CSVWrite::default();
+//     block.activate(&Context::default(), &vec![
+//       vec![cstr!("a"), cstr!("b"), cstr!("c")].into(),
+//       vec![cstr!("1"), cstr!("2"), cstr!("3")].into(),
+//       vec![cstr!("4"), cstr!("5"), cstr!("6")].into(),
+//     ]).unwrap();
+//     assert_eq!(
+//       block.output.as_ref().try_into().unwrap(),
+//       cstr!("a,b,c\n1,2,3\n4,5,6\n")
+//     );
+//   }
+// }
+
 pub fn registerBlocks() {
   registerBlock::<CSVRead>();
+  registerBlock::<CSVWrite>();
 }
