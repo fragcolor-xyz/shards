@@ -80,6 +80,43 @@ macro_rules! blocks {
             blk
     }};
 
+    // (BlockName.BlockName :ParamName ParamVar ...)
+    (@block $block0:ident.$block1:ident $(:$pname:tt $param:tt) *) => {{
+      let blkname = concat!(stringify!($block0), ".", stringify!($block1));
+      let blk = $crate::core::createBlockPtr(blkname);
+      unsafe {
+          (*blk).setup.unwrap()(blk);
+      }
+      let cparams: $crate::chainblocksc::CBParametersInfo;
+      unsafe {
+          cparams = (*blk).parameters.unwrap()(blk);
+      }
+      let params: &[$crate::chainblocksc::CBParameterInfo] = cparams.into();
+      $(
+          {
+              let param = stringify!($pname);
+              let mut piter = params.iter();
+              let idx = piter.position(|&x| -> bool {
+                  unsafe {
+                      let cname = x.name as *const std::os::raw::c_char as *mut std::os::raw::c_char;
+                      let cstr =  std::ffi::CString::from_raw(cname);
+                      let s = cstr.to_str();
+                      s.is_err() || s.unwrap() == param
+                  }
+              });
+              if let Some(pidx) = idx {
+                  let pvar = var!($param);
+                  unsafe {
+                      (*blk).setParam.unwrap()(blk, pidx as i32, &pvar.0 as * const _);
+                  }
+              } else {
+                  panic!("Parameter not found: {} for block: {}!", param, blkname);
+              }
+          }
+      ) *
+          blk
+   }};
+
     // (BlockName :ParamName ParamVar ...)
     (@block $block:ident $(:$pname:tt $param:tt) *) => {{
         let blkname = stringify!($block);
@@ -116,6 +153,25 @@ macro_rules! blocks {
         ) *
             blk
      }};
+
+     // (BlockName.BlockName ParamVar ...)
+    (@block $block0:ident.$block1:ident $($param:tt) *) => {{
+      let blk = $crate::core::createBlockPtr(concat!(stringify!($block0), ".", stringify!($block1)));
+      unsafe {
+          (*blk).setup.unwrap()(blk);
+      }
+      let mut _pidx: i32 = 0;
+      $(
+          {
+              let pvar = var!($param);
+              unsafe {
+                  (*blk).setParam.unwrap()(blk, _pidx, &pvar.0 as *const _);
+              }
+              _pidx += 1;
+          }
+      ) *
+          blk
+    }};
 
     // (BlockName ParamVar ...)
     (@block $block:ident $($param:tt) *) => {{
@@ -256,8 +312,12 @@ mod dummy_block {
   }
 
   fn macroTest() {
+    let rust_variable = "Hello World!";
+    let rust_variable2 = 2;
     blocks!(
       (. 10)
+      (Math.Multiply rust_variable2)
+      (Math.Subtract :Operand 1)
       (Set .x)
       (Log)
       (ToString)
@@ -265,7 +325,8 @@ mod dummy_block {
       (Repeat
         (->
         (Msg "repeating...")
-        (Log)))
+        (Log)
+        (. rust_variable) (Log)))
       (Msg :Message "Done"));
 
     blocks!(
