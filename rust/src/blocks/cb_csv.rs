@@ -5,6 +5,7 @@ use crate::core::registerBlock;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
@@ -65,6 +66,12 @@ impl Block for CSVRead {
 
   fn name(&mut self) -> &str {
     "CSV.Read"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!(
+      "Reads a CSV string and outputs the data as a sequence of strings in a sequence of rows."
+    ))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -147,6 +154,12 @@ impl Block for CSVWrite {
 
   fn name(&mut self) -> &str {
     "CSV.Write"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!(
+      "Reads a sequence of strings in a sequence of rows and outputs the data as a CSV string."
+    ))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
