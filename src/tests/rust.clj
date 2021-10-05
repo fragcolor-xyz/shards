@@ -65,14 +65,15 @@
         (Assert.Is "0x3db763bbbb1ac900eb2eb8b106218f85f9f64a13" true)))
   (| (ECDSA.PublicKey true) (ToHex) (Log))
 
-  "city,country,pop
-Boston,United States,4628910
-Concord,United States,42695"
-  (CSV.Read) (Log)
 
-  "city;country;pop
-Boston;United States;4628910
-Concord;United States;42695"
-  (CSV.Read :NoHeader true :Separator ";") (Log)))
+  "city,country,pop\nBoston,United States,4628910\nConcord,United States,42695\n"
+  (CSV.Read) (Log)
+  (CSV.Write)
+  (Assert.Is "Boston,United States,4628910\nConcord,United States,42695\n" true)
+
+  "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n"
+  (CSV.Read :NoHeader true :Separator ";") (Log)
+  (CSV.Write :NoHeader true :Separator ";")
+  (Assert.Is "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n" true)))
 
 (run Root)
