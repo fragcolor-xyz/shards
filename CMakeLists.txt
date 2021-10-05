@@ -508,6 +508,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
+    ${CHAINBLOCKS_DIR}/deps/imguizmo
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
     ${CHAINBLOCKS_DIR}/deps/miniaudio
@@ -802,6 +803,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_tables.cpp
+    ${CHAINBLOCKS_DIR}/deps/imguizmo/ImGuizmo.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot_items.cpp
 
