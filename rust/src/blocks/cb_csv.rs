@@ -25,24 +25,33 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("NoHeader"),
-      cbccstr!("If the block should not skip parsing the first row."),
+      cbccstr!("Whether the block should parse the first row as data, instead of header."),
       vec![common_type::bool]
     )
       .into(),
     (
       cstr!("Separator"),
-      cbccstr!("If the block should not skip parsing the first row."),
-      vec![common_type::none, common_type::string]
+      cbccstr!("The character to use as fields separator."),
+      vec![common_type::string]
     )
       .into()
   ];
 }
 
-#[derive(Default)]
 struct CSVRead {
   output: Seq,
   no_header: bool,
-  separator: Option<CString>,
+  separator: CString,
+}
+
+impl Default for CSVRead {
+  fn default() -> Self {
+    CSVRead {
+      output: Seq::new(),
+      no_header: false,
+      separator: CString::new(",").unwrap(),
+    }
+  }
 }
 
 impl Block for CSVRead {
@@ -73,13 +82,7 @@ impl Block for CSVRead {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.no_header = value.try_into().unwrap(),
-      1 => {
-        if value.is_none() {
-          self.separator = None;
-        } else {
-          self.separator = Some(value.try_into().unwrap());
-        }
-      }
+      1 => self.separator = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
@@ -87,13 +90,7 @@ impl Block for CSVRead {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.no_header.into(),
-      1 => {
-        if let Some(ref separator) = self.separator {
-          separator.into()
-        } else {
-          ().into()
-        }
-      }
+      1 => self.separator.as_ref().into(),
       _ => unreachable!(),
     }
   }
@@ -102,13 +99,7 @@ impl Block for CSVRead {
     let text: &str = input.try_into()?;
     let mut reader = ReaderBuilder::new()
       .has_headers(!self.no_header)
-      .delimiter({
-        if self.separator.is_some() {
-          self.separator.as_ref().unwrap().as_bytes()[0] as u8
-        } else {
-          b','
-        }
-      })
+      .delimiter(self.separator.as_bytes()[0] as u8)
       .from_reader(text.as_bytes());
     for row in reader.records() {
       let record = row.map_err(|e| {
@@ -129,11 +120,20 @@ impl Block for CSVRead {
   }
 }
 
-#[derive(Default)]
 struct CSVWrite {
   output: ClonedVar,
   no_header: bool,
-  separator: Option<CString>,
+  separator: CString,
+}
+
+impl Default for CSVWrite {
+  fn default() -> Self {
+    CSVWrite {
+      output: ().into(),
+      no_header: false,
+      separator: CString::new(",").unwrap(),
+    }
+  }
 }
 
 impl Block for CSVWrite {
@@ -164,13 +164,7 @@ impl Block for CSVWrite {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.no_header = value.try_into().unwrap(),
-      1 => {
-        if value.is_none() {
-          self.separator = None;
-        } else {
-          self.separator = Some(value.try_into().unwrap());
-        }
-      }
+      1 => self.separator = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
@@ -178,13 +172,7 @@ impl Block for CSVWrite {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.no_header.into(),
-      1 => {
-        if let Some(ref separator) = self.separator {
-          separator.into()
-        } else {
-          ().into()
-        }
-      }
+      1 => self.separator.as_ref().into(),
       _ => unreachable!(),
     }
   }
@@ -192,13 +180,7 @@ impl Block for CSVWrite {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let mut writer = WriterBuilder::new()
       .has_headers(!self.no_header)
-      .delimiter({
-        if self.separator.is_some() {
-          self.separator.as_ref().unwrap().as_bytes()[0] as u8
-        } else {
-          b','
-        }
-      })
+      .delimiter(self.separator.as_bytes()[0] as u8)
       .from_writer(Vec::new());
     let input: Seq = input.try_into()?;
     for row in input.iter() {
@@ -225,40 +207,6 @@ impl Block for CSVWrite {
     Ok(self.output.0)
   }
 }
-
-/* courtesy of copilot lol */
-// #[cfg(test)]
-// mod tests {
-//   use super::*;
-
-//   #[test]
-//   fn test_csv_read() {
-//     let mut block = CSVRead::default();
-//     block.activate(&Context::default(), &"a,b,c\n1,2,3\n4,5,6\n".into()).unwrap();
-//     assert_eq!(
-//       block.output.as_ref().try_into().unwrap(),
-//       vec![
-//         vec![cstr!("a"), cstr!("b"), cstr!("c")].into(),
-//         vec![cstr!("1"), cstr!("2"), cstr!("3")].into(),
-//         vec![cstr!("4"), cstr!("5"), cstr!("6")].into(),
-//       ]
-//     );
-//   }
-
-//   #[test]
-//   fn test_csv_write() {
-//     let mut block = CSVWrite::default();
-//     block.activate(&Context::default(), &vec![
-//       vec![cstr!("a"), cstr!("b"), cstr!("c")].into(),
-//       vec![cstr!("1"), cstr!("2"), cstr!("3")].into(),
-//       vec![cstr!("4"), cstr!("5"), cstr!("6")].into(),
-//     ]).unwrap();
-//     assert_eq!(
-//       block.output.as_ref().try_into().unwrap(),
-//       cstr!("a,b,c\n1,2,3\n4,5,6\n")
-//     );
-//   }
-// }
 
 pub fn registerBlocks() {
   registerBlock::<CSVRead>();
