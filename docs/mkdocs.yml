@@ -39,7 +39,7 @@ plugins:
       strict: false
 theme:
   custom_dir: overrides
-  favicon: assets/images/logo.svg
+  favicon: assets/images/favicon.svg
   features:
     # - navigation.indexes # disabled: looks like there are some bugs.
     - navigation.instant
