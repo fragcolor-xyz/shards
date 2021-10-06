@@ -37,6 +37,11 @@ lazy_static! {
     )
       .into()
   ];
+  static ref STR_HELP: OptionalString =
+    OptionalString(cbccstr!("A multiline string in CSV format to parse."));
+  static ref SEQ_HELP: OptionalString = OptionalString(cbccstr!(
+    "A sequence of rows, each row being a sequence of strings derived parsing the input string."
+  ));
 }
 
 struct CSVRead {
@@ -72,6 +77,14 @@ impl Block for CSVRead {
     OptionalString(cbccstr!(
       "Reads a CSV string and outputs the data as a sequence of strings in a sequence of rows."
     ))
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    *STR_HELP
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *SEQ_HELP
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -162,11 +175,19 @@ impl Block for CSVWrite {
     ))
   }
 
-  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+  fn inputHelp(&mut self) -> OptionalString {
+    *SEQ_HELP
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *STR_HELP
+  }
+
+  fn inputTypes(&mut self) -> &Vec<Type> {
     &SEQ_OF_STRINGS_TYPES
   }
 
-  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+  fn outputTypes(&mut self) -> &Vec<Type> {
     &STRING_TYPES
   }
 
