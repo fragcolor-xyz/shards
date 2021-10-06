@@ -288,7 +288,11 @@ void registerCoreBlocks() {
   channels::registerBlocks();
   Random::registerBlocks();
   Imaging::registerBlocks();
+  
+#ifndef CHAINBLOCKS_NO_BIGINT_BLOCKS
   BigInt::registerBlocks();
+#endif
+  
   registerFSBlocks();
   Wasm::registerBlocks();
   Http::registerBlocks();

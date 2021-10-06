@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-#ifndef CB_NO_BIGINT_BLOCKS
-
 #include "math.h"
 #include "shared.hpp"
 
@@ -575,11 +573,3 @@ void registerBlocks() {
 }
 } // namespace BigInt
 } // namespace chainblocks
-
-#else
-namespace chainblocks {
-namespace BigInt {
-void registerBlocks() {}
-} // namespace BigInt
-} // namespace chainblocks
-#endif

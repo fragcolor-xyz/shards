@@ -17,7 +17,6 @@ set(core_SOURCES
   blocks/strings.cpp
   blocks/channels.cpp
   blocks/random.cpp
-  blocks/bigint.cpp
   blocks/fs.cpp
   blocks/edn.cpp
   blocks/reflection.cpp
@@ -45,6 +44,12 @@ target_include_directories(chainblocks-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(EMSCRIPTEN)
   target_compile_options(chainblocks-core PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
+endif()
+
+if(CHAINBLOCKS_NO_BIGINT_BLOCKS)
+  target_compile_definitions(chainblocks-core PRIVATE CHAINBLOCKS_NO_BIGINT_BLOCKS=1)
+else()
+  target_sources(chainblocks-core PRIVATE blocks/bigint.cpp)
 endif()
 
 if(APPLE)
