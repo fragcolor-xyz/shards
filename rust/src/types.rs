@@ -99,7 +99,7 @@ pub type RawString = CBString;
 
 #[derive(PartialEq)]
 pub struct String(pub CBString);
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct OptionalString(pub CBOptionalString);
 pub struct DerivedType(pub Type);
 
@@ -147,6 +147,7 @@ unsafe impl Send for Context {}
 unsafe impl Send for Block {}
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}
+unsafe impl Sync for OptionalString {}
 
 /*
 CBTypeInfo & co
