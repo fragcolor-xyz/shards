@@ -1680,7 +1680,6 @@ struct CameraBase : public BaseConsumer {
   int _height = 0;
   int _offsetX = 0;
   int _offsetY = 0;
-  CBVar *_bgfxContext{nullptr};
 
   static inline Parameters params{
       {"OffsetX",
@@ -1738,17 +1737,6 @@ struct CameraBase : public BaseConsumer {
       throw InvalidParameterIndex();
     }
   }
-
-  void warmup(CBContext *context) {
-    _bgfxContext = referenceVariable(context, "GFX.Context");
-  }
-
-  void cleanup() {
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
-  }
 };
 
 struct Camera : public CameraBase {
@@ -1800,8 +1788,7 @@ struct Camera : public CameraBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    Context *ctx =
-        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
 
     auto &currentView = ctx->currentView();
 
@@ -1955,8 +1942,7 @@ struct CameraOrtho : public CameraBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    Context *ctx =
-        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
 
     auto &currentView = ctx->currentView();
 
@@ -2103,7 +2089,6 @@ struct Draw : public BaseConsumer {
   ParamVar _textures{};
   ParamVar _model{};
   OwnedVar _blend{};
-  CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 5> _requiring;
 
   CBExposedTypesInfo requiredVariables() {
@@ -2137,11 +2122,11 @@ struct Draw : public BaseConsumer {
   }
 
   void warmup(CBContext *context) {
+    BaseConsumer::warmup(context);
+
     _shader.warmup(context);
     _textures.warmup(context);
     _model.warmup(context);
-
-    _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
@@ -2149,10 +2134,7 @@ struct Draw : public BaseConsumer {
     _textures.cleanup();
     _model.cleanup();
 
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
+    BaseConsumer::cleanup();
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -2236,7 +2218,7 @@ struct Draw : public BaseConsumer {
   }
 
   void render() {
-    auto *ctx = reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    auto *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
     auto shader =
         reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
     assert(shader);
@@ -2426,7 +2408,6 @@ struct RenderTarget : public BaseConsumer {
   int _height{256};
   bool _gui{false};
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
-  CBVar *_bgfxContext{nullptr};
   bgfx::ViewId _viewId;
   std::optional<OcornutImguiContext> _imguiBgfxCtx;
   CBColor _clearColor{0x30, 0x30, 0x30, 0xFF};
@@ -2503,10 +2484,8 @@ struct RenderTexture : public RenderTarget {
     bgfx::TextureHandle textures[] = {_texture->handle, _depth.handle};
     _framebuffer = bgfx::createFrameBuffer(2, textures, false);
 
-    _bgfxContext = referenceVariable(context, "GFX.Context");
-    assert(_bgfxContext->valueType == CBType::Object);
-    Context *ctx =
-        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    BaseConsumer::warmup(context);
+    Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
     _viewId = ctx->nextViewId();
 
     bgfx::setViewRect(_viewId, 0, 0, _width, _height);
@@ -2519,11 +2498,6 @@ struct RenderTexture : public RenderTarget {
 
   void cleanup() {
     _blocks.cleanup();
-
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
 
     if (_framebuffer.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_framebuffer);
@@ -2543,11 +2517,12 @@ struct RenderTexture : public RenderTarget {
     if (_imguiBgfxCtx) {
       _imguiBgfxCtx->destroy();
     }
+
+    BaseConsumer::cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    Context *ctx =
-        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
 
     // we could do this on warmup but breaks on window resize...
     // so let's just do it every activation, doubt its a bottleneck
@@ -2774,21 +2749,8 @@ struct Screenshot : public BaseConsumer {
     return CoreInfo::StringType;
   }
 
-  void warmup(CBContext *context) {
-    _bgfxContext = referenceVariable(context, "GFX.Context");
-    assert(_bgfxContext->valueType == CBType::Object);
-  }
-
-  void cleanup() {
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
-  }
-
   CBVar activate(CBContext *context, const CBVar &input) {
-    Context *ctx =
-        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
     if (_overwrite) {
       bgfx::requestScreenShot(currentView.fb, input.payload.stringValue);
@@ -2809,7 +2771,6 @@ struct Screenshot : public BaseConsumer {
     return input;
   }
 
-  CBVar *_bgfxContext{nullptr};
   bool _overwrite{true};
 };
 
@@ -2817,7 +2778,6 @@ struct Unproject : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::Float2Type; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float3Type; }
 
-  CBVar *_bgfxContext{nullptr};
   float _z{0.0};
 
   static inline Parameters params{
@@ -2839,18 +2799,6 @@ struct Unproject : public BaseConsumer {
     return CoreInfo::Float3Type;
   }
 
-  void warmup(CBContext *context) {
-    _bgfxContext = referenceVariable(context, "GFX.Context");
-    assert(_bgfxContext->valueType == CBType::Object);
-  }
-
-  void cleanup() {
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
-  }
-
   CBOptionalString help() {
     return CBCCSTR(
         "This block unprojects screen coordinates into world coordinates.");
@@ -2860,8 +2808,7 @@ struct Unproject : public BaseConsumer {
     using namespace linalg;
     using namespace linalg::aliases;
 
-    Context *ctx =
-        reinterpret_cast<Context *>(_bgfxContext->payload.objectValue);
+    Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
     const auto sx =
