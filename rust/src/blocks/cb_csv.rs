@@ -38,9 +38,9 @@ lazy_static! {
       .into()
   ];
   static ref STR_HELP: OptionalString =
-    OptionalString(cbccstr!("A multiline string in CSV format to parse."));
+    OptionalString(cbccstr!("A multiline string in CSV format."));
   static ref SEQ_HELP: OptionalString = OptionalString(cbccstr!(
-    "A sequence of rows, each row being a sequence of strings derived parsing the input string."
+    "A sequence of rows, with each row being a sequence of strings."
   ));
 }
 
