@@ -12,8 +12,27 @@ set(SDL_RENDER_DISABLED 1)
 add_subdirectory(SDL)
 add_subdirectory(spdlog)
 
-OPTION(BUILD_NATIVE "" OFF)
-add_subdirectory(wasm3)
+if(LINUX AND NOT EMSCRIPTEN)
+  # NOTE: Build externally since it only behaves correctly when built in Release and without certain flags defined in Platform.cmake (linux)
+  include(ExternalProject)
+  ExternalProject_Add(wasm3-build
+    URL ${CHAINBLOCKS_DIR}/deps/wasm3
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps
+    BUILD_IN_SOURCE True
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_NATIVE=0
+    BUILD_COMMAND cmake --build . --target m3
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3-build/source/libm3.a
+  )
+
+  add_library(m3 STATIC IMPORTED GLOBAL)
+  set_target_properties(m3 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3-build/source/libm3.a)
+  target_include_directories(m3 INTERFACE ${CHAINBLOCKS_DIR}/deps/wasm3/source)
+  add_dependencies(m3 wasm3-build)
+else()
+  option(BUILD_NATIVE "" OFF)
+  add_subdirectory(wasm3)
+endif()
 
 add_subdirectory(Catch2)
 
