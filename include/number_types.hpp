@@ -2,9 +2,11 @@
 
 #include "chainblocks.h"
 #include "common_types.hpp"
-#include <vector>
-#include <map>
 #include <cassert>
+#include <map>
+#include <vector>
+
+namespace chainblocks {
 
 enum class NumberType {
   Invalid = 0,
@@ -137,3 +139,5 @@ private:
   void buildCBTypeLookup();
   void buildDimensionLookup();
 };
+
+}; // namespace chainblocks

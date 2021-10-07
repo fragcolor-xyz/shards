@@ -1,7 +1,9 @@
 #include "number_types.hpp"
 #include <algorithm>
-#include <type_traits>
 #include <cstdlib>
+#include <type_traits>
+
+namespace chainblocks {
 
 std::map<CBType, NumberType> getCBTypeToNumberTypeMap() {
   // clang-format off
@@ -276,3 +278,5 @@ const std::vector<NumberType> &getCBTypeToNumberTypeArrayMap() {
   }();
   return result;
 }
+
+}; // namespace chainblocks
