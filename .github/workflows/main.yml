@@ -604,16 +604,25 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
-          path: docs\samples
+          name: cbl-win64 Debug
+          path: docs/samples
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-boost
       - name: Run samples
-        shell: pwsh
+        shell: msys2 {0}
         run: |
-          cd docs\samples
-          dir blocks -recurse -include *.edn | %{
-            echo ("Running sample " + ($_ | Resolve-Path -Relative))
-            .\cbl.exe .\run_sample.edn --file $_.FullName
-          }
+          cd docs/samples
+          for i in $(find blocks -name '*.edn');
+          do
+            echo "Running sample $i";
+            ./cbl.exe run_sample.edn --file "$i";
+          done
 
   #
   # Generate blocks documentation (markdown)
@@ -630,8 +639,16 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: cbl-win64 Debug
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-boost
       - name: Generate markdown
-        shell: bash
+        shell: msys2 {0}
         run: ./cbl.exe src/tests/infos_docs.edn
       - name: Upload artifact
         uses: actions/upload-artifact@v2
