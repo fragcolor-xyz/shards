@@ -18,7 +18,13 @@
         .vec3 (ToInt3) (ToString) >= .int3Str (Log "Int3 to string")
         .int3Str (ToInt3) (Assert.Is (Int3 1 2 3) true) (Log "Int3 from string")
         
-        [3.0 4.0 5.0] >= .vec3seq (Log "Float3 seq")
-        .vec3seq (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq")
+        [3.0 4.0 5.0] >= .vec3seqFixed (Log "Float3 seq (fixed)")
+        .vec3seqFixed (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (fixed)")
+        
+        3.0 (Push "vec3seqVariable")
+        4 (Push "vec3seqVariable")
+        5 (Push "vec3seqVariable")
+        (Get "vec3seqVariable") >= .vec3seqVariable (Log "Float3 seq (variable)")
+        .vec3seqVariable (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (variable)")
         ))
 (tick Root)

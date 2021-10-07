@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include "blockwrapper.hpp"
 #include "shared.hpp"
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
@@ -246,41 +247,92 @@ template <CBType ToType> struct ToNumber {
   const VectorTypeTraits *_outputVectorType{nullptr};
   const NumberTypeTraits *_outputNumberType{nullptr};
 
+  // If known at compose time these are set
+  // otherwise each element should be evaluated during activate
+  const VectorTypeTraits *_inputVectorType{nullptr};
+  const NumberConversion *_numberConversion{nullptr};
+
   CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   CBTypesInfo outputTypes() {
-    if(!_outputVectorType)
+    if (!_outputVectorType)
       return CoreInfo::AnyType;
-    return _outputVectorType->type; 
+    return _outputVectorType->type;
   }
-  
+
+  const NumberTypeTraits *
+  determineFixedSeqNumberType(const CBTypeInfo &typeInfo) {
+    if (!typeInfo.fixedSize) {
+      return nullptr;
+    }
+
+    const NumberTypeTraits *fixedElemNumberType = nullptr;
+    for (size_t i = 0; i < typeInfo.seqTypes.len; i++) {
+      const CBTypeInfo &elementType = typeInfo.seqTypes.elements[i];
+      const NumberTypeTraits *currentElemNumberType =
+          NumberTypeLookup::getInstance().get(elementType.basicType);
+      if (!currentElemNumberType)
+        return nullptr;
+      if (i == 0) {
+        fixedElemNumberType = currentElemNumberType;
+      } else {
+        if (currentElemNumberType != fixedElemNumberType) {
+          return nullptr;
+        }
+      }
+    }
+
+    return fixedElemNumberType;
+  }
+
   CBTypeInfo compose(const CBInstanceData &data) {
-    _outputVectorType =
-        VectorTypeLookup::getInstance().get(ToType);
+    _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
     if (!_outputVectorType) {
       throw ComposeError("Conversion not implemented for this type");
     }
 
-    _outputNumberType = NumberTypeLookup::getInstance().get(_outputVectorType->numberType);
+    _outputNumberType =
+        NumberTypeLookup::getInstance().get(_outputVectorType->numberType);
+    _inputVectorType =
+        VectorTypeLookup::getInstance().get(data.inputType.basicType);
+
+    if (_inputVectorType) {
+      _numberConversion = NumberTypeLookup::getInstance().getConversion(
+          _inputVectorType->numberType, _outputVectorType->numberType);
+      cbassert(_numberConversion);
+    } else if (data.inputType.basicType == Seq) {
+      const NumberTypeTraits *fixedNumberType =
+          determineFixedSeqNumberType(data.inputType);
+      if (fixedNumberType) {
+        _numberConversion =
+            fixedNumberType->conversionTable.get(_outputNumberType->type);
+        cbassert(_numberConversion);
+
+        OVERRIDE_ACTIVATE(data, activateSeqElementsFixed);
+      }
+    }
 
     return _outputVectorType->type;
   }
 
   void parseVector(CBVar &output, const CBVar &input) {
     const VectorTypeTraits *inputVectorType =
-        VectorTypeLookup::getInstance().get(input.valueType);
+        _inputVectorType ? _inputVectorType
+                         : VectorTypeLookup::getInstance().get(input.valueType);
     if (!inputVectorType) {
       throw ActivationError("Cannot cast given input type.");
     }
 
     const NumberConversion *conversion =
-        NumberTypeLookup::getInstance().getConversion(
-            inputVectorType->numberType, _outputVectorType->numberType);
-    assert(conversion);
+        _numberConversion
+            ? _numberConversion
+            : NumberTypeLookup::getInstance().getConversion(
+                  inputVectorType->numberType, _outputVectorType->numberType);
+    cbassert(conversion);
 
     // Can reduce call overhead by adding a single ConvertMultiple function with
     // in/out lengths
-    uint8_t *srcPtr = (uint8_t*)&input.payload;
-    uint8_t *dstPtr = (uint8_t*)&output.payload;
+    uint8_t *srcPtr = (uint8_t *)&input.payload;
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
     size_t numToConvert =
         std::min(_outputVectorType->dimension, inputVectorType->dimension);
     for (size_t i = 0; i < numToConvert; i++) {
@@ -291,7 +343,7 @@ template <CBType ToType> struct ToNumber {
   }
 
   void parseSeqElements(CBVar &output, const CBSeq &sequence) {
-    uint8_t *dstPtr = (uint8_t*)&output.payload;
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
     for (size_t i = 0; i < sequence.len; i++) {
       const CBVar &elem = sequence.elements[i];
 
@@ -303,15 +355,16 @@ template <CBType ToType> struct ToNumber {
 
       const NumberConversion *conversion =
           elemNumberType->conversionTable.get(_outputVectorType->numberType);
-      assert(conversion);
+      cbassert(conversion);
 
       conversion->convertOne(&elem.payload, dstPtr);
       dstPtr += conversion->outStride;
     }
   }
-  
-  void skipStringSeparators(const char*& strPtr) {
-    while(*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == ',' || strPtr[0] == ';')) {
+
+  void skipStringSeparators(const char *&strPtr) {
+    while (*strPtr &&
+           (std::isspace(strPtr[0]) || strPtr[0] == ',' || strPtr[0] == ';')) {
       ++strPtr;
     }
   }
@@ -321,31 +374,56 @@ template <CBType ToType> struct ToNumber {
     const char *strPtr = str;
 
     // Skip seq header
-    while(*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == '(' || strPtr[0] == '{' || strPtr[0] == '[')) {
+    while (*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == '(' ||
+                       strPtr[0] == '{' || strPtr[0] == '[')) {
       ++strPtr;
     }
 
     for (size_t i = 0; i < _outputVectorType->dimension; i++) {
-      _outputNumberType->convertParse(dstPtr, strPtr, (char**)&strPtr);
+      _outputNumberType->convertParse(dstPtr, strPtr, (char **)&strPtr);
       skipStringSeparators(strPtr);
       dstPtr += _outputNumberType->size;
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  CBVar activateSeqElementsFixed(CBContext *context, const CBVar &input) {
+    cbassert(_outputVectorType);
+    cbassert(_numberConversion);
+
+    const CBSeq &sequence = input.payload.seqValue;
     CBVar output{};
     output.valueType = _outputVectorType->cbType;
+
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
+    for (size_t i = 0; i < sequence.len; i++) {
+      const CBVar &elem = sequence.elements[i];
+
+      _numberConversion->convertOne(&elem.payload, dstPtr);
+      dstPtr += _numberConversion->outStride;
+    }
+
+    return output;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    cbassert(_outputVectorType);
+
+    CBVar output{};
+    output.valueType = _outputVectorType->cbType;
+
     switch (input.valueType) {
     case Seq:
       parseSeqElements(output, input.payload.seqValue);
       break;
     case String:
-      parseStringElements(output, input.payload.stringValue, input.payload.stringLen);
+      parseStringElements(output, input.payload.stringValue,
+                          input.payload.stringLen);
       break;
     default:
       parseVector(output, input);
       break;
     }
+
     return output;
   }
 };
