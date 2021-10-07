@@ -1220,7 +1220,7 @@ TEST_CASE("Number Types") {
 
     // Should return false
     CHECK_THROWS_AS(typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
-              ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue), NumberConvertOutOfRangeEx);
+              ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue), NumberConversionOutOfRangeEx);
     CHECK(float2v1[0] == 0.f);
     CHECK(float2v1[1] == 0.f);
   }

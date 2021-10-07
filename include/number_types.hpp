@@ -26,16 +26,16 @@ inline NumberType cbTypeToNumberType(CBType type) {
   return mapping[(size_t)type];
 }
 
-struct NumberConvertOutOfRangeEx {
+struct NumberConversionOutOfRangeEx {
   int64_t index;
-  NumberConvertOutOfRangeEx(int64_t index) :index(index) {};
+  NumberConversionOutOfRangeEx(int64_t index) :index(index) {};
 };
 
 // Convers from one number type to another
 typedef void (*NumberConvertOneFunction)(const void *src, void *dst);
 
 // Applies combined conversion and swizzle operation
-// Throws NumberConvertOutOfRangeEx false on out of range index
+// Throws NumberConversionOutOfRangeEx false on out of range index
 typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst, size_t srcLen,
                                    const CBSeq &sequence);
 

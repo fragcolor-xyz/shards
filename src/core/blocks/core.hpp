@@ -2662,7 +2662,7 @@ struct Take {
     
     try {
       _vectorConversion->convertMultipleSeq(&input.payload, &_vectorOutput.payload, _vectorInputType->dimension, indices.payload.seqValue);
-    } catch(const NumberConvertOutOfRangeEx& ex) {
+    } catch(const NumberConversionOutOfRangeEx& ex) {
       throw OutOfRangeEx(_vectorInputType->dimension, ex.index);
     }
     

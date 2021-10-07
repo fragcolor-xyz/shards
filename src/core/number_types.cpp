@@ -34,7 +34,7 @@ struct TNumberConversion : NumberConversion {
       for (size_t dstIndex = 0; dstIndex < sequence.len; dstIndex++) {
         CBInt srcIndex = sequence.elements[dstIndex].payload.intValue;
         if (srcIndex >= (CBInt)srcLen || srcIndex < 0) {
-          throw NumberConvertOutOfRangeEx(srcIndex);
+          throw NumberConversionOutOfRangeEx(srcIndex);
         }
 
         ((TOut *)dst)[dstIndex] = (TOut)((TIn *)src)[srcIndex];
