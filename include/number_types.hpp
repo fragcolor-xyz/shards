@@ -7,6 +7,7 @@
 #include <cassert>
 
 enum class NumberType {
+  Invalid = 0,
   Float32,
   Float64,
   UInt8,
@@ -14,7 +15,6 @@ enum class NumberType {
   Int16,
   Int32,
   Int64,
-  Invalid
 };
 
 std::map<CBType, NumberType> getCBTypeToNumberTypeMap();
