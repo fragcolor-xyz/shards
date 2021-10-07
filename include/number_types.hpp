@@ -10,13 +10,13 @@ namespace chainblocks {
 
 enum class NumberType {
   Invalid = 0,
-  Float32,
-  Float64,
   UInt8,
   Int8,
   Int16,
   Int32,
   Int64,
+  Float32,
+  Float64,
 };
 
 std::map<CBType, NumberType> getCBTypeToNumberTypeMap();
@@ -30,7 +30,7 @@ inline NumberType cbTypeToNumberType(CBType type) {
 
 struct NumberConversionOutOfRangeEx {
   int64_t index;
-  NumberConversionOutOfRangeEx(int64_t index) :index(index) {};
+  NumberConversionOutOfRangeEx(int64_t index) : index(index){};
 };
 
 // Convers from one number type to another
@@ -38,10 +38,12 @@ typedef void (*NumberConvertOneFunction)(const void *src, void *dst);
 
 // Applies combined conversion and swizzle operation
 // Throws NumberConversionOutOfRangeEx false on out of range index
-typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst, size_t srcLen,
-                                   const CBSeq &sequence);
+typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst,
+                                                 size_t srcLen,
+                                                 const CBSeq &sequence);
 
-typedef void (*NumberConvertParse)(void* dst, const char *input, char** inputEnd);
+typedef void (*NumberConvertParse)(void *dst, const char *input,
+                                   char **inputEnd);
 
 struct NumberConversion {
   size_t inStride;
@@ -117,7 +119,7 @@ struct VectorTypeTraits {
   CBType cbType;
   chainblocks::Type type;
   NumberType numberType;
-  const char* name;
+  const char *name;
 };
 
 struct VectorTypeLookup {

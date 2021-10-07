@@ -8,6 +8,7 @@ namespace chainblocks {
 std::map<CBType, NumberType> getCBTypeToNumberTypeMap() {
   // clang-format off
   return {
+    {Color, NumberType::UInt8},
     {Int, NumberType::Int64},
     {Int2, NumberType::Int64},
     {Int3, NumberType::Int32},
@@ -18,7 +19,6 @@ std::map<CBType, NumberType> getCBTypeToNumberTypeMap() {
     {Float2, NumberType::Float64},
     {Float3, NumberType::Float32},
     {Float4, NumberType::Float32},
-    {Color, NumberType::UInt8},
   };
   // clang-format on
 };
@@ -32,7 +32,7 @@ struct TNumberConversion : NumberConversion {
       ((TOut *)dst)[0] = (TOut)((TIn *)src)[0];
     };
     convertMultipleSeq = [](const void *src, void *dst, size_t srcLen,
-              const CBSeq &sequence) {
+                            const CBSeq &sequence) {
       for (size_t dstIndex = 0; dstIndex < sequence.len; dstIndex++) {
         CBInt srcIndex = sequence.elements[dstIndex].payload.intValue;
         if (srcIndex >= (CBInt)srcLen || srcIndex < 0) {
@@ -48,13 +48,13 @@ struct TNumberConversion : NumberConversion {
 template <typename TIn>
 struct TNumberConversionTable : public NumberConversionTable {
   TNumberConversionTable() {
-    set(NumberType::Float32, TNumberConversion<TIn, float>());
-    set(NumberType::Float64, TNumberConversion<TIn, double>());
     set(NumberType::UInt8, TNumberConversion<TIn, uint8_t>());
     set(NumberType::Int8, TNumberConversion<TIn, int8_t>());
     set(NumberType::Int16, TNumberConversion<TIn, int16_t>());
     set(NumberType::Int32, TNumberConversion<TIn, int32_t>());
     set(NumberType::Int64, TNumberConversion<TIn, int64_t>());
+    set(NumberType::Float32, TNumberConversion<TIn, float>());
+    set(NumberType::Float64, TNumberConversion<TIn, double>());
   }
 
   void set(const NumberType &numberType,
@@ -66,45 +66,45 @@ struct TNumberConversionTable : public NumberConversionTable {
 
 template <typename TIn> struct TNumberStringOperations {};
 
-template<> struct TNumberStringOperations<float> {
-  static void parse(float* out, const char* input, char** inputEnd) {
-    out[0] = std::strtof(input, inputEnd);
+template <> struct TNumberStringOperations<uint8_t> {
+  static void parse(uint8_t *out, const char *input, char **inputEnd) {
+    out[0] = (uint8_t)std::strtoul(input, inputEnd, 10);
   }
 };
 
-template<> struct TNumberStringOperations<double> {
-  static void parse(double* out, const char* input, char** inputEnd) {
-    out[0] = std::strtod(input, inputEnd);
-  }
-};
-
-template<> struct TNumberStringOperations<int64_t> {
-  static void parse(int64_t* out, const char* input, char** inputEnd) {
-    out[0] = std::strtoll(input, inputEnd, 10);
-  }
-};
-
-template<> struct TNumberStringOperations<int32_t> {
-  static void parse(int32_t* out, const char* input, char** inputEnd) {
-    out[0] = std::strtol(input, inputEnd, 10);
-  }
-};
-
-template<> struct TNumberStringOperations<int16_t> {
-  static void parse(int16_t* out, const char* input, char** inputEnd) {
-    out[0] = (int16_t)std::strtoul(input, inputEnd, 10);
-  }
-};
-
-template<> struct TNumberStringOperations<int8_t> {
-  static void parse(int8_t* out, const char* input, char** inputEnd) {
+template <> struct TNumberStringOperations<int8_t> {
+  static void parse(int8_t *out, const char *input, char **inputEnd) {
     out[0] = (int8_t)std::strtol(input, inputEnd, 10);
   }
 };
 
-template<> struct TNumberStringOperations<uint8_t> {
-  static void parse(uint8_t* out, const char* input, char** inputEnd) {
-    out[0] = (uint8_t)std::strtoul(input, inputEnd, 10);
+template <> struct TNumberStringOperations<int16_t> {
+  static void parse(int16_t *out, const char *input, char **inputEnd) {
+    out[0] = (int16_t)std::strtoul(input, inputEnd, 10);
+  }
+};
+
+template <> struct TNumberStringOperations<int32_t> {
+  static void parse(int32_t *out, const char *input, char **inputEnd) {
+    out[0] = std::strtol(input, inputEnd, 10);
+  }
+};
+
+template <> struct TNumberStringOperations<int64_t> {
+  static void parse(int64_t *out, const char *input, char **inputEnd) {
+    out[0] = std::strtoll(input, inputEnd, 10);
+  }
+};
+
+template <> struct TNumberStringOperations<float> {
+  static void parse(float *out, const char *input, char **inputEnd) {
+    out[0] = std::strtof(input, inputEnd);
+  }
+};
+
+template <> struct TNumberStringOperations<double> {
+  static void parse(double *out, const char *input, char **inputEnd) {
+    out[0] = std::strtod(input, inputEnd);
   }
 };
 
@@ -118,17 +118,18 @@ template <NumberType Type> struct TNumberTypeTraits {};
       isInteger = std::is_integral<_CType>::value;                             \
       size = sizeof(_CType);                                                   \
       conversionTable = TNumberConversionTable<_CType>();                      \
-      convertParse = (NumberConvertParse)&TNumberStringOperations<_CType>::parse;                  \
+      convertParse =                                                           \
+          (NumberConvertParse)&TNumberStringOperations<_CType>::parse;         \
     }                                                                          \
   };
 
-NUMBER_TYPE_TRAITS(NumberType::Int64, int64_t);
-NUMBER_TYPE_TRAITS(NumberType::Int32, int32_t);
-NUMBER_TYPE_TRAITS(NumberType::Int16, int16_t);
-NUMBER_TYPE_TRAITS(NumberType::Int8, int8_t);
 NUMBER_TYPE_TRAITS(NumberType::UInt8, uint8_t);
-NUMBER_TYPE_TRAITS(NumberType::Float64, double);
+NUMBER_TYPE_TRAITS(NumberType::Int8, int8_t);
+NUMBER_TYPE_TRAITS(NumberType::Int16, int16_t);
+NUMBER_TYPE_TRAITS(NumberType::Int32, int32_t);
+NUMBER_TYPE_TRAITS(NumberType::Int64, int64_t);
 NUMBER_TYPE_TRAITS(NumberType::Float32, float);
+NUMBER_TYPE_TRAITS(NumberType::Float64, double);
 
 #undef NUMBER_TYPE_TRAITS
 
@@ -149,6 +150,7 @@ template <CBType Type> struct TVectorTypeTraits {};
     }                                                                          \
   };
 
+VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);
 VECTOR_TYPE_TRAITS(Int, 1, NumberType::Int64);
 VECTOR_TYPE_TRAITS(Int2, 2, NumberType::Int64);
 VECTOR_TYPE_TRAITS(Int3, 3, NumberType::Int32);
@@ -159,7 +161,6 @@ VECTOR_TYPE_TRAITS(Float, 1, NumberType::Float64);
 VECTOR_TYPE_TRAITS(Float2, 2, NumberType::Float64);
 VECTOR_TYPE_TRAITS(Float3, 3, NumberType::Float32);
 VECTOR_TYPE_TRAITS(Float4, 4, NumberType::Float32);
-VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);
 
 #undef VECTOR_TYPE_TRAITS
 #undef STRINGIFY
@@ -168,6 +169,7 @@ VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);
 VectorTypeLookup::VectorTypeLookup() {
   // clang-format off
     vectorTypes = {
+        TVectorTypeTraits<Color>(),
         TVectorTypeTraits<Int>(),
         TVectorTypeTraits<Int2>(),
         TVectorTypeTraits<Int3>(),
@@ -178,7 +180,6 @@ VectorTypeLookup::VectorTypeLookup() {
         TVectorTypeTraits<Float2>(),
         TVectorTypeTraits<Float3>(),
         TVectorTypeTraits<Float4>(),
-        TVectorTypeTraits<Color>(),
     };
   // clang-format on
   buildCBTypeLookup();
@@ -186,13 +187,13 @@ VectorTypeLookup::VectorTypeLookup() {
 }
 
 NumberTypeLookup::NumberTypeLookup() {
-  set(TNumberTypeTraits<NumberType::Int64>());
-  set(TNumberTypeTraits<NumberType::Int32>());
-  set(TNumberTypeTraits<NumberType::Int16>());
-  set(TNumberTypeTraits<NumberType::Int8>());
   set(TNumberTypeTraits<NumberType::UInt8>());
-  set(TNumberTypeTraits<NumberType::Float64>());
+  set(TNumberTypeTraits<NumberType::Int8>());
+  set(TNumberTypeTraits<NumberType::Int16>());
+  set(TNumberTypeTraits<NumberType::Int32>());
+  set(TNumberTypeTraits<NumberType::Int64>());
   set(TNumberTypeTraits<NumberType::Float32>());
+  set(TNumberTypeTraits<NumberType::Float64>());
   buildConversionInfo();
 }
 
