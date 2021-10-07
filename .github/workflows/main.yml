@@ -629,7 +629,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
+          name: cbl-win64 Debug
       - name: Generate markdown
         shell: bash
         run: ./cbl.exe src/tests/infos_docs.edn
@@ -682,7 +682,7 @@ jobs:
   # Publish documentation website to IPFS
   #
   docs-website-publish:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
     needs: docs-website-build
     runs-on: ubuntu-latest
     steps:
