@@ -339,7 +339,7 @@ template <class T> struct BlockWrapper {
                                                             CBContext *ctx,    \
                                                             const CBVar *v) {  \
     return reinterpret_cast<                                                   \
-               BlockWrapper<std::remove_pointer<decltype(this)>::type> *>(b)   \
+               BlockWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)   \
         ->block.__func__(ctx, *v);                                             \
   })
 
