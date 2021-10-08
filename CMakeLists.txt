@@ -668,7 +668,7 @@ if(NOT BUILD_CORE_ONLY)
         add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=43)
       endif()
     else()
-      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION=30)
+      add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION=30)
     endif()
 
     include_directories(
