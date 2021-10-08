@@ -432,6 +432,10 @@ private:
                                                                                \
     bool convert(CBVar &dst, const CBVar &src) {                               \
       switch (src.valueType) {                                                 \
+      case Enum: {                                                             \
+        dst.payload._payload_ = static_cast<_type_>(src.payload.enumValue);    \
+        break;                                                                 \
+      }                                                                        \
       case String: {                                                           \
         dst.payload._payload_ =                                                \
             static_cast<_type_>(std::_strOp_(src.payload.stringValue));        \
@@ -481,6 +485,8 @@ private:
         }                                                                      \
         break;                                                                 \
       }                                                                        \
+      case Enum:                                                               \
+      case String:                                                             \
       case Int:                                                                \
       case Int2:                                                               \
       case Int3:                                                               \
@@ -489,7 +495,6 @@ private:
       case Float2:                                                             \
       case Float3:                                                             \
       case Float4:                                                             \
-      case String:                                                             \
         if (convert(output, input))                                            \
           return output;                                                       \
         break;                                                                 \
