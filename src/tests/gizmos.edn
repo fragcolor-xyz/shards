@@ -1,0 +1,203 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+(def cube
+  {"Vertices"
+   [(float3 -1.0  1.0  1.0) 0xff000000
+    (float3  1.0  1.0  1.0) 0xff0000ff
+    (float3 -1.0 -1.0  1.0) 0xff00ff00
+    (float3  1.0 -1.0  1.0) 0xff00ffff
+    (float3 -1.0  1.0 -1.0) 0xffff0000
+    (float3  1.0  1.0 -1.0) 0xffff00ff
+    (float3 -1.0 -1.0 -1.0) 0xffffff00
+    (float3  1.0 -1.0 -1.0) 0xffffffff]
+   "Indices"
+   [(int3 0 1 2)
+    (int3 1 3 2)
+    (int3 4 6 5)
+    (int3 5 6 7)
+    (int3 0 2 4)
+    (int3 4 2 6)
+    (int3 1 5 3)
+    (int3 5 7 3)
+    (int3 0 4 1)
+    (int3 4 5 1)
+    (int3 2 3 6)
+    (int3 6 3 7)]})
+
+(def identity
+  [(float4 1 0 0 0)
+   (float4 0 1 0 0)
+   (float4 0 0 1 0)
+   (float4 0 0 0 1)])
+
+(def pos1
+  [(float4 1 0 0 0)
+   (float4 0 1 0 0)
+   (float4 0 0 1 0)
+   (float4 0 1 0 1)])
+
+(def shaders-folder
+  (cond
+    (= platform "windows") "dx11"
+    (= platform "apple") "metal"
+    (or
+     (= platform "linux")
+     (= platform "emscripten")) "glsl"))
+
+(defn FColor
+  [r g b a]
+  (color (* 255 r) (* 255 g) (* 255 b) (* 255 a)))
+
+(defn applyStyle []
+  (-> (float2 15 15) (GUI.Style GuiStyle.WindowPadding)
+      5.0 (GUI.Style GuiStyle.WindowRounding)
+      (float2 5 5) (GUI.Style GuiStyle.FramePadding)
+      (float2 12 8) (GUI.Style GuiStyle.ItemSpacing)
+      (float2 8 6) (GUI.Style GuiStyle.ItemInnerSpacing)
+      25.0 (GUI.Style GuiStyle.IndentSpacing)
+      15.0 (GUI.Style GuiStyle.ScrollbarSize)
+      9.0 (GUI.Style GuiStyle.ScrollbarRounding)
+      5.0 (GUI.Style GuiStyle.GrabMinSize)
+      3.0 (GUI.Style GuiStyle.GrabRounding)
+      (FColor 0.80 0.80 0.83 1.00) (GUI.Style GuiStyle.TextColor)
+      (FColor 0.24 0.23 0.29 1.00) (GUI.Style GuiStyle.TextDisabledColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.WindowBgColor)
+      (FColor 0.07 0.07 0.09 1.00) (GUI.Style GuiStyle.ChildBgColor)
+      (FColor 0.07 0.07 0.09 1.00) (GUI.Style GuiStyle.PopupBgColor)
+      (FColor 0.80 0.80 0.83 0.88) (GUI.Style GuiStyle.BorderColor)
+      (FColor 0.92 0.91 0.88 0.00) (GUI.Style GuiStyle.BorderShadowColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.FrameBgColor)
+      (FColor 0.24 0.23 0.29 1.00) (GUI.Style GuiStyle.FrameBgHoveredColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.FrameBgActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.TitleBgColor)
+      (FColor 1.00 0.98 0.95 0.75) (GUI.Style GuiStyle.TitleBgCollapsedColor)
+      (FColor 0.07 0.07 0.09 1.00) (GUI.Style GuiStyle.TitleBgActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.MenuBarBgColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.ScrollbarBgColor)
+      (FColor 0.80 0.80 0.83 0.31) (GUI.Style GuiStyle.ScrollbarGrabColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.ScrollbarGrabHoveredColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.ScrollbarGrabActiveColor)
+      (FColor 0.80 0.80 0.83 0.31) (GUI.Style GuiStyle.CheckMarkColor)
+      (FColor 0.80 0.80 0.83 0.31) (GUI.Style GuiStyle.SliderGrabColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.SliderGrabActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.ButtonColor)
+      (FColor 0.24 0.23 0.29 1.00) (GUI.Style GuiStyle.ButtonHoveredColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.ButtonActiveColor)
+      (FColor 0.10 0.09 0.12 1.00) (GUI.Style GuiStyle.HeaderColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.HeaderHoveredColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.HeaderActiveColor)
+      (FColor 0.00 0.00 0.00 0.00) (GUI.Style GuiStyle.ResizeGripColor)
+      (FColor 0.56 0.56 0.58 1.00) (GUI.Style GuiStyle.ResizeGripHoveredColor)
+      (FColor 0.06 0.05 0.07 1.00) (GUI.Style GuiStyle.ResizeGripActiveColor)
+      (FColor 0.40 0.39 0.38 0.63) (GUI.Style GuiStyle.PlotLinesColor)
+      (FColor 0.25 1.00 0.00 1.00) (GUI.Style GuiStyle.PlotLinesHoveredColor)
+      (FColor 0.40 0.39 0.38 0.63) (GUI.Style GuiStyle.PlotHistogramColor)
+      (FColor 0.25 1.00 0.00 1.00) (GUI.Style GuiStyle.PlotHistogramHoveredColor)
+      (FColor 0.25 1.00 0.00 0.43) (GUI.Style GuiStyle.TextSelectedBgColor)))
+
+(defloop test-chain
+  (GFX.MainWindow
+   :Title "Gizmo test" :Width 1024 :Height 768 :Debug true :Fullscreen false
+   :Contents
+   ~[(Setup
+      (applyStyle)
+      cube (GFX.Model
+            :Layout [VertexAttribute.Position VertexAttribute.Color0]
+            :CullMode CullMode.Front) >= .cube
+
+      (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
+      (FS.Read :Bytes true) >= .vs_bytes
+      (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
+      (FS.Read :Bytes true) >= .fs_bytes
+      (GFX.Shader :VertexShader .vs_bytes :PixelShader .fs_bytes) >= .shader
+
+      ;;(Inputs.Mouse :Hidden false :Capture false :Relative false)
+
+      (float3 4 4 4) >= .cam_p
+      (float3 0 1 0) >= .cam_t
+      {"Position" .cam_p
+       "Target" .cam_t} (Math.LookAt) >= .myView
+
+      (defn cameraButton [label offset cam_p cam_t view]
+        (GUI.Button
+         (str label)
+         (->
+          cam_p (Math.Add offset) >= cam_p
+          cam_t (Math.Add offset) >= cam_t
+          {"Position" cam_p
+           "Target" cam_t} (Math.LookAt) >= view)))
+
+      pos1 >= .cube_t
+      (float3 1 1 1) >= .snap
+      .snap >= .prev_snap
+
+      GizmoGridAxis.Y (ToInt) (Set "radioGridAxis")
+      GizmoMode.Local (ToInt) (Set "radioMode")
+      GizmoOperation.Translate (ToInt) (Set "radioOperation"))
+
+     ; toolbar
+     (GUI.Window
+      :Title "Toolbar" :Height 316 :Width 500 :Pos (Int2 4 4)
+      :AllowResize true :AllowMove true :AllowCollapse true
+      :Contents
+      (->
+       "Grid axes" (GUI.Text) (GUI.SameLine)
+       (GUI.RadioButton "X" "radioGridAxis" 0) (GUI.SameLine)
+       (GUI.RadioButton "Y" "radioGridAxis" 1) (GUI.SameLine)
+       (GUI.RadioButton "Z" "radioGridAxis" 2)
+       (GUI.Separator)
+       (GUI.RadioButton "Local" "radioMode" 0) (GUI.SameLine)
+       (GUI.RadioButton "World" "radioMode" 1)
+       (GUI.Separator)
+       (GUI.RadioButton "Translate" "radioOperation" 0) (GUI.SameLine)
+       (GUI.RadioButton "Rotate" "radioOperation" 1) (GUI.SameLine)
+       (GUI.RadioButton "Scale" "radioOperation" 2)
+       (GUI.Separator)
+       (If (GUI.CheckBox "Snap?" "snappie")
+           :Then (->
+                  .prev_snap >= .snap
+                  (GUI.SameLine) (GUI.Float3Input "" "snap")
+                  .snap >= .prev_snap)
+           :Else (-> (float3 0 0 0) >= .snap))
+       (GUI.Separator)
+       (cameraButton "X-1" (float3 -1 0 0) .cam_p .cam_t .myView)
+       (GUI.SameLine)
+       (cameraButton "Y-1" (float3 0 -1 0) .cam_p .cam_t .myView)
+       (GUI.SameLine)
+       (cameraButton "Z-1" (float3 0 0 -1) .cam_p .cam_t .myView)
+       (GUI.Separator)
+       (cameraButton "X+1" (float3 1 0 0) .cam_p .cam_t .myView)
+       (GUI.SameLine)
+       (cameraButton "Y+1" (float3 0 1 0) .cam_p .cam_t .myView)
+       (GUI.SameLine)
+       (cameraButton "Z+1" (float3 0 0 1) .cam_p .cam_t .myView)
+       (GUI.SameLine)))
+
+     .radioGridAxis (Match
+                     [0 ~[GizmoGridAxis.X]
+                      1 ~[GizmoGridAxis.Y]
+                      2 ~[GizmoGridAxis.Z]]
+                     false) >= .gridAxis
+
+     .radioMode (Match
+                 [0 ~[GizmoMode.Local]
+                  1 ~[GizmoMode.World]]
+                 false) >= .mode
+     .radioOperation (Match
+                      [0 ~[GizmoOperation.Translate]
+                       1 ~[GizmoOperation.Rotate]
+                       2 ~[GizmoOperation.Scale]]
+                      false) >= .operation
+     ; camera
+     .myView (GFX.Camera)
+     ; regular model render
+     .cube_t (GFX.Draw :Shader .shader :Model .cube)
+     ; gizmos
+     (Gizmo.Grid :Axis .gridAxis)
+     (Gizmo.CubeView .myView)
+     (Gizmo.Transform :Matrix .cube_t :Mode .mode :Operation .operation :Snap .snap)]))
+
+(defnode main)
+(schedule main test-chain)
+(run main 0.02)
