@@ -22,6 +22,82 @@ namespace Helper {
   const float PI_2 = PI*0.5f;
 }; // namespace Helper
 
+struct CubeView {
+  static CBOptionalString help() {
+    return CBCCSTR("Display a cube gizmo that can be used to control the "
+                   "orientation of the current camera.");
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputhelp() {
+    return CBCCSTR("The input value is not used and will pass through.");
+  }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputhelp() {
+    return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _view = value;
+      break;
+
+    default:
+      throw CBException("Parameter out of range.");
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _view;
+
+    default:
+      throw CBException("Parameter out of range.");
+    }
+  }
+
+  void cleanup() { _view.cleanup(); }
+
+  void warmup(CBContext *context) { _view.warmup(context); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto &view = _view.get();
+    // HACKish, I use Mat4 because the API hides some complexity, but it feels
+    // unnecessary to do that many copies should manipulate the seq of float4
+    // directly
+    Mat4 mat{};
+    mat = view;
+    float arrView[16];
+    Mat4::ToArrayUnsafe(mat, arrView);
+
+    ImGuiIO &io = ::ImGui::GetIO();
+    float viewManipulateRight =
+        io.DisplaySize.x;        // TODO: make it a param (% of viewport?)
+    float viewManipulateTop = 0; // TODO: make it a param
+    ImGuizmo::ViewManipulate(
+        arrView, 5, ImVec2(viewManipulateRight - 128, viewManipulateTop),
+        ImVec2(128, 128), 0x10101010); // TODO: make offset and size a param
+
+    chainblocks::cloneVar(view, Mat4::FromArrayUnsafe(arrView));
+
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"ViewMatrix",
+       CBCCSTR(
+           "A variable that points to the vuew matrix that will be modified."),
+       {Type::VariableOf(CoreInfo::Float4x4Type)}}};
+
+  ParamVar _view{};
+};
+
 struct Grid : public BGFX::BaseConsumer {
   static CBOptionalString help() { return CBCCSTR("Displays a grid."); }
 
@@ -131,6 +207,7 @@ private:
 };
 
 void registerGizmoBlocks() {
+  REGISTER_CBLOCK("Gizmo.CubeView", CubeView);
   REGISTER_CBLOCK("Gizmo.Grid", Grid);
 }
 }; // namespace Gizmo
