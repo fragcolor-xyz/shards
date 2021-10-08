@@ -1671,7 +1671,8 @@ struct CameraBase : public BaseConsumer {
   static inline std::array<CBString, 2> InputTableKeys{"Position", "Target"};
   static inline Type InputTable =
       Type::TableOf(InputTableTypes, InputTableKeys);
-  static inline Types InputTypes{{CoreInfo::NoneType, InputTable}};
+  static inline Types InputTypes{
+      {CoreInfo::NoneType, InputTable, CoreInfo::Float4x4Type}};
 
   static CBTypesInfo inputTypes() { return InputTypes; }
   static CBTypesInfo outputTypes() { return InputTypes; }
@@ -1793,7 +1794,9 @@ struct Camera : public CameraBase {
     auto &currentView = ctx->currentView();
 
     std::array<float, 16> view;
-    if (input.valueType == CBType::Table) {
+    bool hasView;
+    switch (input.valueType) {
+    case CBType::Table: {
       // this is the most efficient way to find items in table
       // without hashing and possible allocations etc
       CBTable table = input.payload.tableValue;
@@ -1827,6 +1830,34 @@ struct Camera : public CameraBase {
       bx::Vec3 *bt = reinterpret_cast<bx::Vec3 *>(&target.payload.float3Value);
       bx::mtxLookAt(view.data(), *bp, *bt, {0.0, 1.0, 0.0},
                     bx::Handness::Right);
+
+      hasView = true;
+    } break;
+
+    case CBType::Seq: {
+
+      auto *mat = reinterpret_cast<float *>(view.data());
+      auto &vmat = input;
+
+      if (vmat.payload.seqValue.len != 4) {
+        throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
+      }
+
+      memcpy(&mat[0], &vmat.payload.seqValue.elements[0].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[4], &vmat.payload.seqValue.elements[1].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[8], &vmat.payload.seqValue.elements[2].payload.float4Value,
+             sizeof(float) * 4);
+      memcpy(&mat[12], &vmat.payload.seqValue.elements[3].payload.float4Value,
+             sizeof(float) * 4);
+
+      hasView = true;
+    } break;
+
+    default:
+      hasView = false;
+      break;
     }
 
     int width = _width != 0 ? _width : currentView.width;
@@ -1845,9 +1876,8 @@ struct Camera : public CameraBase {
       }
     }
 
-    bgfx::setViewTransform(
-        currentView.id,
-        input.valueType == CBType::Table ? view.data() : nullptr, proj.data());
+    bgfx::setViewTransform(currentView.id, hasView ? view.data() : nullptr,
+                           proj.data());
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
 
@@ -1858,10 +1888,10 @@ struct Camera : public CameraBase {
     currentView.viewport.height = height;
 
     // populate view matrices
-    if (input.valueType != CBType::Table) {
-      currentView.view = linalg::identity;
-    } else {
+    if (hasView) {
       currentView.view = Mat4::FromArray(view);
+    } else {
+      currentView.view = linalg::identity;
     }
     currentView.proj = Mat4::FromArray(proj);
     currentView.invalidate();
