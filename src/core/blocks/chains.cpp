@@ -6,8 +6,13 @@
 #include <chrono>
 #include <memory>
 #include <set>
+
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 #include <taskflow/taskflow.hpp>
+#endif
+
+#ifdef WIN32
+#include <boost/thread/tss.hpp>
 #endif
 
 namespace chainblocks {
@@ -55,9 +60,19 @@ struct ChainBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  std::unordered_set<CBChain *> &visiting() {
-    thread_local std::unordered_set<CBChain *> visiting;
-    return visiting;
+  static std::unordered_set<const CBChain *> &visiting() {
+#ifdef WIN32
+    static boost::thread_specific_ptr<std::unordered_set<const CBChain *>>
+        _gatheredChains;
+
+    if (_gatheredChains.get() == nullptr)
+      _gatheredChains.reset(new std::unordered_set<const CBChain *>());
+
+    return *_gatheredChains;
+#else
+    thread_local std::unordered_set<const CBChain *> _gatheredChains;
+    return _gatheredChains;
+#endif
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
