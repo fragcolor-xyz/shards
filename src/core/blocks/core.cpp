@@ -485,8 +485,6 @@ struct XPendBase {
 };
 
 struct XpendTo : public XPendBase {
-  ThreadShared<std::string> _scratchStr;
-
   ParamVar _collection{};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -558,6 +556,8 @@ struct XpendTo : public XPendBase {
 
 struct AppendTo : public XpendTo {
   CBVar activate(CBContext *context, const CBVar &input) {
+    thread_local std::string scratch;
+
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
@@ -571,23 +571,21 @@ struct AppendTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr().clear();
-      _scratchStr().append(collection.payload.stringValue,
-                           CBSTRLEN(collection));
-      _scratchStr().append(input.payload.stringValue, CBSTRLEN(input));
-      Var tmp(_scratchStr());
+      scratch.clear();
+      scratch.append(collection.payload.stringValue, CBSTRLEN(collection));
+      scratch.append(input.payload.stringValue, CBSTRLEN(input));
+      Var tmp(scratch);
       cloneVar(collection, tmp);
       break;
     }
     case Bytes: {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
-      _scratchStr().clear();
-      _scratchStr().append((char *)collection.payload.bytesValue,
-                           collection.payload.bytesSize);
-      _scratchStr().append((char *)input.payload.bytesValue,
-                           input.payload.bytesSize);
-      Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
+      scratch.clear();
+      scratch.append((char *)collection.payload.bytesValue,
+                     collection.payload.bytesSize);
+      scratch.append((char *)input.payload.bytesValue, input.payload.bytesSize);
+      Var tmp((uint8_t *)scratch.data(), scratch.size());
       cloneVar(collection, tmp);
     } break;
     default:
@@ -599,6 +597,8 @@ struct AppendTo : public XpendTo {
 
 struct PrependTo : public XpendTo {
   CBVar activate(CBContext *context, const CBVar &input) {
+    thread_local std::string scratch;
+
     auto &collection = _collection.get();
     switch (collection.valueType) {
     case Seq: {
@@ -613,23 +613,21 @@ struct PrependTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr().clear();
-      _scratchStr().append(input.payload.stringValue, CBSTRLEN(input));
-      _scratchStr().append(collection.payload.stringValue,
-                           CBSTRLEN(collection));
-      Var tmp(_scratchStr());
+      scratch.clear();
+      scratch.append(input.payload.stringValue, CBSTRLEN(input));
+      scratch.append(collection.payload.stringValue, CBSTRLEN(collection));
+      Var tmp(scratch);
       cloneVar(collection, tmp);
       break;
     }
     case Bytes: {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
-      _scratchStr().clear();
-      _scratchStr().append((char *)input.payload.bytesValue,
-                           input.payload.bytesSize);
-      _scratchStr().append((char *)collection.payload.bytesValue,
-                           collection.payload.bytesSize);
-      Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
+      scratch.clear();
+      scratch.append((char *)input.payload.bytesValue, input.payload.bytesSize);
+      scratch.append((char *)collection.payload.bytesValue,
+                     collection.payload.bytesSize);
+      Var tmp((uint8_t *)scratch.data(), scratch.size());
       cloneVar(collection, tmp);
     } break;
     default:

@@ -94,68 +94,6 @@ inline CBOptionalString operator"" _optional(const char *s, size_t) {
     enum { value = sizeof(test<T>(0)) == sizeof(char) };                       \
   }
 
-template <typename T, void (*OnDelete)(T *p) = nullptr, bool LEAK = false>
-class ThreadShared {
-public:
-  ThreadShared() { addRef(); }
-
-  ~ThreadShared() { decRef(); }
-
-  T &get() {
-    if (!_tp) {
-      // create
-      _tp = new T();
-      // lock now since _ptrs is shared
-      std::unique_lock<std::mutex> lock(_m);
-      // store thread local location
-      _ptrs.push_back(&_tp);
-    }
-
-    return *_tp;
-  }
-
-  T &operator()() { return get(); }
-
-  T *operator->() { return &get(); }
-
-private:
-  void addRef() {
-    std::unique_lock<std::mutex> lock(_m);
-
-    _refs++;
-  }
-
-  void decRef() {
-    std::unique_lock<std::mutex> lock(_m);
-
-    _refs--;
-
-    if (_refs == 0) {
-      // Why LEAK?
-      // Workaround for windows TLS issues when program is terminated
-      // Do not use it if possible!!
-      // It might be useful only when ThreadShared is in the GLOBAL scope
-      if (!LEAK) {
-        for (auto ptr : _ptrs) {
-          if constexpr (OnDelete != nullptr) {
-            OnDelete(*ptr);
-          }
-          // delete the internal object
-          delete *ptr;
-          // null the thread local
-          *ptr = nullptr;
-        }
-      }
-      _ptrs.clear();
-    }
-  }
-
-  static inline std::mutex _m;
-  static inline uint64_t _refs = 0;
-  static inline thread_local T *_tp = nullptr;
-  static inline std::vector<T **> _ptrs;
-};
-
 template <typename T, typename ARG = void *, ARG defaultValue = nullptr>
 class Shared {
 public:

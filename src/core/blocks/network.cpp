@@ -33,10 +33,6 @@ struct NetworkBase {
   ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
 
-  // Every server/client will share same context, so sharing the same recv
-  // buffer is possible and nice!
-  ThreadShared<std::array<char, 0xFFFF>> _recv_buffer;
-
   CBVar *_socketVar = nullptr;
   SocketData _socket{};
 
@@ -241,9 +237,10 @@ struct Server : public NetworkBase {
   Serialization deserial;
 
   void do_receive() {
+    thread_local std::array<char, 0xFFFF> recv_buffer;
     _socket.socket->async_receive_from(
-        boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
-        _sender, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+        boost::asio::buffer(&recv_buffer.front(), recv_buffer.size()), _sender,
+        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
           if (!ec && bytes_recvd > 0) {
             ClientPkt pkt{};
 
@@ -256,7 +253,7 @@ struct Server : public NetworkBase {
             }
 
             // deserialize from buffer
-            Reader r(&_recv_buffer().front(), bytes_recvd);
+            Reader r(&recv_buffer.front(), bytes_recvd);
             deserial.reset();
             deserial.deserialize(r, pkt.payload);
 
@@ -343,9 +340,11 @@ struct Client : public NetworkBase {
   Serialization deserial;
 
   void do_receive() {
+    thread_local std::array<char, 0xFFFF> recv_buffer;
+
     _socket.socket->async_receive_from(
-        boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
-        _server, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+        boost::asio::buffer(&recv_buffer.front(), recv_buffer.size()), _server,
+        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
           if (!ec && bytes_recvd > 0) {
             CBVar v{};
 
@@ -355,7 +354,7 @@ struct Client : public NetworkBase {
             }
 
             // deserialize from buffer
-            Reader r(&_recv_buffer().front(), bytes_recvd);
+            Reader r(&recv_buffer.front(), bytes_recvd);
             deserial.reset();
             deserial.deserialize(r, v);
 
@@ -426,8 +425,6 @@ struct Send {
   // Must take an optional seq of SocketData, to be used properly by server
   // This way we get also a easy and nice broadcast
 
-  ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
-
   CBVar *_socketVar = nullptr;
 
   void cleanup() {
@@ -453,12 +450,13 @@ struct Send {
   Serialization serializer;
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    thread_local std::array<char, 0xFFFF> send_buffer;
     auto socket = getSocket(context);
-    NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
+    NetworkBase::Writer w(&send_buffer.front(), send_buffer.size());
     serializer.reset();
     auto size = serializer.serialize(input, w);
     // use async, avoid syscalls!
-    socket->socket->send_to(boost::asio::buffer(&_send_buffer().front(), size),
+    socket->socket->send_to(boost::asio::buffer(&send_buffer.front(), size),
                             *socket->endpoint);
     return input;
   }
