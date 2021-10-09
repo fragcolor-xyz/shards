@@ -658,14 +658,11 @@ if(NOT BUILD_CORE_ONLY)
   elseif(LINUX)
     if(NOT EMSCRIPTEN)
       if(FORCE_USE_VULKAN)
-        # Use Vulkan Only
         add_compile_definitions(BGFX_CONFIG_RENDERER_VULKAN)
       elseif(BGFX_OPENGL_VERSION)
-        # Force using OpenGL
         add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=${BGFX_OPENGL_VERSION})
       else()
-        # Notice this also builds Vulkan support now! Runtime decides what to use!
-        add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=43)
+        add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=43)
       endif()
     else()
       add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION=30)
