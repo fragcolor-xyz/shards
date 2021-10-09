@@ -8,6 +8,10 @@ if(NOT SKIP_RUST_BINDGEN)
   ADD_RUST_FEATURE(Rust_FEATURES run_bindgen)
 endif()
 
+if(RUST_CBLISP)
+  ADD_RUST_FEATURE(Rust_FEATURES cblisp)
+endif()
+
 if(Rust_CARGO_TARGET)
   set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
 endif()
