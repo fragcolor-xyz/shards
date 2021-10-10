@@ -94,24 +94,47 @@ inline CBOptionalString operator"" _optional(const char *s, size_t) {
     enum { value = sizeof(test<T>(0)) == sizeof(char) };                       \
   }
 
+/*
+  Lazy initialization of a static variable.
+
+  The idea is that blocks on the same thread share this variable
+  And that as long as there is an instance of a block we don't deallocate
+  anything Once all blocks are gone we cleanup
+
+  To be used WITHOUT static keywords
+*/
 template <typename T, void (*OnDelete)(T *p) = nullptr> class ThreadShared {
 public:
   ThreadShared() { addRef(); }
 
   ~ThreadShared() { decRef(); }
 
-  T &operator()() {
+  T &get() {
     if (!_tp) {
       // create
-      _tp = new T();
+      auto p = new T(); // keep for debugging sanity
+      auto mem = &_tp;  // keep for debugging sanity
+      _tp = p;
       // lock now since _ptrs is shared
       std::unique_lock<std::mutex> lock(_m);
+
+      if (!_ptrs) {
+        _ptrs = new std::vector<T **>();
+        _objs = new std::vector<T *>();
+      }
+
       // store thread local location
-      _ptrs.push_back(&_tp);
+      _ptrs->push_back(mem);
+      // also store the pointer in the global list
+      _objs->push_back(p);
     }
 
     return *_tp;
   }
+
+  T &operator()() { return get(); }
+  T &operator*() { return get(); }
+  T *operator->() { return &get(); }
 
 private:
   void addRef() {
@@ -125,26 +148,41 @@ private:
 
     _refs--;
 
-    if (_refs == 0) {
-      for (auto ptr : _ptrs) {
-        if constexpr (OnDelete != nullptr) {
-          OnDelete(*ptr);
-        }
-        // delete the internal object
-        delete *ptr;
+    if (_refs == 0 && _ptrs) {
+      for (auto ptr : *_ptrs) {
         // null the thread local
+        // the idea is that we clean up even the thread still exists
         *ptr = nullptr;
       }
-      _ptrs.clear();
+      delete _ptrs;
+      _ptrs = nullptr;
+
+      for (auto ptr : *_objs) {
+        if (!ptr)
+          continue;
+
+        if constexpr (OnDelete != nullptr) {
+          OnDelete(ptr);
+        }
+        // delete the internal object
+        delete ptr;
+      }
+      delete _objs;
+      _objs = nullptr;
     }
   }
 
   static inline std::mutex _m;
   static inline uint64_t _refs = 0;
   static inline thread_local T *_tp = nullptr;
-  static inline std::vector<T **> _ptrs;
+  // the following collections will static init fiasco if used as value
+  static inline std::vector<T **> *_ptrs = nullptr;
+  static inline std::vector<T *> *_objs = nullptr;
 };
 
+/*
+  Lazy initialization of a static variable.
+*/
 template <typename T, typename ARG = void *, ARG defaultValue = nullptr>
 class Shared {
 public:
@@ -152,7 +190,7 @@ public:
 
   ~Shared() { decRef(); }
 
-  T &operator()() {
+  T &get() {
     if (!_tp) {
       std::unique_lock<std::mutex> lock(_m);
       // check again as another thread might have locked
@@ -167,6 +205,10 @@ public:
 
     return *_tp;
   }
+
+  T &operator()() { return get(); }
+  T &operator*() { return get(); }
+  T *operator->() { return &get(); }
 
 private:
   void addRef() {
