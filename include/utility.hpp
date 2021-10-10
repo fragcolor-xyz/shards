@@ -118,15 +118,10 @@ public:
       // lock now since _ptrs is shared
       std::unique_lock<std::mutex> lock(_m);
 
-      if (!_ptrs) {
-        _ptrs = new std::vector<T **>();
-        _objs = new std::vector<T *>();
-      }
-
       // store thread local location
-      _ptrs->push_back(mem);
+      _ptrs.push_back(mem);
       // also store the pointer in the global list
-      _objs->push_back(p);
+      _objs.push_back(p);
     }
 
     return *_tp;
@@ -148,16 +143,15 @@ private:
 
     _refs--;
 
-    if (_refs == 0 && _ptrs) {
-      for (auto ptr : *_ptrs) {
+    if (_refs == 0) {
+      for (auto ptr : _ptrs) {
         // null the thread local
         // the idea is that we clean up even the thread still exists
         *ptr = nullptr;
       }
-      delete _ptrs;
-      _ptrs = nullptr;
+      _ptrs.clear();
 
-      for (auto ptr : *_objs) {
+      for (auto ptr : _objs) {
         if (!ptr)
           continue;
 
@@ -167,17 +161,15 @@ private:
         // delete the internal object
         delete ptr;
       }
-      delete _objs;
-      _objs = nullptr;
+      _objs.clear();
     }
   }
 
   static inline std::mutex _m;
   static inline uint64_t _refs = 0;
   static inline thread_local T *_tp = nullptr;
-  // the following collections will static init fiasco if used as value
-  static inline std::vector<T **> *_ptrs = nullptr;
-  static inline std::vector<T *> *_objs = nullptr;
+  static inline std::vector<T **> _ptrs;
+  static inline std::vector<T *> _objs;
 };
 
 /*

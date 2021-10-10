@@ -2355,14 +2355,26 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
+std::unordered_set<const CBChain *> &gatheringChains() {
+#ifdef WIN32
+  // we have to leak.. or windows tls emulation will crash at process end
+  thread_local std::unordered_set<const CBChain *> *chains =
+      new std::unordered_set<const CBChain *>();
+  return *chains;
+#else
+  thread_local std::unordered_set<const CBChain *> chains;
+  return chains;
+#endif
+}
+
 void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   // TODO out should be a set?
   switch (coll.index()) {
   case 0: {
     // chain
     auto chain = std::get<const CBChain *>(coll);
-    if (!GetGlobals().GatheringChains->count(chain)) {
-      GetGlobals().GatheringChains->insert(chain);
+    if (!gatheringChains().count(chain)) {
+      gatheringChains().insert(chain);
       for (auto blk : chain->blocks) {
         _gatherBlocks(blk, out);
       }
@@ -2424,7 +2436,7 @@ void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }
 
 void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
-  GetGlobals().GatheringChains->clear();
+  gatheringChains().clear();
   _gatherBlocks(coll, out);
 }
 
@@ -2434,7 +2446,7 @@ uint64_t hash(const CBVar &var) {
   static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
                 "XXH64_hash_t is not uint64_t");
 
-  GetGlobals().GatheringChains->clear();
+  gatheringChains().clear();
 
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
@@ -2573,8 +2585,8 @@ void hash_update(const CBVar &var, void *state) {
   } break;
   case CBType::Chain: {
     auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-    if (GetGlobals().GatheringChains->count(chain.get()) == 0) {
-      GetGlobals().GatheringChains->insert(chain.get());
+    if (gatheringChains().count(chain.get()) == 0) {
+      gatheringChains().insert(chain.get());
 
       error = XXH3_64bits_update(hashState, chain->name.c_str(),
                                  chain->name.length());
