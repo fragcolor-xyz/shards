@@ -56,7 +56,7 @@ struct ChainBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static std::unordered_set<const CBChain *> &gatheredChains() {
+  static std::unordered_set<const CBChain *> &visiting() {
     static TlsWrapper<std::unordered_set<const CBChain *>> _gatheredChains;
     return _gatheredChains.get();
   }
