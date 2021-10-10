@@ -11,10 +11,6 @@
 #include <taskflow/taskflow.hpp>
 #endif
 
-#ifdef WIN32
-#include <boost/thread/tss.hpp>
-#endif
-
 namespace chainblocks {
 enum RunChainMode { Inline, Detached, Stepped };
 
@@ -61,18 +57,9 @@ struct ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static std::unordered_set<const CBChain *> &visiting() {
-#ifdef WIN32
-    static boost::thread_specific_ptr<std::unordered_set<const CBChain *>>
+    thread_local TlsWrapper<std::unordered_set<const CBChain *>>
         _gatheredChains;
-
-    if (_gatheredChains.get() == nullptr)
-      _gatheredChains.reset(new std::unordered_set<const CBChain *>());
-
-    return *_gatheredChains;
-#else
-    thread_local std::unordered_set<const CBChain *> _gatheredChains;
-    return _gatheredChains;
-#endif
+    return _gatheredChains.get();
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {

@@ -94,6 +94,27 @@ inline CBOptionalString operator"" _optional(const char *s, size_t) {
     enum { value = sizeof(test<T>(0)) == sizeof(char) };                       \
   }
 
+// This seems to help on platforms with emulated tls
+// Like windows crashing atexit
+template <typename T> struct TlsWrapper {
+  T &get() {
+    if (!obj) {
+      obj = new T();
+    }
+    return *obj;
+  }
+
+  ~TlsWrapper() {
+    if (obj) {
+      delete obj;
+      obj = nullptr;
+    }
+  }
+
+private:
+  static inline thread_local T *obj = nullptr;
+};
+
 template <typename T, typename ARG = void *, ARG defaultValue = nullptr>
 class Shared {
 public:

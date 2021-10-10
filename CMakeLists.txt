@@ -220,7 +220,7 @@ add_compile_options(${INLINING_FLAGS})
 
 ### libs
 if(WIN32)
-  set(BOOST_LIBS -lboost_thread-mt -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto -lws2_32 -lmswsock -lSecur32 -lCrypt32 -lNcrypt)
+  set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto -lws2_32 -lmswsock -lSecur32 -lCrypt32 -lNcrypt)
 elseif(APPLE)
   if(NOT IOS)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")

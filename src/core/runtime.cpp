@@ -17,10 +17,6 @@
 #include <string.h>
 #include <unordered_set>
 
-#ifdef WIN32
-#include <boost/thread/tss.hpp>
-#endif
-
 #ifdef __EMSCRIPTEN__
 // clang-format off
 EM_JS(void, cb_emscripten_init, (), {
@@ -2359,19 +2355,9 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-std::unordered_set<const CBChain *> &gatheredChains() {
-#ifdef WIN32
-  static boost::thread_specific_ptr<std::unordered_set<const CBChain *>>
-      _gatheredChains;
-
-  if (_gatheredChains.get() == nullptr)
-    _gatheredChains.reset(new std::unordered_set<const CBChain *>());
-
-  return *_gatheredChains;
-#else
-  thread_local std::unordered_set<const CBChain *> _gatheredChains;
-  return _gatheredChains;
-#endif
+static std::unordered_set<const CBChain *> &gatheredChains() {
+  thread_local TlsWrapper<std::unordered_set<const CBChain *>> _gatheredChains;
+  return _gatheredChains.get();
 }
 
 void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
