@@ -4,6 +4,10 @@
 #ifndef CB_UTILITY_HPP
 #define CB_UTILITY_HPP
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #include "chainblocks.hpp"
 #include <future>
 #include <magic_enum.hpp>
@@ -96,23 +100,58 @@ inline CBOptionalString operator"" _optional(const char *s, size_t) {
 
 // This seems to help on platforms with emulated tls
 // Like windows crashing atexit
+// Meant to be used as static variable or static inline variable!
 template <typename T> struct TlsWrapper {
   T &get() {
+#ifdef WIN32
+    T *obj = static_cast<T *>(TlsGetValue(tls_index));
+#endif
+
     if (!obj) {
       obj = new T();
+#ifdef WIN32
+      TlsSetValue(tls_index, obj);
+#endif
+
+      std::unique_lock<std::mutex> lock(tls_mutex);
+      tls_objects.push_back(obj);
     }
+
     return *obj;
   }
 
-  ~TlsWrapper() {
-    if (obj) {
-      delete obj;
-      obj = nullptr;
+  TlsWrapper() {
+#ifdef WIN32
+    if (tls_count == 0) {
+      tls_index = TlsAlloc();
+      assert(tls_index != TLS_OUT_OF_INDEXES);
     }
+    tls_count++;
+#endif
+  }
+
+  ~TlsWrapper() {
+    for (auto obj : tls_objects) {
+      delete obj;
+    }
+    tls_objects.clear();
+
+#ifdef WIN32
+    if (--tls_count == 0) {
+      TlsFree(tls_index);
+    }
+#endif
   }
 
 private:
+#ifdef WIN32
+  static inline std::atomic_int tls_count = 0;
+  static inline DWORD tls_index = TLS_OUT_OF_INDEXES;
+#else
   static inline thread_local T *obj = nullptr;
+#endif
+  static inline std::mutex tls_mutex;
+  static inline std::vector<T *> tls_objects;
 };
 
 template <typename T, typename ARG = void *, ARG defaultValue = nullptr>
