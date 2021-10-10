@@ -460,6 +460,11 @@ struct Globals {
 
   std::unordered_map<uint32_t, CBOptionalString> *CompressedStrings{nullptr};
 
+  // need to derive to not confuse with other global types
+  struct GatheringChainsGuard : public std::unordered_set<const CBChain *> {};
+  // utility used in hashing, gatherchains and visiting chains when composing
+  ThreadShared<GatheringChainsGuard> GatheringChains;
+
   CBTableInterface TableInterface{
       .tableGetIterator =
           [](CBTable table, CBTableIterator *outIter) {
