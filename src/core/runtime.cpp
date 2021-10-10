@@ -2355,8 +2355,8 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-static std::unordered_set<const CBChain *> &gatheredChains() {
-  thread_local TlsWrapper<std::unordered_set<const CBChain *>> _gatheredChains;
+std::unordered_set<const CBChain *> &gatheredChains() {
+  static TlsWrapper<std::unordered_set<const CBChain *>> _gatheredChains;
   return _gatheredChains.get();
 }
 
