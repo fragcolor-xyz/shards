@@ -1025,6 +1025,8 @@ struct Texture2D : public BaseConsumer {
       Texture::Var.Release(_texture);
       _texture = nullptr;
     }
+
+    BaseConsumer::cleanup();
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
@@ -1404,6 +1406,8 @@ struct Model : public BaseConsumer {
       ModelHandle::Var.Release(_output);
       _output = nullptr;
     }
+
+    BaseConsumer::cleanup();
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
