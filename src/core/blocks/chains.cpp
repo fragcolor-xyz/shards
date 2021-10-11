@@ -55,7 +55,17 @@ struct ChainBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline thread_local std::set<CBChain *> visiting;
+  std::unordered_set<const CBChain *> &gatheringChains() {
+#ifdef WIN32
+    // we have to leak.. or windows tls emulation will crash at process end
+    thread_local std::unordered_set<const CBChain *> *chains =
+        new std::unordered_set<const CBChain *>();
+    return *chains;
+#else
+    thread_local std::unordered_set<const CBChain *> chains;
+    return chains;
+#endif
+  }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     // Free any previous result!
@@ -101,7 +111,7 @@ struct ChainBase {
     }
 
     // avoid stackoverflow
-    if (chain->isRoot || visiting.count(chain.get())) {
+    if (chain->isRoot || gatheringChains().count(chain.get())) {
       CBLOG_DEBUG(
           "ChainBase::compose early return, chain is being visited, name: {}",
           chain->name);
@@ -129,8 +139,8 @@ struct ChainBase {
     }
 
     // and the subject here
-    visiting.insert(chain.get());
-    DEFER(visiting.erase(chain.get()));
+    gatheringChains().insert(chain.get());
+    DEFER(gatheringChains().erase(chain.get()));
 
     auto dataCopy = data;
     dataCopy.chain = chain.get();
@@ -1069,10 +1079,11 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     chain->node = context->main->node;
 
     // avoid stackoverflow
-    if (visiting.count(chain.get()))
+    if (gatheringChains().count(chain.get()))
       return; // we don't know yet...
 
-    visiting.insert(chain.get());
+    gatheringChains().insert(chain.get());
+    DEFER(gatheringChains().erase(chain.get()));
 
     // We need to validate the sub chain to figure it out!
     auto res = composeChain(
@@ -1090,7 +1101,6 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
         },
         this, data);
 
-    visiting.erase(chain.get());
     chainblocks::arrayFree(res.exposedInfo);
     chainblocks::arrayFree(res.requiredInfo);
   }
