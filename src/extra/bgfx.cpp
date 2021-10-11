@@ -622,8 +622,14 @@ struct MainWindow : public BaseWindow {
 
     if (_sdlWinVar) {
       if (_sdlWinVar->refcount > 1) {
+#ifdef NDEBUG
         CBLOG_ERROR(
             "MainWindow: Found a dangling reference to GFX.CurrentWindow");
+#else
+        CBLOG_ERROR(
+            "MainWindow: Found {} dangling reference(s) to GFX.CurrentWindow",
+            _sdlWinVar->refcount - 1);
+#endif
       }
       memset(_sdlWinVar, 0x0, sizeof(CBVar));
       _sdlWinVar = nullptr;
@@ -631,7 +637,12 @@ struct MainWindow : public BaseWindow {
 
     if (_bgfxCtx) {
       if (_bgfxCtx->refcount > 1) {
+#ifdef NDEBUG
         CBLOG_ERROR("MainWindow: Found a dangling reference to GFX.Context");
+#else
+        CBLOG_ERROR("MainWindow: Found {} dangling reference(s) to GFX.Context",
+                    _bgfxCtx->refcount - 1);
+#endif
       }
       memset(_bgfxCtx, 0x0, sizeof(CBVar));
       _bgfxCtx = nullptr;
@@ -639,7 +650,12 @@ struct MainWindow : public BaseWindow {
 
     if (_imguiCtx) {
       if (_imguiCtx->refcount > 1) {
+#ifdef NDEBUG
         CBLOG_ERROR("MainWindow: Found a dangling reference to GUI.Context");
+#else
+        CBLOG_ERROR("MainWindow: Found {} dangling reference(s) to GUI.Context",
+                    _imguiCtx->refcount - 1);
+#endif
       }
       memset(_imguiCtx, 0x0, sizeof(CBVar));
       _imguiCtx = nullptr;
