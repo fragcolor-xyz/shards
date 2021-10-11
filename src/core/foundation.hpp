@@ -124,6 +124,12 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn = false);
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash);
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);

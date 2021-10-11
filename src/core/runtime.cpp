@@ -656,12 +656,27 @@ CBChainState suspend(CBContext *context, double seconds) {
   return context->getState();
 }
 
-template <typename T>
+void hash_update(const CBVar &var, void *state);
+
+template <typename T, bool HASHED = false>
 ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
                                             const CBVar &chainInput,
                                             CBVar &output,
-                                            const bool handlesReturn) {
+                                            const bool handlesReturn,
+                                            uint64_t *outHash = nullptr) {
+  XXH3_state_s hashState; // optimized out in release if not HASHED
+  if constexpr (HASHED) {
+    assert(outHash);
+    XXH3_INITSTATE(&hashState);
+    XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                 XXH_SECRET_DEFAULT_SIZE);
+  }
+  DEFER(if constexpr (HASHED) { *outHash = XXH3_64bits_digest(&hashState); });
+
+  // store initial input
   auto input = chainInput;
+
+  // find len based on blocks type
   size_t len;
   if constexpr (std::is_same<T, CBlocks>::value ||
                 std::is_same<T, CBSeq>::value) {
@@ -672,6 +687,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     len = 0;
     CBLOG_FATAL("Unreachable blocksActivation case");
   }
+
   for (size_t i = 0; i < len; i++) {
     CBlockPtr blk;
     if constexpr (std::is_same<T, CBlocks>::value) {
@@ -685,7 +701,19 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       CBLOG_FATAL("Unreachable blocksActivation case");
     }
     try {
-      output = activateBlock(blk, context, input);
+      if constexpr (HASHED) {
+        auto blockHash = blk->hash(blk);
+        XXH3_64bits_update(&hashState, &blockHash, sizeof(blockHash));
+        hash_update(input, &hashState);
+        auto params = blk->parameters(blk);
+        for (uint32_t nParam; nParam < params.len; nParam++) {
+          hash_update(blk->getParam(blk, nParam), &hashState);
+        }
+        output = activateBlock(blk, context, input);
+        hash_update(output, &hashState);
+      } else {
+        output = activateBlock(blk, context, input);
+      }
       if (unlikely(!context->shouldContinue())) {
         // TODO #64 try and benchmark: remove this switch and state
         // Replace with preallocated exceptions like StopChainException
@@ -746,6 +774,20 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn) {
   return blocksActivation(blocks, context, chainInput, output, handlesReturn);
+}
+
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash) {
+  return blocksActivation<CBlocks, true>(blocks, context, chainInput, output,
+                                         handlesReturn, outHash);
+}
+
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash) {
+  return blocksActivation<CBSeq, true>(blocks, context, chainInput, output,
+                                       handlesReturn, outHash);
 }
 
 // Lazy and also avoid windows Loader (Dead)Lock
@@ -2431,8 +2473,6 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
 }
 
 thread_local std::unordered_set<CBChain *> tHashingChains;
-
-void hash_update(const CBVar &var, void *state);
 
 uint64_t hash(const CBVar &var) {
   static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
