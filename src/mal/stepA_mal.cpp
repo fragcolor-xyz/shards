@@ -51,7 +51,13 @@ extern malEnvPtr malenv() { return currentEnv; }
 int malmain(int argc, const char *argv[]) {
   malEnvPtr replEnv(new malEnv());
 
-  auto exePath = std::filesystem::path(argv[0]).parent_path().string();
+  // do the following before malinit
+
+  auto cblAbsPath = std::filesystem::absolute(argv[0]).lexically_normal();
+  auto cblAbsStr = cblAbsPath.string();
+  replEnv->set("*cbl*", mal::string(cblAbsStr));
+
+  auto exePath = cblAbsPath.parent_path().string();
   auto scriptPath = exePath;
   if (argc > 1) {
     scriptPath = std::filesystem::absolute(
@@ -61,10 +67,6 @@ int malmain(int argc, const char *argv[]) {
   }
 
   malinit(replEnv, exePath.c_str(), scriptPath.c_str());
-
-  auto cblAbsPath = std::filesystem::absolute(argv[0]);
-  auto cblAbsStr = cblAbsPath.string();
-  replEnv->set("*cbl*", mal::string(cblAbsStr));
 
   makeArgv(replEnv, argc - 2, argv + 2);
   bool failed = false;
