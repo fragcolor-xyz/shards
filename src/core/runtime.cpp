@@ -2505,288 +2505,285 @@ uint64_t hash(const CBVar &var) {
   XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
                                XXH_SECRET_DEFAULT_SIZE);
 
-  hash_update(var, &hashState);
+  void hash_update(const CBVar &var, void *state) {
+    auto hashState = reinterpret_cast<XXH3_state_s *>(state);
 
-  return XXH3_64bits_digest(&hashState);
-}
+    auto error =
+        XXH3_64bits_update(hashState, &var.valueType, sizeof(var.valueType));
+    assert(error == XXH_OK);
 
-void hash_update(const CBVar &var, void *state) {
-  auto hashState = reinterpret_cast<XXH3_state_s *>(state);
-
-  auto error =
-      XXH3_64bits_update(hashState, &var.valueType, sizeof(var.valueType));
-  assert(error == XXH_OK);
-
-  switch (var.valueType) {
-  case CBType::Bytes: {
-    error = XXH3_64bits_update(hashState, var.payload.bytesValue,
-                               size_t(var.payload.bytesSize));
-    assert(error == XXH_OK);
-  } break;
-  case CBType::Path:
-  case CBType::ContextVar:
-  case CBType::String: {
-    error = XXH3_64bits_update(
-        hashState, var.payload.stringValue,
-        size_t(var.payload.stringLen > 0 || var.payload.stringValue == nullptr
-                   ? var.payload.stringLen
-                   : strlen(var.payload.stringValue)));
-    assert(error == XXH_OK);
-  } break;
-  case CBType::Image: {
-    CBImage i = var.payload.imageValue;
-    i.data = nullptr;
-    error = XXH3_64bits_update(hashState, &i, sizeof(CBImage));
-    assert(error == XXH_OK);
-    auto pixsize = 1;
-    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
-    error = XXH3_64bits_update(
-        hashState, var.payload.imageValue.data,
-        size_t(var.payload.imageValue.channels * var.payload.imageValue.width *
-               var.payload.imageValue.height * pixsize));
-    assert(error == XXH_OK);
-  } break;
-  case CBType::Audio: {
-    CBAudio a = var.payload.audioValue;
-    a.samples = nullptr;
-    error = XXH3_64bits_update(hashState, &a, sizeof(CBAudio));
-    assert(error == XXH_OK);
-    error = XXH3_64bits_update(hashState, var.payload.audioValue.samples,
-                               size_t(var.payload.audioValue.channels *
-                                      var.payload.audioValue.nsamples *
-                                      sizeof(float)));
-    assert(error == XXH_OK);
-  } break;
-  case CBType::Seq: {
-    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-      hash_update(var.payload.seqValue.elements[i], state);
-    }
-  } break;
-  case CBType::Array: {
-    for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
-      CBVar tmp; // only of blittable types and hash uses just type, so no init
-                 // needed
-      tmp.valueType = var.innerType;
-      tmp.payload = var.payload.arrayValue.elements[i];
-      hash_update(tmp, state);
-    }
-  } break;
-  case CBType::Table: {
-    // this is unsafe because allocates on the stack
-    // but we need to sort hashes
-    std::vector<std::pair<uint64_t, CBString>,
-                stack_allocator<std::pair<uint64_t, CBString>>>
-        hashes;
-
-    auto &t = var.payload.tableValue;
-    CBTableIterator it;
-    t.api->tableGetIterator(t, &it);
-    CBString key;
-    CBVar value;
-    while (t.api->tableNext(t, &it, &key, &value)) {
-      hashes.emplace_back(hash(value), key);
-    }
-
-    pdqsort(hashes.begin(), hashes.end());
-    for (const auto &pair : hashes) {
-      error = XXH3_64bits_update(hashState, pair.second, strlen(pair.second));
+    switch (var.valueType) {
+    case CBType::Bytes: {
+      error = XXH3_64bits_update(hashState, var.payload.bytesValue,
+                                 size_t(var.payload.bytesSize));
       assert(error == XXH_OK);
-      XXH3_64bits_update(hashState, &pair.first, sizeof(uint64_t));
-    }
-  } break;
-  case CBType::Set: {
-    // this is unsafe because allocates on the stack
-    // but we need to sort hashes
-    std::vector<uint64_t, stack_allocator<uint64_t>> hashes;
-
-    // just store hashes, sort and actually combine later
-    auto &s = var.payload.setValue;
-    CBSetIterator it;
-    s.api->setGetIterator(s, &it);
-    CBVar value;
-    while (s.api->setNext(s, &it, &value)) {
-      hashes.emplace_back(hash(value));
-    }
-
-    pdqsort(hashes.begin(), hashes.end());
-    for (const auto hash : hashes) {
-      XXH3_64bits_update(hashState, &hash, sizeof(uint64_t));
-    }
-  } break;
-  case CBType::Block: {
-    auto blk = var.payload.blockValue;
-    auto name = blk->name(blk);
-    auto error = XXH3_64bits_update(hashState, name, strlen(name));
-    assert(error == XXH_OK);
-
-    auto params = blk->parameters(blk);
-    for (uint32_t i = 0; i < params.len; i++) {
-      auto pval = blk->getParam(blk, int(i));
-      hash_update(pval, state);
-    }
-
-    if (blk->getState) {
-      auto bstate = blk->getState(blk);
-      hash_update(bstate, state);
-    }
-  } break;
-  case CBType::Chain: {
-    auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-    if (gatheringChains().count(chain.get()) == 0) {
-      gatheringChains().insert(chain.get());
-
-      error = XXH3_64bits_update(hashState, chain->name.c_str(),
-                                 chain->name.length());
+    } break;
+    case CBType::Path:
+    case CBType::ContextVar:
+    case CBType::String: {
+      error = XXH3_64bits_update(
+          hashState, var.payload.stringValue,
+          size_t(var.payload.stringLen > 0 || var.payload.stringValue == nullptr
+                     ? var.payload.stringLen
+                     : strlen(var.payload.stringValue)));
       assert(error == XXH_OK);
-
+    } break;
+    case CBType::Image: {
+      CBImage i = var.payload.imageValue;
+      i.data = nullptr;
+      error = XXH3_64bits_update(hashState, &i, sizeof(CBImage));
+      assert(error == XXH_OK);
+      auto pixsize = 1;
+      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
+          CBIMAGE_FLAGS_16BITS_INT)
+        pixsize = 2;
+      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
+               CBIMAGE_FLAGS_32BITS_FLOAT)
+        pixsize = 4;
       error =
-          XXH3_64bits_update(hashState, &chain->looped, sizeof(chain->looped));
+          XXH3_64bits_update(hashState, var.payload.imageValue.data,
+                             size_t(var.payload.imageValue.channels *
+                                    var.payload.imageValue.width *
+                                    var.payload.imageValue.height * pixsize));
       assert(error == XXH_OK);
-
-      error =
-          XXH3_64bits_update(hashState, &chain->unsafe, sizeof(chain->unsafe));
+    } break;
+    case CBType::Audio: {
+      CBAudio a = var.payload.audioValue;
+      a.samples = nullptr;
+      error = XXH3_64bits_update(hashState, &a, sizeof(CBAudio));
       assert(error == XXH_OK);
-
-      for (auto &blk : chain->blocks) {
-        CBVar tmp;
-        tmp.valueType = CBType::Block;
-        tmp.payload.blockValue = blk;
+      error = XXH3_64bits_update(hashState, var.payload.audioValue.samples,
+                                 size_t(var.payload.audioValue.channels *
+                                        var.payload.audioValue.nsamples *
+                                        sizeof(float)));
+      assert(error == XXH_OK);
+    } break;
+    case CBType::Seq: {
+      for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+        hash_update(var.payload.seqValue.elements[i], state);
+      }
+    } break;
+    case CBType::Array: {
+      for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
+        CBVar tmp; // only of blittable types and hash uses just type, so no
+                   // init needed
+        tmp.valueType = var.innerType;
+        tmp.payload = var.payload.arrayValue.elements[i];
         hash_update(tmp, state);
       }
+    } break;
+    case CBType::Table: {
+      // this is unsafe because allocates on the stack
+      // but we need to sort hashes
+      std::vector<std::pair<uint64_t, CBString>,
+                  stack_allocator<std::pair<uint64_t, CBString>>>
+          hashes;
 
-      for (auto &chainVar : chain->variables) {
-        error = XXH3_64bits_update(hashState, chainVar.first.c_str(),
-                                   chainVar.first.length());
-        assert(error == XXH_OK);
-        hash_update(chainVar.second, state);
+      auto &t = var.payload.tableValue;
+      CBTableIterator it;
+      t.api->tableGetIterator(t, &it);
+      CBString key;
+      CBVar value;
+      while (t.api->tableNext(t, &it, &key, &value)) {
+        hashes.emplace_back(hash(value), key);
       }
-    }
-  } break;
-  case CBType::Object: {
-    error = XXH3_64bits_update(hashState, &var.payload.objectVendorId,
-                               sizeof(var.payload.objectVendorId));
-    assert(error == XXH_OK);
-    error = XXH3_64bits_update(hashState, &var.payload.objectTypeId,
-                               sizeof(var.payload.objectTypeId));
-    assert(error == XXH_OK);
-    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
-        var.objectInfo && var.objectInfo->hash) {
-      // hash of the hash...
-      auto objHash = var.objectInfo->hash(var.payload.objectValue);
-      error = XXH3_64bits_update(hashState, &objHash, sizeof(uint64_t));
+
+      pdqsort(hashes.begin(), hashes.end());
+      for (const auto &pair : hashes) {
+        error = XXH3_64bits_update(hashState, pair.second, strlen(pair.second));
+        assert(error == XXH_OK);
+        XXH3_64bits_update(hashState, &pair.first, sizeof(uint64_t));
+      }
+    } break;
+    case CBType::Set: {
+      // this is unsafe because allocates on the stack
+      // but we need to sort hashes
+      std::vector<uint64_t, stack_allocator<uint64_t>> hashes;
+
+      // just store hashes, sort and actually combine later
+      auto &s = var.payload.setValue;
+      CBSetIterator it;
+      s.api->setGetIterator(s, &it);
+      CBVar value;
+      while (s.api->setNext(s, &it, &value)) {
+        hashes.emplace_back(hash(value));
+      }
+
+      pdqsort(hashes.begin(), hashes.end());
+      for (const auto hash : hashes) {
+        XXH3_64bits_update(hashState, &hash, sizeof(uint64_t));
+      }
+    } break;
+    case CBType::Block: {
+      auto blk = var.payload.blockValue;
+      auto name = blk->name(blk);
+      auto error = XXH3_64bits_update(hashState, name, strlen(name));
       assert(error == XXH_OK);
-    } else {
-      // this will be valid only within this process memory space
-      // better then nothing
-      error = XXH3_64bits_update(hashState, &var.payload.objectValue,
-                                 sizeof(var.payload.objectValue));
+
+      auto params = blk->parameters(blk);
+      for (uint32_t i = 0; i < params.len; i++) {
+        auto pval = blk->getParam(blk, int(i));
+        hash_update(pval, state);
+      }
+
+      if (blk->getState) {
+        auto bstate = blk->getState(blk);
+        hash_update(bstate, state);
+      }
+    } break;
+    case CBType::Chain: {
+      auto chain = CBChain::sharedFromRef(var.payload.chainValue);
+      if (gatheringChains().count(chain.get()) == 0) {
+        gatheringChains().insert(chain.get());
+
+        error = XXH3_64bits_update(hashState, chain->name.c_str(),
+                                   chain->name.length());
+        assert(error == XXH_OK);
+
+        error = XXH3_64bits_update(hashState, &chain->looped,
+                                   sizeof(chain->looped));
+        assert(error == XXH_OK);
+
+        error = XXH3_64bits_update(hashState, &chain->unsafe,
+                                   sizeof(chain->unsafe));
+        assert(error == XXH_OK);
+
+        for (auto &blk : chain->blocks) {
+          CBVar tmp;
+          tmp.valueType = CBType::Block;
+          tmp.payload.blockValue = blk;
+          hash_update(tmp, state);
+        }
+
+        for (auto &chainVar : chain->variables) {
+          error = XXH3_64bits_update(hashState, chainVar.first.c_str(),
+                                     chainVar.first.length());
+          assert(error == XXH_OK);
+          hash_update(chainVar.second, state);
+        }
+      }
+    } break;
+    case CBType::Object: {
+      error = XXH3_64bits_update(hashState, &var.payload.objectVendorId,
+                                 sizeof(var.payload.objectVendorId));
+      assert(error == XXH_OK);
+      error = XXH3_64bits_update(hashState, &var.payload.objectTypeId,
+                                 sizeof(var.payload.objectTypeId));
+      assert(error == XXH_OK);
+      if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
+          var.objectInfo && var.objectInfo->hash) {
+        // hash of the hash...
+        auto objHash = var.objectInfo->hash(var.payload.objectValue);
+        error = XXH3_64bits_update(hashState, &objHash, sizeof(uint64_t));
+        assert(error == XXH_OK);
+      } else {
+        // this will be valid only within this process memory space
+        // better then nothing
+        error = XXH3_64bits_update(hashState, &var.payload.objectValue,
+                                   sizeof(var.payload.objectValue));
+        assert(error == XXH_OK);
+      }
+    } break;
+    case CBType::None:
+    case CBType::Any:
+      break;
+    default: {
+      error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
       assert(error == XXH_OK);
     }
-  } break;
-  case CBType::None:
-  case CBType::Any:
-    break;
-  default: {
-    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
-    assert(error == XXH_OK);
-  }
-  }
-}
-
-void Serialization::varFree(CBVar &output) {
-  switch (output.valueType) {
-  case CBType::None:
-  case CBType::EndOfBlittableTypes:
-  case CBType::Any:
-  case CBType::Enum:
-  case CBType::Bool:
-  case CBType::Int:
-  case CBType::Int2:
-  case CBType::Int3:
-  case CBType::Int4:
-  case CBType::Int8:
-  case CBType::Int16:
-  case CBType::Float:
-  case CBType::Float2:
-  case CBType::Float3:
-  case CBType::Float4:
-  case CBType::Color:
-    break;
-  case CBType::Bytes:
-    delete[] output.payload.bytesValue;
-    break;
-  case CBType::Array:
-    chainblocks::arrayFree(output.payload.arrayValue);
-    break;
-  case CBType::Path:
-  case CBType::String:
-  case CBType::ContextVar: {
-    delete[] output.payload.stringValue;
-    break;
-  }
-  case CBType::Seq: {
-    for (uint32_t i = 0; i < output.payload.seqValue.cap; i++) {
-      varFree(output.payload.seqValue.elements[i]);
     }
-    chainblocks::arrayFree(output.payload.seqValue);
-    break;
   }
-  case CBType::Table: {
-    output.payload.tableValue.api->tableFree(output.payload.tableValue);
-    break;
-  }
-  case CBType::Set: {
-    output.payload.setValue.api->setFree(output.payload.setValue);
-    break;
-  }
-  case CBType::Image: {
-    delete[] output.payload.imageValue.data;
-    break;
-  }
-  case CBType::Audio: {
-    delete[] output.payload.audioValue.samples;
-    break;
-  }
-  case CBType::Block: {
-    auto blk = output.payload.blockValue;
-    if (!blk->owned) {
-      // destroy only if not owned
-      blk->destroy(blk);
+
+  void Serialization::varFree(CBVar & output) {
+    switch (output.valueType) {
+    case CBType::None:
+    case CBType::EndOfBlittableTypes:
+    case CBType::Any:
+    case CBType::Enum:
+    case CBType::Bool:
+    case CBType::Int:
+    case CBType::Int2:
+    case CBType::Int3:
+    case CBType::Int4:
+    case CBType::Int8:
+    case CBType::Int16:
+    case CBType::Float:
+    case CBType::Float2:
+    case CBType::Float3:
+    case CBType::Float4:
+    case CBType::Color:
+      break;
+    case CBType::Bytes:
+      delete[] output.payload.bytesValue;
+      break;
+    case CBType::Array:
+      chainblocks::arrayFree(output.payload.arrayValue);
+      break;
+    case CBType::Path:
+    case CBType::String:
+    case CBType::ContextVar: {
+      delete[] output.payload.stringValue;
+      break;
     }
-    break;
-  }
-  case CBType::Chain: {
-    CBChain::deleteRef(output.payload.chainValue);
-    break;
-  }
-  case CBType::Object: {
-    if ((output.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
-        output.objectInfo && output.objectInfo->release) {
-      output.objectInfo->release(output.payload.objectValue);
+    case CBType::Seq: {
+      for (uint32_t i = 0; i < output.payload.seqValue.cap; i++) {
+        varFree(output.payload.seqValue.elements[i]);
+      }
+      chainblocks::arrayFree(output.payload.seqValue);
+      break;
     }
-    break;
+    case CBType::Table: {
+      output.payload.tableValue.api->tableFree(output.payload.tableValue);
+      break;
+    }
+    case CBType::Set: {
+      output.payload.setValue.api->setFree(output.payload.setValue);
+      break;
+    }
+    case CBType::Image: {
+      delete[] output.payload.imageValue.data;
+      break;
+    }
+    case CBType::Audio: {
+      delete[] output.payload.audioValue.samples;
+      break;
+    }
+    case CBType::Block: {
+      auto blk = output.payload.blockValue;
+      if (!blk->owned) {
+        // destroy only if not owned
+        blk->destroy(blk);
+      }
+      break;
+    }
+    case CBType::Chain: {
+      CBChain::deleteRef(output.payload.chainValue);
+      break;
+    }
+    case CBType::Object: {
+      if ((output.flags & CBVAR_FLAGS_USES_OBJINFO) ==
+              CBVAR_FLAGS_USES_OBJINFO &&
+          output.objectInfo && output.objectInfo->release) {
+        output.objectInfo->release(output.payload.objectValue);
+      }
+      break;
+    }
+    }
+
+    memset(&output, 0x0, sizeof(CBVar));
   }
+
+  CBString getString(uint32_t crc) {
+    assert(chainblocks::GetGlobals().CompressedStrings);
+    auto s = (*chainblocks::GetGlobals().CompressedStrings)[crc].string;
+    return s != nullptr ? s : "";
   }
 
-  memset(&output, 0x0, sizeof(CBVar));
-}
-
-CBString getString(uint32_t crc) {
-  assert(chainblocks::GetGlobals().CompressedStrings);
-  auto s = (*chainblocks::GetGlobals().CompressedStrings)[crc].string;
-  return s != nullptr ? s : "";
-}
-
-void setString(uint32_t crc, CBString str) {
-  assert(chainblocks::GetGlobals().CompressedStrings);
-  (*chainblocks::GetGlobals().CompressedStrings)[crc].string = str;
-  (*chainblocks::GetGlobals().CompressedStrings)[crc].crc = crc;
-}
+  void setString(uint32_t crc, CBString str) {
+    assert(chainblocks::GetGlobals().CompressedStrings);
+    (*chainblocks::GetGlobals().CompressedStrings)[crc].string = str;
+    (*chainblocks::GetGlobals().CompressedStrings)[crc].crc = crc;
+  }
 }; // namespace chainblocks
 
 // NO NAMESPACE here!
