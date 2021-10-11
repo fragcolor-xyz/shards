@@ -473,6 +473,10 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/pareto/source
   )
 
+if(BUILD_CORE_ONLY)
+  add_compile_definitions(CB_CORE_ONLY)
+endif()
+
 # wasm3
 ExternalProject_Add(wasm3
   URL ${CHAINBLOCKS_DIR}/deps/wasm3

@@ -52,7 +52,9 @@ static StaticList<malBuiltIn *> handlers;
 
 extern void cbRegisterAllBlocks();
 
+#ifndef CB_CORE_ONLY
 extern "C" void runRuntimeTests();
+#endif
 
 class malCBChain;
 class malCBlock;
@@ -100,8 +102,10 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
     initDoneOnce = true;
 
 #ifndef NDEBUG
+#ifndef CB_CORE_ONLY
     // TODO fix running rust tests...
     runRuntimeTests();
+#endif
 #endif
   }
 
