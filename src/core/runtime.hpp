@@ -42,6 +42,7 @@ using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
 #endif
 
 #define XXH_INLINE_ALL
+#define XXH_VECTOR XXH_SCALAR
 #include <xxhash.h>
 
 #ifndef CUSTOM_XXH3_kSecret
