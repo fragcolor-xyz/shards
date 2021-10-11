@@ -1170,6 +1170,6 @@ TEST_CASE("HashedActivations") {
   } catch (...) {
   }
   CBLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash == 1259839571655709330ull);
+  REQUIRE(hash == 15368403145312537271ull);
   REQUIRE(output == input);
 }

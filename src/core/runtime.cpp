@@ -684,7 +684,10 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
                                  XXH_SECRET_DEFAULT_SIZE);
     gatheringChains().clear();
   }
-  DEFER(if constexpr (HASHED) { *outHash = XXH3_64bits_digest(&hashState); });
+  DEFER(if constexpr (HASHED) {
+    *outHash = XXH3_64bits_digest(&hashState);
+    CBLOG_TRACE("Hashing digested {}", *outHash);
+  });
 
   // store initial input
   auto input = chainInput;
@@ -715,14 +718,22 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     }
     try {
       if constexpr (HASHED) {
-        auto blockHash = blk->hash(blk);
+        const auto blockHash = blk->hash(blk);
+        CBLOG_TRACE("Hashing block {}", blockHash);
         XXH3_64bits_update(&hashState, &blockHash, sizeof(blockHash));
+
+        CBLOG_TRACE("Hashing input {}", input);
         hash_update(input, &hashState);
-        auto params = blk->parameters(blk);
-        for (uint32_t nParam; nParam < params.len; nParam++) {
-          hash_update(blk->getParam(blk, nParam), &hashState);
+
+        const auto params = blk->parameters(blk);
+        for (uint32_t nParam = 0; nParam < params.len; nParam++) {
+          const auto param = blk->getParam(blk, nParam);
+          CBLOG_TRACE("Hashing param {}", param);
+          hash_update(param, &hashState);
         }
+
         output = activateBlock(blk, context, input);
+        CBLOG_TRACE("Hashing output {}", output);
         hash_update(output, &hashState);
       } else {
         output = activateBlock(blk, context, input);
