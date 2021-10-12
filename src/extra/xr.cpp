@@ -193,7 +193,7 @@ struct RenderXR : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *context) {
-    BGFX::BaseConsumer::warmup(context);
+    BGFX::BaseConsumer::_warmup(context);
 
     _blocks.warmup(context);
 
@@ -362,7 +362,7 @@ struct RenderXR : public BGFX::BaseConsumer {
       _xrContextPVar = nullptr;
     }
 
-    BGFX::BaseConsumer::cleanup();
+    BGFX::BaseConsumer::_cleanup();
   }
 
   void populateInputsData() {

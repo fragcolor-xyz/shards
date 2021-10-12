@@ -22,7 +22,7 @@ const float PI = 3.141592653589793238463f;
 const float PI_2 = PI * 0.5f;
 }; // namespace Helper
 
-struct CubeView {
+struct CubeView : public BGFX::BaseConsumer {
   static CBOptionalString help() {
     return CBCCSTR("Display a cube gizmo that can be used to control the "
                    "orientation of the current camera.");
@@ -143,11 +143,11 @@ struct Grid : public BGFX::BaseConsumer {
     _axis.cleanup();
     _size.cleanup();
 
-    BGFX::BaseConsumer::cleanup();
+    BGFX::BaseConsumer::_cleanup();
   }
 
   void warmup(CBContext *context) {
-    BGFX::BaseConsumer::warmup(context);
+    BGFX::BaseConsumer::_warmup(context);
 
     _axis.warmup(context);
     _size.warmup(context);
@@ -266,11 +266,11 @@ struct Transform : public BGFX::BaseConsumer {
     _operation.cleanup();
     _snap.cleanup();
 
-    BGFX::BaseConsumer::cleanup();
+    BGFX::BaseConsumer::_cleanup();
   }
 
   void warmup(CBContext *context) {
-    BGFX::BaseConsumer::warmup(context);
+    BGFX::BaseConsumer::_warmup(context);
 
     _matrix.warmup(context);
     _mode.warmup(context);
