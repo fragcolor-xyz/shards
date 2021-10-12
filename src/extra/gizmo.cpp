@@ -26,12 +26,12 @@ struct CubeView : public BGFX::BaseConsumer {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputhelp() {
+  static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is not used and will pass through.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputhelp() {
+  static CBOptionalString outputHelp() {
     return CBCCSTR("The output of this block will be its input.");
   }
 
@@ -103,12 +103,12 @@ struct Grid : public BGFX::BaseConsumer {
   static CBOptionalString help() { return CBCCSTR("Displays a grid."); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputhelp() {
+  static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is not used and will pass through.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputhelp() {
+  static CBOptionalString outputHelp() {
     return CBCCSTR("The output of this block will be its input.");
   }
 
@@ -218,12 +218,12 @@ struct Transform : public BGFX::BaseConsumer {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputhelp() {
+  static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is not used and will pass through.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputhelp() {
+  static CBOptionalString outputHelp() {
     return CBCCSTR("The output of this block will be its input.");
   }
 
