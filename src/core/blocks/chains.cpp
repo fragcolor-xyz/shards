@@ -994,7 +994,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
 
         // but let the provider release the pointer!
         chain.reset(update.chain,
-                    [&](auto &x) { _provider->release(_provider, x); });
+                    [&](CBChain *x) { _provider->release(_provider, x); });
         doWarmup(context);
         CBLOG_INFO("Chain {} has been reloaded", update.chain->name);
         CBVar output{};
