@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        build-type: ["Release"]
+        build-type: ["Debug"]
         bitness: [64bits]
         include:
           - bitness: 64bits
@@ -76,16 +76,25 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
-          path: docs\samples
+          name: cbl-win64 Debug
+          path: docs/samples
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-boost
       - name: Run samples
-        shell: pwsh
+        shell: msys2 {0}
         run: |
-          cd docs\samples
-          dir blocks -recurse -include *.edn | %{
-            echo ("Running sample " + ($_ | Resolve-Path -Relative))
-            .\cbl.exe .\run_sample.edn --file $_.FullName
-          }
+          cd docs/samples
+          for i in $(find blocks -name '*.edn');
+          do
+            echo "Running sample $i";
+            ./cbl.exe run_sample.edn --file "$i";
+          done
 
   #
   # Generate blocks documentation (markdown)
@@ -101,9 +110,17 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
+          name: cbl-win64 Debug
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-boost
       - name: Generate markdown
-        shell: bash
+        shell: msys2 {0}
         run: ./cbl.exe src/tests/infos_docs.edn
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -130,7 +147,9 @@ jobs:
         with:
           python-version: 3.x
       - name: Install mkdocs
-        run: pip install mkdocs-material
+        run: |
+          pip install mkdocs-material
+          pip install mkdocs-awesome-pages-plugin
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
@@ -152,7 +171,6 @@ jobs:
   # Publish documentation website to IPFS
   #
   docs-website-publish:
-    if: ${{ github.event_name != 'pull_request' }}
     needs: docs-website-build
     runs-on: ubuntu-latest
     steps:
@@ -178,10 +196,16 @@ jobs:
                > response.json
           cat response.json
           if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
+      - name: Set IPFS CID
+        id: set_ipfs_cid
+        run: |
+          echo "::set-output name=ipfs_cid::$(cat response.json | jq .value.cid)"
       - name: Sync Cloudflare
         run: |
-          IPFS_CID=$(cat response.json | jq .value.cid)
           curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/96d9b2a2e44b3bcabb158bd3ad0446f7" \
                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
-               -H "Content-Type:application/json" \
-               -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${IPFS_CID}/site\", \"ttl\": 1 }"
+               -H "Content-Type: application/json" \
+               -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${{ steps.set_ipfs_cid.outputs.ipfs_cid }}/site\", \"ttl\": 1 }" \
+               > response.json
+          cat response.json
+          if [ $(cat response.json | jq .success) != "true" ]; then exit 1; fi

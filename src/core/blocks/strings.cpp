@@ -156,6 +156,25 @@ struct ToLower {
   }
 };
 
+struct Trim {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static std::string_view trim(std::string_view s) {
+    s.remove_prefix(std::min(s.find_first_not_of(" \t\r\v\n"), s.size()));
+    s.remove_suffix(
+        std::min(s.size() - s.find_last_not_of(" \t\r\v\n") - 1, s.size()));
+
+    return s;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto sv = CBSTRVIEW(input);
+    auto tsv = trim(sv);
+    return Var(tsv);
+  }
+};
+
 struct Parser {
   std::string _cache;
 };
@@ -183,7 +202,11 @@ struct ParseInt : public Parser {
     char *str = const_cast<char *>(input.payload.stringValue);
     const auto len = CBSTRLEN(input);
     _cache.assign(str, len);
-    auto v = int64_t(std::stoul(_cache, nullptr, _base));
+    size_t parsed;
+    auto v = int64_t(std::stoul(_cache, &parsed, _base));
+    if (parsed != len) {
+      throw ActivationError("ParseInt: Invalid integer string");
+    }
     return Var(v);
   }
 };
@@ -195,7 +218,12 @@ struct ParseFloat : public Parser {
     char *str = const_cast<char *>(input.payload.stringValue);
     const auto len = CBSTRLEN(input);
     _cache.assign(str, len);
-    return Var(std::stod(_cache, nullptr));
+    size_t parsed;
+    auto v = std::stod(_cache, &parsed);
+    if (parsed != len) {
+      throw ActivationError("ParseFloat: Invalid float string");
+    }
+    return Var(v);
   }
 };
 
@@ -207,6 +235,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("String.ToLower", ToLower);
   REGISTER_CBLOCK("ParseInt", ParseInt);
   REGISTER_CBLOCK("ParseFloat", ParseFloat);
+  REGISTER_CBLOCK("String.Trim", Trim);
 }
 } // namespace Regex
 } // namespace chainblocks

@@ -908,6 +908,12 @@ struct Var : public CBVar {
     payload.stringLen = uint32_t(src.length());
   }
 
+  explicit Var(const std::string_view &src) : CBVar() {
+    valueType = CBType::String;
+    payload.stringValue = src.data();
+    payload.stringLen = uint32_t(src.size());
+  }
+
   static Var ContextVar(const std::string &src) {
     Var res{};
     res.valueType = CBType::ContextVar;

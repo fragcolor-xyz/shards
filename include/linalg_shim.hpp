@@ -51,6 +51,16 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return res;
   }
 
+  static void ToArrayUnsafe(const Mat4 &mat, float *array) {
+    int idx = 0;
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        array[idx] = mat[i][j];
+        idx++;
+      }
+    }
+  }
+
   static Mat4 Identity() {
     Mat4 res;
     res[0] = {1, 0, 0, 0};
@@ -176,6 +186,11 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
     return *v;
   }
 };
+
+constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
+constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};
+constexpr linalg::aliases::float3 AxisZ{0.0, 0.0, 1.0};
+
 }; // namespace chainblocks
 
 #endif

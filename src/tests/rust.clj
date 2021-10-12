@@ -27,7 +27,7 @@
   .hash (ECDSA.Recover .signature) = .pub_key1
   "1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e" (ECDSA.PublicKey) = .pub_key2
   .pub_key1 (Is .pub_key2) (Log "recover worked") (Assert.Is true true)
- 
+
   128 (ToLEB128 :Signed false) (BytesToInts) (Log) (Assert.Is [128 1] true)
   (IntsToBytes) (FromLEB128 :Signed false) (Log) (Assert.Is 128 true)
 
@@ -63,6 +63,22 @@
         (ToHex)
         (Log "Eth Address")
         (Assert.Is "0x3db763bbbb1ac900eb2eb8b106218f85f9f64a13" true)))
-  (| (ECDSA.PublicKey true) (ToHex) (Log))))
+  (| (ECDSA.PublicKey true) (ToHex) (Log))
+
+
+  "city,country,pop\nBoston,United States,4628910\nConcord,United States,42695\n"
+  (CSV.Read) (Log)
+  (CSV.Write)
+  (Assert.Is "Boston,United States,4628910\nConcord,United States,42695\n" true)
+
+  "\"Free trip to A,B\",\"5.89\",\"Special rate \"\"1.79\"\"\"\n"
+  (CSV.Read :NoHeader true) (Log)
+  (CSV.Write :NoHeader true) (Log)
+  (Assert.Is "\"Free trip to A,B\",5.89,\"Special rate \"\"1.79\"\"\"\n" true)
+
+  "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n"
+  (CSV.Read :NoHeader true :Separator ";") (Log)
+  (CSV.Write :NoHeader true :Separator ";")
+  (Assert.Is "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n" true)))
 
 (run Root)

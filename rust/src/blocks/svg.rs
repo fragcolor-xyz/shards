@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::chainblocksc::CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::block::Block;
 use crate::chainblocksc::CBImage;
 use crate::chainblocksc::CBVarPayload;
 use crate::chainblocksc::CBVarPayload__bindgen_ty_1;
+use crate::chainblocksc::CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::chainblocksc::{CBType_Bytes, CBType_Image, CBType_String};
 use crate::core::do_blocking;
 use crate::core::log;
@@ -25,7 +25,6 @@ use core::ptr::null_mut;
 use std::convert::TryInto;
 use tiny_skia::Pixmap;
 use usvg::ScreenSize;
-use usvg::SystemFontDB;
 
 impl From<&mut Pixmap> for Var {
   fn from(pmap: &mut Pixmap) -> Self {
@@ -104,7 +103,9 @@ impl Block for ToImage {
     // Get file's absolute directory.
     // opt.resources_dir = std::fs::canonicalize(&args[1]).ok().and_then(|p| p.parent().map(|p| p.to_path_buf()));
     opt.fontdb.load_system_fonts();
-    opt.fontdb.set_generic_families();
+    // opt.fontdb.set_generic_families();
+
+    let opt = opt.to_ref();
 
     let rtree = match input.valueType {
       CBType_Bytes => usvg::Tree::from_data(input.try_into().unwrap(), &opt).map_err(|e| {

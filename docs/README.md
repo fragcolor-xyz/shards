@@ -1,5 +1,9 @@
 # Usage
 
+## Plugin dependencies
+
+* [MkDocs Awesome Pages Plugin}](https://github.com/lukasgeiter/mkdocs-awesome-pages-plugin)
+
 ## Serve - development
 
 1. have docker

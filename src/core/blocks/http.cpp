@@ -31,13 +31,12 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 using namespace std;
 
-inline std::string url_encode(const std::string &value) {
+inline std::string url_encode(const std::string_view &value) {
   std::ostringstream escaped;
   escaped.fill('0');
   escaped << hex;
 
-  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n;
-       ++i) {
+  for (auto i = value.begin(), n = value.end(); i != n; ++i) {
     std::string::value_type c = (*i);
 
     // Keep alphanumeric and other accepted characters intact
@@ -235,9 +234,10 @@ template <const string_view &METHOD> struct GetLike : public Base {
     if (input.valueType == Table) {
       vars.append("?");
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+        auto sv_value = CBSTRVIEW(value);
         vars.append(url_encode(key));
         vars.append("=");
-        vars.append(url_encode(value.payload.stringValue));
+        vars.append(url_encode(sv_value));
         vars.append("&");
       });
       vars.resize(vars.size() - 1);
@@ -248,8 +248,9 @@ template <const string_view &METHOD> struct GetLike : public Base {
     if (headers.get().valueType == Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
+        auto sv_value = CBSTRVIEW(value);
         headersCArray.emplace_back(key);
-        headersCArray.emplace_back(value.payload.stringValue);
+        headersCArray.emplace_back(sv_value.data());
       });
     }
     headersCArray.emplace_back(nullptr);
@@ -349,9 +350,10 @@ template <const string_view &METHOD> struct PostLike : public Base {
       }
       vars.clear();
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
+        auto sv_value = CBSTRVIEW(value);
         vars.append(url_encode(key));
         vars.append("=");
-        vars.append(url_encode(value.payload.stringValue));
+        vars.append(url_encode(sv_value));
         vars.append("&");
       });
       vars.resize(vars.size() - 1);
@@ -581,6 +583,9 @@ struct Read {
 
   void warmup(CBContext *context) {
     _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == CBType::None) {
+      throw WarmupError("Socket variable not found in chain");
+    }
   }
 
   void cleanup() {
@@ -589,6 +594,8 @@ struct Read {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_peerVar->valueType == Object);
+    assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     bool done = false;
@@ -680,6 +687,9 @@ struct Response {
   void warmup(CBContext *context) {
     _headers.warmup(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == CBType::None) {
+      throw WarmupError("Socket variable not found in chain");
+    }
   }
 
   void cleanup() {
@@ -689,12 +699,15 @@ struct Response {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_peerVar->valueType == Object);
+    assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
     _response.clear();
 
     _response.result(_status);
     _response.set(http::field::content_type, "application/json");
-    _response.body() = input.payload.stringValue;
+    auto input_view = CBSTRVIEW(input);
+    _response.body() = input_view;
 
     // add custom headers
     if (_headers.get().valueType == Table) {
@@ -752,6 +765,9 @@ struct SendFile {
   void warmup(CBContext *context) {
     _headers.warmup(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
+    if (_peerVar->valueType == CBType::None) {
+      throw WarmupError("Socket variable not found in chain");
+    }
   }
 
   void cleanup() {
@@ -816,6 +832,8 @@ struct SendFile {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    assert(_peerVar->valueType == Object);
+    assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     std::filesystem::path p{GetGlobals().RootPath};
@@ -887,6 +905,17 @@ struct SendFile {
 };
 #endif
 
+struct EncodeURI {
+  std::string _output;
+  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto str = CBSTRVIEW(input);
+    _output = url_encode(str);
+    return Var(_output);
+  }
+};
+
 void registerBlocks() {
 #ifdef __EMSCRIPTEN__
   REGISTER_CBLOCK("Http.Get", Get);
@@ -901,6 +930,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Http.Response", Response);
   REGISTER_CBLOCK("Http.SendFile", SendFile);
 #endif
+  REGISTER_CBLOCK("String.EncodeURI", EncodeURI);
 }
 } // namespace Http
 } // namespace chainblocks

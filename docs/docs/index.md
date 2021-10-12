@@ -3,10 +3,11 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Welcome to Fragcolor documentation
+# Welcome
 
-Here, you can find the documentation of the technologies used with Fragcolor.
+Welcome to Fragcolor documentation. Here, you can find the documentation of the technologies used with Fragcolor.
 
 - [Chainblocks](./blocks/)
+- [Built-in functions](./functions/)
 
 --8<-- "includes/license.md"

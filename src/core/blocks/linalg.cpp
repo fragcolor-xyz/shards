@@ -654,6 +654,55 @@ struct Rotation {
   }
 };
 
+struct LookAt {
+  static inline Types InputTableTypes{
+      {CoreInfo::Float3Type, CoreInfo::Float3Type}};
+  static inline std::array<CBString, 2> InputTableKeys{"Position", "Target"};
+  static inline Type InputTable =
+      Type::TableOf(InputTableTypes, InputTableKeys);
+
+  static CBTypesInfo inputTypes() { return InputTable; }
+  static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // this is the most efficient way to find items in table
+    // without hashing and possible allocations etc
+    CBTable table = input.payload.tableValue;
+    CBTableIterator it;
+    table.api->tableGetIterator(table, &it);
+    CBVar position{};
+    CBVar target{};
+    while (true) {
+      CBString k;
+      CBVar v;
+      if (!table.api->tableNext(table, &it, &k, &v))
+        break;
+
+      switch (k[0]) {
+      case 'P':
+        position = v;
+        break;
+      case 'T':
+        target = v;
+        break;
+      default:
+        break;
+      }
+    }
+
+    assert(position.valueType == CBType::Float3 &&
+           target.valueType == CBType::Float3);
+
+    auto eye = reinterpret_cast<const Vec3 *>(&position);
+    auto center = reinterpret_cast<const Vec3 *>(&target);
+    _output = linalg::lookat_matrix(*eye, *center, {0.0, 1.0, 0.0});
+    return _output;
+  }
+
+private:
+  Mat4 _output{};
+};
+
 template <const linalg::aliases::float3 &AXIS> struct AxisAngle {
   Vec4 _output{};
 
@@ -665,10 +714,6 @@ template <const linalg::aliases::float3 &AXIS> struct AxisAngle {
     return _output;
   }
 };
-
-constexpr linalg::vec<float, 3> AxisX{1.0, 0.0, 0.0};
-constexpr linalg::vec<float, 3> AxisY{0.0, 1.0, 0.0};
-constexpr linalg::vec<float, 3> AxisZ{0.0, 0.0, 1.0};
 
 using AxisAngleX = AxisAngle<AxisX>;
 using AxisAngleY = AxisAngle<AxisY>;
@@ -708,6 +753,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Math.Translation", Translation);
   REGISTER_CBLOCK("Math.Scaling", Scaling);
   REGISTER_CBLOCK("Math.Rotation", Rotation);
+  REGISTER_CBLOCK("Math.LookAt", LookAt);
   REGISTER_CBLOCK("Math.AxisAngleX", AxisAngleX);
   REGISTER_CBLOCK("Math.AxisAngleY", AxisAngleY);
   REGISTER_CBLOCK("Math.AxisAngleZ", AxisAngleZ);

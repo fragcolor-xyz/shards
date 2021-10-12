@@ -76,3 +76,13 @@
 
 (schedule Root d)
 (run Root 0.1)
+
+
+; fail the root chain propagated from Wait
+(def d
+  (Chain
+   "test-4"
+   "4qjwieouqjweiouqweoi\") exit" (ParseFloat) (Log)))
+
+(schedule Root d)
+(run Root 0.1)

@@ -228,21 +228,22 @@ elseif(APPLE)
       set(BOOST_LIBS
       /usr/local/opt/boost/lib/libboost_context-mt.a
       /usr/local/opt/boost/lib/libboost_filesystem-mt.a
-      /usr/local/opt/openssl/lib/libssl.a
-      /usr/local/opt/openssl/lib/libcrypto.a)
+      /usr/local/opt/openssl@1.1/lib/libssl.a
+      /usr/local/opt/openssl@1.1/lib/libcrypto.a)
     else()
       set(BOOST_LIBS -lboost_context-mt -lboost_filesystem-mt -lssl -lcrypto)
     endif()
   endif()
+
   include_directories(
     /usr/local/include
-    /usr/local/opt/openssl/include
-    )
+    /usr/local/opt/openssl@1.1/include
+  )
   link_directories(
     /usr/local/lib
-    /usr/local/opt/openssl/lib
+    /usr/local/opt/openssl@1.1/lib
     /usr/local/opt/boost/lib
-    )
+  )
 elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_74_0)
@@ -305,6 +306,8 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/audio.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/gizmo.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/gizmo.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.hpp
   ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
@@ -473,6 +476,10 @@ include_directories(
   ${CHAINBLOCKS_DIR}/deps/pareto/source
   )
 
+if(BUILD_CORE_ONLY)
+  add_compile_definitions(CB_CORE_ONLY)
+endif()
+
 # wasm3
 ExternalProject_Add(wasm3
   URL ${CHAINBLOCKS_DIR}/deps/wasm3
@@ -504,6 +511,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
+    ${CHAINBLOCKS_DIR}/deps/imguizmo
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
     ${CHAINBLOCKS_DIR}/deps/miniaudio
@@ -660,9 +668,9 @@ if(NOT BUILD_CORE_ONLY)
       if(FORCE_USE_VULKAN)
         add_compile_definitions(BGFX_CONFIG_RENDERER_VULKAN)
       elseif(BGFX_OPENGL_VERSION)
-        add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=${BGFX_OPENGL_VERSION})
+        add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=${BGFX_OPENGL_VERSION})
       else()
-        add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=43)
+        add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGL BGFX_CONFIG_RENDERER_OPENGL_MIN_VERSION=43)
       endif()
     else()
       add_compile_definitions(BGFX_CONFIG_RENDERER_OPENGLES_MIN_VERSION=30)
@@ -786,6 +794,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/gizmo.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
     ${CHAINBLOCKS_DIR}/src/extra/dsp.cpp
@@ -798,6 +807,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_tables.cpp
+    ${CHAINBLOCKS_DIR}/deps/imguizmo/ImGuizmo.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot_items.cpp
 
@@ -843,7 +853,11 @@ if(NOT BUILD_CORE_ONLY)
   if(NOT SKIP_RUST_BINDGEN)
     # So we got issues when building win32 and libclang...
     # let's bindgen on win64 only and the other OSs
-    set(RUST_BINDGEN ,run_bindgen)
+    set(RUST_FEATURES ${RUST_FEATURES} --features run_bindgen)
+  endif()
+
+  if(RUST_CBLISP)
+    set(RUST_FEATURES ${RUST_FEATURES} --features cblisp)
   endif()
 
   if(RUST_USE_LTO)
@@ -865,7 +879,7 @@ if(NOT BUILD_CORE_ONLY)
   add_custom_target(
     rust_blocks
     COMMAND ${RUSTFLAGS}
-    COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks${RUST_BINDGEN} ${RUST_BUILD_OPTIONS}
+    COMMAND cargo ${CARGO_NIGHT} build ${CARGO_Z} --features blocks ${RUST_FEATURES} ${RUST_BUILD_OPTIONS}
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
@@ -1028,6 +1042,27 @@ if(EMSCRIPTEN)
     set_target_properties(cbl PROPERTIES SUFFIX "-st.js")
   endif()
 endif()
+###
+
+### mal as dll
+add_library(
+  libcb SHARED
+  "${CHAINBLOCKS_DIR}/src/mal/stepA_mal.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Core.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Environment.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Reader.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/ReadLine.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/String.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Types.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/Validation.cpp"
+  "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
+  )
+add_dependencies(libcb cb_static)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+set_property(TARGET libcb PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT -DNO_MAL_MAIN")
+target_link_libraries(libcb ${CB_RUNTIME_LIBS} ${EXTRA_LIBS} ${BOOST_LIBS} ${CB_PLATFORM_LIBS} ${EXTRA_SYS_LIBS})
+set_target_properties(libcb PROPERTIES PREFIX "")
 ###
 
 ### our experimental edn eval

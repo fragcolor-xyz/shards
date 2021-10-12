@@ -52,12 +52,11 @@ jobs:
           rustup target add wasm32-unknown-emscripten
       - name: Set up rust (mt)
         if: ${{ matrix.threading == 'mt' }}
-        run: |        
+        run: |
           rustup component add rust-src --toolchain nightly
       - name: Build
         run: |
           source emsdk/emsdk_env.sh
-          cargo tree --features blocks --target=wasm32-unknown-emscripten
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
@@ -239,7 +238,7 @@ jobs:
           ./cbl ../src/tests/branch.edn
           ./cbl ../src/tests/audio.edn
           ./cbl ../src/tests/time.edn
-          ./cbl ../src/tests/eth.edn 
+          ./cbl ../src/tests/eth.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ matrix.build-type == 'Debug' }}
@@ -465,7 +464,7 @@ jobs:
           cd deps/libbacktrace
           mkdir build
           ./configure --prefix=`pwd`/build
-          make && make install        
+          make && make install
       - name: Build
         env:
           RUST_BACKTRACE: 1
@@ -605,16 +604,25 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
-          path: docs\samples
+          name: cbl-win64 Debug
+          path: docs/samples
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-boost
       - name: Run samples
-        shell: pwsh
+        shell: msys2 {0}
         run: |
-          cd docs\samples
-          dir blocks -recurse -include *.edn | %{
-            echo ("Running sample " + ($_ | Resolve-Path -Relative))
-            .\cbl.exe .\run_sample.edn --file $_.FullName
-          }
+          cd docs/samples
+          for i in $(find blocks -name '*.edn');
+          do
+            echo "Running sample $i";
+            ./cbl.exe run_sample.edn --file "$i";
+          done
 
   #
   # Generate blocks documentation (markdown)
@@ -630,9 +638,17 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
+          name: cbl-win64 Debug
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-boost
       - name: Generate markdown
-        shell: bash
+        shell: msys2 {0}
         run: ./cbl.exe src/tests/infos_docs.edn
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -659,7 +675,9 @@ jobs:
         with:
           python-version: 3.x
       - name: Install mkdocs
-        run: pip install mkdocs-material
+        run: |
+          pip install mkdocs-material
+          pip install mkdocs-awesome-pages-plugin
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
@@ -681,7 +699,7 @@ jobs:
   # Publish documentation website to IPFS
   #
   docs-website-publish:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
     needs: docs-website-build
     runs-on: ubuntu-latest
     steps:
@@ -707,13 +725,19 @@ jobs:
                > response.json
           cat response.json
           if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
+      - name: Set IPFS CID
+        id: set_ipfs_cid
+        run: |
+          echo "::set-output name=ipfs_cid::$(cat response.json | jq .value.cid)"
       - name: Sync Cloudflare
         run: |
-          IPFS_CID=$(cat response.json | jq .value.cid)
           curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/96d9b2a2e44b3bcabb158bd3ad0446f7" \
                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
-               -H "Content-Type:application/json" \
-               -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${IPFS_CID}/site\", \"ttl\": 1 }"
+               -H "Content-Type: application/json" \
+               -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${{ steps.set_ipfs_cid.outputs.ipfs_cid }}/site\", \"ttl\": 1 }" \
+               > response.json
+          cat response.json
+          if [ $(cat response.json | jq .success) != "true" ]; then exit 1; fi
 
   #
   # Build chainblocks for macOS
@@ -733,6 +757,7 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
           brew install boost cmake ninja clang-format
+          brew install openssl@1.1
           rustup update
       - name: Build
         run: |
@@ -829,6 +854,7 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
           brew install boost cmake clang-format
+          brew install openssl@1.1
           rustup update
           rustup target add x86_64-apple-ios
           rustup target add aarch64-apple-ios

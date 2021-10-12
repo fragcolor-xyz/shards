@@ -52,6 +52,10 @@ static StaticList<malBuiltIn *> handlers;
 
 extern void cbRegisterAllBlocks();
 
+#ifndef CB_CORE_ONLY
+extern "C" void runRuntimeTests();
+#endif
+
 class malCBChain;
 class malCBlock;
 class malCBNode;
@@ -96,6 +100,13 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
     cbRegisterAllBlocks();
 
     initDoneOnce = true;
+
+#ifndef NDEBUG
+#ifndef CB_CORE_ONLY
+    // TODO fix running rust tests...
+    runRuntimeTests();
+#endif
+#endif
   }
 
   // Chain params
@@ -2173,13 +2184,19 @@ __cdecl void cbLispDestroy(void *env) {
 __cdecl CBVar cbLispEval(void *env, const char *str) {
   auto penv = (malEnvPtr *)env;
   try {
-    auto res = maleval(str, *penv);
+    malValuePtr res;
+    if (penv) {
+      res = maleval(str, *penv);
+    } else {
+      auto cenv = malenv();
+      res = maleval(str, cenv);
+    }
     auto mvar = varify(res);
-    // hack, increase count to not loose contents...
-    // TODO, improve as in the end this leaks basically
-    std::size_t sh = std::hash<const char *>{}(str);
-    (*penv)->set(std::to_string(sh), malValuePtr(mvar.ptr()));
-    return mvar->value();
+    auto scriptVal = mvar->value();
+    CBVar tmp{};
+    // assume users will call CBCore::destroyVar!
+    chainblocks::cloneVar(tmp, scriptVal);
+    return scriptVal;
   } catch (...) {
     return chainblocks::Var::Empty;
   }

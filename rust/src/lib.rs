@@ -51,7 +51,7 @@ use std::ffi::CString;
 // cargo +nightly rustc --profile=check -- -Zunstable-options --pretty=expanded
 
 macro_rules! var {
-    ((--> $($param:tt) *)) => {{
+    ((-> $($param:tt) *)) => {{
         let blks = blocks!($($param) *);
         let mut vblks = Vec::<$crate::types::Var>::new();
         for blk in blks {
@@ -61,12 +61,13 @@ macro_rules! var {
         // but for now it's the easiest
         $crate::types::ClonedVar::from($crate::types::Var::from(&vblks))
     }};
+
     ($vexp:expr) => { $crate::types::WrappedVar($crate::types::Var::from($vexp)) }
 }
 
 macro_rules! blocks {
-    (@block Set :Name ..$var:ident) => { blocks!(@block Set (stringify!($var))); };
-    (@block Set ..$var:ident) => { blocks!(@block Set (stringify!($var))); };
+    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))); };
+    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))); };
     (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))); };
     (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))); };
 
@@ -78,6 +79,43 @@ macro_rules! blocks {
         }
             blk
     }};
+
+    // (BlockName.BlockName :ParamName ParamVar ...)
+    (@block $block0:ident.$block1:ident $(:$pname:tt $param:tt) *) => {{
+      let blkname = concat!(stringify!($block0), ".", stringify!($block1));
+      let blk = $crate::core::createBlockPtr(blkname);
+      unsafe {
+          (*blk).setup.unwrap()(blk);
+      }
+      let cparams: $crate::chainblocksc::CBParametersInfo;
+      unsafe {
+          cparams = (*blk).parameters.unwrap()(blk);
+      }
+      let params: &[$crate::chainblocksc::CBParameterInfo] = cparams.into();
+      $(
+          {
+              let param = stringify!($pname);
+              let mut piter = params.iter();
+              let idx = piter.position(|&x| -> bool {
+                  unsafe {
+                      let cname = x.name as *const std::os::raw::c_char as *mut std::os::raw::c_char;
+                      let cstr =  std::ffi::CString::from_raw(cname);
+                      let s = cstr.to_str();
+                      s.is_err() || s.unwrap() == param
+                  }
+              });
+              if let Some(pidx) = idx {
+                  let pvar = var!($param);
+                  unsafe {
+                      (*blk).setParam.unwrap()(blk, pidx as i32, &pvar.0 as * const _);
+                  }
+              } else {
+                  panic!("Parameter not found: {} for block: {}!", param, blkname);
+              }
+          }
+      ) *
+          blk
+   }};
 
     // (BlockName :ParamName ParamVar ...)
     (@block $block:ident $(:$pname:tt $param:tt) *) => {{
@@ -116,6 +154,25 @@ macro_rules! blocks {
             blk
      }};
 
+     // (BlockName.BlockName ParamVar ...)
+    (@block $block0:ident.$block1:ident $($param:tt) *) => {{
+      let blk = $crate::core::createBlockPtr(concat!(stringify!($block0), ".", stringify!($block1)));
+      unsafe {
+          (*blk).setup.unwrap()(blk);
+      }
+      let mut _pidx: i32 = 0;
+      $(
+          {
+              let pvar = var!($param);
+              unsafe {
+                  (*blk).setParam.unwrap()(blk, _pidx, &pvar.0 as *const _);
+              }
+              _pidx += 1;
+          }
+      ) *
+          blk
+    }};
+
     // (BlockName ParamVar ...)
     (@block $block:ident $($param:tt) *) => {{
         let blk = $crate::core::createBlockPtr(stringify!($block));
@@ -135,8 +192,16 @@ macro_rules! blocks {
             blk
     }};
 
-    (@block $a:expr) => { blocks!(@block Const $a); };
+    /*
+      I wanted to make just regular literals work but I could not
+      e.g.: 10 (Log)
+      but in this macro (. 10) (Log) has to be used.
+      I will implement a (.) builtin maybe in mal to allow copy pasting of such scripts.. but not sure we are going to use either.. again WIP but don't wanna loose it in history.
+    */
+    (@block . $a:expr) => { blocks!(@block Const $a); };
 
+    // this is the CORE evaluator takes a list of blocks expressions
+    // the current limit is that everything has to be between parenthesis (...)
     ($(($block:tt $($param:tt) *)) *) => {{
         let mut blks = Vec::<$crate::chainblocksc::CBlockPtr>::new();
         $(
@@ -247,14 +312,27 @@ mod dummy_block {
   }
 
   fn macroTest() {
-    blocks!((10)
-                (Log)
-                (Set :Name ..x)
-                (Repeat
-                 (-->
-                  (Msg "repeating...")
-                  (Log)))
-                (Msg :Message "Done"));
+    let rust_variable = "Hello World!";
+    let rust_variable2 = 2;
+    blocks!(
+      (. 10)
+      (Math.Multiply rust_variable2)
+      (Math.Subtract :Operand 1)
+      (Set .x)
+      (Log)
+      (ToString)
+      (Set :Name .x)
+      (Repeat
+        (->
+        (Msg "repeating...")
+        (Log)
+        (. rust_variable) (Log)))
+      (Msg :Message "Done"));
+
+    blocks!(
+      (. "Hello")
+      (Msg)
+    );
   }
 
   #[test]
@@ -298,10 +376,41 @@ mod dummy_block {
   }
 }
 
+#[cfg(feature = "cblisp")]
+mod cblisp {
+  use crate::Var;
+  use std::convert::TryInto;
+  use std::ffi::CString;
+
+  extern "C" {
+    pub fn cbLispCreate(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void;
+    pub fn cbLispDestroy(env: *mut ::core::ffi::c_void);
+    pub fn cbLispEval(env: *mut ::core::ffi::c_void, code: *const ::std::os::raw::c_char) -> Var;
+  }
+
+  macro_rules! cbl {
+    ($code:expr) => {
+      unsafe {
+        let code = CString::new($code).expect("CString failed...");
+        cbLispEval(::core::ptr::null_mut(), code.as_ptr())
+      }
+    };
+  }
+
+  pub fn test_cbl() {
+    // the string is stored at compile time, ideally we should compress them all!
+    let res = cbl!(include_str!("test.edn"));
+    let res: &str = res.as_ref().try_into().unwrap();
+    assert_eq!(res, "Hello");
+  }
+}
+
 #[cfg(feature = "blocks")]
 #[no_mangle]
-pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
-  Core = core;
+pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
+  unsafe {
+    Core = core;
+  }
 
   #[cfg(not(target_arch = "wasm32"))]
   blocks::http::registerBlocks();
@@ -316,7 +425,14 @@ pub unsafe extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::physics::forces::registerBlocks();
   blocks::svg::registerBlocks();
   blocks::eth::registerBlocks();
+  blocks::cb_csv::registerBlocks();
 
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   blocks::browse::registerBlocks();
+}
+
+#[no_mangle]
+pub extern "C" fn runRuntimeTests() {
+  #[cfg(feature = "cblisp")]
+  cblisp::test_cbl();
 }

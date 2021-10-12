@@ -1,4 +1,4 @@
-(Float 9)
+(float 9)
 (Math.Divide
  ;:Operand
  2.0)

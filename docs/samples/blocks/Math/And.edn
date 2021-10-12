@@ -1,5 +1,5 @@
-(Int4 0 2 4 8)
+(int4 0 2 4 8)
 (Math.And
  ;:Operand
- (Int4 3 3 3 3))
-(Assert.Is (Int4 0 2 0 0) true)
+ (int4 3 3 3 3))
+(Assert.Is (int4 0 2 0 0) true)
