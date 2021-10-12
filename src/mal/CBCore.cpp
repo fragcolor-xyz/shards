@@ -205,6 +205,8 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
       env);
   rep("(defmacro! | (fn* [& blocks] `(Sub (chainify (vector ~@blocks)))))",
       env);
+  rep("(defmacro! |# (fn* [& blocks] `(Hashed (chainify (vector ~@blocks)))))",
+      env);
   rep("(defmacro! || (fn* [& blocks] `(Await (chainify (vector ~@blocks)))))",
       env);
   rep("(defmacro! Setup (fn* [& blocks] `(Once (chainify (vector ~@blocks)))))",

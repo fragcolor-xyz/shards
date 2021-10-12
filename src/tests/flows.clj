@@ -263,16 +263,16 @@
 
 (defchain hashed
   10
-  (Hashed
-   (->
-    (Math.Add 1)
-    (Math.Add 2)
-    (Math.Add 3)
-    (Math.Add 4)
-    (Math.Add 5)
-    (Math.Add 6)))
+  (|#
+   (Math.Add 1)
+   (Math.Add 2)
+   (Math.Add 3)
+   (Math.Add 4)
+   (Math.Add 5)
+   (Math.Add 6))
   (Log)
   (| (Take "Hash") (ToHex) (Assert.Is "0xc9d0a01223cba6ab") (Log)))
+
 
 (schedule Root hashed)
 (run Root)
