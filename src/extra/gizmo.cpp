@@ -7,6 +7,7 @@ using namespace chainblocks;
 
 namespace chainblocks {
 namespace Gizmo {
+static TableVar experimental{{"experimental", Var(true)}};
 
 namespace Helper {
 static const float identity[16] = {
@@ -32,6 +33,10 @@ struct CubeView : public BGFX::BaseConsumer {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBOptionalString outputhelp() {
     return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
   }
 
   static CBParametersInfo parameters() { return _params; }
@@ -105,6 +110,10 @@ struct Grid : public BGFX::BaseConsumer {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBOptionalString outputhelp() {
     return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
   }
 
   static CBParametersInfo parameters() { return _params; }
@@ -216,6 +225,10 @@ struct Transform : public BGFX::BaseConsumer {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBOptionalString outputhelp() {
     return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
   }
 
   static CBParametersInfo parameters() { return _params; }
