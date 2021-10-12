@@ -160,16 +160,16 @@ struct Grid : public BGFX::BaseConsumer {
 
   CBVar activate(CBContext *context, const CBVar &input) {
 
-    linalg::aliases::float3 axis;
+    linalg::aliases::float4 rot;
     switch (Enums::GridAxis(_axis.get().payload.enumValue)) {
     case Enums::GridAxis::X:
-      axis = AxisX;
+      rot = linalg::rotation_quat(AxisZ, Helper::PI_2);
       break;
     case Enums::GridAxis::Y:
-      axis = AxisY;
+      rot = {0.f, 0.f, 0.f, 1.f};
       break;
     case Enums::GridAxis::Z:
-      axis = AxisZ;
+      rot = linalg::rotation_quat(AxisX, Helper::PI_2);
       break;
     }
 
@@ -177,7 +177,6 @@ struct Grid : public BGFX::BaseConsumer {
         reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
-    auto rot = linalg::rotation_quat(axis, Helper::PI_2);
     _matView = linalg::mul(currentView.view, linalg::rotation_matrix(rot));
 
     float arrView[16];
