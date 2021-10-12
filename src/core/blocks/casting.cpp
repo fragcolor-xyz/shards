@@ -2,6 +2,8 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "blockwrapper.hpp"
+#include "chainblocks.h"
+#include "number_types.hpp"
 #include "shared.hpp"
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
@@ -259,6 +261,15 @@ template <CBType ToType> struct ToNumber {
     return _outputVectorType->type;
   }
 
+  static const NumberTypeTraits *getEnumNumberType() {
+    static const NumberTypeTraits *result = nullptr;
+    if (!result) {
+      result = NumberTypeLookup::getInstance().get(NumberType::Int32);
+      cbassert(result);
+    }
+    return result;
+  }
+
   const NumberTypeTraits *
   determineFixedSeqNumberType(const CBTypeInfo &typeInfo) {
     if (!typeInfo.fixedSize) {
@@ -386,6 +397,14 @@ template <CBType ToType> struct ToNumber {
     }
   }
 
+  CBVar parseEnumValue(CBVar &output, CBEnum value) {
+    _numberConversion =
+        getEnumNumberType()->conversionTable.get(_outputVectorType->numberType);
+    cbassert(_numberConversion);
+
+    _numberConversion->convertOne(&value, &output.payload);
+  }
+
   CBVar activateSeqElementsFixed(CBContext *context, const CBVar &input) {
     cbassert(_outputVectorType);
     cbassert(_numberConversion);
@@ -414,6 +433,9 @@ template <CBType ToType> struct ToNumber {
     switch (input.valueType) {
     case Seq:
       parseSeqElements(output, input.payload.seqValue);
+      break;
+    case Enum:
+      parseEnumValue(output, input.payload.enumValue);
       break;
     case String:
       parseStringElements(output, input.payload.stringValue,
