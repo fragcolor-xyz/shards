@@ -686,7 +686,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
   }
   DEFER(if constexpr (HASHED) {
     *outHash = XXH3_64bits_digest(&hashState);
-    CBLOG_TRACE("Hashing digested {}", *outHash);
+    CBLOG_TRACE("Hashing digested {0:x}", *outHash);
   });
 
   // store initial input
@@ -3152,6 +3152,21 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
       return CBChainState::Stop;
     }
   };
+
+  result->runBlocksHashed =
+      [](CBlocks blocks, CBContext *context, const CBVar *input, CBVar *output,
+         const CBBool handleReturn, uint64_t *outHash) noexcept {
+        try {
+          return chainblocks::activateBlocks(blocks, context, *input, *output,
+                                             handleReturn, outHash);
+        } catch (const std::exception &e) {
+          context->cancelFlow(e.what());
+          return CBChainState::Stop;
+        } catch (...) {
+          context->cancelFlow("foreign exception failure during runBlocks");
+          return CBChainState::Stop;
+        }
+      };
 
   result->getChainInfo = [](CBChainRef chainref) noexcept {
     auto sc = CBChain::sharedFromRef(chainref);

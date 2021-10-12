@@ -985,6 +985,14 @@ struct InternalCore {
                                        handleReturn);
   }
 
+  static CBChainState runBlocksHashed(CBlocks blocks, CBContext *context,
+                                      const CBVar &input, CBVar &output,
+                                      const CBBool handleReturn,
+                                      uint64_t *outHash) {
+    return chainblocks::activateBlocks(blocks, context, input, output,
+                                       handleReturn, outHash);
+  }
+
   static CBChainState suspend(CBContext *ctx, double seconds) {
     return chainblocks::suspend(ctx, seconds);
   }
