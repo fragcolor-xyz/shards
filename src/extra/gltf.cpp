@@ -378,6 +378,8 @@ struct Load : public BGFX::BaseConsumer {
     if (_shaderCompiler) {
       _shaderCompiler = nullptr;
     }
+
+    BGFX::BaseConsumer::cleanup();
   }
 
   std::shared_ptr<GFXTexture> getOrLoadTexture(const GLTFModel &gltf,
@@ -577,6 +579,8 @@ struct Load : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *ctx) {
+    BGFX::BaseConsumer::warmup(ctx);
+
     _shaderCompiler = makeShaderCompiler();
     _shaderCompiler->warmup(ctx);
 
@@ -1405,7 +1409,6 @@ struct Draw : public BGFX::BaseConsumer {
   ParamVar _model{};
   ParamVar _materials{};
   OwnedVar _rootChain{};
-  CBVar *_bgfxContext{nullptr};
   std::array<CBExposedTypeInfo, 5> _required;
   std::unordered_map<size_t,
                      std::optional<std::pair<const CBVar *, const CBVar *>>>
@@ -1556,19 +1559,18 @@ struct Draw : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *context) {
+    BGFX::BaseConsumer::warmup(context);
+
     _model.warmup(context);
     _materials.warmup(context);
-    _bgfxContext = referenceVariable(context, "GFX.Context");
   }
 
   void cleanup() {
     _matsCache.clear();
     _model.cleanup();
     _materials.cleanup();
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
+
+    BGFX::BaseConsumer::cleanup();
   }
 
   void renderNodeSubmit(BGFX::Context *ctx, const Node &node,
@@ -1748,7 +1750,7 @@ struct Draw : public BGFX::BaseConsumer {
     bgfx::setInstanceDataBuffer(&idb);
 
     auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
 
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
@@ -1770,7 +1772,7 @@ struct Draw : public BGFX::BaseConsumer {
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
     auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
 
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);

@@ -305,6 +305,8 @@ set(
   ${CHAINBLOCKS_DIR}/src/extra/audio.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
   ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
+  ${CHAINBLOCKS_DIR}/src/extra/gizmo.cpp
+  ${CHAINBLOCKS_DIR}/src/extra/gizmo.hpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
   ${CHAINBLOCKS_DIR}/src/extra/imgui.hpp
   ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
@@ -508,6 +510,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/examples/common/imgui
     ${CHAINBLOCKS_DIR}/deps/bimg/include
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui
+    ${CHAINBLOCKS_DIR}/deps/imguizmo
     ${CHAINBLOCKS_DIR}/deps/implot
     ${CHAINBLOCKS_DIR}/deps/bimg/3rdparty/astc-codec/include
     ${CHAINBLOCKS_DIR}/deps/miniaudio
@@ -790,6 +793,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
     ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
+    ${CHAINBLOCKS_DIR}/src/extra/gizmo.cpp
     ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
     ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
     ${CHAINBLOCKS_DIR}/src/extra/dsp.cpp
@@ -802,6 +806,7 @@ if(NOT BUILD_CORE_ONLY)
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_draw.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_widgets.cpp
     ${CHAINBLOCKS_DIR}/deps/bgfx/3rdparty/dear-imgui/imgui_tables.cpp
+    ${CHAINBLOCKS_DIR}/deps/imguizmo/ImGuizmo.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot.cpp
     ${CHAINBLOCKS_DIR}/deps/implot/implot_items.cpp
 
