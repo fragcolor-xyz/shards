@@ -193,10 +193,9 @@ struct RenderXR : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *context) {
-    _blocks.warmup(context);
+    BGFX::BaseConsumer::warmup(context);
 
-    _bgfxContext = referenceVariable(context, "GFX.Context");
-    assert(_bgfxContext->valueType == CBType::Object);
+    _blocks.warmup(context);
 
     _xrContextPVar = referenceVariable(context, "XR.Context");
     _xrContextPVar->valueType = CBType::Object;
@@ -251,7 +250,7 @@ struct RenderXR : public BGFX::BaseConsumer {
 
     if (bool(_xrSession)) {
       auto ctx =
-          reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+          reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
 
       _cb = (*_xrSession)["chainblocks"];
       if (!_cb->as<bool>()) {
@@ -358,15 +357,12 @@ struct RenderXR : public BGFX::BaseConsumer {
     _refSpace.reset();
 #endif
 
-    if (_bgfxContext) {
-      releaseVariable(_bgfxContext);
-      _bgfxContext = nullptr;
-    }
-
     if (_xrContextPVar) {
       releaseVariable(_xrContextPVar);
       _xrContextPVar = nullptr;
     }
+
+    BGFX::BaseConsumer::cleanup();
   }
 
   void populateInputsData() {
@@ -447,7 +443,7 @@ struct RenderXR : public BGFX::BaseConsumer {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     const auto ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxContext->payload.objectValue);
+        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
 #ifdef __EMSCRIPTEN__
     if (likely(bool(_cb))) {
       _frame = (*_cb)["frame"];
@@ -551,7 +547,6 @@ private:
 
   bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
   bgfx::ViewId _views[2];
-  CBVar *_bgfxContext{nullptr};
   float _near{0.1};
   float _far{1000.0};
   BlocksVar _blocks;

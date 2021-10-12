@@ -415,7 +415,7 @@ struct ModelHandle {
 constexpr uint32_t windowCC = 'hwnd';
 
 struct Base {
-  CBVar *_bgfxCtx;
+  CBVar *_bgfxCtx{nullptr};
 };
 
 struct BaseConsumer : public Base {
@@ -428,6 +428,18 @@ struct BaseConsumer : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
+  }
+
+  void warmup(CBContext *context) {
+    _bgfxCtx = referenceVariable(context, "GFX.Context");
+    assert(_bgfxCtx->valueType == CBType::Object);
+  }
+
+  void cleanup() {
+    if (_bgfxCtx) {
+      releaseVariable(_bgfxCtx);
+      _bgfxCtx = nullptr;
+    }
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {

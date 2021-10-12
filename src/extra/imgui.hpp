@@ -6,6 +6,8 @@
 #include "foundation.hpp"
 #include "imgui.h"
 
+#include "ImGuizmo.h"
+
 namespace ImGuiExtra {
 #include "imgui_memory_editor.h"
 };

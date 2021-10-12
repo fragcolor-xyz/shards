@@ -20,6 +20,10 @@ namespace ImGui {
 extern void registerImGuiBlocks();
 }
 
+namespace Gizmo {
+extern void registerGizmoBlocks();
+}
+
 namespace Snappy {
 extern void registerBlocks();
 }
@@ -64,6 +68,7 @@ void cbInitExtras() {
 
   BGFX::registerBGFXBlocks();
   chainblocks::ImGui::registerImGuiBlocks();
+  chainblocks::Gizmo::registerGizmoBlocks();
   XR::registerBlocks();
   gltf::registerBlocks();
   Inputs::registerBlocks();
