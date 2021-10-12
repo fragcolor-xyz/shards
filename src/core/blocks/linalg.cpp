@@ -715,10 +715,6 @@ template <const linalg::aliases::float3 &AXIS> struct AxisAngle {
   }
 };
 
-constexpr linalg::vec<float, 3> AxisX{1.0, 0.0, 0.0};
-constexpr linalg::vec<float, 3> AxisY{0.0, 1.0, 0.0};
-constexpr linalg::vec<float, 3> AxisZ{0.0, 0.0, 1.0};
-
 using AxisAngleX = AxisAngle<AxisX>;
 using AxisAngleY = AxisAngle<AxisY>;
 using AxisAngleZ = AxisAngle<AxisZ>;

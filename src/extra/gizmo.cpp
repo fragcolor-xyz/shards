@@ -14,10 +14,6 @@ static const float identity[16] = {
     0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f,
 };
 
-// FIXME: copied from linal.cpp, should be shared
-constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
-constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};
-constexpr linalg::aliases::float3 AxisZ{0.0, 0.0, 1.0};
 const float PI = 3.141592653589793238463f;
 const float PI_2 = PI * 0.5f;
 }; // namespace Helper
@@ -158,13 +154,13 @@ struct Grid : public BGFX::BaseConsumer {
     linalg::aliases::float3 axis;
     switch (Enums::GridAxis(_axis.get().payload.enumValue)) {
     case Enums::GridAxis::X:
-      axis = Helper::AxisX;
+      axis = AxisX;
       break;
     case Enums::GridAxis::Y:
-      axis = Helper::AxisY;
+      axis = AxisY;
       break;
     case Enums::GridAxis::Z:
-      axis = Helper::AxisZ;
+      axis = AxisZ;
       break;
     }
 

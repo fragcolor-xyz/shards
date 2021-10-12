@@ -186,6 +186,11 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
     return *v;
   }
 };
+
+constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
+constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};
+constexpr linalg::aliases::float3 AxisZ{0.0, 0.0, 1.0};
+
 }; // namespace chainblocks
 
 #endif
