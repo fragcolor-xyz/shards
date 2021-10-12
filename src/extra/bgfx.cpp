@@ -1041,8 +1041,6 @@ struct Texture2D : public BaseConsumer {
       Texture::Var.Release(_texture);
       _texture = nullptr;
     }
-
-    BaseConsumer::cleanup();
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
@@ -1422,8 +1420,6 @@ struct Model : public BaseConsumer {
       ModelHandle::Var.Release(_output);
       _output = nullptr;
     }
-
-    BaseConsumer::cleanup();
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -1719,6 +1715,10 @@ struct CameraBase : public BaseConsumer {
        {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
+
+  void cleanup() { BaseConsumer::_cleanup(); }
+
+  void warmup(CBContext *context) { BaseConsumer::_warmup(context); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
@@ -2172,7 +2172,7 @@ struct Draw : public BaseConsumer {
   }
 
   void warmup(CBContext *context) {
-    BaseConsumer::warmup(context);
+    BaseConsumer::_warmup(context);
 
     _shader.warmup(context);
     _textures.warmup(context);
@@ -2184,7 +2184,7 @@ struct Draw : public BaseConsumer {
     _textures.cleanup();
     _model.cleanup();
 
-    BaseConsumer::cleanup();
+    BaseConsumer::_cleanup();
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
@@ -2534,7 +2534,7 @@ struct RenderTexture : public RenderTarget {
     bgfx::TextureHandle textures[] = {_texture->handle, _depth.handle};
     _framebuffer = bgfx::createFrameBuffer(2, textures, false);
 
-    BaseConsumer::warmup(context);
+    BaseConsumer::_warmup(context);
     Context *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
     _viewId = ctx->nextViewId();
 
@@ -2568,7 +2568,7 @@ struct RenderTexture : public RenderTarget {
       _imguiBgfxCtx->destroy();
     }
 
-    BaseConsumer::cleanup();
+    BaseConsumer::_cleanup();
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -2794,6 +2794,10 @@ struct Screenshot : public BaseConsumer {
 
   CBVar getParam(int index) { return Var(_overwrite); }
 
+  void cleanup() { BaseConsumer::_cleanup(); }
+
+  void warmup(CBContext *context) { BaseConsumer::_warmup(context); }
+
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
     return CoreInfo::StringType;
@@ -2843,6 +2847,10 @@ struct Unproject : public BaseConsumer {
   }
 
   CBVar getParam(int index) { return Var(_z); }
+
+  void cleanup() { BaseConsumer::_cleanup(); }
+
+  void warmup(CBContext *context) { BaseConsumer::_warmup(context); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     BaseConsumer::compose(data);
