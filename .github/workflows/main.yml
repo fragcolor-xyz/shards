@@ -36,7 +36,7 @@ jobs:
         with:
           repository: emscripten-core/emsdk
           path: emsdk
-          fetch-depth: 2
+          fetch-depth: 1
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
@@ -520,7 +520,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          fetch-depth: 2
+          fetch-depth: 1
+          submodules: recursive
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
