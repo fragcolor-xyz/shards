@@ -1198,15 +1198,17 @@ TEST_CASE("Number Types") {
 
     std::vector<Var> vec{Var(0)};
     Var seq = Var(vec);
-    CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
-              ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
+    CHECK_NOTHROW(
+        typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+            ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)1.1f);
     CHECK(float2v[1] == 0.0);
 
     vec = {Var(3), Var(1)};
     seq = Var(vec);
-    CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
-              ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
+    CHECK_NOTHROW(
+        typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+            ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)4.4f);
     CHECK(float2v[1] == (double)2.2f);
   }
@@ -1219,8 +1221,10 @@ TEST_CASE("Number Types") {
     Var seq = Var(vec);
 
     // Should return false
-    CHECK_THROWS_AS(typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
-              ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue), NumberConversionOutOfRangeEx);
+    CHECK_THROWS_AS(
+        typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
+            ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue),
+        NumberConversionOutOfRangeEx);
     CHECK(float2v1[0] == 0.f);
     CHECK(float2v1[1] == 0.f);
   }
@@ -1240,14 +1244,16 @@ TEST_CASE("Vector types") {
   }
 
   for (size_t i = 1; i < 4; i++) {
-    const VectorTypeTraits *compatibleType = Typelookup.findCompatibleType(false, i);
+    const VectorTypeTraits *compatibleType =
+        Typelookup.findCompatibleType(false, i);
     CHECK(compatibleType);
     CHECK(compatibleType->dimension >= i);
     CHECK(!compatibleType->isInteger);
   }
-  
+
   for (size_t i = 1; i < 16; i++) {
-    const VectorTypeTraits *compatibleType = Typelookup.findCompatibleType(true, i);
+    const VectorTypeTraits *compatibleType =
+        Typelookup.findCompatibleType(true, i);
     CHECK(compatibleType);
     CHECK(compatibleType->dimension >= i);
     CHECK(compatibleType->isInteger);

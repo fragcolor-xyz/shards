@@ -77,7 +77,7 @@ struct Type {
   }
 
   operator CBTypesInfo() const {
-    CBTypesInfo res{const_cast<CBTypeInfo*>(&_type), 1, 0};
+    CBTypesInfo res{const_cast<CBTypeInfo *>(&_type), 1, 0};
     return res;
   }
 

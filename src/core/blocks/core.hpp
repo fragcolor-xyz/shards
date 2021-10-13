@@ -10,9 +10,9 @@
 #include "chainblocks.hpp"
 #include "common_types.hpp"
 #include "number_types.hpp"
-#include <sstream>
 #include <cassert>
 #include <cmath>
+#include <sstream>
 
 namespace chainblocks {
 struct CoreInfo2 {
@@ -2343,12 +2343,12 @@ struct Take {
   ExposedInfo _exposedInfo{};
   bool _seqOutput{false};
   bool _tableOutput{false};
-  
+
   CBVar _vectorOutput{};
   const VectorTypeTraits *_vectorInputType{nullptr};
   const VectorTypeTraits *_vectorOutputType{nullptr};
-  const NumberConversion* _vectorConversion{nullptr};
-  
+  const NumberConversion *_vectorConversion{nullptr};
+
   Type _seqOutputType{};
   std::vector<CBTypeInfo> _seqOutputTypes;
 
@@ -2443,31 +2443,39 @@ struct Take {
       _vectorInputType =
           VectorTypeLookup::getInstance().get(data.inputType.basicType);
       if (_vectorInputType) {
-        if(_seqOutput)
+        if (_seqOutput)
           OVERRIDE_ACTIVATE(data, activateVector);
         else
           OVERRIDE_ACTIVATE(data, activateNumber);
-        
-        uint8_t indexTableLength = _seqOutput ? (uint8_t)_indices.payload.seqValue.len : 1;
-        _vectorOutputType = VectorTypeLookup::getInstance().findCompatibleType(_vectorInputType->isInteger, indexTableLength);
-        if(!_vectorOutputType) {
+
+        uint8_t indexTableLength =
+            _seqOutput ? (uint8_t)_indices.payload.seqValue.len : 1;
+        _vectorOutputType = VectorTypeLookup::getInstance().findCompatibleType(
+            _vectorInputType->isInteger, indexTableLength);
+        if (!_vectorOutputType) {
           std::stringstream errorMsgStream;
-          errorMsgStream << "Take: No " << (_vectorInputType->isInteger ? "integer" : "float") << " vector type exists that fits " << indexTableLength << "elements";
+          errorMsgStream << "Take: No "
+                         << (_vectorInputType->isInteger ? "integer" : "float")
+                         << " vector type exists that fits " << indexTableLength
+                         << "elements";
           std::string errorMsg = errorMsgStream.str();
-            CBLOG_ERROR(errorMsg.c_str());
-            throw ComposeError(errorMsg);
+          CBLOG_ERROR(errorMsg.c_str());
+          throw ComposeError(errorMsg);
         }
-        
-        _vectorConversion = NumberTypeLookup::getInstance().getConversion(_vectorInputType->numberType, _vectorOutputType->numberType);
-        if(!_vectorConversion) {
+
+        _vectorConversion = NumberTypeLookup::getInstance().getConversion(
+            _vectorInputType->numberType, _vectorOutputType->numberType);
+        if (!_vectorConversion) {
           std::stringstream errorMsgStream;
-          errorMsgStream << "Take: No conversion from " << _vectorInputType->name << " to " << _vectorOutputType->name << " exists";
+          errorMsgStream << "Take: No conversion from "
+                         << _vectorInputType->name << " to "
+                         << _vectorOutputType->name << " exists";
           std::string errorMsg = errorMsgStream.str();
-            CBLOG_ERROR(errorMsg.c_str());
-            throw ComposeError(errorMsg);
+          CBLOG_ERROR(errorMsg.c_str());
+          throw ComposeError(errorMsg);
         }
-        
-        _vectorOutput.valueType  = _vectorOutputType->cbType;
+
+        _vectorOutput.valueType = _vectorOutputType->cbType;
         return _vectorOutputType->type;
       } else if (data.inputType.basicType == Bytes) {
         OVERRIDE_ACTIVATE(data, activateBytes);
@@ -2659,23 +2667,26 @@ struct Take {
 
   CBVar activateVector(CBContext *context, const CBVar &input) {
     const auto &indices = _indices;
-    
+
     try {
-      _vectorConversion->convertMultipleSeq(&input.payload, &_vectorOutput.payload, _vectorInputType->dimension, indices.payload.seqValue);
-    } catch(const NumberConversionOutOfRangeEx& ex) {
+      _vectorConversion->convertMultipleSeq(
+          &input.payload, &_vectorOutput.payload, _vectorInputType->dimension,
+          indices.payload.seqValue);
+    } catch (const NumberConversionOutOfRangeEx &ex) {
       throw OutOfRangeEx(_vectorInputType->dimension, ex.index);
     }
-    
+
     return _vectorOutput;
   }
-  
+
   CBVar activateNumber(CBContext *context, const CBVar &input) {
     CBInt index = _indices.payload.intValue;
-    if(index < 0 || index >= (CBInt)_vectorInputType->dimension) {
+    if (index < 0 || index >= (CBInt)_vectorInputType->dimension) {
       throw OutOfRangeEx(_vectorInputType->dimension, index);
     }
-    
-    const uint8_t* inputPtr = (uint8_t*)&input.payload + _vectorConversion->inStride * index;
+
+    const uint8_t *inputPtr =
+        (uint8_t *)&input.payload + _vectorConversion->inStride * index;
     _vectorConversion->convertOne(inputPtr, &_vectorOutput.payload);
 
     return _vectorOutput;
@@ -2703,7 +2714,7 @@ struct RTake : public Take {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     CBTypeInfo result = Take::compose(data);
-    if(data.inputType.basicType == Seq) {
+    if (data.inputType.basicType == Seq) {
       OVERRIDE_ACTIVATE(data, activate);
     } else {
       throw CBException("RTake is only supported on sequence types");

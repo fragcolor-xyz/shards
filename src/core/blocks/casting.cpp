@@ -397,7 +397,7 @@ template <CBType ToType> struct ToNumber {
     }
   }
 
-  CBVar parseEnumValue(CBVar &output, CBEnum value) {
+  void parseEnumValue(CBVar &output, CBEnum value) {
     _numberConversion =
         getEnumNumberType()->conversionTable.get(_outputVectorType->numberType);
     cbassert(_numberConversion);

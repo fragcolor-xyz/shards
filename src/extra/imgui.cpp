@@ -787,6 +787,15 @@ struct ChildWindow : public Base {
   }
 };
 
+Parameters &VariableParamsInfo() {
+  static Parameters params{
+      {"Label", CBCCSTR("The label for this widget."), CoreInfo::StringOrNone},
+      {"Variable",
+       CBCCSTR("The name of the variable that holds the input value."),
+       CoreInfo::StringOrNone}};
+  return params;
+}
+
 template <CBType CT> struct Variable : public Base {
   static inline Type varType{{CT}};
 
@@ -854,13 +863,10 @@ template <CBType CT> struct Variable : public Base {
     }
   }
 
-  static inline Parameters paramsInfo{
-      {"Label", CBCCSTR("The label for this widget."), CoreInfo::StringOrNone},
-      {"Variable",
-       CBCCSTR("The name of the variable that holds the input value."),
-       CoreInfo::StringOrNone}};
-
-  static CBParametersInfo parameters() { return paramsInfo; }
+  static CBParametersInfo parameters() {
+    static CBParametersInfo info = VariableParamsInfo();
+    return info;
+  }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -1272,7 +1278,7 @@ template <CBType CBT> struct DragBase : public Variable<CBT> {
   float _speed{1.0};
 
   static inline Parameters paramsInfo{
-      Variable<CBT>::paramsInfo,
+      VariableParamsInfo(),
       {{"Speed", CBCCSTR("The speed multiplier for this drag widget."),
         CoreInfo::StringOrNone}}};
 
@@ -2025,7 +2031,7 @@ struct RadioButton : public Variable<CBType::Int> {
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
-  static CBParametersInfo parameters() { return _params; }
+  static CBParametersInfo parameters() { return paramsInfo; }
 
   void setParam(int index, const CBVar &value) {
     if (index < 2)
@@ -2065,8 +2071,8 @@ struct RadioButton : public Variable<CBType::Int> {
   }
 
 private:
-  static inline Parameters _params{
-      Variable<CBType::Int>::paramsInfo,
+  static inline Parameters paramsInfo{
+      VariableParamsInfo(),
       {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::IntType}}}};
 
   CBInt _value;
