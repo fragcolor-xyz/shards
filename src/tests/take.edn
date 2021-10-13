@@ -1,0 +1,24 @@
+(def Root (Node))
+
+(schedule
+ Root
+ (Chain "test"
+        (Float3 1 2 3) >= .vec
+        (Take 1)
+        (Assert.Is 2.0 true)
+        (Log "Y Component")
+        ;; This should fail
+        ;; .vec (Take 4)
+        .vec (Take [2 1 0])
+        (Assert.Is (Float3 3 2 1) true)
+        (Log "YXZ Swizzle")
+        
+        .vec (Take [0 0 1 2])
+        (Assert.Is (Float4 1 1 2 3) true)
+        (Log "XXYZ Swizzle")
+        (ToFloat3)
+        (Log "Converted to Float3")
+        (ToInt3)
+        (Log "Converted to Int3")
+        ))
+(tick Root)
