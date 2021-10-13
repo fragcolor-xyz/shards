@@ -101,11 +101,9 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
 
     initDoneOnce = true;
 
-#ifndef NDEBUG
-#ifndef CB_CORE_ONLY
+#if defined(CHAINBLOCKS_WITH_RUST_BLOCKS) && !defined(NDEBUG)
     // TODO fix running rust tests...
     runRuntimeTests();
-#endif
 #endif
   }
 
