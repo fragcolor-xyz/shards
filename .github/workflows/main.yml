@@ -239,6 +239,8 @@ jobs:
           ./cbl ../src/tests/audio.edn
           ./cbl ../src/tests/time.edn
           ./cbl ../src/tests/eth.edn
+          ./cbl ../src/tests/take.edn
+          ./cbl ../src/tests/casting_numbers.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ matrix.build-type == 'Debug' }}
