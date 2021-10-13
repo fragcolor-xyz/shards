@@ -247,12 +247,17 @@ jobs:
         run: |
           cd build
           ./cbl ../src/tests/blocks.clj
-      - name: Test Headless
+      - name: Test Headless (bgfx)
         uses: chainblocks/xvfb-action@v1
         with:
           working-directory: ./build
           run: |
             ./cbl ../src/tests/bgfx.clj
+      - name: Test Headless (gizmos)
+        uses: chainblocks/xvfb-action@v1
+        with:
+          working-directory: ./build
+          run: |
             ./cbl ../src/tests/gizmos.edn
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
