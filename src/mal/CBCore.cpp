@@ -2085,7 +2085,11 @@ BUILTIN("info") {
       pmap[":types"] = mal::string(ss.str());
       {
         std::ostringstream ss;
-        ss << block->getParam(block, (int)i);
+        auto param = block->getParam(block, (int)i);
+        if (param.valueType == CBType::String)
+          ss << "\"" << param.payload.stringValue << "\"";
+        else
+          ss << param;
         pmap[":default"] = mal::string(ss.str());
       }
       pvec.emplace_back(mal::hash(pmap));
