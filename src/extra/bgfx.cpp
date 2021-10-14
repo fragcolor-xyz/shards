@@ -367,13 +367,17 @@ struct BaseWindow : public Base {
       {"ClearColor",
        CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
                "new frame."),
-       {CoreInfo::ColorType}}};
+       {CoreInfo::ColorType, CoreInfo::ColorVarType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() { return params; }
+
+  void warmup(CBContext *context) { _clearColor.warmup(context); }
+
+  void cleanup() { _clearColor.cleanup(); }
 
   std::string _title;
   int _pwidth = 1024;
@@ -388,7 +392,7 @@ struct BaseWindow : public Base {
   CBVar *_nativeWnd = nullptr;
   BlocksVar _blocks;
   OcornutImguiContext _imguiBgfxCtx;
-  CBColor _clearColor{0xC0, 0xC0, 0xAA, 0xFF};
+  ParamVar _clearColor{Var(CBColor{0xC0, 0xC0, 0xAA, 0xFF})};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -411,7 +415,7 @@ struct BaseWindow : public Base {
       _debug = value.payload.boolValue;
       break;
     case 6:
-      _clearColor = value.payload.colorValue;
+      _clearColor = value;
       break;
     default:
       break;
@@ -433,7 +437,7 @@ struct BaseWindow : public Base {
     case 5:
       return Var(_debug);
     case 6:
-      return Var(_clearColor);
+      return _clearColor;
     default:
       return Var::Empty;
     }
@@ -668,6 +672,8 @@ struct MainWindow : public BaseWindow {
 
     _wheelScroll = 0;
     _bgfxInit = false;
+
+    BaseWindow::cleanup();
   }
 
   static inline char *_clipboardContents{nullptr};
@@ -695,6 +701,8 @@ struct MainWindow : public BaseWindow {
   uint32_t _frameCounter{0};
 
   void warmup(CBContext *context) {
+    BaseWindow::warmup(context);
+
     // do not touch parameter values
     _rwidth = _pwidth;
     _rheight = _pheight;
@@ -849,9 +857,6 @@ struct MainWindow : public BaseWindow {
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
 
     bgfx::setViewRect(0, 0, 0, _rwidth, _rheight);
-    bgfx::setViewClear(0,
-                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
-                       Var(_clearColor).colorToInt(), 1.0f, 0);
 
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
     _bgfxCtx = referenceVariable(context, "GFX.Context");
@@ -891,6 +896,11 @@ struct MainWindow : public BaseWindow {
     if (!_bgfxCallback.fatalError.empty()) {
       throw ActivationError(_bgfxCallback.fatalError);
     }
+
+    auto colorInt = Var(_clearColor.get().payload.colorValue).colorToInt();
+    bgfx::setViewClear(0,
+                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+                       colorInt, 1.0f, 0);
 
     // Deal with inputs first as we might resize etc
 
