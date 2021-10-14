@@ -541,7 +541,7 @@ struct Window : public Base {
   chainblocks::BlocksVar _blks{};
   std::string _title;
   bool firstActivation{true};
-  Var _pos{}, _width{1.0}, _height{1.0};
+  Var _pos{}, _width{}, _height{};
   bool _movable{false};
   bool _closable{false};
   bool _resizable{false};
@@ -558,12 +558,12 @@ struct Window : public Base {
       {"Width",
        CBCCSTR("The width of the window to create. If the value is a Float, it "
                "will be interpreted as relative to the container window size."),
-       {CoreInfo::IntType, CoreInfo::FloatType}},
+       {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
       {"Height",
        CBCCSTR(
            "The height of the window to create. If the value is a Float, it "
            "will be interpreted as relative to the container window size."),
-       {CoreInfo::IntType, CoreInfo::FloatType}},
+       {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
       {"Contents", CBCCSTR("The inner contents blocks."),
        CoreInfo::BlocksOrNone},
       {"AllowMove",
@@ -676,14 +676,14 @@ struct Window : public Base {
       } else if (_width.valueType == Float) {
         size.x = io.DisplaySize.x * float(_width.payload.floatValue);
       } else {
-        assert(false);
+        size.x = 0.f;
       }
       if (_height.valueType == Int) {
         size.y = float(_height.payload.intValue);
       } else if (_height.valueType == Float) {
         size.y = io.DisplaySize.y * float(_height.payload.floatValue);
       } else {
-        assert(false);
+        size.y = 0.f;
       }
       ::ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
