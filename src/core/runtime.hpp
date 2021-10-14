@@ -1530,16 +1530,12 @@ struct Serialization {
         total += serialize(blockVar, write);
       }
       { // Variables len
-        uint32_t len = 0;
-        for (auto &var : chain->variables) {
-          len++;
-        }
+        uint32_t len = uint32_t(chain->variables.size());
         write((const uint8_t *)&len, sizeof(uint32_t));
         total += sizeof(uint32_t);
       }
       // Variables
       for (auto &var : chain->variables) {
-
         CBLOG_DEBUG("Serializing chain: {} variable: {} value: {}", chain->name,
                     var.first, var.second);
         uint32_t len = uint32_t(var.first.size());

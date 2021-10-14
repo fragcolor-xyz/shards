@@ -1343,7 +1343,7 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
         }
         // set :Default
         auto v = varify(next);
-        blk->value()->setParam(blk->value(), 4, &v->value());
+        blk->value()->setParam(blk->value(), 3, &v->value());
         state = Get;
       } else {
         auto blks = blockify(next);

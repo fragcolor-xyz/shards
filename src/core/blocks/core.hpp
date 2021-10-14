@@ -992,13 +992,12 @@ struct Get : public VariableBase {
   }
 
   void setParam(int index, const CBVar &value) {
-    if (index < variableParamsInfoLen) {
+    if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
-    } else if (index == variableParamsInfoLen + 0) {
+    else if (index == variableParamsInfoLen + 0)
       cloneVar(_defaultValue, value);
-    } else if (index == variableParamsInfoLen + 1) {
+    else if (index == variableParamsInfoLen + 1)
       _external = value.payload.boolValue;
-    }
   }
 
   CBVar getParam(int index) {
@@ -1006,6 +1005,8 @@ struct Get : public VariableBase {
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
       return _defaultValue;
+    else if (index == variableParamsInfoLen + 1)
+      return Var(_external);
     throw CBException("Param index out of range.");
   }
 
