@@ -2078,6 +2078,15 @@ private:
   CBInt _value;
 };
 
+struct FPS : public Base {
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ImGuiIO &io = ::ImGui::GetIO();
+    return Var(io.Framerate);
+  }
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -2119,6 +2128,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
   REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
   REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
+  REGISTER_CBLOCK("GUI.FPS", FPS);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
