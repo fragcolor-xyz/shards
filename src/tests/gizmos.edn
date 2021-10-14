@@ -154,7 +154,7 @@
        (GUI.RadioButton "Rotate" "radioOperation" 1) (GUI.SameLine)
        (GUI.RadioButton "Scale" "radioOperation" 2)
        (GUI.Separator)
-       (If (GUI.CheckBox "Snap?" "snappie")
+       (If (GUI.Checkbox "Snap?" "snappie")
            :Then (->
                   .prev_snap > .snap
                   (GUI.SameLine) (GUI.Float3Input "" "snap")

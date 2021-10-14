@@ -11,7 +11,7 @@
    "Next text"
    (GUI.Text)
 
-   (GUI.CheckBox "Yes/No" "cbox1")
+   (GUI.Checkbox "Yes/No" "cbox1")
    (GUI.Text)
 
    (GUI.Separator)

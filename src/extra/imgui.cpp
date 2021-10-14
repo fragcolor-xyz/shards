@@ -902,7 +902,7 @@ template <CBType CT> struct Variable : public Base {
   }
 };
 
-struct CheckBox : public Variable<CBType::Bool> {
+struct Checkbox : public Variable<CBType::Bool> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -2082,7 +2082,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
   REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
-  REGISTER_CBLOCK("GUI.CheckBox", CheckBox);
+  REGISTER_CBLOCK("GUI.Checkbox", Checkbox);
   REGISTER_CBLOCK("GUI.Text", Text);
   REGISTER_CBLOCK("GUI.Button", Button);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);

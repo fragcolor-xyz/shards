@@ -214,7 +214,7 @@
                    99 (GUI.Text "Player1")
                    99 (GUI.Text "Player1")
                    (GUI.Separator)
-                   (GUI.CheckBox "CheckBoxie" "checkBoxie") (GUI.SameLine) (GUI.Text)
+                   (GUI.Checkbox "CheckBoxie" "checkBoxie") (GUI.SameLine) (GUI.Text)
                    (Float4 2 3 4 5)
                    (Set "x")
                    (Float4 1 2 3 4)
