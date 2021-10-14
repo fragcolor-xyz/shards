@@ -929,12 +929,15 @@ struct Checkbox : public Variable<CBType::Bool> {
 struct Text : public Base {
   std::string _label;
   CBVar _color{};
+  std::string _format;
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Label", CBCCSTR("An optional label for the value."),
                         CoreInfo::StringOrNone),
       ParamsInfo::Param("Color", CBCCSTR("The optional color of the text."),
-                        CoreInfo::ColorOrNone));
+                        CoreInfo::ColorOrNone),
+      ParamsInfo::Param("Format", CBCCSTR("An optional format for the text."),
+                        CoreInfo::StringOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -949,6 +952,14 @@ struct Text : public Base {
     } break;
     case 1:
       _color = value;
+      break;
+    case 2: {
+      if (value.valueType == None) {
+        _format.clear();
+      } else {
+        _format = value.payload.stringValue;
+      }
+    } break;
     default:
       break;
     }
@@ -960,6 +971,8 @@ struct Text : public Base {
       return _label.size() == 0 ? Var::Empty : Var(_label);
     case 1:
       return _color;
+    case 2:
+      return _format.size() == 0 ? Var::Empty : Var(_format);
     default:
       return Var::Empty;
     }
@@ -974,10 +987,21 @@ struct Text : public Base {
     if (_color.valueType == Color)
       ::ImGui::PushStyleColor(ImGuiCol_Text, Style::color2Vec4(_color));
 
+    auto format = "%s";
+    if (_format.size() > 0) {
+      auto pos = _format.find("{}");
+      // while (pos != std::string::npos) {
+      if (pos != std::string::npos) {
+        _format.replace(pos, 2, format);
+        // pos = _format.find("{}", pos + 2);
+        // TODO support multiple args
+      }
+      format = _format.c_str();
+    }
     if (_label.size() > 0) {
-      ::ImGui::LabelText(_label.c_str(), "%s", _text.str());
+      ::ImGui::LabelText(_label.c_str(), format, _text.str());
     } else {
-      ::ImGui::Text("%s", _text.str());
+      ::ImGui::Text(format, _text.str());
     }
 
     if (_color.valueType == Color)
