@@ -1449,13 +1449,6 @@ struct Serialization {
       auto blk = input.payload.blockValue;
       // name
       auto name = blk->name(blk);
-      auto serialized = true;
-      if (strcmp(name, "Once") == 0) {
-        // optimize Once blocks if necessary
-        auto onceBlock =
-            reinterpret_cast<chainblocks::BlockWrapper<Once> *>(blk);
-        serialized = onceBlock->block._serialized;
-      }
       uint32_t len = uint32_t(strlen(name));
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
@@ -1465,29 +1458,26 @@ struct Serialization {
       auto crc = blk->hash(blk);
       write((const uint8_t *)&crc, sizeof(uint32_t));
       total += sizeof(uint32_t);
-      if (serialized) {
-        // params
-        // well, this is bad and should be fixed somehow at some point
-        // we are creating a block just to compare to figure default values
-        auto model =
-            defaultBlocks
-                .emplace(name, std::shared_ptr<CBlock>(createBlock(name),
-                                                       [](CBlock *block) {
-                                                         block->destroy(block);
-                                                       }))
-                .first->second.get();
-        if (!model) {
-          CBLOG_FATAL("Could not create block: {}.", name);
-        }
-        auto params = blk->parameters(blk);
-        for (uint32_t i = 0; i < params.len; i++) {
-          auto idx = int(i);
-          auto dval = model->getParam(model, idx);
-          auto pval = blk->getParam(blk, idx);
-          if (pval != dval) {
-            write((const uint8_t *)&idx, sizeof(int));
-            total += serialize(pval, write) + sizeof(int);
-          }
+      // params
+      // well, this is bad and should be fixed somehow at some point
+      // we are creating a block just to compare to figure default values
+      auto model =
+          defaultBlocks
+              .emplace(name, std::shared_ptr<CBlock>(
+                                 createBlock(name),
+                                 [](CBlock *block) { block->destroy(block); }))
+              .first->second.get();
+      if (!model) {
+        CBLOG_FATAL("Could not create block: {}.", name);
+      }
+      auto params = blk->parameters(blk);
+      for (uint32_t i = 0; i < params.len; i++) {
+        auto idx = int(i);
+        auto dval = model->getParam(model, idx);
+        auto pval = blk->getParam(blk, idx);
+        if (pval != dval) {
+          write((const uint8_t *)&idx, sizeof(int));
+          total += serialize(pval, write) + sizeof(int);
         }
       }
       int idx = -1; // end of params
@@ -1542,29 +1532,24 @@ struct Serialization {
       { // Variables len
         uint32_t len = 0;
         for (auto &var : chain->variables) {
-          if ((var.second.flags & CBVAR_FLAGS_SHOULD_SERIALIZE) ==
-              CBVAR_FLAGS_SHOULD_SERIALIZE) {
-            len++;
-          }
+          len++;
         }
         write((const uint8_t *)&len, sizeof(uint32_t));
         total += sizeof(uint32_t);
       }
       // Variables
       for (auto &var : chain->variables) {
-        if ((var.second.flags & CBVAR_FLAGS_SHOULD_SERIALIZE) ==
-            CBVAR_FLAGS_SHOULD_SERIALIZE) {
-          CBLOG_DEBUG("Serializing chain: {} variable: {} value: {}",
-                      chain->name, var.first, var.second);
-          uint32_t len = uint32_t(var.first.size());
-          write((const uint8_t *)&len, sizeof(uint32_t));
-          total += sizeof(uint32_t);
-          write((const uint8_t *)var.first.c_str(), len);
-          total += len;
-          // Serialization discards anything cept payload
-          // That is what we want anyway!
-          total += serialize(var.second, write);
-        }
+
+        CBLOG_DEBUG("Serializing chain: {} variable: {} value: {}", chain->name,
+                    var.first, var.second);
+        uint32_t len = uint32_t(var.first.size());
+        write((const uint8_t *)&len, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        write((const uint8_t *)var.first.c_str(), len);
+        total += len;
+        // Serialization discards anything cept payload
+        // That is what we want anyway!
+        total += serialize(var.second, write);
       }
       break;
     }
