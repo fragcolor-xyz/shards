@@ -1,0 +1,304 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+(defblocks todo! []
+  "todo!" (GUI.Text :Color (color 128 128 128 255)))
+
+(defblocks helloWorld-window []
+  (GUI.Window
+   :Title "Hello, World!"
+   :AllowResize true :AllowMove true :AllowCollapse true
+   :Contents
+   (-> (Setup
+        0 >= .counter
+        0.0 >= .fps)
+       "This is some useful text." (GUI.Text) (GUI.HelpMarker "This is some useful popup.")
+       (GUI.Checkbox "Demo Window" "showDemo")
+       (GUI.Checkbox "Another Window" "showAnother")
+       (GUI.FloatSlider "float" "floating" :Min 0.0 :Max 1.0)
+       (GUI.ColorInput "clear color" "color")
+       (GUI.Button "Button" (Math.Inc .counter))
+       (GUI.SameLine) .counter (GUI.Text :Format "counter = {}")
+       (GUI.FPS) > .fps 1000.0 (Math.Divide .fps)
+       (GUI.Text :Format "Application average {} ms/frame")
+       (GUI.SameLine) .fps (GUI.Text :Format "({} FPS)")))
+  (If (Get "showDemo") :Then (demo-window))
+  (If (Get "showAnother") :Then (another-window)))
+
+(defblocks another-window []
+  (GUI.Window
+   :Title "Another Window" :AllowMove true
+   :OnClose .showAnother
+   :Contents
+   (-> "Hello from another window!" (GUI.Text)
+       (GUI.Button "Close Me" (-> false (Update "showAnother"))))))
+
+(defblocks demo-window []
+  (GUI.Window
+   :Title "Dear ImGui Demo" :Pos (int2 650 20) :Width 550 :Height 680
+   :AllowResize true :AllowMove true :AllowCollapse true :ShowMenuBar true
+   :Contents
+   (-> (GUI.MenuBar
+        :Contents
+        (-> (GUI.Menu "Menu" :Contents (demo-menu-items))
+            (examples-menu)
+            (tools-menu)))
+       (GUI.Version) (GUI.Text :Format "dear imgui says hello ({})")
+       (GUI.CollapsingHeader
+        "Help"
+        (-> "ABOUT THIS DEMO:" (GUI.Text)
+            "Sections below are demonstrating many aspects of the library." (GUI.BulletText)
+            "The \"Examples\" menu above leads to more demo contents." (GUI.BulletText)
+            "The \"Tools\" menu above gives access to: About Box, Style Editor,\nand Metrics/Debugger (general purpose Dear ImGui debugging tool)." (GUI.BulletText)
+            (GUI.Separator)
+            "PROGRAMMER GUIDE:" (GUI.Text)
+            "See the demo-window block in imgui_demo.edn. <- you are here!" (GUI.BulletText)
+            (GUI.Separator)
+            "USER GUIDE:" (GUI.Text)
+            "Double-click on title bar to collapse window." (GUI.BulletText)
+            "Click and drag on lower corner to resize window\n(double-click to auto fit window to its contents)." (GUI.BulletText)
+            "CTRL+Click on a slider or drag box to input value as text." (GUI.BulletText)
+            "TAB/SHIFT+TAB to cycle through keyboard editable fields." (GUI.BulletText)
+            "While inputing text:\n" (GUI.BulletText)
+            (GUI.Indent)
+            "CTRL+Left/Right to word jump." (GUI.BulletText)
+            "CTRL+A or double-click to select all." (GUI.BulletText)
+            "CTRL+X/C/V to use clipboard cut/copy/paste." (GUI.BulletText)
+            "CTRL+Z,CTRL+Y to undo/redo." (GUI.BulletText)
+            "ESCAPE to revert." (GUI.BulletText)
+            "You can apply arithmetic operators +,*,/ on numerical values.\nUse +- to subtract." (GUI.BulletText)
+            (GUI.Unindent)
+            "With keyboard navigation enabled:" (GUI.BulletText)
+            (GUI.Indent)
+            "Arrow keys to navigate." (GUI.BulletText)
+            "Space to activate a widget." (GUI.BulletText)
+            "Return to input text into a widget." (GUI.BulletText)
+            "Escape to deactivate a widget, close popup, exit child window." (GUI.BulletText)
+            "Alt to jump to the menu layer of a window." (GUI.BulletText)
+            "CTRL+Tab to select a window." (GUI.BulletText)
+            (GUI.Unindent)))
+       (GUI.CollapsingHeader "Configuration" (todo!))
+       (GUI.CollapsingHeader "Window options" (todo!))
+       (GUI.CollapsingHeader
+        "Widgets"
+        (-> (Setup
+             0 >= .clickCount
+             0 >= .radioValue
+             0 >= .arrowCounter
+             "Hello, world!" >= .inputText
+             false >= .disableAll)
+            (GUI.Disable
+             .disableAll
+             (-> (GUI.TreeNode
+                  "Basic"
+                  (-> (GUI.Button "Button" (Math.Inc .clickCount))
+                      (If (-> .clickCount (Math.And 1) (IsMore 0))
+                          (-> (GUI.SameLine) "Thanks for clicking me!" (GUI.Text)))
+                      (GUI.Checkbox "Checkbox")
+                      (GUI.RadioButton "radio a" "radioValue" 0) (GUI.SameLine)
+                      (GUI.RadioButton "radio b" "radioValue" 1) (GUI.SameLine)
+                      (GUI.RadioButton "radio c" "radioValue" 2)
+                      "Hold to repeat:" (GUI.Text) (GUI.SameLine)
+                      (GUI.ArrowButton "##left" GuiDir.Left (Math.Dec .arrowCounter) true) (GUI.SameLine)
+                      (GUI.ArrowButton "##right" GuiDir.Right (Math.Inc .arrowCounter) true) (GUI.SameLine)
+                      .arrowCounter (GUI.Text)
+                      "Hover over me" (GUI.Text) (GUI.Tooltip (-> "I am a tooltip" (GUI.Text))) (GUI.SameLine)
+                      "- or me" (GUI.Text)
+                      (GUI.Tooltip
+                       (-> "I am a fancy tooltip" (GUI.Text)
+                           (GUI.Plot "Curve" (-> [0.6 0.1 1.0 0.5 0.92 0.1 0.2] (GUI.PlotLine)))))
+                      (GUI.Separator)
+                      "Value" (GUI.Text :Label "Label")
+                      ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIIIIII", "JJJJ", "KKKKKKK"] (GUI.Combo "Combo")
+                      (GUI.SameLine) (GUI.HelpMarker "One-line API is nice!")
+                      (GUI.TextInput "input text" "inputText")))
+                 (GUI.TreeNode
+                  "Trees"
+                  (-> (GUI.TreeNode "Basic trees" (todo!))
+                      (GUI.TreeNode "Advanced, with Selectable nodes" (todo!))))
+                 (GUI.TreeNode "Collapsing Headers" (todo!))
+                 (GUI.TreeNode "Bullets" (todo!))
+                 (GUI.TreeNode "Text" (todo!))
+                 (GUI.TreeNode "Images" (todo!))
+                 (GUI.TreeNode "Combo" (todo!))
+                 (GUI.TreeNode "List boxes" (todo!))
+                 (GUI.TreeNode "Selectables" (todo!))
+                 (GUI.TreeNode "Text Input" (todo!))
+                 (GUI.TreeNode "Tabs" (todo!))
+                 (GUI.TreeNode "Plots Widgets" (todo!))
+                 (GUI.TreeNode "Color/Picker Widgets" (todo!))
+                 (GUI.TreeNode "Drag/Slider Flags" (todo!))
+                 (GUI.TreeNode "Range Widgets" (todo!))
+                 (GUI.TreeNode "Data Types" (todo!))
+                 (GUI.TreeNode "Multi-component Widgets" (todo!))
+                 (GUI.TreeNode "Vertical Sliders" (todo!))
+                 (GUI.TreeNode "Drag and Drop" (todo!))
+                 (GUI.TreeNode "Querying Item Status (Edited/Active/Hovered etc.)" (todo!))
+                 (GUI.TreeNode "Querying Window Status (Focused/Hovered etc.)" (todo!))))
+            (GUI.TreeNode
+             "Disable block"
+             (-> (GUI.Checkbox "Disable entire section above" "disableAll")
+                 (GUI.SameLine)
+                 (GUI.HelpMarker "Demonstrate using (Disable) across this section.")))))
+       (GUI.CollapsingHeader "Layout & Scrolling" (todo!))
+       (GUI.CollapsingHeader "Popups & Modal windows" (todo!))
+       (GUI.CollapsingHeader "Tables & Columns" (todo!))
+       (GUI.CollapsingHeader "Filtering" (todo!))
+       (GUI.CollapsingHeader "Inputs, Navigation & Focus" (todo!)))))
+
+(defblocks demo-menu-items []
+  (GUI.MenuItem "(demo menu)" :IsEnabled false)
+  (GUI.MenuItem "New")
+  (GUI.MenuItem "Open" :Shortcut "Ctrl+O")
+  (GUI.Menu
+   "Open Recent"
+   :Contents
+   (-> (GUI.MenuItem "fish_hat.c")
+       (GUI.MenuItem "fish_hat.inl")
+       (GUI.MenuItem "fish_hat.h")
+       (GUI.Menu
+        "More..."
+        :Contents
+        (-> (GUI.MenuItem "Hello")
+            (GUI.MenuItem "Sailor")))))
+  (GUI.MenuItem "Save" :Shortcut "Ctrl+S")
+  (GUI.MenuItem "SaveAs...")
+  (GUI.Separator)
+  (GUI.Menu
+   "Options"
+   :Contents
+   (-> (Setup
+        0.5 >= .f
+        false >= .isEnabled)
+       (GUI.MenuItem "Enabled" .isEnabled)
+       (GUI.ChildWindow
+        :Border true :Height 60
+        :Contents
+        (-> 0 >= .i
+            (Repeat (-> .i (GUI.Text :Format "Scrolling Text {}") (Math.Inc .i)) :Times 10)))
+       (GUI.FloatSlider "Value" "f" 0.0 1.0)
+       (GUI.FloatInput "Input" "f" :Step 0.1)
+       ["Yes", "No", "Maybe"] (GUI.Combo "Combo" "combo")))
+  (GUI.Menu "Colors" :IsEnabled false)
+       ;; it will append to the "Options" menu (which we already created above)
+  (GUI.Menu "Options" :Contents (GUI.Checkbox "SomeOption" "option"))
+  (GUI.Menu "Disabled" :IsEnabled false)
+  (GUI.MenuItem "Checked" true)
+  (GUI.MenuItem "Quit" :Shortcut "Alt+F4" :Action (Stop)))
+
+(defblocks examples-menu []
+  (Setup
+   false >= .mainMenuBar-example
+   false >= .console-example
+   false >= .log-example
+   false >= .layout-example
+   false >= .propertyEditor-example
+   false >= .longText-example
+   false >= .autoResize-example
+   false >= .constrainedResize-example
+   false >= .simpleOverlay-example
+   false >= .fullscreen-example
+   false >= .windowTitles-example
+   false >= .customRendering-example
+   false >= .documents-example)
+  (GUI.Menu
+   "Examples"
+   :Contents
+   (-> (GUI.MenuItem "Main menu bar" .mainMenuBar-example)
+       (GUI.MenuItem "Console" .console-example :IsEnabled false)
+       (GUI.MenuItem "Log" .log-example :IsEnabled false)
+       (GUI.MenuItem "Simple layout" .layout-example)
+       (GUI.MenuItem "Property editor" .propertyEditor-example :IsEnabled false)
+       (GUI.MenuItem "Long text display" .longText-example :IsEnabled false)
+       (GUI.MenuItem "Auto-resizing window" .autoResize-example :IsEnabled false)
+       (GUI.MenuItem "Constrained-resizing window" .constrainedResize-example :IsEnabled false)
+       (GUI.MenuItem "Simple overlay" .simpleOverlay-example :IsEnabled false)
+       (GUI.MenuItem "Fullscreen window" .fullscreen-example :IsEnabled false)
+       (GUI.MenuItem "Manipulating window titles" .windowTitles-example :IsEnabled false)
+       (GUI.MenuItem "Custom rendering" .customRendering-example :IsEnabled false)
+       (GUI.MenuItem "Documents" .documents-example :IsEnabled false)))
+  (If (Get .mainMenuBar-example) :Then (mainMenuBar-example))
+  (If (Get .layout-example) :Then (layout-example)))
+
+(defblocks mainMenuBar-example []
+  (GUI.MainMenuBar
+   :Contents
+   (-> (GUI.Menu "File" :Contents (demo-menu-items))
+       (GUI.Menu
+        "Edit"
+        :Contents
+        (-> (GUI.MenuItem "Undo" :Shortcut "Ctrl+Z")
+            (GUI.MenuItem "Redo" :Shortcut "Ctrl+Y" :IsEnabled false)
+            (GUI.Separator)
+            (GUI.MenuItem "Cut" :Shortcut "Ctrl+X")
+            (GUI.MenuItem "Copy" :Shortcut "Ctrl+C")
+            (GUI.MenuItem "Paste" :Shortcut "Ctrl+V"))))))
+
+(defblocks layout-example []
+  (GUI.Window
+   :Title "Example: Simple layout" :OnClose .layout-example :Height 440 :Width 500
+   :AllowResize true :AllowMove true :AllowCollapse true :ShowMenuBar true
+   :Contents
+   (-> (GUI.MenuBar
+        :Contents
+        (GUI.Menu
+         "File"
+         :Contents
+         (-> (GUI.MenuItem "Close" :Action (-> false > .layout-example)))))
+       ;; left pane
+       (GUI.ChildWindow
+        :Width 150 :Contents
+        (-> 0 >= .i
+            (Repeat (-> .i (GUI.Text :Format "MyObject {}") (Math.Inc .i)) :Times 100)))
+       (GUI.SameLine)
+       ;; right pane
+       (GUI.Group
+        (-> (GUI.ChildWindow
+             :Contents
+             (->
+              0 (GUI.Text :Format "MyObject: {}")
+              (GUI.Separator)
+              (GUI.TabBar
+               "##Tabs"
+               :Contents
+               (-> (GUI.TabItem
+                    "Description"
+                    :Contents
+                    (-> "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+                        (GUI.Text :Wrap true)))
+                   (GUI.TabItem "Details" :Contents (-> "ID: 0123456789" (GUI.Text))))))))))))
+
+(defblocks tools-menu []
+  (Setup
+   false >= .about)
+  (GUI.Menu
+   "Tools"
+   :Contents
+   (-> (GUI.MenuItem "Metrics/Debugger" :IsEnabled false)
+       (GUI.MenuItem "Stack Tool" :IsEnabled false)
+       (GUI.MenuItem "Style Editor" :IsEnabled false)
+       (GUI.MenuItem "About Dear ImGui" .about)))
+  (If (Get .about)
+      :Then
+      (GUI.Window
+       :Title "About Dear ImGui" :OnClose .about
+       :AllowResize true :AllowMove true :AllowCollapse true
+       :Contents
+       (-> (GUI.Version) (GUI.Text :Format "Dear ImGui {}")
+           (GUI.Separator)
+           "By Omar Cornut and all Dear ImGui contributors." (GUI.Text)
+           "Dear ImGui is licensed under the MIT License, see LICENSE for more information." (GUI.Text)))))
+
+(defnode main)
+(defloop imgui-chain
+  (GFX.MainWindow
+   :Title "Dear ImGui Chainblocks Example" :Width 1280 :Height 768 :Debug true :Fullscreen false
+   :ClearColor .color
+   :Contents
+   (-> (Setup
+        true >= .showDemo
+        false >= .showAnother
+        (color 192 192 170 255) >= .color)
+       (helloWorld-window))))
+(schedule main imgui-chain)
+(run main 0.02)
