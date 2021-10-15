@@ -599,6 +599,8 @@ struct CBVarPayload {
 #define CBVAR_FLAGS_NONE (0)
 #define CBVAR_FLAGS_USES_OBJINFO (1 << 0)
 #define CBVAR_FLAGS_REF_COUNTED (1 << 1)
+// this marks a variable external and even if references are counted
+// it won't be destroyed automatically
 #define CBVAR_FLAGS_EXTERNAL (1 << 2)
 
 struct CBVar {

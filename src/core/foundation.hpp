@@ -367,6 +367,9 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
                      boost::alignment::aligned_allocator<
                          std::pair<const std::string, CBVar>, 16>>
       variables;
+
+  // variables with lifetime managed externally
+  std::unordered_map<std::string, CBVar *> externalVariables;
   // used only in the case of external variables
   std::unordered_map<uint64_t, chainblocks::TypeInfo> typesCache;
 
