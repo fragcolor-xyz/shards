@@ -1756,11 +1756,13 @@ void error_handler(int err_sig) {
   std::raise(err_sig);
 }
 
-#if _WIN32
+#ifdef _WIN32
 #include "debugapi.h"
 static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
-#elif __APPLE__
+#elif defined(__APPLE__)
 static bool isDebuggerPresent() { return false; }
+#elif defined(BOOST_USE_VALGRIND)
+static bool isDebuggerPresent() { return true; }
 #else
 #include <sys/ptrace.h>
 #include <sys/types.h>
