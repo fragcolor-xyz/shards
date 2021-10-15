@@ -2526,6 +2526,52 @@ private:
   bool _isInline{true};
 };
 
+struct ProgressBar : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _overlay.clear();
+      } else {
+        _overlay = value.payload.stringValue;
+      }
+    } break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _overlay.size() == 0 ? Var::Empty : Var(_overlay);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto buf = _overlay.size() > 0 ? _overlay.c_str() : nullptr;
+    ::ImGui::ProgressBar(input.payload.floatValue, ImVec2(0.f, 0.f), buf);
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Overlay",
+       CBCCSTR("The text displayed inside the progress bar."),
+       {CoreInfo::StringType}},
+  };
+
+  std::string _overlay;
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -2580,6 +2626,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.FPS", FPS);
   REGISTER_CBLOCK("GUI.Version", Version);
   REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
+  REGISTER_CBLOCK("GUI.ProgressBar", ProgressBar);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
