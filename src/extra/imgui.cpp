@@ -805,7 +805,9 @@ template <CBType CT> struct Variable : public Base {
   ExposedInfo _expInfo{};
   bool _exposing = false;
 
-  virtual void cleanup() {
+  void cleanup() { cleanupVariable(); }
+
+  void cleanupVariable() {
     if (_variable) {
       releaseVariable(_variable);
       _variable = nullptr;
@@ -883,7 +885,7 @@ template <CBType CT> struct Variable : public Base {
       } else {
         _variable_name = value.payload.stringValue;
       }
-      cleanup();
+      cleanupVariable();
     } break;
     default:
       break;
@@ -1449,7 +1451,7 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
   }
 
 IMGUIINPUT(Int, int64_t, IntType, ImGuiDataType_S64, intValue, "%lld");
-IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%f");
+IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%.3f");
 
 #define IMGUIINPUT2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_, _CMP_)            \
   struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
@@ -1496,6 +1498,200 @@ IMGUIINPUT2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, "%.3f",
             3);
 IMGUIINPUT2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, "%.3f",
             4);
+
+#define IMGUISLIDER(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                           \
+  struct _CBT_##Slider : public Variable<CBType::_CBT_> {                      \
+                                                                               \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+                                                                               \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }         \
+                                                                               \
+    static CBParametersInfo parameters() { return paramsInfo; }                \
+                                                                               \
+    void cleanup() {                                                           \
+      _min.cleanup();                                                          \
+      _max.cleanup();                                                          \
+      Variable<CBType::_CBT_>::cleanup();                                      \
+    }                                                                          \
+                                                                               \
+    void warmup(CBContext *context) {                                          \
+      _min.warmup(context);                                                    \
+      _max.warmup(context);                                                    \
+    }                                                                          \
+                                                                               \
+    void setParam(int index, const CBVar &value) {                             \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        Variable<CBType::_CBT_>::setParam(index, value);                       \
+        break;                                                                 \
+      case 2:                                                                  \
+        _min = value;                                                          \
+        break;                                                                 \
+      case 3:                                                                  \
+        _max = value;                                                          \
+        break;                                                                 \
+      default:                                                                 \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+    CBVar getParam(int index) {                                                \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        return Variable<CBType::_CBT_>::getParam(index);                       \
+      case 2:                                                                  \
+        return _min;                                                           \
+      case 3:                                                                  \
+        return _max;                                                           \
+      default:                                                                 \
+        return Var::Empty;                                                     \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      IDContext idCtx(this);                                                   \
+                                                                               \
+      if (!_variable && _variable_name.size() > 0) {                           \
+        _variable = referenceVariable(context, _variable_name.c_str());        \
+        if (_exposing) {                                                       \
+          _variable->valueType = _CBT_;                                        \
+        }                                                                      \
+      }                                                                        \
+                                                                               \
+      _T_ min = _min.get().payload._VAL_##Value;                               \
+      _T_ max = _max.get().payload._VAL_##Value;                               \
+      if (_variable) {                                                         \
+        ::ImGui::SliderScalar(_label.c_str(), _IMT_,                           \
+                              (void *)&_variable->payload._VAL_##Value, &min,  \
+                              &max, _FMT_, 0);                                 \
+        return *_variable;                                                     \
+      } else {                                                                 \
+        ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&_tmp, &min,      \
+                              &max, _FMT_, 0);                                 \
+        return Var(_tmp);                                                      \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+  private:                                                                     \
+    static inline Parameters paramsInfo{                                       \
+        VariableParamsInfo(),                                                  \
+        {{"Min",                                                               \
+          CBCCSTR("The minimum value."),                                       \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
+         {"Max",                                                               \
+          CBCCSTR("The maximum value."),                                       \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
+    };                                                                         \
+                                                                               \
+    ParamVar _min{Var((_T_)0)};                                                \
+    ParamVar _max{Var((_T_)100)};                                              \
+    _T_ _tmp;                                                                  \
+  }
+
+IMGUISLIDER(Int, int64_t, ImGuiDataType_S64, int, "%lld");
+IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
+
+#define IMGUISLIDER2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                   \
+  struct _CBT_##_CMP_##Slider : public Variable<CBType::_CBT_##_CMP_> {        \
+                                                                               \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+                                                                               \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }  \
+                                                                               \
+    static CBParametersInfo parameters() { return paramsInfo; }                \
+                                                                               \
+    void cleanup() {                                                           \
+      _min.cleanup();                                                          \
+      _max.cleanup();                                                          \
+      Variable<CBType::_CBT_##_CMP_>::cleanup();                               \
+    }                                                                          \
+                                                                               \
+    void warmup(CBContext *context) {                                          \
+      _min.warmup(context);                                                    \
+      _max.warmup(context);                                                    \
+    }                                                                          \
+                                                                               \
+    void setParam(int index, const CBVar &value) {                             \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                \
+        break;                                                                 \
+      case 2:                                                                  \
+        _min = value;                                                          \
+        break;                                                                 \
+      case 3:                                                                  \
+        _max = value;                                                          \
+        break;                                                                 \
+      default:                                                                 \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+    CBVar getParam(int index) {                                                \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                \
+      case 2:                                                                  \
+        return _min;                                                           \
+      case 3:                                                                  \
+        return _max;                                                           \
+      default:                                                                 \
+        return Var::Empty;                                                     \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                   \
+      IDContext idCtx(this);                                                   \
+                                                                               \
+      if (!_variable && _variable_name.size() > 0) {                           \
+        _variable = referenceVariable(context, _variable_name.c_str());        \
+        if (_exposing) {                                                       \
+          _variable->valueType = _CBT_##_CMP_;                                 \
+        }                                                                      \
+      }                                                                        \
+                                                                               \
+      _T_ min = _min.get().payload._VAL_##Value;                               \
+      _T_ max = _max.get().payload._VAL_##Value;                               \
+      if (_variable) {                                                         \
+        ::ImGui::SliderScalarN(                                                \
+            _label.c_str(), _IMT_,                                             \
+            (void *)&_variable->payload._VAL_##_CMP_##Value, _CMP_, &min,      \
+            &max, _FMT_, 0);                                                   \
+        return *_variable;                                                     \
+      } else {                                                                 \
+        ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&_tmp, _CMP_,    \
+                               &min, &max, _FMT_, 0);                          \
+        return Var(_tmp);                                                      \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+  private:                                                                     \
+    static inline Parameters paramsInfo{                                       \
+        VariableParamsInfo(),                                                  \
+        {{"Min",                                                               \
+          CBCCSTR("The minimum value."),                                       \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
+         {"Max",                                                               \
+          CBCCSTR("The maximum value."),                                       \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
+    };                                                                         \
+                                                                               \
+    ParamVar _min{Var((_T_)0)};                                                \
+    ParamVar _max{Var((_T_)100)};                                              \
+    _T_ _tmp;                                                                  \
+  }
+
+IMGUISLIDER2(Int, 2, int64_t, ImGuiDataType_S64, int, "%lld");
+IMGUISLIDER2(Int, 3, int32_t, ImGuiDataType_S32, int, "%lld");
+IMGUISLIDER2(Int, 4, int32_t, ImGuiDataType_S32, int, "%lld");
+
+IMGUISLIDER2(Float, 2, double, ImGuiDataType_Double, float, "%.3f");
+IMGUISLIDER2(Float, 3, float, ImGuiDataType_Float, float, "%.3f");
+IMGUISLIDER2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 
 struct TextInput : public Variable<CBType::String> {
   // fallback, used only when no variable name is set
@@ -2169,6 +2365,14 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Float2Drag", Float2Drag);
   REGISTER_CBLOCK("GUI.Float3Drag", Float3Drag);
   REGISTER_CBLOCK("GUI.Float4Drag", Float4Drag);
+  REGISTER_CBLOCK("GUI.IntSlider", IntSlider);
+  REGISTER_CBLOCK("GUI.FloatSlider", FloatSlider);
+  REGISTER_CBLOCK("GUI.Int2Slider", Int2Slider);
+  REGISTER_CBLOCK("GUI.Int3Slider", Int3Slider);
+  REGISTER_CBLOCK("GUI.Int4Slider", Int4Slider);
+  REGISTER_CBLOCK("GUI.Float2Slider", Float2Slider);
+  REGISTER_CBLOCK("GUI.Float3Slider", Float3Slider);
+  REGISTER_CBLOCK("GUI.Float4Slider", Float4Slider);
   REGISTER_CBLOCK("GUI.TextInput", TextInput);
   REGISTER_CBLOCK("GUI.Image", Image);
   REGISTER_CBLOCK("GUI.Plot", Plot);
