@@ -858,6 +858,12 @@ typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
 typedef struct CBVar *(__cdecl *CBReferenceChainVariable)(CBChainRef chain,
                                                           CBString name);
 
+typedef void(__cdecl *CBSetExternalVariable)(CBChainRef chain, CBString name,
+                                             struct CBVar *pVar);
+
+typedef void(__cdecl *CBRemoveExternalVariable)(CBChainRef chain,
+                                                CBString name);
+
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
 typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
@@ -1074,6 +1080,10 @@ typedef struct _CBCore {
   CBReferenceVariable referenceVariable;
   CBReferenceChainVariable referenceChainVariable;
   CBReleaseVariable releaseVariable;
+
+  // To add/rem external variables to chains
+  CBSetExternalVariable setExternalVariable;
+  CBRemoveExternalVariable removeExternalVariable;
 
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;

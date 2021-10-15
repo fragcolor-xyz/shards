@@ -2971,6 +2971,18 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     return chainblocks::releaseVariable(variable);
   };
 
+  result->setExternalVariable = [](CBChainRef chain, const char *name,
+                                   CBVar *pVar) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    sc->externalVariables[name] = pVar;
+  };
+
+  result->removeExternalVariable = [](CBChainRef chain,
+                                      const char *name) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    sc->externalVariables.erase(name);
+  };
+
   result->suspend = [](CBContext *context, double seconds) noexcept {
     try {
       return chainblocks::suspend(context, seconds);
