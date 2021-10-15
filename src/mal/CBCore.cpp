@@ -381,10 +381,12 @@ private:
 class malCBVar : public malValue, public malRoot {
 public:
   malCBVar(const CBVar &var, bool cloned) : m_cloned(cloned) {
-    if (cloned)
+    if (cloned) {
+      memset(&m_var, 0, sizeof(m_var));
       chainblocks::cloneVar(m_var, var);
-    else
+    } else {
       m_var = var;
+    }
   }
 
   malCBVar(const malCBVar &that, const malValuePtr &meta)
