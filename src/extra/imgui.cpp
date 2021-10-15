@@ -1218,6 +1218,13 @@ struct Separator : public Base {
   }
 };
 
+struct Spacing : public Base {
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::Spacing();
+    return input;
+  }
+};
+
 struct Indent : public Base {
   static CBVar activate(CBContext *context, const CBVar &input) {
     ::ImGui::Indent();
@@ -2471,6 +2478,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.NewLine", NewLine);
   REGISTER_CBLOCK("GUI.SameLine", SameLine);
   REGISTER_CBLOCK("GUI.Separator", Separator);
+  REGISTER_CBLOCK("GUI.Spacing", Spacing);
   REGISTER_CBLOCK("GUI.Indent", Indent);
   REGISTER_CBLOCK("GUI.Unindent", Unindent);
   REGISTER_CBLOCK("GUI.TreeNode", TreeNode);
