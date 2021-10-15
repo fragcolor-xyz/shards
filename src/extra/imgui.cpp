@@ -274,10 +274,10 @@ struct Style : public Base {
   static CBColor vec42Color(const ImVec4 &color) {
     // remember, we edited the shader to do srgb->linear
     CBColor res;
-    res.r = color.x * 255.0f;
-    res.g = color.y * 255.0f;
-    res.b = color.z * 255.0f;
-    res.a = color.w * 255.0f;
+    res.r = roundf(color.x * 255.0f);
+    res.g = roundf(color.y * 255.0f);
+    res.b = roundf(color.z * 255.0f);
+    res.a = roundf(color.w * 255.0f);
     return res;
   }
 
