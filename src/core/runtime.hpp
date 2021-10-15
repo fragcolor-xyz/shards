@@ -1206,18 +1206,20 @@ struct Serialization {
         chain->addBlock(blockVar.payload.blockValue);
         // blow's owner is the chain
       }
-      // variables len
-      read((uint8_t *)&len, sizeof(uint32_t));
-      auto varsLen = len;
-      for (uint32_t i = 0; i < varsLen; i++) {
-        read((uint8_t *)&len, sizeof(uint32_t));
-        buf.resize(len + 1);
-        read((uint8_t *)&buf[0], len);
-        buf[len] = 0;
-        CBVar tmp{};
-        deserialize(read, tmp);
-        chain->variables[&buf[0]] = tmp;
-      }
+      // // variables len
+      // read((uint8_t *)&len, sizeof(uint32_t));
+      // auto varsLen = len;
+      // for (uint32_t i = 0; i < varsLen; i++) {
+      //   read((uint8_t *)&len, sizeof(uint32_t));
+      //   buf.resize(len + 1);
+      //   read((uint8_t *)&buf[0], len);
+      //   buf[len] = 0;
+      //   CBVar tmp{};
+      //   deserialize(read, tmp);
+      //   // TODO / BUG we don't clone, memory will be trashed if not blittable
+      //   auto &key = chain->variables.emplace(&buf[0], tmp).first->first;
+      //   CBLOG_TRACE("Deserializing variable: {}", key);
+      // }
       break;
     }
     case CBType::Object: {
@@ -1529,24 +1531,24 @@ struct Serialization {
         blockVar.payload.blockValue = block;
         total += serialize(blockVar, write);
       }
-      { // Variables len
-        uint32_t len = uint32_t(chain->variables.size());
-        write((const uint8_t *)&len, sizeof(uint32_t));
-        total += sizeof(uint32_t);
-      }
-      // Variables
-      for (auto &var : chain->variables) {
-        CBLOG_DEBUG("Serializing chain: {} variable: {} value: {}", chain->name,
-                    var.first, var.second);
-        uint32_t len = uint32_t(var.first.size());
-        write((const uint8_t *)&len, sizeof(uint32_t));
-        total += sizeof(uint32_t);
-        write((const uint8_t *)var.first.c_str(), len);
-        total += len;
-        // Serialization discards anything cept payload
-        // That is what we want anyway!
-        total += serialize(var.second, write);
-      }
+      // { // Variables len
+      //   uint32_t len = uint32_t(chain->variables.size());
+      //   write((const uint8_t *)&len, sizeof(uint32_t));
+      //   total += sizeof(uint32_t);
+      // }
+      // // Variables
+      // for (auto &var : chain->variables) {
+      //   CBLOG_DEBUG("Serializing variable: {} value: {}", var.first,
+      //               var.second);
+      //   uint32_t len = uint32_t(var.first.size());
+      //   write((const uint8_t *)&len, sizeof(uint32_t));
+      //   total += sizeof(uint32_t);
+      //   write((const uint8_t *)var.first.c_str(), len);
+      //   total += len;
+      //   // Serialization discards anything cept payload
+      //   // That is what we want anyway!
+      //   total += serialize(var.second, write);
+      // }
       break;
     }
     case CBType::Object: {

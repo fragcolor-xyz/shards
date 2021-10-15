@@ -619,9 +619,12 @@ void releaseVariable(CBVar *variable) {
 
   variable->refcount--;
   if (variable->refcount == 0) {
-    CBLOG_TRACE("Destroying a variable (0 ref count), type: {}",
-                type2Name(variable->valueType));
-    destroyVar(*variable);
+    // don't destroy external variables here
+    if ((variable->flags & CBVAR_FLAGS_EXTERNAL) == 0) {
+      CBLOG_TRACE("Destroying a variable (0 ref count), type: {}",
+                  type2Name(variable->valueType));
+      destroyVar(*variable);
+    }
   }
 }
 
@@ -1223,6 +1226,25 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
   ctx.chain = data.chain;
   ctx.userData = userData;
   ctx.onWorkerThread = data.onWorkerThread;
+
+  // add externally added variables
+  if (ctx.chain) {
+    for (const auto &[key, var] : ctx.chain->variables) {
+      if ((var.flags & CBVAR_FLAGS_EXTERNAL) == 0)
+        continue;
+
+      auto hash = deriveTypeHash(var);
+      TypeInfo *info = nullptr;
+      if (ctx.chain->typesCache.find(hash) == ctx.chain->typesCache.end()) {
+        info = &ctx.chain->typesCache.emplace(hash, TypeInfo(var, data))
+                    .first->second;
+      } else {
+        info = &ctx.chain->typesCache.at(hash);
+      }
+      ctx.inherited[key].insert(
+          CBExposedTypeInfo{key.c_str(), {}, *info, false /* mutable */});
+    }
+  }
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {

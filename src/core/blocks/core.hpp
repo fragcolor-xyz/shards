@@ -972,7 +972,6 @@ struct Get : public VariableBase {
   std::vector<CBTypeInfo> _tableTypes{};
   std::vector<CBString> _tableKeys{};
   CBlock *_block{nullptr};
-  bool _external{false};
 
   static inline ParamsInfo getParamsInfo = ParamsInfo(
       variableParamsInfo,
@@ -981,11 +980,7 @@ struct Get : public VariableBase {
           CBCCSTR("The default value to use to infer types and output if the "
                   "variable is not set, key is not there and/or type "
                   "mismatches."),
-          CoreInfo::AnyType),
-      ParamsInfo::Param("External",
-                        CBCCSTR("If the variable is externally managed and "
-                                "will be loaded before the chain runs."),
-                        CoreInfo::BoolType));
+          CoreInfo::AnyType));
 
   static CBParametersInfo parameters() {
     return CBParametersInfo(getParamsInfo);
@@ -996,8 +991,6 @@ struct Get : public VariableBase {
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0)
       cloneVar(_defaultValue, value);
-    else if (index == variableParamsInfoLen + 1)
-      _external = value.payload.boolValue;
   }
 
   CBVar getParam(int index) {
@@ -1005,8 +998,6 @@ struct Get : public VariableBase {
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
       return _defaultValue;
-    else if (index == variableParamsInfoLen + 1)
-      return Var(_external);
     throw CBException("Param index out of range.");
   }
 
@@ -1169,12 +1160,6 @@ struct Get : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
-
-    if (_external) {
-      if ((_target->flags & CBVAR_FLAGS_EXTERNAL) == 0) {
-        throw CBException("External variable " + _name + " not found.");
-      }
-    }
 
     _key.warmup(context);
   }

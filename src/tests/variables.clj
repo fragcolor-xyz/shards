@@ -229,4 +229,15 @@
 (if (tick node) nil (throw "failure"))
 (def node nil)
 
+(defnode main)
+(defchain external-var-test
+  .external-variable (Assert.Is "Hello" true) (Log "EXTVAR"))
+
+(do
+  ; do this inside a do to test chain ownership of the variable
+  (set-variable external-var-test "external-variable" (string "Hello")))
+
+(schedule main external-var-test)
+(run main)
+
 (prn "Done!")

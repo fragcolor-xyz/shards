@@ -1599,6 +1599,18 @@ BUILTIN("run-empty-forever") {
   }
 }
 
+BUILTIN("set-variable") {
+  CHECK_ARGS_IS(3);
+  ARG(malCBChain, chainvar);
+  ARG(malString, varName);
+  ARG(malCBVar, var);
+  auto chain = CBChain::sharedFromRef(chainvar->value());
+  var->value().flags |= CBVAR_FLAGS_EXTERNAL;
+  chain->variables[varName->ref().c_str()] = var->value();
+  chainvar->reference(var); // keep alive until chain is destroyed
+  return var;
+}
+
 BUILTIN("start") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malCBChain, chainvar);
