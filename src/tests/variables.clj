@@ -231,7 +231,9 @@
 
 (defnode main)
 (defchain external-var-test
-  .external-variable (Assert.Is "Hello" true) (Log "EXTVAR"))
+  " World" >= .hw
+  .external-variable (Assert.Is "Hello" true) (Log "EXTVAR") (PrependTo .hw)
+  .hw (Assert.Is "Hello World" true) (Log))
 
 (do
   ; do this inside a do to test chain ownership of the variable
