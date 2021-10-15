@@ -2467,6 +2467,65 @@ struct Version : public Base {
   }
 };
 
+struct HelpMarker : public Base {
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _desc.clear();
+      } else {
+        _desc = value.payload.stringValue;
+      }
+    } break;
+    case 1:
+      _isInline = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _desc.size() == 0 ? Var::Empty : Var(_desc);
+    case 1:
+      return Var(_isInline);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (_isInline)
+      ::ImGui::SameLine();
+    ::ImGui::TextDisabled("(?)");
+    if (::ImGui::IsItemHovered()) {
+      ::ImGui::BeginTooltip();
+      ::ImGui::PushTextWrapPos(::ImGui::GetFontSize() * 35.0f);
+      ::ImGui::TextUnformatted(_desc.c_str());
+      ::ImGui::PopTextWrapPos();
+      ::ImGui::EndTooltip();
+    }
+
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Description",
+       CBCCSTR("The text displayed in a popup."),
+       {CoreInfo::StringType}},
+      {"Inline", CBCCSTR("Display on the same line."), {CoreInfo::BoolType}},
+  };
+
+  std::string _desc;
+  bool _isInline{true};
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -2520,6 +2579,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.FPS", FPS);
   REGISTER_CBLOCK("GUI.Version", Version);
+  REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
