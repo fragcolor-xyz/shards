@@ -250,13 +250,13 @@ jobs:
           cd build
           ./cbl ../src/tests/blocks.clj
       - name: Test Headless (bgfx)
-        uses: chainblocks/xvfb-action@v1
+        uses: chainblocks/xvfb-action@master
         with:
           working-directory: ./build
           run: |
             ./cbl ../src/tests/bgfx.clj
       - name: Test Headless (gizmos)
-        uses: chainblocks/xvfb-action@v1
+        uses: chainblocks/xvfb-action@master
         with:
           working-directory: ./build
           run: |
@@ -318,7 +318,7 @@ jobs:
           cd build
           ./test_runtime
       - name: Test Headless
-        uses: chainblocks/xvfb-action@v1
+        uses: chainblocks/xvfb-action@master
         with:
           working-directory: ./build
           run: |
