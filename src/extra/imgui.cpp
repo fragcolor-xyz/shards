@@ -1196,6 +1196,13 @@ struct HexViewer : public Base {
   }
 };
 
+struct NewLine : public Base {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::NewLine();
+    return input;
+  }
+};
+
 struct SameLine : public Base {
   // TODO add offsets and spacing
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -2461,6 +2468,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Text", Text);
   REGISTER_CBLOCK("GUI.Button", Button);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
+  REGISTER_CBLOCK("GUI.NewLine", NewLine);
   REGISTER_CBLOCK("GUI.SameLine", SameLine);
   REGISTER_CBLOCK("GUI.Separator", Separator);
   REGISTER_CBLOCK("GUI.Indent", Indent);
