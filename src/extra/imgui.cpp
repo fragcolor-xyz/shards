@@ -2087,6 +2087,14 @@ struct FPS : public Base {
   }
 };
 
+struct Version : public Base {
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return Var(IMGUI_VERSION);
+  }
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -2129,6 +2137,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
   REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.FPS", FPS);
+  REGISTER_CBLOCK("GUI.Version", Version);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
