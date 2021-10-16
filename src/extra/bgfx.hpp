@@ -186,6 +186,11 @@ struct ViewInfo {
   // mutable Mat4 _invViewProj;
 };
 
+struct IDrawable {
+  virtual const Mat4 &getTransform() = 0;
+  virtual CBChain *getChain() = 0;
+};
+
 struct Context {
   static inline Type Info{
       {CBType::Object,
@@ -201,6 +206,15 @@ struct Context {
   void popView() {
     assert(viewsStack.size() > 0);
     viewsStack.pop_back();
+  }
+
+  void newFrame() {
+    frameDrawablesCount = 0;
+    frameDrawables.clear();
+  }
+
+  void addFrameDrawable(IDrawable *drawable) {
+    frameDrawables[frameDrawablesCount++] = drawable;
   }
 
   size_t viewIndex() const { return viewsStack.size(); }
@@ -237,6 +251,8 @@ struct Context {
   uint32_t getMaxLights() const { return lightCount; }
   void addLight() { lightCount++; }
 
+  bool isPicking() const { return picking; }
+
   // TODO thread_local? anyway sort multiple threads
   // this is written during sleeps between node ticks
   static inline std::vector<SDL_Event> sdlEvents;
@@ -244,8 +260,15 @@ struct Context {
 private:
   std::deque<ViewInfo> viewsStack;
   bgfx::ViewId nextViewCounter{0};
+
   std::vector<bgfx::UniformHandle> samplers;
+
   uint32_t lightCount{0};
+
+  uint32_t frameDrawablesCount{0};
+  std::unordered_map<uint32_t, IDrawable *> frameDrawables;
+
+  bool picking{false};
 };
 
 struct Texture {
