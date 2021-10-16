@@ -690,12 +690,13 @@ struct Window : public Base {
       firstActivation = false;
     }
 
-    ::ImGui::Begin(_title.c_str(), nullptr, flags);
+    auto active = ::ImGui::Begin(_title.c_str(), nullptr, flags);
     DEFER({ ::ImGui::End(); });
-
-    CBVar output{};
-    // this one throws that's why we use defer above!
-    activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+    if (active) {
+      CBVar output{};
+      // this one throws that's why we use defer above!
+      activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+    }
     return input;
   }
 };
@@ -777,12 +778,13 @@ struct ChildWindow : public Base {
       size = {float(_width.payload.intValue), float(_height.payload.intValue)};
     }
 
-    ::ImGui::BeginChild(_wndId, size, _border);
+    auto visible = ::ImGui::BeginChild(_wndId, size, _border);
     DEFER({ ::ImGui::EndChild(); });
-
-    CBVar output{};
-    // this one throws that's why we use defer above!
-    activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+    if (visible) {
+      CBVar output{};
+      // this one throws that's why we use defer above!
+      activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+    }
     return input;
   }
 };
