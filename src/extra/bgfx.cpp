@@ -1013,6 +1013,8 @@ struct MainWindow : public BaseWindow {
     float time[4] = {ddt.count(), adt.count(), float(_frameCounter++), 0.0};
     bgfx::setUniform(_timeUniformHandle, time, 1);
 
+    _bgfxContext.newFrame();
+
     if (_windowScalingW != 1.0 || _windowScalingH != 1.0) {
       mouseX = int32_t(float(mouseX) * _windowScalingW);
       mouseY = int32_t(float(mouseY) * _windowScalingH);
@@ -2191,9 +2193,10 @@ struct Draw : public BaseConsumer {
     BaseConsumer::compose(data);
 
     if (data.inputType.seqTypes.elements[0].basicType == CBType::Seq) {
-      // TODO
+      // Instanced rendering
       OVERRIDE_ACTIVATE(data, activate);
     } else {
+      // Single rendering
       OVERRIDE_ACTIVATE(data, activateSingle);
     }
     return data.inputType;
@@ -2267,8 +2270,23 @@ struct Draw : public BaseConsumer {
     }
   }
 
-  void render() {
-    auto *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
+  struct Drawable : public IDrawable {
+    Drawable(const CBVar &varTransform, CBChain *drawableChain)
+        : transform(reinterpret_cast<const Mat4 *>(&varTransform)),
+          chain(drawableChain) {}
+
+    const Mat4 &getTransform() override { return *transform; }
+    CBChain *getChain() override { return chain; }
+
+  private:
+    const Mat4 *transform;
+    CBChain *chain;
+  };
+
+  // use deque for stable memory location
+  std::deque<Drawable> _frameDrawables;
+
+  void render(Context *ctx) {
     auto shader =
         reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
     assert(shader);
@@ -2372,6 +2390,10 @@ struct Draw : public BaseConsumer {
       throw ActivationError("Invalid Matrix4x4 input, should Float4 x 4.");
     }
 
+    auto *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
+
+    _frameDrawables.clear();
+
     bgfx::Transform t;
     // using allocTransform to avoid an extra copy
     auto idx = bgfx::allocTransform(&t, 1);
@@ -2385,12 +2407,17 @@ struct Draw : public BaseConsumer {
            sizeof(float) * 4);
     bgfx::setTransform(idx, 1);
 
-    render();
+    ctx->addFrameDrawable(
+        &_frameDrawables.emplace_back(input, context->currentChain()));
+
+    render(ctx);
 
     return input;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    auto *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
+
     const auto instances = input.payload.seqValue.len;
     constexpr uint16_t stride = 64; // matrix 4x4
     if (bgfx::getAvailInstanceDataBuffer(instances, stride) != instances) {
@@ -2400,6 +2427,8 @@ struct Draw : public BaseConsumer {
     bgfx::InstanceDataBuffer idb;
     bgfx::allocInstanceDataBuffer(&idb, instances, stride);
     uint8_t *data = idb.data;
+
+    auto currentChain = context->currentChain();
 
     for (uint32_t i = 0; i < instances; i++) {
       float *mat = reinterpret_cast<float *>(data);
@@ -2418,12 +2447,14 @@ struct Draw : public BaseConsumer {
       memcpy(&mat[12], &vmat.payload.seqValue.elements[3].payload.float4Value,
              sizeof(float) * 4);
 
+      ctx->addFrameDrawable(&_frameDrawables.emplace_back(vmat, currentChain));
+
       data += stride;
     }
 
     bgfx::setInstanceDataBuffer(&idb);
 
-    render();
+    render(ctx);
 
     return input;
   }
