@@ -107,6 +107,36 @@ pub fn log(s: &str) {
   }
 }
 
+#[inline(always)]
+pub fn logLevel(level: i32, s: &str) {
+  unsafe {
+    (*Core).logLevel.unwrap()(level, s.as_ptr() as *const std::os::raw::c_char);
+  }
+}
+
+#[macro_export]
+#[cfg(debug_assertions)]
+macro_rules! cblog_debug {
+  ($text:expr, $($arg:expr),*) => {
+      use std::io::Write as __stdWrite;
+      let mut buf = vec![];
+      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      logLevel(1, ::std::str::from_utf8(&buf).unwrap());
+  };
+
+  ($text:expr) => {
+    logLevel(1, concat!($text, "\0"));
+  };
+}
+
+#[macro_export]
+#[cfg(not(debug_assertions))]
+macro_rules! cblog_debug {
+  ($text:expr, $($arg:expr),*) => {};
+
+  ($text:expr) => {};
+}
+
 #[macro_export]
 macro_rules! cblog {
     ($text:expr, $($arg:expr),*) => {
@@ -276,29 +306,36 @@ pub fn releaseVariable(var: &CBVar) {
   }
 }
 
-unsafe extern "C" fn do_blocking_c_call<'a>(context: *mut CBContext, arg2: *mut c_void) -> CBVar {
-  let trait_obj_ref: &mut &mut dyn FnMut() -> Result<CBVar, &'a str> = { &mut *(arg2 as *mut _) };
+//--------------------------------------------------------------------------------------------------
+
+unsafe extern "C" fn do_blocking_c_call(context: *mut CBContext, arg2: *mut c_void) -> CBVar {
+  let trait_obj_ref: &mut &mut dyn FnMut() -> Result<CBVar, &'static str> =
+    { &mut *(arg2 as *mut _) };
   match trait_obj_ref() {
     Ok(value) => value,
     Err(error) => {
+      cblog_debug!("do_blocking failure detected"); // in case error leads to crash
+      cblog_debug!("do_blocking failure: {}", error);
       abortChain(&(*context), error);
       Var::default()
     }
   }
 }
 
-pub fn do_blocking<'a, F>(context: &CBContext, f: F) -> CBVar
+pub fn do_blocking<F>(context: &CBContext, f: F) -> CBVar
 where
-  F: FnMut() -> Result<CBVar, &'a str>,
+  F: FnMut() -> Result<CBVar, &'static str>,
 {
   unsafe {
     let ctx = context as *const CBContext as *mut CBContext;
-    let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'a str> = &f;
+    let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'static str> = &f;
     let trait_obj_ref = &mut trait_obj;
     let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
     (*Core).asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call))
   }
 }
+
+//--------------------------------------------------------------------------------------------------
 
 pub trait BlockingBlock {
   fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
@@ -318,6 +355,8 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingBlock>(
   match res {
     Ok(value) => value,
     Err(error) => {
+      cblog_debug!("activate_blocking failure detected"); // in case error leads to crash
+      cblog_debug!("activate_blocking failure: {}", error);
       abortChain(&(*context), error);
       Var::default()
     }
@@ -342,6 +381,8 @@ where
     (*Core).asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<T>))
   }
 }
+
+//--------------------------------------------------------------------------------------------------
 
 pub struct BlockInstance {
   ptr: CBlockPtr,
