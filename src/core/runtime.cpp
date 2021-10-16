@@ -3223,11 +3223,14 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     std::filesystem::current_path(p);
   };
 
-  result->asyncActivate = [](auto context, auto data, auto call) {
+  result->asyncActivate = [](CBContext *context, void *userData,
+                             CBAsyncActivateProc call,
+                             CBAsyncCancelProc cancel_call) {
     return chainblocks::awaitne(
-        context, [&] { return call(context, data); },
-        [] {
-          // TODO CANCELLATION
+        context, [=] { return call(context, userData); },
+        [=] {
+          if (cancel_call)
+            cancel_call(context, userData);
         });
   };
 
