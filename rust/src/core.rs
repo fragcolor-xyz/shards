@@ -331,7 +331,7 @@ where
     let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'static str> = &f;
     let trait_obj_ref = &mut trait_obj;
     let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
-    (*Core).asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call))
+    (*Core).asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call), None)
   }
 }
 
@@ -339,6 +339,7 @@ where
 
 pub trait BlockingBlock {
   fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
+  fn cancel_activation(&mut self, _context: &Context) {}
 }
 
 struct AsyncCallData<T: BlockingBlock> {
@@ -363,6 +364,14 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingBlock>(
   }
 }
 
+unsafe extern "C" fn cancel_blocking_c_call<T: BlockingBlock>(
+  context: *mut CBContext,
+  arg2: *mut c_void,
+) {
+  let data = arg2 as *mut AsyncCallData<T>;
+  (*(*data).caller).cancel_activation(&*context);
+}
+
 pub fn activate_blocking<'a, T>(
   caller: &'a mut T,
   context: &'a CBContext,
@@ -378,7 +387,12 @@ where
     };
     let ctx = context as *const CBContext as *mut CBContext;
     let data_ptr = &data as *const AsyncCallData<T> as *mut AsyncCallData<T> as *mut c_void;
-    (*Core).asyncActivate.unwrap()(ctx, data_ptr, Some(activate_blocking_c_call::<T>))
+    (*Core).asyncActivate.unwrap()(
+      ctx,
+      data_ptr,
+      Some(activate_blocking_c_call::<T>),
+      Some(cancel_blocking_c_call::<T>),
+    )
   }
 }
 
