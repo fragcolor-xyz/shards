@@ -930,6 +930,58 @@ struct Checkbox : public Variable<CBType::Bool> {
   }
 };
 
+struct RadioButton : public Variable<CBType::Int> {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return paramsInfo; }
+
+  void setParam(int index, const CBVar &value) {
+    if (index < 2)
+      Variable<CBType::Int>::setParam(index, value);
+    else
+      _value = value.payload.intValue;
+  }
+
+  CBVar getParam(int index) {
+    if (index < 2)
+      return Variable<CBType::Int>::getParam(index);
+    else
+      return Var(_value);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+    }
+
+    if (_variable) {
+      if (::ImGui::RadioButton(_label.c_str(),
+                               _variable->payload.intValue == _value)) {
+        _variable->payload.intValue = _value;
+      }
+    } else {
+      // HACK kinda... we recycle _exposing since we are not using it in this
+      // branch
+      if (::ImGui::RadioButton(_label.c_str(), _exposing)) {
+        _exposing ^= true;
+      }
+    }
+
+    return Var(_value);
+  }
+
+private:
+  static inline Parameters paramsInfo{
+      VariableParamsInfo(),
+      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::IntType}}}};
+
+  CBInt _value;
+};
+
 struct Text : public Base {
   static CBParametersInfo parameters() { return _params; }
 
@@ -2475,58 +2527,6 @@ struct HasPointer : public Base {
   }
 };
 
-struct RadioButton : public Variable<CBType::Int> {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-
-  static CBParametersInfo parameters() { return paramsInfo; }
-
-  void setParam(int index, const CBVar &value) {
-    if (index < 2)
-      Variable<CBType::Int>::setParam(index, value);
-    else
-      _value = value.payload.intValue;
-  }
-
-  CBVar getParam(int index) {
-    if (index < 2)
-      return Variable<CBType::Int>::getParam(index);
-    else
-      return Var(_value);
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    IDContext idCtx(this);
-
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
-    if (_variable) {
-      if (::ImGui::RadioButton(_label.c_str(),
-                               _variable->payload.intValue == _value)) {
-        _variable->payload.intValue = _value;
-      }
-    } else {
-      // HACK kinda... we recycle _exposing since we are not using it in this
-      // branch
-      if (::ImGui::RadioButton(_label.c_str(), _exposing)) {
-        _exposing ^= true;
-      }
-    }
-
-    return Var(_value);
-  }
-
-private:
-  static inline Parameters paramsInfo{
-      VariableParamsInfo(),
-      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::IntType}}}};
-
-  CBInt _value;
-};
-
 struct FPS : public Base {
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
@@ -2654,6 +2654,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Window", Window);
   REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
   REGISTER_CBLOCK("GUI.Checkbox", Checkbox);
+  REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.Text", Text);
   REGISTER_CBLOCK("GUI.BulletText", BulletText);
   REGISTER_CBLOCK("GUI.Button", Button);
@@ -2700,7 +2701,6 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
   REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
   REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
-  REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.FPS", FPS);
   REGISTER_CBLOCK("GUI.Version", Version);
   REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
