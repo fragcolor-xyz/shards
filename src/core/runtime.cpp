@@ -1842,14 +1842,14 @@ static bool isDebuggerPresent() {
 #endif
 
 void installSignalHandlers() {
-  if (!isDebuggerPresent()) {
+  // if (!isDebuggerPresent()) {
     std::signal(SIGINT, &error_handler);
     std::signal(SIGTERM, &error_handler);
     std::signal(SIGFPE, &error_handler);
     std::signal(SIGILL, &error_handler);
     std::signal(SIGABRT, &error_handler);
     std::signal(SIGSEGV, &error_handler);
-  }
+  // }
 }
 
 Blocks &Blocks::block(std::string_view name, std::vector<Var> params) {
