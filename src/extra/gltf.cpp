@@ -1753,7 +1753,15 @@ struct Draw : public BGFX::BaseConsumer {
       memcpy(&t.data[12], &drawable.transform.w, sizeof(float) * 4);
       bgfx::setTransform(idx, 1);
 
-      ctx->addFrameDrawable(&drawable);
+      const auto id = ctx->addFrameDrawable(&drawable);
+      if (ctx->isPicking()) {
+        float fid[4];
+        fid[0] = ((id >> 0) & 0xff) / 255.0f;
+        fid[1] = ((id >> 8) & 0xff) / 255.0f;
+        fid[2] = ((id >> 16) & 0xff) / 255.0f;
+        fid[3] = ((id >> 24) & 0xff) / 255.0f;
+        bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
+      }
 
       renderNodeSubmit<instanced>(ctx, node, mats);
     }
