@@ -656,12 +656,43 @@ CBChainState suspend(CBContext *context, double seconds) {
   return context->getState();
 }
 
-template <typename T>
+void hash_update(const CBVar &var, void *state);
+
+std::unordered_set<const CBChain *> &gatheringChains() {
+#ifdef WIN32
+  // we have to leak.. or windows tls emulation will crash at process end
+  thread_local std::unordered_set<const CBChain *> *chains =
+      new std::unordered_set<const CBChain *>();
+  return *chains;
+#else
+  thread_local std::unordered_set<const CBChain *> chains;
+  return chains;
+#endif
+}
+
+template <typename T, bool HASHED = false>
 ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
                                             const CBVar &chainInput,
                                             CBVar &output,
-                                            const bool handlesReturn) {
+                                            const bool handlesReturn,
+                                            uint64_t *outHash = nullptr) {
+  XXH3_state_s hashState; // optimized out in release if not HASHED
+  if constexpr (HASHED) {
+    assert(outHash);
+    XXH3_INITSTATE(&hashState);
+    XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                 XXH_SECRET_DEFAULT_SIZE);
+    gatheringChains().clear();
+  }
+  DEFER(if constexpr (HASHED) {
+    *outHash = XXH3_64bits_digest(&hashState);
+    CBLOG_TRACE("Hashing digested {0:x}", *outHash);
+  });
+
+  // store initial input
   auto input = chainInput;
+
+  // find len based on blocks type
   size_t len;
   if constexpr (std::is_same<T, CBlocks>::value ||
                 std::is_same<T, CBSeq>::value) {
@@ -672,6 +703,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
     len = 0;
     CBLOG_FATAL("Unreachable blocksActivation case");
   }
+
   for (size_t i = 0; i < len; i++) {
     CBlockPtr blk;
     if constexpr (std::is_same<T, CBlocks>::value) {
@@ -685,7 +717,27 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       CBLOG_FATAL("Unreachable blocksActivation case");
     }
     try {
-      output = activateBlock(blk, context, input);
+      if constexpr (HASHED) {
+        const auto blockHash = blk->hash(blk);
+        CBLOG_TRACE("Hashing block {}", blockHash);
+        XXH3_64bits_update(&hashState, &blockHash, sizeof(blockHash));
+
+        CBLOG_TRACE("Hashing input {}", input);
+        hash_update(input, &hashState);
+
+        const auto params = blk->parameters(blk);
+        for (uint32_t nParam = 0; nParam < params.len; nParam++) {
+          const auto param = blk->getParam(blk, nParam);
+          CBLOG_TRACE("Hashing param {}", param);
+          hash_update(param, &hashState);
+        }
+
+        output = activateBlock(blk, context, input);
+        CBLOG_TRACE("Hashing output {}", output);
+        hash_update(output, &hashState);
+      } else {
+        output = activateBlock(blk, context, input);
+      }
       if (unlikely(!context->shouldContinue())) {
         // TODO #64 try and benchmark: remove this switch and state
         // Replace with preallocated exceptions like StopChainException
@@ -746,6 +798,20 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn) {
   return blocksActivation(blocks, context, chainInput, output, handlesReturn);
+}
+
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash) {
+  return blocksActivation<CBlocks, true>(blocks, context, chainInput, output,
+                                         handlesReturn, outHash);
+}
+
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash) {
+  return blocksActivation<CBSeq, true>(blocks, context, chainInput, output,
+                                       handlesReturn, outHash);
 }
 
 // Lazy and also avoid windows Loader (Dead)Lock
@@ -2335,18 +2401,6 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
   };
 }
 
-std::unordered_set<const CBChain *> &gatheringChains() {
-#ifdef WIN32
-  // we have to leak.. or windows tls emulation will crash at process end
-  thread_local std::unordered_set<const CBChain *> *chains =
-      new std::unordered_set<const CBChain *>();
-  return *chains;
-#else
-  thread_local std::unordered_set<const CBChain *> chains;
-  return chains;
-#endif
-}
-
 void _gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   // TODO out should be a set?
   switch (coll.index()) {
@@ -2419,8 +2473,6 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   gatheringChains().clear();
   _gatherBlocks(coll, out);
 }
-
-void hash_update(const CBVar &var, void *state);
 
 uint64_t hash(const CBVar &var) {
   static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
@@ -3080,6 +3132,21 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
       return CBChainState::Stop;
     }
   };
+
+  result->runBlocksHashed =
+      [](CBlocks blocks, CBContext *context, const CBVar *input, CBVar *output,
+         const CBBool handleReturn, uint64_t *outHash) noexcept {
+        try {
+          return chainblocks::activateBlocks(blocks, context, *input, *output,
+                                             handleReturn, outHash);
+        } catch (const std::exception &e) {
+          context->cancelFlow(e.what());
+          return CBChainState::Stop;
+        } catch (...) {
+          context->cancelFlow("foreign exception failure during runBlocks");
+          return CBChainState::Stop;
+        }
+      };
 
   result->getChainInfo = [](CBChainRef chainref) noexcept {
     auto sc = CBChain::sharedFromRef(chainref);

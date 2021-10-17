@@ -504,6 +504,13 @@ public:
     return CB_CORE::runBlocks(_blocks, context, input, output, handleReturn);
   }
 
+  CBChainState activateHashed(CBContext *context, const CBVar &input,
+                              CBVar &output, const bool handleReturn,
+                              uint64_t *outHash) {
+    return CB_CORE::runBlocksHashed(_blocks, context, input, output,
+                                    handleReturn, outHash);
+  }
+
   operator bool() const { return _blocksArray.size() > 0; }
 
   const CBlocks &blocks() const { return _blocks; }
