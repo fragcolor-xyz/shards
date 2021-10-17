@@ -274,6 +274,7 @@ struct Context {
     }
     if (pickingUniform.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(pickingUniform);
+      pickingUniform = BGFX_INVALID_HANDLE;
     }
     samplers.clear();
     lightCount = 0;

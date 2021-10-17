@@ -491,9 +491,6 @@ void testDraw() {
   }
 }
 
-#define GFX_Texture2D block("GFX.Texture2D")
-#define GFX_SetUniform(_name, _elems) block("GFX.SetUniform", _name, _elems)
-
 void testUniforms() {
   SECTION("Working Float4 Array") {
     std::vector<Var> cubeVertices = {
@@ -538,10 +535,10 @@ void testUniforms() {
                         Blocks() //
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-rgba.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-n.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .let(vs)
                             .block("FS.Read", true)
                             .block("Ref", "vs_bytes")
@@ -626,10 +623,10 @@ void testUniforms() {
                         Blocks() //
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-rgba.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-n.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .let(vs)
                             .block("FS.Read", true)
                             .block("Ref", "vs_bytes")
@@ -716,10 +713,10 @@ void testUniforms() {
                         Blocks() //
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-rgba.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-n.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .let(vs)
                             .block("FS.Read", true)
                             .block("Ref", "vs_bytes")
@@ -805,10 +802,10 @@ void testUniforms() {
                         Blocks() //
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-rgba.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-n.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .let(vs)
                             .block("FS.Read", true)
                             .block("Ref", "vs_bytes")
@@ -893,10 +890,10 @@ void testUniforms() {
                         Blocks() //
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-rgba.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-n.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .let(vs)
                             .block("FS.Read", true)
                             .block("Ref", "vs_bytes")
@@ -980,10 +977,10 @@ void testUniforms() {
                         Blocks() //
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-rgba.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .block("LoadImage", "../deps/bgfx/examples/06-bump/"
                                                 "fieldstone-n.tga")
-                            .GFX_Texture2D.block("Push", "textures")
+                            .GFX_Texture2D().block("Push", "textures")
                             .let(vs)
                             .block("FS.Read", true)
                             .block("Ref", "vs_bytes")
