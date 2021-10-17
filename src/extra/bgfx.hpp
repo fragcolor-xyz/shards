@@ -220,8 +220,10 @@ struct Context {
     frameDrawables.clear();
   }
 
-  void addFrameDrawable(IDrawable *drawable) {
-    frameDrawables[frameDrawablesCount++] = drawable;
+  uint32_t addFrameDrawable(IDrawable *drawable) {
+    uint32_t id = frameDrawablesCount++;
+    frameDrawables[id] = drawable;
+    return id;
   }
 
   size_t viewIndex() const { return viewsStack.size(); }
@@ -237,6 +239,9 @@ struct Context {
     for (auto &sampler : samplers) {
       bgfx::destroy(sampler);
     }
+    if (pickingUniform.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(pickingUniform);
+    }
     samplers.clear();
     lightCount = 0;
   }
@@ -251,6 +256,14 @@ struct Context {
     } else {
       return samplers[index];
     }
+  }
+
+  const bgfx::UniformHandle &getPickingUniform() {
+    if (pickingUniform.idx == bgfx::kInvalidHandle) {
+      pickingUniform =
+          bgfx::createUniform("u_picking_id", bgfx::UniformType::Vec4);
+    }
+    return pickingUniform;
   }
 
   // for now this is very simple, we just compute how many max light sources we
@@ -276,6 +289,7 @@ private:
   std::unordered_map<uint32_t, IDrawable *> frameDrawables;
 
   bool picking{false};
+  bgfx::UniformHandle pickingUniform = BGFX_INVALID_HANDLE;
 };
 
 struct Texture {

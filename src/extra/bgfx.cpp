@@ -2430,8 +2430,17 @@ struct Draw : public BaseConsumer {
            sizeof(float) * 4);
     bgfx::setTransform(idx, 1);
 
-    ctx->addFrameDrawable(
+    const auto id = ctx->addFrameDrawable(
         &_frameDrawables.emplace_back(input, context->currentChain()));
+
+    if (ctx->isPicking()) {
+      float fid[4];
+      fid[0] = ((id >> 0) & 0xff) / 255.0f;
+      fid[1] = ((id >> 8) & 0xff) / 255.0f;
+      fid[2] = ((id >> 16) & 0xff) / 255.0f;
+      fid[3] = ((id >> 24) & 0xff) / 255.0f;
+      bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
+    }
 
     render(ctx);
 
@@ -2470,7 +2479,17 @@ struct Draw : public BaseConsumer {
       memcpy(&mat[12], &vmat.payload.seqValue.elements[3].payload.float4Value,
              sizeof(float) * 4);
 
-      ctx->addFrameDrawable(&_frameDrawables.emplace_back(vmat, currentChain));
+      const auto id = ctx->addFrameDrawable(
+          &_frameDrawables.emplace_back(vmat, currentChain));
+
+      if (ctx->isPicking()) {
+        float fid[4];
+        fid[0] = ((id >> 0) & 0xff) / 255.0f;
+        fid[1] = ((id >> 8) & 0xff) / 255.0f;
+        fid[2] = ((id >> 16) & 0xff) / 255.0f;
+        fid[3] = ((id >> 24) & 0xff) / 255.0f;
+        bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
+      }
 
       data += stride;
     }
