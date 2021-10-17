@@ -76,12 +76,12 @@ struct Type {
     return *this;
   }
 
-  operator CBTypesInfo() {
-    CBTypesInfo res{&_type, 1, 0};
+  operator CBTypesInfo() const {
+    CBTypesInfo res{const_cast<CBTypeInfo *>(&_type), 1, 0};
     return res;
   }
 
-  operator CBTypeInfo() { return _type; }
+  operator CBTypeInfo() const { return _type; }
 
   static Type SeqOf(CBTypesInfo types) {
     Type res;

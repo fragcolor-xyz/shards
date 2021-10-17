@@ -236,26 +236,6 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Input> *>(blk);
     return cblock->block.activate(context, input);
   }
-  case CoreTakeSeq: {
-    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    return cblock->core.activateSeq(context, input);
-  }
-  case CoreTakeFloats: {
-    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    return cblock->core.activateFloats(context, input);
-  }
-  case CoreTakeTable: {
-    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    return cblock->core.activateTable(context, input);
-  }
-  case CoreTakeString: {
-    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    return cblock->core.activateString(context, input);
-  }
-  case CoreTakeBytes: {
-    auto cblock = reinterpret_cast<chainblocks::TakeRuntime *>(blk);
-    return cblock->core.activateBytes(context, input);
-  }
   case CorePush: {
     auto cblock = reinterpret_cast<chainblocks::PushRuntime *>(blk);
     return cblock->core.activate(context, input);

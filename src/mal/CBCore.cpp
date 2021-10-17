@@ -94,7 +94,7 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
     CBLOG_DEBUG("Script path: {}", scriptPath);
 
 #ifndef __EMSCRIPTEN__
-    // chainblocks::installSignalHandlers();
+    chainblocks::installSignalHandlers();
 #endif
 
     cbRegisterAllBlocks();

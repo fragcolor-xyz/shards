@@ -7,6 +7,7 @@ using namespace chainblocks;
 
 namespace chainblocks {
 namespace Gizmo {
+static TableVar experimental{{"experimental", Var(true)}};
 
 namespace Helper {
 static const float identity[16] = {
@@ -14,28 +15,28 @@ static const float identity[16] = {
     0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f,
 };
 
-// FIXME: copied from linal.cpp, should be shared
-constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
-constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};
-constexpr linalg::aliases::float3 AxisZ{0.0, 0.0, 1.0};
 const float PI = 3.141592653589793238463f;
 const float PI_2 = PI * 0.5f;
 }; // namespace Helper
 
-struct CubeView {
+struct CubeView : public BGFX::BaseConsumer {
   static CBOptionalString help() {
     return CBCCSTR("Display a cube gizmo that can be used to control the "
                    "orientation of the current camera.");
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputhelp() {
+  static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is not used and will pass through.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputhelp() {
+  static CBOptionalString outputHelp() {
     return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
   }
 
   static CBParametersInfo parameters() { return _params; }
@@ -102,13 +103,17 @@ struct Grid : public BGFX::BaseConsumer {
   static CBOptionalString help() { return CBCCSTR("Displays a grid."); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputhelp() {
+  static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is not used and will pass through.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputhelp() {
+  static CBOptionalString outputHelp() {
     return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
   }
 
   static CBParametersInfo parameters() { return _params; }
@@ -143,11 +148,11 @@ struct Grid : public BGFX::BaseConsumer {
     _axis.cleanup();
     _size.cleanup();
 
-    BGFX::BaseConsumer::cleanup();
+    BGFX::BaseConsumer::_cleanup();
   }
 
   void warmup(CBContext *context) {
-    BGFX::BaseConsumer::warmup(context);
+    BGFX::BaseConsumer::_warmup(context);
 
     _axis.warmup(context);
     _size.warmup(context);
@@ -155,16 +160,16 @@ struct Grid : public BGFX::BaseConsumer {
 
   CBVar activate(CBContext *context, const CBVar &input) {
 
-    linalg::aliases::float3 axis;
+    linalg::aliases::float4 rot;
     switch (Enums::GridAxis(_axis.get().payload.enumValue)) {
     case Enums::GridAxis::X:
-      axis = Helper::AxisX;
+      rot = linalg::rotation_quat(AxisZ, Helper::PI_2);
       break;
     case Enums::GridAxis::Y:
-      axis = Helper::AxisY;
+      rot = {0.f, 0.f, 0.f, 1.f};
       break;
     case Enums::GridAxis::Z:
-      axis = Helper::AxisZ;
+      rot = linalg::rotation_quat(AxisX, Helper::PI_2);
       break;
     }
 
@@ -172,7 +177,6 @@ struct Grid : public BGFX::BaseConsumer {
         reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
-    auto rot = linalg::rotation_quat(axis, Helper::PI_2);
     _matView = linalg::mul(currentView.view, linalg::rotation_matrix(rot));
 
     float arrView[16];
@@ -213,13 +217,17 @@ struct Transform : public BGFX::BaseConsumer {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputhelp() {
+  static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is not used and will pass through.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputhelp() {
+  static CBOptionalString outputHelp() {
     return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static const CBTable *properties() {
+    return &experimental.payload.tableValue;
   }
 
   static CBParametersInfo parameters() { return _params; }
@@ -266,11 +274,11 @@ struct Transform : public BGFX::BaseConsumer {
     _operation.cleanup();
     _snap.cleanup();
 
-    BGFX::BaseConsumer::cleanup();
+    BGFX::BaseConsumer::_cleanup();
   }
 
   void warmup(CBContext *context) {
-    BGFX::BaseConsumer::warmup(context);
+    BGFX::BaseConsumer::_warmup(context);
 
     _matrix.warmup(context);
     _mode.warmup(context);

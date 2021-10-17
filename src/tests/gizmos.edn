@@ -123,10 +123,10 @@
         (GUI.Button
          (str label)
          (->
-          cam_p (Math.Add offset) >= cam_p
-          cam_t (Math.Add offset) >= cam_t
+          cam_p (Math.Add offset) > cam_p
+          cam_t (Math.Add offset) > cam_t
           {"Position" cam_p
-           "Target" cam_t} (Math.LookAt) >= view)))
+           "Target" cam_t} (Math.LookAt) > view)))
 
       pos1 >= .cube_t
       (float3 1 1 1) >= .snap
@@ -156,10 +156,10 @@
        (GUI.Separator)
        (If (GUI.CheckBox "Snap?" "snappie")
            :Then (->
-                  .prev_snap >= .snap
+                  .prev_snap > .snap
                   (GUI.SameLine) (GUI.Float3Input "" "snap")
-                  .snap >= .prev_snap)
-           :Else (-> (float3 0 0 0) >= .snap))
+                  .snap > .prev_snap)
+           :Else (-> (float3 0 0 0) > .snap))
        (GUI.Separator)
        (cameraButton "X-1" (float3 -1 0 0) .cam_p .cam_t .myView)
        (GUI.SameLine)
@@ -200,4 +200,4 @@
 
 (defnode main)
 (schedule main test-chain)
-(run main 0.02)
+(run main 0.02 100)

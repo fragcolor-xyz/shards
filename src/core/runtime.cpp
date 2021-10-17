@@ -1201,28 +1201,6 @@ void validateConnection(ValidationContext &ctx) {
     }
   }
 
-  // Take selector checks
-  // TODO move into Take compose, we know have block variable
-  if (strcmp(ctx.bottom->name(ctx.bottom), "Take") == 0) {
-    if (previousOutput.basicType == Seq) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeSeq;
-    } else if (previousOutput.basicType == Table) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeTable;
-    } else if (previousOutput.basicType >= Int2 &&
-               previousOutput.basicType <= Int16) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeInts;
-    } else if (previousOutput.basicType >= Float2 &&
-               previousOutput.basicType <= Float4) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeFloats;
-    } else if (previousOutput.basicType == Color) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeColor;
-    } else if (previousOutput.basicType == Bytes) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeBytes;
-    } else if (previousOutput.basicType == String) {
-      ctx.bottom->inlineBlockId = CBInlineBlocks::CoreTakeString;
-    }
-  }
-
   // Finally do checks on what we consume
   auto requiredVar = ctx.bottom->requiredVariables(ctx.bottom);
 
@@ -1844,11 +1822,13 @@ void error_handler(int err_sig) {
   std::raise(err_sig);
 }
 
-#if _WIN32
+#ifdef _WIN32
 #include "debugapi.h"
 static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
-#elif __APPLE__
+#elif defined(__APPLE__)
 static bool isDebuggerPresent() { return false; }
+#elif defined(BOOST_USE_VALGRIND)
+static bool isDebuggerPresent() { return true; }
 #else
 #include <sys/ptrace.h>
 #include <sys/types.h>
@@ -3310,11 +3290,14 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     std::filesystem::current_path(p);
   };
 
-  result->asyncActivate = [](auto context, auto data, auto call) {
+  result->asyncActivate = [](CBContext *context, void *userData,
+                             CBAsyncActivateProc call,
+                             CBAsyncCancelProc cancel_call) {
     return chainblocks::awaitne(
-        context, [&] { return call(context, data); },
-        [] {
-          // TODO CANCELLATION
+        context, [=] { return call(context, userData); },
+        [=] {
+          if (cancel_call)
+            cancel_call(context, userData);
         });
   };
 

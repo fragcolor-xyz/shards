@@ -335,13 +335,12 @@ template <class T> struct BlockWrapper {
                                NAMEOF_FULL_TYPE(__type__))
 
 #define OVERRIDE_ACTIVATE(__data__, __func__)                                  \
-  __data__.block->activate = static_cast<CBActivateProc>([](CBlock *b,         \
-                                                            CBContext *ctx,    \
-                                                            const CBVar *v) {  \
-    return reinterpret_cast<                                                   \
-               BlockWrapper<std::remove_pointer<decltype(this)>::type> *>(b)   \
-        ->block.__func__(ctx, *v);                                             \
-  })
+  __data__.block->activate = static_cast<CBActivateProc>(                      \
+      [](CBlock *b, CBContext *ctx, const CBVar *v) {                          \
+        return reinterpret_cast<BlockWrapper<                                  \
+            typename std::remove_pointer<decltype(this)>::type> *>(b)          \
+            ->block.__func__(ctx, *v);                                         \
+      })
 
 template <typename CBCORE, Parameters &Params, size_t NPARAMS, Type &InputType,
           Type &OutputType>

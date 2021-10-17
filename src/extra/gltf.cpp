@@ -378,8 +378,6 @@ struct Load : public BGFX::BaseConsumer {
     if (_shaderCompiler) {
       _shaderCompiler = nullptr;
     }
-
-    BGFX::BaseConsumer::cleanup();
   }
 
   std::shared_ptr<GFXTexture> getOrLoadTexture(const GLTFModel &gltf,
@@ -579,8 +577,6 @@ struct Load : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *ctx) {
-    BGFX::BaseConsumer::warmup(ctx);
-
     _shaderCompiler = makeShaderCompiler();
     _shaderCompiler->warmup(ctx);
 
@@ -1559,7 +1555,7 @@ struct Draw : public BGFX::BaseConsumer {
   }
 
   void warmup(CBContext *context) {
-    BGFX::BaseConsumer::warmup(context);
+    BGFX::BaseConsumer::_warmup(context);
 
     _model.warmup(context);
     _materials.warmup(context);
@@ -1570,7 +1566,7 @@ struct Draw : public BGFX::BaseConsumer {
     _model.cleanup();
     _materials.cleanup();
 
-    BGFX::BaseConsumer::cleanup();
+    BGFX::BaseConsumer::_cleanup();
   }
 
   void renderNodeSubmit(BGFX::Context *ctx, const Node &node,

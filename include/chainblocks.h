@@ -70,13 +70,6 @@ enum CBInlineBlocks : uint32_t {
   CoreRefTable,
   CoreUpdate,
   CoreSwap,
-  CoreTakeSeq,
-  CoreTakeInts,
-  CoreTakeFloats,
-  CoreTakeColor,
-  CoreTakeBytes,
-  CoreTakeString,
-  CoreTakeTable,
   CorePush,
   CoreIs,
   CoreIsNot,
@@ -980,9 +973,12 @@ typedef void(__cdecl *CBSetRootPath)(CBString);
 typedef struct CBVar(__cdecl *CBAsyncActivateProc)(struct CBContext *context,
                                                    void *userData);
 
-typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context,
-                                                  void *userData,
-                                                  CBAsyncActivateProc call);
+typedef void(__cdecl *CBAsyncCancelProc)(struct CBContext *context,
+                                         void *userData);
+
+typedef struct CBVar(__cdecl *CBRunAsyncActivate)(
+    struct CBContext *context, void *userData, CBAsyncActivateProc call,
+    CBAsyncCancelProc cancel_call);
 
 typedef CBStrings(__cdecl *CBGetBlocks)();
 

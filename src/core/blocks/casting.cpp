@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include "blockwrapper.hpp"
+#include "chainblocks.h"
+#include "number_types.hpp"
 #include "shared.hpp"
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
@@ -242,283 +245,210 @@ private:
   std::vector<uint8_t> _buffer;
 };
 
-// TODO Write proper inputTypes Info
-#define TO_SOMETHING(_varName_, _width_, _type_, _payload_, _strOp_, _info_)   \
-  struct To##_varName_##_width_ {                                              \
-    static inline Type &singleOutput = CoreInfo::_info_;                       \
-    CBTypesInfo inputTypes() { return CoreInfo::AnyType; }                     \
-    CBTypesInfo outputTypes() { return singleOutput; }                         \
-                                                                               \
-    CBTypeInfo compose(const CBInstanceData &data) { return singleOutput; }    \
-                                                                               \
-    bool convert(CBVar &dst, int &index, const CBVar &src) {                   \
-      switch (src.valueType) {                                                 \
-      case String: {                                                           \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(std::_strOp_(src.payload.stringValue));        \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      }                                                                        \
-      case Float:                                                              \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.floatValue);                       \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Float2:                                                             \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float2Value[0]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float2Value[1]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Float3:                                                             \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float3Value[0]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float3Value[1]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float3Value[2]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Float4:                                                             \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float4Value[0]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float4Value[1]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float4Value[2]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.float4Value[3]);                   \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int:                                                                \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.intValue);                         \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int2:                                                               \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int2Value[0]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int2Value[1]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int3:                                                               \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int3Value[0]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int3Value[1]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int3Value[2]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      case Int4:                                                               \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int4Value[0]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int4Value[1]);                     \
-        index++;                                                               \
-        if (index == 4)                                                        \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int4Value[2]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        dst.payload._payload_[index] =                                         \
-            static_cast<_type_>(src.payload.int4Value[3]);                     \
-        index++;                                                               \
-        if (index == (_width_))                                                \
-          return true;                                                         \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError("Cannot cast given input type.");                \
-      }                                                                        \
-      return false;                                                            \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      int index = 0;                                                           \
-      CBVar output{};                                                          \
-      output.valueType = _varName_##_width_;                                   \
-      switch (input.valueType) {                                               \
-      case Seq: {                                                              \
-        for (uint32_t i = 0; i < _width_ && i < input.payload.seqValue.len;    \
-             i++) {                                                            \
-          if (convert(output, index, input.payload.seqValue.elements[i]))      \
-            return output;                                                     \
-        }                                                                      \
-        break;                                                                 \
-      }                                                                        \
-      case Int:                                                                \
-      case Int2:                                                               \
-      case Int3:                                                               \
-      case Int4:                                                               \
-      case Float:                                                              \
-      case Float2:                                                             \
-      case Float3:                                                             \
-      case Float4:                                                             \
-      case String:                                                             \
-        if (convert(output, index, input))                                     \
-          return output;                                                       \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError("Cannot cast given input type.");                \
-      }                                                                        \
-      return output;                                                           \
-    }                                                                          \
-  };                                                                           \
-  RUNTIME_CORE_BLOCK(To##_varName_##_width_);                                  \
-  RUNTIME_BLOCK_inputTypes(To##_varName_##_width_);                            \
-  RUNTIME_BLOCK_outputTypes(To##_varName_##_width_);                           \
-  RUNTIME_BLOCK_compose(To##_varName_##_width_);                               \
-  RUNTIME_BLOCK_activate(To##_varName_##_width_);                              \
-  RUNTIME_BLOCK_END(To##_varName_##_width_);
+template <CBType ToType> struct ToNumber {
+  const VectorTypeTraits *_outputVectorType{nullptr};
+  const NumberTypeTraits *_outputNumberType{nullptr};
 
-// TODO improve this
-#define TO_SOMETHING_SIMPLE(_varName_, _type_, _payload_, _strOp_, _info_)     \
-  struct To##_varName_ {                                                       \
-    static inline Type &singleOutput = CoreInfo::_info_;                       \
-    CBTypesInfo inputTypes() { return CoreInfo::AnyType; }                     \
-    CBTypesInfo outputTypes() { return singleOutput; }                         \
-                                                                               \
-    CBTypeInfo compose(const CBInstanceData &data) { return singleOutput; }    \
-                                                                               \
-    bool convert(CBVar &dst, const CBVar &src) {                               \
-      switch (src.valueType) {                                                 \
-      case Enum: {                                                             \
-        dst.payload._payload_ = static_cast<_type_>(src.payload.enumValue);    \
-        break;                                                                 \
-      }                                                                        \
-      case String: {                                                           \
-        dst.payload._payload_ =                                                \
-            static_cast<_type_>(std::_strOp_(src.payload.stringValue));        \
-        break;                                                                 \
-      }                                                                        \
-      case Float:                                                              \
-        dst.payload._payload_ = static_cast<_type_>(src.payload.floatValue);   \
-        break;                                                                 \
-      case Float2:                                                             \
-        dst.payload._payload_ =                                                \
-            static_cast<_type_>(src.payload.float2Value[0]);                   \
-        break;                                                                 \
-      case Float3:                                                             \
-        dst.payload._payload_ =                                                \
-            static_cast<_type_>(src.payload.float3Value[0]);                   \
-        break;                                                                 \
-      case Float4:                                                             \
-        dst.payload._payload_ =                                                \
-            static_cast<_type_>(src.payload.float4Value[0]);                   \
-        break;                                                                 \
-      case Int:                                                                \
-        dst.payload._payload_ = static_cast<_type_>(src.payload.intValue);     \
-        break;                                                                 \
-      case Int2:                                                               \
-        dst.payload._payload_ = static_cast<_type_>(src.payload.int2Value[0]); \
-        break;                                                                 \
-      case Int3:                                                               \
-        dst.payload._payload_ = static_cast<_type_>(src.payload.int3Value[0]); \
-        break;                                                                 \
-      case Int4:                                                               \
-        dst.payload._payload_ = static_cast<_type_>(src.payload.int4Value[0]); \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError("Cannot cast given input type.");                \
-      }                                                                        \
-      return false;                                                            \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      CBVar output{};                                                          \
-      output.valueType = _varName_;                                            \
-      switch (input.valueType) {                                               \
-      case Seq: {                                                              \
-        for (uint32_t i = 0; i < 1 && i < input.payload.seqValue.len; i++) {   \
-          if (convert(output, input.payload.seqValue.elements[i]))             \
-            return output;                                                     \
-        }                                                                      \
-        break;                                                                 \
-      }                                                                        \
-      case Enum:                                                               \
-      case String:                                                             \
-      case Int:                                                                \
-      case Int2:                                                               \
-      case Int3:                                                               \
-      case Int4:                                                               \
-      case Float:                                                              \
-      case Float2:                                                             \
-      case Float3:                                                             \
-      case Float4:                                                             \
-        if (convert(output, input))                                            \
-          return output;                                                       \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError("Cannot cast given input type.");                \
-      }                                                                        \
-      return output;                                                           \
-    }                                                                          \
-  };                                                                           \
-  RUNTIME_CORE_BLOCK(To##_varName_);                                           \
-  RUNTIME_BLOCK_inputTypes(To##_varName_);                                     \
-  RUNTIME_BLOCK_outputTypes(To##_varName_);                                    \
-  RUNTIME_BLOCK_compose(To##_varName_);                                        \
-  RUNTIME_BLOCK_activate(To##_varName_);                                       \
-  RUNTIME_BLOCK_END(To##_varName_);
+  // If known at compose time these are set
+  // otherwise each element should be evaluated during activate
+  const VectorTypeTraits *_inputVectorType{nullptr};
+  const NumberConversion *_numberConversion{nullptr};
 
-TO_SOMETHING_SIMPLE(Int, int64_t, intValue, stoll, IntType);
-TO_SOMETHING(Int, 2, int64_t, int2Value, stoll, Int2Type);
-TO_SOMETHING(Int, 3, int32_t, int3Value, stol, Int3Type);
-TO_SOMETHING(Int, 4, int32_t, int4Value, stol, Int4Type);
-TO_SOMETHING_SIMPLE(Float, double, floatValue, stod, FloatType);
-TO_SOMETHING(Float, 2, double, float2Value, stod, Float2Type);
-TO_SOMETHING(Float, 3, float, float3Value, stof, Float3Type);
-TO_SOMETHING(Float, 4, float, float4Value, stof, Float4Type);
+  CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  CBTypesInfo outputTypes() {
+    if (!_outputVectorType)
+      return CoreInfo::AnyType;
+    return _outputVectorType->type;
+  }
+
+  static const NumberTypeTraits *getEnumNumberType() {
+    static const NumberTypeTraits *result = nullptr;
+    if (!result) {
+      result = NumberTypeLookup::getInstance().get(NumberType::Int32);
+      cbassert(result);
+    }
+    return result;
+  }
+
+  const NumberTypeTraits *
+  determineFixedSeqNumberType(const CBTypeInfo &typeInfo) {
+    if (!typeInfo.fixedSize) {
+      return nullptr;
+    }
+
+    const NumberTypeTraits *fixedElemNumberType = nullptr;
+    for (size_t i = 0; i < typeInfo.seqTypes.len; i++) {
+      const CBTypeInfo &elementType = typeInfo.seqTypes.elements[i];
+      const NumberTypeTraits *currentElemNumberType =
+          NumberTypeLookup::getInstance().get(elementType.basicType);
+      if (!currentElemNumberType)
+        return nullptr;
+      if (i == 0) {
+        fixedElemNumberType = currentElemNumberType;
+      } else {
+        if (currentElemNumberType != fixedElemNumberType) {
+          return nullptr;
+        }
+      }
+    }
+
+    return fixedElemNumberType;
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
+    if (!_outputVectorType) {
+      throw ComposeError("Conversion not implemented for this type");
+    }
+
+    _outputNumberType =
+        NumberTypeLookup::getInstance().get(_outputVectorType->numberType);
+    _inputVectorType =
+        VectorTypeLookup::getInstance().get(data.inputType.basicType);
+
+    if (_inputVectorType) {
+      _numberConversion = NumberTypeLookup::getInstance().getConversion(
+          _inputVectorType->numberType, _outputVectorType->numberType);
+      cbassert(_numberConversion);
+    } else if (data.inputType.basicType == Seq) {
+      const NumberTypeTraits *fixedNumberType =
+          determineFixedSeqNumberType(data.inputType);
+      if (fixedNumberType) {
+        _numberConversion =
+            fixedNumberType->conversionTable.get(_outputNumberType->type);
+        cbassert(_numberConversion);
+
+        OVERRIDE_ACTIVATE(data, activateSeqElementsFixed);
+      }
+    }
+
+    return _outputVectorType->type;
+  }
+
+  void parseVector(CBVar &output, const CBVar &input) {
+    const VectorTypeTraits *inputVectorType =
+        _inputVectorType ? _inputVectorType
+                         : VectorTypeLookup::getInstance().get(input.valueType);
+    if (!inputVectorType) {
+      throw ActivationError("Cannot cast given input type.");
+    }
+
+    const NumberConversion *conversion =
+        _numberConversion
+            ? _numberConversion
+            : NumberTypeLookup::getInstance().getConversion(
+                  inputVectorType->numberType, _outputVectorType->numberType);
+    cbassert(conversion);
+
+    // Can reduce call overhead by adding a single ConvertMultiple function with
+    // in/out lengths
+    uint8_t *srcPtr = (uint8_t *)&input.payload;
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
+    size_t numToConvert =
+        std::min(_outputVectorType->dimension, inputVectorType->dimension);
+    for (size_t i = 0; i < numToConvert; i++) {
+      conversion->convertOne(srcPtr, dstPtr);
+      srcPtr += conversion->inStride;
+      dstPtr += conversion->outStride;
+    }
+  }
+
+  void parseSeqElements(CBVar &output, const CBSeq &sequence) {
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
+    for (size_t i = 0; i < sequence.len; i++) {
+      const CBVar &elem = sequence.elements[i];
+
+      const NumberTypeTraits *elemNumberType =
+          NumberTypeLookup::getInstance().get(elem.valueType);
+      if (!elemNumberType) {
+        throw ActivationError("Cannot cast given sequence element type.");
+      }
+
+      const NumberConversion *conversion =
+          elemNumberType->conversionTable.get(_outputVectorType->numberType);
+      cbassert(conversion);
+
+      conversion->convertOne(&elem.payload, dstPtr);
+      dstPtr += conversion->outStride;
+    }
+  }
+
+  void skipStringSeparators(const char *&strPtr) {
+    while (*strPtr &&
+           (std::isspace(strPtr[0]) || strPtr[0] == ',' || strPtr[0] == ';')) {
+      ++strPtr;
+    }
+  }
+
+  void parseStringElements(CBVar &output, const char *str, size_t length) {
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
+    const char *strPtr = str;
+
+    // Skip seq header
+    while (*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == '(' ||
+                       strPtr[0] == '{' || strPtr[0] == '[')) {
+      ++strPtr;
+    }
+
+    for (size_t i = 0; i < _outputVectorType->dimension; i++) {
+      _outputNumberType->convertParse(dstPtr, strPtr, (char **)&strPtr);
+      skipStringSeparators(strPtr);
+      dstPtr += _outputNumberType->size;
+    }
+  }
+
+  void parseEnumValue(CBVar &output, CBEnum value) {
+    _numberConversion =
+        getEnumNumberType()->conversionTable.get(_outputVectorType->numberType);
+    cbassert(_numberConversion);
+
+    _numberConversion->convertOne(&value, &output.payload);
+  }
+
+  CBVar activateSeqElementsFixed(CBContext *context, const CBVar &input) {
+    cbassert(_outputVectorType);
+    cbassert(_numberConversion);
+
+    const CBSeq &sequence = input.payload.seqValue;
+    CBVar output{};
+    output.valueType = _outputVectorType->cbType;
+
+    uint8_t *dstPtr = (uint8_t *)&output.payload;
+    for (size_t i = 0; i < sequence.len; i++) {
+      const CBVar &elem = sequence.elements[i];
+
+      _numberConversion->convertOne(&elem.payload, dstPtr);
+      dstPtr += _numberConversion->outStride;
+    }
+
+    return output;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    cbassert(_outputVectorType);
+
+    CBVar output{};
+    output.valueType = _outputVectorType->cbType;
+
+    switch (input.valueType) {
+    case Seq:
+      parseSeqElements(output, input.payload.seqValue);
+      break;
+    case Enum:
+      parseEnumValue(output, input.payload.enumValue);
+      break;
+    case String:
+      parseStringElements(output, input.payload.stringValue,
+                          input.payload.stringLen);
+      break;
+    default:
+      parseVector(output, input);
+      break;
+    }
+
+    return output;
+  }
+};
 
 struct ToString {
   VarStringStream stream;
@@ -853,14 +783,18 @@ struct StringToBytes {
 };
 
 void registerCastingBlocks() {
-  REGISTER_CORE_BLOCK(ToInt);
-  REGISTER_CORE_BLOCK(ToInt2);
-  REGISTER_CORE_BLOCK(ToInt3);
-  REGISTER_CORE_BLOCK(ToInt4);
-  REGISTER_CORE_BLOCK(ToFloat);
-  REGISTER_CORE_BLOCK(ToFloat2);
-  REGISTER_CORE_BLOCK(ToFloat3);
-  REGISTER_CORE_BLOCK(ToFloat4);
+  REGISTER_CBLOCK("ToInt", ToNumber<Int>);
+  REGISTER_CBLOCK("ToInt2", ToNumber<Int2>);
+  REGISTER_CBLOCK("ToInt3", ToNumber<Int3>);
+  REGISTER_CBLOCK("ToInt4", ToNumber<Int4>);
+  REGISTER_CBLOCK("ToInt8", ToNumber<Int8>);
+  REGISTER_CBLOCK("ToInt16", ToNumber<Int16>);
+  REGISTER_CBLOCK("ToColor", ToNumber<Color>);
+  REGISTER_CBLOCK("ToFloat", ToNumber<Float>);
+  REGISTER_CBLOCK("ToFloat2", ToNumber<Float2>);
+  REGISTER_CBLOCK("ToFloat3", ToNumber<Float3>);
+  REGISTER_CBLOCK("ToFloat4", ToNumber<Float4>);
+
   REGISTER_CORE_BLOCK(ToString);
   REGISTER_CORE_BLOCK(ToHex);
 

@@ -1173,3 +1173,126 @@ TEST_CASE("HashedActivations") {
   REQUIRE(hash == 15368403145312537271ull);
   REQUIRE(output == input);
 }
+
+#include "number_types.hpp"
+
+TEST_CASE("Number Types") {
+  NumberTypeLookup typeLookup;
+
+  CHECK(typeLookup.get(NumberType::Invalid) == nullptr);
+
+  CHECK(typeLookup.get(NumberType::UInt8)->size == 1);
+  CHECK(typeLookup.get(NumberType::Int8)->size == 1);
+  CHECK(typeLookup.get(NumberType::Int16)->size == 2);
+  CHECK(typeLookup.get(NumberType::Int32)->size == 4);
+  CHECK(typeLookup.get(NumberType::Int64)->size == 8);
+  CHECK(typeLookup.get(NumberType::Float32)->size == 4);
+  CHECK(typeLookup.get(NumberType::Float64)->size == 8);
+
+  CHECK(typeLookup.get(NumberType::UInt8)->isInteger);
+  CHECK(typeLookup.get(NumberType::Int8)->isInteger);
+  CHECK(typeLookup.get(NumberType::Int16)->isInteger);
+  CHECK(typeLookup.get(NumberType::Int32)->isInteger);
+  CHECK(typeLookup.get(NumberType::Int64)->isInteger);
+  CHECK(!typeLookup.get(NumberType::Float32)->isInteger);
+  CHECK(!typeLookup.get(NumberType::Float64)->isInteger);
+
+  CHECK(typeLookup.get(CBType::Int) == typeLookup.get(NumberType::Int64));
+  CHECK(typeLookup.get(CBType::Int2) == typeLookup.get(NumberType::Int64));
+  CHECK(typeLookup.get(CBType::Int3) == typeLookup.get(NumberType::Int32));
+  CHECK(typeLookup.get(CBType::Int4) == typeLookup.get(NumberType::Int32));
+  CHECK(typeLookup.get(CBType::Int8) == typeLookup.get(NumberType::Int16));
+  CHECK(typeLookup.get(CBType::Int16) == typeLookup.get(NumberType::Int8));
+  CHECK(typeLookup.get(CBType::Color) == typeLookup.get(NumberType::UInt8));
+  CHECK(typeLookup.get(CBType::Float) == typeLookup.get(NumberType::Float64));
+  CHECK(typeLookup.get(CBType::Float2) == typeLookup.get(NumberType::Float64));
+  CHECK(typeLookup.get(CBType::Float3) == typeLookup.get(NumberType::Float32));
+  CHECK(typeLookup.get(CBType::Float4) == typeLookup.get(NumberType::Float32));
+
+  double d = 3.14;
+  float f = 0.f;
+  typeLookup.getConversion(NumberType::Float64, NumberType::Float32)
+      ->convertOne(&d, &f);
+  CHECK(f == 3.14f);
+
+  int32_t i32 = 0;
+  typeLookup.getConversion(NumberType::Float32, NumberType::Int32)
+      ->convertOne(&f, &i32);
+  CHECK(i32 == 3);
+
+  uint8_t u8 = 0;
+  typeLookup.getConversion(NumberType::Float32, NumberType::UInt8)
+      ->convertOne(&f, &u8);
+  CHECK(u8 == 3);
+
+  typeLookup.getConversion(NumberType::UInt8, NumberType::Float64)
+      ->convertOne(&u8, &d);
+  CHECK(d == 3.0);
+
+  SECTION("Vector take") {
+    float float4v[4] = {1.1f, 2.2f, 3.3f, 4.4f};
+    double float2v[2] = {0};
+
+    std::vector<Var> vec{Var(0)};
+    Var seq = Var(vec);
+    CHECK_NOTHROW(
+        typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+            ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
+    CHECK(float2v[0] == (double)1.1f);
+    CHECK(float2v[1] == 0.0);
+
+    vec = {Var(3), Var(1)};
+    seq = Var(vec);
+    CHECK_NOTHROW(
+        typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+            ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
+    CHECK(float2v[0] == (double)4.4f);
+    CHECK(float2v[1] == (double)2.2f);
+  }
+
+  SECTION("Vector take (out of range)") {
+    float float2v0[2] = {1.f, 2.f};
+    float float2v1[2] = {0};
+
+    std::vector<Var> vec{Var(3) /*out of range index*/};
+    Var seq = Var(vec);
+
+    // Should return false
+    CHECK_THROWS_AS(
+        typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
+            ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue),
+        NumberConversionOutOfRangeEx);
+    CHECK(float2v1[0] == 0.f);
+    CHECK(float2v1[1] == 0.f);
+  }
+}
+
+TEST_CASE("Vector types") {
+  VectorTypeLookup Typelookup;
+
+  CBType typesToCheck[] = {
+      Int, Int2, Int3, Int4, Int8, Int16, Float, Float2, Float3, Float4, Color,
+  };
+
+  for (const CBType &typeToCheck : typesToCheck) {
+    const VectorTypeTraits *typeTraits = Typelookup.get(typeToCheck);
+    CHECK(typeTraits);
+    CHECK(typeTraits->dimension > 0);
+  }
+
+  for (size_t i = 1; i < 4; i++) {
+    const VectorTypeTraits *compatibleType =
+        Typelookup.findCompatibleType(false, i);
+    CHECK(compatibleType);
+    CHECK(compatibleType->dimension >= i);
+    CHECK(!compatibleType->isInteger);
+  }
+
+  for (size_t i = 1; i < 16; i++) {
+    const VectorTypeTraits *compatibleType =
+        Typelookup.findCompatibleType(true, i);
+    CHECK(compatibleType);
+    CHECK(compatibleType->dimension >= i);
+    CHECK(compatibleType->isInteger);
+  }
+}

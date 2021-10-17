@@ -430,12 +430,14 @@ struct BaseConsumer : public Base {
     return CBExposedTypesInfo(requiredInfo);
   }
 
-  void warmup(CBContext *context) {
+  // Required before _bgfxCtx can be used
+  void _warmup(CBContext *context) {
     _bgfxCtx = referenceVariable(context, "GFX.Context");
     assert(_bgfxCtx->valueType == CBType::Object);
   }
 
-  void cleanup() {
+  // Required during cleanup if _warmup() was called
+  void _cleanup() {
     if (_bgfxCtx) {
       releaseVariable(_bgfxCtx);
       _bgfxCtx = nullptr;
