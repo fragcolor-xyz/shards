@@ -1697,6 +1697,10 @@ struct Draw : public BGFX::BaseConsumer {
         }
 
         bgfx::submit(currentView.id, handle);
+
+        if (ctx->isPicking()) {
+          bgfx::submit(BGFX::PickingViewId, ctx->getPickingProgram());
+        }
       }
     }
   }
