@@ -6,6 +6,7 @@
 
 #include "SDL.h"
 #include "bgfx/bgfx.h"
+#include "bgfx/embedded_shader.h"
 #include "bgfx/platform.h"
 #include "blocks/shared.hpp"
 #include "linalg_shim.hpp"
@@ -196,6 +197,8 @@ struct IDrawable {
 };
 
 struct Context {
+  static inline bgfx::EmbeddedShader const *EmbeddedShaders = nullptr;
+
   static inline Type Info{
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxContextCC}}}};
@@ -257,8 +260,6 @@ struct Context {
 
   bool isPicking() const { return picking; }
 
-  bgfx::ProgramHandle getPickingProgram() const { return pickingShaderHandle; }
-
   // TODO thread_local? anyway sort multiple threads
   // this is written during sleeps between node ticks
   static inline std::vector<SDL_Event> sdlEvents;
@@ -275,7 +276,6 @@ private:
   std::unordered_map<uint32_t, IDrawable *> frameDrawables;
 
   bool picking{false};
-  bgfx::ProgramHandle pickingShaderHandle = BGFX_INVALID_HANDLE;
 };
 
 struct Texture {
@@ -393,10 +393,14 @@ struct ShaderHandle {
                                             BgfxShaderHandleCC};
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle pickingHandle = BGFX_INVALID_HANDLE;
 
   ~ShaderHandle() {
     if (handle.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(handle);
+    }
+    if (pickingHandle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(pickingHandle);
     }
   }
 };
