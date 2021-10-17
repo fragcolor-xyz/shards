@@ -8,6 +8,17 @@ elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
   add_compile_definitions(CPUBITS32)
 endif()
 
+# Default arch if ARCH is not set
+if(NOT ARCH)
+  if(X86 AND NOT EMSCRIPTEN)
+    set(ARCH "sandybridge")
+  endif()
+endif()
+
+if(ARCH)
+  add_compile_options(-march=${ARCH})
+endif()
+
 if(EMSCRIPTEN)
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     add_compile_options(-g1 -Os)

@@ -17,11 +17,11 @@ endif()
 
 message(STATUS "Rust_CARGO_TARGET = ${Rust_CARGO_TARGET}")
 
-if(NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"))
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(Rust_BUILD_SUBDIR_CONFIGURATION debug)
+else()
   set(Rust_CARGO_FLAGS --release)
   set(Rust_BUILD_SUBDIR_CONFIGURATION release)
-else()
-  set(Rust_BUILD_SUBDIR_CONFIGURATION debug)
 endif()
 
 if(Rust_BUILD_SUBDIR_HAS_TARGET)
@@ -30,6 +30,8 @@ else()
   set(Rust_BUILD_SUBDIR ${Rust_BUILD_SUBDIR_CONFIGURATION})
 endif()
 message(STATUS "Rust_BUILD_SUBDIR = ${Rust_BUILD_SUBDIR}")
+
+set(Rust_FLAGS ${Rust_FLAGS} -Ctarget-cpu=${ARCH})
 
 if(RUST_USE_LTO)
   set(Rust_FLAGS ${Rust_FLAGS} -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
