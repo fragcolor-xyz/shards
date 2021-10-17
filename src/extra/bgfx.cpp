@@ -816,7 +816,9 @@ struct MainWindow : public BaseWindow {
     // _imguiContext.Reset();
     // _imguiContext.Set();
 
-    _imguiBgfxCtx.create(18.0, 255);
+    // INT16_MAX is imgui View id, this gives us room up to UINT16_MAX
+    // For views above it.
+    _imguiBgfxCtx.create(18.0, GuiViewId);
 
     ImGuiIO &io = ::ImGui::GetIO();
 
@@ -2100,7 +2102,12 @@ struct Draw : public BaseConsumer {
            "The blend state table to describe and enable blending. If it's a "
            "single table the state will be assigned to both RGB and Alpha, if "
            "2 tables are specified, the first will be RGB, the second Alpha."),
-       {CoreInfo::NoneType, Enums::BlendTable, Enums::BlendTableSeq}}};
+       {CoreInfo::NoneType, Enums::BlendTable, Enums::BlendTableSeq}},
+      {"Picking",
+       CBCCSTR("If 3D pixel based picking should be possible when requested "
+               "using our default picking shaders. Disable if your vertex "
+               "shader uses a non-standard world transform."),
+       {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -2117,6 +2124,9 @@ struct Draw : public BaseConsumer {
       break;
     case 3:
       _blend = value;
+    case 4:
+      _picking = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -2132,6 +2142,8 @@ struct Draw : public BaseConsumer {
       return _model;
     case 3:
       return _blend;
+    case 4:
+      return Var(_picking);
     default:
       return Var::Empty;
     }
@@ -2142,6 +2154,7 @@ struct Draw : public BaseConsumer {
   ParamVar _model{};
   OwnedVar _blend{};
   std::array<CBExposedTypeInfo, 5> _requiring;
+  bool _picking{true};
 
   CBExposedTypesInfo requiredVariables() {
     int idx = 0;
@@ -2383,6 +2396,10 @@ struct Draw : public BaseConsumer {
 
     // Submit primitive for rendering to the current view.
     bgfx::submit(currentView.id, shader->handle);
+
+    if (ctx->isPicking() && _picking && model) {
+      bgfx::submit(PickingViewId, ctx->getPickingProgram());
+    }
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {

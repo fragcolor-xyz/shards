@@ -31,6 +31,10 @@ constexpr uint32_t BgfxModelHandleCC = 'gfxM';
 constexpr uint32_t BgfxContextCC = 'gfx ';
 constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
 
+// BGFX_CONFIG_MAX_VIEWS is 256
+constexpr bgfx::ViewId GuiViewId = 256 - 1;
+constexpr bgfx::ViewId PickingViewId = GuiViewId - 1;
+
 struct Enums {
   enum class CullMode { None, Front, Back };
   static constexpr uint32_t CullModeCC = 'gfxC';
@@ -253,6 +257,8 @@ struct Context {
 
   bool isPicking() const { return picking; }
 
+  bgfx::ProgramHandle getPickingProgram() const { return pickingShaderHandle; }
+
   // TODO thread_local? anyway sort multiple threads
   // this is written during sleeps between node ticks
   static inline std::vector<SDL_Event> sdlEvents;
@@ -269,6 +275,7 @@ private:
   std::unordered_map<uint32_t, IDrawable *> frameDrawables;
 
   bool picking{false};
+  bgfx::ProgramHandle pickingShaderHandle = BGFX_INVALID_HANDLE;
 };
 
 struct Texture {
