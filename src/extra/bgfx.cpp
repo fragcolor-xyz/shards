@@ -4,7 +4,6 @@
 #include "./bgfx.hpp"
 #include "./imgui.hpp"
 #include "SDL.h"
-#include <bgfx/embedded_shader.h>
 #include <bx/debug.h>
 #include <bx/math.h>
 #include <bx/timer.h>
@@ -34,10 +33,14 @@ using namespace chainblocks;
 #include "roboto_regular.ttf.h"
 #include "robotomono_regular.ttf.h"
 
+#include "fs_picking.bin.h"
+
 static const bgfx::EmbeddedShader s_embeddedShaders[] = {
     BGFX_EMBEDDED_SHADER(vs_ocornut_imgui),
     BGFX_EMBEDDED_SHADER(fs_ocornut_imgui),
-    BGFX_EMBEDDED_SHADER(vs_imgui_image), BGFX_EMBEDDED_SHADER(fs_imgui_image),
+    BGFX_EMBEDDED_SHADER(vs_imgui_image),
+    BGFX_EMBEDDED_SHADER(fs_imgui_image),
+    BGFX_EMBEDDED_SHADER(fs_picking),
     BGFX_EMBEDDED_SHADER_END()};
 
 struct FontRangeMerge {
@@ -561,6 +564,8 @@ struct MainWindow : public BaseWindow {
   float _windowScalingW{1.0};
   float _windowScalingH{1.0};
   bgfx::UniformHandle _timeUniformHandle = BGFX_INVALID_HANDLE;
+
+  void setup() { Context::EmbeddedShaders = s_embeddedShaders; }
 
   CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
@@ -1270,11 +1275,23 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
         throw ActivationError("Failed to create shader program.");
       }
 
+      // also build picking program
+      bgfx::RendererType::Enum type = bgfx::getRendererType();
+      auto pph = bgfx::createProgram(
+          vsh,
+          bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_picking"),
+          true);
+      if (pph.idx == bgfx::kInvalidHandle) {
+        throw ActivationError("Failed to create shader program.");
+      }
+
+      // commit our compiled shaders
       if (_output) {
         ShaderHandle::Var.Release(_output);
       }
       _output = ShaderHandle::Var.New();
       _output->handle = ph;
+      _output->pickingHandle = pph;
     }
     return ShaderHandle::Var.Get(_output);
   }
@@ -2398,7 +2415,7 @@ struct Draw : public BaseConsumer {
     bgfx::submit(currentView.id, shader->handle);
 
     if (ctx->isPicking() && _picking && model) {
-      bgfx::submit(PickingViewId, ctx->getPickingProgram());
+      bgfx::submit(PickingViewId, shader->pickingHandle);
     }
   }
 

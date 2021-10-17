@@ -37,11 +37,15 @@ TODO; GLTF.Animate - to play animations
 namespace chainblocks {
 namespace gltf {
 struct GFXShader {
-  GFXShader(bgfx::ProgramHandle handle, bgfx::ProgramHandle instanced)
-      : handle(handle), handleInstanced(instanced) {}
+  GFXShader(bgfx::ProgramHandle handle, bgfx::ProgramHandle instanced,
+            bgfx::ProgramHandle picking, bgfx::ProgramHandle instancedPicking)
+      : handle(handle), handlePicking(picking), handleInstanced(instanced),
+        handleInstancedPicking(instancedPicking) {}
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle handlePicking = BGFX_INVALID_HANDLE;
   bgfx::ProgramHandle handleInstanced = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle handleInstancedPicking = BGFX_INVALID_HANDLE;
 
   GFXShader(GFXShader &&other) {
     std::swap(handle, other.handle);
@@ -53,8 +57,16 @@ struct GFXShader {
       bgfx::destroy(handle);
     }
 
+    if (handlePicking.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handlePicking);
+    }
+
     if (handleInstanced.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(handleInstanced);
+    }
+
+    if (handleInstancedPicking.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handleInstancedPicking);
     }
   }
 };
@@ -502,9 +514,16 @@ struct Load : public BGFX::BaseConsumer {
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
         }
-        shader =
-            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true),
-                                        bgfx::createProgram(ivsh, psh, true));
+
+        bgfx::RendererType::Enum type = bgfx::getRendererType();
+        auto pickingShader = bgfx::createEmbeddedShader(
+            BGFX::Context::EmbeddedShaders, type, "fs_picking");
+        shader = std::make_shared<GFXShader>(
+            bgfx::createProgram(vsh, psh, true),
+            bgfx::createProgram(ivsh, psh, true),
+            bgfx::createProgram(vsh, pickingShader, true),
+            bgfx::createProgram(ivsh, pickingShader, true));
+
         _shadersCache().add(hash, shader);
       }
       material.shader = shader;
@@ -565,9 +584,16 @@ struct Load : public BGFX::BaseConsumer {
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
         }
-        shader =
-            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true),
-                                        bgfx::createProgram(ivsh, psh, true));
+
+        bgfx::RendererType::Enum type = bgfx::getRendererType();
+        auto pickingShader = bgfx::createEmbeddedShader(
+            BGFX::Context::EmbeddedShaders, type, "fs_picking");
+        shader = std::make_shared<GFXShader>(
+            bgfx::createProgram(vsh, psh, true),
+            bgfx::createProgram(ivsh, psh, true),
+            bgfx::createProgram(vsh, pickingShader, true),
+            bgfx::createProgram(ivsh, pickingShader, true));
+
         _shadersCache().add(hash, shader);
       }
       material.shader = shader;
@@ -1615,6 +1641,7 @@ struct Draw : public BGFX::BaseConsumer {
         }
 
         bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+        bgfx::ProgramHandle pickingHandle = BGFX_INVALID_HANDLE;
 
         if (prims.material) {
           const auto &material = (*prims.material).get();
@@ -1650,9 +1677,12 @@ struct Draw : public BGFX::BaseConsumer {
             const auto shader = reinterpret_cast<BGFX::ShaderHandle *>(
                 pshader->payload.objectValue);
             handle = shader->handle;
+            pickingHandle = shader->pickingHandle;
           } else if (material.shader) {
             handle = instanced ? material.shader->handleInstanced
                                : material.shader->handle;
+            pickingHandle = instanced ? material.shader->handleInstancedPicking
+                                      : material.shader->handlePicking;
           }
 
           // if textures are empty, use the ones we loaded during Load
@@ -1699,7 +1729,7 @@ struct Draw : public BGFX::BaseConsumer {
         bgfx::submit(currentView.id, handle);
 
         if (ctx->isPicking()) {
-          bgfx::submit(BGFX::PickingViewId, ctx->getPickingProgram());
+          bgfx::submit(BGFX::PickingViewId, pickingHandle);
         }
       }
     }
