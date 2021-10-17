@@ -487,12 +487,14 @@ struct Load : public BGFX::BaseConsumer {
       if (!shader) {
         // compile or fetch cached shaders
         // vertex
+        uint32_t hashOut;
         bgfx::ShaderHandle vsh;
         {
           auto bytecode = _shaderCompiler->compile(
               varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
+          hashOut = BGFX::extractHashOut(mem);
           vsh = bgfx::createShader(mem);
         }
         // vertex - instanced
@@ -515,9 +517,18 @@ struct Load : public BGFX::BaseConsumer {
           psh = bgfx::createShader(mem);
         }
 
-        bgfx::RendererType::Enum type = bgfx::getRendererType();
-        auto pickingShader = bgfx::createEmbeddedShader(
-            BGFX::Context::EmbeddedShaders, type, "fs_picking");
+        // also build picking program
+        auto &pickingShaderData =
+            BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
+        auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
+
+        // hack/fix hash in or creation of program will fail!
+        *(uint32_t *)(ppmem->data + 4) = hashOut;
+        auto pickingShader = bgfx::createShader(ppmem);
+        if (pickingShader.idx == bgfx::kInvalidHandle) {
+          throw ActivationError("Failed to load picking pixel shader.");
+        }
+
         shader = std::make_shared<GFXShader>(
             bgfx::createProgram(vsh, psh, true),
             bgfx::createProgram(ivsh, psh, true),
@@ -557,12 +568,14 @@ struct Load : public BGFX::BaseConsumer {
       if (!shader) {
         // compile or fetch cached shaders
         // vertex
+        uint32_t hashOut;
         bgfx::ShaderHandle vsh;
         {
           auto bytecode = _shaderCompiler->compile(
               varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
+          hashOut = BGFX::extractHashOut(mem);
           vsh = bgfx::createShader(mem);
         }
         // vertex - instanced
@@ -585,9 +598,18 @@ struct Load : public BGFX::BaseConsumer {
           psh = bgfx::createShader(mem);
         }
 
-        bgfx::RendererType::Enum type = bgfx::getRendererType();
-        auto pickingShader = bgfx::createEmbeddedShader(
-            BGFX::Context::EmbeddedShaders, type, "fs_picking");
+        // also build picking program
+        auto &pickingShaderData =
+            BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
+        auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
+
+        // hack/fix hash in or creation of program will fail!
+        *(uint32_t *)(ppmem->data + 4) = hashOut;
+        auto pickingShader = bgfx::createShader(ppmem);
+        if (pickingShader.idx == bgfx::kInvalidHandle) {
+          throw ActivationError("Failed to load picking pixel shader.");
+        }
+
         shader = std::make_shared<GFXShader>(
             bgfx::createProgram(vsh, psh, true),
             bgfx::createProgram(ivsh, psh, true),
@@ -1724,16 +1746,19 @@ struct Draw : public BGFX::BaseConsumer {
               "Rendering a primitive with invalid shader handle");
         }
 
-        bgfx::submit(currentView.id, handle);
+        bool picking = currentView.id == 0 && ctx->isPicking();
 
-        if (currentView.id == 0 && ctx->isPicking()) {
+        bgfx::submit(currentView.id, handle, 0, picking ? 0 : BGFX_DISCARD_ALL);
+
+        if (picking) {
           float fid[4];
           fid[0] = ((primId >> 0) & 0xff) / 255.0f;
           fid[1] = ((primId >> 8) & 0xff) / 255.0f;
           fid[2] = ((primId >> 16) & 0xff) / 255.0f;
           fid[3] = ((primId >> 24) & 0xff) / 255.0f;
           bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
-          bgfx::submit(BGFX::PickingViewId, pickingHandle);
+          // also here we discard all
+          bgfx::submit(BGFX::PickingViewId, pickingHandle, 0, BGFX_DISCARD_ALL);
         }
       }
     }

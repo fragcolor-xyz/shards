@@ -11,6 +11,8 @@
 #include "blocks/shared.hpp"
 #include "linalg_shim.hpp"
 
+#include "fs_picking.bin.h"
+
 using namespace chainblocks;
 namespace BGFX {
 enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
@@ -35,6 +37,36 @@ constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
 // BGFX_CONFIG_MAX_VIEWS is 256
 constexpr bgfx::ViewId GuiViewId = 256 - 1;
 constexpr bgfx::ViewId PickingViewId = GuiViewId - 1;
+
+// FROM BGFX, MIGHT BREAK IF BGFX CHANGES
+constexpr bool isShaderVerLess(uint32_t _magic, uint8_t _version) {
+  return (_magic & BX_MAKEFOURCC(0, 0, 0, 0xff)) <
+         BX_MAKEFOURCC(0, 0, 0, _version);
+}
+// ~ FROM BGFX, MIGHT BREAK IF BGFX CHANGES
+
+constexpr uint32_t extractHashOut(const bgfx::Memory *mem) {
+  uint32_t magic = *(uint32_t *)mem->data;
+  uint32_t hashIn = *(uint32_t *)(mem->data + 4);
+  uint32_t hashOut = 0x0;
+  if (isShaderVerLess(magic, 6)) {
+    hashOut = hashIn;
+  } else {
+    hashOut = *(uint32_t *)(mem->data + 8);
+  }
+  return hashOut;
+}
+
+inline const bgfx::EmbeddedShader::Data &
+findEmbeddedShader(const bgfx::EmbeddedShader &shader) {
+  bgfx::RendererType::Enum type = bgfx::getRendererType();
+  for (uint32_t i = 0; i < bgfx::RendererType::Count; ++i) {
+    if (shader.data[i].type == type) {
+      return shader.data[i];
+    }
+  }
+  throw std::runtime_error("Could not find embedded shader");
+}
 
 struct Enums {
   enum class CullMode { None, Front, Back };
@@ -196,7 +228,8 @@ struct IDrawable {
 };
 
 struct Context {
-  static inline bgfx::EmbeddedShader const *EmbeddedShaders = nullptr;
+  static inline bgfx::EmbeddedShader PickingShaderData =
+      BGFX_EMBEDDED_SHADER(fs_picking);
 
   static inline Type Info{
       {CBType::Object,
@@ -220,7 +253,8 @@ struct Context {
   }
 
   uint32_t addFrameDrawable(IDrawable *drawable) {
-    uint32_t id = frameDrawablesCount++;
+    // 0 idx = empty
+    uint32_t id = ++frameDrawablesCount;
     frameDrawables[id] = drawable;
     return id;
   }
