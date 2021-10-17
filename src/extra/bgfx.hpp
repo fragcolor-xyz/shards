@@ -192,7 +192,6 @@ struct ViewInfo {
 };
 
 struct IDrawable {
-  virtual const Mat4 &getTransform() = 0;
   virtual CBChain *getChain() = 0;
 };
 
@@ -272,6 +271,7 @@ struct Context {
   void addLight() { lightCount++; }
 
   bool isPicking() const { return picking; }
+  void setPicking(bool picking) { this->picking = picking; }
 
   // TODO thread_local? anyway sort multiple threads
   // this is written during sleeps between node ticks
