@@ -16,8 +16,7 @@
    (Msg "one - 3")
    (Resume "two")
    (Msg "one - Done")
-   (Resume "two")
-   ))
+   (Resume "two")))
 
 (def chain2
   (Chain
@@ -28,8 +27,7 @@
    (Msg "two - 3")
    (Resume "one")
    (Msg "two - 4")
-   (Msg "two - Done")
-   ))
+   (Msg "two - Done")))
 
 (schedule Root chain1)
 (run Root 0.1)
@@ -42,8 +40,7 @@
    (Cond
     [(-> (IsLess 5))
      (Do "recur")])
-   (Log "res")
-   ))
+   (Log "res")))
 
 (def logicChain
   (Chain
@@ -180,7 +177,7 @@
               (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
               (Log))
           :Times 10)
-  
+
   (Repeat (-> 10
               (Expand 10 (defchain wide-test (RandomBytes 8) (ToHex)) :Threads 10)
               (Log))
@@ -263,3 +260,19 @@
 
     (schedule Root test-ipfs)
     (run Root 0.1)))
+
+(defchain hashed
+  10
+  (|#
+   (Math.Add 1)
+   (Math.Add 2)
+   (Math.Add 3)
+   (Math.Add 4)
+   (Math.Add 5)
+   (Math.Add 6))
+  (Log)
+  (| (Take "Hash") (ToHex) (Assert.Is "0xc9d0a01223cba6ab") (Log)))
+
+
+(schedule Root hashed)
+(run Root)

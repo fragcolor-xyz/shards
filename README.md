@@ -8,8 +8,8 @@
 - Warning: Work in progress
 ```
 
-![CI](https://github.com/sinkingsugar/chainblocks/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/sinkingsugar/chainblocks/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/sinkingsugar/chainblocks)
+![CI](https://github.com/fragcolor-xyz/chainblocks/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/fragcolor-xyz/chainblocks/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/chainblocks)
 
 ## Vision
 Building a programming tool for the future.
@@ -51,7 +51,7 @@ We introduce a low code way of producing high performance and multi-platform app
 
 #### Textual version - using a clojure like language (more in the pipeline)
 
-[Read more about the textual language](https://github.com/sinkingsugar/chainblocks/wiki/Chain-definition-language)
+[Read more about the textual language](https://github.com/fragcolor-xyz/chainblocks/wiki/Chain-definition-language)
 
 ```clojure
 (defchain action

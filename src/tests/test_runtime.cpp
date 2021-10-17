@@ -1137,6 +1137,43 @@ TEST_CASE("TableVar") {
   CBLOG_INFO(hand);
 }
 
+TEST_CASE("HashedActivations") {
+  // we need to hack this in as we run out of context
+  CBCoro foo{};
+  CBFlow flow{};
+#ifndef __EMSCRIPTEN__
+  CBContext ctx(std::move(foo), nullptr, &flow);
+#else
+  CBContext ctx(&foo, nullptr, &flow);
+#endif
+  auto input = Var(11);
+  uint64_t hash;
+  CBlocks blocks{};
+  CBVar output;
+  auto b1 = createBlock("Assert.Is");
+  DEFER(b1->destroy(b1));
+
+  b1->setParam(b1, 0, &input);
+  blocks.len = 1;
+  blocks.elements = &b1;
+  activateBlocks(blocks, &ctx, input, output, false, &hash);
+  CBLOG_INFO("hash: {} - output: {}", hash, output);
+  REQUIRE(hash == 9974806237512093940ull);
+  REQUIRE(output == input);
+
+  auto wrongValue = Var(12);
+  b1->setParam(b1, 0, &wrongValue);
+  blocks.len = 1;
+  blocks.elements = &b1;
+  try {
+    activateBlocks(blocks, &ctx, input, output, false, &hash);
+  } catch (...) {
+  }
+  CBLOG_INFO("hash: {} - output: {}", hash, output);
+  REQUIRE(hash == 15368403145312537271ull);
+  REQUIRE(output == input);
+}
+
 #include "number_types.hpp"
 
 TEST_CASE("Number Types") {

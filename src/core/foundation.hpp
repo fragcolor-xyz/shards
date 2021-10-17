@@ -124,6 +124,12 @@ CBChainState activateBlocks(CBSeq blocks, CBContext *context,
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             const bool handlesReturn = false);
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash);
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output,
+                            const bool handlesReturn, uint64_t *outHash);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
@@ -982,6 +988,14 @@ struct InternalCore {
                                 const CBBool handleReturn) {
     return chainblocks::activateBlocks(blocks, context, input, output,
                                        handleReturn);
+  }
+
+  static CBChainState runBlocksHashed(CBlocks blocks, CBContext *context,
+                                      const CBVar &input, CBVar &output,
+                                      const CBBool handleReturn,
+                                      uint64_t *outHash) {
+    return chainblocks::activateBlocks(blocks, context, input, output,
+                                       handleReturn, outHash);
   }
 
   static CBChainState suspend(CBContext *ctx, double seconds) {

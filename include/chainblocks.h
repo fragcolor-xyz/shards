@@ -906,6 +906,16 @@ typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                            const CBBool handleReturn);
 #endif
 
+#if defined(__cplusplus) || defined(CB_USE_ENUMS)
+typedef enum CBChainState(__cdecl *CBRunBlocksHashed)(
+    CBlocks blocks, struct CBContext *context, const struct CBVar *input,
+    struct CBVar *output, const CBBool handleReturn, uint64_t *outHash);
+#else
+typedef CBChainState(__cdecl *CBRunBlocksHashed)(
+    CBlocks blocks, struct CBContext *context, const struct CBVar *input,
+    struct CBVar *output, const CBBool handleReturn, uint64_t *outHash);
+#endif
+
 typedef void(__cdecl *CBLog)(CBString msg);
 typedef void(__cdecl *CBLogLevel)(int level, CBString msg);
 
@@ -971,9 +981,12 @@ typedef void(__cdecl *CBSetRootPath)(CBString);
 typedef struct CBVar(__cdecl *CBAsyncActivateProc)(struct CBContext *context,
                                                    void *userData);
 
-typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context,
-                                                  void *userData,
-                                                  CBAsyncActivateProc call);
+typedef void(__cdecl *CBAsyncCancelProc)(struct CBContext *context,
+                                         void *userData);
+
+typedef struct CBVar(__cdecl *CBRunAsyncActivate)(
+    struct CBContext *context, void *userData, CBAsyncActivateProc call,
+    CBAsyncCancelProc cancel_call);
 
 typedef CBStrings(__cdecl *CBGetBlocks)();
 
@@ -1015,6 +1028,7 @@ typedef struct _CBCore {
   // Utility to use blocks within blocks
   CBComposeBlocks composeBlocks;
   CBRunBlocks runBlocks;
+  CBRunBlocksHashed runBlocksHashed;
 
   // Logging
   CBLog log;

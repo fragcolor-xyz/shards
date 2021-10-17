@@ -300,7 +300,7 @@ jobs:
           mkdir -p build/shaders/include
           mkdir -p build/shaders/lib/gltf
           cd build/shaders
-          wget https://github.com/sinkingsugar/chainblocks/files/5938139/shadercRelease.zip
+          wget https://github.com/fragcolor-xyz/chainblocks/files/5938139/shadercRelease.zip
           unzip shadercRelease.zip
           cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
           cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h

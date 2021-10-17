@@ -1021,6 +1021,67 @@ struct Sub {
   }
 };
 
+struct HashedBlocks {
+  BlocksVar _blocks{};
+  CBComposeResult _composition{};
+
+  Types _outputTableTypes{{CoreInfo::AnyType, CoreInfo::IntType}};
+  static inline std::array<CBString, 2> OutputTableKeys{"Result", "Hash"};
+  Type _outputTableType = Type::TableOf(_outputTableTypes, OutputTableKeys);
+
+  TableVar _outputTable{};
+
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Activates a block or a sequence of blocks independently, without "
+        "consuming the input. In other words, the ouput of the sub flow will "
+        "be its input regardless of the blocks activated in this sub flow.");
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR(
+        "The value given to the block or sequence of blocks in this sub flow.");
+  }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static CBParametersInfo parameters() {
+    static Parameters params{{"Blocks",
+                              CBCCSTR("The blocks to execute in the sub flow."),
+                              {CoreInfo::BlocksOrNone}}};
+    return params;
+  }
+
+  void setParam(int index, const CBVar &value) { _blocks = value; }
+
+  CBVar getParam(int index) { return _blocks; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _composition = _blocks.compose(data);
+    _outputTableTypes._types[0] = _composition.outputType;
+    return _outputTableType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    CBVar output{};
+    uint64_t hash;
+    _blocks.activateHashed(context, input, output, false, &hash);
+    _outputTable["Result"] = output;
+    _outputTable["Hash"] = Var(hash);
+    return _outputTable;
+  }
+};
+
 void registerFlowBlocks() {
   REGISTER_CBLOCK("Cond", Cond);
   REGISTER_CBLOCK("Maybe", Maybe);
@@ -1030,5 +1091,6 @@ void registerFlowBlocks() {
   REGISTER_CBLOCK("If", IfBlock);
   REGISTER_CBLOCK("Match", Match);
   REGISTER_CBLOCK("Sub", Sub);
+  REGISTER_CBLOCK("Hashed", HashedBlocks);
 }
 }; // namespace chainblocks
