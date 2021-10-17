@@ -73,6 +73,7 @@
   block("GFX.Shader", Var::ContextVar(#_vs), Var::ContextVar(#_fs))
 #define GFX_Texture2D() block("GFX.Texture2D")
 #define GFX_CompileShader() block("GFX.CompileShader")
+#define GFX_SetUniform(_name, _elems) block("GFX.SetUniform", _name, _elems)
 
 #define GLTF_Load() block("GLTF.Load")
 #define GLTF_Load_WithTransformBefore(_transform)                              \
