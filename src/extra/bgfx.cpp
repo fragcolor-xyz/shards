@@ -2290,22 +2290,17 @@ struct Draw : public BaseConsumer {
   }
 
   struct Drawable : public IDrawable {
-    Drawable(const CBVar &varTransform, CBChain *drawableChain)
-        : transform(reinterpret_cast<const Mat4 *>(&varTransform)),
-          chain(drawableChain) {}
-
-    const Mat4 &getTransform() override { return *transform; }
-    CBChain *getChain() override { return chain; }
+    Drawable(CBChain *drawableChain) : _chain(drawableChain) {}
+    CBChain *getChain() override { return _chain; }
 
   private:
-    const Mat4 *transform;
-    CBChain *chain;
+    CBChain *_chain;
   };
 
   // use deque for stable memory location
   std::deque<Drawable> _frameDrawables;
 
-  void render(Context *ctx) {
+  void render(Context *ctx, uint32_t id) {
     auto shader =
         reinterpret_cast<ShaderHandle *>(_shader.get().payload.objectValue);
     assert(shader);
@@ -2403,7 +2398,13 @@ struct Draw : public BaseConsumer {
     // Submit primitive for rendering to the current view.
     bgfx::submit(currentView.id, shader->handle);
 
-    if (ctx->isPicking() && model) {
+    if (currentView.id == 0 && ctx->isPicking() && model) {
+      float fid[4];
+      fid[0] = ((id >> 0) & 0xff) / 255.0f;
+      fid[1] = ((id >> 8) & 0xff) / 255.0f;
+      fid[2] = ((id >> 16) & 0xff) / 255.0f;
+      fid[3] = ((id >> 24) & 0xff) / 255.0f;
+      bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
       bgfx::submit(PickingViewId, shader->pickingHandle);
     }
   }
@@ -2430,19 +2431,10 @@ struct Draw : public BaseConsumer {
            sizeof(float) * 4);
     bgfx::setTransform(idx, 1);
 
-    const auto id = ctx->addFrameDrawable(
-        &_frameDrawables.emplace_back(input, context->currentChain()));
+    auto id = ctx->addFrameDrawable(
+        &_frameDrawables.emplace_back(context->currentChain()));
 
-    if (ctx->isPicking()) {
-      float fid[4];
-      fid[0] = ((id >> 0) & 0xff) / 255.0f;
-      fid[1] = ((id >> 8) & 0xff) / 255.0f;
-      fid[2] = ((id >> 16) & 0xff) / 255.0f;
-      fid[3] = ((id >> 24) & 0xff) / 255.0f;
-      bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
-    }
-
-    render(ctx);
+    render(ctx, id);
 
     return input;
   }
@@ -2479,24 +2471,15 @@ struct Draw : public BaseConsumer {
       memcpy(&mat[12], &vmat.payload.seqValue.elements[3].payload.float4Value,
              sizeof(float) * 4);
 
-      const auto id = ctx->addFrameDrawable(
-          &_frameDrawables.emplace_back(vmat, currentChain));
-
-      if (ctx->isPicking()) {
-        float fid[4];
-        fid[0] = ((id >> 0) & 0xff) / 255.0f;
-        fid[1] = ((id >> 8) & 0xff) / 255.0f;
-        fid[2] = ((id >> 16) & 0xff) / 255.0f;
-        fid[3] = ((id >> 24) & 0xff) / 255.0f;
-        bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
-      }
-
       data += stride;
     }
 
     bgfx::setInstanceDataBuffer(&idb);
 
-    render(ctx);
+    auto id =
+        ctx->addFrameDrawable(&_frameDrawables.emplace_back(currentChain));
+
+    render(ctx, id);
 
     return input;
   }

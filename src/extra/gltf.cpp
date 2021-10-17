@@ -1596,13 +1596,11 @@ struct Draw : public BGFX::BaseConsumer {
   }
 
   struct Drawable : public BGFX::IDrawable {
-    const Mat4 &getTransform() override {
-      return *reinterpret_cast<Mat4 *>(&transform);
-    }
-    CBChain *getChain() override { return chain; }
+    Drawable(CBChain *chain) : _chain(chain) {}
+    CBChain *getChain() override { return _chain; }
 
-    linalg::aliases::float4x4 transform;
-    CBChain *chain;
+  private:
+    CBChain *_chain;
   };
 
   // use deque for stable memory location
@@ -1610,7 +1608,7 @@ struct Draw : public BGFX::BaseConsumer {
 
   template <bool instanced>
   void renderNodeSubmit(BGFX::Context *ctx, const Node &node,
-                        const CBTable *mats) {
+                        const CBTable *mats, uint32_t primId) {
     for (const auto &primsRef : node.mesh->get().primitives) {
       const auto &prims = primsRef.get();
       if (prims.vb.idx != bgfx::kInvalidHandle) {
@@ -1728,7 +1726,13 @@ struct Draw : public BGFX::BaseConsumer {
 
         bgfx::submit(currentView.id, handle);
 
-        if (ctx->isPicking()) {
+        if (currentView.id == 0 && ctx->isPicking()) {
+          float fid[4];
+          fid[0] = ((primId >> 0) & 0xff) / 255.0f;
+          fid[1] = ((primId >> 8) & 0xff) / 255.0f;
+          fid[2] = ((primId >> 16) & 0xff) / 255.0f;
+          fid[3] = ((primId >> 24) & 0xff) / 255.0f;
+          bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
           bgfx::submit(BGFX::PickingViewId, pickingHandle);
         }
       }
@@ -1739,35 +1743,27 @@ struct Draw : public BGFX::BaseConsumer {
   void renderNode(BGFX::Context *ctx, const Node &node,
                   const linalg::aliases::float4x4 &parentTransform,
                   const CBTable *mats, CBChain *currentChain) {
-    Drawable &drawable = _frameDrawables.emplace_back();
-    drawable.chain = currentChain;
-    drawable.transform = linalg::mul(parentTransform, node.transform);
+    linalg::aliases::float4x4 transform =
+        linalg::mul(parentTransform, node.transform);
 
     if (node.mesh) {
       bgfx::Transform t;
       // using allocTransform to avoid an extra copy
       auto idx = bgfx::allocTransform(&t, 1);
-      memcpy(&t.data[0], &drawable.transform.x, sizeof(float) * 4);
-      memcpy(&t.data[4], &drawable.transform.y, sizeof(float) * 4);
-      memcpy(&t.data[8], &drawable.transform.z, sizeof(float) * 4);
-      memcpy(&t.data[12], &drawable.transform.w, sizeof(float) * 4);
+      memcpy(&t.data[0], &transform.x, sizeof(float) * 4);
+      memcpy(&t.data[4], &transform.y, sizeof(float) * 4);
+      memcpy(&t.data[8], &transform.z, sizeof(float) * 4);
+      memcpy(&t.data[12], &transform.w, sizeof(float) * 4);
       bgfx::setTransform(idx, 1);
 
-      const auto id = ctx->addFrameDrawable(&drawable);
-      if (ctx->isPicking()) {
-        float fid[4];
-        fid[0] = ((id >> 0) & 0xff) / 255.0f;
-        fid[1] = ((id >> 8) & 0xff) / 255.0f;
-        fid[2] = ((id >> 16) & 0xff) / 255.0f;
-        fid[3] = ((id >> 24) & 0xff) / 255.0f;
-        bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
-      }
+      auto id =
+          ctx->addFrameDrawable(&_frameDrawables.emplace_back(currentChain));
 
-      renderNodeSubmit<instanced>(ctx, node, mats);
+      renderNodeSubmit<instanced>(ctx, node, mats, id);
     }
 
     for (const auto &snode : node.children) {
-      renderNode<instanced>(ctx, snode, drawable.transform, mats, currentChain);
+      renderNode<instanced>(ctx, snode, transform, mats, currentChain);
     }
   }
 
