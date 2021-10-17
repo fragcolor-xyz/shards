@@ -1825,20 +1825,8 @@ void error_handler(int err_sig) {
 #ifdef _WIN32
 #include "debugapi.h"
 static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
-#elif defined(__APPLE__)
-static bool isDebuggerPresent() { return false; }
-#elif defined(BOOST_USE_VALGRIND)
-static bool isDebuggerPresent() { return true; }
 #else
-#include <sys/ptrace.h>
-#include <sys/types.h>
-static bool isDebuggerPresent() {
-  if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0)
-    return true;
-  else
-    ptrace(PTRACE_DETACH, 0, 1, 0);
-  return false;
-}
+constexpr bool isDebuggerPresent() { return false; }
 #endif
 
 void installSignalHandlers() {
