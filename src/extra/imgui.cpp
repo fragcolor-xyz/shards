@@ -12,8 +12,9 @@ using namespace chainblocks;
 namespace chainblocks {
 namespace ImGui {
 struct Base {
-  static inline ExposedInfo requiredInfo = ExposedInfo(ExposedInfo::Variable(
-      "GUI.Context", CBCCSTR("The ImGui Context."), Context::Info));
+  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
+      "GUI.Context", CBCCSTR("The ImGui Context."), Context::Info);
+  static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
 
   CBExposedTypesInfo requiredVariables() {
     return CBExposedTypesInfo(requiredInfo);
@@ -545,6 +546,7 @@ struct Window : public Base {
   bool _movable{false};
   bool _closable{false};
   bool _resizable{false};
+  bool _showMenuBar{false};
 
   static inline Parameters _params{
       {"Title",
@@ -574,6 +576,9 @@ struct Window : public Base {
        {CoreInfo::BoolType}},
       {"AllowCollapse",
        CBCCSTR("If the window can be collapsed."),
+       {CoreInfo::BoolType}},
+      {"ShowMenuBar",
+       CBCCSTR("If the window should display a menubar."),
        {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return _params; }
@@ -609,6 +614,9 @@ struct Window : public Base {
     case 7:
       _closable = value.payload.boolValue;
       break;
+    case 8:
+      _showMenuBar = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -632,6 +640,8 @@ struct Window : public Base {
       return Var(_resizable);
     case 7:
       return Var(_closable);
+    case 8:
+      return Var(_showMenuBar);
     default:
       return Var::Empty;
     }
@@ -655,6 +665,7 @@ struct Window : public Base {
     flags |= !_movable ? ImGuiWindowFlags_NoMove : 0;
     flags |= !_closable ? ImGuiWindowFlags_NoCollapse : 0;
     flags |= !_resizable ? ImGuiWindowFlags_NoResize : 0;
+    flags |= _showMenuBar ? ImGuiWindowFlags_MenuBar : 0;
 
     if (firstActivation) {
       const ImGuiIO &io = ::ImGui::GetIO();
@@ -694,8 +705,7 @@ struct Window : public Base {
     DEFER({ ::ImGui::End(); });
     if (active) {
       CBVar output{};
-      // this one throws that's why we use defer above!
-      activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+      _blks.activate(context, input, output);
     }
     return input;
   }
@@ -782,8 +792,7 @@ struct ChildWindow : public Base {
     DEFER({ ::ImGui::EndChild(); });
     if (visible) {
       CBVar output{};
-      // this one throws that's why we use defer above!
-      activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);
+      _blks.activate(context, input, output);
     }
     return input;
   }
@@ -1251,7 +1260,7 @@ struct Button : public Base {
 #define IMBTN_RUN_ACTION                                                       \
   {                                                                            \
     CBVar output = Var::Empty;                                                 \
-    activateBlocks(CBVar(_blks).payload.seqValue, context, input, output);     \
+    _blks.activate(context, input, output);                                    \
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -2254,14 +2263,14 @@ struct Plot : public Base {
       DEFER(ImPlot::EndPlot());
 
       CBVar output{};
-      activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
+      _blocks.activate(context, input, output);
     }
 
     return input;
   }
 };
 
-struct PlottableBase : Base {
+struct PlottableBase : public Base {
   std::string _label;
   std::string _fullLabel{"##" +
                          std::to_string(reinterpret_cast<uintptr_t>(this))};
@@ -2649,6 +2658,325 @@ private:
   std::string _overlay;
 };
 
+struct MenuBase : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return blocks;
+      break;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() { blocks.cleanup(); }
+
+  void warmup(CBContext *context) { blocks.warmup(context); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    blocks.compose(data);
+    return CoreInfo::BoolType;
+  }
+
+protected:
+  static inline Parameters params = {
+      {"Contents", CBCCSTR("The inner contents blocks."),
+       CoreInfo::BlocksOrNone},
+  };
+
+  BlocksVar blocks{};
+};
+
+struct MainMenuBar : public MenuBase {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto active = ::ImGui::BeginMainMenuBar();
+    if (active) {
+      DEFER(::ImGui::EndMainMenuBar());
+      CBVar output{};
+      blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+};
+
+struct MenuBar : public MenuBase {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto active = ::ImGui::BeginMenuBar();
+    if (active) {
+      DEFER(::ImGui::EndMenuBar());
+      CBVar output{};
+      blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+};
+
+struct Menu : public MenuBase {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
+    case 1:
+      _isEnabled = value;
+      break;
+    default:
+      MenuBase::setParam(index - 2, value);
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+    case 1:
+      return _isEnabled;
+    default:
+      return MenuBase::getParam(index - 2);
+    }
+  }
+
+  void cleanup() {
+    _isEnabled.cleanup();
+
+    MenuBase::cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    MenuBase::warmup(context);
+
+    _isEnabled.warmup(context);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = Base::ContextInfo;
+    idx++;
+
+    if (_isEnabled.isVariable()) {
+      _required[idx].name = _isEnabled.variableName();
+      _required[idx].help = CBCCSTR("The required IsEnabled.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto active =
+        ::ImGui::BeginMenu(_label.c_str(), _isEnabled.get().payload.boolValue);
+    if (active) {
+      DEFER(::ImGui::EndMenu());
+      CBVar output{};
+      blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+
+private:
+  static inline Parameters _params{
+      {{"Label", CBCCSTR("The label of the menu"), {CoreInfo::StringType}},
+       {"IsEnabled",
+        CBCCSTR("Sets whether this menu is enabled. A disabled item cannot be "
+                "selected or clicked."),
+        {CoreInfo::BoolType, CoreInfo::BoolVarType}}},
+      MenuBase::params};
+
+  std::string _label;
+  ParamVar _isEnabled{Var::True};
+  std::array<CBExposedTypeInfo, 2> _required;
+};
+
+struct MenuItem : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
+    case 1:
+      _isChecked = value;
+      break;
+    case 2:
+      _action = value;
+      break;
+    case 3: {
+      if (value.valueType == None) {
+        _shortcut.clear();
+      } else {
+        _shortcut = value.payload.stringValue;
+      }
+    } break;
+    case 4:
+      _isEnabled = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _label.size() == 0 ? Var::Empty : Var(_label);
+    case 1:
+      return _isChecked;
+    case 2:
+      return _action;
+    case 3:
+      return _shortcut.size() == 0 ? Var::Empty : Var(_shortcut);
+    case 4:
+      return _isEnabled;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup() {
+    _action.cleanup();
+    _isEnabled.cleanup();
+    _isChecked.cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    _action.warmup(context);
+    _isEnabled.warmup(context);
+    _isChecked.warmup(context);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = Base::ContextInfo;
+    idx++;
+
+    if (_isChecked.isVariable()) {
+      _required[idx].name = _isChecked.variableName();
+      _required[idx].help = CBCCSTR("The required IsChecked.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    if (_isEnabled.isVariable()) {
+      _required[idx].name = _isEnabled.variableName();
+      _required[idx].help = CBCCSTR("The required IsEnabled.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _action.compose(data);
+
+    if (_isChecked.isVariable()) {
+      // search for an existing variable and ensure it's the right type
+      auto found = false;
+      for (auto &var : data.shared) {
+        if (strcmp(var.name, _isChecked.variableName()) == 0) {
+          // we found a variable, make sure it's the right type and mark
+          if (var.exposedType.basicType != CBType::Bool) {
+            throw CBException("Gui - MenuItem: Existing variable type not "
+                              "matching the input.");
+          }
+          // also make sure it's mutable!
+          if (!var.isMutable) {
+            throw CBException(
+                "Gui - MenuItem: Existing variable is not mutable.");
+          }
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        // we didn't find a variable
+        throw CBException("Gui - MenuItem: Missing mutable variable.");
+    }
+
+    return CoreInfo::BoolType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    bool active;
+    if (_isChecked.isVariable()) {
+      active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(),
+                                 &_isChecked.get().payload.boolValue,
+                                 _isEnabled.get().payload.boolValue);
+    } else {
+      active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(),
+                                 _isChecked.get().payload.boolValue,
+                                 _isEnabled.get().payload.boolValue);
+    }
+    if (active) {
+      CBVar output{};
+      _action.activate(context, input, output);
+    }
+    return Var(active);
+  }
+
+private:
+  static inline Parameters _params{
+      {"Label", CBCCSTR("The label of the menu item"), {CoreInfo::StringType}},
+      {"IsChecked",
+       CBCCSTR("Sets whether this menu item is checked. A checked item "
+               "displays a check mark on the side."),
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Action", CBCCSTR(""), {CoreInfo::BlocksOrNone}},
+      {"Shortcut",
+       CBCCSTR("A keyboard shortcut to activate that item"),
+       {CoreInfo::StringType}},
+      {"IsEnabled",
+       CBCCSTR("Sets whether this menu item is enabled. A disabled item cannot "
+               "be selected or clicked."),
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+  };
+
+  std::string _label;
+  ParamVar _isChecked{Var::False};
+  BlocksVar _action{};
+  std::string _shortcut;
+  ParamVar _isEnabled{Var::True};
+  std::array<CBExposedTypeInfo, 3> _required;
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -2705,6 +3033,10 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Version", Version);
   REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
   REGISTER_CBLOCK("GUI.ProgressBar", ProgressBar);
+  REGISTER_CBLOCK("GUI.MainMenuBar", MainMenuBar);
+  REGISTER_CBLOCK("GUI.MenuBar", MenuBar);
+  REGISTER_CBLOCK("GUI.Menu", Menu);
+  REGISTER_CBLOCK("GUI.MenuItem", MenuItem);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
