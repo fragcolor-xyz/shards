@@ -563,8 +563,6 @@ struct MainWindow : public BaseWindow {
 
   bgfx::TextureHandle _pickingColorRT = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle _pickingDepthRT = BGFX_INVALID_HANDLE;
-  bgfx::TextureHandle _pickingColorTexture = BGFX_INVALID_HANDLE;
-  bgfx::FrameBufferHandle _pickingFrameBuffer = BGFX_INVALID_HANDLE;
 
   CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
@@ -603,11 +601,6 @@ struct MainWindow : public BaseWindow {
     // _imguiContext.Reset();
     _bgfxContext.reset();
 
-    if (_pickingFrameBuffer.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingFrameBuffer);
-      _pickingFrameBuffer = BGFX_INVALID_HANDLE;
-    }
-
     if (_pickingColorRT.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_pickingColorRT);
       _pickingColorRT = BGFX_INVALID_HANDLE;
@@ -616,11 +609,6 @@ struct MainWindow : public BaseWindow {
     if (_pickingDepthRT.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_pickingDepthRT);
       _pickingDepthRT = BGFX_INVALID_HANDLE;
-    }
-
-    if (_pickingColorTexture.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingColorTexture);
-      _pickingColorTexture = BGFX_INVALID_HANDLE;
     }
 
     if (_bgfxInit) {
@@ -838,16 +826,17 @@ struct MainWindow : public BaseWindow {
 #endif
 
     // Setup picking
-    constexpr uint16_t pickBufferSize = 128;
 
     // Set up ID buffer, which has a color target and depth buffer
     _pickingColorRT = bgfx::createTexture2D(
-        pickBufferSize, pickBufferSize, false, 1, bgfx::TextureFormat::RGBA8,
+        PickingBufferSize, PickingBufferSize, false, 1,
+        bgfx::TextureFormat::RGBA8,
         0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
             BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
             BGFX_SAMPLER_V_CLAMP);
     _pickingDepthRT = bgfx::createTexture2D(
-        pickBufferSize, pickBufferSize, false, 1, bgfx::TextureFormat::D32F,
+        PickingBufferSize, PickingBufferSize, false, 1,
+        bgfx::TextureFormat::D32F,
         0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
             BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
             BGFX_SAMPLER_V_CLAMP);
@@ -856,17 +845,20 @@ struct MainWindow : public BaseWindow {
     // clicked on. Impossible to read directly from a render target, you *must*
     // blit to a CPU texture first. Algorithm Overview: Render on GPU -> Blit to
     // CPU texture -> Read from CPU texture.
-    _pickingColorTexture = bgfx::createTexture2D(
-        pickBufferSize, pickBufferSize, false, 1, bgfx::TextureFormat::RGBA8,
+    _bgfxContext.pickingColorTexture() = bgfx::createTexture2D(
+        PickingBufferSize, PickingBufferSize, false, 1,
+        bgfx::TextureFormat::RGBA8,
         0 | BGFX_TEXTURE_BLIT_DST | BGFX_TEXTURE_READ_BACK |
             BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
             BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
             BGFX_SAMPLER_V_CLAMP);
 
     bgfx::TextureHandle rt[2] = {_pickingColorRT, _pickingDepthRT};
-    _pickingFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
-    bgfx::setViewFrameBuffer(PickingViewId, _pickingFrameBuffer);
-    bgfx::setViewRect(PickingViewId, 0, 0, pickBufferSize, pickBufferSize);
+    _bgfxContext.pickingFrameBuffer() =
+        bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
+    bgfx::setViewFrameBuffer(PickingViewId, _bgfxContext.pickingFrameBuffer());
+    bgfx::setViewRect(PickingViewId, 0, 0, PickingBufferSize,
+                      PickingBufferSize);
     bgfx::setViewClear(PickingViewId,
                        BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
                        0x00000000, 1.0f, 0);

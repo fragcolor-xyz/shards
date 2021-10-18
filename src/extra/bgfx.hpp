@@ -15,6 +15,8 @@
 
 using namespace chainblocks;
 namespace BGFX {
+constexpr uint16_t PickingBufferSize = 128;
+
 enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
 
 #if defined(BGFX_CONFIG_RENDERER_VULKAN)
@@ -193,34 +195,33 @@ struct ViewInfo {
     return _invProj;
   }
 
-  // const Mat4 &viewProj() const {
-  //   if (unlikely(_viewProj.x._private[0] == 0)) {
-  //     _viewProj = linalg::mul(view, proj);
-  //     _viewProj.x._private[0] = 1;
-  //   }
-  //   return _viewProj;
-  // }
+  const Mat4 &viewProj() const {
+    if (unlikely(_viewProj.x._private[0] == 0)) {
+      _viewProj = linalg::mul(view, proj);
+      _viewProj.x._private[0] = 1;
+    }
+    return _viewProj;
+  }
 
-  // const Mat4 &invViewProj() const {
-  //   if (unlikely(_invViewProj.x._private[0] == 0)) {
-  //     _invViewProj = linalg::inverse(viewProj());
-  //     _invViewProj.x._private[0] = 1;
-  //   }
-  //   return _invViewProj;
-  // }
+  const Mat4 &invViewProj() const {
+    if (unlikely(_invViewProj.x._private[0] == 0)) {
+      _invViewProj = linalg::inverse(viewProj());
+      _invViewProj.x._private[0] = 1;
+    }
+    return _invViewProj;
+  }
 
   void invalidate() {
     _invView.x._private[0] = 0;
     _invProj.x._private[0] = 0;
-    // _viewProj.x._private[0] = 0;
-    // _invViewProj.x._private[0] = 0;
+    _viewProj.x._private[0] = 0;
+    _invViewProj.x._private[0] = 0;
   }
 
-  // private:
-  mutable Mat4 _invView;
-  mutable Mat4 _invProj;
-  // mutable Mat4 _viewProj;
-  // mutable Mat4 _invViewProj;
+  mutable Mat4 _invView{};
+  mutable Mat4 _invProj{};
+  mutable Mat4 _viewProj{};
+  mutable Mat4 _invViewProj{};
 };
 
 struct IDrawable {
@@ -238,93 +239,111 @@ struct Context {
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
 
-  ViewInfo &currentView() { return viewsStack.back(); };
+  void reset() {
+    _viewsStack.clear();
+    _nextViewCounter = 0;
 
-  ViewInfo &pushView(ViewInfo view) { return viewsStack.emplace_back(view); }
+    for (auto &sampler : _samplers) {
+      bgfx::destroy(sampler);
+    }
+    _samplers.clear();
+
+    if (_pickingFrameBuffer.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingFrameBuffer);
+      _pickingFrameBuffer = BGFX_INVALID_HANDLE;
+    }
+    if (_pickingUniform.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingUniform);
+      _pickingUniform = BGFX_INVALID_HANDLE;
+    }
+    if (_pickingColorTexture.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingColorTexture);
+      _pickingColorTexture = BGFX_INVALID_HANDLE;
+    }
+
+    _lightCount = 0;
+  }
+
+  ViewInfo &currentView() { return _viewsStack.back(); };
+
+  ViewInfo &pushView(ViewInfo view) { return _viewsStack.emplace_back(view); }
 
   void popView() {
-    assert(viewsStack.size() > 0);
-    viewsStack.pop_back();
+    assert(_viewsStack.size() > 0);
+    _viewsStack.pop_back();
+  }
+
+  size_t viewIndex() const { return _viewsStack.size(); }
+
+  bgfx::ViewId nextViewId() {
+    assert(_nextViewCounter < UINT16_MAX);
+    return _nextViewCounter++;
   }
 
   void newFrame() {
-    frameDrawablesCount = 0;
-    frameDrawables.clear();
+    _frameDrawablesCount = 0;
+    _frameDrawables.clear();
   }
 
   uint32_t addFrameDrawable(IDrawable *drawable) {
     // 0 idx = empty
-    uint32_t id = ++frameDrawablesCount;
-    frameDrawables[id] = drawable;
+    uint32_t id = ++_frameDrawablesCount;
+    _frameDrawables[id] = drawable;
     return id;
   }
 
-  size_t viewIndex() const { return viewsStack.size(); }
-
-  bgfx::ViewId nextViewId() {
-    assert(nextViewCounter < UINT16_MAX);
-    return nextViewCounter++;
-  }
-
-  void reset() {
-    viewsStack.clear();
-    nextViewCounter = 0;
-    for (auto &sampler : samplers) {
-      bgfx::destroy(sampler);
-    }
-    if (pickingUniform.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(pickingUniform);
-      pickingUniform = BGFX_INVALID_HANDLE;
-    }
-    samplers.clear();
-    lightCount = 0;
-  }
-
   const bgfx::UniformHandle &getSampler(size_t index) {
-    const auto nsamplers = samplers.size();
-    if (index >= nsamplers) {
+    const auto nSamplers = _samplers.size();
+    if (index >= nSamplers) {
       std::string name("DrawSampler_");
       name.append(std::to_string(index));
-      return samplers.emplace_back(
+      return _samplers.emplace_back(
           bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
     } else {
-      return samplers[index];
+      return _samplers[index];
     }
-  }
-
-  const bgfx::UniformHandle &getPickingUniform() {
-    if (pickingUniform.idx == bgfx::kInvalidHandle) {
-      pickingUniform =
-          bgfx::createUniform("u_picking_id", bgfx::UniformType::Vec4);
-    }
-    return pickingUniform;
   }
 
   // for now this is very simple, we just compute how many max light sources we
   // have to render. In the future we will do it in a smarter way
-  uint32_t getMaxLights() const { return lightCount; }
-  void addLight() { lightCount++; }
+  constexpr uint32_t getMaxLights() const { return _lightCount; }
+  void addLight() { _lightCount++; }
 
-  bool isPicking() const { return picking; }
-  void setPicking(bool picking) { this->picking = picking; }
+  constexpr bool isPicking() const { return _picking; }
+
+  void setPicking(bool picking) { _picking = picking; }
+
+  bgfx::TextureHandle &pickingColorTexture() { return _pickingColorTexture; }
+
+  bgfx::FrameBufferHandle &pickingFrameBuffer() { return _pickingFrameBuffer; }
+
+  const bgfx::UniformHandle getPickingUniform() {
+    if (_pickingUniform.idx == bgfx::kInvalidHandle) {
+      _pickingUniform =
+          bgfx::createUniform("u_picking_id", bgfx::UniformType::Vec4);
+    }
+    return _pickingUniform;
+  }
 
   // TODO thread_local? anyway sort multiple threads
   // this is written during sleeps between node ticks
   static inline std::vector<SDL_Event> sdlEvents;
 
 private:
-  std::deque<ViewInfo> viewsStack;
-  bgfx::ViewId nextViewCounter{0};
+  std::deque<ViewInfo> _viewsStack;
+  bgfx::ViewId _nextViewCounter{0};
 
-  std::vector<bgfx::UniformHandle> samplers;
+  std::deque<bgfx::UniformHandle> _samplers;
 
-  uint32_t lightCount{0};
+  uint32_t _lightCount{0};
 
-  uint32_t frameDrawablesCount{0};
-  std::unordered_map<uint32_t, IDrawable *> frameDrawables;
+  uint32_t _frameDrawablesCount{0};
+  std::unordered_map<uint32_t, IDrawable *> _frameDrawables;
 
-  bool picking{false};
-  bgfx::UniformHandle pickingUniform = BGFX_INVALID_HANDLE;
+  bool _picking{false};
+  bgfx::UniformHandle _pickingUniform = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle _pickingColorTexture = BGFX_INVALID_HANDLE;
+  bgfx::FrameBufferHandle _pickingFrameBuffer = BGFX_INVALID_HANDLE;
 };
 
 struct Texture {
