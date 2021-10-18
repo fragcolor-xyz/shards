@@ -1492,16 +1492,6 @@ BUILTIN("read-var") {
   return readVar(v);
 }
 
-BUILTIN("-->") {
-  auto vec = new malValueVec();
-  auto blks = chainify(argsBegin, argsEnd);
-  for (auto blk : blks) {
-    malCBlock *pblk = blk.ptr();
-    vec->emplace_back(pblk);
-  }
-  return malValuePtr(new malList(vec));
-}
-
 BUILTIN("->") {
   auto vec = new malValueVec();
   auto blks = chainify(argsBegin, argsEnd);
