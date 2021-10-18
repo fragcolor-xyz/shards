@@ -547,6 +547,8 @@ struct Window : public Base {
   bool _closable{false};
   bool _resizable{false};
   bool _showMenuBar{false};
+  ParamVar _notClosed{Var::True};
+  std::array<CBExposedTypeInfo, 2> _required;
 
   static inline Parameters _params{
       {"Title",
@@ -579,7 +581,13 @@ struct Window : public Base {
        {CoreInfo::BoolType}},
       {"ShowMenuBar",
        CBCCSTR("If the window should display a menubar."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"OnClose",
+       CBCCSTR("Passing a variable will display a close button in the "
+               "upper-right corner. Clicking will set the variable to false "
+               "and hide the window."),
+       {CoreInfo::BoolVarType}},
+  };
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -617,6 +625,9 @@ struct Window : public Base {
     case 8:
       _showMenuBar = value.payload.boolValue;
       break;
+    case 9:
+      _notClosed = value;
+      break;
     default:
       break;
     }
@@ -642,16 +653,37 @@ struct Window : public Base {
       return Var(_closable);
     case 8:
       return Var(_showMenuBar);
+    case 9:
+      return _notClosed;
     default:
       return Var::Empty;
     }
   }
 
-  void cleanup() { _blks.cleanup(); }
+  void cleanup() {
+    _blks.cleanup();
+    _notClosed.cleanup();
+  }
 
   void warmup(CBContext *context) {
     _blks.warmup(context);
+    _notClosed.warmup(context);
     firstActivation = true;
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = Base::ContextInfo;
+    idx++;
+
+    if (_notClosed.isVariable()) {
+      _required[idx].name = _notClosed.variableName();
+      _required[idx].help = CBCCSTR("The required OnClose.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -701,8 +733,11 @@ struct Window : public Base {
       firstActivation = false;
     }
 
-    auto active = ::ImGui::Begin(_title.c_str(), nullptr, flags);
-    DEFER({ ::ImGui::End(); });
+    auto active = ::ImGui::Begin(
+        _title.c_str(),
+        _notClosed.isVariable() ? &_notClosed.get().payload.boolValue : nullptr,
+        flags);
+    DEFER(::ImGui::End());
     if (active) {
       CBVar output{};
       _blks.activate(context, input, output);
