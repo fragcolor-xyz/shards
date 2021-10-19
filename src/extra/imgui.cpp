@@ -1417,13 +1417,57 @@ IMGUIDRAG2(Float2, double, Float2Type, ImGuiDataType_Double, float2Value, 2);
 IMGUIDRAG2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, 3);
 IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
 
-#define IMGUIINPUT(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_)                    \
+#define IMGUIINPUT(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                            \
   struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
     _T_ _tmp;                                                                  \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
                                                                                \
-    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }         \
+                                                                               \
+    static CBParametersInfo parameters() { return paramsInfo; }                \
+                                                                               \
+    void cleanup() {                                                           \
+      _step.cleanup();                                                         \
+      _stepFast.cleanup();                                                     \
+      Variable<CBType::_CBT_>::cleanup();                                      \
+    }                                                                          \
+                                                                               \
+    void warmup(CBContext *context) {                                          \
+      _step.warmup(context);                                                   \
+      _stepFast.warmup(context);                                               \
+    }                                                                          \
+                                                                               \
+    void setParam(int index, const CBVar &value) {                             \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        Variable<CBType::_CBT_>::setParam(index, value);                       \
+        break;                                                                 \
+      case 2:                                                                  \
+        _step = value;                                                         \
+        break;                                                                 \
+      case 3:                                                                  \
+        _stepFast = value;                                                     \
+        break;                                                                 \
+      default:                                                                 \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+    CBVar getParam(int index) {                                                \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        return Variable<CBType::_CBT_>::getParam(index);                       \
+      case 2:                                                                  \
+        return _step;                                                          \
+      case 3:                                                                  \
+        return _stepFast;                                                      \
+      default:                                                                 \
+        return Var::Empty;                                                     \
+      }                                                                        \
+    }                                                                          \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1435,31 +1479,91 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
         }                                                                      \
       }                                                                        \
                                                                                \
-      _T_ step = 1;                                                            \
-      _T_ step_fast = step * 100;                                              \
+      _T_ step = _step.get().payload._VAL_##Value;                             \
+      _T_ step_fast = _stepFast.get().payload._VAL_##Value;                    \
       if (_variable) {                                                         \
         ::ImGui::InputScalar(_label.c_str(), _IMT_,                            \
-                             (void *)&_variable->payload._VAL_, &step,         \
-                             &step_fast, _FMT_, 0);                            \
+                             (void *)&_variable->payload._VAL_##Value,         \
+                             step > 0 ? &step : nullptr,                       \
+                             step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);  \
         return *_variable;                                                     \
       } else {                                                                 \
-        ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp, &step,      \
-                             &step_fast, _FMT_, 0);                            \
+        ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp,             \
+                             step > 0 ? &step : nullptr,                       \
+                             step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);  \
         return Var(_tmp);                                                      \
       }                                                                        \
     }                                                                          \
+                                                                               \
+  private:                                                                     \
+    static inline Parameters paramsInfo{                                       \
+        VariableParamsInfo(),                                                  \
+        {{"Step",                                                              \
+          CBCCSTR("The value of a single increment."),                         \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
+         {"StepFast",                                                          \
+          CBCCSTR("The value of a single increment, when holding Ctrl"),       \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
+    };                                                                         \
+                                                                               \
+    ParamVar _step{Var((_T_)0)};                                               \
+    ParamVar _stepFast{Var((_T_)0)};                                           \
   }
 
-IMGUIINPUT(Int, int64_t, IntType, ImGuiDataType_S64, intValue, "%lld");
-IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%.3f");
+IMGUIINPUT(Int, int64_t, ImGuiDataType_S64, int, "%lld");
+IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
 
-#define IMGUIINPUT2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _FMT_, _CMP_)            \
-  struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
+#define IMGUIINPUT2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                    \
+  struct _CBT_##_CMP_##Input : public Variable<CBType::_CBT_##_CMP_> {         \
     CBVar _tmp;                                                                \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
                                                                                \
-    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }  \
+                                                                               \
+    static CBParametersInfo parameters() { return paramsInfo; }                \
+                                                                               \
+    void cleanup() {                                                           \
+      _step.cleanup();                                                         \
+      _stepFast.cleanup();                                                     \
+      Variable<CBType::_CBT_##_CMP_>::cleanup();                               \
+    }                                                                          \
+                                                                               \
+    void warmup(CBContext *context) {                                          \
+      _step.warmup(context);                                                   \
+      _stepFast.warmup(context);                                               \
+    }                                                                          \
+                                                                               \
+    void setParam(int index, const CBVar &value) {                             \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                \
+        break;                                                                 \
+      case 2:                                                                  \
+        _step = value;                                                         \
+        break;                                                                 \
+      case 3:                                                                  \
+        _stepFast = value;                                                     \
+        break;                                                                 \
+      default:                                                                 \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+                                                                               \
+    CBVar getParam(int index) {                                                \
+      switch (index) {                                                         \
+      case 0:                                                                  \
+      case 1:                                                                  \
+        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                \
+      case 2:                                                                  \
+        return _step;                                                          \
+      case 3:                                                                  \
+        return _stepFast;                                                      \
+      default:                                                                 \
+        return Var::Empty;                                                     \
+      }                                                                        \
+    }                                                                          \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1467,37 +1571,50 @@ IMGUIINPUT(Float, double, FloatType, ImGuiDataType_Double, floatValue, "%.3f");
       if (!_variable && _variable_name.size() > 0) {                           \
         _variable = referenceVariable(context, _variable_name.c_str());        \
         if (_exposing) {                                                       \
-          _variable->valueType = _CBT_;                                        \
+          _variable->valueType = _CBT_##_CMP_;                                 \
         }                                                                      \
       }                                                                        \
                                                                                \
-      _T_ step = 1;                                                            \
-      _T_ step_fast = step * 100;                                              \
+      _T_ step = _step.get().payload._VAL_##Value;                             \
+      _T_ step_fast = _stepFast.get().payload._VAL_##Value;                    \
       if (_variable) {                                                         \
         ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
-                              (void *)&_variable->payload._VAL_, _CMP_, &step, \
-                              &step_fast, _FMT_, 0);                           \
+                              (void *)&_variable->payload._VAL_##_CMP_##Value, \
+                              _CMP_, step > 0 ? &step : nullptr,               \
+                              step_fast > 0 ? &step_fast : nullptr, _FMT_, 0); \
         return *_variable;                                                     \
       } else {                                                                 \
         _tmp.valueType = _CBT_;                                                \
         ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
-                              (void *)&_tmp.payload._VAL_, _CMP_, &step,       \
-                              &step_fast, _FMT_, 0);                           \
+                              (void *)&_tmp.payload._VAL_##_CMP_##Value,       \
+                              _CMP_, step > 0 ? &step : nullptr,               \
+                              step_fast > 0 ? &step_fast : nullptr, _FMT_, 0); \
         return _tmp;                                                           \
       }                                                                        \
     }                                                                          \
+                                                                               \
+  private:                                                                     \
+    static inline Parameters paramsInfo{                                       \
+        VariableParamsInfo(),                                                  \
+        {{"Step",                                                              \
+          CBCCSTR("The value of a single increment."),                         \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
+         {"StepFast",                                                          \
+          CBCCSTR("The value of a single increment, when holding Ctrl"),       \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
+    };                                                                         \
+                                                                               \
+    ParamVar _step{Var((_T_)0)};                                               \
+    ParamVar _stepFast{Var((_T_)0)};                                           \
   }
 
-IMGUIINPUT2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, "%lld", 2);
-IMGUIINPUT2(Int3, int32_t, Int3Type, ImGuiDataType_S32, int3Value, "%d", 3);
-IMGUIINPUT2(Int4, int32_t, Int4Type, ImGuiDataType_S32, int4Value, "%d", 4);
+IMGUIINPUT2(Int, 2, int64_t, ImGuiDataType_S64, int, "%lld");
+IMGUIINPUT2(Int, 3, int32_t, ImGuiDataType_S32, int, "%d");
+IMGUIINPUT2(Int, 4, int32_t, ImGuiDataType_S32, int, "%d");
 
-IMGUIINPUT2(Float2, double, Float2Type, ImGuiDataType_Double, float2Value,
-            "%.3f", 2);
-IMGUIINPUT2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, "%.3f",
-            3);
-IMGUIINPUT2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, "%.3f",
-            4);
+IMGUIINPUT2(Float, 2, double, ImGuiDataType_Double, float, "%.3f");
+IMGUIINPUT2(Float, 3, float, ImGuiDataType_Float, float, "%.3f");
+IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 
 #define IMGUISLIDER(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                           \
   struct _CBT_##Slider : public Variable<CBType::_CBT_> {                      \
