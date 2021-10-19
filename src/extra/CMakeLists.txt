@@ -29,7 +29,6 @@ if(EMSCRIPTEN)
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"
   )
-  target_include_directories(chainblocks-extra PRIVATE "SDL-include_wrapper")
 else()
   target_link_libraries(chainblocks-extra SDL2-static)
 endif()
