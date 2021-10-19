@@ -31,13 +31,7 @@ set(os_SOURCES
   blocks/ws.cpp
 )
 
-option(CHAINBLOCKS_CORE_BUILD_SHARED OFF "Build chainblocks core as dynamic library")
-if(CHAINBLOCKS_CORE_BUILD_SHARED)
-  add_library(chainblocks-core-base SHARED ${core_SOURCES})
-  target_compile_definitions(chainblocks-core-base PUBLIC "-DCHAINBLOCKS_CORE_DLL=1")
-else()
-  add_library(chainblocks-core-base STATIC ${core_SOURCES})
-endif()
+add_library(chainblocks-core-base STATIC ${core_SOURCES})
 
 target_include_directories(chainblocks-core-base PUBLIC ../../include)
 target_include_directories(chainblocks-core-base PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -213,21 +207,27 @@ if(IOS)
   target_compile_definitions(chainblocks-core-base PUBLIC CHAINBLOCKS_NO_HTTP_BLOCKS=1)
 endif()
 
+add_library(chainblocks-core-shared SHARED runtime.cpp)
+target_link_libraries(chainblocks-core-shared PUBLIC chainblocks-core-base)
+target_compile_definitions(chainblocks-core-shared PUBLIC CHAINBLOCKS_CORE_DLL=1 chainblocks_core_EXPORTS=1)
+
+add_library(chainblocks-core-static runtime.cpp)
+target_link_libraries(chainblocks-core-static PUBLIC chainblocks-core-base)
+
+add_library(chainblocks-core ALIAS chainblocks-core-static)
+
 set(cbedn_SOURCES
   edn/main.cpp
   edn/eval.cpp
 )
 add_executable(cbedn ${cbedn_SOURCES})
-target_link_libraries(cbedn chainblocks-core-base)
+target_link_libraries(cbedn chainblocks-core)
 
 if(CHAINBLOCKS_BUILD_TESTS)
   add_executable(test_runtime ../tests/test_runtime.cpp)
   
   target_link_libraries(test_runtime 
-    chainblocks-core-base Catch2WithMain
+    chainblocks-core Catch2WithMain
   )
   catch_discover_tests(test_runtime)
 endif()
-
-add_library(chainblocks-core runtime.cpp)
-target_link_libraries(chainblocks-core PUBLIC chainblocks-core-base)
