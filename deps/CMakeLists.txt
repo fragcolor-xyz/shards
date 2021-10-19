@@ -68,12 +68,6 @@ target_include_directories(bgfx-example-common INTERFACE ${BGFX_DIR}/examples/co
 add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
 
-# file(GLOB backtrace_SOURCES
-#   libbacktrace/*.c
-# )
-# add_library(backtrace ${backtrace_SOURCES})
-# add_subdirectory(libbacktrace)
-
 add_library(imgui_club INTERFACE)
 target_include_directories(imgui_club INTERFACE imgui_club/imgui_memory_editor)
 
