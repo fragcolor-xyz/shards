@@ -3016,6 +3016,133 @@ private:
   std::array<CBExposedTypeInfo, 3> _required;
 };
 
+struct Combo : public Variable<CBType::Int> {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+    }
+
+    auto count = input.payload.seqValue.len;
+    if (count == 0) {
+      if (_variable)
+        _variable->payload.intValue = -1;
+      return Var::Empty;
+    }
+
+    std::vector<std::string> vec;
+    for (uint32_t i = 0; i < count; i++) {
+      std::ostringstream stream;
+      stream << input.payload.seqValue.elements[i];
+      vec.push_back(stream.str());
+    }
+    const char *items[count];
+    for (size_t i = 0; i < vec.size(); i++) {
+      items[i] = vec[i].c_str();
+    }
+
+    if (_variable) {
+      _n = _variable->payload.intValue;
+      ::ImGui::Combo(_label.c_str(), &_n, items, count);
+      _variable->payload.intValue = _n;
+    } else {
+      ::ImGui::Combo(_label.c_str(), &_n, items, count);
+    }
+
+    CBVar output{};
+    ::chainblocks::cloneVar(output, input.payload.seqValue.elements[_n]);
+    return output;
+  }
+
+private:
+  int _n{0};
+};
+
+struct ListBox : public Variable<CBType::Int> {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+    case 1:
+      Variable<CBType::Int>::setParam(index, value);
+      break;
+    case 2:
+      _height = value.payload.intValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+    case 1:
+      return Variable<CBType::Int>::getParam(index);
+    case 2:
+      return Var(_height);
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+    }
+
+    auto count = input.payload.seqValue.len;
+    if (count == 0) {
+      if (_variable)
+        _variable->payload.intValue = -1;
+      return Var::Empty;
+    }
+
+    std::vector<std::string> vec;
+    for (uint32_t i = 0; i < count; i++) {
+      std::ostringstream stream;
+      stream << input.payload.seqValue.elements[i];
+      vec.push_back(stream.str());
+    }
+    const char *items[count];
+    for (size_t i = 0; i < vec.size(); i++) {
+      items[i] = vec[i].c_str();
+    }
+
+    if (_variable) {
+      _n = _variable->payload.intValue;
+      ::ImGui::ListBox(_label.c_str(), &_n, items, count, _height);
+      _variable->payload.intValue = _n;
+    } else {
+      ::ImGui::ListBox(_label.c_str(), &_n, items, count, _height);
+    }
+
+    CBVar output{};
+    ::chainblocks::cloneVar(output, input.payload.seqValue.elements[_n]);
+    return output;
+  }
+
+private:
+  static inline Parameters _params = {
+      VariableParamsInfo(),
+      {{"ItemsHeight",
+        CBCCSTR("Height of the list in number of items"),
+        {CoreInfo::IntType}}},
+  };
+
+  int _n{0};
+  int _height{-1};
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -3076,6 +3203,8 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.MenuBar", MenuBar);
   REGISTER_CBLOCK("GUI.Menu", Menu);
   REGISTER_CBLOCK("GUI.MenuItem", MenuItem);
+  REGISTER_CBLOCK("GUI.Combo", Combo);
+  REGISTER_CBLOCK("GUI.ListBox", ListBox);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
