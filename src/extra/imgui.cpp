@@ -819,12 +819,16 @@ struct ChildWindow : public Base {
       return input;
 
     ImVec2 size{0, 0};
-    if (_width.valueType == Int && _height.valueType == Int) {
-      size = {float(_width.payload.intValue), float(_height.payload.intValue)};
+    if (_width.valueType == Int) {
+      size.x = float(_width.payload.intValue);
+    }
+
+    if (_height.valueType == Int) {
+      size.y = float(_height.payload.intValue);
     }
 
     auto visible = ::ImGui::BeginChild(_wndId, size, _border);
-    DEFER({ ::ImGui::EndChild(); });
+    DEFER(::ImGui::EndChild());
     if (visible) {
       CBVar output{};
       _blks.activate(context, input, output);
