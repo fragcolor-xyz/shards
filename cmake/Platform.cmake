@@ -128,17 +128,6 @@ endif()
 add_compile_definitions(BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 add_compile_options(-Wall)
 
-# this works with emscripten too but makes the final binary much bigger
-if(NOT SKIP_HEAVY_INLINE)
-  if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-      add_compile_options(-mllvm -inline-threshold=100000)
-    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      add_compile_options(-finline-limit=100000)
-    endif()
-  endif()
-endif()
-
 if(APPLE)
   # This tells FindPackage(Threads) that threads are built in
   set(CMAKE_THREAD_LIBS_INIT "-lpthread")
