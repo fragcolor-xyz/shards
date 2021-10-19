@@ -58,7 +58,9 @@ if(NOT EMSCRIPTEN)
   
   add_library(SDL2-static STATIC IMPORTED GLOBAL)
   set_target_properties(SDL2-static PROPERTIES IMPORTED_LOCATION ${SDL_LIB_PATH})
-  target_include_directories(SDL2-static INTERFACE SDL/include)
+  
+  file(MAKE_DIRECTORY ${SDL_BUILD_PATH}/include/SDL2)
+  target_include_directories(SDL2-static INTERFACE ${SDL_BUILD_PATH}/include ${SDL_BUILD_PATH}/include/SDL2)
   add_dependencies(SDL2-static sdl_a)
   
   if(WIN32)
