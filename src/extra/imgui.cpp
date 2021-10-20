@@ -3340,6 +3340,56 @@ private:
   std::string _label;
 };
 
+struct Group : public Base {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+      break;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *context) { _blocks.warmup(context); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return CoreInfo::BoolType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::BeginGroup();
+    DEFER(::ImGui::EndGroup());
+    CBVar output{};
+    _blocks.activate(context, input, output);
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Contents", CBCCSTR("The inner contents blocks."),
+       CoreInfo::BlocksOrNone},
+  };
+
+  BlocksVar _blocks{};
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -3404,6 +3454,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.ListBox", ListBox);
   REGISTER_CBLOCK("GUI.TabBar", TabBar);
   REGISTER_CBLOCK("GUI.TabItem", TabItem);
+  REGISTER_CBLOCK("GUI.Group", Group);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
