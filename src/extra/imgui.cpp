@@ -927,19 +927,7 @@ struct Checkbox : public Variable<CBType::Bool> {
 };
 
 struct Text : public Base {
-  std::string _label;
-  CBVar _color{};
-  std::string _format;
-
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Label", CBCCSTR("An optional label for the value."),
-                        CoreInfo::StringOrNone),
-      ParamsInfo::Param("Color", CBCCSTR("The optional color of the text."),
-                        CoreInfo::ColorOrNone),
-      ParamsInfo::Param("Format", CBCCSTR("An optional format for the text."),
-                        CoreInfo::StringOrNone));
-
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -960,6 +948,9 @@ struct Text : public Base {
         _format = value.payload.stringValue;
       }
     } break;
+    case 3:
+      _wrap = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -973,6 +964,8 @@ struct Text : public Base {
       return _color;
     case 2:
       return _format.size() == 0 ? Var::Empty : Var(_format);
+    case 3:
+      return Var(_wrap);
     default:
       return Var::Empty;
     }
@@ -998,17 +991,45 @@ struct Text : public Base {
       }
       format = _format.c_str();
     }
+
+    if (_wrap)
+      ::ImGui::PushTextWrapPos(0.0f);
+
     if (_label.size() > 0) {
       ::ImGui::LabelText(_label.c_str(), format, _text.str());
     } else {
       ::ImGui::Text(format, _text.str());
     }
 
+    if (_wrap)
+      ::ImGui::PopTextWrapPos();
+
     if (_color.valueType == Color)
       ::ImGui::PopStyleColor();
 
     return input;
   }
+
+private:
+  static inline Parameters _params = {
+      {"Label",
+       CBCCSTR("An optional label for the value."),
+       {CoreInfo::StringOrNone}},
+      {"Color",
+       CBCCSTR("The optional color of the text."),
+       {CoreInfo::ColorOrNone}},
+      {"Format",
+       CBCCSTR("An optional format for the text."),
+       {CoreInfo::StringOrNone}},
+      {"Wrap",
+       CBCCSTR("Whether to wrap the text to the next line if it doesn't fit "
+               "horizontally."),
+       {CoreInfo::BoolType}}};
+
+  std::string _label;
+  CBVar _color{};
+  std::string _format;
+  bool _wrap{false};
 };
 
 struct Button : public Base {
