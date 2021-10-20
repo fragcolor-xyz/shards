@@ -1438,24 +1438,13 @@ struct SetClipboard : public Base {
 };
 
 struct TreeNode : public Base {
-  std::string _label;
-  bool _defaultOpen = true;
-  BlocksVar _blocks;
-
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Label", CBCCSTR("The label of this node."),
-                        CoreInfo::StringType),
-      ParamsInfo::Param("Contents", CBCCSTR("The contents of this node."),
-                        CoreInfo::BlocksOrNone),
-      ParamsInfo::Param("StartOpen",
-                        CBCCSTR("If this node should start in the open state."),
-                        CoreInfo::BoolType));
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blocks.compose(data);
-    return data.inputType;
+    return CoreInfo::BoolType;
   }
 
   void cleanup() { _blocks.cleanup(); }
@@ -1510,6 +1499,78 @@ struct TreeNode : public Base {
 
     return Var(visible);
   }
+
+private:
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Label", CBCCSTR("The label of this node."),
+                        CoreInfo::StringType),
+      ParamsInfo::Param("Contents", CBCCSTR("The contents of this node."),
+                        CoreInfo::BlocksOrNone),
+      ParamsInfo::Param("StartOpen",
+                        CBCCSTR("If this node should start in the open state."),
+                        CoreInfo::BoolType));
+
+  std::string _label;
+  bool _defaultOpen = true;
+  BlocksVar _blocks;
+};
+
+struct CollapsingHeader : public Base {
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _label = value.payload.stringValue;
+      break;
+    case 1:
+      _blocks = value;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+    case 1:
+      return _blocks;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return CoreInfo::BoolType;
+  }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto active = ::ImGui::CollapsingHeader(_label.c_str());
+    if (active) {
+      CBVar output{};
+      _blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Label", CBCCSTR("The label of this node."), {CoreInfo::StringType}},
+      {"Contents",
+       CBCCSTR("The contents under this header."),
+       {CoreInfo::BlocksOrNone}},
+  };
+
+  std::string _label;
+  BlocksVar _blocks{};
 };
 
 template <CBType CBT> struct DragBase : public Variable<CBT> {
@@ -3407,6 +3468,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Indent", Indent);
   REGISTER_CBLOCK("GUI.Unindent", Unindent);
   REGISTER_CBLOCK("GUI.TreeNode", TreeNode);
+  REGISTER_CBLOCK("GUI.CollapsingHeader", CollapsingHeader);
   REGISTER_CBLOCK("GUI.IntInput", IntInput);
   REGISTER_CBLOCK("GUI.FloatInput", FloatInput);
   REGISTER_CBLOCK("GUI.Int2Input", Int2Input);
