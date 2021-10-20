@@ -2002,12 +2002,42 @@ IMGUISLIDER2(Float, 3, float, ImGuiDataType_Float, float, "%.3f");
 IMGUISLIDER2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 
 struct TextInput : public Variable<CBType::String> {
-  // fallback, used only when no variable name is set
-  std::string _buffer;
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+    case 1:
+      Variable<CBType::String>::setParam(index, value);
+      break;
+    case 2: {
+      if (value.valueType == None) {
+        _hint.clear();
+      } else {
+        _hint = value.payload.stringValue;
+      }
+    } break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+    case 1:
+      return Variable<CBType::String>::getParam(index);
+    case 2:
+      return Var(_hint);
+    default:
+      return Var::Empty;
+    }
+  }
 
   static int InputTextCallback(ImGuiInputTextCallbackData *data) {
     TextInput *it = (TextInput *)data->UserData;
@@ -2041,18 +2071,32 @@ struct TextInput : public Variable<CBType::String> {
       }
     }
 
+    auto *hint = _hint.size() > 0 ? _hint.c_str() : nullptr;
     if (_variable) {
-      ::ImGui::InputText(_label.c_str(), (char *)_variable->payload.stringValue,
-                         _variable->payload.stringCapacity,
-                         ImGuiInputTextFlags_CallbackResize, &InputTextCallback,
-                         this);
+      ::ImGui::InputTextWithHint(
+          _label.c_str(), hint, (char *)_variable->payload.stringValue,
+          _variable->payload.stringCapacity, ImGuiInputTextFlags_CallbackResize,
+          &InputTextCallback, this);
       return *_variable;
     } else {
-      ::ImGui::InputText(_label.c_str(), (char *)_buffer.c_str(),
-                         _buffer.capacity() + 1, 0, &InputTextCallback, this);
+      ::ImGui::InputTextWithHint(
+          _label.c_str(), hint, (char *)_buffer.c_str(), _buffer.capacity() + 1,
+          ImGuiInputTextFlags_CallbackResize, &InputTextCallback, this);
       return Var(_buffer);
     }
   }
+
+private:
+  static inline Parameters _params{
+      VariableParamsInfo(),
+      {{"Hint",
+        CBCCSTR("A hint text displayed when the control is empty."),
+        {CoreInfo::StringType}}},
+  };
+
+  // fallback, used only when no variable name is set
+  std::string _buffer;
+  std::string _hint;
 };
 
 struct ColorInput : public Variable<CBType::Color> {
