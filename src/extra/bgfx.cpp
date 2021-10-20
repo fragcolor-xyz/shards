@@ -561,8 +561,8 @@ struct MainWindow : public BaseWindow {
   float _windowScalingH{1.0};
   bgfx::UniformHandle _timeUniformHandle = BGFX_INVALID_HANDLE;
 
-  bgfx::TextureHandle _pickingColorRT = BGFX_INVALID_HANDLE;
   bgfx::TextureHandle _pickingDepthRT = BGFX_INVALID_HANDLE;
+  bgfx::FrameBufferHandle _pickingFB = BGFX_INVALID_HANDLE;
 
   CBTypeInfo compose(CBInstanceData &data) {
     if (data.onWorkerThread) {
@@ -598,13 +598,13 @@ struct MainWindow : public BaseWindow {
     // cleanup before releasing the resources
     _blocks.cleanup();
 
+    if (_pickingFB.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingFB);
+      _pickingFB = BGFX_INVALID_HANDLE;
+    }
+
     // _imguiContext.Reset();
     _bgfxContext.reset();
-
-    if (_pickingColorRT.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingColorRT);
-      _pickingColorRT = BGFX_INVALID_HANDLE;
-    }
 
     if (_pickingDepthRT.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_pickingDepthRT);
@@ -828,7 +828,7 @@ struct MainWindow : public BaseWindow {
     // Setup picking
 
     // Set up ID buffer, which has a color target and depth buffer
-    _pickingColorRT = bgfx::createTexture2D(
+    _bgfxContext.pickingRenderTarget() = bgfx::createTexture2D(
         PickingBufferSize, PickingBufferSize, false, 1,
         bgfx::TextureFormat::RGBA8,
         0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
@@ -845,7 +845,7 @@ struct MainWindow : public BaseWindow {
     // clicked on. Impossible to read directly from a render target, you *must*
     // blit to a CPU texture first. Algorithm Overview: Render on GPU -> Blit to
     // CPU texture -> Read from CPU texture.
-    _bgfxContext.pickingColorTexture() = bgfx::createTexture2D(
+    _bgfxContext.pickingTexture() = bgfx::createTexture2D(
         PickingBufferSize, PickingBufferSize, false, 1,
         bgfx::TextureFormat::RGBA8,
         0 | BGFX_TEXTURE_BLIT_DST | BGFX_TEXTURE_READ_BACK |
@@ -853,10 +853,10 @@ struct MainWindow : public BaseWindow {
             BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
             BGFX_SAMPLER_V_CLAMP);
 
-    bgfx::TextureHandle rt[2] = {_pickingColorRT, _pickingDepthRT};
-    _bgfxContext.pickingFrameBuffer() =
-        bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
-    bgfx::setViewFrameBuffer(PickingViewId, _bgfxContext.pickingFrameBuffer());
+    bgfx::TextureHandle rt[2] = {_bgfxContext.pickingRenderTarget(),
+                                 _pickingDepthRT};
+    _pickingFB = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
+    bgfx::setViewFrameBuffer(PickingViewId, _pickingFB);
     bgfx::setViewRect(PickingViewId, 0, 0, PickingBufferSize,
                       PickingBufferSize);
     bgfx::setViewClear(PickingViewId,
@@ -1091,7 +1091,7 @@ struct MainWindow : public BaseWindow {
 
     // finish up with this frame
     _imguiBgfxCtx.endFrame();
-    bgfx::frame();
+    _bgfxContext.setBgfxFrame(bgfx::frame());
 
     return input;
   }
@@ -3081,8 +3081,117 @@ struct CompileShader {
 };
 
 struct Picking : public BaseConsumer {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::ChainSeqType; }
+  BlocksVar _blocks;
+  ParamVar _enabled;
+  std::array<CBExposedTypeInfo, 2> _required;
+  CBComposeResult _composeResults;
+
+  static CBTypesInfo inputTypes() { return CoreInfo::Float2Type; }
+  // it's either Chain or None but so we use any to allow this duality
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters Params{
+      {"Blocks",
+       CBCCSTR("Any Draw inside this flow will render to the picking buffer as "
+               "well (main view only)."),
+       {CoreInfo::BlocksOrNone}},
+      {"Enabled",
+       CBCCSTR("Whether to enable picking."),
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
+
+  static CBParametersInfo parameters() { return Params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _blocks = value;
+      break;
+    case 1:
+      _enabled = value;
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    case 1:
+      return _enabled;
+    }
+    return CBVar();
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_enabled.isVariable()) {
+      _required[0] = BaseConsumer::requiredVariables().elements[0];
+      _required[1] = CBExposedTypeInfo{
+          _enabled.variableName(),
+          CBCCSTR("The exposed boolean variable to turn picking on and off."),
+          CoreInfo::BoolType};
+      return {&_required[0], 2, 0};
+    } else {
+      return BaseConsumer::requiredVariables();
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    _composeResults = _blocks.compose(data);
+    return CoreInfo::AnyType;
+  }
+
+  CBExposedTypesInfo exposedVariables() { return _composeResults.exposedInfo; }
+
+  void warmup(CBContext *context) {
+    BaseConsumer::_warmup(context);
+    _blocks.warmup(context);
+    _enabled.warmup(context);
+
+    _blitData.resize(PickingBufferSize * PickingBufferSize * 4);
+  }
+
+  void cleanup() {
+    BaseConsumer::_cleanup();
+    _blocks.cleanup();
+    _enabled.cleanup();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
+
+    auto result = Var::Empty;
+
+    auto enabled = _enabled.get();
+    ctx->setPicking(enabled.payload.boolValue);
+    DEFER(ctx->setPicking(false));
+    CBVar output{};
+    _blocks.activate(context, input, output);
+    if (enabled.payload.boolValue) {
+      auto &blitTex = ctx->pickingTexture();
+      auto &pickRt = ctx->pickingRenderTarget();
+      bgfx::blit(PickingViewId, blitTex, 0, 0, pickRt);
+      bgfx::readTexture(blitTex, _blitData.data());
+    } else {
+      memset(_blitData.data(), 0, _blitData.size());
+    }
+
+    auto x = input.payload.float2Value[0] * float(PickingBufferSize);
+    auto y = input.payload.float2Value[1] * float(PickingBufferSize);
+    uint32_t id = _blitData[y * PickingBufferSize + x];
+
+    uint32_t sum = 0;
+    for (auto i : _blitData) {
+      sum += i;
+    }
+
+    CBLOG_TRACE("Picking picked: {} at x: {} y: {} sum: {}", id, x, y, sum);
+
+    return result;
+  }
+
+private:
+  std::vector<uint32_t> _blitData;
 };
 
 void registerBGFXBlocks() {
@@ -3101,6 +3210,7 @@ void registerBGFXBlocks() {
   REGISTER_CBLOCK("GFX.Screenshot", Screenshot);
   REGISTER_CBLOCK("GFX.Unproject", Unproject);
   REGISTER_CBLOCK("GFX.CompileShader", CompileShader);
+  REGISTER_CBLOCK("GFX.Picking", Picking);
 }
 }; // namespace BGFX
 

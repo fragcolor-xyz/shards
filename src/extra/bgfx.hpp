@@ -248,20 +248,21 @@ struct Context {
     }
     _samplers.clear();
 
-    if (_pickingFrameBuffer.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingFrameBuffer);
-      _pickingFrameBuffer = BGFX_INVALID_HANDLE;
+    if (_pickingRT.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingRT);
+      _pickingRT = BGFX_INVALID_HANDLE;
     }
     if (_pickingUniform.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_pickingUniform);
       _pickingUniform = BGFX_INVALID_HANDLE;
     }
-    if (_pickingColorTexture.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingColorTexture);
-      _pickingColorTexture = BGFX_INVALID_HANDLE;
+    if (_pickingTexture.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingTexture);
+      _pickingTexture = BGFX_INVALID_HANDLE;
     }
 
     _lightCount = 0;
+    _currentFrame = 0;
   }
 
   ViewInfo &currentView() { return _viewsStack.back(); };
@@ -284,6 +285,10 @@ struct Context {
     _frameDrawablesCount = 0;
     _frameDrawables.clear();
   }
+
+  void setBgfxFrame(uint32_t frame) { _currentFrame = frame; }
+
+  uint32_t getBgfxFrame() const { return _currentFrame; }
 
   uint32_t addFrameDrawable(IDrawable *drawable) {
     // 0 idx = empty
@@ -313,9 +318,9 @@ struct Context {
 
   void setPicking(bool picking) { _picking = picking; }
 
-  bgfx::TextureHandle &pickingColorTexture() { return _pickingColorTexture; }
+  bgfx::TextureHandle &pickingTexture() { return _pickingTexture; }
 
-  bgfx::FrameBufferHandle &pickingFrameBuffer() { return _pickingFrameBuffer; }
+  bgfx::TextureHandle &pickingRenderTarget() { return _pickingRT; }
 
   const bgfx::UniformHandle getPickingUniform() {
     if (_pickingUniform.idx == bgfx::kInvalidHandle) {
@@ -342,8 +347,10 @@ private:
 
   bool _picking{false};
   bgfx::UniformHandle _pickingUniform = BGFX_INVALID_HANDLE;
-  bgfx::TextureHandle _pickingColorTexture = BGFX_INVALID_HANDLE;
-  bgfx::FrameBufferHandle _pickingFrameBuffer = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle _pickingTexture = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle _pickingRT = BGFX_INVALID_HANDLE;
+
+  uint32_t _currentFrame{0};
 };
 
 struct Texture {

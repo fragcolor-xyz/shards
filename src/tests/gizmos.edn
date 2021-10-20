@@ -191,8 +191,12 @@
                       false) >= .operation
      ; camera
      .myView (GFX.Camera)
-     ; regular model render
-     .cube_t (GFX.Draw :Shader .shader :Model .cube)
+     (Inputs.MousePos)
+     (GFX.Picking (->
+                   ; regular model render
+                   .cube_t (GFX.Draw :Shader .shader :Model .cube))
+                  true)
+
      ; gizmos
      (Gizmo.Grid :Axis .gridAxis)
      (Gizmo.CubeView .myView)
