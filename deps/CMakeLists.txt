@@ -32,6 +32,8 @@ if(NOT EMSCRIPTEN)
   endif()
   
   if(SDL_XCODE_BUILD_COMMAND)
+    set(SDL_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/SDL/include)
+    
     ExternalProject_Add(sdl_a
       URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL
       PREFIX ${SDL_BUILD_PATH}
@@ -42,6 +44,8 @@ if(NOT EMSCRIPTEN)
       BUILD_BYPRODUCTS ${SDL_LIB_PATH}
     )
   else()
+    set(SDL_INCLUDE_PATH ${SDL_BUILD_PATH}/include ${SDL_BUILD_PATH}/include/SDL2)
+    
     if(WIN32)
       set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2-static.a)
     else()
@@ -60,7 +64,7 @@ if(NOT EMSCRIPTEN)
   set_target_properties(SDL2-static PROPERTIES IMPORTED_LOCATION ${SDL_LIB_PATH})
   
   file(MAKE_DIRECTORY ${SDL_BUILD_PATH}/include/SDL2)
-  target_include_directories(SDL2-static INTERFACE ${SDL_BUILD_PATH}/include ${SDL_BUILD_PATH}/include/SDL2)
+  target_include_directories(SDL2-static INTERFACE ${SDL_INCLUDE_PATH})
   add_dependencies(SDL2-static sdl_a)
   
   if(WIN32)
