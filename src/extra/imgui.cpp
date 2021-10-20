@@ -3187,6 +3187,159 @@ private:
   int _height{-1};
 };
 
+struct TabBase : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return blocks;
+      break;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() { blocks.cleanup(); }
+
+  void warmup(CBContext *context) { blocks.warmup(context); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    blocks.compose(data);
+    return CoreInfo::BoolType;
+  }
+
+protected:
+  static inline Parameters params = {
+      {"Contents", CBCCSTR("The inner contents blocks."),
+       CoreInfo::BlocksOrNone},
+  };
+
+  BlocksVar blocks{};
+};
+
+struct TabBar : public TabBase {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _name.clear();
+      } else {
+        _name = value.payload.stringValue;
+      }
+    } break;
+    case 1:
+      TabBase::setParam(index - 1, value);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_name);
+      break;
+    case 1:
+      return TabBase::getParam(index - 1);
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTabBar";
+    auto active = ::ImGui::BeginTabBar(str_id);
+    if (active) {
+      DEFER(::ImGui::EndTabBar());
+      CBVar output{};
+      blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+
+private:
+  static inline Parameters _params = {
+      {{"Name",
+        CBCCSTR("A unique name for this tab bar."),
+        {CoreInfo::StringType}}},
+      TabBase::params,
+  };
+
+  std::string _name;
+};
+
+struct TabItem : public TabBase {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
+    case 1:
+      TabBase::setParam(index - 1, value);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+      break;
+    case 1:
+      return TabBase::getParam(index - 1);
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto active = ::ImGui::BeginTabItem(_label.c_str());
+    if (active) {
+      DEFER(::ImGui::EndTabItem());
+      CBVar output{};
+      blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+
+private:
+  static inline Parameters _params = {
+      {{"Label", CBCCSTR("The label of the tab"), {CoreInfo::StringType}}},
+      TabBase::params,
+  };
+
+  std::string _label;
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -3249,6 +3402,8 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.MenuItem", MenuItem);
   REGISTER_CBLOCK("GUI.Combo", Combo);
   REGISTER_CBLOCK("GUI.ListBox", ListBox);
+  REGISTER_CBLOCK("GUI.TabBar", TabBar);
+  REGISTER_CBLOCK("GUI.TabItem", TabItem);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
