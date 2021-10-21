@@ -38,7 +38,8 @@ constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
 
 // BGFX_CONFIG_MAX_VIEWS is 256
 constexpr bgfx::ViewId GuiViewId = 256 - 1;
-constexpr bgfx::ViewId PickingViewId = GuiViewId - 1;
+constexpr bgfx::ViewId PickingBlit = GuiViewId - 1;
+constexpr bgfx::ViewId PickingViewId = PickingBlit - 1;
 
 // FROM BGFX, MIGHT BREAK IF BGFX CHANGES
 constexpr bool isShaderVerLess(uint32_t _magic, uint8_t _version) {
@@ -248,10 +249,7 @@ struct Context {
     }
     _samplers.clear();
 
-    if (_pickingRT.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingRT);
-      _pickingRT = BGFX_INVALID_HANDLE;
-    }
+    // _pickingRT is destroyed when FB is destroyed!
     if (_pickingUniform.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_pickingUniform);
       _pickingUniform = BGFX_INVALID_HANDLE;

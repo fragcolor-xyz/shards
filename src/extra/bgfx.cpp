@@ -561,7 +561,6 @@ struct MainWindow : public BaseWindow {
   float _windowScalingH{1.0};
   bgfx::UniformHandle _timeUniformHandle = BGFX_INVALID_HANDLE;
 
-  bgfx::TextureHandle _pickingDepthRT = BGFX_INVALID_HANDLE;
   bgfx::FrameBufferHandle _pickingFB = BGFX_INVALID_HANDLE;
 
   CBTypeInfo compose(CBInstanceData &data) {
@@ -598,6 +597,7 @@ struct MainWindow : public BaseWindow {
     // cleanup before releasing the resources
     _blocks.cleanup();
 
+    // this will destroy color + depth textures too
     if (_pickingFB.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(_pickingFB);
       _pickingFB = BGFX_INVALID_HANDLE;
@@ -605,11 +605,6 @@ struct MainWindow : public BaseWindow {
 
     // _imguiContext.Reset();
     _bgfxContext.reset();
-
-    if (_pickingDepthRT.idx != bgfx::kInvalidHandle) {
-      bgfx::destroy(_pickingDepthRT);
-      _pickingDepthRT = BGFX_INVALID_HANDLE;
-    }
 
     if (_bgfxInit) {
       _imguiBgfxCtx.destroy();
@@ -834,7 +829,7 @@ struct MainWindow : public BaseWindow {
         0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
             BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
             BGFX_SAMPLER_V_CLAMP);
-    _pickingDepthRT = bgfx::createTexture2D(
+    auto pickingDepthRT = bgfx::createTexture2D(
         PickingBufferSize, PickingBufferSize, false, 1,
         bgfx::TextureFormat::D32F,
         0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
@@ -854,13 +849,12 @@ struct MainWindow : public BaseWindow {
             BGFX_SAMPLER_V_CLAMP);
 
     bgfx::TextureHandle rt[2] = {_bgfxContext.pickingRenderTarget(),
-                                 _pickingDepthRT};
+                                 pickingDepthRT};
     _pickingFB = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
     bgfx::setViewFrameBuffer(PickingViewId, _pickingFB);
     bgfx::setViewRect(PickingViewId, 0, 0, PickingBufferSize,
                       PickingBufferSize);
-    bgfx::setViewClear(PickingViewId,
-                       BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL,
+    bgfx::setViewClear(PickingViewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                        0x00000000, 1.0f, 0);
 
 // Debug purposes!
@@ -3170,7 +3164,7 @@ struct Picking : public BaseConsumer {
     if (enabled.payload.boolValue) {
       auto &blitTex = ctx->pickingTexture();
       auto &pickRt = ctx->pickingRenderTarget();
-      bgfx::blit(PickingViewId, blitTex, 0, 0, pickRt);
+      bgfx::blit(PickingBlit, blitTex, 0, 0, pickRt);
       bgfx::readTexture(blitTex, _blitData.data());
     } else {
       memset(_blitData.data(), 0, _blitData.size());
