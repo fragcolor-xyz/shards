@@ -3153,6 +3153,10 @@ struct Picking : public BaseConsumer {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto *ctx = reinterpret_cast<Context *>(_bgfxCtx->payload.objectValue);
+    const auto &view = ctx->currentView();
+    if (view.id != 0) {
+      throw ActivationError("Picking can only be used in the main view.");
+    }
 
     auto result = Var::Empty;
 
@@ -3164,12 +3168,13 @@ struct Picking : public BaseConsumer {
     if (enabled.payload.boolValue) {
       auto &blitTex = ctx->pickingTexture();
       auto &pickRt = ctx->pickingRenderTarget();
-      bgfx::blit(PickingBlit, blitTex, 0, 0, pickRt);
+      bgfx::blit(BlittingViewId, blitTex, 0, 0, pickRt);
       bgfx::readTexture(blitTex, _blitData.data());
     } else {
       memset(_blitData.data(), 0, _blitData.size());
     }
 
+    auto ratio = float(view.width) / float(view.height);
     auto x = input.payload.float2Value[0] * float(PickingBufferSize);
     auto y = input.payload.float2Value[1] * float(PickingBufferSize);
     uint32_t id = _blitData[y * PickingBufferSize + x];
