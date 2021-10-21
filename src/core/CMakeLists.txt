@@ -79,14 +79,7 @@ if(APPLE)
   endif()
 endif()
 
-if(IOS)
-  target_include_directories(chainblocks-core-static PUBLIC ${Boost_INCLUDE_DIRS})
-  target_link_libraries(chainblocks-core-static boost-context)
-elseif(EMSCRIPTEN)
-  target_include_directories(chainblocks-core-static PUBLIC ${Boost_INCLUDE_DIRS})
-else()
-  target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem)
-endif()
+target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem)
 
 target_link_libraries(chainblocks-core-static 
   spdlog magic_enum nameof linalg xxHash

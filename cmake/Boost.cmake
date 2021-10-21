@@ -2,9 +2,14 @@
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE_PREV ${CMAKE_FIND_ROOT_PATH_MODE_INCLUDE})
 unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
 
-if(IOS)
-  find_package(Boost REQUIRED)
+if(IOS OR EMSCRIPTEN)
+find_package(Boost REQUIRED)
+  
+add_library(boost-headers INTERFACE)
+target_include_directories(boost-headers ${Boost_INCLUDE_DIRS})
+endif()
 
+if(IOS)
   # Boost-context implementation
   enable_language(ASM)
   if(X86 OR X86_IOS_SIMULATOR)
@@ -22,10 +27,13 @@ if(IOS)
       ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_arm64_aapcs_macho_gas.S
     )
   endif()
-  add_library(boost-context STATIC ${BOOST_CONTEXT_SOURCES})
-  target_include_directories(boost-context PRIVATE ${Boost_INCLUDE_DIRS})
+  
+  add_library(Boost::filesystem ALIAS boost-headers)
+  add_library(Boost::context STATIC ${BOOST_CONTEXT_SOURCES})
+  target_include_directories(Boost::context PUBLIC ${Boost_INCLUDE_DIRS})
 elseif(EMSCRIPTEN)
-  find_package(Boost REQUIRED)
+  add_library(Boost::context ALIAS boost-headers)
+  add_library(Boost::filesystem ALIAS boost-headers)
 else()
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(Boost_USE_STATIC_LIBS ON)
