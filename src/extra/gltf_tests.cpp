@@ -3,7 +3,7 @@
 
 // included in gltf.cpp
 
-#ifndef CB_INTERNAL_TESTS
+#ifndef CHAINBLOCKS_BUILD_TESTS
 // just for linting purposes
 #include "./gltf.cpp"
 #endif

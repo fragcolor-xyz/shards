@@ -60,7 +60,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-          ninja rust_blocks && ninja cbl && ninja test_runtime
+          ninja cbl && ninja test_runtime
       - name: Test (st)
         if: ${{ matrix.threading == 'st' }}
         run: |
@@ -159,7 +159,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBGFX_OPENGL_VERSION=33 ..
-          ninja rust_blocks && ninja cbl
+          ninja cbl
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -195,7 +195,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
-          ninja rust_blocks && ninja cbl
+          ninja cbl
       - name: Download artifact (Release)
         if: ${{ matrix.build-type == 'Release' }}
         uses: actions/download-artifact@v2
@@ -273,7 +273,7 @@ jobs:
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
           mkdir coverage
-          lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core.dir --directory build/CMakeFiles/cbl.dir --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
@@ -318,7 +318,7 @@ jobs:
         run: |
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DBUILD_INTERNAL_TESTS=1 ..
-          ninja rust_blocks && ninja test_runtime && ninja test_extra
+          ninja test_runtime && ninja test_extra
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -334,7 +334,7 @@ jobs:
       - name: CodeCov
         run: |
           mkdir coverage
-          lcov --capture --directory build/CMakeFiles/cb_static.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core.dir --directory build/CMakeFiles/test_runtime.dir --directory build/CMakeFiles/test_extra.dir --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
@@ -361,7 +361,7 @@ jobs:
           tags: "latest"
       - name: Build and Test
         run: |
-          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
           mkdir build
           docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
       - name: Build and upload to hub runtime image
@@ -392,7 +392,7 @@ jobs:
   #       tags: "latest"
   #   - name: Build and Test
   #     run: |
-  #       docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_USE_VULKAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja rust_blocks && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+  #       docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_USE_VULKAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
   #       mkdir build
   #       docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
   #   - uses: chainblocks/Publish-Docker-Github-Action@master
@@ -489,7 +489,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} -DSKIP_RUST_BINDGEN=${{ matrix.bitness == '32bits' }} ..
-          ninja rust_blocks && ninja cbl
+          ninja cbl
       - name: Test runtime (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         env:
@@ -787,7 +787,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja rust_blocks && ninja cbl
+          ninja cbl
       - name: Test runtime (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         env:

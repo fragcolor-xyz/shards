@@ -1750,7 +1750,6 @@ BUILTIN("override-root-path") {
 
   chainblocks::GetGlobals().RootPath = value->ref();
   std::filesystem::current_path(value->ref());
-
   return mal::nilValue();
 }
 

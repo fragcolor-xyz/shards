@@ -31,6 +31,7 @@
 [submodule "deps/replxx"]
 	path = deps/replxx
 	url = https://github.com/chainblocks/replxx.git
+	branch = chainblocks
 [submodule "deps/nameof"]
 	path = deps/nameof
 	url = https://github.com/chainblocks/nameof.git
@@ -40,6 +41,7 @@
 [submodule "deps/SDL"]
 	path = deps/SDL
 	url = https://github.com/chainblocks/SDL-org.git
+	branch = cmake_cleanup
 [submodule "deps/implot"]
 	path = deps/implot
 	url = https://github.com/chainblocks/implot.git
@@ -59,6 +61,7 @@
 [submodule "deps/Catch2"]
 	path = deps/Catch2
 	url = https://github.com/chainblocks/Catch2.git
+  branch = devel
 [submodule "deps/linalg"]
 	path = deps/linalg
 	url = https://github.com/chainblocks/linalg.git
@@ -83,3 +86,12 @@
 [submodule "deps/imguizmo"]
 	path = deps/imguizmo
 	url = https://github.com/chainblocks/ImGuizmo.git
+[submodule "deps/bgfx.cmake"]
+	path = deps/bgfx.cmake
+	url = https://github.com/chainblocks/bgfx.cmake.git
+[submodule "deps/brotli"]
+	path = deps/brotli
+	url = https://github.com/chainblocks/brotli.git
+[submodule "deps/snappy"]
+	path = deps/snappy
+	url = https://github.com/chainblocks/snappy.git

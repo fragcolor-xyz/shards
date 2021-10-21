@@ -3215,7 +3215,7 @@ void registerBGFXBlocks() {
 }
 }; // namespace BGFX
 
-#ifdef CB_INTERNAL_TESTS
+#ifdef CHAINBLOCKS_BUILD_TESTS
 #include "bgfx_tests.cpp"
 #endif
 

@@ -3,7 +3,7 @@
 
 // included in bgfx.cpp
 
-#ifndef CB_INTERNAL_TESTS
+#ifndef CHAINBLOCKS_BUILD_TESTS
 // just for linting purposes
 #include "./bgfx.cpp"
 #endif

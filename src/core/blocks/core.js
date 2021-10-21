@@ -3,7 +3,7 @@
 
 // emscripten related utilities
 
-mergeInto(LibraryManager.library, {
+var cbl_core = {
   now: function () {
     return Date.now() / 1000.0;
   },
@@ -89,4 +89,8 @@ mergeInto(LibraryManager.library, {
   //     return -1;
   //   }
   // }
-});
+}
+
+autoAddDeps(cbl_core, '$GL');
+autoAddDeps(cbl_core, '$Fetch');
+mergeInto(LibraryManager.library, cbl_core);
