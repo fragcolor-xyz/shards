@@ -37,9 +37,10 @@ constexpr uint32_t BgfxContextCC = 'gfx ';
 constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
 
 // BGFX_CONFIG_MAX_VIEWS is 256
-constexpr bgfx::ViewId GuiViewId = 256 - 1;
-constexpr bgfx::ViewId PickingBlit = GuiViewId - 1;
-constexpr bgfx::ViewId PickingViewId = PickingBlit - 1;
+constexpr bgfx::ViewId MaxViews = 256;
+constexpr bgfx::ViewId GuiViewId = MaxViews - 1;
+constexpr bgfx::ViewId BlittingViewId = GuiViewId - 1;
+constexpr bgfx::ViewId PickingViewId = BlittingViewId - 1;
 
 // FROM BGFX, MIGHT BREAK IF BGFX CHANGES
 constexpr bool isShaderVerLess(uint32_t _magic, uint8_t _version) {
