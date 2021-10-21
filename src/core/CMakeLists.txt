@@ -2,6 +2,7 @@ set(core_SOURCES
   runtime.cpp
   ops_internal.cpp
   number_types.cpp
+  runtime.cpp
   blocks/assert.cpp
   blocks/chains.cpp
   blocks/logging.cpp
@@ -31,23 +32,23 @@ set(os_SOURCES
   blocks/ws.cpp
 )
 
-add_library(chainblocks-core-base STATIC ${core_SOURCES})
+add_library(chainblocks-core-static STATIC ${core_SOURCES})
 
-target_include_directories(chainblocks-core-base PUBLIC ../../include)
-target_include_directories(chainblocks-core-base PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(chainblocks-core-static PUBLIC ../../include)
+target_include_directories(chainblocks-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(EMSCRIPTEN)
-  target_compile_options(chainblocks-core-base PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
+  target_compile_options(chainblocks-core-static PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
 endif()
 
 if(CHAINBLOCKS_NO_BIGINT_BLOCKS)
-  target_compile_definitions(chainblocks-core-base PUBLIC CHAINBLOCKS_NO_BIGINT_BLOCKS=1)
+  target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_NO_BIGINT_BLOCKS=1)
 else()
-  target_sources(chainblocks-core-base PRIVATE blocks/bigint.cpp)
+  target_sources(chainblocks-core-static PRIVATE blocks/bigint.cpp)
 endif()
 
 if(APPLE)
-  target_link_libraries(chainblocks-core-base
+  target_link_libraries(chainblocks-core-static
     "-framework Foundation"
     "-framework CoreAudio"
     "-framework AudioToolbox"
@@ -60,7 +61,7 @@ if(APPLE)
   )
 
   if(IOS)
-    target_link_libraries(chainblocks-core-base
+    target_link_libraries(chainblocks-core-static
       "-framework hidapi"
       "-framework AVFoundation"
       "-framework GameController"
@@ -70,7 +71,7 @@ if(APPLE)
       "-framework UIKit"
     )
   else()
-    target_link_libraries(chainblocks-core-base
+    target_link_libraries(chainblocks-core-static
       "-framework Cocoa"
       "-framework Carbon"
       "-framework ForceFeedback"
@@ -79,113 +80,80 @@ if(APPLE)
 endif()
 
 if(IOS)
-  unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
-  find_package(Boost REQUIRED)
-
-  # FindBoost doesn't work on iOS
-  # Compile-in boost-context implementation
-  enable_language(ASM)
-  if(X86 OR X86_IOS_SIMULATOR)
-    set(BOOST_CONTEXT_SOURCES
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_x86_64_sysv_macho_gas.S
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_x86_64_sysv_macho_gas.S
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_x86_64_sysv_macho_gas.S
-    )
-  else()
-    set(BOOST_CONTEXT_SOURCES
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/posix/stack_traits.cpp
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/jump_arm64_aapcs_macho_gas.S
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/make_arm64_aapcs_macho_gas.S
-      ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_arm64_aapcs_macho_gas.S
-    )
-  endif()
-  add_library(boost-context STATIC ${BOOST_CONTEXT_SOURCES})
-  target_include_directories(boost-context PUBLIC ${CHAINBLOCKS_DIR}/deps/boost-context/include ${Boost_INCLUDE_DIRS})
-  target_link_libraries(chainblocks-core-base boost-context)
+  target_include_directories(chainblocks-core-static PUBLIC ${Boost_INCLUDE_DIRS})
+  target_link_libraries(chainblocks-core-static boost-context)
 elseif(EMSCRIPTEN)
-  # emcmake sets this, but can't find boost anymore, see https://github.com/emscripten-core/emscripten/issues/10078
-  unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
-
-  # Only need the headers
-  find_package(Boost REQUIRED)
-  
-  target_include_directories(chainblocks-core-base PUBLIC ${Boost_INCLUDE_DIRS})
+  target_include_directories(chainblocks-core-static PUBLIC ${Boost_INCLUDE_DIRS})
 else()
-  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(Boost_USE_STATIC_LIBS ON)
-  endif()
-  
-  find_package(Boost REQUIRED COMPONENTS context filesystem)
-  target_link_libraries(chainblocks-core-base Boost::context Boost::filesystem)
+  target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem)
 endif()
 
-target_link_libraries(chainblocks-core-base 
+target_link_libraries(chainblocks-core-static 
   spdlog magic_enum nameof linalg xxHash
   pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem 
 )
 
 if(NOT EMSCRIPTEN)
-  target_sources(chainblocks-core-base PRIVATE ${os_SOURCES})
+  target_sources(chainblocks-core-static PRIVATE ${os_SOURCES})
 else()
-  target_sources(chainblocks-core-base PRIVATE coro.cpp) # emscripten coroutines
+  target_sources(chainblocks-core-static PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
 if(WIN32)
-  target_link_libraries(chainblocks-core-base ssl crypto ws2_32 mswsock Secur32 Crypt32 NCrypt)
+  target_link_libraries(chainblocks-core-static ssl crypto ws2_32 mswsock Secur32 Crypt32 NCrypt)
 elseif(APPLE)
   if(NOT IOS)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
       # these have to be full path or cmake will revert to use -l resulting in dynamic linking
-      target_link_libraries(chainblocks-core-base
+      target_link_libraries(chainblocks-core-static
         /usr/local/opt/openssl@1.1/lib/libssl.a
         /usr/local/opt/openssl@1.1/lib/libcrypto.a
       )
     else()
-      target_link_libraries(chainblocks-core-base
+      target_link_libraries(chainblocks-core-static
         -lssl -lcrypto
       )
     endif()
   endif()
   
-  target_include_directories(chainblocks-core-base PUBLIC 
+  target_include_directories(chainblocks-core-static PUBLIC 
     /usr/local/include
     /usr/local/opt/openssl@1.1/include
   )
-  target_link_directories(chainblocks-core-base PUBLIC
+  target_link_directories(chainblocks-core-static PUBLIC
     /usr/local/lib
     /usr/local/opt/openssl@1.1/lib
   )
 elseif(UNIX AND NOT EMSCRIPTEN)
-  target_link_libraries(chainblocks-core-base ssl crypto pthread dl rt)
+  target_link_libraries(chainblocks-core-static ssl crypto pthread dl rt)
 endif()
 
-target_compile_options(chainblocks-core-base 
+target_compile_options(chainblocks-core-static 
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
 )
 
-target_compile_options(chainblocks-core-base 
+target_compile_options(chainblocks-core-static 
   PUBLIC -Wno-multichar
   PRIVATE -Wno-missing-field-initializers -Wno-deprecated-copy
 )
 
 # TODO: Modularize block registration to remove Core=>Rust dependency
 if(CHAINBLOCKS_WITH_EXTRA_BLOCKS)
-  target_compile_definitions(chainblocks-core-base PUBLIC "-DCHAINBLOCKS_WITH_EXTRA_BLOCKS=1")
-  target_link_libraries(chainblocks-core-base chainblocks-extra)
+  target_compile_definitions(chainblocks-core-static PUBLIC "-DCHAINBLOCKS_WITH_EXTRA_BLOCKS=1")
+  target_link_libraries(chainblocks-core-static chainblocks-extra)
 endif()
 
 if(EMSCRIPTEN)
-  em_link_js_library(chainblocks-core-base blocks/core.js)
+  em_link_js_library(chainblocks-core-static blocks/core.js)
   
-  target_compile_options(chainblocks-core-base PUBLIC 
+  target_compile_options(chainblocks-core-static PUBLIC 
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-s FETCH=1"
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
   )
   
-  target_link_options(chainblocks-core-base PUBLIC
+  target_link_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-s NO_EXIT_RUNTIME=1"
     "SHELL:-s INITIAL_MEMORY=209715200"
@@ -204,15 +172,11 @@ if(EMSCRIPTEN)
 endif()
 
 if(IOS)
-  target_compile_definitions(chainblocks-core-base PUBLIC CHAINBLOCKS_NO_HTTP_BLOCKS=1)
+  target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_NO_HTTP_BLOCKS=1)
 endif()
 
-add_library(chainblocks-core-shared SHARED runtime.cpp)
-target_link_libraries(chainblocks-core-shared PUBLIC chainblocks-core-base)
+duplicate_library_target(chainblocks-core-static SHARED chainblocks-core-shared)
 target_compile_definitions(chainblocks-core-shared PUBLIC CHAINBLOCKS_CORE_DLL=1 chainblocks_core_EXPORTS=1)
-
-add_library(chainblocks-core-static runtime.cpp)
-target_link_libraries(chainblocks-core-static PUBLIC chainblocks-core-base)
 
 add_library(chainblocks-core ALIAS chainblocks-core-static)
 

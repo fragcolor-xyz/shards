@@ -29,6 +29,7 @@ get_filename_component(CHAINBLOCKS_DIR ${CMAKE_CURRENT_LIST_DIR} ABSOLUTE)
 include(Sanitizers)
 include(Platform)
 include(Tidy)
+include(Utils)
 
 # Rust build support
 include(Rust)
@@ -39,6 +40,8 @@ set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 enable_testing()
 include(CTest)
 include(deps/Catch2/extras/Catch.cmake)
+
+include(Boost)
 
 add_subdirectory(deps)
 
