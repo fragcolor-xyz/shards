@@ -204,4 +204,5 @@
 
 (defnode main)
 (schedule main test-chain)
-(run main 0.02 100)
+;; (run main 0.02 100)
+(run main 0.02)
