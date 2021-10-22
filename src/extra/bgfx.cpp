@@ -1977,7 +1977,7 @@ struct Camera : public CameraBase {
                            proj.data());
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
-    if (currentView.id == 0 && ctx->isPicking()) {
+    if (currentView.id == 0) {
       // also set picking view
       bgfx::setViewTransform(PickingViewId, hasView ? view.data() : nullptr,
                              proj.data());
@@ -2137,7 +2137,7 @@ struct CameraOrtho : public CameraBase {
         input.valueType == CBType::Table ? view.data() : nullptr, proj.data());
     bgfx::setViewRect(currentView.id, uint16_t(_offsetX), uint16_t(_offsetY),
                       uint16_t(width), uint16_t(height));
-    if (currentView.id == 0 && ctx->isPicking()) {
+    if (currentView.id == 0) {
       // also set picking view
       bgfx::setViewTransform(PickingViewId,
                              input.valueType == CBType::Table ? view.data()
@@ -3163,8 +3163,10 @@ struct Picking : public BaseConsumer {
     auto enabled = _enabled.get();
     ctx->setPicking(enabled.payload.boolValue);
     DEFER(ctx->setPicking(false));
+
     CBVar output{};
     _blocks.activate(context, input, output);
+
     if (enabled.payload.boolValue) {
       auto &blitTex = ctx->pickingTexture();
       auto &pickRt = ctx->pickingRenderTarget();
@@ -3174,10 +3176,9 @@ struct Picking : public BaseConsumer {
       memset(_blitData.data(), 0, _blitData.size());
     }
 
-    auto ratio = float(view.width) / float(view.height);
-    auto x = input.payload.float2Value[0] * float(PickingBufferSize);
-    auto y = input.payload.float2Value[1] * float(PickingBufferSize);
-    uint32_t id = _blitData[y * PickingBufferSize + x];
+    auto x = int(input.payload.float2Value[0] * float(PickingBufferSize));
+    auto y = int(input.payload.float2Value[1] * float(PickingBufferSize));
+    uint32_t id = _blitData[y * int(PickingBufferSize) + x];
 
     uint32_t sum = 0;
     for (auto i : _blitData) {
