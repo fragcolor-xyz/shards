@@ -1158,7 +1158,8 @@ TEST_CASE("HashedActivations") {
   blocks.elements = &b1;
   activateBlocks2(blocks, &ctx, input, output, hash);
   CBLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash == 9974806237512093940ull);
+  REQUIRE(hash.payload.int2Value[0] == 994886936879121204ll);
+  REQUIRE(hash.payload.int2Value[1] == -5204327824692322669ll);
   REQUIRE(output == input);
 
   auto wrongValue = Var(12);
@@ -1170,7 +1171,8 @@ TEST_CASE("HashedActivations") {
   } catch (...) {
   }
   CBLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash == 15368403145312537271ull);
+  REQUIRE(hash.payload.int2Value[0] == 6312058842062295303ll);
+  REQUIRE(hash.payload.int2Value[1] == -1718237385683811710ll);
   REQUIRE(output == input);
 }
 
