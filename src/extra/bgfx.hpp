@@ -296,6 +296,13 @@ struct Context {
     return id;
   }
 
+  IDrawable *getFrameDrawable(uint32_t id) {
+    if (id == 0) {
+      return nullptr;
+    }
+    return _frameDrawables[id];
+  }
+
   const bgfx::UniformHandle &getSampler(size_t index) {
     const auto nSamplers = _samplers.size();
     if (index >= nSamplers) {
