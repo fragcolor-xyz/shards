@@ -45,6 +45,7 @@
 #define ToString() block("ToString")
 #define ToHex() block("ToHex")
 #define HexToBytes() block("HexToBytes")
+#define ToBytes() block("ToBytes")
 #define ToBase58() block("ToBase58")
 
 #define PrependTo(_var) .block("PrependTo", Var::ContextVar(#_var))

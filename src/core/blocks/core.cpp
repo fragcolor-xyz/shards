@@ -381,7 +381,7 @@ struct Remove : public ActionJointOp {
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
       // conditional flow so we might have "returns" form (And) (Or)
-      if (unlikely(_blks.activate(context, var, output, true) >
+      if (unlikely(_blks.activate<true>(context, var, output) >
                    CBChainState::Return))
         return *_input;
 
@@ -685,7 +685,7 @@ struct ForEachBlock {
   CBVar activateSeq(CBContext *context, const CBVar &input) {
     CBVar output{};
     for (auto &item : input) {
-      auto state = _blocks.activate(context, item, output, true);
+      auto state = _blocks.activate<true>(context, item, output);
       // handle return short circuit, assume it was for us
       if (state != CBChainState::Continue)
         break;
@@ -703,7 +703,7 @@ struct ForEachBlock {
       _tableItem[1] = val;
       auto &itemref = _tableItem;
       const auto item = Var(reinterpret_cast<std::array<CBVar, 2> &>(itemref));
-      const auto state = _blocks.activate(context, item, output, true);
+      const auto state = _blocks.activate<true>(context, item, output);
       // handle return short circuit, assume it was for us
       if (unlikely(state != CBChainState::Continue))
         return false;
@@ -765,7 +765,7 @@ struct Map {
     arrayResize(_output.payload.seqValue, 0);
     for (auto &item : input) {
       // handle return short circuit, assume it was for us
-      auto state = _blocks.activate(context, item, output, true);
+      auto state = _blocks.activate<true>(context, item, output);
       if (state != CBChainState::Continue)
         break;
       arrayPush(_output.payload.seqValue, output);
@@ -844,7 +844,7 @@ struct Reduce {
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
       // allow short circut with (Return)
-      auto state = _blocks.activate(context, item, output, true);
+      auto state = _blocks.activate<true>(context, item, output);
       if (state != CBChainState::Continue)
         break;
       cloneVar(*_tmp, output);
@@ -1608,9 +1608,7 @@ CBVar exitProgramActivation(const CBVar &input) {
   exit(input.payload.intValue);
 }
 
-CBVar hashActivation(const CBVar &input) {
-  return Var(chainblocks::hash(input));
-}
+CBVar hashActivation(const CBVar &input) { return chainblocks::hash(input); }
 
 CBVar blockingSleepActivation(const CBVar &input) {
   if (input.valueType == CBType::Int) {
@@ -1776,7 +1774,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Exit", ExitBlock);
 
   using HasherBlock =
-      LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::IntType>;
+      LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type>;
   REGISTER_CBLOCK("Hash", HasherBlock);
 
   using BlockingSleepBlock = LambdaBlock<blockingSleepActivation,

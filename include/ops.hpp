@@ -551,14 +551,14 @@ inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
 }
 
 namespace chainblocks {
-uint64_t hash(const CBVar &var);
+CBVar hash(const CBVar &var);
 } // namespace chainblocks
 
 namespace std {
 template <> struct hash<CBVar> {
   std::size_t operator()(const CBVar &var) const {
     // not ideal on 32 bits as our hash is 64.. but it should be ok
-    return std::size_t(chainblocks::hash(var));
+    return std::size_t(chainblocks::hash(var).payload.int2Value[0]);
   }
 };
 

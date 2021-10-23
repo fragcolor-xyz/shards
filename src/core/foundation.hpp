@@ -118,18 +118,34 @@ void setString(uint32_t crc, CBString str);
 [[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
                                            CBValidationCallback callback,
                                            void *userData, CBInstanceData data);
+// caller does not handle return
+CBChainState activateBlocks(CBSeq blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output);
+// caller handles return
+CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output);
+// caller does not handle return
+CBChainState activateBlocks(CBlocks blocks, CBContext *context,
+                            const CBVar &chainInput, CBVar &output);
+// caller handles return
+CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output);
+// caller does not handle return
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn = false);
+                            CBVar &outHash);
+// caller handles return
+CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output,
+                             CBVar &outHash);
+// caller does not handle return
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn = false);
-CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn, uint64_t *outHash);
-CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn, uint64_t *outHash);
+                            CBVar &outHash);
+// caller handles return
+CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output,
+                             CBVar &outHash);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
@@ -350,7 +366,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   chainblocks::OwnedVar finishedOutput{};
   std::string finishedError{};
 
-  uint64_t composedHash{};
+  CBVar composedHash{};
   bool warmedUp{false};
   bool isRoot{false};
   std::unordered_set<void *> chainUsers;
@@ -984,18 +1000,26 @@ struct InternalCore {
   }
 
   static CBChainState runBlocks(CBlocks blocks, CBContext *context,
-                                const CBVar &input, CBVar &output,
-                                const CBBool handleReturn) {
-    return chainblocks::activateBlocks(blocks, context, input, output,
-                                       handleReturn);
+                                const CBVar &input, CBVar &output) {
+    return chainblocks::activateBlocks(blocks, context, input, output);
+  }
+
+  static CBChainState runBlocks2(CBlocks blocks, CBContext *context,
+                                 const CBVar &input, CBVar &output) {
+    return chainblocks::activateBlocks(blocks, context, input, output);
   }
 
   static CBChainState runBlocksHashed(CBlocks blocks, CBContext *context,
                                       const CBVar &input, CBVar &output,
-                                      const CBBool handleReturn,
-                                      uint64_t *outHash) {
-    return chainblocks::activateBlocks(blocks, context, input, output,
-                                       handleReturn, outHash);
+                                      CBVar &outHash) {
+    return chainblocks::activateBlocks(blocks, context, input, output, outHash);
+  }
+
+  static CBChainState runBlocksHashed2(CBlocks blocks, CBContext *context,
+                                       const CBVar &input, CBVar &output,
+                                       CBVar &outHash) {
+    return chainblocks::activateBlocks2(blocks, context, input, output,
+                                        outHash);
   }
 
   static CBChainState suspend(CBContext *ctx, double seconds) {

@@ -194,8 +194,8 @@ struct Device {
         for (auto channel : channels) {
           CBVar output{};
           device->dspChain->currentInput = inputVar;
-          if (channel->blocks.activate(&device->dspContext, inputVar, output,
-                                       false) == CBChainState::Stop) {
+          if (channel->blocks.activate(&device->dspContext, inputVar, output) ==
+              CBChainState::Stop) {
             device->stopped = true;
             // always cleanup or we risk to break someone's ears
             memset(pOutput, 0x0, frameCount * sizeof(float));

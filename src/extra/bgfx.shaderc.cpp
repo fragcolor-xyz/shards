@@ -180,8 +180,7 @@ struct ShaderCompiler : public IShaderCompiler {
         // hash the shader code and other parameters
         .Get(shader_hashing)
         .Hash()
-        .ToHex()
-        .HexToBytes()
+        .ToBytes()
         .ToBase58() Set(shader_hash_filename)
         .let("shaders/cache/") PrependTo(shader_hash_filename) //
         .Get(shader_hash_filename)
