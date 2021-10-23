@@ -305,7 +305,7 @@ struct Cond {
     for (auto &cond : _conditions) {
       CBVar output{};
       CBlocks blocks{&cond[0], (uint32_t)cond.size(), 0};
-      auto state = activateBlocks(blocks, context, input, output, true);
+      auto state = activateBlocks2(blocks, context, input, output);
       // conditional flow so we might have "returns" form (And) (Or)
       if (unlikely(state > CBChainState::Return))
         return output;
@@ -671,7 +671,7 @@ template <bool COND> struct When {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
-    auto state = _cond.activate(context, input, output, true);
+    auto state = _cond.activate<true>(context, input, output);
     if (unlikely(state > CBChainState::Return))
       return input;
 
@@ -779,7 +779,7 @@ struct IfBlock {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
-    auto state = _cond.activate(context, input, output, true);
+    auto state = _cond.activate<true>(context, input, output);
     if (unlikely(state > CBChainState::Return))
       return input;
 
@@ -1025,7 +1025,7 @@ struct HashedBlocks {
   BlocksVar _blocks{};
   CBComposeResult _composition{};
 
-  Types _outputTableTypes{{CoreInfo::AnyType, CoreInfo::IntType}};
+  Types _outputTableTypes{{CoreInfo::AnyType, CoreInfo::Int2Type}};
   static inline std::array<CBString, 2> OutputTableKeys{"Result", "Hash"};
   Type _outputTableType = Type::TableOf(_outputTableTypes, OutputTableKeys);
 
@@ -1074,10 +1074,10 @@ struct HashedBlocks {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar output{};
-    uint64_t hash;
-    _blocks.activateHashed(context, input, output, false, &hash);
+    CBVar hash{};
+    _blocks.activateHashed(context, input, output, hash);
     _outputTable["Result"] = output;
-    _outputTable["Hash"] = Var(hash);
+    _outputTable["Hash"] = hash;
     return _outputTable;
   }
 };

@@ -684,23 +684,25 @@ std::unordered_set<const CBChain *> &gatheringChains() {
 #endif
 }
 
-template <typename T, bool HASHED = false>
+template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
                                             const CBVar &chainInput,
                                             CBVar &output,
-                                            const bool handlesReturn,
-                                            uint64_t *outHash = nullptr) {
+                                            CBVar *outHash = nullptr) {
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
     assert(outHash);
     XXH3_INITSTATE(&hashState);
-    XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                                 XXH_SECRET_DEFAULT_SIZE);
+    XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                  XXH_SECRET_DEFAULT_SIZE);
     gatheringChains().clear();
   }
   DEFER(if constexpr (HASHED) {
-    *outHash = XXH3_64bits_digest(&hashState);
-    CBLOG_TRACE("Hashing digested {0:x}", *outHash);
+    auto digest = XXH3_128bits_digest(&hashState);
+    outHash->valueType = CBType::Int2;
+    outHash->payload.int2Value[0] = int64_t(digest.low64);
+    outHash->payload.int2Value[1] = int64_t(digest.high64);
+    CBLOG_TRACE("Hashing digested {}", *outHash);
   });
 
   // store initial input
@@ -734,7 +736,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
       if constexpr (HASHED) {
         const auto blockHash = blk->hash(blk);
         CBLOG_TRACE("Hashing block {}", blockHash);
-        XXH3_64bits_update(&hashState, &blockHash, sizeof(blockHash));
+        XXH3_128bits_update(&hashState, &blockHash, sizeof(blockHash));
 
         CBLOG_TRACE("Hashing input {}", input);
         hash_update(input, &hashState);
@@ -758,7 +760,7 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
         // removing this should make every block activate faster, 1 check less
         switch (context->getState()) {
         case CBChainState::Return:
-          if (handlesReturn)
+          if constexpr (HANDLES_RETURN)
             context->continueFlow();
           return CBChainState::Return;
         case CBChainState::Stop:
@@ -803,29 +805,55 @@ ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context,
 }
 
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn) {
-  return blocksActivation(blocks, context, chainInput, output, handlesReturn);
+                            const CBVar &chainInput, CBVar &output) {
+  return blocksActivation<CBlocks, false, false>(blocks, context, chainInput,
+                                                 output);
+}
+
+CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output) {
+  return blocksActivation<CBlocks, true, false>(blocks, context, chainInput,
+                                                output);
 }
 
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn) {
-  return blocksActivation(blocks, context, chainInput, output, handlesReturn);
+                            const CBVar &chainInput, CBVar &output) {
+  return blocksActivation<CBSeq, false, false>(blocks, context, chainInput,
+                                               output);
+}
+
+CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output) {
+  return blocksActivation<CBSeq, true, false>(blocks, context, chainInput,
+                                              output);
 }
 
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn, uint64_t *outHash) {
-  return blocksActivation<CBlocks, true>(blocks, context, chainInput, output,
-                                         handlesReturn, outHash);
+                            CBVar &outHash) {
+  return blocksActivation<CBlocks, false, true>(blocks, context, chainInput,
+                                                output, &outHash);
+}
+
+CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output,
+                             CBVar &outHash) {
+  return blocksActivation<CBlocks, true, true>(blocks, context, chainInput,
+                                               output, &outHash);
 }
 
 CBChainState activateBlocks(CBSeq blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
-                            const bool handlesReturn, uint64_t *outHash) {
-  return blocksActivation<CBSeq, true>(blocks, context, chainInput, output,
-                                       handlesReturn, outHash);
+                            CBVar &outHash) {
+  return blocksActivation<CBSeq, false, true>(blocks, context, chainInput,
+                                              output, &outHash);
+}
+
+CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
+                             const CBVar &chainInput, CBVar &output,
+                             CBVar &outHash) {
+  return blocksActivation<CBSeq, true, true>(blocks, context, chainInput,
+                                             output, &outHash);
 }
 
 // Lazy and also avoid windows Loader (Dead)Lock
@@ -1965,8 +1993,8 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context,
   DEFER({ chain->state = CBChain::State::IterationEnded; });
 
   try {
-    auto state = blocksActivation(chain->blocks, context, chainInput,
-                                  chain->previousOutput, false);
+    auto state = blocksActivation<std::vector<CBlockPtr>, false, false>(
+        chain->blocks, context, chainInput, chain->previousOutput);
     switch (state) {
     case CBChainState::Return:
     case CBChainState::Restart:
@@ -2496,39 +2524,37 @@ void gatherBlocks(const BlocksCollection &coll, std::vector<CBlockInfo> &out) {
   _gatherBlocks(coll, out);
 }
 
-uint64_t hash(const CBVar &var) {
-  static_assert(std::is_same<uint64_t, XXH64_hash_t>::value,
-                "XXH64_hash_t is not uint64_t");
-
+CBVar hash(const CBVar &var) {
   gatheringChains().clear();
 
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
-  XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                               XXH_SECRET_DEFAULT_SIZE);
+  XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
+                                XXH_SECRET_DEFAULT_SIZE);
 
   hash_update(var, &hashState);
 
-  return XXH3_64bits_digest(&hashState);
+  auto digest = XXH3_128bits_digest(&hashState);
+  return Var(int64_t(digest.low64), int64_t(digest.high64));
 }
 
 void hash_update(const CBVar &var, void *state) {
   auto hashState = reinterpret_cast<XXH3_state_s *>(state);
 
   auto error =
-      XXH3_64bits_update(hashState, &var.valueType, sizeof(var.valueType));
+      XXH3_128bits_update(hashState, &var.valueType, sizeof(var.valueType));
   assert(error == XXH_OK);
 
   switch (var.valueType) {
   case CBType::Bytes: {
-    error = XXH3_64bits_update(hashState, var.payload.bytesValue,
-                               size_t(var.payload.bytesSize));
+    error = XXH3_128bits_update(hashState, var.payload.bytesValue,
+                                size_t(var.payload.bytesSize));
     assert(error == XXH_OK);
   } break;
   case CBType::Path:
   case CBType::ContextVar:
   case CBType::String: {
-    error = XXH3_64bits_update(
+    error = XXH3_128bits_update(
         hashState, var.payload.stringValue,
         size_t(var.payload.stringLen > 0 || var.payload.stringValue == nullptr
                    ? var.payload.stringLen
@@ -2538,7 +2564,7 @@ void hash_update(const CBVar &var, void *state) {
   case CBType::Image: {
     CBImage i = var.payload.imageValue;
     i.data = nullptr;
-    error = XXH3_64bits_update(hashState, &i, sizeof(CBImage));
+    error = XXH3_128bits_update(hashState, &i, sizeof(CBImage));
     assert(error == XXH_OK);
     auto pixsize = 1;
     if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
@@ -2547,7 +2573,7 @@ void hash_update(const CBVar &var, void *state) {
     else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
              CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
-    error = XXH3_64bits_update(
+    error = XXH3_128bits_update(
         hashState, var.payload.imageValue.data,
         size_t(var.payload.imageValue.channels * var.payload.imageValue.width *
                var.payload.imageValue.height * pixsize));
@@ -2556,12 +2582,12 @@ void hash_update(const CBVar &var, void *state) {
   case CBType::Audio: {
     CBAudio a = var.payload.audioValue;
     a.samples = nullptr;
-    error = XXH3_64bits_update(hashState, &a, sizeof(CBAudio));
+    error = XXH3_128bits_update(hashState, &a, sizeof(CBAudio));
     assert(error == XXH_OK);
-    error = XXH3_64bits_update(hashState, var.payload.audioValue.samples,
-                               size_t(var.payload.audioValue.channels *
-                                      var.payload.audioValue.nsamples *
-                                      sizeof(float)));
+    error = XXH3_128bits_update(hashState, var.payload.audioValue.samples,
+                                size_t(var.payload.audioValue.channels *
+                                       var.payload.audioValue.nsamples *
+                                       sizeof(float)));
     assert(error == XXH_OK);
   } break;
   case CBType::Seq: {
@@ -2581,8 +2607,8 @@ void hash_update(const CBVar &var, void *state) {
   case CBType::Table: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
-    std::vector<std::pair<uint64_t, CBString>,
-                stack_allocator<std::pair<uint64_t, CBString>>>
+    std::vector<std::pair<CBVar, CBString>,
+                stack_allocator<std::pair<CBVar, CBString>>>
         hashes;
 
     auto &t = var.payload.tableValue;
@@ -2596,15 +2622,15 @@ void hash_update(const CBVar &var, void *state) {
 
     pdqsort(hashes.begin(), hashes.end());
     for (const auto &pair : hashes) {
-      error = XXH3_64bits_update(hashState, pair.second, strlen(pair.second));
+      error = XXH3_128bits_update(hashState, pair.second, strlen(pair.second));
       assert(error == XXH_OK);
-      XXH3_64bits_update(hashState, &pair.first, sizeof(uint64_t));
+      XXH3_128bits_update(hashState, &pair.first, sizeof(uint64_t));
     }
   } break;
   case CBType::Set: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
-    std::vector<uint64_t, stack_allocator<uint64_t>> hashes;
+    std::vector<CBVar, stack_allocator<CBVar>> hashes;
 
     // just store hashes, sort and actually combine later
     auto &s = var.payload.setValue;
@@ -2617,13 +2643,13 @@ void hash_update(const CBVar &var, void *state) {
 
     pdqsort(hashes.begin(), hashes.end());
     for (const auto hash : hashes) {
-      XXH3_64bits_update(hashState, &hash, sizeof(uint64_t));
+      XXH3_128bits_update(hashState, &hash, sizeof(uint64_t));
     }
   } break;
   case CBType::Block: {
     auto blk = var.payload.blockValue;
     auto name = blk->name(blk);
-    auto error = XXH3_64bits_update(hashState, name, strlen(name));
+    auto error = XXH3_128bits_update(hashState, name, strlen(name));
     assert(error == XXH_OK);
 
     auto params = blk->parameters(blk);
@@ -2642,16 +2668,16 @@ void hash_update(const CBVar &var, void *state) {
     if (gatheringChains().count(chain.get()) == 0) {
       gatheringChains().insert(chain.get());
 
-      error = XXH3_64bits_update(hashState, chain->name.c_str(),
-                                 chain->name.length());
+      error = XXH3_128bits_update(hashState, chain->name.c_str(),
+                                  chain->name.length());
       assert(error == XXH_OK);
 
       error =
-          XXH3_64bits_update(hashState, &chain->looped, sizeof(chain->looped));
+          XXH3_128bits_update(hashState, &chain->looped, sizeof(chain->looped));
       assert(error == XXH_OK);
 
       error =
-          XXH3_64bits_update(hashState, &chain->unsafe, sizeof(chain->unsafe));
+          XXH3_128bits_update(hashState, &chain->unsafe, sizeof(chain->unsafe));
       assert(error == XXH_OK);
 
       for (auto &blk : chain->blocks) {
@@ -2662,31 +2688,31 @@ void hash_update(const CBVar &var, void *state) {
       }
 
       for (auto &chainVar : chain->variables) {
-        error = XXH3_64bits_update(hashState, chainVar.first.c_str(),
-                                   chainVar.first.length());
+        error = XXH3_128bits_update(hashState, chainVar.first.c_str(),
+                                    chainVar.first.length());
         assert(error == XXH_OK);
         hash_update(chainVar.second, state);
       }
     }
   } break;
   case CBType::Object: {
-    error = XXH3_64bits_update(hashState, &var.payload.objectVendorId,
-                               sizeof(var.payload.objectVendorId));
+    error = XXH3_128bits_update(hashState, &var.payload.objectVendorId,
+                                sizeof(var.payload.objectVendorId));
     assert(error == XXH_OK);
-    error = XXH3_64bits_update(hashState, &var.payload.objectTypeId,
-                               sizeof(var.payload.objectTypeId));
+    error = XXH3_128bits_update(hashState, &var.payload.objectTypeId,
+                                sizeof(var.payload.objectTypeId));
     assert(error == XXH_OK);
     if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
         var.objectInfo && var.objectInfo->hash) {
       // hash of the hash...
       auto objHash = var.objectInfo->hash(var.payload.objectValue);
-      error = XXH3_64bits_update(hashState, &objHash, sizeof(uint64_t));
+      error = XXH3_128bits_update(hashState, &objHash, sizeof(uint64_t));
       assert(error == XXH_OK);
     } else {
       // this will be valid only within this process memory space
       // better then nothing
-      error = XXH3_64bits_update(hashState, &var.payload.objectValue,
-                                 sizeof(var.payload.objectValue));
+      error = XXH3_128bits_update(hashState, &var.payload.objectValue,
+                                  sizeof(var.payload.objectValue));
       assert(error == XXH_OK);
     }
   } break;
@@ -2694,7 +2720,7 @@ void hash_update(const CBVar &var, void *state) {
   case CBType::Any:
     break;
   default: {
-    error = XXH3_64bits_update(hashState, &var.payload, sizeof(CBVarPayload));
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(CBVarPayload));
     assert(error == XXH_OK);
   }
   }
@@ -2813,7 +2839,7 @@ void CBChain::reset() {
   variables.clear();
 
   chainUsers.clear();
-  composedHash = 0;
+  composedHash = Var::Empty;
   inputType = CBTypeInfo();
   outputType = {};
   requiredVariables.clear();
@@ -3154,10 +3180,9 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->runBlocks = [](CBlocks blocks, CBContext *context, const CBVar *input,
-                         CBVar *output, const CBBool handleReturn) noexcept {
+                         CBVar *output) noexcept {
     try {
-      return chainblocks::activateBlocks(blocks, context, *input, *output,
-                                         handleReturn);
+      return chainblocks::activateBlocks(blocks, context, *input, *output);
     } catch (const std::exception &e) {
       context->cancelFlow(e.what());
       return CBChainState::Stop;
@@ -3167,20 +3192,48 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
     }
   };
 
-  result->runBlocksHashed =
-      [](CBlocks blocks, CBContext *context, const CBVar *input, CBVar *output,
-         const CBBool handleReturn, uint64_t *outHash) noexcept {
-        try {
-          return chainblocks::activateBlocks(blocks, context, *input, *output,
-                                             handleReturn, outHash);
-        } catch (const std::exception &e) {
-          context->cancelFlow(e.what());
-          return CBChainState::Stop;
-        } catch (...) {
-          context->cancelFlow("foreign exception failure during runBlocks");
-          return CBChainState::Stop;
-        }
-      };
+  result->runBlocks2 = [](CBlocks blocks, CBContext *context,
+                          const CBVar *input, CBVar *output) noexcept {
+    try {
+      return chainblocks::activateBlocks2(blocks, context, *input, *output);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+      return CBChainState::Stop;
+    } catch (...) {
+      context->cancelFlow("foreign exception failure during runBlocks");
+      return CBChainState::Stop;
+    }
+  };
+
+  result->runBlocksHashed = [](CBlocks blocks, CBContext *context,
+                               const CBVar *input, CBVar *output,
+                               CBVar *outHash) noexcept {
+    try {
+      return chainblocks::activateBlocks(blocks, context, *input, *output,
+                                         *outHash);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+      return CBChainState::Stop;
+    } catch (...) {
+      context->cancelFlow("foreign exception failure during runBlocks");
+      return CBChainState::Stop;
+    }
+  };
+
+  result->runBlocksHashed2 = [](CBlocks blocks, CBContext *context,
+                                const CBVar *input, CBVar *output,
+                                CBVar *outHash) noexcept {
+    try {
+      return chainblocks::activateBlocks2(blocks, context, *input, *output,
+                                          *outHash);
+    } catch (const std::exception &e) {
+      context->cancelFlow(e.what());
+      return CBChainState::Stop;
+    } catch (...) {
+      context->cancelFlow("foreign exception failure during runBlocks");
+      return CBChainState::Stop;
+    }
+  };
 
   result->getChainInfo = [](CBChainRef chainref) noexcept {
     auto sc = CBChain::sharedFromRef(chainref);

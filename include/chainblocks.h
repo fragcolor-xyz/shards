@@ -896,24 +896,26 @@ typedef struct CBComposeResult(__cdecl *CBComposeBlocks)(
 typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                                 struct CBContext *context,
                                                 const struct CBVar *input,
-                                                struct CBVar *output,
-                                                const CBBool handleReturn);
+                                                struct CBVar *output);
 #else
 typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
                                            struct CBContext *context,
                                            const struct CBVar *input,
-                                           struct CBVar *output,
-                                           const CBBool handleReturn);
+                                           struct CBVar *output);
 #endif
 
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
-typedef enum CBChainState(__cdecl *CBRunBlocksHashed)(
-    CBlocks blocks, struct CBContext *context, const struct CBVar *input,
-    struct CBVar *output, const CBBool handleReturn, uint64_t *outHash);
+typedef enum CBChainState(__cdecl *CBRunBlocksHashed)(CBlocks blocks,
+                                                      struct CBContext *context,
+                                                      const struct CBVar *input,
+                                                      struct CBVar *output,
+                                                      struct CBVar *outHash);
 #else
-typedef CBChainState(__cdecl *CBRunBlocksHashed)(
-    CBlocks blocks, struct CBContext *context, const struct CBVar *input,
-    struct CBVar *output, const CBBool handleReturn, uint64_t *outHash);
+typedef CBChainState(__cdecl *CBRunBlocksHashed)(CBlocks blocks,
+                                                 struct CBContext *context,
+                                                 const struct CBVar *input,
+                                                 struct CBVar *output,
+                                                 struct CBVar *outHash);
 #endif
 
 typedef void(__cdecl *CBLog)(CBString msg);
@@ -1027,8 +1029,14 @@ typedef struct _CBCore {
 
   // Utility to use blocks within blocks
   CBComposeBlocks composeBlocks;
+  // caller not handling return state
   CBRunBlocks runBlocks;
+  // caller handles return state
+  CBRunBlocks runBlocks2;
+  // caller not handling return state
   CBRunBlocksHashed runBlocksHashed;
+  // caller handles return state
+  CBRunBlocksHashed runBlocksHashed2;
 
   // Logging
   CBLog log;

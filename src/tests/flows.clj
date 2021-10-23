@@ -271,7 +271,7 @@
    (Math.Add 5)
    (Math.Add 6))
   (Log)
-  (| (Take "Hash") (ToHex) (Assert.Is "0xc9d0a01223cba6ab") (Log)))
+  (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
 
 
 (schedule Root hashed)

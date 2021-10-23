@@ -499,16 +499,22 @@ public:
     return _chainValidation;
   }
 
-  CBChainState activate(CBContext *context, const CBVar &input, CBVar &output,
-                        const bool handleReturn = false) {
-    return CB_CORE::runBlocks(_blocks, context, input, output, handleReturn);
+  template <bool CALLER_HANDLES_RETURN = false>
+  CBChainState activate(CBContext *context, const CBVar &input, CBVar &output) {
+    if constexpr (CALLER_HANDLES_RETURN)
+      return CB_CORE::runBlocks2(_blocks, context, input, output);
+    else
+      return CB_CORE::runBlocks(_blocks, context, input, output);
   }
 
+  template <bool CALLER_HANDLES_RETURN = false>
   CBChainState activateHashed(CBContext *context, const CBVar &input,
-                              CBVar &output, const bool handleReturn,
-                              uint64_t *outHash) {
-    return CB_CORE::runBlocksHashed(_blocks, context, input, output,
-                                    handleReturn, outHash);
+                              CBVar &output, CBVar &outHash) {
+    if constexpr (CALLER_HANDLES_RETURN)
+      return CB_CORE::runBlocksHashed2(_blocks, context, input, output,
+                                       outHash);
+    else
+      return CB_CORE::runBlocksHashed(_blocks, context, input, output, outHash);
   }
 
   operator bool() const { return _blocksArray.size() > 0; }

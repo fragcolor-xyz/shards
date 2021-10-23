@@ -161,7 +161,7 @@ struct ChainBase {
 
     CBTypeInfo chainOutput;
     // make sure to compose only once...
-    if (chain->composedHash == 0) {
+    if (chain->composedHash.valueType == None) {
       CBLOG_TRACE("Running {} compose", chain->name);
       chainValidation = composeChain(
           chain.get(),
@@ -177,7 +177,7 @@ struct ChainBase {
             }
           },
           this, dataCopy);
-      chain->composedHash = 1; // no need to hash properly here
+      chain->composedHash = Var(1, 1); // no need to hash properly here
       chainOutput = chainValidation.outputType;
       IterableExposedInfo exposing(chainValidation.exposedInfo);
       // keep only globals
@@ -1029,7 +1029,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
   static CBParametersInfo parameters() { return params; }
 
   ParamVar _chain{};
-  std::size_t _chainHash = 0;
+  CBVar _chainHash{};
   CBChain *_chainPtr = nullptr;
   CBExposedTypeInfo _requiredChain{};
 
@@ -1111,7 +1111,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     if (unlikely(!chain))
       return input;
 
-    if (_chainHash == 0 || _chainHash != chain->composedHash ||
+    if (_chainHash.valueType == None || _chainHash != chain->composedHash ||
         _chainPtr != chain.get()) {
       // Compose and hash in a thread
       await(

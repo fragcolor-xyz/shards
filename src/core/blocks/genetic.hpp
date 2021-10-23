@@ -316,7 +316,7 @@ struct Evolve {
             auto best = CBChain::sharedFromRef(
                 _sortedPopulation.front()->chain.payload.chainValue);
             best->cleanup(true);
-            best->composedHash = 0;
+            best->composedHash = Var::Empty;
             best->chainUsers.clear();
           }
 
@@ -458,9 +458,9 @@ struct Evolve {
                   auto fitchain =
                       CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
                   stop(chain.get());
-                  chain->composedHash = 0;
+                  chain->composedHash = Var::Empty;
                   stop(fitchain.get());
-                  fitchain->composedHash = 0;
+                  fitchain->composedHash = Var::Empty;
                   i.node->terminate();
                 });
 
@@ -519,7 +519,7 @@ struct Evolve {
           auto best = CBChain::sharedFromRef(
               _sortedPopulation.front()->chain.payload.chainValue);
           best->cleanup(true);
-          best->composedHash = 0;
+          best->composedHash = Var::Empty;
           best->chainUsers.clear();
 
           _result.clear();

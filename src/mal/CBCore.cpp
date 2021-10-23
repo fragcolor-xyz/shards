@@ -1568,7 +1568,7 @@ BUILTIN("prepare") {
         }
       },
       nullptr, data);
-  chain->composedHash = 1; // just to mark as composed
+  chain->composedHash = Var(1, 1); // just to mark as composed
   chainblocks::arrayFree(chainValidation.exposedInfo);
   chainblocks::prepare(chain.get(), nullptr);
   return mal::nilValue();

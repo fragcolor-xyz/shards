@@ -3217,8 +3217,8 @@ struct Repeat {
     while (repeats) {
       CBVar repeatOutput{};
       CBVar blks = _blks;
-      auto state = activateBlocks(blks.payload.seqValue, context, input,
-                                  repeatOutput, true);
+      auto state =
+          activateBlocks2(blks.payload.seqValue, context, input, repeatOutput);
       if (state != CBChainState::Continue)
         break;
 
@@ -3227,7 +3227,7 @@ struct Repeat {
 
       if (_pred) {
         CBVar pres{};
-        state = _pred.activate(context, input, pres, true);
+        state = _pred.activate<true>(context, input, pres);
         // logic flow here!
         if (unlikely(state > CBChainState::Return || pres.payload.boolValue))
           break;
