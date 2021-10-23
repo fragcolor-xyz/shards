@@ -2607,8 +2607,9 @@ void hash_update(const CBVar &var, void *state) {
   case CBType::Table: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
-    std::vector<std::pair<CBVar, CBString>,
-                stack_allocator<std::pair<CBVar, CBString>>>
+    std::vector<
+        std::pair<std::pair<uint64_t, uint64_t>, CBString>,
+        stack_allocator<std::pair<std::pair<uint64_t, uint64_t>, CBString>>>
         hashes;
 
     auto &t = var.payload.tableValue;
@@ -2617,20 +2618,26 @@ void hash_update(const CBVar &var, void *state) {
     CBString key;
     CBVar value;
     while (t.api->tableNext(t, &it, &key, &value)) {
-      hashes.emplace_back(hash(value), key);
+      const auto h = hash(value);
+      hashes.emplace_back(std::make_pair(uint64_t(h.payload.int2Value[0]),
+                                         uint64_t(h.payload.int2Value[1])),
+                          key);
     }
 
     pdqsort(hashes.begin(), hashes.end());
     for (const auto &pair : hashes) {
       error = XXH3_128bits_update(hashState, pair.second, strlen(pair.second));
       assert(error == XXH_OK);
-      XXH3_128bits_update(hashState, &pair.first, sizeof(uint64_t));
+      XXH3_128bits_update(hashState, &pair.first,
+                          sizeof(std::pair<uint64_t, uint64_t>));
     }
   } break;
   case CBType::Set: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
-    std::vector<CBVar, stack_allocator<CBVar>> hashes;
+    std::vector<std::pair<uint64_t, uint64_t>,
+                stack_allocator<std::pair<uint64_t, uint64_t>>>
+        hashes;
 
     // just store hashes, sort and actually combine later
     auto &s = var.payload.setValue;
@@ -2638,7 +2645,9 @@ void hash_update(const CBVar &var, void *state) {
     s.api->setGetIterator(s, &it);
     CBVar value;
     while (s.api->setNext(s, &it, &value)) {
-      hashes.emplace_back(hash(value));
+      const auto h = hash(value);
+      hashes.emplace_back(uint64_t(h.payload.int2Value[0]),
+                          uint64_t(h.payload.int2Value[1]));
     }
 
     pdqsort(hashes.begin(), hashes.end());
