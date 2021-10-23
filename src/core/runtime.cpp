@@ -562,6 +562,7 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
   {
     auto rit = ctx->chainStack.rbegin();
     for (; rit != ctx->chainStack.rend(); ++rit) {
+      // prioritize local variables
       auto it = (*rit)->variables.find(name);
       if (it != (*rit)->variables.end()) {
         // found, lets get out here
@@ -570,9 +571,18 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
         cv.flags |= CBVAR_FLAGS_REF_COUNTED;
         return &cv;
       }
+      // try external variables
+      auto pit = (*rit)->externalVariables.find(name);
+      if (pit != (*rit)->externalVariables.end()) {
+        // found, lets get out here
+        CBVar &cv = *pit->second;
+        assert((cv.flags & CBVAR_FLAGS_EXTERNAL) != 0);
+        return &cv;
+      }
     }
   }
 
+  // try using node
   auto node = ctx->main->node.lock();
   assert(node);
 
@@ -612,6 +622,10 @@ CBVar *referenceVariable(CBContext *ctx, const char *name) {
 void releaseVariable(CBVar *variable) {
   if (!variable)
     return;
+
+  if ((variable->flags & CBVAR_FLAGS_EXTERNAL) != 0) {
+    return;
+  }
 
   assert((variable->flags & CBVAR_FLAGS_REF_COUNTED) ==
          CBVAR_FLAGS_REF_COUNTED);
@@ -1289,6 +1303,26 @@ CBComposeResult composeChain(const std::vector<CBlock *> &chain,
   ctx.chain = data.chain;
   ctx.userData = userData;
   ctx.onWorkerThread = data.onWorkerThread;
+
+  // add externally added variables
+  if (ctx.chain) {
+    for (const auto &[key, pVar] : ctx.chain->externalVariables) {
+      CBVar &var = *pVar;
+      assert((var.flags & CBVAR_FLAGS_EXTERNAL) != 0);
+
+      auto hash = deriveTypeHash(var);
+      TypeInfo *info = nullptr;
+      if (ctx.chain->typesCache.find(hash) == ctx.chain->typesCache.end()) {
+        info = &ctx.chain->typesCache.emplace(hash, TypeInfo(var, data))
+                    .first->second;
+      } else {
+        info = &ctx.chain->typesCache.at(hash);
+      }
+
+      ctx.inherited[key].insert(
+          CBExposedTypeInfo{key.c_str(), {}, *info, true /* mutable */});
+    }
+  }
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -2975,6 +3009,18 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
 
   result->releaseVariable = [](CBVar *variable) noexcept {
     return chainblocks::releaseVariable(variable);
+  };
+
+  result->setExternalVariable = [](CBChainRef chain, const char *name,
+                                   CBVar *pVar) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    sc->externalVariables[name] = pVar;
+  };
+
+  result->removeExternalVariable = [](CBChainRef chain,
+                                      const char *name) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    sc->externalVariables.erase(name);
   };
 
   result->suspend = [](CBContext *context, double seconds) noexcept {

@@ -1055,8 +1055,6 @@ struct Assoc : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
-    if (_serialized)
-      _target->flags |= CBVAR_FLAGS_SHOULD_SERIALIZE;
     _key.warmup(context);
   }
 

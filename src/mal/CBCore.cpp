@@ -382,10 +382,13 @@ private:
 
 class malCBVar : public malValue, public malRoot {
 public:
-  malCBVar(CBVar &var, bool cloned = false) : m_var(var), m_cloned(cloned) {}
-
-  malCBVar(const CBVar &var) : m_var({}), m_cloned(true) {
-    cloneVar(m_var, var);
+  malCBVar(const CBVar &var, bool cloned) : m_cloned(cloned) {
+    if (cloned) {
+      memset(&m_var, 0, sizeof(m_var));
+      chainblocks::cloneVar(m_var, var);
+    } else {
+      m_var = var;
+    }
   }
 
   malCBVar(const malCBVar &that, const malValuePtr &meta)
@@ -838,7 +841,7 @@ struct InnerCall {
     avec->push_back(activate);
 
     CBVar empty{};
-    innerVar = new malCBVar(empty);
+    innerVar = new malCBVar(empty, false);
     avec->push_back(malValuePtr(innerVar));
 
     malActivateList = new malList(avec);
@@ -993,7 +996,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     CBVar var{};
-    auto v = new malCBVar(var);
+    auto v = new malCBVar(var, false);
     v->line = arg->line;
     return malCBVarPtr(v);
   } else if (malString *v = DYNAMIC_CAST(malString, arg)) {
@@ -1001,7 +1004,8 @@ malCBVarPtr varify(const malValuePtr &arg) {
     CBVar var{};
     var.valueType = String;
     var.payload.stringValue = s.c_str();
-    auto svar = new malCBVar(var);
+    // notice, we don't clone in this case
+    auto svar = new malCBVar(var, false);
     svar->reference(v);
     svar->line = arg->line;
     return malCBVarPtr(svar);
@@ -1015,7 +1019,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
       var.valueType = Float;
       var.payload.floatValue = value;
     }
-    auto res = new malCBVar(var);
+    auto res = new malCBVar(var, false);
     res->line = arg->line;
     return malCBVarPtr(res);
   } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
@@ -1064,14 +1068,14 @@ malCBVarPtr varify(const malValuePtr &arg) {
     CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = true;
-    auto v = new malCBVar(var);
+    auto v = new malCBVar(var, false);
     v->line = arg->line;
     return malCBVarPtr(v);
   } else if (arg == mal::falseValue()) {
     CBVar var{};
     var.valueType = Bool;
     var.payload.boolValue = false;
-    auto v = new malCBVar(var);
+    auto v = new malCBVar(var, false);
     v->line = arg->line;
     return malCBVarPtr(v);
   } else if (malCBVar *v = DYNAMIC_CAST(malCBVar, arg)) {
@@ -1091,7 +1095,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
     CBVar var{};
     var.valueType = Block;
     var.payload.blockValue = block;
-    auto bvar = new malCBVar(var);
+    auto bvar = new malCBVar(var, false);
     v->consume();
     bvar->reference(v);
     bvar->line = arg->line;
@@ -1101,7 +1105,7 @@ malCBVarPtr varify(const malValuePtr &arg) {
     CBVar var{};
     var.valueType = CBType::Chain;
     var.payload.chainValue = chain;
-    auto cvar = new malCBVar(var);
+    auto cvar = new malCBVar(var, false);
     cvar->reference(v);
     cvar->line = arg->line;
     return malCBVarPtr(cvar);
@@ -1193,7 +1197,7 @@ malValuePtr newEnum(int32_t vendor, int32_t type, CBEnum value) {
   var.payload.enumVendorId = vendor;
   var.payload.enumTypeId = type;
   var.payload.enumValue = value;
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 struct Observer : public chainblocks::RuntimeObserver {
@@ -1345,7 +1349,7 @@ std::vector<malCBlockPtr> chainify(malValueIter begin, malValueIter end) {
         }
         // set :Default
         auto v = varify(next);
-        blk->value()->setParam(blk->value(), 4, &v->value());
+        blk->value()->setParam(blk->value(), 3, &v->value());
         state = Get;
       } else {
         auto blks = blockify(next);
@@ -1476,8 +1480,8 @@ static malValuePtr readVar(const CBVar &v) {
     }
     return mal::hash(map);
   } else {
-    // just return a variable in this case, but a cloned one
-    return malValuePtr(new malCBVar(v));
+    // just return a variable in this case, but a copy, not cloning inner
+    return malValuePtr(new malCBVar(v, false));
   }
 }
 
@@ -1599,6 +1603,20 @@ BUILTIN("run-empty-forever") {
   while (true) {
     chainblocks::sleep(1.0, false);
   }
+}
+
+BUILTIN("set-var") {
+  CHECK_ARGS_IS(3);
+  ARG(malCBChain, chainvar);
+  ARG(malString, varName);
+  auto last = *argsBegin;
+  auto chain = CBChain::sharedFromRef(chainvar->value());
+  auto var = varify(last);
+  auto clonedVar = new malCBVar(var->value(), true);
+  clonedVar->value().flags |= CBVAR_FLAGS_EXTERNAL;
+  chain->externalVariables[varName->ref().c_str()] = &clonedVar->value();
+  chainvar->reference(clonedVar); // keep alive until chain is destroyed
+  return malValuePtr(clonedVar);
 }
 
 BUILTIN("start") {
@@ -1753,7 +1771,7 @@ BUILTIN("path") {
   CBVar var{};
   var.valueType = Path;
   var.payload.stringValue = s.c_str();
-  auto mvar = new malCBVar(var);
+  auto mvar = new malCBVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
 }
@@ -1768,7 +1786,7 @@ BUILTIN("enum") {
   var.payload.enumVendorId = static_cast<int32_t>(value0->value());
   var.payload.enumTypeId = static_cast<int32_t>(value1->value());
   var.payload.enumValue = static_cast<CBEnum>(value2->value());
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("string") {
@@ -1778,7 +1796,7 @@ BUILTIN("string") {
   var.valueType = String;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
-  auto mvar = new malCBVar(var);
+  auto mvar = new malCBVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
 }
@@ -1791,7 +1809,7 @@ BUILTIN("bytes") {
   auto &s = value->ref();
   var.payload.bytesValue = (uint8_t *)s.data();
   var.payload.bytesSize = s.size();
-  auto mvar = new malCBVar(var);
+  auto mvar = new malCBVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
 }
@@ -1803,7 +1821,7 @@ BUILTIN("context-var") {
   var.valueType = ContextVar;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
-  auto mvar = new malCBVar(var);
+  auto mvar = new malCBVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
 }
@@ -1814,7 +1832,7 @@ BUILTIN("int") {
   CBVar var{};
   var.valueType = Int;
   var.payload.intValue = value->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("int2") {
@@ -1825,7 +1843,7 @@ BUILTIN("int2") {
   var.valueType = Int2;
   var.payload.int2Value[0] = value0->value();
   var.payload.int2Value[1] = value1->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("int3") {
@@ -1838,7 +1856,7 @@ BUILTIN("int3") {
   var.payload.int3Value[0] = value0->value();
   var.payload.int3Value[1] = value1->value();
   var.payload.int3Value[2] = value2->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("int4") {
@@ -1853,7 +1871,7 @@ BUILTIN("int4") {
   var.payload.int4Value[1] = value1->value();
   var.payload.int4Value[2] = value2->value();
   var.payload.int4Value[3] = value3->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("color") {
@@ -1868,7 +1886,7 @@ BUILTIN("color") {
   var.payload.colorValue.g = static_cast<uint8_t>(value1->value());
   var.payload.colorValue.b = static_cast<uint8_t>(value2->value());
   var.payload.colorValue.a = static_cast<uint8_t>(value3->value());
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("float") {
@@ -1877,7 +1895,7 @@ BUILTIN("float") {
   CBVar var{};
   var.valueType = Float;
   var.payload.floatValue = value->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("float2") {
@@ -1888,7 +1906,7 @@ BUILTIN("float2") {
   var.valueType = Float2;
   var.payload.float2Value[0] = value0->value();
   var.payload.float2Value[1] = value1->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("float3") {
@@ -1901,7 +1919,7 @@ BUILTIN("float3") {
   var.payload.float3Value[0] = value0->value();
   var.payload.float3Value[1] = value1->value();
   var.payload.float3Value[2] = value2->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("float4") {
@@ -1916,7 +1934,7 @@ BUILTIN("float4") {
   var.payload.float4Value[1] = value1->value();
   var.payload.float4Value[2] = value2->value();
   var.payload.float4Value[3] = value3->value();
-  return malValuePtr(new malCBVar(var));
+  return malValuePtr(new malCBVar(var, false));
 }
 
 BUILTIN("import") {

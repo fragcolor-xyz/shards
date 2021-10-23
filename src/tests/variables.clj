@@ -229,4 +229,22 @@
 (if (tick node) nil (throw "failure"))
 (def node nil)
 
+(defnode main)
+(defchain external-var-test
+  .external-variable-1 (Assert.Is "Hello" true) (Log "EXTVAR") (PrependTo .external-variable-2)
+  .external-variable-2 (Assert.Is "Hello World" true) (Log))
+
+(do
+  ; do this inside a do to test chain ownership of the variable
+  (set-var external-var-test "external-variable-1" "Hello"))
+
+(def mutating-ext-var (set-var external-var-test "external-variable-2" " World"))
+
+(schedule main external-var-test)
+(run main)
+
+; another property is that we can read back those variables!
+(println (read-var mutating-ext-var))
+(if (= "Hello World" (read-var mutating-ext-var)) nil (throw "external variable not updated!"))
+
 (prn "Done!")
