@@ -599,7 +599,9 @@ struct CBVarPayload {
 #define CBVAR_FLAGS_NONE (0)
 #define CBVAR_FLAGS_USES_OBJINFO (1 << 0)
 #define CBVAR_FLAGS_REF_COUNTED (1 << 1)
-#define CBVAR_FLAGS_SHOULD_SERIALIZE (1 << 2)
+// this marks a variable external and even if references are counted
+// it won't be destroyed automatically
+#define CBVAR_FLAGS_EXTERNAL (1 << 2)
 
 struct CBVar {
   struct CBVarPayload payload;
@@ -856,6 +858,12 @@ typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
 typedef struct CBVar *(__cdecl *CBReferenceChainVariable)(CBChainRef chain,
                                                           CBString name);
 
+typedef void(__cdecl *CBSetExternalVariable)(CBChainRef chain, CBString name,
+                                             struct CBVar *pVar);
+
+typedef void(__cdecl *CBRemoveExternalVariable)(CBChainRef chain,
+                                                CBString name);
+
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
 typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
@@ -1086,6 +1094,10 @@ typedef struct _CBCore {
   CBReferenceVariable referenceVariable;
   CBReferenceChainVariable referenceChainVariable;
   CBReleaseVariable releaseVariable;
+
+  // To add/rem external variables to chains
+  CBSetExternalVariable setExternalVariable;
+  CBRemoveExternalVariable removeExternalVariable;
 
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
