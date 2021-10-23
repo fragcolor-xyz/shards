@@ -857,11 +857,6 @@ struct MainWindow : public BaseWindow {
     bgfx::setViewClear(PickingViewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
                        0x00000000, 1.0f, 0);
 
-// Debug purposes!
-#ifndef NDEBUG
-    _bgfxContext.setPicking(true);
-#endif
-
     //
 
     // _imguiContext.Reset();
@@ -3079,6 +3074,7 @@ struct Picking : public BaseConsumer {
   ParamVar _enabled;
   std::array<CBExposedTypeInfo, 2> _required;
   CBComposeResult _composeResults;
+  std::shared_ptr<CBChain> _chain;
 
   static CBTypesInfo inputTypes() { return CoreInfo::Float2Type; }
   // it's either Chain or None but so we use any to allow this duality
@@ -3147,6 +3143,9 @@ struct Picking : public BaseConsumer {
 
   void cleanup() {
     BaseConsumer::_cleanup();
+
+    _chain = nullptr;
+
     _blocks.cleanup();
     _enabled.cleanup();
   }
@@ -3157,6 +3156,8 @@ struct Picking : public BaseConsumer {
     if (view.id != 0) {
       throw ActivationError("Picking can only be used in the main view.");
     }
+
+    _chain = nullptr;
 
     auto result = Var::Empty;
 
@@ -3180,12 +3181,13 @@ struct Picking : public BaseConsumer {
     auto y = int(input.payload.float2Value[1] * float(PickingBufferSize));
     uint32_t id = _blitData[y * int(PickingBufferSize) + x];
 
-    uint32_t sum = 0;
-    for (auto i : _blitData) {
-      sum += i;
-    }
+    const auto picked = ctx->getFrameDrawable(id);
 
-    CBLOG_TRACE("Picking picked: {} at x: {} y: {} sum: {}", id, x, y, sum);
+    if (picked) {
+      assert(picked->getChain());
+      _chain = picked->getChain()->shared_from_this();
+      result = Var(CBChain::weakRef(_chain));
+    }
 
     return result;
   }

@@ -196,6 +196,7 @@
                    ; regular model render
                    .cube_t (GFX.Draw :Shader .shader :Model .cube))
                   true)
+     (When (IsNotNone) (Log))
 
      ; gizmos
      (Gizmo.Grid :Axis .gridAxis)
