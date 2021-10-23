@@ -1147,7 +1147,7 @@ TEST_CASE("HashedActivations") {
   CBContext ctx(&foo, nullptr, &flow);
 #endif
   auto input = Var(11);
-  uint64_t hash;
+  CBVar hash{};
   CBlocks blocks{};
   CBVar output;
   auto b1 = createBlock("Assert.Is");
@@ -1156,7 +1156,7 @@ TEST_CASE("HashedActivations") {
   b1->setParam(b1, 0, &input);
   blocks.len = 1;
   blocks.elements = &b1;
-  activateBlocks(blocks, &ctx, input, output, false, &hash);
+  activateBlocks2(blocks, &ctx, input, output, hash);
   CBLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash == 9974806237512093940ull);
   REQUIRE(output == input);
@@ -1166,7 +1166,7 @@ TEST_CASE("HashedActivations") {
   blocks.len = 1;
   blocks.elements = &b1;
   try {
-    activateBlocks(blocks, &ctx, input, output, false, &hash);
+    activateBlocks2(blocks, &ctx, input, output, hash);
   } catch (...) {
   }
   CBLOG_INFO("hash: {} - output: {}", hash, output);
