@@ -998,7 +998,7 @@ struct InternalCore {
 
   static CBChainState runBlocks2(CBlocks blocks, CBContext *context,
                                  const CBVar &input, CBVar &output) {
-    return chainblocks::activateBlocks(blocks, context, input, output);
+    return chainblocks::activateBlocks2(blocks, context, input, output);
   }
 
   static CBChainState runBlocksHashed(CBlocks blocks, CBContext *context,
