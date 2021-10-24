@@ -842,20 +842,6 @@ CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
                                                output, &outHash);
 }
 
-CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            CBVar &outHash) {
-  return blocksActivation<CBSeq, false, true>(blocks, context, chainInput,
-                                              output, &outHash);
-}
-
-CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
-                             const CBVar &chainInput, CBVar &output,
-                             CBVar &outHash) {
-  return blocksActivation<CBSeq, true, true>(blocks, context, chainInput,
-                                             output, &outHash);
-}
-
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
 #ifdef __EMSCRIPTEN__

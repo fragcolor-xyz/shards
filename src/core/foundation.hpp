@@ -131,14 +131,6 @@ CBChainState activateBlocks(CBlocks blocks, CBContext *context,
 CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
                              const CBVar &chainInput, CBVar &output);
 // caller does not handle return
-CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            CBVar &outHash);
-// caller handles return
-CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
-                             const CBVar &chainInput, CBVar &output,
-                             CBVar &outHash);
-// caller does not handle return
 CBChainState activateBlocks(CBlocks blocks, CBContext *context,
                             const CBVar &chainInput, CBVar &output,
                             CBVar &outHash);
