@@ -2358,13 +2358,15 @@ struct Plot : public Base {
       {CoreInfo::FloatSeqType, CoreInfo::Float2SeqType}};
 
   BlocksVar _blocks;
+  CBVar _width{}, _height{};
   std::string _title;
   std::string _fullTitle{"##" +
                          std::to_string(reinterpret_cast<uintptr_t>(this))};
   std::string _xlabel;
   std::string _ylabel;
   ParamVar _xlimits{}, _ylimits{};
-  ParamVar _lockx{Var(false)}, _locky{Var(false)};
+  ParamVar _lockx{Var::False}, _locky{Var::False};
+  std::array<CBExposedTypeInfo, 5> _required;
 
   static inline Parameters params{
       {"Title",
@@ -2373,6 +2375,12 @@ struct Plot : public Base {
       {"Contents",
        CBCCSTR("The blocks describing this plot."),
        {CoreInfo::BlocksOrNone}},
+      {"Width",
+       CBCCSTR("The width of the plot area to create."),
+       {CoreInfo::IntOrNone}},
+      {"Height",
+       CBCCSTR("The height of the plot area to create."),
+       {CoreInfo::IntOrNone}},
       {"X_Label", CBCCSTR("The X axis label."), {CoreInfo::StringType}},
       {"Y_Label", CBCCSTR("The Y axis label."), {CoreInfo::StringType}},
       {"X_Limits",
@@ -2401,21 +2409,27 @@ struct Plot : public Base {
       _blocks = value;
       break;
     case 2:
-      _xlabel = value.payload.stringValue;
+      _width = value;
       break;
     case 3:
-      _ylabel = value.payload.stringValue;
+      _height = value;
       break;
     case 4:
-      _xlimits = value;
+      _xlabel = value.payload.stringValue;
       break;
     case 5:
-      _ylimits = value;
+      _ylabel = value.payload.stringValue;
       break;
     case 6:
-      _lockx = value;
+      _xlimits = value;
       break;
     case 7:
+      _ylimits = value;
+      break;
+    case 8:
+      _lockx = value;
+      break;
+    case 9:
       _locky = value;
       break;
     default:
@@ -2430,16 +2444,20 @@ struct Plot : public Base {
     case 1:
       return _blocks;
     case 2:
-      return Var(_xlabel);
+      return _width;
     case 3:
-      return Var(_ylabel);
+      return _height;
     case 4:
-      return _xlimits;
+      return Var(_xlabel);
     case 5:
-      return _ylimits;
+      return Var(_ylabel);
     case 6:
-      return _lockx;
+      return _xlimits;
     case 7:
+      return _ylimits;
+    case 8:
+      return _lockx;
+    case 9:
       return _locky;
     default:
       return Var::Empty;
@@ -2468,6 +2486,42 @@ struct Plot : public Base {
     _locky.warmup(context);
   }
 
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = Base::ContextInfo;
+    idx++;
+
+    if (_xlimits.isVariable()) {
+      _required[idx].name = _xlimits.variableName();
+      _required[idx].help = CBCCSTR("The required X axis limits.");
+      _required[idx].exposedType = CoreInfo::Float2Type;
+      idx++;
+    }
+
+    if (_ylimits.isVariable()) {
+      _required[idx].name = _ylimits.variableName();
+      _required[idx].help = CBCCSTR("The required Y axis limits.");
+      _required[idx].exposedType = CoreInfo::Float2Type;
+      idx++;
+    }
+
+    if (_lockx.isVariable()) {
+      _required[idx].name = _lockx.variableName();
+      _required[idx].help = CBCCSTR("The required X axis locking.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    if (_locky.isVariable()) {
+      _required[idx].name = _locky.variableName();
+      _required[idx].help = CBCCSTR("The required Y axis locking.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     if (_xlimits.get().valueType == Float2) {
       auto limitx = _xlimits.get().payload.float2Value[0];
@@ -2485,9 +2539,17 @@ struct Plot : public Base {
                                  locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
-    if (ImPlot::BeginPlot(_fullTitle.c_str(),
-                          _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
-                          _ylabel.size() > 0 ? _ylabel.c_str() : nullptr)) {
+    ImVec2 size{0, 0};
+    if (_width.valueType == Int) {
+      size.x = float(_width.payload.intValue);
+    }
+    if (_height.valueType == Int) {
+      size.y = float(_height.payload.intValue);
+    }
+
+    if (ImPlot::BeginPlot(
+            _fullTitle.c_str(), _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
+            _ylabel.size() > 0 ? _ylabel.c_str() : nullptr, size)) {
       DEFER(ImPlot::EndPlot());
 
       CBVar output{};
