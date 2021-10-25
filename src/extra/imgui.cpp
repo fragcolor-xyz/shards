@@ -2781,6 +2781,59 @@ struct Version : public Base {
   }
 };
 
+struct Tooltip : public Base {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blocks;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *context) { _blocks.warmup(context); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (::ImGui::IsItemHovered()) {
+      ::ImGui::BeginTooltip();
+      DEFER(::ImGui::EndTooltip());
+
+      CBVar output{};
+      _blocks.activate(context, input, output);
+    }
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Contents",
+       CBCCSTR("The inner contents blocks."),
+       {CoreInfo::BlocksOrNone}},
+  };
+
+  BlocksVar _blocks{};
+};
+
 struct HelpMarker : public Base {
 
   static CBParametersInfo parameters() { return _params; }
@@ -3672,6 +3725,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
   REGISTER_CBLOCK("GUI.FPS", FPS);
   REGISTER_CBLOCK("GUI.Version", Version);
+  REGISTER_CBLOCK("GUI.Tooltip", Tooltip);
   REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
   REGISTER_CBLOCK("GUI.ProgressBar", ProgressBar);
   REGISTER_CBLOCK("GUI.MainMenuBar", MainMenuBar);
