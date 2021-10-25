@@ -3535,6 +3535,87 @@ private:
   BlocksVar _blocks{};
 };
 
+struct Disable : public Base {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _disable = value;
+      break;
+    case 1:
+      _blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _disable;
+    case 1:
+      return _blocks;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() {
+    _disable.cleanup();
+    _blocks.cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    _disable.warmup(context);
+    _blocks.warmup(context);
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = Base::ContextInfo;
+    idx++;
+
+    if (_disable.isVariable()) {
+      _required[idx].name = _disable.variableName();
+      _required[idx].help = CBCCSTR("The required Disable.");
+      _required[idx].exposedType = CoreInfo::BoolType;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::BeginDisabled(_disable.get().payload.boolValue);
+    DEFER(::ImGui::EndDisabled());
+    CBVar output{};
+    _blocks.activate(context, input, output);
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Disable",
+       CBCCSTR("Sets whether the contents should be disabled."),
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Contents",
+       CBCCSTR("The inner contents blocks."),
+       {CoreInfo::BlocksOrNone}},
+  };
+
+  ParamVar _disable{Var::True};
+  BlocksVar _blocks{};
+  std::array<CBExposedTypeInfo, 2> _required;
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -3602,6 +3683,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.TabBar", TabBar);
   REGISTER_CBLOCK("GUI.TabItem", TabItem);
   REGISTER_CBLOCK("GUI.Group", Group);
+  REGISTER_CBLOCK("GUI.Disable", Disable);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
