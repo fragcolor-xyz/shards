@@ -2233,6 +2233,7 @@ impl PartialEq for Type {
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
   pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
+  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
   pub static ref STRING_TYPES: Vec<Type> = vec![common_type::string];
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);

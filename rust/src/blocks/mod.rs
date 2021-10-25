@@ -17,6 +17,7 @@ extern crate tiny_skia;
 extern crate usvg;
 extern crate wasabi_leb128;
 extern crate csv;
+extern crate winterfell;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;
@@ -42,3 +43,5 @@ pub mod svg;
 pub mod eth;
 
 pub mod cb_csv;
+
+pub mod stark;
