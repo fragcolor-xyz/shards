@@ -1355,6 +1355,90 @@ struct Button : public Base {
   }
 };
 
+struct ArrowButton : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _label = value.payload.stringValue;
+      break;
+    case 1:
+      _dir = Enums::DirToImGui(value.payload.enumValue);
+      break;
+    case 2:
+      _blocks = value;
+      break;
+    case 3:
+      _repeat = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+    case 1:
+      return Var::Enum(_dir, CoreCC, Enums::GuiDirCC);
+    case 2:
+      return _blocks;
+    case 3:
+      return Var(_repeat);
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *context) { _blocks.warmup(context); }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::PushButtonRepeat(_repeat);
+    DEFER(::ImGui::PopButtonRepeat());
+
+    if (::ImGui::ArrowButton(_label.c_str(), _dir)) {
+      CBVar output{};
+      _blocks.activate(context, input, output);
+      return Var::True;
+    }
+    return Var::False;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Label",
+       CBCCSTR("The text label of this button."), // FIXME: it is not a label
+                                                  // but an ID
+       {CoreInfo::StringType}},
+      {"Direction", CBCCSTR("The direction of the arrow"), {Enums::GuiDirType}},
+      {"Action",
+       CBCCSTR("The blocks to execute when the button is pressed."),
+       {CoreInfo::BlocksOrNone}},
+      {"Repeat",
+       CBCCSTR("Whether to repeat the action while the button is pressed."),
+       {CoreInfo::BoolType}},
+  };
+
+  std::string _label;
+  ImGuiDir _dir{ImGuiDir_Left};
+  BlocksVar _blocks{};
+  bool _repeat{false};
+};
+
 struct HexViewer : public Base {
   // TODO use a variable so edits are possible and easy
 
@@ -3460,6 +3544,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Text", Text);
   REGISTER_CBLOCK("GUI.BulletText", BulletText);
   REGISTER_CBLOCK("GUI.Button", Button);
+  REGISTER_CBLOCK("GUI.ArrowButton", ArrowButton);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
   REGISTER_CBLOCK("GUI.NewLine", NewLine);
   REGISTER_CBLOCK("GUI.SameLine", SameLine);
