@@ -1595,7 +1595,7 @@ private:
                         CoreInfo::BoolType));
 
   std::string _label;
-  bool _defaultOpen = true;
+  bool _defaultOpen = false;
   BlocksVar _blocks;
 };
 
