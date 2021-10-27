@@ -200,6 +200,7 @@ typedef int64_t CBInt;
 typedef double CBFloat;
 typedef bool CBBool;
 typedef int32_t CBEnum;
+CB_ARRAY_DECL(CBEnums, CBEnum);
 
 typedef const char *CBString;
 CB_ARRAY_DECL(CBStrings, CBString);
@@ -461,6 +462,7 @@ struct CBObjectInfo {
 struct CBEnumInfo {
   CBString name;
   CBStrings labels;
+  CBEnums values;
 };
 
 struct CBParameterInfo {
@@ -962,6 +964,7 @@ CB_ARRAY_TYPE(CBTypesInfo, struct CBTypeInfo);
 CB_ARRAY_TYPE(CBParametersInfo, struct CBParameterInfo);
 CB_ARRAY_TYPE(CBlocks, CBlockPtr);
 CB_ARRAY_TYPE(CBExposedTypesInfo, struct CBExposedTypeInfo);
+CB_ARRAY_TYPE(CBEnums, CBEnum);
 CB_ARRAY_TYPE(CBStrings, CBString);
 
 #define CB_ARRAY_PROCS(_array_, _short_)                                       \
@@ -1142,6 +1145,9 @@ typedef struct _CBCore {
 
   // Utility to deal with CBExposedTypeInfo
   CB_ARRAY_PROCS(CBExposedTypesInfo, expTypes);
+
+  // Utility to deal with CBEnums
+  CB_ARRAY_PROCS(CBEnums, enums);
 
   // Utility to deal with CBStrings
   CB_ARRAY_PROCS(CBStrings, strings);

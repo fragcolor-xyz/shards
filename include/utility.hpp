@@ -288,9 +288,11 @@ public:
 template <class CB_CORE, typename E> class TEnumInfo {
 private:
   static constexpr auto eseq = magic_enum::enum_names<E>();
+  static constexpr auto vseq = magic_enum::enum_values<E>();
   CBEnumInfo info;
   std::vector<std::string> labels;
   std::vector<CBString> clabels;
+  std::vector<CBEnum> values;
 
 public:
   TEnumInfo(const char *name, int32_t vendorId, int32_t enumId) {
@@ -303,6 +305,14 @@ public:
     }
     info.labels.elements = &clabels[0];
     info.labels.len = uint32_t(labels.size());
+
+    for (auto &v : vseq) {
+      values.emplace_back(CBEnum(v));
+    }
+    info.values.elements = &values[0];
+    info.values.len = uint32_t(values.size());
+
+    assert(info.values.len == info.labels.len);
     CB_CORE::registerEnumType(vendorId, enumId, info);
   }
 };
