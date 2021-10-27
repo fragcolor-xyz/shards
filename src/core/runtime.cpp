@@ -3109,6 +3109,7 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
   CB_ARRAY_IMPL(CBlocks, CBlockPtr, blocks);
   CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  CB_ARRAY_IMPL(CBEnums, CBEnum, enums);
   CB_ARRAY_IMPL(CBStrings, CBString, strings);
 
   result->tableNew = []() noexcept {

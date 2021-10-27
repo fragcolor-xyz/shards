@@ -1244,7 +1244,7 @@ struct Observer : public chainblocks::RuntimeObserver {
     for (uint32_t i = 0; i < info.labels.len; i++) {
       auto enumName =
           MalString(info.name) + "." + MalString(info.labels.elements[i]);
-      auto enumValue = newEnum(vendorId, typeId, i);
+      auto enumValue = newEnum(vendorId, typeId, info.values.elements[i]);
       builtIns[enumName] = enumValue;
       _env->set(enumName, enumValue);
     }
