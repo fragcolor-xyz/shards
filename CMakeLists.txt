@@ -860,6 +860,12 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_FEATURES ${RUST_FEATURES} --features cblisp)
   endif()
 
+  if(EMSCRIPTEN)
+    set(RUST_FEATURES ${RUST_FEATURES} --features blocks_wasm)
+  else()
+    set(RUST_FEATURES ${RUST_FEATURES} --features blocks_native)
+  endif()
+
   if(RUST_USE_LTO)
     set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
   endif()
