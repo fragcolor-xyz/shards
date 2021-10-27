@@ -870,6 +870,11 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
     break;
   }
   case Enum: {
+    // special case: any enum
+    if (receiverType.enumeration.vendorId == 0 &&
+        receiverType.enumeration.typeId == 0)
+      return true;
+    // otherwise, exact match
     if (inputType.enumeration.vendorId != receiverType.enumeration.vendorId ||
         inputType.enumeration.typeId != receiverType.enumeration.typeId) {
       return false;
