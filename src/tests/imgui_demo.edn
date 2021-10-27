@@ -95,6 +95,20 @@
                       (If (-> .clickCount (Math.And 1) (IsMore 0))
                           (-> (GUI.SameLine) "Thanks for clicking me!" (GUI.Text)))
                       (GUI.Checkbox "Checkbox")
+                      "Flags:" (GUI.Text) (GUI.Indent)
+                      (GUI.CheckboxFlags "Left" "direction" 1) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Right" "direction" 2) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Up" "direction" 4) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Down" "direction" 8) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Forward" "direction" 16) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Backward" "direction" 32)
+                      (GUI.Disable
+                       true
+                       (->
+                        (GUI.CheckboxFlags "Left & Right" "direction" 3) (GUI.SameLine)
+                        (GUI.CheckboxFlags "Up & down" "direction" 12) (GUI.SameLine)
+                        (GUI.CheckboxFlags "Forward & backward" "direction" 48) (GUI.SameLine)
+                        (GUI.CheckboxFlags "All" "direction" 63))) (GUI.Unindent)
                       (GUI.RadioButton "radio a" "radioValue" 0) (GUI.SameLine)
                       (GUI.RadioButton "radio b" "radioValue" 1) (GUI.SameLine)
                       (GUI.RadioButton "radio c" "radioValue" 2)
