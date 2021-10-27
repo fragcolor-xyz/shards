@@ -262,6 +262,12 @@ jobs:
           working-directory: ./build
           run: |
             ./cbl ../src/tests/gizmos.edn
+      - name: Test Headless (imgui_demo)
+        uses: chainblocks/xvfb-action@master
+        with:
+          working-directory: ./build
+          run: |
+            ./cbl ../src/tests/imgui_demo.edn
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
@@ -586,6 +592,8 @@ jobs:
           ./cbl ../src/tests/bgfx.clj
           echo "Running test: gizmos"
           ./cbl ../src/tests/gizmos.edn
+          echo "Running test: imgui_demo"
+          ./cbl ../src/tests/imgui_demo.edn
           echo "Running test: wasm"
           ./cbl ../src/tests/wasm.clj
           echo "Running test: eth"

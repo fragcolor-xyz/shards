@@ -301,4 +301,4 @@
        .color (GUI.Style GuiStyle.WindowBgColor)
        (helloWorld-window))))
 (schedule main imgui-chain)
-(run main 0.02)
+(run main 0.02 100)
