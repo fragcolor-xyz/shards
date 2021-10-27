@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "imgui.hpp"
+
 #include "bgfx.hpp"
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
@@ -908,7 +909,123 @@ template <CBType CT> struct Variable : public Base {
           requiredInfo,
           ExposedInfo::Variable(_variable_name.c_str(),
                                 CBCCSTR("The exposed input variable."),
-                                CBTypeInfo(varType)));
+                                CBTypeInfo(varType), true));
+      return CBExposedTypesInfo(_expInfo);
+    } else {
+      return {};
+    }
+  }
+
+  static CBParametersInfo parameters() {
+    static CBParametersInfo info = VariableParamsInfo();
+    return info;
+  }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
+    case 1: {
+      if (value.valueType == None) {
+        _variable_name.clear();
+      } else {
+        _variable_name = value.payload.stringValue;
+      }
+      cleanupVariable();
+    } break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _label.size() == 0 ? Var::Empty : Var(_label);
+    case 1:
+      return _variable_name.size() == 0 ? Var::Empty : Var(_variable_name);
+    default:
+      return Var::Empty;
+    }
+  }
+};
+
+template <CBType CT1, CBType CT2> struct Variable2 : public Base {
+  static inline Type varType1{{CT1}};
+  static inline Type varType2{{CT2}};
+
+  std::string _label;
+  std::string _variable_name;
+  CBVar *_variable = nullptr;
+  ExposedInfo _expInfo{};
+  bool _exposing = false;
+
+  void cleanup() { cleanupVariable(); }
+
+  void cleanupVariable() {
+    if (_variable) {
+      releaseVariable(_variable);
+      _variable = nullptr;
+    }
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    if (_variable_name.size() > 0) {
+      _exposing = true; // assume we expose a new variable
+      // search for a possible existing variable and ensure it's the right type
+      for (auto &var : data.shared) {
+        if (strcmp(var.name, _variable_name.c_str()) == 0) {
+          // we found a variable, make sure it's the right type and mark
+          // exposing off
+          _exposing = false;
+          if (var.exposedType.basicType != CT1 &&
+              var.exposedType.basicType != CT2) {
+            throw CBException("ImGui - Variable: Existing variable type not "
+                              "matching the input.");
+          }
+          // also make sure it's mutable!
+          if (!var.isMutable) {
+            throw CBException(
+                "ImGui - Variable: Existing variable is not mutable.");
+          }
+          break;
+        }
+      }
+    }
+    return CoreInfo::AnyType;
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_variable_name.size() > 0 && !_exposing) {
+      _expInfo = ExposedInfo(
+          requiredInfo,
+          ExposedInfo::Variable(_variable_name.c_str(),
+                                CBCCSTR("The required input variable."),
+                                CBTypeInfo(varType1)),
+          ExposedInfo::Variable(_variable_name.c_str(),
+                                CBCCSTR("The required input variable."),
+                                CBTypeInfo(varType2)));
+      return CBExposedTypesInfo(_expInfo);
+    } else {
+      return {};
+    }
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (_variable_name.size() > 0 && _exposing) {
+      _expInfo = ExposedInfo(
+          requiredInfo,
+          ExposedInfo::Variable(_variable_name.c_str(),
+                                CBCCSTR("The exposed input variable."),
+                                CBTypeInfo(varType1), true),
+          ExposedInfo::Variable(_variable_name.c_str(),
+                                CBCCSTR("The exposed input variable."),
+                                CBTypeInfo(varType2), true));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -966,16 +1083,101 @@ struct Checkbox : public Variable<CBType::Bool> {
       _variable = referenceVariable(context, _variable_name.c_str());
     }
 
+    auto result = Var::False;
     if (_variable) {
-      ::ImGui::Checkbox(_label.c_str(), &_variable->payload.boolValue);
-      return _variable->payload.boolValue ? Var::True : Var::False;
+      if (::ImGui::Checkbox(_label.c_str(), &_variable->payload.boolValue)) {
+        result = Var::True;
+      }
     } else {
       // HACK kinda... we recycle _exposing since we are not using it in this
       // branch
-      ::ImGui::Checkbox(_label.c_str(), &_exposing);
-      return _exposing ? Var::True : Var::False;
+      if (::ImGui::Checkbox(_label.c_str(), &_exposing)) {
+        result = Var::True;
+      }
     }
+    return result;
   }
+};
+
+struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    if (index < 2)
+      Variable2<CBType::Int, CBType::Enum>::setParam(index, value);
+    else
+      _value = value;
+  }
+
+  CBVar getParam(int index) {
+    if (index < 2)
+      return Variable2<CBType::Int, CBType::Enum>::getParam(index);
+    else
+      return _value;
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    Variable2<CBType::Int, CBType::Enum>::compose(data);
+
+    // ideally here we should check that the type of _value is the same as
+    // _variable.
+
+    return CoreInfo::BoolType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+    }
+
+    auto result = Var::False;
+    switch (_value.valueType) {
+    case CBType::Int: {
+      int *flags;
+      if (_variable) {
+        flags = reinterpret_cast<int *>(&_variable->payload.intValue);
+      } else {
+        flags = reinterpret_cast<int *>(&_tmp.payload.intValue);
+      }
+      if (::ImGui::CheckboxFlags(_label.c_str(), flags,
+                                 int(_value.payload.intValue))) {
+        result = Var::True;
+      }
+    } break;
+    case CBType::Enum: {
+      int *flags;
+      if (_variable) {
+        flags = reinterpret_cast<int *>(&_variable->payload.enumValue);
+      } else {
+        flags = reinterpret_cast<int *>(&_tmp.payload.enumValue);
+      }
+      if (::ImGui::CheckboxFlags(_label.c_str(), flags,
+                                 int(_value.payload.enumValue))) {
+        result = Var::True;
+      }
+    } break;
+    default:
+      break;
+    }
+
+    return result;
+  }
+
+private:
+  static inline Parameters _params{
+      VariableParamsInfo(),
+      {{"Value",
+        CBCCSTR("The flag value to set or unset."),
+        {CoreInfo::IntType, CoreInfo::AnyEnumType}}}};
+
+  CBVar _value{};
+  CBVar _tmp{};
 };
 
 struct RadioButton : public Variable<CBType::Int> {
@@ -1006,20 +1208,22 @@ struct RadioButton : public Variable<CBType::Int> {
       _variable = referenceVariable(context, _variable_name.c_str());
     }
 
+    auto result = Var::False;
     if (_variable) {
       if (::ImGui::RadioButton(_label.c_str(),
                                _variable->payload.intValue == _value)) {
         _variable->payload.intValue = _value;
+        result = Var::True;
       }
     } else {
       // HACK kinda... we recycle _exposing since we are not using it in this
       // branch
       if (::ImGui::RadioButton(_label.c_str(), _exposing)) {
-        _exposing ^= true;
+        result = Var::True;
       }
     }
 
-    return Var(_value);
+    return result;
   }
 
 private:
@@ -3751,6 +3955,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Window", Window);
   REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
   REGISTER_CBLOCK("GUI.Checkbox", Checkbox);
+  REGISTER_CBLOCK("GUI.CheckboxFlags", CheckboxFlags);
   REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.Text", Text);
   REGISTER_CBLOCK("GUI.BulletText", BulletText);
