@@ -29,7 +29,7 @@ ethereum-types = { version = "0.12.0", optional = true }
 ethabi = { version = "15.0.0", optional = true }
 serde_json = { version = "1.0.64", optional = true }
 csv = { version = "1.1", optional = true }
-smoldot-light = { git = "https://github.com/chainblocks/smoldot.git",  optional = true }
+smoldot-light = { git = "https://github.com/chainblocks/smoldot.git", branch = "chainblocks", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
