@@ -17,11 +17,6 @@ extern crate tiny_skia;
 extern crate usvg;
 extern crate wasabi_leb128;
 extern crate csv;
-
-#[cfg(not(target_arch = "wasm32"))]
-extern crate smoldot;
-
-#[cfg(target_arch = "wasm32")]
 extern crate smoldot_light;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
