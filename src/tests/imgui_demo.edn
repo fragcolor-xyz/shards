@@ -16,7 +16,7 @@
        (GUI.Checkbox "Demo Window" "showDemo")
        (GUI.Checkbox "Another Window" "showAnother")
        (GUI.FloatSlider "float" "floating" :Min 0.0 :Max 1.0)
-       (GUI.ColorInput "clear color" "color")
+       (GUI.ColorInput "background color" "color")
        (GUI.Button "Button" (Math.Inc .counter))
        (GUI.SameLine) .counter (GUI.Text :Format "counter = {}")
        (GUI.FPS) > .fps 1000.0 (Math.Divide .fps)
@@ -293,12 +293,12 @@
 (defloop imgui-chain
   (GFX.MainWindow
    :Title "Dear ImGui Chainblocks Example" :Width 1280 :Height 768 :Debug true :Fullscreen false
-   :ClearColor .color
    :Contents
    (-> (Setup
         true >= .showDemo
         false >= .showAnother
-        (color 192 192 170 255) >= .color)
+        (color 15 15 15 240) >= .color)
+       .color (GUI.Style GuiStyle.WindowBgColor)
        (helloWorld-window))))
 (schedule main imgui-chain)
 (run main 0.02)
