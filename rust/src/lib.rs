@@ -66,10 +66,10 @@ macro_rules! var {
 }
 
 macro_rules! blocks {
-    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))); };
-    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))); };
-    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))); };
-    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))); };
+    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))) };
+    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))) };
+    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))) };
+    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))) };
 
     // (BlockName)
     (@block $block:ident) => {{
@@ -198,7 +198,7 @@ macro_rules! blocks {
       but in this macro (. 10) (Log) has to be used.
       I will implement a (.) builtin maybe in mal to allow copy pasting of such scripts.. but not sure we are going to use either.. again WIP but don't wanna loose it in history.
     */
-    (@block . $a:expr) => { blocks!(@block Const $a); };
+    (@block . $a:expr) => { blocks!(@block Const $a) };
 
     // this is the CORE evaluator takes a list of blocks expressions
     // the current limit is that everything has to be between parenthesis (...)
