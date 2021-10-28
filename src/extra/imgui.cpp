@@ -1611,6 +1611,10 @@ struct CollapsingHeader : public Base {
       break;
     case 1:
       _blocks = value;
+      break;
+    case 2:
+      _defaultOpen = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -1622,6 +1626,8 @@ struct CollapsingHeader : public Base {
       return Var(_label);
     case 1:
       return _blocks;
+    case 2:
+      return Var(_defaultOpen);
     default:
       return Var::Empty;
     }
@@ -1637,6 +1643,11 @@ struct CollapsingHeader : public Base {
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
+    if (_defaultOpen) {
+      ::ImGui::SetNextItemOpen(true);
+      _defaultOpen = false;
+    }
+
     auto active = ::ImGui::CollapsingHeader(_label.c_str());
     if (active) {
       CBVar output{};
@@ -1651,10 +1662,14 @@ private:
       {"Contents",
        CBCCSTR("The contents under this header."),
        {CoreInfo::BlocksOrNone}},
+      {"StartOpen",
+       CBCCSTR("If this header should start in the open state."),
+       {CoreInfo::BoolType}},
   };
 
   std::string _label;
   BlocksVar _blocks{};
+  bool _defaultOpen = false;
 };
 
 template <CBType CBT> struct DragBase : public Variable<CBT> {
