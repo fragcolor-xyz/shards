@@ -435,16 +435,6 @@ jobs:
     strategy:
       matrix:
         build-type: ["Debug", "Release"]
-        bitness: [32bits, 64bits]
-        include:
-          - bitness: 32bits
-            msystem: MINGW32
-            arch: i686
-            artifact: cbl-win32
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -456,24 +446,23 @@ jobs:
           RUSTUP_USE_CURL: 1
         run: |
           rustup update
-          rustup default stable-${{ matrix.arch }}-pc-windows-gnu
+          rustup default stable-x86_64-pc-windows-gnu
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: MINGW64
           release: false
           path-type: inherit
           install: >-
             base-devel
-            mingw-w64-${{ matrix.arch }}-toolchain
-            mingw-w64-${{ matrix.arch }}-cmake
-            mingw-w64-${{ matrix.arch }}-boost
-            mingw-w64-${{ matrix.arch }}-ninja
-            mingw-w64-${{ matrix.arch }}-clang
-            mingw-w64-${{ matrix.arch }}-lld
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-clang
+            mingw-w64-x86_64-lld
             wget
-      - name: Build libtrace (64bits)
-        if: ${{ matrix.bitness == '64bits' }}
+      - name: Build libtrace
         shell: msys2 {0}
         run: |
           cd deps/libbacktrace
@@ -487,7 +476,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} -DSKIP_RUST_BINDGEN=${{ matrix.bitness == '32bits' }} ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=1 ..
           ninja rust_blocks && ninja cbl
       - name: Test runtime (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
@@ -501,7 +490,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
+          name: cbl-win64 ${{ matrix.build-type }}
           path: build/cbl.exe
           if-no-files-found: error
 
@@ -515,16 +504,6 @@ jobs:
       fail-fast: false
       matrix:
         build-type: ["Debug", "Release"]
-        bitness: [32bits, 64bits]
-        include:
-          - bitness: 32bits
-            msystem: MINGW32
-            arch: i686
-            artifact: cbl-win32
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -534,24 +513,24 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
+          name: cbl-win64 ${{ matrix.build-type }}
           path: build
       - name: Set up MSYS2 (Release)
         if: ${{ matrix.build-type == 'Release' }}
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: MINGW64
           release: false
           path-type: inherit
       - name: Set up MSYS2 (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{ matrix.msystem }}
+          msystem: MINGW64
           release: false
           path-type: inherit
           install: >-
-            mingw-w64-${{ matrix.arch }}-boost
+            mingw-w64-x86_64-boost
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -598,13 +577,6 @@ jobs:
           ./cbl ../src/tests/wasm.clj
           echo "Running test: eth"
           ./cbl ../src/tests/eth.edn
-      - name: Test (64bits)
-        if: ${{ matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
           echo "Running test: genetic"
           ./cbl ../src/tests/genetic.clj
           echo "Running test: time"
