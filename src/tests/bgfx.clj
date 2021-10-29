@@ -257,7 +257,7 @@
                                                                  :Model .cube)))
                    (GUI.Image (Float2 1.0 1.0))
 
-                   (GUI.ChildWindow
+                   (GUI.ChildWindow :Height 150
                     :Border true :Contents
                     (-> (GUI.TreeNode
                          "Node1"
@@ -301,16 +301,13 @@
                                     :Lock_X false
                                     :Lock_Y true)))))
 
-                   (GUI.Button "Push me!" (->
-                                           (Msg "Action!")))
-                   (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
-                   (GUI.Button "Push me!" (->
-                                           (Msg "Action!")) ImGuiButton.Small)
-                   (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
-                   (GUI.Button "Push me!" (->
-                                           (Msg "Action!")) ImGuiButton.ArrowUp)
-                   (Cond [(-> (Is true)) (-> (Msg "yeah..."))])
-                   (GUI.ChildWindow :Border true :Width 100 :Height 100 :Contents
+                   (GUI.Button "Push me!" (Msg "Action!"))
+                   (Cond [(-> (Is true)) (Msg "yeah...")])
+                   (GUI.Button "Push me!" (Msg "Action!") ImGuiButton.Small)
+                   (Cond [(-> (Is true)) (Msg "yeah...")])
+                   (GUI.ArrowButton "Push me!" GuiDir.Up (Msg "Action!"))
+                   (Cond [(-> (Is true)) (Msg "yeah...")])
+                   (GUI.ChildWindow :Border true :Height 350 :Contents
                                     (-> (ToBytes)
                                         (GUI.HexViewer)))))
       (GUI.Window "Another window" :Pos (Float2 0.5 0.5) :Width 0.25 :Height 0.25
