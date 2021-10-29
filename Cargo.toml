@@ -2,3 +2,6 @@
 members = [
     "rust",
 ]
+
+[patch.crates-io]
+chrono = { git = "https://github.com/sinkingsugar/chrono" }
