@@ -156,7 +156,70 @@
                  (GUI.HelpMarker "Demonstrate using (Disable) across this section.")))))
        (GUI.CollapsingHeader "Layout & Scrolling" (todo!))
        (GUI.CollapsingHeader "Popups & Modal windows" (todo!))
-       (GUI.CollapsingHeader "Tables & Columns" (todo!))
+       (GUI.CollapsingHeader
+        "Tables & Columns"
+        (-> (GUI.TreeNode
+             "Basic"
+             (-> (GUI.Spacing) (GUI.HelpMarker "Using GUI.NextRow + calling GUI.SetColumnIndex _before_ each cell, in a loop.")
+                 (GUI.Table
+                  :Columns 3 :Contents
+                  (-> 0 >= .row
+                      (Repeat
+                       :Times 4 :Action
+                       (-> 0 >= .column
+                           (GUI.NextRow)
+                           (Repeat
+                            :Times 3 :Action
+                            (->
+                             .column (GUI.SetColumnIndex)
+                             .row (GUI.Text :Format "Row {}") (GUI.SameLine)
+                             .column (GUI.Text :Format "Column {}")
+                             (Math.Inc .column)))
+                           (Math.Inc .row)))))
+                 (GUI.Spacing) (GUI.HelpMarker "Using GUI.NextRow + calling GUI.NextColumn _before_ each cell, manually.")
+                 (GUI.Table
+                  :Columns 3 :Contents
+                  (-> 0 >= .row
+                      (Repeat
+                       :Times 4 :Action
+                       (-> (GUI.NextRow)
+                           (GUI.NextColumn) .row (GUI.Text :Format "Row {}")
+                           (GUI.NextColumn) "Some contents" (GUI.Text)
+                           (GUI.NextColumn) 123.456 (GUI.Text)
+                           (Math.Inc .row)))))
+                 (GUI.Spacing) (GUI.HelpMarker "Only using GUI.NextColumn, which tends to be convenient for tables where every cells contains the same type of contents.")
+                 (GUI.Table
+                  :Columns 3 :Contents
+                  (-> 0 >= .item
+                      (Repeat
+                       :Times 14 :Action
+                       (-> (GUI.NextColumn)
+                           .item (GUI.Text :Format "Item {}")
+                           (Math.Inc .item)))))))
+            (GUI.TreeNode
+             "Reorderable, hideable, with headers"
+             (-> (GUI.Spacing) (GUI.HelpMarker "Click and drag column headers to reorder columns.\n\nRight-click on a header to open a context menu.")
+                 (GUI.CheckboxFlags "Resizable" "tableFlags" GuiTableFlags.Resizable)
+                 (GUI.CheckboxFlags "Reorderable" "tableFlags" GuiTableFlags.Reorderable)
+                 (GUI.CheckboxFlags "Hideable" "tableFlags" GuiTableFlags.Hideable)
+                 (GUI.Table
+                  :Columns 3 :Flags .tableFlags :Contents
+                  (-> (GUI.SetupColumn "One")
+                      (GUI.SetupColumn "Two")
+                      (GUI.SetupColumn "Three")
+                      (GUI.HeadersRow)
+                      0 >= .row
+                      (Repeat
+                       :Times 6 :Action
+                       (-> 0 >= .column
+                           (GUI.NextRow)
+                           (Repeat
+                            :Times 3 :Action
+                            (->
+                             .column (GUI.SetColumnIndex)
+                             .row (GUI.Text :Format "Hello {},") (GUI.SameLine) .column (GUI.Text)
+                             (Math.Inc .column)))
+                           (Math.Inc .row)))))))))
        (GUI.CollapsingHeader "Filtering" (todo!))
        (GUI.CollapsingHeader "Inputs, Navigation & Focus" (todo!)))))
 
