@@ -37,24 +37,15 @@ struct Context {
 };
 
 struct Enums {
-  enum class GuiDir { Left, Right, Up, Down };
+  enum class GuiDir {
+    Left = ::ImGuiDir_Left,
+    Right = ::ImGuiDir_Right,
+    Up = ::ImGuiDir_Up,
+    Down = ::ImGuiDir_Down
+  };
   static constexpr uint32_t GuiDirCC = 'guiD';
   static inline EnumInfo<GuiDir> GuiDirEnumInfo{"GuiDir", CoreCC, GuiDirCC};
   static inline Type GuiDirType = Type::Enum(CoreCC, GuiDirCC);
-
-  static constexpr ::ImGuiDir DirToImGui(CBEnum eval) {
-    switch (GuiDir(eval)) {
-    case GuiDir::Left:
-      return ::ImGuiDir_Left;
-    case GuiDir::Right:
-      return ::ImGuiDir_Right;
-    case GuiDir::Up:
-      return ::ImGuiDir_Up;
-    case GuiDir::Down:
-      return ::ImGuiDir_Down;
-    }
-    return ::ImGuiDir_None;
-  }
 
   enum class GuiTableFlags {
     None = ::ImGuiTableFlags_None,

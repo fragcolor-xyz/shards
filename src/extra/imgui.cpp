@@ -1421,15 +1421,7 @@ struct Button : public Base {
   static inline Type buttonTypeInfo{
       {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiB'}}}};
 
-  enum ButtonTypes {
-    Normal,
-    Small,
-    Invisible,
-    ArrowLeft,
-    ArrowRight,
-    ArrowUp,
-    ArrowDown
-  };
+  enum ButtonTypes { Normal, Small, Invisible };
 
   typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
   static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", CoreCC, 'guiB'};
@@ -1530,30 +1522,6 @@ struct Button : public Base {
         result = Var::True;
       }
       break;
-    case ArrowLeft:
-      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Left)) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
-    case ArrowRight:
-      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Right)) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
-    case ArrowUp:
-      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Up)) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
-    case ArrowDown:
-      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Down)) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
     }
     return result;
   }
@@ -1572,7 +1540,7 @@ struct ArrowButton : public Base {
       _label = value.payload.stringValue;
       break;
     case 1:
-      _dir = Enums::DirToImGui(value.payload.enumValue);
+      _dir = ::ImGuiDir(value.payload.enumValue);
       break;
     case 2:
       _blocks = value;
@@ -1607,7 +1575,7 @@ struct ArrowButton : public Base {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blocks.compose(data);
-    return data.inputType;
+    return CoreInfo::BoolType;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -3241,7 +3209,6 @@ struct MenuBase : public Base {
     switch (index) {
     case 0:
       return blocks;
-      break;
     default:
       break;
     }
@@ -3687,7 +3654,6 @@ struct TabBase : public Base {
     switch (index) {
     case 0:
       return blocks;
-      break;
     default:
       break;
     }
@@ -3736,7 +3702,6 @@ struct TabBar : public TabBase {
     switch (index) {
     case 0:
       return Var(_name);
-      break;
     case 1:
       return TabBase::getParam(index - 1);
     default:
@@ -3791,7 +3756,6 @@ struct TabItem : public TabBase {
     switch (index) {
     case 0:
       return Var(_label);
-      break;
     case 1:
       return TabBase::getParam(index - 1);
     default:
@@ -3836,7 +3800,6 @@ struct Group : public Base {
     switch (index) {
     case 0:
       return _blocks;
-      break;
     default:
       break;
     }
