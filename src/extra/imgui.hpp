@@ -55,6 +55,30 @@ struct Enums {
     }
     return ::ImGuiDir_None;
   }
+
+  enum class GuiTableFlags {
+    None = ::ImGuiTableFlags_None,
+    Resizable = ::ImGuiTableFlags_Resizable,
+    Reorderable = ::ImGuiTableFlags_Reorderable,
+    Hideable = ::ImGuiTableFlags_Hideable,
+    Sortable = ::ImGuiTableFlags_Sortable
+  };
+  static constexpr uint32_t GuiTableFlagsCC = 'guTF';
+  static inline EnumInfo<GuiTableFlags> GuiTableFlagsEnumInfo{
+      "GuiTableFlags", CoreCC, GuiTableFlagsCC};
+  static inline Type GuiTableFlagsType = Type::Enum(CoreCC, GuiTableFlagsCC);
+
+  enum class GuiTableColumnFlags {
+    None = ::ImGuiTableColumnFlags_None,
+    Disabled = ::ImGuiTableColumnFlags_Disabled,
+    DefaultHide = ::ImGuiTableColumnFlags_DefaultHide,
+    DefaultSort = ::ImGuiTableColumnFlags_DefaultSort
+  };
+  static constexpr uint32_t GuiTableColumnFlagsCC = 'gTCF';
+  static inline EnumInfo<GuiTableFlags> GuiTableColumnFlagsEnumInfo{
+      "GuiTableColumnFlags", CoreCC, GuiTableColumnFlagsCC};
+  static inline Type GuiTableColumnFlagsType =
+      Type::Enum(CoreCC, GuiTableColumnFlagsCC);
 };
 }; // namespace ImGui
 }; // namespace chainblocks

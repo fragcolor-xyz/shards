@@ -3950,6 +3950,178 @@ private:
   std::array<CBExposedTypeInfo, 2> _required;
 };
 
+struct Table : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _columns = value.payload.intValue;
+      break;
+    case 1:
+      _blocks = value;
+      break;
+    case 2:
+      _flags = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_columns);
+    case 1:
+      return _blocks;
+    case 2:
+      return _flags;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() {
+    _blocks.cleanup();
+    _flags.cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    _blocks.warmup(context);
+    _flags.warmup(context);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    _blocks.compose(data);
+    return CoreInfo::BoolType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto flags = ::ImGuiTableFlags(_flags.get().payload.enumValue);
+    auto active = ::ImGui::BeginTable(
+        "myTable", _columns, flags); // FIXME: ID should be uniquely generated
+    if (active) {
+      DEFER(::ImGui::EndTable());
+      CBVar output{};
+      _blocks.activate(context, input, output);
+    }
+    return Var(active);
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Columns", CBCCSTR("The number of columns."), {CoreInfo::IntType}},
+      {"Contents", CBCCSTR("The inner contents blocks."),
+       CoreInfo::BlocksOrNone},
+      {"Flags",
+       CBCCSTR("TODO!"),
+       {Enums::GuiTableFlagsType, Type::VariableOf(Enums::GuiTableFlagsType)}},
+  };
+
+  int _columns;
+  BlocksVar _blocks{};
+  ParamVar _flags{};
+};
+
+struct TableHeadersRow : public Base {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::TableHeadersRow();
+    return input;
+  }
+};
+
+struct TableNextColumn : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto active = ::ImGui::TableNextColumn();
+    return Var(active);
+  }
+};
+
+struct TableNextRow : public Base {
+  CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::TableNextRow();
+    return input;
+  }
+};
+
+struct TableSetColumnIndex : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto &index = input.payload.intValue;
+    auto active = ::ImGui::TableSetColumnIndex(index);
+    return Var(active);
+  }
+};
+
+struct TableSetupColumn : public Base {
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == None) {
+        _label.clear();
+      } else {
+        _label = value.payload.stringValue;
+      }
+    } break;
+    case 1:
+      _flags = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_label);
+    case 1:
+      return _flags;
+    default:
+      break;
+    }
+    return Var::Empty;
+  }
+
+  void cleanup() { _flags.cleanup(); }
+
+  void warmup(CBContext *context) { _flags.warmup(context); }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto flags = ::ImGuiTableColumnFlags(_flags.get().payload.enumValue);
+    ::ImGui::TableSetupColumn(_label.c_str(), flags);
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Label", CBCCSTR("TODO!"), {CoreInfo::StringType}},
+      {"Flags",
+       CBCCSTR("TODO!"),
+       {Enums::GuiTableColumnFlagsType,
+        Type::VariableOf(Enums::GuiTableColumnFlagsType)}},
+  };
+
+  std::string _label;
+  ParamVar _flags{};
+};
+
 void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
@@ -4020,6 +4192,12 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.TabItem", TabItem);
   REGISTER_CBLOCK("GUI.Group", Group);
   REGISTER_CBLOCK("GUI.Disable", Disable);
+  REGISTER_CBLOCK("GUI.Table", Table);
+  REGISTER_CBLOCK("GUI.HeadersRow", TableHeadersRow);
+  REGISTER_CBLOCK("GUI.NextColumn", TableNextColumn);
+  REGISTER_CBLOCK("GUI.NextRow", TableNextRow);
+  REGISTER_CBLOCK("GUI.SetColumnIndex", TableSetColumnIndex);
+  REGISTER_CBLOCK("GUI.SetupColumn", TableSetupColumn);
 }
 }; // namespace ImGui
 }; // namespace chainblocks
