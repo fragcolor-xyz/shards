@@ -1,0 +1,16 @@
+(defnode root)
+(defchain main
+  ; test from hex string
+  "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+  (| (Sr25519.PublicKey) (ToHex)
+     (Assert.Is "0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f"))
+  (| (Ed25519.PublicKey) (ToHex)
+     (Assert.Is "0xd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+  ; test from bytes
+  (HexToBytes)
+  (| (Sr25519.PublicKey) (ToHex)
+     (Assert.Is "0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f"))
+  (| (Ed25519.PublicKey) (ToHex)
+     (Assert.Is "0xd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")))
+(schedule root main)
+(run root)

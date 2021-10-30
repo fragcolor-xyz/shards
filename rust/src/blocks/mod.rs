@@ -45,3 +45,4 @@ pub mod eth;
 pub mod cb_csv;
 
 pub mod keyring;
+pub mod curve25519;

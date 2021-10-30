@@ -19,13 +19,13 @@
   (Hash.Keccak-256) = .hash
   (ToHex)
   (Assert.Is "0xed6c11b0b5b808960df26f5bfc471d04c1995b0ffd2055925ad1be28d6baadfd" true)
-  .hash (ECDSA.Sign "1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e") = .signature
+  .hash (ECDSA.Sign "0x1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e") = .signature
   (Log "Signed")
   (Take 0)
   (ToHex) (Log "Signed Hex")
 
   .hash (ECDSA.Recover .signature) = .pub_key1
-  "1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e" (ECDSA.PublicKey) = .pub_key2
+  "0x1536f1d756d1abf83aaf173bc5ee3fc487c93010f18624d80bd6d4038fadd59e" (ECDSA.PublicKey) = .pub_key2
   .pub_key1 (Is .pub_key2) (Log "recover worked") (Assert.Is true true)
 
   128 (ToLEB128 :Signed false) (BytesToInts) (Log) (Assert.Is [128 1] true)
@@ -54,7 +54,7 @@
   (SVG.ToImage)
   (WritePNG "svgtest.png")
 
-  "7bf19806aa6d5b31d7b7ea9e833c202e51ff8ee6311df6a036f0261f216f09ef"
+  "0x7bf19806aa6d5b31d7b7ea9e833c202e51ff8ee6311df6a036f0261f216f09ef"
   (| (ECDSA.PublicKey)
      (| (ToHex) (Log))
      (| (Slice :From 1)

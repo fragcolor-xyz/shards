@@ -426,6 +426,7 @@ pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
   blocks::svg::registerBlocks();
   blocks::eth::registerBlocks();
   blocks::cb_csv::registerBlocks();
+  blocks::curve25519::registerBlocks();
 
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   blocks::browse::registerBlocks();
