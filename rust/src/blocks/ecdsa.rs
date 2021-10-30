@@ -16,6 +16,7 @@ use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
 use crate::types::BYTES_TYPES;
+use crate::types::STRING_TYPES;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -213,6 +214,59 @@ impl Block for ECDSAPubKey {
 }
 
 #[derive(Default)]
+struct ECDSAPrivKey {
+  output: ClonedVar,
+  compressed: bool,
+}
+
+impl Block for ECDSAPrivKey {
+  fn registerName() -> &'static str {
+    cstr!("ECDSA.PrivateKey")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("ECDSA.PrivateKey-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "ECDSA.PrivateKey"
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &STRING_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &BYTES_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&PK_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.compressed = value.try_into().unwrap(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.compressed.into(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let key = get_key(*input)?;
+    let key: [u8; 32] = key.serialize();
+    self.output = key[..].into();
+    Ok(self.output.0)
+  }
+}
+
+#[derive(Default)]
 struct ECDSARecover {
   output: ClonedVar,
   signature: ParamVar,
@@ -299,5 +353,6 @@ impl Block for ECDSARecover {
 pub fn registerBlocks() {
   registerBlock::<ECDSASign>();
   registerBlock::<ECDSAPubKey>();
+  registerBlock::<ECDSAPrivKey>();
   registerBlock::<ECDSARecover>();
 }
