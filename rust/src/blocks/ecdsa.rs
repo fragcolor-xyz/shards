@@ -15,6 +15,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BYTES_TYPES;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -26,8 +27,6 @@ use std::convert::TryInto;
 use std::ffi::CStr;
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![common_type::bytes];
-  static ref OUTPUT_TYPE: Vec<Type> = vec![common_type::bytezs];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     cbccstr!("The private key to be used to sign the hashed message input."),
@@ -48,10 +47,8 @@ lazy_static! {
     .into()];
   static ref SIG_PARAMETERS: Parameters = vec![(
     cstr!("Signature"),
-    cbccstr!(
-      "The signature and recovery id generated signing the input message with the private key."
-    ),
-    vec![common_type::bytezs, common_type::bytess_var]
+    cbccstr!("The signature generated signing the input message with the private key."),
+    vec![common_type::bytes, common_type::bytes_var]
   )
     .into()];
 }
@@ -84,7 +81,7 @@ fn get_key(input: Var) -> Result<libsecp256k1::SecretKey, &'static str> {
 
 #[derive(Default)]
 struct ECDSASign {
-  output: Seq,
+  output: ClonedVar,
   key: ParamVar,
 }
 
@@ -102,11 +99,11 @@ impl Block for ECDSASign {
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &INPUT_TYPES
+    &BYTES_TYPES
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &OUTPUT_TYPE
+    &BYTES_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -147,13 +144,12 @@ impl Block for ECDSASign {
       "Failed to parse input message hash"
     })?;
 
-    self.output.clear();
-    let signed = libsecp256k1::sign(&msg, &key);
-    let signature = signed.0.serialize();
-    self.output.push(signature[..].into());
-    let rec_vec = vec![signed.1.serialize()];
-    self.output.push(rec_vec.as_slice().into());
-    Ok(self.output.as_ref().into())
+    let x = libsecp256k1::sign(&msg, &key);
+    let mut signature: [u8; 65] = [0; 65];
+    signature[0..64].copy_from_slice(&x.0.serialize()[..]);
+    signature[64] = x.1.serialize();
+    self.output = signature[..].into();
+    Ok(self.output.0)
   }
 }
 
@@ -181,7 +177,7 @@ impl Block for ECDSAPubKey {
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &INPUT_TYPES
+    &BYTES_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -236,11 +232,11 @@ impl Block for ECDSARecover {
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &INPUT_TYPES
+    &BYTES_TYPES
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &INPUT_TYPES
+    &BYTES_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -274,18 +270,14 @@ impl Block for ECDSARecover {
     let bytes: &[u8] = input.as_ref().try_into()?;
 
     let signature = self.signature.get();
-    let signature_seq: Seq = signature.try_into()?;
-    let signature_slice: &[u8] = signature_seq[0].as_ref().try_into()?;
-    let signature =
-      libsecp256k1::Signature::parse_overflowing_slice(signature_slice).map_err(|e| {
-        cblog!("{}", e);
-        "Failed to parse signature"
-      })?;
-
-    let recovery_id: &[u8] = signature_seq[1].as_ref().try_into()?;
-    let recovery_id = libsecp256k1::RecoveryId::parse(recovery_id[0]).map_err(|e| {
+    let x: &[u8] = signature.as_ref().try_into()?;
+    let sig = libsecp256k1::Signature::parse_overflowing_slice(&x[..64]).map_err(|e| {
       cblog!("{}", e);
-      "Failed to parse recovery id"
+      "Failed to parse signature"
+    })?;
+    let ri = libsecp256k1::RecoveryId::parse(x[64]).map_err(|e| {
+      cblog!("{}", e);
+      "Failed to parse signature"
     })?;
 
     let msg = libsecp256k1::Message::parse_slice(bytes).map_err(|e| {
@@ -293,7 +285,7 @@ impl Block for ECDSARecover {
       "Failed to parse input message hash"
     })?;
 
-    let pub_key = libsecp256k1::recover(&msg, &signature, &recovery_id).map_err(|e| {
+    let pub_key = libsecp256k1::recover(&msg, &sig, &ri).map_err(|e| {
       cblog!("{}", e);
       "Failed to recover public key"
     })?;
