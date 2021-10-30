@@ -591,6 +591,8 @@ jobs:
           ./cbl ../src/tests/wasm.clj
           echo "Running test: eth"
           ./cbl ../src/tests/eth.edn
+          echo "Running test: crypto"
+          ./cbl ../src/tests/crypto.edn
       - name: Test (64bits)
         if: ${{ matrix.bitness == '64bits' }}
         env:
