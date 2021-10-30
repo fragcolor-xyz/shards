@@ -19,6 +19,8 @@ use crate::CString;
 use crate::Types;
 use crate::Var;
 use core::time::Duration;
+use sp_core::crypto::Pair;
+use sp_core::ecdsa;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
@@ -64,11 +66,13 @@ fn get_key(input: Var) -> Result<libsecp256k1::SecretKey, &'static str> {
   } else {
     let key: Result<&str, &str> = input.as_ref().try_into();
     if let Ok(key) = key {
-      let key = hex::decode(key).map_err(|e| {
-        cblog!("{}", e);
-        "Failed to parse key's hex string"
+      // use this to allow even mnemonics to work!
+      let pair = ecdsa::Pair::from_string(key, None).map_err(|e| {
+        cblog!("{:?}", e);
+        "Failed to parse secret key"
       })?;
-      libsecp256k1::SecretKey::parse_slice(key.as_slice()).map_err(|e| {
+      let key = pair.seed();
+      libsecp256k1::SecretKey::parse(&key).map_err(|e| {
         cblog!("{}", e);
         "Failed to parse secret key"
       })
@@ -156,7 +160,6 @@ impl Block for ECDSASign {
 #[derive(Default)]
 struct ECDSAPubKey {
   output: ClonedVar,
-  is_string: bool,
   compressed: bool,
 }
 
