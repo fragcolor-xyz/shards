@@ -221,15 +221,15 @@ struct ECDSAPrivKey {
 
 impl Block for ECDSAPrivKey {
   fn registerName() -> &'static str {
-    cstr!("ECDSA.PrivateKey")
+    cstr!("ECDSA.Seed")
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ECDSA.PrivateKey-rust-0x20200101")
+    compile_time_crc32::crc32!("ECDSA.Seed-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "ECDSA.PrivateKey"
+    "ECDSA.Seed"
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {

@@ -18,10 +18,11 @@
      (Assert.Is "0x048db55b05db86c0b1786ca49f095d76344c9e6056b2f02701a7e7f3c20aabfd913ebbe148dd17c56551a52952371071a6c604b3f3abe8f2c8fa742158ea6dd7d4"))
 
   "caution juice atom organ advance problem want pledge someone senior holiday very"
+  (| (Sr25519.Seed) (ToHex) (Assert.Is "0xc8fa03532fb22ee1f7f6908b9c02b4e72483f0dbd66e4cd456b8f34c6230b849" true))
   (| (Sr25519.PublicKey)
      (| (ToHex) (Assert.Is "0xd6a3105d6768e956e9e5d41050ac29843f98561410d3a47f9dd5b3b227ab8746"))
      (| (Substrate.AccountId) (Assert.Is "5Gv8YYFu8H1btvmrJy9FjjAWfb99wrhV3uhPFoNEr918utyR" true)))
-  (| (ECDSA.PrivateKey) (Log) (ToHex) (Assert.Is "0xc8fa03532fb22ee1f7f6908b9c02b4e72483f0dbd66e4cd456b8f34c6230b849" true))
+  (| (ECDSA.Seed) (Log) (ToHex) (Assert.Is "0xc8fa03532fb22ee1f7f6908b9c02b4e72483f0dbd66e4cd456b8f34c6230b849" true))
   (| (ECDSA.PublicKey)
      (| (ToHex) (Log))
      (| (Slice :From 1)

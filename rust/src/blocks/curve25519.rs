@@ -16,6 +16,7 @@ use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
 use crate::types::BYTES_TYPES;
+use crate::types::STRING_TYPES;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -214,9 +215,73 @@ add_pub_key!(
   32
 );
 
+macro_rules! add_priv_key {
+  ($block_name:ident, $name_str:literal, $hash:literal, $key_type:tt, $size:literal) => {
+    #[derive(Default)]
+    struct $block_name {
+      output: ClonedVar,
+      is_string: bool,
+    }
+
+    impl Block for $block_name {
+      fn registerName() -> &'static str {
+        cstr!($name_str)
+      }
+
+      fn hash() -> u32 {
+        compile_time_crc32::crc32!($hash)
+      }
+
+      fn name(&mut self) -> &str {
+        $name_str
+      }
+
+      fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+        &STRING_TYPES
+      }
+
+      fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+        &BYTES_TYPES
+      }
+
+      fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+        let key: &str = input.as_ref().try_into()?;
+        let (_, seed) = $key_type::Pair::from_string_with_seed(key, None).map_err(|e| {
+          cblog!("{:?}", e);
+          "Failed to parse secret key mnemonic or string"
+        })?;
+        if let Some(seed) = seed {
+          self.output = seed[..].into();
+          Ok(self.output.0)
+        } else {
+          Err("No seed found")
+        }
+      }
+    }
+  };
+}
+
+add_priv_key!(
+  Sr25519Seed,
+  "Sr25519.Seed",
+  "Sr25519.Seed-rust-0x20200101",
+  sr25519,
+  32
+);
+
+add_priv_key!(
+  Ed25519Seed,
+  "Ed25519.Seed",
+  "Ed25519.Seed-rust-0x20200101",
+  ed25519,
+  32
+);
+
 pub fn registerBlocks() {
   registerBlock::<Sr25519Sign>();
   registerBlock::<Ed25519Sign>();
   registerBlock::<Sr25519PublicKey>();
   registerBlock::<Ed25519PublicKey>();
+  registerBlock::<Sr25519Seed>();
+  registerBlock::<Ed25519Seed>();
 }
