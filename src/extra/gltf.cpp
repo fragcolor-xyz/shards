@@ -494,7 +494,7 @@ struct Load : public BGFX::BaseConsumer {
               varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
-          hashOut = BGFX::extractHashOut(mem);
+          hashOut = BGFX::getShaderOutputHash(mem);
           vsh = bgfx::createShader(mem);
         }
         // vertex - instanced
@@ -522,8 +522,7 @@ struct Load : public BGFX::BaseConsumer {
             BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
         auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
 
-        // hack/fix hash in or creation of program will fail!
-        *(uint32_t *)(ppmem->data + 4) = hashOut;
+        BGFX::overrideShaderInputHash(ppmem, hashOut);
         auto pickingShader = bgfx::createShader(ppmem);
         if (pickingShader.idx == bgfx::kInvalidHandle) {
           throw ActivationError("Failed to load picking pixel shader.");
@@ -575,7 +574,7 @@ struct Load : public BGFX::BaseConsumer {
               varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
-          hashOut = BGFX::extractHashOut(mem);
+          hashOut = BGFX::getShaderOutputHash(mem);
           vsh = bgfx::createShader(mem);
         }
         // vertex - instanced
@@ -603,8 +602,7 @@ struct Load : public BGFX::BaseConsumer {
             BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
         auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
 
-        // hack/fix hash in or creation of program will fail!
-        *(uint32_t *)(ppmem->data + 4) = hashOut;
+        BGFX::overrideShaderInputHash(ppmem, hashOut);
         auto pickingShader = bgfx::createShader(ppmem);
         if (pickingShader.idx == bgfx::kInvalidHandle) {
           throw ActivationError("Failed to load picking pixel shader.");

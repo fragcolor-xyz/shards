@@ -851,7 +851,6 @@ struct MainWindow : public BaseWindow {
     bgfx::TextureHandle rt[2] = {_bgfxContext.pickingRenderTarget(),
                                  pickingDepthRT};
     _pickingFB = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
-    bgfx::setViewFrameBuffer(PickingViewId, _pickingFB);
     bgfx::setViewRect(PickingViewId, 0, 0, PickingBufferSize,
                       PickingBufferSize);
     bgfx::setViewClear(PickingViewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
@@ -1054,6 +1053,7 @@ struct MainWindow : public BaseWindow {
     // Touch view 0
     bgfx::touch(0);
     // also touch picking view
+    bgfx::setViewFrameBuffer(PickingViewId, _pickingFB);
     bgfx::touch(PickingViewId);
 
     // Set time
@@ -1302,7 +1302,7 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
     } else {
       const auto &vcode = _vcode.get();
       auto vmem = bgfx::copy(vcode.payload.bytesValue, vcode.payload.bytesSize);
-      auto hashOut = extractHashOut(vmem);
+      auto hashOut = getShaderOutputHash(vmem);
       auto vsh = bgfx::createShader(vmem);
       if (vsh.idx == bgfx::kInvalidHandle) {
         throw ActivationError("Failed to load vertex shader.");
@@ -1324,8 +1324,7 @@ template <char SHADER_TYPE> struct Shader : public BaseConsumer {
       auto &pickingShaderData = findEmbeddedShader(Context::PickingShaderData);
       auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
 
-      // hack/fix hash in or creation of program will fail!
-      *(uint32_t *)(ppmem->data + 4) = hashOut;
+      overrideShaderInputHash(ppmem, hashOut);
       auto ppsh = bgfx::createShader(ppmem);
       if (ppsh.idx == bgfx::kInvalidHandle) {
         throw ActivationError("Failed to load picking pixel shader.");
