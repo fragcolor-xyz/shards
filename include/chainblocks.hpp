@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace chainblocks {
-constexpr uint32_t CoreCC = 'sink'; // 1936289387
+constexpr uint32_t CoreCC = 'frag'; // 1718772071
 
 class CBException : public std::exception {
 public:

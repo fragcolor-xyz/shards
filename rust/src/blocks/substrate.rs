@@ -396,6 +396,67 @@ impl Block for CBEncode {
   }
 }
 
+#[derive(Default)]
+struct CBDecode {
+  output: ClonedVar,
+  hints: ClonedVar,
+  v: Vec<u8>,
+}
+
+impl Block for CBDecode {
+  fn registerName() -> &'static str {
+    cstr!("Substrate.Decode")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("Substrate.Decode-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "Substrate.Decode"
+  }
+
+  fn inputTypes(&mut self) -> &Vec<Type> {
+    &BYTES_TYPES
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("The encoded SCALE bytes."))
+  }
+
+  fn outputTypes(&mut self) -> &Vec<Type> {
+    &ANYS_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("The decoded values."))
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&DECODE_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.hints = ClonedVar(*value),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.hints.0,
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let bytes: &[u8] = input.as_ref().try_into()?;
+    let hints: Seq = self.hints.0.try_into()?;
+    Err("no")
+  }
+}
+
 pub fn registerBlocks() {
   registerBlock::<AccountId>();
   registerBlock::<CBStorageKey>();

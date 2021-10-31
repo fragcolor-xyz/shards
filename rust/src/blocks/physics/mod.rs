@@ -30,7 +30,7 @@ lazy_static! {
   static ref SIMULATION_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x73696e6b, // 'sink'
+      vendorId: 0x66726167, // 'frag'
       typeId: 0x70687973, // 'phys'
     };
     t
@@ -47,7 +47,7 @@ lazy_static! {
   static ref SHAPE_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x73696e6b, // 'sink'
+      vendorId: 0x66726167, // 'frag'
       typeId: 0x70687953, // 'phyS'
     };
     t
@@ -61,7 +61,7 @@ lazy_static! {
   static ref RIGIDBODY_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x73696e6b, // 'sink'
+      vendorId: 0x66726167, // 'frag'
       typeId: 0x70687952, // 'phyR'
     };
     t

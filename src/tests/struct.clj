@@ -8,6 +8,10 @@
  (Chain
   "test"
 
+  "frag"
+  (StringToBytes) (Log)
+  (BigInt) (BigInt.ToString) (Log)
+
   (Const [10 20 3.14])
   (Pack "i32 i32 f32")
   (Set "bytes")

@@ -100,7 +100,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     auto count = 100;
@@ -133,7 +133,7 @@ void testModel() {
             .block("Set", "cube", "Indices")
             .block("Get", "cube")
             .block("GFX.Model", Var(layout), false,
-                   Var::Enum(BGFX::Enums::CullMode::Front, 'sink', 'gfxV'));
+                   Var::Enum(BGFX::Enums::CullMode::Front, CoreCC, 'gfxV'));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -170,7 +170,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -207,7 +207,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -247,7 +247,7 @@ void testModel() {
                                  .block("Get", "cube")
                                  .block("GFX.Model", Var(layout), false,
                                         Var::Enum(BGFX::Enums::CullMode::Front,
-                                                  'sink', 'gfxV'))));
+                                                  CoreCC, 'gfxV'))));
     auto node = CBNode::make();
     auto failed = false;
     try {
@@ -284,7 +284,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -317,7 +317,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -351,7 +351,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -385,7 +385,7 @@ void testModel() {
                                 .block("Get", "cube")
                                 .block("GFX.Model", Var(layout), false,
                                        Var::Enum(BGFX::Enums::CullMode::Front,
-                                                 'sink', 'gfxV')));
+                                                 CoreCC, 'gfxV')));
     auto node = CBNode::make();
     node->schedule(chain);
     REQUIRE_FALSE(node->tick()); // false is chain errors happened
@@ -470,7 +470,7 @@ void testDraw() {
                                .block("Get", "cube")
                                .block("GFX.Model", Var(layout), false,
                                       Var::Enum(BGFX::Enums::CullMode::Front,
-                                                'sink', 'gfxV'))
+                                                CoreCC, 'gfxV'))
                                .block("Set", "cube-model"))
                     .let(0.0, 0.0, 10.0)
                     .block("Set", "cam", "Position")
@@ -557,7 +557,7 @@ void testUniforms() {
                             .block("Get", "cube")
                             .block("GFX.Model", Var(layout), false,
                                    Var::Enum(BGFX::Enums::CullMode::Front,
-                                             'sink', 'gfxV'))
+                                             CoreCC, 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParamsArray)
                     .GFX_SetUniform("u_lightPosRadius", 4)
@@ -647,7 +647,7 @@ void testUniforms() {
                             .block("Get", "cube")
                             .block("GFX.Model", Var(layout), false,
                                    Var::Enum(BGFX::Enums::CullMode::Front,
-                                             'sink', 'gfxV'))
+                                             CoreCC, 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParamsArray)
                     .block("Push", "matricesX2")
@@ -739,7 +739,7 @@ void testUniforms() {
                             .block("Get", "cube")
                             .block("GFX.Model", Var(layout), false,
                                    Var::Enum(BGFX::Enums::CullMode::Front,
-                                             'sink', 'gfxV'))
+                                             CoreCC, 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParamsArray)
                     .block("Push", "matricesX2")
@@ -830,7 +830,7 @@ void testUniforms() {
                             .block("Get", "cube")
                             .block("GFX.Model", Var(layout), false,
                                    Var::Enum(BGFX::Enums::CullMode::Front,
-                                             'sink', 'gfxV'))
+                                             CoreCC, 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParams) // wrong actually
                     .GFX_SetUniform("u_lightPosRadius", 1)
@@ -920,7 +920,7 @@ void testUniforms() {
                             .block("Get", "cube")
                             .block("GFX.Model", Var(layout), false,
                                    Var::Enum(BGFX::Enums::CullMode::Front,
-                                             'sink', 'gfxV'))
+                                             CoreCC, 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParams) // wrong actually
                     .GFX_SetUniform("u_lightPosRadius", 1)
@@ -1009,7 +1009,7 @@ void testUniforms() {
                             .block("Get", "cube")
                             .block("GFX.Model", Var(layout), false,
                                    Var::Enum(BGFX::Enums::CullMode::Front,
-                                             'sink', 'gfxV'))
+                                             CoreCC, 'gfxV'))
                             .block("Ref", "cube-model"))
                     .let(uniformParams) // wrong actually
                     .GFX_SetUniform("u_lightPosRadius", 1)
@@ -1128,7 +1128,7 @@ void testScreenshot() {
                                .block("Get", "cube")
                                .block("GFX.Model", Var(layout), false,
                                       Var::Enum(BGFX::Enums::CullMode::Front,
-                                                'sink', 'gfxV'))
+                                                CoreCC, 'gfxV'))
                                .block("Set", "cube-model")
                                .let("screenshot.png")
                                .block("GFX.Screenshot"))
@@ -1202,7 +1202,7 @@ void testScreenshot() {
                                .block("Get", "cube")
                                .block("GFX.Model", Var(layout), false,
                                       Var::Enum(BGFX::Enums::CullMode::Front,
-                                                'sink', 'gfxV'))
+                                                CoreCC, 'gfxV'))
                                .block("Set", "cube-model"))
                     .let(0.0, 0.0, 10.0)
                     .block("Set", "cam", "Position")
