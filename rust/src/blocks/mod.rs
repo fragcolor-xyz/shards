@@ -17,7 +17,8 @@ extern crate tiny_skia;
 extern crate usvg;
 extern crate wasabi_leb128;
 extern crate csv;
-extern crate sp_keyring;
+extern crate sp_core;
+extern crate sp_runtime;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;
