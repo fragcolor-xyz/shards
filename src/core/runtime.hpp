@@ -94,6 +94,8 @@ struct CBContext {
   void *tsan_handle = nullptr;
 #endif
 
+  CBChain *currentChain() const { return chainStack.back(); }
+
   constexpr void stopFlow(const CBVar &lastValue) {
     state = CBChainState::Stop;
     flowStorage = lastValue;
