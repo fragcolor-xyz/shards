@@ -19,6 +19,7 @@ extern crate wasabi_leb128;
 extern crate csv;
 extern crate sp_core;
 extern crate sp_runtime;
+extern crate parity_scale_codec;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;

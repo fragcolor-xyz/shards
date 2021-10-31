@@ -2,6 +2,11 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::block::Block;
+use crate::chainblocksc::CBType_Bool;
+use crate::chainblocksc::CBType_Bytes;
+use crate::chainblocksc::CBType_Int;
+use crate::chainblocksc::CBType_None;
+use crate::chainblocksc::CBType_Seq;
 use crate::chainblocksc::CBType_String;
 use crate::core::do_blocking;
 use crate::core::log;
@@ -16,6 +21,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::ANYS_TYPES;
 use crate::types::BYTES_TYPES;
 use crate::types::STRINGS_TYPES;
 use crate::types::STRING_TYPES;
@@ -23,21 +29,27 @@ use crate::CString;
 use crate::Types;
 use crate::Var;
 use core::time::Duration;
+use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
 use sp_core::{blake2_128, ed25519, sr25519, twox_128};
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
-// use substrate_api_client::extrinsic::codec::Compact;
-// use substrate_api_client::extrinsic::xt_primitives::{
-//   GenericAddress, GenericExtra, UncheckedExtrinsicV4,
-// };
+use std::str::FromStr;
 
 lazy_static! {
   static ref ID_PARAMETERS: Parameters = vec![(
     cstr!("Ed25519"),
     cbccstr!("If the input public key is an Ed25519 and not the default Sr25519."),
     vec![common_type::bool]
+  )
+    .into()];
+  static ref STRINGS_OR_NONE: Vec<Type> = vec![common_type::string, common_type::none];
+  static ref STRINGS_OR_NONE_TYPE: Type = Type::seq(&STRINGS_OR_NONE);
+  static ref ENCODE_PARAMETERS: Parameters = vec![(
+    cstr!("Types"),
+    cbccstr!("The hints of types to encode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"a\" for AccountId or nil for other types."),
+    vec![*STRINGS_OR_NONE_TYPE]
   )
     .into()];
 }
@@ -247,8 +259,126 @@ impl Block for CBStorageMap {
   }
 }
 
+#[derive(Default)]
+struct CBEncode {
+  output: ClonedVar,
+  hints: ClonedVar,
+  v: Vec<u8>,
+}
+
+fn encode_var(value: Var, hint: Var) -> Result<Vec<u8>, &'static str> {
+  match value.valueType {
+    CBType_String => {
+      let hint: Result<&str, &str> = hint.as_ref().try_into();
+      let account = if let Ok(hint) = hint {
+        matches!(hint, "a")
+      } else {
+        false
+      };
+      let string: &str = value.as_ref().try_into()?;
+      if account {
+        let id = AccountId32::from_str(string).map_err(|_| "Invalid account id")?;
+        Ok(id.encode())
+      } else {
+        Ok(string.encode())
+      }
+    }
+    CBType_Int => {
+      let hint: &str = hint.as_ref().try_into()?;
+      let int: i64 = value.as_ref().try_into()?;
+      match hint {
+        "u8" => Ok(u8::encode(&int.try_into().map_err(|_| "Invalid u8")?)),
+        "u16" => Ok(u16::encode(&int.try_into().map_err(|_| "Invalid u16")?)),
+        "u32" => Ok(u32::encode(&int.try_into().map_err(|_| "Invalid u32")?)),
+        "u64" => Ok(u64::encode(&int.try_into().map_err(|_| "Invalid u64")?)),
+        "i8" => Ok(i8::encode(&int.try_into().map_err(|_| "Invalid i8")?)),
+        "i16" => Ok(i16::encode(&int.try_into().map_err(|_| "Invalid i16")?)),
+        "i32" => Ok(i32::encode(&int.try_into().map_err(|_| "Invalid i32")?)),
+        "i64" => Ok(i64::encode(&int)),
+        _ => Err("Invalid hint"),
+      }
+    }
+    CBType_Bytes => {
+      let bytes: &[u8] = value.as_ref().try_into()?;
+      Ok(bytes.encode())
+    }
+    CBType_Bool => {
+      let bool: bool = value.as_ref().try_into()?;
+      Ok(bool.encode())
+    }
+    _ => Err("Invalid input value type"),
+  }
+}
+
+impl Block for CBEncode {
+  fn registerName() -> &'static str {
+    cstr!("Substrate.Encode")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("Substrate.Encode-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "Substrate.Encode"
+  }
+
+  fn inputTypes(&mut self) -> &Vec<Type> {
+    &ANYS_TYPES
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("A sequence of values to SCALE encode."))
+  }
+
+  fn outputTypes(&mut self) -> &Vec<Type> {
+    &BYTES_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("The encoded SCALE bytes."))
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&ENCODE_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.hints = ClonedVar(*value),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.hints.0,
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let values: Seq = input.try_into()?;
+    let hints: Seq = self.hints.0.try_into()?;
+
+    if values.len() != hints.len() {
+      return Err("Invalid input length");
+    }
+
+    self.v.clear();
+    for (value, hint) in values.iter().zip(hints.iter()) {
+      let encoded = encode_var(value, hint)?;
+      self.v.extend(encoded);
+    }
+
+    self.output = self.v.as_slice().into();
+    Ok(self.output.0)
+  }
+}
+
 pub fn registerBlocks() {
   registerBlock::<AccountId>();
   registerBlock::<CBStorageKey>();
   registerBlock::<CBStorageMap>();
+  registerBlock::<CBEncode>();
 }
