@@ -35,6 +35,8 @@
   ["Sudo" "Key"] (Substrate.StorageKey) (ToHex) (Assert.Is "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b" true)
   ["Balances" "FreeBalance"] (Substrate.StorageKey) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4" true)
   ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
+  ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" "0x002a"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dce11f437743387ffa42428d46ee58416002a" true)
+
 
   "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" = .account-id
   [.account-id] (Substrate.Encode ["a"]) (ToHex) (Assert.Is "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
