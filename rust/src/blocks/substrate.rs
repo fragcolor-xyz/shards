@@ -236,15 +236,21 @@ impl Block for CBStorageMap {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let strings: Seq = input.try_into()?;
-    if strings.len() != 3 {
+
+    if strings.len() < 3 {
       return Err("Invalid input length");
     }
+
     self.v.clear();
+
+    // first two strings are the map
     for i in 0..2 {
       let string: &str = strings[i].as_ref().try_into()?;
       let hash = twox_128(string.as_bytes());
       self.v.extend(&hash[..]);
     }
+
+    // third is the key
     let string: &str = strings[2].as_ref().try_into()?;
     let bytes =
       hex::decode(string.trim_start_matches("0x").trim_start_matches("0X")).map_err(|e| {
@@ -254,6 +260,20 @@ impl Block for CBStorageMap {
     let hash = blake2_128(&bytes);
     self.v.extend(&hash[..]);
     self.v.extend(bytes);
+
+    // double map key
+    if strings.len() == 4 {
+      let string: &str = strings[3].as_ref().try_into()?;
+      let bytes =
+        hex::decode(string.trim_start_matches("0x").trim_start_matches("0X")).map_err(|e| {
+          cblog!("{}", e);
+          "Failed to parse input hex string"
+        })?;
+      let hash = blake2_128(&bytes);
+      self.v.extend(&hash[..]);
+      self.v.extend(bytes);
+    }
+
     self.output = self.v.as_slice().into();
     Ok(self.output.0)
   }
