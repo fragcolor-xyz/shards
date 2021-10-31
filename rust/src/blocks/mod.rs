@@ -5,21 +5,21 @@
 extern crate reqwest;
 
 extern crate bs58;
+extern crate csv;
 extern crate ethabi;
 extern crate ethereum_types;
 extern crate hex;
 extern crate libsecp256k1;
+extern crate parity_scale_codec;
 extern crate resvg;
 extern crate serde_json;
 extern crate sha2;
+extern crate sp_core;
+extern crate sp_runtime;
 extern crate tiny_keccak;
 extern crate tiny_skia;
 extern crate usvg;
 extern crate wasabi_leb128;
-extern crate csv;
-extern crate sp_core;
-extern crate sp_runtime;
-extern crate parity_scale_codec;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;

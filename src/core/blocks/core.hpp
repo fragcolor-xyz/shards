@@ -16,6 +16,7 @@
 
 namespace chainblocks {
 struct CoreInfo2 {
+  // 'type' == 0x74797065 or 1954115685
   static inline EnumInfo<BasicTypes> BasicTypesEnum{"Type", CoreCC, 'type'};
   static inline Type BasicTypesType{
       {CBType::Enum, {.enumeration = {CoreCC, 'type'}}}};

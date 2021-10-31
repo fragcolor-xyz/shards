@@ -25,6 +25,7 @@ use crate::chainblocksc::CBTable;
 use crate::chainblocksc::CBTableIterator;
 use crate::chainblocksc::CBTypeInfo;
 use crate::chainblocksc::CBTypeInfo_Details;
+use crate::chainblocksc::CBTypeInfo_Details_Enum;
 use crate::chainblocksc::CBTypeInfo_Details_Object;
 use crate::chainblocksc::CBTypeInfo_Details_Table;
 use crate::chainblocksc::CBType_Any;
@@ -401,6 +402,7 @@ pub mod common_type {
   use crate::chainblocksc::CBType_Bytes;
   use crate::chainblocksc::CBType_Chain;
   use crate::chainblocksc::CBType_ContextVar;
+  use crate::chainblocksc::CBType_Enum;
   use crate::chainblocksc::CBType_Float;
   use crate::chainblocksc::CBType_Int;
   use crate::chainblocksc::CBType_None;
@@ -542,6 +544,16 @@ pub mod common_type {
     objects_var,
     object_table,
     object_table_var
+  );
+  cbtype!(
+    make_enum,
+    CBType_Enum,
+    enumeration,
+    enums,
+    enum_var,
+    enums_var,
+    enum_table,
+    enum_table_var
   );
   cbtype!(
     make_string,
@@ -1327,11 +1339,19 @@ impl Var {
   }
 
   pub fn as_ref(&self) -> &Self {
-    &self
+    self
   }
 
   pub fn is_context_var(&self) -> bool {
     self.valueType == CBType_ContextVar
+  }
+
+  pub fn enum_value(&self) -> Result<i32, &'static str> {
+    if self.valueType != CBType_Enum {
+      Err("Variable is not an enum")
+    } else {
+      unsafe { Ok(self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue) }
+    }
   }
 }
 
@@ -2264,4 +2284,14 @@ lazy_static! {
   };
   pub static ref FLOAT4X2_TYPES: Vec<Type> = vec![*FLOAT4X2_TYPE];
   pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&FLOAT4X2_TYPES);
+  pub static ref TYPES_ENUM: Type = {
+    let mut t = common_type::enumeration;
+    t.details.enumeration = CBTypeInfo_Details_Enum {
+      vendorId: 0x66726167, // 'frag'
+      typeId: 0x74797065, // 'type'
+    };
+    t
+  };
+  pub static ref TYPES_ENUM_TYPES: Vec<Type> = vec![*TYPES_ENUM];
+  pub static ref TYPES_ENUMS: Type = Type::seq(&TYPES_ENUM_TYPES);
 }
