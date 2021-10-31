@@ -701,6 +701,42 @@ struct MainWindow : public BaseWindow {
   ProcessClock _deltaTimer;
   uint32_t _frameCounter{0};
 
+  void setupPicking() {
+    // Set up ID buffer, which has a color target and depth buffer
+    _bgfxContext.pickingRenderTarget() = bgfx::createTexture2D(
+        PickingBufferSize, PickingBufferSize, false, 1,
+        bgfx::TextureFormat::RGBA8,
+        0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
+            BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
+            BGFX_SAMPLER_V_CLAMP);
+    auto pickingDepthRT = bgfx::createTexture2D(
+        PickingBufferSize, PickingBufferSize, false, 1,
+        bgfx::TextureFormat::D32F,
+        0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
+            BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
+            BGFX_SAMPLER_V_CLAMP);
+
+    // CPU texture for blitting to and reading ID buffer so we can see what was
+    // clicked on. Impossible to read directly from a render target, you *must*
+    // blit to a CPU texture first. Algorithm Overview: Render on GPU -> Blit to
+    // CPU texture -> Read from CPU texture.
+    _bgfxContext.pickingTexture() = bgfx::createTexture2D(
+        PickingBufferSize, PickingBufferSize, false, 1,
+        bgfx::TextureFormat::RGBA8,
+        0 | BGFX_TEXTURE_BLIT_DST | BGFX_TEXTURE_READ_BACK |
+            BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
+            BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
+            BGFX_SAMPLER_V_CLAMP);
+
+    bgfx::TextureHandle rt[2] = {_bgfxContext.pickingRenderTarget(),
+                                 pickingDepthRT};
+    _pickingFB = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
+    bgfx::setViewRect(PickingViewId, 0, 0, PickingBufferSize,
+                      PickingBufferSize);
+    bgfx::setViewClear(PickingViewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
+                       0x00000000, 1.0f, 0);
+  }
+
   void warmup(CBContext *context) {
     // do not touch parameter values
     _rwidth = _pwidth;
@@ -820,43 +856,7 @@ struct MainWindow : public BaseWindow {
                bgfx::getRendererName(bgfx::RendererType::OpenGLES));
 #endif
 
-    // Setup picking
-
-    // Set up ID buffer, which has a color target and depth buffer
-    _bgfxContext.pickingRenderTarget() = bgfx::createTexture2D(
-        PickingBufferSize, PickingBufferSize, false, 1,
-        bgfx::TextureFormat::RGBA8,
-        0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
-            BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
-            BGFX_SAMPLER_V_CLAMP);
-    auto pickingDepthRT = bgfx::createTexture2D(
-        PickingBufferSize, PickingBufferSize, false, 1,
-        bgfx::TextureFormat::D32F,
-        0 | BGFX_TEXTURE_RT | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
-            BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
-            BGFX_SAMPLER_V_CLAMP);
-
-    // CPU texture for blitting to and reading ID buffer so we can see what was
-    // clicked on. Impossible to read directly from a render target, you *must*
-    // blit to a CPU texture first. Algorithm Overview: Render on GPU -> Blit to
-    // CPU texture -> Read from CPU texture.
-    _bgfxContext.pickingTexture() = bgfx::createTexture2D(
-        PickingBufferSize, PickingBufferSize, false, 1,
-        bgfx::TextureFormat::RGBA8,
-        0 | BGFX_TEXTURE_BLIT_DST | BGFX_TEXTURE_READ_BACK |
-            BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT |
-            BGFX_SAMPLER_MIP_POINT | BGFX_SAMPLER_U_CLAMP |
-            BGFX_SAMPLER_V_CLAMP);
-
-    bgfx::TextureHandle rt[2] = {_bgfxContext.pickingRenderTarget(),
-                                 pickingDepthRT};
-    _pickingFB = bgfx::createFrameBuffer(BX_COUNTOF(rt), rt, true);
-    bgfx::setViewRect(PickingViewId, 0, 0, PickingBufferSize,
-                      PickingBufferSize);
-    bgfx::setViewClear(PickingViewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH,
-                       0x00000000, 1.0f, 0);
-
-    //
+    setupPicking();
 
     // _imguiContext.Reset();
     // _imguiContext.Set();
