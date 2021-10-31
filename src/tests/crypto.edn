@@ -40,7 +40,8 @@
 
   "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" = .account-id
   [.account-id] (Substrate.Encode ["a"]) (ToHex) (Assert.Is "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
-  [false 42] (Substrate.Encode [nil "u8"]) (ToHex) (Assert.Is "0x002a" true)
+  [false 42] (Substrate.Encode [nil "u8"]) (| (ToHex) (Assert.Is "0x002a" true)) 
+  (Substrate.Decode [Type.Bool Type.Int]) (Assert.Is [false 42] true)
   ;
   )
 (schedule root main)

@@ -25,6 +25,7 @@ use crate::types::ANYS_TYPES;
 use crate::types::BYTES_TYPES;
 use crate::types::STRINGS_TYPES;
 use crate::types::STRING_TYPES;
+use crate::types::TYPES_ENUMS;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -52,6 +53,7 @@ lazy_static! {
     vec![*STRINGS_OR_NONE_TYPE]
   )
     .into()];
+  static ref DECODE_PARAMETERS: Parameters = vec![(cstr!("Types"), cbccstr!("The list of types expected to decode."), vec![*TYPES_ENUMS]).into()];
 }
 
 fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
@@ -396,11 +398,18 @@ impl Block for CBEncode {
   }
 }
 
-#[derive(Default)]
 struct CBDecode {
-  output: ClonedVar,
+  output: Seq,
   hints: ClonedVar,
-  v: Vec<u8>,
+}
+
+impl Default for CBDecode {
+  fn default() -> Self {
+    Self {
+      output: Seq::new(),
+      hints: ClonedVar(Var::default()),
+    }
+  }
 }
 
 impl Block for CBDecode {
@@ -453,7 +462,43 @@ impl Block for CBDecode {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: &[u8] = input.as_ref().try_into()?;
     let hints: Seq = self.hints.0.try_into()?;
-    Err("no")
+    let mut offset = 0;
+    self.output.clear();
+    for hint in hints {
+      let hint = hint.enum_value()?;
+      match hint {
+        1 => {
+          // Bool
+          let mut bytes = &bytes[offset..];
+          let value = bool::decode(&mut bytes).map_err(|_| "Invalid bool")?;
+          offset += 1;
+          self.output.push(value.into());
+        }
+        2 => {
+          // Int
+          let mut bytes = &bytes[offset..];
+          let value = i64::decode(&mut bytes).map_err(|_| "Invalid i64")?;
+          offset += 8;
+          self.output.push(value.into());
+        }
+        15 => {
+          // Bytes
+          let mut bytes = &bytes[offset..];
+          let value = Vec::<u8>::decode(&mut bytes).map_err(|_| "Invalid bytes")?;
+          offset += value.len();
+          self.output.push(value.as_slice().into());
+        }
+        16 => {
+          // String
+          let mut bytes = &bytes[offset..];
+          let value = String::decode(&mut bytes).map_err(|_| "Invalid string")?;
+          offset += value.len();
+          self.output.push(value.as_str().into());
+        }
+        _ => return Err("Invalid value type"),
+      }
+    }
+    Ok(self.output.as_ref().into())
   }
 }
 
@@ -462,4 +507,5 @@ pub fn registerBlocks() {
   registerBlock::<CBStorageKey>();
   registerBlock::<CBStorageMap>();
   registerBlock::<CBEncode>();
+  registerBlock::<CBDecode>();
 }
