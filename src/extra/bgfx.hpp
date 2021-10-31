@@ -49,7 +49,7 @@ constexpr bool isShaderVerLess(uint32_t _magic, uint8_t _version) {
 }
 // ~ FROM BGFX, MIGHT BREAK IF BGFX CHANGES
 
-constexpr uint32_t extractHashOut(const bgfx::Memory *mem) {
+constexpr uint32_t getShaderOutputHash(const bgfx::Memory *mem) {
   uint32_t magic = *(uint32_t *)mem->data;
   uint32_t hashIn = *(uint32_t *)(mem->data + 4);
   uint32_t hashOut = 0x0;
@@ -59,6 +59,12 @@ constexpr uint32_t extractHashOut(const bgfx::Memory *mem) {
     hashOut = *(uint32_t *)(mem->data + 8);
   }
   return hashOut;
+}
+
+inline void overrideShaderInputHash(const bgfx::Memory *mem, uint32_t hash) {
+  // hack/fix hash in or creation of program will fail!
+  // otherwise bgfx would fail inside createShader
+  *(uint32_t *)(mem->data + 4) = hash;
 }
 
 inline const bgfx::EmbeddedShader::Data &
