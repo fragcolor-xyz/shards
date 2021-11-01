@@ -896,7 +896,7 @@ macro_rules! var_try_from {
             __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
               $varfield: v
                 .try_into()
-                .or_else(|_| Err("Conversion failed, value out of range"))?,
+                .map_err(|_| "Conversion failed, value out of range")?,
             },
           },
           ..Default::default()
@@ -911,6 +911,8 @@ var_from!(i64, intValue, CBType_Int);
 var_try_from!(u8, intValue, CBType_Int);
 var_try_from!(u16, intValue, CBType_Int);
 var_try_from!(u32, intValue, CBType_Int);
+var_try_from!(u128, intValue, CBType_Int);
+var_try_from!(i128, intValue, CBType_Int);
 var_from_into!(i32, intValue, CBType_Int);
 var_try_from!(usize, intValue, CBType_Int);
 var_try_from!(u64, intValue, CBType_Int);

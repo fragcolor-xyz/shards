@@ -338,6 +338,10 @@ fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static 
           u64::encode_to(&int.try_into().map_err(|_| "Invalid u64 value")?, dest);
           Ok(())
         }
+        "u128" => {
+          u128::encode_to(&int.try_into().map_err(|_| "Invalid u128 value")?, dest);
+          Ok(())
+        }
         "i8" => {
           i8::encode_to(&int.try_into().map_err(|_| "Invalid i8 value")?, dest);
           Ok(())
@@ -352,6 +356,10 @@ fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static 
         }
         "i64" => {
           i64::encode_to(&int, dest);
+          Ok(())
+        }
+        "i128" => {
+          i128::encode_to(&int.try_into().map_err(|_| "Invalid i128 value")?, dest);
           Ok(())
         }
         "c" => {
@@ -547,6 +555,11 @@ impl Block for CBDecode {
               offset += value.encoded_size();
               Ok(value.try_into()?)
             }
+            "u128" => {
+              let value = u128::decode(&mut bytes).map_err(|_| "Invalid u128")?;
+              offset += value.encoded_size();
+              Ok(value.try_into()?)
+            }
             "i8" => {
               let value = i8::decode(&mut bytes).map_err(|_| "Invalid i8")? as i64;
               offset += value.encoded_size();
@@ -566,6 +579,11 @@ impl Block for CBDecode {
               let value = i64::decode(&mut bytes).map_err(|_| "Invalid i64")?;
               offset += value.encoded_size();
               Ok(value.into())
+            }
+            "i128" => {
+              let value = i128::decode(&mut bytes).map_err(|_| "Invalid i128")?;
+              offset += value.encoded_size();
+              Ok(value.try_into()?)
             }
             "c" => {
               let value = Compact::<u64>::decode(&mut bytes).map_err(|_| "Invalid Compact int")?;
