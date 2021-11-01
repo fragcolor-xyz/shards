@@ -48,12 +48,23 @@ lazy_static! {
   static ref STRINGS_OR_NONE: Vec<Type> = vec![common_type::string, common_type::none];
   static ref STRINGS_OR_NONE_TYPE: Type = Type::seq(&STRINGS_OR_NONE);
   static ref ENCODE_PARAMETERS: Parameters = vec![(
-    cstr!("Types"),
-    cbccstr!("The hints of types to encode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"a\" for AccountId or nil for other types."),
+    cstr!("Hints"),
+    cbccstr!("The hints of types to encode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"c\" for Compact int, \"a\" for AccountId or nil for other types."),
     vec![*STRINGS_OR_NONE_TYPE]
   )
     .into()];
-  static ref DECODE_PARAMETERS: Parameters = vec![(cstr!("Types"), cbccstr!("The list of types expected to decode."), vec![*TYPES_ENUMS]).into()];
+  static ref DECODE_PARAMETERS: Parameters = vec![(
+    cstr!("Types"),
+    cbccstr!("The list of types expected to decode."),
+    vec![*TYPES_ENUMS]
+  )
+    .into(),
+  (
+    cstr!("Hints"),
+    cbccstr!("The hints of the types to decode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"c\" for Compact int, \"a\" for AccountId or nil for other types."),
+    vec![*STRINGS_OR_NONE_TYPE]
+  )
+    .into()];
 }
 
 fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
@@ -288,7 +299,7 @@ struct CBEncode {
   v: Vec<u8>,
 }
 
-fn encode_var(value: Var, hint: Var) -> Result<Vec<u8>, &'static str> {
+fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static str> {
   match value.valueType {
     CBType_String => {
       let hint: Result<&str, &str> = hint.as_ref().try_into();
@@ -300,33 +311,66 @@ fn encode_var(value: Var, hint: Var) -> Result<Vec<u8>, &'static str> {
       let string: &str = value.as_ref().try_into()?;
       if account {
         let id = AccountId32::from_str(string).map_err(|_| "Invalid account id")?;
-        Ok(id.encode())
+        id.encode_to(dest);
+        Ok(())
       } else {
-        Ok(string.encode())
+        string.encode_to(dest);
+        Ok(())
       }
     }
     CBType_Int => {
       let hint: &str = hint.as_ref().try_into()?;
       let int: i64 = value.as_ref().try_into()?;
       match hint {
-        "u8" => Ok(u8::encode(&int.try_into().map_err(|_| "Invalid u8")?)),
-        "u16" => Ok(u16::encode(&int.try_into().map_err(|_| "Invalid u16")?)),
-        "u32" => Ok(u32::encode(&int.try_into().map_err(|_| "Invalid u32")?)),
-        "u64" => Ok(u64::encode(&int.try_into().map_err(|_| "Invalid u64")?)),
-        "i8" => Ok(i8::encode(&int.try_into().map_err(|_| "Invalid i8")?)),
-        "i16" => Ok(i16::encode(&int.try_into().map_err(|_| "Invalid i16")?)),
-        "i32" => Ok(i32::encode(&int.try_into().map_err(|_| "Invalid i32")?)),
-        "i64" => Ok(i64::encode(&int)),
+        "u8" => {
+          u8::encode_to(&int.try_into().map_err(|_| "Invalid u8 value")?, dest);
+          Ok(())
+        }
+        "u16" => {
+          u16::encode_to(&int.try_into().map_err(|_| "Invalid u16 value")?, dest);
+          Ok(())
+        }
+        "u32" => {
+          u32::encode_to(&int.try_into().map_err(|_| "Invalid u32 value")?, dest);
+          Ok(())
+        }
+        "u64" => {
+          u64::encode_to(&int.try_into().map_err(|_| "Invalid u64 value")?, dest);
+          Ok(())
+        }
+        "i8" => {
+          i8::encode_to(&int.try_into().map_err(|_| "Invalid i8 value")?, dest);
+          Ok(())
+        }
+        "i16" => {
+          i16::encode_to(&int.try_into().map_err(|_| "Invalid i16 value")?, dest);
+          Ok(())
+        }
+        "i32" => {
+          i32::encode_to(&int.try_into().map_err(|_| "Invalid i32 value")?, dest);
+          Ok(())
+        }
+        "i64" => {
+          i64::encode_to(&int, dest);
+          Ok(())
+        }
+        "c" => {
+          let u64int: u64 = int.try_into().map_err(|_| "Invalid u64 value")?;
+          Compact(u64int).encode_to(dest);
+          Ok(())
+        }
         _ => Err("Invalid hint"),
       }
     }
     CBType_Bytes => {
       let bytes: &[u8] = value.as_ref().try_into()?;
-      Ok(bytes.encode())
+      bytes.encode_to(dest);
+      Ok(())
     }
     CBType_Bool => {
       let bool: bool = value.as_ref().try_into()?;
-      Ok(bool.encode())
+      bool.encode_to(dest);
+      Ok(())
     }
     _ => Err("Invalid input value type"),
   }
@@ -389,8 +433,7 @@ impl Block for CBEncode {
 
     self.v.clear();
     for (value, hint) in values.iter().zip(hints.iter()) {
-      let encoded = encode_var(value, hint)?;
-      self.v.extend(encoded);
+      encode_var(value, hint, &mut self.v)?;
     }
 
     self.output = self.v.as_slice().into();
@@ -401,6 +444,7 @@ impl Block for CBEncode {
 struct CBDecode {
   output: Seq,
   hints: ClonedVar,
+  types: ClonedVar,
 }
 
 impl Default for CBDecode {
@@ -408,6 +452,7 @@ impl Default for CBDecode {
     Self {
       output: Seq::new(),
       hints: ClonedVar(Var::default()),
+      types: ClonedVar(Var::default()),
     }
   }
 }
@@ -447,26 +492,29 @@ impl Block for CBDecode {
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.hints = ClonedVar(*value),
+      0 => self.types = ClonedVar(*value),
+      1 => self.hints = ClonedVar(*value),
       _ => unreachable!(),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.hints.0,
+      0 => self.types.0,
+      1 => self.hints.0,
       _ => unreachable!(),
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: &[u8] = input.as_ref().try_into()?;
+    let types: Seq = self.types.0.try_into()?;
     let hints: Seq = self.hints.0.try_into()?;
     let mut offset = 0;
     self.output.clear();
-    for hint in hints {
-      let hint = hint.enum_value()?;
-      match hint {
+    for (t, h) in types.iter().zip(hints.iter()) {
+      let t = t.enum_value()?;
+      match t {
         1 => {
           // Bool
           let mut bytes = &bytes[offset..];
@@ -476,24 +524,85 @@ impl Block for CBDecode {
         }
         2 => {
           // Int
+          let hint: &str = h.as_ref().try_into()?;
           let mut bytes = &bytes[offset..];
-          let value = i64::decode(&mut bytes).map_err(|_| "Invalid i64")?;
-          offset += 8;
-          self.output.push(value.into());
+          let value = match hint {
+            "u8" => {
+              let value = u8::decode(&mut bytes).map_err(|_| "Invalid u8")?;
+              offset += value.encoded_size();
+              Ok(value.try_into()?)
+            }
+            "u16" => {
+              let value = u16::decode(&mut bytes).map_err(|_| "Invalid u16")?;
+              offset += value.encoded_size();
+              Ok(value.try_into()?)
+            }
+            "u32" => {
+              let value = u32::decode(&mut bytes).map_err(|_| "Invalid u32")?;
+              offset += value.encoded_size();
+              Ok(value.try_into()?)
+            }
+            "u64" => {
+              let value = u64::decode(&mut bytes).map_err(|_| "Invalid u64")?;
+              offset += value.encoded_size();
+              Ok(value.try_into()?)
+            }
+            "i8" => {
+              let value = i8::decode(&mut bytes).map_err(|_| "Invalid i8")? as i64;
+              offset += value.encoded_size();
+              Ok(value.into())
+            }
+            "i16" => {
+              let value = i16::decode(&mut bytes).map_err(|_| "Invalid i16")? as i64;
+              offset += value.encoded_size();
+              Ok(value.into())
+            }
+            "i32" => {
+              let value = i32::decode(&mut bytes).map_err(|_| "Invalid i32")? as i64;
+              offset += value.encoded_size();
+              Ok(value.into())
+            }
+            "i64" => {
+              let value = i64::decode(&mut bytes).map_err(|_| "Invalid i64")?;
+              offset += value.encoded_size();
+              Ok(value.into())
+            }
+            "c" => {
+              let value = Compact::<u64>::decode(&mut bytes).map_err(|_| "Invalid Compact int")?;
+              offset += value.encoded_size();
+              Ok(value.0.try_into()?)
+            }
+            _ => Err("Invalid hint"),
+          }?;
+          self.output.push(value);
         }
         15 => {
           // Bytes
           let mut bytes = &bytes[offset..];
           let value = Vec::<u8>::decode(&mut bytes).map_err(|_| "Invalid bytes")?;
-          offset += value.len();
+          offset += value.encoded_size();
           self.output.push(value.as_slice().into());
         }
         16 => {
           // String
+          let hint: Result<&str, &str> = h.as_ref().try_into();
+          let account = if let Ok(hint) = hint {
+            matches!(hint, "a")
+          } else {
+            false
+          };
           let mut bytes = &bytes[offset..];
-          let value = String::decode(&mut bytes).map_err(|_| "Invalid string")?;
-          offset += value.len();
-          self.output.push(value.as_str().into());
+          if account {
+            let value = AccountId32::decode(&mut bytes)
+              .map_err(|_| "Invalid account")?
+              .to_ss58check();
+            offset += value.encoded_size();
+            self.output.push(value.as_str().into());
+          } else {
+            let value = String::decode(&mut bytes).map_err(|_| "Invalid string")?;
+            offset += value.encoded_size();
+            self.output.push(value.as_str().into());
+          }
         }
         _ => return Err("Invalid value type"),
       }
