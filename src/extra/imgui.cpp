@@ -3571,6 +3571,34 @@ private:
   int _height{-1};
 };
 
+struct Selectable : public Variable<CBType::Bool> {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
+    if (!_variable && _variable_name.size() > 0) {
+      _variable = referenceVariable(context, _variable_name.c_str());
+    }
+
+    auto result = Var::False;
+    if (_variable) {
+      if (::ImGui::Selectable(_label.c_str(), &_variable->payload.boolValue)) {
+        result = Var::True;
+      }
+    } else {
+      // HACK kinda... we recycle _exposing since we are not using it in this
+      // branch
+      if (::ImGui::Selectable(_label.c_str(), &_exposing)) {
+        result = Var::True;
+      }
+    }
+    return result;
+  }
+};
+
 struct TabBase : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
@@ -4088,6 +4116,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.MenuItem", MenuItem);
   REGISTER_CBLOCK("GUI.Combo", Combo);
   REGISTER_CBLOCK("GUI.ListBox", ListBox);
+  REGISTER_CBLOCK("GUI.Selectable", Selectable);
   REGISTER_CBLOCK("GUI.TabBar", TabBar);
   REGISTER_CBLOCK("GUI.TabItem", TabItem);
   REGISTER_CBLOCK("GUI.Group", Group);

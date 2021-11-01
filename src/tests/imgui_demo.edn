@@ -316,7 +316,8 @@
    :Title "Example: Simple layout" :OnClose .layout-example :Height 440 :Width 500
    :AllowResize true :AllowMove true :AllowCollapse true :ShowMenuBar true
    :Contents
-   (-> (GUI.MenuBar
+   (-> (Setup 0 >= .selected)
+       (GUI.MenuBar
         :Contents
         (GUI.Menu
          "File"
@@ -325,15 +326,22 @@
        ;; left pane
        (GUI.ChildWindow
         :Width 150 :Contents
-        (-> 0 >= .i
-            (Repeat (-> .i (GUI.Text :Format "MyObject {}") (Math.Inc .i)) :Times 100)))
+        (-> (Setup false >= .i)
+            (defn my_object [index]
+              (if (< index 0)
+                index
+                ~[(my_object (- index 1))
+                  .selected (Is index) > .i
+                  (If (GUI.Selectable (str "My Object " index) "i")
+                      (-> index > .selected))]))
+            (my_object 100)))
        (GUI.SameLine)
        ;; right pane
        (GUI.Group
         (-> (GUI.ChildWindow
              :Contents
              (->
-              0 (GUI.Text :Format "MyObject: {}")
+              .selected (GUI.Text :Format "MyObject: {}")
               (GUI.Separator)
               (GUI.TabBar
                "##Tabs"
