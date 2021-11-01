@@ -54,7 +54,7 @@ echo "Running test: wasm"
 ./cbl ../src/tests/wasm.clj
 echo "Running test: eth"
 ./cbl ../src/tests/eth.edn
-echo "Running test: crypto"
-./cbl ../src/tests/crypto.edn
+# echo "Running test: crypto"
+# ./cbl ../src/tests/crypto.edn
 echo "Running test_runtime"
 ./test_runtime
