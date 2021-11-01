@@ -39,9 +39,14 @@
 
 
   "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" = .account-id
-  [.account-id] (Substrate.Encode ["a"]) (ToHex) (Assert.Is "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
+  [.account-id] (Substrate.Encode ["a"]) (| (ToHex) (Assert.Is "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true))
+  (Substrate.Decode [Type.String] ["a"]) (Log) (Assert.Is ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"] true)
   [false 42] (Substrate.Encode [nil "u8"]) (| (ToHex) (Assert.Is "0x002a" true)) 
-  (Substrate.Decode [Type.Bool Type.Int]) (Assert.Is [false 42] true)
+  (Substrate.Decode [Type.Bool Type.Int] [nil "u8"]) (Assert.Is [false 42] true)
+  [false 42] (Substrate.Encode [nil "c"]) (| (ToHex) (Assert.Is "0x00a8" true))
+  (Substrate.Decode [Type.Bool Type.Int] [nil "c"]) (Assert.Is [false 42] true)
+  ["Hello world" "And universe" "And planets"] (Substrate.Encode [nil nil nil]) (Substrate.Decode [Type.String Type.String Type.String] [nil nil nil]) (Log)
+  (Assert.Is ["Hello world" "And universe" "And planets"] true)
   ;
   )
 (schedule root main)
