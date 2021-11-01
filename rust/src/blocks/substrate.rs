@@ -35,6 +35,7 @@ use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
 use sp_core::{blake2_128, ed25519, sr25519, twox_128};
 use sp_runtime::MultiSigner;
+use frame_metadata::RuntimeMetadataPrefixed;
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::str::FromStr;
@@ -628,6 +629,11 @@ impl Block for CBDecode {
     }
     Ok(self.output.as_ref().into())
   }
+}
+
+fn var_to_metadata(v: &Var) -> Result<RuntimeMetadataPrefixed, &'static str> {
+  let mut bytes: &[u8] = v.try_into()?;
+  RuntimeMetadataPrefixed::decode(&mut bytes).map_err(|_| "Invalid metadata")
 }
 
 pub fn registerBlocks() {

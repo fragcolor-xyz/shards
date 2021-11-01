@@ -23,6 +23,9 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
+extern crate serde;
+extern crate serde_json;
+
 pub mod block;
 mod chainblocksc;
 pub mod core;

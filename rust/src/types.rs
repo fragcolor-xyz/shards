@@ -76,6 +76,8 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use serde::ser::{SerializeMap, SerializeSeq};
+use serde::{Deserialize, Serialize};
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::rc::Rc;
@@ -759,6 +761,55 @@ impl Type {
 /*
 CBVar utility
  */
+
+impl Serialize for Var {
+  fn serialize<S>(
+    &self,
+    se: S,
+  ) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
+  where
+    S: serde::Serializer,
+  {
+    match self.valueType {
+      CBType_Int => {
+        let value: i64 = unsafe { self.payload.__bindgen_anon_1.intValue };
+        se.serialize_i64(value)
+      }
+      CBType_Float => {
+        let value: f64 = unsafe { self.payload.__bindgen_anon_1.floatValue };
+        se.serialize_f64(value)
+      }
+      CBType_Bool => {
+        let value: bool = unsafe { self.payload.__bindgen_anon_1.boolValue };
+        se.serialize_bool(value)
+      }
+      CBType_Table => {
+        let table: Table = self.try_into().unwrap();
+        let mut t = se.serialize_map(None)?;
+        for (key, value) in table.iter() {
+          unsafe {
+            let key = CStr::from_ptr(key.0).to_str().unwrap();
+            t.serialize_entry(&key, &value)?;
+          }
+        }
+        t.end()
+      }
+      CBType_String => {
+        let value: &str = self.try_into().unwrap();
+        se.serialize_str(value)
+      },
+      CBType_Seq => {
+        let seq: Seq = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(seq.len()))?;
+        for value in seq {
+          s.serialize_element(&value)?;
+        }
+        s.end()
+      }
+      _ => se.serialize_none(),
+    }
+  }
+}
 
 #[repr(transparent)] // force it same size of original
 #[derive(Default)]
