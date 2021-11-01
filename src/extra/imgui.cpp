@@ -1259,6 +1259,9 @@ struct Text : public Base {
     case 3:
       _wrap = value.payload.boolValue;
       break;
+    case 4:
+      _bullet = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -1274,6 +1277,8 @@ struct Text : public Base {
       return _format.size() == 0 ? Var::Empty : Var(_format);
     case 3:
       return Var(_wrap);
+    case 4:
+      return Var(_bullet);
     default:
       return Var::Empty;
     }
@@ -1302,6 +1307,9 @@ struct Text : public Base {
 
     if (_wrap)
       ::ImGui::PushTextWrapPos(0.0f);
+
+    if (_bullet)
+      ::ImGui::Bullet();
 
     if (_label.size() > 0) {
       ::ImGui::LabelText(_label.c_str(), format, _text.str());
@@ -1332,87 +1340,17 @@ private:
       {"Wrap",
        CBCCSTR("Whether to wrap the text to the next line if it doesn't fit "
                "horizontally."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::BoolType}},
+      {"Bullet",
+       CBCCSTR("Display a small circle before the text."),
+       {CoreInfo::BoolType}},
+  };
 
   std::string _label;
   CBVar _color{};
   std::string _format;
   bool _wrap{false};
-};
-
-struct BulletText : public Base {
-
-  static CBParametersInfo parameters() { return _params; }
-
-  void setParam(int index, const CBVar &value) {
-    switch (index) {
-    case 0:
-      _color = value;
-      break;
-    case 1: {
-      if (value.valueType == None) {
-        _format.clear();
-      } else {
-        _format = value.payload.stringValue;
-      }
-    } break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _color;
-    case 1:
-      return _format.size() == 0 ? Var::Empty : Var(_format);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  VarStringStream _text;
-  CBVar activate(CBContext *context, const CBVar &input) {
-    IDContext idCtx(this);
-
-    _text.write(input);
-
-    if (_color.valueType == Color)
-      ::ImGui::PushStyleColor(ImGuiCol_Text, Style::color2Vec4(_color));
-
-    auto format = "%s";
-    if (_format.size() > 0) {
-      auto pos = _format.find("{}");
-      // while (pos != std::string::npos) {
-      if (pos != std::string::npos) {
-        _format.replace(pos, 2, format);
-        // pos = _format.find("{}", pos + 2);
-        // TODO support multiple args
-      }
-      format = _format.c_str();
-    }
-
-    ::ImGui::BulletText(format, _text.str());
-
-    if (_color.valueType == Color)
-      ::ImGui::PopStyleColor();
-
-    return input;
-  }
-
-private:
-  static inline Parameters _params = {
-      {"Color",
-       CBCCSTR("The optional color of the text."),
-       {CoreInfo::ColorOrNone}},
-      {"Format",
-       CBCCSTR("An optional format for the text."),
-       {CoreInfo::StringOrNone}},
-  };
-
-  CBVar _color{};
-  std::string _format;
+  bool _bullet{false};
 };
 
 struct Button : public Base {
@@ -4093,7 +4031,6 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.CheckboxFlags", CheckboxFlags);
   REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.Text", Text);
-  REGISTER_CBLOCK("GUI.BulletText", BulletText);
   REGISTER_CBLOCK("GUI.Button", Button);
   REGISTER_CBLOCK("GUI.ArrowButton", ArrowButton);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
