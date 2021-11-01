@@ -34,6 +34,7 @@ use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
 use sp_core::{blake2_128, ed25519, sr25519, twox_128};
+use sp_runtime::MultiSigner;
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::str::FromStr;

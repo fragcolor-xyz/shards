@@ -1,3 +1,6 @@
+(def _args (eval `(assoc {} ~@*command-line-args*)))
+(def test-rpcs (if (contains? _args "--rpcs") (read-string (get _args "--rpcs")) false))
+
 (defnode root)
 (defchain main
   ; test from hex string
@@ -31,17 +34,29 @@
         (ToHex)
         (Log "Eth Address")
         (Assert.Is "0x30bfedb19bab047810a0b27b87ff73ec3aa840f9" true)))
+  
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getMetadata"} (ToJson) (Http.Post "http://172.20.243.56:9933")
+                    (FromJson) (ExpectTable) (Take "result") (ExpectString) = .metadata))
 
-  ["Sudo" "Key"] (Substrate.StorageKey) (ToHex) (Assert.Is "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b" true)
+  ["Sudo" "Key"] (Substrate.StorageKey) (ToHex) (Assert.Is "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b" true) = .sudo-key-data
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.sudo-key-data]} (ToJson) (Http.Post "http://172.20.243.56:9933") (Log)))
+  ["Fragments" "Something"] (Substrate.StorageKey) (ToHex) = .frag-key-data
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.frag-key-data]} (ToJson) (Http.Post "http://172.20.243.56:9933") (Log)
+                    (FromJson) (ExpectTable) (Take "result") (ExpectString) (HexToBytes) (Substrate.Decode [Type.Int] ["u32"]) (Log)))
+
   ["Balances" "FreeBalance"] (Substrate.StorageKey) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4" true)
   ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
-  ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" "0x002a"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dce11f437743387ffa42428d46ee58416002a" true)
 
+  ["System" "Account" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] (Substrate.StorageMap) (ToHex) = .balance-data
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.balance-data]} (ToJson) (Log) (Http.Post "http://172.20.243.56:9933") (Log)
+                    (FromJson) (ExpectTable) (Take "result") (ExpectString) (HexToBytes) (Substrate.Decode [Type.Int] ["u64"]) (Log)))
+
+  ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" "0x002a"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dce11f437743387ffa42428d46ee58416002a" true)
 
   "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" = .account-id
   [.account-id] (Substrate.Encode ["a"]) (| (ToHex) (Assert.Is "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true))
   (Substrate.Decode [Type.String] ["a"]) (Log) (Assert.Is ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"] true)
-  [false 42] (Substrate.Encode [nil "u8"]) (| (ToHex) (Assert.Is "0x002a" true)) 
+  [false 42] (Substrate.Encode [nil "u8"]) (| (ToHex) (Assert.Is "0x002a" true))
   (Substrate.Decode [Type.Bool Type.Int] [nil "u8"]) (Assert.Is [false 42] true)
   [false 42] (Substrate.Encode [nil "c"]) (| (ToHex) (Assert.Is "0x00a8" true))
   (Substrate.Decode [Type.Bool Type.Int] [nil "c"]) (Assert.Is [false 42] true)
