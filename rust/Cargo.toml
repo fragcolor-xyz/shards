@@ -13,6 +13,8 @@ crate-type = ["rlib", "staticlib"]
 approx = "0.5.0"
 lazy_static = "1.4.0"
 compile-time-crc32 = "0.1.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0.64" }
 tiny-keccak = { version = "2.0.2", features = ["keccak", "sha3"], optional = true }
 libsecp256k1 = { version = "0.7.0", optional = true }
 hex = { version = "0.4.2", optional = true }
@@ -27,7 +29,6 @@ tiny-skia = { version = "0.6.1", optional = true }
 instant = { version = "0.1.10", features = [ "now" ] }
 ethereum-types = { version = "0.12.0", optional = true }
 ethabi = { version = "15.0.0", optional = true }
-serde_json = { version = "1.0.64", optional = true }
 csv = { version = "1.1", optional = true }
 sp-core = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master", features = ["full_crypto"], optional = true }
 sp-runtime = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "master", optional = true }
@@ -69,8 +70,7 @@ blocks = ["reqwest",
           "sp-core",
           "sp-runtime",
           "parity-scale-codec",
-          "frame-metadata",
-          "serde_json"]
+          "frame-metadata"]
 dllblock = ["dlopen"]
 run_bindgen = ["bindgen"]
 cblisp = []

@@ -12,7 +12,6 @@ extern crate hex;
 extern crate libsecp256k1;
 extern crate parity_scale_codec;
 extern crate resvg;
-extern crate serde_json;
 extern crate sha2;
 extern crate sp_core;
 extern crate sp_runtime;
