@@ -6,12 +6,17 @@
 
 #include "SDL.h"
 #include "bgfx/bgfx.h"
+#include "bgfx/embedded_shader.h"
 #include "bgfx/platform.h"
 #include "blocks/shared.hpp"
 #include "linalg_shim.hpp"
 
+#include "fs_picking.bin.h"
+
 using namespace chainblocks;
 namespace BGFX {
+constexpr uint16_t PickingBufferSize = 128;
+
 enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
 
 #if defined(BGFX_CONFIG_RENDERER_VULKAN)
@@ -30,6 +35,48 @@ constexpr uint32_t BgfxShaderHandleCC = 'gfxS';
 constexpr uint32_t BgfxModelHandleCC = 'gfxM';
 constexpr uint32_t BgfxContextCC = 'gfx ';
 constexpr uint32_t BgfxNativeWindowCC = 'gfxW';
+
+// BGFX_CONFIG_MAX_VIEWS is 256
+constexpr bgfx::ViewId MaxViews = 256;
+constexpr bgfx::ViewId GuiViewId = MaxViews - 1;
+constexpr bgfx::ViewId BlittingViewId = GuiViewId - 1;
+constexpr bgfx::ViewId PickingViewId = BlittingViewId - 1;
+
+// FROM BGFX, MIGHT BREAK IF BGFX CHANGES
+constexpr bool isShaderVerLess(uint32_t _magic, uint8_t _version) {
+  return (_magic & BX_MAKEFOURCC(0, 0, 0, 0xff)) <
+         BX_MAKEFOURCC(0, 0, 0, _version);
+}
+// ~ FROM BGFX, MIGHT BREAK IF BGFX CHANGES
+
+constexpr uint32_t getShaderOutputHash(const bgfx::Memory *mem) {
+  uint32_t magic = *(uint32_t *)mem->data;
+  uint32_t hashIn = *(uint32_t *)(mem->data + 4);
+  uint32_t hashOut = 0x0;
+  if (isShaderVerLess(magic, 6)) {
+    hashOut = hashIn;
+  } else {
+    hashOut = *(uint32_t *)(mem->data + 8);
+  }
+  return hashOut;
+}
+
+inline void overrideShaderInputHash(const bgfx::Memory *mem, uint32_t hash) {
+  // hack/fix hash in or creation of program will fail!
+  // otherwise bgfx would fail inside createShader
+  *(uint32_t *)(mem->data + 4) = hash;
+}
+
+inline const bgfx::EmbeddedShader::Data &
+findEmbeddedShader(const bgfx::EmbeddedShader &shader) {
+  bgfx::RendererType::Enum type = bgfx::getRendererType();
+  for (uint32_t i = 0; i < bgfx::RendererType::Count; ++i) {
+    if (shader.data[i].type == type) {
+      return shader.data[i];
+    }
+  }
+  throw std::runtime_error("Could not find embedded shader");
+}
 
 struct Enums {
   enum class CullMode { None, Front, Back };
@@ -156,37 +203,43 @@ struct ViewInfo {
     return _invProj;
   }
 
-  // const Mat4 &viewProj() const {
-  //   if (unlikely(_viewProj.x._private[0] == 0)) {
-  //     _viewProj = linalg::mul(view, proj);
-  //     _viewProj.x._private[0] = 1;
-  //   }
-  //   return _viewProj;
-  // }
+  const Mat4 &viewProj() const {
+    if (unlikely(_viewProj.x._private[0] == 0)) {
+      _viewProj = linalg::mul(view, proj);
+      _viewProj.x._private[0] = 1;
+    }
+    return _viewProj;
+  }
 
-  // const Mat4 &invViewProj() const {
-  //   if (unlikely(_invViewProj.x._private[0] == 0)) {
-  //     _invViewProj = linalg::inverse(viewProj());
-  //     _invViewProj.x._private[0] = 1;
-  //   }
-  //   return _invViewProj;
-  // }
+  const Mat4 &invViewProj() const {
+    if (unlikely(_invViewProj.x._private[0] == 0)) {
+      _invViewProj = linalg::inverse(viewProj());
+      _invViewProj.x._private[0] = 1;
+    }
+    return _invViewProj;
+  }
 
   void invalidate() {
     _invView.x._private[0] = 0;
     _invProj.x._private[0] = 0;
-    // _viewProj.x._private[0] = 0;
-    // _invViewProj.x._private[0] = 0;
+    _viewProj.x._private[0] = 0;
+    _invViewProj.x._private[0] = 0;
   }
 
-  // private:
-  mutable Mat4 _invView;
-  mutable Mat4 _invProj;
-  // mutable Mat4 _viewProj;
-  // mutable Mat4 _invViewProj;
+  mutable Mat4 _invView{};
+  mutable Mat4 _invProj{};
+  mutable Mat4 _viewProj{};
+  mutable Mat4 _invViewProj{};
+};
+
+struct IDrawable {
+  virtual CBChain *getChain() = 0;
 };
 
 struct Context {
+  static inline bgfx::EmbeddedShader PickingShaderData =
+      BGFX_EMBEDDED_SHADER(fs_picking);
+
   static inline Type Info{
       {CBType::Object,
        {.object = {.vendorId = CoreCC, .typeId = BgfxContextCC}}}};
@@ -194,58 +247,122 @@ struct Context {
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
 
-  ViewInfo &currentView() { return viewsStack.back(); };
-
-  ViewInfo &pushView(ViewInfo view) { return viewsStack.emplace_back(view); }
-
-  void popView() {
-    assert(viewsStack.size() > 0);
-    viewsStack.pop_back();
-  }
-
-  size_t viewIndex() const { return viewsStack.size(); }
-
-  bgfx::ViewId nextViewId() {
-    assert(nextViewCounter < UINT16_MAX);
-    return nextViewCounter++;
-  }
-
   void reset() {
-    viewsStack.clear();
-    nextViewCounter = 0;
-    for (auto &sampler : samplers) {
+    _viewsStack.clear();
+    _nextViewCounter = 0;
+
+    for (auto &sampler : _samplers) {
       bgfx::destroy(sampler);
     }
-    samplers.clear();
-    lightCount = 0;
+    _samplers.clear();
+
+    // _pickingRT is destroyed when FB is destroyed!
+    if (_pickingUniform.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingUniform);
+      _pickingUniform = BGFX_INVALID_HANDLE;
+    }
+    if (_pickingTexture.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(_pickingTexture);
+      _pickingTexture = BGFX_INVALID_HANDLE;
+    }
+
+    _lightCount = 0;
+    _currentFrame = 0;
+  }
+
+  ViewInfo &currentView() { return _viewsStack.back(); };
+
+  ViewInfo &pushView(ViewInfo view) { return _viewsStack.emplace_back(view); }
+
+  void popView() {
+    assert(_viewsStack.size() > 0);
+    _viewsStack.pop_back();
+  }
+
+  size_t viewIndex() const { return _viewsStack.size(); }
+
+  bgfx::ViewId nextViewId() {
+    assert(_nextViewCounter < UINT16_MAX);
+    return _nextViewCounter++;
+  }
+
+  void newFrame() {
+    _frameDrawablesCount = 0;
+    _frameDrawables.clear();
+  }
+
+  void setBgfxFrame(uint32_t frame) { _currentFrame = frame; }
+
+  uint32_t getBgfxFrame() const { return _currentFrame; }
+
+  uint32_t addFrameDrawable(IDrawable *drawable) {
+    // 0 idx = empty
+    uint32_t id = ++_frameDrawablesCount;
+    _frameDrawables[id] = drawable;
+    return id;
+  }
+
+  IDrawable *getFrameDrawable(uint32_t id) {
+    if (id == 0) {
+      return nullptr;
+    }
+    return _frameDrawables[id];
   }
 
   const bgfx::UniformHandle &getSampler(size_t index) {
-    const auto nsamplers = samplers.size();
-    if (index >= nsamplers) {
+    const auto nSamplers = _samplers.size();
+    if (index >= nSamplers) {
       std::string name("DrawSampler_");
       name.append(std::to_string(index));
-      return samplers.emplace_back(
+      return _samplers.emplace_back(
           bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
     } else {
-      return samplers[index];
+      return _samplers[index];
     }
   }
 
   // for now this is very simple, we just compute how many max light sources we
   // have to render. In the future we will do it in a smarter way
-  uint32_t getMaxLights() const { return lightCount; }
-  void addLight() { lightCount++; }
+  constexpr uint32_t getMaxLights() const { return _lightCount; }
+  void addLight() { _lightCount++; }
+
+  constexpr bool isPicking() const { return _picking; }
+
+  void setPicking(bool picking) { _picking = picking; }
+
+  bgfx::TextureHandle &pickingTexture() { return _pickingTexture; }
+
+  bgfx::TextureHandle &pickingRenderTarget() { return _pickingRT; }
+
+  const bgfx::UniformHandle getPickingUniform() {
+    if (_pickingUniform.idx == bgfx::kInvalidHandle) {
+      _pickingUniform =
+          bgfx::createUniform("u_picking_id", bgfx::UniformType::Vec4);
+    }
+    return _pickingUniform;
+  }
 
   // TODO thread_local? anyway sort multiple threads
   // this is written during sleeps between node ticks
   static inline std::vector<SDL_Event> sdlEvents;
 
 private:
-  std::deque<ViewInfo> viewsStack;
-  bgfx::ViewId nextViewCounter{0};
-  std::vector<bgfx::UniformHandle> samplers;
-  uint32_t lightCount{0};
+  std::deque<ViewInfo> _viewsStack;
+  bgfx::ViewId _nextViewCounter{0};
+
+  std::deque<bgfx::UniformHandle> _samplers;
+
+  uint32_t _lightCount{0};
+
+  uint32_t _frameDrawablesCount{0};
+  std::unordered_map<uint32_t, IDrawable *> _frameDrawables;
+
+  bool _picking{false};
+  bgfx::UniformHandle _pickingUniform = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle _pickingTexture = BGFX_INVALID_HANDLE;
+  bgfx::TextureHandle _pickingRT = BGFX_INVALID_HANDLE;
+
+  uint32_t _currentFrame{0};
 };
 
 struct Texture {
@@ -363,10 +480,14 @@ struct ShaderHandle {
                                             BgfxShaderHandleCC};
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle pickingHandle = BGFX_INVALID_HANDLE;
 
   ~ShaderHandle() {
     if (handle.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(handle);
+    }
+    if (pickingHandle.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(pickingHandle);
     }
   }
 };

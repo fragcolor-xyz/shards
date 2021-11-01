@@ -37,11 +37,15 @@ TODO; GLTF.Animate - to play animations
 namespace chainblocks {
 namespace gltf {
 struct GFXShader {
-  GFXShader(bgfx::ProgramHandle handle, bgfx::ProgramHandle instanced)
-      : handle(handle), handleInstanced(instanced) {}
+  GFXShader(bgfx::ProgramHandle handle, bgfx::ProgramHandle instanced,
+            bgfx::ProgramHandle picking, bgfx::ProgramHandle instancedPicking)
+      : handle(handle), handlePicking(picking), handleInstanced(instanced),
+        handleInstancedPicking(instancedPicking) {}
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle handlePicking = BGFX_INVALID_HANDLE;
   bgfx::ProgramHandle handleInstanced = BGFX_INVALID_HANDLE;
+  bgfx::ProgramHandle handleInstancedPicking = BGFX_INVALID_HANDLE;
 
   GFXShader(GFXShader &&other) {
     std::swap(handle, other.handle);
@@ -53,8 +57,16 @@ struct GFXShader {
       bgfx::destroy(handle);
     }
 
+    if (handlePicking.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handlePicking);
+    }
+
     if (handleInstanced.idx != bgfx::kInvalidHandle) {
       bgfx::destroy(handleInstanced);
+    }
+
+    if (handleInstancedPicking.idx != bgfx::kInvalidHandle) {
+      bgfx::destroy(handleInstancedPicking);
     }
   }
 };
@@ -475,12 +487,14 @@ struct Load : public BGFX::BaseConsumer {
       if (!shader) {
         // compile or fetch cached shaders
         // vertex
+        uint32_t hashOut;
         bgfx::ShaderHandle vsh;
         {
           auto bytecode = _shaderCompiler->compile(
               varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
+          hashOut = BGFX::getShaderOutputHash(mem);
           vsh = bgfx::createShader(mem);
         }
         // vertex - instanced
@@ -502,9 +516,24 @@ struct Load : public BGFX::BaseConsumer {
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
         }
-        shader =
-            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true),
-                                        bgfx::createProgram(ivsh, psh, true));
+
+        // also build picking program
+        auto &pickingShaderData =
+            BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
+        auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
+
+        BGFX::overrideShaderInputHash(ppmem, hashOut);
+        auto pickingShader = bgfx::createShader(ppmem);
+        if (pickingShader.idx == bgfx::kInvalidHandle) {
+          throw ActivationError("Failed to load picking pixel shader.");
+        }
+
+        shader = std::make_shared<GFXShader>(
+            bgfx::createProgram(vsh, psh, true),
+            bgfx::createProgram(ivsh, psh, true),
+            bgfx::createProgram(vsh, pickingShader, true),
+            bgfx::createProgram(ivsh, pickingShader, true));
+
         _shadersCache().add(hash, shader);
       }
       material.shader = shader;
@@ -538,12 +567,14 @@ struct Load : public BGFX::BaseConsumer {
       if (!shader) {
         // compile or fetch cached shaders
         // vertex
+        uint32_t hashOut;
         bgfx::ShaderHandle vsh;
         {
           auto bytecode = _shaderCompiler->compile(
               varyings, _shadersVSEntry, "v", shaderDefinesStr, context);
           auto mem = bgfx::copy(bytecode.payload.bytesValue,
                                 bytecode.payload.bytesSize);
+          hashOut = BGFX::getShaderOutputHash(mem);
           vsh = bgfx::createShader(mem);
         }
         // vertex - instanced
@@ -565,9 +596,24 @@ struct Load : public BGFX::BaseConsumer {
                                 bytecode.payload.bytesSize);
           psh = bgfx::createShader(mem);
         }
-        shader =
-            std::make_shared<GFXShader>(bgfx::createProgram(vsh, psh, true),
-                                        bgfx::createProgram(ivsh, psh, true));
+
+        // also build picking program
+        auto &pickingShaderData =
+            BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
+        auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
+
+        BGFX::overrideShaderInputHash(ppmem, hashOut);
+        auto pickingShader = bgfx::createShader(ppmem);
+        if (pickingShader.idx == bgfx::kInvalidHandle) {
+          throw ActivationError("Failed to load picking pixel shader.");
+        }
+
+        shader = std::make_shared<GFXShader>(
+            bgfx::createProgram(vsh, psh, true),
+            bgfx::createProgram(ivsh, psh, true),
+            bgfx::createProgram(vsh, pickingShader, true),
+            bgfx::createProgram(ivsh, pickingShader, true));
+
         _shadersCache().add(hash, shader);
       }
       material.shader = shader;
@@ -1569,146 +1615,178 @@ struct Draw : public BGFX::BaseConsumer {
     BGFX::BaseConsumer::_cleanup();
   }
 
+  struct Drawable : public BGFX::IDrawable {
+    Drawable(CBChain *chain) : _chain(chain) {}
+    CBChain *getChain() override { return _chain; }
+
+  private:
+    CBChain *_chain;
+  };
+
+  // use deque for stable memory location
+  std::deque<Drawable> _frameDrawables;
+
+  template <bool instanced>
   void renderNodeSubmit(BGFX::Context *ctx, const Node &node,
-                        const CBTable *mats, bool instanced) {
-    if (node.mesh) {
-      for (const auto &primsRef : node.mesh->get().primitives) {
-        const auto &prims = primsRef.get();
-        if (prims.vb.idx != bgfx::kInvalidHandle) {
-          const auto currentView = ctx->currentView();
+                        const CBTable *mats, uint32_t primId) {
+    for (const auto &primsRef : node.mesh->get().primitives) {
+      const auto &prims = primsRef.get();
+      if (prims.vb.idx != bgfx::kInvalidHandle) {
+        const auto currentView = ctx->currentView();
 
-          uint64_t state = prims.stateFlags | BGFX_STATE_WRITE_RGB |
-                           BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
-                           BGFX_STATE_DEPTH_TEST_LESS;
+        uint64_t state = prims.stateFlags | BGFX_STATE_WRITE_RGB |
+                         BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
+                         BGFX_STATE_DEPTH_TEST_LESS;
 
-          if (!prims.material || !(*prims.material).get().doubleSided) {
-            if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
-              // workaround for flipped Y render to textures
-              if (currentView.id > 0) {
-                state |= BGFX_STATE_CULL_CCW;
-              } else {
-                state |= BGFX_STATE_CULL_CW;
-              }
+        if (!prims.material || !(*prims.material).get().doubleSided) {
+          if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
+            // workaround for flipped Y render to textures
+            if (currentView.id > 0) {
+              state |= BGFX_STATE_CULL_CCW;
             } else {
               state |= BGFX_STATE_CULL_CW;
             }
+          } else {
+            state |= BGFX_STATE_CULL_CW;
+          }
+        }
+
+        bgfx::setState(state);
+
+        bgfx::setVertexBuffer(0, prims.vb);
+        if (prims.ib.idx != bgfx::kInvalidHandle) {
+          bgfx::setIndexBuffer(prims.ib);
+        }
+
+        bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+        bgfx::ProgramHandle pickingHandle = BGFX_INVALID_HANDLE;
+
+        if (prims.material) {
+          const auto &material = (*prims.material).get();
+          const CBVar *pshader = nullptr;
+          const CBVar *ptextures = nullptr;
+
+          if (mats) {
+            const auto it = _matsCache.find(material.hash);
+            if (it != _matsCache.end()) {
+              if (it->second) {
+                pshader = it->second->first;
+                ptextures = it->second->second;
+              }
+            } else {
+              // not found, let's cache it as well
+              const auto override =
+                  mats->api->tableAt(*mats, material.name.c_str());
+              if (override->valueType == CBType::Table) {
+                const auto &records = override->payload.tableValue;
+                pshader = records.api->tableAt(records, "Shader");
+                ptextures = records.api->tableAt(records, "Textures");
+                // add to quick cache map by integer
+                _matsCache[material.hash] = std::make_pair(pshader, ptextures);
+              } else {
+                _matsCache[material.hash].reset();
+              }
+            }
           }
 
-          bgfx::setState(state);
-
-          bgfx::setVertexBuffer(0, prims.vb);
-          if (prims.ib.idx != bgfx::kInvalidHandle) {
-            bgfx::setIndexBuffer(prims.ib);
+          // try override shader, if not use the default PBR shader
+          if (pshader && pshader->valueType == CBType::Object) {
+            // we got the shader
+            const auto shader = reinterpret_cast<BGFX::ShaderHandle *>(
+                pshader->payload.objectValue);
+            handle = shader->handle;
+            pickingHandle = shader->pickingHandle;
+          } else if (material.shader) {
+            handle = instanced ? material.shader->handleInstanced
+                               : material.shader->handle;
+            pickingHandle = instanced ? material.shader->handleInstancedPicking
+                                      : material.shader->handlePicking;
           }
 
-          bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+          // if textures are empty, use the ones we loaded during Load
+          if (ptextures && ptextures->valueType == CBType::Seq &&
+              ptextures->payload.seqValue.len > 0) {
+            const auto textures = ptextures->payload.seqValue;
+            for (uint32_t i = 0; i < textures.len; i++) {
+              const auto texture = reinterpret_cast<BGFX::Texture *>(
+                  textures.elements[i].payload.objectValue);
+              bgfx::setTexture(uint8_t(i), ctx->getSampler(i), texture->handle);
+            }
+          } else {
+            uint8_t samplerSlot = 0;
+            if (material.baseColorTexture) {
+              bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+                               material.baseColorTexture->handle);
+              samplerSlot++;
+            }
+            if (material.normalTexture) {
+              bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+                               material.normalTexture->handle);
+              samplerSlot++;
+            }
+          }
+        }
 
+        if (handle.idx == bgfx::kInvalidHandle) {
+          const std::string *matName;
           if (prims.material) {
             const auto &material = (*prims.material).get();
-            const CBVar *pshader = nullptr;
-            const CBVar *ptextures = nullptr;
-
-            if (mats) {
-              const auto it = _matsCache.find(material.hash);
-              if (it != _matsCache.end()) {
-                if (it->second) {
-                  pshader = it->second->first;
-                  ptextures = it->second->second;
-                }
-              } else {
-                // not found, let's cache it as well
-                const auto override =
-                    mats->api->tableAt(*mats, material.name.c_str());
-                if (override->valueType == CBType::Table) {
-                  const auto &records = override->payload.tableValue;
-                  pshader = records.api->tableAt(records, "Shader");
-                  ptextures = records.api->tableAt(records, "Textures");
-                  // add to quick cache map by integer
-                  _matsCache[material.hash] =
-                      std::make_pair(pshader, ptextures);
-                } else {
-                  _matsCache[material.hash].reset();
-                }
-              }
-            }
-
-            // try override shader, if not use the default PBR shader
-            if (pshader && pshader->valueType == CBType::Object) {
-              // we got the shader
-              const auto shader = reinterpret_cast<BGFX::ShaderHandle *>(
-                  pshader->payload.objectValue);
-              handle = shader->handle;
-            } else if (material.shader) {
-              handle = instanced ? material.shader->handleInstanced
-                                 : material.shader->handle;
-            }
-
-            // if textures are empty, use the ones we loaded during Load
-            if (ptextures && ptextures->valueType == CBType::Seq &&
-                ptextures->payload.seqValue.len > 0) {
-              const auto textures = ptextures->payload.seqValue;
-              for (uint32_t i = 0; i < textures.len; i++) {
-                const auto texture = reinterpret_cast<BGFX::Texture *>(
-                    textures.elements[i].payload.objectValue);
-                bgfx::setTexture(uint8_t(i), ctx->getSampler(i),
-                                 texture->handle);
-              }
-            } else {
-              uint8_t samplerSlot = 0;
-              if (material.baseColorTexture) {
-                bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
-                                 material.baseColorTexture->handle);
-                samplerSlot++;
-              }
-              if (material.normalTexture) {
-                bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
-                                 material.normalTexture->handle);
-                samplerSlot++;
-              }
-            }
+            matName = &material.name;
+          } else {
+            matName = nullptr;
           }
+          CBLOG_ERROR("Rendering a primitive with invalid shader handle, "
+                      "mesh: {} material: {} mats table: {}",
+                      node.mesh->get().name,
+                      (matName ? matName->c_str() : "<no material>"),
+                      _materials.get());
+          throw ActivationError(
+              "Rendering a primitive with invalid shader handle");
+        }
 
-          if (handle.idx == bgfx::kInvalidHandle) {
-            const std::string *matName;
-            if (prims.material) {
-              const auto &material = (*prims.material).get();
-              matName = &material.name;
-            } else {
-              matName = nullptr;
-            }
-            CBLOG_ERROR("Rendering a primitive with invalid shader handle, "
-                        "mesh: {} material: {} mats table: {}",
-                        node.mesh->get().name,
-                        (matName ? matName->c_str() : "<no material>"),
-                        _materials.get());
-            throw ActivationError(
-                "Rendering a primitive with invalid shader handle");
-          }
+        bool picking = currentView.id == 0 && ctx->isPicking();
 
-          bgfx::submit(currentView.id, handle);
+        bgfx::submit(currentView.id, handle, 0, picking ? 0 : BGFX_DISCARD_ALL);
+
+        if (picking) {
+          float fid[4];
+          fid[0] = ((primId >> 0) & 0xff) / 255.0f;
+          fid[1] = ((primId >> 8) & 0xff) / 255.0f;
+          fid[2] = ((primId >> 16) & 0xff) / 255.0f;
+          fid[3] = ((primId >> 24) & 0xff) / 255.0f;
+          bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
+          // also here we discard all
+          bgfx::submit(BGFX::PickingViewId, pickingHandle, 0, BGFX_DISCARD_ALL);
         }
       }
     }
   }
 
+  template <bool instanced>
   void renderNode(BGFX::Context *ctx, const Node &node,
                   const linalg::aliases::float4x4 &parentTransform,
-                  const CBTable *mats, bool instanced) {
-    const auto transform = linalg::mul(parentTransform, node.transform);
+                  const CBTable *mats, CBChain *currentChain) {
+    linalg::aliases::float4x4 transform =
+        linalg::mul(parentTransform, node.transform);
 
-    bgfx::Transform t;
-    // using allocTransform to avoid an extra copy
-    auto idx = bgfx::allocTransform(&t, 1);
-    memcpy(&t.data[0], &transform.x, sizeof(float) * 4);
-    memcpy(&t.data[4], &transform.y, sizeof(float) * 4);
-    memcpy(&t.data[8], &transform.z, sizeof(float) * 4);
-    memcpy(&t.data[12], &transform.w, sizeof(float) * 4);
-    bgfx::setTransform(idx, 1);
+    if (node.mesh) {
+      bgfx::Transform t;
+      // using allocTransform to avoid an extra copy
+      auto idx = bgfx::allocTransform(&t, 1);
+      memcpy(&t.data[0], &transform.x, sizeof(float) * 4);
+      memcpy(&t.data[4], &transform.y, sizeof(float) * 4);
+      memcpy(&t.data[8], &transform.z, sizeof(float) * 4);
+      memcpy(&t.data[12], &transform.w, sizeof(float) * 4);
+      bgfx::setTransform(idx, 1);
 
-    renderNodeSubmit(ctx, node, mats, instanced);
+      auto id =
+          ctx->addFrameDrawable(&_frameDrawables.emplace_back(currentChain));
+
+      renderNodeSubmit<instanced>(ctx, node, mats, id);
+    }
 
     for (const auto &snode : node.children) {
-      renderNode(ctx, snode, transform, mats, instanced);
+      renderNode<instanced>(ctx, snode, transform, mats, currentChain);
     }
   }
 
@@ -1718,6 +1796,8 @@ struct Draw : public BGFX::BaseConsumer {
     if (bgfx::getAvailInstanceDataBuffer(instances, stride) != instances) {
       throw ActivationError("Instance buffer overflow");
     }
+
+    _frameDrawables.clear();
 
     bgfx::InstanceDataBuffer idb;
     bgfx::allocInstanceDataBuffer(&idb, instances, stride);
@@ -1758,9 +1838,10 @@ struct Draw : public BGFX::BaseConsumer {
                           ? &matsVar.payload.tableValue
                           : nullptr;
 
+    auto chain = context->currentChain();
     auto rootTransform = Mat4::Identity();
     for (const auto &nodeRef : model->rootNodes) {
-      renderNode(ctx, nodeRef.get(), rootTransform, mats, true);
+      renderNode<true>(ctx, nodeRef.get(), rootTransform, mats, chain);
     }
 
     return input;
@@ -1775,6 +1856,8 @@ struct Draw : public BGFX::BaseConsumer {
     if (!model)
       return input;
 
+    _frameDrawables.clear();
+
     const auto &matsVar = _materials.get();
     const auto mats = matsVar.valueType != CBType::None
                           ? &matsVar.payload.tableValue
@@ -1782,8 +1865,9 @@ struct Draw : public BGFX::BaseConsumer {
 
     auto rootTransform =
         reinterpret_cast<Mat4 *>(&input.payload.seqValue.elements[0]);
+    auto chain = context->currentChain();
     for (const auto &nodeRef : model->rootNodes) {
-      renderNode(ctx, nodeRef.get(), *rootTransform, mats, false);
+      renderNode<false>(ctx, nodeRef.get(), *rootTransform, mats, chain);
     }
 
     return input;

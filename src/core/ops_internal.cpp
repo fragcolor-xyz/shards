@@ -3,6 +3,7 @@
 
 #include "ops_internal.hpp"
 #include "ops.hpp"
+#include "runtime.hpp"
 #include <unordered_set>
 
 std::ostream &operator<<(std::ostream &os, const CBVar &var) {
@@ -21,10 +22,16 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
        << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId
        << std::dec;
     break;
-  case CBType::Chain:
-    os << "Chain: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
-    break;
+  case CBType::Chain: {
+    if (var.payload.chainValue) {
+      auto chain = CBChain::sharedFromRef(var.payload.chainValue);
+      os << "Chain: 0x" << std::hex
+         << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
+      os << " name: " << chain->name;
+    } else {
+      os << "Chain: 0x0";
+    }
+  } break;
   case CBType::Bytes:
     os << "Bytes: 0x" << std::hex
        << reinterpret_cast<uintptr_t>(var.payload.bytesValue)
