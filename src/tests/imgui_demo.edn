@@ -49,7 +49,8 @@
         (-> "ABOUT THIS DEMO:" (GUI.Text)
             "Sections below are demonstrating many aspects of the library." (GUI.Text :Bullet true)
             "The \"Examples\" menu above leads to more demo contents." (GUI.Text :Bullet true)
-            "The \"Tools\" menu above gives access to: About Box, Style Editor,\nand Metrics/Debugger (general purpose Dear ImGui debugging tool)." (GUI.Text :Bullet true)
+            (str "The \"Tools\" menu above gives access to: About Box, Style Editor,\n"
+                 "and Metrics/Debugger (general purpose Dear ImGui debugging tool).") (GUI.Text :Bullet true)
             (GUI.Separator)
             "PROGRAMMER GUIDE:" (GUI.Text)
             "See the demo-window block in imgui_demo.edn. <- you are here!" (GUI.Text :Bullet true)
@@ -128,17 +129,78 @@
                       (GUI.TextInput "input text" "inputText")))
                  (GUI.TreeNode
                   "Trees"
-                  (-> (GUI.TreeNode "Basic trees" (todo!))
-                      (GUI.TreeNode "Advanced, with Selectable nodes" (todo!))))
+                  (-> (GUI.TreeNode
+                       "Basic trees"
+                       (-> (defn my_nodes [i]
+                             (if (< i 0)
+                               nil
+                               ~[(my_nodes (- i 1))
+                                 (GUI.TreeNode
+                                  :Label (str "Child " i) :StartOpen (= i 0) :Contents
+                                  (-> "blah blah" (GUI.Text) (GUI.SameLine) (GUI.Button "button" :Type GuiButton.Small)))]))
+                           (my_nodes 5)))
+                      (GUI.TreeNode
+                       "Advanced, with Selectable nodes"
+                       (-> (Setup GuiTreeNodeFlags.SpanAvailWidth >= .treeNodeFlags)
+                           (GUI.HelpMarker (str "This is a more typical looking tree with selectable nodes.\n"
+                                                "Click to select, CTRL+Click to toggle, click on arrows or double-click to open.")
+                                           :Inline false)
+                           (GUI.CheckboxFlags "OpenOnArrow" "treeNodeFlags" GuiTreeNodeFlags.OpenOnArrow)
+                           (GUI.CheckboxFlags "OpenOnDoubleClick" "treeNodeFlags" GuiTreeNodeFlags.OpenOnDoubleClick)
+                           (GUI.CheckboxFlags "SpanAvailWidth" "treeNodeFlags" GuiTreeNodeFlags.SpanAvailWidth)
+                           (GUI.HelpMarker "Extend hit area to all available width instead of allowing more items to be laid out after the node.")
+                           (GUI.CheckboxFlags "SpanFullWidth" "treeNodeFlags" GuiTreeNodeFlags.SpanFullWidth)
+                           (GUI.Checkbox "Align label with current X position" "alignX")
+                           "Hello!" (GUI.Text)
+                           (If (Get .alignX) (GUI.Unindent))
+                           (defn my_nodes_2 [i]
+                             (if (< i 0) nil
+                                 ~[(my_nodes_2 (- i 1))
+                                   (GUI.TreeNode
+                                    :Label (str "Node " i) :Flags .treeNodeFlags :Contents
+                                    (-> "Blah blah\nBlah Blah" (GUI.Text :Bullet true)))]))
+                           (my_nodes_2 6)
+                           (If (Get .alignX) (GUI.Indent))))))
                  (GUI.TreeNode "Collapsing Headers" (todo!))
-                 (GUI.TreeNode "Bullets" (todo!))
-                 (GUI.TreeNode "Text" (todo!))
+                 (GUI.TreeNode
+                  "Bullets"
+                  (-> "Bullet point 1" (GUI.Text :Bullet true)
+                      "Bullet point 2\nOn multiple lines" (GUI.Text :Bullet true)
+                      (GUI.TreeNode "Tree node" (-> "Another bullet point" (GUI.Text :Bullet true)))
+                      (GUI.Bullet) "Bullet point 3 (two calls)" (GUI.Text)
+                      (GUI.Bullet) (GUI.Button "Button" :Type GuiButton.Small)))
+                 (GUI.TreeNode
+                  "Text"
+                  (-> (GUI.TreeNode
+                       "Colorful text"
+                       (-> "Pink" (GUI.Text :Color (color 255 0 255 255))
+                           "Yellow" (GUI.Text :Color (color 255 255 0 255))))
+                      (GUI.TreeNode
+                       "Word Wrapping"
+                       (-> (str "This text should automatically wrap on the edge of the window. The current implementation "
+                                "for text wrapping follows simple rules suitable for English and possibly other languages.")
+                           (GUI.Text :Wrap true)
+                           (GUI.Spacing)
+                           (Setup -8 >= .margin)
+                           (GUI.IntSlider "Left margin" "margin" :Min -8 :Max 350)
+                           (GUI.SameLine) (GUI.HelpMarker "-8 compensate for the spacing between the invisible item and the text.")
+                           (GUI.Dummy :Width .margin) (GUI.SameLine)
+                           .margin (GUI.Text :Wrap true :Format "The lazy dog is a good dog. This paragraph should have a {} pixels left margin. Testing a 1 character word. The quick brown fox jumps over the lazy dog.")))))
                  (GUI.TreeNode "Images" (todo!))
                  (GUI.TreeNode "Combo" (todo!))
                  (GUI.TreeNode "List boxes" (todo!))
                  (GUI.TreeNode "Selectables" (todo!))
                  (GUI.TreeNode "Text Input" (todo!))
-                 (GUI.TreeNode "Tabs" (todo!))
+                 (GUI.TreeNode
+                  "Tabs"
+                  (-> (GUI.TreeNode
+                       "Basic"
+                       (-> (GUI.TabBar
+                            "##MyTabBar"
+                            (-> (GUI.TabItem "Avocado" (-> "This is the Avocado tab!\nblah blah blah blah blah" (GUI.Text)))
+                                (GUI.TabItem "Broccoli" (-> "This is the Broccoli tab!\nblah blah blah blah blah" (GUI.Text)))
+                                (GUI.TabItem "Cucumber" (-> "This is the Cucumber tab!\nblah blah blah blah blah" (GUI.Text)))))
+                           (GUI.Separator)))))
                  (GUI.TreeNode "Plots Widgets" (todo!))
                  (GUI.TreeNode "Color/Picker Widgets" (todo!))
                  (GUI.TreeNode "Drag/Slider Flags" (todo!))
@@ -160,7 +222,7 @@
         "Tables & Columns"
         (-> (GUI.TreeNode
              "Basic"
-             (-> (GUI.Spacing) (GUI.HelpMarker "Using GUI.NextRow + calling GUI.SetColumnIndex _before_ each cell, in a loop.")
+             (-> (GUI.HelpMarker "Using GUI.NextRow + calling GUI.SetColumnIndex _before_ each cell, in a loop." :Inline false)
                  (GUI.Table
                   :Columns 3 :Contents
                   (-> 0 >= .row
@@ -176,7 +238,7 @@
                              .column (GUI.Text :Format "Column {}")
                              (Math.Inc .column)))
                            (Math.Inc .row)))))
-                 (GUI.Spacing) (GUI.HelpMarker "Using GUI.NextRow + calling GUI.NextColumn _before_ each cell, manually.")
+                 (GUI.HelpMarker "Using GUI.NextRow + calling GUI.NextColumn _before_ each cell, manually." :Inline false)
                  (GUI.Table
                   :Columns 3 :Contents
                   (-> 0 >= .row
@@ -187,7 +249,7 @@
                            (GUI.NextColumn) "Some contents" (GUI.Text)
                            (GUI.NextColumn) 123.456 (GUI.Text)
                            (Math.Inc .row)))))
-                 (GUI.Spacing) (GUI.HelpMarker "Only using GUI.NextColumn, which tends to be convenient for tables where every cells contains the same type of contents.")
+                 (GUI.HelpMarker "Only using GUI.NextColumn, which tends to be convenient for tables where every cells contains the same type of contents." :Inline false)
                  (GUI.Table
                   :Columns 3 :Contents
                   (-> 0 >= .item
@@ -198,7 +260,7 @@
                            (Math.Inc .item)))))))
             (GUI.TreeNode
              "Reorderable, hideable, with headers"
-             (-> (GUI.Spacing) (GUI.HelpMarker "Click and drag column headers to reorder columns.\n\nRight-click on a header to open a context menu.")
+             (-> (GUI.HelpMarker "Click and drag column headers to reorder columns.\n\nRight-click on a header to open a context menu." :Inline false)
                  (GUI.CheckboxFlags "Resizable" "tableFlags" GuiTableFlags.Resizable)
                  (GUI.CheckboxFlags "Reorderable" "tableFlags" GuiTableFlags.Reorderable)
                  (GUI.CheckboxFlags "Hideable" "tableFlags" GuiTableFlags.Hideable)
@@ -329,7 +391,7 @@
         (-> (Setup false >= .i)
             (defn my_object [index]
               (if (< index 0)
-                index
+                nil
                 ~[(my_object (- index 1))
                   .selected (Is index) > .i
                   (If (GUI.Selectable (str "My Object " index) "i")
