@@ -1353,6 +1353,13 @@ private:
   bool _bullet{false};
 };
 
+struct Bullet : public Base {
+  static CBVar activate(CBContext *context, const CBVar &input) {
+    ::ImGui::Bullet();
+    return input;
+  }
+};
+
 struct Button : public Base {
   CBTypesInfo outputType() { return CoreInfo::BoolType; }
 
@@ -4076,6 +4083,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.CheckboxFlags", CheckboxFlags);
   REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
   REGISTER_CBLOCK("GUI.Text", Text);
+  REGISTER_CBLOCK("GUI.Bullet", Bullet);
   REGISTER_CBLOCK("GUI.Button", Button);
   REGISTER_CBLOCK("GUI.ArrowButton", ArrowButton);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
