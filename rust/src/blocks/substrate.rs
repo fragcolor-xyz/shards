@@ -31,12 +31,12 @@ use crate::CString;
 use crate::Types;
 use crate::Var;
 use core::time::Duration;
-use frame_metadata::RuntimeMetadataPrefixed;
 use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
 use sp_core::{blake2_128, ed25519, sr25519, twox_128};
-use sp_runtime::MultiSigner;
+use sp_runtime::{MultiSignature, MultiSigner, MultiAddress};
+use sp_runtime::generic::{Era};
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::rc::Rc;
@@ -77,6 +77,7 @@ lazy_static! {
     };
     t
   };
+  static ref METADATA_TYPES: Vec<Type> = vec![*METADATA_TYPE];
 }
 
 fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
@@ -313,6 +314,10 @@ struct CBEncode {
 
 fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static str> {
   match value.valueType {
+    CBType_None => {
+      dest.push(0);
+      Ok(())
+    }
     CBType_String => {
       let hint: Result<&str, &str> = hint.as_ref().try_into();
       let account = if let Ok(hint) = hint {
@@ -535,14 +540,19 @@ impl Block for CBDecode {
     for (t, h) in types.iter().zip(hints.iter()) {
       let t = t.enum_value()?;
       match t {
-        1 => {
+        0 => {
+          // None
+          offset += 1;
+          self.output.push(().into());
+        }
+        2 => {
           // Bool
           let mut bytes = &bytes[offset..];
           let value = bool::decode(&mut bytes).map_err(|_| "Invalid bool")?;
           offset += 1;
           self.output.push(value.into());
         }
-        2 => {
+        3 => {
           // Int
           let hint: &str = h.as_ref().try_into()?;
           let mut bytes = &bytes[offset..];
@@ -606,14 +616,14 @@ impl Block for CBDecode {
           }?;
           self.output.push(value);
         }
-        15 => {
+        16 => {
           // Bytes
           let mut bytes = &bytes[offset..];
           let value = Vec::<u8>::decode(&mut bytes).map_err(|_| "Invalid bytes")?;
           offset += value.encoded_size();
           self.output.push(value.as_slice().into());
         }
-        16 => {
+        17 => {
           // String
           let hint: Result<&str, &str> = h.as_ref().try_into();
           let account = if let Ok(hint) = hint {
@@ -641,59 +651,10 @@ impl Block for CBDecode {
   }
 }
 
-fn var_to_metadata(v: &Var) -> Result<RuntimeMetadataPrefixed, &'static str> {
-  let s: &str = v.try_into()?;
-  let mut bytes: &[u8] = s.as_bytes();
-  RuntimeMetadataPrefixed::decode(&mut bytes).map_err(|_| "Invalid metadata")
-}
-
-#[derive(Default)]
-struct Metadata {
-  metadata: Rc<Option<RuntimeMetadataPrefixed>>,
-  output: ClonedVar,
-}
-
-impl Block for Metadata {
-  fn registerName() -> &'static str {
-    cstr!("Substrate.Metadata")
-  }
-
-  fn hash() -> u32 {
-    compile_time_crc32::crc32!("Substrate.Metadata-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "Substrate.Metadata"
-  }
-
-  fn inputTypes(&mut self) -> &Vec<Type> {
-    &STRING_TYPES
-  }
-
-  fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(cbccstr!("The SCALE encoded string from state_getMetadata."))
-  }
-
-  fn outputTypes(&mut self) -> &Vec<Type> {
-    &BYTES_TYPES
-  }
-
-  fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(cbccstr!("The metadata object."))
-  }
-
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    self.metadata = Rc::new(Some(var_to_metadata(input)?));
-    let obj = Var::new_object(&self.metadata, &METADATA_TYPE);
-    Ok(obj)
-  }
-}
-
 pub fn registerBlocks() {
   registerBlock::<AccountId>();
   registerBlock::<CBStorageKey>();
   registerBlock::<CBStorageMap>();
   registerBlock::<CBEncode>();
   registerBlock::<CBDecode>();
-  registerBlock::<Metadata>();
 }

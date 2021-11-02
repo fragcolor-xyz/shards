@@ -19,6 +19,7 @@ use crate::Types;
 use crate::Var;
 use core::time::Duration;
 use sha2::{Digest, Sha256, Sha512};
+use sp_core::{blake2_128, blake2_256};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
@@ -198,6 +199,88 @@ add_hasher2!(
   Sha512::new
 );
 
+macro_rules! add_hasher3 {
+  ($block_name:ident, $name_str:literal, $hash:literal, $algo:expr, $size:literal) => {
+    struct $block_name {
+      output: Vec<u8>,
+      scratch: Vec<u8>,
+    }
+    impl Default for $block_name {
+      fn default() -> Self {
+        $block_name {
+          output: Vec::new(),
+          scratch: Vec::new(),
+        }
+      }
+    }
+    impl Block for $block_name {
+      fn registerName() -> &'static str {
+        cstr!($name_str)
+      }
+      fn hash() -> u32 {
+        compile_time_crc32::crc32!($hash)
+      }
+      fn name(&mut self) -> &str {
+        $name_str
+      }
+      fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+        &INPUT_TYPES
+      }
+      fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+        &BYTES_TYPES
+      }
+      fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+        self.scratch.clear();
+        if input.is_seq() {
+          let s: Seq = input.try_into().unwrap();
+          for val in s.iter() {
+            let bytes: Result<&[u8], &str> = val.as_ref().try_into();
+            if let Ok(bytes) = bytes {
+              self.scratch.extend(bytes);
+            } else {
+              let string: Result<&str, &str> = val.as_ref().try_into();
+              if let Ok(string) = string {
+                let bytes = string.as_bytes();
+                self.scratch.extend(bytes);
+              }
+            }
+          }
+        } else {
+          let bytes: Result<&[u8], &str> = input.as_ref().try_into();
+          if let Ok(bytes) = bytes {
+            self.scratch.extend(bytes);
+          } else {
+            let string: Result<&str, &str> = input.as_ref().try_into();
+            if let Ok(string) = string {
+              let bytes = string.as_bytes();
+              self.scratch.extend(bytes);
+            }
+          }
+        }
+        let output: [u8; $size] = $algo(&self.scratch);
+        self.output = output[..].into();
+        Ok(self.output.as_slice().into())
+      }
+    }
+  };
+}
+
+add_hasher3!(
+  CBBlake_128,
+  "Hash.Blake2-128",
+  "Hash.Blake2-128-rust-0x20200101",
+  blake2_128,
+  16
+);
+
+add_hasher3!(
+  CBBlake_256,
+  "Hash.Blake2-256",
+  "Hash.Blake2-256-rust-0x20200101",
+  blake2_256,
+  32
+);
+
 pub fn registerBlocks() {
   registerBlock::<Keccak_256>();
   registerBlock::<Keccak_512>();
@@ -205,4 +288,6 @@ pub fn registerBlocks() {
   registerBlock::<CBSha3_512>();
   registerBlock::<CBSha2_256>();
   registerBlock::<CBSha2_512>();
+  registerBlock::<CBBlake_128>();
+  registerBlock::<CBBlake_256>();
 }

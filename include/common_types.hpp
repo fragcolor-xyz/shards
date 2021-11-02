@@ -15,6 +15,7 @@ At runtime just dlopen the dll, that's it!
 namespace chainblocks {
 
 enum class BasicTypes {
+  None,
   Any,
   Bool,
   Int,

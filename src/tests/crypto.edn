@@ -1,5 +1,6 @@
 (def _args (eval `(assoc {} ~@*command-line-args*)))
 (def test-rpcs (if (contains? _args "--rpcs") (read-string (get _args "--rpcs")) false))
+(def rpc-server "http://172.23.16.138:9933")
 
 (defnode root)
 (defchain main
@@ -34,21 +35,22 @@
         (ToHex)
         (Log "Eth Address")
         (Assert.Is "0x30bfedb19bab047810a0b27b87ff73ec3aa840f9" true)))
-  
-  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getMetadata"} (ToJson) (Http.Post "http://172.20.243.56:9933")
+
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getMetadata"} (ToJson) (Http.Post rpc-server)
                     (FromJson) (ExpectTable) (Take "result") (ExpectString) = .metadata))
 
   ["Sudo" "Key"] (Substrate.StorageKey) (ToHex) (Assert.Is "0x5c0d1176a568c1f92944340dbfed9e9c530ebca703c85910e7164cb7d1c9e47b" true) = .sudo-key-data
-  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.sudo-key-data]} (ToJson) (Http.Post "http://172.20.243.56:9933") (Log)))
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.sudo-key-data]} (ToJson) (Http.Post rpc-server) (Log)))
+
   ["Fragments" "Something"] (Substrate.StorageKey) (ToHex) = .frag-key-data
-  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.frag-key-data]} (ToJson) (Http.Post "http://172.20.243.56:9933") (Log)
-                    (FromJson) (ExpectTable) (Take "result") (ExpectString) (HexToBytes) (Substrate.Decode [Type.Int] ["u32"]) (Log)))
+;;   (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.frag-key-data]} (ToJson) (Http.Post rpc-server) (Log)
+;;                     (FromJson) (ExpectTable) (Take "result") (ExpectString) (HexToBytes) (Substrate.Decode [Type.Int] ["u32"]) (Log)))
 
   ["Balances" "FreeBalance"] (Substrate.StorageKey) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4" true)
   ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" true)
 
   ["System" "Account" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"] (Substrate.StorageMap) (ToHex) = .balance-data
-  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.balance-data]} (ToJson) (Log) (Http.Post "http://172.20.243.56:9933") (Log)
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getStorage" "params" [.balance-data]} (ToJson) (Log) (Http.Post rpc-server) (Log)
                     (FromJson) (ExpectTable) (Take "result") (ExpectString) (HexToBytes) (Substrate.Decode [Type.Int] ["u64"]) (Log)))
 
   ["Balances" "FreeBalance" "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d" "0x002a"] (Substrate.StorageMap) (ToHex) (Assert.Is "0xc2261276cc9d1f8598ea4b6a74b15c2f6482b9ade7bc6657aaca787ba1add3b4de1e86a9a8c739864cf3cc5ec2bea59fd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dce11f437743387ffa42428d46ee58416002a" true)
@@ -62,6 +64,62 @@
   (Substrate.Decode [Type.Bool Type.Int] [nil "c"]) (Assert.Is [false 42] true)
   ["Hello world" "And universe" "And planets"] (Substrate.Encode [nil nil nil]) (Substrate.Decode [Type.String Type.String Type.String] [nil nil nil]) (Log)
   (Assert.Is ["Hello world" "And universe" "And planets"] true)
+
+  (if test-rpcs (-> {"id" 1 "jsonrpc" "2.0" "method" "state_getRuntimeVersion"} (ToJson) (Http.Post rpc-server)
+                    (FromJson) (ExpectTable) (Take "result") (ExpectTable) (Log) = .runtime-version))
+
+  (if test-rpcs
+    (-> {"id" 1 "jsonrpc" "2.0" "method" "chain_getBlockHash" "params" [0]} (ToJson) (Http.Post rpc-server)
+        (FromJson) (ExpectTable) (Take "result") (ExpectString) (Log) (HexToBytes) (Log) = .genesis-hash)
+    (-> (Bytes "0x0") = .genesis-hash))
+
+  ; extrinsic call
+
+  ; call payload to be signed
+  ; [module-index call-index args...]
+  [8 0 44] (Substrate.Encode ["u8" "u8" "u32"]) = .call-data
+
+  ; extra data to be signed
+  ; [era nonce auth-index?]
+  ; use 0 u8 for era to have an immortal transaction
+  [0 0 0] (Substrate.Encode ["u8" "c" "c"]) = .extra-data
+
+  ; additional data to be signed
+  ; [runtime-spec-version transaction-version genesis-hash genesis-or-current-hash nil nil nil]
+  [100 1 .genesis-hash .genesis-hash nil nil nil] (Substrate.Encode ["u32" "u32" nil nil nil nil nil]) = .additional-data
+
+  .call-data >= .signed-payload
+  .extra-data (AppendTo .signed-payload)
+  .additional-data (AppendTo .signed-payload)
+  (Count .signed-payload)
+  (If (IsMore 256)
+      (-> .signed-payload (Hash.Blake2-256))
+      (-> .signed-payload)) ; use hashed version if longer bigger than 256
+  (Sr25519.Sign "//Alice") (Log) >= .signature
+  ; add enum index 1
+  "0x01" (HexToBytes) (PrependTo .signature)
+  .signature (ToHex) (Log)
+
+  ; signer
+  "//Alice" (Sr25519.PublicKey) (Substrate.AccountId) (Log) = .alice-pub-key-ss58
+  ; multiaddress enum
+  [0 .alice-pub-key-ss58] (Substrate.Encode ["u8" "a"]) = .signer
+
+  ; call payload
+  ;  V4 | 0b1000_0000 - if signed
+  [0x84] (Substrate.Encode ["u8"]) >= .rpc-data
+  .signer (AppendTo .rpc-data)
+  .signature (AppendTo .rpc-data)
+  .extra-data (AppendTo .rpc-data)
+  ; V4 & 0b0111_1111 - if unsigned
+;;   [0x7F] (Substrate.Encode ["u8"]) >= .rpc-data
+  ; function
+  .call-data (AppendTo .rpc-data)
+  ; must be len prefixed
+  [.rpc-data] (Substrate.Encode [nil]) (ToHex) (Log) = .rpc-data-hex
+  (if test-rpcs
+    (-> {"id" 1 "jsonrpc" "2.0" "method" "author_submitExtrinsic" "params" [.rpc-data-hex]} (ToJson) (Http.Post rpc-server)
+        (FromJson) (Log)))
   ;
   )
 (schedule root main)
