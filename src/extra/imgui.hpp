@@ -37,15 +37,19 @@ struct Context {
 };
 
 struct Enums {
-  enum class GuiDir {
-    Left = ::ImGuiDir_Left,
-    Right = ::ImGuiDir_Right,
-    Up = ::ImGuiDir_Up,
-    Down = ::ImGuiDir_Down
+  enum class GuiButtonKind {
+    Normal,
+    Small,
+    Invisible,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    ArrowDown
   };
-  static constexpr uint32_t GuiDirCC = 'guiD';
-  static inline EnumInfo<GuiDir> GuiDirEnumInfo{"GuiDir", CoreCC, GuiDirCC};
-  static inline Type GuiDirType = Type::Enum(CoreCC, GuiDirCC);
+  static constexpr uint32_t GuiButtonKindCC = 'guiD';
+  static inline EnumInfo<GuiButtonKind> GuiButtonKindEnumInfo{
+      "GuiButton", CoreCC, GuiButtonKindCC};
+  static inline Type GuiButtonKindType = Type::Enum(CoreCC, GuiButtonKindCC);
 
   enum class GuiTableFlags {
     None = ::ImGuiTableFlags_None,
@@ -55,7 +59,7 @@ struct Enums {
     Sortable = ::ImGuiTableFlags_Sortable
   };
   static constexpr uint32_t GuiTableFlagsCC = 'guTF';
-  static inline EnumInfo<GuiTableFlags> GuiTableFlagsEnumInfo{
+  static inline FlagsInfo<GuiTableFlags> GuiTableFlagsEnumInfo{
       "GuiTableFlags", CoreCC, GuiTableFlagsCC};
   static inline Type GuiTableFlagsType = Type::Enum(CoreCC, GuiTableFlagsCC);
 
@@ -66,7 +70,7 @@ struct Enums {
     DefaultSort = ::ImGuiTableColumnFlags_DefaultSort
   };
   static constexpr uint32_t GuiTableColumnFlagsCC = 'gTCF';
-  static inline EnumInfo<GuiTableColumnFlags> GuiTableColumnFlagsEnumInfo{
+  static inline FlagsInfo<GuiTableColumnFlags> GuiTableColumnFlagsEnumInfo{
       "GuiTableColumnFlags", CoreCC, GuiTableColumnFlagsCC};
   static inline Type GuiTableColumnFlagsType =
       Type::Enum(CoreCC, GuiTableColumnFlagsCC);

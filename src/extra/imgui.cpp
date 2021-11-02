@@ -1361,118 +1361,6 @@ struct Bullet : public Base {
 };
 
 struct Button : public Base {
-  CBTypesInfo outputType() { return CoreInfo::BoolType; }
-
-  static inline Type buttonTypeInfo{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiB'}}}};
-
-  enum ButtonTypes { Normal, Small, Invisible };
-
-  typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
-  static inline ButtonEnumInfo buttonEnumInfo{"GuiButton", CoreCC, 'guiB'};
-
-  BlocksVar _blks{};
-  ButtonTypes _type{};
-  std::string _label;
-  ImVec2 _size = {0, 0};
-
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Label", CBCCSTR("The text label of this button."),
-                        CoreInfo::StringType),
-      ParamsInfo::Param(
-          "Action",
-          CBCCSTR("The blocks to execute when the button is pressed."),
-          CoreInfo::BlocksOrNone),
-      ParamsInfo::Param("Type", CBCCSTR("The button type."), buttonTypeInfo),
-      ParamsInfo::Param("Size", CBCCSTR("The optional size override."),
-                        CoreInfo::Float2Type));
-
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
-
-  void setParam(int index, const CBVar &value) {
-    switch (index) {
-    case 0:
-      _label = value.payload.stringValue;
-      break;
-    case 1:
-      _blks = value;
-      break;
-    case 2:
-      _type = ButtonTypes(value.payload.enumValue);
-      break;
-    case 3:
-      _size.x = value.payload.float2Value[0];
-      _size.y = value.payload.float2Value[1];
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(_label);
-    case 1:
-      return _blks;
-    case 2:
-      return Var::Enum(_type, CoreCC, 'guiB');
-    case 3:
-      return Var(_size.x, _size.x);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blks.compose(data);
-    return CoreInfo::BoolType;
-  }
-
-  void cleanup() { _blks.cleanup(); }
-
-  void warmup(CBContext *ctx) { _blks.warmup(ctx); }
-
-#define IMBTN_RUN_ACTION                                                       \
-  {                                                                            \
-    CBVar output = Var::Empty;                                                 \
-    _blks.activate(context, input, output);                                    \
-  }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    IDContext idCtx(this);
-
-    auto result = Var::False;
-    ImVec2 size;
-    switch (_type) {
-    case Normal:
-      if (::ImGui::Button(_label.c_str(), _size)) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
-    case Small:
-      if (::ImGui::SmallButton(_label.c_str())) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
-    case Invisible:
-      if (::ImGui::InvisibleButton(_label.c_str(), _size)) {
-        IMBTN_RUN_ACTION;
-        result = Var::True;
-      }
-      break;
-    }
-    return result;
-  }
-};
-
-struct ArrowButton : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -1485,12 +1373,16 @@ struct ArrowButton : public Base {
       _label = value.payload.stringValue;
       break;
     case 1:
-      _dir = ::ImGuiDir(value.payload.enumValue);
-      break;
-    case 2:
       _blocks = value;
       break;
+    case 2:
+      _type = Enums::GuiButtonKind(value.payload.enumValue);
+      break;
     case 3:
+      _size.x = value.payload.float2Value[0];
+      _size.y = value.payload.float2Value[1];
+      break;
+    case 4:
       _repeat = value.payload.boolValue;
       break;
     default:
@@ -1503,56 +1395,106 @@ struct ArrowButton : public Base {
     case 0:
       return Var(_label);
     case 1:
-      return Var::Enum(_dir, CoreCC, Enums::GuiDirCC);
-    case 2:
       return _blocks;
+    case 2:
+      return Var::Enum(_type, CoreCC, Enums::GuiButtonKindCC);
     case 3:
+      return Var(_size.x, _size.x);
+    case 4:
       return Var(_repeat);
     default:
-      break;
+      return Var::Empty;
     }
-    return Var::Empty;
   }
-
-  void cleanup() { _blocks.cleanup(); }
-
-  void warmup(CBContext *context) { _blocks.warmup(context); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blocks.compose(data);
     return CoreInfo::BoolType;
   }
 
+  void cleanup() { _blocks.cleanup(); }
+
+  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+
+#define IMBTN_RUN_ACTION                                                       \
+  {                                                                            \
+    CBVar output = Var::Empty;                                                 \
+    _blocks.activate(context, input, output);                                  \
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
+    IDContext idCtx(this);
+
     ::ImGui::PushButtonRepeat(_repeat);
     DEFER(::ImGui::PopButtonRepeat());
 
-    if (::ImGui::ArrowButton(_label.c_str(), _dir)) {
-      CBVar output{};
-      _blocks.activate(context, input, output);
-      return Var::True;
+    auto result = Var::False;
+    ImVec2 size;
+    switch (_type) {
+    case Enums::GuiButtonKind::Normal:
+      if (::ImGui::Button(_label.c_str(), _size)) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
+    case Enums::GuiButtonKind::Small:
+      if (::ImGui::SmallButton(_label.c_str())) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
+    case Enums::GuiButtonKind::Invisible:
+      if (::ImGui::InvisibleButton(_label.c_str(), _size)) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
+    case Enums::GuiButtonKind::ArrowLeft:
+      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Left)) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
+    case Enums::GuiButtonKind::ArrowRight:
+      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Right)) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
+    case Enums::GuiButtonKind::ArrowUp:
+      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Up)) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
+    case Enums::GuiButtonKind::ArrowDown:
+      if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Down)) {
+        IMBTN_RUN_ACTION;
+        result = Var::True;
+      }
+      break;
     }
-    return Var::False;
+    return result;
   }
 
 private:
   static inline Parameters _params = {
       {"Label",
-       CBCCSTR("The text label of this button."), // FIXME: it is not a label
-                                                  // but an ID
+       CBCCSTR("The text label of this button."),
        {CoreInfo::StringType}},
-      {"Direction", CBCCSTR("The direction of the arrow"), {Enums::GuiDirType}},
-      {"Action",
-       CBCCSTR("The blocks to execute when the button is pressed."),
-       {CoreInfo::BlocksOrNone}},
+      {"Action", CBCCSTR("The blocks to execute when the button is pressed."),
+       CoreInfo::BlocksOrNone},
+      {"Type", CBCCSTR("The button type."), {Enums::GuiButtonKindType}},
+      {"Size", CBCCSTR("The optional size override."), {CoreInfo::Float2Type}},
       {"Repeat",
        CBCCSTR("Whether to repeat the action while the button is pressed."),
        {CoreInfo::BoolType}},
   };
 
   std::string _label;
-  ImGuiDir _dir{ImGuiDir_Left};
   BlocksVar _blocks{};
+  Enums::GuiButtonKind _type{};
+  ImVec2 _size = {0, 0};
   bool _repeat{false};
 };
 
@@ -3966,13 +3908,20 @@ struct Table : public Base {
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
-    case 0:
+    case 0: {
+      if (value.valueType == None) {
+        _name.clear();
+      } else {
+        _name = value.payload.stringValue;
+      }
+    } break;
+    case 1:
       _columns = value.payload.intValue;
       break;
-    case 1:
+    case 2:
       _blocks = value;
       break;
-    case 2:
+    case 3:
       _flags = value;
       break;
     default:
@@ -3983,10 +3932,12 @@ struct Table : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_columns);
+      return Var(_name);
     case 1:
-      return _blocks;
+      return Var(_columns);
     case 2:
+      return _blocks;
+    case 3:
       return _flags;
     default:
       break;
@@ -4011,8 +3962,8 @@ struct Table : public Base {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto flags = ::ImGuiTableFlags(_flags.get().payload.enumValue);
-    auto active = ::ImGui::BeginTable(
-        "myTable", _columns, flags); // FIXME: ID should be uniquely generated
+    auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTable";
+    auto active = ::ImGui::BeginTable(str_id, _columns, flags);
     if (active) {
       DEFER(::ImGui::EndTable());
       CBVar output{};
@@ -4023,14 +3974,18 @@ struct Table : public Base {
 
 private:
   static inline Parameters _params = {
+      {"Name",
+       CBCCSTR("A unique name for this table."),
+       {CoreInfo::StringType}},
       {"Columns", CBCCSTR("The number of columns."), {CoreInfo::IntType}},
       {"Contents", CBCCSTR("The inner contents blocks."),
        CoreInfo::BlocksOrNone},
       {"Flags",
-       CBCCSTR("TODO!"),
+       CBCCSTR("Flags to enable table options."),
        {Enums::GuiTableFlagsType, Type::VariableOf(Enums::GuiTableFlagsType)}},
   };
 
+  std::string _name;
   int _columns;
   BlocksVar _blocks{};
   ParamVar _flags{};
@@ -4118,9 +4073,9 @@ struct TableSetupColumn : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("TODO!"), {CoreInfo::StringType}},
+      {"Label", CBCCSTR("Column header"), {CoreInfo::StringType}},
       {"Flags",
-       CBCCSTR("TODO!"),
+       CBCCSTR("Flags to enable column options."),
        {Enums::GuiTableColumnFlagsType,
         Type::VariableOf(Enums::GuiTableColumnFlagsType)}},
   };
@@ -4139,7 +4094,6 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Text", Text);
   REGISTER_CBLOCK("GUI.Bullet", Bullet);
   REGISTER_CBLOCK("GUI.Button", Button);
-  REGISTER_CBLOCK("GUI.ArrowButton", ArrowButton);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
   REGISTER_CBLOCK("GUI.Dummy", Dummy);
   REGISTER_CBLOCK("GUI.NewLine", NewLine);

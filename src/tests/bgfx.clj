@@ -305,7 +305,7 @@
                    (Cond [(-> (Is true)) (Msg "yeah...")])
                    (GUI.Button "Push me!" (Msg "Action!") GuiButton.Small)
                    (Cond [(-> (Is true)) (Msg "yeah...")])
-                   (GUI.ArrowButton "Push me!" GuiDir.Up (Msg "Action!"))
+                   (GUI.Button "Push me!" (Msg "Action!") GuiButton.ArrowUp)
                    (Cond [(-> (Is true)) (Msg "yeah...")])
                    (GUI.ChildWindow :Border true :Height 350 :Contents
                                     (-> (ToBytes)
