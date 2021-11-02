@@ -1544,6 +1544,9 @@ struct Sequence : public SeqBase {
 
   void addType(Types &inner, BasicTypes type) {
     switch (type) {
+    case BasicTypes::None:
+      inner._types.emplace_back(CoreInfo::NoneType);
+      break;
     case BasicTypes::Any:
       inner._types.emplace_back(CoreInfo::AnyType);
       break;
@@ -1822,6 +1825,9 @@ struct TableDecl : public VariableBase {
 
   void addType(Types &inner, BasicTypes type) {
     switch (type) {
+    case BasicTypes::None:
+      inner._types.emplace_back(CoreInfo::NoneType);
+      break;
     case BasicTypes::Any:
       inner._types.emplace_back(CoreInfo::AnyType);
       break;
