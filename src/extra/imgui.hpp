@@ -66,10 +66,27 @@ struct Enums {
     DefaultSort = ::ImGuiTableColumnFlags_DefaultSort
   };
   static constexpr uint32_t GuiTableColumnFlagsCC = 'gTCF';
-  static inline EnumInfo<GuiTableFlags> GuiTableColumnFlagsEnumInfo{
+  static inline EnumInfo<GuiTableColumnFlags> GuiTableColumnFlagsEnumInfo{
       "GuiTableColumnFlags", CoreCC, GuiTableColumnFlagsCC};
   static inline Type GuiTableColumnFlagsType =
       Type::Enum(CoreCC, GuiTableColumnFlagsCC);
+
+  enum class GuiTreeNodeFlags {
+    None = ::ImGuiTreeNodeFlags_None,
+    Selected = ::ImGuiTreeNodeFlags_Selected,
+    Framed = ::ImGuiTreeNodeFlags_Framed,
+    OpenOnDoubleClick = ::ImGuiTreeNodeFlags_OpenOnDoubleClick,
+    OpenOnArrow = ::ImGuiTreeNodeFlags_OpenOnArrow,
+    Leaf = ::ImGuiTreeNodeFlags_Leaf,
+    Bullet = ::ImGuiTreeNodeFlags_Bullet,
+    SpanAvailWidth = ::ImGuiTreeNodeFlags_SpanAvailWidth,
+    SpanFullWidth = ::ImGuiTreeNodeFlags_SpanFullWidth
+  };
+  static constexpr uint32_t GuiTreeNodeFlagsCC = 'gTNF';
+  static inline FlagsInfo<GuiTreeNodeFlags> GuiTreeNodeFlagsEnumInfo{
+      "GuiTreeNodeFlags", CoreCC, GuiTreeNodeFlagsCC};
+  static inline Type GuiTreeNodeFlagsType =
+      Type::Enum(CoreCC, GuiTreeNodeFlagsCC);
 };
 }; // namespace ImGui
 }; // namespace chainblocks

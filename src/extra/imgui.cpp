@@ -1634,16 +1634,22 @@ struct SetClipboard : public Base {
 struct TreeNode : public Base {
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static CBParametersInfo parameters() { return _params; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     _blocks.compose(data);
     return CoreInfo::BoolType;
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() {
+    _blocks.cleanup();
+    _flags.cleanup();
+  }
 
-  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+  void warmup(CBContext *context) {
+    _blocks.warmup(context);
+    _flags.warmup(context);
+  }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -1655,6 +1661,9 @@ struct TreeNode : public Base {
       break;
     case 2:
       _defaultOpen = value.payload.boolValue;
+      break;
+    case 3:
+      _flags = value;
       break;
     default:
       break;
@@ -1669,6 +1678,8 @@ struct TreeNode : public Base {
       return _blocks;
     case 2:
       return Var(_defaultOpen);
+    case 3:
+      return _flags;
     default:
       return CBVar();
     }
@@ -1677,12 +1688,13 @@ struct TreeNode : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
+    auto flags = ::ImGuiTreeNodeFlags(_flags.get().payload.enumValue);
+
     if (_defaultOpen) {
-      ::ImGui::SetNextItemOpen(true);
-      _defaultOpen = false;
+      flags |= ::ImGuiTreeNodeFlags_DefaultOpen;
     }
 
-    auto visible = ::ImGui::TreeNode(_label.c_str());
+    auto visible = ::ImGui::TreeNodeEx(_label.c_str(), flags);
     if (visible) {
       CBVar output{};
       // run inner blocks
@@ -1695,18 +1707,23 @@ struct TreeNode : public Base {
   }
 
 private:
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Label", CBCCSTR("The label of this node."),
-                        CoreInfo::StringType),
-      ParamsInfo::Param("Contents", CBCCSTR("The contents of this node."),
-                        CoreInfo::BlocksOrNone),
-      ParamsInfo::Param("StartOpen",
-                        CBCCSTR("If this node should start in the open state."),
-                        CoreInfo::BoolType));
+  static inline Parameters _params = {
+      {"Label", CBCCSTR("The label of this node."), {CoreInfo::StringType}},
+      {"Contents", CBCCSTR("The contents of this node."),
+       CoreInfo::BlocksOrNone},
+      {"StartOpen",
+       CBCCSTR("If this node should start in the open state."),
+       {CoreInfo::BoolType}},
+      {"Flags",
+       CBCCSTR("Flags to enable tree node options."),
+       {Enums::GuiTreeNodeFlagsType,
+        Type::VariableOf(Enums::GuiTreeNodeFlagsType)}},
+  };
 
   std::string _label;
   bool _defaultOpen = false;
   BlocksVar _blocks;
+  ParamVar _flags{};
 };
 
 struct CollapsingHeader : public Base {
