@@ -1362,7 +1362,7 @@ struct Button : public Base {
   enum ButtonTypes { Normal, Small, Invisible };
 
   typedef EnumInfo<ButtonTypes> ButtonEnumInfo;
-  static inline ButtonEnumInfo buttonEnumInfo{"ImGuiButton", CoreCC, 'guiB'};
+  static inline ButtonEnumInfo buttonEnumInfo{"GuiButton", CoreCC, 'guiB'};
 
   BlocksVar _blks{};
   ButtonTypes _type{};

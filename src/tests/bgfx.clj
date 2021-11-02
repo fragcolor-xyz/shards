@@ -303,7 +303,7 @@
 
                    (GUI.Button "Push me!" (Msg "Action!"))
                    (Cond [(-> (Is true)) (Msg "yeah...")])
-                   (GUI.Button "Push me!" (Msg "Action!") ImGuiButton.Small)
+                   (GUI.Button "Push me!" (Msg "Action!") GuiButton.Small)
                    (Cond [(-> (Is true)) (Msg "yeah...")])
                    (GUI.ArrowButton "Push me!" GuiDir.Up (Msg "Action!"))
                    (Cond [(-> (Is true)) (Msg "yeah...")])
