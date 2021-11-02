@@ -1031,6 +1031,12 @@ public:
       : TEnumInfo<InternalCore, E>(name, vendorId, enumId) {}
 };
 
+template <typename E> class FlagsInfo : public TFlagsInfo<InternalCore, E> {
+public:
+  FlagsInfo(const char *name, int32_t vendorId, int32_t enumId)
+      : TFlagsInfo<InternalCore, E>(name, vendorId, enumId) {}
+};
+
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
           E (*Deserializer)(const std::string_view &) = nullptr,
           void (*BeforeDelete)(const E &) = nullptr>

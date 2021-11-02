@@ -317,6 +317,38 @@ public:
   }
 };
 
+template <class CB_CORE, typename E> class TFlagsInfo {
+private:
+  static constexpr auto eseq = magic_enum::flags::enum_names<E>();
+  static constexpr auto vseq = magic_enum::flags::enum_values<E>();
+  CBEnumInfo info;
+  std::vector<std::string> labels;
+  std::vector<CBString> clabels;
+  std::vector<CBEnum> values;
+
+public:
+  TFlagsInfo(const char *name, int32_t vendorId, int32_t enumId) {
+    info.name = name;
+    for (auto &view : eseq) {
+      labels.emplace_back(view);
+    }
+    for (auto &s : labels) {
+      clabels.emplace_back(s.c_str());
+    }
+    info.labels.elements = &clabels[0];
+    info.labels.len = uint32_t(labels.size());
+
+    for (auto &v : vseq) {
+      values.emplace_back(CBEnum(v));
+    }
+    info.values.elements = &values[0];
+    info.values.len = uint32_t(values.size());
+
+    assert(info.values.len == info.labels.len);
+    CB_CORE::registerEnumType(vendorId, enumId, info);
+  }
+};
+
 template <class CB_CORE, typename E,
           std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
           E (*Deserializer)(const std::string_view &) = nullptr,
