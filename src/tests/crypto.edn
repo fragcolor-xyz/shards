@@ -80,20 +80,21 @@
   [8 0 44] (Substrate.Encode ["u8" "u8" "u32"]) = .call-data
 
   ; extra data to be signed
-  ; [era nonce auth-index?]
+  ; [era nonce weight]
   ; use 0 u8 for era to have an immortal transaction
   [0 0 0] (Substrate.Encode ["u8" "c" "c"]) = .extra-data
 
   ; additional data to be signed
-  ; [runtime-spec-version transaction-version genesis-hash genesis-or-current-hash nil nil nil]
-  [100 1 .genesis-hash .genesis-hash nil nil nil] (Substrate.Encode ["u32" "u32" nil nil nil nil nil]) = .additional-data
+  ; [runtime-spec-version transaction-version genesis-hash genesis-or-current-hash]
+  [100 1] (Substrate.Encode ["u32" "u32"]) >= .additional-data
+  .genesis-hash (AppendTo .additional-data) (AppendTo .additional-data) ; twice
 
   .call-data >= .signed-payload
   .extra-data (AppendTo .signed-payload)
   .additional-data (AppendTo .signed-payload)
   (Count .signed-payload)
   (If (IsMore 256)
-      (-> .signed-payload (Hash.Blake2-256))
+      (-> (Msg "Big signature") .signed-payload (Hash.Blake2-256))
       (-> .signed-payload)) ; use hashed version if longer bigger than 256
   (Sr25519.Sign "//Alice") (Log) >= .signature
   ; add enum index 1
@@ -101,9 +102,9 @@
   .signature (ToHex) (Log)
 
   ; signer
-  "//Alice" (Sr25519.PublicKey) (Substrate.AccountId) (Log) = .alice-pub-key-ss58
+  "//Alice" (Sr25519.PublicKey) (Substrate.AccountId) (Log)= .alice-pub-key
   ; multiaddress enum
-  [0 .alice-pub-key-ss58] (Substrate.Encode ["u8" "a"]) = .signer
+  [0 .alice-pub-key] (Substrate.Encode ["u8" "a"]) = .signer
 
   ; call payload
   ;  V4 | 0b1000_0000 - if signed
