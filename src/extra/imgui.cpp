@@ -1574,6 +1574,60 @@ struct HexViewer : public Base {
   }
 };
 
+struct Dummy : public Base {
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _width = value;
+      break;
+    case 1:
+      _height = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _width;
+    case 1:
+      return _height;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup() {
+    _width.cleanup();
+    _height.cleanup();
+  }
+
+  void warmup(CBContext *ctx) {
+    _width.warmup(ctx);
+    _height.warmup(ctx);
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto width = float(_width.get().payload.intValue);
+    auto height = float(_height.get().payload.intValue);
+    ::ImGui::Dummy({width, height});
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"Width", CBCCSTR("The width of the item."), CoreInfo::IntOrIntVar},
+      {"Height", CBCCSTR("The height of the item."), CoreInfo::IntOrIntVar},
+  };
+
+  ParamVar _width{Var(0)};
+  ParamVar _height{Var(0)};
+};
+
 struct NewLine : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     ::ImGui::NewLine();
@@ -4087,6 +4141,7 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Button", Button);
   REGISTER_CBLOCK("GUI.ArrowButton", ArrowButton);
   REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
+  REGISTER_CBLOCK("GUI.Dummy", Dummy);
   REGISTER_CBLOCK("GUI.NewLine", NewLine);
   REGISTER_CBLOCK("GUI.SameLine", SameLine);
   REGISTER_CBLOCK("GUI.Separator", Separator);
