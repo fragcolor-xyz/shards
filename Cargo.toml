@@ -4,4 +4,4 @@ members = [
 ]
 
 [patch.crates-io]
-chrono = { git = "https://github.com/sinkingsugar/chrono" }
+chrono = { git = "https://github.com/chronotope/chrono", branch = "main" }
