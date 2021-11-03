@@ -174,7 +174,6 @@
         (str "Box " n))
 
       (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
-                  :AllowResize true :AllowMove true :AllowCollapse true
                   :Pos (Int2 0 0) :Contents
                   (->
                    (Inputs.MousePos)
@@ -311,7 +310,7 @@
                                     (-> (ToBytes)
                                         (GUI.HexViewer)))))
       (GUI.Window "Another window" :Pos (Float2 0.5 0.5) :Width 0.25 :Height 0.25
-                  :AllowMove true
+                  :Flags [GuiWindowFlags.NoResize, GuiWindowFlags.NoCollapse]
                   :Contents
                   (->
                    "Hi" (GUI.Text)))])))

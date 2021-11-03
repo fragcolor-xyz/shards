@@ -19,6 +19,7 @@
     (GUI.Window
      :Title "Hot-reloaded window"
      :Width 400 :Height 720 :Pos (int2 0, 0)
+     :Flags [GuiWindowFlags.NoResize, GuiWindowFlags.NoMove, GuiWindowFlags.NoCollapse]
      :Contents
      (-> (ChainLoader (Chain* "imgui-sandbox.clj"))))))))
 

@@ -537,10 +537,7 @@ struct Window : public Base {
   std::string _title;
   bool firstActivation{true};
   Var _pos{}, _width{}, _height{};
-  bool _movable{false};
-  bool _closable{false};
-  bool _resizable{false};
-  bool _showMenuBar{false};
+  ParamVar _flags;
   ParamVar _notClosed{Var::True};
   std::array<CBExposedTypeInfo, 2> _required;
 
@@ -564,18 +561,10 @@ struct Window : public Base {
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
       {"Contents", CBCCSTR("The inner contents blocks."),
        CoreInfo::BlocksOrNone},
-      {"AllowMove",
-       CBCCSTR("If the window can be moved."),
-       {CoreInfo::BoolType}},
-      {"AllowResize",
-       CBCCSTR("If the window can be resized."),
-       {CoreInfo::BoolType}},
-      {"AllowCollapse",
-       CBCCSTR("If the window can be collapsed."),
-       {CoreInfo::BoolType}},
-      {"ShowMenuBar",
-       CBCCSTR("If the window should display a menubar."),
-       {CoreInfo::BoolType}},
+      {"Flags",
+       CBCCSTR("Flags to enable window options."),
+       {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType,
+        Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType}},
       {"OnClose",
        CBCCSTR("Passing a variable will display a close button in the "
                "upper-right corner. Clicking will set the variable to false "
@@ -608,18 +597,9 @@ struct Window : public Base {
       _blks = value;
       break;
     case 5:
-      _movable = value.payload.boolValue;
+      _flags = value;
       break;
     case 6:
-      _resizable = value.payload.boolValue;
-      break;
-    case 7:
-      _closable = value.payload.boolValue;
-      break;
-    case 8:
-      _showMenuBar = value.payload.boolValue;
-      break;
-    case 9:
       _notClosed = value;
       break;
     default:
@@ -640,14 +620,8 @@ struct Window : public Base {
     case 4:
       return _blks;
     case 5:
-      return Var(_movable);
+      return _flags;
     case 6:
-      return Var(_resizable);
-    case 7:
-      return Var(_closable);
-    case 8:
-      return Var(_showMenuBar);
-    case 9:
       return _notClosed;
     default:
       return Var::Empty;
@@ -656,11 +630,13 @@ struct Window : public Base {
 
   void cleanup() {
     _blks.cleanup();
+    _flags.cleanup();
     _notClosed.cleanup();
   }
 
   void warmup(CBContext *context) {
     _blks.warmup(context);
+    _flags.warmup(context);
     _notClosed.warmup(context);
     firstActivation = true;
   }
@@ -686,12 +662,9 @@ struct Window : public Base {
     if (!_blks)
       return input;
 
-    int flags = ImGuiWindowFlags_NoSavedSettings;
-
-    flags |= !_movable ? ImGuiWindowFlags_NoMove : 0;
-    flags |= !_closable ? ImGuiWindowFlags_NoCollapse : 0;
-    flags |= !_resizable ? ImGuiWindowFlags_NoResize : 0;
-    flags |= _showMenuBar ? ImGuiWindowFlags_MenuBar : 0;
+    auto flags = ::ImGuiWindowFlags_NoSavedSettings |
+                 ::ImGuiWindowFlags(
+                     chainblocks::getFlags<Enums::GuiWindowFlags>(_flags));
 
     if (firstActivation) {
       const ImGuiIO &io = ::ImGui::GetIO();

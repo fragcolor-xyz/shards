@@ -139,7 +139,6 @@
      ; toolbar
      (GUI.Window
       :Title "Toolbar" :Height 316 :Width 500 :Pos (Int2 4 4)
-      :AllowResize true :AllowMove true :AllowCollapse true
       :Contents
       (->
        "Grid axes" (GUI.Text) (GUI.SameLine)
