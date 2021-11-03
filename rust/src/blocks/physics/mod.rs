@@ -14,6 +14,7 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Seq;
 use crate::types::Type;
+use crate::types::FRAG_CC;
 use crate::Var;
 use rapier3d::dynamics::{
   CCDSolver, IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet,
@@ -30,7 +31,7 @@ lazy_static! {
   static ref SIMULATION_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x66726167, // 'frag'
+      vendorId: FRAG_CC, // 'frag'
       typeId: 0x70687973, // 'phys'
     };
     t
@@ -47,7 +48,7 @@ lazy_static! {
   static ref SHAPE_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x66726167, // 'frag'
+      vendorId: FRAG_CC, // 'frag'
       typeId: 0x70687953, // 'phyS'
     };
     t
@@ -61,7 +62,7 @@ lazy_static! {
   static ref RIGIDBODY_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x66726167, // 'frag'
+      vendorId: FRAG_CC, // 'frag'
       typeId: 0x70687952, // 'phyR'
     };
     t

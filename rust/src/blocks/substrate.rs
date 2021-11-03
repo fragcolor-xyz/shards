@@ -24,9 +24,10 @@ use crate::types::Table;
 use crate::types::Type;
 use crate::types::ANYS_TYPES;
 use crate::types::BYTES_TYPES;
+use crate::types::ENUMS_TYPE;
+use crate::types::FRAG_CC;
 use crate::types::STRINGS_TYPES;
 use crate::types::STRING_TYPES;
-use crate::types::TYPES_ENUMS;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -35,8 +36,8 @@ use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
 use sp_core::{blake2_128, ed25519, sr25519, twox_128};
-use sp_runtime::{MultiSignature, MultiSigner, MultiAddress};
-use sp_runtime::generic::{Era};
+use sp_runtime::generic::Era;
+use sp_runtime::{MultiAddress, MultiSignature, MultiSigner};
 use std::convert::{TryFrom, TryInto};
 use std::ffi::CStr;
 use std::rc::Rc;
@@ -60,7 +61,7 @@ lazy_static! {
   static ref DECODE_PARAMETERS: Parameters = vec![(
     cstr!("Types"),
     cbccstr!("The list of types expected to decode."),
-    vec![*TYPES_ENUMS]
+    vec![*ENUMS_TYPE]
   )
     .into(),
   (
@@ -72,7 +73,7 @@ lazy_static! {
   static ref METADATA_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = CBTypeInfo_Details_Object {
-      vendorId: 0x66726167, // 'frag'
+      vendorId: FRAG_CC, // 'frag'
       typeId: 0x7375624D, // 'subM'
     };
     t

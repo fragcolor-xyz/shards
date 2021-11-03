@@ -2303,6 +2303,8 @@ impl PartialEq for Type {
   }
 }
 
+pub const FRAG_CC: i32 = 0x66726167;  // 'frag'
+
 // TODO share those from C++ ones to reduce binary size
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
@@ -2338,14 +2340,14 @@ lazy_static! {
   };
   pub static ref FLOAT4X2_TYPES: Vec<Type> = vec![*FLOAT4X2_TYPE];
   pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&FLOAT4X2_TYPES);
-  pub static ref TYPES_ENUM: Type = {
+  pub static ref ENUM_TYPE: Type = {
     let mut t = common_type::enumeration;
     t.details.enumeration = CBTypeInfo_Details_Enum {
-      vendorId: 0x66726167, // 'frag'
+      vendorId: FRAG_CC, // 'frag'
       typeId: 0x74797065, // 'type'
     };
     t
   };
-  pub static ref TYPES_ENUM_TYPES: Vec<Type> = vec![*TYPES_ENUM];
-  pub static ref TYPES_ENUMS: Type = Type::seq(&TYPES_ENUM_TYPES);
+  pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
+  pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
 }
