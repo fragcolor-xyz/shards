@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace chainblocks {
-constexpr uint32_t CoreCC = 'frag'; // 1718772071
+constexpr uint32_t CoreCC = 'frag'; // FourCC = 1718772071 = 0x66726167
 
 class CBException : public std::exception {
 public:
