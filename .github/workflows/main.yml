@@ -541,8 +541,6 @@ jobs:
           ./cbl ../src/tests/general.edn
           echo "Running test: variables"
           ./cbl ../src/tests/variables.clj
-          echo "Running test: subchains"
-          ./cbl ../src/tests/subchains.clj
           echo "Running test: linalg"
           ./cbl ../src/tests/linalg.clj
           echo "Running test: loader"
@@ -581,6 +579,8 @@ jobs:
           ./cbl ../src/tests/genetic.clj
           echo "Running test: time"
           ./cbl ../src/tests/time.edn
+          echo "Running test: subchains"
+          ./cbl ../src/tests/subchains.clj
 
   #
   # Run blocks documentation samples
