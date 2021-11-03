@@ -1211,6 +1211,65 @@ pub type CBInt = i64;
 pub type CBFloat = f64;
 pub type CBBool = bool;
 pub type CBEnum = i32;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CBEnums {
+  pub elements: *mut CBEnum,
+  pub len: u32,
+  pub cap: u32,
+}
+#[test]
+fn bindgen_test_layout_CBEnums() {
+  assert_eq!(
+    ::core::mem::size_of::<CBEnums>(),
+    12usize,
+    concat!("Size of: ", stringify!(CBEnums))
+  );
+  assert_eq!(
+    ::core::mem::align_of::<CBEnums>(),
+    4usize,
+    concat!("Alignment of ", stringify!(CBEnums))
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<CBEnums>())).elements as *const _ as usize },
+    0usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(CBEnums),
+      "::",
+      stringify!(elements)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<CBEnums>())).len as *const _ as usize },
+    4usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(CBEnums),
+      "::",
+      stringify!(len)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<CBEnums>())).cap as *const _ as usize },
+    8usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(CBEnums),
+      "::",
+      stringify!(cap)
+    )
+  );
+}
+impl Default for CBEnums {
+  fn default() -> Self {
+    let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+    unsafe {
+      ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+      s.assume_init()
+    }
+  }
+}
 pub type CBString = *const ::std::os::raw::c_char;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2408,12 +2467,13 @@ impl Default for CBObjectInfo {
 pub struct CBEnumInfo {
   pub name: CBString,
   pub labels: CBStrings,
+  pub values: CBEnums,
 }
 #[test]
 fn bindgen_test_layout_CBEnumInfo() {
   assert_eq!(
     ::core::mem::size_of::<CBEnumInfo>(),
-    16usize,
+    28usize,
     concat!("Size of: ", stringify!(CBEnumInfo))
   );
   assert_eq!(
@@ -2439,6 +2499,16 @@ fn bindgen_test_layout_CBEnumInfo() {
       stringify!(CBEnumInfo),
       "::",
       stringify!(labels)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<CBEnumInfo>())).values as *const _ as usize },
+    16usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(CBEnumInfo),
+      "::",
+      stringify!(values)
     )
   );
 }
@@ -4367,6 +4437,18 @@ pub type CBExposedTypesInfoFastDelete =
   ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBExposedTypesInfo, arg2: u32)>;
 pub type CBExposedTypesInfoSlowDelete =
   ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBExposedTypesInfo, arg2: u32)>;
+pub type CBEnumsFree = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums)>;
+pub type CBEnumsPush =
+  ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums, arg2: *const CBEnum)>;
+pub type CBEnumsInsert =
+  ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums, arg2: u32, arg3: *const CBEnum)>;
+pub type CBEnumsPop = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums) -> CBEnum>;
+pub type CBEnumsResize =
+  ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums, arg2: u32)>;
+pub type CBEnumsFastDelete =
+  ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums, arg2: u32)>;
+pub type CBEnumsSlowDelete =
+  ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBEnums, arg2: u32)>;
 pub type CBStringsFree = ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBStrings)>;
 pub type CBStringsPush =
   ::core::option::Option<unsafe extern "C" fn(arg1: *mut CBStrings, arg2: *const CBString)>;
@@ -4604,6 +4686,13 @@ pub struct _CBCore {
   pub expTypesResize: CBExposedTypesInfoResize,
   pub expTypesFastDelete: CBExposedTypesInfoFastDelete,
   pub expTypesSlowDelete: CBExposedTypesInfoSlowDelete,
+  pub enumsFree: CBEnumsFree,
+  pub enumsPush: CBEnumsPush,
+  pub enumsInsert: CBEnumsInsert,
+  pub enumsPop: CBEnumsPop,
+  pub enumsResize: CBEnumsResize,
+  pub enumsFastDelete: CBEnumsFastDelete,
+  pub enumsSlowDelete: CBEnumsSlowDelete,
   pub stringsFree: CBStringsFree,
   pub stringsPush: CBStringsPush,
   pub stringsInsert: CBStringsInsert,
@@ -4616,7 +4705,7 @@ pub struct _CBCore {
 fn bindgen_test_layout__CBCore() {
   assert_eq!(
     ::core::mem::size_of::<_CBCore>(),
-    400usize,
+    428usize,
     concat!("Size of: ", stringify!(_CBCore))
   );
   assert_eq!(
@@ -5555,8 +5644,78 @@ fn bindgen_test_layout__CBCore() {
     )
   );
   assert_eq!(
-    unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsFree as *const _ as usize },
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsFree as *const _ as usize },
     372usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsFree)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsPush as *const _ as usize },
+    376usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsPush)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsInsert as *const _ as usize },
+    380usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsInsert)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsPop as *const _ as usize },
+    384usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsPop)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsResize as *const _ as usize },
+    388usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsResize)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsFastDelete as *const _ as usize },
+    392usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsFastDelete)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).enumsSlowDelete as *const _ as usize },
+    396usize,
+    concat!(
+      "Offset of field: ",
+      stringify!(_CBCore),
+      "::",
+      stringify!(enumsSlowDelete)
+    )
+  );
+  assert_eq!(
+    unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsFree as *const _ as usize },
+    400usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
@@ -5566,7 +5725,7 @@ fn bindgen_test_layout__CBCore() {
   );
   assert_eq!(
     unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsPush as *const _ as usize },
-    376usize,
+    404usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
@@ -5576,7 +5735,7 @@ fn bindgen_test_layout__CBCore() {
   );
   assert_eq!(
     unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsInsert as *const _ as usize },
-    380usize,
+    408usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
@@ -5586,7 +5745,7 @@ fn bindgen_test_layout__CBCore() {
   );
   assert_eq!(
     unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsPop as *const _ as usize },
-    384usize,
+    412usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
@@ -5596,7 +5755,7 @@ fn bindgen_test_layout__CBCore() {
   );
   assert_eq!(
     unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsResize as *const _ as usize },
-    388usize,
+    416usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
@@ -5606,7 +5765,7 @@ fn bindgen_test_layout__CBCore() {
   );
   assert_eq!(
     unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsFastDelete as *const _ as usize },
-    392usize,
+    420usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
@@ -5616,7 +5775,7 @@ fn bindgen_test_layout__CBCore() {
   );
   assert_eq!(
     unsafe { &(*(::core::ptr::null::<_CBCore>())).stringsSlowDelete as *const _ as usize },
-    396usize,
+    424usize,
     concat!(
       "Offset of field: ",
       stringify!(_CBCore),
