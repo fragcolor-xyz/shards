@@ -12,6 +12,8 @@ namespace ImGuiExtra {
 #include "imgui_memory_editor.h"
 };
 
+using namespace magic_enum::bitwise_operators;
+
 namespace chainblocks {
 namespace ImGui {
 constexpr uint32_t ImGuiContextCC = 'gui ';
@@ -37,7 +39,25 @@ struct Context {
 };
 
 struct Enums {
-  enum class GuiButtonKind {
+#define REGISTER_ENUM(_NAME_, _CC_)                                            \
+  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
+  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,             \
+                                                  _NAME_##CC};                 \
+  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+
+#define REGISTER_FLAGS(_NAME_, _CC_)                                           \
+  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
+  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,            \
+                                                   _NAME_##CC};                \
+  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+
+#define REGISTER_FLAGS_EX(_NAME_, _CC_)                                        \
+  REGISTER_FLAGS(_NAME_, _CC_);                                                \
+  static inline Type _NAME_##SeqType = Type::SeqOf(_NAME_##Type);              \
+  static inline Type _NAME_##VarType = Type::VariableOf(_NAME_##Type);         \
+  static inline Type _NAME_##VarSeqType = Type::VariableOf(_NAME_##SeqType)
+
+  enum class GuiButton {
     Normal,
     Small,
     Invisible,
@@ -46,10 +66,7 @@ struct Enums {
     ArrowUp,
     ArrowDown
   };
-  static constexpr uint32_t GuiButtonKindCC = 'guiD';
-  static inline EnumInfo<GuiButtonKind> GuiButtonKindEnumInfo{
-      "GuiButton", CoreCC, GuiButtonKindCC};
-  static inline Type GuiButtonKindType = Type::Enum(CoreCC, GuiButtonKindCC);
+  REGISTER_ENUM(GuiButton, 'guiB'); // FourCC = 0x67756942
 
   enum class GuiTableFlags {
     None = ::ImGuiTableFlags_None,
@@ -58,10 +75,7 @@ struct Enums {
     Hideable = ::ImGuiTableFlags_Hideable,
     Sortable = ::ImGuiTableFlags_Sortable
   };
-  static constexpr uint32_t GuiTableFlagsCC = 'guTF';
-  static inline FlagsInfo<GuiTableFlags> GuiTableFlagsEnumInfo{
-      "GuiTableFlags", CoreCC, GuiTableFlagsCC};
-  static inline Type GuiTableFlagsType = Type::Enum(CoreCC, GuiTableFlagsCC);
+  REGISTER_FLAGS_EX(GuiTableFlags, 'guiT'); // FourCC = 0x67756954
 
   enum class GuiTableColumnFlags {
     None = ::ImGuiTableColumnFlags_None,
@@ -69,11 +83,7 @@ struct Enums {
     DefaultHide = ::ImGuiTableColumnFlags_DefaultHide,
     DefaultSort = ::ImGuiTableColumnFlags_DefaultSort
   };
-  static constexpr uint32_t GuiTableColumnFlagsCC = 'gTCF';
-  static inline FlagsInfo<GuiTableColumnFlags> GuiTableColumnFlagsEnumInfo{
-      "GuiTableColumnFlags", CoreCC, GuiTableColumnFlagsCC};
-  static inline Type GuiTableColumnFlagsType =
-      Type::Enum(CoreCC, GuiTableColumnFlagsCC);
+  REGISTER_FLAGS_EX(GuiTableColumnFlags, 'guTC'); // FourCC = 0x67755443
 
   enum class GuiTreeNodeFlags {
     None = ::ImGuiTreeNodeFlags_None,
@@ -86,11 +96,26 @@ struct Enums {
     SpanAvailWidth = ::ImGuiTreeNodeFlags_SpanAvailWidth,
     SpanFullWidth = ::ImGuiTreeNodeFlags_SpanFullWidth
   };
-  static constexpr uint32_t GuiTreeNodeFlagsCC = 'gTNF';
-  static inline FlagsInfo<GuiTreeNodeFlags> GuiTreeNodeFlagsEnumInfo{
-      "GuiTreeNodeFlags", CoreCC, GuiTreeNodeFlagsCC};
-  static inline Type GuiTreeNodeFlagsType =
-      Type::Enum(CoreCC, GuiTreeNodeFlagsCC);
+  REGISTER_FLAGS_EX(GuiTreeNodeFlags, 'guTN'); // FourCC = 0x6775544E
+
+  template <typename EnumType> static EnumType getFlags(CBVar var) {
+    EnumType flags{};
+    switch (var.valueType) {
+    case CBType::Enum:
+      flags = EnumType(var.payload.enumValue);
+      break;
+    case CBType::Seq: {
+      assert(var.payload.seqValue.len == 0 ||
+             var.payload.seqValue.elements[0].valueType == CBType::Enum);
+      for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+        flags |= EnumType(var.payload.seqValue.elements[i].payload.enumValue);
+      }
+    } break;
+    default:
+      break;
+    }
+    return flags;
+  };
 };
 }; // namespace ImGui
 }; // namespace chainblocks

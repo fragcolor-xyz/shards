@@ -32,10 +32,7 @@ struct IDContext {
 };
 
 struct Style : public Base {
-  static inline Type styleEnumInfo{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'guiS'}}}};
-
-  enum ImGuiStyle {
+  enum GuiStyle {
     Alpha,
     WindowPadding,
     WindowRounding,
@@ -119,21 +116,19 @@ struct Style : public Base {
     NavWindowingDimBgColor,
     ModalWindowDimBgColor,
   };
+  REGISTER_ENUM(GuiStyle, 'guiS'); // FourCC = 0x67756953
 
-  typedef EnumInfo<ImGuiStyle> ImGuiStyleInfo;
-  static inline ImGuiStyleInfo imguiEnumInfo{"GuiStyle", CoreCC, 'guiS'};
+  GuiStyle _key{};
 
-  ImGuiStyle _key{};
-
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Style", CBCCSTR("A style key to set."), styleEnumInfo));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Style", CBCCSTR("A style key to set."), GuiStyleType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
-      _key = ImGuiStyle(value.payload.enumValue);
+      _key = GuiStyle(value.payload.enumValue);
       break;
     default:
       break;
@@ -1376,7 +1371,7 @@ struct Button : public Base {
       _blocks = value;
       break;
     case 2:
-      _type = Enums::GuiButtonKind(value.payload.enumValue);
+      _type = Enums::GuiButton(value.payload.enumValue);
       break;
     case 3:
       _size.x = value.payload.float2Value[0];
@@ -1397,7 +1392,7 @@ struct Button : public Base {
     case 1:
       return _blocks;
     case 2:
-      return Var::Enum(_type, CoreCC, Enums::GuiButtonKindCC);
+      return Var::Enum(_type, CoreCC, Enums::GuiButtonCC);
     case 3:
       return Var(_size.x, _size.x);
     case 4:
@@ -1431,43 +1426,43 @@ struct Button : public Base {
     auto result = Var::False;
     ImVec2 size;
     switch (_type) {
-    case Enums::GuiButtonKind::Normal:
+    case Enums::GuiButton::Normal:
       if (::ImGui::Button(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
         result = Var::True;
       }
       break;
-    case Enums::GuiButtonKind::Small:
+    case Enums::GuiButton::Small:
       if (::ImGui::SmallButton(_label.c_str())) {
         IMBTN_RUN_ACTION;
         result = Var::True;
       }
       break;
-    case Enums::GuiButtonKind::Invisible:
+    case Enums::GuiButton::Invisible:
       if (::ImGui::InvisibleButton(_label.c_str(), _size)) {
         IMBTN_RUN_ACTION;
         result = Var::True;
       }
       break;
-    case Enums::GuiButtonKind::ArrowLeft:
+    case Enums::GuiButton::ArrowLeft:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Left)) {
         IMBTN_RUN_ACTION;
         result = Var::True;
       }
       break;
-    case Enums::GuiButtonKind::ArrowRight:
+    case Enums::GuiButton::ArrowRight:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Right)) {
         IMBTN_RUN_ACTION;
         result = Var::True;
       }
       break;
-    case Enums::GuiButtonKind::ArrowUp:
+    case Enums::GuiButton::ArrowUp:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Up)) {
         IMBTN_RUN_ACTION;
         result = Var::True;
       }
       break;
-    case Enums::GuiButtonKind::ArrowDown:
+    case Enums::GuiButton::ArrowDown:
       if (::ImGui::ArrowButton(_label.c_str(), ImGuiDir_Down)) {
         IMBTN_RUN_ACTION;
         result = Var::True;
@@ -1484,7 +1479,7 @@ private:
        {CoreInfo::StringType}},
       {"Action", CBCCSTR("The blocks to execute when the button is pressed."),
        CoreInfo::BlocksOrNone},
-      {"Type", CBCCSTR("The button type."), {Enums::GuiButtonKindType}},
+      {"Type", CBCCSTR("The button type."), {Enums::GuiButtonType}},
       {"Size", CBCCSTR("The optional size override."), {CoreInfo::Float2Type}},
       {"Repeat",
        CBCCSTR("Whether to repeat the action while the button is pressed."),
@@ -1493,7 +1488,7 @@ private:
 
   std::string _label;
   BlocksVar _blocks{};
-  Enums::GuiButtonKind _type{};
+  Enums::GuiButton _type{};
   ImVec2 _size = {0, 0};
   bool _repeat{false};
 };
@@ -1691,7 +1686,8 @@ struct TreeNode : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    auto flags = ::ImGuiTreeNodeFlags(_flags.get().payload.enumValue);
+    auto flags = ::ImGuiTreeNodeFlags(
+        Enums::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
 
     if (_defaultOpen) {
       flags |= ::ImGuiTreeNodeFlags_DefaultOpen;
@@ -1719,8 +1715,8 @@ private:
        {CoreInfo::BoolType}},
       {"Flags",
        CBCCSTR("Flags to enable tree node options."),
-       {Enums::GuiTreeNodeFlagsType,
-        Type::VariableOf(Enums::GuiTreeNodeFlagsType)}},
+       {Enums::GuiTreeNodeFlagsType, Enums::GuiTreeNodeFlagsVarType,
+        Enums::GuiTreeNodeFlagsSeqType, Enums::GuiTreeNodeFlagsVarSeqType}},
   };
 
   std::string _label;
@@ -3961,7 +3957,8 @@ struct Table : public Base {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags = ::ImGuiTableFlags(_flags.get().payload.enumValue);
+    auto flags =
+        ::ImGuiTableFlags(Enums::getFlags<Enums::GuiTableFlags>(_flags.get()));
     auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTable";
     auto active = ::ImGui::BeginTable(str_id, _columns, flags);
     if (active) {
@@ -3982,7 +3979,8 @@ private:
        CoreInfo::BlocksOrNone},
       {"Flags",
        CBCCSTR("Flags to enable table options."),
-       {Enums::GuiTableFlagsType, Type::VariableOf(Enums::GuiTableFlagsType)}},
+       {Enums::GuiTableFlagsType, Enums::GuiTableFlagsVarType,
+        Enums::GuiTableFlagsSeqType, Enums::GuiTableFlagsVarSeqType}},
   };
 
   std::string _name;
@@ -4066,7 +4064,8 @@ struct TableSetupColumn : public Base {
   void warmup(CBContext *context) { _flags.warmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags = ::ImGuiTableColumnFlags(_flags.get().payload.enumValue);
+    auto flags = ::ImGuiTableColumnFlags(
+        Enums::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
     ::ImGui::TableSetupColumn(_label.c_str(), flags);
     return input;
   }
@@ -4076,8 +4075,9 @@ private:
       {"Label", CBCCSTR("Column header"), {CoreInfo::StringType}},
       {"Flags",
        CBCCSTR("Flags to enable column options."),
-       {Enums::GuiTableColumnFlagsType,
-        Type::VariableOf(Enums::GuiTableColumnFlagsType)}},
+       {Enums::GuiTableColumnFlagsType, Enums::GuiTableColumnFlagsVarType,
+        Enums::GuiTableColumnFlagsSeqType,
+        Enums::GuiTableColumnFlagsVarSeqType}},
   };
 
   std::string _label;
