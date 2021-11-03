@@ -1,6 +1,6 @@
 (def _args (eval `(assoc {} ~@*command-line-args*)))
 (def test-rpcs (if (contains? _args "--rpcs") (read-string (get _args "--rpcs")) false))
-(def rpc-server "http://172.23.16.138:9933")
+(def rpc-server "http://172.29.35.84:9933")
 ; node: cargo run -- --dev --tmp --rpc-external --rpc-port 9933 --rpc-cors all --ws-external --enable-offchain-indexing 1 --rpc-methods=Unsafe
 
 (defnode root)

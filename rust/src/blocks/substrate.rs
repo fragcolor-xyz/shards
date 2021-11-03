@@ -436,7 +436,7 @@ impl Block for CBEncode {
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.hints = ClonedVar(*value),
+      0 => self.hints = value.into(),
       _ => unreachable!(),
     }
   }
@@ -517,8 +517,8 @@ impl Block for CBDecode {
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.types = ClonedVar(*value),
-      1 => self.hints = ClonedVar(*value),
+      0 => self.types = value.into(),
+      1 => self.hints = value.into(),
       _ => unreachable!(),
     }
   }
