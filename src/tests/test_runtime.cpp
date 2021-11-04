@@ -151,11 +151,11 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     std::vector<float> b1(1024);
     std::vector<float> b2(1024);
     std::vector<float> b3(1024);
-    CBVar x{.payload = {.audioValue = {44100, 512, 2, b1.data()}},
+    CBVar x{.payload = {.audioValue = CBAudio{44100, 512, 2, b1.data()}},
             .valueType = CBType::Audio};
-    CBVar y{.payload = {.audioValue = {44100, 512, 2, b2.data()}},
+    CBVar y{.payload = {.audioValue = CBAudio{44100, 512, 2, b2.data()}},
             .valueType = CBType::Audio};
-    CBVar z{.payload = {.audioValue = {44100, 1024, 1, b3.data()}},
+    CBVar z{.payload = {.audioValue = CBAudio{44100, 1024, 1, b3.data()}},
             .valueType = CBType::Audio};
     auto empty = Var::Empty;
     REQUIRE(x == y);

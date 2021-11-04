@@ -2357,6 +2357,7 @@ struct Draw : public BaseConsumer {
 
   struct Drawable : public IDrawable {
     Drawable(CBChain *drawableChain) : _chain(drawableChain) {}
+    virtual ~Drawable() {}
     CBChain *getChain() override { return _chain; }
 
   private:
@@ -3061,9 +3062,9 @@ struct CompileShader {
     }
 
     return _compiler->compile(varyings, code,
-                              _type == ShaderType::Vertex  ? "v"
-                              : _type == ShaderType::Pixel ? "f"
-                                                           : "c",
+                              _type == ShaderType::Vertex
+                                  ? "v"
+                                  : _type == ShaderType::Pixel ? "f" : "c",
                               defines, context);
   }
 };
