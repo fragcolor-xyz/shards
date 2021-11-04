@@ -1617,6 +1617,7 @@ struct Draw : public BGFX::BaseConsumer {
 
   struct Drawable : public BGFX::IDrawable {
     Drawable(CBChain *chain) : _chain(chain) {}
+    virtual ~Drawable() {}
     CBChain *getChain() override { return _chain; }
 
   private:
