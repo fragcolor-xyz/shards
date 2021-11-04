@@ -12,8 +12,6 @@ namespace ImGuiExtra {
 #include "imgui_memory_editor.h"
 };
 
-using namespace magic_enum::bitwise_operators;
-
 namespace chainblocks {
 namespace ImGui {
 constexpr uint32_t ImGuiContextCC = 'gui ';
@@ -39,18 +37,6 @@ struct Context {
 };
 
 struct Enums {
-#define REGISTER_ENUM(_NAME_, _CC_)                                            \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
-  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,             \
-                                                  _NAME_##CC};                 \
-  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
-
-#define REGISTER_FLAGS(_NAME_, _CC_)                                           \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
-  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,            \
-                                                   _NAME_##CC};                \
-  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
-
 #define REGISTER_FLAGS_EX(_NAME_, _CC_)                                        \
   REGISTER_FLAGS(_NAME_, _CC_);                                                \
   static inline Type _NAME_##SeqType = Type::SeqOf(_NAME_##Type);              \
@@ -97,25 +83,6 @@ struct Enums {
     SpanFullWidth = ::ImGuiTreeNodeFlags_SpanFullWidth
   };
   REGISTER_FLAGS_EX(GuiTreeNodeFlags, 'guTN'); // FourCC = 0x6775544E
-
-  template <typename EnumType> static EnumType getFlags(CBVar var) {
-    EnumType flags{};
-    switch (var.valueType) {
-    case CBType::Enum:
-      flags = EnumType(var.payload.enumValue);
-      break;
-    case CBType::Seq: {
-      assert(var.payload.seqValue.len == 0 ||
-             var.payload.seqValue.elements[0].valueType == CBType::Enum);
-      for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
-        flags |= EnumType(var.payload.seqValue.elements[i].payload.enumValue);
-      }
-    } break;
-    default:
-      break;
-    }
-    return flags;
-  };
 };
 }; // namespace ImGui
 }; // namespace chainblocks

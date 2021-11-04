@@ -1687,7 +1687,7 @@ struct TreeNode : public Base {
     IDContext idCtx(this);
 
     auto flags = ::ImGuiTreeNodeFlags(
-        Enums::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
+        chainblocks::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
 
     if (_defaultOpen) {
       flags |= ::ImGuiTreeNodeFlags_DefaultOpen;
@@ -3957,8 +3957,8 @@ struct Table : public Base {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags =
-        ::ImGuiTableFlags(Enums::getFlags<Enums::GuiTableFlags>(_flags.get()));
+    auto flags = ::ImGuiTableFlags(
+        chainblocks::getFlags<Enums::GuiTableFlags>(_flags.get()));
     auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTable";
     auto active = ::ImGui::BeginTable(str_id, _columns, flags);
     if (active) {
@@ -4065,7 +4065,7 @@ struct TableSetupColumn : public Base {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto flags = ::ImGuiTableColumnFlags(
-        Enums::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
+        chainblocks::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
     ::ImGui::TableSetupColumn(_label.c_str(), flags);
     return input;
   }
