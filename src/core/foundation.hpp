@@ -615,7 +615,43 @@ struct Globals {
 Globals &GetGlobals();
 
 template <typename T>
-NO_INLINE void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4);
+inline void arrayGrow(T &arr, size_t addlen, size_t min_cap) {
+  // safety check to make sure this is not a borrowed foreign array!
+  assert((arr.cap == 0 && arr.elements == nullptr) ||
+         (arr.cap > 0 && arr.elements != nullptr));
+
+  size_t min_len = arr.len + addlen;
+
+  // compute the minimum capacity needed
+  if (min_len > min_cap)
+    min_cap = min_len;
+
+  if (min_cap <= arr.cap)
+    return;
+
+  // increase needed capacity to guarantee O(1) amortized
+  if (min_cap < 2 * arr.cap)
+    min_cap = 2 * arr.cap;
+
+  // TODO investigate realloc
+  auto newbuf =
+      new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
+  if (arr.elements) {
+    memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
+    ::operator delete[](arr.elements, std::align_val_t{16});
+  }
+  arr.elements = (decltype(arr.elements))newbuf;
+
+  // also memset to 0 new memory in order to make cloneVars valid on new items
+  size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
+  memset(arr.elements + arr.len, 0x0, size);
+
+  if (min_cap > UINT32_MAX) {
+    // this is the case for now for many reasons, but should be just fine
+    CBLOG_FATAL("Int array overflow, we don't support more then UINT32_MAX.");
+  }
+  arr.cap = uint32_t(min_cap);
+}
 
 template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap) {
