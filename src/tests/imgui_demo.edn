@@ -13,17 +13,17 @@
         0 >= .counter
         0.0 >= .fps)
        "This is some useful text." (GUI.Text) (GUI.HelpMarker "This is some useful popup.")
-       (GUI.Checkbox "Demo Window" "showDemo")
-       (GUI.Checkbox "Another Window" "showAnother")
-       (GUI.FloatSlider "float" "floating" :Min 0.0 :Max 1.0)
-       (GUI.ColorInput "background color" "color")
+       (GUI.Checkbox "Demo Window" .showDemo)
+       (GUI.Checkbox "Another Window" .showAnother)
+       (GUI.FloatSlider "float" .floating :Min 0.0 :Max 1.0)
+       (GUI.ColorInput "background color" .color)
        (GUI.Button "Button" (Math.Inc .counter))
        (GUI.SameLine) .counter (GUI.Text :Format "counter = {}")
        (GUI.FPS) > .fps 1000.0 (Math.Divide .fps)
        (GUI.Text :Format "Application average {} ms/frame")
        (GUI.SameLine) .fps (GUI.Text :Format "({} FPS)")))
-  (If (Get "showDemo") :Then (demo-window))
-  (If (Get "showAnother") :Then (another-window)))
+  (If (Get .showDemo) :Then (demo-window))
+  (If (Get .showAnother) :Then (another-window)))
 
 (defblocks another-window []
   (GUI.Window
@@ -31,7 +31,7 @@
    :OnClose .showAnother
    :Contents
    (-> "Hello from another window!" (GUI.Text)
-       (GUI.Button "Close Me" (-> false (Update "showAnother"))))))
+       (GUI.Button "Close Me" (-> false (Update .showAnother))))))
 
 (defblocks demo-window []
   (GUI.Window
@@ -97,22 +97,22 @@
                           (-> (GUI.SameLine) "Thanks for clicking me!" (GUI.Text)))
                       (GUI.Checkbox "Checkbox")
                       "Flags:" (GUI.Text) (GUI.Indent)
-                      (GUI.CheckboxFlags "Left" "direction" 1) (GUI.SameLine)
-                      (GUI.CheckboxFlags "Right" "direction" 2) (GUI.SameLine)
-                      (GUI.CheckboxFlags "Up" "direction" 4) (GUI.SameLine)
-                      (GUI.CheckboxFlags "Down" "direction" 8) (GUI.SameLine)
-                      (GUI.CheckboxFlags "Forward" "direction" 16) (GUI.SameLine)
-                      (GUI.CheckboxFlags "Backward" "direction" 32)
+                      (GUI.CheckboxFlags "Left" .direction 1) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Right" .direction 2) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Up" .direction 4) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Down" .direction 8) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Forward" .direction 16) (GUI.SameLine)
+                      (GUI.CheckboxFlags "Backward" .direction 32)
                       (GUI.Disable
                        true
                        (->
-                        (GUI.CheckboxFlags "Left & Right" "direction" 3) (GUI.SameLine)
-                        (GUI.CheckboxFlags "Up & down" "direction" 12) (GUI.SameLine)
-                        (GUI.CheckboxFlags "Forward & backward" "direction" 48) (GUI.SameLine)
-                        (GUI.CheckboxFlags "All" "direction" 63))) (GUI.Unindent)
-                      (GUI.RadioButton "radio a" "radioValue" 0) (GUI.SameLine)
-                      (GUI.RadioButton "radio b" "radioValue" 1) (GUI.SameLine)
-                      (GUI.RadioButton "radio c" "radioValue" 2)
+                        (GUI.CheckboxFlags "Left & Right" .direction 3) (GUI.SameLine)
+                        (GUI.CheckboxFlags "Up & down" .direction 12) (GUI.SameLine)
+                        (GUI.CheckboxFlags "Forward & backward" .direction 48) (GUI.SameLine)
+                        (GUI.CheckboxFlags "All" .direction 63))) (GUI.Unindent)
+                      (GUI.RadioButton "radio a" .radioValue 0) (GUI.SameLine)
+                      (GUI.RadioButton "radio b" .radioValue 1) (GUI.SameLine)
+                      (GUI.RadioButton "radio c" .radioValue 2)
                       "Hold to repeat:" (GUI.Text) (GUI.SameLine)
                       (GUI.Button "##left" (Math.Dec .arrowCounter) GuiButton.ArrowLeft :Repeat true) (GUI.SameLine)
                       (GUI.Button "##right" (Math.Inc .arrowCounter) GuiButton.ArrowRight :Repeat true) (GUI.SameLine)
@@ -126,7 +126,7 @@
                       "Value" (GUI.Text :Label "Label")
                       ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIIIIII", "JJJJ", "KKKKKKK"] (GUI.Combo "Combo")
                       (GUI.SameLine) (GUI.HelpMarker "One-line API is nice!")
-                      (GUI.TextInput "input text" "inputText")))
+                      (GUI.TextInput "input text" .inputText)))
                  (GUI.TreeNode
                   "Trees"
                   (-> (GUI.TreeNode
@@ -145,12 +145,12 @@
                            (GUI.HelpMarker (str "This is a more typical looking tree with selectable nodes.\n"
                                                 "Click to select, CTRL+Click to toggle, click on arrows or double-click to open.")
                                            :Inline false)
-                           (GUI.CheckboxFlags "OpenOnArrow" "treeNodeFlags" GuiTreeNodeFlags.OpenOnArrow)
-                           (GUI.CheckboxFlags "OpenOnDoubleClick" "treeNodeFlags" GuiTreeNodeFlags.OpenOnDoubleClick)
-                           (GUI.CheckboxFlags "SpanAvailWidth" "treeNodeFlags" GuiTreeNodeFlags.SpanAvailWidth)
+                           (GUI.CheckboxFlags "OpenOnArrow" .treeNodeFlags GuiTreeNodeFlags.OpenOnArrow)
+                           (GUI.CheckboxFlags "OpenOnDoubleClick" .treeNodeFlags GuiTreeNodeFlags.OpenOnDoubleClick)
+                           (GUI.CheckboxFlags "SpanAvailWidth" .treeNodeFlags GuiTreeNodeFlags.SpanAvailWidth)
                            (GUI.HelpMarker "Extend hit area to all available width instead of allowing more items to be laid out after the node.")
-                           (GUI.CheckboxFlags "SpanFullWidth" "treeNodeFlags" GuiTreeNodeFlags.SpanFullWidth)
-                           (GUI.Checkbox "Align label with current X position" "alignX")
+                           (GUI.CheckboxFlags "SpanFullWidth" .treeNodeFlags GuiTreeNodeFlags.SpanFullWidth)
+                           (GUI.Checkbox "Align label with current X position" .alignX)
                            "Hello!" (GUI.Text)
                            (If (Get .alignX) (GUI.Unindent))
                            (defn my_nodes_2 [i]
@@ -182,7 +182,7 @@
                            (GUI.Text :Wrap true)
                            (GUI.Spacing)
                            (Setup -8 >= .margin)
-                           (GUI.IntSlider "Left margin" "margin" :Min -8 :Max 350)
+                           (GUI.IntSlider "Left margin" .margin :Min -8 :Max 350)
                            (GUI.SameLine) (GUI.HelpMarker "-8 compensate for the spacing between the invisible item and the text.")
                            (GUI.Dummy :Width .margin) (GUI.SameLine)
                            .margin (GUI.Text :Wrap true :Format "The lazy dog is a good dog. This paragraph should have a {} pixels left margin. Testing a 1 character word. The quick brown fox jumps over the lazy dog.")))))
@@ -213,7 +213,7 @@
                  (GUI.TreeNode "Querying Window Status (Focused/Hovered etc.)" (todo!))))
             (GUI.TreeNode
              "Disable block"
-             (-> (GUI.Checkbox "Disable entire section above" "disableAll")
+             (-> (GUI.Checkbox "Disable entire section above" .disableAll)
                  (GUI.SameLine)
                  (GUI.HelpMarker "Demonstrate using (Disable) across this section.")))))
        (GUI.CollapsingHeader "Layout & Scrolling" (todo!))
@@ -261,9 +261,9 @@
             (GUI.TreeNode
              "Reorderable, hideable, with headers"
              (-> (GUI.HelpMarker "Click and drag column headers to reorder columns.\n\nRight-click on a header to open a context menu." :Inline false)
-                 (GUI.CheckboxFlags "Resizable" "tableFlags" GuiTableFlags.Resizable)
-                 (GUI.CheckboxFlags "Reorderable" "tableFlags" GuiTableFlags.Reorderable)
-                 (GUI.CheckboxFlags "Hideable" "tableFlags" GuiTableFlags.Hideable)
+                 (GUI.CheckboxFlags "Resizable" .tableFlags GuiTableFlags.Resizable)
+                 (GUI.CheckboxFlags "Reorderable" .tableFlags GuiTableFlags.Reorderable)
+                 (GUI.CheckboxFlags "Hideable" .tableFlags GuiTableFlags.Hideable)
                  (GUI.Table
                   :Columns 3 :Flags .tableFlags :Contents
                   (-> (GUI.SetupColumn "One")
@@ -315,12 +315,12 @@
         :Contents
         (-> 0 >= .i
             (Repeat (-> .i (GUI.Text :Format "Scrolling Text {}") (Math.Inc .i)) :Times 10)))
-       (GUI.FloatSlider "Value" "f" 0.0 1.0)
-       (GUI.FloatInput "Input" "f" :Step 0.1)
-       ["Yes", "No", "Maybe"] (GUI.Combo "Combo" "combo")))
+       (GUI.FloatSlider "Value" .f 0.0 1.0)
+       (GUI.FloatInput "Input" .f :Step 0.1)
+       ["Yes", "No", "Maybe"] (GUI.Combo "Combo" .combo)))
   (GUI.Menu "Colors" :IsEnabled false)
        ;; it will append to the "Options" menu (which we already created above)
-  (GUI.Menu "Options" :Contents (GUI.Checkbox "SomeOption" "option"))
+  (GUI.Menu "Options" :Contents (GUI.Checkbox "SomeOption" .option))
   (GUI.Menu "Disabled" :IsEnabled false)
   (GUI.MenuItem "Checked" true)
   (GUI.MenuItem "Quit" :Shortcut "Alt+F4" :Action (Stop)))
@@ -394,7 +394,7 @@
                 nil
                 ~[(my_object (- index 1))
                   .selected (Is index) > .i
-                  (If (GUI.Selectable (str "My Object " index) "i")
+                  (If (GUI.Selectable (str "My Object " index) .i)
                       (-> index > .selected))]))
             (my_object 100)))
        (GUI.SameLine)

@@ -255,7 +255,6 @@ struct Style : public Base {
   }
 
   static ImVec4 color2Vec4(const CBColor &color) {
-    // remember, we edited the shader to do srgb->linear
     ImVec4 res;
     res.x = color.r / 255.0f;
     res.y = color.g / 255.0f;
@@ -269,7 +268,6 @@ struct Style : public Base {
   }
 
   static CBColor vec42Color(const ImVec4 &color) {
-    // remember, we edited the shader to do srgb->linear
     CBColor res;
     res.r = roundf(color.x * 255.0f);
     res.g = roundf(color.y * 255.0f);
@@ -837,8 +835,9 @@ Parameters &VariableParamsInfo() {
   static Parameters params{
       {"Label", CBCCSTR("The label for this widget."), CoreInfo::StringOrNone},
       {"Variable",
-       CBCCSTR("The name of the variable that holds the input value."),
-       CoreInfo::StringOrNone}};
+       CBCCSTR("The variable that holds the input value."),
+       {CoreInfo::AnyVarType, CoreInfo::NoneType}},
+  };
   return params;
 }
 
@@ -846,26 +845,20 @@ template <CBType CT> struct Variable : public Base {
   static inline Type varType{{CT}};
 
   std::string _label;
-  std::string _variable_name;
-  CBVar *_variable = nullptr;
+  ParamVar _variable{};
   ExposedInfo _expInfo{};
   bool _exposing = false;
 
-  void cleanup() { cleanupVariable(); }
+  void cleanup() { _variable.cleanup(); }
 
-  void cleanupVariable() {
-    if (_variable) {
-      releaseVariable(_variable);
-      _variable = nullptr;
-    }
-  }
+  void warmup(CBContext *context) { _variable.warmup(context); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (_variable_name.size() > 0) {
+    if (_variable.isVariable()) {
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
       for (auto &var : data.shared) {
-        if (strcmp(var.name, _variable_name.c_str()) == 0) {
+        if (strcmp(var.name, _variable.variableName()) == 0) {
           // we found a variable, make sure it's the right type and mark
           // exposing off
           _exposing = false;
@@ -886,10 +879,10 @@ template <CBType CT> struct Variable : public Base {
   }
 
   CBExposedTypesInfo requiredVariables() {
-    if (_variable_name.size() > 0 && !_exposing) {
+    if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(
           requiredInfo,
-          ExposedInfo::Variable(_variable_name.c_str(),
+          ExposedInfo::Variable(_variable.variableName(),
                                 CBCCSTR("The required input variable."),
                                 CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
@@ -899,10 +892,10 @@ template <CBType CT> struct Variable : public Base {
   }
 
   CBExposedTypesInfo exposedVariables() {
-    if (_variable_name.size() > 0 && _exposing) {
+    if (_variable.isVariable() > 0 && _exposing) {
       _expInfo = ExposedInfo(
           requiredInfo,
-          ExposedInfo::Variable(_variable_name.c_str(),
+          ExposedInfo::Variable(_variable.variableName(),
                                 CBCCSTR("The exposed input variable."),
                                 CBTypeInfo(varType), true));
       return CBExposedTypesInfo(_expInfo);
@@ -925,14 +918,9 @@ template <CBType CT> struct Variable : public Base {
         _label = value.payload.stringValue;
       }
     } break;
-    case 1: {
-      if (value.valueType == None) {
-        _variable_name.clear();
-      } else {
-        _variable_name = value.payload.stringValue;
-      }
-      cleanupVariable();
-    } break;
+    case 1:
+      _variable = value;
+      break;
     default:
       break;
     }
@@ -943,7 +931,7 @@ template <CBType CT> struct Variable : public Base {
     case 0:
       return _label.size() == 0 ? Var::Empty : Var(_label);
     case 1:
-      return _variable_name.size() == 0 ? Var::Empty : Var(_variable_name);
+      return _variable;
     default:
       return Var::Empty;
     }
@@ -955,26 +943,20 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
   static inline Type varType2{{CT2}};
 
   std::string _label;
-  std::string _variable_name;
-  CBVar *_variable = nullptr;
+  ParamVar _variable{};
   ExposedInfo _expInfo{};
   bool _exposing = false;
 
-  void cleanup() { cleanupVariable(); }
+  void cleanup() { _variable.cleanup(); }
 
-  void cleanupVariable() {
-    if (_variable) {
-      releaseVariable(_variable);
-      _variable = nullptr;
-    }
-  }
+  void warmup(CBContext *context) { _variable.warmup(context); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    if (_variable_name.size() > 0) {
+    if (_variable.isVariable()) {
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
       for (auto &var : data.shared) {
-        if (strcmp(var.name, _variable_name.c_str()) == 0) {
+        if (strcmp(var.name, _variable.variableName()) == 0) {
           // we found a variable, make sure it's the right type and mark
           // exposing off
           _exposing = false;
@@ -996,13 +978,13 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
   }
 
   CBExposedTypesInfo requiredVariables() {
-    if (_variable_name.size() > 0 && !_exposing) {
+    if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(
           requiredInfo,
-          ExposedInfo::Variable(_variable_name.c_str(),
+          ExposedInfo::Variable(_variable.variableName(),
                                 CBCCSTR("The required input variable."),
                                 CBTypeInfo(varType1)),
-          ExposedInfo::Variable(_variable_name.c_str(),
+          ExposedInfo::Variable(_variable.variableName(),
                                 CBCCSTR("The required input variable."),
                                 CBTypeInfo(varType2)));
       return CBExposedTypesInfo(_expInfo);
@@ -1012,13 +994,13 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
   }
 
   CBExposedTypesInfo exposedVariables() {
-    if (_variable_name.size() > 0 && _exposing) {
+    if (_variable.isVariable() && _exposing) {
       _expInfo = ExposedInfo(
           requiredInfo,
-          ExposedInfo::Variable(_variable_name.c_str(),
+          ExposedInfo::Variable(_variable.variableName(),
                                 CBCCSTR("The exposed input variable."),
                                 CBTypeInfo(varType1), true),
-          ExposedInfo::Variable(_variable_name.c_str(),
+          ExposedInfo::Variable(_variable.variableName(),
                                 CBCCSTR("The exposed input variable."),
                                 CBTypeInfo(varType2), true));
       return CBExposedTypesInfo(_expInfo);
@@ -1041,14 +1023,9 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
         _label = value.payload.stringValue;
       }
     } break;
-    case 1: {
-      if (value.valueType == None) {
-        _variable_name.clear();
-      } else {
-        _variable_name = value.payload.stringValue;
-      }
-      cleanupVariable();
-    } break;
+    case 1:
+      _variable = value;
+      break;
     default:
       break;
     }
@@ -1059,7 +1036,7 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
     case 0:
       return _label.size() == 0 ? Var::Empty : Var(_label);
     case 1:
-      return _variable_name.size() == 0 ? Var::Empty : Var(_variable_name);
+      return _variable;
     default:
       return Var::Empty;
     }
@@ -1074,13 +1051,11 @@ struct Checkbox : public Variable<CBType::Bool> {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
     auto result = Var::False;
-    if (_variable) {
-      if (::ImGui::Checkbox(_label.c_str(), &_variable->payload.boolValue)) {
+    if (_variable.isVariable()) {
+      _variable.get().valueType = CBType::Bool;
+      if (::ImGui::Checkbox(_label.c_str(),
+                            &_variable.get().payload.boolValue)) {
         result = Var::True;
       }
     } else {
@@ -1127,16 +1102,13 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
     auto result = Var::False;
     switch (_value.valueType) {
     case CBType::Int: {
       int *flags;
-      if (_variable) {
-        flags = reinterpret_cast<int *>(&_variable->payload.intValue);
+      if (_variable.isVariable()) {
+        _variable.get().valueType = CBType::Int;
+        flags = reinterpret_cast<int *>(&_variable.get().payload.intValue);
       } else {
         flags = reinterpret_cast<int *>(&_tmp.payload.intValue);
       }
@@ -1147,8 +1119,9 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
     } break;
     case CBType::Enum: {
       int *flags;
-      if (_variable) {
-        flags = reinterpret_cast<int *>(&_variable->payload.enumValue);
+      if (_variable.isVariable()) {
+        _variable.get().valueType = CBType::Enum;
+        flags = reinterpret_cast<int *>(&_variable.get().payload.enumValue);
       } else {
         flags = reinterpret_cast<int *>(&_tmp.payload.enumValue);
       }
@@ -1199,15 +1172,13 @@ struct RadioButton : public Variable<CBType::Int> {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
     auto result = Var::False;
-    if (_variable) {
+    if (_variable.isVariable()) {
+      auto &var = _variable.get();
       if (::ImGui::RadioButton(_label.c_str(),
-                               _variable->payload.intValue == _value)) {
-        _variable->payload.intValue = _value;
+                               var.payload.intValue == _value)) {
+        var.valueType = CBType::Int;
+        var.payload.intValue = _value;
         result = Var::True;
       }
     } else {
@@ -1834,17 +1805,13 @@ template <CBType CBT> struct DragBase : public Variable<CBT> {
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
                                                                                \
-      if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = referenceVariable(context, _variable_name.c_str());        \
-        if (_exposing) {                                                       \
-          _variable->valueType = _CBT_;                                        \
-        }                                                                      \
-      }                                                                        \
+      if (_variable.isVariable()) {                                            \
+        auto &var = _variable.get();                                           \
+        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_, \
+                            _speed);                                           \
                                                                                \
-      if (_variable) {                                                         \
-        ::ImGui::DragScalar(_label.c_str(), _IMT_,                             \
-                            (void *)&_variable->payload._VAL_, _speed);        \
-        return *_variable;                                                     \
+        var.valueType = CBType::_CBT_;                                         \
+        return var;                                                            \
       } else {                                                                 \
         ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, _speed);     \
         return Var(_tmp);                                                      \
@@ -1866,20 +1833,15 @@ IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
                                                                                \
-      if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = referenceVariable(context, _variable_name.c_str());        \
-        if (_exposing) {                                                       \
-          _variable->valueType = _CBT_;                                        \
-        }                                                                      \
-      }                                                                        \
-                                                                               \
-      if (_variable) {                                                         \
+      if (_variable.isVariable()) {                                            \
+        auto &var = _variable.get();                                           \
         ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
-                             (void *)&_variable->payload._VAL_, _CMP_,         \
-                             _speed);                                          \
-        return *_variable;                                                     \
+                             (void *)&var.payload._VAL_, _CMP_, _speed);       \
+                                                                               \
+        var.valueType = CBType::_CBT_;                                         \
+        return var;                                                            \
       } else {                                                                 \
-        _tmp.valueType = _CBT_;                                                \
+        _tmp.valueType = CBType::_CBT_;                                        \
         ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
                              (void *)&_tmp.payload._VAL_, _CMP_, _speed);      \
         return _tmp;                                                           \
@@ -1911,6 +1873,7 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
     }                                                                          \
                                                                                \
     void warmup(CBContext *context) {                                          \
+      Variable<CBType::_CBT_>::warmup(context);                                \
       _step.warmup(context);                                                   \
       _stepFast.warmup(context);                                               \
     }                                                                          \
@@ -1949,21 +1912,17 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
                                                                                \
-      if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = referenceVariable(context, _variable_name.c_str());        \
-        if (_exposing) {                                                       \
-          _variable->valueType = _CBT_;                                        \
-        }                                                                      \
-      }                                                                        \
-                                                                               \
       _T_ step = _step.get().payload._VAL_##Value;                             \
       _T_ step_fast = _stepFast.get().payload._VAL_##Value;                    \
-      if (_variable) {                                                         \
+      if (_variable.isVariable()) {                                            \
+        auto &var = _variable.get();                                           \
         ::ImGui::InputScalar(_label.c_str(), _IMT_,                            \
-                             (void *)&_variable->payload._VAL_##Value,         \
+                             (void *)&var.payload._VAL_##Value,                \
                              step > 0 ? &step : nullptr,                       \
                              step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);  \
-        return *_variable;                                                     \
+                                                                               \
+        var.valueType = CBType::_CBT_;                                         \
+        return var;                                                            \
       } else {                                                                 \
         ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp,             \
                              step > 0 ? &step : nullptr,                       \
@@ -2007,6 +1966,7 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
     }                                                                          \
                                                                                \
     void warmup(CBContext *context) {                                          \
+      Variable<CBType::_CBT_##_CMP_>::warmup(context);                         \
       _step.warmup(context);                                                   \
       _stepFast.warmup(context);                                               \
     }                                                                          \
@@ -2045,23 +2005,19 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
                                                                                \
-      if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = referenceVariable(context, _variable_name.c_str());        \
-        if (_exposing) {                                                       \
-          _variable->valueType = _CBT_##_CMP_;                                 \
-        }                                                                      \
-      }                                                                        \
-                                                                               \
       _T_ step = _step.get().payload._VAL_##Value;                             \
       _T_ step_fast = _stepFast.get().payload._VAL_##Value;                    \
-      if (_variable) {                                                         \
+      if (_variable.isVariable()) {                                            \
+        auto &var = _variable.get();                                           \
         ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
-                              (void *)&_variable->payload._VAL_##_CMP_##Value, \
-                              _CMP_, step > 0 ? &step : nullptr,               \
+                              (void *)&var.payload._VAL_##_CMP_##Value, _CMP_, \
+                              step > 0 ? &step : nullptr,                      \
                               step_fast > 0 ? &step_fast : nullptr, _FMT_, 0); \
-        return *_variable;                                                     \
+                                                                               \
+        var.valueType = CBType::_CBT_;                                         \
+        return var;                                                            \
       } else {                                                                 \
-        _tmp.valueType = _CBT_;                                                \
+        _tmp.valueType = CBType::_CBT_;                                        \
         ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
                               (void *)&_tmp.payload._VAL_##_CMP_##Value,       \
                               _CMP_, step > 0 ? &step : nullptr,               \
@@ -2109,6 +2065,7 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
     }                                                                          \
                                                                                \
     void warmup(CBContext *context) {                                          \
+      Variable<CBType::_CBT_>::warmup(context);                                \
       _min.warmup(context);                                                    \
       _max.warmup(context);                                                    \
     }                                                                          \
@@ -2147,20 +2104,16 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
                                                                                \
-      if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = referenceVariable(context, _variable_name.c_str());        \
-        if (_exposing) {                                                       \
-          _variable->valueType = _CBT_;                                        \
-        }                                                                      \
-      }                                                                        \
-                                                                               \
       _T_ min = _min.get().payload._VAL_##Value;                               \
       _T_ max = _max.get().payload._VAL_##Value;                               \
-      if (_variable) {                                                         \
+      if (_variable.isVariable()) {                                            \
+        auto &var = _variable.get();                                           \
         ::ImGui::SliderScalar(_label.c_str(), _IMT_,                           \
-                              (void *)&_variable->payload._VAL_##Value, &min,  \
-                              &max, _FMT_, 0);                                 \
-        return *_variable;                                                     \
+                              (void *)&var.payload._VAL_##Value, &min, &max,   \
+                              _FMT_, 0);                                       \
+                                                                               \
+        var.valueType = CBType::_CBT_;                                         \
+        return var;                                                            \
       } else {                                                                 \
         ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&_tmp, &min,      \
                               &max, _FMT_, 0);                                 \
@@ -2203,6 +2156,7 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
     }                                                                          \
                                                                                \
     void warmup(CBContext *context) {                                          \
+      Variable<CBType::_CBT_##_CMP_>::warmup(context);                         \
       _min.warmup(context);                                                    \
       _max.warmup(context);                                                    \
     }                                                                          \
@@ -2241,21 +2195,16 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
                                                                                \
-      if (!_variable && _variable_name.size() > 0) {                           \
-        _variable = referenceVariable(context, _variable_name.c_str());        \
-        if (_exposing) {                                                       \
-          _variable->valueType = _CBT_##_CMP_;                                 \
-        }                                                                      \
-      }                                                                        \
-                                                                               \
       _T_ min = _min.get().payload._VAL_##Value;                               \
       _T_ max = _max.get().payload._VAL_##Value;                               \
-      if (_variable) {                                                         \
-        ::ImGui::SliderScalarN(                                                \
-            _label.c_str(), _IMT_,                                             \
-            (void *)&_variable->payload._VAL_##_CMP_##Value, _CMP_, &min,      \
-            &max, _FMT_, 0);                                                   \
-        return *_variable;                                                     \
+      if (_variable.isVariable()) {                                            \
+        auto &var = _variable.get();                                           \
+        ::ImGui::SliderScalarN(_label.c_str(), _IMT_,                          \
+                               (void *)&var.payload._VAL_##_CMP_##Value,       \
+                               _CMP_, &min, &max, _FMT_, 0);                   \
+                                                                               \
+        var.valueType = CBType::_CBT_;                                         \
+        return var;                                                            \
       } else {                                                                 \
         ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&_tmp, _CMP_,    \
                                &min, &max, _FMT_, 0);                          \
@@ -2329,12 +2278,12 @@ struct TextInput : public Variable<CBType::String> {
     TextInput *it = (TextInput *)data->UserData;
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
       // Resize string callback
-      if (it->_variable) {
-        delete[] it->_variable->payload.stringValue;
-        it->_variable->payload.stringCapacity = data->BufTextLen * 2;
-        it->_variable->payload.stringValue =
-            new char[it->_variable->payload.stringCapacity];
-        data->Buf = (char *)it->_variable->payload.stringValue;
+      if (it->_variable.isVariable()) {
+        auto &var = it->_variable.get();
+        delete[] var.payload.stringValue;
+        var.payload.stringCapacity = data->BufTextLen * 2;
+        var.payload.stringValue = new char[var.payload.stringCapacity];
+        data->Buf = (char *)var.payload.stringValue;
       } else {
         it->_buffer.resize(data->BufTextLen * 2);
         data->Buf = (char *)it->_buffer.c_str();
@@ -2346,24 +2295,24 @@ struct TextInput : public Variable<CBType::String> {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-      if (_exposing) {
-        // we own the variable so let's run some init
-        _variable->valueType = String;
-        _variable->payload.stringValue = new char[32];
-        _variable->payload.stringCapacity = 32;
-        memset((void *)_variable->payload.stringValue, 0x0, 32);
-      }
+    if (_exposing && _init) {
+      _init = false;
+      auto &var = _variable.get();
+      // we own the variable so let's run some init
+      var.valueType = CBType::String;
+      var.payload.stringValue = new char[32];
+      var.payload.stringCapacity = 32;
+      memset((void *)var.payload.stringValue, 0x0, 32);
     }
 
     auto *hint = _hint.size() > 0 ? _hint.c_str() : nullptr;
-    if (_variable) {
+    if (_variable.isVariable()) {
+      auto &var = _variable.get();
       ::ImGui::InputTextWithHint(
-          _label.c_str(), hint, (char *)_variable->payload.stringValue,
-          _variable->payload.stringCapacity, ImGuiInputTextFlags_CallbackResize,
+          _label.c_str(), hint, (char *)var.payload.stringValue,
+          var.payload.stringCapacity, ImGuiInputTextFlags_CallbackResize,
           &InputTextCallback, this);
-      return *_variable;
+      return var;
     } else {
       ::ImGui::InputTextWithHint(
           _label.c_str(), hint, (char *)_buffer.c_str(), _buffer.capacity() + 1,
@@ -2383,6 +2332,7 @@ private:
   // fallback, used only when no variable name is set
   std::string _buffer;
   std::string _hint;
+  bool _init{true};
 };
 
 struct ColorInput : public Variable<CBType::Color> {
@@ -2394,28 +2344,31 @@ struct ColorInput : public Variable<CBType::Color> {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-      if (_exposing) {
-        // we own the variable so let's run some init
-        _variable->valueType = Color;
-        _variable->payload.colorValue.r = 0;
-        _variable->payload.colorValue.g = 0;
-        _variable->payload.colorValue.b = 0;
-        _variable->payload.colorValue.a = 255;
-      }
+    if (_exposing && _init) {
+      _init = false;
+      auto &var = _variable.get();
+      // we own the variable so let's run some init
+      var.valueType = CBType::Color;
+      var.payload.colorValue.r = 0;
+      var.payload.colorValue.g = 0;
+      var.payload.colorValue.b = 0;
+      var.payload.colorValue.a = 255;
     }
 
-    if (_variable) {
-      auto fc = Style::color2Vec4(*_variable);
+    if (_variable.isVariable()) {
+      auto &var = _variable.get();
+      auto fc = Style::color2Vec4(var);
       ::ImGui::ColorEdit4(_label.c_str(), &fc.x);
-      _variable->payload.colorValue = Style::vec42Color(fc);
-      return *_variable;
+      var.payload.colorValue = Style::vec42Color(fc);
+      return var;
     } else {
       ::ImGui::ColorEdit4(_label.c_str(), &_lcolor.x);
       return Var(Style::vec42Color(_lcolor));
     }
   }
+
+private:
+  bool _init{true};
 };
 
 struct Image : public Base {
@@ -3466,14 +3419,10 @@ struct Combo : public Variable<CBType::Int> {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
     auto count = input.payload.seqValue.len;
     if (count == 0) {
-      if (_variable)
-        _variable->payload.intValue = -1;
+      if (_variable.isVariable())
+        _variable.get().payload.intValue = -1;
       return Var::Empty;
     }
 
@@ -3488,10 +3437,10 @@ struct Combo : public Variable<CBType::Int> {
       items[i] = vec[i].c_str();
     }
 
-    if (_variable) {
-      _n = _variable->payload.intValue;
+    if (_variable.isVariable()) {
+      _n = _variable.get().payload.intValue;
       ::ImGui::Combo(_label.c_str(), &_n, items, count);
-      _variable->payload.intValue = _n;
+      _variable.get().payload.intValue = _n;
     } else {
       ::ImGui::Combo(_label.c_str(), &_n, items, count);
     }
@@ -3540,14 +3489,10 @@ struct ListBox : public Variable<CBType::Int> {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
     auto count = input.payload.seqValue.len;
     if (count == 0) {
-      if (_variable)
-        _variable->payload.intValue = -1;
+      if (_variable.isVariable())
+        _variable.get().payload.intValue = -1;
       return Var::Empty;
     }
 
@@ -3562,10 +3507,10 @@ struct ListBox : public Variable<CBType::Int> {
       items[i] = vec[i].c_str();
     }
 
-    if (_variable) {
-      _n = _variable->payload.intValue;
+    if (_variable.isVariable()) {
+      _n = _variable.get().payload.intValue;
       ::ImGui::ListBox(_label.c_str(), &_n, items, count, _height);
-      _variable->payload.intValue = _n;
+      _variable.get().payload.intValue = _n;
     } else {
       ::ImGui::ListBox(_label.c_str(), &_n, items, count, _height);
     }
@@ -3595,13 +3540,11 @@ struct Selectable : public Variable<CBType::Bool> {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    if (!_variable && _variable_name.size() > 0) {
-      _variable = referenceVariable(context, _variable_name.c_str());
-    }
-
     auto result = Var::False;
-    if (_variable) {
-      if (::ImGui::Selectable(_label.c_str(), &_variable->payload.boolValue)) {
+    if (_variable.isVariable()) {
+      if (::ImGui::Selectable(_label.c_str(),
+                              &_variable.get().payload.boolValue)) {
+        _variable.get().valueType = CBType::Bool;
         result = Var::True;
       }
     } else {

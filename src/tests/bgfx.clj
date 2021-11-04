@@ -214,7 +214,7 @@
                    99 (GUI.Text "Player1")
                    99 (GUI.Text "Player1")
                    (GUI.Separator)
-                   (GUI.Checkbox "CheckBoxie" "checkBoxie") (GUI.SameLine) (GUI.Text)
+                   (GUI.Checkbox "CheckBoxie" .checkBoxie) (GUI.SameLine) (GUI.Text)
                    (Float4 2 3 4 5)
                    (Set "x")
                    (Float4 1 2 3 4)
@@ -264,7 +264,7 @@
                          (->
                           "Node text..."
                           (GUI.Text)
-                          (GUI.TextInput "Say something" "text1")
+                          (GUI.TextInput "Say something" .text1)
                           (GUI.Text "<-- you said!")
 
                           (GUI.IntInput)
@@ -276,8 +276,8 @@
                           (GUI.Int3Input)
                           (GUI.Text)
 
-                          (GUI.Float3Input "f3" "f3var")
-                          (Get "f3var")
+                          (GUI.Float3Input "f3" .f3var)
+                          (Get .f3var)
                           (GUI.Text)
 
                           (GUI.FloatDrag)
