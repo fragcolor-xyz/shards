@@ -66,6 +66,21 @@ struct CubeView : public BGFX::BaseConsumer {
 
   void warmup(CBContext *context) { _view.warmup(context); }
 
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = BGFX::BaseConsumer::ContextInfo;
+    idx++;
+
+    if (_view.isVariable()) {
+      _required[idx].name = _view.variableName();
+      _required[idx].help = CBCCSTR("The required view matrix.");
+      _required[idx].exposedType = CoreInfo::Float4x4Type;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto &view = _view.get();
     // HACKish, I use Mat4 because the API hides some complexity, but it feels
@@ -97,6 +112,7 @@ private:
        {Type::VariableOf(CoreInfo::Float4x4Type)}}};
 
   ParamVar _view{};
+  std::array<CBExposedTypeInfo, 2> _required;
 };
 
 struct Grid : public BGFX::BaseConsumer {
@@ -158,6 +174,27 @@ struct Grid : public BGFX::BaseConsumer {
     _size.warmup(context);
   }
 
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = BGFX::BaseConsumer::ContextInfo;
+    idx++;
+
+    if (_axis.isVariable()) {
+      _required[idx].name = _axis.variableName();
+      _required[idx].help = CBCCSTR("The required axis.");
+      _required[idx].exposedType = Enums::GridAxisType;
+      idx++;
+    }
+    if (_size.isVariable()) {
+      _required[idx].name = _size.variableName();
+      _required[idx].help = CBCCSTR("The required size.");
+      _required[idx].exposedType = CoreInfo::FloatType;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
 
     linalg::aliases::float4 rot;
@@ -206,6 +243,7 @@ private:
   // params
   ParamVar _axis{Var((CBEnum)Enums::GridAxis::Y)};
   ParamVar _size{Var(100.0f)};
+  std::array<CBExposedTypeInfo, 3> _required;
 
   Mat4 _matView{};
 };
@@ -286,6 +324,39 @@ struct Transform : public BGFX::BaseConsumer {
     _snap.warmup(context);
   }
 
+  CBExposedTypesInfo requiredVariables() {
+    int idx = 0;
+    _required[idx] = BGFX::BaseConsumer::ContextInfo;
+    idx++;
+
+    if (_matrix.isVariable()) {
+      _required[idx].name = _matrix.variableName();
+      _required[idx].help = CBCCSTR("The required matrix.");
+      _required[idx].exposedType = CoreInfo::Float4x4Type;
+      idx++;
+    }
+    if (_mode.isVariable()) {
+      _required[idx].name = _mode.variableName();
+      _required[idx].help = CBCCSTR("The required mode.");
+      _required[idx].exposedType = Enums::ModeType;
+      idx++;
+    }
+    if (_operation.isVariable()) {
+      _required[idx].name = _operation.variableName();
+      _required[idx].help = CBCCSTR("The required operation.");
+      _required[idx].exposedType = Enums::OperationType;
+      idx++;
+    }
+    if (_snap.isVariable()) {
+      _required[idx].name = _snap.variableName();
+      _required[idx].help = CBCCSTR("The optional snap.");
+      _required[idx].exposedType = CoreInfo::Float3Type;
+      idx++;
+    }
+
+    return {_required.data(), uint32_t(idx), 0};
+  }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     auto *ctx =
         reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
@@ -327,7 +398,6 @@ private:
       {"Matrix",
        CBCCSTR("Object matrix modified by this transform gizmo."),
        {Type::VariableOf(CoreInfo::Float4x4Type)}},
-      // TODO add checks: matrix is required and must be non-null
       {"Mode",
        CBCCSTR("Type of coordinates used. Either local to the object or global "
                "(world)."),
@@ -345,6 +415,7 @@ private:
   ParamVar _mode{};
   ParamVar _operation{};
   ParamVar _snap{};
+  std::array<CBExposedTypeInfo, 5> _required;
 };
 
 void registerGizmoBlocks() {

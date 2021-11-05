@@ -32,7 +32,8 @@
                                    (ChainRunner .chainVar :Mode RunChainMode.Detached)
                                     ;; (Detach action)
                                    ])
-                     (GUI.CheckBox)
+                     (GUI.Checkbox :Variable .checked)
+                     .checked
                      (When (Is true)
                            ~["Hello optional world"
                              (GUI.Text)])])])))

@@ -522,6 +522,16 @@ BUILTIN("vals") {
 
 BUILTIN("vector") { return mal::vector(argsBegin, argsEnd); }
 
+BUILTIN("vec") {
+  CHECK_ARGS_IS(1);
+  if (*argsBegin == mal::nilValue()) {
+    // empty vector
+    return mal::vector(argsBegin, argsBegin);
+  }
+  ARG(malSequence, seq);
+  return mal::vector(seq->begin(), seq->end());
+}
+
 BUILTIN("with-meta") {
   CHECK_ARGS_IS(2);
   malValuePtr obj = *argsBegin++;

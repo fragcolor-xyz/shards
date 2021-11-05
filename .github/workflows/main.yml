@@ -262,6 +262,12 @@ jobs:
           working-directory: ./build
           run: |
             ./cbl ../src/tests/gizmos.edn
+      - name: Test Headless (imgui_demo)
+        uses: chainblocks/xvfb-action@master
+        with:
+          working-directory: ./build
+          run: |
+            ./cbl ../src/tests/imgui_demo.edn
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
@@ -556,8 +562,6 @@ jobs:
           ./cbl ../src/tests/general.edn
           echo "Running test: variables"
           ./cbl ../src/tests/variables.clj
-          echo "Running test: subchains"
-          ./cbl ../src/tests/subchains.clj
           echo "Running test: linalg"
           ./cbl ../src/tests/linalg.clj
           echo "Running test: loader"
@@ -586,6 +590,8 @@ jobs:
           ./cbl ../src/tests/bgfx.clj
           echo "Running test: gizmos"
           ./cbl ../src/tests/gizmos.edn
+          echo "Running test: imgui_demo"
+          ./cbl ../src/tests/imgui_demo.edn
           echo "Running test: wasm"
           ./cbl ../src/tests/wasm.clj
           echo "Running test: eth"
@@ -601,6 +607,8 @@ jobs:
           ./cbl ../src/tests/genetic.clj
           echo "Running test: time"
           ./cbl ../src/tests/time.edn
+          echo "Running test: subchains"
+          ./cbl ../src/tests/subchains.clj
 
   #
   # Run blocks documentation samples

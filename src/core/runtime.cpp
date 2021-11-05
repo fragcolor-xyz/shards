@@ -870,6 +870,11 @@ bool matchTypes(const CBTypeInfo &inputType, const CBTypeInfo &receiverType,
     break;
   }
   case Enum: {
+    // special case: any enum
+    if (receiverType.enumeration.vendorId == 0 &&
+        receiverType.enumeration.typeId == 0)
+      return true;
+    // otherwise, exact match
     if (inputType.enumeration.vendorId != receiverType.enumeration.vendorId ||
         inputType.enumeration.typeId != receiverType.enumeration.typeId) {
       return false;
@@ -3065,6 +3070,7 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   CB_ARRAY_IMPL(CBParametersInfo, CBParameterInfo, params);
   CB_ARRAY_IMPL(CBlocks, CBlockPtr, blocks);
   CB_ARRAY_IMPL(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
+  CB_ARRAY_IMPL(CBEnums, CBEnum, enums);
   CB_ARRAY_IMPL(CBStrings, CBString, strings);
 
   result->tableNew = []() noexcept {

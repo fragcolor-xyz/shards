@@ -1061,10 +1061,54 @@ template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleBlock : public TSimpleBlock<InternalCore, Params, NPARAMS,
                                          InputType, OutputType> {};
 
-template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E> {
+template <typename E>
+class EnumInfo : public TEnumInfo<InternalCore, E, false> {
 public:
   EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
-      : TEnumInfo<InternalCore, E>(name, vendorId, enumId) {}
+      : TEnumInfo<InternalCore, E, false>(name, vendorId, enumId) {}
+};
+
+template <typename E>
+class FlagsInfo : public TEnumInfo<InternalCore, E, true> {
+public:
+  FlagsInfo(const char *name, int32_t vendorId, int32_t enumId)
+      : TEnumInfo<InternalCore, E, true>(name, vendorId, enumId) {}
+};
+
+#define REGISTER_ENUM(_NAME_, _CC_)                                            \
+  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
+  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,             \
+                                                  _NAME_##CC};                 \
+  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+
+#define REGISTER_FLAGS(_NAME_, _CC_)                                           \
+  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
+  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,            \
+                                                   _NAME_##CC};                \
+  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+
+template <typename E> static E getFlags(CBVar var) {
+  E flags{};
+  switch (var.valueType) {
+  case CBType::Enum:
+    flags = E(var.payload.enumValue);
+    break;
+  case CBType::Seq: {
+    assert(var.payload.seqValue.len == 0 ||
+           var.payload.seqValue.elements[0].valueType == CBType::Enum);
+    for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
+      // note: can't use namespace magic_enum::bitwise_operators because of
+      // potential conflicts with other implementations
+      flags = static_cast<E>(
+          static_cast<magic_enum::underlying_type_t<E>>(flags) |
+          static_cast<magic_enum::underlying_type_t<E>>(
+              var.payload.seqValue.elements[i].payload.enumValue));
+    }
+  } break;
+  default:
+    break;
+  }
+  return flags;
 };
 
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,

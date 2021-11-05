@@ -1244,7 +1244,7 @@ struct Observer : public chainblocks::RuntimeObserver {
     for (uint32_t i = 0; i < info.labels.len; i++) {
       auto enumName =
           MalString(info.name) + "." + MalString(info.labels.elements[i]);
-      auto enumValue = newEnum(vendorId, typeId, i);
+      auto enumValue = newEnum(vendorId, typeId, info.values.elements[i]);
       builtIns[enumName] = enumValue;
       _env->set(enumName, enumValue);
     }
@@ -1490,16 +1490,6 @@ BUILTIN("read-var") {
   ARG(malCBVar, value);
   auto &v = value->value();
   return readVar(v);
-}
-
-BUILTIN("-->") {
-  auto vec = new malValueVec();
-  auto blks = chainify(argsBegin, argsEnd);
-  for (auto blk : blks) {
-    malCBlock *pblk = blk.ptr();
-    vec->emplace_back(pblk);
-  }
-  return malValuePtr(new malList(vec));
 }
 
 BUILTIN("->") {
@@ -2085,7 +2075,11 @@ BUILTIN("info") {
       pmap[":types"] = mal::string(ss.str());
       {
         std::ostringstream ss;
-        ss << block->getParam(block, (int)i);
+        auto param = block->getParam(block, (int)i);
+        if (param.valueType == CBType::String)
+          ss << "\"" << param.payload.stringValue << "\"";
+        else
+          ss << param;
         pmap[":default"] = mal::string(ss.str());
       }
       pvec.emplace_back(mal::hash(pmap));

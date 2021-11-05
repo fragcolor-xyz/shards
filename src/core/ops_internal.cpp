@@ -149,7 +149,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     if (var.payload.stringValue == nullptr)
       os << "NULL";
     else
-      os << "\"" << var.payload.stringValue << "\"";
+      os << var.payload.stringValue;
     break;
   case CBType::ContextVar:
     os << "ContextVariable: " << var.payload.stringValue;
