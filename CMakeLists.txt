@@ -206,7 +206,7 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # aggressive inlining
-  if(NOT SKIP_HEAVY_INLINE)
+  if(NOT SKIP_HEAVY_INLINE AND NOT (CMAKE_SIZEOF_VOID_P EQUAL 4))
     # this works with emscripten too but makes the final binary much bigger
     # for now let's keep it disabled
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
