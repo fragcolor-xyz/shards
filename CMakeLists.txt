@@ -244,11 +244,16 @@ elseif(APPLE)
   include_directories(
     /usr/local/include
     /usr/local/opt/openssl@1.1/include
+    /opt/homebrew/include
+    /opt/homebrew/opt/openssl@1.1/include
   )
   link_directories(
     /usr/local/lib
     /usr/local/opt/openssl@1.1/lib
     /usr/local/opt/boost/lib
+    /opt/homebrew/lib
+    /opt/homebrew/opt/openssl@1.1/lib
+    /opt/homebrew/opt/boost/lib
   )
 elseif(EMSCRIPTEN)
   include_directories(${CHAINBLOCKS_DIR}/external/boost_1_73_0)
