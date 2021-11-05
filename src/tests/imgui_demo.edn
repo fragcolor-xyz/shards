@@ -35,7 +35,7 @@
 
 (defblocks demo-window []
   (GUI.Window
-   :Title "Dear ImGui Demo" :Pos (int2 650 20) :Width 550 :Height 680
+   :Title "UI Demo" :Pos (int2 650 20) :Width 550 :Height 680
    :AllowResize true :AllowMove true :AllowCollapse true :ShowMenuBar true
    :Contents
    (-> (GUI.MenuBar
@@ -43,14 +43,14 @@
         (-> (GUI.Menu "Menu" :Contents (demo-menu-items))
             (examples-menu)
             (tools-menu)))
-       (GUI.Version) (GUI.Text :Format "dear imgui says hello ({})")
+       "UI says hello" (GUI.Text)
        (GUI.CollapsingHeader
         "Help"
         (-> "ABOUT THIS DEMO:" (GUI.Text)
             "Sections below are demonstrating many aspects of the library." (GUI.Text :Bullet true)
             "The \"Examples\" menu above leads to more demo contents." (GUI.Text :Bullet true)
             (str "The \"Tools\" menu above gives access to: About Box, Style Editor,\n"
-                 "and Metrics/Debugger (general purpose Dear ImGui debugging tool).") (GUI.Text :Bullet true)
+                 "and Metrics/Debugger (general purpose UI debugging tool).") (GUI.Text :Bullet true)
             (GUI.Separator)
             "PROGRAMMER GUIDE:" (GUI.Text)
             "See the demo-window block in imgui_demo.edn. <- you are here!" (GUI.Text :Bullet true)
@@ -424,22 +424,22 @@
    (-> (GUI.MenuItem "Metrics/Debugger" :IsEnabled false)
        (GUI.MenuItem "Stack Tool" :IsEnabled false)
        (GUI.MenuItem "Style Editor" :IsEnabled false)
-       (GUI.MenuItem "About Dear ImGui" .about)))
+       (GUI.MenuItem "About UI" .about)))
   (If (Get .about)
       :Then
       (GUI.Window
-       :Title "About Dear ImGui" :OnClose .about
+       :Title "About UI" :OnClose .about
        :AllowResize true :AllowMove true :AllowCollapse true
        :Contents
-       (-> (GUI.Version) (GUI.Text :Format "Dear ImGui {}")
+       (-> "UI Chainblocks" (GUI.Text)
            (GUI.Separator)
-           "By Omar Cornut and all Dear ImGui contributors." (GUI.Text)
-           "Dear ImGui is licensed under the MIT License, see LICENSE for more information." (GUI.Text)))))
+           "Based on 'Dear ImGUI' by Omar Cornut and contributors." (GUI.Text)
+           "'Dear ImGui' is licensed under the MIT License." (GUI.Text)))))
 
 (defnode main)
-(defloop imgui-chain
+(defloop ui-chain
   (GFX.MainWindow
-   :Title "Dear ImGui Chainblocks Example" :Width 1280 :Height 768 :Debug true :Fullscreen false
+   :Title "UI Chainblocks Example" :Width 1280 :Height 768 :Debug true :Fullscreen false
    :Contents
    (-> (Setup
         true >= .showDemo
@@ -447,5 +447,5 @@
         (color 15 15 15 240) >= .color)
        .color (GUI.Style GuiStyle.WindowBgColor)
        (helloWorld-window))))
-(schedule main imgui-chain)
+(schedule main ui-chain)
 (run main 0.02 100)

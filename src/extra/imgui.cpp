@@ -2929,14 +2929,6 @@ struct FPS : public Base {
   }
 };
 
-struct Version : public Base {
-  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
-
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return Var(IMGUI_VERSION);
-  }
-};
-
 struct Tooltip : public Base {
   static CBParametersInfo parameters() { return _params; }
 
@@ -4083,7 +4075,6 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
   REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
   REGISTER_CBLOCK("GUI.FPS", FPS);
-  REGISTER_CBLOCK("GUI.Version", Version);
   REGISTER_CBLOCK("GUI.Tooltip", Tooltip);
   REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
   REGISTER_CBLOCK("GUI.ProgressBar", ProgressBar);
