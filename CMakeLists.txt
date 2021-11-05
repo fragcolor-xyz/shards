@@ -168,7 +168,7 @@ endif()
 
 add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 
-if(X86 AND NOT EMSCRIPTEN AND NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
+if(X86 AND NOT EMSCRIPTEN)
   if(FORCE_CORE2)
     # Not as good as AVX but CBVarPayload being m128 and such rocks it!
     set(ARCH_FLAGS -march=core2)
@@ -182,9 +182,15 @@ if(X86 AND NOT EMSCRIPTEN AND NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(ARCH_FLAGS -march=native)
     set(RUST_ARCH "-Ctarget-cpu=native ")
   else()
-    # CBVars are m256 basically, so this is extremely good! (AVX!)
-    set(ARCH_FLAGS -march=sandybridge)
-    set(RUST_ARCH "-Ctarget-cpu=sandybridge ")
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+      # Not as good as AVX but CBVarPayload being m128 and such rocks it!
+      set(ARCH_FLAGS -march=core2)
+      set(RUST_ARCH "-Ctarget-cpu=core2 ")
+    else()
+      # CBVars are m256 basically, so this is extremely good! (AVX!)
+      set(ARCH_FLAGS -march=sandybridge)
+      set(RUST_ARCH "-Ctarget-cpu=sandybridge ")
+    endif()
   endif()
 endif()
 
