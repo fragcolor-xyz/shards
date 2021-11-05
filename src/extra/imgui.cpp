@@ -836,7 +836,7 @@ template <CBType CT> struct Variable : public Base {
           // we found a variable, make sure it's the right type and mark
           // exposing off
           _exposing = false;
-          if (var.exposedType.basicType != CT) {
+          if (CT != CBType::Any && var.exposedType.basicType != CT) {
             throw CBException("ImGui - Variable: Existing variable type not "
                               "matching the input.");
           }
@@ -1122,7 +1122,7 @@ private:
   CBVar _tmp{};
 };
 
-struct RadioButton : public Variable<CBType::Int> {
+struct RadioButton : public Variable<CBType::Any> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
@@ -1131,16 +1131,42 @@ struct RadioButton : public Variable<CBType::Int> {
 
   void setParam(int index, const CBVar &value) {
     if (index < 2)
-      Variable<CBType::Int>::setParam(index, value);
+      Variable<CBType::Any>::setParam(index, value);
     else
-      _value = value.payload.intValue;
+      _value = value;
   }
 
   CBVar getParam(int index) {
     if (index < 2)
-      return Variable<CBType::Int>::getParam(index);
+      return Variable<CBType::Any>::getParam(index);
     else
-      return Var(_value);
+      return _value;
+  }
+
+  CBExposedTypesInfo requiredVariables() {
+    if (_variable.isVariable() && !_exposing) {
+      _expInfo = ExposedInfo(
+          requiredInfo,
+          ExposedInfo::Variable(_variable.variableName(),
+                                CBCCSTR("The required input variable."),
+                                CBTypeInfo({_value.valueType})));
+      return CBExposedTypesInfo(_expInfo);
+    } else {
+      return {};
+    }
+  }
+
+  CBExposedTypesInfo exposedVariables() {
+    if (_variable.isVariable() > 0 && _exposing) {
+      _expInfo = ExposedInfo(
+          requiredInfo,
+          ExposedInfo::Variable(_variable.variableName(),
+                                CBCCSTR("The exposed input variable."),
+                                CBTypeInfo({_value.valueType}), true));
+      return CBExposedTypesInfo(_expInfo);
+    } else {
+      return {};
+    }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -1149,10 +1175,8 @@ struct RadioButton : public Variable<CBType::Int> {
     auto result = Var::False;
     if (_variable.isVariable()) {
       auto &var = _variable.get();
-      if (::ImGui::RadioButton(_label.c_str(),
-                               var.payload.intValue == _value)) {
-        var.valueType = CBType::Int;
-        var.payload.intValue = _value;
+      if (::ImGui::RadioButton(_label.c_str(), var == _value)) {
+        chainblocks::cloneVar(var, _value);
         result = Var::True;
       }
     } else {
@@ -1169,9 +1193,9 @@ struct RadioButton : public Variable<CBType::Int> {
 private:
   static inline Parameters paramsInfo{
       VariableParamsInfo(),
-      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::IntType}}}};
+      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::AnyType}}}};
 
-  CBInt _value;
+  CBVar _value{};
 };
 
 struct Text : public Base {
