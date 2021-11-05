@@ -449,3 +449,6 @@
        (helloWorld-window))))
 (schedule main ui-chain)
 (run main 0.02 100)
+
+(schedule main ui-chain)
+(run main 0.02 100)
