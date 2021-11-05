@@ -168,7 +168,7 @@ endif()
 
 add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 
-if(X86 AND NOT EMSCRIPTEN)
+if(X86 AND NOT EMSCRIPTEN AND NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   if(FORCE_CORE2)
     # Not as good as AVX but CBVarPayload being m128 and such rocks it!
     set(ARCH_FLAGS -march=core2)
