@@ -1926,7 +1926,6 @@ struct Camera : public CameraBase {
     } break;
 
     case CBType::Seq: {
-
       auto *mat = reinterpret_cast<float *>(view.data());
       auto &vmat = input;
 
