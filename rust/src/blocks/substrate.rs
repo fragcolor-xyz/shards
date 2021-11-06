@@ -120,6 +120,10 @@ impl Block for AccountId {
     "Substrate.AccountId"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("Returns the account id of the input public key."))
+  }
+
   fn inputTypes(&mut self) -> &Vec<Type> {
     &BYTES_TYPES
   }
@@ -190,6 +194,12 @@ impl Block for CBStorageKey {
     "Substrate.StorageKey"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!(
+      "Returns the encoded storage key corresponding to the input strings."
+    ))
+  }
+
   fn inputTypes(&mut self) -> &Vec<Type> {
     &STRINGS_TYPES
   }
@@ -241,6 +251,12 @@ impl Block for CBStorageMap {
 
   fn name(&mut self) -> &str {
     "Substrate.StorageMap"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!(
+      "Returns the encoded storage map corresponding to the input strings."
+    ))
   }
 
   fn inputTypes(&mut self) -> &Vec<Type> {
@@ -415,6 +431,10 @@ impl Block for CBEncode {
     "Substrate.Encode"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("Encode values into a byte array in SCALE format"))
+  }
+
   fn inputTypes(&mut self) -> &Vec<Type> {
     &ANYS_TYPES
   }
@@ -494,6 +514,10 @@ impl Block for CBDecode {
 
   fn name(&mut self) -> &str {
     "Substrate.Decode"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(cbccstr!("Decode SCALE encoded bytes into values"))
   }
 
   fn inputTypes(&mut self) -> &Vec<Type> {
