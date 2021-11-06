@@ -2603,7 +2603,7 @@ void hash_update(const CBVar &var, void *state) {
     }
 
     pdqsort(hashes.begin(), hashes.end());
-    for (const auto hash : hashes) {
+    for (const auto &hash : hashes) {
       XXH3_128bits_update(hashState, &hash, sizeof(uint64_t));
     }
   } break;

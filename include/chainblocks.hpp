@@ -66,6 +66,8 @@ struct Type {
 
   Type(CBTypeInfo type) : _type(type) {}
 
+  Type(const Type &obj) { _type = obj._type; }
+
   Type &operator=(Type other) {
     _type = other._type;
     return *this;
