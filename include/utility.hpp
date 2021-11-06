@@ -702,6 +702,9 @@ template <class Function> struct Defer {
 #define DEFER_DEF(uniq, body)                                                  \
   ::chainblocks::Defer DEFER_NAME(uniq)([&]() { body; })
 #define DEFER(body) DEFER_DEF(__LINE__, body)
+
+template <typename T, size_t N>
+struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
 }; // namespace chainblocks
 
 #endif
