@@ -351,11 +351,6 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingBlock>(
   context: *mut CBContext,
   arg2: *mut c_void,
 ) -> CBVar {
-  #[cfg(all(windows, target_pointer_width = "32"))]
-  unsafe {
-    #![feature(asm)]
-    asm!("and esp, -16");
-  }
   let data = arg2 as *mut AsyncCallData<T>;
   let res = (*(*data).caller).activate_blocking(&*context, &*(*data).input);
   match res {

@@ -3343,8 +3343,19 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
                              CBAsyncActivateProc call,
                              CBAsyncCancelProc cancel_call) {
     return chainblocks::awaitne(
-        context, [=] { return call(context, userData); },
+        context,
         [=] {
+#if defined(WIN32) && defined(CPUBITS32)
+          // realign the stack to 16 bytes
+          asm volatile("andl $-16, %esp");
+#endif
+          return call(context, userData);
+        },
+        [=] {
+#if defined(WIN32) && defined(CPUBITS32)
+          // realign the stack to 16 bytes
+          asm volatile("andl $-16, %esp");
+#endif
           if (cancel_call)
             cancel_call(context, userData);
         });
