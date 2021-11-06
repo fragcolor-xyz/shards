@@ -77,10 +77,10 @@ struct OcornutImguiContext {
 
     const bgfx::Caps *caps = bgfx::getCaps();
     {
-      float ortho[16];
-      bx::mtxOrtho(ortho, 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f,
+      aligned_array<float, 16> ortho;
+      bx::mtxOrtho(ortho.data(), 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f,
                    caps->homogeneousDepth);
-      bgfx::setViewTransform(m_viewId, NULL, ortho);
+      bgfx::setViewTransform(m_viewId, NULL, ortho.data());
       bgfx::setViewRect(m_viewId, 0, 0, uint16_t(width), uint16_t(height));
     }
 

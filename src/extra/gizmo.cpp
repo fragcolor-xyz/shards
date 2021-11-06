@@ -88,18 +88,18 @@ struct CubeView : public BGFX::BaseConsumer {
     // directly
     Mat4 mat{};
     mat = view;
-    float arrView[16];
-    Mat4::ToArrayUnsafe(mat, arrView);
+    aligned_array<float, 16> arrView;
+    Mat4::ToArrayUnsafe(mat, arrView.data());
 
     ImGuiIO &io = ::ImGui::GetIO();
     float viewManipulateRight =
         io.DisplaySize.x;        // TODO: make it a param (% of viewport?)
     float viewManipulateTop = 0; // TODO: make it a param
     ImGuizmo::ViewManipulate(
-        arrView, 5, ImVec2(viewManipulateRight - 128, viewManipulateTop),
+        arrView.data(), 5, ImVec2(viewManipulateRight - 128, viewManipulateTop),
         ImVec2(128, 128), 0x10101010); // TODO: make offset and size a param
 
-    chainblocks::cloneVar(view, Mat4::FromArrayUnsafe(arrView));
+    chainblocks::cloneVar(view, Mat4::FromArrayUnsafe(arrView.data()));
 
     return input;
   }
@@ -216,14 +216,14 @@ struct Grid : public BGFX::BaseConsumer {
 
     _matView = linalg::mul(currentView.view, linalg::rotation_matrix(rot));
 
-    float arrView[16];
-    float arrProj[16];
-    Mat4::ToArrayUnsafe(_matView, arrView);
-    Mat4::ToArrayUnsafe(currentView.proj, arrProj);
+    aligned_array<float, 16> arrView;
+    aligned_array<float, 16> arrProj;
+    Mat4::ToArrayUnsafe(_matView, arrView.data());
+    Mat4::ToArrayUnsafe(currentView.proj, arrProj.data());
 
     ImGuiIO &io = ::ImGui::GetIO();
     ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-    ImGuizmo::DrawGrid(arrView, arrProj, Helper::identity,
+    ImGuizmo::DrawGrid(arrView.data(), arrProj.data(), Helper::identity,
                        _size.get().payload.floatValue);
 
     return input;
@@ -362,10 +362,10 @@ struct Transform : public BGFX::BaseConsumer {
         reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
-    float arrView[16];
-    float arrProj[16];
-    Mat4::ToArrayUnsafe(currentView.view, arrView);
-    Mat4::ToArrayUnsafe(currentView.proj, arrProj);
+    aligned_array<float, 16> arrView;
+    aligned_array<float, 16> arrProj;
+    Mat4::ToArrayUnsafe(currentView.view, arrView.data());
+    Mat4::ToArrayUnsafe(currentView.proj, arrProj.data());
 
     auto &matrix = _matrix.get();
     // HACKish, I use Mat4 because the API hides some complexity, but it feels
@@ -373,8 +373,8 @@ struct Transform : public BGFX::BaseConsumer {
     // directly
     Mat4 mat{};
     mat = matrix;
-    float arrMatrix[16];
-    Mat4::ToArrayUnsafe(mat, arrMatrix);
+    aligned_array<float, 16> arrMatrix;
+    Mat4::ToArrayUnsafe(mat, arrMatrix.data());
 
     auto &snap = _snap.get();
     auto useSnap = snap.valueType == CBType::Float3;
@@ -383,12 +383,12 @@ struct Transform : public BGFX::BaseConsumer {
                        : nullptr;
 
     ImGuizmo::Manipulate(
-        arrView, arrProj,
+        arrView.data(), arrProj.data(),
         Enums::OperationToGuizmo(_operation.get().payload.enumValue),
-        Enums::ModeToGuizmo(_mode.get().payload.enumValue), arrMatrix, nullptr,
+        Enums::ModeToGuizmo(_mode.get().payload.enumValue), arrMatrix.data(), nullptr,
         snapPtr);
 
-    chainblocks::cloneVar(matrix, Mat4::FromArrayUnsafe(arrMatrix));
+    chainblocks::cloneVar(matrix, Mat4::FromArrayUnsafe(arrMatrix.data()));
 
     return input;
   }

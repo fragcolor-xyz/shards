@@ -169,7 +169,7 @@ struct NativeWindow {
        {.object = {.vendorId = CoreCC, .typeId = BgfxNativeWindowCC}}}};
 };
 
-struct ViewInfo {
+struct alignas(16) ViewInfo {
   bgfx::ViewId id{0};
 
   int width{0};
