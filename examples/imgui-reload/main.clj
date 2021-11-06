@@ -18,7 +18,7 @@
            (applyStyle)))
     (GUI.Window
      :Title "Hot-reloaded window"
-     :Width 400 :Height 720 :PosX 0 :PosY 0
+     :Width 400 :Height 720 :Pos (int2 0, 0)
      :Contents
      (-> (ChainLoader (Chain* "imgui-sandbox.clj"))))))))
 

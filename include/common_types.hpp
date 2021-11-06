@@ -78,6 +78,8 @@ struct CoreInfo {
   CB_CORE_TYPE_DEF(Set);
   CB_CORE_TYPE_DEF(Audio);
 
+  static inline Type AnyEnumType = Type::Enum(0, 0);
+
   static inline Type Float4x4Type{{CBType::Seq, {.seqTypes = Float4Type}, 4}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);
   static inline Types Float4x4Types{{Float4x4Type, Float4x4SeqType}};

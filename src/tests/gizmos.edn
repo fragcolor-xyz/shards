@@ -132,9 +132,9 @@
       (float3 1 1 1) >= .snap
       .snap >= .prev_snap
 
-      GizmoGridAxis.Y (ToInt) (Set "radioGridAxis")
-      GizmoMode.Local (ToInt) (Set "radioMode")
-      GizmoOperation.Translate (ToInt) (Set "radioOperation"))
+      GizmoGridAxis.Y (ToInt) (Set .radioGridAxis)
+      GizmoMode.Local (ToInt) (Set .radioMode)
+      GizmoOperation.Translate (ToInt) (Set .radioOperation))
 
      ; toolbar
      (GUI.Window
@@ -143,21 +143,21 @@
       :Contents
       (->
        "Grid axes" (GUI.Text) (GUI.SameLine)
-       (GUI.RadioButton "X" "radioGridAxis" 0) (GUI.SameLine)
-       (GUI.RadioButton "Y" "radioGridAxis" 1) (GUI.SameLine)
-       (GUI.RadioButton "Z" "radioGridAxis" 2)
+       (GUI.RadioButton "X" .radioGridAxis 0) (GUI.SameLine)
+       (GUI.RadioButton "Y" .radioGridAxis 1) (GUI.SameLine)
+       (GUI.RadioButton "Z" .radioGridAxis 2)
        (GUI.Separator)
-       (GUI.RadioButton "Local" "radioMode" 0) (GUI.SameLine)
-       (GUI.RadioButton "World" "radioMode" 1)
+       (GUI.RadioButton "Local" .radioMode 0) (GUI.SameLine)
+       (GUI.RadioButton "World" .radioMode 1)
        (GUI.Separator)
-       (GUI.RadioButton "Translate" "radioOperation" 0) (GUI.SameLine)
-       (GUI.RadioButton "Rotate" "radioOperation" 1) (GUI.SameLine)
-       (GUI.RadioButton "Scale" "radioOperation" 2)
+       (GUI.RadioButton "Translate" .radioOperation 0) (GUI.SameLine)
+       (GUI.RadioButton "Rotate" .radioOperation 1) (GUI.SameLine)
+       (GUI.RadioButton "Scale" .radioOperation 2)
        (GUI.Separator)
-       (If (GUI.CheckBox "Snap?" "snappie")
+       (If (GUI.Checkbox "Snap?" .snappie)
            :Then (->
                   .prev_snap > .snap
-                  (GUI.SameLine) (GUI.Float3Input "" "snap")
+                  (GUI.SameLine) (GUI.Float3Input "" .snap)
                   .snap > .prev_snap)
            :Else (-> (float3 0 0 0) > .snap))
        (GUI.Separator)
@@ -206,4 +206,6 @@
 (defnode main)
 (schedule main test-chain)
 (run main 0.02 100)
-;; (run main 0.02)
+
+(schedule main test-chain)
+(run main 0.02 100)
