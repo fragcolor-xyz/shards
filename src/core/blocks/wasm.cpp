@@ -21,9 +21,9 @@
 // defined and causes some issues with vectorcall definition
 #pragma push_macro("WIN32")
 #undef WIN32
+
 #include "wasm3.h"
 
-#include "m3_api_defs.h"
 #include "m3_api_libc.h"
 #include "m3_config.h"
 #include "m3_env.h"
