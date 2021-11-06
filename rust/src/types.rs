@@ -797,7 +797,7 @@ impl Serialize for Var {
       CBType_String => {
         let value: &str = self.try_into().unwrap();
         se.serialize_str(value)
-      },
+      }
       CBType_Seq => {
         let seq: Seq = self.try_into().unwrap();
         let mut s = se.serialize_seq(Some(seq.len()))?;
@@ -2303,7 +2303,7 @@ impl PartialEq for Type {
   }
 }
 
-pub const FRAG_CC: i32 = 0x66726167;  // 'frag'
+pub const FRAG_CC: i32 = 0x66726167; // 'frag'
 
 // TODO share those from C++ ones to reduce binary size
 lazy_static! {
