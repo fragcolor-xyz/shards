@@ -385,8 +385,8 @@ struct Transform : public BGFX::BaseConsumer {
     ImGuizmo::Manipulate(
         arrView.data(), arrProj.data(),
         Enums::OperationToGuizmo(_operation.get().payload.enumValue),
-        Enums::ModeToGuizmo(_mode.get().payload.enumValue), arrMatrix.data(), nullptr,
-        snapPtr);
+        Enums::ModeToGuizmo(_mode.get().payload.enumValue), arrMatrix.data(),
+        nullptr, snapPtr);
 
     chainblocks::cloneVar(matrix, Mat4::FromArrayUnsafe(arrMatrix.data()));
 

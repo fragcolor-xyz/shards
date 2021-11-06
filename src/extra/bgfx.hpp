@@ -347,7 +347,8 @@ struct Context {
   static inline std::vector<SDL_Event> sdlEvents;
 
 private:
-  std::deque<ViewInfo> _viewsStack;
+  std::deque<ViewInfo, boost::alignment::aligned_allocator<ViewInfo>>
+      _viewsStack;
   bgfx::ViewId _nextViewCounter{0};
 
   std::deque<bgfx::UniformHandle> _samplers;
