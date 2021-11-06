@@ -77,10 +77,10 @@ struct OcornutImguiContext {
 
     const bgfx::Caps *caps = bgfx::getCaps();
     {
-      float ortho[16];
-      bx::mtxOrtho(ortho, 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f,
+      aligned_array<float, 16> ortho;
+      bx::mtxOrtho(ortho.data(), 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f,
                    caps->homogeneousDepth);
-      bgfx::setViewTransform(m_viewId, NULL, ortho);
+      bgfx::setViewTransform(m_viewId, NULL, ortho.data());
       bgfx::setViewRect(m_viewId, 0, 0, uint16_t(width), uint16_t(height));
     }
 
@@ -1884,7 +1884,7 @@ struct Camera : public CameraBase {
 
     auto &currentView = ctx->currentView();
 
-    std::array<float, 16> view;
+    aligned_array<float, 16> view;
     bool hasView;
     switch (input.valueType) {
     case CBType::Table: {
@@ -1926,7 +1926,6 @@ struct Camera : public CameraBase {
     } break;
 
     case CBType::Seq: {
-
       auto *mat = reinterpret_cast<float *>(view.data());
       auto &vmat = input;
 
@@ -1954,7 +1953,7 @@ struct Camera : public CameraBase {
     int width = _width != 0 ? _width : currentView.width;
     int height = _height != 0 ? _height : currentView.height;
 
-    std::array<float, 16> proj;
+    aligned_array<float, 16> proj;
     bx::mtxProj(proj.data(), _fov, float(width) / float(height), _near, _far,
                 bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
@@ -2074,7 +2073,7 @@ struct CameraOrtho : public CameraBase {
 
     auto &currentView = ctx->currentView();
 
-    std::array<float, 16> view;
+    aligned_array<float, 16> view;
     if (input.valueType == CBType::Table) {
       // this is the most efficient way to find items in table
       // without hashing and possible allocations etc
@@ -2113,7 +2112,7 @@ struct CameraOrtho : public CameraBase {
     int width = _width != 0 ? _width : currentView.width;
     int height = _height != 0 ? _height : currentView.height;
 
-    std::array<float, 16> proj;
+    aligned_array<float, 16> proj;
     bx::mtxOrtho(proj.data(), _left, _right, _bottom, _top, _near, _far, 0.0,
                  bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 

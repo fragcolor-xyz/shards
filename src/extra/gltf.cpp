@@ -98,7 +98,7 @@ struct GFXMaterial {
 
   // textures and parameters
   std::shared_ptr<GFXTexture> baseColorTexture;
-  std::array<float, 4> baseColor;
+  aligned_array<float, 4> baseColor;
 
   std::shared_ptr<GFXTexture> metallicRoughnessTexture;
   float metallicFactor;
@@ -109,7 +109,7 @@ struct GFXMaterial {
   std::shared_ptr<GFXTexture> occlusionTexture;
 
   std::shared_ptr<GFXTexture> emissiveTexture;
-  std::array<float, 3> emissiveColor;
+  aligned_array<float, 3> emissiveColor;
 
   std::shared_ptr<GFXShader> shader;
 };
