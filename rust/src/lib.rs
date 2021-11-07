@@ -384,11 +384,20 @@ mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
   use std::ffi::CString;
+  use super::*;
 
   extern "C" {
     pub fn cbLispCreate(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void;
     pub fn cbLispDestroy(env: *mut ::core::ffi::c_void);
     pub fn cbLispEval(env: *mut ::core::ffi::c_void, code: *const ::std::os::raw::c_char) -> Var;
+  }
+
+  pub fn init() {
+    unsafe {
+      if Core.is_null() {
+        Core = chainblocksc::chainblocksInterface(0x20200101);
+      }
+    }
   }
 
   macro_rules! cbl {
