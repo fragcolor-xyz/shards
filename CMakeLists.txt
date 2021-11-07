@@ -863,10 +863,6 @@ if(NOT BUILD_CORE_ONLY)
     set(RUST_FEATURES ${RUST_FEATURES} --features run_bindgen)
   endif()
 
-  if(RUST_CBLISP)
-    set(RUST_FEATURES ${RUST_FEATURES} --features cblisp)
-  endif()
-
   if(RUST_USE_LTO)
     set(RUST_LTO "-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld ")
   endif()
@@ -890,9 +886,11 @@ if(NOT BUILD_CORE_ONLY)
     WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   )
 
-  add_library(cb_rust_static STATIC IMPORTED GLOBAL)
-  set_target_properties(cb_rust_static PROPERTIES IMPORTED_LOCATION ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
-  add_dependencies(cb_rust_static rust_blocks)
+  if(NOT RUST_CBLISP)
+    add_library(cb_rust_static STATIC IMPORTED GLOBAL)
+    set_target_properties(cb_rust_static PROPERTIES IMPORTED_LOCATION ${CHAINBLOCKS_DIR}/target/${RUST_BUILD_SUBDIR}/libchainblocks.a)
+    add_dependencies(cb_rust_static rust_blocks)
+  endif()
 endif()
 
 add_compile_definitions(REPLXX_STATIC)
@@ -971,7 +969,7 @@ set(CB_RUNTIME_LIBS cb_static)
 # also shared lib target
 # can't use OBJECT sadly due to xcode generator not liking it
 add_library(
-  cb_shared SHARED
+  cb_shared SHARED EXCLUDE_FROM_ALL
   ${RUNTIME_SRC}
   )
 set_property(TARGET cb_shared PROPERTY COMPILE_FLAGS "-DCB_DLL_EXPORT")
@@ -986,9 +984,11 @@ if(NOT BUILD_CORE_ONLY)
   add_dependencies(cb_shared libkissfft)
   set(EXTRA_LIBS ${EXTRA_LIBS} libkissfft)
 
-  add_dependencies(cb_static cb_rust_static)
-  add_dependencies(cb_shared cb_rust_static)
-  set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
+  if(NOT RUST_CBLISP)
+    add_dependencies(cb_static cb_rust_static)
+    add_dependencies(cb_shared cb_rust_static)
+    set(EXTRA_LIBS ${EXTRA_LIBS} cb_rust_static)
+  endif()
 
   if(NOT EMSCRIPTEN)
     # we link with emscripten SDL in the case of emscripten
@@ -1022,7 +1022,7 @@ endif()
 
 ### mal
 add_executable(
-  cbl
+  cbl EXCLUDE_FROM_ALL
   "${CHAINBLOCKS_DIR}/src/mal/stepA_mal.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/Core.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
@@ -1053,7 +1053,7 @@ endif()
 
 ### mal as dll
 add_library(
-  libcb SHARED
+  libcb SHARED EXCLUDE_FROM_ALL
   "${CHAINBLOCKS_DIR}/src/mal/stepA_mal.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/Core.cpp"
   "${CHAINBLOCKS_DIR}/src/mal/CBCore.cpp"
@@ -1074,7 +1074,7 @@ set_target_properties(libcb PROPERTIES PREFIX "")
 
 ### our experimental edn eval
 add_executable(
-  cbedn
+  cbedn EXCLUDE_FROM_ALL
   "${CHAINBLOCKS_DIR}/src/core/edn/main.cpp"
   )
 add_dependencies(cbedn cb_static)
@@ -1109,7 +1109,7 @@ if(BUILD_INTERNAL_TESTS)
 endif()
 
 add_executable(
-  test_runtime
+  test_runtime EXCLUDE_FROM_ALL
   "${CHAINBLOCKS_DIR}/src/tests/test_runtime.cpp"
   )
 add_dependencies(test_runtime libCatch2)
@@ -1129,7 +1129,7 @@ if(EMSCRIPTEN)
 endif()
 
 add_executable(
-  test_extra
+  test_extra EXCLUDE_FROM_ALL
   "${CHAINBLOCKS_DIR}/src/tests/test_extra.cpp"
   )
 add_dependencies(test_extra libCatch2)
@@ -1147,3 +1147,5 @@ if(EMSCRIPTEN)
     em_link_js_library(test_extra ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.js)
   endif()
 endif()
+
+install(TARGETS cb_static)

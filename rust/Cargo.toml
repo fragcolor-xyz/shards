@@ -46,6 +46,7 @@ ctor = "0.1.16"
 
 [build-dependencies]
 bindgen = { version = "0.59.1", optional = true }
+cmake = { version = "0.1", optional = true }
 
 [features]
 default = []
@@ -71,7 +72,7 @@ blocks = ["reqwest",
           "parity-scale-codec"]
 dllblock = ["dlopen"]
 run_bindgen = ["bindgen"]
-cblisp = []
+cblisp = ["cmake"]
 
 [profile.release]
 panic = "abort"

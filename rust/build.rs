@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+#[cfg(feature = "cblisp")]
+extern crate cmake;
+
 #[cfg(feature = "run_bindgen")]
 extern crate bindgen;
 
@@ -38,6 +41,22 @@ fn bindgen_it() {
 #[cfg(not(feature = "run_bindgen"))]
 fn bindgen_it() {}
 
+#[cfg(feature = "cblisp")]
+fn build_all() {
+  // Builds the project in the directory located in `libfoo`, installing it
+  // into $OUT_DIR
+  let dst = cmake::Config::new("../")
+    .define("RUST_CBLISP", "1")
+    .build_target("cb_static")
+    .build();
+  println!("cargo:rustc-link-search=native={}/build", dst.display());
+  println!("cargo:rustc-link-lib=static=cb_static");
+}
+
+#[cfg(not(feature = "cblisp"))]
+fn build_all() {}
+
 fn main() {
   bindgen_it();
+  build_all();
 }
