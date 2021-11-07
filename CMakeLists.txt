@@ -166,6 +166,11 @@ if(USE_LTO)
   set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_CXX_FLAGS=-flto)
 endif()
 
+if(USE_FPIC)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  set(EXTRA_CMAKE_ARGS ${EXTRA_CMAKE_ARGS} -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSDL_STATIC_PIC=ON)
+endif()
+
 add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 
 if(X86 AND NOT EMSCRIPTEN)
