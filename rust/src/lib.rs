@@ -383,6 +383,7 @@ mod dummy_block {
 pub mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
+  use std::env;
   use std::ffi::CString;
 
   extern "C" {
@@ -391,7 +392,8 @@ pub mod cblisp {
     pub fn cbLispEval(env: *mut ::core::ffi::c_void, code: *const ::std::os::raw::c_char) -> Var;
   }
 
-  macro_rules! cbl {
+  #[macro_export]
+  macro_rules! cbl_no_env {
     ($code:expr) => {
       unsafe {
         let code = CString::new($code).expect("CString failed...");
@@ -400,9 +402,26 @@ pub mod cblisp {
     };
   }
 
+  #[macro_export]
+  macro_rules! cbl_env {
+    ($code:expr) => {{
+      thread_local! {
+        static ENV: *mut ::core::ffi::c_void = {
+          let current_dir = env::current_dir().unwrap();
+          let current_dir = current_dir.to_str().unwrap();
+          unsafe { cbLispCreate(CString::new(current_dir).unwrap().as_ptr()) }
+        }
+      }
+      unsafe {
+        let code = CString::new($code).expect("CString failed...");
+        ENV.with(|env| cbLispEval(*env, code.as_ptr()))
+      }
+    }};
+  }
+
   pub fn test_cbl() {
     // the string is stored at compile time, ideally we should compress them all!
-    let res = cbl!(include_str!("test.edn"));
+    let res = cbl_env!(include_str!("test.edn"));
     let res: &str = res.as_ref().try_into().unwrap();
     assert_eq!(res, "Hello");
   }
