@@ -380,7 +380,7 @@ mod dummy_block {
 }
 
 #[cfg(feature = "cblisp")]
-mod cblisp {
+pub mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
   use std::ffi::CString;
