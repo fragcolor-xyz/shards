@@ -6,7 +6,7 @@ if(IOS OR EMSCRIPTEN)
 find_package(Boost REQUIRED)
   
 add_library(boost-headers INTERFACE)
-target_include_directories(boost-headers ${Boost_INCLUDE_DIRS})
+target_include_directories(boost-headers INTERFACE ${Boost_INCLUDE_DIRS})
 endif()
 
 if(IOS)
