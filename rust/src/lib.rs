@@ -36,13 +36,7 @@ pub mod types;
 pub mod blocks;
 
 use crate::block::Block;
-use crate::chainblocksc::CBContext;
-use crate::chainblocksc::CBCore;
-use crate::chainblocksc::CBSeq;
-use crate::chainblocksc::CBTypeInfo;
-use crate::chainblocksc::CBTypesInfo;
-use crate::chainblocksc::CBVar;
-use crate::chainblocksc::CBlock;
+pub use crate::chainblocksc::*;
 use crate::core::log;
 use crate::core::Core;
 use crate::types::Types;
@@ -384,18 +378,12 @@ pub mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
 
-  extern "C" {
-    pub fn cbLispCreate(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void;
-    pub fn cbLispDestroy(env: *mut ::core::ffi::c_void);
-    pub fn cbLispEval(env: *mut ::core::ffi::c_void, code: *const ::std::os::raw::c_char) -> Var;
-  }
-
   #[macro_export]
   macro_rules! cbl_no_env {
     ($code:expr) => {
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
-        cbLispEval(::core::ptr::null_mut(), code.as_ptr())
+        $crate::Core::cbLispEval(::core::ptr::null_mut(), code.as_ptr())
       }
     };
   }
@@ -407,12 +395,12 @@ pub mod cblisp {
         static ENV: *mut ::core::ffi::c_void = {
           let current_dir = std::env::current_dir().unwrap();
           let current_dir = current_dir.to_str().unwrap();
-          unsafe { cbLispCreate(std::ffi::CString::new(current_dir).unwrap().as_ptr()) }
+          unsafe { $crate::core::ScriptEnvCreate.unwrap()(std::ffi::CString::new(current_dir).unwrap().as_ptr()) }
         }
       }
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
-        ENV.with(|env| cbLispEval(*env, code.as_ptr()))
+        ENV.with(|env| $crate::core::ScriptEval.unwrap()(*env, code.as_ptr()))
       }
     }};
   }

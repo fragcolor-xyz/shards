@@ -31,15 +31,25 @@ use std::os::raw::c_char;
 const ABI_VERSION: u32 = 0x20200101;
 
 pub static mut Core: *mut CBCore = core::ptr::null_mut();
+pub static mut ScriptEnvCreate: Option<
+  unsafe extern "C" fn(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void,
+> = None;
+pub static mut ScriptEnvDestroy: Option<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)> = None;
+pub static mut ScriptEval: Option<
+  unsafe extern "C" fn(
+    env: *mut ::core::ffi::c_void,
+    script: *const ::std::os::raw::c_char,
+  ) -> CBVar,
+> = None;
 static mut init_done: bool = false;
 
 #[cfg(feature = "dllblock")]
 mod internal_core_init {
   extern crate dlopen;
+  use super::*;
   use crate::chainblocksc::chainblocksInterface;
   use crate::core::CBCore;
   use crate::core::ABI_VERSION;
-  use crate::Core;
   use dlopen::symbor::Library;
 
   fn try_load_dlls() -> Option<Library> {
@@ -60,6 +70,26 @@ mod internal_core_init {
 
   pub static mut CBDLL: Option<Library> = None;
 
+  pub unsafe fn initScripting(lib: &Library) {
+    let fun = lib.symbol::<unsafe extern "C" fn(
+      path: *const ::std::os::raw::c_char,
+    ) -> *mut ::core::ffi::c_void>("cbLispCreate");
+    if let Ok(fun) = fun {
+      ScriptEnvCreate = Some(*fun);
+    } else {
+      // short circuit here
+      return;
+    }
+
+    let fun = lib.symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)>("cbLispDestroy");
+    ScriptEnvDestroy = Some(*fun.unwrap());
+    let fun = lib.symbol::<unsafe extern "C" fn(
+      env: *mut ::core::ffi::c_void,
+      script: *const ::std::os::raw::c_char,
+    ) -> CBVar>("cbLispEval");
+    ScriptEval = Some(*fun.unwrap());
+  }
+
   pub unsafe fn initInternal() {
     let exe = Library::open_self().ok().unwrap();
 
@@ -71,6 +101,7 @@ mod internal_core_init {
       if Core.is_null() {
         panic!("Failed to aquire chainblocks interface, version not compatible.");
       }
+      initScripting(&exe);
     } else {
       let lib = try_load_dlls().unwrap();
       let fun = lib
@@ -80,6 +111,7 @@ mod internal_core_init {
       if Core.is_null() {
         panic!("Failed to aquire chainblocks interface, version not compatible.");
       }
+      initScripting(&lib);
       CBDLL = Some(lib);
     }
   }
