@@ -2180,19 +2180,19 @@ BUILTIN_ISA("Chain?", malCBChain);
 BUILTIN_ISA("Block?", malCBlock);
 
 extern "C" {
-EXPORTED __cdecl void *cbLispCreate(const char *path) {
+CHAINBLOCKS_API __cdecl void *cbLispCreate(const char *path) {
   auto env = new malEnvPtr(new malEnv);
   malinit(*env, path, path);
   return (void *)env;
 }
 
-EXPORTED __cdecl void cbLispDestroy(void *env) {
+CHAINBLOCKS_API __cdecl void cbLispDestroy(void *env) {
   auto penv = (malEnvPtr *)env;
   observers.erase((malEnv *)penv->ptr());
   delete penv;
 }
 
-EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
+CHAINBLOCKS_API __cdecl CBVar cbLispEval(void *env, const char *str) {
   auto penv = (malEnvPtr *)env;
   try {
     malValuePtr res;
