@@ -88,6 +88,13 @@ mod internal_core_init {
       script: *const ::std::os::raw::c_char,
     ) -> CBVar>("cbLispEval");
     ScriptEval = Some(*fun.unwrap());
+
+    // trigger initializations... fix me in the future to something more elegant
+    let current_dir = std::env::current_dir().unwrap();
+    let current_dir = current_dir.to_str().unwrap();
+    let current_dir = std::ffi::CString::new(current_dir).unwrap();
+    let env = ScriptEnvCreate.unwrap()(current_dir.as_ptr());
+    ScriptEnvDestroy.unwrap()(env);
   }
 
   pub unsafe fn initInternal() {
@@ -97,21 +104,23 @@ mod internal_core_init {
       .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
       .ok();
     if let Some(fun) = exefun {
+      // init scripting first if possible!
+      initScripting(&exe);
       Core = fun(ABI_VERSION);
       if Core.is_null() {
         panic!("Failed to aquire chainblocks interface, version not compatible.");
       }
-      initScripting(&exe);
     } else {
       let lib = try_load_dlls().unwrap();
       let fun = lib
         .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
         .unwrap();
+      // init scripting first if possible!
+      initScripting(&lib);
       Core = fun(ABI_VERSION);
       if Core.is_null() {
         panic!("Failed to aquire chainblocks interface, version not compatible.");
       }
-      initScripting(&lib);
       CBDLL = Some(lib);
     }
   }
@@ -153,11 +162,11 @@ macro_rules! cblog_debug {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
       ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
-      logLevel(1, ::std::str::from_utf8(&buf).unwrap());
+      $crate::core::logLevel(1, ::std::str::from_utf8(&buf).unwrap());
   };
 
   ($text:expr) => {
-    logLevel(1, concat!($text, "\0"));
+    $crate::core::logLevel(1, concat!($text, "\0"));
   };
 }
 
@@ -175,11 +184,11 @@ macro_rules! cblog {
         use std::io::Write as __stdWrite;
         let mut buf = vec![];
         ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
-        log(::std::str::from_utf8(&buf).unwrap());
+        $crate::core::log(::std::str::from_utf8(&buf).unwrap());
     };
 
     ($text:expr) => {
-        log(concat!($text, "\0"));
+      $crate::core::log(concat!($text, "\0"));
     };
 }
 
