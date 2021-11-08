@@ -35,7 +35,7 @@ endif()
 
 target_link_libraries(chainblocks-extra
   chainblocks-core 
-  bx bimg bgfx bgfx-example-common stb tinygltf
+  bx bimg bgfx bgfx-examples stb tinygltf
   dear-imgui imgui_club implot imguizmo
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio

@@ -121,8 +121,9 @@ set(BIMG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bimg)
 set(BGFX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bgfx)
 add_subdirectory(bgfx.cmake)
 
-add_library(bgfx-example-common INTERFACE)
-target_include_directories(bgfx-example-common INTERFACE ${BGFX_DIR}/examples/common/imgui)
+add_library(bgfx-examples INTERFACE)
+target_include_directories(bgfx-examples INTERFACE ${BGFX_DIR}/examples/common/imgui)
+target_include_directories(bgfx-examples INTERFACE ${BGFX_DIR}/examples/chainblocks)
 
 add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
