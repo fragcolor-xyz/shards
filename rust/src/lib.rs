@@ -383,8 +383,6 @@ mod dummy_block {
 pub mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
-  use std::env;
-  use std::ffi::CString;
 
   extern "C" {
     pub fn cbLispCreate(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void;
@@ -396,7 +394,7 @@ pub mod cblisp {
   macro_rules! cbl_no_env {
     ($code:expr) => {
       unsafe {
-        let code = CString::new($code).expect("CString failed...");
+        let code = std::ffi::CString::new($code).expect("CString failed...");
         cbLispEval(::core::ptr::null_mut(), code.as_ptr())
       }
     };
@@ -407,13 +405,13 @@ pub mod cblisp {
     ($code:expr) => {{
       thread_local! {
         static ENV: *mut ::core::ffi::c_void = {
-          let current_dir = env::current_dir().unwrap();
+          let current_dir = std::env::current_dir().unwrap();
           let current_dir = current_dir.to_str().unwrap();
-          unsafe { cbLispCreate(CString::new(current_dir).unwrap().as_ptr()) }
+          unsafe { cbLispCreate(std::ffi::CString::new(current_dir).unwrap().as_ptr()) }
         }
       }
       unsafe {
-        let code = CString::new($code).expect("CString failed...");
+        let code = std::ffi::CString::new($code).expect("CString failed...");
         ENV.with(|env| cbLispEval(*env, code.as_ptr()))
       }
     }};
