@@ -727,6 +727,117 @@ private:
   BlocksVar _blocks{};
 };
 
+struct ForRangeBlock {
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Executes a block while an iteration value is within a range.");
+  }
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is not used and will pass through.");
+  }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output of this block will be its input.");
+  }
+
+  static CBParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _from = value;
+      break;
+    case 1:
+      _to = value;
+      break;
+    case 2:
+      _blocks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _from;
+    case 1:
+      return _to;
+    case 2:
+      return _blocks;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  void cleanup() {
+    _from.cleanup();
+    _to.cleanup();
+    _blocks.cleanup();
+  }
+
+  void warmup(CBContext *context) {
+    _from.warmup(context);
+    _to.warmup(context);
+    _blocks.warmup(context);
+  }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto dataCopy = data;
+    dataCopy.inputType = CoreInfo::IntType;
+
+    _blocks.compose(dataCopy);
+
+    return data.inputType;
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    auto from = _from.get().payload.intValue;
+    auto to = _to.get().payload.intValue;
+
+    CBVar output{};
+    CBVar item{};
+    if (from < to) {
+      for (auto i = from; i <= to; i++) {
+        item = Var(i);
+        auto state = _blocks.activate<true>(context, item, output);
+        if (state != CBChainState::Continue)
+          break;
+      }
+    } else if (from > to) {
+      for (auto i = from; i >= to; i--) {
+        item = Var(i);
+        auto state = _blocks.activate<true>(context, item, output);
+        if (state != CBChainState::Continue)
+          break;
+      }
+    }
+
+    return input;
+  }
+
+private:
+  static inline Parameters _params = {
+      {"From",
+       CBCCSTR("The initial iteration value (inclusive)."),
+       {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"To",
+       CBCCSTR("The final iteration value (inclusive)."),
+       {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"Action",
+       CBCCSTR("The action to perform at each iteration. The current iteration "
+               "value will be passed as input."),
+       {CoreInfo::BlocksOrNone}}};
+
+  ParamVar _from{Var(0)};
+  ParamVar _to{Var(1)};
+  BlocksVar _blocks{};
+};
+
 struct Map {
   CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
 
@@ -1753,6 +1864,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Profile", Profile);
 
   REGISTER_CBLOCK("ForEach", ForEachBlock);
+  REGISTER_CBLOCK("ForRange", ForRangeBlock);
   REGISTER_CBLOCK("Map", Map);
   REGISTER_CBLOCK("Reduce", Reduce);
   REGISTER_CBLOCK("Erase", Erase);
