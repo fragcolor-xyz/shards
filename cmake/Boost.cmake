@@ -28,9 +28,11 @@ if(IOS)
     )
   endif()
   
+  add_library(boost-context STATIC ${BOOST_CONTEXT_SOURCES})
+  target_include_directories(boost-context PUBLIC ${Boost_INCLUDE_DIRS})
+  
   add_library(Boost::filesystem ALIAS boost-headers)
-  add_library(Boost::context STATIC ${BOOST_CONTEXT_SOURCES})
-  target_include_directories(Boost::context PUBLIC ${Boost_INCLUDE_DIRS})
+  add_library(Boost::context ALIAS boost-context)
 elseif(EMSCRIPTEN)
   add_library(Boost::context ALIAS boost-headers)
   add_library(Boost::filesystem ALIAS boost-headers)
