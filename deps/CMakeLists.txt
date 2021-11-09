@@ -7,9 +7,16 @@ else()
   set(EXTERNAL_BUILD_TYPE "Release")
 endif()
 
-string(TOUPPER "CMAKE_CXX_FLAGS_${EXTERNAL_BUILD_TYPE}" EXTERNAL_CXX_FLAGS_VAR)
-set(EXTERNAL_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${${EXTERNAL_CXX_FLAGS_VAR}})
-set(EXTERNAL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${EXTERNAL_CXX_FLAGS}")
+set(EXTERNAL_CMAKE_ARGS "")
+if(EMSCRIPTEN)
+  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
+  if(EMSCRIPTEN_PTHREADS)
+    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-sUSE_PTHREADS=1 -DCMAKE_C_FLAGS=-sUSE_PTHREADS=1)
+  endif()
+elseif(IOS)
+  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
+endif()
+
 message(STATUS "External cmake args: ${EXTERNAL_CMAKE_ARGS}")
 
 add_subdirectory(filesystem)
@@ -91,8 +98,8 @@ ExternalProject_Add(snappy_a
   GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
   GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target snappy ${EXTRA_CMAKE_BUILD_ARGS}
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTERNAL_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target snappy ${EXTERNAL_CMAKE_ARGS}
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
 )
@@ -105,8 +112,8 @@ ExternalProject_Add(brotli_a
   GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
   GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTERNAL_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTERNAL_CMAKE_ARGS}
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
@@ -114,9 +121,9 @@ ExternalProject_Add(brotli_a
   INSTALL_COMMAND ""
 )
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
 
 add_library(brotlicommon-static STATIC IMPORTED GLOBAL)
+target_include_directories(brotlicommon-static INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
 add_dependencies(brotlicommon-static brotli_a)
 if(IOS)
   set_target_properties(brotlicommon-static PROPERTIES
@@ -129,6 +136,7 @@ else()
 endif()
 
 add_library(brotlidec-static STATIC IMPORTED GLOBAL)
+target_include_directories(brotlidec-static INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
 add_dependencies(brotlidec-static brotli_a)
 if(IOS)
   set_target_properties(brotlidec-static PROPERTIES
@@ -141,6 +149,7 @@ else()
 endif()
 
 add_library(brotlienc-static STATIC IMPORTED GLOBAL)
+target_include_directories(brotlienc-static INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
 add_dependencies(brotlienc-static brotli_a)
 if(IOS)
   set_target_properties(brotlienc-static PROPERTIES
@@ -155,7 +164,7 @@ endif()
 ExternalProject_Add(catch2_a
   URL ${CHAINBLOCKS_DIR}/deps/Catch2
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/catch2_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/catch2_a ${EXTRA_CMAKE_ARGS}
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/catch2_a ${EXTERNAL_CMAKE_ARGS}
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a
 )
@@ -174,7 +183,7 @@ ExternalProject_Add(kissfft_a
   URL ${CHAINBLOCKS_DIR}/deps/kissfft
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a
   BUILD_IN_SOURCE True
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} ${EXTRA_CMAKE_ARGS} -DKISSFFT_ARCH_FLAGS=${ARCH_FLAGS} -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} ${EXTERNAL_CMAKE_ARGS} -DKISSFFT_ARCH_FLAGS=${ARCH_FLAGS} -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
   BUILD_COMMAND cmake --build .
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a/src/kissfft_a/libkissfft-float.a
