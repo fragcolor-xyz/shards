@@ -72,34 +72,118 @@ if(NOT EMSCRIPTEN)
   endif()
 endif()
 
-if(LINUX AND NOT EMSCRIPTEN)
-  # NOTE: Build externally since it only behaves correctly when built in Release and without certain flags defined in Platform.cmake (linux)
-  ExternalProject_Add(wasm3-build
-    URL ${CHAINBLOCKS_DIR}/deps/wasm3
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps
-    BUILD_IN_SOURCE True
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_NATIVE=0
-    BUILD_COMMAND cmake --build . --target m3
-    INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3-build/source/libm3.a
-  )
+ExternalProject_Add(wasm3_a
+  URL ${CHAINBLOCKS_DIR}/deps/wasm3
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3_a
+  BUILD_IN_SOURCE True
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_NATIVE=0
+  BUILD_COMMAND cmake --build . --target m3
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3_a/src/wasm3_a/source/libm3.a
+)
 
-  add_library(m3 STATIC IMPORTED GLOBAL)
-  set_target_properties(m3 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/wasm3-deps/src/wasm3-build/source/libm3.a)
-  target_include_directories(m3 INTERFACE ${CHAINBLOCKS_DIR}/deps/wasm3/source)
-  add_dependencies(m3 wasm3-build)
+add_library(m3 STATIC IMPORTED GLOBAL)
+set_target_properties(m3 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/wasm3_a/src/wasm3_a/source/libm3.a)
+target_include_directories(m3 INTERFACE ${CHAINBLOCKS_DIR}/deps/wasm3/source)
+add_dependencies(m3 wasm3_a)
+
+ExternalProject_Add(snappy_a
+  GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
+  GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTRA_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target snappy ${EXTRA_CMAKE_BUILD_ARGS}
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
+)
+add_library(snappy STATIC IMPORTED GLOBAL)
+set_target_properties(snappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
+target_include_directories(snappy INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
+add_dependencies(snappy snappy_a)
+
+ExternalProject_Add(brotli_a
+  GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
+  GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTRA_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include/brotli/decode.h
+  INSTALL_COMMAND ""
+)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
+
+add_library(brotlicommon-static STATIC IMPORTED GLOBAL)
+add_dependencies(brotlicommon-static brotli_a)
+if(IOS)
+  set_target_properties(brotlicommon-static PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a
+  )
 else()
-  option(BUILD_NATIVE "" OFF)
-  add_subdirectory(wasm3)
+  set_target_properties(brotlicommon-static PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
+  )
 endif()
 
-add_subdirectory(Catch2)
+add_library(brotlidec-static STATIC IMPORTED GLOBAL)
+add_dependencies(brotlidec-static brotli_a)
+if(IOS)
+  set_target_properties(brotlidec-static PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a
+  )
+else()
+  set_target_properties(brotlidec-static PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
+  )
+endif()
 
-option(SNAPPY_BUILD_TESTS OFF "")
-add_subdirectory(snappy)
+add_library(brotlienc-static STATIC IMPORTED GLOBAL)
+add_dependencies(brotlienc-static brotli_a)
+if(IOS)
+  set_target_properties(brotlienc-static PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a
+  )
+else()
+  set_target_properties(brotlienc-static PROPERTIES
+    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
+  )
+endif()
 
-set(BROTLI_DISABLE_TESTS ON)
-add_subdirectory(brotli)
+ExternalProject_Add(catch2_a
+  URL ${CHAINBLOCKS_DIR}/deps/Catch2
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/catch2_a
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/catch2_a ${EXTRA_CMAKE_ARGS}
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a
+)
+
+add_library(Catch2 STATIC IMPORTED GLOBAL)
+set_target_properties(Catch2 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a)
+target_include_directories(Catch2 INTERFACE ${CHAINBLOCKS_DIR}/deps/Catch2/src)
+add_dependencies(Catch2 catch2_a)
+
+add_library(Catch2WithMain STATIC IMPORTED GLOBAL)
+set_target_properties(Catch2WithMain PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a)
+target_include_directories(Catch2WithMain INTERFACE ${CHAINBLOCKS_DIR}/deps/Catch2/src)
+add_dependencies(Catch2WithMain catch2_a)
+
+ExternalProject_Add(kissfft_a
+  URL ${CHAINBLOCKS_DIR}/deps/kissfft
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a
+  BUILD_IN_SOURCE True
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} ${EXTRA_CMAKE_ARGS} -DKISSFFT_ARCH_FLAGS=${ARCH_FLAGS} -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
+  BUILD_COMMAND cmake --build .
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a/src/kissfft_a/libkissfft-float.a
+)
+
+add_library(kissfft STATIC IMPORTED GLOBAL)
+set_target_properties(kissfft PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a/src/kissfft_a/libkissfft-float.a)
+target_include_directories(kissfft INTERFACE ${CHAINBLOCKS_DIR}/deps/kissfft)
+add_dependencies(kissfft kissfft_a)
 
 option(TINYGLTF_BUILD_LOADER_EXAMPLE OFF "") 
 add_subdirectory(tinygltf)
@@ -107,11 +191,6 @@ add_subdirectory(tinygltf)
 option(TF_BUILD_TESTS "" OFF)
 option(TF_BUILD_EXAMPLES "" OFF)
 add_subdirectory(cpp-taskflow)
-
-option(KISSFFT_STATIC "" ON)
-option(KISSFFT_TEST "" OFF)
-option(KISSFFT_TOOLS "" OFF)
-add_subdirectory(kissfft)
 
 option(BGFX_BUILD_EXAMPLES "" OFF)
 option(BGFX_INSTALL "" OFF)
