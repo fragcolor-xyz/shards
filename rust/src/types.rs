@@ -102,7 +102,16 @@ pub type ParameterInfo = CBParameterInfo;
 pub type RawString = CBString;
 pub type Chain = CBChain;
 
+#[repr(transparent)] // force it same size of original
+#[derive(Default)]
+pub struct ClonedVar(pub Var);
+
+#[repr(transparent)] // force it same size of original
+#[derive(Default)]
+pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
+
 pub struct Node(pub CBNodeRef);
+#[derive(Copy, Clone)]
 pub struct ChainRef(pub CBChainRef);
 
 impl Default for Node {
@@ -180,6 +189,7 @@ unsafe impl Sync for Table {}
 unsafe impl Sync for OptionalString {}
 unsafe impl Sync for ChainRef {}
 unsafe impl Sync for Node {}
+unsafe impl Sync for ClonedVar {}
 
 /*
 CBTypeInfo & co
@@ -839,14 +849,6 @@ impl Serialize for Var {
     }
   }
 }
-
-#[repr(transparent)] // force it same size of original
-#[derive(Default)]
-pub struct ClonedVar(pub Var);
-
-#[repr(transparent)] // force it same size of original
-#[derive(Default)]
-pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
 impl<T> From<T> for ClonedVar
 where
