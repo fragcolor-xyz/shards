@@ -89,7 +89,8 @@
              "Hello, world!" >= .inputText
              false >= .disableAll)
             (GUI.Disable
-             .disableAll
+             :Disable .disableAll
+             :Contents
              (-> (GUI.TreeNode
                   "Basic"
                   (-> (GUI.Button "Button" (Math.Inc .clickCount))
@@ -104,7 +105,6 @@
                       (GUI.CheckboxFlags "Forward" .direction 16) (GUI.SameLine)
                       (GUI.CheckboxFlags "Backward" .direction 32)
                       (GUI.Disable
-                       true
                        (->
                         (GUI.CheckboxFlags "Left & Right" .direction 3) (GUI.SameLine)
                         (GUI.CheckboxFlags "Up & down" .direction 12) (GUI.SameLine)

@@ -3754,10 +3754,10 @@ struct Disable : public Base {
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
-      _disable = value;
+      _blocks = value;
       break;
     case 1:
-      _blocks = value;
+      _disable = value;
       break;
     default:
       break;
@@ -3767,9 +3767,9 @@ struct Disable : public Base {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return _disable;
-    case 1:
       return _blocks;
+    case 1:
+      return _disable;
     default:
       break;
     }
@@ -3816,12 +3816,12 @@ struct Disable : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Disable",
-       CBCCSTR("Sets whether the contents should be disabled."),
-       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
       {"Contents",
        CBCCSTR("The inner contents blocks."),
        {CoreInfo::BlocksOrNone}},
+      {"Disable",
+       CBCCSTR("Sets whether the contents should be disabled."),
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
   };
 
   ParamVar _disable{Var::True};
