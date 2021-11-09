@@ -17,6 +17,24 @@ elseif(IOS)
   list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
 endif()
 
+if(IOS)
+  if(X86_IOS_SIMULATOR)
+  list(APPEND EXTRA_CMAKE_BUILD_ARGS -- -sdk iphonesimulator -arch x86_64)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      set(EXTRA_LIBS_DIR "Debug-iphonesimulator")
+    else()
+      set(EXTRA_LIBS_DIR "Release-iphonesimulator")
+    endif()
+  else()
+    list(APPEND EXTRA_CMAKE_BUILD_ARGS -- -sdk iphoneos -arch arm64)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      set(EXTRA_LIBS_DIR "Debug-iphoneos")
+    else()
+      set(EXTRA_LIBS_DIR "Release-iphoneos")
+    endif()
+  endif()
+endif()
+
 message(STATUS "External cmake args: ${EXTERNAL_CMAKE_ARGS}")
 
 add_subdirectory(filesystem)
@@ -99,7 +117,7 @@ ExternalProject_Add(snappy_a
   GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTERNAL_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target snappy ${EXTERNAL_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target snappy ${EXTRA_CMAKE_BUILD_ARGS}
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
 )
@@ -113,7 +131,7 @@ ExternalProject_Add(brotli_a
   GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTERNAL_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTERNAL_CMAKE_ARGS}
+  BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
   BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
