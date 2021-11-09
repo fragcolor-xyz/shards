@@ -2,6 +2,7 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 use crate::chainblocksc::CBBool;
+use crate::chainblocksc::CBChainRef;
 use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBChainState_Continue;
@@ -14,6 +15,7 @@ use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypeInfo;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
+use crate::chainblocksc::CBNodeRef;
 use crate::chainblocksc::CBOptionalString;
 use crate::chainblocksc::CBParameterInfo;
 use crate::chainblocksc::CBParametersInfo;
@@ -93,12 +95,37 @@ pub type Context = CBContext;
 pub type Var = CBVar;
 pub type Type = CBTypeInfo;
 pub type InstanceData = CBInstanceData;
-pub type Chain = CBChain;
 pub type ComposeResult = CBComposeResult;
 pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
 pub type ParameterInfo = CBParameterInfo;
 pub type RawString = CBString;
+pub type Chain = CBChain;
+
+pub struct Node(pub CBNodeRef);
+pub struct ChainRef(pub CBChainRef);
+
+impl Default for Node {
+  fn default() -> Self {
+    Node(unsafe { (*Core).createNode.unwrap()() })
+  }
+}
+
+impl Drop for Node {
+  fn drop(&mut self) {
+    unsafe { (*Core).destroyNode.unwrap()(self.0) }
+  }
+}
+
+impl Node {
+  pub fn schedule(&self, chain: ChainRef) {
+    unsafe { (*Core).schedule.unwrap()(self.0, chain.0) }
+  }
+
+  pub fn tick(&self) -> bool {
+    unsafe { (*Core).tick.unwrap()(self.0) }
+  }
+}
 
 #[derive(PartialEq)]
 pub struct String(pub CBString);
@@ -151,6 +178,8 @@ unsafe impl Send for Block {}
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}
 unsafe impl Sync for OptionalString {}
+unsafe impl Sync for ChainRef {}
+unsafe impl Sync for Node {}
 
 /*
 CBTypeInfo & co
@@ -1730,10 +1759,23 @@ impl TryFrom<Var> for &[Var] {
   }
 }
 
+impl TryFrom<Var> for ChainRef {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Chain {
+      Err("Expected Chain variable, but casting failed.")
+    } else {
+      unsafe { Ok(ChainRef(var.payload.__bindgen_anon_1.chainValue)) }
+    }
+  }
+}
+
 impl AsRef<Var> for Var {
   #[inline(always)]
   fn as_ref(&self) -> &Var {
-    &self
+    self
   }
 }
 

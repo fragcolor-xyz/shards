@@ -2210,7 +2210,7 @@ EXPORTED __cdecl CBVar cbLispEval(void *env, const char *str) {
     CBVar tmp{};
     // assume users will call CBCore::destroyVar!
     chainblocks::cloneVar(tmp, scriptVal);
-    return scriptVal;
+    return tmp;
   } catch (...) {
     return chainblocks::Var::Empty;
   }

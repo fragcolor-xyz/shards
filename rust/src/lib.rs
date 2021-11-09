@@ -378,12 +378,22 @@ pub mod cblisp {
   use crate::Var;
   use std::convert::TryInto;
 
+  pub struct ScriptEnv(pub *mut ::core::ffi::c_void);
+
+  impl Drop for ScriptEnv {
+    fn drop(&mut self) {
+      unsafe {
+        crate::core::ScriptEnvDestroy.unwrap()(self.0);
+      }
+    }
+  }
+
   #[macro_export]
   macro_rules! cbl_no_env {
     ($code:expr) => {
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
-        $crate::Core::cbLispEval(::core::ptr::null_mut(), code.as_ptr())
+        $crate::core::cbLispEval(::core::ptr::null_mut(), code.as_ptr())
       }
     };
   }
@@ -392,15 +402,15 @@ pub mod cblisp {
   macro_rules! cbl_env {
     ($code:expr) => {{
       thread_local! {
-        static ENV: *mut ::core::ffi::c_void = {
+        static ENV: $crate::cblisp::ScriptEnv = {
           let current_dir = std::env::current_dir().unwrap();
           let current_dir = current_dir.to_str().unwrap();
-          unsafe { $crate::core::ScriptEnvCreate.unwrap()(std::ffi::CString::new(current_dir).unwrap().as_ptr()) }
+          unsafe { $crate::cblisp::ScriptEnv($crate::core::ScriptEnvCreate.unwrap()(std::ffi::CString::new(current_dir).unwrap().as_ptr())) }
         }
       }
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
-        ENV.with(|env| $crate::core::ScriptEval.unwrap()(*env, code.as_ptr()))
+        ENV.with(|env| $crate::core::ScriptEval.unwrap()((*env).0, code.as_ptr()))
       }
     }};
   }

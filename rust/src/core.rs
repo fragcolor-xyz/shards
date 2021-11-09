@@ -280,6 +280,13 @@ pub fn cloneVar(dst: &mut Var, src: &Var) {
   }
 }
 
+#[inline(always)]
+pub fn destroyVar(v: &mut Var) {
+  unsafe {
+    (*Core).destroyVar.unwrap()(v);
+  }
+}
+
 pub fn readCachedString(id: u32) -> &'static str {
   unsafe {
     let s = (*Core).readCachedString.unwrap()(id);
