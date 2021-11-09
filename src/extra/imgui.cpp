@@ -564,7 +564,8 @@ struct Window : public Base {
       {"Flags",
        CBCCSTR("Flags to enable window options."),
        {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType,
-        Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType}},
+        Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType,
+        CoreInfo::NoneType}},
       {"OnClose",
        CBCCSTR("Passing a variable will display a close button in the "
                "upper-right corner. Clicking will set the variable to false "
@@ -1660,7 +1661,8 @@ private:
       {"Flags",
        CBCCSTR("Flags to enable tree node options."),
        {Enums::GuiTreeNodeFlagsType, Enums::GuiTreeNodeFlagsVarType,
-        Enums::GuiTreeNodeFlagsSeqType, Enums::GuiTreeNodeFlagsVarSeqType}},
+        Enums::GuiTreeNodeFlagsSeqType, Enums::GuiTreeNodeFlagsVarSeqType,
+        CoreInfo::NoneType}},
   };
 
   std::string _label;
@@ -3888,7 +3890,8 @@ private:
       {"Flags",
        CBCCSTR("Flags to enable table options."),
        {Enums::GuiTableFlagsType, Enums::GuiTableFlagsVarType,
-        Enums::GuiTableFlagsSeqType, Enums::GuiTableFlagsVarSeqType}},
+        Enums::GuiTableFlagsSeqType, Enums::GuiTableFlagsVarSeqType,
+        CoreInfo::NoneType}},
   };
 
   std::string _name;
@@ -3984,8 +3987,8 @@ private:
       {"Flags",
        CBCCSTR("Flags to enable column options."),
        {Enums::GuiTableColumnFlagsType, Enums::GuiTableColumnFlagsVarType,
-        Enums::GuiTableColumnFlagsSeqType,
-        Enums::GuiTableColumnFlagsVarSeqType}},
+        Enums::GuiTableColumnFlagsSeqType, Enums::GuiTableColumnFlagsVarSeqType,
+        CoreInfo::NoneType}},
   };
 
   std::string _label;
