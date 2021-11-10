@@ -356,17 +356,19 @@ pub fn releaseVariable(var: &CBVar) {
   }
 }
 
-pub fn setExternalVariable(chain: ChainRef, name: &str, var: &ExternalVar) {
-  let cname = CString::new(name).unwrap();
-  unsafe {
-    (*Core).setExternalVariable.unwrap()(chain.0, cname.as_ptr(), &var.0 as *const _ as *mut _);
+impl ChainRef {
+  pub fn set_external(&self, name: &str, var: &ExternalVar) {
+    let cname = CString::new(name).unwrap();
+    unsafe {
+      (*Core).setExternalVariable.unwrap()(self.0, cname.as_ptr() as *const _, &var.0 as *const _ as *mut _);
+    }
   }
-}
 
-pub fn removeExternalVariable(chain: ChainRef, name: &str) {
-  let cname = CString::new(name).unwrap();
-  unsafe {
-    (*Core).removeExternalVariable.unwrap()(chain.0, cname.as_ptr());
+  pub fn remove_external(&self, name: &str) {
+    let cname = CString::new(name).unwrap();
+    unsafe {
+      (*Core).removeExternalVariable.unwrap()(self.0, cname.as_ptr() as *const _);
+    }
   }
 }
 
