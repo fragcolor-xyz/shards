@@ -2,8 +2,8 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 use crate::chainblocksc::CBBool;
-use crate::chainblocksc::CBChainRef;
 use crate::chainblocksc::CBChain;
+use crate::chainblocksc::CBChainRef;
 use crate::chainblocksc::CBChainState;
 use crate::chainblocksc::CBChainState_Continue;
 use crate::chainblocksc::CBChainState_Rebase;
@@ -72,6 +72,7 @@ use crate::chainblocksc::CBIMAGE_FLAGS_32BITS_FLOAT;
 use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
 use crate::core::cloneVar;
 use crate::core::Core;
+use crate::CBVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
 use core::convert::TryInto;
 use core::mem::transmute;
@@ -105,6 +106,9 @@ pub type Chain = CBChain;
 #[repr(transparent)] // force it same size of original
 #[derive(Default)]
 pub struct ClonedVar(pub Var);
+
+#[repr(transparent)] // force it same size of original
+pub struct ExternalVar(pub Var);
 
 #[repr(transparent)] // force it same size of original
 #[derive(Default)]
@@ -190,6 +194,7 @@ unsafe impl Sync for OptionalString {}
 unsafe impl Sync for ChainRef {}
 unsafe impl Sync for Node {}
 unsafe impl Sync for ClonedVar {}
+unsafe impl Sync for ExternalVar {}
 
 /*
 CBTypeInfo & co
@@ -866,6 +871,24 @@ where
   }
 }
 
+impl<T> From<T> for ExternalVar
+where
+  T: Into<Var>,
+{
+  fn from(v: T) -> Self {
+    let vt: Var = v.into();
+    let mut res = ExternalVar(Var::default());
+    unsafe {
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = &vt as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
+    }
+    // ensure this flag is set
+    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+    res
+  }
+}
+
 impl From<&Var> for ClonedVar {
   fn from(v: &Var) -> Self {
     let res = ClonedVar(Var::default());
@@ -874,6 +897,20 @@ impl From<&Var> for ClonedVar {
       let sv = v as *const CBVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
+    res
+  }
+}
+
+impl From<&Var> for ExternalVar {
+  fn from(v: &Var) -> Self {
+    let mut res = ExternalVar(Var::default());
+    unsafe {
+      let rv = &res.0 as *const CBVar as *mut CBVar;
+      let sv = v as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
+    }
+    // ensure this flag is set
+    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
     res
   }
 }
@@ -920,6 +957,42 @@ impl From<&[ClonedVar]> for ClonedVar {
 }
 
 impl Drop for ClonedVar {
+  #[inline(always)]
+  fn drop(&mut self) {
+    unsafe {
+      let rv = &self.0 as *const CBVar as *mut CBVar;
+      (*Core).destroyVar.unwrap()(rv);
+    }
+  }
+}
+
+impl Default for ExternalVar {
+  #[inline(always)]
+  fn default() -> Self {
+    let mut res = ExternalVar(Var::default());
+    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+    res
+  }
+}
+
+impl ExternalVar {
+  #[inline(always)]
+  pub fn update<T>(&mut self, value: T)
+  where
+    T: Into<Var>,
+  {
+    let vt: Var = value.into();
+    unsafe {
+      let rv = &self.0 as *const CBVar as *mut CBVar;
+      let sv = &vt as *const CBVar;
+      (*Core).cloneVar.unwrap()(rv, sv);
+    }
+    // ensure this flag is set
+    self.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+  }
+}
+
+impl Drop for ExternalVar {
   #[inline(always)]
   fn drop(&mut self) {
     unsafe {

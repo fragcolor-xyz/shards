@@ -3,7 +3,6 @@
 
 #![macro_use]
 
-use crate::types::ChainRef;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::CBBool;
@@ -15,9 +14,11 @@ use crate::chainblocksc::CBString;
 use crate::chainblocksc::CBStrings;
 use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
+use crate::types::ChainRef;
 use crate::types::ChainState;
 use crate::types::Context;
 use crate::types::DerivedType;
+use crate::types::ExternalVar;
 use crate::types::InstanceData;
 use crate::types::ParameterInfo;
 use crate::types::Parameters;
@@ -355,10 +356,10 @@ pub fn releaseVariable(var: &CBVar) {
   }
 }
 
-pub fn setExternalVariable(chain: ChainRef, name: &str, var: &mut CBVar) {
+pub fn setExternalVariable(chain: ChainRef, name: &str, var: &ExternalVar) {
   let cname = CString::new(name).unwrap();
   unsafe {
-    (*Core).setExternalVariable.unwrap()(chain.0, cname.as_ptr(), var);
+    (*Core).setExternalVariable.unwrap()(chain.0, cname.as_ptr(), &var.0 as *const _ as *mut _);
   }
 }
 
