@@ -75,7 +75,7 @@ if(CHAINBLOCKS_BUILD_TESTS)
   )
   
   target_link_libraries(test_extra 
-    chainblocks-core chainblocks-extra Catch2WithMain
+    chainblocks-core chainblocks-extra Catch2 Catch2WithMain
   )
   catch_discover_tests(test_extra)
 endif()

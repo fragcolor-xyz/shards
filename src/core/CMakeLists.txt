@@ -184,7 +184,7 @@ if(CHAINBLOCKS_BUILD_TESTS)
   add_executable(test_runtime ../tests/test_runtime.cpp)
   
   target_link_libraries(test_runtime 
-    chainblocks-core Catch2WithMain
+    chainblocks-core Catch2 Catch2WithMain
   )
   catch_discover_tests(test_runtime)
 endif()
