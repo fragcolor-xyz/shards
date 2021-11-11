@@ -22,8 +22,14 @@ struct Base {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is not used and will pass through.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output of this block will be its input.");
+  }
 };
 
 struct IDContext {
@@ -171,7 +177,7 @@ struct Style : public Base {
     case Alpha:
       if (data.inputType.basicType != Float) {
         throw CBException(
-            "this ImGui Style block expected a Float variable as input!");
+            "this GUI Style block expected a Float variable as input!");
       }
       break;
     case WindowPadding:
@@ -187,7 +193,7 @@ struct Style : public Base {
     case DisplaySafeAreaPadding:
       if (data.inputType.basicType != Float2) {
         throw CBException(
-            "this ImGui Style block expected a Float2 variable as input!");
+            "this GUI Style block expected a Float2 variable as input!");
       }
       break;
     case TextColor:
@@ -240,7 +246,7 @@ struct Style : public Base {
     case ModalWindowDimBgColor:
       if (data.inputType.basicType != Color) {
         throw CBException(
-            "this ImGui Style block expected a Color variable as input!");
+            "this GUI Style block expected a Color variable as input!");
       }
       break;
     }
@@ -544,6 +550,10 @@ struct Window : public Base {
   ParamVar _notClosed{Var::True};
   std::array<CBExposedTypeInfo, 2> _required;
 
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static inline Parameters _params{
       {"Title",
        CBCCSTR("The title of the window to create."),
@@ -725,6 +735,10 @@ struct ChildWindow : public Base {
   static inline ImGuiID windowIds{0};
   ImGuiID _wndId = ++windowIds;
 
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static inline ParamsInfo paramsInfo = ParamsInfo(
       ParamsInfo::Param("Width",
                         CBCCSTR("The width of the child window to create"),
@@ -841,13 +855,13 @@ template <CBType CT> struct Variable : public Base {
           // exposing off
           _exposing = false;
           if (CT != CBType::Any && var.exposedType.basicType != CT) {
-            throw CBException("ImGui - Variable: Existing variable type not "
+            throw CBException("GUI - Variable: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
             throw CBException(
-                "ImGui - Variable: Existing variable is not mutable.");
+                "GUI - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -940,13 +954,13 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
           _exposing = false;
           if (var.exposedType.basicType != CT1 &&
               var.exposedType.basicType != CT2) {
-            throw CBException("ImGui - Variable: Existing variable type not "
+            throw CBException("GUI - Variable: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
             throw CBException(
-                "ImGui - Variable: Existing variable is not mutable.");
+                "GUI - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -1023,8 +1037,15 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
 
 struct Checkbox : public Variable<CBType::Bool> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the checkbox changed state "
+                   "during that frame.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -1049,8 +1070,15 @@ struct Checkbox : public Variable<CBType::Bool> {
 
 struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the checkbox changed state "
+                   "during that frame.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1128,8 +1156,15 @@ private:
 
 struct RadioButton : public Variable<CBType::Any> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the radio button changed "
+                   "state during that frame.");
+  }
 
   static CBParametersInfo parameters() { return paramsInfo; }
 
@@ -1203,6 +1238,10 @@ private:
 };
 
 struct Text : public Base {
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value to display.");
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -1330,8 +1369,15 @@ struct Bullet : public Base {
 
 struct Button : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the button was clicked during "
+                   "that frame.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1470,6 +1516,9 @@ struct HexViewer : public Base {
   // TODO use a variable so edits are possible and easy
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value to display in the viewer.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
@@ -1583,7 +1632,15 @@ struct Unindent : public Base {
 
 struct GetClipboard : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The content of the clipboard.");
+  }
+
   static CBVar activate(CBContext *context, const CBVar &input) {
     auto contents = ::ImGui::GetClipboardText();
     if (contents)
@@ -1595,7 +1652,12 @@ struct GetClipboard : public Base {
 
 struct SetClipboard : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value to set in the clipboard.");
+  }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
   static CBVar activate(CBContext *context, const CBVar &input) {
     ::ImGui::SetClipboardText(input.payload.stringValue);
     return input;
@@ -1603,7 +1665,14 @@ struct SetClipboard : public Base {
 };
 
 struct TreeNode : public Base {
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the tree node is open.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1700,7 +1769,14 @@ private:
 };
 
 struct CollapsingHeader : public Base {
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the header is open.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1802,8 +1878,14 @@ template <CBType CBT> struct DragBase : public Variable<CBT> {
     _T_ _tmp;                                                                  \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+    static CBOptionalString inputHelp() {                                      \
+      return CBCCSTR("The input value is ignored.");                           \
+    }                                                                          \
                                                                                \
     static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR("The value produced by this block.");                     \
+    }                                                                          \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1830,8 +1912,14 @@ IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
     CBVar _tmp;                                                                \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+    static CBOptionalString inputHelp() {                                      \
+      return CBCCSTR("The input value is ignored.");                           \
+    }                                                                          \
                                                                                \
     static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR("The value produced by this block.");                     \
+    }                                                                          \
                                                                                \
     CBVar activate(CBContext *context, const CBVar &input) {                   \
       IDContext idCtx(this);                                                   \
@@ -1864,8 +1952,14 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
     _T_ _tmp;                                                                  \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+    static CBOptionalString inputHelp() {                                      \
+      return CBCCSTR("The input value is ignored.");                           \
+    }                                                                          \
                                                                                \
     static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }         \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR("The value that was input.");                             \
+    }                                                                          \
                                                                                \
     static CBParametersInfo parameters() { return paramsInfo; }                \
                                                                                \
@@ -1957,8 +2051,14 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
     CBVar _tmp;                                                                \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+    static CBOptionalString inputHelp() {                                      \
+      return CBCCSTR("The input value is ignored.");                           \
+    }                                                                          \
                                                                                \
     static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }  \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR("The value that was input.");                             \
+    }                                                                          \
                                                                                \
     static CBParametersInfo parameters() { return paramsInfo; }                \
                                                                                \
@@ -2056,8 +2156,14 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
   struct _CBT_##Slider : public Variable<CBType::_CBT_> {                      \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+    static CBOptionalString inputHelp() {                                      \
+      return CBCCSTR("The input value is ignored.");                           \
+    }                                                                          \
                                                                                \
     static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }         \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR("The value produced by this block.");                     \
+    }                                                                          \
                                                                                \
     static CBParametersInfo parameters() { return paramsInfo; }                \
                                                                                \
@@ -2147,8 +2253,14 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
   struct _CBT_##_CMP_##Slider : public Variable<CBType::_CBT_##_CMP_> {        \
                                                                                \
     static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
+    static CBOptionalString inputHelp() {                                      \
+      return CBCCSTR("The input value is ignored.");                           \
+    }                                                                          \
                                                                                \
     static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }  \
+    static CBOptionalString outputHelp() {                                     \
+      return CBCCSTR("The value produced by this block.");                     \
+    }                                                                          \
                                                                                \
     static CBParametersInfo parameters() { return paramsInfo; }                \
                                                                                \
@@ -2242,8 +2354,14 @@ IMGUISLIDER2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 struct TextInput : public Variable<CBType::String> {
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The string that was input.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -2342,7 +2460,14 @@ struct ColorInput : public Variable<CBType::Color> {
   ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The color that was input.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -2379,6 +2504,7 @@ struct Image : public Base {
   bool _trueSize = false;
 
   static CBTypesInfo inputTypes() { return BGFX::Texture::ObjType; }
+  static CBOptionalString inputHelp() { return CBCCSTR("A texture object."); }
 
   static CBTypesInfo outputTypes() { return BGFX::Texture::ObjType; }
 
@@ -2464,6 +2590,10 @@ struct Plot : public Base {
   ParamVar _xlimits{}, _ylimits{};
   ParamVar _lockx{Var::False}, _locky{Var::False};
   std::array<CBExposedTypeInfo, 5> _required;
+
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
 
   static inline Parameters params{
       {"Title",
@@ -2666,6 +2796,10 @@ struct PlottableBase : public Base {
   CBVar _color{};
 
   static CBTypesInfo inputTypes() { return Plot::Plottable; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("A sequence of values.");
+  }
+
   static CBTypesInfo outputTypes() { return Plot::Plottable; }
 
   static constexpr int nparams = 2;
@@ -2917,14 +3051,28 @@ struct PlotBars : public PlottableBase {
 
 struct HasPointer : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean."); }
+
   static CBVar activate(CBContext *context, const CBVar &input) {
     return Var(::ImGui::IsAnyItemHovered());
   }
 };
 
 struct FPS : public Base {
+  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The current framerate.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     ImGuiIO &io = ::ImGui::GetIO();
@@ -2933,6 +3081,10 @@ struct FPS : public Base {
 };
 
 struct Tooltip : public Base {
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -3046,6 +3198,9 @@ private:
 
 struct ProgressBar : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value to display.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
@@ -3091,9 +3246,14 @@ private:
 };
 
 struct MenuBase : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the menu is visible.");
+  }
 
   static CBParametersInfo parameters() { return params; }
 
@@ -3160,10 +3320,6 @@ struct MenuBar : public MenuBase {
 };
 
 struct Menu : public MenuBase {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -3248,9 +3404,9 @@ private:
 };
 
 struct MenuItem : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Action blocks.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -3345,13 +3501,13 @@ struct MenuItem : public Base {
         if (strcmp(var.name, _isChecked.variableName()) == 0) {
           // we found a variable, make sure it's the right type and mark
           if (var.exposedType.basicType != CBType::Bool) {
-            throw CBException("Gui - MenuItem: Existing variable type not "
+            throw CBException("GUI - MenuItem: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
             throw CBException(
-                "Gui - MenuItem: Existing variable is not mutable.");
+                "GUI - MenuItem: Existing variable is not mutable.");
           }
           found = true;
           break;
@@ -3359,7 +3515,7 @@ struct MenuItem : public Base {
       }
       if (!found)
         // we didn't find a variable
-        throw CBException("Gui - MenuItem: Missing mutable variable.");
+        throw CBException("GUI - MenuItem: Missing mutable variable.");
     }
 
     return CoreInfo::BoolType;
@@ -3410,8 +3566,14 @@ private:
 
 struct Combo : public Variable<CBType::Int> {
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("A sequence of values.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The selected value.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto count = input.payload.seqValue.len;
@@ -3480,8 +3642,14 @@ struct ListBox : public Variable<CBType::Int> {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("A sequence of values.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The currently selected value.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto count = input.payload.seqValue.len;
@@ -3529,8 +3697,15 @@ private:
 
 struct Selectable : public Variable<CBType::Bool> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR(
+        "A boolean indicating whether this item is currently selected.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -3554,9 +3729,14 @@ struct Selectable : public Variable<CBType::Bool> {
 };
 
 struct TabBase : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the tab is visible.");
+  }
 
   static CBParametersInfo parameters() { return params; }
 
@@ -3704,6 +3884,10 @@ private:
 };
 
 struct Group : public Base {
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -3753,6 +3937,10 @@ private:
 };
 
 struct Disable : public Base {
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
+
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -3834,9 +4022,14 @@ private:
 };
 
 struct Table : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value will be passed to the Contents blocks.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the table is visible.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -3937,8 +4130,14 @@ struct TableHeadersRow : public Base {
 
 struct TableNextColumn : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value is ignored.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the table column is visible.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto active = ::ImGui::TableNextColumn();
@@ -3955,8 +4154,12 @@ struct TableNextRow : public Base {
 
 struct TableSetColumnIndex : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static CBOptionalString inputHelp() { return CBCCSTR("The table index."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("A boolean indicating whether the table column is visible.");
+  }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto &index = input.payload.intValue;
