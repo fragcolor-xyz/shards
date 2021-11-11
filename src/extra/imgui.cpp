@@ -537,7 +537,10 @@ struct Window : public Base {
   std::string _title;
   bool firstActivation{true};
   Var _pos{}, _width{}, _height{};
-  ParamVar _flags;
+  ParamVar _flags{Var::Enum((int(Enums::GuiWindowFlags::NoResize) |
+                             int(Enums::GuiWindowFlags::NoMove) |
+                             int(Enums::GuiWindowFlags::NoCollapse)),
+                            CoreCC, Enums::GuiWindowFlagsCC)};
   ParamVar _notClosed{Var::True};
   std::array<CBExposedTypeInfo, 2> _required;
 
@@ -562,7 +565,8 @@ struct Window : public Base {
       {"Contents", CBCCSTR("The inner contents blocks."),
        CoreInfo::BlocksOrNone},
       {"Flags",
-       CBCCSTR("Flags to enable window options."),
+       CBCCSTR("Flags to enable window options. The defaults are NoResize | "
+               "NoMove | NoCollapse."),
        {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType,
         Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType,
         CoreInfo::NoneType}},
