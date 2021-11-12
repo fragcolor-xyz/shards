@@ -377,6 +377,8 @@ CBlock *createBlock(std::string_view name) {
     blkp->inlineBlockId = CBInlineBlocks::CoreInput;
   } else if (name == "Pause") {
     blkp->inlineBlockId = CBInlineBlocks::CoreSleep;
+  } else if (name == "ForRange") {
+    blkp->inlineBlockId = CBInlineBlocks::CoreForRange;
   } else if (name == "Repeat") {
     blkp->inlineBlockId = CBInlineBlocks::CoreRepeat;
   } else if (name == "Once") {
