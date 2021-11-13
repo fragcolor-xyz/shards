@@ -212,8 +212,8 @@ set_target_properties(kissfft PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINAR
 target_include_directories(kissfft INTERFACE ${CHAINBLOCKS_DIR}/deps/kissfft)
 add_dependencies(kissfft kissfft_a)
 
-option(TINYGLTF_BUILD_LOADER_EXAMPLE OFF "") 
-add_subdirectory(tinygltf)
+add_library(tinygltf INTERFACE)
+target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 option(TF_BUILD_TESTS "" OFF)
 option(TF_BUILD_EXAMPLES "" OFF)
@@ -245,7 +245,7 @@ set(imguizmo_SOURCES
 )
 add_library(imguizmo STATIC ${imguizmo_SOURCES})
 target_include_directories(imguizmo PUBLIC imguizmo)
-target_include_directories(imguizmo PRIVATE bgfx/3rdparty/dear-imgui)
+target_include_directories(imguizmo PUBLIC bgfx/3rdparty/dear-imgui)
 target_link_libraries(imguizmo PUBLIC dear-imgui)
 
 add_library(implot STATIC 
@@ -253,6 +253,7 @@ add_library(implot STATIC
   implot/implot_items.cpp
 )
 target_include_directories(implot PUBLIC implot)
+target_include_directories(implot PUBLIC bgfx/3rdparty/dear-imgui)
 target_link_libraries(implot
   PUBLIC dear-imgui
   PRIVATE stb
