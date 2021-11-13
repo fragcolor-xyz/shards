@@ -277,6 +277,13 @@ jobs:
           lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+      - name: Upload coverage
+        if: ${{ matrix.build-type == 'Debug' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: cbl-linux-coverage
+          path: coverage
+          if-no-files-found: error
 
   #
   # Extra tests and coverage on linux
@@ -338,6 +345,12 @@ jobs:
           lcov --remove coverage/coverage.info */c++/* */boost/* */usr/* */deps/* */src/mal/* --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+      - name: Upload coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: cbl-linux-coverage-extra
+          path: coverage
+          if-no-files-found: error
 
   #
   # Build chainblocks and publish docker image
