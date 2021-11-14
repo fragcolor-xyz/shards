@@ -31,7 +31,6 @@
 [submodule "deps/replxx"]
 	path = deps/replxx
 	url = https://github.com/chainblocks/replxx.git
-	branch = chainblocks
 [submodule "deps/nameof"]
 	path = deps/nameof
 	url = https://github.com/chainblocks/nameof.git
@@ -53,14 +52,12 @@
 [submodule "deps/wasm3"]
 	path = deps/wasm3
 	url = https://github.com/chainblocks/wasm3.git
-	branch = cmake_cleanup
 [submodule "deps/xxHash"]
 	path = deps/xxHash
 	url = https://github.com/chainblocks/xxHash.git
 [submodule "deps/Catch2"]
 	path = deps/Catch2
 	url = https://github.com/chainblocks/Catch2.git
-  branch = devel
 [submodule "deps/linalg"]
 	path = deps/linalg
 	url = https://github.com/chainblocks/linalg.git
@@ -88,7 +85,6 @@
 [submodule "deps/bgfx.cmake"]
 	path = deps/bgfx.cmake
 	url = https://github.com/chainblocks/bgfx.cmake.git
-	branch = chainblocks
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/chainblocks/brotli.git
