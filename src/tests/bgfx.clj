@@ -106,44 +106,44 @@
     :Title "SDL Window" :Width 1024 :Height 1024 :Debug true :Fullscreen true
     :Contents
     (-> (Setup
-         (applyStyle)
-         (LoadImage "../../assets/drawing.png")
-         (GFX.Texture2D) >= .image1
-         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
-         (GFX.Texture2D) >> .bump-textures
-         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
-         (GFX.Texture2D) >> .bump-textures
-         cube (GFX.Model
-               :Layout [VertexAttribute.Position
-                        VertexAttribute.Color0]
-               :CullMode CullMode.Front) >= .cube
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
-         (FS.Read :Bytes true) >= .vs_bytes
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
-         (FS.Read :Bytes true) >= .fs_bytes
-         (GFX.Shader :VertexShader .vs_bytes
-                     :PixelShader .fs_bytes) >= .shader
+       (applyStyle)
+       (LoadImage "../../content/images/chainblocks/logo.png")
+       (GFX.Texture2D) >= .image1
+       (LoadImage "../../content/images/test/fieldstone-rgba.tga")
+       (GFX.Texture2D) >> .bump-textures
+       (LoadImage "../../content/images/test/fieldstone-n.tga")
+       (GFX.Texture2D) >> .bump-textures
+       cube (GFX.Model
+             :Layout [VertexAttribute.Position
+                      VertexAttribute.Color0]
+             :CullMode CullMode.Front) >= .cube
+       (str "../../content/built/shaders/" shaders-folder "/vs_cubes.bin")
+       (FS.Read :Bytes true) >= .vs_bytes
+       (str "../../content/built/shaders/" shaders-folder "/fs_cubes.bin")
+       (FS.Read :Bytes true) >= .fs_bytes
+       (GFX.Shader :VertexShader .vs_bytes
+                   :PixelShader .fs_bytes) >= .shader
 
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
-         (FS.Read :Bytes true) > .vs_bytes
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
-         (FS.Read :Bytes true) > .fs_bytes
-         (GFX.Shader :VertexShader .vs_bytes
-                     :PixelShader .fs_bytes) >= .bump-shader
+       (str "../../content/built/shaders/" shaders-folder "/vs_bump.bin")
+       (FS.Read :Bytes true) > .vs_bytes
+       (str "../../content/built/shaders/" shaders-folder "/fs_bump.bin")
+       (FS.Read :Bytes true) > .fs_bytes
+       (GFX.Shader :VertexShader .vs_bytes
+                   :PixelShader .fs_bytes) >= .bump-shader
 
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_instancing.bin")
-         (FS.Read :Bytes true) > .vs_bytes
-         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_instancing.bin")
-         (FS.Read :Bytes true) > .fs_bytes
-         (GFX.Shader :VertexShader .vs_bytes
-                     :PixelShader .fs_bytes) >= .instancing-shader
+       (str "../../content/built/shaders/" shaders-folder "/vs_instancing.bin")
+       (FS.Read :Bytes true) > .vs_bytes
+       (str "../../content/built/shaders/" shaders-folder "/fs_instancing.bin")
+       (FS.Read :Bytes true) > .fs_bytes
+       (GFX.Shader :VertexShader .vs_bytes
+                   :PixelShader .fs_bytes) >= .instancing-shader
 
-         false (Set "checkBoxie")
-         (Inputs.Mouse :Hidden true :Capture true :Relative true)
-         (Physics.Ball :Radius 0.5) = .ball-pshape
-         (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
-         (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
-
+    ;;    false (Set "checkBoxie")
+    ;;    (Inputs.Mouse :Hidden false :Capture true :Relative true)
+       (Physics.Ball :Radius 0.5) = .ball-pshape
+       (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
+       (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
+      
       ; regular model render
         {"Position" (Float3 5 1 8)
          "Target" (Float3 0 0 0)} (GFX.Camera)
@@ -316,8 +316,8 @@
                      "Hi" (GUI.Text)))))))
 
 (schedule Root test-chain)
-(run Root 0.02 100)
-;; (run Root 0.02)
+;; (run Root 0.02 100)
+(run Root 0.02)
 
-(schedule Root test-chain)
-(run Root 0.02 100)
+;; (schedule Root test-chain)
+;; (run Root 0.02 100)

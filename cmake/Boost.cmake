@@ -3,10 +3,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE_PREV ${CMAKE_FIND_ROOT_PATH_MODE_INCLUDE})
 unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
 
 if(IOS OR EMSCRIPTEN)
-find_package(Boost REQUIRED)
+  find_package(Boost REQUIRED)
   
-add_library(boost-headers INTERFACE)
-target_include_directories(boost-headers INTERFACE ${Boost_INCLUDE_DIRS})
+  add_library(boost-headers INTERFACE)
+  target_include_directories(boost-headers INTERFACE ${Boost_INCLUDE_DIRS})
+  add_library(Boost::headers ALIAS boost-headers)
 endif()
 
 if(IOS)

@@ -11,6 +11,10 @@ namespace BGFX {
 extern void registerBGFXBlocks();
 }
 
+namespace gfx {
+extern void registerBlocks();
+}
+
 #ifdef _WIN32
 namespace Desktop {
 extern void registerDesktopBlocks();
@@ -63,24 +67,25 @@ void cbInitExtras() {
   registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
 #endif
 
-  Snappy::registerBlocks();
-  Brotli::registerBlocks();
+	Snappy::registerBlocks();
+	Brotli::registerBlocks();
 
 #ifdef __EMSCRIPTEN__
-  registerEmscriptenShaderCompiler();
+	registerEmscriptenShaderCompiler();
 #endif
 
-  BGFX::registerBGFXBlocks();
-  chainblocks::ImGui::registerImGuiBlocks();
-  chainblocks::Gizmo::registerGizmoBlocks();
-  XR::registerBlocks();
-  gltf::registerBlocks();
-  Inputs::registerBlocks();
-  Audio::registerBlocks();
-  DSP::registerBlocks();
+	// BGFX::registerBGFXBlocks();
+	// gfx::registerBlocks();
+	// chainblocks::ImGui::registerImGuiBlocks();
+	// chainblocks::Gizmo::registerGizmoBlocks();
+	// XR::registerBlocks();
+	// gltf::registerBlocks();
+	// Inputs::registerBlocks();
+	Audio::registerBlocks();
+	DSP::registerBlocks();
 
 #ifdef _WIN32
-  Desktop::registerDesktopBlocks();
+	Desktop::registerDesktopBlocks();
 #endif
 }
 }; // namespace chainblocks

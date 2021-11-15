@@ -82,7 +82,9 @@ if(USE_LTO)
   add_link_options(-flto)
 endif()
 
-add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+if(NOT MSVC)
+  add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)

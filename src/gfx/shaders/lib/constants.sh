@@ -1,0 +1,6 @@
+#ifndef CONSTANTS_SH
+#define CONSTANTS_SH
+#define PI 3.14159265359
+#define PI2 6.28318530718
+#define HALF_PI 1.57079632679
+#endif

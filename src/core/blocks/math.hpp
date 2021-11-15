@@ -5,7 +5,10 @@
 
 // TODO, remove most of C macros, use more templates
 
+#include "chainblocks.h"
+#include "chainblocks.hpp"
 #include "core.hpp"
+#include <sstream>
 #include <variant>
 
 #define _PC
@@ -86,6 +89,14 @@ struct BinaryBase : public Base {
     return CBParametersInfo(mathParamsInfo);
   }
 
+  ComposeError formatTypeError(const CBType& inputType, const CBType& paramType) {
+    std::stringstream errStream;
+    errStream << "Operation not supported between different types ";
+    errStream << "(input=" << type2Name(inputType);
+    errStream << ", param=" << type2Name(paramType) << ")";
+    return ComposeError(errStream.str());
+  }
+
   CBTypeInfo compose(const CBInstanceData &data) {
     CBVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
@@ -96,16 +107,14 @@ struct BinaryBase : public Base {
           if (data.shared.elements[i].exposedType.basicType != Seq &&
               data.inputType.basicType != Seq) {
             if (data.shared.elements[i].exposedType != data.inputType)
-              throw ComposeError(
-                  "Operation not supported between different types");
+              throw formatTypeError(data.inputType.basicType, data.shared.elements[i].exposedType.basicType);
             _opType = Normal;
           } else if (data.shared.elements[i].exposedType.basicType != Seq &&
                      data.inputType.basicType == Seq) {
             if (data.inputType.seqTypes.len != 1 ||
                 data.shared.elements[i].exposedType !=
                     data.inputType.seqTypes.elements[0])
-              throw ComposeError(
-                  "Operation not supported between different types");
+              throw formatTypeError(data.inputType.seqTypes.elements[0].basicType, data.shared.elements[i].exposedType.basicType);
             _opType = Seq1;
           } else if (data.shared.elements[i].exposedType.basicType == Seq &&
                      data.inputType.basicType == Seq) {
@@ -124,14 +133,14 @@ struct BinaryBase : public Base {
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
         if (operandSpec.valueType != data.inputType.basicType)
-          throw ComposeError("Operation not supported between different types");
+          throw formatTypeError(data.inputType.basicType, operandSpec.valueType);
         _opType = Normal;
       } else if (operandSpec.valueType != Seq &&
                  data.inputType.basicType == Seq) {
         if (data.inputType.seqTypes.len != 1 ||
             operandSpec.valueType !=
                 data.inputType.seqTypes.elements[0].basicType)
-          throw ComposeError("Operation not supported between different types");
+          throw formatTypeError(data.inputType.seqTypes.elements[0].basicType, operandSpec.valueType);
         _opType = Seq1;
       } else if (operandSpec.valueType == Seq &&
                  data.inputType.basicType == Seq) {

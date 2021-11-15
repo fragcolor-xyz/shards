@@ -43,6 +43,7 @@ add_subdirectory(deps)
 
 add_subdirectory(src/core)
 add_subdirectory(src/mal)
+add_subdirectory(src/gfx)
 
 if(CHAINBLOCKS_WITH_EXTRA_BLOCKS)
   if(CHAINBLOCKS_WITH_RUST_BLOCKS)
