@@ -4,7 +4,9 @@
 #include "imgui.hpp"
 
 #include "bgfx.hpp"
+#include "bgfx/objects.hpp"
 #include "blocks/shared.hpp"
+#include "gfx/chainblocks_types.hpp"
 #include "runtime.hpp"
 #include <implot.h>
 
@@ -14,7 +16,7 @@ namespace chainblocks {
 namespace ImGui {
 struct Base {
   static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
-      "GUI.Context", CBCCSTR("The ImGui Context."), Context::Info);
+      "GFX.Context", CBCCSTR("The graphics context Context."), gfx::ContextType);
   static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
 
   CBExposedTypesInfo requiredVariables() {

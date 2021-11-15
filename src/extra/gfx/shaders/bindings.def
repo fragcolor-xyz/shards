@@ -1,0 +1,15 @@
+Binding(baseColorFactor, Binding_Float4)
+Binding(baseColorTexture, Binding_Texture2D)
+
+Binding(metallicFactor, Binding_Float)
+Binding(roughnessFactor, Binding_Float)
+Binding(metallicRoughnessTexture, Binding_Texture2D)
+
+Binding(normalTexture, Binding_Texture2D)
+Binding(normalTextureScale, Binding_Float)
+
+Binding(occlusionTexture, Binding_Texture2D)
+Binding(occlusionTextureScale, Binding_Float)
+
+Binding(emissiveFactor, Binding_Float3)
+Binding(emissiveTexture, Binding_Texture2D)
