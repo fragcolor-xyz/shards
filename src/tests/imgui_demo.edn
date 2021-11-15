@@ -7,7 +7,6 @@
 (defblocks helloWorld-window []
   (GUI.Window
    :Title "Hello, World!"
-   :AllowResize true :AllowMove true :AllowCollapse true
    :Contents
    (-> (Setup
         0 >= .counter
@@ -27,7 +26,8 @@
 
 (defblocks another-window []
   (GUI.Window
-   :Title "Another Window" :AllowMove true
+   :Title "Another Window"
+   :Flags [GuiWindowFlags.NoResize, GuiWindowFlags.NoCollapse]
    :OnClose .showAnother
    :Contents
    (-> "Hello from another window!" (GUI.Text)
@@ -36,7 +36,7 @@
 (defblocks demo-window []
   (GUI.Window
    :Title "UI Demo" :Pos (int2 650 20) :Width 550 :Height 680
-   :AllowResize true :AllowMove true :AllowCollapse true :ShowMenuBar true
+   :Flags [GuiWindowFlags.MenuBar]
    :Contents
    (-> (GUI.MenuBar
         :Contents
@@ -89,7 +89,8 @@
              "Hello, world!" >= .inputText
              false >= .disableAll)
             (GUI.Disable
-             .disableAll
+             :Disable .disableAll
+             :Contents
              (-> (GUI.TreeNode
                   "Basic"
                   (-> (GUI.Button "Button" (Math.Inc .clickCount))
@@ -104,7 +105,6 @@
                       (GUI.CheckboxFlags "Forward" .direction 16) (GUI.SameLine)
                       (GUI.CheckboxFlags "Backward" .direction 32)
                       (GUI.Disable
-                       true
                        (->
                         (GUI.CheckboxFlags "Left & Right" .direction 3) (GUI.SameLine)
                         (GUI.CheckboxFlags "Up & down" .direction 12) (GUI.SameLine)
@@ -376,7 +376,7 @@
 (defblocks layout-example []
   (GUI.Window
    :Title "Example: Simple layout" :OnClose .layout-example :Height 440 :Width 500
-   :AllowResize true :AllowMove true :AllowCollapse true :ShowMenuBar true
+   :Flags [GuiWindowFlags.MenuBar]
    :Contents
    (-> (Setup 0 >= .selected)
        (GUI.MenuBar
@@ -429,7 +429,6 @@
       :Then
       (GUI.Window
        :Title "About UI" :OnClose .about
-       :AllowResize true :AllowMove true :AllowCollapse true
        :Contents
        (-> "UI Chainblocks" (GUI.Text)
            (GUI.Separator)

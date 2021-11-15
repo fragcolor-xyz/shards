@@ -22,29 +22,35 @@ template <Type &OUTTYPE, CBType CBTYPE> struct Rand : public RandBase {
 
   CBVar getParam(int index) { return _max; }
 
+  void cleanup() { _max.cleanup(); }
+
+  void warmup(CBContext *context) { _max.warmup(context); }
+
   CBVar activate(CBContext *context, const CBVar &input) {
     CBVar res{};
     res.valueType = CBTYPE;
+
+    auto max = _max.get();
     if constexpr (CBTYPE == CBType::Int) {
-      if (_max.valueType == None)
+      if (max.valueType == None)
         res.payload.intValue = _uintdis(_gen);
       else
-        res.payload.intValue = _uintdis(_gen) % _max.payload.intValue;
+        res.payload.intValue = _uintdis(_gen) % max.payload.intValue;
     } else if constexpr (CBTYPE == CBType::Float) {
-      if (_max.valueType == None)
+      if (max.valueType == None)
         res.payload.floatValue = _udis(_gen);
       else
-        res.payload.floatValue = _udis(_gen) * _max.payload.floatValue;
+        res.payload.floatValue = _udis(_gen) * max.payload.floatValue;
     }
     return res;
   }
 
 private:
-  CBVar _max{};
   static inline Parameters _params{
       {"Max",
        CBCCSTR("The maximum (if integer, not including) value to output."),
-       {CoreInfo::NoneType, OUTTYPE}}};
+       {CoreInfo::NoneType, OUTTYPE, Type::VariableOf(OUTTYPE)}}};
+  ParamVar _max{};
 };
 
 using RandomInt = Rand<CoreInfo::IntType, CBType::Int>;

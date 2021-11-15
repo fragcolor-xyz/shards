@@ -79,7 +79,7 @@ We introduce a low code way of producing high performance and multi-platform app
       (GUI.Button "Push me!" (->
                               (Msg "Action!")
                               (Detach action)))
-      (GUI.CheckBox)
+      (GUI.Checkbox)
       (When (Is true) (->
                        "Hello optional world" (GUI.Text))))))))
 

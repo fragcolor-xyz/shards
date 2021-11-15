@@ -132,29 +132,29 @@
       (float3 1 1 1) >= .snap
       .snap >= .prev_snap
 
-      GizmoGridAxis.Y (ToInt) (Set .radioGridAxis)
-      GizmoMode.Local (ToInt) (Set .radioMode)
-      GizmoOperation.Translate (ToInt) (Set .radioOperation))
+      GizmoGridAxis.Y >= .gridAxis
+      GizmoMode.Local >= .mode
+      GizmoOperation.Translate >= .operation)
 
      ; toolbar
      (GUI.Window
       :Title "Toolbar" :Height 316 :Width 500 :Pos (Int2 4 4)
-      :AllowResize true :AllowMove true :AllowCollapse true
       :Contents
       (->
        "Grid axes" (GUI.Text) (GUI.SameLine)
-       (GUI.RadioButton "X" .radioGridAxis 0) (GUI.SameLine)
-       (GUI.RadioButton "Y" .radioGridAxis 1) (GUI.SameLine)
-       (GUI.RadioButton "Z" .radioGridAxis 2)
+       (GUI.RadioButton "X" .gridAxis GizmoGridAxis.X) (GUI.SameLine)
+       (GUI.RadioButton "Y" .gridAxis GizmoGridAxis.Y) (GUI.SameLine)
+       (GUI.RadioButton "Z" .gridAxis GizmoGridAxis.Z)
        (GUI.Separator)
-       (GUI.RadioButton "Local" .radioMode 0) (GUI.SameLine)
-       (GUI.RadioButton "World" .radioMode 1)
+       (GUI.RadioButton "Local" .mode GizmoMode.Local) (GUI.SameLine)
+       (GUI.RadioButton "World" .mode GizmoMode.World)
        (GUI.Separator)
-       (GUI.RadioButton "Translate" .radioOperation 0) (GUI.SameLine)
-       (GUI.RadioButton "Rotate" .radioOperation 1) (GUI.SameLine)
-       (GUI.RadioButton "Scale" .radioOperation 2)
+       (GUI.RadioButton "Translate" .operation GizmoOperation.Translate) (GUI.SameLine)
+       (GUI.RadioButton "Rotate" .operation GizmoOperation.Rotate) (GUI.SameLine)
+       (GUI.RadioButton "Scale" .operation GizmoOperation.Scale)
        (GUI.Separator)
-       (If (GUI.Checkbox "Snap?" .snappie)
+       (GUI.Checkbox "Snap?" .snappie)
+       (If (-> .snappie)
            :Then (->
                   .prev_snap > .snap
                   (GUI.SameLine) (GUI.Float3Input "" .snap)
@@ -174,21 +174,6 @@
        (cameraButton "Z+1" (float3 0 0 1) .cam_p .cam_t .myView)
        (GUI.SameLine)))
 
-     .radioGridAxis (Match
-                     [0 ~[GizmoGridAxis.X]
-                      1 ~[GizmoGridAxis.Y]
-                      2 ~[GizmoGridAxis.Z]]
-                     false) >= .gridAxis
-
-     .radioMode (Match
-                 [0 ~[GizmoMode.Local]
-                  1 ~[GizmoMode.World]]
-                 false) >= .mode
-     .radioOperation (Match
-                      [0 ~[GizmoOperation.Translate]
-                       1 ~[GizmoOperation.Rotate]
-                       2 ~[GizmoOperation.Scale]]
-                      false) >= .operation
      ; camera
      .myView (GFX.Camera)
      (Inputs.MousePos)

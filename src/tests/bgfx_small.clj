@@ -18,8 +18,7 @@
      :Title "My Window" :Width 400 :Height 200
      :Contents
      ~[(GUI.Window "My ImGui Window"
-                   :Width 400 :Height 200
-                   :Pos (Int2 0 0)
+                   :Width 400 :Height 200 :Pos (Int2 0 0)
                    :Contents
                    ~["Hello world"   (GUI.Text)
                      "Hello world 2" (GUI.Text)

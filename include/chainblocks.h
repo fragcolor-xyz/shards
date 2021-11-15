@@ -62,6 +62,7 @@ enum CBInlineBlocks : uint32_t {
   CoreConst,
   CoreSleep,
   CoreInput,
+  CoreForRange,
   CoreRepeat,
   CoreOnce,
   CoreGet,

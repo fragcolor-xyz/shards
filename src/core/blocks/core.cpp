@@ -1753,6 +1753,7 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Profile", Profile);
 
   REGISTER_CBLOCK("ForEach", ForEachBlock);
+  REGISTER_CBLOCK("ForRange", ForRangeBlock);
   REGISTER_CBLOCK("Map", Map);
   REGISTER_CBLOCK("Reduce", Reduce);
   REGISTER_CBLOCK("Erase", Erase);

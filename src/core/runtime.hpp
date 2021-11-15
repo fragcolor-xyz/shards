@@ -242,6 +242,11 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     auto cblock = reinterpret_cast<chainblocks::PushRuntime *>(blk);
     return cblock->core.activate(context, input);
   }
+  case CoreForRange: {
+    auto cblock =
+        reinterpret_cast<chainblocks::BlockWrapper<ForRangeBlock> *>(blk);
+    return cblock->block.activate(context, input);
+  }
   case CoreRepeat: {
     auto cblock = reinterpret_cast<chainblocks::RepeatRuntime *>(blk);
     return cblock->core.activate(context, input);

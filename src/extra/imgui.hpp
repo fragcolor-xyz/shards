@@ -83,6 +83,30 @@ struct Enums {
     SpanFullWidth = ::ImGuiTreeNodeFlags_SpanFullWidth
   };
   REGISTER_FLAGS_EX(GuiTreeNodeFlags, 'guTN'); // FourCC = 0x6775544E
+
+  enum class GuiWindowFlags {
+    None = ::ImGuiWindowFlags_None,
+    NoTitleBar = ::ImGuiWindowFlags_NoTitleBar,
+    NoResize = ::ImGuiWindowFlags_NoResize,
+    NoMove = ::ImGuiWindowFlags_NoMove,
+    NoScrollbar = ::ImGuiWindowFlags_NoScrollbar,
+    NoScrollWithMouse = ::ImGuiWindowFlags_NoScrollWithMouse,
+    NoCollapse = ::ImGuiWindowFlags_NoCollapse,
+    AlwaysAutoResize = ::ImGuiWindowFlags_AlwaysAutoResize,
+    NoBackground = ::ImGuiWindowFlags_NoBackground,
+    NoSavedSettings = ::ImGuiWindowFlags_NoSavedSettings,
+    NoMouseInputs = ::ImGuiWindowFlags_NoMouseInputs,
+    MenuBar = ::ImGuiWindowFlags_MenuBar,
+    HorizontalScrollbar = ::ImGuiWindowFlags_HorizontalScrollbar,
+    NoFocusOnAppearing = ::ImGuiWindowFlags_NoFocusOnAppearing,
+    NoBringToFrontOnFocus = ::ImGuiWindowFlags_NoBringToFrontOnFocus,
+    AlwaysVerticalScrollbar = ::ImGuiWindowFlags_AlwaysVerticalScrollbar,
+    AlwaysHorizontalScrollbar = ::ImGuiWindowFlags_AlwaysHorizontalScrollbar,
+    AlwaysUseWindowPadding = ::ImGuiWindowFlags_AlwaysUseWindowPadding,
+    NoNavInputs = ::ImGuiWindowFlags_NoNavInputs,
+    NoNavFocus = ::ImGuiWindowFlags_NoNavFocus
+  };
+  REGISTER_FLAGS_EX(GuiWindowFlags, 'guiW'); // FourCC = 0x67756957
 };
 }; // namespace ImGui
 }; // namespace chainblocks
