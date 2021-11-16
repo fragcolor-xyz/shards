@@ -107,7 +107,7 @@
     :Contents
     (-> (Setup
        (applyStyle)
-       (LoadImage "../../content/chainbblocks/logo.png")
+       (LoadImage "../../content/images/chainblocks/logo.png")
        (GFX.Texture2D) >= .image1
        (LoadImage "../../content/images/test/fieldstone-rgba.tga")
        (GFX.Texture2D) >> .bump-textures
@@ -138,8 +138,8 @@
        (GFX.Shader :VertexShader .vs_bytes
                    :PixelShader .fs_bytes) >= .instancing-shader
 
-       false (Set "checkBoxie")
-       (Inputs.Mouse :Hidden true :Capture true :Relative true)
+    ;;    false (Set "checkBoxie")
+    ;;    (Inputs.Mouse :Hidden false :Capture true :Relative true)
        (Physics.Ball :Radius 0.5) = .ball-pshape
        (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
        (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)

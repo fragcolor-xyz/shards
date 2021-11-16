@@ -1628,8 +1628,6 @@ struct Draw : public BaseConsumer {
 			fid[2] = ((id >> 16) & 0xff) / 255.0f;
 			fid[3] = ((id >> 24) & 0xff) / 255.0f;
 			bgfx::setUniform(gfxContext.getPickingUniform(), fid, 1);
-			// also here we discard all
-			assert(false); // TODO
 			bgfx::submit(gfx::PickingViewId, shader->pickingHandle, 0, BGFX_DISCARD_ALL);
 		}
 	}
