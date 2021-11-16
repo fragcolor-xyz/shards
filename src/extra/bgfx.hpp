@@ -13,7 +13,6 @@
 #include "gfx/frame.hpp"
 #include "gfx/chainblocks_types.hpp"
 #include "blocks/shared.hpp"
-#include "bgfx/context.hpp"
 #include "chainblocks.hpp"
 #include "linalg_shim.hpp"
 

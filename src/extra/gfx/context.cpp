@@ -4,7 +4,6 @@
 #include <filesystem>
 #include "SDL_events.h"
 #include "SDL_keycode.h"
-#include "../bgfx/context.hpp"
 #include "../bgfx.hpp"
 #include "chainblocks.hpp"
 #include "mesh.hpp"
@@ -115,12 +114,20 @@ void Context::init(CBContext *context, SDL_Window *window) {
 
 	_timeUniformHandle = bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
 
-	// setup main view
+	setupPicking();
+
 	bgfx::setViewRect(0, 0, 0, width, height);
 	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, Var(clearColor).colorToInt(), 1.0f, 0);
 }
 
 void Context::cleanup() {
+	if (_pickingFB.idx != bgfx::kInvalidHandle) {
+		bgfx::destroy(_pickingFB);
+		_pickingFB = BGFX_INVALID_HANDLE;
+	}
+	
+	imguiContext->cleanup();
+
 	for (auto &sampler : _samplers) {
 		bgfx::destroy(sampler);
 	}
@@ -131,6 +138,7 @@ void Context::cleanup() {
 		bgfx::destroy(_pickingUniform);
 		_pickingUniform = BGFX_INVALID_HANDLE;
 	}
+
 	if (_pickingTexture.idx != bgfx::kInvalidHandle) {
 		bgfx::destroy(_pickingTexture);
 		_pickingTexture = BGFX_INVALID_HANDLE;
@@ -142,6 +150,8 @@ void Context::cleanup() {
 		_metalView = nullptr;
 	}
 #endif
+
+	bgfx::shutdown();
 }
 
 const bgfx::UniformHandle &Context::getSampler(size_t index) {
@@ -278,5 +288,5 @@ void BGFXCallbacks::captureBegin(uint32_t /*_width*/, uint32_t /*_height*/, uint
 
 } // namespace gfx
 
-#include "fs_picking.bin.h"
+#include "../../../content/shaders/gfx/fs_picking.bin.h"
 bgfx::EmbeddedShader gfx::Context::PickingShaderData = BGFX_EMBEDDED_SHADER(fs_picking);

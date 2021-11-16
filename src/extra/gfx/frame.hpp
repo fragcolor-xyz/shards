@@ -27,7 +27,7 @@ struct FrameRenderer {
 	std::vector<SDL_Event> events;
 
 	std::deque<ViewInfo, boost::alignment::aligned_allocator<ViewInfo>> _viewsStack;
-	bgfx::ViewId _nextViewCounter{0};
+	bgfx::ViewId _nextViewCounter{1};
 
 	uint32_t _frameDrawablesCount{0};
 	std::unordered_map<uint32_t, IDrawable*> _frameDrawables;

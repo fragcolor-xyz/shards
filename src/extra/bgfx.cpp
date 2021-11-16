@@ -123,101 +123,17 @@ struct BaseWindow : public Base {
 };
 
 struct MainWindow : public BaseWindow {
-	struct Callbacks : public bgfx::CallbackI {
-		virtual ~Callbacks() {}
+	gfx::Context _gfxContext{};
+	bool _gfxContextInitialized{false};
 
-		virtual void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) override {
-			if (bgfx::Fatal::DebugCheck == _code) {
-				bx::debugBreak();
-			}
-			else {
-				fatalError = _str;
-				throw std::runtime_error(_str);
-			}
-		}
-
-		virtual void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override {
-			char temp[2048];
-			char *out = temp;
-			va_list argListCopy;
-			va_copy(argListCopy, _argList);
-			int32_t len = bx::snprintf(out, sizeof(temp), "%s (%d): ", _filePath, _line);
-			int32_t total = len + bx::vsnprintf(out + len, sizeof(temp) - len, _format, argListCopy);
-			va_end(argListCopy);
-			if ((int32_t)sizeof(temp) < total) {
-				out = (char *)alloca(total + 1);
-				bx::memCopy(out, temp, len);
-				bx::vsnprintf(out + len, total - len, _format, _argList);
-			}
-			out[total] = '\0';
-			CBLOG_DEBUG("(bgfx): {}", out);
-		}
-
-		virtual void profilerBegin(const char * /*_name*/, uint32_t /*_abgr*/, const char * /*_filePath*/, uint16_t /*_line*/) override {}
-
-		virtual void profilerBeginLiteral(const char * /*_name*/, uint32_t /*_abgr*/, const char * /*_filePath*/, uint16_t /*_line*/) override {}
-
-		virtual void profilerEnd() override {}
-
-		virtual uint32_t cacheReadSize(uint64_t /*_id*/) override { return 0; }
-
-		virtual bool cacheRead(uint64_t /*_id*/, void * /*_data*/, uint32_t /*_size*/) override { return false; }
-
-		virtual void cacheWrite(uint64_t /*_id*/, const void * /*_data*/, uint32_t /*_size*/) override {}
-
-		virtual void screenShot(
-			const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) override {
-			CBLOG_DEBUG("Screenshot requested for path:  {}", _filePath);
-
-			// For now.. TODO as might be not true
-			assert(_pitch == (_width * 4));
-
-			// need to convert to rgba
-			std::vector<uint8_t> data;
-			data.resize(_size);
-			const uint8_t *bgra = (uint8_t *)_data;
-			for (uint32_t x = 0; x < _height; x++) {
-				for (uint32_t y = 0; y < _width; y++) {
-					data[((y * 4) + 0) + (_pitch * x)] = bgra[((y * 4) + 2) + (_pitch * x)];
-					data[((y * 4) + 1) + (_pitch * x)] = bgra[((y * 4) + 1) + (_pitch * x)];
-					data[((y * 4) + 2) + (_pitch * x)] = bgra[((y * 4) + 0) + (_pitch * x)];
-					data[((y * 4) + 3) + (_pitch * x)] = bgra[((y * 4) + 3) + (_pitch * x)];
-				}
-			}
-
-			stbi_flip_vertically_on_write(_yflip);
-			std::filesystem::path p(_filePath);
-			std::filesystem::path t = p;
-			t += ".tmp";
-			const auto tname = t.string();
-			const auto ext = p.extension();
-			if (ext == ".png" || ext == ".PNG") {
-				stbi_write_png(tname.c_str(), _width, _height, 4, data.data(), _pitch);
-			}
-			else if (ext == ".jpg" || ext == ".JPG" || ext == ".jpeg" || ext == ".JPEG") {
-				stbi_write_jpg(tname.c_str(), _width, _height, 4, data.data(), 95);
-			}
-			// we do this to ensure p is a complete flushed file
-			std::filesystem::rename(t, p);
-		}
-
-		virtual void captureBegin(
-			uint32_t /*_width*/, uint32_t /*_height*/, uint32_t /*_pitch*/, bgfx::TextureFormat::Enum /*_format*/, bool /*_yflip*/) override {
-			BX_TRACE("Warning: using capture without callback (a.k.a. pointless).");
-		}
-
-		virtual void captureEnd() override {}
-
-		virtual void captureFrame(const void * /*_data*/, uint32_t /*_size*/) override {}
-
-		MainWindow *_mw;
-		std::string fatalError;
+	struct ProcessClock {
+		decltype(std::chrono::high_resolution_clock::now()) Start;
+		ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
 	};
 
-	Callbacks _bgfxCallback;
-	gfx::Context _gfxContext{};
-	int32_t _wheelScroll = 0;
-	bool _bgfxInit{false};
+	ProcessClock _absTimer;
+	ProcessClock _deltaTimer;
+	uint32_t _frameCounter{0};
 
 	CBTypeInfo compose(CBInstanceData &data) {
 		if (data.onWorkerThread) {
@@ -245,7 +161,10 @@ struct MainWindow : public BaseWindow {
 
 	void cleanup() {
 		_blocks.cleanup();
-		_gfxContext.cleanup();
+
+		if (_gfxContextInitialized) {
+			_gfxContext.cleanup();
+		}
 
 		if (_window) {
 			SDL_DestroyWindow(_window);
@@ -265,15 +184,6 @@ struct MainWindow : public BaseWindow {
 			_bgfxCtx = nullptr;
 		}
 	}
-
-	struct ProcessClock {
-		decltype(std::chrono::high_resolution_clock::now()) Start;
-		ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
-	};
-
-	ProcessClock _absTimer;
-	ProcessClock _deltaTimer;
-	uint32_t _frameCounter{0};
 
 	void pollEvents(std::vector<SDL_Event> &events) {
 		events.clear();
@@ -309,7 +219,9 @@ struct MainWindow : public BaseWindow {
 		SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
 		_gfxContext.clearColor = _clearColor;
+
 		_gfxContext.init(context, _window);
+		_gfxContextInitialized = true;
 
 		_bgfxCtx = referenceVariable(context, "GFX.Context");
 
@@ -631,20 +543,19 @@ struct Shader : public BaseConsumer {
 			}
 
 			// // also build picking program
-			assert(false); // TODO
-			// auto &pickingShaderData = findEmbeddedShader(Context::PickingShaderData);
-			// auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
+			auto &pickingShaderData = findEmbeddedShader(gfx::Context::PickingShaderData);
+			auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
 
-			// overrideShaderInputHash(ppmem, hashOut);
-			// auto ppsh = bgfx::createShader(ppmem);
-			// if (ppsh.idx == bgfx::kInvalidHandle) {
-			// 	throw ActivationError("Failed to load picking pixel shader.");
-			// }
+			overrideShaderInputHash(ppmem, hashOut);
+			auto ppsh = bgfx::createShader(ppmem);
+			if (ppsh.idx == bgfx::kInvalidHandle) {
+				throw ActivationError("Failed to load picking pixel shader.");
+			}
 
-			// auto pph = bgfx::createProgram(vsh, ppsh, true);
-			// if (pph.idx == bgfx::kInvalidHandle) {
-			// 	throw ActivationError("Failed to create picking shader program.");
-			// }
+			auto pph = bgfx::createProgram(vsh, ppsh, true);
+			if (pph.idx == bgfx::kInvalidHandle) {
+				throw ActivationError("Failed to create picking shader program.");
+			}
 
 			// commit our compiled shaders
 			if (_output) {
@@ -1812,7 +1723,6 @@ struct RenderTarget : public BaseConsumer {
 	int _height{256};
 	bool _gui{false};
 	bgfx::FrameBufferHandle _framebuffer = BGFX_INVALID_HANDLE;
-	bgfx::ViewId _viewId;
 	CBColor _clearColor{0x30, 0x30, 0x30, 0xFF};
 
 	void setParam(int index, const CBVar &value) {
@@ -1885,11 +1795,6 @@ struct RenderTexture : public RenderTarget {
 		bgfx::TextureHandle textures[] = {_texture->handle, _depth.handle};
 		_framebuffer = bgfx::createFrameBuffer(2, textures, false);
 
-		_viewId = getFrameRenderer().nextViewId();
-
-		bgfx::setViewRect(_viewId, 0, 0, _width, _height);
-		bgfx::setViewClear(_viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, Var(_clearColor).colorToInt(), 1.0f, 0);
-
 		_blocks.warmup(context);
 	}
 
@@ -1917,12 +1822,16 @@ struct RenderTexture : public RenderTarget {
 	CBVar activate(CBContext *context, const CBVar &input) {
 		gfx::FrameRenderer &frameRenderer = getFrameRenderer();
 
-		frameRenderer.pushView(gfx::ViewInfo(_viewId, gfx::Rect(_width, _height), _framebuffer));
+		bgfx::ViewId viewId = getFrameRenderer().nextViewId();
+
+		bgfx::setViewRect(viewId, 0, 0, _width, _height);
+		bgfx::setViewClear(viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, Var(_clearColor).colorToInt(), 1.0f, 0);
+
+		frameRenderer.pushView(gfx::ViewInfo(viewId, gfx::Rect(_width, _height), _framebuffer));
 		DEFER({ frameRenderer.popView(); });
 
-		bgfx::setViewFrameBuffer(_viewId, _framebuffer);
+		bgfx::setViewFrameBuffer(viewId, _framebuffer);
 
-		// activate the blocks and render
 		CBVar output{};
 		_blocks.activate(context, input, output);
 

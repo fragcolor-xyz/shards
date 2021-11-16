@@ -5,6 +5,8 @@
 #include "blocks/shared.hpp"
 #include "linalg_shim.hpp"
 #include "runtime.hpp"
+#include "gfx/frame.hpp"
+#include "bgfx/objects.hpp"
 
 #include <deque>
 #include <filesystem>
@@ -260,10 +262,10 @@ struct Load : public BGFX::BaseConsumer {
   void setup() { _loader.SetImageLoader(&LoadImageData, this); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // Skip base compose, we don't care about that check
-    // BGFX::BaseConsumer::compose(data);
+    BGFX::BaseConsumer::compose(data);
     return ModelType;
   }
+  
   template <typename T> struct Cache {
     std::shared_ptr<T> find(uint64_t hash) {
       std::shared_ptr<T> res;
@@ -519,7 +521,7 @@ struct Load : public BGFX::BaseConsumer {
 
         // also build picking program
         auto &pickingShaderData =
-            BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
+            BGFX::findEmbeddedShader(gfx::Context::PickingShaderData);
         auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
 
         BGFX::overrideShaderInputHash(ppmem, hashOut);
@@ -599,7 +601,7 @@ struct Load : public BGFX::BaseConsumer {
 
         // also build picking program
         auto &pickingShaderData =
-            BGFX::findEmbeddedShader(BGFX::Context::PickingShaderData);
+            BGFX::findEmbeddedShader(gfx::Context::PickingShaderData);
         auto ppmem = bgfx::copy(pickingShaderData.data, pickingShaderData.size);
 
         BGFX::overrideShaderInputHash(ppmem, hashOut);
@@ -1615,7 +1617,7 @@ struct Draw : public BGFX::BaseConsumer {
     BGFX::BaseConsumer::_cleanup();
   }
 
-  struct Drawable : public BGFX::IDrawable {
+  struct Drawable : public gfx::IDrawable {
     Drawable(CBChain *chain) : _chain(chain) {}
     virtual ~Drawable() {}
     CBChain *getChain() override { return _chain; }
@@ -1628,19 +1630,19 @@ struct Draw : public BGFX::BaseConsumer {
   std::deque<Drawable> _frameDrawables;
 
   template <bool instanced>
-  void renderNodeSubmit(BGFX::Context *ctx, const Node &node,
+  void renderNodeSubmit(gfx::FrameRenderer& frameRenderer, const Node &node,
                         const CBTable *mats, uint32_t primId) {
     for (const auto &primsRef : node.mesh->get().primitives) {
       const auto &prims = primsRef.get();
       if (prims.vb.idx != bgfx::kInvalidHandle) {
-        const auto currentView = ctx->currentView();
+        const auto& currentView = frameRenderer.getCurrentView();
 
         uint64_t state = prims.stateFlags | BGFX_STATE_WRITE_RGB |
                          BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
                          BGFX_STATE_DEPTH_TEST_LESS;
 
         if (!prims.material || !(*prims.material).get().doubleSided) {
-          if constexpr (BGFX::CurrentRenderer == BGFX::Renderer::OpenGL) {
+          if constexpr (gfx::CurrentRenderer == gfx::Renderer::OpenGL) {
             // workaround for flipped Y render to textures
             if (currentView.id > 0) {
               state |= BGFX_STATE_CULL_CCW;
@@ -1711,17 +1713,17 @@ struct Draw : public BGFX::BaseConsumer {
             for (uint32_t i = 0; i < textures.len; i++) {
               const auto texture = reinterpret_cast<BGFX::Texture *>(
                   textures.elements[i].payload.objectValue);
-              bgfx::setTexture(uint8_t(i), ctx->getSampler(i), texture->handle);
+              bgfx::setTexture(uint8_t(i), frameRenderer.context.getSampler(i), texture->handle);
             }
           } else {
             uint8_t samplerSlot = 0;
             if (material.baseColorTexture) {
-              bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+              bgfx::setTexture(samplerSlot, frameRenderer.context.getSampler(samplerSlot),
                                material.baseColorTexture->handle);
               samplerSlot++;
             }
             if (material.normalTexture) {
-              bgfx::setTexture(samplerSlot, ctx->getSampler(samplerSlot),
+              bgfx::setTexture(samplerSlot, frameRenderer.context.getSampler(samplerSlot),
                                material.normalTexture->handle);
               samplerSlot++;
             }
@@ -1745,7 +1747,7 @@ struct Draw : public BGFX::BaseConsumer {
               "Rendering a primitive with invalid shader handle");
         }
 
-        bool picking = currentView.id == 0 && ctx->isPicking();
+        bool picking = currentView.id == 0 && frameRenderer.isPicking();
 
         bgfx::submit(currentView.id, handle, 0, picking ? 0 : BGFX_DISCARD_ALL);
 
@@ -1755,16 +1757,16 @@ struct Draw : public BGFX::BaseConsumer {
           fid[1] = ((primId >> 8) & 0xff) / 255.0f;
           fid[2] = ((primId >> 16) & 0xff) / 255.0f;
           fid[3] = ((primId >> 24) & 0xff) / 255.0f;
-          bgfx::setUniform(ctx->getPickingUniform(), fid, 1);
+          bgfx::setUniform(frameRenderer.context.getPickingUniform(), fid, 1);
           // also here we discard all
-          bgfx::submit(BGFX::PickingViewId, pickingHandle, 0, BGFX_DISCARD_ALL);
+          bgfx::submit(gfx::PickingViewId, pickingHandle, 0, BGFX_DISCARD_ALL);
         }
       }
     }
   }
 
   template <bool instanced>
-  void renderNode(BGFX::Context *ctx, const Node &node,
+  void renderNode(gfx::FrameRenderer& frameRenderer, const Node &node,
                   const linalg::aliases::float4x4 &parentTransform,
                   const CBTable *mats, CBChain *currentChain) {
     linalg::aliases::float4x4 transform =
@@ -1781,13 +1783,13 @@ struct Draw : public BGFX::BaseConsumer {
       bgfx::setTransform(idx, 1);
 
       auto id =
-          ctx->addFrameDrawable(&_frameDrawables.emplace_back(currentChain));
+          frameRenderer.addFrameDrawable(&_frameDrawables.emplace_back(currentChain));
 
-      renderNodeSubmit<instanced>(ctx, node, mats, id);
+      renderNodeSubmit<instanced>(frameRenderer, node, mats, id);
     }
 
     for (const auto &snode : node.children) {
-      renderNode<instanced>(ctx, snode, transform, mats, currentChain);
+      renderNode<instanced>(frameRenderer, snode, transform, mats, currentChain);
     }
   }
 
@@ -1824,10 +1826,7 @@ struct Draw : public BGFX::BaseConsumer {
       data += stride;
     }
 
-    bgfx::setInstanceDataBuffer(&idb);
-
-    auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
+    bgfx::setInstanceDataBuffer(&idb);;
 
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
@@ -1842,16 +1841,13 @@ struct Draw : public BGFX::BaseConsumer {
     auto chain = context->currentChain();
     auto rootTransform = Mat4::Identity();
     for (const auto &nodeRef : model->rootNodes) {
-      renderNode<true>(ctx, nodeRef.get(), rootTransform, mats, chain);
+      renderNode<true>(getFrameRenderer(), nodeRef.get(), rootTransform, mats, chain);
     }
 
     return input;
   }
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
-    auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
-
     const auto &modelVar = _model.get();
     const auto model = reinterpret_cast<Model *>(modelVar.payload.objectValue);
     if (!model)
@@ -1868,7 +1864,7 @@ struct Draw : public BGFX::BaseConsumer {
         reinterpret_cast<Mat4 *>(&input.payload.seqValue.elements[0]);
     auto chain = context->currentChain();
     for (const auto &nodeRef : model->rootNodes) {
-      renderNode<false>(ctx, nodeRef.get(), *rootTransform, mats, chain);
+      renderNode<false>(getFrameRenderer(), nodeRef.get(), *rootTransform, mats, chain);
     }
 
     return input;

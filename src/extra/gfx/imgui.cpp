@@ -14,15 +14,15 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb/stb_truetype.h>
 
-#include "fs_imgui_image.bin.h"
-#include "fs_ocornut_imgui.bin.h"
-#include "vs_imgui_image.bin.h"
-#include "vs_ocornut_imgui.bin.h"
+#include "../../../content/shaders/imgui/fs_imgui_image.bin.h"
+#include "../../../content/shaders/imgui/fs_ocornut_imgui.bin.h"
+#include "../../../content/shaders/imgui/vs_imgui_image.bin.h"
+#include "../../../content/shaders/imgui/vs_ocornut_imgui.bin.h"
 
-#include "icons_font_awesome.ttf.h"
-#include "icons_kenney.ttf.h"
-#include "roboto_regular.ttf.h"
-#include "robotomono_regular.ttf.h"
+#include "../../../content/fonts/icons_font_awesome.ttf.h"
+#include "../../../content/fonts/icons_kenney.ttf.h"
+#include "../../../content/fonts/roboto_regular.ttf.h"
+#include "../../../content/fonts/robotomono_regular.ttf.h"
 
 #define IMGUI_FLAGS_NONE UINT8_C(0x00)
 #define IMGUI_FLAGS_ALPHA_BLEND UINT8_C(0x01)
