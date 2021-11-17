@@ -19,6 +19,11 @@ if(ARCH)
   add_compile_options(-march=${ARCH})
 endif()
 
+if(USE_FPIC) 
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSDL_STATIC_PIC=ON)
+endif()
+
 if(EMSCRIPTEN)
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     add_compile_options(-g1 -Os)
