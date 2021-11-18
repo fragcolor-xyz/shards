@@ -1,11 +1,9 @@
 set(extra_SOURCES
   runtime.cpp
   bgfx.cpp
-  bgfx.shaderc.cpp
   imgui.cpp
   xr.cpp
   dsp.cpp
-  gltf.cpp
   inputs.cpp
   snappy.cpp
   brotli.cpp
@@ -35,8 +33,7 @@ endif()
 
 target_link_libraries(chainblocks-extra
   chainblocks-core
-  bx bimg bgfx bgfx-examples stb tinygltf
-  dear-imgui imgui_club implot imguizmo
+  stb gfx
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json
@@ -61,9 +58,6 @@ if(CHAINBLOCKS_WITH_RUST_BLOCKS)
   target_link_libraries(chainblocks-extra chainblocks-rust)
 endif()
 
-if(EMSCRIPTEN)
-  em_link_js_library(chainblocks-extra bgfx.shaderc.js)
-endif()
 
 if(CHAINBLOCKS_BUILD_TESTS)
   # Include test code embedded in chainblocks-extra

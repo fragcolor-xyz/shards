@@ -2,21 +2,21 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include <bgfx/bgfx.h>
-#include <chainblocks.hpp>
 #include <SDL2/SDL_events.h>
+#include <vector>
 #include "imgui.h"
 
 namespace gfx {
 
 struct FrameInputs;
-struct ViewInfo;
+struct View;
 struct ImguiContext {
 	void init(float _fontSize, bgfx::ViewId _viewId);
 	void cleanup();
 
 	bool checkAvailTransientBuffers(uint32_t _numVertices, const bgfx::VertexLayout &_layout, uint32_t _numIndices);
 	void setupStyle(bool _dark);
-	void beginFrame(const gfx::ViewInfo &mainView, const FrameInputs &frameInputs);
+	void beginFrame(const gfx::View &mainView, const FrameInputs &frameInputs);
 	void endFrame();
 
 private:

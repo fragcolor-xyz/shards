@@ -26,17 +26,7 @@ using namespace chainblocks;
 
 namespace BGFX {
 
-// DPI awareness fix
-#ifdef _WIN32
-struct DpiAwareness {
-	DpiAwareness() { SetProcessDPIAware(); }
-};
-#endif
-
 struct BaseWindow : public Base {
-#ifdef _WIN32
-	static inline DpiAwareness DpiAware{};
-#endif
 
 	static inline Parameters params{
 		{"Title", CBCCSTR("The title of the window to create."), {CoreInfo::StringType}},
@@ -295,9 +285,9 @@ struct MainWindow : public BaseWindow {
 		gfx::FrameRenderer frameRenderer(_gfxContext, gfx::FrameInputs(ddt.count(), adt.count(), _frameCounter++, events));
 		frameRenderer.begin(*context);
 
-		gfx::ViewInfo &mainView = frameRenderer.pushMainView();
+		gfx::View &mainView = frameRenderer.pushMainView();
 		bgfx::setViewName(mainView.id, "MainWindow");
-		bgfx::setViewClear(mainView.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, Var(_clearColor).colorToInt(), 1.0f, 0);
+		bgfx::setViewClear(mainView.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, gfx::colorToUInt32(_clearColor), 1.0f, 0);
 
 		gfx::ImguiContext &imguiContext = *_gfxContext.imguiContext.get();
 		imguiContext.beginFrame(mainView, frameRenderer.inputs);
@@ -1825,7 +1815,7 @@ struct RenderTexture : public RenderTarget {
 		bgfx::setViewRect(viewId, 0, 0, _width, _height);
 		bgfx::setViewClear(viewId, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, Var(_clearColor).colorToInt(), 1.0f, 0);
 
-		frameRenderer.pushView(gfx::ViewInfo(viewId, gfx::Rect(_width, _height), _framebuffer));
+		frameRenderer.pushView(gfx::View(viewId, gfx::Rect(_width, _height), _framebuffer));
 		DEFER({ frameRenderer.popView(); });
 
 		bgfx::setViewFrameBuffer(viewId, _framebuffer);

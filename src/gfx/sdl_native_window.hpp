@@ -1,7 +1,9 @@
 #pragma once
 
 #include "SDL_syswm.h"
-#include "chainblocks.hpp"
+#include "error_utils.hpp"
+#include <SDL_error.h>
+#include <stdexcept>
 
 inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
 	SDL_SysWMinfo winInfo{};
@@ -9,7 +11,7 @@ inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
 	SDL_VERSION(&sdlVer);
 	winInfo.version = sdlVer;
 	if (!SDL_GetWindowWMInfo(window, &winInfo)) {
-		throw chainblocks::ActivationError("Failed to call SDL_GetWindowWMInfo");
+		throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
 	}
 #if defined(_WIN32)
 	return winInfo.info.win.window;
@@ -29,7 +31,7 @@ inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
 	SDL_VERSION(&sdlVer);
 	winInfo.version = sdlVer;
 	if (!SDL_GetWindowWMInfo(window, &winInfo)) {
-		throw chainblocks::ActivationError("Failed to call SDL_GetWindowWMInfo");
+		throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
 	}
 #if defined(__linux__)
 	return (void *)winInfo.info.x11.display;

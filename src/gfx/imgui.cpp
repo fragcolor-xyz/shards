@@ -1,13 +1,13 @@
 #include "imgui.hpp"
-#include "utility.hpp"
-#include "view.hpp"
 #include "frame.hpp"
+#include "types.hpp"
+#include "view.hpp"
 
+#include <SDL2/SDL.h>
 #include <bgfx/embedded_shader.h>
 #include <bx/math.h>
 #include <bx/timer.h>
 #include <imguizmo/ImGuizmo.h>
-#include <SDL2/SDL.h>
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include <stb/stb_rect_pack.h>
@@ -24,13 +24,14 @@
 #include "../../../content/fonts/roboto_regular.ttf.h"
 #include "../../../content/fonts/robotomono_regular.ttf.h"
 
+#include "fonts/icons_font_awesome.h"
+#include "fonts/icons_kenney.h"
+
 #define IMGUI_FLAGS_NONE UINT8_C(0x00)
 #define IMGUI_FLAGS_ALPHA_BLEND UINT8_C(0x01)
 #define IMGUI_MBUT_LEFT 0x01
 #define IMGUI_MBUT_RIGHT 0x02
 #define IMGUI_MBUT_MIDDLE 0x04
-
-using chainblocks::aligned_array;
 
 namespace gfx {
 
@@ -42,12 +43,15 @@ static const char *ImGui_ImplSDL2_GetClipboardText(ImguiContext *context) {
 	return context->_clipboardContents;
 }
 
-static void ImGui_ImplSDL2_SetClipboardText(ImguiContext *context, const char *text) {
+static void ImGui_ImplSDL2_SetClipboardText(ImguiContext *context,
+											const char *text) {
 	SDL_SetClipboardText(text);
 }
 
 static const bgfx::EmbeddedShader s_embeddedShaders[] = {
-	BGFX_EMBEDDED_SHADER(vs_ocornut_imgui), BGFX_EMBEDDED_SHADER(fs_ocornut_imgui), BGFX_EMBEDDED_SHADER(vs_imgui_image), BGFX_EMBEDDED_SHADER(fs_imgui_image),
+	BGFX_EMBEDDED_SHADER(vs_ocornut_imgui),
+	BGFX_EMBEDDED_SHADER(fs_ocornut_imgui),
+	BGFX_EMBEDDED_SHADER(vs_imgui_image), BGFX_EMBEDDED_SHADER(fs_imgui_image),
 	BGFX_EMBEDDED_SHADER_END()};
 
 struct FontRangeMerge {
@@ -58,11 +62,17 @@ struct FontRangeMerge {
 
 static FontRangeMerge s_fontRangeMerge[] = {
 	{s_iconsKenneyTtf, sizeof(s_iconsKenneyTtf), {ICON_MIN_KI, ICON_MAX_KI, 0}},
-	{s_iconsFontAwesomeTtf, sizeof(s_iconsFontAwesomeTtf), {ICON_MIN_FA, ICON_MAX_FA, 0}}};
+	{s_iconsFontAwesomeTtf,
+	 sizeof(s_iconsFontAwesomeTtf),
+	 {ICON_MIN_FA, ICON_MAX_FA, 0}}};
 
-bool ImguiContext::checkAvailTransientBuffers(uint32_t _numVertices, const bgfx::VertexLayout &_layout, uint32_t _numIndices) {
-	return _numVertices == bgfx::getAvailTransientVertexBuffer(_numVertices, _layout) &&
-		   (0 == _numIndices || _numIndices == bgfx::getAvailTransientIndexBuffer(_numIndices));
+bool ImguiContext::checkAvailTransientBuffers(uint32_t _numVertices,
+											  const bgfx::VertexLayout &_layout,
+											  uint32_t _numIndices) {
+	return _numVertices ==
+			   bgfx::getAvailTransientVertexBuffer(_numVertices, _layout) &&
+		   (0 == _numIndices ||
+			_numIndices == bgfx::getAvailTransientIndexBuffer(_numIndices));
 }
 
 void ImguiContext::init(float _fontSize, bgfx::ViewId _viewId) {
@@ -97,8 +107,10 @@ void ImguiContext::init(float _fontSize, bgfx::ViewId _viewId) {
 	io.KeyMap[ImGuiKey_Z] = SDL_SCANCODE_Z;
 
 	io.ClipboardUserData = this;
-	io.GetClipboardTextFn = (decltype(io.GetClipboardTextFn))ImGui_ImplSDL2_GetClipboardText;
-	io.SetClipboardTextFn = (decltype(io.SetClipboardTextFn))ImGui_ImplSDL2_SetClipboardText;
+	io.GetClipboardTextFn =
+		(decltype(io.GetClipboardTextFn))ImGui_ImplSDL2_GetClipboardText;
+	io.SetClipboardTextFn =
+		(decltype(io.SetClipboardTextFn))ImGui_ImplSDL2_SetClipboardText;
 
 	io.DisplaySize = ImVec2(1280.0f, 720.0f);
 	io.DeltaTime = 1.0f / 60.0f;
@@ -109,12 +121,20 @@ void ImguiContext::init(float _fontSize, bgfx::ViewId _viewId) {
 	if (s_useCount == 0) {
 		bgfx::RendererType::Enum type = bgfx::getRendererType();
 		s_program = bgfx::createProgram(
-			bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_ocornut_imgui"), bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_ocornut_imgui"),
+			bgfx::createEmbeddedShader(s_embeddedShaders, type,
+									   "vs_ocornut_imgui"),
+			bgfx::createEmbeddedShader(s_embeddedShaders, type,
+									   "fs_ocornut_imgui"),
 			true);
 
-		s_imageLodEnabled = bgfx::createUniform("u_imageLodEnabled", bgfx::UniformType::Vec4);
-		s_imageProgram = bgfx::createProgram(
-			bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_imgui_image"), bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_imgui_image"), true);
+		s_imageLodEnabled =
+			bgfx::createUniform("u_imageLodEnabled", bgfx::UniformType::Vec4);
+		s_imageProgram =
+			bgfx::createProgram(bgfx::createEmbeddedShader(
+									s_embeddedShaders, type, "vs_imgui_image"),
+								bgfx::createEmbeddedShader(
+									s_embeddedShaders, type, "fs_imgui_image"),
+								true);
 
 		s_layout.begin()
 			.add(bgfx::Attrib::Position, 2, bgfx::AttribType::Float)
@@ -134,9 +154,12 @@ void ImguiContext::init(float _fontSize, bgfx::ViewId _viewId) {
 			//			config.MergeGlyphCenterV = true;
 
 			const ImWchar *ranges = io.Fonts->GetGlyphRangesCyrillic();
-			s_font[::ImGui::Font::Regular] = io.Fonts->AddFontFromMemoryTTF((void *)s_robotoRegularTtf, sizeof(s_robotoRegularTtf), _fontSize, &config, ranges);
-			s_font[::ImGui::Font::Mono] =
-				io.Fonts->AddFontFromMemoryTTF((void *)s_robotoMonoRegularTtf, sizeof(s_robotoMonoRegularTtf), _fontSize - 3.0f, &config, ranges);
+			s_font[::ImGui::Font::Regular] = io.Fonts->AddFontFromMemoryTTF(
+				(void *)s_robotoRegularTtf, sizeof(s_robotoRegularTtf),
+				_fontSize, &config, ranges);
+			s_font[::ImGui::Font::Mono] = io.Fonts->AddFontFromMemoryTTF(
+				(void *)s_robotoMonoRegularTtf, sizeof(s_robotoMonoRegularTtf),
+				_fontSize - 3.0f, &config, ranges);
 
 			config.MergeMode = true;
 			config.DstFont = s_font[::ImGui::Font::Regular];
@@ -144,13 +167,18 @@ void ImguiContext::init(float _fontSize, bgfx::ViewId _viewId) {
 			for (uint32_t ii = 0; ii < BX_COUNTOF(s_fontRangeMerge); ++ii) {
 				const FontRangeMerge &frm = s_fontRangeMerge[ii];
 
-				io.Fonts->AddFontFromMemoryTTF((void *)frm.data, (int)frm.size, _fontSize - 3.0f, &config, frm.ranges);
+				io.Fonts->AddFontFromMemoryTTF((void *)frm.data, (int)frm.size,
+											   _fontSize - 3.0f, &config,
+											   frm.ranges);
 			}
 		}
 
 		io.Fonts->GetTexDataAsRGBA32(&data, &width, &height);
 
-		s_texture = bgfx::createTexture2D((uint16_t)width, (uint16_t)height, false, 1, bgfx::TextureFormat::BGRA8, 0, bgfx::copy(data, width * height * 4));
+		s_texture =
+			bgfx::createTexture2D((uint16_t)width, (uint16_t)height, false, 1,
+								  bgfx::TextureFormat::BGRA8, 0,
+								  bgfx::copy(data, width * height * 4));
 	}
 
 	s_useCount++;
@@ -184,8 +212,7 @@ void ImguiContext::setupStyle(bool _dark) {
 	ImGuiStyle &style = ::ImGui::GetStyle();
 	if (_dark) {
 		::ImGui::StyleColorsDark(&style);
-	}
-	else {
+	} else {
 		::ImGui::StyleColorsLight(&style);
 	}
 
@@ -193,11 +220,14 @@ void ImguiContext::setupStyle(bool _dark) {
 	style.WindowBorderSize = 0.0f;
 }
 
-void ImguiContext::beginFrame(const gfx::ViewInfo &mainView, const FrameInputs &frameInputs) {
+void ImguiContext::beginFrame(const gfx::View &mainView,
+							  const FrameInputs &frameInputs) {
 	processInputEvents(frameInputs.events);
 
+	int2 viewportSize = mainView.getSize();
+
 	ImGuiIO &io = ::ImGui::GetIO();
-	io.DisplaySize = ImVec2((float)mainView.viewport.width, (float)mainView.viewport.height);
+	io.DisplaySize = ImVec2(float(viewportSize.x), float(viewportSize.y));
 	io.DeltaTime = frameInputs.deltaTime;
 
 	::ImGui::NewFrame();
@@ -233,24 +263,19 @@ void ImguiContext::processInputEvents(const std::vector<SDL_Event> &events) {
 		if (event.type == SDL_MOUSEWHEEL) {
 			io.MouseWheel = float(event.wheel.y);
 			io.MouseWheelH = float(event.wheel.x);
-		}
-		else if (event.type == SDL_MOUSEBUTTONDOWN) {
+		} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 			// need to make sure to pass those as well or in low fps/simulated
 			// clicks we might mess up
 			if (event.button.button == SDL_BUTTON_LEFT) {
 				imButtons = imButtons | IMGUI_MBUT_LEFT;
-			}
-			else if (event.button.button == SDL_BUTTON_RIGHT) {
+			} else if (event.button.button == SDL_BUTTON_RIGHT) {
 				imButtons = imButtons | IMGUI_MBUT_RIGHT;
-			}
-			else if (event.button.button == SDL_BUTTON_MIDDLE) {
+			} else if (event.button.button == SDL_BUTTON_MIDDLE) {
 				imButtons = imButtons | IMGUI_MBUT_MIDDLE;
 			}
-		}
-		else if (event.type == SDL_TEXTINPUT) {
+		} else if (event.type == SDL_TEXTINPUT) {
 			io.AddInputCharactersUTF8(event.text.text);
-		}
-		else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+		} else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
 			const auto key = event.key.keysym.scancode;
 			const auto modState = SDL_GetModState();
 			io.KeysDown[key] = event.type == SDL_KEYDOWN;
@@ -277,9 +302,10 @@ void ImguiContext::render(ImDrawData *_drawData) {
 
 	const bgfx::Caps *caps = bgfx::getCaps();
 	{
-		aligned_array<float, 16> ortho;
-		bx::mtxOrtho(ortho.data(), 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f, caps->homogeneousDepth);
-		bgfx::setViewTransform(m_viewId, NULL, ortho.data());
+		float matrix[16];
+		bx::mtxOrtho(matrix, 0.0f, width, height, 0.0f, 0.0f, 1000.0f, 0.0f,
+					 caps->homogeneousDepth);
+		bgfx::setViewTransform(m_viewId, NULL, matrix);
 		bgfx::setViewRect(m_viewId, 0, 0, uint16_t(width), uint16_t(height));
 	}
 
@@ -293,26 +319,32 @@ void ImguiContext::render(ImDrawData *_drawData) {
 		uint32_t numIndices = (uint32_t)drawList->IdxBuffer.size();
 
 		if (!checkAvailTransientBuffers(numVertices, s_layout, numIndices)) {
-			// not enough space in transient buffer just quit drawing the rest...
+			// not enough space in transient buffer just quit drawing the
+			// rest...
 			break;
 		}
 
 		bgfx::allocTransientVertexBuffer(&tvb, numVertices, s_layout);
-		bgfx::allocTransientIndexBuffer(&tib, numIndices, sizeof(ImDrawIdx) == 4);
+		bgfx::allocTransientIndexBuffer(&tib, numIndices,
+										sizeof(ImDrawIdx) == 4);
 
 		ImDrawVert *verts = (ImDrawVert *)tvb.data;
-		bx::memCopy(verts, drawList->VtxBuffer.begin(), numVertices * sizeof(ImDrawVert));
+		bx::memCopy(verts, drawList->VtxBuffer.begin(),
+					numVertices * sizeof(ImDrawVert));
 
 		ImDrawIdx *indices = (ImDrawIdx *)tib.data;
-		bx::memCopy(indices, drawList->IdxBuffer.begin(), numIndices * sizeof(ImDrawIdx));
+		bx::memCopy(indices, drawList->IdxBuffer.begin(),
+					numIndices * sizeof(ImDrawIdx));
 
 		uint32_t offset = 0;
-		for (const ImDrawCmd *cmd = drawList->CmdBuffer.begin(), *cmdEnd = drawList->CmdBuffer.end(); cmd != cmdEnd; ++cmd) {
+		for (const ImDrawCmd *cmd = drawList->CmdBuffer.begin(),
+							 *cmdEnd = drawList->CmdBuffer.end();
+			 cmd != cmdEnd; ++cmd) {
 			if (cmd->UserCallback) {
 				cmd->UserCallback(drawList, cmd);
-			}
-			else if (0 != cmd->ElemCount) {
-				uint64_t state = 0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_MSAA;
+			} else if (0 != cmd->ElemCount) {
+				uint64_t state = 0 | BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+								 BGFX_STATE_MSAA;
 
 				bgfx::TextureHandle th = s_texture;
 				bgfx::ProgramHandle program = s_program;
@@ -327,22 +359,28 @@ void ImguiContext::render(ImDrawData *_drawData) {
 						} s;
 					} texture = {cmd->TextureId};
 					state |= 0 != (IMGUI_FLAGS_ALPHA_BLEND & texture.s.flags)
-								 ? BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA)
+								 ? BGFX_STATE_BLEND_FUNC(
+									   BGFX_STATE_BLEND_SRC_ALPHA,
+									   BGFX_STATE_BLEND_INV_SRC_ALPHA)
 								 : BGFX_STATE_NONE;
 					th = texture.s.handle;
 					if (0 != texture.s.mip) {
-						const float lodEnabled[4] = {float(texture.s.mip), 1.0f, 0.0f, 0.0f};
+						const float lodEnabled[4] = {float(texture.s.mip), 1.0f,
+													 0.0f, 0.0f};
 						bgfx::setUniform(s_imageLodEnabled, lodEnabled);
 						program = s_imageProgram;
 					}
-				}
-				else {
-					state |= BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA);
+				} else {
+					state |=
+						BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA,
+											  BGFX_STATE_BLEND_INV_SRC_ALPHA);
 				}
 
 				const uint16_t xx = uint16_t(bx::max(cmd->ClipRect.x, 0.0f));
 				const uint16_t yy = uint16_t(bx::max(cmd->ClipRect.y, 0.0f));
-				bgfx::setScissor(xx, yy, uint16_t(bx::min(cmd->ClipRect.z, 65535.0f) - xx), uint16_t(bx::min(cmd->ClipRect.w, 65535.0f) - yy));
+				bgfx::setScissor(
+					xx, yy, uint16_t(bx::min(cmd->ClipRect.z, 65535.0f) - xx),
+					uint16_t(bx::min(cmd->ClipRect.w, 65535.0f) - yy));
 
 				bgfx::setState(state);
 				bgfx::setTexture(0, s_tex, th);
@@ -359,7 +397,5 @@ void ImguiContext::render(ImDrawData *_drawData) {
 } // namespace gfx
 
 namespace ImGui {
-void PushFont(Font::Enum _font) {
-	PushFont(gfx::ImguiContext::s_font[_font]);
-}
+void PushFont(Font::Enum _font) { PushFont(gfx::ImguiContext::s_font[_font]); }
 } // namespace ImGui
