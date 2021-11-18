@@ -5,6 +5,8 @@
 #include <vector>
 
 namespace gfx {
+struct Context;
+
 struct ShaderCompileContext {
   std::vector<std::string> errors;
   std::vector<uint8_t> binary;
@@ -69,6 +71,9 @@ struct ShaderCompileOptions : public ShaderCompilePODOptions,
   std::vector<std::string> dependencies;
 
   ShaderCompileOptions();
+
+  void setBuiltinIncludePaths();
+  void setCompatibleForContext(Context& context);
   
   const ShaderCompilePODOptions &getPODOptions() { return *this; }
   const char *getInputFilePath() { return inputFilePath.c_str(); }

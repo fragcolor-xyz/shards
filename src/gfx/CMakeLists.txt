@@ -1,5 +1,6 @@
 set(BGFX_DIR ${CHAINBLOCKS_DIR}/deps/bgfx)
 
+option(GFX_DEBUG "Enable context debug mode by default" OFF)
 option(GFX_SHADERC_SHARED_LIBRARY "Build shaderc as a shared library" ON)
 option(GFX_SHADERC_PREBUILT "When enabled will treat shaderc to be prebuilt" ON)
 if(NOT GFX_SHADERC_PREBUILT)
@@ -10,8 +11,11 @@ add_library(gfx
   context.cpp
   imgui.cpp
   # frame.cpp
-  # material.cpp
+#   material.cpp
   # shader_cache.cpp
+#   mesh.cpp
+  geom.cpp
+  test_platform_id.cpp
   loop.cpp
   frame.cpp
   capture.cpp
@@ -26,7 +30,7 @@ target_include_directories(gfx
 )
 target_link_libraries(gfx
   bx bimg bgfx tinygltf
-  dear-imgui imgui_club implot imguizmo
+  dear-imgui imgui_club implot imguizmo magic_enum
   spdlog stb
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
@@ -47,6 +51,10 @@ endif()
 
 if(NOT GFX_SHADERC_PREBUILT)
   add_dependencies(gfx gfx-shaderc)
+endif()
+
+if(GFX_DEBUG)
+	target_compile_definitions(gfx PUBLIC GFX_DEBUG=1)
 endif()
 
 if(EMSCRIPTEN)
@@ -71,10 +79,10 @@ set(GFX_GENERATED_INCLUDE_PATH "${CMAKE_CURRENT_BINARY_DIR}/include")
 file(MAKE_DIRECTORY "${GFX_GENERATED_INCLUDE_PATH}/gfx")
 target_include_directories(gfx PUBLIC ${GFX_GENERATED_INCLUDE_PATH})
 
-# Make shader paths relative to the root
-foreach(P ${GFX_SHADER_PATHS})
-	file(RELATIVE_PATH P ${CHAINBLOCKS_DIR} ${P})
-	list(APPEND GFX_SHADER_PATHS_RELATIVE ${P})
+# Get shader paths relative to the root
+foreach(SHADER_PATH ${GFX_SHADER_PATHS})
+	file(RELATIVE_PATH SHADER_PATH ${CHAINBLOCKS_DIR} ${SHADER_PATH})
+	list(APPEND GFX_SHADER_PATHS_RELATIVE ${SHADER_PATH})
 endforeach()
 
 # Write relative shader include paths to shader_paths.hpp

@@ -1,16 +1,15 @@
-#include "bx/filepath.h"
+#include "context.hpp"
 #include "paths.hpp"
 #include "shaderc/api.hpp"
 #include <bx/filepath.h>
 #include <bx/os.h>
+#include <bx/platform.h>
 #include <cassert>
 #include <gfx/shader_paths.hpp>
 
 namespace gfx {
 
-void ShaderCompileOutput::writeError(const char *error) {
-	errors.push_back(error);
-}
+void ShaderCompileOutput::writeError(const char *error) { errors.push_back(error); }
 void ShaderCompileOutput::writeOutput(const void *data, int32_t size) {
 	size_t offset = binary.size();
 	binary.resize(offset + size);
@@ -18,14 +17,57 @@ void ShaderCompileOutput::writeOutput(const void *data, int32_t size) {
 }
 
 ShaderCompileOptions::ShaderCompileOptions() {
+	setBuiltinIncludePaths();
+}
+
+void ShaderCompileOptions::setBuiltinIncludePaths() {
+
 	for (auto path : shaderIncludePaths) {
 		includeDirs.push_back(resolveDataPath(path));
 	}
 }
+void ShaderCompileOptions::setCompatibleForContext(Context &context) {
+#if BX_PLATFORM_WINDOWS
+	platform = "windows";
+#elif BX_PLATFORM_EMSCRIPTEN
+	platform = "asm.js";
+#elif BX_PLATFORM_LINUX
+	platform = "linux";
+#elfi BX_PLATFORM_OSX
+	platform = "osx";
+#elif BX_PLATFORM_IOS
+	platform = "ios";
+#endif
 
-ShaderCompilerModule::ShaderCompilerModule(IShaderCompiler *instance,
-										   void *moduleHandle)
-	: instance(instance), moduleHandle(moduleHandle) {}
+	switch (context.getRendererType()) {
+	case RendererType::DirectX11:
+		if (shaderType == 'v') {
+			profile = "vs_5_0";
+		} else if (shaderType == 'f') {
+			profile = "ps_5_0";
+		} else if (shaderType == 'c') {
+			profile = "cs_5_0";
+		}
+		break;
+	case RendererType::OpenGL:
+#if BX_PLATFORM_EMSCRIPTEN
+		profile = "300_es";
+#else
+		profile = "430";
+#endif
+		break;
+	case RendererType::Metal:
+		profile = "metal";
+		break;
+	case RendererType::Vulkan:
+		profile = "spirv";
+		break;
+	default:
+		assert(false);
+	}
+}
+
+ShaderCompilerModule::ShaderCompilerModule(IShaderCompiler *instance, void *moduleHandle) : instance(instance), moduleHandle(moduleHandle) {}
 ShaderCompilerModule::~ShaderCompilerModule() {
 	if (instance) {
 		delete instance;
@@ -68,8 +110,7 @@ std::shared_ptr<ShaderCompilerModule> createShaderCompilerModule() {
 #define _EXPAND(_X) #_X
 #define EXPAND(_X) _EXPAND(_X)
 	const char *symbolName = EXPAND(GFX_SHADERC_MODULE_ENTRY);
-	gfx::f_GetShaderCompilerInterface entry =
-		(gfx::f_GetShaderCompilerInterface)bx::dlsym(module, symbolName);
+	gfx::f_GetShaderCompilerInterface entry = (gfx::f_GetShaderCompilerInterface)bx::dlsym(module, symbolName);
 
 	if (!entry) {
 		bx::dlclose(module);

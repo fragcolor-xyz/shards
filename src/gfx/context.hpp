@@ -10,21 +10,14 @@
 #include <deque>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
-
-struct CBContext;
-struct CBChain;
-
-namespace chainblocks {
-struct IShaderCompiler;
-}
 
 namespace gfx {
 struct BGFXException : public std::runtime_error {
 	uint16_t line;
 	bgfx::Fatal::Enum code;
-	BGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code,
-				  const char *str);
+	BGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str);
 };
 
 constexpr uint16_t PickingBufferSize = 128;
@@ -40,15 +33,15 @@ struct IDrawable {
 	// virtual CBChain *getChain() = 0;
 };
 
-enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
+enum class RendererType : uint8_t { None, DirectX11, Vulkan, OpenGL, Metal };
+std::string_view getRendererTypeName(RendererType renderer);
 
 struct ShaderBindingPointUniforms {
 #define Binding_Float bgfx::UniformType::Vec4
 #define Binding_Float3 bgfx::UniformType::Vec4
 #define Binding_Float4 bgfx::UniformType::Vec4
 #define Binding_Texture2D bgfx::UniformType::Sampler
-#define Binding(_name, _type)                                                  \
-	bgfx::UniformHandle _name = bgfx::createUniform(#_name, _type);
+#define Binding(_name, _type) bgfx::UniformHandle _name = bgfx::createUniform(#_name, _type);
 #include "shaders/bindings.def"
 #undef Binding
 #undef Binding_Float
@@ -60,8 +53,10 @@ struct ShaderBindingPointUniforms {
 struct ContextCreationOptions {
 	bool debug = false;
 	bgfx::TextureFormat::Enum backbufferFormat = bgfx::TextureFormat::RGBA8;
-	Renderer renderer = Renderer::None;
-	void* overrideNativeWindowHandle = nullptr;
+	RendererType renderer = RendererType::None;
+	void *overrideNativeWindowHandle = nullptr;
+
+	ContextCreationOptions();
 };
 
 struct ImguiContext;
@@ -73,7 +68,7 @@ struct Window;
 class ShaderCompilerModule;
 struct ICapture;
 struct Context {
-  public:
+public:
 	std::shared_ptr<ShaderCompilerModule> shaderCompilerModule;
 	std::shared_ptr<ShaderBindingPointUniforms> bindingUniforms;
 	std::shared_ptr<BGFXCallbacks> bgfxCallbacks;
@@ -86,19 +81,19 @@ struct Context {
 
 	bgfx::UniformHandle timeUniformHandle = BGFX_INVALID_HANDLE;
 
-  private:
-	bool bgfxInitialized = false;
+private:
+	RendererType rendererType = RendererType::None;
 	FrameRenderer *currentFrameRenderer = nullptr;
 	Window *window;
 	int2 mainOutputSize;
 	std::vector<bgfx::UniformHandle> samplers;
 
-  public:
+public:
 	Context();
 	~Context();
-	void init(Window &window,
-			  const ContextCreationOptions &options = ContextCreationOptions{});
+	void init(Window &window, const ContextCreationOptions &options = ContextCreationOptions{});
 	void cleanup();
+	bool isInitialized() const { return rendererType != RendererType::None; }
 
 	Window &getWindow() {
 		assert(window);
@@ -106,6 +101,8 @@ struct Context {
 	}
 
 	const bgfx::UniformHandle &getSampler(size_t index);
+
+	RendererType getRendererType() const { return rendererType; }
 
 	int2 getMainOutputSize() const { return mainOutputSize; }
 	void resizeMainOutput(const int2 &newSize);
@@ -125,9 +122,7 @@ struct Context {
 
 struct FrameCaptureSync {
 	Context &context;
-	FrameCaptureSync(Context &context) : context(context) {
-		context.captureMark();
-	}
+	FrameCaptureSync(Context &context) : context(context) { context.captureMark(); }
 	~FrameCaptureSync() { context.captureSync(); }
 };
 

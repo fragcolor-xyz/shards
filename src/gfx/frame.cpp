@@ -2,6 +2,7 @@
 #include "context.hpp"
 #include "mesh.hpp"
 #include <bgfx/bgfx.h>
+#include <spdlog/spdlog.h>
 
 namespace gfx {
 void FrameRenderer::begin() {
@@ -12,10 +13,10 @@ void FrameRenderer::begin() {
 	bgfx::setUniform(context.timeUniformHandle, time, 1);
 }
 
-void FrameRenderer::end() {
+void FrameRenderer::end(bool capture) {
 	assert(views.size() == 0);
 	context.endFrame(this);
-	bgfx::frame();
+	bgfx::frame(capture);
 }
 
 uint32_t FrameRenderer::addFrameDrawable(IDrawable *drawable) {

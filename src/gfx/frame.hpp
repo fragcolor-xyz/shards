@@ -11,8 +11,8 @@ struct FrameInputs {
 	int frameNumber;
 	const std::vector<SDL_Event> &events;
 
-	FrameInputs(float deltaTime, float time, int frameNumber,
-				const std::vector<SDL_Event> &events)
+	FrameInputs(float deltaTime = 0.1f, float time = 0.0f, int frameNumber = 0,
+				const std::vector<SDL_Event> &events = std::vector<SDL_Event>())
 		: deltaTime(deltaTime), time(time), frameNumber(frameNumber),
 		  events(events) {}
 };
@@ -33,13 +33,13 @@ struct FrameRenderer {
 
 	bool _picking{false};
 
-	FrameRenderer(Context &context, FrameInputs &&inputs)
+	FrameRenderer(Context &context, FrameInputs &&inputs = FrameInputs())
 		: context(context), inputs(inputs) {}
 	FrameRenderer(const FrameRenderer &) = delete;
 	FrameRenderer &operator=(const FrameRenderer &) = delete;
 
 	void begin();
-	void end();
+	void end(bool capture = false);
 
 	constexpr bool isPicking() const { return _picking; }
 	void setPicking(bool picking) { _picking = picking; }

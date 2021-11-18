@@ -5,17 +5,21 @@
 #include "./bgfx/enums.hpp"
 #include "./bgfx/objects.hpp"
 #include "./imgui.hpp"
-#include "SDL_events.h"
-#include "bgfx/bgfx.h"
 #include "gfx/context.hpp"
-#include "gfx/imgui.hpp"
-#include "SDL.h"
+#include "gfx/types.hpp"
+#include "gfx/window.hpp"
+#include "linalg.h"
+#include <SDL2/SDL_events.h>
+#include <bgfx/bgfx.h>
 #include <bx/debug.h>
 #include <bx/math.h>
 #include <bx/timer.h>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <gfx/context.hpp>
+#include <gfx/imgui.hpp>
+#include <gfx/window.hpp>
 #include <stb_image_write.h>
 
 #ifdef __EMSCRIPTEN__
@@ -27,21 +31,19 @@ using namespace chainblocks;
 namespace BGFX {
 
 struct BaseWindow : public Base {
-
-	static inline Parameters params{
-		{"Title", CBCCSTR("The title of the window to create."), {CoreInfo::StringType}},
-		{"Width", CBCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
-		{"Height", CBCCSTR("The height of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
-		{"Contents", CBCCSTR("The contents of this window."), {CoreInfo::BlocksOrNone}},
-		{"Fullscreen", CBCCSTR("If the window should use fullscreen mode."), {CoreInfo::BoolType}},
-		{"Debug",
-		 CBCCSTR("If the device backing the window should be created with "
-				 "debug layers on."),
-		 {CoreInfo::BoolType}},
-		{"ClearColor",
-		 CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
-				 "new frame."),
-		 {CoreInfo::ColorType}}};
+	static inline Parameters params{{"Title", CBCCSTR("The title of the window to create."), {CoreInfo::StringType}},
+									{"Width", CBCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
+									{"Height", CBCCSTR("The height of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
+									{"Contents", CBCCSTR("The contents of this window."), {CoreInfo::BlocksOrNone}},
+									{"Fullscreen", CBCCSTR("If the window should use fullscreen mode."), {CoreInfo::BoolType}},
+									{"Debug",
+									 CBCCSTR("If the device backing the window should be created with "
+											 "debug layers on."),
+									 {CoreInfo::BoolType}},
+									{"ClearColor",
+									 CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
+											 "new frame."),
+									 {CoreInfo::ColorType}}};
 
 	static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -52,13 +54,9 @@ struct BaseWindow : public Base {
 	std::string _title;
 	int _pwidth = 1024;
 	int _pheight = 768;
-	int _rwidth = 1024;
-	int _rheight = 768;
 	bool _debug = false;
 	bool _fsMode{false};
-	SDL_Window *_window = nullptr;
-	CBVar *_sdlWinVar = nullptr;
-	CBVar *_imguiCtx = nullptr;
+	gfx::Window _window;
 	BlocksVar _blocks;
 	CBColor _clearColor{0xC0, 0xC0, 0xAA, 0xFF};
 
@@ -114,7 +112,6 @@ struct BaseWindow : public Base {
 
 struct MainWindow : public BaseWindow {
 	gfx::Context _gfxContext{};
-	bool _gfxContextInitialized{false};
 
 	struct ProcessClock {
 		decltype(std::chrono::high_resolution_clock::now()) Start;
@@ -127,9 +124,8 @@ struct MainWindow : public BaseWindow {
 
 	CBTypeInfo compose(CBInstanceData &data) {
 		if (data.onWorkerThread) {
-			throw ComposeError(
-				"GFX Blocks cannot be used on a worker thread (e.g. "
-				"within an Await block)");
+			throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
+							   "within an Await block)");
 		}
 
 		// Make sure MainWindow is UNIQUE
@@ -152,15 +148,8 @@ struct MainWindow : public BaseWindow {
 	void cleanup() {
 		_blocks.cleanup();
 
-		if (_gfxContextInitialized) {
-			_gfxContext.cleanup();
-		}
-
-		if (_window) {
-			SDL_DestroyWindow(_window);
-			SDL_Quit();
-			_window = nullptr;
-		}
+		_gfxContext.cleanup();
+		_window.cleanup();
 
 		if (_bgfxCtx) {
 			if (_bgfxCtx->refcount > 1) {
@@ -175,43 +164,22 @@ struct MainWindow : public BaseWindow {
 		}
 	}
 
-	void pollEvents(std::vector<SDL_Event> &events) {
-		events.clear();
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			events.push_back(event);
-		}
-	}
-
 	void warmup(CBContext *context) {
-		// do not touch parameter values
-		_rwidth = _pwidth;
-		_rheight = _pheight;
-
 		auto initErr = SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
 		if (initErr != 0) {
 			CBLOG_ERROR("Failed to initialize SDL {}", SDL_GetError());
 			throw ActivationError("Failed to initialize SDL");
 		}
 
-		uint32_t flags = SDL_WINDOW_SHOWN;
-#ifndef __EMSCRIPTEN__
-		flags |= SDL_WINDOW_ALLOW_HIGHDPI;
-#endif
-		flags |= SDL_WINDOW_RESIZABLE | (_fsMode ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-#ifdef __APPLE__
-		flags |= SDL_WINDOW_METAL;
-#endif
-		// TODO: SDL_WINDOW_BORDERLESS
-		_window = SDL_CreateWindow(_title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, _fsMode ? 0 : _rwidth, _fsMode ? 0 : _rheight, flags);
+		gfx::WindowCreationOptions windowOptions;
+		windowOptions.fullscreen = _fsMode;
+		windowOptions.width = _pwidth;
+		windowOptions.height = _pheight;
+		windowOptions.title = _title;
+		_window.init(windowOptions);
 
-		// Ensure clicks will happen even from out of focus!
-		SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-
-		_gfxContext.clearColor = _clearColor;
-
-		_gfxContext.init(context, _window);
-		_gfxContextInitialized = true;
+		gfx::ContextCreationOptions contextOptions;
+		_gfxContext.init(_window, contextOptions);
 
 		_bgfxCtx = referenceVariable(context, "GFX.Context");
 
@@ -233,30 +201,13 @@ struct MainWindow : public BaseWindow {
 			if (event.type == SDL_QUIT) {
 				// stop the current chain on close
 				throw ActivationError("Window closed, aborting chain.");
-			}
-			else if (event.type == SDL_WINDOWEVENT && SDL_GetWindowID(_window) == event.window.windowID) { // support multiple windows closure
+			} else if (event.type == SDL_WINDOWEVENT) { // support multiple windows closure
 				if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
 					// stop the current chain on close
 					throw ActivationError("Window closed, aborting chain.");
-				}
-				else if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-					int w, h;
-					SDL_GetWindowSize(_window, &w, &h);
-					_gfxContext.resizeMainOutput(w, h);
-				}
-				else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-					int w, h;
-					SDL_GetWindowSize(_window, &w, &h);
-#ifdef __APPLE__
-					int real_w, real_h;
-					SDL_Metal_GetDrawableSize(_window, &real_w, &real_h);
-					_gfxContext._windowScalingW = float(real_w) / float(w);
-					_gfxContext._windowScalingH = float(real_h) / float(j);
-					// finally in this case override our real values
-					w = real_w;
-					j = real_h;
-#endif
-					_gfxContext.resizeMainOutput(w, h);
+				} else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+					gfx::int2 newSize = _window.getSize();
+					_gfxContext.resizeMainOutput(newSize);
 				}
 			}
 		}
@@ -267,13 +218,13 @@ struct MainWindow : public BaseWindow {
 		if (res != EMSCRIPTEN_RESULT_SUCCESS) {
 			throw ActivationError("Failed to callemscripten_get_element_css_size");
 		}
-		resizeMainOutputConditional(int(canvasWidth), int(canvasHeight));
+		_gfxContext.resizeMainOutputConditional(gfx::int2(int(canvasWidth), int(canvasHeight)));
 #endif
 	}
 
 	CBVar activate(CBContext *context, const CBVar &input) {
 		std::vector<SDL_Event> events;
-		pollEvents(events);
+		_window.pollEvents(events);
 
 		processWindowEvents(events);
 
@@ -283,11 +234,11 @@ struct MainWindow : public BaseWindow {
 		_deltaTimer.Start = tnow;
 
 		gfx::FrameRenderer frameRenderer(_gfxContext, gfx::FrameInputs(ddt.count(), adt.count(), _frameCounter++, events));
-		frameRenderer.begin(*context);
+		frameRenderer.begin();
 
-		gfx::View &mainView = frameRenderer.pushMainView();
+		gfx::View &mainView = frameRenderer.pushMainOutputView();
 		bgfx::setViewName(mainView.id, "MainWindow");
-		bgfx::setViewClear(mainView.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, gfx::colorToUInt32(_clearColor), 1.0f, 0);
+		bgfx::setViewClear(mainView.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, gfx::colorToRGBA(gfx::Color(_clearColor.r, _clearColor.g, _clearColor.b, _clearColor.a)), 1.0f, 0);
 
 		gfx::ImguiContext &imguiContext = *_gfxContext.imguiContext.get();
 		imguiContext.beginFrame(mainView, frameRenderer.inputs);
@@ -299,7 +250,7 @@ struct MainWindow : public BaseWindow {
 
 		imguiContext.endFrame();
 
-		frameRenderer.end(*context);
+		frameRenderer.end();
 
 		return input;
 	}
@@ -331,9 +282,9 @@ struct Texture2D : public BaseConsumer {
 		else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
 			bpp = 4;
 
-		// Upload a completely new image if sizes changed, also first activation!
-		if (!_texture || input.payload.imageValue.width != _texture->width || input.payload.imageValue.height != _texture->height ||
-			input.payload.imageValue.channels != _texture->channels || bpp != _texture->bpp) {
+		// Upload a completely new image if sizes changed, also first
+		// activation!
+		if (!_texture || input.payload.imageValue.width != _texture->width || input.payload.imageValue.height != _texture->height || input.payload.imageValue.channels != _texture->channels || bpp != _texture->bpp) {
 			if (_texture) {
 				Texture::Var.Release(_texture);
 			}
@@ -346,14 +297,14 @@ struct Texture2D : public BaseConsumer {
 
 			BGFX_TEXTURE2D_CREATE(bpp * 8, _texture->channels, _texture);
 
-			if (_texture->handle.idx == bgfx::kInvalidHandle) throw ActivationError("Failed to create texture");
+			if (_texture->handle.idx == bgfx::kInvalidHandle)
+				throw ActivationError("Failed to create texture");
 		}
 
 		// we copy because bgfx is multithreaded
 		// this just queues this texture basically
 		// this copy is internally managed
-		auto mem = bgfx::copy(
-			input.payload.imageValue.data, uint32_t(_texture->width) * uint32_t(_texture->height) * uint32_t(_texture->channels) * uint32_t(_texture->bpp));
+		auto mem = bgfx::copy(input.payload.imageValue.data, uint32_t(_texture->width) * uint32_t(_texture->height) * uint32_t(_texture->channels) * uint32_t(_texture->bpp));
 
 		bgfx::updateTexture2D(_texture->handle, 0, 0, 0, 0, _texture->width, _texture->height, mem);
 
@@ -361,8 +312,7 @@ struct Texture2D : public BaseConsumer {
 	}
 };
 
-template<char SHADER_TYPE>
-struct Shader : public BaseConsumer {
+template <char SHADER_TYPE> struct Shader : public BaseConsumer {
 	static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 	static CBTypesInfo outputTypes() { return ShaderHandle::ObjType; }
 
@@ -371,17 +321,14 @@ struct Shader : public BaseConsumer {
 		return ShaderHandle::ObjType;
 	}
 
-	static inline Parameters f_v_params{
-		{"VertexShader", CBCCSTR("The vertex shader bytecode."), {CoreInfo::BytesType, CoreInfo::BytesVarType}},
-		{"PixelShader", CBCCSTR("The pixel shader bytecode."), {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
+	static inline Parameters f_v_params{{"VertexShader", CBCCSTR("The vertex shader bytecode."), {CoreInfo::BytesType, CoreInfo::BytesVarType}}, {"PixelShader", CBCCSTR("The pixel shader bytecode."), {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
 
 	static inline Parameters c_params{{"ComputeShader", CBCCSTR("The compute shader bytecode."), {CoreInfo::BytesType, CoreInfo::BytesVarType}}};
 
 	static CBParametersInfo parameters() {
 		if constexpr (SHADER_TYPE == 'c') {
 			return c_params;
-		}
-		else {
+		} else {
 			return f_v_params;
 		}
 	}
@@ -404,8 +351,7 @@ struct Shader : public BaseConsumer {
 				_requiring[idx].exposedType = CoreInfo::BytesType;
 				idx++;
 			}
-		}
-		else {
+		} else {
 			if (_vcode.isVariable()) {
 				_requiring[idx].name = _vcode.variableName();
 				_requiring[idx].help = CBCCSTR("The required vertex shader bytecode.");
@@ -431,8 +377,7 @@ struct Shader : public BaseConsumer {
 			default:
 				break;
 			}
-		}
-		else {
+		} else {
 			switch (index) {
 			case 0:
 				_vcode = value;
@@ -454,8 +399,7 @@ struct Shader : public BaseConsumer {
 			default:
 				return Var::Empty;
 			}
-		}
-		else {
+		} else {
 			switch (index) {
 			case 0:
 				return _vcode;
@@ -470,8 +414,7 @@ struct Shader : public BaseConsumer {
 	void cleanup() {
 		if constexpr (SHADER_TYPE == 'c') {
 			_ccode.cleanup();
-		}
-		else {
+		} else {
 			_vcode.cleanup();
 			_pcode.cleanup();
 		}
@@ -485,8 +428,7 @@ struct Shader : public BaseConsumer {
 	void warmup(CBContext *context) {
 		if constexpr (SHADER_TYPE == 'c') {
 			_ccode.warmup(context);
-		}
-		else {
+		} else {
 			_vcode.warmup(context);
 			_pcode.warmup(context);
 		}
@@ -510,8 +452,7 @@ struct Shader : public BaseConsumer {
 			}
 			_output = ShaderHandle::Var.New();
 			_output->handle = ph;
-		}
-		else {
+		} else {
 			const auto &vcode = _vcode.get();
 			auto vmem = bgfx::copy(vcode.payload.bytesValue, vcode.payload.bytesSize);
 			auto hashOut = getShaderOutputHash(vmem);
@@ -644,13 +585,12 @@ struct Model : public BaseConsumer {
 	static CBTypesInfo inputTypes() { return InputTable; }
 	static CBTypesInfo outputTypes() { return ModelHandle::ObjType; }
 
-	static inline Parameters params{
-		{"Layout", CBCCSTR("The vertex layout of this model."), {VertexAttributeSeqType}},
-		{"Dynamic",
-		 CBCCSTR("If the model is dynamic and will be optimized to change as "
-				 "often as every frame."),
-		 {CoreInfo::BoolType}},
-		{"CullMode", CBCCSTR("Triangles facing the specified direction are not drawn."), {Enums::CullModeType}}};
+	static inline Parameters params{{"Layout", CBCCSTR("The vertex layout of this model."), {VertexAttributeSeqType}},
+									{"Dynamic",
+									 CBCCSTR("If the model is dynamic and will be optimized to change as "
+											 "often as every frame."),
+									 {CoreInfo::BoolType}},
+									{"CullMode", CBCCSTR("Triangles facing the specified direction are not drawn."), {Enums::CullModeType}}};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -702,8 +642,7 @@ struct Model : public BaseConsumer {
 
 		if (_dynamic) {
 			OVERRIDE_ACTIVATE(data, activateDynamic);
-		}
-		else {
+		} else {
 			OVERRIDE_ACTIVATE(data, activateStatic);
 		}
 
@@ -792,7 +731,8 @@ struct Model : public BaseConsumer {
 		while (true) {
 			CBString k;
 			CBVar v;
-			if (!table.api->tableNext(table, &it, &k, &v)) break;
+			if (!table.api->tableNext(table, &it, &k, &v))
+				break;
 
 			switch (k[0]) {
 			case 'V':
@@ -810,8 +750,7 @@ struct Model : public BaseConsumer {
 
 		if (!_output) {
 			_output = ModelHandle::Var.New();
-		}
-		else {
+		} else {
 			// in the case of static model, we destroy it
 			// well, release, some variable might still be using it
 			ModelHandle::Var.Release(_output);
@@ -861,9 +800,9 @@ struct Model : public BaseConsumer {
 					offset += sizeof(float) * 4;
 					break;
 				case CBType::Int4: {
-					if (elem.payload.int4Value[0] < 0 || elem.payload.int4Value[0] > 255 || elem.payload.int4Value[1] < 0 || elem.payload.int4Value[1] > 255 ||
-						elem.payload.int4Value[2] < 0 || elem.payload.int4Value[2] > 255 || elem.payload.int4Value[3] < 0 || elem.payload.int4Value[3] > 255) {
-						throw ActivationError("Int4 value must be between 0 and 255 for a vertex buffer");
+					if (elem.payload.int4Value[0] < 0 || elem.payload.int4Value[0] > 255 || elem.payload.int4Value[1] < 0 || elem.payload.int4Value[1] > 255 || elem.payload.int4Value[2] < 0 || elem.payload.int4Value[2] > 255 || elem.payload.int4Value[3] < 0 || elem.payload.int4Value[3] > 255) {
+						throw ActivationError("Int4 value must be between 0 "
+											  "and 255 for a vertex buffer");
 					}
 					CBColor value;
 					value.r = uint8_t(elem.payload.int4Value[0]);
@@ -897,8 +836,7 @@ struct Model : public BaseConsumer {
 			flags |= BGFX_BUFFER_INDEX32;
 			isize = nindices * sizeof(uint32_t) * 3; // int3s
 			compressed = false;
-		}
-		else {
+		} else {
 			isize = nindices * sizeof(uint16_t) * 3; // int3s
 		}
 
@@ -913,12 +851,10 @@ struct Model : public BaseConsumer {
 				if (selems[i] < min || selems[i] > max) {
 					throw ActivationError("Vertex index out of range");
 				}
-				const uint16_t t[] = {
-					uint16_t(selems[i].payload.int3Value[0]), uint16_t(selems[i].payload.int3Value[1]), uint16_t(selems[i].payload.int3Value[2])};
+				const uint16_t t[] = {uint16_t(selems[i].payload.int3Value[0]), uint16_t(selems[i].payload.int3Value[1]), uint16_t(selems[i].payload.int3Value[2])};
 				memcpy(ibuffer->data + offset, t, sizeof(uint16_t) * 3);
 				offset += sizeof(uint16_t) * 3;
-			}
-			else {
+			} else {
 				if (selems[i] < min || selems[i] > max) {
 					throw ActivationError("Vertex index out of range");
 				}
@@ -956,17 +892,16 @@ struct CameraBase : public BaseConsumer {
 	int _offsetX = 0;
 	int _offsetY = 0;
 
-	static inline Parameters params{
-		{"OffsetX", CBCCSTR("The horizontal offset of the viewport."), {CoreInfo::IntType}},
-		{"OffsetY", CBCCSTR("The vertical offset of the viewport."), {CoreInfo::IntType}},
-		{"Width",
-		 CBCCSTR("The width of the viewport, if 0 it will use the full current "
-				 "view width."),
-		 {CoreInfo::IntType}},
-		{"Height",
-		 CBCCSTR("The height of the viewport, if 0 it will use the full current "
-				 "view height."),
-		 {CoreInfo::IntType}}};
+	static inline Parameters params{{"OffsetX", CBCCSTR("The horizontal offset of the viewport."), {CoreInfo::IntType}},
+									{"OffsetY", CBCCSTR("The vertical offset of the viewport."), {CoreInfo::IntType}},
+									{"Width",
+									 CBCCSTR("The width of the viewport, if 0 it will use the full current "
+											 "view width."),
+									 {CoreInfo::IntType}},
+									{"Height",
+									 CBCCSTR("The height of the viewport, if 0 it will use the full current "
+											 "view height."),
+									 {CoreInfo::IntType}}};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -1019,11 +954,7 @@ struct Camera : public CameraBase {
 	float _far = 1000.0;
 	float _fov = 60.0;
 
-	static inline Parameters params{
-		{{"Near", CBCCSTR("The distance from the near clipping plane."), {CoreInfo::FloatType}},
-		 {"Far", CBCCSTR("The distance from the far clipping plane."), {CoreInfo::FloatType}},
-		 {"FieldOfView", CBCCSTR("The field of view of the camera."), {CoreInfo::FloatType}}},
-		CameraBase::params};
+	static inline Parameters params{{{"Near", CBCCSTR("The distance from the near clipping plane."), {CoreInfo::FloatType}}, {"Far", CBCCSTR("The distance from the far clipping plane."), {CoreInfo::FloatType}}, {"FieldOfView", CBCCSTR("The field of view of the camera."), {CoreInfo::FloatType}}}, CameraBase::params};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -1075,7 +1006,8 @@ struct Camera : public CameraBase {
 			while (true) {
 				CBString k;
 				CBVar v;
-				if (!table.api->tableNext(table, &it, &k, &v)) break;
+				if (!table.api->tableNext(table, &it, &k, &v))
+					break;
 
 				switch (k[0]) {
 				case 'P':
@@ -1125,7 +1057,7 @@ struct Camera : public CameraBase {
 		aligned_array<float, 16> proj;
 		bx::mtxProj(proj.data(), _fov, float(width) / float(height), _near, _far, bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
-		if constexpr (gfx::CurrentRenderer == gfx::Renderer::OpenGL) {
+		if constexpr (gfx::CurrentRenderer == gfx::RendererType::OpenGL) {
 			// workaround for flipped Y render to textures
 			if (currentView.id > 0) {
 				proj[5] = -proj[5];
@@ -1151,8 +1083,7 @@ struct Camera : public CameraBase {
 		// populate view matrices
 		if (hasView) {
 			currentView.view = Mat4::FromArray(view);
-		}
-		else {
+		} else {
 			currentView.view = linalg::identity;
 		}
 		currentView.proj = Mat4::FromArray(proj);
@@ -1170,14 +1101,7 @@ struct CameraOrtho : public CameraBase {
 	float _bottom = 1.0;
 	float _top = 0.0;
 
-	static inline Parameters params{
-		{{"Left", CBCCSTR("The left of the projection."), {CoreInfo::FloatType}},
-		 {"Right", CBCCSTR("The right of the projection."), {CoreInfo::FloatType}},
-		 {"Bottom", CBCCSTR("The bottom of the projection."), {CoreInfo::FloatType}},
-		 {"Top", CBCCSTR("The top of the projection."), {CoreInfo::FloatType}},
-		 {"Near", CBCCSTR("The distance from the near clipping plane."), {CoreInfo::FloatType}},
-		 {"Far", CBCCSTR("The distance from the far clipping plane."), {CoreInfo::FloatType}}},
-		CameraBase::params};
+	static inline Parameters params{{{"Left", CBCCSTR("The left of the projection."), {CoreInfo::FloatType}}, {"Right", CBCCSTR("The right of the projection."), {CoreInfo::FloatType}}, {"Bottom", CBCCSTR("The bottom of the projection."), {CoreInfo::FloatType}}, {"Top", CBCCSTR("The top of the projection."), {CoreInfo::FloatType}}, {"Near", CBCCSTR("The distance from the near clipping plane."), {CoreInfo::FloatType}}, {"Far", CBCCSTR("The distance from the far clipping plane."), {CoreInfo::FloatType}}}, CameraBase::params};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -1242,7 +1166,8 @@ struct CameraOrtho : public CameraBase {
 			while (true) {
 				CBString k;
 				CBVar v;
-				if (!table.api->tableNext(table, &it, &k, &v)) break;
+				if (!table.api->tableNext(table, &it, &k, &v))
+					break;
 
 				switch (k[0]) {
 				case 'P':
@@ -1269,7 +1194,7 @@ struct CameraOrtho : public CameraBase {
 		aligned_array<float, 16> proj;
 		bx::mtxOrtho(proj.data(), _left, _right, _bottom, _top, _near, _far, 0.0, bgfx::getCaps()->homogeneousDepth, bx::Handness::Right);
 
-		if constexpr (gfx::CurrentRenderer == gfx::Renderer::OpenGL) {
+		if constexpr (gfx::CurrentRenderer == gfx::RendererType::OpenGL) {
 			// workaround for flipped Y render to textures
 			if (currentView.id > 0) {
 				proj[5] = -proj[5];
@@ -1295,8 +1220,7 @@ struct CameraOrtho : public CameraBase {
 		// populate view matrices
 		if (input.valueType != CBType::Table) {
 			currentView.view = linalg::identity;
-		}
-		else {
+		} else {
 			currentView.view = Mat4::FromArray(view);
 		}
 		currentView.proj = Mat4::FromArray(proj);
@@ -1312,22 +1236,21 @@ struct Draw : public BaseConsumer {
 	static CBTypesInfo inputTypes() { return CoreInfo::Float4x4Types; }
 	static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Types; }
 
-	// keep in mind that bgfx does its own sorting, so we don't need to make this
-	// block way too smart
-	static inline Parameters params{
-		{"Shader", CBCCSTR("The shader program to use for this draw."), {ShaderHandle::ObjType, ShaderHandle::VarType}},
-		{"Textures",
-		 CBCCSTR("A texture or the textures to pass to the shaders."),
-		 {Texture::ObjType, Texture::VarType, Texture::SeqType, Texture::VarSeqType, CoreInfo::NoneType}},
-		{"Model",
-		 CBCCSTR("The model to draw. If no model is specified a full screen quad "
-				 "will be used."),
-		 {ModelHandle::ObjType, ModelHandle::VarType, CoreInfo::NoneType}},
-		{"Blend",
-		 CBCCSTR("The blend state table to describe and enable blending. If it's a "
-				 "single table the state will be assigned to both RGB and Alpha, if "
-				 "2 tables are specified, the first will be RGB, the second Alpha."),
-		 {CoreInfo::NoneType, Enums::BlendTable, Enums::BlendTableSeq}}};
+	// keep in mind that bgfx does its own sorting, so we don't need to make
+	// this block way too smart
+	static inline Parameters params{{"Shader", CBCCSTR("The shader program to use for this draw."), {ShaderHandle::ObjType, ShaderHandle::VarType}},
+									{"Textures", CBCCSTR("A texture or the textures to pass to the shaders."), {Texture::ObjType, Texture::VarType, Texture::SeqType, Texture::VarSeqType, CoreInfo::NoneType}},
+									{"Model",
+									 CBCCSTR("The model to draw. If no model is specified a full screen quad "
+											 "will be used."),
+									 {ModelHandle::ObjType, ModelHandle::VarType, CoreInfo::NoneType}},
+									{"Blend",
+									 CBCCSTR("The blend state table to describe and enable blending. If it's a "
+											 "single table the state will be assigned to both RGB and Alpha, "
+											 "if "
+											 "2 tables are specified, the first will be RGB, the second "
+											 "Alpha."),
+									 {CoreInfo::NoneType, Enums::BlendTable, Enums::BlendTableSeq}}};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -1422,8 +1345,7 @@ struct Draw : public BaseConsumer {
 		if (data.inputType.seqTypes.elements[0].basicType == CBType::Seq) {
 			// Instanced rendering
 			OVERRIDE_ACTIVATE(data, activate);
-		}
-		else {
+		} else {
 			// Single rendering
 			OVERRIDE_ACTIVATE(data, activateSingle);
 		}
@@ -1437,9 +1359,7 @@ struct Draw : public BaseConsumer {
 		float m_u;
 		float m_v;
 
-		static void init() {
-			ms_layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float).end();
-		}
+		static void init() { ms_layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float).end(); }
 
 		static inline bgfx::VertexLayout ms_layout;
 	};
@@ -1499,7 +1419,7 @@ struct Draw : public BaseConsumer {
 		virtual ~Drawable() {}
 		CBChain *getChain() override { return _chain; }
 
-	private:
+	  private:
 		CBChain *_chain;
 	};
 
@@ -1533,8 +1453,7 @@ struct Draw : public BaseConsumer {
 		if (_blend.valueType == Table) {
 			const auto [s, d, o] = getBlends(_blend);
 			state |= BGFX_STATE_BLEND_FUNC(s, d) | BGFX_STATE_BLEND_EQUATION(o);
-		}
-		else if (_blend.valueType == Seq) {
+		} else if (_blend.valueType == Seq) {
 			assert(_blend.payload.seqValue.len == 2);
 			const auto [sc, dc, oc] = getBlends(_blend.payload.seqValue.elements[0]);
 			const auto [sa, da, oa] = getBlends(_blend.payload.seqValue.elements[1]);
@@ -1557,12 +1476,10 @@ struct Draw : public BaseConsumer {
 					// workaround for flipped Y render to textures
 					if (currentView.id > 0) {
 						state |= BGFX_STATE_CULL_CW;
-					}
-					else {
+					} else {
 						state |= BGFX_STATE_CULL_CCW;
 					}
-				}
-				else {
+				} else {
 					state |= BGFX_STATE_CULL_CCW;
 				}
 			} break;
@@ -1571,20 +1488,17 @@ struct Draw : public BaseConsumer {
 					// workaround for flipped Y render to textures
 					if (currentView.id > 0) {
 						state |= BGFX_STATE_CULL_CCW;
-					}
-					else {
+					} else {
 						state |= BGFX_STATE_CULL_CW;
 					}
-				}
-				else {
+				} else {
 					state |= BGFX_STATE_CULL_CW;
 				}
 			} break;
 			default:
 				break;
 			}
-		}
-		else {
+		} else {
 			screenSpaceQuad();
 		}
 
@@ -1597,8 +1511,7 @@ struct Draw : public BaseConsumer {
 		if (vtextures.valueType == CBType::Object) {
 			auto texture = reinterpret_cast<Texture *>(vtextures.payload.objectValue);
 			bgfx::setTexture(0, gfxContext.getSampler(0), texture->handle);
-		}
-		else if (vtextures.valueType == CBType::Seq) {
+		} else if (vtextures.valueType == CBType::Seq) {
 			auto textures = vtextures.payload.seqValue;
 			for (uint32_t i = 0; i < textures.len; i++) {
 				auto texture = reinterpret_cast<Texture *>(textures.elements[i].payload.objectValue);
@@ -1689,19 +1602,18 @@ struct Draw : public BaseConsumer {
 };
 
 struct RenderTarget : public BaseConsumer {
-	static inline Parameters params{
-		{"Width", CBCCSTR("The width of the texture to render."), {CoreInfo::IntType}},
-		{"Height", CBCCSTR("The height of the texture to render."), {CoreInfo::IntType}},
-		{"Contents", CBCCSTR("The blocks expressing the contents to render."), {CoreInfo::BlocksOrNone}},
-		{"GUI",
-		 CBCCSTR("If this render target should be able to render GUI blocks "
-				 "within. If false any GUI block inside will be rendered on the "
-				 "top level surface."),
-		 {CoreInfo::BoolType}},
-		{"ClearColor",
-		 CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
-				 "new frame."),
-		 {CoreInfo::ColorType}}};
+	static inline Parameters params{{"Width", CBCCSTR("The width of the texture to render."), {CoreInfo::IntType}},
+									{"Height", CBCCSTR("The height of the texture to render."), {CoreInfo::IntType}},
+									{"Contents", CBCCSTR("The blocks expressing the contents to render."), {CoreInfo::BlocksOrNone}},
+									{"GUI",
+									 CBCCSTR("If this render target should be able to render GUI blocks "
+											 "within. If false any GUI block inside will be rendered on the "
+											 "top level surface."),
+									 {CoreInfo::BoolType}},
+									{"ClearColor",
+									 CBCCSTR("The color to use to clear the backbuffer at the beginning of a "
+											 "new frame."),
+									 {CoreInfo::ColorType}}};
 	static CBParametersInfo parameters() { return params; }
 
 	static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -1828,8 +1740,7 @@ struct RenderTexture : public RenderTarget {
 };
 
 struct SetUniform : public BaseConsumer {
-	static inline Types InputTypes{
-		{CoreInfo::Float4Type, CoreInfo::Float4x4Type, CoreInfo::Float3x3Type, CoreInfo::Float4SeqType, CoreInfo::Float4x4SeqType, CoreInfo::Float3x3SeqType}};
+	static inline Types InputTypes{{CoreInfo::Float4Type, CoreInfo::Float4x4Type, CoreInfo::Float3x3Type, CoreInfo::Float4SeqType, CoreInfo::Float4x4SeqType, CoreInfo::Float3x3SeqType}};
 
 	static CBTypesInfo inputTypes() { return InputTypes; }
 	static CBTypesInfo outputTypes() { return InputTypes; }
@@ -1842,17 +1753,16 @@ struct SetUniform : public BaseConsumer {
 	bgfx::UniformHandle _handle = BGFX_INVALID_HANDLE;
 	std::vector<float> _scratch;
 
-	static inline Parameters Params{
-		{"Name",
-		 CBCCSTR("The name of the uniform shader variable. Uniforms are so named "
-				 "because they do not change from one shader invocation to the "
-				 "next within a particular rendering call thus their value is "
-				 "uniform among all invocations. Uniform names are unique."),
-		 {CoreInfo::StringType}},
-		{"MaxSize",
-		 CBCCSTR("If the input contains multiple values, the maximum expected "
-				 "size of the input."),
-		 {CoreInfo::IntType}}};
+	static inline Parameters Params{{"Name",
+									 CBCCSTR("The name of the uniform shader variable. Uniforms are so named "
+											 "because they do not change from one shader invocation to the "
+											 "next within a particular rendering call thus their value is "
+											 "uniform among all invocations. Uniform names are unique."),
+									 {CoreInfo::StringType}},
+									{"MaxSize",
+									 CBCCSTR("If the input contains multiple values, the maximum expected "
+											 "size of the input."),
+									 {CoreInfo::IntType}}};
 
 	static CBParametersInfo parameters() { return Params; }
 
@@ -1883,12 +1793,10 @@ struct SetUniform : public BaseConsumer {
 	bgfx::UniformType::Enum findSingleType(const CBTypeInfo &t) {
 		if (t.basicType == CBType::Float4) {
 			return bgfx::UniformType::Vec4;
-		}
-		else if (t.basicType == CBType::Seq) {
+		} else if (t.basicType == CBType::Seq) {
 			if (t.fixedSize == 4 && t.seqTypes.elements[0].basicType == CBType::Float4) {
 				return bgfx::UniformType::Mat4;
-			}
-			else if (t.fixedSize == 3 && t.seqTypes.elements[0].basicType == CBType::Float3) {
+			} else if (t.fixedSize == 3 && t.seqTypes.elements[0].basicType == CBType::Float3) {
 				return bgfx::UniformType::Mat3;
 			}
 		}
@@ -1900,9 +1808,9 @@ struct SetUniform : public BaseConsumer {
 		if (_elems == 1) {
 			_type = findSingleType(data.inputType);
 			_isArray = false;
-		}
-		else {
-			if (data.inputType.basicType != CBType::Seq || data.inputType.seqTypes.len == 0) throw ComposeError("Invalid input type for GFX.SetUniform");
+		} else {
+			if (data.inputType.basicType != CBType::Seq || data.inputType.seqTypes.len == 0)
+				throw ComposeError("Invalid input type for GFX.SetUniform");
 			_type = findSingleType(data.inputType.seqTypes.elements[0]);
 			_isArray = true;
 		}
@@ -1922,8 +1830,7 @@ struct SetUniform : public BaseConsumer {
 		if (elem.valueType == CBType::Float4) {
 			memcpy(_scratch.data() + offset, &elem.payload.float4Value, sizeof(float) * 4);
 			offset += 4;
-		}
-		else {
+		} else {
 			// Seq
 			if (_type == bgfx::UniformType::Mat3) {
 				memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[0], sizeof(float) * 3);
@@ -1932,8 +1839,7 @@ struct SetUniform : public BaseConsumer {
 				offset += 3;
 				memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[2], sizeof(float) * 3);
 				offset += 3;
-			}
-			else {
+			} else {
 				memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[0], sizeof(float) * 4);
 				offset += 4;
 				memcpy(_scratch.data() + offset, &elem.payload.seqValue.elements[1], sizeof(float) * 4);
@@ -1972,8 +1878,7 @@ struct SetUniform : public BaseConsumer {
 				fillElement(elem, offset);
 				elems++;
 			}
-		}
-		else {
+		} else {
 			int offset = 0;
 			switch (_type) {
 			case bgfx::UniformType::Vec4:
@@ -2002,12 +1907,11 @@ struct Screenshot : public BaseConsumer {
 	static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
 	static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-	static inline Parameters params{
-		{"Overwrite",
-		 CBCCSTR("If each activation should overwrite the previous screenshot at "
-				 "the given path if existing. If false the path will be suffixed "
-				 "in order to avoid overwriting."),
-		 {CoreInfo::BoolType}}};
+	static inline Parameters params{{"Overwrite",
+									 CBCCSTR("If each activation should overwrite the previous screenshot at "
+											 "the given path if existing. If false the path will be suffixed "
+											 "in order to avoid overwriting."),
+									 {CoreInfo::BoolType}}};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -2030,8 +1934,7 @@ struct Screenshot : public BaseConsumer {
 		const auto &currentView = frameRenderer.getCurrentView();
 		if (_overwrite) {
 			bgfx::requestScreenShot(currentView.fb, input.payload.stringValue);
-		}
-		else {
+		} else {
 			std::filesystem::path base(input.payload.stringValue);
 			const auto baseName = base.stem().string();
 			const auto ext = base.extension().string();
@@ -2057,11 +1960,10 @@ struct Unproject : public BaseConsumer {
 
 	float _z{0.0};
 
-	static inline Parameters params{
-		{"Z",
-		 CBCCSTR("The value of Z depth to use, generally 0.0 for  the near "
-				 "plane, 1.0 for the far plane."),
-		 {CoreInfo::FloatType}}};
+	static inline Parameters params{{"Z",
+									 CBCCSTR("The value of Z depth to use, generally 0.0 for  the near "
+											 "plane, 1.0 for the far plane."),
+									 {CoreInfo::FloatType}}};
 
 	static CBParametersInfo parameters() { return params; }
 
@@ -2159,12 +2061,11 @@ struct Picking : public BaseConsumer {
 	// it's either Chain or None but so we use any to allow this duality
 	static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-	static inline Parameters Params{
-		{"Blocks",
-		 CBCCSTR("Any Draw inside this flow will render to the picking buffer as "
-				 "well (main view only)."),
-		 {CoreInfo::BlocksOrNone}},
-		{"Enabled", CBCCSTR("Whether to enable picking."), {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
+	static inline Parameters Params{{"Blocks",
+									 CBCCSTR("Any Draw inside this flow will render to the picking buffer as "
+											 "well (main view only)."),
+									 {CoreInfo::BlocksOrNone}},
+									{"Enabled", CBCCSTR("Whether to enable picking."), {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
 
 	static CBParametersInfo parameters() { return Params; }
 
@@ -2194,8 +2095,7 @@ struct Picking : public BaseConsumer {
 			_required[0] = BaseConsumer::requiredVariables().elements[0];
 			_required[1] = CBExposedTypeInfo{_enabled.variableName(), CBCCSTR("The exposed boolean variable to turn picking on and off."), CoreInfo::BoolType};
 			return {&_required[0], 2, 0};
-		}
-		else {
+		} else {
 			return BaseConsumer::requiredVariables();
 		}
 	}
@@ -2250,8 +2150,7 @@ struct Picking : public BaseConsumer {
 			auto &pickRt = gfxContext.pickingRenderTarget();
 			bgfx::blit(gfx::BlittingViewId, blitTex, 0, 0, pickRt);
 			bgfx::readTexture(blitTex, _blitData.data());
-		}
-		else {
+		} else {
 			memset(_blitData.data(), 0, _blitData.size());
 		}
 
@@ -2270,7 +2169,7 @@ struct Picking : public BaseConsumer {
 		return result;
 	}
 
-private:
+  private:
 	std::vector<uint32_t> _blitData;
 };
 

@@ -36,8 +36,7 @@ void main() {
 	IShaderCompiler &shaderCompiler = shaderCompilerModule->getShaderCompiler();
 
 	ShaderCompileOutput output;
-	CHECK(shaderCompiler.compile(options, output, varyings, fragCode,
-								 strlen(fragCode)));
+	CHECK(shaderCompiler.compile(options, output, varyings, fragCode, strlen(fragCode)));
 	CHECK(output.binary.size() > 0);
 }
 
@@ -46,27 +45,18 @@ void main() {
 #endif
 
 #if BX_PLATFORM_WINDOWS
-TEST_CASE("windows/ps_5_0", "[shaderc]") {
-	testCompileSimpleShader("windows", "ps_5_0");
-}
-TEST_CASE("windows/spirv", "[shaderc]") {
-	testCompileSimpleShader("windows", "spirv");
-}
+TEST_CASE("windows/ps_5_0", "[shaderc]") { testCompileSimpleShader("windows", "ps_5_0"); }
+TEST_CASE("windows/spirv", "[shaderc]") { testCompileSimpleShader("windows", "spirv"); }
 #endif
 
-#define NON_WINDOWS_DESKTOP_PLATFORM                                           \
-	(BX_PLATFORM_WINDOWS || BX_PLATFORM_LINUX || BX_PLATFORM_OSX)
+#define NON_WINDOWS_DESKTOP_PLATFORM (BX_PLATFORM_WINDOWS || BX_PLATFORM_LINUX || BX_PLATFORM_OSX)
 
 #if NON_WINDOWS_DESKTOP_PLATFORM
 TEST_CASE("linux/430", "[shaderc]") { testCompileSimpleShader("linux", "430"); }
 
-TEST_CASE("linux/metal", "[shaderc]") {
-	testCompileSimpleShader("linux", "metal");
-}
+TEST_CASE("linux/metal", "[shaderc]") { testCompileSimpleShader("linux", "metal"); }
 
-TEST_CASE("linux/spirv", "[shaderc]") {
-	testCompileSimpleShader("linux", "spirv");
-}
+TEST_CASE("linux/spirv", "[shaderc]") { testCompileSimpleShader("linux", "spirv"); }
 #endif
 
 #if NON_WINDOWS_DESKTOP_PLATFORM || BX_PLATFORM_IOS
@@ -74,12 +64,5 @@ TEST_CASE("ios/metal", "[shaderc]") { testCompileSimpleShader("ios", "metal"); }
 #endif
 
 #if NON_WINDOWS_DESKTOP_PLATFORM || BX_PLATFORM_EMSCRIPTEN
-TEST_CASE("asm.js/300_es", "[shaderc]") {
-	ShaderCompileOptions options;
-	for (auto &p : options.includeDirs) {
-		spdlog::info("Default shader include path: {}", p);
-	}
-		
-	testCompileSimpleShader("asm.js", "300_es");
-}
+TEST_CASE("asm.js/300_es", "[shaderc]") { testCompileSimpleShader("asm.js", "300_es"); }
 #endif

@@ -4,6 +4,7 @@
 #include "bgfx/defines.h"
 #include "capture.hpp"
 #include "imgui.hpp"
+#include "magic_enum.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
 #include "sdl_native_window.hpp"
@@ -16,6 +17,7 @@
 #include <bx/string.h>
 #include <exception>
 #include <filesystem>
+#include <magic_enum.hpp>
 #include <memory>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -41,42 +43,36 @@
 
 namespace gfx {
 
-#if defined(BGFX_CONFIG_RENDERER_VULKAN)
-constexpr Renderer DefaultRenderer = Renderer::Vulkan;
-#elif defined(__linux__) || defined(__EMSCRIPTEN__) ||                         \
-	defined(BGFX_CONFIG_RENDERER_OPENGL)
-constexpr Renderer DefaultRenderer = Renderer::OpenGL;
-#elif defined(_WIN32)
-constexpr Renderer DefaultRenderer = Renderer::DirectX11;
-#elif defined(__APPLE__)
-constexpr Renderer DefaultRenderer = Renderer::Metal;
+#if 0
+constexpr RendererType DefaultRenderer = RendererType::Vulkan;
+#elif BX_PLATFORM_LINUX || BX_PLATFORM_EMSCRIPTEN
+constexpr RendererType DefaultRenderer = RendererType::OpenGL;
+#elif BX_PLATFORM_WINDOW
+constexpr RendererType DefaultRenderer = RendererType::DirectX11;
+#elif BX_PLATFORM_OSX || BX_PLATFORM_IOS
+constexpr RendererType DefaultRenderer = RendererType::Metal;
 #endif
 
-static bgfx::RendererType::Enum getBgfxRenderType(Renderer renderer) {
+static bgfx::RendererType::Enum getBgfxRenderType(RendererType renderer) {
 	switch (renderer) {
-	case Renderer::DirectX11:
+	case RendererType::DirectX11:
 		return bgfx::RendererType::Direct3D11;
-	case Renderer::Vulkan:
+	case RendererType::Vulkan:
 		return bgfx::RendererType::Vulkan;
-	case Renderer::OpenGL:
+	case RendererType::OpenGL:
 		return bgfx::RendererType::OpenGL;
-	case Renderer::Metal:
+	case RendererType::Metal:
 		return bgfx::RendererType::Metal;
 	default:
 		return bgfx::RendererType::Noop;
 	}
 }
 
-static std::string formatBGFXException(const char *filepath, uint16_t line,
-									   bgfx::Fatal::Enum code,
-									   const char *str) {
-	return fmt::format("BGFX fatal {}:{}: {}", filepath, line, str);
-}
+std::string_view getRendererTypeName(RendererType renderer) { return magic_enum::enum_name(renderer); }
 
-BGFXException::BGFXException(const char *filepath, uint16_t line,
-							 bgfx::Fatal::Enum code, const char *str)
-	: std::runtime_error(formatBGFXException(filepath, line, code, str)),
-	  line(line), code(code) {}
+static std::string formatBGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) { return fmt::format("BGFX fatal {}:{}: {}", filepath, line, str); }
+
+BGFXException::BGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) : std::runtime_error(formatBGFXException(filepath, line, code, str)), line(line), code(code) {}
 
 struct BGFXCallbacks : public bgfx::CallbackI {
 #if BGFX_CONFIG_MULTITHREADED
@@ -88,44 +84,32 @@ struct BGFXCallbacks : public bgfx::CallbackI {
 	std::vector<std::weak_ptr<ICapture>> captureCallbacks;
 
 	virtual ~BGFXCallbacks() {}
-	virtual void fatal(const char *_filePath, uint16_t _line,
-					   bgfx::Fatal::Enum _code, const char *_str) override;
-	virtual void traceVargs(const char *_filePath, uint16_t _line,
-							const char *_format, va_list _argList) override;
-	virtual void profilerBegin(const char * /*_name*/, uint32_t /*_abgr*/,
-							   const char * /*_filePath*/,
-							   uint16_t /*_line*/) override {}
-	virtual void profilerBeginLiteral(const char * /*_name*/,
-									  uint32_t /*_abgr*/,
-									  const char * /*_filePath*/,
-									  uint16_t /*_line*/) override {}
+	virtual void fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) override;
+	virtual void traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) override;
+	virtual void profilerBegin(const char * /*_name*/, uint32_t /*_abgr*/, const char * /*_filePath*/, uint16_t /*_line*/) override {}
+	virtual void profilerBeginLiteral(const char * /*_name*/, uint32_t /*_abgr*/, const char * /*_filePath*/, uint16_t /*_line*/) override {}
 	virtual void profilerEnd() override {}
 	virtual uint32_t cacheReadSize(uint64_t /*_id*/) override { return 0; }
-	virtual bool cacheRead(uint64_t /*_id*/, void * /*_data*/,
-						   uint32_t /*_size*/) override {
-		return false;
-	}
-	virtual void cacheWrite(uint64_t /*_id*/, const void * /*_data*/,
-							uint32_t /*_size*/) override {}
-	virtual void screenShot(const char *_filePath, uint32_t _width,
-							uint32_t _height, uint32_t _pitch,
-							const void *_data, uint32_t _size,
-							bool _yflip) override;
-	virtual void captureBegin(uint32_t /*_width*/, uint32_t /*_height*/,
-							  uint32_t /*_pitch*/,
-							  bgfx::TextureFormat::Enum /*_format*/,
-							  bool /*_yflip*/) override;
+	virtual bool cacheRead(uint64_t /*_id*/, void * /*_data*/, uint32_t /*_size*/) override { return false; }
+	virtual void cacheWrite(uint64_t /*_id*/, const void * /*_data*/, uint32_t /*_size*/) override {}
+	virtual void screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) override;
+	virtual void captureBegin(uint32_t /*_width*/, uint32_t /*_height*/, uint32_t /*_pitch*/, bgfx::TextureFormat::Enum /*_format*/, bool /*_yflip*/) override;
 	virtual void captureEnd() override;
-	virtual void captureFrame(const void * /*_data*/,
-							  uint32_t /*_size*/) override;
+	virtual void captureFrame(const void * /*_data*/, uint32_t /*_size*/) override;
 };
+
+ContextCreationOptions::ContextCreationOptions() {
+#ifdef GFX_DEBUG
+	debug = true;
+#endif
+}
 
 Context::Context() { imguiContext = std::make_shared<ImguiContext>(); }
 Context::~Context() { cleanup(); }
 
 void Context::init(Window &window, const ContextCreationOptions &options) {
 	spdlog::debug("GFX.Context init");
-	assert(!bgfxInitialized);
+	assert(!isInitialized());
 
 	this->window = &window;
 
@@ -140,11 +124,11 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	pdata.ndt = SDL_GetNativeDisplayPtr(window.window);
 	bgfx::setPlatformData(pdata);
 
+	RendererType rendererType = options.renderer == RendererType::None ? DefaultRenderer : options.renderer;
+
 	bgfx::Init initInfo{};
 	initInfo.callback = bgfxCallbacks.get();
-	initInfo.type = getBgfxRenderType(options.renderer == Renderer::None
-										  ? DefaultRenderer
-										  : options.renderer);
+	initInfo.type = getBgfxRenderType(rendererType);
 
 	mainOutputSize = window.getDrawableSize();
 	initInfo.resolution.width = mainOutputSize.x;
@@ -155,7 +139,7 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	if (!bgfx::init(initInfo)) {
 		throw std::runtime_error("Failed to initialize BGFX");
 	}
-	bgfxInitialized = true;
+	this->rendererType = rendererType;
 
 	shaderCompilerModule = createShaderCompilerModule();
 
@@ -163,13 +147,14 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 
 	imguiContext->init(18.0, GuiViewId);
 
-	timeUniformHandle =
-		bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
+	timeUniformHandle = bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
 }
 
 void Context::cleanup() {
 	spdlog::debug("GFX.Context cleanup");
-	if (bgfxInitialized) {
+	if (isInitialized()) {
+		rendererType = RendererType::None;
+
 		if (imguiContext) {
 			imguiContext->cleanup();
 			imguiContext.reset();
@@ -189,16 +174,14 @@ const bgfx::UniformHandle &Context::getSampler(size_t index) {
 	if (index >= nsamplers) {
 		std::string name("DrawSampler_");
 		name.append(std::to_string(index));
-		return samplers.emplace_back(
-			bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
+		return samplers.emplace_back(bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
 	} else {
 		return samplers[index];
 	}
 }
 
 void Context::resizeMainOutput(const int2 &newSize) {
-	spdlog::debug("GFX.Context resized width: {} height: {}", newSize.x,
-				  newSize.y);
+	spdlog::debug("GFX.Context resized width: {} height: {}", newSize.x, newSize.y);
 	this->mainOutputSize = newSize;
 	bgfx::reset(newSize.x, newSize.y, resetFlags);
 }
@@ -238,8 +221,7 @@ void Context::removeCapture(std::weak_ptr<ICapture> capture) {
 		return false;
 	};
 
-	captureCallbacks.erase(std::remove_if(captureCallbacks.begin(),
-										  captureCallbacks.end(), filter));
+	captureCallbacks.erase(std::remove_if(captureCallbacks.begin(), captureCallbacks.end(), filter));
 
 	bool disableCapture = wasCaptureEnabled && captureCallbacks.size() == 0;
 	if (disableCapture) {
@@ -276,8 +258,7 @@ void Context::endFrame(FrameRenderer *frameRenderer) {
 	currentFrameRenderer = nullptr;
 }
 
-void BGFXCallbacks::fatal(const char *_filePath, uint16_t _line,
-						  bgfx::Fatal::Enum _code, const char *_str) {
+void BGFXCallbacks::fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) {
 	if (bgfx::Fatal::DebugCheck == _code) {
 		bx::debugBreak();
 	} else {
@@ -285,16 +266,13 @@ void BGFXCallbacks::fatal(const char *_filePath, uint16_t _line,
 	}
 }
 
-void BGFXCallbacks::traceVargs(const char *_filePath, uint16_t _line,
-							   const char *_format, va_list _argList) {
+void BGFXCallbacks::traceVargs(const char *_filePath, uint16_t _line, const char *_format, va_list _argList) {
 	char temp[2048];
 	char *out = temp;
 	va_list argListCopy;
 	va_copy(argListCopy, _argList);
-	int32_t len =
-		bx::snprintf(out, sizeof(temp), "%s (%d): ", _filePath, _line);
-	int32_t total = len + bx::vsnprintf(out + len, sizeof(temp) - len, _format,
-										argListCopy);
+	int32_t len = bx::snprintf(out, sizeof(temp), "%s (%d): ", _filePath, _line);
+	int32_t total = len + bx::vsnprintf(out + len, sizeof(temp) - len, _format, argListCopy);
 	va_end(argListCopy);
 	if ((int32_t)sizeof(temp) < total) {
 		out = (char *)alloca(total + 1);
@@ -305,9 +283,7 @@ void BGFXCallbacks::traceVargs(const char *_filePath, uint16_t _line,
 	spdlog::debug("{}", out);
 }
 
-void BGFXCallbacks::screenShot(const char *_filePath, uint32_t _width,
-							   uint32_t _height, uint32_t _pitch,
-							   const void *_data, uint32_t _size, bool _yflip) {
+void BGFXCallbacks::screenShot(const char *_filePath, uint32_t _width, uint32_t _height, uint32_t _pitch, const void *_data, uint32_t _size, bool _yflip) {
 	spdlog::debug("Screenshot requested for path:  {}", _filePath);
 
 	// For now.. TODO as might be not true
@@ -319,14 +295,10 @@ void BGFXCallbacks::screenShot(const char *_filePath, uint32_t _width,
 	const uint8_t *bgra = (uint8_t *)_data;
 	for (uint32_t x = 0; x < _height; x++) {
 		for (uint32_t y = 0; y < _width; y++) {
-			data[((y * 4) + 0) + (_pitch * x)] =
-				bgra[((y * 4) + 2) + (_pitch * x)];
-			data[((y * 4) + 1) + (_pitch * x)] =
-				bgra[((y * 4) + 1) + (_pitch * x)];
-			data[((y * 4) + 2) + (_pitch * x)] =
-				bgra[((y * 4) + 0) + (_pitch * x)];
-			data[((y * 4) + 3) + (_pitch * x)] =
-				bgra[((y * 4) + 3) + (_pitch * x)];
+			data[((y * 4) + 0) + (_pitch * x)] = bgra[((y * 4) + 2) + (_pitch * x)];
+			data[((y * 4) + 1) + (_pitch * x)] = bgra[((y * 4) + 1) + (_pitch * x)];
+			data[((y * 4) + 2) + (_pitch * x)] = bgra[((y * 4) + 0) + (_pitch * x)];
+			data[((y * 4) + 3) + (_pitch * x)] = bgra[((y * 4) + 3) + (_pitch * x)];
 		}
 	}
 
@@ -338,17 +310,14 @@ void BGFXCallbacks::screenShot(const char *_filePath, uint32_t _width,
 	const auto ext = p.extension();
 	if (ext == ".png" || ext == ".PNG") {
 		stbi_write_png(tname.c_str(), _width, _height, 4, data.data(), _pitch);
-	} else if (ext == ".jpg" || ext == ".JPG" || ext == ".jpeg" ||
-			   ext == ".JPEG") {
+	} else if (ext == ".jpg" || ext == ".JPG" || ext == ".jpeg" || ext == ".JPEG") {
 		stbi_write_jpg(tname.c_str(), _width, _height, 4, data.data(), 95);
 	}
 	// we do this to ensure p is a complete flushed file
 	std::filesystem::rename(t, p);
 }
 
-void BGFXCallbacks::captureBegin(uint32_t width, uint32_t height,
-								 uint32_t pitch,
-								 bgfx::TextureFormat::Enum format, bool yflip) {
+void BGFXCallbacks::captureBegin(uint32_t width, uint32_t height, uint32_t pitch, bgfx::TextureFormat::Enum format, bool yflip) {
 	captureFormat.size = int2(width, height);
 	captureFormat.pitch = pitch;
 	captureFormat.format = format;
