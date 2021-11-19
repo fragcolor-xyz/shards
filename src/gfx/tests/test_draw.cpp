@@ -1,61 +1,16 @@
-#include "bgfx/bgfx.h"
-#include "gfx/context.hpp"
-#include "gfx/frame.hpp"
-#include "gfx/geom.hpp"
-#include "gfx/linalg.hpp"
-#include "gfx/shaderc.hpp"
-#include "gfx/view.hpp"
-#include "linalg/linalg.h"
-#include "test_data.hpp"
+#include "draw_fixture.hpp"
 #include <bgfx/bgfx.h>
 #include <catch2/catch_all.hpp>
-#include <gfx/capture.hpp>
 #include <gfx/context.hpp>
+#include <gfx/frame.hpp>
 #include <gfx/geom.hpp>
+#include <gfx/linalg.hpp>
 #include <gfx/material.hpp>
 #include <gfx/mesh.hpp>
 #include <gfx/shaderc.hpp>
-#include <gfx/test_platform_id.hpp>
-#include <gfx/tests/test_data.hpp>
 #include <gfx/types.hpp>
-#include <gfx/window.hpp>
-
-#define CHECK_FRAME(_id) CHECK(checkFrame(_id))
-
-struct DrawFixture {
-	gfx::Window window;
-	gfx::Context context;
-	gfx::TestData testData;
-
-	std::shared_ptr<gfx::SingleFrameCapture> capture = gfx::SingleFrameCapture::create();
-
-	DrawFixture() {
-		window.init();
-		context.init(window);
-		context.addCapture(capture);
-		testData = gfx::TestData(gfx::TestPlatformId::get(context));
-	}
-
-	void frameWithCaptureSync() {
-		gfx::FrameCaptureSync _(context);
-		bgfx::frame();
-	}
-
-	bool checkFrame(const char *id, float tolerance = 0) {
-		gfx::TestFrame frame(*capture.get());
-		return testData.checkFrame(id, frame, tolerance);
-	}
-
-	bool pollEvents() {
-		std::vector<SDL_Event> events;
-		window.pollEvents(events);
-		for (const auto &event : events) {
-			if (event.type == SDL_QUIT)
-				return false;
-		}
-		return true;
-	}
-};
+#include <gfx/view.hpp>
+#include <linalg/linalg.h>
 
 TEST_CASE_METHOD(DrawFixture, "Clear", "[draw]") {
 	gfx::Color clearColor = gfx::Color(100, 0, 200, 255);
@@ -119,13 +74,10 @@ void main() {
 
 	bgfx::ProgramHandle prog = bgfx::createProgram(vs, ps, false);
 
-	gfx::Primitive prim;
 	const bgfx::Memory *vertMem = bgfx::copy(gen.vertices.data(), gen.vertices.size() * sizeof(gfx::geom::VertexPNT));
-	prim.vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
+	bgfx::VertexBufferHandle vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
 	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
-	prim.ib = bgfx::createIndexBuffer(indexMem);
-	prim.staticUsageParameters.flags |= gfx::UsageFlags::HasNormals;
-	prim.pipelineParameters.primitiveType = gfx::MeshPrimitiveType::TriangleList;
+	bgfx::IndexBufferHandle ib = bgfx::createIndexBuffer(indexMem);
 
 	{
 		gfx::FrameCaptureSync _(context);
@@ -148,8 +100,8 @@ void main() {
 		bgfx::setTransform(transformCacheIndex);
 		bgfx::setViewTransform(view.id, transformCache.data + 16 * 1, transformCache.data + 16 * 2);
 
-		bgfx::setVertexBuffer(0, prim.vb);
-		bgfx::setIndexBuffer(prim.ib);
+		bgfx::setVertexBuffer(0, vb);
+		bgfx::setIndexBuffer(ib);
 
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
 

@@ -14,9 +14,13 @@
 #include <gfx/paths.hpp>
 #include <gfx/types.hpp>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_write.h>
+#pragma GCC diagnostic pop
 
 namespace gfx {
 TestFrame::TestFrame(uint32_t *imageData, int2 size, uint32_t pitch, bool yflip) { set(imageData, size, pitch, yflip); }
@@ -78,7 +82,6 @@ bool TestData::checkFrame(const char *id, const TestFrame &frame, float toleranc
 	bx::FilePath filePath = basePath;
 	filePath.join(filename.c_str());
 
-	// stbi_write_png(
 	TestFrame referenceFrame;
 	if (loadFrame(referenceFrame, filePath.getCPtr())) {
 		return referenceFrame.compare(frame, tolerance);

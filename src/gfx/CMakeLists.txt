@@ -11,7 +11,8 @@ add_library(gfx
   context.cpp
   imgui.cpp
   # frame.cpp
-#   material.cpp
+  material.cpp
+  shader.cpp
   # shader_cache.cpp
 #   mesh.cpp
   geom.cpp

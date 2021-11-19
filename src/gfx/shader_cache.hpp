@@ -12,23 +12,6 @@ struct IShaderCompiler;
 
 namespace gfx {
 
-struct ShaderHandle {
-	bgfx::ShaderHandle shaderHandle = BGFX_INVALID_HANDLE;
-	ShaderHandle(bgfx::ShaderHandle shaderHandle) : shaderHandle(shaderHandle) {}
-	~ShaderHandle();
-};
-using ShaderHandlePtr = std::shared_ptr<ShaderHandle>;
-
-struct ShaderProgram {
-	bgfx::ProgramHandle program;
-
-	ShaderProgram(bgfx::ProgramHandle program) : program(program) {}
-	~ShaderProgram() {
-		if (bgfx::isValid(program)) bgfx::destroy(program);
-	}
-};
-using ShaderProgramPtr = std::shared_ptr<ShaderProgram>;
-
 struct ShaderCache {
 	struct SourceInfo {
 		std::unordered_map<StaticShaderParameters, ShaderHandlePtr> shaders;

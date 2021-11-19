@@ -157,7 +157,7 @@ void main() {
 		prim.vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
 		const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
 		prim.ib = bgfx::createIndexBuffer(indexMem);
-		prim.staticUsageParameters.flags |= gfx::UsageFlags::HasNormals;
+		prim.staticUsageParameters.flags |= gfx::MaterialUsageFlags::HasNormals;
 		prim.pipelineParameters.primitiveType = gfx::MeshPrimitiveType::TriangleList;
 	}
 

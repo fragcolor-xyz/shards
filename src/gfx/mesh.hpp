@@ -19,8 +19,8 @@ struct Primitive {
 	bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
 	bgfx::VertexLayout vertexLayout{};
 
-	StaticUsageParameters staticUsageParameters;
-	MeshPipelineParameters pipelineParameters;
+	// StaticUsageParameters staticUsageParameters;
+	// MeshPipelineParameters pipelineParameters;
 
 	std::shared_ptr<Material> material;
 
@@ -31,8 +31,8 @@ struct Primitive {
 		std::swap(ib, other.ib);
 		std::swap(vertexLayout, other.vertexLayout);
 		std::swap(material, other.material);
-		std::swap(staticUsageParameters, other.staticUsageParameters);
-		std::swap(pipelineParameters, other.pipelineParameters);
+		// std::swap(staticUsageParameters, other.staticUsageParameters);
+		// std::swap(pipelineParameters, other.pipelineParameters);
 	}
 
 	~Primitive() {

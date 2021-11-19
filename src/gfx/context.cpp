@@ -171,7 +171,7 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 
 	shaderCompilerModule = createShaderCompilerModule();
 
-	bindingUniforms = std::make_shared<ShaderBindingPointUniforms>();
+	// bindingUniforms = std::make_shared<ShaderBindingPointUniforms>();
 
 	imguiContext->init(18.0, GuiViewId);
 

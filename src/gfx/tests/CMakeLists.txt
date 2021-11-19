@@ -9,6 +9,7 @@ add_executable(test_gfx
   test_shaderc.cpp
   test_data.cpp
   test_draw.cpp
+  test_material.cpp
   main.cpp
   utils.cpp
 )

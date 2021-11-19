@@ -1,7 +1,7 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
-#include "shader_cache.hpp"
+// #include "shader_cache.hpp"
 #include "types.hpp"
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_video.h>
@@ -74,8 +74,8 @@ public:
 	std::shared_ptr<BGFXCallbacks> bgfxCallbacks;
 	std::shared_ptr<ImguiContext> imguiContext;
 
-	ShaderCache shaderCache;
-	ShaderBindingPoints bindingPoints;
+	// ShaderCache shaderCache;
+	// ShaderBindingPoints bindingPoints;
 
 	uint32_t resetFlags = BGFX_RESET_VSYNC;
 
