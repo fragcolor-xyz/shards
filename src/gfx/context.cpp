@@ -9,6 +9,7 @@
 #include "mesh.hpp"
 #include "sdl_native_window.hpp"
 #include "shaderc.hpp"
+#include "spdlog/spdlog.h"
 #include "window.hpp"
 #include <algorithm>
 #include <bgfx/bgfx.h>
@@ -23,6 +24,7 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #pragma GCC diagnostic push
@@ -47,7 +49,7 @@ namespace gfx {
 constexpr RendererType DefaultRenderer = RendererType::Vulkan;
 #elif BX_PLATFORM_LINUX || BX_PLATFORM_EMSCRIPTEN
 constexpr RendererType DefaultRenderer = RendererType::OpenGL;
-#elif BX_PLATFORM_WINDOW
+#elif BX_PLATFORM_WINDOWS
 constexpr RendererType DefaultRenderer = RendererType::DirectX11;
 #elif BX_PLATFORM_OSX || BX_PLATFORM_IOS
 constexpr RendererType DefaultRenderer = RendererType::Metal;
@@ -69,6 +71,16 @@ static bgfx::RendererType::Enum getBgfxRenderType(RendererType renderer) {
 }
 
 std::string_view getRendererTypeName(RendererType renderer) { return magic_enum::enum_name(renderer); }
+static RendererType getRendererTypeByName(std::string_view inName) {
+	size_t index = 0;
+	for (const auto &name : magic_enum::enum_names<RendererType>()) {
+		if (name == inName) {
+			return (RendererType)index;
+		}
+		index++;
+	}
+	return RendererType::None;
+}
 
 static std::string formatBGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) { return fmt::format("BGFX fatal {}:{}: {}", filepath, line, str); }
 
@@ -124,7 +136,23 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	pdata.ndt = SDL_GetNativeDisplayPtr(window.window);
 	bgfx::setPlatformData(pdata);
 
-	RendererType rendererType = options.renderer == RendererType::None ? DefaultRenderer : options.renderer;
+	RendererType rendererType;
+	if (options.renderer != RendererType::None) {
+		rendererType = options.renderer;
+	} else {
+		RendererType envRendererType = RendererType::None;
+		if (const char *gfxRenderer = SDL_getenv("GFX_RENDERER")) {
+			envRendererType = getRendererTypeByName(gfxRenderer);
+		}
+
+		if (envRendererType != RendererType::None) {
+			rendererType = envRendererType;
+		} else {
+			rendererType = DefaultRenderer;
+		}
+	}
+	
+	spdlog::debug("Set renderer type to {}", getRendererTypeName(rendererType));
 
 	bgfx::Init initInfo{};
 	initInfo.callback = bgfxCallbacks.get();

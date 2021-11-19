@@ -5,7 +5,11 @@
 namespace gfx {
 TestPlatformId TestPlatformId::get(const RendererType &renderer) {
 	TestPlatformId id;
+#if BX_PLATFORM_EMSCRIPTEN
+	id.platformName = "asm.js"; // ignore version and space in BX_PLATFORM_NAME
+#else
 	id.platformName = BX_PLATFORM_NAME;
+#endif
 	id.renderTypeName = getRendererTypeName(renderer);
 	return id;
 }

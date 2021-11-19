@@ -1,6 +1,11 @@
 #include "test_data.hpp"
+#include "bx/error.h"
+#include "bx/file.h"
+#include "bx/filepath.h"
+#include "bx/readerwriter.h"
 #include "gfx/tests/test_data.hpp"
 #include "gfx/types.hpp"
+#include "utils.hpp"
 #include <bgfx/bgfx.h>
 #include <bx/file.h>
 #include <bx/filepath.h>
@@ -102,8 +107,13 @@ void TestData::storeFrame(const TestFrame &frame, const char *filePath) {
 	int2 size = frame.getSize();
 	assert(size.x > 0 && size.y > 0);
 
+	spdlog::info("Writing frame data to {}", filePath); 
 	const std::vector<TestFrame::pixel_t> &pixels = frame.getPixels();
 	stbi_write_png(filePath, size.x, size.y, 4, pixels.data(), sizeof(TestFrame::pixel_t) * size.x);
+
+#ifdef __EMSCRIPTEN__
+	emrun_copyFileToOutput(filePath);
+#endif
 }
 
 } // namespace gfx
