@@ -9,8 +9,8 @@ add_library(gfx-shaderc ${LINK_TYPE}
 	shaderc.cpp
 )
 
-if(LINK_TYPE EQUAL "SHARED")
-	target_compile_definitions(gfx-shaderc PRIVATE SHADERC_STANDALONE=1)
+if(${LINK_TYPE} MATCHES "SHARED")
+	target_compile_definitions(gfx-shaderc PRIVATE "SHADERC_STANDALONE=1")
 endif()
 
 target_include_directories(gfx-shaderc PUBLIC ${BGFX_DIR}/tools/shaderc)

@@ -27,12 +27,6 @@ namespace bgfx {
 	static bx::DefaultAllocator s_allocator;
 	bx::AllocatorI* g_allocator = &s_allocator;
 
-	struct TinyStlAllocator
-	{
-		static void* static_allocate(size_t _bytes);
-		static void static_deallocate(void* _ptr, size_t /*_bytes*/);
-	};
-
 	void* TinyStlAllocator::static_allocate(size_t _bytes)
 	{
 		return BX_ALLOC(g_allocator, _bytes);
