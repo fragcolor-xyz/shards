@@ -25,9 +25,6 @@ TEST_CASE_METHOD(DrawFixture, "Clear", "[draw]") {
 TEST_CASE_METHOD(DrawFixture, "Draw sphere", "[draw]") {
 	gfx::Color clearColor = gfx::Color(0, 0, 0, 255);
 
-	gfx::geom::SphereGenerator gen;
-	gen.generate();
-
 	const char vars[] = R"(
 vec3 v_normal    : NORMAL    = vec3(0.0, 0.0, 1.0);
 vec2 v_texcoord0 : TEXCOORD0 = vec2(0.0, 0.0);
@@ -74,10 +71,9 @@ void main() {
 
 	bgfx::ProgramHandle prog = bgfx::createProgram(vs, ps, false);
 
-	const bgfx::Memory *vertMem = bgfx::copy(gen.vertices.data(), gen.vertices.size() * sizeof(gfx::geom::VertexPNT));
-	bgfx::VertexBufferHandle vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
-	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
-	bgfx::IndexBufferHandle ib = bgfx::createIndexBuffer(indexMem);
+	bgfx::VertexBufferHandle vb;
+	bgfx::IndexBufferHandle ib;
+	generateSphereMesh(vb, ib);
 
 	{
 		gfx::FrameCaptureSync _(context);
@@ -87,18 +83,7 @@ void main() {
 		gfx::View &view = frame.pushMainOutputView();
 		bgfx::setViewClear(view.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, gfx::colorToRGBA(clearColor));
 
-		bgfx::Transform transformCache;
-
-		gfx::float4x4 modelMtx = linalg::identity;
-		gfx::float4x4 projMtx = linalg::perspective_matrix(45.0f, float(view.getSize().x) / view.getSize().y, 0.01f, 100.0f);
-		gfx::float4x4 viewMtx = linalg::translation_matrix(gfx::float3(0, 0, -5));
-
-		uint32_t transformCacheIndex = bgfx::allocTransform(&transformCache, 3);
-		gfx::packFloat4x4(modelMtx, transformCache.data + 16 * 0);
-		gfx::packFloat4x4(viewMtx, transformCache.data + 16 * 1);
-		gfx::packFloat4x4(projMtx, transformCache.data + 16 * 2);
-		bgfx::setTransform(transformCacheIndex);
-		bgfx::setViewTransform(view.id, transformCache.data + 16 * 1, transformCache.data + 16 * 2);
+		setWorldViewProj(view);
 
 		bgfx::setVertexBuffer(0, vb);
 		bgfx::setIndexBuffer(ib);

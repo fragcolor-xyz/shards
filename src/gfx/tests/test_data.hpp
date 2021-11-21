@@ -29,6 +29,7 @@ struct TestData {
 private:
 	TestPlatformId testPlatformId;
 	bx::FilePath basePath;
+	bool overwriteAll = false;
 
 public:
 	TestData() = default;

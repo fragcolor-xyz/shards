@@ -83,7 +83,7 @@ struct ShaderCompiler : public gfx::IShaderCompiler {
 
 			std::string result;
 			uint64_t counter = atomicCounter.fetch_add(1);
-			bx::stringPrintf(result, "_shaderc_%llu", counter);
+			bx::stringPrintf(result, "_shaderc%04llu", counter);
 
 			return result;
 		}();
@@ -106,10 +106,12 @@ struct ShaderCompiler : public gfx::IShaderCompiler {
 		bgfx::g_verbose = podOptions.verbose;
 		bool shaderCompiled = bgfx::compileShader(varying, "", codeCopy, codeLength, bgfxOptions, &writer);
 
-		// remove temp file
-		// bx::remove(tempSourcePath.c_str());
-		// bx::remove((tempFilename + ".hlsl").c_str());
-		// bx::remove((tempFilename + ".d").c_str());
+		// remove temp files
+		if(!podOptions.keepOutputs)  {
+			bx::remove(tempSourcePath.c_str());
+			bx::remove((tempFilename + ".hlsl").c_str());
+			bx::remove((tempFilename + ".d").c_str());
+		}
 
 		return shaderCompiled;
 	}

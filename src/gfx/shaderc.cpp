@@ -1,6 +1,7 @@
 #include "context.hpp"
 #include "paths.hpp"
 #include "shaderc/api.hpp"
+#include "spdlog/spdlog.h"
 #include <bx/filepath.h>
 #include <bx/os.h>
 #include <bx/platform.h>
@@ -16,12 +17,9 @@ void ShaderCompileOutput::writeOutput(const void *data, int32_t size) {
 	memcpy(&binary[offset], data, size);
 }
 
-ShaderCompileOptions::ShaderCompileOptions() {
-	setBuiltinIncludePaths();
-}
+ShaderCompileOptions::ShaderCompileOptions() { setBuiltinIncludePaths(); }
 
 void ShaderCompileOptions::setBuiltinIncludePaths() {
-
 	for (auto path : shaderIncludePaths) {
 		includeDirs.push_back(resolveDataPath(path));
 	}
@@ -104,6 +102,7 @@ std::shared_ptr<ShaderCompilerModule> createShaderCompilerModule() {
 #endif
 
 	if (!module) {
+		spdlog::error("Failed to load shader compiler module");
 		return std::shared_ptr<ShaderCompilerModule>();
 	}
 
@@ -113,6 +112,7 @@ std::shared_ptr<ShaderCompilerModule> createShaderCompilerModule() {
 	gfx::f_GetShaderCompilerInterface entry = (gfx::f_GetShaderCompilerInterface)bx::dlsym(module, symbolName);
 
 	if (!entry) {
+		spdlog::error("Failed to find entry point in shader compiler module");
 		bx::dlclose(module);
 		return std::shared_ptr<ShaderCompilerModule>();
 	}

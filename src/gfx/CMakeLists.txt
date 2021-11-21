@@ -12,7 +12,7 @@ add_library(gfx
   imgui.cpp
   # frame.cpp
   material.cpp
-  shader.cpp
+  material_shader.cpp
   # shader_cache.cpp
 #   mesh.cpp
   geom.cpp
@@ -32,7 +32,7 @@ target_include_directories(gfx
 target_link_libraries(gfx
   bx bimg bgfx tinygltf
   dear-imgui imgui_club implot imguizmo magic_enum
-  spdlog stb
+  spdlog stb xxHash Boost::headers
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 

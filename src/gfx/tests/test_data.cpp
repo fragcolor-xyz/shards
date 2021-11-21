@@ -6,6 +6,7 @@
 #include "gfx/tests/test_data.hpp"
 #include "gfx/types.hpp"
 #include "utils.hpp"
+#include <SDL_stdinc.h>
 #include <bgfx/bgfx.h>
 #include <bx/file.h>
 #include <bx/filepath.h>
@@ -74,6 +75,10 @@ TestData::TestData(const TestPlatformId &testPlatformId) : testPlatformId(testPl
 	basePath.set(resolveDataPath(GFX_TEST_DATA_PATH).c_str());
 	basePath.join(std::string(testPlatformId).c_str());
 	bx::makeAll(basePath);
+
+	if (SDL_getenv("GFX_OVERWRITE_TEST_DATA")) {
+		overwriteAll = true;
+	}
 }
 
 bool TestData::checkFrame(const char *id, const TestFrame &frame, float tolerance) {
@@ -83,7 +88,7 @@ bool TestData::checkFrame(const char *id, const TestFrame &frame, float toleranc
 	filePath.join(filename.c_str());
 
 	TestFrame referenceFrame;
-	if (loadFrame(referenceFrame, filePath.getCPtr())) {
+	if (!overwriteAll && loadFrame(referenceFrame, filePath.getCPtr())) {
 		return referenceFrame.compare(frame, tolerance);
 	} else {
 		// Write reference
@@ -110,7 +115,7 @@ void TestData::storeFrame(const TestFrame &frame, const char *filePath) {
 	int2 size = frame.getSize();
 	assert(size.x > 0 && size.y > 0);
 
-	spdlog::info("Writing frame data to {}", filePath); 
+	spdlog::info("Writing frame data to {}", filePath);
 	const std::vector<TestFrame::pixel_t> &pixels = frame.getPixels();
 	stbi_write_png(filePath, size.x, size.y, 4, pixels.data(), sizeof(TestFrame::pixel_t) * size.x);
 

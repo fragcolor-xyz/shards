@@ -6,6 +6,7 @@
 #include "texture.hpp"
 #include <functional>
 #include <optional>
+#include <string>
 #include <unordered_map>
 
 namespace gfx {
@@ -63,11 +64,20 @@ struct MaterialData {
 	}
 };
 
+struct MaterialBuiltin {
+	static constexpr const char *baseColor = "baseColor";
+	static constexpr const char *metallic = "metallic";
+	static constexpr const char *roughness = "roughness";
+	static constexpr const char *baseColorTexture = "baseColorTexture";
+	static constexpr const char *normalTexture = "normalTexture";
+	static constexpr const char *metalicRoughnessTexture = "metalicRoughnessTexture";
+	static constexpr const char *emissiveTexture = "emissiveTexture";
+};
+
 struct Material {
 private:
 	MaterialData data;
 	Hash128 staticHash;
-	Hash128 dynamicHash;
 
 public:
 	Material() { modified(); }
@@ -78,7 +88,7 @@ public:
 	}
 	void modified();
 	const MaterialData &getData() const { return data; }
-	const Hash128 &getHash() const { return hash; }
+	const Hash128 &getStaticHash() const { return staticHash; }
 };
 
 } // namespace gfx

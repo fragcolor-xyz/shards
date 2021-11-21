@@ -28,6 +28,7 @@ struct ShaderCompilePODOptions {
   bool keepIntermediate = false;
   bool optimize = false;
   bool verbose = false;
+  bool keepOutputs = true;
   uint32_t optimizationLevel = 3;
 };
 

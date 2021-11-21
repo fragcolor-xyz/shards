@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bgfx/bgfx.h"
 #include <bgfx/bgfx.h>
 #include <memory>
 #include <stdint.h>
@@ -9,24 +10,19 @@ namespace gfx {
 struct Texture {
 	bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
 
-  private:
+private:
 	uint16_t width;
 	uint16_t height;
+	bgfx::TextureFormat::Enum format;
 
-  public:
-	Texture(uint16_t width, uint16_t height) : width(width), height(height) {}
-
-	Texture(Texture &&other) {
-		std::swap(width, other.width);
-		std::swap(height, other.height);
-		std::swap(handle, other.handle);
-	}
-
+public:
+	Texture(uint16_t width, uint16_t height, bgfx::TextureFormat::Enum format) : width(width), height(height), format(format) { handle = bgfx::createTexture2D(width, height, false, 1, format, 0); }
 	~Texture() {
 		if (handle.idx != bgfx::kInvalidHandle) {
 			bgfx::destroy(handle);
 		}
 	}
+	void update(const bgfx::Memory *memory, int mipLevel = 0) { bgfx::updateTexture2D(handle, 0, mipLevel, 0, 0, width, height, memory); }
 };
 
 using TexturePtr = std::shared_ptr<Texture>;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <functional>
+#include <stdint.h>
 
 namespace gfx {
 struct Hash128 {

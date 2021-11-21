@@ -9,15 +9,14 @@
 
 namespace gfx {
 
+struct StaticHashVisitor {
+	template <typename T, typename THasher> void operator()(const T &val, THasher &hasher) { val.hashStatic(hasher); }
+};
+
 void Material::modified() {
-	struct Visitor {
-		template <typename T, typename THasher> void operator()(const T &val, THasher& hasher) {
-			val.hashStatic(hasher);
-		}
-	};
-	HasherXXH128<Visitor> hasher;
-	data.hashStatic(hasher);
-	hash = hasher.getDigest();
+	HasherXXH128<StaticHashVisitor> hasher;
+	hasher(data);
+	staticHash = hasher.getDigest();
 }
 
 // static bool tryLoadShaderSource(std::string& outSource, const char* path) {
