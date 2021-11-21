@@ -1,6 +1,11 @@
 root = true
 
-[{*.edn,*.clj,*.cpp,*.hpp,*.h,*.c,*.js,CMakeLists.txt,*.cmake}]
+[{*.edn,*.clj,*.cpp,*.hpp,*.h,*.c,*.js}]
 charset = utf-8
 indent_size = 4
 indent_style = tab
+
+[{*.cmake,CMakeLists.txt}]
+charset = utf-8
+indent_size = 2
+indent_style = space
