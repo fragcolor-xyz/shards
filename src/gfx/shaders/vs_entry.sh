@@ -1,4 +1,4 @@
-#include <bgfx_shader.sh>
+#include <common.sh>
 
 struct MaterialInfo {
 	vec3 localPosition;
@@ -11,8 +11,8 @@ vec3 generateTangent(vec3 normal) {
 	return normalize(cross(vec3(normal.y, -normal.x, normal.z), normal));
 }
 
-#if GFX_HAS_USER_CODE
-void materialMain(inout MaterialInfo);
+#if GFX_HAS_VS_MATERIAL_MAIN
+void materialMain(inout MaterialInfo mi);
 #endif
 
 void main() {
@@ -37,7 +37,7 @@ void main() {
 	v_texcoord0 = a_texcoord0;
 #endif
 
-#if GFX_HAS_USER_CODE
+#if GFX_HAS_VS_MATERIAL_MAIN
 	materialMain(mi);
 #endif
 

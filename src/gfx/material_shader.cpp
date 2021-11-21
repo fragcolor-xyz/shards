@@ -148,7 +148,7 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	vsCode << "#include <vs_entry.sh>\n";
 
 	if (materialData.vertexCode.size() > 0) {
-		defines.push_back("GFX_HAS_USER_CODE=1");
+		defines.push_back("GFX_HAS_VS_MATERIAL_MAIN=1");
 		vsCode << "#define main materialMain\n";
 		vsCode << materialData.vertexCode;
 	}
@@ -158,7 +158,7 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	psCode << "#include <ps_entry.sh>\n";
 
 	if (materialData.pixelCode.size() > 0) {
-		defines.push_back("GFX_HAS_USER_CODE=1");
+		defines.push_back("GFX_HAS_PS_MATERIAL_MAIN=1");
 		psCode << "#define main materialMain\n";
 		psCode << materialData.pixelCode;
 	}

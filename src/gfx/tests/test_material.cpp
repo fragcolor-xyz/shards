@@ -97,3 +97,37 @@ TEST_CASE_METHOD(MaterialFixture, "Default material - base color texture", "[mat
 	drawTestFrame(materialContext);
 	CHECK_FRAME("materialBaseColorTexture");
 }
+
+TEST_CASE_METHOD(MaterialFixture, "Default material - custom pixel shader", "[material]") {
+	MaterialBuilderContext mbc(context);
+	MaterialUsageContext materialContext(mbc);
+	materialContext.material.modify([](MaterialData &data) {
+	data.pixelCode = R"(
+void main(inout MaterialInfo mi) {
+	float scale = 8.0;
+	float grid = float((int(mi.texcoord0.x * scale) + int(mi.texcoord0.y * scale)) % 2);
+	mi.color = mix(vec4(1,1,1,1), vec4(.5,.5,.5,1.0), grid);
+};
+)";
+	});
+
+	drawTestFrame(materialContext);
+	CHECK_FRAME("materialCustomPixelShader");
+}
+
+TEST_CASE_METHOD(MaterialFixture, "Default material - custom vertex shader", "[material]") {
+	MaterialBuilderContext mbc(context);
+	MaterialUsageContext materialContext(mbc);
+	materialContext.material.modify([](MaterialData &data) {
+	data.vertexCode = R"(
+void main(inout MaterialInfo mi) {
+	float angle = acos(abs(mi.normal.x));
+	float bump = cos(angle * 8.0) * 0.05;
+	mi.localPosition += mi.normal * bump;
+};
+)";
+	});
+
+	drawTestFrame(materialContext);
+	CHECK_FRAME("materialCustomPixelShader");
+}

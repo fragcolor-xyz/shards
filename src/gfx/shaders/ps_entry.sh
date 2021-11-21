@@ -16,18 +16,22 @@ SAMPLER2D(u_emissiveTexture, u_emissiveTexture_register);
 #endif
 
 struct MaterialInfo {
+	vec2 texcoord0;
 	vec4 color;
 	vec3 normal;
 	vec3 tangent;
 };
 
-#ifdef GFX_HAS_USER_CODE
-void materialMain(inout MaterialInfo);
+#ifdef GFX_HAS_PS_MATERIAL_MAIN
+void materialMain(inout MaterialInfo mi);
 #endif
 
 void main() {
 	MaterialInfo mi;
+	mi.texcoord0 = v_texcoord0;
 	mi.color = v_color0;
+	mi.normal = v_normal;
+	mi.tangent = v_tangent;
 	
 	mi.color *= u_baseColor;
 
@@ -35,10 +39,7 @@ void main() {
 	mi.color = mi.color * texture2D(u_baseColorTexture, u_baseColorTexture_texcoord);
 #endif
 
-	mi.normal = v_normal;
-	mi.tangent = v_tangent;
-
-#ifdef GFX_HAS_USER_CODE
+#ifdef GFX_HAS_PS_MATERIAL_MAIN
 	materialMain(mi);
 #endif
 

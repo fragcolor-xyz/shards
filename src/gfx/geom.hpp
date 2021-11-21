@@ -32,8 +32,8 @@ struct GeneratorBase {
 struct SphereGenerator : public GeneratorBase {
 	float radius = 1.0f;
 
-	size_t widthSegments = 16;
-	size_t heightSegments = 8;
+	size_t widthSegments = 32;
+	size_t heightSegments = 20;
 
 	float phiStart = 0;
 	float phiLength = pi2;
