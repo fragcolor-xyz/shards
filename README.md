@@ -8,7 +8,7 @@
 - Warning: Work in progress
 ```
 
-![license](https://img.shields.io/github/license/fragcolor-xyz/chainblocks)
+[![license](https://img.shields.io/github/license/fragcolor-xyz/chainblocks)](./LICENSE)
 ![CI](https://github.com/fragcolor-xyz/chainblocks/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/fragcolor-xyz/chainblocks/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/chainblocks)
 [![docs](https://img.shields.io/badge/docs-API-blueviolet)](https://docs.fragcolor.xyz/)
