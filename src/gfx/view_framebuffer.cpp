@@ -21,10 +21,7 @@ void ViewFrameBuffer::rebuild() {
 	std::vector<FrameBufferAttachment> attachments;
 	for (auto info : textureInfos) {
 		int2 textureSize = int2(float2(referenceSize) * info.scale);
-		uint64_t flags = 0;
-		if (info.cpuReadBack) {
-			flags |= BGFX_TEXTURE_READ_BACK;
-		}
+		uint64_t flags = BGFX_TEXTURE_RT;
 		TexturePtr texture = std::make_shared<Texture>(textureSize, info.format, flags);
 		textures.push_back(texture);
 		attachments.push_back(texture);

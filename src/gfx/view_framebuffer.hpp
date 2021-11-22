@@ -11,7 +11,6 @@ namespace gfx {
 struct ViewFrameBufferTextureInfo {
 	float scale = 1.0f;
 	bgfx::TextureFormat::Enum format;
-	bool cpuReadBack = false;
 };
 
 struct ViewFrameBuffer {

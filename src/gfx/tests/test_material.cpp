@@ -1,4 +1,5 @@
 #include "bgfx/bgfx.h"
+#include "bgfx/defines.h"
 #include "draw_fixture.hpp"
 #include "gfx/tests/test_data.hpp"
 #include "gfx/texture.hpp"
@@ -154,13 +155,19 @@ void main(inout MaterialInfo mi) {
 	});
 
 	gfx::ViewFrameBuffer viewFrameBuffer = {
-		{1.0f, bgfx::TextureFormat::BGRA8, true},
-		{1.0f, bgfx::TextureFormat::BGRA8, true},
-		{1.0f, bgfx::TextureFormat::D32F, true},
+		{1.0f, bgfx::TextureFormat::BGRA8},
+		{1.0f, bgfx::TextureFormat::BGRA8},
+		{1.0f, bgfx::TextureFormat::D32F},
 	};
+	std::vector<TexturePtr> readbackTextures;
 	std::vector<uint8_t> readbackBuffers[3];
 	uint32_t readbackFrameAvailable = 0;
 	int2 viewSize;
+
+	bgfx::resetView(0);
+	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, gfx::colorToRGBA(Color(0, 0, 0, 255)));
+	bgfx::touch(0);
+	bgfx::frame(true);
 
 	{
 		gfx::FrameCaptureSync _(context);
@@ -169,32 +176,44 @@ void main(inout MaterialInfo mi) {
 
 		gfx::View &view = frame.pushMainOutputView();
 		bgfx::setViewClear(view.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, gfx::colorToRGBA(Color(0, 0, 0, 255)));
+		bgfx::touch(view.id);
 
 		viewSize = view.getSize();
 
 		gfx::FrameBufferPtr frameBuffer = viewFrameBuffer.begin(view);
 		bgfx::setViewFrameBuffer(view.id, frameBuffer->handle);
 
-		size_t readbackBufferSize = view.getSize().x * view.getSize().y * sizeof(uint32_t);
+		renderTestSphere(view, materialContext);
+
+		frame.popView();
+
+		View &view1 = frame.pushMainOutputView();
+		size_t readbackBufferSize = view1.getSize().x * view1.getSize().y * sizeof(uint32_t);
 		for (size_t i = 0; i < 3; i++) {
 			auto &readbackBuffer = readbackBuffers[i];
 			readbackBuffer.resize(readbackBufferSize);
 			TexturePtr texture = viewFrameBuffer.getTexture(i);
-			readbackFrameAvailable = bgfx::readTexture(texture->handle, readbackBuffers->data(), 0);
+			TexturePtr readbackTexture = std::make_shared<Texture>(texture->getSize(), texture->getFormat(), BGFX_TEXTURE_READ_BACK | BGFX_TEXTURE_BLIT_DST);
+			readbackTextures.push_back(readbackTexture);
+			bgfx::blit(view1.id, readbackTexture->handle, 0, 0, texture->handle);
+			readbackFrameAvailable = bgfx::readTexture(readbackTexture->handle, readbackBuffer.data(), 0);
 		}
-
-		renderTestSphere(view, materialContext);
-
 		frame.popView();
+
 		frame.end(true);
-		uint32_t frameNumber = bgfx::frame();
+		uint32_t frameNumber = bgfx::frame(true);
 		CHECK(frameNumber >= readbackFrameAvailable);
 	}
 
-	TestFrame frame0(readbackBuffers->data(), viewSize, TestFrameFormat::BGRA8, sizeof(uint32_t) * viewSize.x, false);
-	TestFrame frame1(readbackBuffers->data(), viewSize, TestFrameFormat::BGRA8, sizeof(uint32_t) * viewSize.x, false);
-	TestFrame frame2(readbackBuffers->data(), viewSize, TestFrameFormat::R32F, sizeof(uint32_t) * viewSize.x, false);
+	TestFrame frame0(readbackBuffers[0].data(), viewSize, TestFrameFormat::BGRA8, sizeof(uint32_t) * viewSize.x, false);
+	TestFrame frame1(readbackBuffers[1].data(), viewSize, TestFrameFormat::BGRA8, sizeof(uint32_t) * viewSize.x, false);
+	TestFrame frame2(readbackBuffers[2].data(), viewSize, TestFrameFormat::R32F, sizeof(uint32_t) * viewSize.x, false);
 	CHECK(testData.checkFrame("materialMRT0", frame0));
 	CHECK(testData.checkFrame("materialMRT1", frame1));
 	CHECK(testData.checkFrame("materialMRT2", frame2));
+
+	bgfx::resetView(0);
+	bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, gfx::colorToRGBA(Color(0, 0, 0, 255)));
+	bgfx::touch(0);
+	bgfx::frame(true);
 }

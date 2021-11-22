@@ -31,7 +31,6 @@ using TexturePtr = std::shared_ptr<Texture>;
 struct FrameBufferAttachment {
 	bgfx::Attachment bgfxAttachment;
 	TexturePtr texture;
-	bool cpuReadBack = true;
 
 	FrameBufferAttachment(bgfx::Attachment &&bgfxAttachment);
 	FrameBufferAttachment(TexturePtr texture);
@@ -53,13 +52,14 @@ private:
 	template <typename TIter> void construct(TIter begin, TIter end) {
 		std::vector<bgfx::Attachment> bgfxAttachments;
 		for (auto it = begin; it != end; ++it) {
-			if (it->texture) {
+			const FrameBufferAttachment& attachment = *it;
+			if (attachment.texture) {
 				bgfx::Attachment bgfxAttachment;
-				bgfxAttachment.init(it->texture->handle, bgfx::Access::ReadWrite);
-				referencedTextures.push_back(it->texture);
+				bgfxAttachment.init(attachment.texture->handle, bgfx::Access::Write);
+				referencedTextures.push_back(attachment.texture);
 				bgfxAttachments.push_back(bgfxAttachment);
 			} else {
-				bgfxAttachments.push_back(it->bgfxAttachment);
+				bgfxAttachments.push_back(attachment.bgfxAttachment);
 			}
 		}
 		handle = bgfx::createFrameBuffer(bgfxAttachments.size(), bgfxAttachments.data(), false);

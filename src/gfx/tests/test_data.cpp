@@ -85,7 +85,7 @@ void TestFrame::set(const uint8_t *imageData, int2 size, TestFrameFormat format,
 			return (uint32_t(color[0]) << 0) | (uint32_t(color[1]) << 8) | (uint32_t(color[2]) << 16) | (uint32_t(color[3]) << 24);
 		});
 	} else if (format == TestFrameFormat::R32F) {
-		copyToARGB8<uint32_t>(pixels.data(), srcData, size, pitch, yflip, [](const float &srcColor) -> uint32_t {
+		copyToARGB8<float>(pixels.data(), srcData, size, pitch, yflip, [](const float &srcColor) -> uint32_t {
 			uint8_t r = uint8_t(srcColor * 255.0f);
 			return (uint32_t(r) << 0) | (uint32_t(0) << 8) | (uint32_t(0) << 16) | (uint32_t(255) << 24);
 		});
