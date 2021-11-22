@@ -81,9 +81,9 @@ endif()
 
 target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem)
 
-target_link_libraries(chainblocks-core-static 
+target_link_libraries(chainblocks-core-static
   spdlog magic_enum nameof linalg xxHash
-  pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem 
+  pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
 )
 
 if(NOT EMSCRIPTEN)
@@ -98,34 +98,43 @@ elseif(APPLE)
   if(NOT IOS)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
       # these have to be full path or cmake will revert to use -l resulting in dynamic linking
-      target_link_libraries(chainblocks-core-static
-        /usr/local/opt/openssl@1.1/lib/libssl.a
-        /usr/local/opt/openssl@1.1/lib/libcrypto.a
-      )
+      if(EXISTS "/usr/local/opt/openssl@1.1/lib/libssl.a")
+        target_link_libraries(chainblocks-core-static
+          /usr/local/opt/openssl@1.1/lib/libssl.a
+          /usr/local/opt/openssl@1.1/lib/libcrypto.a
+        )
+      else()
+        target_link_libraries(chainblocks-core-static
+          /opt/homebrew/opt/openssl@1.1/lib/libssl.a
+          /opt/homebrew/opt/openssl@1.1/lib/libcrypto.a
+        )
+      endif()
     else()
       target_link_libraries(chainblocks-core-static
         -lssl -lcrypto
       )
     endif()
   endif()
-  
-  target_include_directories(chainblocks-core-static PUBLIC 
+
+  target_include_directories(chainblocks-core-static PUBLIC
     /usr/local/include
     /usr/local/opt/openssl@1.1/include
+    /opt/homebrew/opt/openssl@1.1/include
   )
   target_link_directories(chainblocks-core-static PUBLIC
     /usr/local/lib
     /usr/local/opt/openssl@1.1/lib
+    /opt/homebrew/opt/openssl@1.1/lib
   )
 elseif(UNIX AND NOT EMSCRIPTEN)
   target_link_libraries(chainblocks-core-static ssl crypto pthread dl rt)
 endif()
 
-target_compile_options(chainblocks-core-static 
+target_compile_options(chainblocks-core-static
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
 )
 
-target_compile_options(chainblocks-core-static 
+target_compile_options(chainblocks-core-static
   PUBLIC -Wno-multichar
   PRIVATE -Wno-missing-field-initializers -Wno-deprecated-copy
 )
@@ -138,14 +147,14 @@ endif()
 
 if(EMSCRIPTEN)
   em_link_js_library(chainblocks-core-static blocks/core.js)
-  
-  target_compile_options(chainblocks-core-static PUBLIC 
+
+  target_compile_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-s FETCH=1"
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
   )
-  
+
   target_link_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-s NO_EXIT_RUNTIME=1"
@@ -182,8 +191,8 @@ target_link_libraries(cbedn chainblocks-core)
 
 if(CHAINBLOCKS_BUILD_TESTS)
   add_executable(test_runtime ../tests/test_runtime.cpp)
-  
-  target_link_libraries(test_runtime 
+
+  target_link_libraries(test_runtime
     chainblocks-core Catch2 Catch2WithMain
   )
   catch_discover_tests(test_runtime)
