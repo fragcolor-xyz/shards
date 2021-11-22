@@ -57,6 +57,20 @@ inline void generateSphereMesh(bgfx::VertexBufferHandle &vb, bgfx::IndexBufferHa
 	ib = bgfx::createIndexBuffer(indexMem);
 }
 
+inline void generateFullscreenQuad(bgfx::VertexBufferHandle &vb, bgfx::IndexBufferHandle &ib) {
+	gfx::geom::PlaneGenerator gen;
+	gen.width = 2.0f;
+	gen.height = 2.0f;
+	gen.heightSegments = 1;
+	gen.widthSegments = 1;
+	gen.generate();
+
+	const bgfx::Memory *vertMem = bgfx::copy(gen.vertices.data(), gen.vertices.size() * sizeof(gfx::geom::VertexPNT));
+	vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
+	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
+	ib = bgfx::createIndexBuffer(indexMem);
+}
+
 inline void setWorldViewProj(gfx::View &view, gfx::float3 cameraLocation = gfx::float3(0, 0, -5)) {
 	bgfx::Transform transformCache;
 

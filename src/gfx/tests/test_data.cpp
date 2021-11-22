@@ -1,4 +1,5 @@
 #include "test_data.hpp"
+#include "bgfx/bgfx.h"
 #include "bx/error.h"
 #include "bx/file.h"
 #include "bx/filepath.h"
@@ -13,6 +14,7 @@
 #include <cassert>
 #include <gfx/capture.hpp>
 #include <gfx/paths.hpp>
+#include <gfx/texture.hpp>
 #include <gfx/types.hpp>
 
 #pragma GCC diagnostic push
@@ -24,36 +26,71 @@
 #pragma GCC diagnostic pop
 
 namespace gfx {
-TestFrame::TestFrame(uint32_t *imageData, int2 size, uint32_t pitch, bool yflip) { set(imageData, size, pitch, yflip); }
+TestFrame::TestFrame(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip) { set(imageData, size, format, pitch, yflip); }
 
 TestFrame::TestFrame(const SingleFrameCapture &capture) {
-	assert(capture.format.format == bgfx::TextureFormat::BGRA8);
 	assert(capture.format.size.x > 0 && capture.format.size.y > 0);
 
-	uint32_t *srcData = (uint32_t *)capture.data.data();
-	set(srcData, capture.format.size, capture.format.pitch, capture.format.yflip);
-
-	// ARGB to ABGR
-	uint32_t *pixelData = pixels.data();
-	size_t numPixels = size.x * size.y;
-	for (size_t p = 0; p < numPixels; p++) {
-		Color color = colorFromARGB(pixelData[p]);
-		pixelData[p] = (uint32_t(color.x) << 0) | (uint32_t(color.y) << 8) | (uint32_t(color.z) << 16) | (uint32_t(color.w) << 24);
+	TestFrameFormat testFrameFormat;
+	switch (capture.format.format) {
+	case bgfx::TextureFormat::BGRA8:
+		testFrameFormat = TestFrameFormat::BGRA8;
+		break;
+	case bgfx::TextureFormat::RGBA8:
+		testFrameFormat = TestFrameFormat::RGBA8;
+		break;
+	case bgfx::TextureFormat::R32F:
+		testFrameFormat = TestFrameFormat::R32F;
+		break;
+	default:
+		assert(false && "Unsupported format");
 	}
+
+	set(capture.data.data(), capture.format.size, testFrameFormat, capture.format.pitch, capture.format.yflip);
 }
 
-void TestFrame::set(uint32_t *imageData, int2 size, uint32_t pitch, bool yflip) {
-	this->size = size;
-	size_t numPixels = size.x * size.y;
-
-	uint8_t *srcData = (uint8_t *)imageData;
-
-	pixels.resize(numPixels);
+template <typename TSrcFormat, typename TLambda> void copyToARGB8(uint32_t *dst, const uint8_t *src, int2 size, uint32_t pitch, bool yflip, TLambda &&convert) {
 	for (size_t _y = 0; _y < size_t(size.y); _y++) {
 		size_t srcY = _y;
 		size_t dstY = yflip ? (size.y - 1 - _y) : _y;
 
-		memcpy(&pixels[dstY * size.x], &srcData[srcY * pitch], sizeof(pixel_t) * size.x);
+		uint32_t *dstLine = &dst[dstY * size.x];
+		TSrcFormat *srcLine = (TSrcFormat *)&src[srcY * pitch];
+
+		for (size_t x = 0; x < size_t(size.x); x++) {
+			dstLine[x] = convert(srcLine[x]);
+		}
+	}
+}
+
+void TestFrame::set(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip) {
+	this->size = size;
+
+	size_t numPixels = size.x * size.y;
+	pixels.resize(numPixels);
+
+	uint8_t *srcData = (uint8_t *)imageData;
+
+	// Internal layout (bit offset)
+	// 24 16 8  0
+	// A  B  G  R
+	if (format == TestFrameFormat::BGRA8) {
+		copyToARGB8<uint32_t>(pixels.data(), srcData, size, pitch, yflip, [](const uint32_t &srcColor) -> uint32_t {
+			const uint8_t *color = (uint8_t *)&srcColor;
+			return (uint32_t(color[2]) << 0) | (uint32_t(color[1]) << 8) | (uint32_t(color[0]) << 16) | (uint32_t(color[3]) << 24);
+		});
+	} else if (format == TestFrameFormat::RGBA8) {
+		copyToARGB8<uint32_t>(pixels.data(), srcData, size, pitch, yflip, [](const uint32_t &srcColor) -> uint32_t {
+			const uint8_t *color = (uint8_t *)&srcColor;
+			return (uint32_t(color[0]) << 0) | (uint32_t(color[1]) << 8) | (uint32_t(color[2]) << 16) | (uint32_t(color[3]) << 24);
+		});
+	} else if (format == TestFrameFormat::R32F) {
+		copyToARGB8<uint32_t>(pixels.data(), srcData, size, pitch, yflip, [](const float &srcColor) -> uint32_t {
+			uint8_t r = uint8_t(srcColor * 255.0f);
+			return (uint32_t(r) << 0) | (uint32_t(0) << 8) | (uint32_t(0) << 16) | (uint32_t(255) << 24);
+		});
+	} else {
+		assert(false && "Unsupported format");
 	}
 }
 
@@ -106,7 +143,7 @@ bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
 		return false;
 	}
 
-	frame.set((uint32_t *)data, size, size.x * sizeof(TestFrame::pixel_t), false);
+	frame.set(data, size, TestFrameFormat::BGRA8, size.x * sizeof(TestFrame::pixel_t), false);
 
 	return true;
 }

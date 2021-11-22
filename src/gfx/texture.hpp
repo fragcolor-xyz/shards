@@ -1,116 +1,69 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
+#include "linalg.hpp"
 #include <bgfx/bgfx.h>
 #include <memory>
+#include <optional>
 #include <stdint.h>
 #include <utility>
+#include <vector>
 
 namespace gfx {
 struct Texture {
 	bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
 
 private:
-	uint16_t width;
-	uint16_t height;
+	int2 size;
 	bgfx::TextureFormat::Enum format;
 
 public:
-	Texture(uint16_t width, uint16_t height, bgfx::TextureFormat::Enum format) : width(width), height(height), format(format) { handle = bgfx::createTexture2D(width, height, false, 1, format, 0); }
-	~Texture() {
-		if (handle.idx != bgfx::kInvalidHandle) {
-			bgfx::destroy(handle);
-		}
-	}
-	void update(const bgfx::Memory *memory, int mipLevel = 0) { bgfx::updateTexture2D(handle, 0, mipLevel, 0, 0, width, height, memory); }
+	Texture(int2 size, bgfx::TextureFormat::Enum format, uint64_t flags = 0);
+	~Texture();
+
+	bgfx::TextureFormat::Enum getFormat() const { return format; }
+	int2 getSize() const { return size; }
+
+	void update(const bgfx::Memory *memory, int mipLevel = 0);
+};
+using TexturePtr = std::shared_ptr<Texture>;
+
+struct FrameBufferAttachment {
+	bgfx::Attachment bgfxAttachment;
+	TexturePtr texture;
+	bool cpuReadBack = true;
+
+	FrameBufferAttachment(bgfx::Attachment &&bgfxAttachment);
+	FrameBufferAttachment(TexturePtr texture);
 };
 
-using TexturePtr = std::shared_ptr<Texture>;
+struct FrameBuffer {
+	bgfx::FrameBufferHandle handle = BGFX_INVALID_HANDLE;
+
+private:
+	std::vector<TexturePtr> referencedTextures;
+
+public:
+	FrameBuffer(const std::vector<FrameBufferAttachment> &attachments) { construct(attachments.begin(), attachments.end()); }
+	FrameBuffer(const std::initializer_list<FrameBufferAttachment> &attachments) { construct(attachments.begin(), attachments.end()); }
+
+	~FrameBuffer();
+
+private:
+	template <typename TIter> void construct(TIter begin, TIter end) {
+		std::vector<bgfx::Attachment> bgfxAttachments;
+		for (auto it = begin; it != end; ++it) {
+			if (it->texture) {
+				bgfx::Attachment bgfxAttachment;
+				bgfxAttachment.init(it->texture->handle, bgfx::Access::ReadWrite);
+				referencedTextures.push_back(it->texture);
+				bgfxAttachments.push_back(bgfxAttachment);
+			} else {
+				bgfxAttachments.push_back(it->bgfxAttachment);
+			}
+		}
+		handle = bgfx::createFrameBuffer(bgfxAttachments.size(), bgfxAttachments.data(), false);
+	}
+};
+using FrameBufferPtr = std::shared_ptr<FrameBuffer>;
 } // namespace gfx
-
-// struct Texture {
-// 	static inline Type ObjType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = BgfxTextureHandleCC}}}};
-// 	static inline Type SeqType = Type::SeqOf(ObjType);
-// 	static inline Type VarType = Type::VariableOf(ObjType);
-// 	static inline Type VarSeqType = Type::VariableOf(SeqType);
-
-// 	static inline ObjectVar<Texture> Var{"BGFX-Texture", CoreCC, BgfxTextureHandleCC};
-
-// 	bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
-// 	uint16_t width = 0;
-// 	uint16_t height = 0;
-// 	uint8_t channels = 0;
-// 	int bpp = 1;
-
-// 	void init(uint32_t width, uint32_t height, bgfx::TextureFormat::Enum format);
-
-// 	~Texture() {
-// 		if (handle.idx != bgfx::kInvalidHandle) {
-// 			bgfx::destroy(handle);
-// 		}
-// 	}
-// };
-
-// utility macro to load textures of different sizes
-// #define BGFX_TEXTURE2D_CREATE(_bits, _components, _texture)
-// 	if (_bits == 8) {
-// 		switch (_components) {
-// 		case 1:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::R8);
-// 			break;
-// 		case 2:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RG8);
-// 			break;
-// 		case 3:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGB8);
-// 			break;
-// 		case 4:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGBA8);
-// 			break;
-// 		default:
-// 			CBLOG_FATAL("invalid state");
-// 			break;
-// 		}
-// 	}
-// 	else if (_bits == 16) {
-// 		switch (_components) {
-// 		case 1:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::R16);
-// 			break;
-// 		case 2:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RG16);
-// 			break;
-// 		case 3:
-// 			throw ActivationError(
-// 				"Format not supported, it seems bgfx has no "
-// 				"RGB16, try using RGBA16 instead (FillAlpha).");
-// 			break;
-// 		case 4:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGBA16);
-// 			break;
-// 		default:
-// 			CBLOG_FATAL("invalid state");
-// 			break;
-// 		}
-// 	}
-// 	else if (_bits == 32) {
-// 		switch (_components) {
-// 		case 1:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::R32F);
-// 			break;
-// 		case 2:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RG32F);
-// 			break;
-// 		case 3:
-// 			throw ActivationError(
-// 				"Format not supported, it seems bgfx has no RGB32F, try using "
-// 				"RGBA32F instead (FillAlpha).");
-// 			break;
-// 		case 4:
-// 			_texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGBA32F);
-// 			break;
-// 		default:
-// 			CBLOG_FATAL("invalid state");
-// 			break;
-// 		}
-// 	}

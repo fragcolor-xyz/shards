@@ -39,7 +39,7 @@ struct FrameRenderer {
 	FrameRenderer &operator=(const FrameRenderer &) = delete;
 
 	void begin();
-	void end(bool capture = false);
+	uint32_t end(bool capture = false);
 
 	constexpr bool isPicking() const { return _picking; }
 	void setPicking(bool picking) { _picking = picking; }

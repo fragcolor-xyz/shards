@@ -1,4 +1,5 @@
 #pragma once
+#include "bgfx/bgfx.h"
 #include <bx/filepath.h>
 #include <gfx/linalg.hpp>
 #include <gfx/test_platform_id.hpp>
@@ -6,7 +7,15 @@
 #include <vector>
 
 namespace gfx {
+struct Texture;
 struct SingleFrameCapture;
+
+enum class TestFrameFormat {
+	BGRA8,
+	RGBA8,
+	R32F,
+};
+
 struct TestFrame {
 	typedef uint32_t pixel_t;
 
@@ -16,9 +25,9 @@ private:
 
 public:
 	TestFrame() = default;
-	TestFrame(uint32_t *imageData, int2 size, uint32_t pitch, bool yflip);
+	TestFrame(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip);
 	TestFrame(const SingleFrameCapture &capture);
-	void set(uint32_t *imageData, int2 size, uint32_t pitch, bool yflip);
+	void set(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip);
 	bool compare(const TestFrame &other, float tolerance = 0.f) const;
 
 	const std::vector<pixel_t> &getPixels() const { return pixels; }

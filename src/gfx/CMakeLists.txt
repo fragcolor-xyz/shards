@@ -10,11 +10,12 @@ endif()
 add_library(gfx 
   context.cpp
   imgui.cpp
-  # frame.cpp
   material.cpp
   material_shader.cpp
   # shader_cache.cpp
-#   mesh.cpp
+  # mesh.cpp
+  texture.cpp
+  view_framebuffer.cpp
   geom.cpp
   test_platform_id.cpp
   loop.cpp

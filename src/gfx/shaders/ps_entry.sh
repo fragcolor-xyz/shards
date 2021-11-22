@@ -15,9 +15,18 @@ SAMPLER2D(u_metallicRougnessTexture, u_metallicRougnessTexture_register);
 SAMPLER2D(u_emissiveTexture, u_emissiveTexture_register);
 #endif
 
+#ifndef DEFAULT_COLOR_FIELD
+#define DEFAULT_COLOR_FIELD color
+#endif
+
 struct MaterialInfo {
-	vec2 texcoord0;
+#ifdef GFX_MRT_FIELDS
+	GFX_MRT_FIELDS
+#else
 	vec4 color;
+#endif
+
+	vec2 texcoord0;
 	vec3 normal;
 	vec3 tangent;
 };
@@ -29,19 +38,23 @@ void materialMain(inout MaterialInfo mi);
 void main() {
 	MaterialInfo mi;
 	mi.texcoord0 = v_texcoord0;
-	mi.color = v_color0;
+	mi.DEFAULT_COLOR_FIELD = v_color0;
 	mi.normal = v_normal;
 	mi.tangent = v_tangent;
-	
-	mi.color *= u_baseColor;
+
+	mi.DEFAULT_COLOR_FIELD *= u_baseColor;
 
 #ifdef GFX_BASE_COLOR_TEXTURE
-	mi.color = mi.color * texture2D(u_baseColorTexture, u_baseColorTexture_texcoord);
+	mi.DEFAULT_COLOR_FIELD = mi.DEFAULT_COLOR_FIELD * texture2D(u_baseColorTexture, u_baseColorTexture_texcoord);
 #endif
 
 #ifdef GFX_HAS_PS_MATERIAL_MAIN
 	materialMain(mi);
 #endif
 
-	gl_FragColor = mi.color;
+#ifdef GFX_MRT_ASSIGNMENTS
+	GFX_MRT_ASSIGNMENTS
+#else
+	gl_FragColor = mi.DEFAULT_COLOR_FIELD;
+#endif
 }

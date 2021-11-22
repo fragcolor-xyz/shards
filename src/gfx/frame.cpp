@@ -13,10 +13,10 @@ void FrameRenderer::begin() {
 	bgfx::setUniform(context.timeUniformHandle, time, 1);
 }
 
-void FrameRenderer::end(bool capture) {
+uint32_t FrameRenderer::end(bool capture) {
 	assert(views.size() == 0);
 	context.endFrame(this);
-	bgfx::frame(capture);
+	return bgfx::frame(capture);
 }
 
 uint32_t FrameRenderer::addFrameDrawable(IDrawable *drawable) {

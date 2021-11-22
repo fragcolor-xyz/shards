@@ -54,7 +54,7 @@ TexturePtr MaterialBuilderContext::createFallbackTexture() {
 		fallbackTextureColors[i] = colorToARGB(colorFromFloat(fallbackTextureColor));
 	}
 
-	TexturePtr texture = std::make_shared<Texture>(2, 2, bgfx::TextureFormat::RGBA8);
+	TexturePtr texture = std::make_shared<Texture>(int2(2, 2), bgfx::TextureFormat::RGBA8);
 	texture->update(bgfx::copy(fallbackTextureColors, sizeof(fallbackTextureColors)));
 	return texture;
 }
@@ -78,15 +78,16 @@ ShaderProgramPtr MaterialUsageContext::getProgram() {
 	return program;
 }
 
-ShaderProgramPtr MaterialUsageContext::compileProgram() {
-	const MaterialData &materialData = material.getData();
-
+struct MaterialShaderBuilder {
 	std::vector<std::string> attributeNames;
 	std::vector<std::string> varyingNames;
 	std::vector<std::string> defines;
 	std::stringstream varyings;
+	std::stringstream vsCode, psCode;
+	std::unordered_map<std::string, size_t> textureRegisterMap;
+	bool usesMultipleRenderTargets = false;
 
-	auto addGenericAttribute = [&](std::string name, const char *type) {
+	void addGenericAttribute(std::string name, const char *type) {
 		std::string nameUpper = name;
 		boost::algorithm::to_upper(nameUpper);
 
@@ -95,7 +96,7 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 		defines.push_back("GFX_HAS_VERTEX_" + nameUpper + "=1");
 	};
 
-	auto addVarying = [&](std::string name, const char *type) {
+	void addVarying(std::string name, const char *type) {
 		std::string nameUpper = name;
 		boost::algorithm::to_upper(nameUpper);
 
@@ -103,99 +104,140 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 		varyings << type << " v_" << name << " : " << nameUpper << ";\n";
 	};
 
-	addGenericAttribute("position", "vec3");
-	addGenericAttribute("texcoord0", "vec2");
+	void assignTextureSlots(const MaterialData &materialData) {
+		size_t textureCounter = 0;
+		for (auto &textureSlot : materialData.textureSlots) {
+			if (textureSlot.first == MaterialBuiltin::baseColorTexture) {
+				defines.push_back(fmt::format("GFX_BASE_COLOR_TEXTURE={}", textureSlot.second.texCoordIndex));
+			} else if (textureSlot.first == MaterialBuiltin::normalTexture) {
+				defines.push_back(fmt::format("GFX_NORMAL_TEXTURE={}", textureSlot.second.texCoordIndex));
+			} else if (textureSlot.first == MaterialBuiltin::metalicRoughnessTexture) {
+				defines.push_back(fmt::format("GFX_METALLIC_ROUGHNESS_TEXTURE={}", textureSlot.second.texCoordIndex));
+			} else if (textureSlot.first == MaterialBuiltin::emissiveTexture) {
+				defines.push_back(fmt::format("GFX_EMISSIVE_TEXTURE={}", textureSlot.second.texCoordIndex));
+			}
 
-	if (materialUsageFlags & MaterialUsageFlags::HasNormals) {
-		addGenericAttribute("normal", "vec3");
+			defines.push_back(fmt::format("u_{}_register={}", textureSlot.first, textureCounter));
+			defines.push_back(fmt::format("u_{}_texcoord=v_texcoord{}", textureSlot.first, textureSlot.second.texCoordIndex));
+			textureRegisterMap[textureSlot.first] = textureCounter;
+			textureCounter++;
+		}
 	}
 
-	if (materialUsageFlags & MaterialUsageFlags::HasTangents) {
-		addGenericAttribute("tangent", "vec3");
-	}
+	void build(const MaterialData &materialData, MaterialUsageFlags::Type materialUsageFlags) {
+		addGenericAttribute("position", "vec3");
+		addGenericAttribute("texcoord0", "vec2");
 
-	if (materialUsageFlags & MaterialUsageFlags::HasVertexColors) {
-		addGenericAttribute("color0", "vec4");
-	}
-
-	addVarying("texcoord0", "vec2");
-	addVarying("normal", "vec3");
-	addVarying("tangent", "vec3");
-	addVarying("color0", "vec4");
-
-	textureRegisterMap.clear();
-	size_t textureCounter = 0;
-	for (auto &textureSlot : materialData.textureSlots) {
-		if (textureSlot.first == MaterialBuiltin::baseColorTexture) {
-			defines.push_back(fmt::format("GFX_BASE_COLOR_TEXTURE={}", textureSlot.second.texCoordIndex));
-		} else if (textureSlot.first == MaterialBuiltin::normalTexture) {
-			defines.push_back(fmt::format("GFX_NORMAL_TEXTURE={}", textureSlot.second.texCoordIndex));
-		} else if (textureSlot.first == MaterialBuiltin::metalicRoughnessTexture) {
-			defines.push_back(fmt::format("GFX_METALLIC_ROUGHNESS_TEXTURE={}", textureSlot.second.texCoordIndex));
-		} else if (textureSlot.first == MaterialBuiltin::emissiveTexture) {
-			defines.push_back(fmt::format("GFX_EMISSIVE_TEXTURE={}", textureSlot.second.texCoordIndex));
+		if (materialUsageFlags & MaterialUsageFlags::HasNormals) {
+			addGenericAttribute("normal", "vec3");
 		}
 
-		defines.push_back(fmt::format("u_{}_register={}", textureSlot.first, textureCounter));
-		defines.push_back(fmt::format("u_{}_texcoord=v_texcoord{}", textureSlot.first, textureSlot.second.texCoordIndex));
-		textureRegisterMap[textureSlot.first] = textureCounter;
-		textureCounter++;
+		if (materialUsageFlags & MaterialUsageFlags::HasTangents) {
+			addGenericAttribute("tangent", "vec3");
+		}
+
+		if (materialUsageFlags & MaterialUsageFlags::HasVertexColors) {
+			addGenericAttribute("color0", "vec4");
+		}
+
+		addVarying("texcoord0", "vec2");
+		addVarying("normal", "vec3");
+		addVarying("tangent", "vec3");
+		addVarying("color0", "vec4");
+
+		assignTextureSlots(materialData);
+
+		if (materialData.pixelCode.size() > 0) {
+			if (materialData.mrtOutputs.size() > 0) {
+				usesMultipleRenderTargets = true;
+				std::string mrtOutputFields;
+				std::string mrtOutputAssignments;
+				for (uint32_t mrtOutputIndex : materialData.mrtOutputs) {
+					mrtOutputFields += fmt::format("vec4 color{};", mrtOutputIndex);
+					mrtOutputAssignments += fmt::format("gl_FragData[{0}] = mi.color{0};", mrtOutputIndex);
+				}
+				defines.push_back(fmt::format("GFX_MRT_FIELDS={}", mrtOutputFields));
+				defines.push_back(fmt::format("GFX_MRT_ASSIGNMENTS={}", mrtOutputAssignments));
+				defines.push_back(fmt::format("DEFAULT_COLOR_FIELD=color{}", materialData.mrtOutputs[0]));
+			}
+		}
+
+		generateVertexCode(materialData);
+		generatePixelCode(materialData);
 	}
 
-	std::stringstream vsCode;
-	vsCode << "$input " << boost::algorithm::join(attributeNames, ", ") << "\n";
-	vsCode << "$output " << boost::algorithm::join(varyingNames, ", ") << "\n";
-	vsCode << "#include <vs_entry.sh>\n";
+	void generateVertexCode(const MaterialData &materialData) {
+		vsCode << "$input " << boost::algorithm::join(attributeNames, ", ") << "\n";
+		vsCode << "$output " << boost::algorithm::join(varyingNames, ", ") << "\n";
+		vsCode << "#include <vs_entry.sh>\n";
 
-	if (materialData.vertexCode.size() > 0) {
-		defines.push_back("GFX_HAS_VS_MATERIAL_MAIN=1");
-		vsCode << "#define main materialMain\n";
-		vsCode << materialData.vertexCode;
+		if (materialData.vertexCode.size() > 0) {
+			defines.push_back("GFX_HAS_VS_MATERIAL_MAIN=1");
+			vsCode << "#define main materialMain\n";
+			vsCode << materialData.vertexCode;
+		}
 	}
 
-	std::stringstream psCode;
-	psCode << "$input " << boost::algorithm::join(varyingNames, ", ") << "\n";
-	psCode << "#include <ps_entry.sh>\n";
+	void generatePixelCode(const MaterialData &materialData) {
+		psCode << "$input " << boost::algorithm::join(varyingNames, ", ") << "\n";
+		psCode << "#include <ps_entry.sh>\n";
 
-	if (materialData.pixelCode.size() > 0) {
-		defines.push_back("GFX_HAS_PS_MATERIAL_MAIN=1");
-		psCode << "#define main materialMain\n";
-		psCode << materialData.pixelCode;
+		if (materialData.pixelCode.size() > 0) {
+
+			defines.push_back("GFX_HAS_PS_MATERIAL_MAIN=1");
+			psCode << "#define main materialMain\n";
+			psCode << materialData.pixelCode;
+		}
 	}
+};
+
+ShaderProgramPtr MaterialUsageContext::compileProgram() {
+	MaterialShaderBuilder shaderBuilder;
+	shaderBuilder.build(material.getData(), materialUsageFlags);
+
+	std::string varyings = shaderBuilder.varyings.str();
+	std::string vsCode = shaderBuilder.vsCode.str();
+	std::string psCode = shaderBuilder.psCode.str();
 
 	HasherXXH128 hasher;
-	hasher(varyings.str());
-	hasher(vsCode.str());
+	hasher(varyings);
+	hasher(vsCode);
 	Hash128 vsCodeHash = hasher.getDigest();
 
 	hasher.reset();
-	hasher(varyings.str());
-	hasher(psCode.str());
+	hasher(varyings);
+	hasher(psCode);
 	Hash128 psCodeHash = hasher.getDigest();
 
-	spdlog::info("Shader varyings:\n{}", varyings.str());
+	// TODO
+	(void)vsCodeHash;
+	(void)psCodeHash;
+
+	spdlog::info("Shader varyings:\n{}", varyings);
 
 	auto compile = [&](char type, ShaderCompileOutput &output, std::string code) {
 		IShaderCompiler &shaderCompiler = context.context.shaderCompilerModule->getShaderCompiler();
 		ShaderCompileOptions options;
 		options.shaderType = type;
-		options.defines = defines;
+		options.defines = shaderBuilder.defines;
 		options.setCompatibleForContext(context.context);
 		options.verbose = false;
 		options.debugInformation = true;
+		options.optimize = true;
+		options.disasm = true;
 
 		spdlog::info("Shader source:\n{}", code);
-		return shaderCompiler.compile(options, output, varyings.str().c_str(), code.data(), code.length());
+		return shaderCompiler.compile(options, output, varyings.c_str(), code.data(), code.length());
 	};
 
 	ShaderCompileOutput vsOutput, psOutput;
-	bool vsCompiled = compile('v', vsOutput, vsCode.str());
+	bool vsCompiled = compile('v', vsOutput, vsCode);
 	if (!vsCompiled) {
 		spdlog::error("Failed to compiler vertex shader");
 		return ShaderProgramPtr();
 	}
 
-	bool psCompiled = compile('f', psOutput, psCode.str());
+	bool psCompiled = compile('f', psOutput, psCode);
 	if (!psCompiled) {
 		spdlog::error("Failed to compiler pixel shader");
 		return ShaderProgramPtr();

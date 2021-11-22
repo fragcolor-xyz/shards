@@ -18,6 +18,11 @@ struct MaterialStaticFlags {
 	};
 };
 
+inline MaterialStaticFlags::Type &operator|=(MaterialStaticFlags::Type &a, MaterialStaticFlags::Type b) {
+	(uint8_t &)a |= uint8_t(a) | uint8_t(b);
+	return a;
+}
+
 struct MaterialDynamicFlags {
 	enum Type : uint32_t {
 		None = 0,
@@ -53,6 +58,7 @@ struct MaterialData {
 	MaterialStaticFlags::Type flags = MaterialStaticFlags::None;
 	std::unordered_map<std::string, float4> vectorParameters;
 	std::unordered_map<std::string, MaterialTextureSlot> textureSlots;
+	std::vector<uint32_t> mrtOutputs;
 	std::string vertexCode;
 	std::string pixelCode;
 

@@ -1,9 +1,13 @@
+#include "bgfx/bgfx.h"
 #include "draw_fixture.hpp"
+#include "gfx/tests/test_data.hpp"
+#include "gfx/texture.hpp"
 #include <catch2/catch_all.hpp>
 #include <gfx/frame.hpp>
 #include <gfx/material.hpp>
 #include <gfx/material_shader.hpp>
 #include <gfx/texture.hpp>
+#include <gfx/view_framebuffer.hpp>
 
 using namespace gfx;
 
@@ -47,6 +51,13 @@ struct MaterialFixture : public DrawFixture {
 		gfx::View &view = frame.pushMainOutputView();
 		bgfx::setViewClear(view.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, gfx::colorToRGBA(Color(0, 0, 0, 255)));
 
+		renderTestSphere(view, materialContext);
+
+		frame.popView();
+		frame.end(true);
+	}
+
+	void renderTestSphere(gfx::View &view, MaterialUsageContext &materialContext) {
 		setWorldViewProj(view);
 
 		bgfx::setVertexBuffer(0, vb);
@@ -62,9 +73,6 @@ struct MaterialFixture : public DrawFixture {
 			materialContext.bindUniforms();
 			bgfx::submit(view.id, shaderProgram->handle);
 		}
-
-		frame.popView();
-		frame.end(true);
 	}
 };
 
@@ -102,7 +110,7 @@ TEST_CASE_METHOD(MaterialFixture, "Default material - custom pixel shader", "[ma
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) {
-	data.pixelCode = R"(
+		data.pixelCode = R"(
 void main(inout MaterialInfo mi) {
 	float scale = 8.0;
 	float grid = float((int(mi.texcoord0.x * scale) + int(mi.texcoord0.y * scale)) % 2);
@@ -119,7 +127,7 @@ TEST_CASE_METHOD(MaterialFixture, "Default material - custom vertex shader", "[m
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) {
-	data.vertexCode = R"(
+		data.vertexCode = R"(
 void main(inout MaterialInfo mi) {
 	float angle = acos(abs(mi.normal.x));
 	float bump = cos(angle * 8.0) * 0.05;
@@ -129,5 +137,64 @@ void main(inout MaterialInfo mi) {
 	});
 
 	drawTestFrame(materialContext);
-	CHECK_FRAME("materialCustomPixelShader");
+	CHECK_FRAME("materialCustomVertexShader");
+}
+
+TEST_CASE_METHOD(MaterialFixture, "Material multiple render targets", "[material]") {
+	MaterialBuilderContext mbc(context);
+	MaterialUsageContext materialContext(mbc);
+	materialContext.material.modify([](MaterialData &data) {
+		data.mrtOutputs = {0, 1};
+		data.pixelCode = R"(
+void main(inout MaterialInfo mi) {
+	mi.color0 = vec4(mi.texcoord0.xy, 0, 1);
+	mi.color1 = vec4(mi.normal.xyz,  1);
+};
+)";
+	});
+
+	gfx::ViewFrameBuffer viewFrameBuffer = {
+		{1.0f, bgfx::TextureFormat::BGRA8, true},
+		{1.0f, bgfx::TextureFormat::BGRA8, true},
+		{1.0f, bgfx::TextureFormat::D32F, true},
+	};
+	std::vector<uint8_t> readbackBuffers[3];
+	uint32_t readbackFrameAvailable = 0;
+	int2 viewSize;
+
+	{
+		gfx::FrameCaptureSync _(context);
+		gfx::FrameRenderer frame(context);
+		frame.begin();
+
+		gfx::View &view = frame.pushMainOutputView();
+		bgfx::setViewClear(view.id, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, gfx::colorToRGBA(Color(0, 0, 0, 255)));
+
+		viewSize = view.getSize();
+
+		gfx::FrameBufferPtr frameBuffer = viewFrameBuffer.begin(view);
+		bgfx::setViewFrameBuffer(view.id, frameBuffer->handle);
+
+		size_t readbackBufferSize = view.getSize().x * view.getSize().y * sizeof(uint32_t);
+		for (size_t i = 0; i < 3; i++) {
+			auto &readbackBuffer = readbackBuffers[i];
+			readbackBuffer.resize(readbackBufferSize);
+			TexturePtr texture = viewFrameBuffer.getTexture(i);
+			readbackFrameAvailable = bgfx::readTexture(texture->handle, readbackBuffers->data(), 0);
+		}
+
+		renderTestSphere(view, materialContext);
+
+		frame.popView();
+		frame.end(true);
+		uint32_t frameNumber = bgfx::frame();
+		CHECK(frameNumber >= readbackFrameAvailable);
+	}
+
+	TestFrame frame0(readbackBuffers->data(), viewSize, TestFrameFormat::BGRA8, sizeof(uint32_t) * viewSize.x, false);
+	TestFrame frame1(readbackBuffers->data(), viewSize, TestFrameFormat::BGRA8, sizeof(uint32_t) * viewSize.x, false);
+	TestFrame frame2(readbackBuffers->data(), viewSize, TestFrameFormat::R32F, sizeof(uint32_t) * viewSize.x, false);
+	CHECK(testData.checkFrame("materialMRT0", frame0));
+	CHECK(testData.checkFrame("materialMRT1", frame1));
+	CHECK(testData.checkFrame("materialMRT2", frame2));
 }
