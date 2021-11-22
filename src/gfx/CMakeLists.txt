@@ -7,13 +7,14 @@ if(NOT GFX_SHADERC_PREBUILT)
   add_subdirectory(shaderc)
 endif()
 
-add_library(gfx 
+add_library(gfx
   context.cpp
   imgui.cpp
   material.cpp
   material_shader.cpp
   # shader_cache.cpp
   # mesh.cpp
+  scene.cpp
   texture.cpp
   view_framebuffer.cpp
   geom.cpp
@@ -26,7 +27,7 @@ add_library(gfx
   paths.cpp
 )
 
-target_include_directories(gfx 
+target_include_directories(gfx
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -61,10 +62,10 @@ endif()
 
 if(EMSCRIPTEN)
   # Use builtin SDL2 port
-  target_compile_options(gfx PUBLIC 
+  target_compile_options(gfx PUBLIC
     "SHELL:-s USE_SDL=2"
   )
-  target_link_options(gfx PUBLIC 
+  target_link_options(gfx PUBLIC
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"

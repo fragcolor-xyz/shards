@@ -29,11 +29,14 @@ struct MaterialInfo {
 	vec2 texcoord0;
 	vec3 normal;
 	vec3 tangent;
+	vec3 worldPosition;
 };
 
 #ifdef GFX_HAS_PS_MATERIAL_MAIN
 void materialMain(inout MaterialInfo mi);
 #endif
+
+#include <lighting.sh>
 
 void main() {
 	MaterialInfo mi;
@@ -41,6 +44,7 @@ void main() {
 	mi.DEFAULT_COLOR_FIELD = v_color0;
 	mi.normal = v_normal;
 	mi.tangent = v_tangent;
+	mi.worldPosition = v_worldPosition;
 
 	mi.DEFAULT_COLOR_FIELD *= u_baseColor;
 
@@ -50,6 +54,12 @@ void main() {
 
 #ifdef GFX_HAS_PS_MATERIAL_MAIN
 	materialMain(mi);
+#endif
+
+#ifdef GFX_LIT
+	vec3 cameraPosition = u_invView[3].xyz;
+	vec3 viewDirection = normalize(cameraPosition - mi.worldPosition);
+	mi.DEFAULT_COLOR_FIELD.xyz *= processLights(mi.worldPosition, viewDirection, mi.normal);
 #endif
 
 #ifdef GFX_MRT_ASSIGNMENTS

@@ -64,10 +64,14 @@ ShaderProgramPtr MaterialBuilderContext::createFallbackShaderProgram() {
 	return shaderProgram;
 }
 
+struct StaticHashVisitor {
+	template <typename T, typename THasher> void operator()(const T &val, THasher &hasher) { val.hashStatic(hasher); }
+};
+
 ShaderProgramPtr MaterialUsageContext::getProgram() {
 	// Hash the external parameters
-	HasherXXH128 hasher(material.getStaticHash());
-	hasher(materialUsageFlags);
+	HasherXXH128<StaticHashVisitor> hasher;
+	hasher(*this);
 	Hash128 materialContextHash = hasher.getDigest();
 
 	ShaderProgramPtr program = compileProgram();
@@ -124,19 +128,24 @@ struct MaterialShaderBuilder {
 		}
 	}
 
-	void build(const MaterialData &materialData, MaterialUsageFlags::Type materialUsageFlags) {
+	void setupLighting(const MaterialData &materialData, const StaticMaterialOptions &staticOptions) {
+		defines.push_back(fmt::format("GFX_MAX_DIR_LIGHTS={}", staticOptions.numDirectionLights));
+		defines.push_back(fmt::format("GFX_MAX_POINT_LIGHTS={}", staticOptions.numPointLights));
+	}
+
+	void build(const MaterialData &materialData, const StaticMaterialOptions &staticOptions) {
 		addGenericAttribute("position", "vec3");
 		addGenericAttribute("texcoord0", "vec2");
 
-		if (materialUsageFlags & MaterialUsageFlags::HasNormals) {
+		if (staticOptions.usageFlags & MaterialUsageFlags::HasNormals) {
 			addGenericAttribute("normal", "vec3");
 		}
 
-		if (materialUsageFlags & MaterialUsageFlags::HasTangents) {
+		if (staticOptions.usageFlags & MaterialUsageFlags::HasTangents) {
 			addGenericAttribute("tangent", "vec3");
 		}
 
-		if (materialUsageFlags & MaterialUsageFlags::HasVertexColors) {
+		if (staticOptions.usageFlags & MaterialUsageFlags::HasVertexColors) {
 			addGenericAttribute("color0", "vec4");
 		}
 
@@ -144,8 +153,14 @@ struct MaterialShaderBuilder {
 		addVarying("normal", "vec3");
 		addVarying("tangent", "vec3");
 		addVarying("color0", "vec4");
+		addVarying("worldPosition", "vec3");
 
 		assignTextureSlots(materialData);
+
+		if (materialData.flags & MaterialStaticFlags::Lit) {
+			setupLighting(materialData, staticOptions);
+			defines.push_back("GFX_LIT=1");
+		}
 
 		if (materialData.pixelCode.size() > 0) {
 			if (materialData.mrtOutputs.size() > 0) {
@@ -193,7 +208,7 @@ struct MaterialShaderBuilder {
 
 ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	MaterialShaderBuilder shaderBuilder;
-	shaderBuilder.build(material.getData(), materialUsageFlags);
+	shaderBuilder.build(material.getData(), staticOptions);
 
 	std::string varyings = shaderBuilder.varyings.str();
 	std::string vsCode = shaderBuilder.vsCode.str();
@@ -273,5 +288,7 @@ void MaterialUsageContext::bindUniforms() {
 		bgfx::setTexture(registerIndex, handle, texture->handle);
 	}
 }
+
+void MaterialUsageContext::setState() { bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS); }
 
 } // namespace gfx

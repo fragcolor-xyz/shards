@@ -50,15 +50,50 @@ struct MaterialBuilderContext {
 	ShaderProgramPtr createFallbackShaderProgram();
 };
 
+struct MaterialUsageFlags {
+	enum Type : uint8_t {
+		None = 0,
+		HasNormals = 1 << 0,
+		HasTangents = 1 << 1,
+		HasVertexColors = 1 << 2,
+		Instanced = 1 << 3,
+		Picking = 1 << 4,
+	};
+	static bool contains(const MaterialUsageFlags::Type &a, const MaterialUsageFlags::Type &b) { return (a & b) != 0; }
+};
+
+inline MaterialUsageFlags::Type &operator|=(MaterialUsageFlags::Type &a, MaterialUsageFlags::Type b) {
+	(uint8_t &)a |= uint8_t(a) | uint8_t(b);
+	return a;
+}
+
+struct StaticMaterialOptions {
+	int numDirectionLights = 0;
+	int numPointLights = 0;
+	MaterialUsageFlags::Type usageFlags;
+
+	template <typename THash> void hashStatic(THash &hash) const {
+		hash(numDirectionLights);
+		hash(numPointLights);
+		hash(usageFlags);
+	}
+};
+
 struct MaterialUsageContext {
 	MaterialBuilderContext &context;
 	Material material;
-	MaterialUsageFlags::Type materialUsageFlags;
 	std::unordered_map<std::string, size_t> textureRegisterMap;
+	StaticMaterialOptions staticOptions;
 
 	MaterialUsageContext(MaterialBuilderContext &context) : context(context) {}
 	ShaderProgramPtr getProgram();
 	ShaderProgramPtr compileProgram();
 	void bindUniforms();
+	void setState();
+
+	template <typename THash> void hashStatic(THash &hash) const {
+		hash(material.getStaticHash());
+		hash(staticOptions);
+	}
 };
 } // namespace gfx

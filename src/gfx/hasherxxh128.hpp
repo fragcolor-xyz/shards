@@ -16,7 +16,6 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 	XXH3_state_t state = {};
 
 	HasherXXH128() { XXH3_INITSTATE(&state); reset(); }
-	HasherXXH128(const Hash128 &seed) : HasherXXH128() { (*this)(&seed, sizeof(Hash128)); }
 
 	void reset() { XXH3_128bits_reset(&state); }
 
@@ -27,6 +26,7 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 
 	void operator()(const void *data, size_t length) { XXH3_128bits_update(&state, data, length); }
 	void operator()(const float4 &v) { (*this)(&v.x, sizeof(float) * 4); }
+	void operator()(const Hash128 &v) { (*this)(&v, sizeof(Hash128)); }
 
 	template <typename TVal> std::enable_if_t<std::is_pod<TVal>::value> operator()(const TVal &val) { (*this)(&val, sizeof(val)); }
 	template <typename TVal> std::enable_if_t<!std::is_pod<TVal>::value> operator()(const TVal &val) { TVisitor{}(val, *this); }

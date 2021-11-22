@@ -1,8 +1,8 @@
 #include "bgfx/bgfx.h"
 #include "bgfx/defines.h"
 #include "draw_fixture.hpp"
-#include "gfx/tests/test_data.hpp"
-#include "gfx/texture.hpp"
+#include "test_data.hpp"
+#include <gfx/texture.hpp>
 #include <catch2/catch_all.hpp>
 #include <gfx/frame.hpp>
 #include <gfx/material.hpp>
@@ -66,7 +66,7 @@ struct MaterialFixture : public DrawFixture {
 
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
 
-		materialContext.materialUsageFlags = MaterialUsageFlags::HasNormals;
+		materialContext.staticOptions.usageFlags = MaterialUsageFlags::HasNormals;
 
 		ShaderProgramPtr shaderProgram = materialContext.compileProgram();
 		CHECK(shaderProgram);

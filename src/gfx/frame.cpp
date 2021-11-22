@@ -1,4 +1,5 @@
 #include "frame.hpp"
+#include "bgfx/bgfx.h"
 #include "context.hpp"
 #include "mesh.hpp"
 #include <bgfx/bgfx.h>
@@ -8,8 +9,7 @@ namespace gfx {
 void FrameRenderer::begin() {
 	context.beginFrame(this);
 
-	float time[4] = {inputs.deltaTime, inputs.time, float(inputs.frameNumber),
-					 0.0};
+	float time[4] = {inputs.deltaTime, inputs.time, float(inputs.frameNumber), 0.0};
 	bgfx::setUniform(context.timeUniformHandle, time, 1);
 }
 
@@ -39,8 +39,8 @@ View &FrameRenderer::getCurrentView() {
 }
 
 View &FrameRenderer::pushView() {
-	View &view =
-		*views.emplace_back(std::make_shared<View>(nextViewId())).get();
+	View &view = *views.emplace_back(std::make_shared<View>(nextViewId())).get();
+	bgfx::resetView(view.id);
 	bgfx::touch(view.id);
 
 	return view;
@@ -156,7 +156,5 @@ bgfx::ViewId FrameRenderer::nextViewId() {
 // 	bgfx::submit(getCurrentView().id, shaderProgram->program);
 // }
 
-FrameRenderer *FrameRenderer::get(Context &context) {
-	return context.getFrameRenderer();
-}
+FrameRenderer *FrameRenderer::get(Context &context) { return context.getFrameRenderer(); }
 } // namespace gfx

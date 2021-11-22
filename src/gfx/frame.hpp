@@ -1,6 +1,7 @@
 #pragma once
 
 #include "context.hpp"
+#include "material.hpp"
 #include "view.hpp"
 
 namespace gfx {
@@ -11,10 +12,7 @@ struct FrameInputs {
 	int frameNumber;
 	const std::vector<SDL_Event> &events;
 
-	FrameInputs(float deltaTime = 0.1f, float time = 0.0f, int frameNumber = 0,
-				const std::vector<SDL_Event> &events = std::vector<SDL_Event>())
-		: deltaTime(deltaTime), time(time), frameNumber(frameNumber),
-		  events(events) {}
+	FrameInputs(float deltaTime = 0.1f, float time = 0.0f, int frameNumber = 0, const std::vector<SDL_Event> &events = std::vector<SDL_Event>()) : deltaTime(deltaTime), time(time), frameNumber(frameNumber), events(events) {}
 };
 
 // Persistent state over the duration of an single update/draw loop iteration
@@ -22,8 +20,6 @@ struct Context;
 struct FrameRenderer {
 	Context &context;
 	FrameInputs inputs;
-
-	std::vector<SDL_Event> events;
 
 	std::deque<std::shared_ptr<View>> views;
 	bgfx::ViewId _nextViewCounter{0};
@@ -33,8 +29,7 @@ struct FrameRenderer {
 
 	bool _picking{false};
 
-	FrameRenderer(Context &context, FrameInputs &&inputs = FrameInputs())
-		: context(context), inputs(inputs) {}
+	FrameRenderer(Context &context, FrameInputs &&inputs = FrameInputs()) : context(context), inputs(inputs) {}
 	FrameRenderer(const FrameRenderer &) = delete;
 	FrameRenderer &operator=(const FrameRenderer &) = delete;
 
@@ -58,4 +53,5 @@ struct FrameRenderer {
 
 	static FrameRenderer *get(Context &context);
 };
+
 } // namespace gfx
