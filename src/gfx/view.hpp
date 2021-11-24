@@ -10,19 +10,18 @@ namespace gfx {
 struct alignas(16) View {
 	const bgfx::ViewId id{0};
 
-  private:
+private:
 	Rect viewport;
 	float4x4 view;
 	float4x4 proj;
 
-  public:
+public:
 	View(bgfx::ViewId id) : id(id) {}
 	View(const View &) = delete;
 
 	void setViewport(const Rect &viewport) {
 		this->viewport = viewport;
-		bgfx::setViewRect(id, viewport.x, viewport.y, viewport.width,
-						  viewport.height);
+		bgfx::setViewRect(id, viewport.x, viewport.y, viewport.width, viewport.height);
 	}
 	const Rect &getViewport() const { return viewport; }
 	const int2 getSize() const { return int2(viewport.width, viewport.height); }

@@ -12,7 +12,7 @@
 #include <gfx/view.hpp>
 #include <linalg/linalg.h>
 
-TEST_CASE_METHOD(DrawFixture, "Clear", "[draw]") {
+TEST_CASE_METHOD(DrawFixture, "clear", "[draw]") {
 	gfx::Color clearColor = gfx::Color(100, 0, 200, 255);
 
 	bgfx::setViewRect(0, 0, 0, bgfx::BackbufferRatio::Equal);
@@ -22,7 +22,7 @@ TEST_CASE_METHOD(DrawFixture, "Clear", "[draw]") {
 	CHECK_FRAME("clear");
 }
 
-TEST_CASE_METHOD(DrawFixture, "Draw sphere", "[draw]") {
+TEST_CASE_METHOD(DrawFixture, "draw", "[draw]") {
 	gfx::Color clearColor = gfx::Color(0, 0, 0, 255);
 
 	const char vars[] = R"(

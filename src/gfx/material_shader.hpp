@@ -27,6 +27,7 @@ using ShaderHandlePtr = std::shared_ptr<ShaderHandle>;
 
 struct ShaderProgram {
 	bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
+	std::unordered_map<std::string, size_t> textureRegisterMap;
 
 public:
 	ShaderProgram(bgfx::ProgramHandle handle) : handle(handle) {}
@@ -100,14 +101,15 @@ struct MaterialUsageContext {
 	MaterialBuilderContext &context;
 	Material material;
 	std::unordered_map<std::string, MaterialTextureSlot> textureSlots;
-	std::unordered_map<std::string, size_t> textureRegisterMap;
 	StaticMaterialOptions staticOptions;
 
 	MaterialUsageContext(MaterialBuilderContext &context) : context(context) {}
 	ShaderProgramPtr getProgram();
 	ShaderProgramPtr compileProgram();
-	void bindUniforms();
+	void bindUniforms(ShaderProgramPtr program);
 	void setState();
+
+	void preloadUniforms();
 
 	template <typename THash> void hashStatic(THash &hash) const {
 		hash(material.getStaticHash());

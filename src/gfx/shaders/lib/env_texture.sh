@@ -4,7 +4,7 @@
 // Conversion to spherical coordinates with r=1
 vec2 directionToLongLat(vec3 dir) {
 	vec2 result;
-	if (dir.x >= 0) {
+	if (dir.x >= 0.0) {
 		result.x = atan(dir.z / dir.x);
 	} else {
 		result.x = atan(dir.z / dir.x) + PI;
@@ -34,6 +34,6 @@ vec3 longLatUvToDirection(vec2 uv) {
 }
 
 #define longLatTextureLod(_sampler, _dir, _lod) texture2DLod(_sampler, directionToLongLatUv(_dir), _lod)
-#define longLatTexture(_sampler, _dir) longLatTextureLod(_sampler, _dir, 0)
+#define longLatTexture(_sampler, _dir) longLatTextureLod(_sampler, _dir, 0.0)
 
 #endif

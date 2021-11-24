@@ -1,7 +1,7 @@
 #include <lib/pbr.sh>
 #include <lib/env_texture.sh>
 
-uniform float4 u_envNumMipLevels;
+uniform vec4 u_envNumMipLevels;
 
 vec3 getIBLRadianceGGX(vec3 ggxSample, vec2 ggxLUT, vec3 fresnelColor, float specularWeight) {
 	vec3 FssEss = fresnelColor * ggxLUT.x + ggxLUT.y;
@@ -26,16 +26,16 @@ vec3 computeEnvironmentLighting(in MaterialInfo material, vec3 negViewDirection)
 
 	float nDotV = dot(negViewDirection, surfaceNormal);
 
-	material.perceptualRoughness = clamp(material.perceptualRoughness, 0, 1);
-	material.metallic = clamp(material.metallic, 0, 1);
+	material.perceptualRoughness = clamp(material.perceptualRoughness, 0.0, 1.0);
+	material.metallic = clamp(material.metallic, 0.0, 1.0);
 
 	float roughness = material.perceptualRoughness * material.perceptualRoughness;
 	float reflectance = max(max(material.specularColor0.r, material.specularColor0.g), material.specularColor0.b);
 
 	float numMipLevels = u_envNumMipLevels.x;
 	vec2 ggxLUT = texture2D(u_envGGXLUTTexture, vec2(roughness, nDotV)).xy;
-	vec3 ggxSample = longLatTextureLod(u_envGGXTexture, reflDir, numMipLevels * material.perceptualRoughness);
-	vec3 lambertianSample = longLatTextureLod(u_envLambertTexture, surfaceNormal, 0);
+	vec3 ggxSample = longLatTextureLod(u_envGGXTexture, reflDir, numMipLevels * material.perceptualRoughness).xyz;
+	vec3 lambertianSample = longLatTextureLod(u_envLambertTexture, surfaceNormal, 0.0).xyz;
 
 	vec3 specularColor90 = max(vec3_splat(1.0 - roughness), material.specularColor0);
 	vec3 fresnelColor = fresnelSchlick(material.specularColor0, specularColor90, nDotV);

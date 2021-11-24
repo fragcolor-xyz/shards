@@ -13,6 +13,7 @@ struct FrameRenderer;
 struct Light;
 struct EnvironmentProbe;
 struct Material;
+struct MaterialBuilderContext;
 struct SceneRenderer {
 	typedef std::function<void(View &view, MaterialUsageContext &, ShaderProgramPtr)> DrawCommandFunction;
 	struct DrawCommand {
@@ -22,15 +23,17 @@ struct SceneRenderer {
 		DrawCommand(MaterialBuilderContext &materialBuilderContext) : materialContext(materialBuilderContext) {}
 	};
 
-	FrameRenderer &frame;
-	MaterialBuilderContext materialBuilderContext;
-
 	std::vector<std::shared_ptr<Feature>> features;
 	std::vector<std::shared_ptr<Light>> lights;
 	std::vector<std::shared_ptr<EnvironmentProbe>> environmentProbes;
 	std::vector<DrawCommand> drawCommands;
 
-	SceneRenderer(FrameRenderer &frame);
+private:
+	Context& context;
+	FrameRenderer *frameRenderer;
+
+public:
+	SceneRenderer(Context& context);
 	void reset();
 	// Renders precomputed maps (shadows/environment/etc.)
 	void runPrecompute();
@@ -39,6 +42,9 @@ struct SceneRenderer {
 	void addLight(std::shared_ptr<Light> light);
 	void addProbe(std::shared_ptr<EnvironmentProbe> probe);
 	void addDrawCommand(Material material, MaterialUsageFlags::Type meshFlags, DrawCommandFunction drawCommand);
+
+	MaterialBuilderContext &getMaterialBuilderContext();
+	FrameRenderer& getFrameRenderer();
 };
 
 } // namespace gfx

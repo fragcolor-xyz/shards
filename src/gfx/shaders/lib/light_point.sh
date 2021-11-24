@@ -11,7 +11,7 @@ struct PointLight {
 };
 
 vec3 pointLight(in PointLight light, vec3 worldPos, vec3 viewDirection, vec3 normal) {
-	float3 lightDir = light.position - worldPos;
+	vec3 lightDir = light.position - worldPos;
 	float distToLightSquare = dot(lightDir, lightDir);
 	float distToLight = sqrt(distToLightSquare);
 	lightDir /= distToLight;
@@ -22,7 +22,7 @@ vec3 pointLight(in PointLight light, vec3 worldPos, vec3 viewDirection, vec3 nor
 	float smoothFactor = max(1.0 - factor * factor, 0.0);
 	float atten = (smoothFactor * smoothFactor) / max(distToLightSquare, minLightRadius * minLightRadius);
 
-	float nDotL = max(0, dot(normal, lightDir));
+	float nDotL = max(0.0, dot(normal, lightDir));
 	return nDotL * light.color * light.intensity * atten;
 }
 #endif

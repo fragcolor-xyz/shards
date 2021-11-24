@@ -25,8 +25,8 @@ option(SHADERC_UNIVERSAL "Set to true to enable shader compilation for all platf
 
 if(SHADERC_UNIVERSAL)
 	set(SHADERC_SPIRV OFF)
-	set(SHADERC_GLSL OFF)
-	set(SHADERC_PSSL OFF)
+	set(SHADERC_GLSL ON)
+	set(SHADERC_PSSL ON)
 	set(SHADERC_METAL OFF)
 	set(SHADERC_HLSL ON)
 elseif(EMSCRIPTEN)

@@ -92,6 +92,7 @@ public:
 	void beginFrame(FrameRenderer *frameRenderer);
 	void endFrame(FrameRenderer *frameRenderer);
 	FrameRenderer *getFrameRenderer() { return currentFrameRenderer; }
+	MaterialBuilderContext& getMaterialBuilderContext() { return *materialBuilderContext.get(); }
 };
 
 struct FrameCaptureSync {

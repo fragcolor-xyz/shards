@@ -25,8 +25,8 @@ MaterialBuilderContext::MaterialBuilderContext(Context &context) : context(conte
 	fallbackShaderProgram = createFallbackShaderProgram();
 	defaultVectorParameters = std::unordered_map<std::string, float4>{
 		{"baseColor", float4(1.0f, 1.0f, 1.0f, 1.0f)},
-		{"roughness", float4(1.0f)},
-		{"metallicness", float4(0.0f)},
+		// {"roughness", float4(1.0f)},
+		// {"metallicness", float4(0.0f)},
 	};
 }
 
@@ -192,7 +192,7 @@ struct MaterialShaderBuilder {
 			addGenericAttribute("color0", "vec4");
 		}
 
-		if(staticOptions.usageFlags & MaterialUsageFlags::FlipTexcoordY) {
+		if (staticOptions.usageFlags & MaterialUsageFlags::FlipTexcoordY) {
 			defines.push_back("GFX_FLIP_TEX_Y=1");
 		}
 
@@ -261,18 +261,19 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	MaterialShaderBuilder shaderBuilder;
 	shaderBuilder.build(material.getData(), staticOptions, textureSlots);
 
-	textureRegisterMap = shaderBuilder.textureRegisterMap;
 	std::string varyings = shaderBuilder.varyings.str();
 	std::string vsCode = shaderBuilder.vsCode.str();
 	std::string psCode = shaderBuilder.psCode.str();
 
 	HasherXXH128 hasher;
+	hasher("vertex");
 	hasher(varyings);
 	hasher(vsCode);
 	hasher(shaderBuilder.defines);
 	Hash128 vsCodeHash = hasher.getDigest();
 
 	hasher.reset();
+	hasher("pixel");
 	hasher(varyings);
 	hasher(psCode);
 	hasher(shaderBuilder.defines);
@@ -287,14 +288,20 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 		options.shaderType = type;
 		options.defines = shaderBuilder.defines;
 		options.setCompatibleForContext(context.context);
-		options.verbose = false;
-		options.debugInformation = true;
 		options.optimize = false;
+
 		options.disasm = true;
+		options.debugInformation = true;
+		options.verbose = true;
+		options.keepIntermediate = true;
+		options.keepOutputs = true;
 
 		spdlog::info("Shader source:\n{}", code);
 		return shaderCompiler.compile(options, output, varyings.c_str(), code.data(), code.length());
 	};
+
+	// Required for OpenGL to find uniforms, the uniforms need to be defined before loading the shader program
+	preloadUniforms();
 
 	ShaderHandlePtr vertexShader = context.getCachedShader(vsCodeHash);
 	if (!vertexShader) {
@@ -328,10 +335,32 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	if (!vertexShader || !pixelShader)
 		return ShaderProgramPtr();
 
-	return std::make_shared<ShaderProgram>(bgfx::createProgram(vertexShader->handle, pixelShader->handle, true));
+	ShaderProgramPtr shaderProgram = std::make_shared<ShaderProgram>(bgfx::createProgram(vertexShader->handle, pixelShader->handle, false));
+	shaderProgram->textureRegisterMap = shaderBuilder.textureRegisterMap;
+	return shaderProgram;
 }
 
-void MaterialUsageContext::bindUniforms() {
+void MaterialUsageContext::preloadUniforms() {
+	const MaterialData &materialData = material.getData();
+
+	for (auto &pair : context.defaultVectorParameters) {
+		context.getUniformHandle(pair.first, bgfx::UniformType::Vec4);
+	}
+
+	for (auto &pair : materialData.vectorParameters) {
+		context.getUniformHandle(pair.first, bgfx::UniformType::Vec4);
+	}
+
+	for (auto &pair : materialData.textureSlots) {
+		context.getUniformHandle(pair.first, bgfx::UniformType::Sampler);
+	}
+
+	for (auto &pair : textureSlots) {
+		context.getUniformHandle(pair.first, bgfx::UniformType::Sampler);
+	}
+}
+
+void MaterialUsageContext::bindUniforms(ShaderProgramPtr program) {
 	const MaterialData &materialData = material.getData();
 
 	std::unordered_map<std::string, float4> vectorParameters = context.defaultVectorParameters;
@@ -352,7 +381,7 @@ void MaterialUsageContext::bindUniforms() {
 			if (!texture)
 				texture = context.fallbackTexture;
 
-			size_t registerIndex = textureRegisterMap[texSlot.first];
+			size_t registerIndex = program->textureRegisterMap[texSlot.first];
 
 			bgfx::setTexture(registerIndex, handle, texture->handle);
 		}

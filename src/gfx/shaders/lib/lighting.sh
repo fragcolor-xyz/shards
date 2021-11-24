@@ -11,7 +11,7 @@
 vec3 processLights(in MaterialInfo mi, vec3 negViewDirection) {
 	vec3 worldPosition = mi.worldPosition;
 	vec3 normal = mi.normal;
-	vec3 result = vec3_splat(0);
+	vec3 result = vec3_splat(0.0);
 
 #if GFX_MAX_DIR_LIGHTS
 	DirectionalLight light;

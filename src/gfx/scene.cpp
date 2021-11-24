@@ -12,7 +12,7 @@
 
 namespace gfx {
 
-SceneRenderer::SceneRenderer(FrameRenderer &frame) : frame(frame), materialBuilderContext(frame.context) {
+SceneRenderer::SceneRenderer(Context &context) : context(context) {
 	features.push_back(std::make_shared<DirectionalLightsFeature>());
 	features.push_back(std::make_shared<PointLightsFeature>());
 	features.push_back(std::make_shared<EnvironmentProbeFeature>());
@@ -48,7 +48,7 @@ void SceneRenderer::renderView(const std::vector<FeaturePtr> &features) {
 			feature->setupState(*this, cmd.materialContext);
 		}
 
-		cmd.function(frame.getCurrentView(), cmd.materialContext, program);
+		cmd.function(getFrameRenderer().getCurrentView(), cmd.materialContext, program);
 	}
 }
 
@@ -57,10 +57,13 @@ void render(std::vector<FeaturePtr> features);
 void SceneRenderer::addLight(std::shared_ptr<Light> light) { lights.push_back(light); }
 void SceneRenderer::addProbe(std::shared_ptr<EnvironmentProbe> probe) { environmentProbes.push_back(probe); }
 void SceneRenderer::addDrawCommand(Material material, MaterialUsageFlags::Type meshFlags, DrawCommandFunction function) {
-	auto &drawCommand = drawCommands.emplace_back(materialBuilderContext);
+	auto &drawCommand = drawCommands.emplace_back(getMaterialBuilderContext());
 	drawCommand.materialContext.material = material;
 	drawCommand.materialContext.staticOptions.usageFlags = meshFlags;
 	drawCommand.function = function;
 }
+
+MaterialBuilderContext &SceneRenderer::getMaterialBuilderContext() { return *context.materialBuilderContext.get(); }
+FrameRenderer &SceneRenderer::getFrameRenderer() { return *FrameRenderer::get(context); }
 
 } // namespace gfx

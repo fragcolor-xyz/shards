@@ -20,6 +20,7 @@ set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)
 target_link_libraries(test_gfx gfx Catch2WithMain Catch2)
 target_precompile_headers(test_gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 bundle_asset_path(test_gfx ${GFX_TEST_DATA_PATH}/asm.js)
+bundle_asset_path(test_gfx ${CMAKE_CURRENT_SOURCE_DIR}/assets)
 add_asset_path_definition(test_gfx PUBLIC GFX_TEST_DATA_PATH ${GFX_TEST_DATA_PATH})
 
 add_executable(gfx-sandbox sandbox.cpp)

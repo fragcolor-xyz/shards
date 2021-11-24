@@ -58,7 +58,7 @@ struct SceneFixture : public DrawFixture {
 		CHECK(program);
 		if (program) {
 			context.setState();
-			context.bindUniforms();
+			context.bindUniforms(program);
 			bgfx::submit(view.id, program->handle);
 		}
 	}
@@ -69,7 +69,7 @@ struct SceneFixture : public DrawFixture {
 			FrameRenderer frame(context);
 			frame.begin();
 
-			SceneRenderer scene(frame);
+			SceneRenderer scene(context);
 			scene.reset();
 			renderScene(scene);
 			scene.runPrecompute();
@@ -88,7 +88,7 @@ struct SceneFixture : public DrawFixture {
 	}
 };
 
-TEST_CASE_METHOD(SceneFixture, "Scene rendering - directional lights", "[scene]") {
+TEST_CASE_METHOD(SceneFixture, "materialLitDirectionalLight", "[scene]") {
 	Material sphereMaterial;
 	sphereMaterial.modify([](MaterialData &data) { data.flags |= MaterialStaticFlags::Lit; });
 
@@ -109,7 +109,7 @@ TEST_CASE_METHOD(SceneFixture, "Scene rendering - directional lights", "[scene]"
 	CHECK_FRAME("materialLitDirectionalLight");
 }
 
-TEST_CASE_METHOD(SceneFixture, "Scene rendering - point lights", "[scene]") {
+TEST_CASE_METHOD(SceneFixture, "materialLitPointLight", "[scene]") {
 	Material sphereMaterial;
 	sphereMaterial.modify([](MaterialData &data) { data.flags |= MaterialStaticFlags::Lit; });
 
@@ -143,14 +143,14 @@ TEST_CASE_METHOD(SceneFixture, "Scene rendering - point lights", "[scene]") {
 	CHECK_FRAME("materialLitPointLight");
 }
 
-TEST_CASE_METHOD(SceneFixture, "Load environment texture", "[env]") {
-	std::string path = resolveDataPath("src/gfx/tests/studio_small_08.exr");
+TEST_CASE_METHOD(SceneFixture, "loadEnvironmentTexture", "[env]") {
+	std::string path = resolveDataPath("src/gfx/tests/assets/studio_small_08.exr");
 	TexturePtr texture = textureFromFileFloat(path.c_str());
 	CHECK(texture);
 }
 
-TEST_CASE_METHOD(SceneFixture, "Scene rendering - environment texture", "[env]") {
-	std::string path = resolveDataPath("src/gfx/tests/studio_small_08.exr");
+TEST_CASE_METHOD(SceneFixture, "materialEnvironmentTexture", "[env]") {
+	std::string path = resolveDataPath("src/gfx/tests/assets/studio_small_08.exr");
 	TexturePtr texture = textureFromFileFloat(path.c_str());
 	CHECK(texture);
 
@@ -194,8 +194,8 @@ void main(inout MaterialInfo mi) {
 	CHECK_FRAME("materialEnvironmentTexture3");
 }
 
-TEST_CASE_METHOD(SceneFixture, "Scene rendering - environment probe", "[env]") {
-	std::string path = resolveDataPath("src/gfx/tests/studio_small_08.exr");
+TEST_CASE_METHOD(SceneFixture, "materialEnvironmentProbe", "[env]") {
+	std::string path = resolveDataPath("src/gfx/tests/assets/studio_small_08.exr");
 	TexturePtr texture = textureFromFileFloat(path.c_str());
 	CHECK(texture);
 

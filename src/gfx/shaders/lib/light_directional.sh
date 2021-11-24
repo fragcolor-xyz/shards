@@ -9,7 +9,7 @@ struct DirectionalLight {
 };
 
 vec3 directionalLight(in DirectionalLight light, vec3 viewDirection, vec3 normal) {
-	float nDotL = max(0, dot(normal, -light.direction));
+	float nDotL = max(0.0, dot(normal, -light.direction));
 	return nDotL * light.color * light.intensity;
 }
 #endif

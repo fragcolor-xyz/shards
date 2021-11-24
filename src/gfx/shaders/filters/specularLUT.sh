@@ -8,10 +8,10 @@ void main(inout MaterialInfo mi) {
 
 	vec3 localViewDir;
 	localViewDir.x = sqrt(1.0 - nDotV * nDotV); // = sin(acos(nDotV));
-	localViewDir.y = 0;
+	localViewDir.y = 0.0;
 	localViewDir.z = nDotV;
 
-	vec2 result = vec2(0, 0);
+	vec2 result = vec2(0.0, 0.0);
 	for (int sampleIndex = 0; sampleIndex < MONTECARLO_NUM_SAMPLES; sampleIndex++) {
 		vec2 coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
 
@@ -23,7 +23,7 @@ void main(inout MaterialInfo mi) {
 		float nDotH = sampleNormal.z;
 		float vDotH = dot(localViewDir, sampleNormal);
 
-		if (nDotL > 0) {
+		if (nDotL > 0.0) {
 			float pdf = visibilityGGX(nDotL, nDotV, roughness) * vDotH * nDotL / nDotH;
 			float fc = pow(1.0 - vDotH, 5.0);
 			result.x += (1.0 - fc) * pdf;
@@ -31,5 +31,5 @@ void main(inout MaterialInfo mi) {
 		}
 	}
 	result /= float(MONTECARLO_NUM_SAMPLES);
-	mi.color = vec4(result.xy * 4, 0, 0);
+	mi.color = vec4(result.xy * 4.0, 0.0, 0.0);
 }

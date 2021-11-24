@@ -42,7 +42,7 @@ vec3 montecarlo(in vec2 inputUV) {
 	mat3 tbn = generateFrameFromZDirection(baseDir);
 
 	float weight = 0.0;
-	vec3 result = vec3(0, 0, 0);
+	vec3 result = vec3_splat(0.0);
 	for (int sampleIndex = 0; sampleIndex < MONTECARLO_NUM_SAMPLES; sampleIndex++) {
 		MonteCarloInput mci;
 		mci.baseDirection = baseDir;

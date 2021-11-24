@@ -44,7 +44,7 @@ void main() {
 
 #if GFX_FULLSCREEN
 	mi.worldPosition = mi.localPosition;
-	mi.ndcPosition = vec4(mi.localPosition, 1);
+	mi.ndcPosition = vec4(mi.localPosition, 1.0);
 #else
 	mi.worldMatrix = u_model[0];
 	mi.worldPosition = mul(mi.worldMatrix, vec4(mi.localPosition, 1.0)).xyz;

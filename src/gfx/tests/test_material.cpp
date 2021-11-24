@@ -2,7 +2,6 @@
 #include "bgfx/defines.h"
 #include "draw_fixture.hpp"
 #include "test_data.hpp"
-#include <gfx/texture.hpp>
 #include <catch2/catch_all.hpp>
 #include <gfx/frame.hpp>
 #include <gfx/material.hpp>
@@ -64,28 +63,26 @@ struct MaterialFixture : public DrawFixture {
 		bgfx::setVertexBuffer(0, vb);
 		bgfx::setIndexBuffer(ib);
 
-		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
-
 		materialContext.staticOptions.usageFlags = MaterialUsageFlags::HasNormals;
 
 		ShaderProgramPtr shaderProgram = materialContext.compileProgram();
 		CHECK(shaderProgram);
 		if (shaderProgram) {
-			materialContext.bindUniforms();
+			materialContext.bindUniforms(shaderProgram);
+			materialContext.setState();
 			bgfx::submit(view.id, shaderProgram->handle);
 		}
 	}
 };
 
-TEST_CASE_METHOD(MaterialFixture, "Default material", "[material]") {
-	MaterialBuilderContext mbc(context);
-	MaterialUsageContext materialContext(mbc);
+TEST_CASE_METHOD(MaterialFixture, "materialDefault", "[material]") {
+	MaterialUsageContext materialContext(context.getMaterialBuilderContext());
 
 	drawTestFrame(materialContext);
 	CHECK_FRAME("materialDefault");
 }
 
-TEST_CASE_METHOD(MaterialFixture, "Default material - base color", "[material]") {
+TEST_CASE_METHOD(MaterialFixture, "materialBaseColor", "[material]") {
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) { data.vectorParameters[MaterialBuiltin::baseColor] = Colorf(0.0f, 1.0f, 0.0f, 1.0f); });
@@ -94,7 +91,7 @@ TEST_CASE_METHOD(MaterialFixture, "Default material - base color", "[material]")
 	CHECK_FRAME("materialBaseColor");
 }
 
-TEST_CASE_METHOD(MaterialFixture, "Default material - base color texture", "[material]") {
+TEST_CASE_METHOD(MaterialFixture, "materialBaseColorTexture", "[material]") {
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) {
@@ -107,7 +104,7 @@ TEST_CASE_METHOD(MaterialFixture, "Default material - base color texture", "[mat
 	CHECK_FRAME("materialBaseColorTexture");
 }
 
-TEST_CASE_METHOD(MaterialFixture, "Default material - custom pixel shader", "[material]") {
+TEST_CASE_METHOD(MaterialFixture, "materialCustomPixelShader", "[material]") {
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) {
@@ -115,8 +112,8 @@ TEST_CASE_METHOD(MaterialFixture, "Default material - custom pixel shader", "[ma
 void main(inout MaterialInfo mi) {
 	float scale = 8.0;
 	float grid = float((int(mi.texcoord0.x * scale) + int(mi.texcoord0.y * scale)) % 2);
-	mi.color = mix(vec4(1,1,1,1), vec4(.5,.5,.5,1.0), grid);
-};
+	mi.color = mix(vec4(1.0, 1.0, 1.0, 1.0), vec4(.5, .5, .5, 1.0), grid);
+}
 )";
 	});
 
@@ -124,7 +121,7 @@ void main(inout MaterialInfo mi) {
 	CHECK_FRAME("materialCustomPixelShader");
 }
 
-TEST_CASE_METHOD(MaterialFixture, "Default material - custom vertex shader", "[material]") {
+TEST_CASE_METHOD(MaterialFixture, "materialCustomVertexShader", "[material]") {
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) {
@@ -135,7 +132,7 @@ void main(inout MaterialInfo mi) {
 	mi.localPosition += mi.normal * bump;
 	mi.worldPosition = mul(mi.worldMatrix, vec4(mi.localPosition.xyz, 1.0)).xyz;
 	mi.ndcPosition = mul(u_viewProj, vec4(mi.worldPosition, 1.0));
-};
+}
 )";
 	});
 
@@ -143,16 +140,16 @@ void main(inout MaterialInfo mi) {
 	CHECK_FRAME("materialCustomVertexShader");
 }
 
-TEST_CASE_METHOD(MaterialFixture, "Material multiple render targets", "[material]") {
+TEST_CASE_METHOD(MaterialFixture, "materialMRT", "[material]") {
 	MaterialBuilderContext mbc(context);
 	MaterialUsageContext materialContext(mbc);
 	materialContext.material.modify([](MaterialData &data) {
 		data.mrtOutputs = {0, 1};
 		data.pixelCode = R"(
 void main(inout MaterialInfo mi) {
-	mi.color0 = vec4(mi.texcoord0.xy, 0, 1);
-	mi.color1 = vec4(mi.normal.xyz,  1);
-};
+	mi.color0 = vec4(mi.texcoord0.xy, 0.0, 1.0);
+	mi.color1 = vec4(mi.normal.xyz, 1.0);
+}
 )";
 	});
 

@@ -1,4 +1,3 @@
-
 #include "feature.hpp"
 #include "bgfx/bgfx.h"
 #include "bgfx/defines.h"
@@ -109,7 +108,7 @@ void applyFilter(FrameRenderer &frameRenderer, MaterialBuilderContext &mbc, Text
 	materialContext.material = material;
 	ShaderProgramPtr program = materialContext.getProgram();
 	materialContext.setState();
-	materialContext.bindUniforms();
+	materialContext.bindUniforms(program);
 
 	bgfx::setIndexBuffer(ib);
 	bgfx::setVertexBuffer(0, vb);
@@ -160,7 +159,7 @@ void EnvironmentProbeFeature::precomputeGGXLUT(SceneRenderer &sceneRenderer) {
 )";
 	});
 
-	applyFilter(sceneRenderer.frame, sceneRenderer.materialBuilderContext, ggxLUTTexture, filterMaterial);
+	applyFilter(sceneRenderer.getFrameRenderer(), sceneRenderer.getMaterialBuilderContext(), ggxLUTTexture, filterMaterial);
 }
 
 void blitCubeMips(View &view, TexturePtr dest, TexturePtr source, int faceIndex) {
@@ -216,7 +215,7 @@ void EnvironmentProbeFeature::precomputeEnvironmentProbe(SceneRenderer &sceneRen
 	bgfx::Attachment depthAttachment;
 	depthAttachment.init(captureDepthStencilTexture->handle);
 
-	FrameRenderer &frameRenderer = sceneRenderer.frame;
+	FrameRenderer &frameRenderer = sceneRenderer.getFrameRenderer();
 	size_t captureViewIndex = 0;
 	for (CaptureView &captureView : views) {
 		auto frameBuffer = std::make_shared<FrameBuffer>(std::initializer_list<FrameBufferAttachment>{colorAttachment, depthAttachment});
@@ -258,7 +257,7 @@ void EnvironmentProbeFeature::precomputeEnvironmentProbe(SceneRenderer &sceneRen
 		data.textureSlots["filterInput"].texture = cubeTexture;
 		data.vectorParameters["filterInputDimensions"] = float4(cubeTexture->getSize().x, cubeTexture->getSize().y, 0, 0);
 	});
-	applyFilter(frameRenderer, sceneRenderer.materialBuilderContext, probe->lambertTexture, diffuseFilterMaterial);
+	applyFilter(frameRenderer, sceneRenderer.getMaterialBuilderContext(), probe->lambertTexture, diffuseFilterMaterial);
 
 	Material specularFilterMaterial;
 	specularFilterMaterial.modify([&](MaterialData &data) {
@@ -275,7 +274,7 @@ void EnvironmentProbeFeature::precomputeEnvironmentProbe(SceneRenderer &sceneRen
 	for (size_t mipLevel = 0; mipLevel < numSpecularMipLevels; mipLevel++) {
 		float roughness = mipLevel / float(numSpecularMipLevels - 1);
 		specularFilterMaterial.modify([&](MaterialData &data) { data.vectorParameters["roughness"] = float4(roughness); });
-		applyFilter(frameRenderer, sceneRenderer.materialBuilderContext, probe->ggxTexture, specularFilterMaterial, mipLevel);
+		applyFilter(frameRenderer, sceneRenderer.getMaterialBuilderContext(), probe->ggxTexture, specularFilterMaterial, mipLevel);
 	}
 
 	probe->numMips = numSpecularMipLevels;
