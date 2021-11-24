@@ -19,7 +19,7 @@ if(ARCH)
   add_compile_options(-march=${ARCH})
 endif()
 
-if(USE_FPIC) 
+if(USE_FPIC)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSDL_STATIC_PIC=ON)
 endif()
@@ -28,27 +28,35 @@ if(EMSCRIPTEN)
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     add_compile_options(-g1 -Os)
   endif()
-  
+
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("SHELL:-s ASSERTIONS=2")
   endif()
-  
+
   add_compile_definitions(NO_FORCE_INLINE)
   add_link_options(--bind)
-  
+
   ## if we wanted thread support...
   if(EMSCRIPTEN_PTHREADS)
     add_link_options("SHELL:-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=6")
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
   endif()
-  
+
   if(EMSCRIPTEN_IDBFS)
     add_link_options(-lidbfs.js)
   endif()
-  
+
   if(EMSCRIPTEN_NODEFS)
     add_link_options(-lnodefs.js)
+  endif()
+endif()
+
+# mingw32 static runtime
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(WIN32)
+    add_link_options(-static)
+    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-static -DCMAKE_C_FLAGS=-static)
   endif()
 endif()
 
@@ -140,7 +148,7 @@ if(APPLE)
   set(CMAKE_USE_WIN32_THREADS_INIT 0)
   set(CMAKE_USE_PTHREADS_INIT 1)
   set(THREADS_PREFER_PTHREAD_FLAG ON)
-  
+
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
   add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
 endif()
