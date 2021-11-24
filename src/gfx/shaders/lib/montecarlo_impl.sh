@@ -34,7 +34,7 @@ mat3 generateFrameFromZDirection(vec3 normal) {
 	vec3 tangent = normalize(cross(bitangent, normal));
 	bitangent = cross(normal, tangent);
 
-	return mtxFromRows(tangent, bitangent, normal);
+	return mtxFromCols(tangent, bitangent, normal);
 }
 
 vec3 montecarlo(in vec2 inputUV) {

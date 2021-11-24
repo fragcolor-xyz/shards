@@ -5,12 +5,12 @@
 #define MONTECARLO_SAMPLE_ENVIRONMENT(_dir, _lod) textureCubeLod(u_filterInput, _dir, _lod).xyz
 #include <lib/montecarlo.sh>
 
-uniform float4 u_roughness;
+uniform vec4 u_roughness;
 
 MonteCarloOutput ggx(MonteCarloInput mci) {
 	MonteCarloOutput result;
 
-	LightingVectorSample lvs = importanceSampleGGX(mci.coord, u_roughness);
+	LightingVectorSample lvs = importanceSampleGGX(mci.coord, u_roughness.x);
 	result.localDirection = lvs.localDirection;
 	result.pdf = lvs.pdf;
 

@@ -3,9 +3,14 @@
 
 #include "light_directional.sh"
 #include "light_point.sh"
-#include "light_environment.sh"
 
-vec3 processLights(vec3 worldPosition, vec3 viewDirection, vec3 normal) {
+#if GFX_ENVIRONMENT_LIGHT
+#include "light_environment.sh"
+#endif
+
+vec3 processLights(in MaterialInfo mi, vec3 negViewDirection) {
+	vec3 worldPosition = mi.worldPosition;
+	vec3 normal = mi.normal;
 	vec3 result = vec3_splat(0);
 
 #if GFX_MAX_DIR_LIGHTS
@@ -14,7 +19,7 @@ vec3 processLights(vec3 worldPosition, vec3 viewDirection, vec3 normal) {
 		light.color = u_dirLightData[i].xyz;
 		light.direction = u_dirLightData[i + 1].xyz;
 		light.intensity = u_dirLightData[i + 1].w;
-		result += directionalLight(light, viewDirection, normal);
+		result += directionalLight(light, negViewDirection, normal);
 	}
 #endif
 
@@ -26,12 +31,12 @@ vec3 processLights(vec3 worldPosition, vec3 viewDirection, vec3 normal) {
 		light.position = u_pointLightData[i + 1].xyz;
 		light.intensity = u_pointLightData[i + 1].w;
 		light.outerRadius = u_pointLightData[i + 2].x;
-		result += pointLight(light, worldPosition, viewDirection, normal);
+		result += pointLight(light, worldPosition, negViewDirection, normal);
 	}
 #endif
 
 #if GFX_ENVIRONMENT_LIGHT
-	result += environmentLight(worldPosition, viewDirection, normal);
+	result += environmentLight(mi, negViewDirection);
 #endif
 
 	return result;

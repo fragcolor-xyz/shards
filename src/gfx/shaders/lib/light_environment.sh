@@ -1,8 +1,12 @@
-#if 0
-struct LightingGeneralParams {
-	vec3 surfaceNormal;
-	vec3 viewDirection; // from object to view
-};
+#include <lib/pbr.sh>
+#include <lib/env_texture.sh>
+
+uniform float4 u_envNumMipLevels;
+
+vec3 getIBLRadianceGGX(vec3 ggxSample, vec2 ggxLUT, vec3 fresnelColor, float specularWeight) {
+	vec3 FssEss = fresnelColor * ggxLUT.x + ggxLUT.y;
+	return specularWeight * ggxSample * FssEss;
+}
 
 vec3 getIBLRadianceLambertian(vec3 lambertianSample, vec2 ggxLUT, vec3 fresnelColor, vec3 diffuseColor, vec3 F0, float specularWeight) {
 	vec3 FssEss = specularWeight * fresnelColor * ggxLUT.x + ggxLUT.y; // <--- GGX / specular light contribution (scale it down if the specularWeight is low)
@@ -16,11 +20,11 @@ vec3 getIBLRadianceLambertian(vec3 lambertianSample, vec2 ggxLUT, vec3 fresnelCo
 	return (FmsEms + k_D) * lambertianSample;
 }
 
-vec3 computeEnvironmentLighting(in MaterialInfo material, in LightingGeneralParams params, in sampler2D envTexLambert, in sampler2D envTexGGX, in sampler2D envTexGGXLUT) {
-	vec3 viewDir = params.viewDirection;
-	vec3 reflDir = getReflectionVector(viewDir, params.surfaceNormal);
+vec3 computeEnvironmentLighting(in MaterialInfo material, vec3 negViewDirection) {
+	vec3 surfaceNormal = material.normal;
+	vec3 reflDir = getReflectionVector(negViewDirection, surfaceNormal);
 
-	float nDotV = dot(viewDir, params.surfaceNormal);
+	float nDotV = dot(negViewDirection, surfaceNormal);
 
 	material.perceptualRoughness = clamp(material.perceptualRoughness, 0, 1);
 	material.metallic = clamp(material.metallic, 0, 1);
@@ -28,27 +32,23 @@ vec3 computeEnvironmentLighting(in MaterialInfo material, in LightingGeneralPara
 	float roughness = material.perceptualRoughness * material.perceptualRoughness;
 	float reflectance = max(max(material.specularColor0.r, material.specularColor0.g), material.specularColor0.b);
 
-	material.specularColor90 = vec3(1.0);
+	float numMipLevels = u_envNumMipLevels.x;
+	vec2 ggxLUT = texture2D(u_envGGXLUTTexture, vec2(roughness, nDotV)).xy;
+	vec3 ggxSample = longLatTextureLod(u_envGGXTexture, reflDir, numMipLevels * material.perceptualRoughness);
+	vec3 lambertianSample = longLatTextureLod(u_envLambertTexture, surfaceNormal, 0);
 
-	// TODO
-	float numMipLevels = 6.0;
-	vec2 ggxLUT = texture(envTexGGXLUT, vec2(roughness, nDotV)).xy;
-	vec3 ggxSample = sampleEnvironmentLod(envTexGGX, reflDir, numMipLevels * material.perceptualRoughness);
-	vec3 lambertianSample = sampleEnvironmentLod(envTexLambert, params.surfaceNormal, 0);
-
-	vec3 specularColor90 = max(vec3(1.0 - roughness), material.specularColor0);
+	vec3 specularColor90 = max(vec3_splat(1.0 - roughness), material.specularColor0);
 	vec3 fresnelColor = fresnelSchlick(material.specularColor0, specularColor90, nDotV);
 
-	vec3 specularLight = vec3(0.0);
-	vec3 diffuseLight = vec3(0.0);
+	vec3 specularLight = vec3_splat(0.0);
+	vec3 diffuseLight = vec3_splat(0.0);
 
 	specularLight += getIBLRadianceGGX(ggxSample, ggxLUT, fresnelColor, material.specularWeight);
 	diffuseLight += getIBLRadianceLambertian(lambertianSample, ggxLUT, fresnelColor, material.diffuseColor, material.specularColor0, material.specularWeight);
 
 	return diffuseLight + specularLight;
 }
-#endif
 
-vec3 environmentLight(vec3 worldPosition, vec3 viewDirection, vec3 normal) {
-	return normal;
+vec3 environmentLight(in MaterialInfo mi, vec3 negViewDirection) {
+	return computeEnvironmentLighting(mi, negViewDirection);
 }

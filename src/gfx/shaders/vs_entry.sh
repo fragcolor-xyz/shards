@@ -10,9 +10,7 @@ struct MaterialInfo {
 	vec3 tangent;
 };
 
-vec3 generateTangent(vec3 normal) {
-	return normalize(cross(vec3(normal.y, -normal.x, normal.z), normal));
-}
+vec3 generateTangent(vec3 normal) { return normalize(cross(vec3(normal.y, -normal.x, normal.z), normal)); }
 
 #if GFX_HAS_VS_MATERIAL_MAIN
 void materialMain(inout MaterialInfo mi);
@@ -38,6 +36,10 @@ void main() {
 #endif
 #if GFX_HAS_VERTEX_TEXCOORD0
 	v_texcoord0 = a_texcoord0;
+#endif
+
+#if GFX_FLIP_TEX_Y
+	v_texcoord0.y = 1.0 - v_texcoord0.y;
 #endif
 
 #if GFX_FULLSCREEN

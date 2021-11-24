@@ -72,6 +72,7 @@ struct MaterialUsageFlags {
 		HasVertexColors = 1 << 2,
 		Instanced = 1 << 3,
 		Picking = 1 << 4,
+		FlipTexcoordY = 1 << 5,
 	};
 	static bool contains(const MaterialUsageFlags::Type &a, const MaterialUsageFlags::Type &b) { return (a & b) != 0; }
 };
@@ -98,6 +99,7 @@ struct StaticMaterialOptions {
 struct MaterialUsageContext {
 	MaterialBuilderContext &context;
 	Material material;
+	std::unordered_map<std::string, MaterialTextureSlot> textureSlots;
 	std::unordered_map<std::string, size_t> textureRegisterMap;
 	StaticMaterialOptions staticOptions;
 
@@ -110,6 +112,7 @@ struct MaterialUsageContext {
 	template <typename THash> void hashStatic(THash &hash) const {
 		hash(material.getStaticHash());
 		hash(staticOptions);
+		hash(textureSlots);
 	}
 };
 } // namespace gfx

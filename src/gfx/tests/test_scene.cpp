@@ -202,7 +202,7 @@ TEST_CASE_METHOD(SceneFixture, "Scene rendering - environment probe", "[env]") {
 	Material skyMaterial;
 	skyMaterial.modify([&](MaterialData &data) {
 		data.textureSlots["skyTexture"].texture = texture;
-		data.vertexCode = R"(
+	data.vertexCode = R"(
 void main(inout MaterialInfo mi) {
 	mi.localPosition *= 100.0f;
 	mi.worldPosition = mi.localPosition + getCameraPosition();
@@ -212,6 +212,7 @@ void main(inout MaterialInfo mi) {
 		data.pixelCode = R"(
 void main(inout MaterialInfo mi) {
 	vec3 dir = normalize(mi.worldPosition - getCameraPosition());
+	dir.xz = vec2(dir.x, -dir.z);
 	mi.color = longLatTextureLod(u_skyTexture, dir, 0);
 }
 )";

@@ -78,33 +78,9 @@ void PointLightsFeature::setupScene(SceneRenderer &sceneRenderer) {
 
 void PointLightsFeature::setupMaterial(SceneRenderer &scene, MaterialUsageContext &context) { context.staticOptions.numPointLights = pointLights.size(); }
 
-static const char *textureEnvLambertTexture = "u_envLambertTexture";
-static const char *textureEnvGGXTexture = "u_envGGXTexture";
-static const char *textureEnvGGXLUTTexture = "u_envGGXLUTTexture";
-
-void EnvironmentProbeFeature::runPrecompute(SceneRenderer &sceneRenderer) {
-	if (!ggxLUTTexture) {
-		precomputeGGXLUT(sceneRenderer);
-	}
-
-	for (auto envProbe : sceneRenderer.environmentProbes) {
-		if (envProbe->needsRebuild())
-			precomputeEnvironmentProbe(sceneRenderer, envProbe);
-		firstEnvProbe = envProbe;
-		break;
-	}
-}
-
-void EnvironmentProbeFeature::setupScene(SceneRenderer &sceneRenderer) {
-	u_envLambertTexture = bgfx::createUniform(textureEnvLambertTexture, bgfx::UniformType::Sampler);
-	u_envGGXTexture = bgfx::createUniform(textureEnvGGXTexture, bgfx::UniformType::Sampler);
-	u_envGGXLUTTexture = bgfx::createUniform(textureEnvGGXLUTTexture, bgfx::UniformType::Sampler);
-}
-
-void EnvironmentProbeFeature::precomputeGGXLUT(SceneRenderer &sceneRenderer) {
-	int ggxLUTResolution = 128;
-	ggxLUTTexture = std::make_shared<Texture>(int2(ggxLUTResolution), bgfx::TextureFormat::RG32F);
-}
+static const char *textureEnvLambertTexture = "envLambertTexture";
+static const char *textureEnvGGXTexture = "envGGXTexture";
+static const char *textureEnvGGXLUTTexture = "envGGXLUTTexture";
 
 void applyFilter(FrameRenderer &frameRenderer, MaterialBuilderContext &mbc, TexturePtr outputTexture, Material &material, int targetMipLevel = 0) {
 	gfx::geom::PlaneGenerator gen;
@@ -129,6 +105,7 @@ void applyFilter(FrameRenderer &frameRenderer, MaterialBuilderContext &mbc, Text
 	view.setViewport(gfx::Rect(fbTexture->getSize().x, fbTexture->getSize().y));
 
 	MaterialUsageContext materialContext(mbc);
+	materialContext.staticOptions.usageFlags |= MaterialUsageFlags::FlipTexcoordY;
 	materialContext.material = material;
 	ShaderProgramPtr program = materialContext.getProgram();
 	materialContext.setState();
@@ -149,6 +126,41 @@ void applyFilter(FrameRenderer &frameRenderer, MaterialBuilderContext &mbc, Text
 			   fbTexture->handle, 0, 0, 0, 0,				   // source mip/x/y/z
 			   mipSize.x, mipSize.y, 0);
 	frameRenderer.popView();
+}
+
+void EnvironmentProbeFeature::runPrecompute(SceneRenderer &sceneRenderer) {
+	if (!ggxLUTTexture) {
+		precomputeGGXLUT(sceneRenderer);
+	}
+
+	for (auto envProbe : sceneRenderer.environmentProbes) {
+		if (envProbe->needsRebuild())
+			precomputeEnvironmentProbe(sceneRenderer, envProbe);
+		firstEnvProbe = envProbe;
+		break;
+	}
+}
+
+void EnvironmentProbeFeature::setupScene(SceneRenderer &sceneRenderer) {
+	u_envLambertTexture = bgfx::createUniform(fmt::format("u_{}", textureEnvLambertTexture).c_str(), bgfx::UniformType::Sampler);
+	u_envGGXTexture = bgfx::createUniform(fmt::format("u_{}", textureEnvGGXTexture).c_str(), bgfx::UniformType::Sampler);
+	u_envGGXLUTTexture = bgfx::createUniform(fmt::format("u_{}", textureEnvGGXLUTTexture).c_str(), bgfx::UniformType::Sampler);
+	u_envNumMipLevels = bgfx::createUniform("u_envNumMipLevels", bgfx::UniformType::Vec4);
+}
+
+void EnvironmentProbeFeature::precomputeGGXLUT(SceneRenderer &sceneRenderer) {
+	int ggxLUTResolution = 128;
+	ggxLUTTexture = std::make_shared<Texture>(int2(ggxLUTResolution), bgfx::TextureFormat::RG32F);
+
+	Material filterMaterial;
+	filterMaterial.modify([&](MaterialData &data) {
+		data.flags = MaterialStaticFlags::Fullscreen;
+		data.pixelCode = R"(
+#include <filters/specularLUT.sh>
+)";
+	});
+
+	applyFilter(sceneRenderer.frame, sceneRenderer.materialBuilderContext, ggxLUTTexture, filterMaterial);
 }
 
 void blitCubeMips(View &view, TexturePtr dest, TexturePtr source, int faceIndex) {
@@ -180,8 +192,8 @@ void EnvironmentProbeFeature::precomputeEnvironmentProbe(SceneRenderer &sceneRen
 		{"back", linalg::rotation_matrix(linalg::rotation_quat(up, 0.0f))},
 		{"right", linalg::rotation_matrix(linalg::rotation_quat(up, -halfPi))},
 		{"left", linalg::rotation_matrix(linalg::rotation_quat(up, halfPi))},
-		{"top", linalg::rotation_matrix(linalg::qmul(linalg::rotation_quat(right, -halfPi), linalg::rotation_quat(up, -halfPi)))},
-		{"bottom", linalg::rotation_matrix(linalg::qmul(linalg::rotation_quat(right, halfPi), linalg::rotation_quat(up, -halfPi)))},
+		{"top", linalg::rotation_matrix(linalg::qmul(linalg::rotation_quat(right, -halfPi), linalg::rotation_quat(up, pi)))},
+		{"bottom", linalg::rotation_matrix(linalg::qmul(linalg::rotation_quat(right, halfPi), linalg::rotation_quat(up, pi)))},
 	};
 	int cubeFaceMapping[6] = {
 		BGFX_CUBE_MAP_POSITIVE_Z, BGFX_CUBE_MAP_NEGATIVE_Z, BGFX_CUBE_MAP_POSITIVE_X,
@@ -265,28 +277,30 @@ void EnvironmentProbeFeature::precomputeEnvironmentProbe(SceneRenderer &sceneRen
 		specularFilterMaterial.modify([&](MaterialData &data) { data.vectorParameters["roughness"] = float4(roughness); });
 		applyFilter(frameRenderer, sceneRenderer.materialBuilderContext, probe->ggxTexture, specularFilterMaterial, mipLevel);
 	}
+
+	probe->numMips = numSpecularMipLevels;
 }
 
 void EnvironmentProbeFeature::setupMaterial(SceneRenderer &scene, MaterialUsageContext &context) {
 	if (!firstEnvProbe)
 		return;
+	if ((context.material.getData().flags & MaterialStaticFlags::Lit) == 0)
+		return;
 
-	context.textureRegisterMap.insert_or_assign(textureEnvLambertTexture, context.textureRegisterMap.size());
-	context.textureRegisterMap.insert_or_assign(textureEnvGGXTexture, context.textureRegisterMap.size());
-	context.textureRegisterMap.insert_or_assign(textureEnvGGXLUTTexture, context.textureRegisterMap.size());
+	context.textureSlots[textureEnvLambertTexture].texture = firstEnvProbe->lambertTexture;
+	context.textureSlots[textureEnvGGXTexture].texture = firstEnvProbe->ggxTexture;
+	context.textureSlots[textureEnvGGXLUTTexture].texture = ggxLUTTexture;
 	context.staticOptions.hasEnvironmentLight = true;
 }
 
 void EnvironmentProbeFeature::setupState(SceneRenderer &scene, MaterialUsageContext &context) {
 	if (!firstEnvProbe)
 		return;
+	if ((context.material.getData().flags & MaterialStaticFlags::Lit) == 0)
+		return;
 
-	size_t envLambertTexture_register = context.textureRegisterMap[textureEnvLambertTexture];
-	size_t envGGXTexture_register = context.textureRegisterMap[textureEnvGGXTexture];
-	size_t envGGXLUTTexture_register = context.textureRegisterMap[textureEnvGGXLUTTexture];
-	bgfx::setTexture(envLambertTexture_register, u_envLambertTexture, firstEnvProbe->lambertTexture->handle);
-	bgfx::setTexture(envGGXTexture_register, u_envGGXTexture, firstEnvProbe->ggxTexture->handle);
-	bgfx::setTexture(envGGXLUTTexture_register, u_envGGXTexture, ggxLUTTexture->handle);
+	float4 numMipLevels = float4(float(firstEnvProbe->numMips));
+	bgfx::setUniform(u_envNumMipLevels, &numMipLevels);
 }
 
 } // namespace gfx

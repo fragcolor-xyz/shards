@@ -22,6 +22,13 @@ void main() {
 	mi.tangent = v_tangent;
 	mi.worldPosition = v_worldPosition;
 
+#if GFX_LIT
+	mi.ior = 1.5;
+	mi.specularColor0 = vec3_splat(0.04);
+	mi.specularWeight = 1.0;
+	materialSetMetallicRoughness(mi, 1.0, 0.3);
+#endif
+
 	mi.DEFAULT_COLOR_FIELD *= u_baseColor;
 
 #ifdef GFX_BASE_COLOR_TEXTURE
@@ -34,7 +41,7 @@ void main() {
 
 #ifdef GFX_LIT
 	vec3 negViewDirection = normalize(getCameraPosition() - mi.worldPosition);
-	mi.DEFAULT_COLOR_FIELD.xyz *= processLights(mi.worldPosition, negViewDirection, mi.normal);
+	mi.DEFAULT_COLOR_FIELD.xyz *= processLights(mi, negViewDirection);
 #endif
 
 #ifdef GFX_MRT_ASSIGNMENTS

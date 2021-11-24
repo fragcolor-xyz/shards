@@ -38,6 +38,7 @@ struct EnvironmentProbeFeature : public Feature {
 	bgfx::UniformHandle u_envLambertTexture;
 	bgfx::UniformHandle u_envGGXTexture;
 	bgfx::UniformHandle u_envGGXLUTTexture;
+	bgfx::UniformHandle u_envNumMipLevels;
 
 	TexturePtr ggxLUTTexture;
 	std::shared_ptr<EnvironmentProbe> firstEnvProbe;

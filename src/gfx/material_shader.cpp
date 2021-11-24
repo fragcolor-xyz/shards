@@ -129,35 +129,40 @@ struct MaterialShaderBuilder {
 		varyings << type << " v_" << name << " : " << nameUpper << ";\n";
 	};
 
-	void assignTextureSlots(const MaterialData &materialData) {
+	void assignTextureSlots(const MaterialData &materialData, const std::unordered_map<std::string, MaterialTextureSlot> &usageTextureSlots) {
 		size_t textureCounter = 0;
 		std::string textureFieldsDefine = "";
-		for (auto &textureSlot : materialData.textureSlots) {
-			if (textureSlot.first == MaterialBuiltin::baseColorTexture) {
-				defines.push_back(fmt::format("GFX_BASE_COLOR_TEXTURE={}", textureSlot.second.texCoordIndex));
-			} else if (textureSlot.first == MaterialBuiltin::normalTexture) {
-				defines.push_back(fmt::format("GFX_NORMAL_TEXTURE={}", textureSlot.second.texCoordIndex));
-			} else if (textureSlot.first == MaterialBuiltin::metalicRoughnessTexture) {
-				defines.push_back(fmt::format("GFX_METALLIC_ROUGHNESS_TEXTURE={}", textureSlot.second.texCoordIndex));
-			} else if (textureSlot.first == MaterialBuiltin::emissiveTexture) {
-				defines.push_back(fmt::format("GFX_EMISSIVE_TEXTURE={}", textureSlot.second.texCoordIndex));
-			}
 
-			TexturePtr texture = textureSlot.second.texture;
-			TextureType type = texture ? texture->getType() : TextureType::Texture2D;
-			if (type == TextureType::Texture2D) {
-				textureFieldsDefine += (fmt::format("SAMPLER2D(u_{0}, u_{0}_register);", textureSlot.first));
-			} else if (type == TextureType::TextureCube) {
-				textureFieldsDefine += (fmt::format("SAMPLERCUBE(u_{0}, u_{0}_register);", textureSlot.first));
-			} else {
-				assert(false);
-			}
+		auto process = [&](const std::unordered_map<std::string, MaterialTextureSlot> &textureSlots) {
+			for (auto &textureSlot : textureSlots) {
+				if (textureSlot.first == MaterialBuiltin::baseColorTexture) {
+					defines.push_back(fmt::format("GFX_BASE_COLOR_TEXTURE={}", textureSlot.second.texCoordIndex));
+				} else if (textureSlot.first == MaterialBuiltin::normalTexture) {
+					defines.push_back(fmt::format("GFX_NORMAL_TEXTURE={}", textureSlot.second.texCoordIndex));
+				} else if (textureSlot.first == MaterialBuiltin::metalicRoughnessTexture) {
+					defines.push_back(fmt::format("GFX_METALLIC_ROUGHNESS_TEXTURE={}", textureSlot.second.texCoordIndex));
+				} else if (textureSlot.first == MaterialBuiltin::emissiveTexture) {
+					defines.push_back(fmt::format("GFX_EMISSIVE_TEXTURE={}", textureSlot.second.texCoordIndex));
+				}
 
-			defines.push_back(fmt::format("u_{}_register={}", textureSlot.first, textureCounter));
-			defines.push_back(fmt::format("u_{}_texcoord=v_texcoord{}", textureSlot.first, textureSlot.second.texCoordIndex));
-			textureRegisterMap[textureSlot.first] = textureCounter;
-			textureCounter++;
-		}
+				TexturePtr texture = textureSlot.second.texture;
+				TextureType type = texture ? texture->getType() : TextureType::Texture2D;
+				if (type == TextureType::Texture2D) {
+					textureFieldsDefine += (fmt::format("SAMPLER2D(u_{0}, u_{0}_register);", textureSlot.first));
+				} else if (type == TextureType::TextureCube) {
+					textureFieldsDefine += (fmt::format("SAMPLERCUBE(u_{0}, u_{0}_register);", textureSlot.first));
+				} else {
+					assert(false);
+				}
+
+				defines.push_back(fmt::format("u_{}_register={}", textureSlot.first, textureCounter));
+				defines.push_back(fmt::format("u_{}_texcoord=v_texcoord{}", textureSlot.first, textureSlot.second.texCoordIndex));
+				textureRegisterMap[textureSlot.first] = textureCounter;
+				textureCounter++;
+			}
+		};
+		process(materialData.textureSlots);
+		process(usageTextureSlots);
 
 		defines.push_back("TEXTURE_FIELDS=" + textureFieldsDefine);
 	}
@@ -170,7 +175,8 @@ struct MaterialShaderBuilder {
 		}
 	}
 
-	void build(const MaterialData &materialData, const StaticMaterialOptions &staticOptions) {
+	void build(const MaterialData &materialData, const StaticMaterialOptions &staticOptions,
+			   const std::unordered_map<std::string, MaterialTextureSlot> &usageTextureSlots) {
 		addGenericAttribute("position", "vec3");
 		addGenericAttribute("texcoord0", "vec2");
 
@@ -186,13 +192,17 @@ struct MaterialShaderBuilder {
 			addGenericAttribute("color0", "vec4");
 		}
 
+		if(staticOptions.usageFlags & MaterialUsageFlags::FlipTexcoordY) {
+			defines.push_back("GFX_FLIP_TEX_Y=1");
+		}
+
 		addVarying("texcoord0", "vec2");
 		addVarying("normal", "vec3");
 		addVarying("tangent", "vec3");
 		addVarying("color0", "vec4");
 		addVarying("worldPosition", "vec3");
 
-		assignTextureSlots(materialData);
+		assignTextureSlots(materialData, usageTextureSlots);
 
 		if (materialData.flags & MaterialStaticFlags::Lit) {
 			setupLighting(materialData, staticOptions);
@@ -249,8 +259,9 @@ struct MaterialShaderBuilder {
 
 ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	MaterialShaderBuilder shaderBuilder;
-	shaderBuilder.build(material.getData(), staticOptions);
+	shaderBuilder.build(material.getData(), staticOptions, textureSlots);
 
+	textureRegisterMap = shaderBuilder.textureRegisterMap;
 	std::string varyings = shaderBuilder.varyings.str();
 	std::string vsCode = shaderBuilder.vsCode.str();
 	std::string psCode = shaderBuilder.psCode.str();
@@ -265,6 +276,7 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	hasher(varyings);
 	hasher(psCode);
 	hasher(shaderBuilder.defines);
+
 	Hash128 psCodeHash = hasher.getDigest();
 
 	spdlog::info("Shader varyings:\n{}", varyings);
@@ -277,7 +289,7 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 		options.setCompatibleForContext(context.context);
 		options.verbose = false;
 		options.debugInformation = true;
-		options.optimize = true;
+		options.optimize = false;
 		options.disasm = true;
 
 		spdlog::info("Shader source:\n{}", code);
@@ -332,17 +344,22 @@ void MaterialUsageContext::bindUniforms() {
 		bgfx::setUniform(handle, &vecParam.second.x);
 	}
 
-	for (auto &texSlot : materialData.textureSlots) {
-		bgfx::UniformHandle handle = context.getUniformHandle(texSlot.first, bgfx::UniformType::Sampler);
+	auto bindTextureSlots = [&](const std::unordered_map<std::string, MaterialTextureSlot> &textureSlots) {
+		for (auto &texSlot : textureSlots) {
+			bgfx::UniformHandle handle = context.getUniformHandle(texSlot.first, bgfx::UniformType::Sampler);
 
-		TexturePtr texture = texSlot.second.texture;
-		if (!texture)
-			texture = context.fallbackTexture;
+			TexturePtr texture = texSlot.second.texture;
+			if (!texture)
+				texture = context.fallbackTexture;
 
-		size_t registerIndex = textureRegisterMap[texSlot.first];
+			size_t registerIndex = textureRegisterMap[texSlot.first];
 
-		bgfx::setTexture(registerIndex, handle, texture->handle);
-	}
+			bgfx::setTexture(registerIndex, handle, texture->handle);
+		}
+	};
+
+	bindTextureSlots(materialData.textureSlots);
+	bindTextureSlots(textureSlots);
 }
 
 void MaterialUsageContext::setState() { bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS); }

@@ -1,5 +1,5 @@
 #define MONTECARLO_NUM_SAMPLES (1024 * 2)
-#include <lib/hammersley2d.glsl>
+#include <lib/hammersley2d.sh>
 #include <lib/pbr.sh>
 
 void main(inout MaterialInfo mi) {
