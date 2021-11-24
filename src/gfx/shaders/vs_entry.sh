@@ -1,7 +1,10 @@
-#include <common.sh>
+#include <lib.sh>
 
 struct MaterialInfo {
 	vec3 localPosition;
+	vec3 worldPosition;
+	mat4 worldMatrix;
+	vec4 ndcPosition;
 	vec4 color;
 	vec3 normal;
 	vec3 tangent;
@@ -37,15 +40,22 @@ void main() {
 	v_texcoord0 = a_texcoord0;
 #endif
 
+#if GFX_FULLSCREEN
+	mi.worldPosition = mi.localPosition;
+	mi.ndcPosition = vec4(mi.localPosition, 1);
+#else
+	mi.worldMatrix = u_model[0];
+	mi.worldPosition = mul(mi.worldMatrix, vec4(mi.localPosition, 1.0)).xyz;
+	mi.ndcPosition = mul(u_viewProj, vec4(mi.worldPosition, 1.0));
+#endif
+
 #if GFX_HAS_VS_MATERIAL_MAIN
 	materialMain(mi);
 #endif
 
-	mat4 worldMatrix = u_model[0];
-	vec4 worldPos = mul(worldMatrix, vec4(mi.localPosition.xyz, 1.0));
-	gl_Position = mul(u_viewProj, worldPos);
+	gl_Position = mi.ndcPosition;
 
-	v_worldPosition = worldPos.xyz;
+	v_worldPosition = mi.worldPosition;
 	v_normal = mi.normal;
 	v_tangent = mi.tangent;
 	v_color0 = mi.color;

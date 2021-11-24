@@ -1,26 +1,23 @@
 #include "test_data.hpp"
-#include "bgfx/bgfx.h"
-#include "bx/error.h"
-#include "bx/file.h"
-#include "bx/filepath.h"
-#include "bx/readerwriter.h"
 #include "gfx/tests/test_data.hpp"
-#include "gfx/types.hpp"
 #include "utils.hpp"
 #include <SDL_stdinc.h>
 #include <bgfx/bgfx.h>
+#include <bx/error.h>
 #include <bx/file.h>
 #include <bx/filepath.h>
+#include <bx/readerwriter.h>
 #include <cassert>
 #include <gfx/capture.hpp>
 #include <gfx/paths.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/types.hpp>
+#include <gfx/utils.hpp>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#define STB_IMAGE_IMPLEMENTATION
+// #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_write.h>
 #pragma GCC diagnostic pop
@@ -94,16 +91,31 @@ void TestFrame::set(const uint8_t *imageData, int2 size, TestFrameFormat format,
 	}
 }
 
-bool TestFrame::compare(const TestFrame &other, float tolerance) const {
+bool TestFrame::compare(const TestFrame &other, float tolerance, CompareRejection *rejection) const {
 	uint8_t byteTolerance = uint8_t(255.0f * tolerance);
 
 	assert(size == other.size);
 
+	uint8_t *bytesA = (uint8_t *)pixels.data();
+	uint8_t *bytesB = (uint8_t *)other.pixels.data();
 	size_t numPixels = size.x * size.y;
 	for (size_t pi = 0; pi < numPixels; pi++) {
-		int32_t delta = int32_t(other.pixels[pi]) - int32_t(pixels[pi]);
-		if (std::abs(delta) > byteTolerance)
-			return false;
+		size_t pixelOffset = pi * 4;
+		for (size_t b = 0; b < 4; b++) {
+			int16_t pa(bytesA[pixelOffset + b]);
+			int16_t pb(bytesB[pixelOffset + b]);
+			int16_t delta = pb - pa;
+			if (std::abs(delta) > byteTolerance) {
+				if (rejection) {
+					rejection->position.y = pi / size.x;
+					rejection->position.x = pi - (rejection->position.y * size.x);
+					rejection->component = b;
+					rejection->a = uint8_t(pa);
+					rejection->b = uint8_t(pb);
+				}
+				return false;
+			}
+		}
 	}
 	return true;
 }
@@ -113,12 +125,12 @@ TestData::TestData(const TestPlatformId &testPlatformId) : testPlatformId(testPl
 	basePath.join(std::string(testPlatformId).c_str());
 	bx::makeAll(basePath);
 
-	if (SDL_getenv("GFX_OVERWRITE_TEST_DATA")) {
+	if (gfx::getEnvFlag("GFX_OVERWRITE_TEST_DATA")) {
 		overwriteAll = true;
 	}
 }
 
-bool TestData::checkFrame(const char *id, const TestFrame &frame, float tolerance) {
+bool TestData::checkFrame(const char *id, const TestFrame &frame, float tolerance, CompareRejection *rejection) {
 	std::string filename = std::string(id) + ".png";
 
 	bx::FilePath filePath = basePath;
@@ -126,7 +138,7 @@ bool TestData::checkFrame(const char *id, const TestFrame &frame, float toleranc
 
 	TestFrame referenceFrame;
 	if (!overwriteAll && loadFrame(referenceFrame, filePath.getCPtr())) {
-		return referenceFrame.compare(frame, tolerance);
+		return referenceFrame.compare(frame, tolerance, rejection);
 	} else {
 		// Write reference
 		storeFrame(frame, filePath.getCPtr());
@@ -143,7 +155,7 @@ bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
 		return false;
 	}
 
-	frame.set(data, size, TestFrameFormat::BGRA8, size.x * sizeof(TestFrame::pixel_t), false);
+	frame.set(data, size, TestFrameFormat::RGBA8, size.x * sizeof(TestFrame::pixel_t), false);
 
 	return true;
 }

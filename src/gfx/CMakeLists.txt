@@ -12,6 +12,7 @@ add_library(gfx
   imgui.cpp
   material.cpp
   material_shader.cpp
+  utils.cpp
   # shader_cache.cpp
   # mesh.cpp
   scene.cpp
@@ -25,6 +26,8 @@ add_library(gfx
   window.cpp
   shaderc.cpp
   paths.cpp
+  texture_file.cpp
+  feature.cpp
 )
 
 target_include_directories(gfx

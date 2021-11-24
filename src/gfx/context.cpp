@@ -151,7 +151,7 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 			rendererType = DefaultRenderer;
 		}
 	}
-	
+
 	spdlog::debug("Set renderer type to {}", getRendererTypeName(rendererType));
 
 	bgfx::Init initInfo{};
@@ -164,6 +164,7 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	initInfo.resolution.reset = resetFlags;
 	initInfo.resolution.format = options.backbufferFormat;
 	initInfo.debug = options.debug;
+	initInfo.profile = options.debug;
 	if (!bgfx::init(initInfo)) {
 		throw std::runtime_error("Failed to initialize BGFX");
 	}

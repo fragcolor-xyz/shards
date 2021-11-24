@@ -133,6 +133,8 @@ void main(inout MaterialInfo mi) {
 	float angle = acos(abs(mi.normal.x));
 	float bump = cos(angle * 8.0) * 0.05;
 	mi.localPosition += mi.normal * bump;
+	mi.worldPosition = mul(mi.worldMatrix, vec4(mi.localPosition.xyz, 1.0)).xyz;
+	mi.ndcPosition = mul(u_viewProj, vec4(mi.worldPosition, 1.0));
 };
 )";
 	});

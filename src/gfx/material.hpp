@@ -15,6 +15,7 @@ struct MaterialStaticFlags {
 	enum Type : uint32_t {
 		None = 0,
 		Lit = 1 << 0,
+		Fullscreen = 1 << 1,
 	};
 };
 

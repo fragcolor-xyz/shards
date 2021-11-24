@@ -27,11 +27,16 @@ void main() {
 	#define model u_model[0]
 #endif
 
+#if GFX_FULLSCREEN
+	v_wpos = a_position;
+	gl_Position
+#else
 	// this will need to become vec4 when we add anims and morphs and divide by .w
 	vec3 wpos = mul(model, vec4(a_position, 1.0) ).xyz;
 	v_wpos = wpos;
 
-	gl_Position = mul(u_viewProj, vec4(wpos, 1.0) );
+	gl_Position = mul(u_viewProj, vec4(wpos, 1.0));
+#endif
 
 #ifdef CB_HAS_NORMAL
 	vec3 normal = a_normal * 2.0 - 1.0;

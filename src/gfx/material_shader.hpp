@@ -11,6 +11,9 @@
 #include <unordered_map>
 
 namespace gfx {
+struct Feature;
+typedef std::shared_ptr<Feature> FeaturePtr;
+
 struct ShaderHandle {
 	bgfx::ShaderHandle shaderHandle = BGFX_INVALID_HANDLE;
 	ShaderHandle(bgfx::ShaderHandle shaderHandle) : shaderHandle(shaderHandle) {}
@@ -70,11 +73,13 @@ inline MaterialUsageFlags::Type &operator|=(MaterialUsageFlags::Type &a, Materia
 struct StaticMaterialOptions {
 	int numDirectionLights = 0;
 	int numPointLights = 0;
-	MaterialUsageFlags::Type usageFlags;
+	bool hasEnvironmentLight = false;
+	MaterialUsageFlags::Type usageFlags = MaterialUsageFlags::None;
 
 	template <typename THash> void hashStatic(THash &hash) const {
 		hash(numDirectionLights);
 		hash(numPointLights);
+		hash(hasEnvironmentLight);
 		hash(usageFlags);
 	}
 };

@@ -3,4 +3,4 @@ IndentWidth: 4
 TabWidth: 4
 AccessModifierOffset: -4
 UseTab: Always
-ColumnLimit: 10000
+ColumnLimit: 160

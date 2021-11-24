@@ -110,6 +110,7 @@ struct MaterialShaderBuilder {
 
 	void assignTextureSlots(const MaterialData &materialData) {
 		size_t textureCounter = 0;
+		std::string textureFieldsDefine = "";
 		for (auto &textureSlot : materialData.textureSlots) {
 			if (textureSlot.first == MaterialBuiltin::baseColorTexture) {
 				defines.push_back(fmt::format("GFX_BASE_COLOR_TEXTURE={}", textureSlot.second.texCoordIndex));
@@ -121,16 +122,31 @@ struct MaterialShaderBuilder {
 				defines.push_back(fmt::format("GFX_EMISSIVE_TEXTURE={}", textureSlot.second.texCoordIndex));
 			}
 
+			TexturePtr texture = textureSlot.second.texture;
+			TextureType type = texture ? texture->getType() : TextureType::Texture2D;
+			if (type == TextureType::Texture2D) {
+				textureFieldsDefine += (fmt::format("SAMPLER2D(u_{0}, u_{0}_register);", textureSlot.first));
+			} else if (type == TextureType::TextureCube) {
+				textureFieldsDefine += (fmt::format("SAMPLERCUBE(u_{0}, u_{0}_register);", textureSlot.first));
+			} else {
+				assert(false);
+			}
+
 			defines.push_back(fmt::format("u_{}_register={}", textureSlot.first, textureCounter));
 			defines.push_back(fmt::format("u_{}_texcoord=v_texcoord{}", textureSlot.first, textureSlot.second.texCoordIndex));
 			textureRegisterMap[textureSlot.first] = textureCounter;
 			textureCounter++;
 		}
+
+		defines.push_back("TEXTURE_FIELDS=" + textureFieldsDefine);
 	}
 
 	void setupLighting(const MaterialData &materialData, const StaticMaterialOptions &staticOptions) {
 		defines.push_back(fmt::format("GFX_MAX_DIR_LIGHTS={}", staticOptions.numDirectionLights));
 		defines.push_back(fmt::format("GFX_MAX_POINT_LIGHTS={}", staticOptions.numPointLights));
+		if (staticOptions.hasEnvironmentLight) {
+			defines.push_back(fmt::format("GFX_ENVIRONMENT_LIGHT={}", 1));
+		}
 	}
 
 	void build(const MaterialData &materialData, const StaticMaterialOptions &staticOptions) {
@@ -160,6 +176,10 @@ struct MaterialShaderBuilder {
 		if (materialData.flags & MaterialStaticFlags::Lit) {
 			setupLighting(materialData, staticOptions);
 			defines.push_back("GFX_LIT=1");
+		}
+
+		if (materialData.flags & MaterialStaticFlags::Fullscreen) {
+			defines.push_back("GFX_FULLSCREEN=1");
 		}
 
 		if (materialData.pixelCode.size() > 0) {

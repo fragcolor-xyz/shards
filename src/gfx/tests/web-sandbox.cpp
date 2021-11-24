@@ -181,7 +181,7 @@ void main() {
 			bgfx::Transform transformCache;
 
 			gfx::float4x4 modelMtx = linalg::identity;
-			gfx::float4x4 projMtx = linalg::perspective_matrix(45.0f, float(view.getSize().x) / view.getSize().y, 0.01f, 100.0f);
+			gfx::float4x4 projMtx = linalg::perspective_matrix(pi * 0.6f, float(view.getSize().x) / view.getSize().y, 0.01f, 100.0f);
 			gfx::float4x4 viewMtx = linalg::translation_matrix(gfx::float3(0, 0, -5));
 
 			uint32_t transformCacheIndex = bgfx::allocTransform(&transformCache, 3);

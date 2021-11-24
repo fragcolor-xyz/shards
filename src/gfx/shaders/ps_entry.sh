@@ -1,42 +1,18 @@
-#include <common.sh>
+#include <lib.sh>
 
 uniform vec4 u_baseColor;
 
-#ifdef GFX_BASE_COLOR_TEXTURE
-SAMPLER2D(u_baseColorTexture, u_baseColorTexture_register);
-#endif
-#ifdef GFX_NORMAL_TEXTURE
-SAMPLER2D(u_normalTexture, u_normalTexture_register);
-#endif
-#ifdef GFX_METALLIC_ROUGHNESS_TEXTURE
-SAMPLER2D(u_metallicRougnessTexture, u_metallicRougnessTexture_register);
-#endif
-#ifdef GFX_EMISSIVE_TEXTURE
-SAMPLER2D(u_emissiveTexture, u_emissiveTexture_register);
+#ifdef TEXTURE_FIELDS
+TEXTURE_FIELDS
 #endif
 
-#ifndef DEFAULT_COLOR_FIELD
-#define DEFAULT_COLOR_FIELD color
-#endif
-
-struct MaterialInfo {
-#ifdef GFX_MRT_FIELDS
-	GFX_MRT_FIELDS
-#else
-	vec4 color;
-#endif
-
-	vec2 texcoord0;
-	vec3 normal;
-	vec3 tangent;
-	vec3 worldPosition;
-};
+#include <ps_material.sh>
 
 #ifdef GFX_HAS_PS_MATERIAL_MAIN
 void materialMain(inout MaterialInfo mi);
 #endif
 
-#include <lighting.sh>
+#include <lib/lighting.sh>
 
 void main() {
 	MaterialInfo mi;
@@ -57,9 +33,8 @@ void main() {
 #endif
 
 #ifdef GFX_LIT
-	vec3 cameraPosition = u_invView[3].xyz;
-	vec3 viewDirection = normalize(cameraPosition - mi.worldPosition);
-	mi.DEFAULT_COLOR_FIELD.xyz *= processLights(mi.worldPosition, viewDirection, mi.normal);
+	vec3 negViewDirection = normalize(getCameraPosition() - mi.worldPosition);
+	mi.DEFAULT_COLOR_FIELD.xyz *= processLights(mi.worldPosition, negViewDirection, mi.normal);
 #endif
 
 #ifdef GFX_MRT_ASSIGNMENTS

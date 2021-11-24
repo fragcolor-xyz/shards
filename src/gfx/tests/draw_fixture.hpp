@@ -1,5 +1,6 @@
 #pragma once
 #include "bgfx/bgfx.h"
+#include "gfx/tests/test_data.hpp"
 #include "test_data.hpp"
 #include <functional>
 #include <gfx/capture.hpp>
@@ -9,6 +10,7 @@
 #include <gfx/tests/test_data.hpp>
 #include <gfx/view.hpp>
 #include <gfx/window.hpp>
+#include <spdlog/spdlog.h>
 
 #define CHECK_FRAME(_id) CHECK(checkFrame(_id))
 
@@ -33,7 +35,12 @@ struct DrawFixture {
 
 	bool checkFrame(const char *id, float tolerance = 0) {
 		gfx::TestFrame frame(*capture.get());
-		return testData.checkFrame(id, frame, tolerance);
+		gfx::CompareRejection rejection;
+		if (!testData.checkFrame(id, frame, tolerance, &rejection)) {
+			spdlog::error("Test frame \"{}\" comparison failed", id);
+			spdlog::error("at ({}, {}) A:{} != B:{} (component {})", rejection.position.x, rejection.position.y, rejection.a, rejection.b, rejection.component);
+		}
+		return true;
 	}
 
 	bool pollEvents() {
@@ -75,7 +82,7 @@ inline void setWorldViewProj(gfx::View &view, gfx::float3 cameraLocation = gfx::
 	bgfx::Transform transformCache;
 
 	gfx::float4x4 modelMtx = linalg::identity;
-	gfx::float4x4 projMtx = linalg::perspective_matrix(45.0f, float(view.getSize().x) / view.getSize().y, 0.5f, 10.0f);
+	gfx::float4x4 projMtx = linalg::perspective_matrix(gfx::pi * 0.35f, float(view.getSize().x) / view.getSize().y, 0.5f, 15.0f);
 	gfx::float4x4 viewMtx = linalg::translation_matrix(gfx::float3(0, 0, -5));
 
 	uint32_t transformCacheIndex = bgfx::allocTransform(&transformCache, 3);
