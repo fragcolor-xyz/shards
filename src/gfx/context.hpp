@@ -20,35 +20,12 @@ struct BGFXException : public std::runtime_error {
 	BGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str);
 };
 
-constexpr uint16_t PickingBufferSize = 128;
-constexpr uint32_t MaxNumLights = 4;
-
-// BGFX_CONFIG_MAX_VIEWS is 256
-constexpr bgfx::ViewId MaxViews = 256;
-constexpr bgfx::ViewId GuiViewId = MaxViews - 1;
-constexpr bgfx::ViewId BlittingViewId = GuiViewId - 1;
-constexpr bgfx::ViewId PickingViewId = BlittingViewId - 1;
-
 struct IDrawable {
 	// virtual CBChain *getChain() = 0;
 };
 
 enum class RendererType : uint8_t { None, DirectX11, Vulkan, OpenGL, Metal };
 std::string_view getRendererTypeName(RendererType renderer);
-
-struct ShaderBindingPointUniforms {
-#define Binding_Float bgfx::UniformType::Vec4
-#define Binding_Float3 bgfx::UniformType::Vec4
-#define Binding_Float4 bgfx::UniformType::Vec4
-#define Binding_Texture2D bgfx::UniformType::Sampler
-#define Binding(_name, _type) bgfx::UniformHandle _name = bgfx::createUniform(#_name, _type);
-#include "shaders/bindings.def"
-#undef Binding
-#undef Binding_Float
-#undef Binding_Float3
-#undef Binding_Float4
-#undef Binding_Texture2D
-};
 
 struct ContextCreationOptions {
 	bool debug = false;
@@ -61,7 +38,7 @@ struct ContextCreationOptions {
 
 struct ImguiContext;
 struct Primitive;
-struct ShaderBindingPointUniforms;
+struct MaterialBuilderContext;
 struct BGFXCallbacks;
 struct FrameRenderer;
 struct Window;
@@ -70,12 +47,9 @@ struct ICapture;
 struct Context {
 public:
 	std::shared_ptr<ShaderCompilerModule> shaderCompilerModule;
-	std::shared_ptr<ShaderBindingPointUniforms> bindingUniforms;
+	std::shared_ptr<MaterialBuilderContext> materialBuilderContext;
 	std::shared_ptr<BGFXCallbacks> bgfxCallbacks;
 	std::shared_ptr<ImguiContext> imguiContext;
-
-	// ShaderCache shaderCache;
-	// ShaderBindingPoints bindingPoints;
 
 	uint32_t resetFlags = BGFX_RESET_VSYNC;
 

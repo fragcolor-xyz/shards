@@ -6,6 +6,7 @@
 #include "imgui.hpp"
 #include "magic_enum.hpp"
 #include "material.hpp"
+#include "material_shader.hpp"
 #include "mesh.hpp"
 #include "sdl_native_window.hpp"
 #include "shaderc.hpp"
@@ -82,9 +83,12 @@ static RendererType getRendererTypeByName(std::string_view inName) {
 	return RendererType::None;
 }
 
-static std::string formatBGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) { return fmt::format("BGFX fatal {}:{}: {}", filepath, line, str); }
+static std::string formatBGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) {
+	return fmt::format("BGFX fatal {}:{}: {}", filepath, line, str);
+}
 
-BGFXException::BGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) : std::runtime_error(formatBGFXException(filepath, line, code, str)), line(line), code(code) {}
+BGFXException::BGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str)
+	: std::runtime_error(formatBGFXException(filepath, line, code, str)), line(line), code(code) {}
 
 struct BGFXCallbacks : public bgfx::CallbackI {
 #if BGFX_CONFIG_MULTITHREADED
@@ -171,16 +175,19 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	this->rendererType = rendererType;
 
 	shaderCompilerModule = createShaderCompilerModule();
+	materialBuilderContext = std::make_shared<MaterialBuilderContext>(*this);
 
-	// bindingUniforms = std::make_shared<ShaderBindingPointUniforms>();
-
-	imguiContext->init(18.0, GuiViewId);
+	imguiContext->init(18.0);
 
 	timeUniformHandle = bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
 }
 
 void Context::cleanup() {
 	spdlog::debug("GFX.Context cleanup");
+
+	materialBuilderContext.reset();
+	shaderCompilerModule.reset();
+
 	if (isInitialized()) {
 		rendererType = RendererType::None;
 

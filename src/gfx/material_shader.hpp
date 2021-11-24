@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
+#include "hash.hpp"
 #include "linalg/linalg.h"
 #include "material.hpp"
 #include "texture.hpp"
@@ -15,9 +16,12 @@ struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
 
 struct ShaderHandle {
-	bgfx::ShaderHandle shaderHandle = BGFX_INVALID_HANDLE;
-	ShaderHandle(bgfx::ShaderHandle shaderHandle) : shaderHandle(shaderHandle) {}
-	~ShaderHandle();
+	bgfx::ShaderHandle handle = BGFX_INVALID_HANDLE;
+	ShaderHandle(bgfx::ShaderHandle handle) : handle(handle) {}
+	~ShaderHandle() {
+		if (bgfx::isValid(handle))
+			bgfx::destroy(handle);
+	}
 };
 using ShaderHandlePtr = std::shared_ptr<ShaderHandle>;
 
@@ -42,13 +46,20 @@ struct MaterialBuilderContext {
 	std::unordered_map<std::string, float4> defaultVectorParameters;
 	std::unordered_map<std::string, bgfx::UniformHandle> uniformsCache;
 
+	std::unordered_map<Hash128, ShaderHandlePtr> compiledShaders;
+	std::unordered_map<Hash128, ShaderProgramPtr> compiledPrograms;
+
 	MaterialBuilderContext(Context &context);
 	~MaterialBuilderContext();
 	MaterialBuilderContext(const MaterialBuilderContext &) = delete;
 	MaterialBuilderContext &operator=(const MaterialBuilderContext &) = delete;
 
+	ShaderHandlePtr getCachedShader(Hash128 inputHash);
+	ShaderProgramPtr getCachedProgram(Hash128 inputHash);
+
 	bgfx::UniformHandle getUniformHandle(const std::string &name, bgfx::UniformType::Enum type, uint32_t num = 1);
 
+private:
 	TexturePtr createFallbackTexture();
 	ShaderProgramPtr createFallbackShaderProgram();
 };

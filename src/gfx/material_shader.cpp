@@ -11,6 +11,7 @@
 #include "types.hpp"
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -34,6 +35,20 @@ MaterialBuilderContext::~MaterialBuilderContext() {
 		bgfx::destroy(uniform.second);
 	}
 	uniformsCache.clear();
+}
+
+ShaderHandlePtr MaterialBuilderContext::getCachedShader(Hash128 inputHash) {
+	auto it = compiledShaders.find(inputHash);
+	if (it != compiledShaders.end())
+		return it->second;
+	return ShaderHandlePtr();
+}
+
+ShaderProgramPtr MaterialBuilderContext::getCachedProgram(Hash128 inputHash) {
+	auto it = compiledPrograms.find(inputHash);
+	if (it != compiledPrograms.end())
+		return it->second;
+	return ShaderProgramPtr();
 }
 
 bgfx::UniformHandle MaterialBuilderContext::getUniformHandle(const std::string &name, bgfx::UniformType::Enum type, uint32_t num) {
@@ -74,7 +89,13 @@ ShaderProgramPtr MaterialUsageContext::getProgram() {
 	hasher(*this);
 	Hash128 materialContextHash = hasher.getDigest();
 
-	ShaderProgramPtr program = compileProgram();
+	ShaderProgramPtr program = context.getCachedProgram(materialContextHash);
+	if (program)
+		return program;
+
+	program = compileProgram();
+	context.compiledPrograms[materialContextHash] = program;
+
 	if (!program) {
 		program = context.fallbackShaderProgram;
 	}
@@ -237,16 +258,14 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 	HasherXXH128 hasher;
 	hasher(varyings);
 	hasher(vsCode);
+	hasher(shaderBuilder.defines);
 	Hash128 vsCodeHash = hasher.getDigest();
 
 	hasher.reset();
 	hasher(varyings);
 	hasher(psCode);
+	hasher(shaderBuilder.defines);
 	Hash128 psCodeHash = hasher.getDigest();
-
-	// TODO
-	(void)vsCodeHash;
-	(void)psCodeHash;
 
 	spdlog::info("Shader varyings:\n{}", varyings);
 
@@ -265,22 +284,39 @@ ShaderProgramPtr MaterialUsageContext::compileProgram() {
 		return shaderCompiler.compile(options, output, varyings.c_str(), code.data(), code.length());
 	};
 
-	ShaderCompileOutput vsOutput, psOutput;
-	bool vsCompiled = compile('v', vsOutput, vsCode);
-	if (!vsCompiled) {
-		spdlog::error("Failed to compiler vertex shader");
-		return ShaderProgramPtr();
+	ShaderHandlePtr vertexShader = context.getCachedShader(vsCodeHash);
+	if (!vertexShader) {
+		ShaderCompileOutput output;
+		bool vsCompiled = compile('v', output, vsCode);
+		if (!vsCompiled) {
+			spdlog::error("Failed to compiler vertex shader");
+			return ShaderProgramPtr();
+		}
+		bgfx::ShaderHandle shaderHandle = bgfx::createShader(bgfx::copy(output.binary.data(), output.binary.size()));
+		vertexShader = std::make_shared<ShaderHandle>(shaderHandle);
+
+		context.compiledShaders[vsCodeHash] = vertexShader;
 	}
 
-	bool psCompiled = compile('f', psOutput, psCode);
-	if (!psCompiled) {
-		spdlog::error("Failed to compiler pixel shader");
-		return ShaderProgramPtr();
+	ShaderHandlePtr pixelShader = context.getCachedShader(psCodeHash);
+	if (!pixelShader) {
+		ShaderCompileOutput output;
+		bool psCompiled = compile('f', output, psCode);
+		if (!psCompiled) {
+			spdlog::error("Failed to compiler pixel shader");
+			return ShaderProgramPtr();
+		}
+
+		bgfx::ShaderHandle shaderHandle = bgfx::createShader(bgfx::copy(output.binary.data(), output.binary.size()));
+		pixelShader = std::make_shared<ShaderHandle>(shaderHandle);
+
+		context.compiledShaders[psCodeHash] = pixelShader;
 	}
 
-	bgfx::ShaderHandle vs = bgfx::createShader(bgfx::copy(vsOutput.binary.data(), vsOutput.binary.size()));
-	bgfx::ShaderHandle ps = bgfx::createShader(bgfx::copy(psOutput.binary.data(), psOutput.binary.size()));
-	return std::make_shared<ShaderProgram>(bgfx::createProgram(vs, ps, true));
+	if (!vertexShader || !pixelShader)
+		return ShaderProgramPtr();
+
+	return std::make_shared<ShaderProgram>(bgfx::createProgram(vertexShader->handle, pixelShader->handle, true));
 }
 
 void MaterialUsageContext::bindUniforms() {
