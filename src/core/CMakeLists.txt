@@ -195,5 +195,4 @@ if(CHAINBLOCKS_BUILD_TESTS)
   target_link_libraries(test_runtime
     chainblocks-core Catch2 Catch2WithMain
   )
-  catch_discover_tests(test_runtime)
 endif()

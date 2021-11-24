@@ -14,7 +14,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
   set (X86 TRUE)
 else()
-  set (X86 FALSE) 
+  set (X86 FALSE)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
@@ -37,10 +37,6 @@ include(Rust)
 # disable targets being added by CTestTargets.cmake
 set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 
-enable_testing()
-include(CTest)
-include(deps/Catch2/extras/Catch.cmake)
-
 include(Boost)
 
 add_subdirectory(deps)
@@ -52,6 +48,6 @@ if(CHAINBLOCKS_WITH_EXTRA_BLOCKS)
   if(CHAINBLOCKS_WITH_RUST_BLOCKS)
     add_subdirectory(rust)
   endif()
-  
+
   add_subdirectory(src/extra)
 endif()

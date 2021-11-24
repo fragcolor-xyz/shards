@@ -21,10 +21,10 @@ endif()
 
 if(EMSCRIPTEN)
   # Use builtin SDL2 port
-  target_compile_options(chainblocks-extra PUBLIC 
+  target_compile_options(chainblocks-extra PUBLIC
     "SHELL:-s USE_SDL=2"
   )
-  target_link_options(chainblocks-extra PUBLIC 
+  target_link_options(chainblocks-extra PUBLIC
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"
@@ -34,7 +34,7 @@ else()
 endif()
 
 target_link_libraries(chainblocks-extra
-  chainblocks-core 
+  chainblocks-core
   bx bimg bgfx bgfx-examples stb tinygltf
   dear-imgui imgui_club implot imguizmo
   brotlienc-static brotlidec-static brotlicommon-static snappy
@@ -73,9 +73,8 @@ if(CHAINBLOCKS_BUILD_TESTS)
   add_executable(test_extra
     ../tests/test_extra.cpp
   )
-  
-  target_link_libraries(test_extra 
+
+  target_link_libraries(test_extra
     chainblocks-core chainblocks-extra Catch2 Catch2WithMain
   )
-  catch_discover_tests(test_extra)
 endif()
