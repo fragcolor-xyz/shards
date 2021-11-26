@@ -33,6 +33,21 @@ using namespace chainblocks;
 #include "roboto_regular.ttf.h"
 #include "robotomono_regular.ttf.h"
 
+static bgfx::RendererType::Enum getCurrentBgfxRenderType() {
+  switch (BGFX::CurrentRenderer) {
+    case BGFX::Renderer::DirectX11:
+      return  bgfx::RendererType::Direct3D11;
+    case BGFX::Renderer::Vulkan:
+      return  bgfx::RendererType::Vulkan;
+    case BGFX::Renderer::OpenGL:
+      return  bgfx::RendererType::OpenGL;
+    case BGFX::Renderer::Metal:
+      return  bgfx::RendererType::Metal;
+    default:
+      return bgfx::RendererType::Noop;
+  }
+}
+
 static const bgfx::EmbeddedShader s_embeddedShaders[] = {
     BGFX_EMBEDDED_SHADER(vs_ocornut_imgui),
     BGFX_EMBEDDED_SHADER(fs_ocornut_imgui),
@@ -757,6 +772,7 @@ struct MainWindow : public BaseWindow {
     });
 
     bgfx::Init initInfo{};
+    initInfo.type = getCurrentBgfxRenderType();
     initInfo.callback = &_bgfxCallback;
     _bgfxCallback._mw = this;
 
@@ -3215,7 +3231,7 @@ void registerBGFXBlocks() {
 }
 }; // namespace BGFX
 
-#ifdef CB_INTERNAL_TESTS
+#ifdef CHAINBLOCKS_BUILD_TESTS
 #include "bgfx_tests.cpp"
 #endif
 

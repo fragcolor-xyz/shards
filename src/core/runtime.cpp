@@ -74,12 +74,12 @@ CBOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
 }
 #endif
 
+extern void registerBlocksCoreBlocks();
 extern void registerChainsBlocks();
 extern void registerLoggingBlocks();
 extern void registerFlowBlocks();
 extern void registerSeqsBlocks();
 extern void registerCastingBlocks();
-extern void registerBlocksCoreBlocks();
 extern void registerSerializationBlocks();
 extern void registerFSBlocks();
 extern void registerJsonBlocks();
@@ -144,7 +144,7 @@ namespace reflection {
 extern void registerBlocks();
 }
 
-#ifdef CB_WITH_EXTRAS
+#ifdef CHAINBLOCKS_WITH_EXTRA_BLOCKS
 extern void cbInitExtras();
 #endif
 
@@ -271,13 +271,13 @@ void registerCoreBlocks() {
   static_assert(sizeof(CBVar) == 32);
   static_assert(sizeof(CBMapIt) <= sizeof(CBTableIterator));
 
-  registerBlocksCoreBlocks();
   Assert::registerBlocks();
   registerChainsBlocks();
   registerLoggingBlocks();
   registerFlowBlocks();
   registerSeqsBlocks();
   registerCastingBlocks();
+  registerBlocksCoreBlocks();
   registerSerializationBlocks();
   Math::registerBlocks();
   Math::LinAlg::registerBlocks();
@@ -288,12 +288,16 @@ void registerCoreBlocks() {
   channels::registerBlocks();
   Random::registerBlocks();
   Imaging::registerBlocks();
+  
+#ifndef CHAINBLOCKS_NO_BIGINT_BLOCKS
   BigInt::registerBlocks();
+#endif
+  
   registerFSBlocks();
   Wasm::registerBlocks();
   Http::registerBlocks();
   edn::registerBlocks();
-  reflection::registerBlocks();
+  reflection::registerBlocks(); 
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
@@ -315,7 +319,7 @@ void registerCoreBlocks() {
     }
   }
 
-#ifdef CB_WITH_EXTRAS
+#ifdef CHAINBLOCKS_WITH_EXTRA_BLOCKS
   cbInitExtras();
 #endif
 

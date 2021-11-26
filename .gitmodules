@@ -52,7 +52,6 @@
 [submodule "deps/wasm3"]
 	path = deps/wasm3
 	url = https://github.com/chainblocks/wasm3.git
-	branch = main
 [submodule "deps/xxHash"]
 	path = deps/xxHash
 	url = https://github.com/chainblocks/xxHash.git
@@ -83,3 +82,12 @@
 [submodule "deps/imguizmo"]
 	path = deps/imguizmo
 	url = https://github.com/chainblocks/ImGuizmo.git
+[submodule "deps/bgfx.cmake"]
+	path = deps/bgfx.cmake
+	url = https://github.com/chainblocks/bgfx.cmake.git
+[submodule "deps/brotli"]
+	path = deps/brotli
+	url = https://github.com/chainblocks/brotli.git
+[submodule "deps/snappy"]
+	path = deps/snappy
+	url = https://github.com/chainblocks/snappy.git

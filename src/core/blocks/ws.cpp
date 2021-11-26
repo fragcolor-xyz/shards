@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-#ifndef CB_NO_HTTP_BLOCKS
+#ifndef CHAINBLOCKS_NO_HTTP_BLOCKS
 #define BOOST_ERROR_CODE_HEADER_ONLY
 
 #include <boost/beast/core.hpp>

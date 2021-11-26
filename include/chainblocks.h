@@ -1156,18 +1156,23 @@ typedef struct _CBCore {
 
 typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 
+#ifdef CHAINBLOCKS_CORE_DLL
 #ifdef _WIN32
-#ifdef CB_DLL_EXPORT
-#define EXPORTED __declspec(dllexport)
+#define CHAINBLOCKS_EXPORT __declspec(dllexport)
+#define CHAINBLOCKS_IMPORT __declspec(dllimport)
 #else
-#define EXPORTED __declspec(dllimport)
+#define CHAINBLOCKS_EXPORT __attribute__((visibility("default")))
+#define CHAINBLOCKS_IMPORT
 #endif
 #else
-#ifdef CB_DLL_EXPORT
-#define EXPORTED __attribute__((visibility("default")))
-#else
-#define EXPORTED
+#define CHAINBLOCKS_EXPORT 
+#define CHAINBLOCKS_IMPORT
 #endif
+
+#ifdef chainblocks_core_EXPORTS
+#define CHAINBLOCKS_API CHAINBLOCKS_EXPORT
+#else
+#define CHAINBLOCKS_API CHAINBLOCKS_IMPORT
 #endif
 
 #define CHAINBLOCKS_CURRENT_ABI 0x20200101
@@ -1176,7 +1181,7 @@ typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 #if defined(__cplusplus)
 extern "C" {
 #endif
-EXPORTED CBCore *__cdecl chainblocksInterface(uint32_t abi_version);
+CHAINBLOCKS_API CBCore *__cdecl chainblocksInterface(uint32_t abi_version);
 #if defined(__cplusplus)
 };
 #endif
