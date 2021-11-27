@@ -70,11 +70,7 @@ if(NOT EMSCRIPTEN)
   else()
     set(SDL_INCLUDE_PATH ${SDL_BUILD_PATH}/include ${SDL_BUILD_PATH}/include/SDL2)
 
-    if(WIN32)
-      set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2-static.a)
-    else()
-      set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2.a)
-    endif()
+    set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2.a)
 
     ExternalProject_Add(sdl_a
       URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL
