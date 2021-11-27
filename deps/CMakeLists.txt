@@ -48,16 +48,16 @@ add_subdirectory(spdlog)
 set(SDL_BUILD_PATH ${CMAKE_CURRENT_BINARY_DIR}/sdl_a)
 if(NOT EMSCRIPTEN)
   if(X86_IOS_SIMULATOR)
-    set(SDL_XCODE_BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -target hidapi-iOS -sdk iphonesimulator -arch x86_64)
+    set(SDL_XCODE_BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -sdk iphonesimulator -arch x86_64)
     set(SDL_LIB_PATH ${SDL_BUILD_PATH}/src/sdl_a/Xcode/SDL/build/Release-iphonesimulator/libSDL2.a)
-  elseif(IOS)  
-    set(SDL_XCODE_BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -target hidapi-iOS -sdk iphoneos -arch arm64)
+  elseif(IOS)
+    set(SDL_XCODE_BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -sdk iphoneos -arch arm64)
     set(SDL_LIB_PATH ${SDL_BUILD_PATH}/src/sdl_a/Xcode/SDL/build/Release-iphoneos/libSDL2.a)
   endif()
-  
+
   if(SDL_XCODE_BUILD_COMMAND)
     set(SDL_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/SDL/include)
-    
+
     ExternalProject_Add(sdl_a
       URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL
       PREFIX ${SDL_BUILD_PATH}
@@ -69,13 +69,9 @@ if(NOT EMSCRIPTEN)
     )
   else()
     set(SDL_INCLUDE_PATH ${SDL_BUILD_PATH}/include ${SDL_BUILD_PATH}/include/SDL2)
-    
-    if(WIN32)
-      set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2-static.a)
-    else()
-      set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2.a)
-    endif()
-    
+
+    set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2.a)
+
     ExternalProject_Add(sdl_a
       URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL
       PREFIX ${SDL_BUILD_PATH}
@@ -83,14 +79,14 @@ if(NOT EMSCRIPTEN)
       BUILD_BYPRODUCTS ${SDL_LIB_PATH}
     )
   endif()
-  
+
   add_library(SDL2-static STATIC IMPORTED GLOBAL)
   set_target_properties(SDL2-static PROPERTIES IMPORTED_LOCATION ${SDL_LIB_PATH})
-  
+
   file(MAKE_DIRECTORY ${SDL_BUILD_PATH}/include/SDL2)
   target_include_directories(SDL2-static INTERFACE ${SDL_INCLUDE_PATH})
   add_dependencies(SDL2-static sdl_a)
-  
+
   if(WIN32)
     target_link_libraries(SDL2-static INTERFACE Winmm Imm32 Setupapi Version)
   endif()
@@ -236,7 +232,7 @@ target_include_directories(xxHash INTERFACE xxHash)
 add_library(imgui_club INTERFACE)
 target_include_directories(imgui_club INTERFACE imgui_club/imgui_memory_editor)
 
-set(imguizmo_SOURCES 
+set(imguizmo_SOURCES
   imguizmo/ImCurveEdit.cpp
   imguizmo/ImGradient.cpp
   imguizmo/ImGuizmo.cpp
@@ -247,7 +243,7 @@ target_include_directories(imguizmo PUBLIC imguizmo)
 target_include_directories(imguizmo PUBLIC bgfx/3rdparty/dear-imgui)
 target_link_libraries(imguizmo PUBLIC dear-imgui)
 
-add_library(implot STATIC 
+add_library(implot STATIC
   implot/implot.cpp
   implot/implot_items.cpp
 )
@@ -270,5 +266,5 @@ target_include_directories(stb INTERFACE stb)
 add_library(utf8.h INTERFACE)
 target_include_directories(utf8.h INTERFACE utf8.h)
 
-add_library(pdqsort INTERFACE) 
+add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
