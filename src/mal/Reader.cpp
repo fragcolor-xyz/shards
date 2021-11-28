@@ -166,7 +166,7 @@ static malValuePtr readForm(Tokeniser &tokeniser) {
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
     return VALUE_WITH_LINE(
-        mal::list(mal::symbol("chainify"), mal::vector(items.release())));
+        mal::list(mal::symbol("Chain#"), mal::vector(items.release())));
   } else if (token == "{") {
     tokeniser.next();
     malValueVec items;

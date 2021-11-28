@@ -1512,6 +1512,18 @@ BUILTIN("chainify") {
   return malValuePtr(new malList(vec));
 }
 
+BUILTIN("Chain#") {
+  CHECK_ARGS_IS(1);
+  ARG(malSequence, value);
+  auto blks = chainify(value->begin(), value->end());
+  auto chain = CBChain::make();
+  for (auto blk : blks) {
+    chain->addBlock(blk->value());
+    blk->consume();
+  }
+  return malValuePtr(new malCBChain(chain));
+}
+
 BUILTIN("unquote") {
   CHECK_ARGS_IS(1);
   ARG(malSequence, value);

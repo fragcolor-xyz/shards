@@ -3,6 +3,7 @@
 (schedule
  Root
  (Chain "test"
+        #((Msg "Hello!")) = .nil-chain
         (Float3 1 2 3) >= .vec
         (Take 1)
         (Assert.Is 2.0 true)
@@ -20,5 +21,6 @@
         (Log "Converted to Float3")
         (ToInt3)
         (Log "Converted to Int3")
+        (ChainRunner .nil-chain)
         ))
-(tick Root)
+(run Root)

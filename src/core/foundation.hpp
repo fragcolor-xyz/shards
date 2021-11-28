@@ -428,7 +428,7 @@ private:
     CBLOG_TRACE("Creating chain: {}", name);
   }
 
-  CBChain() { CBLOG_TRACE("Creating chain"); }
+  CBChain() : name("anon-chain") { CBLOG_TRACE("Creating chain"); }
 
   void reset();
 };
