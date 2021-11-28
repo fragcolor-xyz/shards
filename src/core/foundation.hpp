@@ -445,6 +445,10 @@ using CBMap = std::unordered_map<
                                         16>>;
 using CBMapIt = CBMap::iterator;
 
+using CBVector =
+    std::vector<OwnedVar, boost::alignment::aligned_allocator<OwnedVar, 16>>;
+using CBVectorIt = CBVector::iterator;
+
 struct StopChainException : public CBException {
   StopChainException() : CBException("The chain has been stopped") {}
 };

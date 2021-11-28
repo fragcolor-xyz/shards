@@ -35,16 +35,16 @@ using namespace chainblocks;
 
 static bgfx::RendererType::Enum getCurrentBgfxRenderType() {
   switch (BGFX::CurrentRenderer) {
-    case BGFX::Renderer::DirectX11:
-      return  bgfx::RendererType::Direct3D11;
-    case BGFX::Renderer::Vulkan:
-      return  bgfx::RendererType::Vulkan;
-    case BGFX::Renderer::OpenGL:
-      return  bgfx::RendererType::OpenGL;
-    case BGFX::Renderer::Metal:
-      return  bgfx::RendererType::Metal;
-    default:
-      return bgfx::RendererType::Noop;
+  case BGFX::Renderer::DirectX11:
+    return bgfx::RendererType::Direct3D11;
+  case BGFX::Renderer::Vulkan:
+    return bgfx::RendererType::Vulkan;
+  case BGFX::Renderer::OpenGL:
+    return bgfx::RendererType::OpenGL;
+  case BGFX::Renderer::Metal:
+    return bgfx::RendererType::Metal;
+  default:
+    return bgfx::RendererType::Noop;
   }
 }
 
@@ -3209,6 +3209,60 @@ struct Picking : public BaseConsumer {
 
 private:
   std::vector<uint32_t> _blitData;
+};
+
+struct PassDefer : public BaseConsumer {
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  CBTypeInfo compose(const CBInstanceData &data) {
+    BaseConsumer::compose(data);
+    auto composeResult = _blocks.compose(data);
+    for (auto &required : composeResult.requiredInfo) {
+      _capturing.emplace_back(required.name);
+    }
+    return data.inputType;
+  }
+
+  void warmup(CBContext *context) {
+    for (auto &name : _capturing) {
+      _captured.emplace_back(referenceVariable(context, name.data()));
+    }
+    _len = _captured.size();
+
+    BaseConsumer::_warmup(context);
+
+    _blocks.warmup(context);
+  }
+
+  void cleanup() {
+    for (auto &capture : _captured) {
+      releaseVariable(capture);
+    }
+    _captured.clear();
+
+    BaseConsumer::_cleanup();
+
+    _blocks.cleanup();
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    // clone captured variables into local storage
+    for(size_t i = 0; i < _len; ++i) {
+      _storage[i] = *_captured[i];
+    }
+
+    return input;
+  }
+
+private:
+  BlocksVar _blocks;
+
+  // _blocks keeps alive composition results etc
+  std::vector<std::string_view> _capturing;
+  std::vector<CBVar *> _captured;
+  CBVector _storage;
+  size_t _len;
 };
 
 void registerBGFXBlocks() {
