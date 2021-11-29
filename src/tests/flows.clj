@@ -189,13 +189,13 @@
   (Log)
 
   -10
-  (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
+  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
       (-> true)
       (-> false))
   (Assert.IsNot false false)
 
   11
-  (If ~[(Do spawner) >= .ccc (Wait .ccc) (ExpectBool)]
+  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
       (-> true)
       (-> false))
   (Assert.Is true false)

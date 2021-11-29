@@ -134,10 +134,10 @@
                        (-> (defn my_nodes [i]
                              (if (< i 0)
                                nil
-                               ~[(my_nodes (- i 1))
-                                 (GUI.TreeNode
-                                  :Label (str "Child " i) :StartOpen (= i 0) :Contents
-                                  (-> "blah blah" (GUI.Text) (GUI.SameLine) (GUI.Button "button" :Type GuiButton.Small)))]))
+                               (-> (my_nodes (- i 1))
+                                   (GUI.TreeNode
+                                    :Label (str "Child " i) :StartOpen (= i 0) :Contents
+                                    (-> "blah blah" (GUI.Text) (GUI.SameLine) (GUI.Button "button" :Type GuiButton.Small))))))
                            (my_nodes 5)))
                       (GUI.TreeNode
                        "Advanced, with Selectable nodes"
@@ -155,10 +155,10 @@
                            (If (Get .alignX) (GUI.Unindent))
                            (defn my_nodes_2 [i]
                              (if (< i 0) nil
-                                 ~[(my_nodes_2 (- i 1))
-                                   (GUI.TreeNode
-                                    :Label (str "Node " i) :Flags .treeNodeFlags :Contents
-                                    (-> "Blah blah\nBlah Blah" (GUI.Text :Bullet true)))]))
+                                 (-> (my_nodes_2 (- i 1))
+                                     (GUI.TreeNode
+                                      :Label (str "Node " i) :Flags .treeNodeFlags :Contents
+                                      (-> "Blah blah\nBlah Blah" (GUI.Text :Bullet true))))))
                            (my_nodes_2 6)
                            (If (Get .alignX) (GUI.Indent))))))
                  (GUI.TreeNode "Collapsing Headers" (todo!))
@@ -392,10 +392,10 @@
             (defn my_object [index]
               (if (< index 0)
                 nil
-                ~[(my_object (- index 1))
-                  .selected (Is index) > .i
-                  (If (GUI.Selectable (str "My Object " index) .i)
-                      (-> index > .selected))]))
+                (-> (my_object (- index 1))
+                    .selected (Is index) > .i
+                    (If (GUI.Selectable (str "My Object " index) .i)
+                        (-> index > .selected)))))
             (my_object 100)))
        (GUI.SameLine)
        ;; right pane

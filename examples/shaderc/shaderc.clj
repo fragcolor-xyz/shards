@@ -18,23 +18,23 @@
 
 (defn shaderc [type in out]
   (if (= platform "windows")
-    ~[(Process.Run
-       "shadercRelease.exe"
-       ["-f" in
-        "-o" out
-        "--platform" shaders-platform
-        "-p" shaders-profile
-        "--type" type])]
-    ~[(Wasm.Run
-       "shadercRelease.wasm"
-       ["-f" in
-        "-o" out
-        "--platform" shaders-platform
-        "-p" shaders-profile
-        "--type" type])]))
+    (-> (Process.Run
+         "shadercRelease.exe"
+         ["-f" in
+          "-o" out
+          "--platform" shaders-platform
+          "-p" shaders-profile
+          "--type" type]))
+    (-> (Wasm.Run
+         "shadercRelease.wasm"
+         ["-f" in
+          "-o" out
+          "--platform" shaders-platform
+          "-p" shaders-profile
+          "--type" type]))))
 
-(defn Shader [varying vs-code fs-code] 
-  (let [loader 
+(defn Shader [varying vs-code fs-code]
+  (let [loader
         (Chain
          "shader-compiler"
          "varying.def.sc"

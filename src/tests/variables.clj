@@ -203,13 +203,13 @@
 
   ; without Table block the rest would not work cos Table won't be exposed by When
   (Table .table-decl-1 :Types Type.Float)
-  true (When (Is true) ~[11.0 (Set .table-decl-1 "A")])
+  true (When (Is true) (-> 11.0 (Set .table-decl-1 "A")))
   (Get .table-decl-1 "A") (Math.Add 2.0) (Assert.Is 13.0 true)
   (Get .table-decl-1 "B" :Default 10.0) (Assert.Is 10.0 true)
 
   ; without Table block the rest would not work cos Table won't be exposed by When
   (Table .table-decl-2)
-  true (When (Is true) ~[11.0 (Set .table-decl-2 "A")])
+  true (When (Is true) (-> 11.0 (Set .table-decl-2 "A")))
   (Get .table-decl-2 "A") (ExpectFloat) (Math.Add 2.0) (Assert.Is 13.0 true)
 
 

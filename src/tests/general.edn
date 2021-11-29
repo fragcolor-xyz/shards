@@ -22,9 +22,9 @@
   (Chain
    "namedChain"
    (Msg "Running tests!")
-   (OnCleanup ~[(Comment "ensure multiple blocks can run")
-                (Msg "Finished running tests!")])
-   
+   (OnCleanup (-> (Comment "ensure multiple blocks can run")
+                  (Msg "Finished running tests!")))
+
    .var-with-default ?? 10 ; will either be var-with-default value if existed or 10
    (Assert.Is 10 true)
 
@@ -43,35 +43,35 @@
    2 = .2-var
 
    3
-   (Match [.1-var ~["Yes 1"]
-           .2-var ~["Yes 2"]
-           nil ~["No"]]
+   (Match [.1-var (-> "Yes 1")
+           .2-var (-> "Yes 2")
+           nil (-> "No")]
           :Passthrough false)
    (Assert.Is "No" true)
 
    [1]
-   (Match [[.1-var] ~["Yes 1"]
-           [.2-var] ~["Yes 2"]
-           nil ~["No"]]
+   (Match [[.1-var] (-> "Yes 1")
+           [.2-var] (-> "Yes 2")
+           nil (-> "No")]
           :Passthrough false)
    (Assert.Is "Yes 1" true)
 
    2
-   (Match [.1-var ~["Yes 1"]
-           .2-var ~["Yes 2"]
-           nil ~["No"]]
+   (Match [.1-var (-> "Yes 1")
+           .2-var (-> "Yes 2")
+           nil (-> "No")]
           :Passthrough false)
    (Assert.Is "Yes 2" true)
 
    false
-   (Match [true ~["Yes"]
-           false ~["No"]]
+   (Match [true (-> "Yes")
+           false (-> "No")]
           :Passthrough false)
    (Assert.Is "No" true)
 
    false
-   (Match [true ~["Yes"]
-           nil ~["No"]]
+   (Match [true (-> "Yes")
+           nil (-> "No")]
           :Passthrough false)
    (Assert.Is "No" true)
 
@@ -624,8 +624,8 @@
 
    "../src"
    (When (FS.IsDirectory)
-         ~[(FS.Iterate :Recursive true) (Log)
-           (Take 4) (FS.Extension) (Log)])
+         (-> (FS.Iterate :Recursive true) (Log)
+             (Take 4) (FS.Extension) (Log)))
 
    "The result is: "   (Set "text1")
    "Hello world, "     (AppendTo .text1)
@@ -784,7 +784,7 @@
    "2.1" (ParseFloat) (Assert.Is 2.1 true)
 
    "  3.14 " (String.Trim) (ParseFloat) (Assert.Is 3.14 true)
-   
+
    1.0 >= .one
    (Math.Inc .one)
    .one (Assert.Is 2.0 true)
@@ -1028,8 +1028,8 @@
    {"a" 10
     "b" 20
     "c" 30}
-   (ForEach ~[(Take 1) (ExpectInt)
-              (Math.Add .table-foreach-res) > .table-foreach-res])
+   (ForEach (-> (Take 1) (ExpectInt)
+                (Math.Add .table-foreach-res) > .table-foreach-res))
    .table-foreach-res
    (Assert.Is 60 true)
 
@@ -1072,7 +1072,7 @@
   (Chain
    "LoadBinary"
    (ReadFile "testChain.bin")
-   (ExpectChain) >= .loadedChain 
+   (ExpectChain) >= .loadedChain
    (| (Reflect.Blocks) = .blocks
       (Count .blocks) (Log "blocks-count")
       0 >= .loggers

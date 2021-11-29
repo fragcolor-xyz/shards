@@ -9,5 +9,4 @@
 (Time.Delta)
 (Log "DT")
 (Detach "myChain")
-(eval (read-string (str "~[" (slurp "loadme-extra.clj") "]")))
-
+(eval (read-string (str "(-> " (slurp "loadme-extra.clj") ")")))

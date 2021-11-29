@@ -100,93 +100,93 @@
   (GFX.MainWindow
    :Title "Gizmo test" :Width 1024 :Height 768 :Debug true :Fullscreen false
    :Contents
-   ~[(Setup
-      (applyStyle)
-      cube (GFX.Model
-            :Layout [VertexAttribute.Position VertexAttribute.Color0]
-            :CullMode CullMode.Front) >= .cube
+   (-> (Setup
+        (applyStyle)
+        cube (GFX.Model
+              :Layout [VertexAttribute.Position VertexAttribute.Color0]
+              :CullMode CullMode.Front) >= .cube
 
-      (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
-      (FS.Read :Bytes true) >= .vs_bytes
-      (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
-      (FS.Read :Bytes true) >= .fs_bytes
-      (GFX.Shader :VertexShader .vs_bytes :PixelShader .fs_bytes) >= .shader
+        (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
+        (FS.Read :Bytes true) >= .vs_bytes
+        (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
+        (FS.Read :Bytes true) >= .fs_bytes
+        (GFX.Shader :VertexShader .vs_bytes :PixelShader .fs_bytes) >= .shader
 
       ;;(Inputs.Mouse :Hidden false :Capture false :Relative false)
 
-      (float3 4 4 4) >= .cam_p
-      (float3 0 1 0) >= .cam_t
-      {"Position" .cam_p
-       "Target" .cam_t} (Math.LookAt) >= .myView
+        (float3 4 4 4) >= .cam_p
+        (float3 0 1 0) >= .cam_t
+        {"Position" .cam_p
+         "Target" .cam_t} (Math.LookAt) >= .myView
 
-      (defn cameraButton [label offset cam_p cam_t view]
-        (GUI.Button
-         (str label)
-         (->
-          cam_p (Math.Add offset) > cam_p
-          cam_t (Math.Add offset) > cam_t
-          {"Position" cam_p
-           "Target" cam_t} (Math.LookAt) > view)))
+        (defn cameraButton [label offset cam_p cam_t view]
+          (GUI.Button
+           (str label)
+           (->
+            cam_p (Math.Add offset) > cam_p
+            cam_t (Math.Add offset) > cam_t
+            {"Position" cam_p
+             "Target" cam_t} (Math.LookAt) > view)))
 
-      pos1 >= .cube_t
-      (float3 1 1 1) >= .snap
-      .snap >= .prev_snap
+        pos1 >= .cube_t
+        (float3 1 1 1) >= .snap
+        .snap >= .prev_snap
 
-      GizmoGridAxis.Y >= .gridAxis
-      GizmoMode.Local >= .mode
-      GizmoOperation.Translate >= .operation)
+        GizmoGridAxis.Y >= .gridAxis
+        GizmoMode.Local >= .mode
+        GizmoOperation.Translate >= .operation)
 
-     ; toolbar
-     (GUI.Window
-      :Title "Toolbar" :Height 316 :Width 500 :Pos (Int2 4 4)
-      :Contents
-      (->
-       "Grid axes" (GUI.Text) (GUI.SameLine)
-       (GUI.RadioButton "X" .gridAxis GizmoGridAxis.X) (GUI.SameLine)
-       (GUI.RadioButton "Y" .gridAxis GizmoGridAxis.Y) (GUI.SameLine)
-       (GUI.RadioButton "Z" .gridAxis GizmoGridAxis.Z)
-       (GUI.Separator)
-       (GUI.RadioButton "Local" .mode GizmoMode.Local) (GUI.SameLine)
-       (GUI.RadioButton "World" .mode GizmoMode.World)
-       (GUI.Separator)
-       (GUI.RadioButton "Translate" .operation GizmoOperation.Translate) (GUI.SameLine)
-       (GUI.RadioButton "Rotate" .operation GizmoOperation.Rotate) (GUI.SameLine)
-       (GUI.RadioButton "Scale" .operation GizmoOperation.Scale)
-       (GUI.Separator)
-       (GUI.Checkbox "Snap?" .snappie)
-       (If (-> .snappie)
-           :Then (->
-                  .prev_snap > .snap
-                  (GUI.SameLine) (GUI.Float3Input "" .snap)
-                  .snap > .prev_snap)
-           :Else (-> (float3 0 0 0) > .snap))
-       (GUI.Separator)
-       (cameraButton "X-1" (float3 -1 0 0) .cam_p .cam_t .myView)
-       (GUI.SameLine)
-       (cameraButton "Y-1" (float3 0 -1 0) .cam_p .cam_t .myView)
-       (GUI.SameLine)
-       (cameraButton "Z-1" (float3 0 0 -1) .cam_p .cam_t .myView)
-       (GUI.Separator)
-       (cameraButton "X+1" (float3 1 0 0) .cam_p .cam_t .myView)
-       (GUI.SameLine)
-       (cameraButton "Y+1" (float3 0 1 0) .cam_p .cam_t .myView)
-       (GUI.SameLine)
-       (cameraButton "Z+1" (float3 0 0 1) .cam_p .cam_t .myView)
-       (GUI.SameLine)))
+       ; toolbar
+       (GUI.Window
+        :Title "Toolbar" :Height 316 :Width 500 :Pos (Int2 4 4)
+        :Contents
+        (->
+         "Grid axes" (GUI.Text) (GUI.SameLine)
+         (GUI.RadioButton "X" .gridAxis GizmoGridAxis.X) (GUI.SameLine)
+         (GUI.RadioButton "Y" .gridAxis GizmoGridAxis.Y) (GUI.SameLine)
+         (GUI.RadioButton "Z" .gridAxis GizmoGridAxis.Z)
+         (GUI.Separator)
+         (GUI.RadioButton "Local" .mode GizmoMode.Local) (GUI.SameLine)
+         (GUI.RadioButton "World" .mode GizmoMode.World)
+         (GUI.Separator)
+         (GUI.RadioButton "Translate" .operation GizmoOperation.Translate) (GUI.SameLine)
+         (GUI.RadioButton "Rotate" .operation GizmoOperation.Rotate) (GUI.SameLine)
+         (GUI.RadioButton "Scale" .operation GizmoOperation.Scale)
+         (GUI.Separator)
+         (GUI.Checkbox "Snap?" .snappie)
+         (If (-> .snappie)
+             :Then (->
+                    .prev_snap > .snap
+                    (GUI.SameLine) (GUI.Float3Input "" .snap)
+                    .snap > .prev_snap)
+             :Else (-> (float3 0 0 0) > .snap))
+         (GUI.Separator)
+         (cameraButton "X-1" (float3 -1 0 0) .cam_p .cam_t .myView)
+         (GUI.SameLine)
+         (cameraButton "Y-1" (float3 0 -1 0) .cam_p .cam_t .myView)
+         (GUI.SameLine)
+         (cameraButton "Z-1" (float3 0 0 -1) .cam_p .cam_t .myView)
+         (GUI.Separator)
+         (cameraButton "X+1" (float3 1 0 0) .cam_p .cam_t .myView)
+         (GUI.SameLine)
+         (cameraButton "Y+1" (float3 0 1 0) .cam_p .cam_t .myView)
+         (GUI.SameLine)
+         (cameraButton "Z+1" (float3 0 0 1) .cam_p .cam_t .myView)
+         (GUI.SameLine)))
 
-     ; camera
-     .myView (GFX.Camera)
-     (Inputs.MousePos)
-     (GFX.Picking (->
-                   ; regular model render
-                   .cube_t (GFX.Draw :Shader .shader :Model .cube))
-                  true)
-     (When (IsNotNone) (Log))
+       ; camera
+       .myView (GFX.Camera)
+       (Inputs.MousePos)
+       (GFX.Picking (->
+                     ; regular model render
+                     .cube_t (GFX.Draw :Shader .shader :Model .cube))
+                    true)
+       (When (IsNotNone) (Log))
 
-     ; gizmos
-     (Gizmo.Grid :Axis .gridAxis)
-     (Gizmo.CubeView .myView)
-     (Gizmo.Transform :Matrix .cube_t :Mode .mode :Operation .operation :Snap .snap)]))
+       ; gizmos
+       (Gizmo.Grid :Axis .gridAxis)
+       (Gizmo.CubeView .myView)
+       (Gizmo.Transform :Matrix .cube_t :Mode .mode :Operation .operation :Snap .snap))))
 
 (defnode main)
 (schedule main test-chain)

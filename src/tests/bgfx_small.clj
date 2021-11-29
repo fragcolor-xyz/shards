@@ -17,24 +17,24 @@
     (GFX.MainWindow
      :Title "My Window" :Width 400 :Height 200
      :Contents
-     ~[(GUI.Window "My ImGui Window"
-                   :Width 400 :Height 200 :Pos (Int2 0 0)
-                   :Contents
-                   ~["Hello world"   (GUI.Text)
-                     "Hello world 2" (GUI.Text)
-                     "Hello world 3" (GUI.Text)
-                     "Hello world 4" (GUI.SameLine) (GUI.Text)
-                     (GUI.Button "Push me!"
-                                 ~[(Msg "Action!")
-                                   (Await (Log "Hello worker!"))
-                                   action >= .chainVar
-                                   (ChainRunner .chainVar :Mode RunChainMode.Detached)
+     (-> (GUI.Window "My ImGui Window"
+                     :Width 400 :Height 200 :Pos (Int2 0 0)
+                     :Contents
+                     (-> "Hello world"   (GUI.Text)
+                         "Hello world 2" (GUI.Text)
+                         "Hello world 3" (GUI.Text)
+                         "Hello world 4" (GUI.SameLine) (GUI.Text)
+                         (GUI.Button "Push me!"
+                                     (-> (Msg "Action!")
+                                         (Await (Log "Hello worker!"))
+                                         action >= .chainVar
+                                         (ChainRunner .chainVar :Mode RunChainMode.Detached)
                                     ;; (Detach action)
-                                   ])
-                     (GUI.Checkbox :Variable .checked)
-                     .checked
-                     (When (Is true)
-                           ~["Hello optional world"
-                             (GUI.Text)])])])))
+                                         ))
+                         (GUI.Checkbox :Variable .checked)
+                         .checked
+                         (When (Is true)
+                               (-> "Hello optional world"
+                                   (GUI.Text)))))))))
 
   (run Root 0.02))

@@ -1,7 +1,7 @@
 false
 (Match
  ;:Cases
- [true ~["Yes"]
-  false ~["No"]]
+ [true (-> "Yes")
+  false (-> "No")]
  ;:Passthrough
  false)
