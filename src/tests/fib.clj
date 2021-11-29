@@ -60,9 +60,9 @@
    1 >= .a
    2 >= .b
    (Repeat
-    ~[.a (Math.Add .b) = .c
-      .b > .a
-      .c > .b]
+    (-> .a (Math.Add .b) = .c
+        .b > .a
+        .c > .b)
     :Times .n)
    .b))
 

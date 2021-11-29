@@ -105,96 +105,96 @@
    (GFX.MainWindow
     :Title "SDL Window" :Width 1024 :Height 1024 :Debug true :Fullscreen true
     :Contents
-    ~[(Setup
-       (applyStyle)
-       (LoadImage "../../assets/drawing.png")
-       (GFX.Texture2D) >= .image1
-       (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
-       (GFX.Texture2D) >> .bump-textures
-       (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
-       (GFX.Texture2D) >> .bump-textures
-       cube (GFX.Model
-             :Layout [VertexAttribute.Position
-                      VertexAttribute.Color0]
-             :CullMode CullMode.Front) >= .cube
-       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
-       (FS.Read :Bytes true) >= .vs_bytes
-       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
-       (FS.Read :Bytes true) >= .fs_bytes
-       (GFX.Shader :VertexShader .vs_bytes
-                   :PixelShader .fs_bytes) >= .shader
+    (-> (Setup
+         (applyStyle)
+         (LoadImage "../../assets/drawing.png")
+         (GFX.Texture2D) >= .image1
+         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-rgba.tga")
+         (GFX.Texture2D) >> .bump-textures
+         (LoadImage "../../deps/bgfx/examples/06-bump/fieldstone-n.tga")
+         (GFX.Texture2D) >> .bump-textures
+         cube (GFX.Model
+               :Layout [VertexAttribute.Position
+                        VertexAttribute.Color0]
+               :CullMode CullMode.Front) >= .cube
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_cubes.bin")
+         (FS.Read :Bytes true) >= .vs_bytes
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_cubes.bin")
+         (FS.Read :Bytes true) >= .fs_bytes
+         (GFX.Shader :VertexShader .vs_bytes
+                     :PixelShader .fs_bytes) >= .shader
 
-       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
-       (FS.Read :Bytes true) > .vs_bytes
-       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
-       (FS.Read :Bytes true) > .fs_bytes
-       (GFX.Shader :VertexShader .vs_bytes
-                   :PixelShader .fs_bytes) >= .bump-shader
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_bump.bin")
+         (FS.Read :Bytes true) > .vs_bytes
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_bump.bin")
+         (FS.Read :Bytes true) > .fs_bytes
+         (GFX.Shader :VertexShader .vs_bytes
+                     :PixelShader .fs_bytes) >= .bump-shader
 
-       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_instancing.bin")
-       (FS.Read :Bytes true) > .vs_bytes
-       (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_instancing.bin")
-       (FS.Read :Bytes true) > .fs_bytes
-       (GFX.Shader :VertexShader .vs_bytes
-                   :PixelShader .fs_bytes) >= .instancing-shader
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/vs_instancing.bin")
+         (FS.Read :Bytes true) > .vs_bytes
+         (str "../../deps/bgfx/examples/runtime/shaders/" shaders-folder "/fs_instancing.bin")
+         (FS.Read :Bytes true) > .fs_bytes
+         (GFX.Shader :VertexShader .vs_bytes
+                     :PixelShader .fs_bytes) >= .instancing-shader
 
-       false (Set "checkBoxie")
-       (Inputs.Mouse :Hidden true :Capture true :Relative true)
-       (Physics.Ball :Radius 0.5) = .ball-pshape
-       (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
-       (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
-      
+         false (Set "checkBoxie")
+         (Inputs.Mouse :Hidden true :Capture true :Relative true)
+         (Physics.Ball :Radius 0.5) = .ball-pshape
+         (Physics.Cuboid :HalfExtents (Float3 1.0 1.0 1.0)) = .cube-pshape
+         (Physics.Cuboid :HalfExtents (Float3 100 1 100)) = .ground-pshape)
+
       ; regular model render
-      {"Position" (Float3 5 1 8)
-       "Target" (Float3 0 0 0)} (GFX.Camera)
-      
-      [(Float4 1.0 0.7 0.2 0.8)
-       (Float4 0.7 0.2 1.0 0.8)
-       (Float4 0.2 1.0 0.7 0.8)
-       (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightPosRadius" 4)
-      [(Float4 1.0 0.7 0.2 0.8)
-       (Float4 0.7 0.2 1.0 0.8)
-       (Float4 0.2 1.0 0.7 0.8)
-       (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
-      (Physics.Simulation)
-      (Physics.KinematicBody .ground-pshape (Float3 0.0 -4.0 0.0))
+        {"Position" (Float3 5 1 8)
+         "Target" (Float3 0 0 0)} (GFX.Camera)
+
+        [(Float4 1.0 0.7 0.2 0.8)
+         (Float4 0.7 0.2 1.0 0.8)
+         (Float4 0.2 1.0 0.7 0.8)
+         (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightPosRadius" 4)
+        [(Float4 1.0 0.7 0.2 0.8)
+         (Float4 0.7 0.2 1.0 0.8)
+         (Float4 0.2 1.0 0.7 0.8)
+         (Float4 1.0 0.4 0.2 0.8)] (GFX.SetUniform "u_lightRgbInnerR" 4)
+        (Physics.Simulation)
+        (Physics.KinematicBody .ground-pshape (Float3 0.0 -4.0 0.0))
       ;; (Physics.DynamicBody .cube-pshape :Name "rb1")
       ;; (Once (-> .rb1 (Log)))
       ;; (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add})
 
       ; drop a few boxes
-      (defblocks box [n]
-        (Physics.DynamicBody .cube-pshape :Name (str "rb" n))
-        (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}))
-      (map box (range 1 5))
+        (defblocks box [n]
+          (Physics.DynamicBody .cube-pshape :Name (str "rb" n))
+          (GFX.Draw :Shader .shader :Model .cube :Blend {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}))
+        (map box (range 1 5))
 
-      (defblocks onHover [n]
-        (Float3 0.1 4 0)
-        (Physics.Impulse (ContextVar (str "rb" n)))
-        (str "Box " n))
+        (defblocks onHover [n]
+          (Float3 0.1 4 0)
+          (Physics.Impulse (ContextVar (str "rb" n)))
+          (str "Box " n))
 
-      (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
-                  :Pos (Int2 0 0) :Contents
-                  (->
-                   (Inputs.MousePos)
-                   (| (GFX.Unproject 0.0) = .ray-from (GUI.Text "from"))
-                   (| (GFX.Unproject 1.0) = .ray-to (GUI.Text "to"))
-                   .ray-to (Math.Subtract .ray-from) (Math.Normalize) = .ray-dir
-                   (GUI.Text "ray")
-                   [.ray-from .ray-dir] (Physics.CastRay)
-                   (Match [[.rb1] (onHover 1)
-                           [.rb2] (onHover 2)
-                           [.rb3] (onHover 3)
-                           [.rb4] (onHover 4)
-                           [.rb5] (onHover 5)
-                           nil (-> "No Box")]
-                          :Passthrough false) (GUI.Text)
+        (GUI.Window :Title "My ImGui" :Width 1024 :Height 1024
+                    :Pos (Int2 0 0) :Contents
+                    (->
+                     (Inputs.MousePos)
+                     (| (GFX.Unproject 0.0) = .ray-from (GUI.Text "from"))
+                     (| (GFX.Unproject 1.0) = .ray-to (GUI.Text "to"))
+                     .ray-to (Math.Subtract .ray-from) (Math.Normalize) = .ray-dir
+                     (GUI.Text "ray")
+                     [.ray-from .ray-dir] (Physics.CastRay)
+                     (Match [[.rb1] (onHover 1)
+                             [.rb2] (onHover 2)
+                             [.rb3] (onHover 3)
+                             [.rb4] (onHover 4)
+                             [.rb5] (onHover 5)
+                             nil (-> "No Box")]
+                            :Passthrough false) (GUI.Text)
 
-                   (Window.Size) (GUI.Text)
-                   "Hello world"   (GUI.Text)
-                   "Hello world 2" (GUI.Text)
-                   "Hello world 3" (GUI.SameLine) (GUI.Text)
-                   "Hello world 4" (GUI.SameLine) (GUI.Text)
+                     (Window.Size) (GUI.Text)
+                     "Hello world"   (GUI.Text)
+                     "Hello world 2" (GUI.Text)
+                     "Hello world 3" (GUI.SameLine) (GUI.Text)
+                     "Hello world 4" (GUI.SameLine) (GUI.Text)
                   ;;  (Inputs.MousePos) (GUI.Text "mouse pos")
                   ;;  (| (GFX.Unproject 0.0) (GUI.Text "mouse pos world 0") = .ray-from)
                   ;;  (| (GFX.Unproject 1.0) (GUI.Text "mouse pos world 1") = .ray-to)
@@ -204,116 +204,116 @@
                   ;;                  (Float3 0 10 0) (Physics.Impulse .rb1)
                   ;;                  (Msg "Mouse over the box..."))
                   ;;          nil nil])
-                   (Inputs.MouseDelta) (GUI.Text "mouse delta")
-                   (GUI.Separator)
+                     (Inputs.MouseDelta) (GUI.Text "mouse delta")
+                     (GUI.Separator)
 
-                   (GUI.Indent)
-                   99 (GUI.Text "Player1" (Color 255 0 0 255))
-                   (GUI.Unindent)
-                   99 (GUI.Text "Player1")
-                   99 (GUI.Text "Player1")
-                   (GUI.Separator)
-                   (GUI.Checkbox "CheckBoxie" .checkBoxie) (GUI.SameLine) (GUI.Text)
-                   (Float4 2 3 4 5)
-                   (Set "x")
-                   (Float4 1 2 3 4)
-                   (Math.Add .x)
-                   (GUI.Text)
+                     (GUI.Indent)
+                     99 (GUI.Text "Player1" (Color 255 0 0 255))
+                     (GUI.Unindent)
+                     99 (GUI.Text "Player1")
+                     99 (GUI.Text "Player1")
+                     (GUI.Separator)
+                     (GUI.Checkbox "CheckBoxie" .checkBoxie) (GUI.SameLine) (GUI.Text)
+                     (Float4 2 3 4 5)
+                     (Set "x")
+                     (Float4 1 2 3 4)
+                     (Math.Add .x)
+                     (GUI.Text)
 
-                   (Get "image1")
-                   (GUI.Image (Float2 0.1 0.1))
+                     (Get "image1")
+                     (GUI.Image (Float2 0.1 0.1))
 
-                   (GFX.RenderTexture 256 256
-                                      (->
+                     (GFX.RenderTexture 256 256
+                                        (->
                                        ; render the model
-                                       {"Position" (Float3 5 5 5)
-                                        "Target" (Float3 0 0 0)} (GFX.Camera)
+                                         {"Position" (Float3 5 5 5)
+                                          "Target" (Float3 0 0 0)} (GFX.Camera)
                                        ; this model is not really idea, vertex layout is not correct
-                                       identity (GFX.Draw :Shader .bump-shader
-                                                          :Textures .bump-textures
-                                                          :Model .cube
-                                                          :Blend [{"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}
-                                                                  {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}])))
-                   (GUI.Image (Float2 1.0 1.0))
+                                         identity (GFX.Draw :Shader .bump-shader
+                                                            :Textures .bump-textures
+                                                            :Model .cube
+                                                            :Blend [{"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}
+                                                                    {"Src" Blend.One "Dst" Blend.Zero "Op" BlendOp.Add}])))
+                     (GUI.Image (Float2 1.0 1.0))
 
-                   (GUI.SameLine)
+                     (GUI.SameLine)
 
-                   (GFX.RenderTexture 64 64
-                                      (->
+                     (GFX.RenderTexture 64 64
+                                        (->
                                        ; full screen quad pass
-                                       nil (GFX.CameraOrtho) ; to set only projection
+                                         nil (GFX.CameraOrtho) ; to set only projection
                                        ; no model means full screen quad
-                                       identity (GFX.Draw :Shader .shader)))
-                   (GUI.Image (Float2 1.0 1.0))
+                                         identity (GFX.Draw :Shader .shader)))
+                     (GUI.Image (Float2 1.0 1.0))
 
-                   (GFX.RenderTexture 64 64
-                                      (->
+                     (GFX.RenderTexture 64 64
+                                        (->
                                        ; render the model
-                                       {"Position" (Float3 0 0 2)
-                                        "Target" (Float3 0 0 0)} (GFX.Camera)
+                                         {"Position" (Float3 0 0 2)
+                                          "Target" (Float3 0 0 0)} (GFX.Camera)
                                        ; this model is not really idea, vertex layout is not correct
-                                       [identity pos1] (GFX.Draw :Shader .instancing-shader
-                                                                 :Model .cube)))
-                   (GUI.Image (Float2 1.0 1.0))
+                                         [identity pos1] (GFX.Draw :Shader .instancing-shader
+                                                                   :Model .cube)))
+                     (GUI.Image (Float2 1.0 1.0))
 
-                   (GUI.ChildWindow :Height 150
-                    :Border true :Contents
-                    (-> (GUI.TreeNode
-                         "Node1"
-                         (->
-                          "Node text..."
-                          (GUI.Text)
-                          (GUI.TextInput "Say something" .text1)
-                          (GUI.Text "<-- you said!")
+                     (GUI.ChildWindow :Height 150
+                                      :Border true :Contents
+                                      (-> (GUI.TreeNode
+                                           "Node1"
+                                           (->
+                                            "Node text..."
+                                            (GUI.Text)
+                                            (GUI.TextInput "Say something" .text1)
+                                            (GUI.Text "<-- you said!")
 
-                          (GUI.IntInput)
-                          (GUI.Text)
+                                            (GUI.IntInput)
+                                            (GUI.Text)
 
-                          (GUI.FloatInput)
-                          (GUI.Text)
+                                            (GUI.FloatInput)
+                                            (GUI.Text)
 
-                          (GUI.Int3Input)
-                          (GUI.Text)
+                                            (GUI.Int3Input)
+                                            (GUI.Text)
 
-                          (GUI.Float3Input "f3" .f3var)
-                          (Get .f3var)
-                          (GUI.Text)
+                                            (GUI.Float3Input "f3" .f3var)
+                                            (Get .f3var)
+                                            (GUI.Text)
 
-                          (GUI.FloatDrag)
-                          (GUI.Text)
+                                            (GUI.FloatDrag)
+                                            (GUI.Text)
 
-                          (GUI.ColorInput)
-                          (GUI.Text)
+                                            (GUI.ColorInput)
+                                            (GUI.Text)
 
-                          (GUI.Float3Drag)
-                          (GUI.Text)
-                          (GUI.Plot "Plot"
-                                    (-> (Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
-                                        (GUI.PlotLine)
-                                        (GUI.PlotDigital)
-                                        (Math.Add (Float2 -10 -10))
-                                        (GUI.PlotScatter)
-                                        (Math.Add (Float2 5 3))
-                                        (GUI.PlotBars))
-                                    :X_Limits (Float2 -10 10)
-                                    :Y_Limits (Float2 -10 10)
-                                    :Lock_X false
-                                    :Lock_Y true)))))
+                                            (GUI.Float3Drag)
+                                            (GUI.Text)
+                                            (GUI.Plot "Plot"
+                                                      (-> (Const [(Float2 10 3) (Float2 5 6) (Float2 9 10)])
+                                                          (GUI.PlotLine)
+                                                          (GUI.PlotDigital)
+                                                          (Math.Add (Float2 -10 -10))
+                                                          (GUI.PlotScatter)
+                                                          (Math.Add (Float2 5 3))
+                                                          (GUI.PlotBars))
+                                                      :X_Limits (Float2 -10 10)
+                                                      :Y_Limits (Float2 -10 10)
+                                                      :Lock_X false
+                                                      :Lock_Y true)))))
 
-                   (GUI.Button "Push me!" (Msg "Action!"))
-                   (Cond [(-> (Is true)) (Msg "yeah...")])
-                   (GUI.Button "Push me!" (Msg "Action!") GuiButton.Small)
-                   (Cond [(-> (Is true)) (Msg "yeah...")])
-                   (GUI.Button "Push me!" (Msg "Action!") GuiButton.ArrowUp)
-                   (Cond [(-> (Is true)) (Msg "yeah...")])
-                   (GUI.ChildWindow :Border true :Height 350 :Contents
-                                    (-> (ToBytes)
-                                        (GUI.HexViewer)))))
-      (GUI.Window "Another window" :Pos (Float2 0.5 0.5) :Width 0.25 :Height 0.25
-                  :Flags [GuiWindowFlags.NoResize, GuiWindowFlags.NoCollapse]
-                  :Contents
-                  (->
-                   "Hi" (GUI.Text)))])))
+                     (GUI.Button "Push me!" (Msg "Action!"))
+                     (Cond [(-> (Is true)) (Msg "yeah...")])
+                     (GUI.Button "Push me!" (Msg "Action!") GuiButton.Small)
+                     (Cond [(-> (Is true)) (Msg "yeah...")])
+                     (GUI.Button "Push me!" (Msg "Action!") GuiButton.ArrowUp)
+                     (Cond [(-> (Is true)) (Msg "yeah...")])
+                     (GUI.ChildWindow :Border true :Height 350 :Contents
+                                      (-> (ToBytes)
+                                          (GUI.HexViewer)))))
+        (GUI.Window "Another window" :Pos (Float2 0.5 0.5) :Width 0.25 :Height 0.25
+                    :Flags [GuiWindowFlags.NoResize, GuiWindowFlags.NoCollapse]
+                    :Contents
+                    (->
+                     "Hi" (GUI.Text)))))))
 
 (schedule Root test-chain)
 (run Root 0.02 100)

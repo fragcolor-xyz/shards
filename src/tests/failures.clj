@@ -7,7 +7,7 @@
 (def a
   (Chain
    "test-1"
-   (Await ~[false (Assert.Is true)])))
+   (Await (-> false (Assert.Is true)))))
 
 (schedule Root a)
 (run Root 0.1)
@@ -25,7 +25,7 @@
 (def c
   (Chain
    "test-3"
-   (OnCleanup ~[(Pause 10.0)])))
+   (OnCleanup (-> (Pause 10.0)))))
 
 (schedule Root c)
 (run Root 0.1)

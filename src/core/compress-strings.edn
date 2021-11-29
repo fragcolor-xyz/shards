@@ -24,10 +24,10 @@
    (Count .res) (Log "compressed size") (ToString) (AppendTo .code)
    "> __chainblocks_compressed_strings = {\n" (AppendTo .code)
    .res (BytesToInts)
-   (ForEach ~[>= .b
-              "  " (AppendTo .code)
-              .b (ToHex) (AppendTo .code)
-              ",\n" (AppendTo .code)])
+   (ForEach (-> >= .b
+                "  " (AppendTo .code)
+                .b (ToHex) (AppendTo .code)
+                ",\n" (AppendTo .code)))
    "};\n" (AppendTo .code)
    "cbccstrings.hpp"
    (FS.Write .code :Overwrite true)))
