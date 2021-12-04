@@ -57,6 +57,8 @@ if(APPLE)
     "-framework QuartzCore"
     "-framework Metal"
     "-framework Security"
+    "-framework CoreHaptics"
+    "-framework GameController"
     -liconv
   )
 
@@ -64,10 +66,8 @@ if(APPLE)
     target_link_libraries(chainblocks-core-static
       "-framework hidapi"
       "-framework AVFoundation"
-      "-framework GameController"
       "-framework CoreMotion"
       "-framework CoreGraphics"
-      "-framework CoreHaptics"
       "-framework UIKit"
     )
   else()
