@@ -1,13 +1,13 @@
 set(extra_SOURCES
   runtime.cpp
-  bgfx.cpp
-  imgui.cpp
-  xr.cpp
+  # bgfx.cpp
+  # imgui.cpp
+  # xr.cpp
+  # gizmo.cpp
   dsp.cpp
-  inputs.cpp
+  # inputs.cpp
   snappy.cpp
   brotli.cpp
-  gizmo.cpp
 )
 
 if(CHAINBLOCKS_EXTRA_BUILD_SHARED)

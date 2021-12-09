@@ -74,13 +74,13 @@ void cbInitExtras() {
 	registerEmscriptenShaderCompiler();
 #endif
 
-	BGFX::registerBGFXBlocks();
-	gfx::registerBlocks();
-	chainblocks::ImGui::registerImGuiBlocks();
-	chainblocks::Gizmo::registerGizmoBlocks();
-	XR::registerBlocks();
-	gltf::registerBlocks();
-	Inputs::registerBlocks();
+	// BGFX::registerBGFXBlocks();
+	// gfx::registerBlocks();
+	// chainblocks::ImGui::registerImGuiBlocks();
+	// chainblocks::Gizmo::registerGizmoBlocks();
+	// XR::registerBlocks();
+	// gltf::registerBlocks();
+	// Inputs::registerBlocks();
 	Audio::registerBlocks();
 	DSP::registerBlocks();
 
