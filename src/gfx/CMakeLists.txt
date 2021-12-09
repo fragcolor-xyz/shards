@@ -13,8 +13,10 @@ add_library(gfx
   material.cpp
   material_shader.cpp
   utils.cpp
+  drawable.cpp
   # shader_cache.cpp
   # mesh.cpp
+  fields.cpp
   scene.cpp
   texture.cpp
   view_framebuffer.cpp
@@ -28,6 +30,7 @@ add_library(gfx
   paths.cpp
   texture_file.cpp
   feature.cpp
+  feature_pipeline.cpp
 )
 
 target_include_directories(gfx

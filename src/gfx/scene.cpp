@@ -10,7 +10,7 @@
 #include <vector>
 
 namespace gfx {
-
+/*
 SceneRenderer::SceneRenderer(Context &context) : context(context) {
 }
 
@@ -56,6 +56,6 @@ void SceneRenderer::addDrawCommand(Material material, MaterialUsageFlags::Type m
 }
 
 MaterialBuilderContext &SceneRenderer::getMaterialBuilderContext() { return *context.materialBuilderContext.get(); }
-FrameRenderer &SceneRenderer::getFrameRenderer() { return *FrameRenderer::get(context); }
+FrameRenderer &SceneRenderer::getFrameRenderer() { return *FrameRenderer::get(context); } */
 
 } // namespace gfx

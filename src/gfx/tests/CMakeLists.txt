@@ -5,12 +5,11 @@ if(EMSCRIPTEN)
 endif()
 
 add_executable(test_gfx
+img_compare.cpp
   test_context.cpp
   test_shaderc.cpp
-  test_data.cpp
   test_draw.cpp
-  test_material.cpp
-  test_scene.cpp
+  test_feature.cpp
   main.cpp
   utils.cpp
 )

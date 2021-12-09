@@ -1,5 +1,5 @@
-#include "test_data.hpp"
-#include "gfx/tests/test_data.hpp"
+#include "img_compare.hpp"
+#include "gfx/tests/img_compare.hpp"
 #include "utils.hpp"
 #include <SDL_stdinc.h>
 #include <bgfx/bgfx.h>
@@ -17,7 +17,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-// #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_write.h>
 #pragma GCC diagnostic pop

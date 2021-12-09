@@ -1,13 +1,13 @@
 #pragma once
 #include "bgfx/bgfx.h"
-#include "gfx/tests/test_data.hpp"
-#include "test_data.hpp"
+#include "gfx/tests/img_compare.hpp"
+#include "img_compare.hpp"
 #include <functional>
 #include <gfx/capture.hpp>
 #include <gfx/context.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/test_platform_id.hpp>
-#include <gfx/tests/test_data.hpp>
+#include <gfx/tests/img_compare.hpp>
 #include <gfx/view.hpp>
 #include <gfx/window.hpp>
 #include <spdlog/spdlog.h>

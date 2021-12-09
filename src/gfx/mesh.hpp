@@ -2,40 +2,30 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
+#include "enums.hpp"
 #include "linalg/linalg.h"
 #include "material.hpp"
 #include "tinygltf/tiny_gltf.h"
 
 namespace gfx {
 
-enum class MeshPrimitiveType { TriangleList, TriangleStrip };
-
-struct MeshPipelineParameters {
-	MeshPrimitiveType primitiveType = MeshPrimitiveType::TriangleList;
+struct MeshVertexAttribute {
+	bgfx::Attrib::Enum tag;
+	uint8_t numComponents;
+	bgfx::AttribType::Enum type;
+	bool normalized = false;
+	bool asInt = false;
 };
 
-struct Primitive {
+struct Mesh {
 	bgfx::VertexBufferHandle vb = BGFX_INVALID_HANDLE;
 	bgfx::IndexBufferHandle ib = BGFX_INVALID_HANDLE;
-	bgfx::VertexLayout vertexLayout{};
+	std::vector<MeshVertexAttribute> vertexAttributes;
+	PrimitiveType primitiveType = PrimitiveType::TriangleList;
+	WindingOrder windingOrder = WindingOrder::CCW;
 
-	// StaticUsageParameters staticUsageParameters;
-	// MeshPipelineParameters pipelineParameters;
-
-	std::shared_ptr<Material> material;
-
-	Primitive() {}
-
-	Primitive(Primitive &&other) {
-		std::swap(vb, other.vb);
-		std::swap(ib, other.ib);
-		std::swap(vertexLayout, other.vertexLayout);
-		std::swap(material, other.material);
-		// std::swap(staticUsageParameters, other.staticUsageParameters);
-		// std::swap(pipelineParameters, other.pipelineParameters);
-	}
-
-	~Primitive() {
+	Mesh() {}
+	~Mesh() {
 		if (bgfx::isValid(vb)) {
 			bgfx::destroy(vb);
 		}
@@ -43,11 +33,6 @@ struct Primitive {
 			bgfx::destroy(ib);
 		}
 	}
-};
-
-struct Mesh {
-	std::string name;
-	std::vector<Primitive> primitives;
 };
 using MeshPtr = std::shared_ptr<Mesh>;
 
