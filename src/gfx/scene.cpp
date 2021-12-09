@@ -2,7 +2,6 @@
 #include "bgfx/bgfx.h"
 #include "env_probe.hpp"
 #include "feature.hpp"
-#include "light.hpp"
 #include "linalg/linalg.h"
 #include "material_shader.hpp"
 #include "math.hpp"
@@ -13,14 +12,9 @@
 namespace gfx {
 
 SceneRenderer::SceneRenderer(Context &context) : context(context) {
-	features.push_back(std::make_shared<DirectionalLightsFeature>());
-	features.push_back(std::make_shared<PointLightsFeature>());
-	features.push_back(std::make_shared<EnvironmentProbeFeature>());
 }
 
 void SceneRenderer::reset() {
-	lights.clear();
-	environmentProbes.clear();
 	drawCommands.clear();
 }
 
@@ -54,8 +48,6 @@ void SceneRenderer::renderView(const std::vector<FeaturePtr> &features) {
 
 void render();
 void render(std::vector<FeaturePtr> features);
-void SceneRenderer::addLight(std::shared_ptr<Light> light) { lights.push_back(light); }
-void SceneRenderer::addProbe(std::shared_ptr<EnvironmentProbe> probe) { environmentProbes.push_back(probe); }
 void SceneRenderer::addDrawCommand(Material material, MaterialUsageFlags::Type meshFlags, DrawCommandFunction function) {
 	auto &drawCommand = drawCommands.emplace_back(getMaterialBuilderContext());
 	drawCommand.materialContext.material = material;

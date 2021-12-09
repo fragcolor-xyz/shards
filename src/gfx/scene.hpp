@@ -24,16 +24,14 @@ struct SceneRenderer {
 	};
 
 	std::vector<std::shared_ptr<Feature>> features;
-	std::vector<std::shared_ptr<Light>> lights;
-	std::vector<std::shared_ptr<EnvironmentProbe>> environmentProbes;
 	std::vector<DrawCommand> drawCommands;
 
 private:
-	Context& context;
+	Context &context;
 	FrameRenderer *frameRenderer;
 
 public:
-	SceneRenderer(Context& context);
+	SceneRenderer(Context &context);
 	void reset();
 	// Renders precomputed maps (shadows/environment/etc.)
 	void runPrecompute();
@@ -44,7 +42,7 @@ public:
 	void addDrawCommand(Material material, MaterialUsageFlags::Type meshFlags, DrawCommandFunction drawCommand);
 
 	MaterialBuilderContext &getMaterialBuilderContext();
-	FrameRenderer& getFrameRenderer();
+	FrameRenderer &getFrameRenderer();
 };
 
 } // namespace gfx
