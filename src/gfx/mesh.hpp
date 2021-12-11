@@ -15,6 +15,10 @@ struct MeshVertexAttribute {
 	bgfx::AttribType::Enum type;
 	bool normalized = false;
 	bool asInt = false;
+
+	MeshVertexAttribute() = default;
+	MeshVertexAttribute(bgfx::Attrib::Enum tag, uint8_t numComponents, bgfx::AttribType::Enum type = bgfx::AttribType::Float, bool normalized = false, bool asInt = false)
+		: tag(tag), numComponents(numComponents), type(type), normalized(normalized), asInt(asInt) {}
 };
 
 struct Mesh {
@@ -35,5 +39,15 @@ struct Mesh {
 	}
 };
 using MeshPtr = std::shared_ptr<Mesh>;
+
+template <typename T> bgfx::VertexLayout createVertexLayout(T iterable, bgfx::RendererType::Enum rendererType = bgfx::RendererType::Noop) {
+	bgfx::VertexLayout result;
+	result.begin(rendererType);
+	for (const MeshVertexAttribute &attribute : iterable) {
+		result.add(attribute.tag, attribute.numComponents, attribute.type, attribute.normalized, attribute.asInt);
+	}
+	result.end();
+	return result;
+}
 
 } // namespace gfx

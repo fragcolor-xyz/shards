@@ -1,8 +1,13 @@
 #include "feature.hpp"
 #include "bgfx/defines.h"
+#include "fields.hpp"
 #include <bgfx/defines.h>
 
 namespace gfx {
+
+FeatureShaderField::FeatureShaderField(std::string name, FieldType type, FieldVariant defaultValue) : type(type), name(name), defaultValue(defaultValue) {}
+FeatureShaderField::FeatureShaderField(std::string name, FieldVariant defaultValue)
+	: type(getFieldVariantType(defaultValue)), name(name), defaultValue(defaultValue) {}
 
 BGFXPipelineState FeaturePipelineState::toBGFXState(WindingOrder frontFace) const {
 	BGFXPipelineState result;

@@ -56,33 +56,6 @@ constexpr RendererType DefaultRenderer = RendererType::DirectX11;
 constexpr RendererType DefaultRenderer = RendererType::Metal;
 #endif
 
-static bgfx::RendererType::Enum getBgfxRenderType(RendererType renderer) {
-	switch (renderer) {
-	case RendererType::DirectX11:
-		return bgfx::RendererType::Direct3D11;
-	case RendererType::Vulkan:
-		return bgfx::RendererType::Vulkan;
-	case RendererType::OpenGL:
-		return bgfx::RendererType::OpenGL;
-	case RendererType::Metal:
-		return bgfx::RendererType::Metal;
-	default:
-		return bgfx::RendererType::Noop;
-	}
-}
-
-std::string_view getRendererTypeName(RendererType renderer) { return magic_enum::enum_name(renderer); }
-static RendererType getRendererTypeByName(std::string_view inName) {
-	size_t index = 0;
-	for (const auto &name : magic_enum::enum_names<RendererType>()) {
-		if (name == inName) {
-			return (RendererType)index;
-		}
-		index++;
-	}
-	return RendererType::None;
-}
-
 static std::string formatBGFXException(const char *filepath, uint16_t line, bgfx::Fatal::Enum code, const char *str) {
 	return fmt::format("BGFX fatal {}:{}: {}", filepath, line, str);
 }

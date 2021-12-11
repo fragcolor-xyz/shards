@@ -14,12 +14,23 @@ enum class FieldType : uint8_t {
 #include "field_types.def"
 };
 
-typedef std::variant<float2, float3, float4, float4x4, TexturePtr> FieldVariant;
+typedef std::variant<float, float2, float3, float4, float4x4, TexturePtr> FieldVariant;
 
-void packFieldVariant(const FieldVariant& variant, std::vector<uint8_t>& outBuffer);
+void packFieldVariant(const FieldVariant &variant, std::vector<uint8_t> &outBuffer);
+FieldType getFieldVariantType(const FieldVariant &variant);
+
+// True if type is anything except texture
+bool isBasicFieldType(const FieldType& type);
+const char *getBasicFieldGLSLName(FieldType type);
+bool getBasicFieldGLSLValue(FieldType type, const FieldVariant &variant, std::string& out);
+void getBasicFieldGLSLDefaultValue(FieldType type, std::string &out);
+inline void getBasicFieldGLSLValueOrDefault(FieldType type, const FieldVariant &variant, std::string &out) {
+	if (!getBasicFieldGLSLValue(type, variant, out))
+		getBasicFieldGLSLDefaultValue(type, out);
+}
 
 struct IDrawDataCollector {
-#define FIELD_TYPE(_name, _cppType, ...) void set_##_name(const _cppType &_name);
+#define FIELD_TYPE(_name, _cppType, ...) void set_##_name(const _cppType &_##_name);
 #include "field_types.def"
 };
 

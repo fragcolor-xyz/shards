@@ -1,4 +1,6 @@
 #pragma once
+#include "bgfx/bgfx.h"
+#include "enums.hpp"
 #include <memory>
 #include <string>
 #include <string_view>
@@ -74,8 +76,9 @@ struct ShaderCompileOptions : public ShaderCompilePODOptions,
   ShaderCompileOptions();
 
   void setBuiltinIncludePaths();
-  void setCompatibleForContext(Context& context);
-  
+  void setCompatibleForContext(Context &context);
+  void setCompatibleForRendererType(RendererType type);
+
   const ShaderCompilePODOptions &getPODOptions() { return *this; }
   const char *getInputFilePath() { return inputFilePath.c_str(); }
   const char *getOutputFilePath() { return outputFilePath.c_str(); }

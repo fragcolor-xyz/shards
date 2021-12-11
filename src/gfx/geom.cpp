@@ -28,14 +28,12 @@
 namespace gfx {
 namespace geom {
 
-bgfx::VertexLayout VertexPNT::getVertexLayout() {
-	bgfx::VertexLayout layout;
-	layout.begin();
-	layout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
-	layout.add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float);
-	layout.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float);
-	layout.end();
-	return layout;
+std::vector<MeshVertexAttribute> VertexPNT::getAttributes() {
+	std::vector<MeshVertexAttribute> attribs;
+	attribs.emplace_back(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
+	attribs.emplace_back(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float);
+	attribs.emplace_back(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float);
+	return attribs;
 }
 
 // https://github.com/mrdoob/three.js/blob/master/src/geometries/SphereGeometry.js#L87

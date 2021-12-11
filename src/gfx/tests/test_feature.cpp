@@ -1,6 +1,12 @@
+#include "bgfx/bgfx.h"
 #include "bgfx/defines.h"
+#include "gfx/drawable.hpp"
 #include "gfx/feature.hpp"
+#include "gfx/feature_pipeline.hpp"
+#include "gfx/mesh.hpp"
+#include "gfx/features/base_color.hpp"
 #include "linalg/linalg.h"
+#include "spdlog/spdlog.h"
 #include <bgfx/bgfx.h>
 #include <catch2/catch_all.hpp>
 #include <gfx/drawable.hpp>
@@ -43,21 +49,34 @@ TEST_CASE("combine state", "[feature]") {
 	CHECK(combined != b);
 
 	BGFXPipelineState bgfx = combined.toBGFXState(WindingOrder::CCW);
-	CHECK(bgfx.state == ((bgfxDefaultState ^ (BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A)) | BGFX_STATE_FRONT_CCW | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ALPHA));
+	CHECK(bgfx.state ==
+		  ((bgfxDefaultState ^ (BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A)) | BGFX_STATE_FRONT_CCW | BGFX_STATE_CULL_CW | BGFX_STATE_BLEND_ALPHA));
 }
 
 TEST_CASE("build pipeline", "[feature]") {
 	MeshPtr mesh = make_shared<Mesh>();
+	mesh->vertexAttributes.emplace_back(bgfx::Attrib::Position, 3);
+	mesh->vertexAttributes.emplace_back(bgfx::Attrib::Normal, 3);
+	mesh->vertexAttributes.emplace_back(bgfx::Attrib::TexCoord0, 2);
 
-	vector<DrawablePtr> drawables = {
-		make_shared<Drawable>(mesh, linalg::identity),
-		make_shared<Drawable>(mesh, linalg::identity),
-		make_shared<Drawable>(mesh, linalg::identity),
-		make_shared<Drawable>(mesh, linalg::identity),
-	};
+	DrawablePtr drawable = make_shared<Drawable>(mesh, linalg::identity);
 
 	vector<FeaturePtr> features = {
-		make_shared<Feature>(),
-		make_shared<Feature>(),
+		gfx::features::BaseColor::create(),
 	};
+
+	BuildPipelineParams params;
+	params.drawable = drawable.get();
+	params.features = featuresToPointers(features);
+
+	PipelineOutputDesc &output = params.outputs.emplace_back();
+	output.format = bgfx::TextureFormat::RG11B10F;
+	output.name = "color";
+
+	Pipeline pipeline;
+	CHECK(buildPipeline(params, pipeline));
+
+	CHECK(pipeline.debug);
+	spdlog::info("--------- vs:\n{}", pipeline.debug->stages[0].code);
+	spdlog::info("--------- fs:\n{}", pipeline.debug->stages[1].code);
 }

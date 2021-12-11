@@ -1,8 +1,8 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
-// #include "shader_cache.hpp"
 #include "types.hpp"
+#include "enums.hpp"
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_video.h>
 #include <bgfx/embedded_shader.h>
@@ -23,9 +23,6 @@ struct BGFXException : public std::runtime_error {
 struct IDrawable {
 	// virtual CBChain *getChain() = 0;
 };
-
-enum class RendererType : uint8_t { None, DirectX11, Vulkan, OpenGL, Metal };
-std::string_view getRendererTypeName(RendererType renderer);
 
 struct ContextCreationOptions {
 	bool debug = false;

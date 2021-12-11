@@ -16,6 +16,7 @@ add_library(gfx
   drawable.cpp
   # shader_cache.cpp
   # mesh.cpp
+  enums.cpp
   fields.cpp
   scene.cpp
   texture.cpp

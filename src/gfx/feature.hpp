@@ -94,15 +94,21 @@ typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)
 typedef std::function<void(const FeatureCallbackContext &)> FeaturePrecomputeFunction;
 
 enum class DependencyType { Before, After };
-struct Dependency {
+struct NamedDependency {
 	std::string name;
 	DependencyType type;
+	NamedDependency() = default;
+	NamedDependency(std::string name, DependencyType type = DependencyType::After) : name(name), type(type) {}
 };
 
 struct FeatureShaderCode {
 	ProgrammableGraphicsStage stage;
+	std::string name;
 	std::string code;
-	std::vector<Dependency> dependencies;
+	std::vector<NamedDependency> dependencies;
+
+	FeatureShaderCode() = default;
+	FeatureShaderCode(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment) : stage(stage), name(name) {}
 };
 
 struct FeatureShaderGlobal {
@@ -120,6 +126,10 @@ struct FeatureShaderField {
 	FieldType type = FieldType::Float4;
 	std::string name;
 	FieldVariant defaultValue;
+
+	FeatureShaderField() = default;
+	FeatureShaderField(std::string name, FieldType type = FieldType::Float4, FieldVariant defaultValue = FieldVariant());
+	FeatureShaderField(std::string name, FieldVariant defaultValue);
 };
 
 struct SceneRenderer;

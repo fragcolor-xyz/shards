@@ -2,6 +2,7 @@
 #include "linalg.hpp"
 #include "math.hpp"
 #include <bgfx/bgfx.h>
+#include "mesh.hpp"
 #include <vector>
 
 namespace gfx {
@@ -15,7 +16,7 @@ struct VertexPNT {
 	void setNormal(const float3& v) { memcpy(normal, &v.x, sizeof(float)*3);}
 	void setTexCoord(const float2& v) { memcpy(texCoord, &v.x, sizeof(float)*2);}
 
-	static bgfx::VertexLayout getVertexLayout();
+	static std::vector<MeshVertexAttribute> getAttributes();
 };
 
 struct GeneratorBase {

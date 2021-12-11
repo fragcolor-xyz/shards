@@ -1,6 +1,7 @@
 #pragma once
 #include "bgfx/bgfx.h"
 #include "gfx/tests/img_compare.hpp"
+#include "gfx/mesh.hpp"
 #include "img_compare.hpp"
 #include <functional>
 #include <gfx/capture.hpp>
@@ -59,7 +60,8 @@ inline void generateSphereMesh(bgfx::VertexBufferHandle &vb, bgfx::IndexBufferHa
 	gen.generate();
 
 	const bgfx::Memory *vertMem = bgfx::copy(gen.vertices.data(), gen.vertices.size() * sizeof(gfx::geom::VertexPNT));
-	vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
+	bgfx::VertexLayout layout = gfx::createVertexLayout(gfx::geom::VertexPNT::getAttributes());
+	vb = bgfx::createVertexBuffer(vertMem, layout);
 	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
 	ib = bgfx::createIndexBuffer(indexMem);
 }
@@ -73,7 +75,8 @@ inline void generateFullscreenQuad(bgfx::VertexBufferHandle &vb, bgfx::IndexBuff
 	gen.generate();
 
 	const bgfx::Memory *vertMem = bgfx::copy(gen.vertices.data(), gen.vertices.size() * sizeof(gfx::geom::VertexPNT));
-	vb = bgfx::createVertexBuffer(vertMem, gfx::geom::VertexPNT::getVertexLayout());
+	bgfx::VertexLayout layout = gfx::createVertexLayout(gfx::geom::VertexPNT::getAttributes());
+	vb = bgfx::createVertexBuffer(vertMem, layout);
 	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
 	ib = bgfx::createIndexBuffer(indexMem);
 }

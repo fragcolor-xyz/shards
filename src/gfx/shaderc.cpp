@@ -25,6 +25,10 @@ void ShaderCompileOptions::setBuiltinIncludePaths() {
 	}
 }
 void ShaderCompileOptions::setCompatibleForContext(Context &context) {
+	setCompatibleForRendererType(context.getRendererType());
+}
+
+void ShaderCompileOptions::setCompatibleForRendererType(RendererType type) {
 #if BX_PLATFORM_WINDOWS
 	platform = "windows";
 #elif BX_PLATFORM_EMSCRIPTEN
@@ -37,7 +41,7 @@ void ShaderCompileOptions::setCompatibleForContext(Context &context) {
 	platform = "ios";
 #endif
 
-	switch (context.getRendererType()) {
+	switch (type) {
 	case RendererType::DirectX11:
 		if (shaderType == 'v') {
 			profile = "vs_5_0";

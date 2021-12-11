@@ -2,6 +2,6 @@
 
 namespace gfx {
 
-bool getEnvFlag(const char* name);
+bool getEnvFlag(const char *name);
 
 } // namespace gfx
