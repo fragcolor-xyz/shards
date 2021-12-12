@@ -171,6 +171,12 @@ if(EMSCRIPTEN)
     "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval', 'emCompileShaderBlocking']\""
     "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'GL', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
+
+  if(STANDALONE_WASM)
+    target_link_options(chainblocks-core-static PUBLIC
+      "SHELL:-s STANDALONE_WASM"
+    )
+  endif()
 endif()
 
 if(IOS)
