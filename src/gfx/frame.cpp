@@ -19,51 +19,15 @@ uint32_t FrameRenderer::end(bool capture) {
 	return bgfx::frame(capture);
 }
 
-uint32_t FrameRenderer::addFrameDrawable(IDrawable *drawable) {
-	// 0 idx = empty
-	uint32_t id = ++_frameDrawablesCount;
-	_frameDrawables[id] = drawable;
-	return id;
-}
-
-IDrawable *FrameRenderer::getFrameDrawable(uint32_t id) {
-	if (id == 0) {
-		return nullptr;
-	}
-	return _frameDrawables[id];
-}
-
-View &FrameRenderer::getCurrentView() {
-	assert(views.size() > 0);
-	return *views.back().get();
-}
-
-View &FrameRenderer::pushView() {
-	View &view = *views.emplace_back(std::make_shared<View>(nextViewId())).get();
-	bgfx::resetView(view.id);
-	bgfx::touch(view.id);
-
-	return view;
-}
-
-View &FrameRenderer::pushMainOutputView() {
-	int2 mainOutputSize = context.getMainOutputSize();
-	View &view = pushView();
-
-	Rect viewport(mainOutputSize.x, mainOutputSize.y);
-	view.setViewport(viewport);
-
-	return view;
-}
-
-void FrameRenderer::popView() {
-	assert(views.size() > 0);
-	views.pop_back();
-}
-
 bgfx::ViewId FrameRenderer::nextViewId() {
-	assert(_nextViewCounter < UINT16_MAX);
+	assert(_nextViewCounter < 256);
 	return _nextViewCounter++;
+}
+
+bgfx::ViewId FrameRenderer::getCurrentViewId() const {
+	if (_nextViewCounter == 0)
+		return 0;
+	return (_nextViewCounter - 1);
 }
 
 FrameRenderer *FrameRenderer::get(Context &context) { return context.getFrameRenderer(); }

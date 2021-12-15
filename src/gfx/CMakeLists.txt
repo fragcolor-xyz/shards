@@ -11,16 +11,16 @@ add_library(gfx
   context.cpp
   imgui.cpp
   material.cpp
-  material_shader.cpp
+  # material_shader.cpp
   utils.cpp
   drawable.cpp
   # shader_cache.cpp
   # mesh.cpp
+  view.cpp
   enums.cpp
   fields.cpp
-  scene.cpp
   texture.cpp
-  view_framebuffer.cpp
+  # view_framebuffer.cpp
   geom.cpp
   test_platform_id.cpp
   loop.cpp

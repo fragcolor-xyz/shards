@@ -1,10 +1,13 @@
 #include "bgfx/bgfx.h"
 #include "bgfx/defines.h"
 #include "gfx/drawable.hpp"
+#include "gfx/enums.hpp"
 #include "gfx/feature.hpp"
 #include "gfx/feature_pipeline.hpp"
-#include "gfx/mesh.hpp"
 #include "gfx/features/base_color.hpp"
+#include "gfx/features/transforms.hpp"
+#include "gfx/mesh.hpp"
+#include "gfx/shaderc.hpp"
 #include "linalg/linalg.h"
 #include "spdlog/spdlog.h"
 #include <bgfx/bgfx.h>
@@ -62,6 +65,7 @@ TEST_CASE("build pipeline", "[feature]") {
 	DrawablePtr drawable = make_shared<Drawable>(mesh, linalg::identity);
 
 	vector<FeaturePtr> features = {
+		gfx::features::Transform::create(),
 		gfx::features::BaseColor::create(),
 	};
 
@@ -73,10 +77,10 @@ TEST_CASE("build pipeline", "[feature]") {
 	output.format = bgfx::TextureFormat::RG11B10F;
 	output.name = "color";
 
-	Pipeline pipeline;
-	CHECK(buildPipeline(params, pipeline));
+	ShaderCompilerInputs shaderCompilerInputs;
+	FeaturePipeline pipeline;
+	CHECK(buildPipeline(params, pipeline, &shaderCompilerInputs));
 
-	CHECK(pipeline.debug);
-	spdlog::info("--------- vs:\n{}", pipeline.debug->stages[0].code);
-	spdlog::info("--------- fs:\n{}", pipeline.debug->stages[1].code);
+	// spdlog::info("--------- vs:\n{}", shaderCompilerInputs.stages[0].code);
+	// spdlog::info("--------- fs:\n{}", shaderCompilerInputs.stages[1].code);
 }

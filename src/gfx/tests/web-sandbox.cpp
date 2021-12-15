@@ -1,6 +1,5 @@
 #include "bgfx/bgfx.h"
 #include "bgfx/defines.h"
-#include "bgfx/src/bgfx_p.h"
 #include "gfx/context.hpp"
 #include "gfx/frame.hpp"
 #include "gfx/geom.hpp"

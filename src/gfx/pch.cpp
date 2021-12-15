@@ -1,8 +1,8 @@
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_video.h>
+#include <SDL_events.h>
+#include <SDL_video.h>
 
 #include <memory>
 #include <stdint.h>

@@ -12,7 +12,8 @@ struct FrameInputs {
 	int frameNumber;
 	const std::vector<SDL_Event> &events;
 
-	FrameInputs(float deltaTime = 0.1f, float time = 0.0f, int frameNumber = 0, const std::vector<SDL_Event> &events = std::vector<SDL_Event>()) : deltaTime(deltaTime), time(time), frameNumber(frameNumber), events(events) {}
+	FrameInputs(float deltaTime = 0.1f, float time = 0.0f, int frameNumber = 0, const std::vector<SDL_Event> &events = std::vector<SDL_Event>())
+		: deltaTime(deltaTime), time(time), frameNumber(frameNumber), events(events) {}
 };
 
 // Persistent state over the duration of an single update/draw loop iteration
@@ -39,15 +40,8 @@ struct FrameRenderer {
 	constexpr bool isPicking() const { return _picking; }
 	void setPicking(bool picking) { _picking = picking; }
 
-	uint32_t addFrameDrawable(IDrawable *drawable);
-	IDrawable *getFrameDrawable(uint32_t id);
-
-	View &getCurrentView();
-	View &pushView();
-	View &pushMainOutputView();
-	void popView();
-	size_t viewIndex() const { return views.size(); }
 	bgfx::ViewId nextViewId();
+	bgfx::ViewId getCurrentViewId() const;
 
 	void draw(const Primitive &primitive);
 

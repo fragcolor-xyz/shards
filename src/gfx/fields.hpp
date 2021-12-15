@@ -30,7 +30,7 @@ inline void getBasicFieldGLSLValueOrDefault(FieldType type, const FieldVariant &
 }
 
 struct IDrawDataCollector {
-#define FIELD_TYPE(_name, _cppType, ...) void set_##_name(const _cppType &_##_name);
+#define FIELD_TYPE(_name, _cppType, ...) virtual void set_##_name(const char* name, const _cppType &_##_name) = 0;
 #include "field_types.def"
 };
 

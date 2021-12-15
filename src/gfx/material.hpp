@@ -4,32 +4,13 @@
 #include "linalg.hpp"
 #include "stdint.h"
 #include "texture.hpp"
+#include "feature.hpp"
 #include <functional>
 #include <optional>
 #include <string>
-#include <unordered_map>
+#include <map>
 
 namespace gfx {
-
-struct MaterialStaticFlags {
-	enum Type : uint32_t {
-		None = 0,
-		Lit = 1 << 0,
-		Fullscreen = 1 << 1,
-	};
-};
-
-inline MaterialStaticFlags::Type &operator|=(MaterialStaticFlags::Type &a, MaterialStaticFlags::Type b) {
-	(uint8_t &)a |= uint8_t(a) | uint8_t(b);
-	return a;
-}
-
-struct MaterialDynamicFlags {
-	enum Type : uint32_t {
-		None = 0,
-		DoubleSided = 1 << 0,
-	};
-};
 
 struct MaterialTextureSlot {
 	TexturePtr texture;
@@ -39,18 +20,32 @@ struct MaterialTextureSlot {
 };
 
 struct MaterialData {
-	MaterialStaticFlags::Type flags = MaterialStaticFlags::None;
-	std::unordered_map<std::string, float4> vectorParameters;
-	std::unordered_map<std::string, MaterialTextureSlot> textureSlots;
-	std::vector<uint32_t> mrtOutputs;
-	std::string vertexCode;
-	std::string pixelCode;
+	std::map<std::string, FieldVariant> basicParameters;
+	std::map<std::string, MaterialTextureSlot> textureParameters;
+
+	const FieldVariant* findBasicParameter(const std::string& name) const {
+		auto it = basicParameters.find(name);
+		if (it != basicParameters.end())
+			return &it->second;
+		return nullptr;
+	}
+
+	const MaterialTextureSlot *findTextureSlot(const std::string& name) const {
+		auto it = textureParameters.find(name);
+		if (it != textureParameters.end())
+			return &it->second;
+		return nullptr;
+	}
 
 	template <typename THash> void hashStatic(THash &hash) const {
-		hash(flags);
-		hash(textureSlots);
-		hash(vertexCode);
-		hash(pixelCode);
+		for (auto &pair : basicParameters) {
+			hash(pair.first);
+		}
+
+		for (auto &pair : textureParameters) {
+			hash(pair.first);
+			hash(pair.second.texCoordIndex);
+		}
 	}
 };
 
@@ -65,6 +60,9 @@ struct MaterialBuiltin {
 };
 
 struct Material {
+public:
+	std::vector<FeaturePtr> customFeatures;
+
 private:
 	MaterialData data;
 	Hash128 staticHash;

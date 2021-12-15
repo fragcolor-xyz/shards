@@ -1,8 +1,8 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
-#include "types.hpp"
 #include "enums.hpp"
+#include "types.hpp"
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_video.h>
 #include <bgfx/embedded_shader.h>
@@ -43,10 +43,7 @@ class ShaderCompilerModule;
 struct ICapture;
 struct Context {
 public:
-	std::shared_ptr<ShaderCompilerModule> shaderCompilerModule;
-	std::shared_ptr<MaterialBuilderContext> materialBuilderContext;
 	std::shared_ptr<BGFXCallbacks> bgfxCallbacks;
-	std::shared_ptr<ImguiContext> imguiContext;
 
 	uint32_t resetFlags = BGFX_RESET_VSYNC;
 
@@ -89,7 +86,6 @@ public:
 	void beginFrame(FrameRenderer *frameRenderer);
 	void endFrame(FrameRenderer *frameRenderer);
 	FrameRenderer *getFrameRenderer() { return currentFrameRenderer; }
-	MaterialBuilderContext& getMaterialBuilderContext() { return *materialBuilderContext.get(); }
 };
 
 struct FrameCaptureSync {

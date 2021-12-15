@@ -34,13 +34,15 @@ struct ShaderCompilerInputs {
 	ShaderStageCompilerInputs stages[2];
 };
 
-struct Pipeline {
+struct FeaturePipeline {
 	BGFXPipelineState state;
-	std::vector<Binding> bindings;
 	bgfx::ProgramHandle program;
+	std::vector<Binding> bindings;
 	bgfx::VertexLayout vertexLayout;
-	std::optional<ShaderCompilerInputs> debug;
+
+	~FeaturePipeline();
 };
+typedef std::shared_ptr<FeaturePipeline> FeaturePipelinePtr;
 
 struct PipelineOutputDesc {
 	std::string name;
@@ -55,6 +57,35 @@ struct BuildPipelineParams {
 	std::vector<PipelineOutputDesc> outputs;
 };
 
+struct BuildBindingLayoutParams {
+	const std::vector<const Feature *>& features;
+	const Drawable& drawable;
+};
+
+struct FeatureBasicBinding {
+	std::string name;
+	bgfx::UniformHandle handle;
+};
+
+struct FeatureTextureBinding {
+	std::string name;
+	bgfx::UniformHandle handle;
+};
+
+struct FeatureBindingLayout {
+	std::vector<FeatureBasicBinding> basicBindings;
+	std::vector<FeatureTextureBinding> textureBindings;
+
+	~FeatureBindingLayout();
+};
+typedef std::shared_ptr<FeatureBindingLayout> FeatureBindingLayoutPtr;
+
+struct FeatureBindingValues {
+	std::vector<std::vector<uint8_t>> basicBindings;
+	std::vector<TexturePtr> textureBindings;
+	std::unordered_map<std::string, size_t> textureMap;
+};
+
 template <typename T> std::vector<const Feature *> featuresToPointers(T iterable) {
 	std::vector<const Feature *> result;
 	for (auto &featurePtr : iterable) {
@@ -62,6 +93,8 @@ template <typename T> std::vector<const Feature *> featuresToPointers(T iterable
 	}
 	return result;
 }
-bool buildPipeline(const BuildPipelineParams &params, Pipeline &outPipeline);
+
+bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLayout &outBindingLayout);
+bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeline, ShaderCompilerInputs *outShaderCompilerInputs = nullptr);
 
 } // namespace gfx

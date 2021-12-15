@@ -58,7 +58,7 @@ struct FontRangeMerge {
 static FontRangeMerge s_fontRangeMerge[] = {{s_iconsKenneyTtf, sizeof(s_iconsKenneyTtf), {ICON_MIN_KI, ICON_MAX_KI, 0}},
 											{s_iconsFontAwesomeTtf, sizeof(s_iconsFontAwesomeTtf), {ICON_MIN_FA, ICON_MAX_FA, 0}}};
 
-bool ImguiContext::checkAvailTransientBuffers(uint32_t _numVertices, const bgfx::VertexLayout &_layout, uint32_t _numIndices) {
+/* bool ImguiContext::checkAvailTransientBuffers(uint32_t _numVertices, const bgfx::VertexLayout &_layout, uint32_t _numIndices) {
 	return _numVertices == bgfx::getAvailTransientVertexBuffer(_numVertices, _layout) &&
 		   (0 == _numIndices || _numIndices == bgfx::getAvailTransientIndexBuffer(_numIndices));
 }
@@ -350,7 +350,7 @@ void ImguiContext::render(gfx::View &view, ImDrawData *_drawData) {
 			offset += cmd->ElemCount;
 		}
 	}
-}
+} */
 
 } // namespace gfx
 

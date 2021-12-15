@@ -17,8 +17,17 @@ struct MeshVertexAttribute {
 	bool asInt = false;
 
 	MeshVertexAttribute() = default;
-	MeshVertexAttribute(bgfx::Attrib::Enum tag, uint8_t numComponents, bgfx::AttribType::Enum type = bgfx::AttribType::Float, bool normalized = false, bool asInt = false)
+	MeshVertexAttribute(bgfx::Attrib::Enum tag, uint8_t numComponents, bgfx::AttribType::Enum type = bgfx::AttribType::Float, bool normalized = false,
+						bool asInt = false)
 		: tag(tag), numComponents(numComponents), type(type), normalized(normalized), asInt(asInt) {}
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(tag);
+		hasher(numComponents);
+		hasher(type);
+		hasher(normalized);
+		hasher(asInt);
+	}
 };
 
 struct Mesh {

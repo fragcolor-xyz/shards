@@ -60,16 +60,27 @@ public:
 	}
 
 	BGFXPipelineState toBGFXState(WindingOrder frontFace) const;
+
+	template <typename T> void hashStatic(T &hasher) const {
+#define PIPELINE_STATE(_name, _type) hasher(_name);
+#include "pipeline_states.def"
+	}
 };
 
 struct Drawable;
 struct View;
+struct Context;
 
-enum class FeatureCallbackFrequency { PerDrawable, PerView };
+enum class FeatureCallbackFrequency : uint8_t {
+	PerFrame = 0,
+	PerDrawable = 1 << 0,
+	PerView = 1 << 1,
+};
 
 struct FeatureCallbackContext {
-	View *view;
-	Drawable *drawable;
+	Context &context;
+	View *view = nullptr;
+	Drawable *drawable = nullptr;
 };
 
 typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
@@ -86,7 +97,7 @@ template <typename T> struct FeatureFrequencyCallback {
 	T callback;
 	FeatureCallbackFrequency frequency;
 
-	FeatureFrequencyCallback(T callback, FeatureCallbackFrequency frequency) : callback(callback), frequency(frequency) {}
+	FeatureFrequencyCallback(T callback, FeatureCallbackFrequency frequency = FeatureCallbackFrequency::PerFrame) : callback(callback), frequency(frequency) {}
 };
 
 struct IDrawDataCollector;
@@ -97,8 +108,14 @@ enum class DependencyType { Before, After };
 struct NamedDependency {
 	std::string name;
 	DependencyType type;
+
 	NamedDependency() = default;
 	NamedDependency(std::string name, DependencyType type = DependencyType::After) : name(name), type(type) {}
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(name);
+		hasher(type);
+	}
 };
 
 struct FeatureShaderCode {
@@ -109,17 +126,34 @@ struct FeatureShaderCode {
 
 	FeatureShaderCode() = default;
 	FeatureShaderCode(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment) : stage(stage), name(name) {}
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(stage);
+		hasher(name);
+		hasher(code);
+		hasher(dependencies);
+	}
 };
 
 struct FeatureShaderGlobal {
 	FieldType type = FieldType::Float4;
 	std::string name;
 	FieldVariant defaultValue;
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(type);
+		hasher(name);
+	}
 };
 
 struct FeatureShaderVarying {
 	FieldType type = FieldType::Float4;
 	std::string name;
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(type);
+		hasher(name);
+	}
 };
 
 struct FeatureShaderField {
@@ -130,6 +164,11 @@ struct FeatureShaderField {
 	FeatureShaderField() = default;
 	FeatureShaderField(std::string name, FieldType type = FieldType::Float4, FieldVariant defaultValue = FieldVariant());
 	FeatureShaderField(std::string name, FieldVariant defaultValue);
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(type);
+		hasher(name);
+	}
 };
 
 struct SceneRenderer;
@@ -143,6 +182,16 @@ struct Feature {
 	std::vector<FeatureShaderField> shaderGlobals;
 	std::vector<FeatureShaderField> shaderVaryings;
 	std::vector<FeatureShaderCode> shaderCode;
+
+	virtual ~Feature() = default;
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(state);
+		hasher(shaderParams);
+		hasher(shaderGlobals);
+		hasher(shaderVaryings);
+		hasher(shaderCode);
+	}
 };
 typedef std::shared_ptr<Feature> FeaturePtr;
 

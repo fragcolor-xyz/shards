@@ -9,11 +9,14 @@
 #include "mesh.hpp"
 #include "shaderc.hpp"
 #include "spdlog/fmt/bundled/core.h"
+#include "spdlog/spdlog.h"
 #include "strings.hpp"
 #include "texture.hpp"
+#include "utils.hpp"
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <cctype>
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -259,6 +262,7 @@ struct ShaderBuilder {
 	bool buildVaryings(std::string &out);
 	bool buildInputAttributes(std::string &out);
 	bool buildUniformDefinition(std::string &out);
+	bool buildVertexOutputs();
 	bool buildFragmentOutputs();
 	bool buildSubShaderBody(ShaderStageBuilder &stageBuilder, std::string &output, const char *stageName);
 };
@@ -302,8 +306,7 @@ bool ShaderBuilder::buildInputAttributes(std::string &out) {
 		auto &attr = vertexAttributes[i];
 
 		std::string tagName = std::string(magic_enum::enum_name(attr.tag));
-		assert(tagName.size() > 0);
-		tagName[0] = std::tolower(tagName[0]);
+		boost::algorithm::to_lower(tagName);
 
 		FieldType fieldType;
 		if (attr.type != bgfx::AttribType::Float) {
@@ -349,7 +352,7 @@ bool ShaderBuilder::buildInputAttributes(std::string &out) {
 
 		std::string attributeName = std::string("a_") + tagName;
 		std::string glslTypeName = getBasicFieldGLSLName(fieldType);
-		out += fmt::format("{} {};\n", glslTypeName, attributeName, bgfxAttribToShaderSemantic(attr.tag));
+		out += fmt::format("{} {} : {};\n", glslTypeName, attributeName, bgfxAttribToShaderSemantic(attr.tag));
 
 		vertex.inputs.emplace_back(attributeName, glslTypeName, fmt::format("in_{}", tagName));
 	}
@@ -371,20 +374,50 @@ bool ShaderBuilder::buildUniformDefinition(std::string &out) {
 	return true;
 }
 
+bool ShaderBuilder::buildVertexOutputs() {
+	CodeBlock &codeBlock = vertex.mainCodeSegments.emplace_back();
+	codeBlock.name = l_writeOutputs;
+	codeBlock.dependencies.emplace_back(l_postFeature, DependencyType::After);
+
+	std::vector<InOutVar> outputs = {InOutVar("gl_Position", "vec4", "position")};
+
+	for (InOutVar &output : outputs) {
+		vertex.materialStructBody += fmt::format("vec4 out_{};\n", output.baseName);
+		vertex.materialStructInitializer += fmt::format("mi.out_{} = vec4_splat(0.0);\n", output.baseName);
+
+		codeBlock.code += fmt::format("{} = mi.out_{};\n", output.name, output.baseName);
+	}
+
+	return true;
+}
+
 bool ShaderBuilder::buildFragmentOutputs() {
 	CodeBlock &codeBlock = fragment.mainCodeSegments.emplace_back();
 	codeBlock.name = l_writeOutputs;
 	codeBlock.dependencies.emplace_back(l_postFeature, DependencyType::After);
 
-	for (size_t i = 0; i < outputs.size(); i++) {
-		auto &output = outputs[i];
+	if (outputs.size() >= 1) {
+		std::string colorFieldName = outputs.size() > 0 ? outputs[0].name : "color";
 
-		std::string key = fmt::format("OUTPUT_{}", output.name);
-		defines.insert_or_assign(key, fmt::format("{}", i));
+		std::string key = fmt::format("OUTPUT_{}", colorFieldName);
+		defines.insert_or_assign(key, fmt::format("{}", 0));
 
-		fragment.materialStructBody += fmt::format("vec4 out_{};\n", output.name);
+		fragment.materialStructBody += fmt::format("vec4 out_{};\n", colorFieldName);
+		fragment.materialStructInitializer += fmt::format("mi.out_{} = vec4_splat(0.0);\n", colorFieldName);
 
-		codeBlock.code += fmt::format("gl_FragData[{}] = mi.out_{};\n", i, output.name);
+		codeBlock.code = fmt::format("gl_FragColor = mi.out_{};\n", colorFieldName);
+	} else {
+		for (size_t i = 0; i < outputs.size(); i++) {
+			auto &output = outputs[i];
+
+			std::string key = fmt::format("OUTPUT_{}", output.name);
+			defines.insert_or_assign(key, fmt::format("{}", i));
+
+			fragment.materialStructBody += fmt::format("vec4 out_{};\n", output.name);
+			fragment.materialStructInitializer += fmt::format("mi.out_{} = vec4_splat(0.0);\n", output.name);
+
+			codeBlock.code += fmt::format("gl_FragData[{}] = mi.out_{};\n", i, output.name);
+		}
 	}
 
 	return true;
@@ -393,7 +426,7 @@ bool ShaderBuilder::buildFragmentOutputs() {
 bool ShaderBuilder::buildSubShaderBody(ShaderStageBuilder &stageBuilder, std::string &output, const char *stageName) {
 	std::string materialStructInitializer = std::move(stageBuilder.materialStructInitializer);
 	std::string writeOutputs;
-	std::string materialStruct = "struct Materialinfo {\n";
+	std::string materialStruct = "struct MaterialInfo {\n";
 	materialStruct += stageBuilder.materialStructBody;
 	for (size_t i = 0; i < globals.size(); i++) {
 		auto &field = globals[i];
@@ -453,6 +486,9 @@ bool ShaderBuilder::build(ShaderCompilerInputs &output) {
 	if (!buildInputAttributes(output.varyings))
 		return false;
 
+	if (!buildVertexOutputs())
+		return false;
+
 	if (!buildFragmentOutputs())
 		return false;
 
@@ -500,31 +536,115 @@ bool ShaderBuilder::build(ShaderCompilerInputs &output) {
 	return true;
 }
 
-bool buildPipeline(const BuildPipelineParams &params, Pipeline &outPipeline) {
+FeaturePipeline::~FeaturePipeline() {
+	if (bgfx::isValid(program))
+		bgfx::destroy(program);
+
+	for (auto &binding : bindings) {
+		if (bgfx::isValid(binding.handle))
+			bgfx::destroy(binding.handle);
+	}
+}
+
+FeatureBindingLayout::~FeatureBindingLayout() {
+	for (auto &binding : basicBindings)
+		bgfx::destroy(binding.handle);
+	for (auto &binding : textureBindings)
+		bgfx::destroy(binding.handle);
+}
+
+bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLayout &outBindingLayout) {
+	const Mesh &mesh = *params.drawable.mesh.get();
+	auto &material = params.drawable.material;
+	const MaterialData *materialData = material ? &material->getData() : nullptr;
+
+	auto applyFeature = [&](auto &featurePtr) {
+		for (auto &shaderParam : featurePtr->shaderParams) {
+			std::string shaderName = fmt::format("u_{}", shaderParam.name);
+			if (shaderParam.type == FieldType::Texture2D) {
+				auto &binding = outBindingLayout.textureBindings.emplace_back();
+				binding.name = shaderParam.name;
+				binding.handle = bgfx::createUniform(shaderName.c_str(), bgfx::UniformType::Sampler);
+			} else {
+				auto &binding = outBindingLayout.basicBindings.emplace_back();
+				binding.name = shaderParam.name;
+				bgfx::UniformType::Enum uniformType;
+				switch (shaderParam.type) {
+				case FieldType::Float:
+				case FieldType::Float2:
+				case FieldType::Float3:
+				case FieldType::Float4:
+					uniformType = bgfx::UniformType::Vec4;
+					break;
+				case FieldType::Float4x4:
+					uniformType = bgfx::UniformType::Mat4;
+					break;
+				default:
+					assert(false);
+					break;
+				}
+				binding.handle = bgfx::createUniform(shaderName.c_str(), uniformType);
+			}
+		}
+	};
+
+	for (auto &featurePtr : params.features) {
+		applyFeature(featurePtr);
+	}
+	if (material) {
+		for (auto &featurePtr : material->customFeatures) {
+			applyFeature(featurePtr);
+		}
+	}
+
+	return true;
+}
+
+bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeline, ShaderCompilerInputs *outShaderCompilerInputs) {
 	const Mesh &mesh = *params.drawable->mesh.get();
-	const Material &material = *params.drawable->material.get();
+	auto material = params.drawable->material;
 
 	std::unordered_map<std::string, size_t> textureMap;
 	ShaderBuilder shaderBuilder{mesh.vertexAttributes, params.outputs, textureMap};
 	FeaturePipelineState combinedState;
 
-	// merge features
-	for (auto &featurePtr : params.features) {
+	auto applyFeature = [&](auto &featurePtr) {
 		const Feature &feature = *featurePtr;
 		combinedState = combinedState.combine(feature.state);
 
 		for (auto &shaderParam : feature.shaderParams) {
 			Binding &binding = outPipeline.bindings.emplace_back();
 			binding.name = shaderParam.name;
+
+			bgfx::UniformType::Enum uniformType;
+
 			if (shaderParam.type == FieldType::Texture2D) {
+				uniformType = bgfx::UniformType::Sampler;
 				binding.texture = TextureBinding{textureMap.size()};
 				textureMap.insert_or_assign(shaderParam.name, binding.texture->slot);
 				if (const TexturePtr *texture = std::get_if<TexturePtr>(&shaderParam.defaultValue)) {
 					binding.texture->defaultValue = *texture;
 				}
 			} else {
+				switch (shaderParam.type) {
+				case FieldType::Float:
+				case FieldType::Float2:
+				case FieldType::Float3:
+				case FieldType::Float4:
+					uniformType = bgfx::UniformType::Vec4;
+					break;
+				case FieldType::Float4x4:
+					uniformType = bgfx::UniformType::Mat4;
+					break;
+				default:
+					assert(false);
+					break;
+				}
 				packFieldVariant(shaderParam.defaultValue, binding.defaultValue);
 			}
+
+			std::string bindingName = fmt::format("u_{}", shaderParam.name);
+			binding.handle = bgfx::createUniform(bindingName.c_str(), uniformType);
 		}
 
 		for (auto &shaderCode : feature.shaderCode) {
@@ -541,31 +661,55 @@ bool buildPipeline(const BuildPipelineParams &params, Pipeline &outPipeline) {
 		for (auto &varying : feature.shaderVaryings) {
 			shaderBuilder.varyings.push_back(varying);
 		}
+	};
+
+	for (auto &featurePtr : params.features) {
+		applyFeature(featurePtr);
+	}
+	if (material) {
+		for (auto &featurePtr : material->customFeatures) {
+			applyFeature(featurePtr);
+		}
 	}
 
-	ShaderCompilerInputs &shaderCompilerInputs = outPipeline.debug.emplace();
+	ShaderCompilerInputs localShaderCompilerInputs;
+	if (!outShaderCompilerInputs)
+		outShaderCompilerInputs = &localShaderCompilerInputs;
+	ShaderCompilerInputs &shaderCompilerInputs = *outShaderCompilerInputs;
+
 	shaderBuilder.build(shaderCompilerInputs);
 
 	if (params.rendererType != RendererType::None) {
 		ShaderCompileOptions compileOptions;
 		ShaderCompileOutput vsOutput, fsOutput;
-		compileOptions.setCompatibleForRendererType(params.rendererType);
+
+		compileOptions.keepOutputs = true;
+		compileOptions.debugInformation = true;
 
 		assert(params.shaderCompiler);
 		compileOptions.shaderType = 'v';
+		compileOptions.setCompatibleForRendererType(params.rendererType);
 		if (!params.shaderCompiler->compile(compileOptions, vsOutput, shaderCompilerInputs.varyings.c_str(), shaderCompilerInputs.stages[0].code.c_str(),
 											shaderCompilerInputs.stages[0].code.size()))
 			return false;
 
 		compileOptions.shaderType = 'f';
+		compileOptions.setCompatibleForRendererType(params.rendererType);
 		if (!params.shaderCompiler->compile(compileOptions, fsOutput, shaderCompilerInputs.varyings.c_str(), shaderCompilerInputs.stages[1].code.c_str(),
 											shaderCompilerInputs.stages[1].code.size()))
 			return false;
+
+		if (params.rendererType == RendererType::OpenGL) {
+			spdlog::info("-- Platform VS:\n{}", extractPlatformShaderBinary(vsOutput.binary));
+			spdlog::info("-- Platform FS:\n{}", extractPlatformShaderBinary(fsOutput.binary));
+		}
 
 		bgfx::ShaderHandle vs = bgfx::createShader(bgfx::copy(vsOutput.binary.data(), vsOutput.binary.size()));
 		bgfx::ShaderHandle fs = bgfx::createShader(bgfx::copy(fsOutput.binary.data(), fsOutput.binary.size()));
 		outPipeline.program = bgfx::createProgram(vs, fs, true);
 	}
+
+	spdlog::info("-- Varyings:\n{}", shaderCompilerInputs.varyings);
 
 	outPipeline.state = combinedState.toBGFXState(mesh.windingOrder);
 

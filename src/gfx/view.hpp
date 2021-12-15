@@ -2,44 +2,49 @@
 
 #include "bgfx/bgfx.h"
 #include "opt.hpp"
+#include "texture.hpp"
 #include "types.hpp"
 #include <bgfx/bgfx.h>
+#include <optional>
+#include <variant>
 
 namespace gfx {
 
-struct alignas(16) View {
-	const bgfx::ViewId id{0};
+enum class FovDirection {
+	Horizontal,
+	Vertical,
+};
+struct ViewPerspectiveProjection {
+	float fov;
+	FovDirection fovType = FovDirection::Vertical;
+	float near = 0.1f;
+	float far = 800.0f;
+};
 
-private:
-	Rect viewport;
+enum class OrthographicSizeType {
+	Horizontal,
+	Vertical,
+	PixelScale,
+};
+struct ViewOrthographicProjection {
+	float size;
+	OrthographicSizeType sizeType = OrthographicSizeType::Horizontal;
+	float near = 0.0f;
+	float far = 1000.0f;
+};
+
+struct alignas(16) View {
+public:
 	float4x4 view;
-	float4x4 proj;
+	std::optional<Rect> viewport;
+	std::variant<std::monostate, ViewPerspectiveProjection, ViewOrthographicProjection, float4x4> proj;
 
 public:
-	View(bgfx::ViewId id) : id(id) {}
+	View();
 	View(const View &) = delete;
 
-	void setViewport(const Rect &viewport) {
-		this->viewport = viewport;
-		bgfx::setViewRect(id, viewport.x, viewport.y, viewport.width, viewport.height);
-	}
-	const Rect &getViewport() const { return viewport; }
-	const int2 getSize() const { return int2(viewport.width, viewport.height); }
-
-	void setViewTransform(const float4x4 &view, const float4x4 &proj) {
-		this->view = view;
-		this->proj = proj;
-
-		bgfx::Transform transform;
-		bgfx::allocTransform(&transform, 2);
-		float *viewPtr = transform.data;
-		float *projPtr = transform.data + 16;
-		packFloat4x4(view, viewPtr);
-		packFloat4x4(proj, projPtr);
-
-		bgfx::setViewTransform(id, viewPtr, projPtr);
-	}
-	const float4x4 &getViewMatrix() const { return view; }
-	const float4x4 &getProjMatrix() const { return proj; }
+	float4x4 getProjectionMatrix(const int2 &viewSize) const;
 };
+typedef std::shared_ptr<View> ViewPtr;
+
 } // namespace gfx

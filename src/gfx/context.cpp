@@ -1,6 +1,7 @@
 #include "context.hpp"
 #include "SDL_events.h"
 #include "SDL_keycode.h"
+#include "bgfx/bgfx.h"
 #include "bgfx/defines.h"
 #include "capture.hpp"
 #include "imgui.hpp"
@@ -93,7 +94,7 @@ ContextCreationOptions::ContextCreationOptions() {
 #endif
 }
 
-Context::Context() { imguiContext = std::make_shared<ImguiContext>(); }
+Context::Context() {}
 Context::~Context() { cleanup(); }
 
 void Context::init(Window &window, const ContextCreationOptions &options) {
@@ -147,27 +148,14 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	}
 	this->rendererType = rendererType;
 
-	shaderCompilerModule = createShaderCompilerModule();
-	materialBuilderContext = std::make_shared<MaterialBuilderContext>(*this);
-
-	imguiContext->init(18.0);
-
 	timeUniformHandle = bgfx::createUniform("u_private_time4", bgfx::UniformType::Vec4, 1);
 }
 
 void Context::cleanup() {
 	spdlog::debug("GFX.Context cleanup");
 
-	materialBuilderContext.reset();
-	shaderCompilerModule.reset();
-
 	if (isInitialized()) {
 		rendererType = RendererType::None;
-
-		if (imguiContext) {
-			imguiContext->cleanup();
-			imguiContext.reset();
-		}
 
 		for (auto &sampler : samplers) {
 			bgfx::destroy(sampler);
@@ -268,6 +256,7 @@ void Context::endFrame(FrameRenderer *frameRenderer) {
 }
 
 void BGFXCallbacks::fatal(const char *_filePath, uint16_t _line, bgfx::Fatal::Enum _code, const char *_str) {
+	spdlog::error("{}", formatBGFXException(_filePath, _line, _code, _str));
 	if (bgfx::Fatal::DebugCheck == _code) {
 		bx::debugBreak();
 	} else {

@@ -1,5 +1,6 @@
 #pragma once
 #include "linalg.hpp"
+#include "linalg/linalg.h"
 #include <memory>
 #include <vector>
 
@@ -12,7 +13,7 @@ struct Drawable {
 	std::shared_ptr<Material> material;
 	float4x4 transform;
 
-	Drawable(std::shared_ptr<Mesh> mesh, float4x4 transform, std::shared_ptr<Material> material = std::shared_ptr<Material>())
+	Drawable(std::shared_ptr<Mesh> mesh, float4x4 transform = linalg::identity, std::shared_ptr<Material> material = std::shared_ptr<Material>())
 		: mesh(mesh), material(material), transform(transform) {}
 };
 typedef std::shared_ptr<Drawable> DrawablePtr;

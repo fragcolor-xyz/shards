@@ -1,6 +1,5 @@
 #include "texture_file.hpp"
 #include "bgfx/bgfx.h"
-#include "bgfx/src/bgfx_p.h"
 #include "bimg/bimg.h"
 #include "bx/error.h"
 #include "bx/file.h"
@@ -20,6 +19,10 @@
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #include "stb_image.h"
 #pragma GCC diagnostic pop
+
+namespace bgfx {
+bx::AllocatorI *g_allocator;
+}
 
 namespace gfx {
 TexturePtr textureFromFileFloat(const char *path) {
@@ -45,7 +48,8 @@ TexturePtr textureFromFileFloat(const char *path) {
 	}
 
 	const bgfx::Memory *memory = bgfx::copy(imageContainer->m_data, imageContainer->m_size);
-	TexturePtr texture = std::make_shared<Texture>(int2(imageContainer->m_width, imageContainer->m_height), (bgfx::TextureFormat::Enum)imageContainer->m_format);
+	TexturePtr texture =
+		std::make_shared<Texture>(int2(imageContainer->m_width, imageContainer->m_height), (bgfx::TextureFormat::Enum)imageContainer->m_format);
 	texture->update(memory);
 
 	bimg::imageFree(imageContainer);

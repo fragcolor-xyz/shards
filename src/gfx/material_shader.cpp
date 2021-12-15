@@ -79,13 +79,9 @@ ShaderProgramPtr MaterialBuilderContext::createFallbackShaderProgram() {
 	return shaderProgram;
 }
 
-struct StaticHashVisitor {
-	template <typename T, typename THasher> void operator()(const T &val, THasher &hasher) { val.hashStatic(hasher); }
-};
-
 ShaderProgramPtr MaterialUsageContext::getProgram() {
 	// Hash the external parameters
-	HasherXXH128<StaticHashVisitor> hasher;
+	HasherXXH128<HashStaticVistor> hasher;
 	hasher(*this);
 	Hash128 materialContextHash = hasher.getDigest();
 
