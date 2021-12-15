@@ -48,7 +48,7 @@
   .b (Hash.Sha2-256) (AppendTo .a)
   .a (ToBase58) (Log) (Assert.Is "QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx" true)
 
-  "../../assets/Freesample.svg"
+  "../../content/images/test/Freesample.svg"
   (FS.Read :Bytes true)
   (SVG.ToImage)
   (WritePNG "svgtest.png")

@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="450" src="assets/banner.png">
+  <img width="450" src="content/images/chainblocks/banner.png">
 </p>
 
 ## A scripting tool to build tools.
@@ -94,13 +94,13 @@ We introduce a low code way of producing high performance and multi-platform app
 
 *Work in progress, app source outside of this repository's scope*
 
-<img src="assets/ios-editor.GIF" height="500px">
+<img src=".readme/ios-editor.GIF" height="500px">
 
 ### Becomes
 
 ![](assets/simple1.PNG)
 
-<img src="assets/ios-imgui.PNG" height="500px">
+<img src=".readme/ios-imgui.PNG" height="500px">
 
 Complete of a BGFX context, rendering a ImGui window on a DX11 (windows) and/or Metal (iOS) surface.
 
