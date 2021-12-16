@@ -129,6 +129,8 @@ private:
 			std::vector<const Feature *> features;
 			FeatureCallbackContext filterContext{frame.context, view.get(), drawable.get()};
 			for (auto &featureSource : featureSources) {
+				if (!featureSource)
+					continue;
 				for (auto &feature : *featureSource) {
 					if (featureFilter(*feature.get(), filterContext)) {
 						features.push_back(feature.get());

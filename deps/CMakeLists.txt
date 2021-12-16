@@ -184,18 +184,18 @@ endif()
 ExternalProject_Add(catch2_a
   URL ${CHAINBLOCKS_DIR}/deps/Catch2
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/catch2_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/catch2_a ${EXTERNAL_CMAKE_ARGS}
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a
+  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/catch2_a ${EXTERNAL_CMAKE_ARGS}
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/Catch2.lib
+  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/Catch2Main.lib
 )
 
 add_library(Catch2 STATIC IMPORTED GLOBAL)
-set_target_properties(Catch2 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a)
+set_target_properties(Catch2 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/Catch2.lib)
 target_include_directories(Catch2 INTERFACE ${CHAINBLOCKS_DIR}/deps/Catch2/src)
 add_dependencies(Catch2 catch2_a)
 
 add_library(Catch2WithMain STATIC IMPORTED GLOBAL)
-set_target_properties(Catch2WithMain PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a)
+set_target_properties(Catch2WithMain PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/Catch2Main.lib)
 target_include_directories(Catch2WithMain INTERFACE ${CHAINBLOCKS_DIR}/deps/Catch2/src)
 add_dependencies(Catch2WithMain catch2_a)
 

@@ -21,7 +21,7 @@
 #pragma GCC diagnostic pop
 
 namespace bgfx {
-bx::AllocatorI *g_allocator;
+extern bx::AllocatorI *g_allocator;
 }
 
 namespace gfx {

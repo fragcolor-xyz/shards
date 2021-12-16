@@ -1,7 +1,7 @@
 #pragma once
 #include "bgfx/bgfx.h"
-#include "gfx/tests/img_compare.hpp"
 #include "gfx/mesh.hpp"
+#include "gfx/tests/img_compare.hpp"
 #include "img_compare.hpp"
 #include <functional>
 #include <gfx/capture.hpp>
@@ -66,6 +66,25 @@ inline void generateSphereMesh(bgfx::VertexBufferHandle &vb, bgfx::IndexBufferHa
 	ib = bgfx::createIndexBuffer(indexMem);
 }
 
+inline gfx::MeshPtr generateSphereMesh() {
+	auto result = std::make_shared<gfx::Mesh>();
+	result->primitiveType = gfx::PrimitiveType::TriangleList;
+	result->vertexAttributes = gfx::geom::VertexPNT::getAttributes();
+
+	gfx::geom::SphereGenerator gen;
+	gen.generate();
+
+	bgfx::VertexLayout layout = gfx::createVertexLayout(result->vertexAttributes);
+
+	const bgfx::Memory *vertMem = bgfx::copy(gen.vertices.data(), gen.vertices.size() * sizeof(gfx::geom::VertexPNT));
+	result->vb = bgfx::createVertexBuffer(vertMem, layout);
+
+	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
+	result->ib = bgfx::createIndexBuffer(indexMem);
+
+	return result;
+}
+
 inline void generateFullscreenQuad(bgfx::VertexBufferHandle &vb, bgfx::IndexBufferHandle &ib) {
 	gfx::geom::PlaneGenerator gen;
 	gen.width = 2.0f;
@@ -79,19 +98,4 @@ inline void generateFullscreenQuad(bgfx::VertexBufferHandle &vb, bgfx::IndexBuff
 	vb = bgfx::createVertexBuffer(vertMem, layout);
 	const bgfx::Memory *indexMem = bgfx::copy(gen.indices.data(), gen.indices.size() * sizeof(gfx::geom::GeneratorBase::index_t));
 	ib = bgfx::createIndexBuffer(indexMem);
-}
-
-inline void setWorldViewProj(gfx::View &view, gfx::float3 cameraLocation = gfx::float3(0, 0, -5)) {
-	bgfx::Transform transformCache;
-
-	gfx::float4x4 modelMtx = linalg::identity;
-	gfx::float4x4 projMtx = linalg::perspective_matrix(gfx::pi * 0.35f, float(view.getSize().x) / view.getSize().y, 0.5f, 15.0f);
-	gfx::float4x4 viewMtx = linalg::translation_matrix(gfx::float3(0, 0, -5));
-
-	uint32_t transformCacheIndex = bgfx::allocTransform(&transformCache, 3);
-	gfx::packFloat4x4(modelMtx, transformCache.data + 16 * 0);
-	gfx::packFloat4x4(viewMtx, transformCache.data + 16 * 1);
-	gfx::packFloat4x4(projMtx, transformCache.data + 16 * 2);
-	bgfx::setTransform(transformCacheIndex);
-	bgfx::setViewTransform(view.id, transformCache.data + 16 * 1, transformCache.data + 16 * 2);
 }

@@ -21,6 +21,9 @@ bool topologicalSort(const Graph &graph, std::vector<std::set<size_t>> &incoming
 	// Implement Kahn's algorithm
 	size_t numNodes = graph.nodes.size();
 
+	if(numNodes == 0)
+		return true;
+
 	assert(incomingEdgesPerNode.size() == numNodes);
 	assert(outgoingEdgesPerNode.size() == numNodes);
 

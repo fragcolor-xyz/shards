@@ -8,12 +8,20 @@
 #include <optional>
 #include <variant>
 
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
+
 namespace gfx {
 
 enum class FovDirection {
 	Horizontal,
 	Vertical,
 };
+
 struct ViewPerspectiveProjection {
 	float fov;
 	FovDirection fovType = FovDirection::Vertical;

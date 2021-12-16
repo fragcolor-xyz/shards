@@ -626,7 +626,8 @@ bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeli
 		outShaderCompilerInputs = &localShaderCompilerInputs;
 	ShaderCompilerInputs &shaderCompilerInputs = *outShaderCompilerInputs;
 
-	shaderBuilder.build(params.bindingLayout, shaderCompilerInputs);
+	if (!shaderBuilder.build(params.bindingLayout, shaderCompilerInputs))
+		return false;
 
 	if (params.rendererType != RendererType::None) {
 		ShaderCompileOptions compileOptions;

@@ -8,7 +8,6 @@ add_executable(test_gfx
 img_compare.cpp
   test_context.cpp
   test_shaderc.cpp
-  test_draw.cpp
   test_feature.cpp
   main.cpp
   utils.cpp
