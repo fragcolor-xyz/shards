@@ -118,5 +118,5 @@ struct ShaderCompiler : public gfx::IShaderCompiler {
 };
 
 extern "C" {
-gfx::IShaderCompiler *SHADERC_API GFX_SHADERC_MODULE_ENTRY() { return new ShaderCompiler(); }
+SHADERC_API gfx::IShaderCompiler *GFX_SHADERC_MODULE_ENTRY() { return new ShaderCompiler(); }
 }

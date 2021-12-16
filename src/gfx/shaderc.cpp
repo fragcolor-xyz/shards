@@ -12,6 +12,8 @@ namespace gfx {
 
 void ShaderCompileOutput::writeError(const char *error) { errors.push_back(error); }
 void ShaderCompileOutput::writeOutput(const void *data, int32_t size) {
+	if (size <= 0)
+		return;
 	size_t offset = binary.size();
 	binary.resize(offset + size);
 	memcpy(&binary[offset], data, size);
@@ -24,9 +26,7 @@ void ShaderCompileOptions::setBuiltinIncludePaths() {
 		includeDirs.push_back(resolveDataPath(path));
 	}
 }
-void ShaderCompileOptions::setCompatibleForContext(Context &context) {
-	setCompatibleForRendererType(context.getRendererType());
-}
+void ShaderCompileOptions::setCompatibleForContext(Context &context) { setCompatibleForRendererType(context.getRendererType()); }
 
 void ShaderCompileOptions::setCompatibleForRendererType(RendererType type) {
 #if BX_PLATFORM_WINDOWS

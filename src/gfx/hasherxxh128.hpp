@@ -11,15 +11,13 @@
 namespace gfx {
 
 struct HasherDefaultVisitor {
-    template<typename T, typename H>
-    static constexpr auto applies(...) -> decltype(std::declval<T>().hash(*(H*)0), bool()) { return true; }
+	template <typename T, typename H> static constexpr auto applies(...) -> decltype(std::declval<T>().hash(*(H *)0), bool()) { return true; }
 
 	template <typename T, typename THasher> void operator()(const T &value, THasher &&hasher) { value.hash(hasher); }
 };
 
 struct HashStaticVistor {
-    template<typename T, typename H>
-    static constexpr auto applies(...) -> decltype(std::declval<T>().hashStatic(*(H*)0), bool()) { return true; }
+	template <typename T, typename H> static constexpr auto applies(...) -> decltype(std::declval<T>().hashStatic(*(H *)0), bool()) { return true; }
 
 	template <typename T, typename THasher> void operator()(const T &val, THasher &hasher) { val.hashStatic(hasher); }
 };
@@ -41,7 +39,7 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 
 	void operator()(const void *data, size_t length) { XXH3_128bits_update(&state, data, length); }
 	void operator()(const Hash128 &v) { (*this)(&v, sizeof(Hash128)); }
-	template <typename T, size_t N> void operator()(const linalg::vec<T, N> &v) { (*this)(&v.x, sizeof(T) * N); }
+	template <typename T> void operator()(const linalg::vec<T, 4> &v) { (*this)(&v.x, sizeof(T) * 4); }
 	template <typename TVal> void operator()(const std::optional<TVal> &v) {
 		bool has_value = v.has_value();
 		(*this)(has_value);
@@ -50,12 +48,11 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 	}
 
 	template <typename TVal> void operator()(const TVal &val) {
+		static_assert(canVisit<TVal>(0) || std::is_pod<TVal>::value, "Type can not be hashed");
 		if constexpr (canVisit<TVal>(0)) {
 			TVisitor{}(val, *this);
 		} else if constexpr (std::is_pod<TVal>::value) {
 			(*this)(&val, sizeof(val));
-		} else {
-			assert(false);
 		}
 	}
 	void operator()(const std::string &str) { (*this)(str.data(), str.size()); }
@@ -71,7 +68,9 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 		}
 	}
 
-	template<typename TVal> static constexpr auto canVisit(int) -> decltype(TVisitor::template applies<TVal, HasherXXH128>(), bool()) { return TVisitor::template applies<TVal, HasherXXH128>(0); }
-    template<typename TVal> static constexpr auto canVisit(char) -> bool { return false; }
+	template <typename TVal> static constexpr auto canVisit(int) -> decltype(TVisitor::template applies<TVal, HasherXXH128>(), bool()) {
+		return TVisitor::template applies<TVal, HasherXXH128>(0);
+	}
+	template <typename TVal> static constexpr auto canVisit(char) -> bool { return false; }
 };
 } // namespace gfx

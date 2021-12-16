@@ -246,22 +246,20 @@ struct ShaderStageBuilder {
 struct ShaderBuilder {
 	const std::vector<MeshVertexAttribute> &vertexAttributes;
 	const std::vector<PipelineOutputDesc> &outputs;
-	const std::unordered_map<std::string, size_t> &textureMap;
 	ShaderStageBuilder vertex;
 	ShaderStageBuilder fragment;
 	std::unordered_map<std::string, std::string> defines;
 	std::vector<FeatureShaderField> globals;
-	std::vector<FeatureShaderField> params;
 	std::vector<FeatureShaderField> varyings;
 
 	std::vector<std::string> errors;
 	std::set<bgfx::Attrib::Enum> allocatedVaryings;
 
 	void pushError(std::string &&err) { errors.emplace_back(err); }
-	bool build(ShaderCompilerInputs &output);
+	bool build(const FeatureBindingLayout &bindingLayout, ShaderCompilerInputs &output);
 	bool buildVaryings(std::string &out);
 	bool buildInputAttributes(std::string &out);
-	bool buildUniformDefinition(std::string &out);
+	bool buildUniformDefinition(const FeatureBindingLayout &bindingLayout, std::string &out);
 	bool buildVertexOutputs();
 	bool buildFragmentOutputs();
 	bool buildSubShaderBody(ShaderStageBuilder &stageBuilder, std::string &output, const char *stageName);
@@ -360,17 +358,16 @@ bool ShaderBuilder::buildInputAttributes(std::string &out) {
 	return true;
 }
 
-bool ShaderBuilder::buildUniformDefinition(std::string &out) {
-	for (size_t i = 0; i < params.size(); i++) {
-		const FeatureShaderField &param = params[i];
-		if (isBasicFieldType(param.type)) {
-			out += fmt::format("uniform {} u_{};\n", getBasicFieldGLSLName(param.type), param.name);
-		} else if (param.type == FieldType::Texture2D) {
-			auto textureMapIt = textureMap.find(param.name);
-			assert(textureMapIt != textureMap.end());
-			out += fmt::format("SAMPLER2D(u_{}, {});\n", getBasicFieldGLSLName(param.type), textureMapIt->second);
-		}
+bool ShaderBuilder::buildUniformDefinition(const FeatureBindingLayout &bindingLayout, std::string &out) {
+	for (auto &binding : bindingLayout.basicBindings) {
+		out += fmt::format("uniform {} u_{};\n", getBasicFieldGLSLName(binding.type), binding.name);
 	}
+
+	for (size_t i = 0; i < bindingLayout.textureBindings.size(); i++) {
+		auto &binding = bindingLayout.textureBindings[i];
+		out += fmt::format("SAMPLER2D(u_{}, {});\n", binding.name, i);
+	}
+
 	return true;
 }
 
@@ -478,7 +475,7 @@ bool ShaderBuilder::buildSubShaderBody(ShaderStageBuilder &stageBuilder, std::st
 	return true;
 }
 
-bool ShaderBuilder::build(ShaderCompilerInputs &output) {
+bool ShaderBuilder::build(const FeatureBindingLayout &bindingLayout, ShaderCompilerInputs &output) {
 	output.varyings.clear();
 	if (!buildVaryings(output.varyings))
 		return false;
@@ -521,7 +518,7 @@ bool ShaderBuilder::build(ShaderCompilerInputs &output) {
 	fsHeader += "\n";
 
 	sharedHeader += "\n";
-	if (!buildUniformDefinition(sharedHeader))
+	if (!buildUniformDefinition(bindingLayout, sharedHeader))
 		return false;
 	sharedHeader += "\n";
 
@@ -539,11 +536,6 @@ bool ShaderBuilder::build(ShaderCompilerInputs &output) {
 FeaturePipeline::~FeaturePipeline() {
 	if (bgfx::isValid(program))
 		bgfx::destroy(program);
-
-	for (auto &binding : bindings) {
-		if (bgfx::isValid(binding.handle))
-			bgfx::destroy(binding.handle);
-	}
 }
 
 FeatureBindingLayout::~FeatureBindingLayout() {
@@ -554,9 +546,7 @@ FeatureBindingLayout::~FeatureBindingLayout() {
 }
 
 bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLayout &outBindingLayout) {
-	const Mesh &mesh = *params.drawable.mesh.get();
 	auto &material = params.drawable.material;
-	const MaterialData *materialData = material ? &material->getData() : nullptr;
 
 	auto applyFeature = [&](auto &featurePtr) {
 		for (auto &shaderParam : featurePtr->shaderParams) {
@@ -565,9 +555,15 @@ bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLa
 				auto &binding = outBindingLayout.textureBindings.emplace_back();
 				binding.name = shaderParam.name;
 				binding.handle = bgfx::createUniform(shaderName.c_str(), bgfx::UniformType::Sampler);
+				binding.type = FieldType::Texture2D;
+				if (const TexturePtr *texture = std::get_if<TexturePtr>(&shaderParam.defaultValue)) {
+					binding.defaultValue = *texture;
+				}
 			} else {
 				auto &binding = outBindingLayout.basicBindings.emplace_back();
 				binding.name = shaderParam.name;
+				binding.defaultValue = shaderParam.defaultValue;
+				binding.type = shaderParam.type;
 				bgfx::UniformType::Enum uniformType;
 				switch (shaderParam.type) {
 				case FieldType::Float:
@@ -580,6 +576,7 @@ bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLa
 					uniformType = bgfx::UniformType::Mat4;
 					break;
 				default:
+					uniformType = bgfx::UniformType::Count;
 					assert(false);
 					break;
 				}
@@ -601,61 +598,18 @@ bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLa
 }
 
 bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeline, ShaderCompilerInputs *outShaderCompilerInputs) {
-	const Mesh &mesh = *params.drawable->mesh.get();
-	auto material = params.drawable->material;
-
-	std::unordered_map<std::string, size_t> textureMap;
-	ShaderBuilder shaderBuilder{mesh.vertexAttributes, params.outputs, textureMap};
+	ShaderBuilder shaderBuilder{params.vertexAttributes, params.outputs};
 	FeaturePipelineState combinedState;
 
 	auto applyFeature = [&](auto &featurePtr) {
 		const Feature &feature = *featurePtr;
 		combinedState = combinedState.combine(feature.state);
 
-		for (auto &shaderParam : feature.shaderParams) {
-			Binding &binding = outPipeline.bindings.emplace_back();
-			binding.name = shaderParam.name;
-
-			bgfx::UniformType::Enum uniformType;
-
-			if (shaderParam.type == FieldType::Texture2D) {
-				uniformType = bgfx::UniformType::Sampler;
-				binding.texture = TextureBinding{textureMap.size()};
-				textureMap.insert_or_assign(shaderParam.name, binding.texture->slot);
-				if (const TexturePtr *texture = std::get_if<TexturePtr>(&shaderParam.defaultValue)) {
-					binding.texture->defaultValue = *texture;
-				}
-			} else {
-				switch (shaderParam.type) {
-				case FieldType::Float:
-				case FieldType::Float2:
-				case FieldType::Float3:
-				case FieldType::Float4:
-					uniformType = bgfx::UniformType::Vec4;
-					break;
-				case FieldType::Float4x4:
-					uniformType = bgfx::UniformType::Mat4;
-					break;
-				default:
-					assert(false);
-					break;
-				}
-				packFieldVariant(shaderParam.defaultValue, binding.defaultValue);
-			}
-
-			std::string bindingName = fmt::format("u_{}", shaderParam.name);
-			binding.handle = bgfx::createUniform(bindingName.c_str(), uniformType);
-		}
-
 		for (auto &shaderCode : feature.shaderCode) {
 			if (shaderCode.stage == ProgrammableGraphicsStage::Vertex)
 				shaderBuilder.vertex.addFeatureCode(shaderCode);
 			else
 				shaderBuilder.fragment.addFeatureCode(shaderCode);
-		}
-
-		for (auto &param : feature.shaderParams) {
-			shaderBuilder.params.push_back(param);
 		}
 
 		for (auto &varying : feature.shaderVaryings) {
@@ -666,18 +620,13 @@ bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeli
 	for (auto &featurePtr : params.features) {
 		applyFeature(featurePtr);
 	}
-	if (material) {
-		for (auto &featurePtr : material->customFeatures) {
-			applyFeature(featurePtr);
-		}
-	}
 
 	ShaderCompilerInputs localShaderCompilerInputs;
 	if (!outShaderCompilerInputs)
 		outShaderCompilerInputs = &localShaderCompilerInputs;
 	ShaderCompilerInputs &shaderCompilerInputs = *outShaderCompilerInputs;
 
-	shaderBuilder.build(shaderCompilerInputs);
+	shaderBuilder.build(params.bindingLayout, shaderCompilerInputs);
 
 	if (params.rendererType != RendererType::None) {
 		ShaderCompileOptions compileOptions;
@@ -711,7 +660,7 @@ bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeli
 
 	spdlog::info("-- Varyings:\n{}", shaderCompilerInputs.varyings);
 
-	outPipeline.state = combinedState.toBGFXState(mesh.windingOrder);
+	outPipeline.state = combinedState.toBGFXState(params.faceWindingOrder);
 
 	return true;
 }

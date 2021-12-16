@@ -1,8 +1,11 @@
 #pragma once
 
+#include "bgfx/bgfx.h"
 #include "drawable.hpp"
+#include "enums.hpp"
 #include "feature.hpp"
 #include "feature_pipeline.hpp"
+#include "fields.hpp"
 #include "frame.hpp"
 #include "hash.hpp"
 #include "hasherxxh128.hpp"
@@ -11,9 +14,12 @@
 #include "shaderc.hpp"
 #include "view.hpp"
 #include <initializer_list>
+#include <map>
+#include <memory>
 #include <set>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace gfx {
@@ -33,16 +39,41 @@ struct Pipeline {
 	Pipeline(const std::initializer_list<PipelineStep> &steps) : steps(steps) {}
 };
 
+struct DrawData : IDrawDataCollector {
+	std::unordered_map<std::string, FieldVariant> data;
+
+	void set_float(const char *name, const float &v) { data[name] = v; }
+	void set_vec2(const char *name, const float2 &v) { data[name] = v; }
+	void set_vec3(const char *name, const float3 &v) { data[name] = v; }
+	void set_vec4(const char *name, const float4 &v) { data[name] = v; }
+	void set_mat4(const char *name, const float4x4 &v) { data[name] = v; }
+	void set_texture2D(const char *name, const TexturePtr &v) { data[name] = v; }
+
+	void append(const DrawData &other) {
+		for (auto &it : other.data) {
+			data.insert_or_assign(it.first, it.second);
+		}
+	}
+};
+
 struct FrameRenderer;
 struct Renderer {
 private:
 	std::shared_ptr<ShaderCompilerModule> shaderCompilerModule;
 	std::set<const Feature *> framePrecomputeFeatures;
 
+	DrawData frameDrawData;
+
 public:
 	Renderer() { shaderCompilerModule = createShaderCompilerModule(); }
 
+	void reset() { framePrecomputeFeatures.empty(); }
+
 	void render(gfx::FrameRenderer &frame, const DrawQueue &drawQueue, const Pipeline &pipeline, const std::vector<ViewPtr> &views) {
+		std::vector<Feature *> allFeatures;
+		getAllFeatures(pipeline, allFeatures);
+		runPrecompute(allFeatures, FeaturePrecomputeCallbackContext{frame.context, views});
+
 		for (auto &view : views) {
 			renderView(frame, drawQueue, pipeline, view);
 		}
@@ -123,9 +154,12 @@ private:
 	}
 
 	struct PipelineGroup {
-		FeatureBindingLayout bindingLayout;
+		FeatureBindingLayoutPtr bindingLayout;
+		WindingOrder faceWindingOrder;
+		std::vector<MeshVertexAttribute> vertexAttributes;
 		std::vector<const Feature *> features;
 		std::vector<DrawablePtr> drawables;
+		DrawData sharedDrawData;
 	};
 
 	void groupByPipeline(const FeatureGroup &featureGroup, std::unordered_map<Hash128, PipelineGroup> &outGroups) {
@@ -147,7 +181,12 @@ private:
 				it = outGroups.insert(std::make_pair(pipelineHash, PipelineGroup())).first;
 				PipelineGroup &group = it->second;
 				group.features = featureGroup.features;
-				assert(buildBindingLayout(BuildBindingLayoutParams{featureGroup.features, *drawable.get()}, group.bindingLayout));
+				group.faceWindingOrder = drawable->mesh->windingOrder;
+				group.vertexAttributes = drawable->mesh->vertexAttributes;
+
+				group.bindingLayout = std::make_shared<FeatureBindingLayout>();
+				bool result = buildBindingLayout(BuildBindingLayoutParams{featureGroup.features, *drawable.get()}, *group.bindingLayout.get());
+				assert(result);
 			}
 
 			PipelineGroup &group = it->second;
@@ -164,18 +203,94 @@ private:
 			groupByPipeline(it.second, pipelineGroups);
 		}
 
+		// Compute shared draw data for each pipeline group
+		std::unordered_map<const Feature *, DrawData> featureSharedDrawData;
+		for (auto &it : pipelineGroups) {
+			PipelineGroup &group = it.second;
+			for (const Feature *feature : group.features) {
+				auto it1 = featureSharedDrawData.find(feature);
+				if (it1 == featureSharedDrawData.end()) {
+					it1 = featureSharedDrawData.insert(std::make_pair(feature, DrawData())).first;
+					for (auto &it2 : feature->sharedDrawData)
+						(it2)(FeatureCallbackContext{frame.context, view.get()}, it1->second);
+				}
+
+				group.sharedDrawData.append(it1->second);
+			}
+		}
+
 		for (auto &it : pipelineGroups) {
 			PipelineGroup &pipelineGroup = it.second;
+
+			FeaturePipelinePtr pipeline = getPipeline(frame.context, *pipelineGroup.bindingLayout.get(), pipelineGroup.features, pipelineGroup.vertexAttributes,
+													  pipelineGroup.faceWindingOrder);
+
+			std::vector<uint8_t> tempFieldData;
 			for (auto &drawable : pipelineGroup.drawables) {
+				// Compute individual draw data combined with shared draw data
+				DrawData drawData = pipelineGroup.sharedDrawData;
+				generateDrawData(pipelineGroup.features, FeatureCallbackContext{frame.context, view.get(), drawable.get()}, drawData);
+
+				if (drawable->material) {
+					for (auto &it : drawable->material->getData().basicParameters) {
+						drawData.data[it.first] = it.second;
+					}
+					for (auto &it : drawable->material->getData().textureParameters) {
+						drawData.data[it.first] = it.second.texture;
+					}
+				}
+
+				auto &basicBindings = pipelineGroup.bindingLayout->basicBindings;
+				for (size_t i = 0; i < basicBindings.size(); i++) {
+					auto &binding = basicBindings[i];
+					auto it = drawData.data.find(binding.name);
+
+					tempFieldData.clear();
+					if (it != drawData.data.end()) {
+						packFieldVariant(it->second, tempFieldData);
+					} else {
+						packFieldVariant(binding.defaultValue, tempFieldData);
+					}
+
+					bgfx::setUniform(binding.handle, tempFieldData.data());
+				}
+
+				auto &textureBindings = pipelineGroup.bindingLayout->textureBindings;
+				for (size_t i = 0; i < textureBindings.size(); i++) {
+					auto &binding = textureBindings[i];
+					auto it = drawData.data.find(binding.name);
+
+					TexturePtr texture;
+					if (it != drawData.data.end()) {
+						if (auto texturePtrPtr = std::get_if<TexturePtr>(&it->second))
+							texture = *texturePtrPtr;
+					} else {
+						texture = binding.defaultValue;
+					}
+
+					bgfx::TextureHandle handle = texture ? texture->handle : bgfx::TextureHandle(BGFX_INVALID_HANDLE);
+					bgfx::setTexture(i, binding.handle, handle);
+				}
+
+				bgfxSetupPipeline(*pipeline.get());
+
+				float buffer[16];
+				packFloat4x4(drawable->transform, buffer);
+				bgfx::setTransform(buffer);
+
+				auto mesh = drawable->mesh;
+				if (!mesh)
+					continue;
+
+				bgfx::setVertexBuffer(0, mesh->vb);
+				bgfx::setIndexBuffer(mesh->ib);
+
+				bgfx::submit(frame.getCurrentViewId(), pipeline->program);
 			}
 		}
 
 		// 	FeaturePipelinePtr pipeline = getPipeline(frame.context, features, drawable);
 		// 	bgfxSetupPipeline(*pipeline.get());
-
-		// 	float buffer[16];
-		// 	packFloat4x4(drawable->transform, buffer);
-		// 	bgfx::setTransform(buffer);
 
 		// 	for (auto &binding : pipeline->bindings) {
 		// 		if (binding.texture) {
@@ -212,11 +327,29 @@ private:
 		// }
 	}
 
-	void runPrecompute(const std::vector<Feature *> &featurePtrs, FeatureCallbackFrequency frequency, const FeatureCallbackContext &context) {
+	void getAllFeatures(const Pipeline &pipeline, std::vector<Feature *> &outFeatures) {
+		std::set<Feature *> set;
+		for (auto &step : pipeline.steps) {
+			std::visit(
+				[&](auto &&arg) {
+					using T = std::decay_t<decltype(arg)>;
+					if constexpr (std::is_same_v<T, DrawablePass>) {
+						for (auto &feature : arg.features) {
+							if (set.find(feature.get()) == set.end()) {
+								outFeatures.push_back(feature.get());
+								set.insert(feature.get());
+							}
+						}
+					}
+				},
+				step);
+		}
+	}
+
+	void runPrecompute(const std::vector<Feature *> &featurePtrs, const FeaturePrecomputeCallbackContext &context) {
 		for (auto featurePtr : featurePtrs) {
 			for (auto &it : featurePtr->precompute) {
-				if (it.frequency == frequency)
-					it.callback(context);
+				(it)(context);
 			}
 		}
 	}
@@ -232,12 +365,18 @@ private:
 		return true;
 	}
 
-	void generateDrawData(const std::vector<Feature *> &featurePtrs, FeatureCallbackFrequency frequency, const FeatureCallbackContext &context,
-						  IDrawDataCollector &collector) {
+	void generateSharedDrawData(const std::vector<const Feature *> &featurePtrs, const FeatureCallbackContext &context, IDrawDataCollector &collector) {
+		for (auto featurePtr : featurePtrs) {
+			for (auto &it : featurePtr->sharedDrawData) {
+				(it)(context, collector);
+			}
+		}
+	}
+
+	void generateDrawData(const std::vector<const Feature *> &featurePtrs, const FeatureCallbackContext &context, IDrawDataCollector &collector) {
 		for (auto featurePtr : featurePtrs) {
 			for (auto &it : featurePtr->drawData) {
-				if (it.frequency == frequency)
-					it.callback(context, collector);
+				(it)(context, collector);
 			}
 		}
 	}
@@ -255,10 +394,22 @@ private:
 		}
 	}
 
-	FeaturePipelinePtr getPipeline(Context &context, const std::vector<const Feature *> &features, DrawablePtr drawable) {
-		if (!pipeline) {
-			BuildPipelineParams params;
-			params.drawable = drawable.get();
+	std::unordered_map<Hash128, FeaturePipelinePtr> pipelineCache;
+	FeaturePipelinePtr getPipeline(Context &context, const FeatureBindingLayout &bindingLayout, const std::vector<const Feature *> &features,
+								   const std::vector<MeshVertexAttribute> &vertexAttributes, WindingOrder faceWindingOrder) {
+		HasherXXH128<HashStaticVistor> hasher;
+		hasher(vertexAttributes);
+		hasher(faceWindingOrder);
+		for (auto &feature : features) {
+			hasher(*feature);
+		}
+		Hash128 hash = hasher.getDigest();
+
+		auto it = pipelineCache.find(hash);
+		if (it == pipelineCache.end()) {
+			BuildPipelineParams params{bindingLayout};
+			params.faceWindingOrder = faceWindingOrder;
+			params.vertexAttributes = vertexAttributes;
 			params.features = features;
 			params.rendererType = context.getRendererType();
 			params.shaderCompiler = &shaderCompilerModule->getShaderCompiler();
@@ -267,14 +418,15 @@ private:
 			output.name = "color";
 			output.format = bgfx::TextureFormat::RGBA8;
 
-			pipeline = std::make_shared<FeaturePipeline>();
-			if (!buildPipeline(params, *pipeline.get()))
+			FeaturePipelinePtr newPipeline = std::make_shared<FeaturePipeline>();
+			if (!buildPipeline(params, *newPipeline.get()))
 				throw std::runtime_error("");
-		}
-		return pipeline;
-	}
 
-	FeaturePipelinePtr pipeline;
+			it = pipelineCache.insert(std::make_pair(hash, newPipeline)).first;
+		}
+
+		return it->second;
+	}
 };
 
 } // namespace gfx

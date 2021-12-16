@@ -15,7 +15,8 @@ namespace features {
 struct Time {
 	static inline FeaturePtr create() {
 		auto feature = std::make_shared<Feature>();
-		auto drawData = feature->drawData.emplace_back([](const FeatureCallbackContext &callbackContext, IDrawDataCollector &drawDataCollector) {
+		feature->shaderParams.emplace_back("time");
+		auto drawData = feature->sharedDrawData.emplace_back([](const FeatureCallbackContext &callbackContext, IDrawDataCollector &drawDataCollector) {
 			Context &context = callbackContext.context;
 			auto frame = context.getFrameRenderer();
 

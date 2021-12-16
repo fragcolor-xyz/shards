@@ -71,11 +71,7 @@ struct Drawable;
 struct View;
 struct Context;
 
-enum class FeatureCallbackFrequency : uint8_t {
-	PerFrame = 0,
-	PerDrawable = 1 << 0,
-	PerView = 1 << 1,
-};
+typedef std::shared_ptr<View> ViewPtr;
 
 struct FeatureCallbackContext {
 	Context &context;
@@ -93,21 +89,19 @@ struct FeatureFilter {
 	FeatureFilter(FeatureFilterCallback callback, FeatureFilterType type = FeatureFilterType::Inclusion) : callback(callback), type(type) {}
 };
 
-template <typename T> struct FeatureFrequencyCallback {
-	T callback;
-	FeatureCallbackFrequency frequency;
-
-	FeatureFrequencyCallback(T callback, FeatureCallbackFrequency frequency = FeatureCallbackFrequency::PerFrame) : callback(callback), frequency(frequency) {}
-};
-
 struct IDrawDataCollector;
 typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)> FeatureDrawDataFunction;
-typedef std::function<void(const FeatureCallbackContext &)> FeaturePrecomputeFunction;
+
+struct FeaturePrecomputeCallbackContext {
+	Context &context;
+	const std::vector<ViewPtr> views;
+};
+typedef std::function<void(const FeaturePrecomputeCallbackContext &)> FeaturePrecomputeFunction;
 
 enum class DependencyType { Before, After };
 struct NamedDependency {
 	std::string name;
-	DependencyType type;
+	DependencyType type = DependencyType::After;
 
 	NamedDependency() = default;
 	NamedDependency(std::string name, DependencyType type = DependencyType::After) : name(name), type(type) {}
@@ -175,8 +169,9 @@ struct SceneRenderer;
 struct MaterialUsageContext;
 struct Feature {
 	std::vector<FeatureFilter> filters;
-	std::vector<FeatureFrequencyCallback<FeatureDrawDataFunction>> drawData;
-	std::vector<FeatureFrequencyCallback<FeaturePrecomputeFunction>> precompute;
+	std::vector<FeatureDrawDataFunction> sharedDrawData;
+	std::vector<FeatureDrawDataFunction> drawData;
+	std::vector<FeaturePrecomputeFunction> precompute;
 	FeaturePipelineState state;
 	std::vector<FeatureShaderField> shaderParams;
 	std::vector<FeatureShaderField> shaderGlobals;

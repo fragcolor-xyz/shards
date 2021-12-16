@@ -2,8 +2,10 @@
 
 #include "bgfx/bgfx.h"
 #include "drawable.hpp"
+#include "enums.hpp"
 #include "feature.hpp"
 #include "fields.hpp"
+#include "mesh.hpp"
 #include <bgfx/bgfx.h>
 #include <cstdint>
 #include <memory>
@@ -37,54 +39,60 @@ struct ShaderCompilerInputs {
 struct FeaturePipeline {
 	BGFXPipelineState state;
 	bgfx::ProgramHandle program;
-	std::vector<Binding> bindings;
 	bgfx::VertexLayout vertexLayout;
 
+	FeaturePipeline() = default;
+	FeaturePipeline(const FeaturePipeline &) = delete;
+	FeaturePipeline &operator==(const FeaturePipeline &) = delete;
 	~FeaturePipeline();
 };
 typedef std::shared_ptr<FeaturePipeline> FeaturePipelinePtr;
 
 struct PipelineOutputDesc {
 	std::string name;
-	bgfx::TextureFormat::Enum format;
+	bgfx::TextureFormat::Enum format = bgfx::TextureFormat::RGBA8;
 };
 
+struct FeatureBindingLayout;
 struct BuildPipelineParams {
+	const FeatureBindingLayout &bindingLayout;
 	RendererType rendererType = RendererType::None;
 	struct IShaderCompiler *shaderCompiler = nullptr;
-	const Drawable *drawable = nullptr;
+	WindingOrder faceWindingOrder = WindingOrder::CCW;
+	std::vector<MeshVertexAttribute> vertexAttributes;
 	std::vector<const Feature *> features;
 	std::vector<PipelineOutputDesc> outputs;
 };
 
 struct BuildBindingLayoutParams {
-	const std::vector<const Feature *>& features;
-	const Drawable& drawable;
+	const std::vector<const Feature *> &features;
+	const Drawable &drawable;
 };
 
-struct FeatureBasicBinding {
+struct FeatureBinding {
 	std::string name;
 	bgfx::UniformHandle handle;
+	FieldType type;
 };
 
-struct FeatureTextureBinding {
-	std::string name;
-	bgfx::UniformHandle handle;
+struct FeatureBasicBinding : public FeatureBinding {
+	FieldVariant defaultValue;
+};
+
+struct FeatureTextureBinding : public FeatureBinding {
+	TexturePtr defaultValue;
 };
 
 struct FeatureBindingLayout {
 	std::vector<FeatureBasicBinding> basicBindings;
 	std::vector<FeatureTextureBinding> textureBindings;
 
+	FeatureBindingLayout() = default;
+	FeatureBindingLayout(const FeatureBindingLayout &) = delete;
+	FeatureBindingLayout &operator==(const FeatureBindingLayout &) = delete;
 	~FeatureBindingLayout();
 };
 typedef std::shared_ptr<FeatureBindingLayout> FeatureBindingLayoutPtr;
-
-struct FeatureBindingValues {
-	std::vector<std::vector<uint8_t>> basicBindings;
-	std::vector<TexturePtr> textureBindings;
-	std::unordered_map<std::string, size_t> textureMap;
-};
 
 template <typename T> std::vector<const Feature *> featuresToPointers(T iterable) {
 	std::vector<const Feature *> result;

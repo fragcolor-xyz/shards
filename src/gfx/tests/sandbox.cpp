@@ -13,7 +13,6 @@
 #include "gfx/frame.hpp"
 #include "gfx/geom.hpp"
 #include "gfx/hasherxxh128.hpp"
-#include "gfx/imgui.hpp"
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
 #include "gfx/material.hpp"
@@ -90,7 +89,7 @@ struct App {
 			auto &code0 = customShader->shaderCode.emplace_back();
 			code0.code = R"(
 void main(inout MaterialInfo mi) {
-	float wave = mix(0.7f, 1.6f, cos(mi.worldPos.x * 0.1f + u_time.x) * 0.5f + 0.5f);
+	float wave = mix(0.7f, 2.6f, cos(mi.worldPos.x * 0.5f + u_time.y * 1.2f) * 0.5f + 0.5f);
 	mi.color *= wave;
 }
 )";
@@ -105,7 +104,7 @@ void main(inout MaterialInfo mi) {
 			FovDirection::Horizontal,
 		};
 
-		size_t gridSize = 64;
+		size_t gridSize = 256;
 		float spacing = 0.4f;
 		float scale = 0.2f;
 		float totalSize = gridSize * spacing;
