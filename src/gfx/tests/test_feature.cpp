@@ -137,8 +137,6 @@ TEST_CASE_METHOD(FeatureFixture, "color", "[feature]") {
 }
 
 TEST_CASE_METHOD(FeatureFixture, "color texture", "[feature]") {
-	drawQueue.add(std::make_shared<Drawable>(sphereMesh, linalg::identity));
-
 	TexturePtr texture = gfx::textureFromFileFloat(gfx::resolveDataPath("src/gfx/tests/assets/logo.png").c_str());
 
 	auto mat = std::make_shared<Material>();
@@ -146,7 +144,39 @@ TEST_CASE_METHOD(FeatureFixture, "color texture", "[feature]") {
 		md.basicParameters["baseColor"] = float3(1, 1, 1);
 		md.textureParameters["baseColorTexture"].texture = texture;
 	});
-	drawQueue.add(std::make_shared<Drawable>(sphereMesh, linalg::translation_matrix(float3(2.f, 0.0f, 0.0f)), mat));
+	drawQueue.add(std::make_shared<Drawable>(sphereMesh, linalg::translation_matrix(float3(0.f, 0.0f, 0.0f)), mat));
+
+	auto mat1 = std::make_shared<Material>(*mat.get());
+	mat1->modify([&](MaterialData &md) { md.basicParameters["baseColor"] = float3(1, 0, 0); });
+	drawQueue.add(std::make_shared<Drawable>(sphereMesh, linalg::translation_matrix(float3(2.f, 0.0f, 0.0f)), mat1));
+
+	Pipeline pipeline = {
+		DrawablePass(vector<FeaturePtr>{
+			gfx::features::Transform::create(),
+			gfx::features::BaseColor::create(),
+		}),
+	};
+
+	render(pipeline);
+	checkFrame("texture");
+}
+
+TEST_CASE_METHOD(FeatureFixture, "custom feature", "[feature]") {
+	auto customFeature = std::make_shared<Feature>();
+	customFeature->shaderCode.emplace_back("", ProgrammableGraphicsStage::Fragment, R"(
+void main(inout MaterialInfo mi) {
+	mi.out_color
+}
+)");
+
+	auto mat = std::make_shared<Material>();
+	mat->customFeatures.push_back(customFeature);
+
+	drawQueue.add(std::make_shared<Drawable>(sphereMesh, linalg::translation_matrix(float3(0.f, 0.0f, 0.0f)), mat));
+
+	auto mat1 = std::make_shared<Material>(*mat.get());
+	mat1->modify([&](MaterialData &md) { md.basicParameters["baseColor"] = float3(1, 0, 0); });
+	drawQueue.add(std::make_shared<Drawable>(sphereMesh, linalg::translation_matrix(float3(2.f, 0.0f, 0.0f)), mat1));
 
 	Pipeline pipeline = {
 		DrawablePass(vector<FeaturePtr>{

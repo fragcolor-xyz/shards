@@ -100,33 +100,33 @@ static const char *bgfxAttribToShaderSemantic(bgfx::Attrib::Enum tag) {
 	case bgfx::Attrib::Bitangent:
 		return "BITANGENT";
 	case bgfx::Attrib::Color0:
-		return "COLOR";
+		return "COLOR0";
 	case bgfx::Attrib::Color1:
-		return "COLOR";
+		return "COLOR1";
 	case bgfx::Attrib::Color2:
-		return "COLOR";
+		return "COLOR2";
 	case bgfx::Attrib::Color3:
-		return "COLOR";
+		return "COLOR3";
 	case bgfx::Attrib::Indices:
 		return "BLENDINDICES";
 	case bgfx::Attrib::Weight:
 		return "BLENDWEIGHT";
 	case bgfx::Attrib::TexCoord0:
-		return "TEXCOORD";
+		return "TEXCOORD0";
 	case bgfx::Attrib::TexCoord1:
-		return "TEXCOORD";
+		return "TEXCOORD1";
 	case bgfx::Attrib::TexCoord2:
-		return "TEXCOORD";
+		return "TEXCOORD2";
 	case bgfx::Attrib::TexCoord3:
-		return "TEXCOORD";
+		return "TEXCOORD3";
 	case bgfx::Attrib::TexCoord4:
-		return "TEXCOORD";
+		return "TEXCOORD4";
 	case bgfx::Attrib::TexCoord5:
-		return "TEXCOORD";
+		return "TEXCOORD5";
 	case bgfx::Attrib::TexCoord6:
-		return "TEXCOORD";
+		return "TEXCOORD6";
 	case bgfx::Attrib::TexCoord7:
-		return "TEXCOORD";
+		return "TEXCOORD7";
 	default:
 		return nullptr;
 	}
@@ -266,6 +266,36 @@ struct ShaderBuilder {
 };
 
 bool ShaderBuilder::buildVaryings(std::string &out) {
+	const size_t maxNumTexcoords = 8;
+	bool hasTexcoord[maxNumTexcoords];
+	memset(hasTexcoord, 0, sizeof(hasTexcoord));
+
+	for (auto &attrib : vertexAttributes) {
+		if (attrib.tag >= bgfx::Attrib::TexCoord0 && attrib.tag <= bgfx::Attrib::TexCoord7) {
+			size_t texcoordIndex = (size_t)(attrib.tag - bgfx::Attrib::TexCoord0);
+			hasTexcoord[texcoordIndex] = true;
+		}
+	}
+
+	// Automatically interpolate texture coordinates contained on the input mesh
+	for (size_t i = 0; i < maxNumTexcoords; i++) {
+		if (hasTexcoord[i]) {
+			bgfx::Attrib::Enum tag = allocateAttribTag(allocatedVaryings, fmt::format("tex{}", i));
+			out += fmt::format("vec2 v_texcoord{} : {};\n", i, bgfxAttribToShaderSemantic(tag));
+
+			vertex.materialStructInitializer += fmt::format("mi.texcoord{0} = a_texcoord{0};\n", i);
+
+			vertex.outputs.emplace_back(fmt::format("v_texcoord{}", i), "vec2", fmt::format("texcoord{}", i));
+			fragment.inputs.emplace_back(fmt::format("v_texcoord{}", i), "vec2", fmt::format("texcoord{}", i));
+		} else {
+			vertex.materialStructBody += fmt::format("vec2 texcoord{};\n", i);
+			fragment.materialStructBody += fmt::format("vec2 texcoord{};\n", i);
+
+			vertex.materialStructInitializer += fmt::format("mi.texcoord{0} = vec2_splat(0.0);\n", i);
+			fragment.materialStructInitializer += fmt::format("mi.texcoord{0} = vec2_splat(0.0);\n", i);
+		}
+	}
+
 	for (auto &field : varyings) {
 		switch (field.type) {
 		case FieldType::Float:
@@ -365,6 +395,7 @@ bool ShaderBuilder::buildUniformDefinition(const FeatureBindingLayout &bindingLa
 
 	for (size_t i = 0; i < bindingLayout.textureBindings.size(); i++) {
 		auto &binding = bindingLayout.textureBindings[i];
+		defines.insert(std::make_pair(fmt::format("HAS_{}", binding.name), "1"));
 		out += fmt::format("SAMPLER2D(u_{}, {});\n", binding.name, i);
 	}
 
@@ -517,6 +548,7 @@ bool ShaderBuilder::build(const FeatureBindingLayout &bindingLayout, ShaderCompi
 	appendInOutVars(fragment.inputs, fsHeader);
 	fsHeader += "\n";
 
+	sharedHeader += "#include <bgfx_shader.sh>\n";
 	sharedHeader += "\n";
 	if (!buildUniformDefinition(bindingLayout, sharedHeader))
 		return false;
@@ -525,7 +557,6 @@ bool ShaderBuilder::build(const FeatureBindingLayout &bindingLayout, ShaderCompi
 	for (auto &define : defines) {
 		sharedHeader += fmt::format("#define {} {}\n", define.first, define.second);
 	}
-	sharedHeader += "#include <bgfx_shader.sh>\n";
 
 	output.stages[0].code = vsHeader + sharedHeader + vertexCode;
 	output.stages[1].code = fsHeader + sharedHeader + fragmentCode;
@@ -552,6 +583,12 @@ bool buildBindingLayout(const BuildBindingLayoutParams &params, FeatureBindingLa
 		for (auto &shaderParam : featurePtr->shaderParams) {
 			std::string shaderName = fmt::format("u_{}", shaderParam.name);
 			if (shaderParam.type == FieldType::Texture2D) {
+				if (((uint8_t &)shaderParam.flags & (uint8_t)FeatureShaderFieldFlags::Optional) != 0) {
+					if (!material || !material->getData().findTextureSlot(shaderParam.name)) {
+						continue;
+					}
+				}
+
 				auto &binding = outBindingLayout.textureBindings.emplace_back();
 				binding.name = shaderParam.name;
 				binding.handle = bgfx::createUniform(shaderName.c_str(), bgfx::UniformType::Sampler);

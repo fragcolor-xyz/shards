@@ -119,6 +119,15 @@ bool TestFrame::compare(const TestFrame &other, float tolerance, CompareRejectio
 	return true;
 }
 
+void TestFrame::removeAlpha() {
+	size_t numPixels = size.x * size.y;
+	uint8_t *bytes = (uint8_t *)pixels.data();
+	for (size_t pi = 0; pi < numPixels; pi++) {
+		uint8_t &alpha = bytes[pi * 4 + 3];
+		alpha = 0xff;
+	}
+}
+
 TestData::TestData(const TestPlatformId &testPlatformId) : testPlatformId(testPlatformId) {
 	basePath.set(resolveDataPath(GFX_TEST_DATA_PATH).c_str());
 	basePath.join(std::string(testPlatformId).c_str());

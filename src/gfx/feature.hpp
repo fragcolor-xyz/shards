@@ -119,7 +119,8 @@ struct FeatureShaderCode {
 	std::vector<NamedDependency> dependencies;
 
 	FeatureShaderCode() = default;
-	FeatureShaderCode(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment) : stage(stage), name(name) {}
+	FeatureShaderCode(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment, std::string code = std::string())
+		: stage(stage), name(name), code(code) {}
 
 	template <typename T> void hashStatic(T &hasher) const {
 		hasher(stage);
@@ -150,10 +151,16 @@ struct FeatureShaderVarying {
 	}
 };
 
+enum class FeatureShaderFieldFlags : uint8_t {
+	None = 0,
+	Optional = 1 << 0,
+};
+
 struct FeatureShaderField {
 	FieldType type = FieldType::Float4;
 	std::string name;
 	FieldVariant defaultValue;
+	FeatureShaderFieldFlags flags = FeatureShaderFieldFlags::None;
 
 	FeatureShaderField() = default;
 	FeatureShaderField(std::string name, FieldType type = FieldType::Float4, FieldVariant defaultValue = FieldVariant());

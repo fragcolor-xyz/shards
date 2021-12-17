@@ -35,7 +35,8 @@ public:
 	TestFrame(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip);
 	TestFrame(const SingleFrameCapture &capture);
 	void set(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip);
-	bool compare(const TestFrame &other, float tolerance = 0.f, CompareRejection* rejection = nullptr) const;
+	bool compare(const TestFrame &other, float tolerance = 0.f, CompareRejection *rejection = nullptr) const;
+	void removeAlpha();
 
 	const std::vector<pixel_t> &getPixels() const { return pixels; }
 	int2 getSize() const { return size; }

@@ -36,6 +36,8 @@ struct DrawFixture {
 
 	bool checkFrame(const char *id, float tolerance = 0) {
 		gfx::TestFrame frame(*capture.get());
+		frame.removeAlpha();
+
 		gfx::CompareRejection rejection;
 		if (!testData.checkFrame(id, frame, tolerance, &rejection)) {
 			spdlog::error("Test frame \"{}\" comparison failed", id);
