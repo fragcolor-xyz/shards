@@ -5,7 +5,6 @@
 #include "gfx/drawable.hpp"
 #include "gfx/enums.hpp"
 #include "gfx/feature.hpp"
-#include "gfx/feature_pipeline.hpp"
 #include "gfx/features/base_color.hpp"
 #include "gfx/features/time.hpp"
 #include "gfx/features/transforms.hpp"
@@ -23,13 +22,10 @@
 #include "gfx/types.hpp"
 #include "gfx/view.hpp"
 #include "gfx/window.hpp"
-#include "imgui.h"
 #include "linalg/linalg.h"
 #include "spdlog/spdlog.h"
-#include <SDL2/SDL_events.h>
 #include <SDL_events.h>
 #include <SDL_video.h>
-#include <boost/smart_ptr/make_shared_array.hpp>
 #include <bx/string.h>
 #include <cassert>
 #include <cstring>
@@ -104,7 +100,20 @@ void main(inout MaterialInfo mi) {
 			FovDirection::Horizontal,
 		};
 
-		size_t gridSize = 256;
+		auto customFeature = std::make_shared<Feature>();
+		customFeature->shaderCode.emplace_back("", ProgrammableGraphicsStage::Fragment, R"(
+void main(inout MaterialInfo mi) {
+	float x = float(floor((int(abs(mi.worldPos.x) * 4.0) * 4) % 2));
+	float y = float((int(mi.worldPos.y * 2.0) * 4) % 2);
+	mi.color *= mix(vec4(0.5, 0.5, 0.5, 1.0), vec4(1.0, 1.0, 1.0, 1.0), x);
+	// mi.color *= vec4(mi.worldPos.x, 0.0, 0.0, 1.0);
+}
+)");
+
+		auto mat = std::make_shared<Material>();
+		mat->customFeatures.push_back(customFeature);
+
+		size_t gridSize = 32;
 		float spacing = 0.4f;
 		float scale = 0.2f;
 		float totalSize = gridSize * spacing;
@@ -119,6 +128,7 @@ void main(inout MaterialInfo mi) {
 
 				auto mat = std::make_shared<Material>();
 				mat->customFeatures.push_back(customShader);
+				mat->customFeatures.push_back(customFeature);
 				mat->modify([&](MaterialData &md) {
 					float4 &param = md.basicParameters["baseColor"].emplace<float4>();
 

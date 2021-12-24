@@ -7,7 +7,7 @@
 #include "fields.hpp"
 #include "mesh.hpp"
 #include <bgfx/bgfx.h>
-#include <cstdint>
+#include <stdint.h>
 #include <memory>
 
 namespace gfx {

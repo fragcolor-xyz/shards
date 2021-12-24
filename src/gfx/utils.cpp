@@ -1,5 +1,5 @@
 #include "utils.hpp"
-#include <SDL2/SDL_stdinc.h>
+#include <SDL_stdinc.h>
 #include <bx/hash.h>
 #include <bx/readerwriter.h>
 #include <bx/string.h>

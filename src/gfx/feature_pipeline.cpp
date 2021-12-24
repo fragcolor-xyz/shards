@@ -689,14 +689,13 @@ bool buildPipeline(const BuildPipelineParams &params, FeaturePipeline &outPipeli
 		if (params.rendererType == RendererType::OpenGL) {
 			spdlog::info("-- Platform VS:\n{}", extractPlatformShaderBinary(vsOutput.binary));
 			spdlog::info("-- Platform FS:\n{}", extractPlatformShaderBinary(fsOutput.binary));
+			spdlog::info("-- Varyings:\n{}", shaderCompilerInputs.varyings);
 		}
 
 		bgfx::ShaderHandle vs = bgfx::createShader(bgfx::copy(vsOutput.binary.data(), vsOutput.binary.size()));
 		bgfx::ShaderHandle fs = bgfx::createShader(bgfx::copy(fsOutput.binary.data(), fsOutput.binary.size()));
 		outPipeline.program = bgfx::createProgram(vs, fs, true);
 	}
-
-	spdlog::info("-- Varyings:\n{}", shaderCompilerInputs.varyings);
 
 	outPipeline.state = combinedState.toBGFXState(params.faceWindingOrder);
 

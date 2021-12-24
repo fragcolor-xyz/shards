@@ -2,10 +2,10 @@
 
 #include <bx/platform.h>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #if BX_PLATFORM_WINDOWS || BX_PLATFORM_LINUX
 #define HAVE_SDL_SYSWM
-#include <SDL2/SDL_syswm.h>
+#include <SDL_syswm.h>
 #endif
 
 #include "error_utils.hpp"
@@ -39,7 +39,7 @@ inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
 	if (!SDL_GetWindowWMInfo(window, &winInfo)) {
 		throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
 	}
-	
+
 	return (void *)winInfo.info.x11.display;
 #else
 	return nullptr;

@@ -165,7 +165,10 @@ TEST_CASE_METHOD(FeatureFixture, "custom feature", "[feature]") {
 	auto customFeature = std::make_shared<Feature>();
 	customFeature->shaderCode.emplace_back("", ProgrammableGraphicsStage::Fragment, R"(
 void main(inout MaterialInfo mi) {
-	mi.out_color
+	float x = float((int(abs(mi.worldPos.x) * 2.0) * 4) % 2);
+	// float y = float((int(mi.worldPos.y * 2.0) * 4) % 2);
+	mi.color = mix(vec4(0.5, 0.5, 0.5, 1.0), vec4(1.0, 1.0, 1.0, 1.0), x);
+	mi.color = vec4(mi.worldPos.x, 0.0, 0.0, 1.0);
 }
 )");
 
@@ -186,5 +189,5 @@ void main(inout MaterialInfo mi) {
 	};
 
 	render(pipeline);
-	checkFrame("texture");
+	checkFrame("custom");
 }

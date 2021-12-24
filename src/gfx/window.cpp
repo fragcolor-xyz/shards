@@ -1,8 +1,8 @@
 #include "window.hpp"
 #include "error_utils.hpp"
 #include "sdl_native_window.hpp"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_video.h>
+#include <SDL.h>
+#include <SDL_video.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 

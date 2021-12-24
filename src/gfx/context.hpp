@@ -3,15 +3,11 @@
 #include "bgfx/bgfx.h"
 #include "enums.hpp"
 #include "types.hpp"
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_video.h>
-#include <bgfx/embedded_shader.h>
+#include <SDL_events.h>
+#include <SDL_video.h>
 #include <cassert>
-#include <deque>
 #include <memory>
 #include <stdexcept>
-#include <string_view>
-#include <unordered_map>
 
 namespace gfx {
 struct BGFXException : public std::runtime_error {

@@ -1,6 +1,6 @@
 #pragma once
 #include "linalg.hpp"
-#include <cstdint>
+#include <stdint.h>
 #include <memory>
 #include <variant>
 

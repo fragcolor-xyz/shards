@@ -2,6 +2,7 @@
 #include "gfx/tests/img_compare.hpp"
 #include "utils.hpp"
 #include <SDL_stdinc.h>
+#include <spdlog/spdlog.h>
 #include <bgfx/bgfx.h>
 #include <bx/error.h>
 #include <bx/file.h>

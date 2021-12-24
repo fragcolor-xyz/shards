@@ -2,7 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include <bgfx/bgfx.h>
-#include <SDL2/SDL_events.h>
+#include <SDL_events.h>
 #include <vector>
 #include "imgui.h"
 

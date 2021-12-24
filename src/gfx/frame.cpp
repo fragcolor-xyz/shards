@@ -14,7 +14,6 @@ void FrameRenderer::begin() {
 }
 
 uint32_t FrameRenderer::end(bool capture) {
-	assert(views.size() == 0);
 	context.endFrame(this);
 	return bgfx::frame(capture);
 }

@@ -2,12 +2,11 @@
 #include "enums.hpp"
 #include "fields.hpp"
 #include "linalg.hpp"
-#include <cstdint>
+#include <stdint.h>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 
 namespace gfx {
 

@@ -13,7 +13,7 @@
 #include "gfx/window.hpp"
 #include "imgui.h"
 #include "spdlog/spdlog.h"
-#include <SDL2/SDL_events.h>
+#include <SDL_events.h>
 #include <bx/string.h>
 #include <cassert>
 #include <cstring>

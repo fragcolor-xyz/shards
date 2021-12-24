@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cassert>
-#include <cstdint>
+#include <stdint.h>
 #include <deque>
 #include <set>
 #include <vector>

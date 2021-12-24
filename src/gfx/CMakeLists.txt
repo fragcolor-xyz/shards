@@ -28,6 +28,7 @@ add_library(gfx
   capture.cpp
   window.cpp
   shaderc.cpp
+  renderer.cpp
   paths.cpp
   texture_file.cpp
   feature.cpp
@@ -76,7 +77,7 @@ if(EMSCRIPTEN)
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"
-	"SHELL:-s ALLOW_MEMORY_GROWTH=1"
+	  "SHELL:-s ALLOW_MEMORY_GROWTH=1"
   )
 else()
   target_link_libraries(gfx SDL2-static)

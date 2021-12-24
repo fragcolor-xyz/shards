@@ -1,8 +1,8 @@
 #pragma once
 
-#include "context.hpp"
-#include "material.hpp"
-#include "view.hpp"
+#include <bgfx/bgfx.h>
+#include <unordered_map>
+#include <vector>
 
 namespace gfx {
 
@@ -18,11 +18,11 @@ struct FrameInputs {
 
 // Persistent state over the duration of an single update/draw loop iteration
 struct Context;
+struct IDrawable;
 struct FrameRenderer {
 	Context &context;
 	FrameInputs inputs;
 
-	std::deque<std::shared_ptr<View>> views;
 	bgfx::ViewId _nextViewCounter{0};
 
 	uint32_t _frameDrawablesCount{0};
@@ -42,8 +42,6 @@ struct FrameRenderer {
 
 	bgfx::ViewId nextViewId();
 	bgfx::ViewId getCurrentViewId() const;
-
-	void draw(const Primitive &primitive);
 
 	static FrameRenderer *get(Context &context);
 };

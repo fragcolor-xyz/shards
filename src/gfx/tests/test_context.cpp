@@ -2,7 +2,7 @@
 #include "gfx/context.hpp"
 #include "gfx/types.hpp"
 #include "gfx/window.hpp"
-#include <SDL2/SDL_events.h>
+#include <SDL_events.h>
 #include <SDL_events.h>
 #include <bgfx/bgfx.h>
 #include <bgfx/defines.h>

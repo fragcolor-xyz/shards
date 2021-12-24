@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include "view.hpp"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <bgfx/embedded_shader.h>
 #include <bx/math.h>
 #include <bx/timer.h>
