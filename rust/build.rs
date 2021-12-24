@@ -4,6 +4,16 @@
 #[cfg(feature = "run_bindgen")]
 extern crate bindgen;
 
+#[cfg(target_pointer_width = "32")]
+fn bits_flags() -> &'static str {
+    "-DCPUBITS32"
+}
+
+#[cfg(target_pointer_width = "64")]
+fn bits_flags() -> &'static str {
+    "-DCPUBITS64"
+}
+
 #[cfg(feature = "run_bindgen")]
 fn bindgen_it() {
   use std::env::var;
@@ -23,6 +33,7 @@ fn bindgen_it() {
     .header(header_path)
     .clang_arg("-DCB_NO_ANON")
     .clang_arg("-DCB_USE_ENUMS")
+    .clang_arg(bits_flags())
     .derive_default(true)
     .use_core()
     .generate()
