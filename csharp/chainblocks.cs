@@ -38,11 +38,8 @@ namespace Chainblocks
   }
 
   [StructLayout(LayoutKind.Explicit)]
-  public unsafe struct CBVar                  // 2048 bytes in header
+  public struct CBVar                  // 2048 bytes in header
   {
-    [FieldOffset(0)]
-    public fixed byte bytes[32];
-
     [FieldOffset(0)]
     public Vector3 vector3;
 
@@ -57,6 +54,9 @@ namespace Chainblocks
 
     [FieldOffset(30)]
     public byte flags;
+
+    [FieldOffset(31)]
+    public byte _unusedByte;
   }
 
   [StructLayout(LayoutKind.Sequential)]
@@ -191,6 +191,39 @@ namespace Chainblocks
       }
       _setExternalVariableDelegate(chain, name, varPtr);
     }
+
+    delegate IntPtr CreateNodeDelegate();
+    CreateNodeDelegate _createNodeDelegate;
+    public IntPtr CreateNode()
+    {
+      if (_createNodeDelegate == null)
+      {
+        _createNodeDelegate = (CreateNodeDelegate)Marshal.GetDelegateForFunctionPointer(_createNode, typeof(CreateNodeDelegate));
+      }
+      return _createNodeDelegate();
+    }
+
+    delegate byte TickDelegate(IntPtr nodeRef);
+    TickDelegate _tickDelegate;
+    public byte Tick(IntPtr nodeRef)
+    {
+      if (_tickDelegate == null)
+      {
+        _tickDelegate = (TickDelegate)Marshal.GetDelegateForFunctionPointer(_tick, typeof(TickDelegate));
+      }
+      return _tickDelegate(nodeRef);
+    }
+
+    delegate void ScheduleDelegate(IntPtr nodeRef, IntPtr chainRef);
+    ScheduleDelegate _scheduleDelegate;
+    public void Schedule(IntPtr nodeRef, IntPtr chainRef)
+    {
+      if (_scheduleDelegate == null)
+      {
+        _scheduleDelegate = (ScheduleDelegate)Marshal.GetDelegateForFunctionPointer(_schedule, typeof(ScheduleDelegate));
+      }
+      _scheduleDelegate(nodeRef, chainRef);
+    }
   }
 
   [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -199,9 +232,11 @@ namespace Chainblocks
   public static class Native
   {
     static IntPtr _core;
+    static bool _coreInitialized;
+    static CBCore _coreCopy;
 
-    public const string Dll = "libcbl";
-    public const CallingConvention Conv = CallingConvention.Cdecl;
+    const string Dll = "libcbl";
+    const CallingConvention Conv = CallingConvention.Cdecl;
 
     [DllImport(Native.Dll, CallingConvention = Native.Conv)]
     public static extern IntPtr chainblocksInterface(Int32 version);
@@ -215,15 +250,17 @@ namespace Chainblocks
     [DllImport(Native.Dll, CallingConvention = Native.Conv)]
     public static extern CBVar cbLispEval(IntPtr lisp, String code);
 
-    public static CBCore Core
+    public static ref CBCore Core
     {
       get
       {
-        if (_core == IntPtr.Zero)
+        if (!_coreInitialized)
         {
           _core = chainblocksInterface(0x20200101);
+          _coreInitialized = true;
+          _coreCopy = (CBCore)Marshal.PtrToStructure(_core, typeof(CBCore));
         }
-        return (CBCore)Marshal.PtrToStructure(_core, typeof(CBCore));
+        return ref _coreCopy;
       }
     }
   }
