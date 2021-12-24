@@ -609,6 +609,9 @@ struct CBVarPayload {
 struct CBVar {
   struct CBVarPayload payload;
   struct CBObjectInfo *objectInfo;
+#ifdef CPUBITS32
+  uint32_t _cpu32bits_padding;
+#endif
   uint32_t refcount;
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
@@ -1165,7 +1168,7 @@ typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 #define CHAINBLOCKS_IMPORT
 #endif
 #else
-#define CHAINBLOCKS_EXPORT 
+#define CHAINBLOCKS_EXPORT
 #define CHAINBLOCKS_IMPORT
 #endif
 
