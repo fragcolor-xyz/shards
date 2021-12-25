@@ -37,7 +37,7 @@ namespace Chainblocks
     IntPtr _resetState;
   }
 
-  [StructLayout(LayoutKind.Explicit)]
+  [StructLayout(LayoutKind.Explicit, Size = 32)]
   public struct CBVar                  // 2048 bytes in header
   {
     [FieldOffset(0)]
@@ -109,6 +109,8 @@ namespace Chainblocks
     IntPtr _releaseVariable;
     IntPtr _setExternalVariable;
     IntPtr _removeExternalVariable;
+    IntPtr _allocExternalVariable;
+    IntPtr _freeExternalVariable;
     IntPtr _suspend;
     IntPtr _getState;
     IntPtr _abortChain;
@@ -181,15 +183,15 @@ namespace Chainblocks
       return _suspendDelegate(context, duration);
     }
 
-    delegate void SetExternalVariableDelegate(IntPtr chain, string name, IntPtr varPtr);
-    SetExternalVariableDelegate _setExternalVariableDelegate;
-    public void SetExternalVariable(IntPtr chain, string name, IntPtr varPtr)
+    delegate IntPtr AllocExternalVariableDelegate(IntPtr chain, string name);
+    AllocExternalVariableDelegate _allocExternalVariableDelegate;
+    public IntPtr AllocExternalVariable(IntPtr chain, string name)
     {
-      if (_setExternalVariableDelegate == null)
+      if (_allocExternalVariableDelegate == null)
       {
-        _setExternalVariableDelegate = (SetExternalVariableDelegate)Marshal.GetDelegateForFunctionPointer(_setExternalVariable, typeof(SetExternalVariableDelegate));
+        _allocExternalVariableDelegate = (AllocExternalVariableDelegate)Marshal.GetDelegateForFunctionPointer(_allocExternalVariable, typeof(AllocExternalVariableDelegate));
       }
-      _setExternalVariableDelegate(chain, name, varPtr);
+      return _allocExternalVariableDelegate(chain, name);
     }
 
     delegate IntPtr CreateNodeDelegate();
