@@ -870,6 +870,11 @@ typedef void(__cdecl *CBSetExternalVariable)(CBChainRef chain, CBString name,
 typedef void(__cdecl *CBRemoveExternalVariable)(CBChainRef chain,
                                                 CBString name);
 
+typedef struct CBVar *(__cdecl *CBAllocExternalVariable)(CBChainRef chain,
+                                                         CBString name);
+
+typedef void(__cdecl *CBFreeExternalVariable)(CBChainRef chain, CBString name);
+
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
 typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
@@ -1113,6 +1118,9 @@ typedef struct _CBCore {
   // To add/rem external variables to chains
   CBSetExternalVariable setExternalVariable;
   CBRemoveExternalVariable removeExternalVariable;
+  // Alternatives of the above that allocate memory for the variables
+  CBAllocExternalVariable allocExternalVariable;
+  CBFreeExternalVariable freeExternalVariable;
 
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;

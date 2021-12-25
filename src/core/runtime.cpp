@@ -288,16 +288,16 @@ void registerCoreBlocks() {
   channels::registerBlocks();
   Random::registerBlocks();
   Imaging::registerBlocks();
-  
+
 #ifndef CHAINBLOCKS_NO_BIGINT_BLOCKS
   BigInt::registerBlocks();
 #endif
-  
+
   registerFSBlocks();
   Wasm::registerBlocks();
   Http::registerBlocks();
   edn::registerBlocks();
-  reflection::registerBlocks(); 
+  reflection::registerBlocks();
 
 #ifndef __EMSCRIPTEN__
   // registerOSBlocks();
@@ -3013,6 +3013,24 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   result->removeExternalVariable = [](CBChainRef chain,
                                       const char *name) noexcept {
     auto sc = CBChain::sharedFromRef(chain);
+    sc->externalVariables.erase(name);
+  };
+
+  result->allocExternalVariable = [](CBChainRef chain,
+                                     const char *name) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    auto res = new (std::align_val_t{16}) CBVar();
+    sc->externalVariables[name] = res;
+    return res;
+  };
+
+  result->freeExternalVariable = [](CBChainRef chain,
+                                    const char *name) noexcept {
+    auto sc = CBChain::sharedFromRef(chain);
+    auto var = sc->externalVariables[name];
+    if (var) {
+      ::operator delete (var, std::align_val_t{16});
+    }
     sc->externalVariables.erase(name);
   };
 
