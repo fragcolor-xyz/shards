@@ -1032,7 +1032,14 @@ typedef struct CBTypeInfo(__cdecl *CBDeriveTypeInfo)(
     const struct CBVar *v, const struct CBInstanceData *data);
 typedef void(__cdecl *CBFreeDerivedTypeInfo)(struct CBTypeInfo *t);
 
+typedef void*(__cdecl *CBAlloc)(uint32_t size);
+typedef void(__cdecl *CBFree)(void *ptr);
+
 typedef struct _CBCore {
+  // Aligned allocator
+  CBAlloc alloc;
+  CBFree free;
+
   // CBTable interface
   CBTableNew tableNew;
 

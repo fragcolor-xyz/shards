@@ -2192,7 +2192,8 @@ CHAINBLOCKS_API __cdecl void cbLispDestroy(void *env) {
   delete penv;
 }
 
-CHAINBLOCKS_API __cdecl CBVar cbLispEval(void *env, const char *str) {
+CHAINBLOCKS_API __cdecl CBBool cbLispEval(void *env, const char *str,
+                                          CBVar *output = nullptr) {
   auto penv = (malEnvPtr *)env;
   try {
     malValuePtr res;
@@ -2202,14 +2203,14 @@ CHAINBLOCKS_API __cdecl CBVar cbLispEval(void *env, const char *str) {
       auto cenv = malenv();
       res = maleval(str, cenv);
     }
-    auto mvar = varify(res);
-    auto scriptVal = mvar->value();
-    CBVar tmp{};
-    // assume users will call CBCore::destroyVar!
-    chainblocks::cloneVar(tmp, scriptVal);
-    return tmp;
+    if (output) {
+      auto mvar = varify(res);
+      auto scriptVal = mvar->value();
+      chainblocks::cloneVar(*output, scriptVal);
+    }
+    return true;
   } catch (...) {
-    return chainblocks::Var::Empty;
+    return false;
   }
 }
 };

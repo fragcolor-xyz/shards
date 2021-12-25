@@ -150,6 +150,10 @@ extern void cbInitExtras();
 
 static bool globalRegisterDone = false;
 
+#ifdef CB_USE_UBSAN
+extern "C" void __sanitizer_set_report_path(const char *path);
+#endif
+
 void loadExternalBlocks(std::string from) {
   namespace fs = std::filesystem;
   auto root = fs::path(from);
@@ -195,6 +199,13 @@ void registerCoreBlocks() {
     auto cp = std::filesystem::current_path();
     GetGlobals().RootPath = cp.string();
   }
+
+#ifdef CB_USE_UBSAN
+  auto absPath = std::filesystem::absolute(GetGlobals().RootPath);
+  auto absPathStr = absPath.string();
+  CBLOG_TRACE("Setting ASAN report path to: {}", absPathStr);
+  __sanitizer_set_report_path(absPathStr.c_str());
+#endif
 
 // UTF8 on windows
 #ifdef _WIN32
@@ -2950,6 +2961,16 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   auto result = &cb_current_interface;
   cb_current_interface_loaded = true;
 
+  result->alloc = [](uint32_t size) -> void * {
+    auto mem = ::operator new (size, std::align_val_t{16});
+    memset(mem, 0, size);
+    return mem;
+  };
+
+  result->free = [](void *ptr) {
+    ::operator delete (ptr, std::align_val_t{16});
+  };
+
   result->registerBlock = [](const char *fullName,
                              CBBlockConstructor constructor) noexcept {
     API_TRY_CALL(registerBlock,
@@ -3316,10 +3337,12 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   };
 
   result->createNode = []() noexcept {
+    CBLOG_TRACE("createNode");
     return reinterpret_cast<CBNodeRef>(CBNode::makePtr());
   };
 
   result->destroyNode = [](CBNodeRef node) noexcept {
+    CBLOG_TRACE("destroyNode");
     auto snode = reinterpret_cast<std::shared_ptr<CBNode> *>(node);
     delete snode;
   };
