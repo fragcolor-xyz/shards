@@ -20,6 +20,11 @@ set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/libchainbl
 
 file(GLOB_RECURSE SOURCES *.rs *.toml)
 
+# Bindgen dependency
+if(NOT SKIP_RUST_BINDGEN)
+  list(APPEND SOURCES ${CHAINBLOCKS_DIR}/include/chainblocks.h)
+endif()
+
 if(Rust_FEATURES)
   set(FEATURES_ARG --features ${Rust_FEATURES})
 endif()
