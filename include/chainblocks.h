@@ -263,7 +263,7 @@ typedef float CBFloat4[4];
 #endif
 
 #ifndef _WIN32
-#ifdef CPUBITS32
+#if defined(__i386__)
 #define __cdecl __attribute__((__cdecl__))
 #else
 #define __cdecl
@@ -609,9 +609,9 @@ struct CBVarPayload {
 struct CBVar {
   struct CBVarPayload payload;
   struct CBObjectInfo *objectInfo;
-// #ifdef CPUBITS32
-//   uint32_t _cpu32bits_padding;
-// #endif
+#if defined(__i386__) || defined(__EMSCRIPTEN__)
+  uint32_t _cpu32bits_padding;
+#endif
   uint32_t refcount;
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
