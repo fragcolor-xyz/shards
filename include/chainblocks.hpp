@@ -680,10 +680,10 @@ struct Var : public CBVar {
   }
 
   constexpr static CBVar Empty{};
-  constexpr static CBVar True{{true}, nullptr, 0, CBType::Bool};
-  constexpr static CBVar False{{false}, nullptr, 0, CBType::Bool};
+  constexpr static CBVar True{{true}, CBType::Bool};
+  constexpr static CBVar False{{false}, CBType::Bool};
   // this is a special one used to flag default value in Chain/Blocks C++ DSL
-  constexpr static CBVar Any{{false}, nullptr, 0, CBType::Any};
+  constexpr static CBVar Any{{false}, CBType::Any};
 
   template <typename T>
   static Var Object(T valuePtr, uint32_t objectVendorId,

@@ -608,11 +608,6 @@ struct CBVarPayload {
 
 struct CBVar {
   struct CBVarPayload payload;
-  struct CBObjectInfo *objectInfo;
-#if defined(__i386__) || defined(__EMSCRIPTEN__)
-  uint32_t _cpu32bits_padding;
-#endif
-  uint32_t refcount;
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
   enum CBType innerType;
@@ -620,7 +615,12 @@ struct CBVar {
   CBType valueType;
   CBType innerType;
 #endif
-  uint8_t flags;
+  uint16_t flags;
+  uint32_t refcount;
+  struct CBObjectInfo *objectInfo;
+#if defined(__i386__) || defined(__EMSCRIPTEN__)
+  uint32_t _cpu32bits_padding;
+#endif
 } __attribute__((aligned(16)));
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
