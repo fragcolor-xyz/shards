@@ -1300,10 +1300,8 @@ TEST_CASE("Vector types") {
 }
 
 TEST_CASE("UnsafeActivate-block") {
-  typedef CBVar(*Func)(CBContext *, const CBVar *);
-  Func f = [](CBContext *ctx, const CBVar *input) -> CBVar {
-    return Var(77);
-  };
+  typedef CBVar (*Func)(CBContext *, const CBVar *);
+  Func f = [](CBContext *ctx, const CBVar *input) -> CBVar { return Var(77); };
   auto fVar = Var(reinterpret_cast<uint64_t>(f));
   auto b1 = createBlock("UnsafeActivate!");
   DEFER(b1->destroy(b1));
