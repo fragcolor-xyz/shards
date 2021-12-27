@@ -41,7 +41,8 @@ pub static mut ScriptEval: Option<
   unsafe extern "C" fn(
     env: *mut ::core::ffi::c_void,
     script: *const ::std::os::raw::c_char,
-  ) -> CBVar,
+    output: *mut CBVar,
+  ) -> bool,
 > = None;
 static mut init_done: bool = false;
 
@@ -88,7 +89,8 @@ mod internal_core_init {
     let fun = lib.symbol::<unsafe extern "C" fn(
       env: *mut ::core::ffi::c_void,
       script: *const ::std::os::raw::c_char,
-    ) -> CBVar>("cbLispEval");
+      output: *mut CBVar,
+    ) -> bool>("cbLispEval");
     ScriptEval = Some(*fun.unwrap());
 
     // trigger initializations... fix me in the future to something more elegant
@@ -360,7 +362,11 @@ impl ChainRef {
   pub fn set_external(&self, name: &str, var: &ExternalVar) {
     let cname = CString::new(name).unwrap();
     unsafe {
-      (*Core).setExternalVariable.unwrap()(self.0, cname.as_ptr() as *const _, &var.0 as *const _ as *mut _);
+      (*Core).setExternalVariable.unwrap()(
+        self.0,
+        cname.as_ptr() as *const _,
+        &var.0 as *const _ as *mut _,
+      );
     }
   }
 

@@ -375,7 +375,7 @@ mod dummy_block {
 
 #[cfg(feature = "cblisp")]
 pub mod cblisp {
-  use crate::Var;
+  use crate::types::ClonedVar;
   use std::convert::TryInto;
 
   pub struct ScriptEnv(pub *mut ::core::ffi::c_void);
@@ -393,7 +393,13 @@ pub mod cblisp {
     ($code:expr) => {
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
-        $crate::core::cbLispEval(::core::ptr::null_mut(), code.as_ptr())
+        let mut output = ClonedVar::default();
+        let ok = $crate::core::cbLispEval(::core::ptr::null_mut(), code.as_ptr(), &mut output.0);
+        if ok {
+          Some(output)
+        } else {
+          No
+        }
       }
     };
   }
@@ -410,15 +416,21 @@ pub mod cblisp {
       }
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
-        ENV.with(|env| $crate::core::ScriptEval.unwrap()((*env).0, code.as_ptr()))
+        let mut output = ClonedVar::default();
+        let ok = ENV.with(|env| $crate::core::ScriptEval.unwrap()((*env).0, code.as_ptr(), &mut output.0));
+        if ok {
+          Some(output)
+        } else {
+          None
+        }
       }
     }};
   }
 
   pub fn test_cbl() {
     // the string is stored at compile time, ideally we should compress them all!
-    let res = cbl_env!(include_str!("test.edn"));
-    let res: &str = res.as_ref().try_into().unwrap();
+    let res = cbl_env!(include_str!("test.edn")).unwrap();
+    let res: &str = res.0.as_ref().try_into().unwrap();
     assert_eq!(res, "Hello");
   }
 }
