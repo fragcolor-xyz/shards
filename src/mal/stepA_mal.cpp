@@ -43,6 +43,7 @@ void malinit(malEnvPtr env, const char *exePath, const char *scriptPath) {
 
 malValuePtr maleval(const char *str, malEnvPtr env) {
   assert(env);
+  currentEnv = env;
   return EVAL(READ(str), env);
 }
 
