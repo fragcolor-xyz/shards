@@ -2186,6 +2186,12 @@ CHAINBLOCKS_API __cdecl void *cbLispCreate(const char *path) {
   return (void *)env;
 }
 
+CHAINBLOCKS_API __cdecl void *cbLispCreateSub(void *parent) {
+  assert(parent != nullptr);
+  auto env = new malEnvPtr(new malEnv(*reinterpret_cast<malEnvPtr *>(parent)));
+  return (void *)env;
+}
+
 CHAINBLOCKS_API __cdecl void cbLispDestroy(void *env) {
   auto penv = (malEnvPtr *)env;
   observers.erase((malEnv *)penv->ptr());

@@ -388,6 +388,23 @@ pub mod cblisp {
     }
   }
 
+  pub fn new_env() -> ScriptEnv {
+    unsafe {
+      let current_dir = std::env::current_dir().unwrap();
+      let current_dir = current_dir.to_str().unwrap();
+      let current_dir = std::ffi::CString::new(current_dir).unwrap();
+      let env = crate::core::ScriptEnvCreate.unwrap()(current_dir.as_ptr());
+      ScriptEnv(env)
+    }
+  }
+
+  pub fn new_sub_env(env: &ScriptEnv) -> ScriptEnv {
+    unsafe {
+      let cenv = crate::core::ScriptEnvCreateSub.unwrap()(env.0);
+      ScriptEnv(cenv)
+    }
+  }
+
   #[macro_export]
   macro_rules! cbl_no_env {
     ($code:expr) => {
@@ -398,20 +415,21 @@ pub mod cblisp {
         if ok {
           Some(output)
         } else {
-          No
+          None
         }
       }
     };
   }
 
   #[macro_export]
-  macro_rules! cbl_env {
+  macro_rules! cbl {
     ($code:expr) => {{
       thread_local! {
         static ENV: $crate::cblisp::ScriptEnv = {
           let current_dir = std::env::current_dir().unwrap();
           let current_dir = current_dir.to_str().unwrap();
-          unsafe { $crate::cblisp::ScriptEnv($crate::core::ScriptEnvCreate.unwrap()(std::ffi::CString::new(current_dir).unwrap().as_ptr())) }
+          let current_dir = std::ffi::CString::new(current_dir).unwrap();
+          unsafe { $crate::cblisp::ScriptEnv($crate::core::ScriptEnvCreate.unwrap()(current_dir.as_ptr())) }
         }
       }
       unsafe {
@@ -427,9 +445,26 @@ pub mod cblisp {
     }};
   }
 
+  #[macro_export]
+  macro_rules! cbl_env {
+    ($env:expr, $code:expr) => {{
+      unsafe {
+        let code = std::ffi::CString::new($code).expect("CString failed...");
+        let mut output = ClonedVar::default();
+        let env = $env.0;
+        let ok = $crate::core::ScriptEval.unwrap()(env, code.as_ptr(), &mut output.0);
+        if ok {
+          Some(output)
+        } else {
+          None
+        }
+      }
+    }};
+  }
+
   pub fn test_cbl() {
     // the string is stored at compile time, ideally we should compress them all!
-    let res = cbl_env!(include_str!("test.edn")).unwrap();
+    let res = cbl!(include_str!("test.edn")).unwrap();
     let res: &str = res.0.as_ref().try_into().unwrap();
     assert_eq!(res, "Hello");
   }

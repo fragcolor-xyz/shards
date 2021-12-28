@@ -36,6 +36,9 @@ pub static mut Core: *mut CBCore = core::ptr::null_mut();
 pub static mut ScriptEnvCreate: Option<
   unsafe extern "C" fn(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void,
 > = None;
+pub static mut ScriptEnvCreateSub: Option<
+  unsafe extern "C" fn(parent_env: *mut ::core::ffi::c_void) -> *mut ::core::ffi::c_void,
+> = None;
 pub static mut ScriptEnvDestroy: Option<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)> = None;
 pub static mut ScriptEval: Option<
   unsafe extern "C" fn(
@@ -86,6 +89,13 @@ mod internal_core_init {
 
     let fun = lib.symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)>("cbLispDestroy");
     ScriptEnvDestroy = Some(*fun.unwrap());
+
+    let fun = lib
+      .symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void) -> *mut ::core::ffi::c_void>(
+        "cbLispCreateSub",
+      );
+    ScriptEnvCreateSub = Some(*fun.unwrap());
+
     let fun = lib.symbol::<unsafe extern "C" fn(
       env: *mut ::core::ffi::c_void,
       script: *const ::std::os::raw::c_char,
