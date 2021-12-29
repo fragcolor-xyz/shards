@@ -453,7 +453,8 @@ struct RestartChainException : public CBException {
 };
 
 struct Globals {
-  std::mutex SettingsMutex;
+  // sporadically used, don't abuse. And don't use in real time code.
+  std::mutex GlobalMutex;
   std::unordered_map<std::string, OwnedVar> Settings;
 
   int SigIntTerm{0};

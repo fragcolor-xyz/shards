@@ -86,6 +86,8 @@ void installCBCore(const malEnvPtr &env, const char *exePath,
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);
 
+  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
+
   if (!initDoneOnce) {
     chainblocks::GetGlobals().ExePath = exePath;
     chainblocks::GetGlobals().RootPath = scriptPath;
@@ -244,7 +246,10 @@ public:
     CBLOG_TRACE("Created a CBChain - {}", name);
     auto chain = CBChain::make(name);
     m_chain = chain->newRef();
-    chainblocks::GetGlobals().GlobalChains[name] = chain;
+    {
+      std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
+      chainblocks::GetGlobals().GlobalChains[name] = chain;
+    }
   }
 
   malCBChain(const std::shared_ptr<CBChain> &chain) : m_chain(chain->newRef()) {
@@ -259,10 +264,13 @@ public:
 
     // remove from globals TODO some mutex maybe
     auto cp = CBChain::sharedFromRef(m_chain);
-    auto it = chainblocks::GetGlobals().GlobalChains.find(cp.get()->name);
-    if (it != chainblocks::GetGlobals().GlobalChains.end() &&
-        it->second == cp) {
-      chainblocks::GetGlobals().GlobalChains.erase(it);
+    {
+      std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
+      auto it = chainblocks::GetGlobals().GlobalChains.find(cp.get()->name);
+      if (it != chainblocks::GetGlobals().GlobalChains.end() &&
+          it->second == cp) {
+        chainblocks::GetGlobals().GlobalChains.erase(it);
+      }
     }
 
     // delref
@@ -1567,6 +1575,7 @@ BUILTIN("set-global-chain") {
   auto first = *argsBegin;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
     auto chain = CBChain::sharedFromRef(v->value());
+    std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
     chainblocks::GetGlobals().GlobalChains[chain->name] = chain;
     return mal::trueValue();
   }
@@ -1578,6 +1587,7 @@ BUILTIN("unset-global-chain") {
   auto first = *argsBegin;
   if (const malCBChain *v = DYNAMIC_CAST(malCBChain, first)) {
     auto chain = CBChain::sharedFromRef(v->value());
+    std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
     auto it = chainblocks::GetGlobals().GlobalChains.find(chain->name);
     if (it != chainblocks::GetGlobals().GlobalChains.end()) {
       chainblocks::GetGlobals().GlobalChains.erase(it);
@@ -1746,6 +1756,7 @@ BUILTIN("override-root-path") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
+  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   chainblocks::GetGlobals().RootPath = value->ref();
   std::filesystem::current_path(value->ref());
   return mal::nilValue();
@@ -1985,7 +1996,7 @@ BUILTIN("setenv") {
 }
 
 BUILTIN("settings-try-set-min") {
-  std::unique_lock lock(GetGlobals().SettingsMutex);
+  std::scoped_lock lock(GetGlobals().GlobalMutex);
   CHECK_ARGS_IS(2);
   ARG(malString, key);
   ARG(malCBVar, value);
@@ -2004,7 +2015,7 @@ BUILTIN("settings-try-set-min") {
 }
 
 BUILTIN("settings-try-set-max") {
-  std::unique_lock lock(GetGlobals().SettingsMutex);
+  std::scoped_lock lock(GetGlobals().GlobalMutex);
   CHECK_ARGS_IS(2);
   ARG(malString, key);
   ARG(malCBVar, value);
@@ -2033,6 +2044,7 @@ BUILTIN("hasBlock?") {
 }
 
 BUILTIN("blocks") {
+  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   malValueVec v;
   for (auto [name, _] : chainblocks::GetGlobals().BlocksRegister) {
     v.emplace_back(mal::string(std::string(name)));
@@ -2119,6 +2131,7 @@ BUILTIN("info") {
 #ifndef CB_COMPRESSED_STRINGS
 BUILTIN("export-strings") {
   assert(chainblocks::GetGlobals().CompressedStrings);
+  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   malValueVec strs;
   for (auto &[crc, str] : *chainblocks::GetGlobals().CompressedStrings) {
     if (crc != 0) {
@@ -2136,6 +2149,7 @@ static std::unordered_map<uint32_t, std::string> strings_storage;
 
 BUILTIN("decompress-strings") {
 #ifdef CB_COMPRESSED_STRINGS
+  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   if (!chainblocks::GetGlobals().CompressedStrings) {
     throw chainblocks::CBException("String storage was null");
   }
@@ -2224,6 +2238,7 @@ CHAINBLOCKS_API __cdecl CBBool cbLispEval(void *env, const char *str,
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();
   obs->_env = env;
+  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   chainblocks::GetGlobals().Observers.emplace_back(obs);
   observers[env.ptr()] = obs;
 }
