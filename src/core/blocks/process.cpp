@@ -132,28 +132,35 @@ struct Run {
           ipipe << input.payload.stringValue << std::endl;
           ipipe.pipe().close(); // send EOF
 
+          CBLOG_TRACE("Process started");
+
           ios.run_for(std::chrono::seconds(_timeout));
 
-          // we still need to wait termination
-          if (cmd.wait_for(std::chrono::seconds(5))) {
-            _outBuf = ostr.get();
-            _errBuf = estr.get();
+          CBLOG_TRACE("Process finished");
 
-            if (cmd.exit_code() != 0) {
-              CBLOG_INFO(_outBuf);
-              CBLOG_ERROR(_errBuf);
-              std::string err("The process exited with a non-zero exit code: ");
-              err += std::to_string(cmd.exit_code());
-              throw ActivationError(err);
-            } else {
-              if (_errBuf.size() > 0) {
-                // print anyway this stream too
-                CBLOG_INFO("(stderr) {}", _errBuf);
-              }
-              return Var(_outBuf);
-            }
+          if(cmd.running())
+          {
+            cmd.terminate();
+            throw ActivationError("Process timed out");
+          }
+
+          // we still need to wait termination
+          _outBuf = ostr.get();
+          _errBuf = estr.get();
+
+          if (cmd.exit_code() != 0) {
+            CBLOG_INFO(_outBuf);
+            CBLOG_ERROR(_errBuf);
+            std::string err("The process exited with a non-zero exit code: ");
+            err += std::to_string(cmd.exit_code());
+            throw ActivationError(err);
           } else {
-            throw ActivationError("Timed out");
+            if (_errBuf.size() > 0) {
+              // print anyway this stream too
+              CBLOG_INFO("(stderr) {}", _errBuf);
+            }
+            CBLOG_TRACE("Process finished successfully");
+            return Var(_outBuf);
           }
         },
         [] {
