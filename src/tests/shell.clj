@@ -13,7 +13,9 @@
   (Assert.Is "Hello world\n" true)
 
   "Hello world" (Process.Run "cat" :Timeout 2) (Log)
-  (Assert.Is "Hello world\n" true)))
+  (Assert.Is "Hello world\n" true)
+
+  (Maybe (-> "" (Process.Run "sleep" ["10"] :Timeout 1) (Log)))))
 
 ;; (def! dec (fn* [a] (- a 1)))
 ;; (def! Loop (fn* [count] (do

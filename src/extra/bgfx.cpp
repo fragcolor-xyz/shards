@@ -35,16 +35,16 @@ using namespace chainblocks;
 
 static bgfx::RendererType::Enum getCurrentBgfxRenderType() {
   switch (BGFX::CurrentRenderer) {
-    case BGFX::Renderer::DirectX11:
-      return  bgfx::RendererType::Direct3D11;
-    case BGFX::Renderer::Vulkan:
-      return  bgfx::RendererType::Vulkan;
-    case BGFX::Renderer::OpenGL:
-      return  bgfx::RendererType::OpenGL;
-    case BGFX::Renderer::Metal:
-      return  bgfx::RendererType::Metal;
-    default:
-      return bgfx::RendererType::Noop;
+  case BGFX::Renderer::DirectX11:
+    return bgfx::RendererType::Direct3D11;
+  case BGFX::Renderer::Vulkan:
+    return bgfx::RendererType::Vulkan;
+  case BGFX::Renderer::OpenGL:
+    return bgfx::RendererType::OpenGL;
+  case BGFX::Renderer::Metal:
+    return bgfx::RendererType::Metal;
+  default:
+    return bgfx::RendererType::Noop;
   }
 }
 

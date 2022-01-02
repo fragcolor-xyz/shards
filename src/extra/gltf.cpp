@@ -267,7 +267,7 @@ struct Load : public BGFX::BaseConsumer {
   template <typename T> struct Cache {
     std::shared_ptr<T> find(uint64_t hash) {
       std::shared_ptr<T> res;
-      std::unique_lock lock(_mutex);
+      std::scoped_lock lock(_mutex);
       auto it = _cache.find(hash);
       if (it != _cache.end()) {
         res = it->second.lock();
@@ -276,7 +276,7 @@ struct Load : public BGFX::BaseConsumer {
     }
 
     void add(uint64_t hash, const std::shared_ptr<T> &data) {
-      std::unique_lock lock(_mutex);
+      std::scoped_lock lock(_mutex);
       _cache[hash] = data;
     }
 
@@ -628,7 +628,7 @@ struct Load : public BGFX::BaseConsumer {
 
     // lazily fill out varying and entry point shaders
     if (_shadersVarying.size() == 0) {
-      std::unique_lock lock(_shadersMutex);
+      std::scoped_lock lock(_shadersMutex);
       // check again after unlock
       if (_shadersVarying.size() == 0) {
         auto failed = false;
@@ -709,7 +709,7 @@ struct Load : public BGFX::BaseConsumer {
           // retreive the maxBones setting here
           int maxBones = 0;
           {
-            std::unique_lock lock(GetGlobals().SettingsMutex);
+            std::scoped_lock lock(GetGlobals().GlobalMutex);
             auto &vmaxBones = GetGlobals().Settings["GLTF.MaxBones"];
             if (vmaxBones.valueType == CBType::None) {
               vmaxBones = Var(32);
@@ -1463,7 +1463,7 @@ struct Draw : public BGFX::BaseConsumer {
       // retreive the maxBones setting here
       int maxBones = 0;
       {
-        std::unique_lock lock(GetGlobals().SettingsMutex);
+        std::scoped_lock lock(GetGlobals().GlobalMutex);
         auto &vmaxBones = GetGlobals().Settings["GLTF.MaxBones"];
         if (vmaxBones.valueType == CBType::None) {
           vmaxBones = Var(32);

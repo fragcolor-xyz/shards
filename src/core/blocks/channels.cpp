@@ -50,7 +50,7 @@ public:
 
   MPMCChannel &subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
-    std::unique_lock<std::mutex> lock(submutex);
+    std::scoped_lock<std::mutex> lock(submutex);
     return subscribers.emplace_back(_noCopy);
   }
 
@@ -70,7 +70,7 @@ private:
 
 public:
   static Channel &get(const std::string &name) {
-    std::unique_lock<std::mutex> lock(ChannelsMutex);
+    std::scoped_lock<std::mutex> lock(ChannelsMutex);
     return Channels[name];
   }
 };
@@ -216,7 +216,7 @@ struct Broadcast : public Base {
     // we need to support subscriptions during run-time
     // so we need to lock this operation
     // furthermore we allow multiple broadcasters so the erase needs this
-    std::unique_lock<std::mutex> lock(_mpchannel->submutex);
+    std::scoped_lock<std::mutex> lock(_mpchannel->submutex);
     for (auto it = _mpchannel->subscribers.begin();
          it != _mpchannel->subscribers.end();) {
       if (it->closed) {

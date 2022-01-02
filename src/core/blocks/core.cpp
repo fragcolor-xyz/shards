@@ -1279,6 +1279,45 @@ struct Replace {
   }
 };
 
+struct UnsafeActivate {
+  static inline Parameters params{
+      {"Pointer",
+       CBCCSTR(
+           "The function address, must be of type CBVar f(Context*, CBVar*)."),
+       {CoreInfo::IntType}}};
+
+  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static CBParametersInfo parameters() { return params; }
+
+  typedef CBVar (*ActivationFunc)(CBContext *, const CBVar *);
+  ActivationFunc _func{nullptr};
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _func = reinterpret_cast<ActivationFunc>(value.payload.intValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(reinterpret_cast<uint64_t>(_func));
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    return _func(context, &input);
+  }
+};
+
 // Register And
 RUNTIME_CORE_BLOCK_FACTORY(And);
 RUNTIME_BLOCK_inputTypes(And);
@@ -1806,5 +1845,6 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("Comment", Comment);
   REGISTER_CBLOCK("Replace", Replace);
   REGISTER_CBLOCK("OnCleanup", OnCleanup);
+  REGISTER_CBLOCK("UnsafeActivate!", UnsafeActivate);
 }
 }; // namespace chainblocks

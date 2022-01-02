@@ -263,7 +263,7 @@ typedef float CBFloat4[4];
 #endif
 
 #ifndef _WIN32
-#ifdef CPUBITS32
+#if defined(__i386__)
 #define __cdecl __attribute__((__cdecl__))
 #else
 #define __cdecl
@@ -608,8 +608,6 @@ struct CBVarPayload {
 
 struct CBVar {
   struct CBVarPayload payload;
-  struct CBObjectInfo *objectInfo;
-  uint32_t refcount;
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
   enum CBType valueType;
   enum CBType innerType;
@@ -617,7 +615,12 @@ struct CBVar {
   CBType valueType;
   CBType innerType;
 #endif
-  uint8_t flags;
+  uint16_t flags;
+  uint32_t refcount;
+  struct CBObjectInfo *objectInfo;
+#if defined(__i386__) || defined(__EMSCRIPTEN__)
+  uint32_t _cpu32bits_padding;
+#endif
 } __attribute__((aligned(16)));
 
 enum CBRunChainOutputState { Running, Restarted, Stopped, Failed };
@@ -867,6 +870,11 @@ typedef void(__cdecl *CBSetExternalVariable)(CBChainRef chain, CBString name,
 typedef void(__cdecl *CBRemoveExternalVariable)(CBChainRef chain,
                                                 CBString name);
 
+typedef struct CBVar *(__cdecl *CBAllocExternalVariable)(CBChainRef chain,
+                                                         CBString name);
+
+typedef void(__cdecl *CBFreeExternalVariable)(CBChainRef chain, CBString name);
+
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
 typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
@@ -1024,7 +1032,14 @@ typedef struct CBTypeInfo(__cdecl *CBDeriveTypeInfo)(
     const struct CBVar *v, const struct CBInstanceData *data);
 typedef void(__cdecl *CBFreeDerivedTypeInfo)(struct CBTypeInfo *t);
 
+typedef void *(__cdecl *CBAlloc)(uint32_t size);
+typedef void(__cdecl *CBFree)(void *ptr);
+
 typedef struct _CBCore {
+  // Aligned allocator
+  CBAlloc alloc;
+  CBFree free;
+
   // CBTable interface
   CBTableNew tableNew;
 
@@ -1110,6 +1125,9 @@ typedef struct _CBCore {
   // To add/rem external variables to chains
   CBSetExternalVariable setExternalVariable;
   CBRemoveExternalVariable removeExternalVariable;
+  // Alternatives of the above that allocate memory for the variables
+  CBAllocExternalVariable allocExternalVariable;
+  CBFreeExternalVariable freeExternalVariable;
 
   // To be used within blocks, to suspend the coroutine
   CBSuspend suspend;
@@ -1165,7 +1183,7 @@ typedef CBCore *(__cdecl *CBChainblocksInterface)(uint32_t abi_version);
 #define CHAINBLOCKS_IMPORT
 #endif
 #else
-#define CHAINBLOCKS_EXPORT 
+#define CHAINBLOCKS_EXPORT
 #define CHAINBLOCKS_IMPORT
 #endif
 

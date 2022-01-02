@@ -78,7 +78,7 @@ lazy_static! {
       .into(),
     (
       cstr!("Bytes"),
-      cbccstr!("If instead of a string the block should outout bytes."),
+      cbccstr!("If instead of a string the block should output bytes."),
       vec![common_type::bool]
     )
       .into(),

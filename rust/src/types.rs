@@ -884,7 +884,7 @@ where
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     // ensure this flag is set
-    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
     res
   }
 }
@@ -910,7 +910,7 @@ impl From<&Var> for ExternalVar {
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     // ensure this flag is set
-    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
     res
   }
 }
@@ -970,7 +970,7 @@ impl Default for ExternalVar {
   #[inline(always)]
   fn default() -> Self {
     let mut res = ExternalVar(Var::default());
-    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
     res
   }
 }
@@ -988,7 +988,7 @@ impl ExternalVar {
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     // ensure this flag is set
-    self.0.flags |= CBVAR_FLAGS_EXTERNAL as u8;
+    self.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
   }
 }
 
@@ -1904,7 +1904,7 @@ impl ParamVar {
     unsafe {
       let rc = (*self.pointee).refcount;
       (*self.pointee) = value;
-      (*self.pointee).flags = value.flags | (CBVAR_FLAGS_REF_COUNTED as u8);
+      (*self.pointee).flags = value.flags | (CBVAR_FLAGS_REF_COUNTED as u16);
       (*self.pointee).refcount = rc;
     }
   }

@@ -1298,3 +1298,14 @@ TEST_CASE("Vector types") {
     CHECK(compatibleType->isInteger);
   }
 }
+
+TEST_CASE("UnsafeActivate-block") {
+  typedef CBVar (*Func)(CBContext *, const CBVar *);
+  Func f = [](CBContext *ctx, const CBVar *input) -> CBVar { return Var(77); };
+  auto fVar = Var(reinterpret_cast<uint64_t>(f));
+  auto b1 = createBlock("UnsafeActivate!");
+  DEFER(b1->destroy(b1));
+  b1->setParam(b1, 0, &fVar);
+  CBVar input{};
+  CHECK(b1->activate(b1, nullptr, &input).payload.intValue == 77);
+}

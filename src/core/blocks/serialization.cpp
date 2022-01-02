@@ -402,11 +402,11 @@ struct WritePNG : public FileBase {
             float fa = float(a) / 255.0f;
             _scratch[baseIdx + 3] = a;
             uint8_t r = input.payload.imageValue.data[baseIdx + 0];
-            _scratch[baseIdx + 0] = uint8_t(float(r) / fa + 0.5);
+            _scratch[baseIdx + 0] = fa > 0.0 ? uint8_t(float(r) / fa) : 0;
             uint8_t g = input.payload.imageValue.data[baseIdx + 1];
-            _scratch[baseIdx + 1] = uint8_t(float(g) / fa + 0.5);
+            _scratch[baseIdx + 1] = fa > 0.0 ? uint8_t(float(g) / fa) : 0;
             uint8_t b = input.payload.imageValue.data[baseIdx + 2];
-            _scratch[baseIdx + 2] = uint8_t(float(b) / fa + 0.5);
+            _scratch[baseIdx + 2] = fa > 0.0 ? uint8_t(float(b) / fa) : 0;
           } else if (pixsize == 2) {
             uint16_t *source =
                 reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
@@ -415,11 +415,11 @@ struct WritePNG : public FileBase {
             float fa = float(a) / 65535.0f;
             dest[baseIdx + 3] = a;
             uint16_t r = source[baseIdx + 0];
-            dest[baseIdx + 0] = uint16_t(float(r) / fa + 0.5);
+            dest[baseIdx + 0] = fa > 0.0 ? uint16_t(float(r) / fa) : 0;
             uint16_t g = source[baseIdx + 1];
-            dest[baseIdx + 1] = uint16_t(float(g) / fa + 0.5);
+            dest[baseIdx + 1] = fa > 0.0 ? uint16_t(float(g) / fa) : 0;
             uint16_t b = source[baseIdx + 2];
-            dest[baseIdx + 2] = uint16_t(float(b) / fa + 0.5);
+            dest[baseIdx + 2] = fa > 0.0 ? uint16_t(float(b) / fa) : 0;
           } else if (pixsize == 4) {
             float *source =
                 reinterpret_cast<float *>(input.payload.imageValue.data);
@@ -427,11 +427,11 @@ struct WritePNG : public FileBase {
             float fa = source[baseIdx + 3];
             dest[baseIdx + 3] = fa;
             float r = source[baseIdx + 0];
-            dest[baseIdx + 0] = r / fa + 0.5;
+            dest[baseIdx + 0] = fa > 0.0 ? r / fa : 0;
             float g = source[baseIdx + 1];
-            dest[baseIdx + 1] = g / fa + 0.5;
+            dest[baseIdx + 1] = fa > 0.0 ? g / fa : 0;
             float b = source[baseIdx + 2];
-            dest[baseIdx + 2] = b / fa + 0.5;
+            dest[baseIdx + 2] = fa > 0.0 ? b / fa : 0;
           }
         }
       }

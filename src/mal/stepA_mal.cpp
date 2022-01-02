@@ -43,6 +43,7 @@ void malinit(malEnvPtr env, const char *exePath, const char *scriptPath) {
 
 malValuePtr maleval(const char *str, malEnvPtr env) {
   assert(env);
+  currentEnv = env;
   return EVAL(READ(str), env);
 }
 
@@ -176,7 +177,13 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
         const malSymbol *id = VALUE_CAST(malSymbol, list->item(1));
         auto rootEnv = env->getRoot();
         auto e = rootEnv != nullptr ? rootEnv : env;
-        return e->set(id->value(), EVAL(list->item(2), env));
+        return e->set(id->value(), EVAL(list->item(2), e));
+      }
+
+      if (special == "deflocal!") {
+        checkArgsIs("deflocal!", 2, argCount, list->item(0));
+        const malSymbol *id = VALUE_CAST(malSymbol, list->item(1));
+        return env->set(id->value(), EVAL(list->item(2), env));
       }
 
       if (special == "defmacro!") {
