@@ -838,6 +838,8 @@ void registerCastingBlocks() {
   REGISTER_CBLOCK("ExpectIntSeq", ExpectIntSeq);
   using ExpectBytesSeq = ExpectXComplex<CoreInfo::BytesSeqType>;
   REGISTER_CBLOCK("ExpectBytesSeq", ExpectBytesSeq);
+  using ExpectStringSeq = ExpectXComplex<CoreInfo::StringSeqType>;
+  REGISTER_CBLOCK("ExpectBytesSeq", ExpectStringSeq);
 
   REGISTER_CBLOCK("ExpectLike", ExpectLike);
 
