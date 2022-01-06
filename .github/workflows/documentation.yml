@@ -54,7 +54,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja rust_blocks && ninja cbl
+          ninja cbl
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
