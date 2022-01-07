@@ -37,6 +37,7 @@ plugins:
   - search
   - awesome-pages:
       strict: false
+  - macros
 theme:
   custom_dir: overrides
   favicon: assets/images/favicon.svg
