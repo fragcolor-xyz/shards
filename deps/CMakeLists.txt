@@ -123,7 +123,7 @@ add_dependencies(snappy snappy_a)
 
 ExternalProject_Add(brotli_a
   GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
-  GIT_TAG           fcda9db7fd554ffb19c2410b9ada57cdabd19de5
+  GIT_TAG           e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTERNAL_CMAKE_ARGS}
   BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
