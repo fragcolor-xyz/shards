@@ -1289,11 +1289,13 @@ struct ParallelBase : public ChainBase {
     _chains.resize(len);
     Defer cleanups([this]() {
       for (auto &cref : _chains) {
-        if (cref->node) {
-          cref->node->terminate();
+        if (cref) {
+          if (cref->node) {
+            cref->node->terminate();
+          }
+          stop(cref->chain.get());
+          _pool->release(cref);
         }
-        stop(cref->chain.get());
-        _pool->release(cref);
       }
       _chains.clear();
     });
@@ -1303,8 +1305,6 @@ struct ParallelBase : public ChainBase {
       _chains[i]->index = i;
       _chains[i]->done = false;
     }
-
-    auto nchains = _chains.size();
 
     size_t succeeded = 0;
     size_t failed = 0;
@@ -1418,7 +1418,7 @@ struct ParallelBase : public ChainBase {
         }
 #endif
 
-        if ((succeeded + failed) == nchains) {
+        if ((succeeded + failed) == len) {
           if (unlikely(succeeded == 0)) {
             throw ActivationError("TryMany, failed all chains!");
           } else {
@@ -1427,7 +1427,7 @@ struct ParallelBase : public ChainBase {
               return Var(_outputs.data(), succeeded);
             } else {
               assert(_policy == WaitUntil::AllSuccess);
-              if (nchains == succeeded) {
+              if (len == succeeded) {
                 return Var(_outputs.data(), succeeded);
               } else {
                 throw ActivationError("TryMany, failed some chains!");
