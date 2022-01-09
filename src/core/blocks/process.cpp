@@ -138,8 +138,7 @@ struct Run {
 
           CBLOG_TRACE("Process finished");
 
-          if(cmd.running())
-          {
+          if (cmd.running()) {
             cmd.terminate();
             throw ActivationError("Process timed out");
           }

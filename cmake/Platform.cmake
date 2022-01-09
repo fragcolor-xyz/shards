@@ -93,7 +93,7 @@ endif()
 if(LINUX)
   add_link_options(-export-dynamic)
   if(USE_VALGRIND)
-    add_compile_definitions(BOOST_USE_VALGRIND)
+    add_compile_definitions(BOOST_USE_VALGRIND CHAINBLOCKS_NO_BIGINT_BLOCKS)
   endif()
 endif()
 
