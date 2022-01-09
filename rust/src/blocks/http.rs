@@ -95,12 +95,8 @@ lazy_static! {
 
 type Client = reqwest::blocking::Client;
 
-fn new_client() -> Client {
-  reqwest::blocking::Client::new()
-}
-
 struct RequestBase {
-  client: Client,
+  client: Option<Client>,
   url: ParamVar,
   headers: ParamVar,
   output_table: Table,
@@ -112,7 +108,7 @@ struct RequestBase {
 impl Default for RequestBase {
   fn default() -> Self {
     let mut s = Self {
-      client: new_client(),
+      client: None,
       url: ParamVar::new(cstr!("").into()),
       headers: ParamVar::new(().into()),
       output_table: Table::new(),
@@ -169,6 +165,10 @@ impl RequestBase {
   }
 
   fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.client = Some(reqwest::blocking::Client::builder().build().map_err(|e| {
+      cblog!("Failure details: {}", e);
+      "Failed to create client"
+    })?);
     self.url.warmup(context);
     self.headers.warmup(context);
     Ok(())
@@ -283,7 +283,7 @@ macro_rules! get_like {
       fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
         let request = self.rb.url.get();
         let request_string: &str = request.as_ref().try_into()?;
-        let mut request = self.rb.client.$call(request_string);
+        let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
         request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
         if !headers.is_none() {
@@ -376,7 +376,7 @@ macro_rules! post_like {
       fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
         let request = self.rb.url.get();
         let request_string: &str = request.as_ref().try_into()?;
-        let mut request = self.rb.client.$call(request_string);
+        let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
         request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
         if !input.is_none() {
