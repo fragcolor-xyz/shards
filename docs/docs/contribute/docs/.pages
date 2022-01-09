@@ -1,0 +1,5 @@
+nav:
+  - installation.md
+  - making-changes.md
+  - api-docs.md
+  - ...
