@@ -11,9 +11,12 @@ if(NOT Rust_CARGO_TARGET)
   elseif(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(Rust_CARGO_TARGET i686-pc-windows-gnu)
   elseif(WIN32)
-    set(Rust_CARGO_TARGET x86_64-pc-windows-gnu)
+    set(Rust_CARGO_TARGET x86_64-pc-windows-${WINDOWS_ABI})
   endif()
 endif()
+
+set(Rust_LIB_PREFIX ${LIB_PREFIX})
+set(Rust_LIB_SUFFIX ${LIB_SUFFIX})
 
 message(STATUS "Rust_CARGO_TARGET = ${Rust_CARGO_TARGET}")
 
