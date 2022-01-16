@@ -46,12 +46,20 @@ lazy_static! {
     vec![common_type::bool]
   )
     .into()];
-  static ref SIG_PARAMETERS: Parameters = vec![(
-    cstr!("Signature"),
-    cbccstr!("The signature generated signing the input message with the private key."),
-    vec![common_type::bytes, common_type::bytes_var]
-  )
-    .into()];
+  static ref SIG_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Signature"),
+      cbccstr!("The signature generated signing the input message with the private key."),
+      vec![common_type::bytes, common_type::bytes_var]
+    )
+      .into(),
+    (
+      cstr!("Compressed"),
+      cbccstr!("If the output PublicKey should use the compressed format."),
+      vec![common_type::bool]
+    )
+      .into()
+  ];
 }
 
 fn get_key(input: Var) -> Result<libsecp256k1::SecretKey, &'static str> {
@@ -269,6 +277,7 @@ impl Block for ECDSAPrivKey {
 #[derive(Default)]
 struct ECDSARecover {
   output: ClonedVar,
+  compressed: bool,
   signature: ParamVar,
 }
 
@@ -300,6 +309,7 @@ impl Block for ECDSARecover {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.signature.set_param(value),
+      1 => self.compressed = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
@@ -307,6 +317,7 @@ impl Block for ECDSARecover {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.signature.get_param(),
+      1 => self.compressed.into(),
       _ => unreachable!(),
     }
   }
@@ -344,8 +355,13 @@ impl Block for ECDSARecover {
       "Failed to recover public key"
     })?;
 
-    let key: [u8; 65] = pub_key.serialize();
-    self.output = key[..].into();
+    if self.compressed {
+      let key: [u8; 33] = pub_key.serialize_compressed();
+      self.output = key[..].into();
+    } else {
+      let key: [u8; 65] = pub_key.serialize();
+      self.output = key[..].into();
+    }
     Ok(self.output.0)
   }
 }
