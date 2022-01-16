@@ -52,6 +52,15 @@ if(EMSCRIPTEN)
   endif()
 endif()
 
+if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
+  add_compile_definitions(_SCL_SECURE_NO_WARNINGS=1)
+  add_compile_definitions(NOMINMAX=1)
+  set(WINDOWS_ABI "msvc")
+else()
+  set(WINDOWS_ABI "gnu")
+endif()
+
 # mingw32 static runtime
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(WIN32)
@@ -82,7 +91,9 @@ if(USE_LTO)
   add_link_options(-flto)
 endif()
 
-add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+if(NOT MSVC)
+  add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
@@ -153,4 +164,13 @@ if(APPLE)
 
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
   add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
+endif()
+
+
+if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  set(LIB_PREFIX "")
+  set(LIB_SUFFIX ".lib")
+else()
+  set(LIB_PREFIX "lib")
+  set(LIB_SUFFIX ".a")
 endif()

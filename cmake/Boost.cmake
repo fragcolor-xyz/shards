@@ -4,9 +4,10 @@ unset(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
 
 if(IOS OR EMSCRIPTEN)
   find_package(Boost REQUIRED)
-    
+
   add_library(boost-headers INTERFACE)
   target_include_directories(boost-headers INTERFACE ${Boost_INCLUDE_DIRS})
+  add_library(Boost::headers ALIAS boost-headers)
 endif()
 
 if(IOS)
@@ -27,10 +28,10 @@ if(IOS)
       ${CHAINBLOCKS_DIR}/deps/boost-context/src/asm/ontop_arm64_aapcs_macho_gas.S
     )
   endif()
-  
+
   add_library(boost-context STATIC ${BOOST_CONTEXT_SOURCES})
   target_include_directories(boost-context PUBLIC ${Boost_INCLUDE_DIRS})
-  
+
   add_library(Boost::filesystem ALIAS boost-headers)
   add_library(Boost::context ALIAS boost-context)
 elseif(EMSCRIPTEN)
@@ -40,7 +41,7 @@ else()
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(Boost_USE_STATIC_LIBS ON)
   endif()
-  
+
   find_package(Boost REQUIRED COMPONENTS context filesystem)
 endif()
 

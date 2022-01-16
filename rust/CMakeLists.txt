@@ -16,7 +16,7 @@ if(Rust_CARGO_TARGET)
   set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
 endif()
 
-set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/libchainblocks.a)
+set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}chainblocks${Rust_LIB_SUFFIX})
 
 file(GLOB_RECURSE SOURCES *.rs *.toml)
 
