@@ -1,8 +1,0 @@
-// FIELD_TYPE(name, cpp type, display name)
-FIELD_TYPE(float, float, Float)
-FIELD_TYPE(vec2, float2, Float2)
-FIELD_TYPE(vec3, float3, Float3)
-FIELD_TYPE(vec4, float4, Float4)
-FIELD_TYPE(mat4, float4x4, Float4x4)
-FIELD_TYPE(texture2D, TexturePtr, Texture2D)
-#undef FIELD_TYPE

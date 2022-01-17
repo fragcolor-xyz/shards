@@ -9,30 +9,11 @@ endif()
 
 add_library(gfx
   context.cpp
-  imgui.cpp
-  material.cpp
-  # material_shader.cpp
-  utils.cpp
-  drawable.cpp
-  # shader_cache.cpp
-  # mesh.cpp
-  view.cpp
-  enums.cpp
-  fields.cpp
-  texture.cpp
-  # view_framebuffer.cpp
-  geom.cpp
-  test_platform_id.cpp
+  window.cpp
   loop.cpp
   frame.cpp
-  capture.cpp
-  window.cpp
-  shaderc.cpp
-  renderer.cpp
-  paths.cpp
-  texture_file.cpp
-  feature.cpp
-  feature_pipeline.cpp
+  view.cpp
+  gfx_wgpu.cpp
 )
 
 target_include_directories(gfx
@@ -40,8 +21,9 @@ target_include_directories(gfx
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(gfx
-  bx bimg bgfx tinygltf
-  dear-imgui imgui_club implot imguizmo magic_enum
+  tinygltf
+  # dear-imgui imgui_club implot imguizmo
+  magic_enum
   spdlog stb xxHash Boost::headers
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
@@ -53,15 +35,6 @@ if(NOT EMSCRIPTEN AND (CMAKE_BUILD_TYPE MATCHES Debug))
 endif()
 if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
   target_compile_definitions(gfx PUBLIC GFX_DATA_PATH=\"${CHAINBLOCKS_DIR}\")
-endif()
-
-if(NOT GFX_SHADERC_SHARED_LIBRARY AND NOT GFX_SHADERC_PREBUILT)
-  target_link_libraries(gfx gfx-shaderc)
-  target_compile_definitions(gfx PUBLIC GFX_SHADERC_STATIC=1)
-endif()
-
-if(NOT GFX_SHADERC_PREBUILT)
-  add_dependencies(gfx gfx-shaderc)
 endif()
 
 if(GFX_DEBUG)
@@ -112,5 +85,42 @@ if(EMSCRIPTEN)
 		target_link_options(gfx PUBLIC "SHELL:--preload-file \"${SHADER_PATH}\"")
 	endforeach()
 endif()
+
+if(NOT EMSCRIPTEN)
+
+  # wgpu-native target
+  if(Rust_CARGO_TARGET)
+    set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
+  endif()
+
+  set(WGPU_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/wgpu-native)
+  set(GENERATED_LIB_PATH ${WGPU_NATIVE_PATH}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}wgpu_native${Rust_LIB_SUFFIX})
+  file(GLOB_RECURSE SOURCES ${WGPU_NATIVE_PATH}/*.rs ${WGPU_NATIVE_PATH}/*.toml)
+
+  add_custom_command(
+    OUTPUT ${GENERATED_LIB_PATH}
+    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS}" cargo ${Rust_CARGO_TOOLCHAIN} build ${Rust_CARGO_UNSTABLE_FLAGS} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
+    WORKING_DIRECTORY ${WGPU_NATIVE_PATH}
+    DEPENDS ${SOURCES}
+    USES_TERMINAL
+  )
+  add_custom_target(
+    cargo-wgpu-native
+    DEPENDS ${GENERATED_LIB_PATH}
+  )
+
+  add_library(wgpu-native STATIC IMPORTED GLOBAL)
+  add_dependencies(wgpu-native cargo-wgpu-native)
+  set_target_properties(wgpu-native PROPERTIES
+    IMPORTED_LOCATION ${GENERATED_LIB_PATH}
+  )
+  target_include_directories(wgpu-native INTERFACE ${WGPU_NATIVE_PATH}/ffi)
+  target_link_libraries(wgpu-native INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
+  # Userenv ws2_32 Bcrypt Crypt32 Secur32 NtDll Ncrypt
+
+  target_link_libraries(gfx wgpu-native)
+  target_compile_definitions(gfx PUBLIC WEBGPU_NATIVE=1)
+endif()
+
 
 add_subdirectory(tests)

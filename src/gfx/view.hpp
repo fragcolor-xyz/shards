@@ -1,10 +1,9 @@
 #pragma once
 
-#include "bgfx/bgfx.h"
+
 #include "opt.hpp"
-#include "texture.hpp"
 #include "types.hpp"
-#include <bgfx/bgfx.h>
+
 #include <optional>
 #include <variant>
 

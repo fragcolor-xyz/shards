@@ -21,9 +21,7 @@
 // THE SOFTWARE.
 
 #include "geom.hpp"
-#include "bgfx/bgfx.h"
 #include <algorithm>
-#include <bgfx/bgfx.h>
 
 namespace gfx {
 namespace geom {

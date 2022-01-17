@@ -1,20 +1,13 @@
 #include "test_platform_id.hpp"
 #include "context.hpp"
-#include <bx/platform.h>
 
 namespace gfx {
-TestPlatformId TestPlatformId::get(const RendererType &renderer) {
+TestPlatformId TestPlatformId::get(const Context &context) {
 	TestPlatformId id;
-#if BX_PLATFORM_EMSCRIPTEN
-	id.platformName = "asm.js"; // ignore version and space in BX_PLATFORM_NAME
-#else
-	id.platformName = BX_PLATFORM_NAME;
-#endif
-	id.renderTypeName = getRendererTypeName(renderer);
+	id.platformName = "platform"; // TODO
+	id.renderTypeName = "wgpu";	  // TODO
 	return id;
 }
-
-TestPlatformId TestPlatformId::get(const Context &context) { return get(context.getRendererType()); }
 
 TestPlatformId::operator std::string() const { return platformName + "/" + renderTypeName; }
 } // namespace gfx

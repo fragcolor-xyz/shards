@@ -1,7 +1,7 @@
 #pragma once
 #include "linalg.hpp"
 #include "math.hpp"
-#include <bgfx/bgfx.h>
+
 #include "mesh.hpp"
 #include <vector>
 

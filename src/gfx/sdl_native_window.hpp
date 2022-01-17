@@ -1,12 +1,8 @@
 #pragma once
 
-#include <bx/platform.h>
-
 #include <SDL.h>
-#if BX_PLATFORM_WINDOWS || BX_PLATFORM_LINUX
 #define HAVE_SDL_SYSWM
 #include <SDL_syswm.h>
-#endif
 
 #include "error_utils.hpp"
 #include <stdexcept>

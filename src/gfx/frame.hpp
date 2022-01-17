@@ -1,8 +1,8 @@
 #pragma once
 
-#include <bgfx/bgfx.h>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 
 namespace gfx {
 
@@ -21,27 +21,14 @@ struct Context;
 struct IDrawable;
 struct FrameRenderer {
 	Context &context;
-	FrameInputs inputs;
+	std::optional<FrameInputs> inputs;
 
-	bgfx::ViewId _nextViewCounter{0};
-
-	uint32_t _frameDrawablesCount{0};
-	std::unordered_map<uint32_t, IDrawable *> _frameDrawables;
-
-	bool _picking{false};
-
-	FrameRenderer(Context &context, FrameInputs &&inputs = FrameInputs()) : context(context), inputs(inputs) {}
+	FrameRenderer(Context &context) : context(context) {}
 	FrameRenderer(const FrameRenderer &) = delete;
 	FrameRenderer &operator=(const FrameRenderer &) = delete;
 
-	void begin();
-	uint32_t end(bool capture = false);
-
-	constexpr bool isPicking() const { return _picking; }
-	void setPicking(bool picking) { _picking = picking; }
-
-	bgfx::ViewId nextViewId();
-	bgfx::ViewId getCurrentViewId() const;
+	void begin(FrameInputs &&inputs = FrameInputs());
+	void end();
 
 	static FrameRenderer *get(Context &context);
 };

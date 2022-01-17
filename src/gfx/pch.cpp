@@ -5,7 +5,6 @@
 #include <type_traits>
 #include <variant>
 
-#include <alloca.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>

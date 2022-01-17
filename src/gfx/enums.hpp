@@ -1,17 +1,27 @@
 #pragma once
 
 #include <string_view>
-#include <bgfx/bgfx.h>
 
 namespace gfx {
 
 enum class PrimitiveType { TriangleList, TriangleStrip };
 enum class WindingOrder { CW, CCW };
 enum class ProgrammableGraphicsStage { Vertex, Fragment };
+enum class VertexAttributeType {
+	UInt8,
+	Int8,
+	UNorm8,
+	SNorm8,
+	UInt16,
+	Int16,
+	UNorm16,
+	SNorm16,
+	UInt32,
+	Int32,
+	UNorm32,
+	SNorm32,
+	Float16,
+	Float32
+};
 
-enum class RendererType : uint8_t { None, DirectX11, Vulkan, OpenGL, Metal };
-std::string_view getRendererTypeName(RendererType renderer);
-bgfx::RendererType::Enum getBgfxRenderType(RendererType renderer);
-RendererType getRendererTypeByName(std::string_view inName);
-
-} // namespace gfxF
+} // namespace gfx

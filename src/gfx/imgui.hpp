@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include <bgfx/bgfx.h>
+
 #include <SDL_events.h>
 #include <vector>
 #include "imgui.h"

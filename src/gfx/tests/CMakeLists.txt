@@ -23,15 +23,3 @@ add_asset_path_definition(test_gfx PUBLIC GFX_TEST_DATA_PATH ${GFX_TEST_DATA_PAT
 
 add_executable(gfx-sandbox sandbox.cpp)
 target_link_libraries(gfx-sandbox gfx)
-
-if(EMSCRIPTEN)
-	target_link_options(test_gfx PUBLIC --emrun)
-	target_link_options(gfx-sandbox PUBLIC --emrun)
-
-	add_executable(gfx-web-sandbox web-sandbox.cpp)
-	target_link_libraries(gfx-web-sandbox gfx)
-	target_link_options(gfx-web-sandbox PUBLIC
-		"SHELL:-s \"EXPORTED_FUNCTIONS=['_gfx_init', '_gfx_tick']\""
-		"SHELL:-s \"EXPORTED_RUNTIME_METHODS=['ccall', 'cwrap']\""
-	)
-endif()
