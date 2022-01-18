@@ -25,17 +25,18 @@
 using namespace gfx;
 
 struct App {
-	gfx::Window window;
-	gfx::Context context;
-	gfx::Loop loop;
+	Window window;
+	Loop loop;
+	Context context;
 
+	MeshPtr sphereMesh;
 	ViewPtr view;
 
 	void init(const char *hostElement) {
 		spdlog::debug("sandbox Init");
 		window.init();
 
-		gfx::ContextCreationOptions contextOptions;
+		gfx::ContextCreationOptions contextOptions = {};
 		contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
 		context.init(window, contextOptions);
 
@@ -45,9 +46,44 @@ struct App {
 			degToRad(45.0f),
 			FovDirection::Horizontal,
 		};
+
+		geom::SphereGenerator sphereGen;
+		sphereGen.generate();
+		sphereMesh = std::make_shared<Mesh>();
+		Mesh::Format format = {
+			.vertexAttributes = geom::VertexPNT::getAttributes(),
+		};
+		sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
+						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
 	}
 
-	void tick() {
+	void renderFrame(gfx::FrameRenderer &frame) {
+		sphereMesh->createContextDataCondtional(&context);
+
+		WGPUDevice device = context.wgpuDevice;
+		WGPUCommandEncoderDescriptor desc = {};
+		WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
+
+		WGPURenderPassDescriptor passDesc = {};
+		passDesc.colorAttachmentCount = 1;
+		WGPURenderPassColorAttachment mainAttach = {};
+		mainAttach.clearColor = WGPUColor{.r = 1.0f, .g = 0.0f, .b = 1.0f, .a = 1.0f};
+		mainAttach.loadOp = WGPULoadOp_Clear;
+		mainAttach.view = wgpuSwapChainGetCurrentTextureView(context.wgpuSwapchain);
+		mainAttach.storeOp = WGPUStoreOp_Store;
+		passDesc.colorAttachments = &mainAttach;
+		passDesc.colorAttachmentCount = 1;
+
+		WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
+		wgpuRenderPassEncoderEndPass(pass);
+
+		WGPUCommandBufferDescriptor cmdBufDesc = {};
+		WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
+
+		wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
+	}
+
+	void runMainLoop() {
 		gfx::FrameRenderer frame(context);
 		bool quit = false;
 		while (!quit) {
@@ -69,16 +105,18 @@ struct App {
 				frame.begin(gfx::FrameInputs(deltaTime, loop.getAbsoluteTime(), 0, events));
 
 				// FRAME
+				renderFrame(frame);
 
 				frame.end();
+				context.sync();
 			}
 		}
 	}
 };
 
 int main() {
-	App &instance = *new App();
+	App instance;
 	instance.init(nullptr);
-	instance.tick();
+	instance.runMainLoop();
 	return 0;
 }

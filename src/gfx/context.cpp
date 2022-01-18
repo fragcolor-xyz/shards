@@ -1,16 +1,36 @@
 #include "context.hpp"
+#include "context_data.hpp"
 #include "error_utils.hpp"
 #include "sdl_native_window.hpp"
 #include "window.hpp"
+#include <SDL_events.h>
+#include <SDL_video.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 namespace gfx {
 
-ContextCreationOptions::ContextCreationOptions() {
-#ifdef GFX_DEBUG
-	debug = true;
+void ErrorScope::push(WGPUErrorFilter filter) {
+#ifndef WEBGPU_NATIVE
+	wgpuDevicePushErrorScope(context->wgpuDevice, filter);
 #endif
+}
+void ErrorScope::pop(ErrorScope::Function &&function) {
+	this->function = [=](WGPUErrorType type, char const *message) {
+		function(type, message);
+		processed = true;
+	};
+
+#ifndef WEBGPU_NATIVE
+	wgpuDevicePopErrorScope(context->wgpuDevice, &staticCallback, this);
+#else
+	processed = true;
+#endif
+}
+void ErrorScope::staticCallback(WGPUErrorType type, char const *message, void *userData) {
+	ErrorScope *self = (ErrorScope *)userData;
+	self->function(type, message);
 }
 
 Context::Context() {}
@@ -50,10 +70,11 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	this->window = &window;
 	mainOutputSize = window.getDrawableSize();
 
-	// TODO
-	void *surfaceHandle = SDL_GetNativeWindowPtr(window.window);
-	WGPUPlatformSurfaceDescriptor surfDesc(surfaceHandle);
+	void *surfaceHandle = options.overrideNativeWindowHandle;
+	if (!surfaceHandle)
+		surfaceHandle = SDL_GetNativeWindowPtr(window.window);
 
+	WGPUPlatformSurfaceDescriptor surfDesc(surfaceHandle);
 	wgpuSurface = wgpuInstanceCreateSurface(wgpuInstance, &surfDesc);
 
 	WGPURequestAdapterOptions requestAdapter = {};
@@ -74,6 +95,35 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 		throw formatException("Failed to create wgpuAdapter: {} {}", adapterReceiverData.status, adapterReceiverData.message);
 	}
 	spdlog::debug("Created wgpuAdapter");
+
+#ifdef WEBGPU_NATIVE
+	wgpuSetLogCallback([](WGPULogLevel level, const char *msg) {
+		switch (level) {
+		case WGPULogLevel_Error:
+			spdlog::error("WEBGPU: {}", msg);
+			break;
+		case WGPULogLevel_Warn:
+			spdlog::warn("WEBGPU: {}", msg);
+			break;
+		case WGPULogLevel_Info:
+			spdlog::info("WEBGPU: {}", msg);
+			break;
+		case WGPULogLevel_Debug:
+			spdlog::debug("WEBGPU: {}", msg);
+			break;
+		case WGPULogLevel_Trace:
+			spdlog::trace("WEBGPU: {}", msg);
+			break;
+		default:
+			break;
+		}
+	});
+	if (options.debug) {
+		wgpuSetLogLevel(WGPULogLevel_Debug);
+	} else {
+		wgpuSetLogLevel(WGPULogLevel_Info);
+	}
+#endif
 
 	WGPURequiredLimits requiredLimits = {};
 	auto &limits = requiredLimits.limits;
@@ -122,25 +172,89 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
 
 	swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, wgpuAdapter);
+	resizeMainOutput(mainOutputSize);
+
+	initialized = true;
 }
 
 void Context::cleanup() {
 	spdlog::debug("GFX.Context cleanup");
+	initialized = false;
 
-	if (isInitialized()) {
-	}
+	releaseAllContextDataObjects();
+
+	cleanupSwapchain();
+	WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
+	WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
+	wgpuSurface = nullptr; // TODO: drop once c binding exists
+	wgpuAdapter = nullptr; // TODO: drop once c binding exists
 }
 
 void Context::resizeMainOutput(const int2 &newSize) {
 	spdlog::debug("GFX.Context resized width: {} height: {}", newSize.x, newSize.y);
 	this->mainOutputSize = newSize;
-	// TODO
+
+	cleanupSwapchain();
+
+	WGPUSwapChainDescriptor swapchainDesc = {};
+	swapchainDesc.format = swapchainFormat;
+	swapchainDesc.width = newSize.x;
+	swapchainDesc.height = newSize.y;
+	swapchainDesc.presentMode = WGPUPresentMode_Mailbox;
+	swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+	wgpuSwapchain = wgpuDeviceCreateSwapChain(wgpuDevice, wgpuSurface, &swapchainDesc);
+	if (!wgpuSwapchain) {
+		throw formatException("Failed to create swapchain");
+	}
 }
 
 void Context::resizeMainOutputConditional(const int2 &newSize) {
 	if (mainOutputSize != newSize) {
 		resizeMainOutput(newSize);
 	}
+}
+
+void Context::cleanupSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
+
+ErrorScope &Context::pushErrorScope(WGPUErrorFilter filter) {
+	auto errorScope = std::make_shared<ErrorScope>(this);
+	errorScopes.push_back(errorScope);
+	errorScope->push(filter);
+	return *errorScope.get();
+}
+
+std::shared_ptr<CopyBuffer> Context::pushCopyBuffer() {
+	auto buffer = std::make_shared<CopyBuffer>();
+	copyBuffers.push_back(buffer);
+	return buffer;
+}
+
+void Context::addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr) {
+	std::shared_ptr<WithContextData> sharedPtr = ptr.lock();
+	if (sharedPtr) {
+		contextDataObjects.insert_or_assign(sharedPtr.get(), ptr);
+	}
+}
+
+void Context::removeContextDataObjectInternal(WithContextData *ptr) { contextDataObjects.erase(ptr); }
+
+void Context::collectContextDataObjects() {
+	for (auto it = contextDataObjects.begin(); it != contextDataObjects.end();) {
+		if (it->second.expired()) {
+			it = contextDataObjects.erase(it);
+		} else {
+			it++;
+		}
+	}
+}
+
+void Context::releaseAllContextDataObjects() {
+	for (auto &obj : contextDataObjects) {
+		if (!obj.second.expired()) {
+			obj.first->releaseContextDataCondtional();
+		}
+	}
+	contextDataObjects.clear();
 }
 
 void Context::beginFrame(FrameRenderer *frameRenderer) {
@@ -152,6 +266,14 @@ void Context::beginFrame(FrameRenderer *frameRenderer) {
 void Context::endFrame(FrameRenderer *frameRenderer) {
 	assert(currentFrameRenderer == frameRenderer);
 	currentFrameRenderer = nullptr;
+
+	collectContextDataObjects();
+}
+
+void Context::sync() {
+#ifdef WEBGPU_NATIVE
+	wgpuDevicePoll(wgpuDevice, true);
+#endif
 }
 
 } // namespace gfx

@@ -1,7 +1,6 @@
 #pragma once
 #include "linalg.hpp"
 #include "math.hpp"
-
 #include "mesh.hpp"
 #include <vector>
 

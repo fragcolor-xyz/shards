@@ -9,11 +9,14 @@ endif()
 
 add_library(gfx
   context.cpp
+  context_data.cpp
   window.cpp
   loop.cpp
   frame.cpp
   view.cpp
   gfx_wgpu.cpp
+  mesh.cpp
+  geom.cpp
 )
 
 target_include_directories(gfx

@@ -15,7 +15,10 @@ void FrameRenderer::begin(FrameInputs &&inputs) {
 	// TODO: Set time uniform
 }
 
-void FrameRenderer::end() { context.endFrame(this); }
+void FrameRenderer::end() {
+	context.endFrame(this);
+	wgpuSwapChainPresent(context.wgpuSwapchain);
+}
 
 FrameRenderer *FrameRenderer::get(Context &context) { return context.getFrameRenderer(); }
 } // namespace gfx

@@ -1,9 +1,10 @@
 
 #pragma once
 
+#include "context_data.hpp"
 #include "enums.hpp"
+#include "gfx_wgpu.hpp"
 #include "linalg/linalg.h"
-#include "tinygltf/tiny_gltf.h"
 
 namespace gfx {
 
@@ -23,13 +24,37 @@ struct MeshVertexAttribute {
 	}
 };
 
-struct Mesh {
-	std::vector<MeshVertexAttribute> vertexAttributes;
-	PrimitiveType primitiveType = PrimitiveType::TriangleList;
-	WindingOrder windingOrder = WindingOrder::CCW;
+struct MeshContextData {
+	WGPUBuffer vertexBuffer = nullptr;
+	WGPUBuffer indexBuffer = nullptr;
+};
 
+struct Mesh : public TWithContextData<MeshContextData> {
+public:
+	struct Format {
+		PrimitiveType primitiveType = PrimitiveType::TriangleList;
+		WindingOrder windingOrder = WindingOrder::CCW;
+		IndexFormat indexFormat = IndexFormat::UInt16;
+		std::vector<MeshVertexAttribute> vertexAttributes;
+	};
+
+private:
+	Format format;
+	size_t numVertices = 0;
+	size_t numIndices = 0;
+	std::vector<uint8_t> vertexData;
+	std::vector<uint8_t> indexData;
+
+public:
 	Mesh() {}
-	~Mesh() {}
+	~Mesh() { releaseContextDataCondtional(); }
+
+	const Format &getFormat() const { return format; }
+	void update(const Format &format, const void *inVertexData, size_t vertexSize, const void *inIndexData, size_t indexSize);
+
+private:
+	void createContextData();
+	void releaseContextData();
 };
 using MeshPtr = std::shared_ptr<Mesh>;
 
