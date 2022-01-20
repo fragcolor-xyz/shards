@@ -54,6 +54,10 @@ jobs:
         if: ${{ matrix.threading == 'mt' }}
         run: |
           rustup component add rust-src --toolchain nightly
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          key: ${{ matrix.threading }}
       - name: Build
         run: |
           BOOST_ROOT=`pwd`/external/boost_1_76_0
@@ -155,6 +159,10 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev mesa-utils
           rustup update
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          key: ${{ matrix.build-type }}
       - name: Build
         run: |
           mkdir build
@@ -190,6 +198,8 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
           rustup update
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ matrix.build-type == 'Debug' && github.event_name == 'pull_request' }}
       - name: Build (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
@@ -322,6 +332,10 @@ jobs:
           cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
           cp ../../src/extra/shaders/gltf/*.* lib/gltf/
           cp ../../src/extra/shaders/include/*.* include/
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          key: ${{ matrix.test-tags }}
       - name: Build
         run: |
           cd build
@@ -472,6 +486,10 @@ jobs:
         run: |
           rustup update
           rustup default stable-${{ matrix.arch }}-pc-windows-gnu
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          key: ${{ matrix.build-type }}
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -806,6 +824,10 @@ jobs:
           brew install boost cmake ninja clang-format
           brew install openssl@1.1
           rustup update
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          key: ${{ matrix.build-type }}
       - name: Build
         run: |
           mkdir build
@@ -907,6 +929,8 @@ jobs:
           rustup update
           rustup target add x86_64-apple-ios
           rustup target add aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name == 'pull_request' }}
       - name: Build device
         run: |
           mkdir build
