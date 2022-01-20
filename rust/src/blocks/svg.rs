@@ -154,6 +154,7 @@ impl Block for ToImage {
     resvg::render(
       &rtree,
       usvg::FitTo::Size(pixmap_size.width(), pixmap_size.height()),
+      tiny_skia::Transform::default(),
       self.pixmap.as_mut().unwrap().as_mut(),
     )
     .ok_or("Failed to render SVG")?;
