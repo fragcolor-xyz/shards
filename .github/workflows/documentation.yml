@@ -189,25 +189,33 @@ jobs:
           name: docs-website
           path: docs/site
       - name: Publish to NFT storage
-        run: |
-          ./node_modules/.bin/ipfs-car --pack docs/site --output chainblocks-docs.car
-          curl -X POST https://api.nft.storage/upload \
-               --data-binary @chainblocks-docs.car \
-               -H "Authorization: Bearer ${{ secrets.NFT_STORAGE_KEY }}" \
-               -H "Content-Type: application/car" \
-               > response.json
-          cat response.json
-          if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: |
+            ./node_modules/.bin/ipfs-car --pack docs/site --output chainblocks-docs.car
+            curl -X POST https://api.nft.storage/upload \
+                --data-binary @chainblocks-docs.car \
+                -H "Authorization: Bearer ${{ secrets.NFT_STORAGE_KEY }}" \
+                -H "Content-Type: application/car" \
+                > response.json
+            cat response.json
+            if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
       - name: Set IPFS CID
         id: set_ipfs_cid
         run: |
           echo "::set-output name=ipfs_cid::$(cat response.json | jq .value.cid)"
       - name: Sync Cloudflare
-        run: |
-          curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/78646b6202c9ef585ff7dbe5670aaa7e" \
-               -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
-               -H "Content-Type: application/json" \
-               -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${{ steps.set_ipfs_cid.outputs.ipfs_cid }}/site\", \"ttl\": 1 }" \
-               > response.json
-          cat response.json
-          if [ $(cat response.json | jq .success) != "true" ]; then exit 1; fi
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: |
+            curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/78646b6202c9ef585ff7dbe5670aaa7e" \
+                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
+                -H "Content-Type: application/json" \
+                -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${{ steps.set_ipfs_cid.outputs.ipfs_cid }}/site\", \"ttl\": 1 }" \
+                > response.json
+            cat response.json
+            if [ $(cat response.json | jq .success) != "true" ]; then exit 1; fi
