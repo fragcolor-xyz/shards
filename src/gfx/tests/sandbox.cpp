@@ -3,11 +3,10 @@
 #include "gfx/enums.hpp"
 #include "gfx/frame.hpp"
 #include "gfx/geom.hpp"
-#include "gfx/hasherxxh128.hpp"
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
 #include "gfx/mesh.hpp"
-#include "gfx/paths.hpp"
+#include "gfx/renderer.hpp"
 #include "gfx/types.hpp"
 #include "gfx/view.hpp"
 #include "gfx/window.hpp"
@@ -31,6 +30,10 @@ struct App {
 
 	MeshPtr sphereMesh;
 	ViewPtr view;
+	Renderer renderer;
+	DrawQueue drawQueue;
+
+	App() : renderer(context) {}
 
 	void init(const char *hostElement) {
 		spdlog::debug("sandbox Init");
@@ -55,32 +58,13 @@ struct App {
 		};
 		sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
 						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
+
+		auto drawable = std::make_shared<Drawable>(sphereMesh);
+		drawQueue.add(drawable);
 	}
 
 	void renderFrame(gfx::FrameRenderer &frame) {
-		sphereMesh->createContextDataCondtional(&context);
-
-		WGPUDevice device = context.wgpuDevice;
-		WGPUCommandEncoderDescriptor desc = {};
-		WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
-
-		WGPURenderPassDescriptor passDesc = {};
-		passDesc.colorAttachmentCount = 1;
-		WGPURenderPassColorAttachment mainAttach = {};
-		mainAttach.clearColor = WGPUColor{.r = 1.0f, .g = 0.0f, .b = 1.0f, .a = 1.0f};
-		mainAttach.loadOp = WGPULoadOp_Clear;
-		mainAttach.view = wgpuSwapChainGetCurrentTextureView(context.wgpuSwapchain);
-		mainAttach.storeOp = WGPUStoreOp_Store;
-		passDesc.colorAttachments = &mainAttach;
-		passDesc.colorAttachmentCount = 1;
-
-		WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
-		wgpuRenderPassEncoderEndPass(pass);
-
-		WGPUCommandBufferDescriptor cmdBufDesc = {};
-		WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
-
-		wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
+		renderer.render(drawQueue, view);
 	}
 
 	void runMainLoop() {

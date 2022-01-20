@@ -15,8 +15,11 @@ add_library(gfx
   frame.cpp
   view.cpp
   gfx_wgpu.cpp
+  renderer.cpp
   mesh.cpp
   geom.cpp
+  drawable.cpp
+  enums.cpp
 )
 
 target_include_directories(gfx

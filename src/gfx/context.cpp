@@ -169,6 +169,14 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	}
 	spdlog::debug("Create wgpuDevice");
 
+	wgpuDeviceSetUncapturedErrorCallback(
+		wgpuDevice,
+		[](WGPUErrorType type, char const *message, void *userdata) {
+			spdlog::error("WEBGPU: {} ({})", message, type);
+			;
+		},
+		this);
+
 	wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
 
 	swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, wgpuAdapter);

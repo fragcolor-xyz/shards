@@ -17,8 +17,6 @@ size_t getVertexAttributeTypeSize(const VertexAttributeType &type) {
 		return sizeof(uint16_t);
 	case VertexAttributeType::UInt32:
 	case VertexAttributeType::Int32:
-	case VertexAttributeType::UNorm32:
-	case VertexAttributeType::SNorm32:
 		return sizeof(uint32_t);
 	case VertexAttributeType::Float16:
 		return sizeof(uint16_t);
@@ -38,6 +36,139 @@ size_t getIndexFormatSize(const IndexFormat &type) {
 	default:
 		assert(false);
 		return 0;
+	}
+}
+
+WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim) {
+	switch (type) {
+	case VertexAttributeType::UInt8:
+		if (dim == 2)
+			return WGPUVertexFormat_Uint8x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Uint8x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::Int8:
+		if (dim == 2)
+			return WGPUVertexFormat_Sint8x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Sint8x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::UNorm8:
+		if (dim == 2)
+			return WGPUVertexFormat_Unorm8x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Unorm8x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::SNorm8:
+		if (dim == 2)
+			return WGPUVertexFormat_Snorm8x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Snorm8x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::UInt16:
+
+		if (dim == 2)
+			return WGPUVertexFormat_Uint16x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Uint16x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::Int16:
+
+		if (dim == 2)
+			return WGPUVertexFormat_Sint16x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Sint16x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::UNorm16:
+
+		if (dim == 2)
+			return WGPUVertexFormat_Unorm16x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Unorm16x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::SNorm16:
+
+		if (dim == 2)
+			return WGPUVertexFormat_Snorm16x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Snorm16x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::UInt32:
+
+		if (dim == 1) {
+			return WGPUVertexFormat_Uint32;
+		} else if (dim == 2)
+			return WGPUVertexFormat_Uint32x2;
+		else if (dim == 3)
+			return WGPUVertexFormat_Uint32x3;
+		else if (dim == 4)
+			return WGPUVertexFormat_Uint32x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::Int32:
+		if (dim == 1) {
+			return WGPUVertexFormat_Sint32;
+		} else if (dim == 2)
+			return WGPUVertexFormat_Sint32x2;
+		else if (dim == 3)
+			return WGPUVertexFormat_Sint32x3;
+		else if (dim == 4)
+			return WGPUVertexFormat_Sint32x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::Float16:
+		if (dim == 2)
+			return WGPUVertexFormat_Float16x2;
+		else if (dim == 4)
+			return WGPUVertexFormat_Float16x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	case VertexAttributeType::Float32:
+		if (dim == 1) {
+			return WGPUVertexFormat_Float32;
+		} else if (dim == 2)
+			return WGPUVertexFormat_Float32x2;
+		else if (dim == 3)
+			return WGPUVertexFormat_Float32x3;
+		else if (dim == 4)
+			return WGPUVertexFormat_Float32x4;
+		else {
+			assert(false);
+			return WGPUVertexFormat_Force32;
+		}
+	default:
+		assert(false);
+		return WGPUVertexFormat_Force32;
 	}
 }
 } // namespace gfx

@@ -36,6 +36,13 @@ public:
 		WindingOrder windingOrder = WindingOrder::CCW;
 		IndexFormat indexFormat = IndexFormat::UInt16;
 		std::vector<MeshVertexAttribute> vertexAttributes;
+
+		template <typename T> void hashStatic(T &hasher) const {
+			hasher(primitiveType);
+			hasher(windingOrder);
+			hasher(indexFormat);
+			hasher(vertexAttributes);
+		}
 	};
 
 private:
