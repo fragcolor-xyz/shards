@@ -371,7 +371,6 @@ jobs:
   # Build chainblocks and publish docker image
   #
   Linux-docker:
-    needs: Linux
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -437,7 +436,6 @@ jobs:
   # Build chainblocks and run valgrind on Linux
   #
   Linux-valgrind:
-    needs: Linux
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
