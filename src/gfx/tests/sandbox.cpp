@@ -30,10 +30,10 @@ struct App {
 
 	MeshPtr sphereMesh;
 	ViewPtr view;
-	Renderer renderer;
+	std::shared_ptr<Renderer> renderer;
 	DrawQueue drawQueue;
 
-	App() : renderer(context) {}
+	App() {}
 
 	void init(const char *hostElement) {
 		spdlog::debug("sandbox Init");
@@ -44,7 +44,7 @@ struct App {
 		context.init(window, contextOptions);
 
 		view = std::make_shared<View>();
-		view->view = linalg::lookat_matrix(float3(0, 6.0f, -8.0f), float3(0, 0, 0), float3(0, 1, 0));
+		view->view = linalg::lookat_matrix(float3(0, 0.0f, 12.0f), float3(0, 0, 0), float3(0, 1, 0));
 		view->proj = ViewPerspectiveProjection{
 			degToRad(45.0f),
 			FovDirection::Horizontal,
@@ -59,12 +59,29 @@ struct App {
 		sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
 						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
 
-		auto drawable = std::make_shared<Drawable>(sphereMesh);
-		drawQueue.add(drawable);
+		{
+			auto drawable = std::make_shared<Drawable>(sphereMesh);
+			drawQueue.add(drawable);
+		}
+
+		{
+			auto drawable = std::make_shared<Drawable>(sphereMesh);
+			drawable->transform = linalg::translation_matrix(float3(2.5f, 0.0f, 0.0f));
+			drawQueue.add(drawable);
+		}
+
+		{
+			auto drawable = std::make_shared<Drawable>(sphereMesh);
+			drawable->transform = linalg::translation_matrix(float3(0.0f, 2.5f, 0.0f));
+			drawQueue.add(drawable);
+		}
+
+		renderer = std::make_shared<Renderer>(context);
 	}
 
 	void renderFrame(gfx::FrameRenderer &frame) {
-		renderer.render(drawQueue, view);
+		renderer->postFrameCleanup();
+		renderer->render(drawQueue, view);
 	}
 
 	void runMainLoop() {

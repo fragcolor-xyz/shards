@@ -61,6 +61,7 @@ struct Rect {
 
 	int getX1() const { return x + width; }
 	int getY1() const { return x + height; }
+	int2 getSize() const { return int2(width, height); }
 
 	static Rect fromCorners(int x0, int y0, int x1, int y1) {
 		return Rect(x0, y0, x1 - x0, y1 - y0);

@@ -6,12 +6,27 @@
 
 namespace gfx {
 
-void Mesh::update(const Format &format, const void *inVertexData, size_t vertexSize, const void *inIndexData, size_t indexSize) {
+void Mesh::update(const Format &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData, size_t indexDataLength) {
 	this->format = format;
-	vertexData.resize(vertexSize);
-	memcpy(vertexData.data(), inVertexData, vertexSize);
-	indexData.resize(indexSize);
-	memcpy(indexData.data(), inIndexData, indexSize);
+
+	vertexData.resize(vertexDataLength);
+	memcpy(vertexData.data(), inVertexData, vertexDataLength);
+
+	indexData.resize(indexDataLength);
+	memcpy(indexData.data(), inIndexData, indexDataLength);
+
+	size_t vertexSize = 0;
+	for (auto &attr : format.vertexAttributes) {
+		size_t typeSize = getVertexAttributeTypeSize(attr.type);
+		vertexSize += attr.numComponents * typeSize;
+	}
+
+	numVertices = vertexDataLength / vertexSize;
+	assert(numVertices * vertexSize == vertexDataLength);
+
+	size_t indexSize = getIndexFormatSize(format.indexFormat);
+	numIndices = indexDataLength / indexSize;
+	assert(numIndices * indexSize == indexDataLength);
 
 	releaseContextDataCondtional();
 }
@@ -26,6 +41,7 @@ void Mesh::createContextData() {
 	desc.size = vertexData.size();
 	desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
 	contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+	contextData.vertexBufferLength = desc.size;
 
 	auto vertexCopyBuffer = context->pushCopyBuffer();
 	vertexCopyBuffer->data = vertexData;
@@ -35,6 +51,7 @@ void Mesh::createContextData() {
 		desc.size = indexData.size();
 		desc.usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst;
 		contextData.indexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+		contextData.indexBufferLength = desc.size;
 
 		auto indexCopyBuffer = context->pushCopyBuffer();
 		indexCopyBuffer->data = indexData;

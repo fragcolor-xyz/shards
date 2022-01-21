@@ -26,7 +26,9 @@ struct MeshVertexAttribute {
 
 struct MeshContextData {
 	WGPUBuffer vertexBuffer = nullptr;
+	size_t vertexBufferLength = 0;
 	WGPUBuffer indexBuffer = nullptr;
+	size_t indexBufferLength = 0;
 };
 
 struct Mesh : public TWithContextData<MeshContextData> {
@@ -57,7 +59,12 @@ public:
 	~Mesh() { releaseContextDataCondtional(); }
 
 	const Format &getFormat() const { return format; }
-	void update(const Format &format, const void *inVertexData, size_t vertexSize, const void *inIndexData, size_t indexSize);
+
+	size_t getNumVertices() const { return numVertices; }
+	size_t getNumIndices() const { return numIndices; }
+
+	// Updates mesh data with length in bytes
+	void update(const Format &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData, size_t indexDataLength);
 
 private:
 	void createContextData();

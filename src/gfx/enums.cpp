@@ -171,4 +171,15 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
 		return WGPUVertexFormat_Force32;
 	}
 }
+WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type) {
+	switch (type) {
+	case IndexFormat::UInt16:
+		return WGPUIndexFormat_Uint16;
+	case IndexFormat::UInt32:
+		return WGPUIndexFormat_Uint32;
+	default:
+		assert(false);
+		return WGPUIndexFormat_Undefined;
+	}
+}
 } // namespace gfx
