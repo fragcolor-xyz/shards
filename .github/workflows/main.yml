@@ -162,7 +162,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
-          key: ${{ matrix.build-type }}
+          sharedKey: Linux-${{ matrix.build-type }}
       - name: Build
         run: |
           mkdir build
@@ -200,6 +200,8 @@ jobs:
           rustup update
       - uses: Swatinem/rust-cache@v1
         if: ${{ matrix.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
+        with:
+          sharedKey: Linux-${{ matrix.build-type }}
       - name: Build (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
@@ -335,7 +337,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
-          key: ${{ matrix.test-tags }}
+          sharedKey: Linux-Debug
       - name: Build
         run: |
           cd build
