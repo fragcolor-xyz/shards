@@ -30,31 +30,39 @@ struct MeshVertexAttribute {
   }
 };
 
-struct MeshContextData {
+struct MeshFormat {
+  PrimitiveType primitiveType = PrimitiveType::TriangleList;
+  WindingOrder windingOrder = WindingOrder::CCW;
+  IndexFormat indexFormat = IndexFormat::UInt16;
+  std::vector<MeshVertexAttribute> vertexAttributes;
+
+  template <typename T> void hashStatic(T &hasher) const {
+    hasher(primitiveType);
+    hasher(windingOrder);
+    hasher(indexFormat);
+    hasher(vertexAttributes);
+  }
+};
+
+struct MeshContextData : public ContextData {
+  MeshFormat format;
+  size_t numVertices = 0;
+  size_t numIndices = 0;
   WGPUBuffer vertexBuffer = nullptr;
   size_t vertexBufferLength = 0;
   WGPUBuffer indexBuffer = nullptr;
   size_t indexBufferLength = 0;
+
+  ~MeshContextData() { releaseConditional(); }
+  void release() {
+    WGPU_SAFE_RELEASE(wgpuBufferRelease, vertexBuffer);
+    WGPU_SAFE_RELEASE(wgpuBufferRelease, indexBuffer);
+  }
 };
 
-struct Mesh : public TWithContextData<MeshContextData> {
-public:
-  struct Format {
-    PrimitiveType primitiveType = PrimitiveType::TriangleList;
-    WindingOrder windingOrder = WindingOrder::CCW;
-    IndexFormat indexFormat = IndexFormat::UInt16;
-    std::vector<MeshVertexAttribute> vertexAttributes;
-
-    template <typename T> void hashStatic(T &hasher) const {
-      hasher(primitiveType);
-      hasher(windingOrder);
-      hasher(indexFormat);
-      hasher(vertexAttributes);
-    }
-  };
-
+struct Mesh final : public TWithContextData<MeshContextData> {
 private:
-  Format format;
+  MeshFormat format;
   size_t numVertices = 0;
   size_t numIndices = 0;
   std::vector<uint8_t> vertexData;
@@ -62,22 +70,21 @@ private:
 
 public:
   Mesh() {}
-  ~Mesh() { releaseContextDataCondtional(); }
+  ~Mesh() {}
 
-  const Format &getFormat() const { return format; }
+  const MeshFormat &getFormat() const { return format; }
 
   size_t getNumVertices() const { return numVertices; }
   size_t getNumIndices() const { return numIndices; }
 
   // Updates mesh data with length in bytes
-  void update(const Format &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData,
+  void update(const MeshFormat &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData,
               size_t indexDataLength);
-  void update(const Format &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData);
+  void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData);
 
-private:
+protected:
   void update();
-
-  void createContextData();
+  void initContextData(Context &context, MeshContextData &contextData);
   void releaseContextData();
 };
 using MeshPtr = std::shared_ptr<Mesh>;

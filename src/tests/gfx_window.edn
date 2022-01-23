@@ -1,13 +1,13 @@
 (def cube-layout ["position", "color"])
 (def cube
   {"Vertices"
-   [(Float3 -1.0  1.0  1.0) (Color 0xff 0x00 0x00 0x00)
-    (Float3  1.0  1.0  1.0) (Color 0xff 0x00 0x00 0xff)
-    (Float3 -1.0 -1.0  1.0) (Color 0xff 0x00 0xff 0x00)
-    (Float3  1.0 -1.0  1.0) (Color 0xff 0x00 0xff 0xff)
-    (Float3 -1.0  1.0 -1.0) (Color 0xff 0xff 0x00 0x00)
-    (Float3  1.0  1.0 -1.0) (Color 0xff 0xff 0x00 0xff)
-    (Float3 -1.0 -1.0 -1.0) (Color 0xff 0xff 0xff 0x00)
+   [(Float3 -1.0  1.0  1.0) (Color 0x00 0x00 0x00 0xff)
+    (Float3  1.0  1.0  1.0) (Color 0x00 0x00 0xff 0xff)
+    (Float3 -1.0 -1.0  1.0) (Color 0x00 0xff 0x00 0xff)
+    (Float3  1.0 -1.0  1.0) (Color 0x00 0xff 0xff 0xff)
+    (Float3 -1.0  1.0 -1.0) (Color 0xff 0x00 0x00 0xff)
+    (Float3  1.0  1.0 -1.0) (Color 0xff 0x00 0xff 0xff)
+    (Float3 -1.0 -1.0 -1.0) (Color 0xff 0xff 0x00 0xff)
     (Float3  1.0 -1.0 -1.0) (Color 0xff 0xff 0xff 0xff)]
    "Indices"
    [0 1 2
@@ -23,6 +23,7 @@
     2 3 6
     6 3 7]})
 
+(def timestep (/ 1.0 120.0))
 (def Root (Node))
 (def test-chain
   (Chain
@@ -34,9 +35,15 @@
     (-> (Setup
          cube (GFX.Mesh :Layout cube-layout) >= .mesh
          (Float3 0 0 0) (Math.Translation) >= .transform
-         (GFX.Drawable :Mesh .mesh :Transform .transform) >= .drawable
-         (Log "Drawable"))
-        (Log "Frame")))))
+         0.0 >= .time
+         (GFX.Drawable :Mesh .mesh :Transform .transform) >= .drawable)
+
+        .time (Math.Add timestep) >= .time
+        .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+        .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+        .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+        .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) >= .transform
+        .drawable (GFX.Draw)))))
 
 (schedule Root test-chain)
-(run Root (/ 1.0 120.0) 1.0)
+(run Root timestep)

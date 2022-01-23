@@ -24,7 +24,7 @@ struct MainWindowGlobals {
 struct Base {
   static inline const char *mainWindowGlobalsVarName = "GFX.MainWindow";
   static inline CBExposedTypeInfo mainWindowGlobalsInfo =
-      chainblocks::ExposedInfo::Variable(mainWindowGlobalsVarName, CBCCSTR("The main window context."), ContextType);
+      chainblocks::ExposedInfo::Variable(mainWindowGlobalsVarName, CBCCSTR("The main window context."), MainWindowGlobals::Type);
   static inline chainblocks::ExposedInfo requiredInfo = chainblocks::ExposedInfo(mainWindowGlobalsInfo);
 
   CBVar *_mainWindowGlobalsVar{nullptr};

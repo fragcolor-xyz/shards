@@ -1,4 +1,7 @@
 #pragma once
+#include "gfx_wgpu.hpp"
+#include "linalg.hpp"
+#include <functional>
 #include <memory>
 
 namespace gfx {
@@ -19,10 +22,22 @@ struct RendererImpl;
 struct Renderer {
   std::shared_ptr<RendererImpl> impl;
 
+  struct MainOutput {
+    WGPUTextureView view;
+    WGPUTextureFormat format;
+    int2 size;
+  };
+
 public:
   Renderer(Context &context);
-  void swapBuffers();
   void render(const DrawQueue &drawQueue, ViewPtr view);
+  void setMainOutput(const MainOutput &output);
+
+  // Call before frame rendering to swap buffers
+  void swapBuffers();
+
+  // Flushes rendering and cleans up all cached data kept by the renderer
+  void cleanup();
 };
 
 } // namespace gfx

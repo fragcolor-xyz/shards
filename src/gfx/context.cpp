@@ -17,7 +17,7 @@ void ErrorScope::push(WGPUErrorFilter filter) {
 #endif
 }
 void ErrorScope::pop(ErrorScope::Function &&function) {
-  this->function = [=](WGPUErrorType type, char const *message) {
+  this->function = [=, this](WGPUErrorType type, char const *message) {
     function(type, message);
     processed = true;
   };
@@ -32,9 +32,6 @@ void ErrorScope::staticCallback(WGPUErrorType type, char const *message, void *u
   ErrorScope *self = (ErrorScope *)userData;
   self->function(type, message);
 }
-
-Context::Context() {}
-Context::~Context() { cleanup(); }
 
 struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   union {
@@ -62,24 +59,81 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   }
 };
 
+struct ContextMainOutput {
+  Window *window{};
+  WGPUSwapChain wgpuSwapchain{};
+  WGPUSurface wgpuWindowSurface{};
+  WGPUTextureFormat swapchainFormat = WGPUTextureFormat_Undefined;
+  int2 currentSize{};
+
+  ContextMainOutput(Window &window) { this->window = &window; }
+  ~ContextMainOutput() { cleanupSwapchain(); }
+
+  WGPUSurface initSurface(WGPUInstance instance, void *overrideNativeWindowHandle) {
+    if (!wgpuWindowSurface) {
+      void *surfaceHandle = overrideNativeWindowHandle;
+      if (!surfaceHandle)
+        surfaceHandle = SDL_GetNativeWindowPtr(window->window);
+
+      WGPUPlatformSurfaceDescriptor surfDesc(surfaceHandle);
+      wgpuWindowSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
+    }
+
+    return wgpuWindowSurface;
+  }
+
+  void init(WGPUAdapter adapter, WGPUDevice device) {
+    swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
+    int2 mainOutputSize = window->getDrawableSize();
+    resizeSwapchain(device, mainOutputSize);
+  }
+
+  void resizeSwapchain(WGPUDevice device, const int2 &newSize) {
+    assert(newSize.x > 0 && newSize.y > 0);
+    assert(device);
+    assert(wgpuWindowSurface);
+    assert(swapchainFormat != WGPUTextureFormat_Undefined);
+
+    spdlog::debug("GFX.Context resized width: {} height: {}", newSize.x, newSize.y);
+    currentSize = newSize;
+
+    cleanupSwapchain();
+
+    WGPUSwapChainDescriptor swapchainDesc = {};
+    swapchainDesc.format = swapchainFormat;
+    swapchainDesc.width = newSize.x;
+    swapchainDesc.height = newSize.y;
+    swapchainDesc.presentMode = WGPUPresentMode_Fifo;
+    swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+    wgpuSwapchain = wgpuDeviceCreateSwapChain(device, wgpuWindowSurface, &swapchainDesc);
+    if (!wgpuSwapchain) {
+      throw formatException("Failed to create swapchain");
+    }
+  }
+
+  void cleanupSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
+};
+
+Context::Context() {}
+Context::~Context() { cleanup(); }
+
 void Context::init(Window &window, const ContextCreationOptions &options) {
+  mainOutput = std::make_shared<ContextMainOutput>(window);
+  mainOutput->initSurface(wgpuInstance, options.overrideNativeWindowHandle);
+
+  initCommon(options);
+}
+
+void Context::init(const ContextCreationOptions &options) { initCommon(options); }
+
+void Context::initCommon(const ContextCreationOptions &options) {
   spdlog::debug("GFX.Context init");
 
   assert(!isInitialized());
 
-  this->window = &window;
-  mainOutputSize = window.getDrawableSize();
-
-  void *surfaceHandle = options.overrideNativeWindowHandle;
-  if (!surfaceHandle)
-    surfaceHandle = SDL_GetNativeWindowPtr(window.window);
-
-  WGPUPlatformSurfaceDescriptor surfDesc(surfaceHandle);
-  wgpuSurface = wgpuInstanceCreateSurface(wgpuInstance, &surfDesc);
-
   WGPURequestAdapterOptions requestAdapter = {};
   requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
-  requestAdapter.compatibleSurface = wgpuSurface;
+  requestAdapter.compatibleSurface = mainOutput ? mainOutput->wgpuWindowSurface : nullptr;
   requestAdapter.forceFallbackAdapter = false;
 
 #ifdef WEBGPU_NATIVE
@@ -118,10 +172,11 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
       break;
     }
   });
+
   if (options.debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);
   } else {
-    wgpuSetLogLevel(WGPULogLevel_Info);
+    wgpuSetLogLevel(WGPULogLevel_Error);
   }
 #endif
 
@@ -179,8 +234,9 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 
   wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
 
-  swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuSurface, wgpuAdapter);
-  resizeMainOutput(mainOutputSize);
+  if (mainOutput) {
+    mainOutput->init(wgpuAdapter, wgpuDevice);
+  }
 
   initialized = true;
 }
@@ -189,40 +245,43 @@ void Context::cleanup() {
   spdlog::debug("GFX.Context cleanup");
   initialized = false;
 
-  releaseAllContextDataObjects();
+  releaseAllContextData();
 
-  cleanupSwapchain();
+  mainOutput.reset();
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
   WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
-  wgpuSurface = nullptr; // TODO: drop once c binding exists
   wgpuAdapter = nullptr; // TODO: drop once c binding exists
 }
 
-void Context::resizeMainOutput(const int2 &newSize) {
-  spdlog::debug("GFX.Context resized width: {} height: {}", newSize.x, newSize.y);
-  this->mainOutputSize = newSize;
-
-  cleanupSwapchain();
-
-  WGPUSwapChainDescriptor swapchainDesc = {};
-  swapchainDesc.format = swapchainFormat;
-  swapchainDesc.width = newSize.x;
-  swapchainDesc.height = newSize.y;
-  swapchainDesc.presentMode = WGPUPresentMode_Mailbox;
-  swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
-  wgpuSwapchain = wgpuDeviceCreateSwapChain(wgpuDevice, wgpuSurface, &swapchainDesc);
-  if (!wgpuSwapchain) {
-    throw formatException("Failed to create swapchain");
-  }
+Window &Context::getWindow() {
+  assert(mainOutput);
+  return *mainOutput->window;
 }
 
 void Context::resizeMainOutputConditional(const int2 &newSize) {
-  if (mainOutputSize != newSize) {
-    resizeMainOutput(newSize);
+  assert(mainOutput);
+  if (mainOutput->currentSize != newSize) {
+    mainOutput->resizeSwapchain(wgpuDevice, newSize);
   }
 }
 
-void Context::cleanupSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
+int2 Context::getMainOutputSize() const {
+  assert(mainOutput);
+  return mainOutput->currentSize;
+}
+
+WGPUTextureView Context::getMainOutputTextureView() {
+  assert(mainOutput);
+  assert(mainOutput->wgpuSwapchain);
+  return wgpuSwapChainGetCurrentTextureView(mainOutput->wgpuSwapchain);
+}
+
+WGPUTextureFormat Context::getMainOutputFormat() const {
+  assert(mainOutput);
+  return mainOutput->swapchainFormat;
+}
+
+bool Context::isHeadless() const { return !mainOutput; }
 
 ErrorScope &Context::pushErrorScope(WGPUErrorFilter filter) {
   auto errorScope = std::make_shared<ErrorScope>(this);
@@ -231,40 +290,43 @@ ErrorScope &Context::pushErrorScope(WGPUErrorFilter filter) {
   return *errorScope.get();
 }
 
-void Context::addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr) {
-  std::shared_ptr<WithContextData> sharedPtr = ptr.lock();
+void Context::addContextDataInternal(std::weak_ptr<ContextData> ptr) {
+  std::shared_ptr<ContextData> sharedPtr = ptr.lock();
   if (sharedPtr) {
-    contextDataObjects.insert_or_assign(sharedPtr.get(), ptr);
+    contextDatas.insert_or_assign(sharedPtr.get(), ptr);
   }
 }
 
-void Context::removeContextDataObjectInternal(WithContextData *ptr) { contextDataObjects.erase(ptr); }
+void Context::removeContextDataInternal(ContextData *ptr) { contextDatas.erase(ptr); }
 
-void Context::collectContextDataObjects() {
-  for (auto it = contextDataObjects.begin(); it != contextDataObjects.end();) {
+void Context::collectContextData() {
+  for (auto it = contextDatas.begin(); it != contextDatas.end();) {
     if (it->second.expired()) {
-      it = contextDataObjects.erase(it);
+      it = contextDatas.erase(it);
     } else {
       it++;
     }
   }
 }
 
-void Context::releaseAllContextDataObjects() {
-  for (auto &obj : contextDataObjects) {
+void Context::releaseAllContextData() {
+  auto contextDatas = std::move(this->contextDatas);
+  for (auto &obj : contextDatas) {
     if (!obj.second.expired()) {
-      obj.first->releaseContextDataCondtional();
+      obj.first->releaseConditional();
     }
   }
-  contextDataObjects.clear();
 }
 
 void Context::beginFrame() {
-  sync();
-  collectContextDataObjects();
+  collectContextData();
   errorScopes.clear();
 }
-void Context::endFrame() { present(); }
+
+void Context::endFrame() {
+  if (!isHeadless())
+    present();
+}
 
 void Context::sync() {
 #ifdef WEBGPU_NATIVE
@@ -272,6 +334,9 @@ void Context::sync() {
 #endif
 }
 
-void Context::present() { wgpuSwapChainPresent(wgpuSwapchain); }
+void Context::present() {
+  assert(mainOutput);
+  wgpuSwapChainPresent(mainOutput->wgpuSwapchain);
+}
 
 } // namespace gfx

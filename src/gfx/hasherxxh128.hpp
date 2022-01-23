@@ -54,10 +54,10 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
   }
 
   template <typename TVal> void operator()(const TVal &val) {
-    static_assert(canVisit<TVal>(0) || std::is_pod<TVal>::value, "Type can not be hashed");
+    static_assert(canVisit<TVal>(0) || std::is_trivial<TVal>::value, "Type can not be hashed");
     if constexpr (canVisit<TVal>(0)) {
       TVisitor{}(val, *this);
-    } else if constexpr (std::is_pod<TVal>::value) {
+    } else if constexpr (std::is_trivial<TVal>::value) {
       (*this)(&val, sizeof(val));
     }
   }

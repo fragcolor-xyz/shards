@@ -37,61 +37,60 @@ struct ImguiContext;
 struct Primitive;
 struct MaterialBuilderContext;
 struct Window;
-struct ContextImpl;
-struct WithContextData;
+struct ContextBackend;
+struct ContextData;
+struct ContextMainOutput;
 struct Context {
 private:
-  std::shared_ptr<ContextImpl> impl;
-  Window *window;
-  int2 mainOutputSize;
+  std::shared_ptr<ContextMainOutput> mainOutput;
   bool initialized = false;
 
 public:
   WGPUInstance wgpuInstance = nullptr;
-  WGPUSurface wgpuSurface = nullptr;
   WGPUAdapter wgpuAdapter = nullptr;
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
-  WGPUSwapChain wgpuSwapchain = nullptr;
-  WGPUTextureFormat swapchainFormat;
 
   std::vector<std::shared_ptr<ErrorScope>> errorScopes;
-  std::unordered_map<WithContextData *, std::weak_ptr<WithContextData>> contextDataObjects;
+  std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
 
 public:
   Context();
   ~Context();
 
+  // Initialize a context on a window's surface
   void init(Window &window, const ContextCreationOptions &options = ContextCreationOptions{});
+  // Initialize headless context
+  void init(const ContextCreationOptions &options = ContextCreationOptions{});
+
   void cleanup();
   bool isInitialized() const { return initialized; }
 
-  Window &getWindow() {
-    assert(window);
-    return *window;
-  }
-
-  int2 getMainOutputSize() const { return mainOutputSize; }
-  void resizeMainOutput(const int2 &newSize);
+  Window &getWindow();
   void resizeMainOutputConditional(const int2 &newSize);
-  void cleanupSwapchain();
+  int2 getMainOutputSize() const;
+  WGPUTextureView getMainOutputTextureView();
+  WGPUTextureFormat getMainOutputFormat() const;
+  bool isHeadless() const;
 
   // pushes state attached to a popErrorScope callback
   ErrorScope &pushErrorScope(WGPUErrorFilter filter = WGPUErrorFilter::WGPUErrorFilter_Validation);
 
   void beginFrame();
   void endFrame();
-
-  // start tracking an object implementing WithContextData so it's data is released with this context
-  void addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr);
-  void removeContextDataObjectInternal(WithContextData *ptr);
-
-private:
-  void present();
   void sync();
 
-  void collectContextDataObjects();
-  void releaseAllContextDataObjects();
+  // start tracking an object implementing WithContextData so it's data is released with this context
+  void addContextDataInternal(std::weak_ptr<ContextData> ptr);
+  void removeContextDataInternal(ContextData *ptr);
+
+private:
+  void initCommon(const ContextCreationOptions &options);
+
+  void present();
+
+  void collectContextData();
+  void releaseAllContextData();
 };
 
 } // namespace gfx

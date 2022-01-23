@@ -1,9 +1,10 @@
 #pragma once
 
+#include "filesystem.hpp"
 #include <string>
 
 namespace gfx {
 const char *getDataRootPath();
-void resolveDataPathInline(std::string &path);
-std::string resolveDataPath(const std::string &path);
+void resolveDataPathInline(fs::path &path);
+fs::path resolveDataPath(const fs::path &path);
 } // namespace gfx

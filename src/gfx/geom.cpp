@@ -151,5 +151,81 @@ void PlaneGenerator::generate() {
   }
 }
 
+// https://github.com/mrdoob/three.js/blob/master/src/geometries/PlaneGeometry.js
+void CubeGenerator::generate() {
+  reset();
+
+  size_t vertexOffset = 0;
+  auto buildPlane = [&](float u, float v, float w, float udir, float vdir, float width, float height, float depth, int gridX,
+                        int gridY) {
+    const float segmentWidth = width / gridX;
+    const float segmentHeight = height / gridY;
+
+    const float widthHalf = width / 2;
+    const float heightHalf = height / 2;
+    const float depthHalf = depth / 2;
+
+    const int gridX1 = gridX + 1;
+    const int gridY1 = gridY + 1;
+
+    // generate vertices, normals and uvs
+    size_t vertexCounter = 0;
+    for (auto iy = 0; iy < gridY1; iy++) {
+      const float y = iy * segmentHeight - heightHalf;
+
+      for (auto ix = 0; ix < gridX1; ix++) {
+        const float x = ix * segmentWidth - widthHalf;
+
+        VertexPNT &vertex = vertices.emplace_back();
+        ++vertexCounter;
+
+        float3 pos;
+        pos[u] = x * udir;
+        pos[v] = y * vdir;
+        pos[w] = depthHalf;
+        vertex.setPosition(pos);
+
+        float3 normal;
+        normal[u] = 0;
+        normal[v] = 0;
+        normal[w] = depth > 0 ? 1 : -1;
+        vertex.setNormal(normal);
+
+        float2 uv;
+        uv.x = (ix / gridX);
+        uv.y = (1 - (iy / gridY));
+        vertex.setTexCoord(uv);
+      }
+    }
+
+    // indices
+    for (auto iy = 0; iy < gridY; iy++) {
+      for (auto ix = 0; ix < gridX; ix++) {
+        const size_t a = vertexOffset + ix + gridX1 * iy;
+        const size_t b = vertexOffset + ix + gridX1 * (iy + 1);
+        const size_t c = vertexOffset + (ix + 1) + gridX1 * (iy + 1);
+        const size_t d = vertexOffset + (ix + 1) + gridX1 * iy;
+
+        // faces
+        indices.push_back(a);
+        indices.push_back(b);
+        indices.push_back(d);
+
+        indices.push_back(b);
+        indices.push_back(c);
+        indices.push_back(d);
+      }
+    }
+
+    vertexOffset += vertexCounter;
+  };
+
+  buildPlane(2, 1, 0, -1, -1, depth, height, width, depthSegments, heightSegments);  // px
+  buildPlane(2, 1, 0, 1, -1, depth, height, -width, depthSegments, heightSegments);  // nx
+  buildPlane(0, 2, 1, 1, 1, width, depth, height, widthSegments, depthSegments);     // py
+  buildPlane(0, 2, 1, 1, -1, width, depth, -height, widthSegments, depthSegments);   // ny
+  buildPlane(0, 1, 2, 1, -1, width, height, depth, widthSegments, heightSegments);   // pz
+  buildPlane(0, 1, 2, -1, -1, width, height, -depth, widthSegments, heightSegments); // nz
+}
 } // namespace geom
 } // namespace gfx

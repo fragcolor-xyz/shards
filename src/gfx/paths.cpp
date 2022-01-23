@@ -1,7 +1,5 @@
 #include "paths.hpp"
-#include "bx/string.h"
-#include <bx/file.h>
-#include <bx/filepath.h>
+#include "filesystem.hpp"
 
 #if _WIN32
 #include <Windows.h>
@@ -9,67 +7,59 @@
 
 namespace gfx {
 
+#if !defined(GFX_DATA_PATH)
 #if _WIN32
 static inline std::string getModuleFilename() {
-  char path[bx::kMaxFilePath];
-  GetModuleFileNameA(nullptr, path, sizeof(path));
-  return path;
+  std::string buffer;
+  buffer.resize(GetModuleFileNameA(nullptr, nullptr, 0));
+  buffer.resize(GetModuleFileNameA(nullptr, buffer.data(), buffer.size()));
+  return buffer;
 }
 #endif
 
-static bx::StringView getParentDirPath(const bx::FilePath &path) {
-  bx::StringView inPathString = path;
-  if (inPathString.isEmpty())
-    return inPathString;
+static fs::path findRootFolder(fs::path searchPath) {
+  while (!searchPath.empty()) {
+    fs::path testContentPath = searchPath;
+    testContentPath /= "content";
 
-  bx::FilePath fpNonTerm = bx::StringView(inPathString.getPtr(), inPathString.getTerm() - 1);
-  return fpNonTerm.getPath();
-}
-
-static bx::FilePath findRootFolder(bx::FilePath searchPath) {
-  while (!searchPath.isEmpty()) {
-    bx::FilePath testContentPath = searchPath;
-    testContentPath.join("content");
-
-    bx::FileInfo fileInfo;
-    if (bx::stat(fileInfo, testContentPath))
+    if (fs::exists(testContentPath))
       return searchPath;
 
-    searchPath = getParentDirPath(searchPath);
+    searchPath = searchPath.parent_path();
   }
 
-  return bx::FilePath();
+  return fs::path();
 }
 
 static const char *findRootPath() {
   static std::string result;
-  auto setResult = [&](bx::StringView strView) {
-    result = std::string(strView.getPtr(), strView.getTerm());
+  auto setResult = [&](fs::path strView) {
+    result = strView.string();
     return result.c_str();
   };
 
-  bx::FilePath rootFolder;
+  fs::path rootFolder;
 
 #if _WIN32
-  bx::FilePath moduleFilename = getModuleFilename().c_str();
-  bx::StringView modulePath = moduleFilename.getPath();
+  fs::path modulePath = getModuleFilename();
 
   rootFolder = findRootFolder(modulePath);
-  if (!rootFolder.isEmpty()) {
+  if (!rootFolder.empty()) {
     return setResult(rootFolder);
   }
 #endif
 
-  bx::FilePath currentFolder = bx::FilePath(bx::Dir::Current).getCPtr();
+  fs::path currentFolder = fs::current_path();
 
   rootFolder = findRootFolder(currentFolder);
-  if (!rootFolder.isEmpty()) {
+  if (!rootFolder.empty()) {
     return setResult(rootFolder);
   }
 
   // return current folder anyways
   return setResult(currentFolder);
 }
+#endif
 
 const char *getDataRootPath() {
 #if defined(GFX_DATA_PATH)
@@ -80,18 +70,17 @@ const char *getDataRootPath() {
   return rootPath;
 }
 
-void resolveDataPathInline(std::string &path) {
-  bx::FilePath inPath = path.c_str();
-  if (inPath.isAbsolute())
+void resolveDataPathInline(fs::path &path) {
+  fs::path inPath = path.c_str();
+  if (inPath.is_absolute())
     return;
 
-  bx::FilePath bxPath = getDataRootPath();
-  bxPath.join(inPath);
-  path = bxPath.getCPtr();
+  path = getDataRootPath();
+  path /= inPath;
 }
 
-std::string resolveDataPath(const std::string &path) {
-  std::string result = path;
+fs::path resolveDataPath(const fs::path &path) {
+  fs::path result = path;
   resolveDataPathInline(result);
   return result;
 }

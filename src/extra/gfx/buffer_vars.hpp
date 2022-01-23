@@ -149,10 +149,10 @@ template <typename Appender> inline void packIntoVertexBuffer(Appender &output, 
     value.g = uint8_t(var.payload.int4Value[1]);
     value.b = uint8_t(var.payload.int4Value[2]);
     value.a = uint8_t(var.payload.int4Value[3]);
-    output(&value, sizeof(CBColor));
+    output(&value, sizeof(uint8_t) * 4);
   } break;
   case CBType::Color:
-    output(&var.payload.colorValue.r, sizeof(CBColor));
+    output(&var.payload.colorValue.r, sizeof(uint8_t) * 4);
     break;
   case CBType::Seq:
     packIntoVertexBuffer(output, var.payload.seqValue);

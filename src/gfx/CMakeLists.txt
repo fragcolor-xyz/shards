@@ -14,8 +14,16 @@ add_library(gfx
   geom.cpp
   drawable.cpp
   enums.cpp
-  fields.cpp
+  params.cpp
+  paths.cpp
+  utils.cpp
+  feature.cpp
+  shader/generator.cpp
+  shader/blocks.cpp
+  # cache_data.cpp
 )
+
+target_compile_features(gfx PUBLIC cxx_std_20)
 
 target_include_directories(gfx
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -69,7 +77,7 @@ if(NOT EMSCRIPTEN)
 
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS}" cargo ${Rust_CARGO_TOOLCHAIN} build ${Rust_CARGO_UNSTABLE_FLAGS} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
+    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS} -g" cargo ${Rust_CARGO_TOOLCHAIN} build ${Rust_CARGO_UNSTABLE_FLAGS} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
     WORKING_DIRECTORY ${WGPU_NATIVE_PATH}
     DEPENDS ${SOURCES}
     USES_TERMINAL

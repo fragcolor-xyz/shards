@@ -5,6 +5,7 @@
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
 #include "gfx/mesh.hpp"
+#include "gfx/moving_average.hpp"
 #include "gfx/renderer.hpp"
 #include "gfx/types.hpp"
 #include "gfx/view.hpp"
@@ -28,6 +29,7 @@ struct App {
   Context context;
 
   MeshPtr sphereMesh;
+  MeshPtr cubeMesh;
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
   DrawQueue drawQueue;
@@ -40,10 +42,11 @@ struct App {
 
     gfx::ContextCreationOptions contextOptions = {};
     contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
+    contextOptions.debug = true;
     context.init(window, contextOptions);
 
     view = std::make_shared<View>();
-    view->view = linalg::lookat_matrix(float3(0, 0.0f, 12.0f), float3(0, 0, 0), float3(0, 1, 0));
+    view->view = linalg::lookat_matrix(float3(0, 50.0f, 50.0f), float3(0, 0, 0), float3(0, 1, 0));
     view->proj = ViewPerspectiveProjection{
         degToRad(45.0f),
         FovDirection::Horizontal,
@@ -52,34 +55,45 @@ struct App {
     geom::SphereGenerator sphereGen;
     sphereGen.generate();
     sphereMesh = std::make_shared<Mesh>();
-    Mesh::Format format = {
+    MeshFormat meshFormat = {
         .vertexAttributes = geom::VertexPNT::getAttributes(),
     };
-    sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(),
+    sphereMesh->update(meshFormat, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(),
                        sphereGen.indices.data(), sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
 
-    {
-      auto drawable = std::make_shared<Drawable>(sphereMesh);
-      drawQueue.add(drawable);
-    }
-
-    {
-      auto drawable = std::make_shared<Drawable>(sphereMesh);
-      drawable->transform = linalg::translation_matrix(float3(2.5f, 0.0f, 0.0f));
-      drawQueue.add(drawable);
-    }
-
-    {
-      auto drawable = std::make_shared<Drawable>(sphereMesh);
-      drawable->transform = linalg::translation_matrix(float3(0.0f, 2.5f, 0.0f));
-      drawQueue.add(drawable);
-    }
+    geom::CubeGenerator cubeGen;
+    cubeGen.generate();
+    cubeMesh = std::make_shared<Mesh>();
+    cubeMesh->update(meshFormat, cubeGen.vertices.data(), sizeof(geom::VertexPNT) * cubeGen.vertices.size(),
+                     cubeGen.indices.data(), sizeof(geom::GeneratorBase::index_t) * cubeGen.indices.size());
 
     renderer = std::make_shared<Renderer>(context);
+
+    buildDrawables();
+  }
+
+  std::vector<DrawablePtr> testDrawables;
+  void buildDrawables() {
+    int2 testGridDim = {8, 8};
+    for (size_t y = 0; y < testGridDim.y; y++) {
+      float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
+      for (size_t x = 0; x < testGridDim.x; x++) {
+        float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
+        auto mesh = (y % 2) == 0 ? cubeMesh : sphereMesh;
+        auto drawable = std::make_shared<Drawable>(mesh);
+        drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
+        testDrawables.push_back(drawable);
+      }
+    }
   }
 
   void renderFrame() {
-    renderer->swapBuffers();
+    drawQueue.clear();
+
+    for (auto &drawable : testDrawables) {
+      drawQueue.add(drawable);
+    }
+
     renderer->render(drawQueue, view);
   }
 
@@ -102,8 +116,19 @@ struct App {
       float deltaTime;
       if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
         context.beginFrame();
+        renderer->swapBuffers();
         renderFrame();
         context.endFrame();
+
+        static MovingAverage delaTimeMa(32);
+        delaTimeMa.add(deltaTime);
+
+        static float fpsCounter = 0.0f;
+        fpsCounter += deltaTime;
+        if (fpsCounter >= 1.0f) {
+          spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
+          fpsCounter = 0.0f;
+        }
       }
     }
   }

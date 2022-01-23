@@ -53,5 +53,17 @@ struct PlaneGenerator : public GeneratorBase {
   void generate();
 };
 
+struct CubeGenerator : public GeneratorBase {
+  float width = 1;
+  float height = 1;
+  float depth = 1;
+
+  size_t widthSegments = 2;
+  size_t heightSegments = 2;
+  size_t depthSegments = 2;
+
+  void generate();
+};
+
 } // namespace geom
 } // namespace gfx

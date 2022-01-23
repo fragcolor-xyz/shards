@@ -1,87 +1,63 @@
 #include "renderer.hpp"
 #include "context.hpp"
 #include "drawable.hpp"
-#include "fields.hpp"
+#include "feature.hpp"
+#include "features/base_color.hpp"
+#include "features/transforms.hpp"
 #include "hasherxxh128.hpp"
 #include "mesh.hpp"
+#include "params.hpp"
+#include "renderer_types.hpp"
+#include "shader/blocks.hpp"
+#include "shader/entry_point.hpp"
+#include "shader/generator.hpp"
+#include "shader/uniforms.hpp"
 #include "view.hpp"
+#include "view_texture.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
+#define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
+
 namespace gfx {
-
-struct UniformLayout {
-  size_t offset;
-  size_t size;
-  FieldType type;
-};
-
-struct UniformBufferLayout {
-  std::unordered_map<std::string, size_t> mapping;
-  std::vector<UniformLayout> items;
-  size_t size = ~0;
-
-  UniformBufferLayout() = default;
-  UniformBufferLayout(const UniformBufferLayout &other) = default;
-  UniformBufferLayout(UniformBufferLayout &&other) {
-    mapping = std::move(other.mapping);
-    items = std::move(other.items);
-    size = std::move(other.size);
-  }
-
-  UniformBufferLayout &operator=(const UniformBufferLayout &&other) {
-    mapping = std::move(other.mapping);
-    items = std::move(other.items);
-    size = std::move(other.size);
-    return *this;
-  }
-
-  UniformLayout &push(const std::string &name, UniformLayout &&layout) {
-    assert(mapping.find(name) == mapping.end());
-    size_t index = items.size();
-    items.emplace_back(layout);
-    mapping.insert_or_assign(name, index);
-    return items.back();
-  }
-};
-
-struct UniformBufferLayoutBuilder {
-  UniformBufferLayout bufferLayout;
-  size_t offset = 0;
-
-  UniformLayout generateNext(FieldType fieldType) const {
-    UniformLayout result;
-    result.offset = offset;
-    result.size = getFieldTypeSize(fieldType);
-    result.type = fieldType;
-    return result;
-  }
-
-  const UniformLayout &push(const std::string &name, UniformLayout &&layout) {
-    const UniformLayout &result = bufferLayout.push(name, std::move(layout));
-    offset = std::max(offset, layout.offset + layout.size);
-    return result;
-  }
-
-  const UniformLayout &push(const std::string &name, FieldType fieldType) { return push(name, generateNext(fieldType)); }
-
-  UniformBufferLayout &&finalize() {
-    bufferLayout.size = offset;
-    return std::move(bufferLayout);
-  }
-
-  void fill();
-};
+using shader::UniformBufferLayout;
+using shader::UniformBufferLayoutBuilder;
+using shader::UniformLayout;
 
 struct BindingLayout {
   UniformBufferLayout uniformBuffers;
 };
 
-struct PipelineInternal {
+struct CachedPipeline {
+  struct DrawGroup {
+    MeshContextData *mesh;
+    size_t startIndex;
+    size_t numInstances;
+    DrawGroup(MeshContextData *mesh, size_t startIndex, size_t numInstances)
+        : mesh(mesh), startIndex(startIndex), numInstances(numInstances) {}
+  };
+
+  MeshFormat meshFormat;
+  std::vector<const Feature *> features;
+  UniformBufferLayout objectBufferLayout;
+
   WGPURenderPipeline pipeline = {};
   WGPUShaderModule shaderModule = {};
   WGPUPipelineLayout pipelineLayout = {};
   std::vector<WGPUBindGroupLayout> bindGroupLayouts;
+
+  std::vector<Drawable *> drawables;
+  std::vector<Drawable *> drawablesSorted;
+  std::vector<DrawGroup> drawGroups;
+  DynamicWGPUBufferPool instanceBufferPool;
+
+  void reset() {
+    instanceBufferPool.reset();
+    drawables.clear();
+    drawablesSorted.clear();
+    drawGroups.clear();
+  }
+
   void release() {
     wgpuPipelineLayoutRelease(pipelineLayout);
     wgpuShaderModuleRelease(shaderModule);
@@ -91,33 +67,43 @@ struct PipelineInternal {
     }
   }
 };
-typedef std::shared_ptr<PipelineInternal> PipelineInternalPtr;
-
-struct PipelineGroup {
-  Mesh::Format meshFormat;
-  // BindingLayout bindingLayout;
-  WGPUBuffer objectBuffer;
-  WGPUBindGroup bindGroup;
-  std::vector<DrawablePtr> drawables;
-};
+typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 
 static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout, const DrawData &drawData) {
-  for (auto &pair : layout.mapping) {
-    const std::string &key = pair.first;
-    auto drawDataIt = drawData.data.find(key);
+  size_t layoutIndex = 0;
+  for (auto &fieldName : layout.fieldNames) {
+    auto drawDataIt = drawData.data.find(fieldName);
     if (drawDataIt != drawData.data.end()) {
-      const UniformLayout &itemLayout = layout.items[pair.second];
-      FieldType drawDataFieldType = getFieldVariantType(drawDataIt->second);
+      const UniformLayout &itemLayout = layout.items[layoutIndex];
+      ShaderParamType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
         spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", magic_enum::enum_name(itemLayout.type),
                      magic_enum::enum_name(drawDataFieldType));
         continue;
       }
 
-      packFieldVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
+      packParamVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
     }
+    layoutIndex++;
   }
 }
+
+struct CachedDrawableData {
+  Drawable *drawable;
+  CachedPipeline *pipeline;
+  Hash128 pipelineHash;
+};
+
+struct CachedViewData {
+  Swappable<DynamicWGPUBuffer, GFX_RENDERER_MAX_BUFFERED_FRAMES> viewBuffers;
+  ~CachedViewData() {}
+};
+typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
+
+struct FrameReferences {
+  std::vector<std::shared_ptr<ContextData>> contextDataReferences;
+  void clear() { contextDataReferences.clear(); }
+};
 
 struct RendererImpl {
   Context &context;
@@ -125,30 +111,54 @@ struct RendererImpl {
   WGPUSupportedLimits adapterLimits = {};
 
   UniformBufferLayout viewBufferLayout;
-  UniformBufferLayout objectBufferLayout;
-  std::vector<std::function<void()>> postFrameQueue;
+
+  Renderer::MainOutput mainOutput;
+  bool shouldUpdateMainOutputFromContext = false;
+
+  Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
+  Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
+
+  std::unordered_map<View *, CachedViewDataPtr> viewCache;
+  std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
+  std::unordered_map<Drawable *, CachedDrawableData> drawableCache;
+
+  size_t frameIndex = 0;
+  const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
+
+  std::unique_ptr<ViewTexture> depthTexture = std::make_unique<ViewTexture>(WGPUTextureFormat_Depth24Plus);
+
+  std::vector<FeaturePtr> testFeatures;
 
   RendererImpl(Context &context) : context(context) {
     UniformBufferLayoutBuilder viewBufferLayoutBuilder;
-    viewBufferLayoutBuilder.push("view", FieldType::Float4x4);
-    viewBufferLayoutBuilder.push("proj", FieldType::Float4x4);
-    viewBufferLayoutBuilder.push("invView", FieldType::Float4x4);
-    viewBufferLayoutBuilder.push("invProj", FieldType::Float4x4);
-    viewBufferLayoutBuilder.push("viewSize", FieldType::Float4x4);
+    viewBufferLayoutBuilder.push("view", ShaderParamType::Float4x4);
+    viewBufferLayoutBuilder.push("proj", ShaderParamType::Float4x4);
+    viewBufferLayoutBuilder.push("invView", ShaderParamType::Float4x4);
+    viewBufferLayoutBuilder.push("invProj", ShaderParamType::Float4x4);
+    viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
-
-    UniformBufferLayoutBuilder objectBufferLayoutBuilder;
-    objectBufferLayoutBuilder.push("world", FieldType::Float4x4);
-    objectBufferLayout = objectBufferLayoutBuilder.finalize();
 
     wgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
     wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
+
+    initTestFeatures();
   }
 
-  ~RendererImpl() { swapBuffers(); }
+  void initTestFeatures() {
+    testFeatures.push_back(features::Transform::create());
+    testFeatures.push_back(features::BaseColor::create());
+  }
 
-  size_t alignToMinUniformOffset(size_t size) const {
-    size_t alignment = deviceLimits.limits.minUniformBufferOffsetAlignment;
+  ~RendererImpl() {
+    context.sync();
+    swapBuffers();
+  }
+
+  size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
+  size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
+
+  size_t alignTo(size_t size, size_t alignTo) const {
+    size_t alignment = alignTo;
     if (alignment == 0)
       return size;
 
@@ -159,25 +169,46 @@ struct RendererImpl {
     return size;
   }
 
+  void updateMainOutputFromContext() {
+    mainOutput.format = context.getMainOutputFormat();
+    mainOutput.view = context.getMainOutputTextureView();
+    mainOutput.size = context.getMainOutputSize();
+  }
+
   void renderView(const DrawQueue &drawQueue, ViewPtr view) {
+    if (shouldUpdateMainOutputFromContext) {
+      updateMainOutputFromContext();
+    }
+
+    View *viewPtr = view.get();
+
     Rect viewport;
     int2 viewSize;
-    if (view->viewport) {
-      viewSize = view->viewport->getSize();
-      viewport = view->viewport.value();
+    if (viewPtr->viewport) {
+      viewSize = viewPtr->viewport->getSize();
+      viewport = viewPtr->viewport.value();
     } else {
-      viewSize = context.getMainOutputSize();
+      viewSize = mainOutput.size;
       viewport = Rect(0, 0, viewSize.x, viewSize.y);
     }
 
     DrawData viewDrawData;
-    viewDrawData.set_float4x4("view", view->view);
-    viewDrawData.set_float4x4("invView", linalg::inverse(view->view));
-    float4x4 projMatrix = view->getProjectionMatrix(viewSize);
-    viewDrawData.set_float4x4("proj", projMatrix);
-    viewDrawData.set_float4x4("invProj", linalg::inverse(projMatrix));
+    viewDrawData.setParam("view", viewPtr->view);
+    viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
+    float4x4 projMatrix = viewPtr->getProjectionMatrix(viewSize);
+    viewDrawData.setParam("proj", projMatrix);
+    viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
 
-    WGPUBuffer viewBuffer = createTransientUniformBuffer(viewBufferLayout.size, "viewUniform");
+    auto it = viewCache.find(viewPtr);
+    if (it == viewCache.end()) {
+      it = viewCache.insert(std::make_pair(viewPtr, std::make_shared<CachedViewData>())).first;
+    }
+    CachedViewData &viewData = *it->second.get();
+
+    DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers(frameIndex);
+    viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
+                      "viewUniform");
+
     std::vector<uint8_t> stagingBuffer;
     stagingBuffer.resize(viewBufferLayout.size);
     packDrawData(stagingBuffer.data(), stagingBuffer.size(), viewBufferLayout, viewDrawData);
@@ -186,18 +217,27 @@ struct RendererImpl {
     renderDrawablePass(drawQueue, view, viewport, viewBuffer);
   }
 
-  WGPUBuffer createTransientUniformBuffer(size_t size, const char *label = nullptr) {
+  WGPUBuffer createTransientBuffer(size_t size, WGPUBufferUsageFlags flags, const char *label = nullptr) {
     WGPUBufferDescriptor desc = {};
     desc.size = size;
     desc.label = label;
-    desc.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
+    desc.usage = flags;
     WGPUBuffer buffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &desc);
-    onPostFrame([=]() { wgpuBufferRelease(buffer); });
+    onFrameCleanup([buffer]() { wgpuBufferRelease(buffer); });
     return buffer;
   }
 
-  void onPostFrame(std::function<void()> &&callback) { postFrameQueue.emplace_back(std::move(callback)); }
+  void addFrameReference(std::shared_ptr<ContextData> &&contextData) {
+    frameReferences(frameIndex).contextDataReferences.emplace_back(std::move(contextData));
+  }
+
+  void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
+
   void swapBuffers() {
+    frameIndex = (frameIndex + 1) % maxBufferedFrames;
+
+    frameReferences(frameIndex).clear();
+    auto &postFrameQueue = this->postFrameQueue(frameIndex);
     for (auto &cb : postFrameQueue) {
       cb();
     }
@@ -207,7 +247,9 @@ struct RendererImpl {
   struct Bindable {
     WGPUBuffer buffer;
     UniformBufferLayout layout;
-    Bindable(WGPUBuffer buffer, UniformBufferLayout layout) : buffer(buffer), layout(layout) {}
+    size_t overrideSize = ~0;
+    Bindable(WGPUBuffer buffer, UniformBufferLayout layout, size_t overrideSize = ~0)
+        : buffer(buffer), layout(layout), overrideSize(overrideSize) {}
   };
 
   WGPUBindGroup createBindGroup(WGPUDevice device, WGPUBindGroupLayout layout, std::vector<Bindable> bindables) {
@@ -220,13 +262,90 @@ struct RendererImpl {
       WGPUBindGroupEntry &entry = entries.emplace_back(WGPUBindGroupEntry{});
       entry.binding = counter++;
       entry.buffer = bindable.buffer;
-      entry.size = bindable.layout.size;
+      entry.size = (bindable.overrideSize != size_t(~0)) ? bindable.overrideSize : bindable.layout.size;
     }
 
     desc.entries = entries.data();
     desc.entryCount = entries.size();
     desc.layout = layout;
     return wgpuDeviceCreateBindGroup(device, &desc);
+  }
+
+  void clearPipelineCache() {
+    for (auto &pair : pipelineCache) {
+      pair.second->reset();
+    }
+  }
+
+  void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
+    size_t alignedObjectBufferSize =
+        alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment);
+    size_t numObjects = cachedPipeline.drawables.size();
+    size_t instanceBufferLength = numObjects * alignedObjectBufferSize;
+    instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
+
+    std::vector<uint8_t> drawDataTempBuffer;
+    drawDataTempBuffer.resize(instanceBufferLength);
+    for (size_t i = 0; i < numObjects; i++) {
+      Drawable *drawable = cachedPipeline.drawablesSorted[i];
+
+      DrawData objectDrawData;
+      objectDrawData.setParam("world", drawable->transform);
+
+      FeatureCallbackContext callbackContext{context, view, drawable};
+      for (const Feature *feature : cachedPipeline.features) {
+        for (const FeatureDrawDataFunction &drawDataGenerator : feature->drawData) {
+          // TODO: Catch mismatch errors here
+          drawDataGenerator(callbackContext, objectDrawData);
+        }
+      }
+
+      size_t bufferOffset = alignedObjectBufferSize * i;
+      size_t remainingBufferLength = instanceBufferLength - bufferOffset;
+
+      packDrawData(drawDataTempBuffer.data() + bufferOffset, remainingBufferLength, cachedPipeline.objectBufferLayout,
+                   objectDrawData);
+    }
+
+    wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
+  }
+
+  void groupDrawables(CachedPipeline &cachedPipeline) {
+    std::vector<Drawable *> &drawablesSorted = cachedPipeline.drawablesSorted;
+
+    // Sort drawables based on mesh binding
+    for (auto &drawable : cachedPipeline.drawables) {
+      drawable->mesh->createContextDataConditional(context);
+      addFrameReference(drawable->mesh->contextData);
+
+      auto comparison = [](const Drawable *left, const Drawable *right) {
+        return left->mesh->contextData < right->mesh->contextData;
+      };
+      auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), drawable, comparison);
+      drawablesSorted.insert(it, drawable);
+    }
+
+    // Creates draw call ranges based on mesh binding
+    if (drawablesSorted.size() > 0) {
+      size_t groupStart = 0;
+      MeshContextData *currentMeshData = drawablesSorted[0]->mesh->contextData.get();
+
+      auto finishGroup = [&](size_t currentIndex) {
+        size_t groupLength = currentIndex - groupStart;
+        if (groupLength > 0) {
+          cachedPipeline.drawGroups.emplace_back(currentMeshData, groupStart, groupLength);
+        }
+      };
+      for (size_t i = 1; i < drawablesSorted.size(); i++) {
+        MeshContextData *meshData = drawablesSorted[i]->mesh->contextData.get();
+        if (meshData != currentMeshData) {
+          finishGroup(i);
+          groupStart = i;
+          currentMeshData = meshData;
+        }
+      }
+      finishGroup(drawablesSorted.size());
+    }
   }
 
   void renderDrawablePass(const DrawQueue &drawQueue, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
@@ -236,72 +355,71 @@ struct RendererImpl {
 
     WGPURenderPassDescriptor passDesc = {};
     passDesc.colorAttachmentCount = 1;
+
     WGPURenderPassColorAttachment mainAttach = {};
     mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
     mainAttach.loadOp = WGPULoadOp_Clear;
-    mainAttach.view = wgpuSwapChainGetCurrentTextureView(context.wgpuSwapchain);
+    mainAttach.view = mainOutput.view;
     mainAttach.storeOp = WGPUStoreOp_Store;
+
+    WGPURenderPassDepthStencilAttachment depthAttach = {};
+    depthAttach.clearDepth = 1.0f;
+    depthAttach.depthLoadOp = WGPULoadOp_Clear;
+    depthAttach.depthStoreOp = WGPUStoreOp_Store;
+    depthAttach.view = depthTexture->update(device, viewport.getSize());
+
     passDesc.colorAttachments = &mainAttach;
     passDesc.colorAttachmentCount = 1;
+    passDesc.depthStencilAttachment = &depthAttach;
 
-    std::unordered_map<Hash128, PipelineGroup> groups;
-    groupByPipeline(drawQueue.getDrawables(), groups);
-    for (auto &pair : groups) {
-      PipelineGroup &group = pair.second;
+    clearPipelineCache();
+    groupByPipeline(drawQueue.getDrawables());
 
-      size_t alignedObjectBufferSize = alignToMinUniformOffset(objectBufferLayout.size);
-      size_t numObjects = group.drawables.size();
-      size_t bufferLength = numObjects * alignedObjectBufferSize;
-      group.objectBuffer = createTransientUniformBuffer(bufferLength, "objects");
-
-      std::vector<uint8_t> drawDataTempBuffer;
-      drawDataTempBuffer.resize(bufferLength);
-      for (size_t i = 0; i < numObjects; i++) {
-        DrawablePtr drawable = group.drawables[i];
-        drawable->mesh->createContextDataCondtional(&context);
-
-        DrawData worldDrawData;
-        worldDrawData.set_float4x4("world", drawable->transform);
-
-        size_t bufferOffset = alignedObjectBufferSize * i;
-        size_t remainingBufferLength = bufferLength - bufferOffset;
-        packDrawData(drawDataTempBuffer.data() + bufferOffset, remainingBufferLength, objectBufferLayout, worldDrawData);
+    for (auto &pair : pipelineCache) {
+      CachedPipeline &cachedPipeline = *pair.second.get();
+      if (!cachedPipeline.pipeline) {
+        buildObjectBufferLayout(cachedPipeline);
+        buildPipeline(cachedPipeline);
       }
 
-      wgpuQueueWriteBuffer(context.wgpuQueue, group.objectBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
+      groupDrawables(cachedPipeline);
     }
 
     WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
     wgpuRenderPassEncoderSetViewport(passEncoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
                                      (float)viewport.height, 0.0f, 1.0f);
 
-    for (auto &pair : groups) {
-      PipelineGroup &group = pair.second;
-      PipelineInternalPtr pipeline = buildPipeline(group);
-      onPostFrame([=]() { pipeline->release(); });
+    for (auto &pair : pipelineCache) {
+      CachedPipeline &cachedPipeline = *pair.second.get();
+      size_t drawBufferLength = cachedPipeline.objectBufferLayout.size * cachedPipeline.drawables.size();
 
+      DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
+      fillInstanceBuffer(instanceBuffer, cachedPipeline, view.get());
+
+      auto drawGroups = cachedPipeline.drawGroups;
       std::vector<Bindable> bindables = {
           Bindable(viewBuffer, viewBufferLayout),
-          Bindable(group.objectBuffer, objectBufferLayout),
+          Bindable(instanceBuffer, cachedPipeline.objectBufferLayout, drawBufferLength),
       };
-      WGPUBindGroup bindGroup = createBindGroup(device, pipeline->bindGroupLayouts[0], bindables);
-      onPostFrame([=]() { wgpuBindGroupRelease(bindGroup); });
+      WGPUBindGroup bindGroup = createBindGroup(device, cachedPipeline.bindGroupLayouts[0], bindables);
+      onFrameCleanup([bindGroup]() { wgpuBindGroupRelease(bindGroup); });
 
-      for (size_t i = 0; i < group.drawables.size(); i++) {
-        auto &drawable = group.drawables[i];
-        auto &mesh = drawable->mesh;
+      wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
+      wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, bindGroup, 0, nullptr);
 
-        size_t alignedObjectBufferSize = alignToMinUniformOffset(objectBufferLayout.size);
-        uint32_t objectBufferOffset = i * alignedObjectBufferSize;
-        wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, bindGroup, 1, &objectBufferOffset);
-        wgpuRenderPassEncoderSetPipeline(passEncoder, pipeline->pipeline);
-        wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, mesh->contextData.vertexBuffer, 0, 0);
-        if (mesh->contextData.indexBuffer) {
-          wgpuRenderPassEncoderSetIndexBuffer(passEncoder, mesh->contextData.indexBuffer,
-                                              getWGPUIndexFormat(mesh->getFormat().indexFormat), 0, 0);
-          wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), 1, 0, 0, 0);
+      for (auto &drawGroup : drawGroups) {
+        auto meshContextData = drawGroup.mesh;
+
+        wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, 0);
+        if (meshContextData->indexBuffer) {
+          WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
+          wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0, 0);
+
+          wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0,
+                                           drawGroup.startIndex);
         } else {
-          wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)mesh->getNumVertices(), 1, 0, 0);
+          wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0,
+                                    drawGroup.startIndex);
         }
       }
     }
@@ -314,77 +432,115 @@ struct RendererImpl {
     wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
   }
 
-  void groupByPipeline(const std::vector<DrawablePtr> &drawables, std::unordered_map<Hash128, PipelineGroup> &outGroups) {
+  void groupByPipeline(const std::vector<DrawablePtr> &drawables) {
+    // TODO: Paralellize
+    std::vector<const Feature *> features;
+    const std::vector<FeaturePtr> *featureSources[2] = {&testFeatures, nullptr};
     for (auto &drawable : drawables) {
-      HasherXXH128<HashStaticVistor> hasher;
-      hasher(drawable->mesh->getFormat());
-      Hash128 pipelineHash = hasher.getDigest();
+      Drawable *drawablePtr = drawable.get();
+      const Mesh &mesh = *drawablePtr->mesh.get();
 
-      auto it = outGroups.find(pipelineHash);
-      if (it == outGroups.end()) {
-        it = outGroups.insert(std::make_pair(pipelineHash, PipelineGroup())).first;
-        PipelineGroup &group = it->second;
-        group.meshFormat = drawable->mesh->getFormat();
+      features.clear();
+      for (auto &featureSource : featureSources) {
+        if (!featureSource)
+          continue;
+
+        for (auto &feature : *featureSource) {
+          features.push_back(feature.get());
+        }
       }
 
-      PipelineGroup &group = it->second;
-      group.drawables.push_back(drawable);
+      HasherXXH128 featureHasher;
+      for (auto &feature : features) {
+        // NOTE: Hashed by pointer since features are shared/ref-counted
+        featureHasher(feature);
+      }
+      Hash128 featureHash = featureHasher.getDigest();
+
+      auto drawableIt = drawableCache.find(drawablePtr);
+      if (drawableIt == drawableCache.end()) {
+        drawableIt = drawableCache.insert(std::make_pair(drawablePtr, CachedDrawableData{})).first;
+        auto drawableCache = drawableIt->second;
+        drawableCache.drawable = drawablePtr;
+
+        HasherXXH128<HashStaticVistor> hasher;
+        hasher(mesh.getFormat());
+        hasher(featureHash);
+        drawableCache.pipelineHash = hasher.getDigest();
+      }
+
+      Hash128 pipelineHash = drawableIt->second.pipelineHash;
+      auto it1 = pipelineCache.find(pipelineHash);
+      if (it1 == pipelineCache.end()) {
+        it1 = pipelineCache.insert(std::make_pair(pipelineHash, std::make_shared<CachedPipeline>())).first;
+        CachedPipeline &cachedPipeline = *it1->second.get();
+        cachedPipeline.meshFormat = mesh.getFormat();
+        cachedPipeline.features = features;
+      }
+
+      CachedPipelinePtr &pipelineGroup = it1->second;
+      pipelineGroup->drawables.push_back(drawablePtr);
     }
   }
 
-  std::shared_ptr<PipelineInternal> buildPipeline(PipelineGroup &group) {
+  shader::GeneratorOutput generateShader(const CachedPipeline &cachedPipeline) {
+    using namespace shader;
+    using namespace shader::blocks;
+
+    shader::Generator generator;
+    generator.meshFormat = cachedPipeline.meshFormat;
+
+    FieldType positionFieldType(ShaderFieldBaseType::Float32, 4);
+    FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+
+    generator.interpolatedFields.emplace_back("position", FieldType(ShaderFieldBaseType::Float32, 4));
+    generator.outputFields.emplace_back("color", colorFieldType);
+
+    // TODO: Deduce interpolated fields
+    generator.interpolatedFields.emplace_back("color", colorFieldType);
+
+    generator.viewBufferLayout = viewBufferLayout;
+    generator.objectBufferLayout = cachedPipeline.objectBufferLayout;
+
+    std::vector<const EntryPoint *> entryPoints;
+    for (auto &feature : cachedPipeline.features) {
+      for (auto &entryPoint : feature->shaderEntryPoints) {
+        entryPoints.push_back(&entryPoint);
+      }
+    }
+
+    return generator.build(entryPoints);
+  }
+
+  void buildObjectBufferLayout(CachedPipeline &cachedPipeline) {
+    UniformBufferLayoutBuilder objectBufferLayoutBuilder;
+    objectBufferLayoutBuilder.push("world", ShaderParamType::Float4x4);
+    for (const Feature *feature : cachedPipeline.features) {
+      for (auto &param : feature->shaderParams) {
+        objectBufferLayoutBuilder.push(param.name, param.type);
+      }
+    }
+
+    cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
+  }
+
+  void buildPipeline(CachedPipeline &cachedPipeline) {
+    FeaturePipelineState pipelineState{};
     WGPUDevice device = context.wgpuDevice;
 
-    std::shared_ptr<PipelineInternal> result = std::make_shared<PipelineInternal>();
+    shader::GeneratorOutput generatorOutput = generateShader(cachedPipeline);
 
     WGPUShaderModuleDescriptor moduleDesc = {};
     WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
-    wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
     moduleDesc.label = "pipeline";
-    wgslModuleDesc.code = R"(
-			struct View {
-				view: mat4x4<f32>;
-				proj: mat4x4<f32>;
-				invView: mat4x4<f32>;
-				invProj: mat4x4<f32>;
-				viewSize: mat4x4<f32>;
-			};
-
-			struct Object {
-				world: mat4x4<u32>;
-			};
-
-			[[group(0), binding(0)]]
-			var<uniform> u_view: View;
-
-			[[group(0), binding(1)]]
-			var<uniform> u_object: Object;
-
-			struct VertToFrag {
-				[[builtin(position)]] position: vec4<f32>;
-				[[location(0)]] normal: vec3<f32>;
-			};
-
-			[[stage(vertex)]]
-			fn vs_main([[location(0)]] position: vec3<f32>, [[location(1)]] normal: vec3<f32>) -> VertToFrag {
-				var v2f: VertToFrag;
-				let worldPosition = u_object.world * vec4<f32>(position.x, position.y, position.z, 1.0);
-				v2f.position = u_view.proj * u_view.view * worldPosition;
-				v2f.normal = normal;
-				return v2f;
-			}
-
-			[[stage(fragment)]]
-			fn fs_main(v2f: VertToFrag) -> [[location(0)]] vec4<f32> {
-				return vec4<f32>(1.0, 1.0, 1.0, 1.0);
-				// let absNormal = abs(v2f.normal);
-				// return vec4<f32>(absNormal.x, absNormal.y, absNormal.z, 1.0);
-			}
-		)";
     moduleDesc.nextInChain = &wgslModuleDesc.chain;
-    auto errorScope = context.pushErrorScope();
-    result->shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
-    assert(result->shaderModule);
+
+    wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+    wgslModuleDesc.code = generatorOutput.wgslSource.c_str();
+    spdlog::info("Generated WGSL:\n {}", generatorOutput.wgslSource);
+
+    cachedPipeline.shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
+    assert(cachedPipeline.shaderModule);
 
     WGPURenderPipelineDescriptor desc = {};
 
@@ -400,26 +556,25 @@ struct RendererImpl {
       WGPUBindGroupLayoutEntry &objectEntry = bindGroupLayoutEntries.emplace_back();
       objectEntry.binding = 1;
       objectEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
-      objectEntry.buffer.type = WGPUBufferBindingType_Uniform;
-      objectEntry.buffer.hasDynamicOffset = true;
-      objectEntry.buffer.minBindingSize = objectBufferLayout.size;
+      objectEntry.buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+      objectEntry.buffer.hasDynamicOffset = false;
       bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
       bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
       mainBindGroupLayout = wgpuDeviceCreateBindGroupLayout(device, &bindGroupLayoutDesc);
-      result->bindGroupLayouts.push_back(mainBindGroupLayout);
+      cachedPipeline.bindGroupLayouts.push_back(mainBindGroupLayout);
     }
     WGPUPipelineLayoutDescriptor pipelineLayoutDesc = {};
     pipelineLayoutDesc.bindGroupLayouts = &mainBindGroupLayout;
     pipelineLayoutDesc.bindGroupLayoutCount = 1;
-    desc.layout = result->pipelineLayout = wgpuDeviceCreatePipelineLayout(device, &pipelineLayoutDesc);
+    desc.layout = cachedPipeline.pipelineLayout = wgpuDeviceCreatePipelineLayout(device, &pipelineLayoutDesc);
 
     WGPUVertexState &vertex = desc.vertex;
 
     std::vector<WGPUVertexAttribute> attributes;
-    WGPUVertexBufferLayout vertexLayout;
+    WGPUVertexBufferLayout vertexLayout = {};
     size_t vertexStride = 0;
     size_t shaderLocationCounter = 0;
-    for (auto &attr : group.meshFormat.vertexAttributes) {
+    for (auto &attr : cachedPipeline.meshFormat.vertexAttributes) {
       WGPUVertexAttribute &wgpuAttribute = attributes.emplace_back();
       wgpuAttribute.offset = uint64_t(vertexStride);
       wgpuAttribute.format = getWGPUVertexFormat(attr.type, attr.numComponents);
@@ -435,15 +590,31 @@ struct RendererImpl {
     vertex.bufferCount = 1;
     vertex.buffers = &vertexLayout;
     vertex.constantCount = 0;
-    vertex.entryPoint = "vs_main";
-    vertex.module = result->shaderModule;
+    vertex.entryPoint = "vertex_main";
+    vertex.module = cachedPipeline.shaderModule;
 
     WGPUFragmentState fragmentState = {};
-    fragmentState.entryPoint = "fs_main";
-    fragmentState.module = result->shaderModule;
+    fragmentState.entryPoint = "fragment_main";
+    fragmentState.module = cachedPipeline.shaderModule;
+
     WGPUColorTargetState mainTarget = {};
-    mainTarget.format = context.swapchainFormat;
-    mainTarget.writeMask = WGPUColorWriteMask_All;
+    mainTarget.format = mainOutput.format;
+    mainTarget.writeMask = pipelineState.colorWrite.value_or(WGPUColorWriteMask_All);
+
+    WGPUBlendState blendState{};
+    if (pipelineState.blend.has_value()) {
+      blendState = pipelineState.blend.value();
+      mainTarget.blend = &blendState;
+    }
+
+    WGPUDepthStencilState depthStencilState{};
+    depthStencilState.format = depthTexture->getFormat();
+    depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
+    depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
+    depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
+    depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
+    desc.depthStencil = &depthStencilState;
+
     fragmentState.targets = &mainTarget;
     fragmentState.targetCount = 1;
     desc.fragment = &fragmentState;
@@ -451,28 +622,44 @@ struct RendererImpl {
     desc.multisample.count = 1;
     desc.multisample.mask = ~0;
 
-    desc.primitive.cullMode = WGPUCullMode_None; // TODO
-    desc.primitive.frontFace = group.meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
-    switch (group.meshFormat.primitiveType) {
+    desc.primitive.frontFace = cachedPipeline.meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
+    if (pipelineState.culling.value_or(true)) {
+      desc.primitive.cullMode = pipelineState.flipFrontFace.value_or(false) ? WGPUCullMode_Front : WGPUCullMode_Back;
+    } else {
+      desc.primitive.cullMode = WGPUCullMode_None;
+    }
+
+    switch (cachedPipeline.meshFormat.primitiveType) {
     case PrimitiveType::TriangleList:
       desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
       break;
     case PrimitiveType::TriangleStrip:
       desc.primitive.topology = WGPUPrimitiveTopology_TriangleStrip;
-      desc.primitive.stripIndexFormat = getWGPUIndexFormat(group.meshFormat.indexFormat);
+      desc.primitive.stripIndexFormat = getWGPUIndexFormat(cachedPipeline.meshFormat.indexFormat);
       break;
     }
 
-    result->pipeline = wgpuDeviceCreateRenderPipeline(device, &desc);
-    errorScope.pop(
-        [](WGPUErrorType type, char const *message) { spdlog::error("Failed to create pipeline({}): {}", type, message); });
-    return result;
-  };
+    cachedPipeline.pipeline = wgpuDeviceCreateRenderPipeline(device, &desc);
+  }
 };
 
-Renderer::Renderer(Context &context) { impl = std::make_shared<RendererImpl>(context); }
+Renderer::Renderer(Context &context) {
+  impl = std::make_shared<RendererImpl>(context);
+  if (!context.isHeadless()) {
+    impl->shouldUpdateMainOutputFromContext = true;
+  }
+}
 
 void Renderer::swapBuffers() { impl->swapBuffers(); }
 void Renderer::render(const DrawQueue &drawQueue, ViewPtr view) { impl->renderView(drawQueue, view); }
+void Renderer::setMainOutput(const MainOutput &output) {
+  impl->mainOutput = output;
+  impl->shouldUpdateMainOutputFromContext = false;
+}
+void Renderer::cleanup() {
+  Context &context = impl->context;
+  impl.reset();
+  impl = std::make_shared<RendererImpl>(context);
+}
 
 } // namespace gfx

@@ -45,3 +45,9 @@ struct WGPUDeviceReceiverData {
 };
 WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescriptor *descriptor,
                                         WGPUDeviceReceiverData *receiverData);
+
+#define WGPU_SAFE_RELEASE(_fn, _x) \
+  if (_x) {                        \
+    _fn(_x);                       \
+    _x = nullptr;                  \
+  }
