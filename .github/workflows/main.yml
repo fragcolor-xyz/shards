@@ -100,45 +100,6 @@ jobs:
           service: infura
           port: 5001
           protocol: https
-      - name: Copy Shaders
-        if: ${{ matrix.threading == 'st' }}
-        run: |
-          cp deps/bgfx/src/bgfx_shader.sh src/extra/shaders/include/bgfx_shader.h
-          cp deps/bgfx/src/bgfx_compute.sh src/extra/shaders/include/bgfx_compute.h
-          cp deps/bgfx/examples/common/shaderlib.sh src/extra/shaders/include/shaderlib.h
-      - name: Upload shaders to IPFS
-        if: ${{ matrix.threading == 'st' && github.event_name == 'push' }}
-        uses: chainblocks/ipfs-action@master
-        with:
-          path: src/extra/shaders/
-          service: infura
-          port: 5001
-          protocol: https
-
-  # WASI-modules:
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: Setup
-  #     run: |
-  #       git submodule update --init --recursive
-  #       sudo apt-get -y update
-  #       sudo apt-get -y install build-essential
-  #       wget -nv https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-12/wasi-sdk-12.0-linux.tar.gz
-  #       tar xzf wasi-sdk-12.0-linux.tar.gz
-  #   - name: Build
-  #     run: |
-  #       export WASISDK=`pwd`/wasi-sdk-12.0
-  #       cd deps/bgfx
-  #       make projgen
-  #       ls
-  #       cd .build/projects/gmake-linux
-  #       sh ../../../build-wasi.sh
-  #   - uses: actions/upload-artifact@master
-  #     with:
-  #       name: wasi-modules
-  #       path: |
-  #         deps/bgfx/.build/linux32_gcc/bin/shadercRelease.wasm
 
   #
   # Build chainblocks for linux
@@ -167,7 +128,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBGFX_OPENGL_VERSION=33 ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
           ninja cbl
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -207,7 +168,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
           ninja cbl
       - name: Download artifact (Release)
         if: ${{ matrix.build-type == 'Release' }}
@@ -264,24 +225,6 @@ jobs:
         run: |
           cd build
           ./cbl ../src/tests/blocks.clj
-      - name: Test Headless (bgfx)
-        uses: chainblocks/xvfb-action@master
-        with:
-          working-directory: ./build
-          run: |
-            ./cbl ../src/tests/bgfx.clj
-      - name: Test Headless (gizmos)
-        uses: chainblocks/xvfb-action@master
-        with:
-          working-directory: ./build
-          run: |
-            ./cbl ../src/tests/gizmos.edn
-      - name: Test Headless (imgui_demo)
-        uses: chainblocks/xvfb-action@master
-        with:
-          working-directory: ./build
-          run: |
-            ./cbl ../src/tests/imgui_demo.edn
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
@@ -304,10 +247,6 @@ jobs:
   Linux-test-extra:
     needs: Linux
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        test-tags: ["gfx", "gltf"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -325,23 +264,14 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
           rustup update
-          mkdir -p build/shaders/include
-          mkdir -p build/shaders/lib/gltf
-          cd build/shaders
-          wget https://github.com/fragcolor-xyz/chainblocks/files/5938139/shadercRelease.zip
-          unzip shadercRelease.zip
-          cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
-          cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
-          cp ../../src/extra/shaders/gltf/*.* lib/gltf/
-          cp ../../src/extra/shaders/include/*.* include/
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
           sharedKey: Linux-Debug
       - name: Build
         run: |
+          cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1 ..
           ninja test_runtime && ninja test_extra
       - name: Test
         env:
@@ -355,7 +285,7 @@ jobs:
         with:
           working-directory: ./build
           run: |
-            ./test_extra [${{ matrix.test-tags }}]
+            ./test_extra
       - name: CodeCov
         run: |
           mkdir coverage
@@ -620,12 +550,6 @@ jobs:
           # ./cbl ../src/tests/ws.clj
           echo "Running test: bigint"
           ./cbl ../src/tests/bigint.clj
-          echo "Running test: bgfx"
-          ./cbl ../src/tests/bgfx.clj
-          echo "Running test: gizmos"
-          ./cbl ../src/tests/gizmos.edn
-          echo "Running test: imgui_demo"
-          ./cbl ../src/tests/imgui_demo.edn
           echo "Running test: wasm"
           ./cbl ../src/tests/wasm.clj
           echo "Running test: eth"
