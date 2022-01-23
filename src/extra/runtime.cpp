@@ -7,10 +7,6 @@
 extern "C" void registerRustBlocks(CBCore *core);
 #endif
 
-namespace BGFX {
-extern void registerBGFXBlocks();
-}
-
 namespace gfx {
 extern void registerBlocks();
 }
@@ -58,10 +54,6 @@ namespace DSP {
 extern void registerBlocks();
 }
 
-#ifdef __EMSCRIPTEN__
-extern void registerEmscriptenShaderCompiler();
-#endif
-
 void cbInitExtras() {
 #if CHAINBLOCKS_WITH_RUST_BLOCKS
   registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
@@ -70,12 +62,7 @@ void cbInitExtras() {
 	Snappy::registerBlocks();
 	Brotli::registerBlocks();
 
-#ifdef __EMSCRIPTEN__
-	registerEmscriptenShaderCompiler();
-#endif
-
-	// BGFX::registerBGFXBlocks();
-	// gfx::registerBlocks();
+	gfx::registerBlocks();
 	// chainblocks::ImGui::registerImGuiBlocks();
 	// chainblocks::Gizmo::registerGizmoBlocks();
 	// XR::registerBlocks();

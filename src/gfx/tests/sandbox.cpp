@@ -1,7 +1,6 @@
 #include "gfx/context.hpp"
 #include "gfx/drawable.hpp"
 #include "gfx/enums.hpp"
-#include "gfx/frame.hpp"
 #include "gfx/geom.hpp"
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
@@ -79,13 +78,12 @@ struct App {
 		renderer = std::make_shared<Renderer>(context);
 	}
 
-	void renderFrame(gfx::FrameRenderer &frame) {
-		renderer->postFrameCleanup();
+	void renderFrame() {
+		renderer->swapBuffers();
 		renderer->render(drawQueue, view);
 	}
 
 	void runMainLoop() {
-		gfx::FrameRenderer frame(context);
 		bool quit = false;
 		while (!quit) {
 			std::vector<SDL_Event> events;
@@ -103,13 +101,9 @@ struct App {
 
 			float deltaTime;
 			if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
-				frame.begin(gfx::FrameInputs(deltaTime, loop.getAbsoluteTime(), 0, events));
-
-				// FRAME
-				renderFrame(frame);
-
-				frame.end();
-				context.sync();
+				context.beginFrame();
+				renderFrame();
+				context.endFrame();
 			}
 		}
 	}

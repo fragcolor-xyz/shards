@@ -12,7 +12,6 @@ add_library(gfx
   context_data.cpp
   window.cpp
   loop.cpp
-  frame.cpp
   view.cpp
   gfx_wgpu.cpp
   renderer.cpp

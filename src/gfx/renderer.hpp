@@ -21,7 +21,7 @@ struct Renderer {
 
 public:
 	Renderer(Context &context);
-	void postFrameCleanup();
+	void swapBuffers();
 	void render(const DrawQueue &drawQueue, ViewPtr view);
 };
 

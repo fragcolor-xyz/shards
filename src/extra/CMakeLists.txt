@@ -1,6 +1,6 @@
 set(extra_SOURCES
   runtime.cpp
-  # bgfx.cpp
+  gfx.cpp
   # imgui.cpp
   # xr.cpp
   # gizmo.cpp

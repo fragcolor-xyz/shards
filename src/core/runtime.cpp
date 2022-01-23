@@ -1894,7 +1894,7 @@ void error_handler(int err_sig) {
 
 #ifdef _WIN32
 #include "debugapi.h"
-static bool isDebuggerPresent() { return (bool)IsDebuggerPresent(); }
+static bool isDebuggerPresent() { return true; (bool)IsDebuggerPresent(); }
 #else
 constexpr bool isDebuggerPresent() { return false; }
 #endif
