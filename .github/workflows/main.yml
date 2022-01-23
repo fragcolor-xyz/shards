@@ -225,6 +225,12 @@ jobs:
         run: |
           cd build
           ./cbl ../src/tests/blocks.clj
+      - name: Test Headless (gfx)
+        uses: chainblocks/xvfb-action@master
+        with:
+          working-directory: ./build
+          run: |
+            ./cbl ../src/tests/gfx_window.clj
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
