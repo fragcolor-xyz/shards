@@ -156,3 +156,12 @@ if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
   add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
 endif()
+
+
+if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  set(LIB_PREFIX "")
+  set(LIB_SUFFIX ".lib")
+else()
+  set(LIB_PREFIX "lib")
+  set(LIB_SUFFIX ".a")
+endif()

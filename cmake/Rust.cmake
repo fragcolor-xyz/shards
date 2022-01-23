@@ -19,14 +19,8 @@ if(NOT Rust_CARGO_TARGET)
   endif()
 endif()
 
-
-if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
-  set(Rust_LIB_PREFIX "")
-  set(Rust_LIB_SUFFIX ".lib")
-else()
-  set(Rust_LIB_PREFIX "lib")
-  set(Rust_LIB_SUFFIX ".a")
-endif()
+set(Rust_LIB_PREFIX ${LIB_PREFIX})
+set(Rust_LIB_SUFFIX ${LIB_SUFFIX})
 
 message(STATUS "Rust_CARGO_TARGET = ${Rust_CARGO_TARGET}")
 
