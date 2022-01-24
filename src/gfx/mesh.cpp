@@ -48,8 +48,6 @@ void Mesh::createContextData() {
 	WGPUDevice device = context->wgpuDevice;
 	assert(device);
 
-	auto validation = context->pushErrorScope();
-
 	WGPUBufferDescriptor desc = {};
 	desc.size = vertexData.size();
 	desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
@@ -66,8 +64,6 @@ void Mesh::createContextData() {
 
 		wgpuQueueWriteBuffer(context->wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
 	}
-
-	validation.pop([](WGPUErrorType type, const char *msg) { spdlog::error("Failed to create buffer ({}): {}", magic_enum::enum_name(type), msg); });
 }
 
 void Mesh::releaseContextData() {

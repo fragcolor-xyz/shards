@@ -115,11 +115,12 @@ struct MainWindow : public Base {
 		// twice to actually own the data and release...
 		IterableExposedInfo rshared(data.shared);
 		IterableExposedInfo shared(rshared);
-		shared.push_back(ExposedInfo::ProtectedVariable("GFX.Context", CBCCSTR("The graphics context"), ContextType));
+		shared.push_back(ExposedInfo::ProtectedVariable(Base::mainWindowGlobalsVarName, CBCCSTR("The graphics context"), MainWindowGlobals::Type));
 		data.shared = shared;
+
 		_blocks.compose(data);
 
-		return data.inputType;
+		return CoreInfo::NoneType;
 	}
 
 	void warmup(CBContext *context) {
@@ -272,21 +273,58 @@ struct DrawableBlock {
 	}
 };
 
-struct Draw {
-	static inline Type DrawableVarType = Type::VariableOf(DrawableType);
-	static inline Type DrawableSeqType = Type::SeqOf(DrawableVarType);
-	static inline Types DrawableTypes{{DrawableVarType}, {DrawableVarType}};
+struct Draw : public BaseConsumer {
+	static inline Type DrawableSeqType = Type::SeqOf(DrawableType);
+	static inline Types DrawableTypes{DrawableType, DrawableSeqType};
 
 	static CBTypesInfo inputTypes() { return DrawableTypes; }
 	static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 	static CBParametersInfo parameters() { return CBParametersInfo(); }
 
-	CBVar activate(CBContext *cbContext, const CBVar &input) { return CBVar{}; }
+	void warmup(CBContext *cbContext) { baseConsumerWarmup(cbContext); }
+	void cleanup() { baseConsumerCleanup(); }
+	CBTypeInfo compose(const CBInstanceData &data) {
+		if (data.inputType.basicType == CBType::Seq) {
+			OVERRIDE_ACTIVATE(data, activateSeq);
+		} else {
+			OVERRIDE_ACTIVATE(data, activateSingle);
+		}
+		return CoreInfo::NoneType;
+	}
+
+	void addDrawableToQueue(DrawablePtr drawable) {
+		auto &dq = getMainWindowGlobals().drawQueue;
+		dq.add(drawable);
+	}
+
+	CBVar activateSeq(CBContext *cbContext, const CBVar &input) {
+		spdlog::info("activate GFX.Draw [Seq]");
+
+		auto &seq = input.payload.seqValue;
+		for (size_t i = 0; i < seq.len; i++) {
+			DrawablePtr *drawablePtr = (DrawablePtr *)seq.elements[i].payload.objectValue;
+			assert(drawablePtr);
+			addDrawableToQueue(*drawablePtr);
+		}
+
+		return CBVar{};
+	}
+
+	CBVar activateSingle(CBContext *cbContext, const CBVar &input) {
+		spdlog::info("activate GFX.Draw [Single]");
+
+		DrawablePtr *drawablePtr = (DrawablePtr *)input.payload.objectValue;
+		addDrawableToQueue(*drawablePtr);
+
+		return CBVar{};
+	}
+
+	CBVar activate(CBContext *cbContext, const CBVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
 };
 
 struct MeshBlock {
 	static inline Type VertexAttributeSeqType = Type::SeqOf(CoreInfo::StringType);
-	static inline Types VerticesSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType}};
+	static inline Types VerticesSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType, CoreInfo::Int4Type}};
 	static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
 	static inline Types IndicesSeqTypes{{CoreInfo::IntType}};
 	static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
@@ -339,8 +377,6 @@ struct MeshBlock {
 			_mesh = nullptr;
 		}
 	}
-
-	CBTypeInfo compose(const CBInstanceData &data) { return Type::VariableOf(MeshType); }
 
 	void warmup(CBContext *context) {
 		_mesh = MeshObjectVar.New();

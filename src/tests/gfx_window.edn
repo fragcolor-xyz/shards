@@ -1,13 +1,13 @@
 (def cube-layout ["position", "color"])
 (def cube
   {"Vertices"
-   [(Float3 -1.0  1.0  1.0) (Color 0xff 0x00 0x00 0x00)
-    (Float3  1.0  1.0  1.0) (Color 0xff 0x00 0x00 0xff)
-    (Float3 -1.0 -1.0  1.0) (Color 0xff 0x00 0xff 0x00)
-    (Float3  1.0 -1.0  1.0) (Color 0xff 0x00 0xff 0xff)
-    (Float3 -1.0  1.0 -1.0) (Color 0xff 0xff 0x00 0x00)
-    (Float3  1.0  1.0 -1.0) (Color 0xff 0xff 0x00 0xff)
-    (Float3 -1.0 -1.0 -1.0) (Color 0xff 0xff 0xff 0x00)
+   [(Float3 -1.0  1.0  1.0) (Color 0x00 0x00 0x00 0xff)
+    (Float3  1.0  1.0  1.0) (Color 0x00 0x00 0xff 0xff)
+    (Float3 -1.0 -1.0  1.0) (Color 0x00 0xff 0x00 0xff)
+    (Float3  1.0 -1.0  1.0) (Color 0x00 0xff 0xff 0xff)
+    (Float3 -1.0  1.0 -1.0) (Color 0xff 0x00 0x00 0xff)
+    (Float3  1.0  1.0 -1.0) (Color 0xff 0x00 0xff 0xff)
+    (Float3 -1.0 -1.0 -1.0) (Color 0xff 0xff 0x00 0xff)
     (Float3  1.0 -1.0 -1.0) (Color 0xff 0xff 0xff 0xff)]
    "Indices"
    [0 1 2
@@ -34,9 +34,9 @@
     (-> (Setup
          cube (GFX.Mesh :Layout cube-layout) >= .mesh
          (Float3 0 0 0) (Math.Translation) >= .transform
-         (GFX.Drawable :Mesh .mesh :Transform .transform) >= .drawable
-         (Log "Drawable"))
+         (GFX.Drawable :Mesh .mesh :Transform .transform) >= .drawable)
+        [.drawable] (GFX.Draw)
         (Log "Frame")))))
 
 (schedule Root test-chain)
-(run Root (/ 1.0 120.0) 1.0)
+(run Root (/ 1.0 120.0))

@@ -20,7 +20,7 @@ protected:
 // Manages initialization/cleanup of context-specific data T attached to this object
 // NOTE: your destructor should call releaseContextDataCondtional still!
 template <typename T> struct TWithContextData : public WithContextData {
-	T contextData;
+	T contextData = {};
 
 	virtual void createContextDataCondtional(Context *context) final {
 		if (!this->context) {

@@ -13,15 +13,6 @@ typedef std::shared_ptr<Mesh> MeshPtr;
 
 constexpr uint32_t VendorId = 'cgfx';
 
-constexpr uint32_t WindowTypeId = '_wnd';
-static inline chainblocks::Type windowType{{CBType::Object, {.object = {.vendorId = VendorId, .typeId = WindowTypeId}}}};
-
-static constexpr uint32_t ContextTypeId = '_ctx';
-static inline chainblocks::Type ContextType{{CBType::Object, {.object = {.vendorId = VendorId, .typeId = ContextTypeId}}}};
-
-constexpr uint32_t ImguiContextTypeId = 'imui';
-static inline chainblocks::Type ImguiContextType{{CBType::Object, {.object = {.vendorId = VendorId, .typeId = ImguiContextTypeId}}}};
-
 static constexpr uint32_t DrawableTypeId = 'mesh';
 static inline chainblocks::Type DrawableType{{CBType::Object, {.object = {.vendorId = VendorId, .typeId = DrawableTypeId}}}};
 static chainblocks::ObjectVar<DrawablePtr> DrawableObjectVar{"GFX.Drawable", VendorId, DrawableTypeId};

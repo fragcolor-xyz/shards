@@ -11,9 +11,9 @@
 namespace gfx {
 
 struct UniformLayout {
-	size_t offset;
-	size_t size;
-	FieldType type;
+	size_t offset = {};
+	size_t size = {};
+	FieldType type = FieldType(~0);
 };
 
 struct UniformBufferLayout {
@@ -82,6 +82,7 @@ struct PipelineInternal {
 	WGPUShaderModule shaderModule = {};
 	WGPUPipelineLayout pipelineLayout = {};
 	std::vector<WGPUBindGroupLayout> bindGroupLayouts;
+
 	void release() {
 		wgpuPipelineLayoutRelease(pipelineLayout);
 		wgpuShaderModuleRelease(shaderModule);
@@ -95,7 +96,6 @@ typedef std::shared_ptr<PipelineInternal> PipelineInternalPtr;
 
 struct PipelineGroup {
 	Mesh::Format meshFormat;
-	// BindingLayout bindingLayout;
 	WGPUBuffer objectBuffer;
 	WGPUBindGroup bindGroup;
 	std::vector<DrawablePtr> drawables;
@@ -358,29 +358,27 @@ struct RendererImpl {
 			[[group(0), binding(1)]]
 			var<uniform> u_object: Object;
 
+
 			struct VertToFrag {
 				[[builtin(position)]] position: vec4<f32>;
-				[[location(0)]] normal: vec3<f32>;
+				[[location(0)]] color: vec4<f32>;
 			};
 
 			[[stage(vertex)]]
-			fn vs_main([[location(0)]] position: vec3<f32>, [[location(1)]] normal: vec3<f32>) -> VertToFrag {
+			fn vs_main([[location(0)]] position: vec3<f32>, [[location(1)]] color: vec4<f32>) -> VertToFrag {
 				var v2f: VertToFrag;
 				let worldPosition = u_object.world * vec4<f32>(position.x, position.y, position.z, 1.0);
 				v2f.position = u_view.proj * u_view.view * worldPosition;
-				v2f.normal = normal;
+				v2f.color = color;
 				return v2f;
 			}
 
 			[[stage(fragment)]]
 			fn fs_main(v2f: VertToFrag) -> [[location(0)]] vec4<f32> {
-				return vec4<f32>(1.0, 1.0, 1.0, 1.0);
-				// let absNormal = abs(v2f.normal);
-				// return vec4<f32>(absNormal.x, absNormal.y, absNormal.z, 1.0);
+				return v2f.color;
 			}
 		)";
 		moduleDesc.nextInChain = &wgslModuleDesc.chain;
-		auto errorScope = context.pushErrorScope();
 		result->shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
 		assert(result->shaderModule);
 
@@ -414,7 +412,7 @@ struct RendererImpl {
 		WGPUVertexState &vertex = desc.vertex;
 
 		std::vector<WGPUVertexAttribute> attributes;
-		WGPUVertexBufferLayout vertexLayout;
+		WGPUVertexBufferLayout vertexLayout = {};
 		size_t vertexStride = 0;
 		size_t shaderLocationCounter = 0;
 		for (auto &attr : group.meshFormat.vertexAttributes) {
@@ -462,7 +460,6 @@ struct RendererImpl {
 		}
 
 		result->pipeline = wgpuDeviceCreateRenderPipeline(device, &desc);
-		errorScope.pop([](WGPUErrorType type, char const *message) { spdlog::error("Failed to create pipeline({}): {}", type, message); });
 		return result;
 	};
 };

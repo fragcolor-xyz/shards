@@ -58,28 +58,26 @@ struct App {
 		sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
 						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
 
+		renderer = std::make_shared<Renderer>(context);
+	}
+
+	void renderFrame() {
+		drawQueue.clear();
 		{
 			auto drawable = std::make_shared<Drawable>(sphereMesh);
 			drawQueue.add(drawable);
 		}
-
 		{
 			auto drawable = std::make_shared<Drawable>(sphereMesh);
 			drawable->transform = linalg::translation_matrix(float3(2.5f, 0.0f, 0.0f));
 			drawQueue.add(drawable);
 		}
-
 		{
 			auto drawable = std::make_shared<Drawable>(sphereMesh);
 			drawable->transform = linalg::translation_matrix(float3(0.0f, 2.5f, 0.0f));
 			drawQueue.add(drawable);
 		}
 
-		renderer = std::make_shared<Renderer>(context);
-	}
-
-	void renderFrame() {
-		renderer->swapBuffers();
 		renderer->render(drawQueue, view);
 	}
 
@@ -102,6 +100,7 @@ struct App {
 			float deltaTime;
 			if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
 				context.beginFrame();
+				renderer->swapBuffers();
 				renderFrame();
 				context.endFrame();
 			}

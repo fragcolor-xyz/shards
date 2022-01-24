@@ -251,12 +251,12 @@ void Context::collectContextDataObjects() {
 }
 
 void Context::releaseAllContextDataObjects() {
+	auto contextDataObjects = std::move(this->contextDataObjects);
 	for (auto &obj : contextDataObjects) {
 		if (!obj.second.expired()) {
 			obj.first->releaseContextDataCondtional();
 		}
 	}
-	contextDataObjects.clear();
 }
 
 void Context::beginFrame() {
@@ -264,7 +264,10 @@ void Context::beginFrame() {
 	collectContextDataObjects();
 	errorScopes.clear();
 }
-void Context::endFrame() { present(); }
+
+void Context::endFrame() {
+	present();
+}
 
 void Context::sync() {
 #ifdef WEBGPU_NATIVE
@@ -272,6 +275,8 @@ void Context::sync() {
 #endif
 }
 
-void Context::present() { wgpuSwapChainPresent(wgpuSwapchain); }
+void Context::present() {
+	wgpuSwapChainPresent(wgpuSwapchain);
+}
 
 } // namespace gfx
