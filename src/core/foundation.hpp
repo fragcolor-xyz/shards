@@ -48,7 +48,11 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <boost/align/aligned_allocator.hpp>
 
 // TODO make it into a run-time param
+#ifndef NDEBUG
+#define CB_BASE_STACK_SIZE 1024 * 1024
+#else
 #define CB_BASE_STACK_SIZE 128 * 1024
+#endif
 
 #ifndef __EMSCRIPTEN__
 // For coroutines/context switches
