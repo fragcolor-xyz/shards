@@ -9,6 +9,7 @@
 #include "gfx/types.hpp"
 #include "gfx/view.hpp"
 #include "gfx/window.hpp"
+#include "gfx/moving_average.hpp"
 #include "linalg/linalg.h"
 #include "spdlog/spdlog.h"
 #include <SDL_events.h>
@@ -40,10 +41,11 @@ struct App {
 
 		gfx::ContextCreationOptions contextOptions = {};
 		contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
+		contextOptions.debug = false;
 		context.init(window, contextOptions);
 
 		view = std::make_shared<View>();
-		view->view = linalg::lookat_matrix(float3(0, 0.0f, 12.0f), float3(0, 0, 0), float3(0, 1, 0));
+		view->view = linalg::lookat_matrix(float3(0, 100.0f, 100.0f), float3(0, 0, 0), float3(0, 1, 0));
 		view->proj = ViewPerspectiveProjection{
 			degToRad(45.0f),
 			FovDirection::Horizontal,
@@ -63,19 +65,16 @@ struct App {
 
 	void renderFrame() {
 		drawQueue.clear();
-		{
-			auto drawable = std::make_shared<Drawable>(sphereMesh);
-			drawQueue.add(drawable);
-		}
-		{
-			auto drawable = std::make_shared<Drawable>(sphereMesh);
-			drawable->transform = linalg::translation_matrix(float3(2.5f, 0.0f, 0.0f));
-			drawQueue.add(drawable);
-		}
-		{
-			auto drawable = std::make_shared<Drawable>(sphereMesh);
-			drawable->transform = linalg::translation_matrix(float3(0.0f, 2.5f, 0.0f));
-			drawQueue.add(drawable);
+
+		int2 testGridDim = {64, 64};
+		for (size_t y = 0; y < testGridDim.y; y++) {
+			float fy = (y - float(testGridDim.y) / 2.0f);
+			for (size_t x = 0; x < testGridDim.x; x++) {
+				float fx = (x - float(testGridDim.x) / 2.0f);
+				auto drawable = std::make_shared<Drawable>(sphereMesh);
+				drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
+				drawQueue.add(drawable);
+			}
 		}
 
 		renderer->render(drawQueue, view);
@@ -103,6 +102,16 @@ struct App {
 				renderer->swapBuffers();
 				renderFrame();
 				context.endFrame();
+
+				static MovingAverage delaTimeMa(32);
+				delaTimeMa.add(deltaTime);
+
+				static float fpsCounter = 0.0f;
+				fpsCounter += deltaTime;
+				if (fpsCounter >= 1.0f) {
+					spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
+					fpsCounter = 0.0f;
+				}
 			}
 		}
 	}
