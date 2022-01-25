@@ -121,7 +121,7 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 	if (options.debug) {
 		wgpuSetLogLevel(WGPULogLevel_Debug);
 	} else {
-		wgpuSetLogLevel(WGPULogLevel_Info);
+		wgpuSetLogLevel(WGPULogLevel_Error);
 	}
 #endif
 
