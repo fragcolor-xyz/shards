@@ -66,7 +66,7 @@ struct App {
 	void renderFrame() {
 		drawQueue.clear();
 
-		int2 testGridDim = {64, 64};
+		int2 testGridDim = {1024, 64};
 		for (size_t y = 0; y < testGridDim.y; y++) {
 			float fy = (y - float(testGridDim.y) / 2.0f);
 			for (size_t x = 0; x < testGridDim.x; x++) {

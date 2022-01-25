@@ -128,6 +128,8 @@ struct RendererImpl {
 	UniformBufferLayout objectBufferLayout;
 	std::vector<std::function<void()>> postFrameQueue;
 
+	std::unordered_map<Hash128, PipelineInternalPtr> pipelineCache;
+
 	RendererImpl(Context &context) : context(context) {
 		UniformBufferLayoutBuilder viewBufferLayoutBuilder;
 		viewBufferLayoutBuilder.push("view", FieldType::Float4x4);
@@ -276,8 +278,16 @@ struct RendererImpl {
 
 		for (auto &pair : groups) {
 			PipelineGroup &group = pair.second;
-			PipelineInternalPtr pipeline = buildPipeline(group);
-			onPostFrame([=]() { pipeline->release(); });
+
+			PipelineInternalPtr pipeline;
+
+			auto it = pipelineCache.find(pair.first);
+			if (it != pipelineCache.end()) {
+				pipeline = it->second;
+			} else {
+				pipeline = buildPipeline(group);
+				pipelineCache.insert_or_assign(pair.first, pipeline);
+			}
 
 			std::vector<Bindable> bindables = {
 				Bindable(viewBuffer, viewBufferLayout),
