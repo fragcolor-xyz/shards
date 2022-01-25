@@ -118,6 +118,7 @@ void Context::init(Window &window, const ContextCreationOptions &options) {
 			break;
 		}
 	});
+
 	if (options.debug) {
 		wgpuSetLogLevel(WGPULogLevel_Debug);
 	} else {
@@ -265,9 +266,7 @@ void Context::beginFrame() {
 	errorScopes.clear();
 }
 
-void Context::endFrame() {
-	present();
-}
+void Context::endFrame() { present(); }
 
 void Context::sync() {
 #ifdef WEBGPU_NATIVE
@@ -275,8 +274,6 @@ void Context::sync() {
 #endif
 }
 
-void Context::present() {
-	wgpuSwapChainPresent(wgpuSwapchain);
-}
+void Context::present() { wgpuSwapChainPresent(wgpuSwapchain); }
 
 } // namespace gfx

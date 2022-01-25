@@ -20,6 +20,7 @@ struct UniformBufferLayout {
 	std::unordered_map<std::string, size_t> mapping;
 	std::vector<UniformLayout> items;
 	size_t size = ~0;
+	size_t maxAlignment = 0;
 
 	UniformBufferLayout() = default;
 	UniformBufferLayout(const UniformBufferLayout &other) = default;
@@ -60,6 +61,8 @@ struct UniformBufferLayoutBuilder {
 	const UniformLayout &push(const std::string &name, UniformLayout &&layout) {
 		const UniformLayout &result = bufferLayout.push(name, std::move(layout));
 		offset = std::max(offset, layout.offset + layout.size);
+		size_t fieldAlignment = getFieldTypeWGSLAlignment(layout.type);
+		bufferLayout.maxAlignment = std::max(bufferLayout.maxAlignment, fieldAlignment);
 		return result;
 	}
 
@@ -149,8 +152,11 @@ struct RendererImpl {
 
 	~RendererImpl() { swapBuffers(); }
 
-	size_t alignToMinUniformOffset(size_t size) const {
-		size_t alignment = deviceLimits.limits.minUniformBufferOffsetAlignment;
+	size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
+	size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
+
+	size_t alignTo(size_t size, size_t alignTo) const {
+		size_t alignment = alignTo;
 		if (alignment == 0)
 			return size;
 
@@ -179,7 +185,7 @@ struct RendererImpl {
 		viewDrawData.set_float4x4("proj", projMatrix);
 		viewDrawData.set_float4x4("invProj", linalg::inverse(projMatrix));
 
-		WGPUBuffer viewBuffer = createTransientUniformBuffer(viewBufferLayout.size, "viewUniform");
+		WGPUBuffer viewBuffer = createTransientBuffer(viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst, "viewUniform");
 		std::vector<uint8_t> stagingBuffer;
 		stagingBuffer.resize(viewBufferLayout.size);
 		packDrawData(stagingBuffer.data(), stagingBuffer.size(), viewBufferLayout, viewDrawData);
@@ -188,11 +194,11 @@ struct RendererImpl {
 		renderDrawablePass(drawQueue, view, viewport, viewBuffer);
 	}
 
-	WGPUBuffer createTransientUniformBuffer(size_t size, const char *label = nullptr) {
+	WGPUBuffer createTransientBuffer(size_t size, WGPUBufferUsageFlags flags, const char *label = nullptr) {
 		WGPUBufferDescriptor desc = {};
 		desc.size = size;
 		desc.label = label;
-		desc.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
+		desc.usage = flags;
 		WGPUBuffer buffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &desc);
 		onPostFrame([=]() { wgpuBufferRelease(buffer); });
 		return buffer;
@@ -209,7 +215,8 @@ struct RendererImpl {
 	struct Bindable {
 		WGPUBuffer buffer;
 		UniformBufferLayout layout;
-		Bindable(WGPUBuffer buffer, UniformBufferLayout layout) : buffer(buffer), layout(layout) {}
+		size_t overrideSize = ~0;
+		Bindable(WGPUBuffer buffer, UniformBufferLayout layout, size_t overrideSize = ~0) : buffer(buffer), layout(layout), overrideSize(overrideSize) {}
 	};
 
 	WGPUBindGroup createBindGroup(WGPUDevice device, WGPUBindGroupLayout layout, std::vector<Bindable> bindables) {
@@ -222,7 +229,7 @@ struct RendererImpl {
 			WGPUBindGroupEntry &entry = entries.emplace_back(WGPUBindGroupEntry{});
 			entry.binding = counter++;
 			entry.buffer = bindable.buffer;
-			entry.size = bindable.layout.size;
+			entry.size = (bindable.overrideSize != size_t(~0)) ? bindable.overrideSize : bindable.layout.size;
 		}
 
 		desc.entries = entries.data();
@@ -251,10 +258,10 @@ struct RendererImpl {
 		for (auto &pair : groups) {
 			PipelineGroup &group = pair.second;
 
-			size_t alignedObjectBufferSize = alignToMinUniformOffset(objectBufferLayout.size);
+			size_t alignedObjectBufferSize = alignToArrayBounds(objectBufferLayout.size, objectBufferLayout.maxAlignment);
 			size_t numObjects = group.drawables.size();
 			size_t bufferLength = numObjects * alignedObjectBufferSize;
-			group.objectBuffer = createTransientUniformBuffer(bufferLength, "objects");
+			group.objectBuffer = createTransientBuffer(bufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
 
 			std::vector<uint8_t> drawDataTempBuffer;
 			drawDataTempBuffer.resize(bufferLength);
@@ -289,25 +296,37 @@ struct RendererImpl {
 				pipelineCache.insert_or_assign(pair.first, pipeline);
 			}
 
+			size_t drawBufferLength = objectBufferLayout.size * group.drawables.size();
 			std::vector<Bindable> bindables = {
 				Bindable(viewBuffer, viewBufferLayout),
-				Bindable(group.objectBuffer, objectBufferLayout),
+				Bindable(group.objectBuffer, objectBufferLayout, drawBufferLength),
 			};
 			WGPUBindGroup bindGroup = createBindGroup(device, pipeline->bindGroupLayouts[0], bindables);
 			onPostFrame([=]() { wgpuBindGroupRelease(bindGroup); });
 
+			wgpuRenderPassEncoderSetPipeline(passEncoder, pipeline->pipeline);
+			wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, bindGroup, 0, nullptr);
+
+			WGPUBuffer lastVertexBuffer = nullptr;
+			WGPUBuffer lastIndexBuffer = nullptr;
 			for (size_t i = 0; i < group.drawables.size(); i++) {
 				auto &drawable = group.drawables[i];
 				auto &mesh = drawable->mesh;
 
-				size_t alignedObjectBufferSize = alignToMinUniformOffset(objectBufferLayout.size);
-				uint32_t objectBufferOffset = i * alignedObjectBufferSize;
-				wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, bindGroup, 1, &objectBufferOffset);
-				wgpuRenderPassEncoderSetPipeline(passEncoder, pipeline->pipeline);
-				wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, mesh->contextData.vertexBuffer, 0, 0);
+				if (lastVertexBuffer != mesh->contextData.vertexBuffer) {
+					wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, mesh->contextData.vertexBuffer, 0, 0);
+					lastVertexBuffer = mesh->contextData.vertexBuffer;
+				}
+
 				if (mesh->contextData.indexBuffer) {
-					wgpuRenderPassEncoderSetIndexBuffer(passEncoder, mesh->contextData.indexBuffer, getWGPUIndexFormat(mesh->getFormat().indexFormat), 0, 0);
-					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), 1, 0, 0, 0);
+					if (lastIndexBuffer != mesh->contextData.indexBuffer) {
+						wgpuRenderPassEncoderSetIndexBuffer(passEncoder, mesh->contextData.indexBuffer, getWGPUIndexFormat(mesh->getFormat().indexFormat), 0,
+															0);
+						lastIndexBuffer = mesh->contextData.indexBuffer;
+					}
+					// wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), 1, 0, 0, 0);
+					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), group.drawables.size(), 0, 0, 0);
+					break;
 				} else {
 					wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)mesh->getNumVertices(), 1, 0, 0);
 				}
@@ -361,13 +380,15 @@ struct RendererImpl {
 			struct Object {
 				world: mat4x4<u32>;
 			};
+			struct ObjectStorage {
+				arr: array<Object>;
+			};
 
 			[[group(0), binding(0)]]
 			var<uniform> u_view: View;
 
 			[[group(0), binding(1)]]
-			var<uniform> u_object: Object;
-
+			var<storage, read> u_objects: ObjectStorage;
 
 			struct VertToFrag {
 				[[builtin(position)]] position: vec4<f32>;
@@ -375,9 +396,10 @@ struct RendererImpl {
 			};
 
 			[[stage(vertex)]]
-			fn vs_main([[location(0)]] position: vec3<f32>, [[location(1)]] color: vec4<f32>) -> VertToFrag {
+			fn vs_main([[location(0)]] position: vec3<f32>, [[builtin(instance_index)]] index: u32, [[location(1)]] color: vec4<f32>) -> VertToFrag {
+				var object = u_objects.arr[index];
 				var v2f: VertToFrag;
-				let worldPosition = u_object.world * vec4<f32>(position.x, position.y, position.z, 1.0);
+				let worldPosition = object.world * vec4<f32>(position.x, position.y, position.z, 1.0);
 				v2f.position = u_view.proj * u_view.view * worldPosition;
 				v2f.color = color;
 				return v2f;
@@ -406,9 +428,9 @@ struct RendererImpl {
 			WGPUBindGroupLayoutEntry &objectEntry = bindGroupLayoutEntries.emplace_back();
 			objectEntry.binding = 1;
 			objectEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
-			objectEntry.buffer.type = WGPUBufferBindingType_Uniform;
-			objectEntry.buffer.hasDynamicOffset = true;
-			objectEntry.buffer.minBindingSize = objectBufferLayout.size;
+			objectEntry.buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+			objectEntry.buffer.hasDynamicOffset = false;
+			// objectEntry.buffer.minBindingSize = objectBufferLayout.size * 4;
 			bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
 			bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
 			mainBindGroupLayout = wgpuDeviceCreateBindGroupLayout(device, &bindGroupLayoutDesc);
