@@ -4,12 +4,14 @@
 #include "fields.hpp"
 #include "hasherxxh128.hpp"
 #include "mesh.hpp"
+#include "renderer_types.hpp"
 #include "view.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
-namespace gfx {
+#define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
+namespace gfx {
 struct UniformLayout {
 	size_t offset = {};
 	size_t size = {};
@@ -80,11 +82,16 @@ struct BindingLayout {
 	UniformBufferLayout uniformBuffers;
 };
 
-struct PipelineInternal {
+struct CachedPipeline {
+	Mesh::Format meshFormat;
+
 	WGPURenderPipeline pipeline = {};
 	WGPUShaderModule shaderModule = {};
 	WGPUPipelineLayout pipelineLayout = {};
 	std::vector<WGPUBindGroupLayout> bindGroupLayouts;
+
+	std::vector<Drawable *> drawables;
+	Swappable<DynamicWGPUBuffer, GFX_RENDERER_MAX_BUFFERED_FRAMES> instanceBuffers;
 
 	void release() {
 		wgpuPipelineLayoutRelease(pipelineLayout);
@@ -95,14 +102,7 @@ struct PipelineInternal {
 		}
 	}
 };
-typedef std::shared_ptr<PipelineInternal> PipelineInternalPtr;
-
-struct PipelineGroup {
-	Mesh::Format meshFormat;
-	WGPUBuffer objectBuffer;
-	WGPUBindGroup bindGroup;
-	std::vector<DrawablePtr> drawables;
-};
+typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 
 static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout, const DrawData &drawData) {
 	for (auto &pair : layout.mapping) {
@@ -122,6 +122,23 @@ static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 	}
 }
 
+struct CachedDrawableData {
+	Drawable *drawable;
+	CachedPipeline *pipeline;
+	Hash128 pipelineHash;
+};
+
+struct CachedViewData {
+	Swappable<DynamicWGPUBuffer, GFX_RENDERER_MAX_BUFFERED_FRAMES> viewBuffers;
+	~CachedViewData() {}
+};
+typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
+
+struct FrameReferences {
+	std::vector<std::shared_ptr<WithContextData>> contextDataReferences;
+	void clear() { contextDataReferences.clear(); }
+};
+
 struct RendererImpl {
 	Context &context;
 	WGPUSupportedLimits deviceLimits = {};
@@ -129,9 +146,17 @@ struct RendererImpl {
 
 	UniformBufferLayout viewBufferLayout;
 	UniformBufferLayout objectBufferLayout;
-	std::vector<std::function<void()>> postFrameQueue;
 
-	std::unordered_map<Hash128, PipelineInternalPtr> pipelineCache;
+	Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
+	Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
+
+	std::unordered_map<View *, CachedViewDataPtr> viewCache;
+	std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
+	// std::unordered_map<Drawable *, CachedDrawableData> drawableCache;
+	std::map<Drawable *, CachedDrawableData> drawableCache;
+
+	size_t frameIndex = 0;
+	const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
 	RendererImpl(Context &context) : context(context) {
 		UniformBufferLayoutBuilder viewBufferLayoutBuilder;
@@ -168,24 +193,34 @@ struct RendererImpl {
 	}
 
 	void renderView(const DrawQueue &drawQueue, ViewPtr view) {
+		View *viewPtr = view.get();
+
 		Rect viewport;
 		int2 viewSize;
-		if (view->viewport) {
-			viewSize = view->viewport->getSize();
-			viewport = view->viewport.value();
+		if (viewPtr->viewport) {
+			viewSize = viewPtr->viewport->getSize();
+			viewport = viewPtr->viewport.value();
 		} else {
 			viewSize = context.getMainOutputSize();
 			viewport = Rect(0, 0, viewSize.x, viewSize.y);
 		}
 
 		DrawData viewDrawData;
-		viewDrawData.set_float4x4("view", view->view);
-		viewDrawData.set_float4x4("invView", linalg::inverse(view->view));
-		float4x4 projMatrix = view->getProjectionMatrix(viewSize);
+		viewDrawData.set_float4x4("view", viewPtr->view);
+		viewDrawData.set_float4x4("invView", linalg::inverse(viewPtr->view));
+		float4x4 projMatrix = viewPtr->getProjectionMatrix(viewSize);
 		viewDrawData.set_float4x4("proj", projMatrix);
 		viewDrawData.set_float4x4("invProj", linalg::inverse(projMatrix));
 
-		WGPUBuffer viewBuffer = createTransientBuffer(viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst, "viewUniform");
+		auto it = viewCache.find(viewPtr);
+		if (it == viewCache.end()) {
+			it = viewCache.insert(std::make_pair(viewPtr, std::make_shared<CachedViewData>())).first;
+		}
+		CachedViewData &viewData = *it->second.get();
+
+		DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers(frameIndex);
+		viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst, "viewUniform");
+
 		std::vector<uint8_t> stagingBuffer;
 		stagingBuffer.resize(viewBufferLayout.size);
 		packDrawData(stagingBuffer.data(), stagingBuffer.size(), viewBufferLayout, viewDrawData);
@@ -200,12 +235,19 @@ struct RendererImpl {
 		desc.label = label;
 		desc.usage = flags;
 		WGPUBuffer buffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &desc);
-		onPostFrame([=]() { wgpuBufferRelease(buffer); });
+		onFrameCleanup([buffer]() { wgpuBufferRelease(buffer); });
 		return buffer;
 	}
 
-	void onPostFrame(std::function<void()> &&callback) { postFrameQueue.emplace_back(std::move(callback)); }
+	void addFrameReference(std::shared_ptr<WithContextData> &&contextData) {
+		frameReferences(frameIndex).contextDataReferences.emplace_back(std::move(contextData));
+	}
+	void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
 	void swapBuffers() {
+		frameIndex = (frameIndex + 1) % maxBufferedFrames;
+
+		frameReferences(frameIndex).clear();
+		auto &postFrameQueue = this->postFrameQueue(frameIndex);
 		for (auto &cb : postFrameQueue) {
 			cb();
 		}
@@ -253,64 +295,67 @@ struct RendererImpl {
 		passDesc.colorAttachments = &mainAttach;
 		passDesc.colorAttachmentCount = 1;
 
-		std::unordered_map<Hash128, PipelineGroup> groups;
-		groupByPipeline(drawQueue.getDrawables(), groups);
-		for (auto &pair : groups) {
-			PipelineGroup &group = pair.second;
+		clearPipelineCacheDrawables();
+		groupByPipeline(drawQueue.getDrawables());
+		for (auto &pair : pipelineCache) {
+			CachedPipelinePtr &pipeline = pair.second;
 
 			size_t alignedObjectBufferSize = alignToArrayBounds(objectBufferLayout.size, objectBufferLayout.maxAlignment);
-			size_t numObjects = group.drawables.size();
-			size_t bufferLength = numObjects * alignedObjectBufferSize;
-			group.objectBuffer = createTransientBuffer(bufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
+			size_t numObjects = pipeline->drawables.size();
+			size_t instanceBufferLength = numObjects * alignedObjectBufferSize;
+			DynamicWGPUBuffer &instanceBuffer = pipeline->instanceBuffers(frameIndex);
+			instanceBuffer.resize(device, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
 
 			std::vector<uint8_t> drawDataTempBuffer;
-			drawDataTempBuffer.resize(bufferLength);
+			drawDataTempBuffer.resize(instanceBufferLength);
 			for (size_t i = 0; i < numObjects; i++) {
-				DrawablePtr drawable = group.drawables[i];
+				Drawable *drawable = pipeline->drawables[i];
 				drawable->mesh->createContextDataCondtional(&context);
+				addFrameReference(drawable->mesh);
 
 				DrawData worldDrawData;
 				worldDrawData.set_float4x4("world", drawable->transform);
 
 				size_t bufferOffset = alignedObjectBufferSize * i;
-				size_t remainingBufferLength = bufferLength - bufferOffset;
+				size_t remainingBufferLength = instanceBufferLength - bufferOffset;
 				packDrawData(drawDataTempBuffer.data() + bufferOffset, remainingBufferLength, objectBufferLayout, worldDrawData);
 			}
 
-			wgpuQueueWriteBuffer(context.wgpuQueue, group.objectBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
+			wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
 		}
 
 		WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
 		wgpuRenderPassEncoderSetViewport(passEncoder, (float)viewport.x, (float)viewport.y, (float)viewport.width, (float)viewport.height, 0.0f, 1.0f);
 
-		for (auto &pair : groups) {
-			PipelineGroup &group = pair.second;
+		for (auto &pair : pipelineCache) {
+			CachedPipelinePtr &pipeline = pair.second;
+			std::vector<Drawable *> drawables = pipeline->drawables;
 
-			PipelineInternalPtr pipeline;
-
+			if (!pipeline->pipeline) {
+				buildPipeline(pipeline);
+			}
 			auto it = pipelineCache.find(pair.first);
 			if (it != pipelineCache.end()) {
 				pipeline = it->second;
 			} else {
-				pipeline = buildPipeline(group);
 				pipelineCache.insert_or_assign(pair.first, pipeline);
 			}
 
-			size_t drawBufferLength = objectBufferLayout.size * group.drawables.size();
+			size_t drawBufferLength = objectBufferLayout.size * pipeline->drawables.size();
 			std::vector<Bindable> bindables = {
 				Bindable(viewBuffer, viewBufferLayout),
-				Bindable(group.objectBuffer, objectBufferLayout, drawBufferLength),
+				Bindable(pipeline->instanceBuffers(frameIndex), objectBufferLayout, drawBufferLength),
 			};
 			WGPUBindGroup bindGroup = createBindGroup(device, pipeline->bindGroupLayouts[0], bindables);
-			onPostFrame([=]() { wgpuBindGroupRelease(bindGroup); });
+			onFrameCleanup([bindGroup]() { wgpuBindGroupRelease(bindGroup); });
 
 			wgpuRenderPassEncoderSetPipeline(passEncoder, pipeline->pipeline);
 			wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, bindGroup, 0, nullptr);
 
 			WGPUBuffer lastVertexBuffer = nullptr;
 			WGPUBuffer lastIndexBuffer = nullptr;
-			for (size_t i = 0; i < group.drawables.size(); i++) {
-				auto &drawable = group.drawables[i];
+			for (size_t i = 0; i < drawables.size(); i++) {
+				auto &drawable = drawables[i];
 				auto &mesh = drawable->mesh;
 
 				if (lastVertexBuffer != mesh->contextData.vertexBuffer) {
@@ -325,7 +370,7 @@ struct RendererImpl {
 						lastIndexBuffer = mesh->contextData.indexBuffer;
 					}
 					// wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), 1, 0, 0, 0);
-					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), group.drawables.size(), 0, 0, 0);
+					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), drawables.size(), 0, 0, 0);
 					break;
 				} else {
 					wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)mesh->getNumVertices(), 1, 0, 0);
@@ -341,28 +386,42 @@ struct RendererImpl {
 		wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
 	}
 
-	void groupByPipeline(const std::vector<DrawablePtr> &drawables, std::unordered_map<Hash128, PipelineGroup> &outGroups) {
-		for (auto &drawable : drawables) {
-			HasherXXH128<HashStaticVistor> hasher;
-			hasher(drawable->mesh->getFormat());
-			Hash128 pipelineHash = hasher.getDigest();
-
-			auto it = outGroups.find(pipelineHash);
-			if (it == outGroups.end()) {
-				it = outGroups.insert(std::make_pair(pipelineHash, PipelineGroup())).first;
-				PipelineGroup &group = it->second;
-				group.meshFormat = drawable->mesh->getFormat();
-			}
-
-			PipelineGroup &group = it->second;
-			group.drawables.push_back(drawable);
+	void clearPipelineCacheDrawables() {
+		for (auto &pair : pipelineCache) {
+			pair.second->drawables.clear();
 		}
 	}
 
-	std::shared_ptr<PipelineInternal> buildPipeline(PipelineGroup &group) {
-		WGPUDevice device = context.wgpuDevice;
+	void groupByPipeline(const std::vector<DrawablePtr> &drawables) {
+		for (auto &drawable : drawables) {
+			Drawable *drawablePtr = drawable.get();
 
-		std::shared_ptr<PipelineInternal> result = std::make_shared<PipelineInternal>();
+			auto drawableIt = drawableCache.find(drawablePtr);
+			if (drawableIt == drawableCache.end()) {
+				drawableIt = drawableCache.insert(std::make_pair(drawablePtr, CachedDrawableData{})).first;
+				auto drawableCache = drawableIt->second;
+				drawableCache.drawable = drawablePtr;
+
+				HasherXXH128<HashStaticVistor> hasher;
+				hasher(drawablePtr->mesh->getFormat());
+				drawableCache.pipelineHash = hasher.getDigest();
+			}
+
+			Hash128 pipelineHash = drawableIt->second.pipelineHash;
+			auto it1 = pipelineCache.find(pipelineHash);
+			if (it1 == pipelineCache.end()) {
+				it1 = pipelineCache.insert(std::make_pair(pipelineHash, std::make_shared<CachedPipeline>())).first;
+				CachedPipelinePtr &pipelineGroup = it1->second;
+				pipelineGroup->meshFormat = drawablePtr->mesh->getFormat();
+			}
+
+			CachedPipelinePtr &pipelineGroup = it1->second;
+			pipelineGroup->drawables.push_back(drawablePtr);
+		}
+	}
+
+	void buildPipeline(const CachedPipelinePtr &result) {
+		WGPUDevice device = context.wgpuDevice;
 
 		WGPUShaderModuleDescriptor moduleDesc = {};
 		WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
@@ -430,7 +489,6 @@ struct RendererImpl {
 			objectEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
 			objectEntry.buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
 			objectEntry.buffer.hasDynamicOffset = false;
-			// objectEntry.buffer.minBindingSize = objectBufferLayout.size * 4;
 			bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
 			bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
 			mainBindGroupLayout = wgpuDeviceCreateBindGroupLayout(device, &bindGroupLayoutDesc);
@@ -447,7 +505,7 @@ struct RendererImpl {
 		WGPUVertexBufferLayout vertexLayout = {};
 		size_t vertexStride = 0;
 		size_t shaderLocationCounter = 0;
-		for (auto &attr : group.meshFormat.vertexAttributes) {
+		for (auto &attr : result->meshFormat.vertexAttributes) {
 			WGPUVertexAttribute &wgpuAttribute = attributes.emplace_back();
 			wgpuAttribute.offset = uint64_t(vertexStride);
 			wgpuAttribute.format = getWGPUVertexFormat(attr.type, attr.numComponents);
@@ -480,19 +538,18 @@ struct RendererImpl {
 		desc.multisample.mask = ~0;
 
 		desc.primitive.cullMode = WGPUCullMode_None; // TODO
-		desc.primitive.frontFace = group.meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
-		switch (group.meshFormat.primitiveType) {
+		desc.primitive.frontFace = result->meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
+		switch (result->meshFormat.primitiveType) {
 		case PrimitiveType::TriangleList:
 			desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
 			break;
 		case PrimitiveType::TriangleStrip:
 			desc.primitive.topology = WGPUPrimitiveTopology_TriangleStrip;
-			desc.primitive.stripIndexFormat = getWGPUIndexFormat(group.meshFormat.indexFormat);
+			desc.primitive.stripIndexFormat = getWGPUIndexFormat(result->meshFormat.indexFormat);
 			break;
 		}
 
 		result->pipeline = wgpuDeviceCreateRenderPipeline(device, &desc);
-		return result;
 	};
 };
 

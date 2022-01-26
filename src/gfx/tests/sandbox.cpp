@@ -41,7 +41,7 @@ struct App {
 
 		gfx::ContextCreationOptions contextOptions = {};
 		contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
-		contextOptions.debug = false;
+		contextOptions.debug = true;
 		context.init(window, contextOptions);
 
 		view = std::make_shared<View>();
@@ -66,7 +66,7 @@ struct App {
 	void renderFrame() {
 		drawQueue.clear();
 
-		int2 testGridDim = {1024, 256};
+		int2 testGridDim = {2048, 128};
 		for (size_t y = 0; y < testGridDim.y; y++) {
 			float fy = (y - float(testGridDim.y) / 2.0f);
 			for (size_t x = 0; x < testGridDim.x; x++) {

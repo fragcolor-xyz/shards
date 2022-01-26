@@ -209,7 +209,7 @@ void Context::resizeMainOutput(const int2 &newSize) {
 	swapchainDesc.format = swapchainFormat;
 	swapchainDesc.width = newSize.x;
 	swapchainDesc.height = newSize.y;
-	swapchainDesc.presentMode = WGPUPresentMode_Mailbox;
+	swapchainDesc.presentMode = WGPUPresentMode_Fifo;
 	swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
 	wgpuSwapchain = wgpuDeviceCreateSwapChain(wgpuDevice, wgpuSurface, &swapchainDesc);
 	if (!wgpuSwapchain) {
@@ -261,7 +261,7 @@ void Context::releaseAllContextDataObjects() {
 }
 
 void Context::beginFrame() {
-	sync();
+	// sync();
 	collectContextDataObjects();
 	errorScopes.clear();
 }

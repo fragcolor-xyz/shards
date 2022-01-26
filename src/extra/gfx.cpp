@@ -345,8 +345,6 @@ struct MeshBlock {
 	std::vector<Var> _layout;
 	WindingOrder _windingOrder{WindingOrder::CCW};
 
-	std::vector<CBType> _expectedTypes;
-
 	MeshPtr *_mesh = {};
 
 	void setParam(int index, const CBVar &value) {
