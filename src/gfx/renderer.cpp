@@ -152,8 +152,7 @@ struct RendererImpl {
 
 	std::unordered_map<View *, CachedViewDataPtr> viewCache;
 	std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
-	// std::unordered_map<Drawable *, CachedDrawableData> drawableCache;
-	std::map<Drawable *, CachedDrawableData> drawableCache;
+	std::unordered_map<Drawable *, CachedDrawableData> drawableCache;
 
 	size_t frameIndex = 0;
 	const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
@@ -290,7 +289,7 @@ struct RendererImpl {
 		WGPURenderPassColorAttachment mainAttach = {};
 		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
 		mainAttach.loadOp = WGPULoadOp_Clear;
-		mainAttach.view = wgpuSwapChainGetCurrentTextureView(context.wgpuSwapchain);
+		mainAttach.view = context.getMainOutputTextureView();
 		mainAttach.storeOp = WGPUStoreOp_Store;
 		passDesc.colorAttachments = &mainAttach;
 		passDesc.colorAttachmentCount = 1;
@@ -528,7 +527,7 @@ struct RendererImpl {
 		fragmentState.entryPoint = "fs_main";
 		fragmentState.module = result->shaderModule;
 		WGPUColorTargetState mainTarget = {};
-		mainTarget.format = context.swapchainFormat;
+		mainTarget.format = context.getMainOutputFormat();
 		mainTarget.writeMask = WGPUColorWriteMask_All;
 		fragmentState.targets = &mainTarget;
 		fragmentState.targetCount = 1;

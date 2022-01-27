@@ -37,23 +37,19 @@ struct ImguiContext;
 struct Primitive;
 struct MaterialBuilderContext;
 struct Window;
-struct ContextImpl;
+struct ContextBackend;
 struct WithContextData;
+struct ContextMainOutput;
 struct Context {
 private:
-	std::shared_ptr<ContextImpl> impl;
-	Window *window;
-	int2 mainOutputSize;
+	std::shared_ptr<ContextMainOutput> mainOutput;
 	bool initialized = false;
 
 public:
 	WGPUInstance wgpuInstance = nullptr;
-	WGPUSurface wgpuSurface = nullptr;
 	WGPUAdapter wgpuAdapter = nullptr;
 	WGPUDevice wgpuDevice = nullptr;
 	WGPUQueue wgpuQueue = nullptr;
-	WGPUSwapChain wgpuSwapchain = nullptr;
-	WGPUTextureFormat swapchainFormat;
 
 	std::vector<std::shared_ptr<ErrorScope>> errorScopes;
 	std::unordered_map<WithContextData *, std::weak_ptr<WithContextData>> contextDataObjects;
@@ -62,19 +58,20 @@ public:
 	Context();
 	~Context();
 
+	// Initialize a context on a window's surface
 	void init(Window &window, const ContextCreationOptions &options = ContextCreationOptions{});
+	// Initialize headless context
+	void init(const ContextCreationOptions &options = ContextCreationOptions{});
+
 	void cleanup();
 	bool isInitialized() const { return initialized; }
 
-	Window &getWindow() {
-		assert(window);
-		return *window;
-	}
-
-	int2 getMainOutputSize() const { return mainOutputSize; }
-	void resizeMainOutput(const int2 &newSize);
+	Window &getWindow();
 	void resizeMainOutputConditional(const int2 &newSize);
-	void cleanupSwapchain();
+	int2 getMainOutputSize() const;
+	WGPUTextureView getMainOutputTextureView();
+	WGPUTextureFormat getMainOutputFormat() const;
+	bool isHeadless() const;
 
 	// pushes state attached to a popErrorScope callback
 	ErrorScope &pushErrorScope(WGPUErrorFilter filter = WGPUErrorFilter::WGPUErrorFilter_Validation);
@@ -87,6 +84,8 @@ public:
 	void removeContextDataObjectInternal(WithContextData *ptr);
 
 private:
+	void initCommon(const ContextCreationOptions &options);
+
 	void present();
 	void sync();
 

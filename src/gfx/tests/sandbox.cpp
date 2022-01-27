@@ -5,11 +5,11 @@
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
 #include "gfx/mesh.hpp"
+#include "gfx/moving_average.hpp"
 #include "gfx/renderer.hpp"
 #include "gfx/types.hpp"
 #include "gfx/view.hpp"
 #include "gfx/window.hpp"
-#include "gfx/moving_average.hpp"
 #include "linalg/linalg.h"
 #include "spdlog/spdlog.h"
 #include <SDL_events.h>
@@ -61,20 +61,29 @@ struct App {
 						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
 
 		renderer = std::make_shared<Renderer>(context);
+
+		buildDrawables();
 	}
 
-	void renderFrame() {
-		drawQueue.clear();
-
-		int2 testGridDim = {2048, 128};
+	std::vector<DrawablePtr> testDrawables;
+	void buildDrawables() {
+		int2 testGridDim = {64, 64};
 		for (size_t y = 0; y < testGridDim.y; y++) {
 			float fy = (y - float(testGridDim.y) / 2.0f);
 			for (size_t x = 0; x < testGridDim.x; x++) {
 				float fx = (x - float(testGridDim.x) / 2.0f);
 				auto drawable = std::make_shared<Drawable>(sphereMesh);
 				drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
-				drawQueue.add(drawable);
+				testDrawables.push_back(drawable);
 			}
+		}
+	}
+
+	void renderFrame() {
+		drawQueue.clear();
+
+		for (auto &drawable : testDrawables) {
+			drawQueue.add(drawable);
 		}
 
 		renderer->render(drawQueue, view);
