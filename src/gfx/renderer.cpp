@@ -147,6 +147,9 @@ struct RendererImpl {
 	UniformBufferLayout viewBufferLayout;
 	UniformBufferLayout objectBufferLayout;
 
+	Renderer::MainOutput mainOutput;
+	bool shouldUpdateMainOutputFromContext = false;
+
 	Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
 	Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
 
@@ -191,7 +194,17 @@ struct RendererImpl {
 		return size;
 	}
 
+	void updateMainOutputFromContext() {
+		mainOutput.format = context.getMainOutputFormat();
+		mainOutput.view = context.getMainOutputTextureView();
+		mainOutput.size = context.getMainOutputSize();
+	}
+
 	void renderView(const DrawQueue &drawQueue, ViewPtr view) {
+		if (shouldUpdateMainOutputFromContext) {
+			updateMainOutputFromContext();
+		}
+
 		View *viewPtr = view.get();
 
 		Rect viewport;
@@ -289,7 +302,7 @@ struct RendererImpl {
 		WGPURenderPassColorAttachment mainAttach = {};
 		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
 		mainAttach.loadOp = WGPULoadOp_Clear;
-		mainAttach.view = context.getMainOutputTextureView();
+		mainAttach.view = mainOutput.view;
 		mainAttach.storeOp = WGPUStoreOp_Store;
 		passDesc.colorAttachments = &mainAttach;
 		passDesc.colorAttachmentCount = 1;
@@ -527,7 +540,7 @@ struct RendererImpl {
 		fragmentState.entryPoint = "fs_main";
 		fragmentState.module = result->shaderModule;
 		WGPUColorTargetState mainTarget = {};
-		mainTarget.format = context.getMainOutputFormat();
+		mainTarget.format = mainOutput.format;
 		mainTarget.writeMask = WGPUColorWriteMask_All;
 		fragmentState.targets = &mainTarget;
 		fragmentState.targetCount = 1;
@@ -552,9 +565,18 @@ struct RendererImpl {
 	};
 };
 
-Renderer::Renderer(Context &context) { impl = std::make_shared<RendererImpl>(context); }
+Renderer::Renderer(Context &context) {
+	impl = std::make_shared<RendererImpl>(context);
+	if (!context.isHeadless()) {
+		impl->shouldUpdateMainOutputFromContext = true;
+	}
+}
 
 void Renderer::swapBuffers() { impl->swapBuffers(); }
 void Renderer::render(const DrawQueue &drawQueue, ViewPtr view) { impl->renderView(drawQueue, view); }
+void Renderer::setMainOutput(const MainOutput &output) {
+	impl->mainOutput = output;
+	impl->shouldUpdateMainOutputFromContext = false;
+}
 
 } // namespace gfx
