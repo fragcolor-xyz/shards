@@ -30,9 +30,14 @@ struct Renderer {
 
 public:
 	Renderer(Context &context);
-	void swapBuffers();
 	void render(const DrawQueue &drawQueue, ViewPtr view);
 	void setMainOutput(const MainOutput &output);
+
+	// Call before frame rendering to swap buffers
+	void swapBuffers();
+
+	// Flushes rendering and cleans up all cached data kept by the renderer
+	void cleanup();
 };
 
 } // namespace gfx

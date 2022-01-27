@@ -177,7 +177,10 @@ struct RendererImpl {
 		wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
 	}
 
-	~RendererImpl() { swapBuffers(); }
+	~RendererImpl() {
+		context.sync();
+		swapBuffers();
+	}
 
 	size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
 	size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
@@ -213,7 +216,7 @@ struct RendererImpl {
 			viewSize = viewPtr->viewport->getSize();
 			viewport = viewPtr->viewport.value();
 		} else {
-			viewSize = context.getMainOutputSize();
+			viewSize = mainOutput.size;
 			viewport = Rect(0, 0, viewSize.x, viewSize.y);
 		}
 
@@ -562,7 +565,7 @@ struct RendererImpl {
 		}
 
 		result->pipeline = wgpuDeviceCreateRenderPipeline(device, &desc);
-	};
+	}
 };
 
 Renderer::Renderer(Context &context) {
@@ -577,6 +580,11 @@ void Renderer::render(const DrawQueue &drawQueue, ViewPtr view) { impl->renderVi
 void Renderer::setMainOutput(const MainOutput &output) {
 	impl->mainOutput = output;
 	impl->shouldUpdateMainOutputFromContext = false;
+}
+void Renderer::cleanup() {
+	Context &context = impl->context;
+	impl.reset();
+	impl = std::make_shared<RendererImpl>(context);
 }
 
 } // namespace gfx

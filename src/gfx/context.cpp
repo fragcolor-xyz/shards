@@ -323,7 +323,10 @@ void Context::beginFrame() {
 	errorScopes.clear();
 }
 
-void Context::endFrame() { present(); }
+void Context::endFrame() {
+	if (!isHeadless())
+		present();
+}
 
 void Context::sync() {
 #ifdef WEBGPU_NATIVE

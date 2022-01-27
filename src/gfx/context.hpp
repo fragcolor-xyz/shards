@@ -78,6 +78,7 @@ public:
 
 	void beginFrame();
 	void endFrame();
+	void sync();
 
 	// start tracking an object implementing WithContextData so it's data is released with this context
 	void addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr);
@@ -87,7 +88,6 @@ private:
 	void initCommon(const ContextCreationOptions &options);
 
 	void present();
-	void sync();
 
 	void collectContextDataObjects();
 	void releaseAllContextDataObjects();

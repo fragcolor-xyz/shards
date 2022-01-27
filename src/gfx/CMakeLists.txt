@@ -20,6 +20,8 @@ add_library(gfx
   drawable.cpp
   enums.cpp
   fields.cpp
+  paths.cpp
+  utils.cpp
 )
 
 target_include_directories(gfx
