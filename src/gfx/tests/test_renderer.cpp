@@ -140,6 +140,30 @@ TEST_CASE("Renderer capture", "[Renderer]") {
 	headlessRenderer->createRenderTarget(int2(1280, 720));
 	Renderer &renderer = headlessRenderer->renderer;
 
+	MeshPtr mesh = createTestMesh();
+	DrawablePtr drawable = std::make_shared<Drawable>(mesh);
+	ViewPtr view = std::make_shared<View>();
+
+	DrawQueue queue;
+	queue.add(drawable);
+	renderer.render(queue, view);
+
+	TestData testData(TestPlatformId::get(*context.get()));
+	TestFrame testFrame = headlessRenderer->getTestFrame();
+	CHECK(testData.checkFrame("capture", testFrame));
+
+	headlessRenderer.reset();
+	context.reset();
+}
+
+TEST_CASE("Reference tracking", "[Renderer]") {
+	std::shared_ptr<Context> context = std::make_shared<Context>();
+	context->init();
+
+	auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+	headlessRenderer->createRenderTarget(int2(1280, 720));
+	Renderer &renderer = headlessRenderer->renderer;
+
 	std::weak_ptr<Mesh> meshWeak;
 	std::weak_ptr<Drawable> drawableWeak;
 	{
@@ -156,9 +180,17 @@ TEST_CASE("Renderer capture", "[Renderer]") {
 		renderer.render(queue, view);
 	}
 
-	TestData testData(TestPlatformId::get(*context.get()));
-	TestFrame testFrame = headlessRenderer->getTestFrame();
-	CHECK(testData.checkFrame("capture", testFrame));
+	// Mesh should keep being referenced by context
+	CHECK(!meshWeak.expired());
+	CHECK(drawableWeak.expired());
+
+	context->sync();
+	for (size_t i = 0; i < 2; i++) {
+		renderer.swapBuffers();
+	}
+
+	// Should be released now
+	CHECK(meshWeak.expired());
 
 	headlessRenderer.reset();
 	context.reset();
