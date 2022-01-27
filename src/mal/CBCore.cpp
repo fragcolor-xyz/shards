@@ -2195,9 +2195,14 @@ BUILTIN_ISA("Block?", malCBlock);
 
 extern "C" {
 CHAINBLOCKS_API __cdecl void *cbLispCreate(const char *path) {
-  auto env = new malEnvPtr(new malEnv);
-  malinit(*env, path, path);
-  return (void *)env;
+  try {
+    auto env = new malEnvPtr(new malEnv);
+    malinit(*env, path, path);
+    return (void *)env;
+  } catch (std::exception &ex) {
+    CBLOG_FATAL("Failed to create lisp environment: {}", ex.what());
+    return nullptr;
+  }
 }
 
 CHAINBLOCKS_API __cdecl void *cbLispCreateSub(void *parent) {
