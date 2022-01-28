@@ -2,16 +2,23 @@
 #include "context.hpp"
 
 namespace gfx {
-void WithContextData::bindToContext(Context *context) {
+void ContextData::bindToContext(Context &context) {
 	assert(!this->context);
-	assert(context);
-	this->context = context;
-	this->context->addContextDataObjectInternal(weak_from_this());
+	this->context = &context;
+	this->context->addContextDataInternal(weak_from_this());
 }
 
-void WithContextData::unbindFromContext() {
+void ContextData::unbindFromContext() {
 	assert(context);
-	context->removeContextDataObjectInternal(this);
+	context->removeContextDataInternal(this);
 	context = nullptr;
 }
+
+void ContextData::releaseConditional() {
+	if (context) {
+		release();
+		unbindFromContext();
+	}
+}
+
 } // namespace gfx

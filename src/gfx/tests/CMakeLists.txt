@@ -11,6 +11,7 @@ add_executable(test_gfx
   test_renderer.cpp
   test_main.cpp
   test_data.cpp
+  test_context_data.cpp
   test_platform_id.cpp
 )
 

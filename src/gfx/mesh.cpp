@@ -6,7 +6,7 @@
 
 namespace gfx {
 
-void Mesh::update(const Format &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData, size_t indexDataLength) {
+void Mesh::update(const MeshFormat &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData, size_t indexDataLength) {
 	this->format = format;
 
 	vertexData.resize(vertexDataLength);
@@ -18,7 +18,7 @@ void Mesh::update(const Format &format, const void *inVertexData, size_t vertexD
 	update();
 }
 
-void Mesh::update(const Format &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData) {
+void Mesh::update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData) {
 	this->format = format;
 	this->vertexData = std::move(vertexData);
 	this->indexData = std::move(indexData);
@@ -41,11 +41,11 @@ void Mesh::update() {
 	assert(numIndices * indexSize == indexData.size());
 
 	// This causes the GPU data to be recreated the next time it is requested
-	releaseContextDataCondtional();
+	contextData.reset();
 }
 
-void Mesh::createContextData() {
-	WGPUDevice device = context->wgpuDevice;
+void Mesh::initContextData(Context &context, MeshContextData &contextData) {
+	WGPUDevice device = context.wgpuDevice;
 	assert(device);
 
 	WGPUBufferDescriptor desc = {};
@@ -54,7 +54,7 @@ void Mesh::createContextData() {
 	contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
 	contextData.vertexBufferLength = desc.size;
 
-	wgpuQueueWriteBuffer(context->wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
+	wgpuQueueWriteBuffer(context.wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
 
 	if (indexData.size() > 0) {
 		desc.size = indexData.size();
@@ -62,12 +62,8 @@ void Mesh::createContextData() {
 		contextData.indexBuffer = wgpuDeviceCreateBuffer(device, &desc);
 		contextData.indexBufferLength = desc.size;
 
-		wgpuQueueWriteBuffer(context->wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
+		wgpuQueueWriteBuffer(context.wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
 	}
 }
 
-void Mesh::releaseContextData() {
-	WGPU_SAFE_RELEASE(wgpuBufferRelease, contextData.vertexBuffer);
-	WGPU_SAFE_RELEASE(wgpuBufferRelease, contextData.indexBuffer);
-}
 } // namespace gfx

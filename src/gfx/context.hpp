@@ -38,7 +38,7 @@ struct Primitive;
 struct MaterialBuilderContext;
 struct Window;
 struct ContextBackend;
-struct WithContextData;
+struct ContextData;
 struct ContextMainOutput;
 struct Context {
 private:
@@ -52,7 +52,7 @@ public:
 	WGPUQueue wgpuQueue = nullptr;
 
 	std::vector<std::shared_ptr<ErrorScope>> errorScopes;
-	std::unordered_map<WithContextData *, std::weak_ptr<WithContextData>> contextDataObjects;
+	std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
 
 public:
 	Context();
@@ -81,16 +81,16 @@ public:
 	void sync();
 
 	// start tracking an object implementing WithContextData so it's data is released with this context
-	void addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr);
-	void removeContextDataObjectInternal(WithContextData *ptr);
+	void addContextDataInternal(std::weak_ptr<ContextData> ptr);
+	void removeContextDataInternal(ContextData *ptr);
 
 private:
 	void initCommon(const ContextCreationOptions &options);
 
 	void present();
 
-	void collectContextDataObjects();
-	void releaseAllContextDataObjects();
+	void collectContextData();
+	void releaseAllContextData();
 };
 
 } // namespace gfx

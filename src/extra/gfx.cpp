@@ -382,7 +382,7 @@ struct MeshBlock {
 	}
 
 	CBVar activate(CBContext *context, const CBVar &input) {
-		Mesh::Format meshFormat;
+		MeshFormat meshFormat;
 		meshFormat.primitiveType = PrimitiveType::TriangleList;
 		meshFormat.windingOrder = _windingOrder;
 

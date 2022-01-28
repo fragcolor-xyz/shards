@@ -83,7 +83,7 @@ struct BindingLayout {
 };
 
 struct CachedPipeline {
-	Mesh::Format meshFormat;
+	MeshFormat meshFormat;
 
 	WGPURenderPipeline pipeline = {};
 	WGPUShaderModule shaderModule = {};
@@ -135,7 +135,7 @@ struct CachedViewData {
 typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
 
 struct FrameReferences {
-	std::vector<std::shared_ptr<WithContextData>> contextDataReferences;
+	std::vector<std::shared_ptr<ContextData>> contextDataReferences;
 	void clear() { contextDataReferences.clear(); }
 };
 
@@ -254,7 +254,7 @@ struct RendererImpl {
 		return buffer;
 	}
 
-	void addFrameReference(std::shared_ptr<WithContextData> &&contextData) {
+	void addFrameReference(std::shared_ptr<ContextData> &&contextData) {
 		frameReferences(frameIndex).contextDataReferences.emplace_back(std::move(contextData));
 	}
 	void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
@@ -325,8 +325,8 @@ struct RendererImpl {
 			drawDataTempBuffer.resize(instanceBufferLength);
 			for (size_t i = 0; i < numObjects; i++) {
 				Drawable *drawable = pipeline->drawables[i];
-				drawable->mesh->createContextDataCondtional(&context);
-				addFrameReference(drawable->mesh);
+				drawable->mesh->createContextDataConditional(context);
+				addFrameReference(drawable->mesh->contextData);
 
 				DrawData worldDrawData;
 				worldDrawData.set_float4x4("world", drawable->transform);
@@ -372,17 +372,17 @@ struct RendererImpl {
 			for (size_t i = 0; i < drawables.size(); i++) {
 				auto &drawable = drawables[i];
 				auto &mesh = drawable->mesh;
+				auto meshContextData = drawable->mesh->contextData;
 
-				if (lastVertexBuffer != mesh->contextData.vertexBuffer) {
-					wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, mesh->contextData.vertexBuffer, 0, 0);
-					lastVertexBuffer = mesh->contextData.vertexBuffer;
+				if (lastVertexBuffer != meshContextData->vertexBuffer) {
+					wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, 0);
+					lastVertexBuffer = meshContextData->vertexBuffer;
 				}
 
-				if (mesh->contextData.indexBuffer) {
-					if (lastIndexBuffer != mesh->contextData.indexBuffer) {
-						wgpuRenderPassEncoderSetIndexBuffer(passEncoder, mesh->contextData.indexBuffer, getWGPUIndexFormat(mesh->getFormat().indexFormat), 0,
-															0);
-						lastIndexBuffer = mesh->contextData.indexBuffer;
+				if (meshContextData->indexBuffer) {
+					if (lastIndexBuffer != meshContextData->indexBuffer) {
+						wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, getWGPUIndexFormat(mesh->getFormat().indexFormat), 0, 0);
+						lastIndexBuffer = meshContextData->indexBuffer;
 					}
 					// wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), 1, 0, 0, 0);
 					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), drawables.size(), 0, 0, 0);

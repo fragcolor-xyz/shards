@@ -54,7 +54,7 @@ struct App {
 		geom::SphereGenerator sphereGen;
 		sphereGen.generate();
 		sphereMesh = std::make_shared<Mesh>();
-		Mesh::Format format = {
+		MeshFormat format = {
 			.vertexAttributes = geom::VertexPNT::getAttributes(),
 		};
 		sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),

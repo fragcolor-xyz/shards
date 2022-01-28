@@ -109,27 +109,12 @@ MeshPtr createTestMesh() {
 	geom::SphereGenerator gen;
 	gen.generate();
 	MeshPtr mesh = std::make_shared<Mesh>();
-	Mesh::Format format{
+	MeshFormat format{
 		.vertexAttributes = geom::VertexPNT::getAttributes(),
 	};
 	mesh->update(format, gen.vertices.data(), gen.vertices.size() * sizeof(geom::VertexPNT), gen.indices.data(),
 				 gen.indices.size() * sizeof(geom::GeneratorBase::index_t));
 	return mesh;
-}
-
-TEST_CASE("Context data", "[Context]") {
-	std::shared_ptr<Context> context = std::make_shared<Context>();
-	context->init();
-
-	auto mesh = createTestMesh();
-	mesh->createContextDataCondtional(context.get());
-	assert(mesh->contextData.indexBuffer);
-	assert(mesh->contextData.vertexBuffer);
-
-	context.reset();
-
-	assert(!mesh->contextData.indexBuffer);
-	assert(!mesh->contextData.vertexBuffer);
 }
 
 TEST_CASE("Renderer capture", "[Renderer]") {
@@ -166,9 +151,13 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 
 	std::weak_ptr<Mesh> meshWeak;
 	std::weak_ptr<Drawable> drawableWeak;
+	std::weak_ptr<MeshContextData> meshContextData;
 	{
 		MeshPtr mesh = createTestMesh();
 		meshWeak = std::weak_ptr(mesh);
+
+		mesh->createContextDataConditional(*context.get());
+		meshContextData = mesh->contextData;
 
 		DrawablePtr drawable = std::make_shared<Drawable>(mesh);
 		drawableWeak = std::weak_ptr(drawable);
@@ -180,9 +169,9 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 		renderer.render(queue, view);
 	}
 
-	// Mesh should keep being referenced by context
-	CHECK(!meshWeak.expired());
+	CHECK(meshWeak.expired());
 	CHECK(drawableWeak.expired());
+	CHECK(!meshContextData.expired());
 
 	context->sync();
 	for (size_t i = 0; i < 2; i++) {
@@ -190,7 +179,7 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 	}
 
 	// Should be released now
-	CHECK(meshWeak.expired());
+	CHECK(meshContextData.expired());
 
 	headlessRenderer.reset();
 	context.reset();

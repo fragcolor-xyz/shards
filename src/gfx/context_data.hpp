@@ -4,49 +4,49 @@
 
 namespace gfx {
 
+template <typename T> struct TWithContextData;
 struct Context;
-struct WithContextData : public std::enable_shared_from_this<WithContextData> {
+
+// NOTE: Your destructor should manually call releaseConditional!!!
+struct ContextData : public std::enable_shared_from_this<ContextData> {
+private:
 	Context *context = nullptr;
 
-	virtual ~WithContextData() = default;
-	virtual void createContextDataCondtional(Context *context) = 0;
-	virtual void releaseContextDataCondtional() = 0;
+public:
+	ContextData() = default;
+	virtual ~ContextData() = default;
+
+	void releaseConditional();
+	Context &getContext() {
+		assert(context);
+		return *context;
+	}
 
 protected:
-	void bindToContext(Context *context);
+	virtual void release() = 0;
+
+private:
+	template <typename T> friend struct TWithContextData;
+	void bindToContext(Context &context);
 	void unbindFromContext();
 };
 
 // Manages initialization/cleanup of context-specific data T attached to this object
-// NOTE: your destructor should call releaseContextDataCondtional still!
-template <typename T> struct TWithContextData : public WithContextData {
-	T contextData = {};
+template <typename T> struct TWithContextData {
+	std::shared_ptr<T> contextData;
 
-	virtual void createContextDataCondtional(Context *context) final {
-		if (!this->context) {
-			bindToContext(context);
-			createContextData();
+	void createContextDataConditional(Context &context) {
+		if (!contextData) {
+			contextData = std::make_shared<T>();
+			contextData->bindToContext(context);
+			initContextData(context, *contextData.get());
 		} else {
-			assert(this->context == context);
-		}
-	}
-
-	virtual void releaseContextDataCondtional() final {
-		if (context) {
-			releaseContextData();
-			unbindFromContext();
+			assert(&contextData->getContext() == &context);
 		}
 	}
 
 protected:
-	virtual void createContextData() = 0;
-	virtual void releaseContextData() = 0;
+	virtual void initContextData(Context &context, T &contextData) = 0;
 };
-
-#define WGPU_SAFE_RELEASE(_fn, _x) \
-	if (_x) {                      \
-		_fn(_x);                   \
-		_x = nullptr;              \
-	}
 
 } // namespace gfx

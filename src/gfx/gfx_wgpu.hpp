@@ -29,22 +29,23 @@ extern "C" {
 #endif
 
 struct WGPUAdapterReceiverData {
-  bool completed = false;
-  WGPURequestAdapterStatus status;
-  const char *message;
-  WGPUAdapter adapter;
+	bool completed = false;
+	WGPURequestAdapterStatus status;
+	const char *message;
+	WGPUAdapter adapter;
 };
-WGPUAdapter
-wgpuInstanceRequestAdapterSync(WGPUInstance instance,
-                               const WGPURequestAdapterOptions *options,
-                               WGPUAdapterReceiverData *receiverData);
+WGPUAdapter wgpuInstanceRequestAdapterSync(WGPUInstance instance, const WGPURequestAdapterOptions *options, WGPUAdapterReceiverData *receiverData);
 
 struct WGPUDeviceReceiverData {
-  bool completed = false;
-  WGPURequestDeviceStatus status;
-  const char *message;
-  WGPUDevice device;
+	bool completed = false;
+	WGPURequestDeviceStatus status;
+	const char *message;
+	WGPUDevice device;
 };
-WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter,
-                                        const WGPUDeviceDescriptor *descriptor,
-                                        WGPUDeviceReceiverData *receiverData);
+WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDescriptor *descriptor, WGPUDeviceReceiverData *receiverData);
+
+#define WGPU_SAFE_RELEASE(_fn, _x) \
+	if (_x) {                      \
+		_fn(_x);                   \
+		_x = nullptr;              \
+	}

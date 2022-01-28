@@ -245,7 +245,7 @@ void Context::cleanup() {
 	spdlog::debug("GFX.Context cleanup");
 	initialized = false;
 
-	releaseAllContextDataObjects();
+	releaseAllContextData();
 
 	mainOutput.reset();
 	WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
@@ -290,36 +290,36 @@ ErrorScope &Context::pushErrorScope(WGPUErrorFilter filter) {
 	return *errorScope.get();
 }
 
-void Context::addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr) {
-	std::shared_ptr<WithContextData> sharedPtr = ptr.lock();
+void Context::addContextDataInternal(std::weak_ptr<ContextData> ptr) {
+	std::shared_ptr<ContextData> sharedPtr = ptr.lock();
 	if (sharedPtr) {
-		contextDataObjects.insert_or_assign(sharedPtr.get(), ptr);
+		contextDatas.insert_or_assign(sharedPtr.get(), ptr);
 	}
 }
 
-void Context::removeContextDataObjectInternal(WithContextData *ptr) { contextDataObjects.erase(ptr); }
+void Context::removeContextDataInternal(ContextData *ptr) { contextDatas.erase(ptr); }
 
-void Context::collectContextDataObjects() {
-	for (auto it = contextDataObjects.begin(); it != contextDataObjects.end();) {
+void Context::collectContextData() {
+	for (auto it = contextDatas.begin(); it != contextDatas.end();) {
 		if (it->second.expired()) {
-			it = contextDataObjects.erase(it);
+			it = contextDatas.erase(it);
 		} else {
 			it++;
 		}
 	}
 }
 
-void Context::releaseAllContextDataObjects() {
-	auto contextDataObjects = std::move(this->contextDataObjects);
-	for (auto &obj : contextDataObjects) {
+void Context::releaseAllContextData() {
+	auto contextDatas = std::move(this->contextDatas);
+	for (auto &obj : contextDatas) {
 		if (!obj.second.expired()) {
-			obj.first->releaseContextDataCondtional();
+			obj.first->releaseConditional();
 		}
 	}
 }
 
 void Context::beginFrame() {
-	collectContextDataObjects();
+	collectContextData();
 	errorScopes.clear();
 }
 
