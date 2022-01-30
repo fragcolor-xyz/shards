@@ -114,7 +114,9 @@ pub struct ExternalVar(pub Var);
 #[derive(Default)]
 pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
+#[derive(Clone)]
 pub struct Node(pub CBNodeRef);
+
 #[derive(Copy, Clone)]
 pub struct ChainRef(pub CBChainRef);
 

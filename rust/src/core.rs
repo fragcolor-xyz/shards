@@ -3,6 +3,7 @@
 
 #![macro_use]
 
+use crate::types::Node;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::CBBool;
