@@ -50,6 +50,12 @@ lazy_static! {
     vec![common_type::bool]
   )
     .into()];
+  static ref STORAGE_PARAMETERS: Parameters = vec![(
+      cstr!("PreHashed"),
+      cbccstr!("If the keys are already hashed."),
+      vec![common_type::bool]
+    )
+    .into()];
   static ref STRINGS_OR_NONE: Vec<Type> = vec![common_type::string, common_type::none];
   static ref STRINGS_OR_NONE_TYPE: Type = Type::seq(&STRINGS_OR_NONE);
   static ref ENCODE_PARAMETERS: Parameters = vec![(
@@ -238,6 +244,7 @@ impl Block for CBStorageKey {
 struct CBStorageMap {
   output: ClonedVar,
   v: Vec<u8>,
+  pre_hashed: bool,
 }
 
 impl Block for CBStorageMap {
@@ -277,6 +284,24 @@ impl Block for CBStorageMap {
     OptionalString(cbccstr!("The encoded storage map."))
   }
 
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&STORAGE_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) {
+    match index {
+      0 => self.pre_hashed = value.try_into().unwrap(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.pre_hashed.into(),
+      _ => unreachable!(),
+    }
+  }
+
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let strings: Seq = input.try_into()?;
 
@@ -300,9 +325,14 @@ impl Block for CBStorageMap {
         cblog!("{}", e);
         "Failed to parse input hex string"
       })?;
-    let hash = blake2_128(&bytes);
-    self.v.extend(&hash[..]);
-    self.v.extend(bytes);
+    if self.pre_hashed {
+      self.v.extend(&bytes[..]);
+    } else {
+      // default to blake2_128 concat
+      let hash = blake2_128(&bytes);
+      self.v.extend(&hash[..]);
+      self.v.extend(bytes);
+    }
 
     // double map key
     if strings.len() == 4 {
@@ -312,9 +342,14 @@ impl Block for CBStorageMap {
           cblog!("{}", e);
           "Failed to parse input hex string"
         })?;
-      let hash = blake2_128(&bytes);
-      self.v.extend(&hash[..]);
-      self.v.extend(bytes);
+      if self.pre_hashed {
+        self.v.extend(&bytes[..]);
+      } else {
+        // default to blake2_128 concat
+        let hash = blake2_128(&bytes);
+        self.v.extend(&hash[..]);
+        self.v.extend(bytes);
+      }
     }
 
     self.output = self.v.as_slice().into();
