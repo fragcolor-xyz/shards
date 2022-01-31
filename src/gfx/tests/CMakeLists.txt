@@ -13,6 +13,8 @@ add_executable(test_gfx
   test_data.cpp
   test_context_data.cpp
   test_platform_id.cpp
+  test_shader.cpp
+  # test_cache_data.cpp
 )
 
 set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)

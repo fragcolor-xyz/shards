@@ -22,6 +22,9 @@ add_library(gfx
   fields.cpp
   paths.cpp
   utils.cpp
+  shader/evaluator.cpp
+  shader/blocks.cpp
+  # cache_data.cpp
 )
 
 target_include_directories(gfx
