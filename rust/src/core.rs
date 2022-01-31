@@ -61,15 +61,11 @@ mod internal_core_init {
   use dlopen::symbor::Library;
 
   fn try_load_dlls() -> Option<Library> {
-    if let Ok(lib) = Library::open("libcb.dylib") {
+    if let Ok(lib) = Library::open("libcbl.dylib") {
       Some(lib)
-    } else if let Ok(lib) = Library::open("libcb_shared.dylib") {
+    } else if let Ok(lib) = Library::open("libcbl.so") {
       Some(lib)
-    } else if let Ok(lib) = Library::open("libcb.so") {
-      Some(lib)
-    } else if let Ok(lib) = Library::open("libcb_shared.so") {
-      Some(lib)
-    } else if let Ok(lib) = Library::open("libcb.dll") {
+    } else if let Ok(lib) = Library::open("libcbl.dll") {
       Some(lib)
     } else {
       None
