@@ -3,7 +3,6 @@
 
 #![macro_use]
 
-use crate::types::Node;
 use crate::block::cblock_construct;
 use crate::block::Block;
 use crate::chainblocksc::CBBool;
@@ -17,10 +16,12 @@ use crate::chainblocksc::CBVar;
 use crate::chainblocksc::CBlockPtr;
 use crate::types::ChainRef;
 use crate::types::ChainState;
+use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
 use crate::types::ExternalVar;
 use crate::types::InstanceData;
+use crate::types::Node;
 use crate::types::ParameterInfo;
 use crate::types::Parameters;
 use crate::types::Var;
@@ -385,6 +386,21 @@ impl ChainRef {
     let cname = CString::new(name).unwrap();
     unsafe {
       (*Core).removeExternalVariable.unwrap()(self.0, cname.as_ptr() as *const _);
+    }
+  }
+
+  pub fn get_result(&self) -> Result<Option<ClonedVar>, &str> {
+    let info = unsafe { (*Core).getChainInfo.unwrap()(self.0) };
+
+    if !info.isRunning {
+      if info.failed {
+        let msg = unsafe { CStr::from_ptr(info.failureMessage) };
+        Err(msg.to_str().unwrap())
+      } else {
+        unsafe { Ok(Some((*info.finalOutput).into())) }
+      }
+    } else {
+      Ok(None)
     }
   }
 }

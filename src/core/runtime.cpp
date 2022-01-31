@@ -3250,7 +3250,10 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
                      chain->unsafe,
                      chain,
                      {&chain->blocks[0], uint32_t(chain->blocks.size()), 0},
-                     chainblocks::isRunning(chain)};
+                     chainblocks::isRunning(chain),
+                     chain->state == CBChain::State::Failed,
+                     chain->finishedError.c_str(),
+                     &chain->finishedOutput};
     return info;
   };
 

@@ -5,6 +5,7 @@
 extern crate reqwest;
 
 extern crate bs58;
+extern crate chacha20poly1305;
 extern crate csv;
 extern crate ethabi;
 extern crate ethereum_types;
@@ -19,7 +20,6 @@ extern crate tiny_keccak;
 extern crate tiny_skia;
 extern crate usvg;
 extern crate wasabi_leb128;
-extern crate chacha20poly1305;
 
 #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 extern crate webbrowser;

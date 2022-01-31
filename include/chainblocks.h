@@ -1011,6 +1011,9 @@ struct CBChainInfo {
   const struct CBChain *chain;
   const CBlocks blocks;
   CBBool isRunning;
+  CBBool failed;
+  CBString failureMessage;
+  struct CBVar *finalOutput;
 };
 
 typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
