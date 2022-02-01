@@ -367,7 +367,7 @@ pub fn releaseVariable(var: &CBVar) {
 }
 
 impl ChainRef {
-  pub fn set_external(&self, name: &str, var: &ExternalVar) {
+  pub fn set_external(&self, name: &str, var: &mut ExternalVar) {
     let cname = CString::new(name).unwrap();
     unsafe {
       (*Core).setExternalVariable.unwrap()(
