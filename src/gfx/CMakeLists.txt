@@ -19,10 +19,10 @@ add_library(gfx
   geom.cpp
   drawable.cpp
   enums.cpp
-  fields.cpp
+  params.cpp
   paths.cpp
   utils.cpp
-  shader/evaluator.cpp
+  shader/generator.cpp
   shader/blocks.cpp
   # cache_data.cpp
 )

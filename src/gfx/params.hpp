@@ -11,7 +11,7 @@ namespace gfx {
 struct Texture;
 typedef std::shared_ptr<Texture> TexturePtr;
 
-enum class FieldType : uint8_t {
+enum class ShaderParamType : uint8_t {
 #define FIELD_TYPE(_cppType, _displayName, ...) _displayName,
 #include "field_types.def"
 #undef FIELD_TYPE
@@ -20,9 +20,9 @@ enum class FieldType : uint8_t {
 typedef std::variant<float, float2, float3, float4, float4x4> FieldVariant;
 
 size_t packFieldVariant(uint8_t* outData, size_t outLength, const FieldVariant &variant);
-FieldType getFieldVariantType(const FieldVariant &variant);
-size_t getFieldTypeSize(FieldType type);
-size_t getFieldTypeWGSLAlignment(FieldType type);
+ShaderParamType getFieldVariantType(const FieldVariant &variant);
+size_t getFieldTypeSize(ShaderParamType type);
+size_t getFieldTypeWGSLAlignment(ShaderParamType type);
 
 struct IDrawDataCollector {
 #define FIELD_TYPE(_cppType, _displayName, ...) virtual void set_##_cppType(const char *name, const _cppType &_##_name) = 0;

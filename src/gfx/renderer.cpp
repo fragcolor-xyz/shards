@@ -1,10 +1,11 @@
 #include "renderer.hpp"
 #include "context.hpp"
 #include "drawable.hpp"
-#include "fields.hpp"
+#include "params.hpp"
 #include "hasherxxh128.hpp"
 #include "mesh.hpp"
 #include "renderer_types.hpp"
+#include "shader/uniforms.hpp"
 #include "view.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
@@ -12,71 +13,9 @@
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 namespace gfx {
-struct UniformLayout {
-	size_t offset = {};
-	size_t size = {};
-	FieldType type = FieldType(~0);
-};
-
-struct UniformBufferLayout {
-	std::unordered_map<std::string, size_t> mapping;
-	std::vector<UniformLayout> items;
-	size_t size = ~0;
-	size_t maxAlignment = 0;
-
-	UniformBufferLayout() = default;
-	UniformBufferLayout(const UniformBufferLayout &other) = default;
-	UniformBufferLayout(UniformBufferLayout &&other) {
-		mapping = std::move(other.mapping);
-		items = std::move(other.items);
-		size = std::move(other.size);
-	}
-
-	UniformBufferLayout &operator=(const UniformBufferLayout &&other) {
-		mapping = std::move(other.mapping);
-		items = std::move(other.items);
-		size = std::move(other.size);
-		return *this;
-	}
-
-	UniformLayout &push(const std::string &name, UniformLayout &&layout) {
-		assert(mapping.find(name) == mapping.end());
-		size_t index = items.size();
-		items.emplace_back(layout);
-		mapping.insert_or_assign(name, index);
-		return items.back();
-	}
-};
-
-struct UniformBufferLayoutBuilder {
-	UniformBufferLayout bufferLayout;
-	size_t offset = 0;
-
-	UniformLayout generateNext(FieldType fieldType) const {
-		UniformLayout result;
-		result.offset = offset;
-		result.size = getFieldTypeSize(fieldType);
-		result.type = fieldType;
-		return result;
-	}
-
-	const UniformLayout &push(const std::string &name, UniformLayout &&layout) {
-		const UniformLayout &result = bufferLayout.push(name, std::move(layout));
-		offset = std::max(offset, layout.offset + layout.size);
-		size_t fieldAlignment = getFieldTypeWGSLAlignment(layout.type);
-		bufferLayout.maxAlignment = std::max(bufferLayout.maxAlignment, fieldAlignment);
-		return result;
-	}
-
-	const UniformLayout &push(const std::string &name, FieldType fieldType) { return push(name, generateNext(fieldType)); }
-
-	UniformBufferLayout &&finalize() {
-		bufferLayout.size = offset;
-		return std::move(bufferLayout);
-	}
-
-	void fill();
-};
+using shader::UniformBufferLayoutBuilder;
+using shader::UniformBufferLayout;
+using shader::UniformLayout;
 
 struct BindingLayout {
 	UniformBufferLayout uniformBuffers;
@@ -105,12 +44,12 @@ struct CachedPipeline {
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 
 static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout, const DrawData &drawData) {
-	for (auto &pair : layout.mapping) {
-		const std::string &key = pair.first;
-		auto drawDataIt = drawData.data.find(key);
+	size_t layoutIndex = 0;
+	for (auto &fieldName : layout.fieldNames) {
+		auto drawDataIt = drawData.data.find(fieldName);
 		if (drawDataIt != drawData.data.end()) {
-			const UniformLayout &itemLayout = layout.items[pair.second];
-			FieldType drawDataFieldType = getFieldVariantType(drawDataIt->second);
+			const UniformLayout &itemLayout = layout.items[layoutIndex];
+			ShaderParamType drawDataFieldType = getFieldVariantType(drawDataIt->second);
 			if (itemLayout.type != drawDataFieldType) {
 				spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", magic_enum::enum_name(itemLayout.type),
 							 magic_enum::enum_name(drawDataFieldType));
@@ -119,6 +58,7 @@ static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 
 			packFieldVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
 		}
+		layoutIndex++;
 	}
 }
 
@@ -162,15 +102,15 @@ struct RendererImpl {
 
 	RendererImpl(Context &context) : context(context) {
 		UniformBufferLayoutBuilder viewBufferLayoutBuilder;
-		viewBufferLayoutBuilder.push("view", FieldType::Float4x4);
-		viewBufferLayoutBuilder.push("proj", FieldType::Float4x4);
-		viewBufferLayoutBuilder.push("invView", FieldType::Float4x4);
-		viewBufferLayoutBuilder.push("invProj", FieldType::Float4x4);
-		viewBufferLayoutBuilder.push("viewSize", FieldType::Float4x4);
+		viewBufferLayoutBuilder.push("view", ShaderParamType::Float4x4);
+		viewBufferLayoutBuilder.push("proj", ShaderParamType::Float4x4);
+		viewBufferLayoutBuilder.push("invView", ShaderParamType::Float4x4);
+		viewBufferLayoutBuilder.push("invProj", ShaderParamType::Float4x4);
+		viewBufferLayoutBuilder.push("viewSize", ShaderParamType::Float4x4);
 		viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
 		UniformBufferLayoutBuilder objectBufferLayoutBuilder;
-		objectBufferLayoutBuilder.push("world", FieldType::Float4x4);
+		objectBufferLayoutBuilder.push("world", ShaderParamType::Float4x4);
 		objectBufferLayout = objectBufferLayoutBuilder.finalize();
 
 		wgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);

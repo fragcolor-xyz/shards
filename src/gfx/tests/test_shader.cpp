@@ -1,7 +1,9 @@
 #include <catch2/catch_all.hpp>
 #include <cctype>
+#include <gfx/context.hpp>
 #include <gfx/shader/blocks.hpp>
-#include <gfx/shader/evaluator.hpp>
+#include <gfx/shader/generator.hpp>
+#include <spdlog/spdlog.h>
 
 using namespace gfx;
 using namespace gfx::shader;
@@ -88,16 +90,94 @@ string 	with
 	CHECK(!compareNoWhitespace(a, f));
 }
 
-TEST_CASE("Shader 1", "[Shader]") {
-	Evaluator evaluator;
-	evaluator.meshFormat.vertexAttributes = {
+static bool validateShaderModule(Context &context, const String &code) {
+	WGPUShaderModuleDescriptor desc{};
+	WGPUShaderModuleWGSLDescriptor wgslDesc{};
+	desc.nextInChain = &wgslDesc.chain;
+	wgslDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+	wgslDesc.code = code.c_str();
+	WGPUShaderModule module = wgpuDeviceCreateShaderModule(context.wgpuDevice, &desc);
+	if (module)
+		wgpuShaderModuleRelease(module);
+	return module != nullptr;
+}
+
+TEST_CASE("Shader basic", "[Shader]") {
+	Generator generator;
+	generator.meshFormat.vertexAttributes = {
 		MeshVertexAttribute("position", 3),
 		MeshVertexAttribute("normal", 3),
 		MeshVertexAttribute("texcoord0", 2),
 		MeshVertexAttribute("texcoord1", 3),
 	};
 
-	auto root = blocks::makeCompoundBlock("void main() {", blocks::WithAttribute("position", "out.position = in.position;"), "}");
-	String wgslSource = evaluator.build(*root.get());
-	CHECK(compareNoWhitespace(wgslSource, "void main(){out.position=in.position;}"));
+	Context context;
+	context.init();
+
+	UniformBufferLayoutBuilder viewLayoutBuilder;
+	viewLayoutBuilder.push("viewProj", ShaderParamType::Float4x4);
+	generator.viewBufferLayout = viewLayoutBuilder.finalize();
+
+	UniformBufferLayoutBuilder objectLayoutBuilder;
+	objectLayoutBuilder.push("world", ShaderParamType::Float4x4);
+	generator.objectBufferLayout = objectLayoutBuilder.finalize();
+
+	generator.interpolatedFields.emplace_back("position", FieldType(ShaderFieldBaseType::Float32, 4));
+	generator.interpolatedFields.emplace_back("color", FieldType(ShaderFieldBaseType::Float32, 4));
+
+	generator.outputFields.emplace_back("color", FieldType(ShaderFieldBaseType::Float32, 4));
+
+	std::vector<EntryPoint> entryPoints;
+	auto vec4Pos = blocks::makeCompoundBlock("vec4<f32>(", blocks::ReadInput("position"), ".xyz, 1.0)");
+	entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,
+							 blocks::makeCompoundBlock(blocks::WriteOutput("position", std::move(vec4Pos), "*", blocks::ReadBuffer("object"), ".world", "*",
+																		   blocks::ReadBuffer("view"), ".viewProj")));
+
+	entryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment,
+							 blocks::makeCompoundBlock(blocks::WriteOutput("color", "vec4<f32>(0.0, 1.0, 0.0, 1.0);")));
+
+	GeneratorOutput output = generator.build(entryPoints);
+	spdlog::info(output.wgslSource);
+
+	CHECK(validateShaderModule(context, output.wgslSource));
+}
+
+TEST_CASE("Shader globals & dependencies", "[Shader]") {
+	Generator generator;
+	generator.meshFormat.vertexAttributes = {
+		MeshVertexAttribute("position", 3),
+	};
+
+	Context context;
+	context.init();
+
+	UniformBufferLayoutBuilder viewLayoutBuilder;
+	viewLayoutBuilder.push("viewProj", ShaderParamType::Float4x4);
+	generator.viewBufferLayout = viewLayoutBuilder.finalize();
+
+	UniformBufferLayoutBuilder objectLayoutBuilder;
+	objectLayoutBuilder.push("world", ShaderParamType::Float4x4);
+	generator.objectBufferLayout = objectLayoutBuilder.finalize();
+
+	generator.interpolatedFields.emplace_back("position", FieldType(ShaderFieldBaseType::Float32, 4));
+	generator.outputFields.emplace_back("color", FieldType(ShaderFieldBaseType::Float32, 4));
+
+	std::vector<EntryPoint> entryPoints;
+	auto vec4Pos = blocks::makeCompoundBlock("vec4<f32>(", blocks::ReadInput("position"), ".xyz, 1.0)");
+	entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,
+							 blocks::makeCompoundBlock(blocks::WriteOutput("position", std::move(vec4Pos), "*", blocks::ReadBuffer("object"), ".world", "*",
+																		   blocks::ReadBuffer("view"), ".viewProj")));
+
+	entryPoints.emplace_back(
+		"colorDefault", ProgrammableGraphicsStage::Fragment,
+		blocks::makeCompoundBlock(blocks::WriteGlobal("color", FieldType(ShaderFieldBaseType::Float32, 4), "vec4<f32>(0.0, 1.0, 0.0, 1.0);")));
+
+	entryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment,
+							 blocks::makeCompoundBlock(blocks::WriteOutput("color", blocks::ReadGlobal("color"))));
+	entryPoints.back().dependencies.emplace_back("colorDefault", DependencyType::After);
+
+	GeneratorOutput output = generator.build(entryPoints);
+	spdlog::info(output.wgslSource);
+
+	CHECK(validateShaderModule(context, output.wgslSource));
 }

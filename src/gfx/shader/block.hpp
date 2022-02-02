@@ -2,11 +2,11 @@
 
 namespace gfx {
 namespace shader {
-struct EvaluatorContext;
+struct GeneratorContext;
 namespace blocks {
 struct Block {
 	virtual ~Block() = default;
-	virtual void apply(EvaluatorContext &context) const = 0;
+	virtual void apply(GeneratorContext &context) const = 0;
 };
 } // namespace blocks
 } // namespace shader

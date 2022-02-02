@@ -1,4 +1,4 @@
-#include "fields.hpp"
+#include "params.hpp"
 #include "linalg/linalg.h"
 #include "spdlog/fmt/bundled/core.h"
 #include <cassert>
@@ -41,8 +41,8 @@ size_t packFieldVariant(uint8_t *outData, size_t outLength, const FieldVariant &
 		variant);
 }
 
-FieldType getFieldVariantType(const FieldVariant &variant) {
-	FieldType result = {};
+ShaderParamType getFieldVariantType(const FieldVariant &variant) {
+	ShaderParamType result = {};
 	std::visit(
 		[&](auto &&arg) {
 			using T = std::decay_t<decltype(arg)>;
@@ -52,7 +52,7 @@ FieldType getFieldVariantType(const FieldVariant &variant) {
 			}
 #define FIELD_TYPE(_cppType, _displayName, ...)       \
 	else if constexpr (std::is_same_v<T, _cppType>) { \
-		result = FieldType::_displayName;             \
+		result = ShaderParamType::_displayName;             \
 	}
 #include "field_types.def"
 #undef FIELD_TYPE
@@ -64,10 +64,10 @@ FieldType getFieldVariantType(const FieldVariant &variant) {
 	return result;
 }
 
-size_t getFieldTypeSize(FieldType type) {
+size_t getFieldTypeSize(ShaderParamType type) {
 	switch (type) {
 #define FIELD_TYPE(_cppType, _displayName, _size, ...) \
-	case FieldType::_displayName: {               \
+	case ShaderParamType::_displayName: {               \
 		return _size;                             \
 	} break;
 #include "field_types.def"
@@ -78,10 +78,10 @@ size_t getFieldTypeSize(FieldType type) {
 	}
 }
 
-size_t getFieldTypeWGSLAlignment(FieldType type) {
+size_t getFieldTypeWGSLAlignment(ShaderParamType type) {
 	switch (type) {
 #define FIELD_TYPE(_0, _displayName, _1, _alignment, ...) \
-	case FieldType::_displayName: {                  \
+	case ShaderParamType::_displayName: {                  \
 		return _alignment;                           \
 	} break;
 #include "field_types.def"
