@@ -5,14 +5,14 @@ license: CC-BY-SA-4.0
 
 # Contributing changes
 
-Fragcolor documentation is located under the docs/ folder of the Chainblocks repository.
-
-https://github.com/fragcolor-xyz/chainblocks/tree/devel/docs
+Fragcolor documentation is located under the [/docs](https://github.com/fragcolor-xyz/chainblocks/tree/devel/docs) folder of the Chainblocks repository.
 
 Follow these steps to make and contribute document changes.
 
 *We'll be using [Github Desktop](https://desktop.github.com/) to deal with git as this tool is easier to use than the git command line.*
- 
+
+*The process described on this page can be applied to code contributions too.*
+
 ## Clone the Repo
 
 To start with, you'll need to get a copy of the Chainblocks repository on your local machine.
@@ -28,6 +28,7 @@ Open Github Desktop (GD) and choose option 'Clone a repository from the Internet
 Choose the 3rd tab (URL) on the window that opens, and paste the copied git repository URL in the first input box.
 
 *The second input box is the local path where your repository will be cloned. You can change this as desired.*
+
 ![Paste repo URL to clone](assets/contrib_clone-paste.png) 
 
 Once the cloning is complete (might take a couple of minutes depending on the size of the repository) you can view the repository files on your local using your favorite editor (like VS Code) or via your system's file navigator.
@@ -88,21 +89,17 @@ In our case we are using only one plugin : [awesome-pages](https://github.com/lu
 
 ![Search for plugins in MkDocs.yml](assets/changes_find-plugins.png) 
 
-You can install MkDocs plugins using the 'pip install' command in the terminal:
+From the documentation home directory (/docs), install MkDocs plugins using the `pip install mkdocs-awesome-pages-plugin` command in the terminal.
 
-> pip install mkdocs-awesome-pages-plugin
+=== "Command"
+    ![Install MkDocs plugins](assets/changes_install-plugins.png) 
 
-![Install MkDocs plugins](assets/changes_install-plugins.png) 
+Now from the same directory use the `mkdocs serve` command to start the MkDocs live-preview server. On successfull execution of this command you'll see the local URL path that the website is being served at.
 
-Now we can use the serve command to start MkDocs live-preview server:
-
-> mkdocs serve
-
-![Start MkDocs live-preview server](assets/changes_serve.png) 
-
-On successfull execution of this command you'll see the local URL path that the website is served at.
-
-![Live-preview server started](assets/changes_served.png) 
+=== "Command"
+    ![Start MkDocs live-preview server](assets/changes_serve.png) 
+=== "Result"
+    ![Live-preview server started](assets/changes_served.png) 
 
 Navigate to this path in your local browser to access the served site.
 

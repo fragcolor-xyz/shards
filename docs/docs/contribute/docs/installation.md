@@ -43,54 +43,72 @@ And choose to disable the Path Length Limit (just in case your default installat
 
 Retain the other default installations settings.
 
-To confirm Python was installed successfully type either Python or Py in the windows command prompt:
+To confirm Python was installed successfully type either Python or Py in the windows command prompt. If Python is Installed it will show the version Details.
 
-> Python
+=== "Command"
+    ```
+    Python
+    ```
+=== "Result"
+    ![Python was installed successfully](assets/install-py_installed.png)
 
-If Python is Installed it will show the version Details 
+Typing the following command in the windows command prompt to see where Python is installed.
 
-![Python was installed successfully](assets/install-py_installed.png)
-
-
-Typing the following command in the windows command prompt to see where Python is installed:
-
-> where py
-
-![Show where Python is installed](assets/install-py_where-py.png)
+=== "Command"
+    ```
+    where py
+    ```
+=== "Result"
+    ![Show where Python is installed](assets/install-py_where-py.png)
 
 Also confirm that PIP (Python's installation package) is installed successfully by typing the following command in the windows command prompt (it's installed automatically with Python):
 
-> pip
+=== "Command"
+    ```
+    pip
+    ```
+=== "Result"
+    ![Show where Python is installed](assets/install-py_pip-installed.png) 
 
-![Show where Python is installed](assets/install-py_pip-installed.png) 
-
-Official installation instructions for Python on Windows can be found [here](https://docs.python.org/3/using/windows.html#installation-steps).
+*For more details refer to the official Python installation [documentation](https://docs.python.org/3/using/windows.html#installation-steps).*
 
 ## MkDocs
 
 MkDocs is a documentation static site generator that makes it easy to create and generate documentation.
 
-Once Python is installed you can install MkDocs using the PIP command from the command prompt:
-> pip install mkdocs
+Once Python is installed you can install MkDocs using the PIP command from the command prompt.
 
-![Install MkDocs](assets/install-mk_install.png) 
+=== "Command"
+    ```
+    pip install mkdocs
+    ```
+=== "Result"
+    ![Install MkDocs](assets/install-mk_install.png) 
 
-You can check the version of MkDocs installation by using the following command:
-> mkdocs --version
+Then you can check the version of MkDocs installation by using the following command.
 
-![Check MkDocs installation](assets/install-mk_installed.png)
+=== "Command"
+    ```
+    mkdocs --version
+    ```
+=== "Result"
+    ![Check MkDocs installation](assets/install-mk_installed.png)
 
-For more details refer to the official installation instructions [here](https://www.mkdocs.org/user-guide/installation/#installing-mkdocs).
+*For more details refer to the official MkDocs installation [documentation](https://www.mkdocs.org/user-guide/installation/#installing-mkdocs).*
 
 ## MkDocs Material
 
-MkDocs Material is a theme for MkDocs and can be installed via the PIP command :
+MkDocs Material is a theme for MkDocs and can be installed via the PIP command.
 
-> pip install mkdocs-material
+=== "Command"
+    ```
+    pip install mkdocs-material
+    ```
+=== "Result"
+    ![Install MkDocs-Material](assets/install-mkmat_install.png) 
 
-![Install MkDocs-Material](assets/install-mkmat_install.png) 
+*For more details refer to the official MkDocs getting-started[documentation](https://squidfunk.github.io/mkdocs-material/getting-started/).*
 
-Refer to the official MkDocs [getting-started documentation](https://squidfunk.github.io/mkdocs-material/getting-started/).
 
 
 --8<-- "includes/license.md"

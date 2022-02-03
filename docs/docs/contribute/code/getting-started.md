@@ -12,16 +12,16 @@ The Fragcolor ecosystem has a few primary components (each in a different state 
 - [Hasten](https://github.com/fragcolor-xyz/hasten) creativity engine (to build apps, games and open worlds)
 - [Clamor](https://github.com/fragcolor-xyz/clamor) protocol and networking stack
 
-To contribute code to any of the above projects you'll need to setup your development environment to work with Git, Github, a code editor, Rust, & C++.
+To contribute code to any of the above projects you'll need to setup your development environment to work with git, GitHub, a code editor, Rust, & C++.
 
 ## Development environment
 
-### Setup Git & Github
-To install Git on your machine (for Windows, Linux, & Mac) refer to the [Git installation](https://docs.fragcolor.xyz/contribute/docs/installation/#git) section.
+### Setup git & GitHub
+To install git on your machine (for Windows, Linux, & Mac) refer to the [git installation](../../docs/installation/#git) section.
 
-You'll also need an active [Github](https://github.com/) account.
+You can download/ clone the code repository via the https protocol but you'll need an active GitHub account if you intend to fork the code and/or contribute to it as well.
 
-*If you're not familiar with Git/ Github refer to the [Contributing changes](https://docs.fragcolor.xyz/contribute/docs/making-changes/) section (applies to both code and document contributions).*
+*If you're not familiar with git/ GitHub refer to the [Contributing changes](../../docs/making-changes/) section which applies to both code and document contributions.*
 
 ### Get a code editor
 Although you can use any code editor, we recommend Visual Studio Code (aka VS Code). You can can download and install it from [here](https://code.visualstudio.com/download).
@@ -57,7 +57,7 @@ Here are a few VS Code extensions, worth checking out, that we use these extensi
 
 ## Building from sources
 
-Now that the development environment has been setup, you can pick up a project you'd like to contribute to and build it from the sources (like [Building Chainblocks ](https://docs.fragcolor.xyz/contribute/code/building-chainblocks/)).
+Now that the development environment has been setup, you can pick up a project you'd like to contribute to and build it from the sources (like [Building Chainblocks](../building-chainblocks/)).
 
 *Also refer to the relevant project's README file.*
 
