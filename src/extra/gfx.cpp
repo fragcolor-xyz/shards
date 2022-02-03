@@ -266,10 +266,14 @@ struct DrawableBlock {
 		if (!meshPtr)
 			throw formatException("Mesh must be set");
 
-		DrawablePtr *drawablePtr = DrawableObjectVar.New();
-		DrawablePtr drawable = *drawablePtr = std::make_shared<Drawable>(*meshPtr, chainblocks::Mat4(_transformVar.get()));
+		CBDrawable *cbDrawable = DrawableObjectVar.New();
+		cbDrawable->drawable = std::make_shared<Drawable>(*meshPtr, chainblocks::Mat4(_transformVar.get()));
+		if (_transformVar.isVariable()) {
+			cbDrawable->transformVar = (CBVar &)_transformVar;
+			cbDrawable->transformVar.warmup(cbContext);
+		}
 
-		return DrawableObjectVar.Get(drawablePtr);
+		return DrawableObjectVar.Get(cbDrawable);
 	}
 };
 
@@ -297,14 +301,22 @@ struct Draw : public BaseConsumer {
 		dq.add(drawable);
 	}
 
+	void updateCBDrawable(CBDrawable* cbDrawable) {
+		// Update transform if it's referencing a context variable
+		if (cbDrawable->transformVar.isVariable()) {
+			cbDrawable->drawable->transform = chainblocks::Mat4(cbDrawable->transformVar.get());
+		}
+	}
+
 	CBVar activateSeq(CBContext *cbContext, const CBVar &input) {
 		spdlog::info("activate GFX.Draw [Seq]");
 
 		auto &seq = input.payload.seqValue;
 		for (size_t i = 0; i < seq.len; i++) {
-			DrawablePtr *drawablePtr = (DrawablePtr *)seq.elements[i].payload.objectValue;
-			assert(drawablePtr);
-			addDrawableToQueue(*drawablePtr);
+			CBDrawable *cbDrawable = (CBDrawable *)seq.elements[i].payload.objectValue;
+			assert(cbDrawable);
+			updateCBDrawable(cbDrawable);
+			addDrawableToQueue(cbDrawable->drawable);
 		}
 
 		return CBVar{};
@@ -313,8 +325,9 @@ struct Draw : public BaseConsumer {
 	CBVar activateSingle(CBContext *cbContext, const CBVar &input) {
 		spdlog::info("activate GFX.Draw [Single]");
 
-		DrawablePtr *drawablePtr = (DrawablePtr *)input.payload.objectValue;
-		addDrawableToQueue(*drawablePtr);
+		CBDrawable *cbDrawable = (CBDrawable *)input.payload.objectValue;
+		updateCBDrawable(cbDrawable);
+		addDrawableToQueue(cbDrawable->drawable);
 
 		return CBVar{};
 	}
