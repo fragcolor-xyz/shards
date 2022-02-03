@@ -1,10 +1,13 @@
 #include "renderer.hpp"
 #include "context.hpp"
 #include "drawable.hpp"
-#include "params.hpp"
 #include "hasherxxh128.hpp"
 #include "mesh.hpp"
+#include "params.hpp"
 #include "renderer_types.hpp"
+#include "shader/blocks.hpp"
+#include "shader/entry_point.hpp"
+#include "shader/generator.hpp"
 #include "shader/uniforms.hpp"
 #include "view.hpp"
 #include <magic_enum.hpp>
@@ -13,8 +16,8 @@
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 namespace gfx {
-using shader::UniformBufferLayoutBuilder;
 using shader::UniformBufferLayout;
+using shader::UniformBufferLayoutBuilder;
 using shader::UniformLayout;
 
 struct BindingLayout {
@@ -100,13 +103,16 @@ struct RendererImpl {
 	size_t frameIndex = 0;
 	const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
+	std::vector<shader::EntryPoint> testShader;
+	shader::Generator testShaderGenerator;
+
 	RendererImpl(Context &context) : context(context) {
 		UniformBufferLayoutBuilder viewBufferLayoutBuilder;
 		viewBufferLayoutBuilder.push("view", ShaderParamType::Float4x4);
 		viewBufferLayoutBuilder.push("proj", ShaderParamType::Float4x4);
 		viewBufferLayoutBuilder.push("invView", ShaderParamType::Float4x4);
 		viewBufferLayoutBuilder.push("invProj", ShaderParamType::Float4x4);
-		viewBufferLayoutBuilder.push("viewSize", ShaderParamType::Float4x4);
+		viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
 		viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
 		UniformBufferLayoutBuilder objectBufferLayoutBuilder;
@@ -115,6 +121,55 @@ struct RendererImpl {
 
 		wgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
 		wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
+
+		initTestShader();
+	}
+
+	void initTestShader() {
+		using namespace shader;
+		using namespace shader::blocks;
+
+		FieldType positionFieldType(ShaderFieldBaseType::Float32, 4);
+		FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+
+		testShaderGenerator.interpolatedFields.emplace_back("position", FieldType(ShaderFieldBaseType::Float32, 4));
+		testShaderGenerator.interpolatedFields.emplace_back("color", colorFieldType);
+		testShaderGenerator.outputFields.emplace_back("color", colorFieldType);
+
+		auto vec4Pos = makeCompoundBlock("vec4<f32>(", ReadInput("position"), ".xyz, 1.0)");
+
+		testShader.emplace_back("initWorldPosition", ProgrammableGraphicsStage::Vertex,
+								WriteGlobal("worldPosition", positionFieldType, ReadBuffer("object"), ".world", "*", vec4Pos->clone()));
+		auto &initScreenPosition = testShader.emplace_back(
+			"initScreenPosition", ProgrammableGraphicsStage::Vertex,
+			WriteGlobal("screenPosition", positionFieldType, ReadBuffer("view"), ".proj", "*", ReadBuffer("view"), ".view", "*", ReadGlobal("worldPosition")));
+		initScreenPosition.dependencies.emplace_back("initWorldPosition");
+
+		auto &writePosition =
+			testShader.emplace_back("writePosition", ProgrammableGraphicsStage::Vertex, WriteOutput("position", ReadGlobal("screenPosition")));
+		writePosition.dependencies.emplace_back("initScreenPosition");
+
+		testShader.emplace_back("initColor", ProgrammableGraphicsStage::Vertex,
+								WriteGlobal("color", colorFieldType, WithInput("color", ReadInput("color"), "vec4<f32>(1.0, 0.0, 1.0, 1.0)")));
+		auto &writeColor = testShader.emplace_back("writeColor", ProgrammableGraphicsStage::Vertex, WriteOutput("color", ReadGlobal("color")));
+		writeColor.dependencies.emplace_back("initColor");
+
+		auto &normalColor = testShader.emplace_back("normalColor", ProgrammableGraphicsStage::Vertex,
+													WithInput("normal", WriteGlobal("color", colorFieldType, "vec4<f32>(", ReadInput("normal"), ".xyz, 1.0)")));
+		normalColor.dependencies.emplace_back("initColor");
+		normalColor.dependencies.emplace_back("writeColor", DependencyType::Before);
+
+		EntryPoint &applyVertexColor = testShader.emplace_back(
+			"applyVertexColor", ProgrammableGraphicsStage::Vertex,
+			WithInput("color", WriteGlobal("color", colorFieldType, makeCompoundBlock(ReadGlobal("color"), "*", ReadInput("color"), ";"))));
+		applyVertexColor.dependencies.emplace_back("initColor", DependencyType::After);
+		applyVertexColor.dependencies.emplace_back("writeColor", DependencyType::Before);
+
+		testShader.emplace_back("color", ProgrammableGraphicsStage::Fragment, WithInput("color", WriteOutput("color", ReadInput("color"))));
+		// testShader.emplace_back("color", ProgrammableGraphicsStage::Fragment, WithInput("color", WriteOutput("color", "vec4<f32>(1.0, 1.0, 1.0, 1.0)")));
+
+		testShaderGenerator.viewBufferLayout = viewBufferLayout;
+		testShaderGenerator.objectBufferLayout = objectBufferLayout;
 	}
 
 	~RendererImpl() {
@@ -324,7 +379,6 @@ struct RendererImpl {
 						wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, getWGPUIndexFormat(mesh->getFormat().indexFormat), 0, 0);
 						lastIndexBuffer = meshContextData->indexBuffer;
 					}
-					// wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), 1, 0, 0, 0);
 					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)mesh->getNumIndices(), drawables.size(), 0, 0, 0);
 					break;
 				} else {
@@ -378,53 +432,19 @@ struct RendererImpl {
 	void buildPipeline(const CachedPipelinePtr &result) {
 		WGPUDevice device = context.wgpuDevice;
 
+		shader::Generator generator = testShaderGenerator;
+		generator.meshFormat = result->meshFormat;
+		shader::GeneratorOutput generatorOutput = generator.build(testShader);
+
 		WGPUShaderModuleDescriptor moduleDesc = {};
 		WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
-		wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
 		moduleDesc.label = "pipeline";
-		wgslModuleDesc.code = R"(
-			struct View {
-				view: mat4x4<f32>;
-				proj: mat4x4<f32>;
-				invView: mat4x4<f32>;
-				invProj: mat4x4<f32>;
-				viewSize: mat4x4<f32>;
-			};
-
-			struct Object {
-				world: mat4x4<u32>;
-			};
-			struct ObjectStorage {
-				arr: array<Object>;
-			};
-
-			[[group(0), binding(0)]]
-			var<uniform> u_view: View;
-
-			[[group(0), binding(1)]]
-			var<storage, read> u_objects: ObjectStorage;
-
-			struct VertToFrag {
-				[[builtin(position)]] position: vec4<f32>;
-				[[location(0)]] color: vec4<f32>;
-			};
-
-			[[stage(vertex)]]
-			fn vs_main([[location(0)]] position: vec3<f32>, [[builtin(instance_index)]] index: u32, [[location(1)]] color: vec4<f32>) -> VertToFrag {
-				var object = u_objects.arr[index];
-				var v2f: VertToFrag;
-				let worldPosition = object.world * vec4<f32>(position.x, position.y, position.z, 1.0);
-				v2f.position = u_view.proj * u_view.view * worldPosition;
-				v2f.color = color;
-				return v2f;
-			}
-
-			[[stage(fragment)]]
-			fn fs_main(v2f: VertToFrag) -> [[location(0)]] vec4<f32> {
-				return v2f.color;
-			}
-		)";
 		moduleDesc.nextInChain = &wgslModuleDesc.chain;
+
+		wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+		wgslModuleDesc.code = generatorOutput.wgslSource.c_str();
+		spdlog::info("Generated WGSL:\n {}", generatorOutput.wgslSource);
+
 		result->shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
 		assert(result->shaderModule);
 
@@ -476,11 +496,11 @@ struct RendererImpl {
 		vertex.bufferCount = 1;
 		vertex.buffers = &vertexLayout;
 		vertex.constantCount = 0;
-		vertex.entryPoint = "vs_main";
+		vertex.entryPoint = "vertex_main";
 		vertex.module = result->shaderModule;
 
 		WGPUFragmentState fragmentState = {};
-		fragmentState.entryPoint = "fs_main";
+		fragmentState.entryPoint = "fragment_main";
 		fragmentState.module = result->shaderModule;
 		WGPUColorTargetState mainTarget = {};
 		mainTarget.format = mainOutput.format;

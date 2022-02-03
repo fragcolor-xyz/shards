@@ -30,8 +30,9 @@ struct EntryPoint {
 	std::vector<NamedDependency> dependencies;
 
 	EntryPoint() = default;
-	EntryPoint(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment, BlockPtr &&code = BlockPtr())
-		: stage(stage), name(name), code(std::move(code)) {}
+	template <typename T>
+	EntryPoint(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment, T &&code = BlockPtr())
+		: stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::move(code))) {}
 	EntryPoint(EntryPoint &&other)
 		: stage(other.stage), name(std::move(other.name)), code(std::move(other.code)), dependencies(std::move(other.dependencies)) {}
 

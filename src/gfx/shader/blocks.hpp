@@ -8,31 +8,7 @@
 namespace gfx {
 namespace shader {
 
-using String = std::string;
-template <typename T> using UniquePtr = std::unique_ptr<T>;
-
 namespace blocks {
-struct Direct : public Block {
-	String code;
-
-	Direct(const char *code) : code(code) {}
-	void apply(GeneratorContext &context) const { context.write(code); }
-};
-
-struct ConvertibleToBlock {
-	UniquePtr<Block> block;
-	ConvertibleToBlock(const char *str) { block = std::make_unique<Direct>(str); }
-	ConvertibleToBlock(UniquePtr<Block> &&block) : block(std::move(block)) {}
-	UniquePtr<Block> operator()() { return std::move(block); }
-};
-
-template <typename T, typename T1 = void> struct ConvertToBlock {};
-template <typename T> struct ConvertToBlock<T, typename std::enable_if<std::is_base_of_v<Block, T>>::type> {
-	UniquePtr<Block> operator()(T &&block) { return std::make_unique<T>(std::move(block)); }
-};
-template <typename T> struct ConvertToBlock<T, typename std::enable_if<!std::is_base_of_v<Block, T>>::type> {
-	UniquePtr<Block> operator()(T &&arg) { return ConvertibleToBlock(std::move(arg))(); }
-};
 
 struct Compound : public Block {
 	std::vector<UniquePtr<Block>> children;
@@ -43,20 +19,40 @@ struct Compound : public Block {
 		for (auto &c : children)
 			c->apply(context);
 	}
+
+	BlockPtr clone() {
+		auto result = std::make_unique<Compound>();
+		for (auto &child : children)
+			result->children.push_back(child->clone());
+		return std::move(result);
+	}
 };
 template <typename... TArgs> inline auto makeCompoundBlock(TArgs &&...args) { return std::make_unique<Compound>(std::move(args)...); }
 
 struct WithInput : public Block {
 	String name;
 	BlockPtr inner;
+	BlockPtr innerElse;
 
 	template <typename T> WithInput(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::move(inner))) {}
-	WithInput(WithInput &&other) : name(std::move(other.name)), inner(std::move(other.inner)) {}
+	template <typename T1, typename T2>
+	WithInput(const String &name, T1 &&inner, T2 &&innerElse)
+		: name(name), inner(ConvertToBlock<T1>{}(std::move(inner))), innerElse(ConvertToBlock<T2>{}(std::move(innerElse))) {}
+	WithInput(WithInput &&other) : name(std::move(other.name)), inner(std::move(other.inner)), innerElse(std::move(other.innerElse)) {}
 
 	void apply(GeneratorContext &context) const {
 		if (context.hasInput(name.c_str())) {
 			inner->apply(context);
+		} else if (innerElse) {
+			innerElse->apply(context);
 		}
+	}
+
+	BlockPtr clone() {
+		if (innerElse)
+			return std::make_unique<WithInput>(name, inner->clone(), innerElse->clone());
+		else
+			return std::make_unique<WithInput>(name, inner->clone());
 	}
 };
 
@@ -74,6 +70,8 @@ struct WriteOutput : public Block {
 		inner->apply(context);
 		context.write(";\n");
 	}
+
+	BlockPtr clone() { return std::make_unique<WriteOutput>(name, inner->clone()); }
 };
 
 struct ReadInput : public Block {
@@ -83,6 +81,8 @@ struct ReadInput : public Block {
 	ReadInput(ReadInput &&other) : name(std::move(other.name)) {}
 
 	void apply(GeneratorContext &context) const { context.readInput(name.c_str()); }
+
+	BlockPtr clone() { return std::make_unique<ReadInput>(name); }
 };
 
 struct WriteGlobal : public Block {
@@ -91,6 +91,8 @@ struct WriteGlobal : public Block {
 	BlockPtr inner;
 
 	template <typename T> WriteGlobal(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::move(inner))) {}
+	template <typename... TArgs>
+	WriteGlobal(const String &name, FieldType type, TArgs &&...inner) : name(name), type(type), inner(makeCompoundBlock(std::move(inner)...)) {}
 	WriteGlobal(WriteGlobal &&other) : name(std::move(other.name)), type(std::move(other.type)), inner(std::move(other.inner)) {}
 
 	void apply(GeneratorContext &context) const {
@@ -99,6 +101,8 @@ struct WriteGlobal : public Block {
 		inner->apply(context);
 		context.write(";\n");
 	}
+
+	BlockPtr clone() { return std::make_unique<WriteGlobal>(name, type, inner->clone()); }
 };
 
 struct ReadGlobal : public Block {
@@ -108,6 +112,8 @@ struct ReadGlobal : public Block {
 	ReadGlobal(ReadGlobal &&other) : name(std::move(other.name)) {}
 
 	void apply(GeneratorContext &context) const { context.readGlobal(name.c_str()); }
+
+	BlockPtr clone() { return std::make_unique<ReadGlobal>(name); }
 };
 
 struct ReadBuffer : public Block {
@@ -117,6 +123,8 @@ struct ReadBuffer : public Block {
 	ReadBuffer(ReadBuffer &&other) : name(std::move(other.name)) {}
 
 	void apply(GeneratorContext &context) const { context.readBuffer(name.c_str()); }
+
+	BlockPtr clone() { return std::make_unique<ReadBuffer>(name); }
 };
 
 template <typename T> inline auto toBlock(T &&arg) { return ConvertibleToBlock(std::move(arg)); }

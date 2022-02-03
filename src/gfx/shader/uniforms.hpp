@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../params.hpp"
 #include <cassert>
 #include <map>
@@ -19,18 +21,9 @@ struct UniformBufferLayout {
 
 	UniformBufferLayout() = default;
 	UniformBufferLayout(const UniformBufferLayout &other) = default;
-	UniformBufferLayout(UniformBufferLayout &&other) {
-		fieldNames = std::move(other.fieldNames);
-		items = std::move(other.items);
-		size = std::move(other.size);
-	}
-
-	UniformBufferLayout &operator=(const UniformBufferLayout &&other) {
-		fieldNames = std::move(other.fieldNames);
-		items = std::move(other.items);
-		size = std::move(other.size);
-		return *this;
-	}
+	UniformBufferLayout(UniformBufferLayout &&other) = default;
+	UniformBufferLayout &operator=(UniformBufferLayout &&other) = default;
+	UniformBufferLayout &operator=(const UniformBufferLayout &other) = default;
 };
 
 struct UniformBufferLayoutBuilder {

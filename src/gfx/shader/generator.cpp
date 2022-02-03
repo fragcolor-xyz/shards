@@ -116,6 +116,7 @@ template <typename T> static void generateStruct(T &output, const String &typeNa
 struct Stage {
 	ProgrammableGraphicsStage stage;
 	std::vector<const EntryPoint *> entryPoints;
+	String mainFunctionHeader;
 	String inputStructName;
 	String inputVariableName;
 	String outputStructName;
@@ -222,6 +223,8 @@ struct Stage {
 		context.write(fmt::format("[[stage({})]]\nfn {}_main(in: {}) -> {} {{\n", wgslStageName, wgslStageName, inputStructName, outputStructName));
 		context.write(fmt::format("\t{} = in;\n", inputVariableName));
 
+		context.write("\t" + mainFunctionHeader + "\n");
+
 		for (auto &functionName : functionNamesToCall) {
 			context.write(fmt::format("\t{}();\n", functionName));
 		}
@@ -245,13 +248,14 @@ struct Stage {
 
 GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) {
 	String vertexInputStructName = "Input";
-	String vertexToFragmentStructName = "VertToFrag";
+	String vertexOutputStructName = "VertOutput";
+	String fragmentInputStructName = "FragInput";
 	String fragmentOutputStructName = "Output";
 
 	const size_t numStages = 2;
 	Stage stages[2] = {
-		Stage(ProgrammableGraphicsStage::Vertex, vertexInputStructName, vertexToFragmentStructName),
-		Stage(ProgrammableGraphicsStage::Fragment, vertexToFragmentStructName, fragmentOutputStructName),
+		Stage(ProgrammableGraphicsStage::Vertex, vertexInputStructName, vertexOutputStructName),
+		Stage(ProgrammableGraphicsStage::Fragment, fragmentInputStructName, fragmentOutputStructName),
 	};
 
 	GeneratorOutput output;
@@ -263,8 +267,8 @@ GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) {
 	std::string result;
 	result.reserve(2 << 12);
 
-	const char *objectIndexer = "u_objectIndex";
-	result += fmt::format("var<private> {}: u32;\n", objectIndexer);
+	const char *instanceIndexer = "u_instanceIndex";
+	result += fmt::format("var<private> {}: u32;\n", instanceIndexer);
 
 	std::vector<NamedField> vertexInputFields;
 	for (auto &attr : meshFormat.vertexAttributes) {
@@ -279,16 +283,30 @@ GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) {
 	std::transform(outputFields.begin(), outputFields.end(), std::back_inserter(fragmentOutputStructFields),
 				   [](const NamedField &field) { return StructField(field, true); });
 
-	std::vector<StructField> interpolatedStructFields;
-	std::transform(interpolatedFields.begin(), interpolatedFields.end(), std::back_inserter(interpolatedStructFields), [](const NamedField &field) {
+	std::vector<StructField> vertexOutputStructFields;
+	std::transform(interpolatedFields.begin(), interpolatedFields.end(), std::back_inserter(vertexOutputStructFields), [](const NamedField &field) {
 		String tag;
 		if (field.name == "position")
 			tag = "position";
 		return tag.empty() ? StructField(field, true) : StructField(field, false, tag);
 	});
 
+	std::vector<StructField> fragmentInputStructFields = vertexOutputStructFields;
+
+	// Add instance index
+	vertexInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), false, "instance_index");
+	vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), true);
+	fragmentInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), true);
+	for (auto &stage : stages) {
+		stage.mainFunctionHeader += fmt::format("{} = {}.instanceIndex;\n", instanceIndexer, stage.inputVariableName);
+	}
+
+	// Interpolate instance index
+	stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
+
 	generateStruct(result, vertexInputStructName, vertexInputStructFields);
-	generateStruct(result, vertexToFragmentStructName, interpolatedStructFields);
+	generateStruct(result, vertexOutputStructName, vertexOutputStructFields);
+	generateStruct(result, fragmentInputStructName, fragmentInputStructFields);
 	generateStruct(result, fragmentOutputStructName, fragmentOutputStructFields);
 
 	generateBuffer(result, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
@@ -296,7 +314,7 @@ GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) {
 
 	std::map<String, BufferDefinition> buffers = {
 		{"view", {"u_view"}},
-		{"object", {"u_objects", objectIndexer}},
+		{"object", {"u_objects", instanceIndexer}},
 	};
 
 	for (size_t i = 0; i < numStages; i++) {
