@@ -22,19 +22,22 @@ The following tools need to be available on your system:
 
 *You probably have these already if you've followed the [Getting Started](../getting-started/) section - msys2 is installed as part of C++/ MinGW, and rustup installs the required rust toolchain.*
 
-Make sure you pull this project repository (i.e. Chainblocks) with dependencies by using the following command (from any terminal): 
+Make sure you pull this project repository (i.e. Chainblocks) with dependencies by using the following command (from any terminal).
 
 ```
 git submodule update --init --recursive
 ```
 
-Also, ensure you're using the Rust GNU toolchain by firing the following rustup command (from any terminal):
+Also, ensure you're using the Rust GNU toolchain by firing the following rustup command (from any terminal).
 
 === "Command"
+
     ```
     rustup default stable-x86_64-pc-windows-gnu
     ```
+
 === "Output"
+
     ```
     C:\Users\saten>rustup default stable-x86_64-pc-windows-gnu
     info: syncing channel updates for 'stable-x86_64-pc-windows-gnu'
@@ -61,15 +64,18 @@ For windows, the path of MinGW bin should be added to your system environment PA
 
 *If you installed MSYS2 and MinGW recently these commands may do nothing much; still, it's a good idea to run them once.*
 
-Start the MYSYS2 MSYS terminal application (you can locate it by searching for 'MSYS2 MSYS' in the Windows start menu). 
+Start the MYSYS2 MSYS terminal application (you can locate it by searching for 'MSYS2 MSYS' in the Windows start menu).
 
 This command will update your packages (you might have to reopen the prompt window after it is executed):
    
 === "Command"
+
     ```
     pacman -Syu --noconfirm
     ``` 
+
 === "Output"
+
     ```
     $ pacman -Syu
     :: Synchronizing package databases...
@@ -88,10 +94,13 @@ This command will update your packages (you might have to reopen the prompt wind
 And this one will install the required dependencies:
 
 === "Command"
+
     ```
     pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld
     ```
+
 === "Output"
+
     ```
     $ pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld
     warning: base-devel-2022.01-1 is up to date -- skipping
@@ -113,21 +122,25 @@ And this one will install the required dependencies:
 Open your favorite terminal (could be within Visual Studio Code) pointing to this repo folder and run the following sequence of commands.
 
 Create a build directory,
+
 ```
 mkdir build
 ```
 
 and then navigate to it.
+
 ```
 cd build
 ```
 
-Now run the following command to describe the build
+Now run the following command to describe the build,
+
 ```
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..
 ```
 
-and then the following command to actually build and link Chainblocks.
+and then run the following command to actually build and link Chainblocks.
+
 ```
 ninja format; ninja cbl
 ```
@@ -141,47 +154,57 @@ After the completion of the build you'll see a message on the terminal confirmin
 ### Build for Web Assembly
 
 To create a Web Assembly (WASM) build, first clone the Emscripten SDK repo.
+
 ```
 git clone https://github.com/emscripten-core/emsdk.git
 ```
 
 Use a `mingw64.exe` terminal to navigate to the emsdk directory,
-```    
+
+```
 cd emsdk
 ```
 
 and then do a git pull to get the latest tools from GitHub (not required the first time you clone the git repository).
+
 ```
 git pull
 ```
 
 Update the SDK tools to latest version.
+
 ```
 emsdk install latest
 ```
 
-Activate the latest SDK for the current user.    
+Activate the latest SDK for the current user.
+  
 ```
 emsdk activate latest
 ```
 
 Activate the PATH/ environment variables for the current terminal session.
-```    
+
+``` 
 emsdk_env.bat
 ```
 
 *NOTE - For non-Windows systems run the commands `./emsdk install latest`, `./emsdk activate latest`, and `source emsdk_env.sh` instead.*
 
 From the chainblocks directory, run the following commands in sequence from the VS Code terminal to create and link the WASM build (similar to how we built Chainblocks for plain C++, in the previous section).
-```    
+
+```
 mkdir build-wasm
 ```     
+
 ```
 cd build-wasm
-``` 
+```
+
 ```
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-``` 
+```
+
 ```
 ninja format; ninja rust_blocks; ninja cbl
 ```

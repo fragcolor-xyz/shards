@@ -19,21 +19,21 @@ To start with, you'll need to get a copy of the Chainblocks repository on your l
 
 Go to the repository's github page. Click the 'Code' button on the right and copy the git repository path (ensure HTTPS is selected) under the heading 'Clone'.
 
-![Copy repo URL to clone](assets/contrib_clone-copy.png) 
+![Copy repo URL to clone](assets/contrib_clone-copy.png)
 
 Open Github Desktop (GD) and choose option 'Clone a repository from the Internet...'
 
-![Select options to clone](assets/contrib_clone-gd.png) 
+![Select options to clone](assets/contrib_clone-gd.png)
 
 Choose the 3rd tab (URL) on the window that opens, and paste the copied git repository URL in the first input box.
 
 *The second input box is the local path where your repository will be cloned. You can change this as desired.*
 
-![Paste repo URL to clone](assets/contrib_clone-paste.png) 
+![Paste repo URL to clone](assets/contrib_clone-paste.png)
 
 Once the cloning is complete (might take a couple of minutes depending on the size of the repository) you can view the repository files on your local using your favorite editor (like VS Code) or via your system's file navigator.
 
-![Repo cloned](assets/contrib_clone-done.png) 
+![Repo cloned](assets/contrib_clone-done.png)
 
 *We shall be using [Visual Studio Code](https://code.visualstudio.com/download/) as the code/ document editor for the rest of this guide.*
 
@@ -51,31 +51,31 @@ You can create a new branch using GD. Click the 'Current Branch' dropdown to sho
 
 ![Show new branch options](assets/contrib_branch-start.png) 
 
-A modal will pop-up asking for the new branch's name. This modal also explains on what branch is this new branch based. Ensure that the source branch is the default branch of the repository (in this case it's 'develop'). 
+A modal will pop-up asking for the new branch's name. This modal also explains on what branch is this new branch based. Ensure that the source branch is the default branch of the repository (in this case it's 'develop').
 
 Click on 'Create Branch'.
 
-![Create new branch](assets/contrib_branch-name.png) 
+![Create new branch](assets/contrib_branch-name.png)
 
 Once the branch is created you have the option of publishing it to Github (i.e. pushing a copy of this locally created branch to the remote from we cloned the repository.)
 
-![publish new branch](assets/contrib_branch-pub.png) 
+![publish new branch](assets/contrib_branch-pub.png)
 
 If you do not have write permission to the original repository, you cannot push your newly created branch to it. In such a case GD will ask you to fork the target repository i.e, create a copy of the original repository in your github account.
 
-![Fork repository](assets/contrib_branch-fork.png) 
+![Fork repository](assets/contrib_branch-fork.png)
 
 After forking the repository choose 'To contribute to the parent project' option as we want to contribute changes to the original repository.
 
-![Continue after forking](assets/contrib_branch-fork-1.png) 
+![Continue after forking](assets/contrib_branch-fork-1.png)
 
 Now you can publish the new branch (remember, this will go to the forked repository in your Github account, not to the original repository on Github.)
 
-![Publish branch after forking](assets/contrib_branch-pub-1.png) 
+![Publish branch after forking](assets/contrib_branch-pub-1.png)
 
 Once the new branch published GD will show you if there are any uncommitted changes in your local branch (there are none here because we haven't yet made any!)
 
-![See uncommitted changes](assets/contrib_commit-ready.png) 
+![See uncommitted changes](assets/contrib_commit-ready.png)
 
 ## Make & test changes 
 
@@ -87,37 +87,41 @@ Before starting the MkDocs live-preview server, however, we need to install any 
 
 In our case we are using only one plugin : [awesome-pages](https://github.com/lukasgeiter/mkdocs-awesome-pages-plugin).
 
-![Search for plugins in MkDocs.yml](assets/changes_find-plugins.png) 
+![Search for plugins in MkDocs.yml](assets/changes_find-plugins.png)
 
 From the documentation home directory (/docs), install MkDocs plugins using the `pip install mkdocs-awesome-pages-plugin` command in the terminal.
 
 === "Command"
-    ![Install MkDocs plugins](assets/changes_install-plugins.png) 
+
+    ![Install MkDocs plugins](assets/changes_install-plugins.png)
 
 Now from the same directory use the `mkdocs serve` command to start the MkDocs live-preview server. On successfull execution of this command you'll see the local URL path that the website is being served at.
 
 === "Command"
-    ![Start MkDocs live-preview server](assets/changes_serve.png) 
+
+    ![Start MkDocs live-preview server](assets/changes_serve.png)
+
 === "Result"
-    ![Live-preview server started](assets/changes_served.png) 
+
+    ![Live-preview server started](assets/changes_served.png)
 
 Navigate to this path in your local browser to access the served site.
 
-![Documentation site served](assets/changes_site.png) 
+![Documentation site served](assets/changes_site.png)
 
 Now we're ready to make some changes!
 
 Let's change the page header's title 'Fragcolor documentation' (sentence case) to 'Fragcolor Documentation' (title case) and save the edit.
 
 Before the change:
-![Edit the source file](assets/changes_change.png) 
+![Edit the source file](assets/changes_change.png)
 
 After the change:
-![Source file edited](assets/changes_changed.png) 
+![Source file edited](assets/changes_changed.png)
 
 And now let's go to our local URL to preview this change.
 
-![Change previewed live](assets/changes_previewed.png) 
+![Change previewed live](assets/changes_previewed.png)
 
 ## Commit & push changes
 
@@ -125,35 +129,35 @@ GD will now show a summary of changes in this new local branch.
 
 *Pink color highlights (-) denote text or code that was removed, while blue color highlights (+) denote what was added.*
 
-![See change summary](assets/commit-push_changes.png) 
+![See change summary](assets/commit-push_changes.png)
 
 Once you're happy with your changes it's time to commit (save) these changes to the local repository branch.
 
 To commit the changes click the 'Commit to LOCAL-REPO-NAME' in the bottom left-hand corner.
 
-![Commit changes to local](assets/commit-push_commit.png) 
+![Commit changes to local](assets/commit-push_commit.png)
 
-Next you'll be asked to add summary (commit message) and description. 
+Next you'll be asked to add summary (commit message) and description.
 
 Add these and then push these changes to the origin remote branch (i.e. the remote original location of our repository) by clicking on 'Push origin' button on the right-hand side.
 
-![Add commit message and push changes to remote origin](assets/commit-push_push.png) 
+![Add commit message and push changes to remote origin](assets/commit-push_push.png)
 
 *The first time you do this git creates this branch on the remote. Subsequent PUSH's only send diffs or changes from the local branch to the (already existing) remote branch.*
 
 At this point GD will show that no local changes exist (since we have committed and pushed to remote origin whatever change we made) and will prompt you to raise a Pull Request.
 
-![Commit pushed to remote origin; raise PR via Github Desktop](assets/commit-push_pushed-gd.png) 
+![Commit pushed to remote origin; raise PR via Github Desktop](assets/commit-push_pushed-gd.png)
 
 If you hop over to Github you'll notice similar messages and prompts on your remote origin forked repository.
 
-![Commit pushed to remote origin; raise PR via Github](assets/commit-push_pushed-github.png) 
+![Commit pushed to remote origin; raise PR via Github](assets/commit-push_pushed-github.png)
 
-You can initiate the process of raising a Pull Request from either GD or Github website. In both cases you'll land up on the Github website's Pull Request page as explained in the next section. 
+You can initiate the process of raising a Pull Request from either GD or Github website. In both cases you'll land up on the Github website's Pull Request page as explained in the next section.
 
 ## Raise a pull request
 
-To make your changes available for review (and merging back into the remote main branch of the documentation repository) you need to raise a Pull Request (PR) to a reviewer or repository maintainer. 
+To make your changes available for review (and merging back into the remote main branch of the documentation repository) you need to raise a Pull Request (PR) to a reviewer or repository maintainer.
 
 *A pull request merges or combines the changes of the PR branch into the target (main) branch.*
 
