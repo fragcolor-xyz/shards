@@ -36,7 +36,7 @@ public:
 	UniformLayout generateNext(ShaderParamType paramType) const {
 		UniformLayout result;
 		result.offset = offset;
-		result.size = getFieldTypeSize(paramType);
+		result.size = getParamTypeSize(paramType);
 		result.type = paramType;
 		return result;
 	}
@@ -44,7 +44,7 @@ public:
 	const UniformLayout &push(const std::string &name, UniformLayout &&layout) {
 		const UniformLayout &result = pushInternal(name, std::move(layout));
 		offset = std::max(offset, layout.offset + layout.size);
-		size_t fieldAlignment = getFieldTypeWGSLAlignment(layout.type);
+		size_t fieldAlignment = getParamTypeWGSLAlignment(layout.type);
 		bufferLayout.maxAlignment = std::max(bufferLayout.maxAlignment, fieldAlignment);
 		return result;
 	}

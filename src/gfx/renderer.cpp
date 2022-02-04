@@ -54,14 +54,14 @@ static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 		auto drawDataIt = drawData.data.find(fieldName);
 		if (drawDataIt != drawData.data.end()) {
 			const UniformLayout &itemLayout = layout.items[layoutIndex];
-			ShaderParamType drawDataFieldType = getFieldVariantType(drawDataIt->second);
+			ShaderParamType drawDataFieldType = getParamVariantType(drawDataIt->second);
 			if (itemLayout.type != drawDataFieldType) {
 				spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", magic_enum::enum_name(itemLayout.type),
 							 magic_enum::enum_name(drawDataFieldType));
 				continue;
 			}
 
-			packFieldVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
+			packParamVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
 		}
 		layoutIndex++;
 	}
@@ -170,7 +170,6 @@ struct RendererImpl {
 		applyVertexColor.dependencies.emplace_back("writeColor", DependencyType::Before);
 
 		testShader.emplace_back("color", ProgrammableGraphicsStage::Fragment, WithInput("color", WriteOutput("color", ReadInput("color"))));
-		// testShader.emplace_back("color", ProgrammableGraphicsStage::Fragment, WithInput("color", WriteOutput("color", "vec4<f32>(1.0, 1.0, 1.0, 1.0)")));
 
 		testShaderGenerator.viewBufferLayout = viewBufferLayout;
 		testShaderGenerator.objectBufferLayout = objectBufferLayout;

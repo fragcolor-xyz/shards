@@ -1,0 +1,8 @@
+// PARAM_TYPE(cpp type, display name, size, alignment)
+// https://www.w3.org/TR/WGSL/#alignment-and-size
+PARAM_TYPE(float,    Float,    sizeof(float),    4)
+PARAM_TYPE(float2,   Float2,   sizeof(float)*2,  8)
+PARAM_TYPE(float3,   Float3,   sizeof(float)*3,  16)
+PARAM_TYPE(float4,   Float4,   sizeof(float)*4,  16)
+PARAM_TYPE(float4x4, Float4x4, sizeof(float)*16, 16)
+#undef PARAM_TYPE
