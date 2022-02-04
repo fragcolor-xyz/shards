@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 #include "context.hpp"
 #include "drawable.hpp"
+#include "feature.hpp"
 #include "hasherxxh128.hpp"
 #include "mesh.hpp"
 #include "params.hpp"
@@ -10,6 +11,7 @@
 #include "shader/generator.hpp"
 #include "shader/uniforms.hpp"
 #include "view.hpp"
+#include "view_texture.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
@@ -105,6 +107,8 @@ struct RendererImpl {
 
 	std::vector<shader::EntryPoint> testShader;
 	shader::Generator testShaderGenerator;
+
+	std::unique_ptr<ViewTexture> depthTexture = std::make_unique<ViewTexture>(WGPUTextureFormat_Depth24Plus);
 
 	RendererImpl(Context &context) : context(context) {
 		UniformBufferLayoutBuilder viewBufferLayoutBuilder;
@@ -297,13 +301,22 @@ struct RendererImpl {
 
 		WGPURenderPassDescriptor passDesc = {};
 		passDesc.colorAttachmentCount = 1;
+
 		WGPURenderPassColorAttachment mainAttach = {};
 		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
 		mainAttach.loadOp = WGPULoadOp_Clear;
 		mainAttach.view = mainOutput.view;
 		mainAttach.storeOp = WGPUStoreOp_Store;
+
+		WGPURenderPassDepthStencilAttachment depthAttach = {};
+		depthAttach.clearDepth = 1.0f;
+		depthAttach.depthLoadOp = WGPULoadOp_Clear;
+		depthAttach.depthStoreOp = WGPUStoreOp_Store;
+		depthAttach.view = depthTexture->update(device, viewport.getSize());
+
 		passDesc.colorAttachments = &mainAttach;
 		passDesc.colorAttachmentCount = 1;
+		passDesc.depthStencilAttachment = &depthAttach;
 
 		clearPipelineCacheDrawables();
 		groupByPipeline(drawQueue.getDrawables());
@@ -430,6 +443,7 @@ struct RendererImpl {
 	}
 
 	void buildPipeline(const CachedPipelinePtr &result) {
+		FeaturePipelineState pipelineState{};
 		WGPUDevice device = context.wgpuDevice;
 
 		shader::Generator generator = testShaderGenerator;
@@ -502,9 +516,25 @@ struct RendererImpl {
 		WGPUFragmentState fragmentState = {};
 		fragmentState.entryPoint = "fragment_main";
 		fragmentState.module = result->shaderModule;
+
 		WGPUColorTargetState mainTarget = {};
 		mainTarget.format = mainOutput.format;
-		mainTarget.writeMask = WGPUColorWriteMask_All;
+		mainTarget.writeMask = pipelineState.colorWrite.value_or(WGPUColorWriteMask_All);
+
+		WGPUBlendState blendState{};
+		if (pipelineState.blend.has_value()) {
+			blendState = pipelineState.blend.value();
+			mainTarget.blend = &blendState;
+		}
+
+		WGPUDepthStencilState depthStencilState{};
+		depthStencilState.format = depthTexture->getFormat();
+		depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
+		depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
+		depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
+		depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
+		desc.depthStencil = &depthStencilState;
+
 		fragmentState.targets = &mainTarget;
 		fragmentState.targetCount = 1;
 		desc.fragment = &fragmentState;
@@ -512,8 +542,13 @@ struct RendererImpl {
 		desc.multisample.count = 1;
 		desc.multisample.mask = ~0;
 
-		desc.primitive.cullMode = WGPUCullMode_None; // TODO
 		desc.primitive.frontFace = result->meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
+		if (pipelineState.culling.value_or(true)) {
+			desc.primitive.cullMode = pipelineState.flipFrontFace.value_or(false) ? WGPUCullMode_Front : WGPUCullMode_Back;
+		} else {
+			desc.primitive.cullMode = WGPUCullMode_None;
+		}
+
 		switch (result->meshFormat.primitiveType) {
 		case PrimitiveType::TriangleList:
 			desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;

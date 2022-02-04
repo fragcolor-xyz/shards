@@ -27,6 +27,8 @@ add_library(gfx
   # cache_data.cpp
 )
 
+target_compile_features(gfx PUBLIC cxx_std_20)
+
 target_include_directories(gfx
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}

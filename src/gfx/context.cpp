@@ -17,7 +17,7 @@ void ErrorScope::push(WGPUErrorFilter filter) {
 #endif
 }
 void ErrorScope::pop(ErrorScope::Function &&function) {
-	this->function = [=](WGPUErrorType type, char const *message) {
+	this->function = [=, this](WGPUErrorType type, char const *message) {
 		function(type, message);
 		processed = true;
 	};
