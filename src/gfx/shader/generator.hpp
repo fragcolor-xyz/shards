@@ -48,6 +48,7 @@ struct Generator {
 	std::vector<NamedField> outputFields;
 
 	GeneratorOutput build(const std::vector<EntryPoint> &entryPoints);
+	GeneratorOutput build(const std::vector<const EntryPoint*> &entryPoints);
 };
 } // namespace shader
 } // namespace gfx

@@ -58,7 +58,11 @@ public:
 
 private:
 	UniformLayout &pushInternal(const std::string &name, UniformLayout &&layout) {
-		assert(mapping.find(name) == mapping.end());
+		auto itExisting = mapping.find(name);
+		if (itExisting != mapping.end()) {
+
+			// assert(itExisti);
+		}
 		size_t index = mapping.size();
 		bufferLayout.fieldNames.push_back(name);
 		bufferLayout.items.emplace_back(std::move(layout));

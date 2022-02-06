@@ -33,8 +33,9 @@ struct EntryPoint {
 	template <typename T>
 	EntryPoint(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment, T &&code = BlockPtr())
 		: stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::move(code))) {}
-	EntryPoint(EntryPoint &&other)
-		: stage(other.stage), name(std::move(other.name)), code(std::move(other.code)), dependencies(std::move(other.dependencies)) {}
+
+	EntryPoint(EntryPoint &&other) = default;
+	EntryPoint &operator=(EntryPoint &&other) = default;
 
 	template <typename T> void hashStatic(T &hasher) const {
 		hasher(stage);

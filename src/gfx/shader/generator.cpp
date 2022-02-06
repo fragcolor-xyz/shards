@@ -1,5 +1,6 @@
 #include "generator.hpp"
 #include "wgsl_mapping.hpp"
+#include <algorithm>
 #include <gfx/graph.hpp>
 #include <magic_enum.hpp>
 #include <optional>
@@ -246,7 +247,13 @@ struct Stage {
 	}
 };
 
-GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) {
+GeneratorOutput Generator::build(const std::vector<EntryPoint> &_entryPoints) {
+	std::vector<const EntryPoint *> entryPoints;
+	std::transform(_entryPoints.begin(), _entryPoints.end(), std::back_inserter(entryPoints), [](const EntryPoint &entryPoint) { return &entryPoint; });
+	return build(entryPoints);
+}
+
+GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoints) {
 	String vertexInputStructName = "Input";
 	String vertexOutputStructName = "VertOutput";
 	String fragmentInputStructName = "FragInput";
@@ -261,7 +268,7 @@ GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) {
 	GeneratorOutput output;
 
 	for (const auto &entryPoint : entryPoints) {
-		stages[size_t(entryPoint.stage)].entryPoints.push_back(&entryPoint);
+		stages[size_t(entryPoint->stage)].entryPoints.push_back(entryPoint);
 	}
 
 	std::string result;

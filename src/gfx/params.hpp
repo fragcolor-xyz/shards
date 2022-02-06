@@ -17,26 +17,21 @@ enum class ShaderParamType : uint8_t {
 #undef PARAM_TYPE
 };
 
-typedef std::variant<float, float2, float3, float4, float4x4> ParamVariant;
+typedef std::variant<std::monostate, float, float2, float3, float4, float4x4> ParamVariant;
 
-size_t packParamVariant(uint8_t* outData, size_t outLength, const ParamVariant &variant);
+size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &variant);
 ShaderParamType getParamVariantType(const ParamVariant &variant);
 size_t getParamTypeSize(ShaderParamType type);
 size_t getParamTypeWGSLAlignment(ShaderParamType type);
 
 struct IDrawDataCollector {
-#define PARAM_TYPE(_cppType, _displayName, ...) virtual void set_##_cppType(const char *name, const _cppType &_##_name) = 0;
-#include "param_types.def"
-#undef PARAM_TYPE
+	virtual void setParam(const char *name, ParamVariant &&value) = 0;
 };
 
 struct DrawData : IDrawDataCollector {
 	std::unordered_map<std::string, ParamVariant> data;
 
-#define PARAM_TYPE(_cppType, _displayName, ...) \
-	void set_##_cppType(const char *name, const _cppType &v) { data[name] = v; }
-#include "param_types.def"
-#undef PARAM_TYPE
+	void setParam(const char *name, ParamVariant &&value) { data.emplace(std::make_pair(name, std::move(value))); }
 	void append(const DrawData &other) {
 		for (auto &it : other.data) {
 			data.insert_or_assign(it.first, it.second);

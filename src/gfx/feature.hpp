@@ -1,6 +1,7 @@
 #pragma once
 #include "enums.hpp"
 #include "linalg.hpp"
+#include "params.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -106,24 +107,60 @@ public:
 	}
 };
 
+enum class ShaderParamFlags {
+	None = 0,
+	Optional = 1 << 0,
+};
+
+struct NamedShaderParam {
+	ShaderParamType type = ShaderParamType::Float4;
+	std::string name;
+	ParamVariant defaultValue;
+	ShaderParamFlags flags = ShaderParamFlags::None;
+
+	NamedShaderParam() = default;
+	NamedShaderParam(std::string name, ShaderParamType type = ShaderParamType::Float4, ParamVariant defaultValue = ParamVariant());
+	NamedShaderParam(std::string name, ParamVariant defaultValue);
+
+	template <typename T> void hashStatic(T &hasher) const {
+		hasher(type);
+		hasher(name);
+		hasher(flags);
+	}
+};
+
+struct Drawable;
+struct View;
+struct Context;
+typedef std::shared_ptr<View> ViewPtr;
+
+struct FeatureCallbackContext {
+	Context &context;
+	View *view = nullptr;
+	Drawable *drawable = nullptr;
+};
+
+typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
+
+struct IDrawDataCollector;
+typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)> FeatureDrawDataFunction;
+
 struct Feature {
+	// Pipeline state flags
 	FeaturePipelineState state;
-	// std::vector<FeatureDrawDataFunction> sharedDrawData;
-	// std::vector<FeatureDrawDataFunction> drawData;
-	// std::vector<FeaturePrecomputeFunction> precompute;
-	// std::vector<FeatureShaderField> shaderParams;
-	// std::vector<FeatureShaderField> shaderGlobals;
-	// std::vector<FeatureShaderField> shaderVaryings;
-	std::vector<std::unique_ptr<shader::EntryPoint>> shaderEntryPoints;
+	// Per drawable draw data
+	std::vector<FeatureDrawDataFunction> drawData;
+	// Material parameters
+	std::vector<NamedShaderParam> shaderParams;
+	// Shader entry points
+	std::vector<shader::EntryPoint> shaderEntryPoints;
 
 	virtual ~Feature() = default;
 
 	template <typename T> void hashStatic(T &hasher) const {
 		hasher(state);
-		// hasher(shaderParams);
-		// hasher(shaderGlobals);
-		// hasher(shaderVaryings);
-		// hasher(shaderCode);
+		hasher(shaderParams);
+		hasher(shaderEntryPoints);
 	}
 };
 typedef std::shared_ptr<Feature> FeaturePtr;

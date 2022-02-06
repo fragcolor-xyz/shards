@@ -29,6 +29,7 @@ struct App {
 	Context context;
 
 	MeshPtr sphereMesh;
+	MeshPtr cubeMesh;
 	ViewPtr view;
 	std::shared_ptr<Renderer> renderer;
 	DrawQueue drawQueue;
@@ -45,7 +46,7 @@ struct App {
 		context.init(window, contextOptions);
 
 		view = std::make_shared<View>();
-		view->view = linalg::lookat_matrix(float3(0, 100.0f, 100.0f), float3(0, 0, 0), float3(0, 1, 0));
+		view->view = linalg::lookat_matrix(float3(0, 50.0f, 50.0f), float3(0, 0, 0), float3(0, 1, 0));
 		view->proj = ViewPerspectiveProjection{
 			degToRad(45.0f),
 			FovDirection::Horizontal,
@@ -54,11 +55,17 @@ struct App {
 		geom::SphereGenerator sphereGen;
 		sphereGen.generate();
 		sphereMesh = std::make_shared<Mesh>();
-		MeshFormat format = {
+		MeshFormat meshFormat = {
 			.vertexAttributes = geom::VertexPNT::getAttributes(),
 		};
-		sphereMesh->update(format, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
+		sphereMesh->update(meshFormat, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
 						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
+
+		geom::CubeGenerator cubeGen;
+		cubeGen.generate();
+		cubeMesh = std::make_shared<Mesh>();
+		cubeMesh->update(meshFormat, cubeGen.vertices.data(), sizeof(geom::VertexPNT) * cubeGen.vertices.size(), cubeGen.indices.data(),
+						 sizeof(geom::GeneratorBase::index_t) * cubeGen.indices.size());
 
 		renderer = std::make_shared<Renderer>(context);
 
@@ -67,12 +74,13 @@ struct App {
 
 	std::vector<DrawablePtr> testDrawables;
 	void buildDrawables() {
-		int2 testGridDim = {64, 64};
+		int2 testGridDim = {8, 8};
 		for (size_t y = 0; y < testGridDim.y; y++) {
-			float fy = (y - float(testGridDim.y) / 2.0f);
+			float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
 			for (size_t x = 0; x < testGridDim.x; x++) {
-				float fx = (x - float(testGridDim.x) / 2.0f);
-				auto drawable = std::make_shared<Drawable>(sphereMesh);
+				float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
+				auto mesh = (y % 2) == 0 ? cubeMesh : sphereMesh;
+				auto drawable = std::make_shared<Drawable>(mesh);
 				drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
 				testDrawables.push_back(drawable);
 			}

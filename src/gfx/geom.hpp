@@ -11,9 +11,9 @@ struct VertexPNT {
 	float normal[3];
 	float texCoord[2];
 
-	void setPosition(const float3& v) { memcpy(position, &v.x, sizeof(float)*3);}
-	void setNormal(const float3& v) { memcpy(normal, &v.x, sizeof(float)*3);}
-	void setTexCoord(const float2& v) { memcpy(texCoord, &v.x, sizeof(float)*2);}
+	void setPosition(const float3 &v) { memcpy(position, &v.x, sizeof(float) * 3); }
+	void setNormal(const float3 &v) { memcpy(normal, &v.x, sizeof(float) * 3); }
+	void setTexCoord(const float2 &v) { memcpy(texCoord, &v.x, sizeof(float) * 2); }
 
 	static std::vector<MeshVertexAttribute> getAttributes();
 };
@@ -49,6 +49,18 @@ struct PlaneGenerator : public GeneratorBase {
 	float height = 1;
 	size_t widthSegments = 1;
 	size_t heightSegments = 1;
+
+	void generate();
+};
+
+struct CubeGenerator : public GeneratorBase {
+	float width = 1;
+	float height = 1;
+	float depth = 1;
+
+	size_t widthSegments = 2;
+	size_t heightSegments = 2;
+	size_t depthSegments = 2;
 
 	void generate();
 };

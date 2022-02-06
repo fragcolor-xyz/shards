@@ -22,6 +22,7 @@ add_library(gfx
   params.cpp
   paths.cpp
   utils.cpp
+  feature.cpp
   shader/generator.cpp
   shader/blocks.cpp
   # cache_data.cpp

@@ -48,6 +48,10 @@ void Mesh::initContextData(Context &context, MeshContextData &contextData) {
 	WGPUDevice device = context.wgpuDevice;
 	assert(device);
 
+	contextData.format = format;
+	contextData.numIndices = numIndices;
+	contextData.numVertices = numVertices;
+
 	WGPUBufferDescriptor desc = {};
 	desc.size = vertexData.size();
 	desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
