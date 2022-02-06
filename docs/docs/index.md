@@ -5,11 +5,18 @@ license: CC-BY-SA-4.0
 
 # Welcome
 
-Welcome to Fragcolor documentation. Here, you can find the documentation of the technologies used with Fragcolor.
+Welcome to Fragcolor documentation!
+
+These documents will help you understand, use, and contribute to Fragcolor technologies.
+
+You can start from a high-level topic below or use the navigation links at the top. 
 
 - [Chainblocks](./blocks/)
 - [Built-in functions](./functions/)
 - [Contributions guides](./contribute/)
+
+*Use the search box if you're looking for something specific.*
+
 
 --8<-- "includes/license.md"
 

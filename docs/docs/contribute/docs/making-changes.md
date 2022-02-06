@@ -5,97 +5,92 @@ license: CC-BY-SA-4.0
 
 # Contributing changes
 
-Fragcolor documentation is located under the [/docs](https://github.com/fragcolor-xyz/chainblocks/tree/devel/docs) folder of the Chainblocks repository.
+Fragcolor documentation exists under the [/docs](https://github.com/fragcolor-xyz/chainblocks/tree/devel/docs) folder of the Chainblocks repository.
 
-Follow these steps to make and contribute document changes.
+This guide will get you started with contributing documentation changes to Fragcolor projects. We'll use the GitHub Desktop (GD) to deal with git as GD is easier to use than the git command line.
 
-*We'll be using [Github Desktop](https://desktop.github.com/) to deal with git as this tool is easier to use than the git command line.*
+Also, all these steps are valid for code contributions too.
 
-*The process described on this page can be applied to code contributions too.*
+*For comprehensive coverage of git/ GitHub workflow, check out GitHub's excellent [Quickstart Tutorial](https://docs.github.com/en/get-started/quickstart/hello-world).*
 
 ## Clone the Repo
 
-To start with, you'll need to get a copy of the Chainblocks repository on your local machine.
+To begin, you'll need a copy of the project's repository on your local machine.
 
-Go to the repository's github page. Click the 'Code' button on the right and copy the git repository path (ensure HTTPS is selected) under the heading 'Clone'.
+Go to the repository's GitHub page. Click the 'Code' button on the right, select HTTPS (under the heading 'Clone'), and copy the git repository path.
 
 ![Copy repo URL to clone](assets/contrib_clone-copy.png)
 
-Open Github Desktop (GD) and choose option 'Clone a repository from the Internet...'
+Open GD and choose the option 'Clone a repository from the Internet...'
 
 ![Select options to clone](assets/contrib_clone-gd.png)
 
 Choose the 3rd tab (URL) on the window that opens, and paste the copied git repository URL in the first input box.
 
-*The second input box is the local path where your repository will be cloned. You can change this as desired.*
+*The second input box is the local path where git will clone your repository. You can change this as desired.*
 
 ![Paste repo URL to clone](assets/contrib_clone-paste.png)
 
-Once the cloning is complete (might take a couple of minutes depending on the size of the repository) you can view the repository files on your local using your favorite editor (like VS Code) or via your system's file navigator.
+Cloning might take a couple of minutes (depending on the size of the repository). After it completes, you'll be able to view the repository files on your local system.
 
 ![Repo cloned](assets/contrib_clone-done.png)
 
-*We shall be using [Visual Studio Code](https://code.visualstudio.com/download/) as the code/ document editor for the rest of this guide.*
-
 ## Create a branch
 
-Before you can make document changes you need to create a local branch to hold your changes.
+You will need to create a new branch from the main/ default branch to hold your changes.
 
-A git repository can contain 'branches'. When you create (fork) a new branch you're essentially creating a copy of the original (master) branch which will now diverge depending on what changes go in the master branch and what changes go in this new branch.
-
-*You should **never** work on the main branch of the repository.*
-
-*A related concept is 'merging' where if a branch is merged with another, usually with master, the changes from both or one or the other may be retained.*
+*Never work on the main branch of the repository; always create a new branch for your changes.*
 
 You can create a new branch using GD. Click the 'Current Branch' dropdown to show the available branches for this repository. Now click on 'New Branch' button on the right-hand side.
 
 ![Show new branch options](assets/contrib_branch-start.png) 
 
-A modal will pop-up asking for the new branch's name. This modal also explains on what branch is this new branch based. Ensure that the source branch is the default branch of the repository (in this case it's 'develop').
+A modal will pop up asking for the new branch's name. This modal also explains on what branch is this new branch based. Ensure that the source branch is the default branch of the repository. In this case, it's 'develop'.
 
 Click on 'Create Branch'.
 
 ![Create new branch](assets/contrib_branch-name.png)
 
-Once the branch is created you have the option of publishing it to Github (i.e. pushing a copy of this locally created branch to the remote from we cloned the repository.)
+Publish this local branch to the project's remote (from where we cloned the repository).
 
 ![publish new branch](assets/contrib_branch-pub.png)
 
-If you do not have write permission to the original repository, you cannot push your newly created branch to it. In such a case GD will ask you to fork the target repository i.e, create a copy of the original repository in your github account.
+If you don't have write access to a project repository, you can't push your changes to it. So, GD will ask you to fork (create a copy of) the target repository instead. Forking will put a copy of the original repository in your GitHub account. You can now push your local branch/ changes to this fork repository in your GitHub account.
+Fork the repository.
 
 ![Fork repository](assets/contrib_branch-fork.png)
 
-After forking the repository choose 'To contribute to the parent project' option as we want to contribute changes to the original repository.
+After forking, choose 'To contribute to the parent project' option.
 
 ![Continue after forking](assets/contrib_branch-fork-1.png)
 
-Now you can publish the new branch (remember, this will go to the forked repository in your Github account, not to the original repository on Github.)
+Publish the new branch to your fork repository.
 
 ![Publish branch after forking](assets/contrib_branch-pub-1.png)
 
-Once the new branch published GD will show you if there are any uncommitted changes in your local branch (there are none here because we haven't yet made any!)
+On GD, you will now be able to see uncommitted changes (if any) in your local branch.
 
 ![See uncommitted changes](assets/contrib_commit-ready.png)
 
 ## Make & test changes 
 
-While working on the documentation you can build and serve the documentation website locally for testing your documentation and your changes to the markdown files will be reflected in real-tinme on served website (hot reloading).
+*Run all terminal commands from the project folder that contains `MkDocs.yml`. For the Chainblocks repository, this folder is `...chainblocks/docs`).*
 
-*All the following commands in the terminal or command window must be used after navigating to the folder where MkDocs.yml lives i.e. '...chainblocks/docs'.* 
- 
-Before starting the MkDocs live-preview server, however, we need to install any plugins that MkDocs might be using (search MkDocs.yml for 'plugins').
+MkDocs can build and serve the documentation website locally while you're making changes. The served pages reflect your documentation changes in real-time (also called hot reloading).
 
-In our case we are using only one plugin : [awesome-pages](https://github.com/lukasgeiter/mkdocs-awesome-pages-plugin).
+Before starting the MkDocs live-preview server, we need to install the required plugins.
+
+MkDocs plugins get registered in the `MkDocs.yml` file against the keyword 'plugins'. Here, we have only one plugin: [awesome-pages](https://github.com/lukasgeiter/mkdocs-awesome-pages-plugin).
 
 ![Search for plugins in MkDocs.yml](assets/changes_find-plugins.png)
 
-From the documentation home directory (/docs), install MkDocs plugins using the `pip install mkdocs-awesome-pages-plugin` command in the terminal.
+Install MkDocs plugins using the `pip install mkdocs-awesome-pages-plugin` command from the terminal.
 
 === "Command"
 
     ![Install MkDocs plugins](assets/changes_install-plugins.png)
 
-Now from the same directory use the `mkdocs serve` command to start the MkDocs live-preview server. On successfull execution of this command you'll see the local URL path that the website is being served at.
+Start the MkDocs live-preview server with the `mkdocs serve` command. Once the server is running, the terminal will display the locally served website's URL path.
 
 === "Command"
 
@@ -111,7 +106,7 @@ Navigate to this path in your local browser to access the served site.
 
 Now we're ready to make some changes!
 
-Let's change the page header's title 'Fragcolor documentation' (sentence case) to 'Fragcolor Documentation' (title case) and save the edit.
+As an exercise, let's change the case of the header's title text. Change 'Fragcolor documentation' (sentence case) to 'Fragcolor Documentation' (title case). Save the edit.
 
 Before the change:
 ![Edit the source file](assets/changes_change.png)
@@ -119,7 +114,7 @@ Before the change:
 After the change:
 ![Source file edited](assets/changes_changed.png)
 
-And now let's go to our local URL to preview this change.
+And now, let's go to our local URL to preview this change.
 
 ![Change previewed live](assets/changes_previewed.png)
 
@@ -127,57 +122,55 @@ And now let's go to our local URL to preview this change.
 
 GD will now show a summary of changes in this new local branch.
 
-*Pink color highlights (-) denote text or code that was removed, while blue color highlights (+) denote what was added.*
+*Pink color highlights (marked with `-`) denote deleted lines. Blue color highlights (marked with `+`) denote added lines.*
 
 ![See change summary](assets/commit-push_changes.png)
 
-Once you're happy with your changes it's time to commit (save) these changes to the local repository branch.
+Commit (save) your changes to the local repository branch.
 
-To commit the changes click the 'Commit to LOCAL-REPO-NAME' in the bottom left-hand corner.
+To commit, click the 'Commit to LOCAL-REPO-NAME' in the bottom left-hand corner of GD.
 
 ![Commit changes to local](assets/commit-push_commit.png)
 
-Next you'll be asked to add summary (commit message) and description.
+GD will ask you to add a summary (commit message) and a description of the changes.
 
-Add these and then push these changes to the origin remote branch (i.e. the remote original location of our repository) by clicking on 'Push origin' button on the right-hand side.
+Add the commit message summary/ description and click on the 'Commit to ...' button below these fields. This commit saves the changes to your new branch locally (in your fork).
+
+Now, click on the 'Push origin' button on the right-hand side. This action pushes your branch's local commits to your fork on GitHub (i.e., the origin remote).
 
 ![Add commit message and push changes to remote origin](assets/commit-push_push.png)
 
-*The first time you do this git creates this branch on the remote. Subsequent PUSH's only send diffs or changes from the local branch to the (already existing) remote branch.*
+At this point, GD will show that no local changes exist. This is because there are no outstanding changes on our local that need to be pushed to remote origin.
 
-At this point GD will show that no local changes exist (since we have committed and pushed to remote origin whatever change we made) and will prompt you to raise a Pull Request.
+GD will now prompt you to raise a Pull Request.
 
-![Commit pushed to remote origin; raise PR via Github Desktop](assets/commit-push_pushed-gd.png)
+![Commit pushed to remote origin; raise PR via GitHub Desktop](assets/commit-push_pushed-gd.png)
 
-If you hop over to Github you'll notice similar messages and prompts on your remote origin forked repository.
+You'll see the same message/ prompt on the GitHub page of your (forked) remote origin repository.
 
-![Commit pushed to remote origin; raise PR via Github](assets/commit-push_pushed-github.png)
+![Commit pushed to remote origin; raise PR via GitHub](assets/commit-push_pushed-github.png)
 
-You can initiate the process of raising a Pull Request from either GD or Github website. In both cases you'll land up on the Github website's Pull Request page as explained in the next section.
+You can start the process of raising a PR from either GD or GitHub website. In either case, you'll end up on the GitHub website's PR page, as explained in the next section.
 
 ## Raise a pull request
 
-To make your changes available for review (and merging back into the remote main branch of the documentation repository) you need to raise a Pull Request (PR) to a reviewer or repository maintainer.
+A Pull Request (or PR) merges/ combines the changes of the PR branch into the target (main) branch.
 
-*A pull request merges or combines the changes of the PR branch into the target (main) branch.*
+*PRs may be raised between branches of the same repository from a fork to the original repository. Here we are dealing with the latter.*
 
-They will review these changes (diffs) and if any changes are needed they will let you know via the Pull Request discussion/ comments section.
+Raise a PR by clicking 'Create Pull Request' in GD. Or, you can click 'Compare & pull request' on your branch/ repository's GitHub page. In both cases, you'll end up on the 'Open a pull request' page on GitHub.
 
-After you click 'Create Pull Request' (in GD) or 'Compare & pull request' on Github, you'll land on the 'Open a pull request' page on Github.
+Fill in the PR title and message. Then click the 'Create pull request' button on the bottom right-hand corner. This action will create a Pull Request and route it to a reviewer.
 
-Fill in the PR title and message, and click 'Create pull request' button on bottom right-hand corner to create a Pull Request.
+![Raise PR via GitHub](assets/pr_raise.png)
 
-![Raise PR via Github](assets/pr_raise.png)
-
-Once the Pull Request is created, a unique URL/ page is generated for that PR. This URL can be used to access this PR's page and participate in the review discussion with the PR reviewers and/ or repository maintainers.
-
-This page also specifies the from and to branches this PR was raised for.
+Every PR gets a unique URL. This URL tracks the review discussion between the contributor and the reviewer(s). It also has details like files changed, commit messages, etc.
 
 ![PR raised](assets/pr_raised.png)
 
-A PR reviewer/ repository maintainer can review this PR and if everything is OK they'll close this PR by merging this change back into the master/default branch.
+Every PR gets routed to a reviewer or a maintainer (of that repository) for a review. If the reviewer agrees with the changes, they'll approve and merge the PR into the target branch. If they need further changes, they will discuss via the comments section in the PR.
 
-*The PR gets closed but the branch will still exist unless explicitly deleted from both local and remote origin.*
+*It's a good practice to delete your branches for merged/ closed PRs.*
 
 
 --8<-- "includes/license.md"

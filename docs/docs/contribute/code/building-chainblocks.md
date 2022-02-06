@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 # Building Chainblocks
 
-*Before building any Fragcolor project from the sources please ensure you've [setup your development environment](../getting-started/#development-environment) correctly.*
+*Before you start, ensure you've [set up your development environment](../getting-started/#development-environment).*
 
 This guide will outline the process to build [Chainblocks](https://github.com/fragcolor-xyz/chainblocks) from the sources.
 
@@ -13,22 +13,19 @@ This guide will outline the process to build [Chainblocks](https://github.com/fr
 
 ### Requirements
 
-*We use GCC and Clang a lot, MSVC might work but it's uncharted territory.*
+*We use GCC and Clang a lot; MSVC might work, but it's uncharted territory.*
 
-The following tools need to be available on your system:
+For Windows, ensure your system environment PATH variable includess the MinGW bin location. This value can be set from: Settings > Edit environment variables for your account > User variables for 'user' > Path > Edit. This allows you to run MinGW from Powershell, VS Code, etc. The value of this PATH is usually `C:\msys64\mingw64\bin`.
 
-- msys2 - https://www.msys2.org/
-- rust - gnu toolchain
+![Add mingw64 bin to user's PATH](assets/build-cb_acc-env-var.png)
 
-*You probably have these already if you've followed the [Getting Started](../getting-started/) section - msys2 is installed as part of C++/ MinGW, and rustup installs the required rust toolchain.*
-
-Make sure you pull this project repository (i.e. Chainblocks) with dependencies by using the following command (from any terminal).
+Pull the Chainblocks repository with dependencies using the following command (from any terminal).
 
 ```
 git submodule update --init --recursive
 ```
 
-Also, ensure you're using the Rust GNU toolchain by firing the following rustup command (from any terminal).
+Switch to the Rust GNU toolchain with the following rustup command (from any terminal).
 
 === "Command"
 
@@ -56,17 +53,11 @@ Also, ensure you're using the Rust GNU toolchain by firing the following rustup 
     C:\Users\saten>
     ```
 
-For windows, the path of MinGW bin should be added to your system environment PATH variable (Settings > Edit environment variables for your account > User variables for 'user' > Path). This is needed in order to run MinGW from powershell, vscode, etc. The value of this PATH is usually `C:\msys64\mingw64\bin` .
-
-![Add mingw64 bin to user's PATH](assets/build-cb_acc-env-var.png)
-
 ### Update system packages
 
-*If you installed MSYS2 and MinGW recently these commands may do nothing much; still, it's a good idea to run them once.*
+Go to the Windows start menu and search for the 'MSYS2 MSYS' terminal application. Start the terminal.
 
-Start the MYSYS2 MSYS terminal application (you can locate it by searching for 'MSYS2 MSYS' in the Windows start menu).
-
-This command will update your packages (you might have to reopen the prompt window after it is executed):
+Run the following command from the MYSYS2 MSYS terminal to update your packages:
    
 === "Command"
 
@@ -91,7 +82,7 @@ This command will update your packages (you might have to reopen the prompt wind
     .
     ``` 
 
-And this one will install the required dependencies:
+Restart the terminal (if needed) and install the required dependencies with this command:
 
 === "Command"
 
@@ -119,9 +110,9 @@ And this one will install the required dependencies:
 
 ### Build & run the project
 
-Open your favorite terminal (could be within Visual Studio Code) pointing to this repo folder and run the following sequence of commands.
+Open a Windows or VS Code terminal and go to the Chainblocks directory.
 
-Create a build directory,
+Now, create a build directory,
 
 ```
 mkdir build
@@ -139,17 +130,17 @@ Now run the following command to describe the build,
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..
 ```
 
-and then run the following command to actually build and link Chainblocks.
+and then, run the following command to actually build and link Chainblocks.
 
 ```
 ninja format; ninja cbl
 ```
 
-After the completion of the build you'll see a message on the terminal confirming the linking of the Chainblocks executable (cbl.exe).
+The build ends with a successful linking of the Chainblocks executable (cbl.exe).
 
  ![Linking Chainblocks cbl.exe](assets/build-cb_use-build-link.png)
 
-*NOTE - The `rust/src/chainblocksc.rs` file might be updated automatically when generating the Rust bindings during compilation. In most cases these changes should not be pushed upstream (unless, and this is very rare, you're modifying certain core files in the project for build target architecture changes). So use the git command `git update-index --skip-worktree rust/src/chainblocksc.rs` to let git ignore changes to this file.*
+*NOTE - When generating the Rust bindings during compilation, the file rust/src/chainblocksc.rs  might be updated automatically. These changes should not be pushed upstream unless you're modifying certain core files for build-target architecture changes (which is very rare). Hence, use the git command `git update-index --skip-worktree rust/src/chainblocksc.rs` to let git ignore changes to this file.*
 
 ### Build for Web Assembly
 
@@ -171,7 +162,7 @@ and then do a git pull to get the latest tools from GitHub (not required the fir
 git pull
 ```
 
-Update the SDK tools to latest version.
+Update the SDK tools to the latest version.
 
 ```
 emsdk install latest
@@ -189,9 +180,9 @@ Activate the PATH/ environment variables for the current terminal session.
 emsdk_env.bat
 ```
 
-*NOTE - For non-Windows systems run the commands `./emsdk install latest`, `./emsdk activate latest`, and `source emsdk_env.sh` instead.*
+*NOTE - For non-Windows systems, use these commands instead: `./emsdk install latest`, `./emsdk activate latest`, and `source emsdk_env.sh`.*
 
-From the chainblocks directory, run the following commands in sequence from the VS Code terminal to create and link the WASM build (similar to how we built Chainblocks for plain C++, in the previous section).
+Open a Windows or VS Code terminal and navigate to the Chainblocks directory. Run the following commands in sequence to create and link the Web Assembly build.
 
 ```
 mkdir build-wasm
@@ -209,7 +200,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/e
 ninja format; ninja rust_blocks; ninja cbl
 ```
 
-*More details can be found at the official Emscripten SDK [documentation](https://emscripten.org/docs/getting_started/downloads.html) page.*
+*For more details, refer to the official Emscripten SDK [documentation](https://emscripten.org/docs/getting_started/downloads.html).*
 
 
 --8<-- "includes/license.md"

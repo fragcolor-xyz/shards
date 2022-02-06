@@ -5,11 +5,9 @@ license: CC-BY-SA-4.0
 
 # Introduction
 
-Fragcolor projects need some love so go ahead and raise a PR!
+Fragcolor has a number of interesting [projects](https://github.com/fragcolor-xyz) open to community contributions.
 
-This guide explains how you can get started contributing code & documentation to Fragcolor.
-
-Browse Fragcolor's [Github page](https://github.com/fragcolor-xyz) page and choose a project that interests you.
+This guide will explain how to set up your development environment. And then, it will walk you through your first code or documentation contribution!
 
 
 --8<-- "includes/license.md"
