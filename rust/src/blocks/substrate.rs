@@ -35,7 +35,7 @@ use core::time::Duration;
 use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
-use sp_core::{blake2_128, ed25519, sr25519, twox_128};
+use sp_core::{blake2_128, ed25519, sr25519, ecdsa, twox_128};
 use sp_runtime::generic::Era;
 use sp_runtime::{MultiAddress, MultiSignature, MultiSigner};
 use std::convert::{TryFrom, TryInto};
@@ -45,8 +45,8 @@ use std::str::FromStr;
 
 lazy_static! {
   static ref ID_PARAMETERS: Parameters = vec![(
-    cstr!("Ed25519"),
-    cbccstr!("If the input public key is an Ed25519 and not the default Sr25519."),
+    cstr!("ECDSA"),
+    cbccstr!("If the input public key is an ECDSA and not the default Sr25519/Ed25519."),
     vec![common_type::bool]
   )
     .into()];
@@ -110,7 +110,7 @@ fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
 #[derive(Default)]
 struct AccountId {
   output: ClonedVar,
-  is_ed: bool,
+  is_ecdsa: bool,
 }
 
 impl Block for AccountId {
@@ -154,25 +154,26 @@ impl Block for AccountId {
 
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
-      0 => self.is_ed = value.try_into().unwrap(),
+      0 => self.is_ecdsa = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.is_ed.into(),
+      0 => self.is_ecdsa.into(),
       _ => unreachable!(),
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: &[u8] = input.as_ref().try_into()?;
-    let raw: [u8; 32] = bytes.try_into().map_err(|_| "Invalid key length")?;
-    let id: String = if self.is_ed {
-      let key = ed25519::Public::from_raw(raw);
+    let id: String = if self.is_ecdsa {
+      let raw: [u8; 33] = bytes.try_into().map_err(|_| "Invalid key length")?;
+      let key = ecdsa::Public::from_raw(raw);
       key.to_ss58check()
     } else {
+      let raw: [u8; 32] = bytes.try_into().map_err(|_| "Invalid key length")?;
       let key = sr25519::Public::from_raw(raw);
       key.to_ss58check()
     };
