@@ -15,6 +15,10 @@ namespace shader {
 using String = std::string;
 using StringView = std::string_view;
 
+struct GeneratorError {
+  std::string error;
+};
+
 struct GeneratorContext {
   String result;
   String inputVariableName;
@@ -23,6 +27,9 @@ struct GeneratorContext {
   std::map<String, BufferDefinition> buffers;
   std::map<String, const NamedField *> inputs;
   std::map<String, FieldType> writtenGlobals;
+  std::map<String, FieldType> writtenOutputs;
+  bool canAddOutputs = false;
+  std::vector<GeneratorError> errors;
 
   void write(const StringView &str);
 
@@ -31,20 +38,24 @@ struct GeneratorContext {
 
   bool hasInput(const char *name);
   void readInput(const char *name);
-  void writeOutput(const char *name);
+  void writeOutput(const char *name, const FieldType &type);
 
   void readBuffer(const char *name);
+
+  void pushError(GeneratorError &&error);
 };
 
 struct GeneratorOutput {
   String wgslSource;
+  std::vector<GeneratorError> errors;
+
+  static void dumpErrors(const GeneratorOutput &output);
 };
 
 struct Generator {
   UniformBufferLayout objectBufferLayout;
   UniformBufferLayout viewBufferLayout;
   MeshFormat meshFormat;
-  std::vector<NamedField> interpolatedFields;
   std::vector<NamedField> outputFields;
 
   GeneratorOutput build(const std::vector<EntryPoint> &entryPoints);

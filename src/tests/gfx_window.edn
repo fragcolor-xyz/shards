@@ -30,10 +30,10 @@
    "test-chain"
    :Looped
    (GFX.MainWindow
-    :Title "SDL Window" :Width 1280 :Height 720 :Debug true
+    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
     :Contents
     (-> (Setup
-         cube (GFX.Mesh :Layout cube-layout) >= .mesh
+         cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
          (Float3 0 0 0) (Math.Translation) >= .transform
          0.0 >= .time
          (GFX.Drawable :Mesh .mesh :Transform .transform) >= .drawable)

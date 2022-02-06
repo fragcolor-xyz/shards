@@ -105,16 +105,73 @@ struct HeadlessRenderer {
   }
 };
 
-MeshPtr createTestMesh() {
-  geom::SphereGenerator gen;
-  gen.generate();
+struct VertexP {
+  float position[3];
+
+  VertexP() = default;
+  VertexP(const geom::VertexPNT &other) { setPosition(*(float3 *)other.position); }
+
+  void setPosition(const float3 &v) { memcpy(position, &v.x, sizeof(float) * 3); }
+
+  static std::vector<MeshVertexAttribute> getAttributes() {
+    std::vector<MeshVertexAttribute> attribs;
+    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
+    return attribs;
+  }
+};
+
+struct VertexPC {
+  float position[3];
+  float color[4];
+
+  VertexPC() = default;
+  VertexPC(const geom::VertexPNT &other) {
+    setPosition(*(float3 *)other.position);
+    setColor(float4(1, 1, 1, 1));
+  }
+
+  void setPosition(const float3 &v) { memcpy(position, &v.x, sizeof(float) * 3); }
+  void setColor(const float4 &v) { memcpy(color, &v.x, sizeof(float) * 4); }
+
+  static std::vector<MeshVertexAttribute> getAttributes() {
+    std::vector<MeshVertexAttribute> attribs;
+    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
+    attribs.emplace_back("color", 4, VertexAttributeType::Float32);
+    return attribs;
+  }
+};
+
+template <typename T> std::vector<T> convertVertices(const std::vector<geom::VertexPNT> &input) {
+  std::vector<T> result;
+  for (auto &vert : input)
+    result.emplace_back(vert);
+  return result;
+}
+
+template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std::vector<geom::GeneratorBase::index_t> &indices) {
   MeshPtr mesh = std::make_shared<Mesh>();
   MeshFormat format{
-      .vertexAttributes = geom::VertexPNT::getAttributes(),
+      .vertexAttributes = T::getAttributes(),
   };
-  mesh->update(format, gen.vertices.data(), gen.vertices.size() * sizeof(geom::VertexPNT), gen.indices.data(),
-               gen.indices.size() * sizeof(geom::GeneratorBase::index_t));
+  mesh->update(format, verts.data(), verts.size() * sizeof(T), indices.data(),
+               indices.size() * sizeof(geom::GeneratorBase::index_t));
   return mesh;
+}
+
+MeshPtr createSphereMesh() {
+  geom::SphereGenerator gen;
+  gen.generate();
+  return createMesh(gen.vertices, gen.indices);
+}
+
+ViewPtr createTestProjectionView() {
+  ViewPtr view = std::make_shared<View>();
+  view->view = linalg::lookat_matrix(float3(0, 10.0f, 10.0f), float3(0, 0, 0), float3(0, 1, 0));
+  view->proj = ViewPerspectiveProjection{
+      degToRad(45.0f),
+      FovDirection::Horizontal,
+  };
+  return view;
 }
 
 TEST_CASE("Renderer capture", "[Renderer]") {
@@ -125,7 +182,7 @@ TEST_CASE("Renderer capture", "[Renderer]") {
   headlessRenderer->createRenderTarget(int2(1280, 720));
   Renderer &renderer = headlessRenderer->renderer;
 
-  MeshPtr mesh = createTestMesh();
+  MeshPtr mesh = createSphereMesh();
   DrawablePtr drawable = std::make_shared<Drawable>(mesh);
   ViewPtr view = std::make_shared<View>();
 
@@ -136,6 +193,44 @@ TEST_CASE("Renderer capture", "[Renderer]") {
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
   CHECK(testData.checkFrame("capture", testFrame));
+
+  headlessRenderer.reset();
+  context.reset();
+}
+
+TEST_CASE("Multiple vertex formats", "[Renderer]") {
+  std::shared_ptr<Context> context = std::make_shared<Context>();
+  context->init();
+
+  auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+  headlessRenderer->createRenderTarget(int2(1280, 720));
+  Renderer &renderer = headlessRenderer->renderer;
+
+  std::vector<MeshPtr> meshes;
+
+  geom::SphereGenerator sphere;
+  sphere.generate();
+  meshes.push_back(createMesh(sphere.vertices, sphere.indices));
+  meshes.push_back(createMesh(convertVertices<VertexP>(sphere.vertices), sphere.indices));
+  meshes.push_back(createMesh(convertVertices<VertexPC>(sphere.vertices), sphere.indices));
+
+  ViewPtr view = createTestProjectionView();
+
+  DrawQueue queue;
+
+  float offset = -2.0f;
+  for (auto &mesh : meshes) {
+    float4x4 transform = linalg::translation_matrix(float3(offset, 0.0f, 0.0f));
+    DrawablePtr drawable = std::make_shared<Drawable>(mesh, transform);
+    queue.add(drawable);
+    offset += 2.0f;
+  }
+
+  renderer.render(queue, view);
+
+  TestData testData(TestPlatformId::get(*context.get()));
+  TestFrame testFrame = headlessRenderer->getTestFrame();
+  CHECK(testData.checkFrame("vertexFormats", testFrame));
 
   headlessRenderer.reset();
   context.reset();
@@ -153,7 +248,7 @@ TEST_CASE("Reference tracking", "[Renderer]") {
   std::weak_ptr<Drawable> drawableWeak;
   std::weak_ptr<MeshContextData> meshContextData;
   {
-    MeshPtr mesh = createTestMesh();
+    MeshPtr mesh = createSphereMesh();
     meshWeak = std::weak_ptr(mesh);
 
     mesh->createContextDataConditional(*context.get());
