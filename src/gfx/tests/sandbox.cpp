@@ -62,6 +62,7 @@ struct App {
 						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
 
 		geom::CubeGenerator cubeGen;
+		cubeGen.height = cubeGen.depth = cubeGen.width = 1.5f;
 		cubeGen.generate();
 		cubeMesh = std::make_shared<Mesh>();
 		cubeMesh->update(meshFormat, cubeGen.vertices.data(), sizeof(geom::VertexPNT) * cubeGen.vertices.size(), cubeGen.indices.data(),
@@ -74,7 +75,8 @@ struct App {
 
 	std::vector<DrawablePtr> testDrawables;
 	void buildDrawables() {
-		int2 testGridDim = {8, 8};
+		testDrawables.clear();
+		int2 testGridDim = {64, 40};
 		for (size_t y = 0; y < testGridDim.y; y++) {
 			float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
 			for (size_t x = 0; x < testGridDim.x; x++) {
