@@ -1,6 +1,7 @@
 #include "generator.hpp"
 #include "wgsl_mapping.hpp"
 #include <algorithm>
+#include <boost/algorithm/string/join.hpp>
 #include <gfx/graph.hpp>
 #include <magic_enum.hpp>
 #include <optional>
@@ -117,6 +118,7 @@ template <typename T> static void generateStruct(T &output, const String &typeNa
 struct Stage {
 	ProgrammableGraphicsStage stage;
 	std::vector<const EntryPoint *> entryPoints;
+	std::vector<String> extraEntryPointParameters;
 	String mainFunctionHeader;
 	String inputStructName;
 	String inputVariableName;
@@ -221,7 +223,13 @@ struct Stage {
 			context.write("}\n");
 		}
 
-		context.write(fmt::format("[[stage({})]]\nfn {}_main(in: {}) -> {} {{\n", wgslStageName, wgslStageName, inputStructName, outputStructName));
+		String entryPointParams = fmt::format("in: {}", inputStructName);
+		if (!extraEntryPointParameters.empty()) {
+			entryPointParams += ", " + boost::algorithm::join(extraEntryPointParameters, ", ");
+		}
+
+		context.write(
+			fmt::format("[[stage({})]]\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
 		context.write(fmt::format("\t{} = in;\n", inputVariableName));
 
 		context.write("\t" + mainFunctionHeader + "\n");
@@ -301,12 +309,14 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 	std::vector<StructField> fragmentInputStructFields = vertexOutputStructFields;
 
 	// Add instance index
-	vertexInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), false, "instance_index");
+	// vertexInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), false, "instance_index");
 	vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), true);
 	fragmentInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), true);
-	for (auto &stage : stages) {
-		stage.mainFunctionHeader += fmt::format("{} = {}.instanceIndex;\n", instanceIndexer, stage.inputVariableName);
-	}
+
+
+	stages[0].extraEntryPointParameters.push_back("[[builtin(instance_index)]] _instanceIndex: u32");
+	stages[0].mainFunctionHeader += fmt::format("{} = _instanceIndex;\n", instanceIndexer);
+	stages[1].mainFunctionHeader += fmt::format("{} = {}.instanceIndex;\n", instanceIndexer, stages[1].inputVariableName);
 
 	// Interpolate instance index
 	stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
