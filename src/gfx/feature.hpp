@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 namespace gfx {
 namespace shader {
@@ -14,20 +15,27 @@ struct EntryPoint;
 }
 
 struct BlendComponent {
+  // NOTE: Sync layout with WGPUBlendComponent
   WGPUBlendOperation operation{};
   WGPUBlendFactor srcFactor{};
   WGPUBlendFactor dstFactor{};
 
   template <typename T> void hashStatic(T &hasher) const {
-    hasher(operation);
     hasher(srcFactor);
     hasher(dstFactor);
+    hasher(operation);
   }
   bool operator==(const BlendComponent &other) const = default;
   bool operator!=(const BlendComponent &other) const = default;
+
+  static BlendComponent Opaque;
+  static BlendComponent Additive;
+  static BlendComponent Alpha;
+  static BlendComponent AlphaPremultiplied;
 };
 
 struct BlendState {
+  // NOTE: Sync layout with WGPUBlendState
   BlendComponent color;
   BlendComponent alpha;
 

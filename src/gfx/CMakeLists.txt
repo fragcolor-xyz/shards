@@ -55,12 +55,22 @@ if(EMSCRIPTEN)
   target_compile_options(gfx PUBLIC
     "SHELL:-s USE_SDL=2"
   )
+
   target_link_options(gfx PUBLIC
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"
-	  "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s USE_WEBGPU=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s NO_DISABLE_EXCEPTION_CATCHING"
+    "SHELL:-s ASYNCIFY=1"
   )
+
+  if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    target_link_options(gfx PUBLIC
+      "SHELL:-s EXCEPTION_DEBUG=1"
+    )
+  endif()
 else()
   target_link_libraries(gfx SDL2-static)
 endif()

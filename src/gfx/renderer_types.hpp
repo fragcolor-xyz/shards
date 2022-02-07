@@ -52,8 +52,18 @@ public:
   ~DynamicWGPUBuffer() { cleanup(); }
   DynamicWGPUBuffer(const DynamicWGPUBuffer &other) = delete;
   DynamicWGPUBuffer &operator=(const DynamicWGPUBuffer &other) = delete;
-  DynamicWGPUBuffer(DynamicWGPUBuffer &&other) = default;
-  DynamicWGPUBuffer &operator=(DynamicWGPUBuffer &&other) = default;
+  DynamicWGPUBuffer(DynamicWGPUBuffer &&other) : capacity(other.capacity), buffer(other.buffer), usage(other.usage) {
+    other.buffer = nullptr;
+    other.capacity = 0;
+  }
+  DynamicWGPUBuffer &operator=(DynamicWGPUBuffer &&other) {
+    capacity = other.capacity;
+    buffer = other.buffer;
+    usage = other.usage;
+    other.buffer = nullptr;
+    other.capacity = 0;
+    return *this;
+  }
 
 private:
   void cleanup() {
@@ -97,7 +107,7 @@ struct DynamicWGPUBufferPool {
   }
 
   DynamicWGPUBuffer &allocateBuffer(size_t size) {
-    size_t smallestDelta = ~0;
+    int64_t smallestDelta = INT64_MAX;
     decltype(freeList)::iterator targetFreeListIt = freeList.end();
     for (auto it = freeList.begin(); it != freeList.end(); ++it) {
       size_t bufferIndex = freeList[*it];

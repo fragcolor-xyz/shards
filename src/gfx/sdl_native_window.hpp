@@ -1,14 +1,17 @@
 #pragma once
 
 #include <SDL.h>
-#define HAVE_SDL_SYSWM
+
+#define NEED_SYSWM (GFX_WINDOWS || GFX_LINUX)
+
 #include <SDL_syswm.h>
 
 #include "error_utils.hpp"
+#include "platform.hpp"
 #include <stdexcept>
 
 inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
-#ifdef HAVE_SDL_SYSWM
+#if NEED_SYSWM
   SDL_SysWMinfo winInfo{};
   SDL_version sdlVer{};
   SDL_VERSION(&sdlVer);
@@ -16,18 +19,19 @@ inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
   if (!SDL_GetWindowWMInfo(window, &winInfo)) {
     throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
   }
-#if defined(_WIN32)
-  return winInfo.info.win.window;
-#elif defined(__linux__)
-  return (void *)winInfo.info.x11.window;
 #endif
+
+#if GFX_WINDOWS
+  return winInfo.info.win.window;
+#elif GFX_LINUX
+  return (void *)winInfo.info.x11.window;
 #else
   return nullptr;
 #endif
 }
 
 inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
-#if BX_PLATFORM_LINUX
+#if NEED_SYSWM
   SDL_SysWMinfo winInfo{};
   SDL_version sdlVer{};
   SDL_VERSION(&sdlVer);
@@ -35,7 +39,9 @@ inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
   if (!SDL_GetWindowWMInfo(window, &winInfo)) {
     throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
   }
+#endif
 
+#if GFX_LINUX
   return (void *)winInfo.info.x11.display;
 #else
   return nullptr;

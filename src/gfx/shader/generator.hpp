@@ -26,8 +26,8 @@ struct GeneratorContext {
   String globalsVariableName;
   std::map<String, BufferDefinition> buffers;
   std::map<String, const NamedField *> inputs;
-  std::map<String, FieldType> writtenGlobals;
-  std::map<String, FieldType> writtenOutputs;
+  std::map<String, FieldType> globals;
+  std::map<String, FieldType> outputs;
   bool canAddOutputs = false;
   std::vector<GeneratorError> errors;
 
@@ -38,6 +38,8 @@ struct GeneratorContext {
 
   bool hasInput(const char *name);
   void readInput(const char *name);
+
+  bool hasOutput(const char *name);
   void writeOutput(const char *name, const FieldType &type);
 
   void readBuffer(const char *name);

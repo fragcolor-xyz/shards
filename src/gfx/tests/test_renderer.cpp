@@ -1,6 +1,9 @@
 #include "test_data.hpp"
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
+#include <gfx/features/base_color.hpp>
+#include <gfx/features/debug_color.hpp>
+#include <gfx/features/transform.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/mesh.hpp>
 #include <gfx/renderer.hpp>
@@ -64,7 +67,6 @@ struct HeadlessRenderer {
   }
 
   TestFrame getTestFrame() {
-
     WGPUCommandEncoderDescriptor ceDesc{};
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &ceDesc);
 
@@ -174,6 +176,19 @@ ViewPtr createTestProjectionView() {
   return view;
 }
 
+PipelineSteps createTestPipelineSteps() {
+  return PipelineSteps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+                  features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex),
+              },
+      }),
+  };
+}
+
 TEST_CASE("Renderer capture", "[Renderer]") {
   std::shared_ptr<Context> context = std::make_shared<Context>();
   context->init();
@@ -188,7 +203,7 @@ TEST_CASE("Renderer capture", "[Renderer]") {
 
   DrawQueue queue;
   queue.add(drawable);
-  renderer.render(queue, view);
+  renderer.render(queue, view, createTestPipelineSteps());
 
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
@@ -212,7 +227,10 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
   sphere.generate();
   meshes.push_back(createMesh(sphere.vertices, sphere.indices));
   meshes.push_back(createMesh(convertVertices<VertexP>(sphere.vertices), sphere.indices));
-  meshes.push_back(createMesh(convertVertices<VertexPC>(sphere.vertices), sphere.indices));
+  auto coloredVertices = convertVertices<VertexPC>(sphere.vertices);
+  for (auto &vert : coloredVertices)
+    vert.setColor(float4(0, 1, 0, 1));
+  meshes.push_back(createMesh(coloredVertices, sphere.indices));
 
   ViewPtr view = createTestProjectionView();
 
@@ -226,11 +244,136 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
     offset += 2.0f;
   }
 
-  renderer.render(queue, view);
+  renderer.render(queue, view, createTestPipelineSteps());
 
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
   CHECK(testData.checkFrame("vertexFormats", testFrame));
+
+  headlessRenderer.reset();
+  context.reset();
+}
+
+TEST_CASE("Pipeline states", "[Renderer]") {
+  std::shared_ptr<Context> context = std::make_shared<Context>();
+  context->init();
+
+  auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+  headlessRenderer->createRenderTarget(int2(512, 512));
+  Renderer &renderer = headlessRenderer->renderer;
+
+  geom::SphereGenerator sphere;
+  sphere.generate();
+
+  auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
+  for (auto &vert : redSphereVerts)
+    vert.setColor(float4(1, 0, 0, 0.5));
+
+  auto greenSphereVerts = convertVertices<VertexPC>(sphere.vertices);
+  for (auto &vert : greenSphereVerts)
+    vert.setColor(float4(0, 1, 0, 0.5));
+
+  MeshPtr redSphereMesh = createMesh(redSphereVerts, sphere.indices);
+  MeshPtr greenSphereMesh = createMesh(greenSphereVerts, sphere.indices);
+
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewOrthographicProjection{
+      .size = 2.0f,
+      .sizeType = OrthographicSizeType::Horizontal,
+      .near = 0.0f,
+      .far = 4.0f,
+  };
+
+  DrawQueue queue;
+
+  float4x4 transform = linalg::translation_matrix(float3(-0.5f, 0.0f, -1.0f));
+  DrawablePtr drawable = std::make_shared<Drawable>(redSphereMesh, transform);
+  queue.add(drawable);
+
+  transform = linalg::translation_matrix(float3(0.5f, 0.0f, -3.0f));
+  drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
+  queue.add(drawable);
+
+  FeaturePtr blendFeature = std::make_shared<Feature>();
+  blendFeature->state.set_depthWrite(false);
+  blendFeature->state.set_blend(BlendState{
+      .color = BlendComponent::AlphaPremultiplied,
+      .alpha = BlendComponent::Opaque,
+  });
+
+  PipelineSteps steps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+                  blendFeature,
+              },
+          .sortMode = SortMode::BackToFront,
+      }),
+  };
+  renderer.render(queue, view, steps);
+
+  TestData testData(TestPlatformId::get(*context.get()));
+  TestFrame testFrame = headlessRenderer->getTestFrame();
+  CHECK(testData.checkFrame("blendAlphaPremul", testFrame));
+
+  headlessRenderer.reset();
+  context.reset();
+}
+
+TEST_CASE("Shader parameters", "[Renderer]") {
+  std::shared_ptr<Context> context = std::make_shared<Context>();
+  context->init();
+
+  auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+  headlessRenderer->createRenderTarget(int2(1280, 720));
+  Renderer &renderer = headlessRenderer->renderer;
+
+  MeshPtr sphereMesh = createSphereMesh();
+
+  ViewPtr view = std::make_shared<View>();
+  view->view = linalg::lookat_matrix(float3(0, 10.0f, 10.0f), float3(0, 0, 0), float3(0, 1, 0));
+  view->proj = ViewPerspectiveProjection{
+      degToRad(45.0f),
+      FovDirection::Horizontal,
+  };
+
+  DrawQueue queue;
+  float4x4 transform;
+  DrawablePtr drawable;
+
+  transform = linalg::translation_matrix(float3(-2.0f, 0.0f, 0.0f));
+  drawable = std::make_shared<Drawable>(sphereMesh, transform);
+  queue.add(drawable);
+
+  transform = linalg::translation_matrix(float3(0.0f, 0.0f, 0.0f));
+  drawable = std::make_shared<Drawable>(sphereMesh, transform);
+  drawable->parameters.set("baseColor", float4(1, 0, 0, 1));
+  queue.add(drawable);
+
+  auto material = std::make_shared<Material>();
+  material->parameters.set("baseColor", float4(0, 1, 0, 1));
+
+  transform = linalg::translation_matrix(float3(2.0f, 0.0f, 0.0f));
+  drawable = std::make_shared<Drawable>(sphereMesh, transform);
+  drawable->material = material;
+  queue.add(drawable);
+
+  PipelineSteps steps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+              },
+      }),
+  };
+  renderer.render(queue, view, steps);
+
+  TestData testData(TestPlatformId::get(*context.get()));
+  TestFrame testFrame = headlessRenderer->getTestFrame();
+  CHECK(testData.checkFrame("shaderParameters", testFrame));
 
   headlessRenderer.reset();
   context.reset();
@@ -261,7 +404,7 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 
     DrawQueue queue;
     queue.add(drawable);
-    renderer.render(queue, view);
+    renderer.render(queue, view, createTestPipelineSteps());
   }
 
   CHECK(meshWeak.expired());

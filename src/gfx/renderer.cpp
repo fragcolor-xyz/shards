@@ -2,9 +2,8 @@
 #include "context.hpp"
 #include "drawable.hpp"
 #include "feature.hpp"
-#include "features/base_color.hpp"
-#include "features/transforms.hpp"
 #include "hasherxxh128.hpp"
+#include "material.hpp"
 #include "mesh.hpp"
 #include "params.hpp"
 #include "renderer_types.hpp"
@@ -24,8 +23,15 @@ using shader::UniformBufferLayout;
 using shader::UniformBufferLayoutBuilder;
 using shader::UniformLayout;
 
+PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
+
 struct BindingLayout {
   UniformBufferLayout uniformBuffers;
+};
+
+struct SortableDrawable {
+  Drawable *drawable{};
+  float projectedDepth = 0.0f;
 };
 
 struct CachedPipeline {
@@ -40,6 +46,7 @@ struct CachedPipeline {
   MeshFormat meshFormat;
   std::vector<const Feature *> features;
   UniformBufferLayout objectBufferLayout;
+  DrawData baseDrawData;
 
   WGPURenderPipeline pipeline = {};
   WGPUShaderModule shaderModule = {};
@@ -47,16 +54,18 @@ struct CachedPipeline {
   std::vector<WGPUBindGroupLayout> bindGroupLayouts;
 
   std::vector<Drawable *> drawables;
-  std::vector<Drawable *> drawablesSorted;
+  std::vector<SortableDrawable> drawablesSorted;
   std::vector<DrawGroup> drawGroups;
+
   DynamicWGPUBufferPool instanceBufferPool;
 
-  void reset() {
-    instanceBufferPool.reset();
+  void resetDrawables() {
     drawables.clear();
     drawablesSorted.clear();
     drawGroups.clear();
   }
+
+  void resetPools() { instanceBufferPool.reset(); }
 
   void release() {
     wgpuPipelineLayoutRelease(pipelineLayout);
@@ -95,8 +104,11 @@ struct CachedDrawableData {
 };
 
 struct CachedViewData {
-  Swappable<DynamicWGPUBuffer, GFX_RENDERER_MAX_BUFFERED_FRAMES> viewBuffers;
+  DynamicWGPUBufferPool viewBuffers;
+  float4x4 projectionMatrix;
   ~CachedViewData() {}
+
+  void resetPools() { viewBuffers.reset(); }
 };
 typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
 
@@ -108,7 +120,6 @@ struct FrameReferences {
 struct RendererImpl {
   Context &context;
   WGPUSupportedLimits deviceLimits = {};
-  WGPUSupportedLimits adapterLimits = {};
 
   UniformBufferLayout viewBufferLayout;
 
@@ -118,16 +129,14 @@ struct RendererImpl {
   Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
   Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
 
-  std::unordered_map<View *, CachedViewDataPtr> viewCache;
+  std::unordered_map<const View *, CachedViewDataPtr> viewCache;
   std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
-  std::unordered_map<Drawable *, CachedDrawableData> drawableCache;
+  std::unordered_map<const Drawable *, CachedDrawableData> drawableCache;
 
   size_t frameIndex = 0;
   const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
   std::unique_ptr<ViewTexture> depthTexture = std::make_unique<ViewTexture>(WGPUTextureFormat_Depth24Plus);
-
-  std::vector<FeaturePtr> testFeatures;
 
   RendererImpl(Context &context) : context(context) {
     UniformBufferLayoutBuilder viewBufferLayoutBuilder;
@@ -138,15 +147,7 @@ struct RendererImpl {
     viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
-    wgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
-    wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
-
-    initTestFeatures();
-  }
-
-  void initTestFeatures() {
-    testFeatures.push_back(features::Transform::create());
-    testFeatures.push_back(features::BaseColor::create());
+    gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
   }
 
   ~RendererImpl() {
@@ -175,7 +176,13 @@ struct RendererImpl {
     mainOutput.size = context.getMainOutputSize();
   }
 
-  void renderView(const DrawQueue &drawQueue, ViewPtr view) {
+  void renderViews(const DrawQueue &drawQueue, const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
+    for (auto &view : views) {
+      renderView(drawQueue, view, pipelineSteps);
+    }
+  }
+
+  void renderView(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
     if (shouldUpdateMainOutputFromContext) {
       updateMainOutputFromContext();
     }
@@ -192,20 +199,20 @@ struct RendererImpl {
       viewport = Rect(0, 0, viewSize.x, viewSize.y);
     }
 
-    DrawData viewDrawData;
-    viewDrawData.setParam("view", viewPtr->view);
-    viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
-    float4x4 projMatrix = viewPtr->getProjectionMatrix(viewSize);
-    viewDrawData.setParam("proj", projMatrix);
-    viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
-
     auto it = viewCache.find(viewPtr);
     if (it == viewCache.end()) {
       it = viewCache.insert(std::make_pair(viewPtr, std::make_shared<CachedViewData>())).first;
     }
     CachedViewData &viewData = *it->second.get();
 
-    DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers(frameIndex);
+    DrawData viewDrawData;
+    viewDrawData.setParam("view", viewPtr->view);
+    viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
+    float4x4 projMatrix = viewData.projectionMatrix = viewPtr->getProjectionMatrix(viewSize);
+    viewDrawData.setParam("proj", projMatrix);
+    viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
+
+    DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
     viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
                       "viewUniform");
 
@@ -214,7 +221,16 @@ struct RendererImpl {
     packDrawData(stagingBuffer.data(), stagingBuffer.size(), viewBufferLayout, viewDrawData);
     wgpuQueueWriteBuffer(context.wgpuQueue, viewBuffer, 0, stagingBuffer.data(), stagingBuffer.size());
 
-    renderDrawablePass(drawQueue, view, viewport, viewBuffer);
+    for (auto &step : pipelineSteps) {
+      std::visit(
+          [&](auto &&arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
+              renderDrawables(drawQueue, arg, view, viewport, viewBuffer);
+            }
+          },
+          *step.get());
+    }
   }
 
   WGPUBuffer createTransientBuffer(size_t size, WGPUBufferUsageFlags flags, const char *label = nullptr) {
@@ -242,6 +258,14 @@ struct RendererImpl {
       cb();
     }
     postFrameQueue.clear();
+
+    for (auto &pair : viewCache) {
+      pair.second->resetPools();
+    }
+
+    for (auto &pair : pipelineCache) {
+      pair.second->resetPools();
+    }
   }
 
   struct Bindable {
@@ -271,12 +295,6 @@ struct RendererImpl {
     return wgpuDeviceCreateBindGroup(device, &desc);
   }
 
-  void clearPipelineCache() {
-    for (auto &pair : pipelineCache) {
-      pair.second->reset();
-    }
-  }
-
   void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
     size_t alignedObjectBufferSize =
         alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment);
@@ -287,11 +305,24 @@ struct RendererImpl {
     std::vector<uint8_t> drawDataTempBuffer;
     drawDataTempBuffer.resize(instanceBufferLength);
     for (size_t i = 0; i < numObjects; i++) {
-      Drawable *drawable = cachedPipeline.drawablesSorted[i];
+      Drawable *drawable = cachedPipeline.drawablesSorted[i].drawable;
 
-      DrawData objectDrawData;
+      DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
 
+      // Grab draw data from material
+      if (Material *material = drawable->material.get()) {
+        for (auto &pair : material->parameters.basic) {
+          objectDrawData.setParam(pair.first, pair.second);
+        }
+      }
+
+      // Grab draw data from drawable
+      for (auto &pair : drawable->parameters.basic) {
+        objectDrawData.setParam(pair.first, pair.second);
+      }
+
+      // Grab draw data from features
       FeatureCallbackContext callbackContext{context, view, drawable};
       for (const Feature *feature : cachedPipeline.features) {
         for (const FeatureDrawDataFunction &drawDataGenerator : feature->drawData) {
@@ -310,25 +341,58 @@ struct RendererImpl {
     wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
   }
 
-  void groupDrawables(CachedPipeline &cachedPipeline) {
-    std::vector<Drawable *> &drawablesSorted = cachedPipeline.drawablesSorted;
+  void buildBaseObjectParameters(CachedPipeline &cachedPipeline) {
+    for (const Feature *feature : cachedPipeline.features) {
+      for (auto &param : feature->shaderParams) {
+        cachedPipeline.baseDrawData.setParam(param.name, param.defaultValue);
+      }
+    }
+  }
+
+  void depthSortBackToFront(CachedPipeline &cachedPipeline, const View &view) {
+    const CachedViewData &viewData = *viewCache[&view].get();
+
+    float4x4 viewProjMatrix = linalg::mul(viewData.projectionMatrix, view.view);
+
+    size_t numDrawables = cachedPipeline.drawables.size();
+    for (size_t i = 0; i < numDrawables; i++) {
+      SortableDrawable &sortable = cachedPipeline.drawablesSorted[i];
+      float4 projected = mul(viewProjMatrix, mul(sortable.drawable->transform, float4(0, 0, 0, 1)));
+      sortable.projectedDepth = projected.z;
+    }
+
+    auto compareBackToFront = [](const SortableDrawable &left, const SortableDrawable &right) {
+      return left.projectedDepth > right.projectedDepth;
+    };
+    std::stable_sort(cachedPipeline.drawablesSorted.begin(), cachedPipeline.drawablesSorted.end(), compareBackToFront);
+  }
+
+  void groupDrawables(CachedPipeline &cachedPipeline, const RenderDrawablesStep &step, const View &view) {
+    std::vector<SortableDrawable> &drawablesSorted = cachedPipeline.drawablesSorted;
 
     // Sort drawables based on mesh binding
     for (auto &drawable : cachedPipeline.drawables) {
       drawable->mesh->createContextDataConditional(context);
       addFrameReference(drawable->mesh->contextData);
 
-      auto comparison = [](const Drawable *left, const Drawable *right) {
-        return left->mesh->contextData < right->mesh->contextData;
+      auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) {
+        return left.drawable->mesh->contextData < right.drawable->mesh->contextData;
       };
-      auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), drawable, comparison);
-      drawablesSorted.insert(it, drawable);
+      SortableDrawable sortableDrawable{
+          .drawable = drawable,
+      };
+      auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
+      drawablesSorted.insert(it, sortableDrawable);
+    }
+
+    if (step.sortMode == SortMode::BackToFront) {
+      depthSortBackToFront(cachedPipeline, view);
     }
 
     // Creates draw call ranges based on mesh binding
     if (drawablesSorted.size() > 0) {
       size_t groupStart = 0;
-      MeshContextData *currentMeshData = drawablesSorted[0]->mesh->contextData.get();
+      MeshContextData *currentMeshData = drawablesSorted[0].drawable->mesh->contextData.get();
 
       auto finishGroup = [&](size_t currentIndex) {
         size_t groupLength = currentIndex - groupStart;
@@ -337,7 +401,7 @@ struct RendererImpl {
         }
       };
       for (size_t i = 1; i < drawablesSorted.size(); i++) {
-        MeshContextData *meshData = drawablesSorted[i]->mesh->contextData.get();
+        MeshContextData *meshData = drawablesSorted[i].drawable->mesh->contextData.get();
         if (meshData != currentMeshData) {
           finishGroup(i);
           groupStart = i;
@@ -348,7 +412,14 @@ struct RendererImpl {
     }
   }
 
-  void renderDrawablePass(const DrawQueue &drawQueue, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
+  void resetPipelineCacheDrawables() {
+    for (auto &pair : pipelineCache) {
+      pair.second->resetDrawables();
+    }
+  }
+
+  void renderDrawables(const DrawQueue &drawQueue, RenderDrawablesStep &step, ViewPtr view, Rect viewport,
+                       WGPUBuffer viewBuffer) {
     WGPUDevice device = context.wgpuDevice;
     WGPUCommandEncoderDescriptor desc = {};
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
@@ -372,17 +443,18 @@ struct RendererImpl {
     passDesc.colorAttachmentCount = 1;
     passDesc.depthStencilAttachment = &depthAttach;
 
-    clearPipelineCache();
-    groupByPipeline(drawQueue.getDrawables());
+    resetPipelineCacheDrawables();
+    groupByPipeline(step, drawQueue.getDrawables());
 
     for (auto &pair : pipelineCache) {
       CachedPipeline &cachedPipeline = *pair.second.get();
       if (!cachedPipeline.pipeline) {
         buildObjectBufferLayout(cachedPipeline);
+        buildBaseObjectParameters(cachedPipeline);
         buildPipeline(cachedPipeline);
       }
 
-      groupDrawables(cachedPipeline);
+      groupDrawables(cachedPipeline, step, *view.get());
     }
 
     WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
@@ -410,10 +482,12 @@ struct RendererImpl {
       for (auto &drawGroup : drawGroups) {
         auto meshContextData = drawGroup.mesh;
 
-        wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, 0);
+        wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0,
+                                             meshContextData->vertexBufferLength);
         if (meshContextData->indexBuffer) {
           WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
-          wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0, 0);
+          wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0,
+                                              meshContextData->indexBufferLength);
 
           wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0,
                                            drawGroup.startIndex);
@@ -429,15 +503,16 @@ struct RendererImpl {
     WGPUCommandBufferDescriptor cmdBufDesc = {};
     WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
 
-    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
+    context.submit(cmdBuf);
   }
 
-  void groupByPipeline(const std::vector<DrawablePtr> &drawables) {
+  void groupByPipeline(RenderDrawablesStep &step, const std::vector<DrawablePtr> &drawables) {
     // TODO: Paralellize
     std::vector<const Feature *> features;
-    const std::vector<FeaturePtr> *featureSources[2] = {&testFeatures, nullptr};
+    const std::vector<FeaturePtr> *featureSources[2] = {&step.features, nullptr};
     for (auto &drawable : drawables) {
       Drawable *drawablePtr = drawable.get();
+      assert(drawablePtr->mesh);
       const Mesh &mesh = *drawablePtr->mesh.get();
 
       features.clear();
@@ -452,7 +527,7 @@ struct RendererImpl {
 
       HasherXXH128 featureHasher;
       for (auto &feature : features) {
-        // NOTE: Hashed by pointer since features are shared/ref-counted
+        // NOTE: Hashed by pointer since features are considered immutable & shared/ref-counted
         featureHasher(feature);
       }
       Hash128 featureHash = featureHasher.getDigest();
@@ -518,8 +593,16 @@ struct RendererImpl {
     cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
   }
 
+  FeaturePipelineState computePipelineState(const std::vector<const Feature *> &features) {
+    FeaturePipelineState state{};
+    for (const Feature *feature : features) {
+      state = state.combine(feature->state);
+    }
+    return state;
+  }
+
   void buildPipeline(CachedPipeline &cachedPipeline) {
-    FeaturePipelineState pipelineState{};
+    FeaturePipelineState pipelineState = computePipelineState(cachedPipeline.features);
     WGPUDevice device = context.wgpuDevice;
 
     shader::GeneratorOutput generatorOutput = generateShader(cachedPipeline);
@@ -534,7 +617,7 @@ struct RendererImpl {
     moduleDesc.nextInChain = &wgslModuleDesc.chain;
 
     wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-    wgslModuleDesc.code = generatorOutput.wgslSource.c_str();
+    wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
     spdlog::info("Generated WGSL:\n {}", generatorOutput.wgslSource);
 
     cachedPipeline.shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
@@ -649,7 +732,12 @@ Renderer::Renderer(Context &context) {
 }
 
 void Renderer::swapBuffers() { impl->swapBuffers(); }
-void Renderer::render(const DrawQueue &drawQueue, ViewPtr view) { impl->renderView(drawQueue, view); }
+void Renderer::render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) {
+  impl->renderViews(drawQueue, views, pipelineSteps);
+}
+void Renderer::render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
+  impl->renderView(drawQueue, view, pipelineSteps);
+}
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;

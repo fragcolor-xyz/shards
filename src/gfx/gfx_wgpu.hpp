@@ -51,3 +51,20 @@ WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDes
     _fn(_x);                       \
     _x = nullptr;                  \
   }
+
+inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor &desc, const char *code) {
+#ifdef WEBGPU_NATIVE
+  desc.code = code;
+#else
+  desc.source = code;
+#endif
+}
+
+// Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
+WGPULimits wgpuGetDefaultLimits();
+
+// Limits with all values unset, to be used as a base for required limits
+WGPULimits wgpuGetUndefinedLimits();
+
+// workaround for emscripten not implementing limits
+void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
