@@ -197,7 +197,7 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/e
 ```
 
 ```
-ninja format; ninja rust_blocks; ninja cbl
+ninja format; ninja cbl
 ```
 
 *For more details, refer to the official Emscripten SDK [documentation](https://emscripten.org/docs/getting_started/downloads.html).*
