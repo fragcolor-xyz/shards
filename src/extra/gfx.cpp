@@ -309,7 +309,7 @@ struct Draw : public BaseConsumer {
 	}
 
 	CBVar activateSeq(CBContext *cbContext, const CBVar &input) {
-		spdlog::info("activate GFX.Draw [Seq]");
+		spdlog::debug("activate GFX.Draw [Seq]");
 
 		auto &seq = input.payload.seqValue;
 		for (size_t i = 0; i < seq.len; i++) {
@@ -323,7 +323,7 @@ struct Draw : public BaseConsumer {
 	}
 
 	CBVar activateSingle(CBContext *cbContext, const CBVar &input) {
-		spdlog::info("activate GFX.Draw [Single]");
+		spdlog::debug("activate GFX.Draw [Single]");
 
 		CBDrawable *cbDrawable = (CBDrawable *)input.payload.objectValue;
 		updateCBDrawable(cbDrawable);
