@@ -450,7 +450,7 @@ struct RendererImpl {
 			auto drawableIt = drawableCache.find(drawablePtr);
 			if (drawableIt == drawableCache.end()) {
 				drawableIt = drawableCache.insert(std::make_pair(drawablePtr, CachedDrawableData{})).first;
-				auto drawableCache = drawableIt->second;
+				auto& drawableCache = drawableIt->second;
 				drawableCache.drawable = drawablePtr;
 
 				HasherXXH128<HashStaticVistor> hasher;
