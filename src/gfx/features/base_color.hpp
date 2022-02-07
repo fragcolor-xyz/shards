@@ -21,7 +21,8 @@ struct BaseColor {
 
 		feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex,
 												WriteGlobal("color", colorFieldType, WithInput("color", ReadInput("color"), "vec4<f32>(1.0, 0.0, 1.0, 1.0)")));
-		auto &writeColor = feature->shaderEntryPoints.emplace_back("writeColor", ProgrammableGraphicsStage::Vertex, WriteOutput("color", ReadGlobal("color")));
+		auto &writeColor =
+			feature->shaderEntryPoints.emplace_back("writeColor", ProgrammableGraphicsStage::Vertex, WriteOutput("color", colorFieldType, ReadGlobal("color")));
 		writeColor.dependencies.emplace_back("initColor");
 
 		auto &normalColor =
@@ -36,7 +37,8 @@ struct BaseColor {
 		applyVertexColor.dependencies.emplace_back("initColor", DependencyType::After);
 		applyVertexColor.dependencies.emplace_back("writeColor", DependencyType::Before);
 
-		feature->shaderEntryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment, WithInput("color", WriteOutput("color", ReadInput("color"))));
+		feature->shaderEntryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment,
+												WithInput("color", WriteOutput("color", colorFieldType, ReadInput("color"))));
 
 		return feature;
 	}

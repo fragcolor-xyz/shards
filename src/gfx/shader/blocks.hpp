@@ -58,20 +58,22 @@ struct WithInput : public Block {
 
 struct WriteOutput : public Block {
 	String name;
+	FieldType type;
 	BlockPtr inner;
 
-	template <typename T> WriteOutput(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::move(inner))) {}
-	template <typename... TArgs> WriteOutput(const String &name, TArgs &&...inner) : name(name), inner(makeCompoundBlock(std::move(inner)...)) {}
-	WriteOutput(WriteOutput &&other) : name(std::move(other.name)), inner(std::move(other.inner)) {}
+	template <typename T> WriteOutput(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::move(inner))) {}
+	template <typename... TArgs>
+	WriteOutput(const String &name, FieldType type, TArgs &&...inner) : name(name), type(type), inner(makeCompoundBlock(std::move(inner)...)) {}
+	WriteOutput(WriteOutput &&other) = default;
 
 	void apply(GeneratorContext &context) const {
-		context.writeOutput(name.c_str());
+		context.writeOutput(name.c_str(), type);
 		context.write(" = ");
 		inner->apply(context);
 		context.write(";\n");
 	}
 
-	BlockPtr clone() { return std::make_unique<WriteOutput>(name, inner->clone()); }
+	BlockPtr clone() { return std::make_unique<WriteOutput>(name, type, inner->clone()); }
 };
 
 struct ReadInput : public Block {
@@ -93,7 +95,7 @@ struct WriteGlobal : public Block {
 	template <typename T> WriteGlobal(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::move(inner))) {}
 	template <typename... TArgs>
 	WriteGlobal(const String &name, FieldType type, TArgs &&...inner) : name(name), type(type), inner(makeCompoundBlock(std::move(inner)...)) {}
-	WriteGlobal(WriteGlobal &&other) : name(std::move(other.name)), type(std::move(other.type)), inner(std::move(other.inner)) {}
+	WriteGlobal(WriteGlobal &&other) = default;
 
 	void apply(GeneratorContext &context) const {
 		context.writeGlobal(name.c_str(), type);

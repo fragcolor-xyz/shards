@@ -26,8 +26,8 @@ struct Transform {
 			WriteGlobal("screenPosition", positionFieldType, ReadBuffer("view"), ".proj", "*", ReadBuffer("view"), ".view", "*", ReadGlobal("worldPosition")));
 		initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
-		auto &writePosition =
-			feature->shaderEntryPoints.emplace_back("writePosition", ProgrammableGraphicsStage::Vertex, WriteOutput("position", ReadGlobal("screenPosition")));
+		auto &writePosition = feature->shaderEntryPoints.emplace_back("writePosition", ProgrammableGraphicsStage::Vertex,
+																	  WriteOutput("position", positionFieldType, ReadGlobal("screenPosition")));
 		writePosition.dependencies.emplace_back("initScreenPosition");
 
 		return feature;

@@ -2,6 +2,7 @@
 #include "wgsl_mapping.hpp"
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
+#include <gfx/error_utils.hpp>
 #include <gfx/graph.hpp>
 #include <magic_enum.hpp>
 #include <optional>
@@ -10,19 +11,28 @@
 namespace gfx {
 namespace shader {
 
+template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) { return GeneratorError{fmt::format(format, args...)}; }
+
 void GeneratorContext::write(const StringView &str) { result += str; }
 
 void GeneratorContext::readGlobal(const char *name) {
 	auto it = writtenGlobals.find(name);
-	assert(it != writtenGlobals.end());
-	result += fmt::format("{}.{}", globalsVariableName, name);
+	if (it == writtenGlobals.end()) {
+		pushError(formatError("Global {} does not exist", name));
+	} else {
+		result += fmt::format("{}.{}", globalsVariableName, name);
+	}
 }
 
 void GeneratorContext::writeGlobal(const char *name, const FieldType &type) {
 	auto it = writtenGlobals.find(name);
-	if (it != writtenGlobals.end())
-		assert(it->second == type);
-	writtenGlobals.insert_or_assign(name, type);
+	if (it == writtenGlobals.end()) {
+		writtenGlobals.insert_or_assign(name, type);
+	} else {
+		if (it->second != type) {
+			pushError(formatError("Global type doesn't match previously expected type"));
+		}
+	}
 	result += fmt::format("{}.{}", globalsVariableName, name);
 }
 
@@ -30,12 +40,28 @@ bool GeneratorContext::hasInput(const char *name) { return inputs.find(name) != 
 
 void GeneratorContext::readInput(const char *name) {
 	auto it = inputs.find(name);
-	assert(it != inputs.end());
-
-	result += fmt::format("{}.{}", inputVariableName, name);
+	if (it == inputs.end()) {
+		pushError(formatError("Input {} does not exist", name));
+	} else {
+		result += fmt::format("{}.{}", inputVariableName, name);
+	}
 }
 
-void GeneratorContext::writeOutput(const char *name) { result += fmt::format("{}.{}", outputVariableName, name); }
+void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
+	auto it = writtenOutputs.find(name);
+	if (it == writtenOutputs.end()) {
+		if (canAddOutputs) {
+			writtenOutputs.insert_or_assign(name, type);
+		} else {
+			pushError(formatError("Output {} does not exist", name));
+		}
+	} else {
+		if (it->second != type) {
+			pushError(formatError("Output type doesn't match previously expected type"));
+		}
+	}
+	result += fmt::format("{}.{}", outputVariableName, name);
+}
 
 void GeneratorContext::readBuffer(const char *name) {
 	auto bufferIt = buffers.find(name);
@@ -48,6 +74,8 @@ void GeneratorContext::readBuffer(const char *name) {
 		result += buffer.bufferVariableName;
 	}
 }
+
+void GeneratorContext::pushError(GeneratorError &&error) { errors.emplace_back(std::move(error)); }
 
 enum class BufferType {
 	Uniform,
@@ -88,32 +116,47 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
 }
 
 struct StructField {
+	static constexpr size_t NO_LOCATION = ~0;
 	NamedField base;
-	bool autoAssignLocation = false;
+	size_t location = NO_LOCATION;
 	String builtinTag;
 
 	StructField() = default;
-	StructField(const NamedField &base, bool autoAssignLocation = false, const String &builtinTag = String())
-		: base(base), autoAssignLocation(autoAssignLocation), builtinTag(builtinTag) {}
+	StructField(const NamedField &base) : base(base) {}
+	StructField(const NamedField &base, size_t location) : base(base), location(location) {}
+	StructField(const NamedField &base, const String &builtinTag) : base(base), builtinTag(builtinTag) {}
+	bool hasLocation() const { return location != NO_LOCATION; }
+	bool hasBuiltinTag() const { return !builtinTag.empty(); }
 };
 
 template <typename T> static void generateStruct(T &output, const String &typeName, const std::vector<StructField> &fields) {
 	output += fmt::format("struct {} {{\n", typeName);
-	size_t index = 0;
 	for (auto &field : fields) {
 		std::string typeName = getFieldWGSLTypeName(field.base.type);
-		if (!field.builtinTag.empty()) {
+		if (field.hasBuiltinTag()) {
 			output += fmt::format("\t[[builtin({})]] ", field.builtinTag);
-			output += fmt::format("{}: {};\n", field.base.name, typeName);
-		} else {
-			if (field.autoAssignLocation) {
-				output += fmt::format("\t[[location({})]] ", index++);
-			}
-			output += fmt::format("{}: {};\n", field.base.name, typeName);
+		} else if (field.hasLocation()) {
+			output += fmt::format("\t[[location({})]] ", field.location);
 		}
+		output += fmt::format("{}: {};\n", field.base.name, typeName);
 	}
 	output += "};\n";
 }
+
+static size_t getNextStructLocation(const std::vector<StructField> &_struct) {
+	size_t loc = 0;
+	for (auto &field : _struct) {
+		if (field.hasLocation()) {
+			loc = std::max(loc, field.location + 1);
+		}
+	}
+	return loc;
+}
+
+struct StageOutput {
+	String code;
+	std::vector<GeneratorError> errors;
+};
 
 struct Stage {
 	ProgrammableGraphicsStage stage;
@@ -188,12 +231,14 @@ struct Stage {
 		return true;
 	}
 
-	String process(const std::vector<NamedField> &inputs, const std::vector<NamedField> &outputs, const std::map<String, BufferDefinition> &buffers) {
+	StageOutput process(const std::vector<NamedField> &inputs, const std::vector<NamedField> &outputs, const std::map<String, BufferDefinition> &buffers,
+						std::vector<StructField> *dynamicOutputStructure) {
 		GeneratorContext context;
 		context.buffers = buffers;
 		context.inputVariableName = inputVariableName;
 		context.outputVariableName = outputVariableName;
 		context.globalsVariableName = globalsVariableName;
+		context.canAddOutputs = dynamicOutputStructure != nullptr;
 
 		for (auto &input : inputs) {
 			context.inputs.insert_or_assign(input.name, &input);
@@ -228,8 +273,7 @@ struct Stage {
 			entryPointParams += ", " + boost::algorithm::join(extraEntryPointParameters, ", ");
 		}
 
-		context.write(
-			fmt::format("[[stage({})]]\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
+		context.write(fmt::format("[[stage({})]]\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
 		context.write(fmt::format("\t{} = in;\n", inputVariableName));
 
 		context.write("\t" + mainFunctionHeader + "\n");
@@ -251,7 +295,26 @@ struct Stage {
 			globalsHeader += fmt::format("var<private> {}: {};\n", globalsVariableName, globalsStructName);
 		}
 
-		return globalsHeader + std::move(context.result);
+		if (dynamicOutputStructure) {
+			for (auto &field : context.writtenOutputs) {
+				dynamicOutputStructure->emplace_back(generateDynamicStructOutput(field.first, field.second, *dynamicOutputStructure));
+			}
+		}
+
+		return StageOutput{
+			globalsHeader + std::move(context.result),
+			std::move(context.errors),
+		};
+	}
+
+	StructField generateDynamicStructOutput(const String &name, const FieldType &type, const std::vector<StructField> &outputStructure) {
+		// Handle builtin outputs here
+		if (name == "position") {
+			return StructField(NamedField(name, type), "position");
+		} else {
+			size_t location = getNextStructLocation(outputStructure);
+			return StructField(NamedField(name, type), location);
+		}
 	}
 };
 
@@ -272,6 +335,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 		Stage(ProgrammableGraphicsStage::Vertex, vertexInputStructName, vertexOutputStructName),
 		Stage(ProgrammableGraphicsStage::Fragment, fragmentInputStructName, fragmentOutputStructName),
 	};
+	auto &vertexStage = stages[0];
 
 	GeneratorOutput output;
 
@@ -279,11 +343,11 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 		stages[size_t(entryPoint->stage)].entryPoints.push_back(entryPoint);
 	}
 
-	std::string result;
-	result.reserve(2 << 12);
+	std::string headerCode;
+	headerCode.reserve(2 << 12);
 
 	const char *instanceIndexer = "u_instanceIndex";
-	result += fmt::format("var<private> {}: u32;\n", instanceIndexer);
+	headerCode += fmt::format("var<private> {}: u32;\n", instanceIndexer);
 
 	std::vector<NamedField> vertexInputFields;
 	for (auto &attr : meshFormat.vertexAttributes) {
@@ -291,28 +355,17 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 	}
 
 	std::vector<StructField> vertexInputStructFields;
-	std::transform(vertexInputFields.begin(), vertexInputFields.end(), std::back_inserter(vertexInputStructFields),
-				   [](const NamedField &field) { return StructField(field, true); });
+	for (size_t i = 0; i < vertexInputFields.size(); i++) {
+		vertexInputStructFields.emplace_back(vertexInputFields[i], i);
+	}
 
 	std::vector<StructField> fragmentOutputStructFields;
-	std::transform(outputFields.begin(), outputFields.end(), std::back_inserter(fragmentOutputStructFields),
-				   [](const NamedField &field) { return StructField(field, true); });
+	for (size_t i = 0; i < outputFields.size(); i++) {
+		fragmentOutputStructFields.emplace_back(outputFields[i], i);
+	}
 
-	std::vector<StructField> vertexOutputStructFields;
-	std::transform(interpolatedFields.begin(), interpolatedFields.end(), std::back_inserter(vertexOutputStructFields), [](const NamedField &field) {
-		String tag;
-		if (field.name == "position")
-			tag = "position";
-		return tag.empty() ? StructField(field, true) : StructField(field, false, tag);
-	});
-
-	std::vector<StructField> fragmentInputStructFields = vertexOutputStructFields;
-
-	// Add instance index
-	// vertexInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), false, "instance_index");
-	vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), true);
-	fragmentInputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), true);
-
+	generateStruct(headerCode, vertexInputStructName, vertexInputStructFields);
+	generateStruct(headerCode, fragmentOutputStructName, fragmentOutputStructFields);
 
 	stages[0].extraEntryPointParameters.push_back("[[builtin(instance_index)]] _instanceIndex: u32");
 	stages[0].mainFunctionHeader += fmt::format("{} = _instanceIndex;\n", instanceIndexer);
@@ -321,42 +374,60 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 	// Interpolate instance index
 	stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
 
-	generateStruct(result, vertexInputStructName, vertexInputStructFields);
-	generateStruct(result, vertexOutputStructName, vertexOutputStructFields);
-	generateStruct(result, fragmentInputStructName, fragmentInputStructFields);
-	generateStruct(result, fragmentOutputStructName, fragmentOutputStructFields);
-
-	generateBuffer(result, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
-	generateBuffer(result, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
+	generateBuffer(headerCode, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
+	generateBuffer(headerCode, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
 
 	std::map<String, BufferDefinition> buffers = {
 		{"view", {"u_view"}},
 		{"object", {"u_objects", instanceIndexer}},
 	};
 
+	std::vector<StructField> vertexOutputStructFields;
+	std::vector<NamedField> fragmentInputFields;
+
+	vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), 0);
+
+	String stagesCode;
+	stagesCode.reserve(2 << 12);
 	for (size_t i = 0; i < numStages; i++) {
 		auto &stage = stages[i];
 
 		bool sorted = stage.sort();
 		assert(sorted);
 
+		static std::vector<NamedField> emptyStruct;
 		std::vector<NamedField> *inputs{};
 		std::vector<NamedField> *outputs{};
+		std::vector<StructField> *generatedStructFields{};
 		switch (stage.stage) {
 		case gfx::ProgrammableGraphicsStage::Vertex:
 			inputs = &vertexInputFields;
-			outputs = &interpolatedFields;
+			outputs = &emptyStruct;
+			generatedStructFields = &vertexOutputStructFields;
 			break;
 		case gfx::ProgrammableGraphicsStage::Fragment:
-			inputs = &interpolatedFields;
+			inputs = &fragmentInputFields;
 			outputs = &outputFields;
 			break;
 		}
 
-		result += stage.process(*inputs, *outputs, buffers);
+		StageOutput stageOutput = stage.process(*inputs, *outputs, buffers, generatedStructFields);
+		for (auto &error : stageOutput.errors)
+			output.errors.emplace_back(error);
+
+		stagesCode += stageOutput.code;
+
+		if (&stage == &vertexStage) {
+			for (auto &outputField : *generatedStructFields)
+				fragmentInputFields.emplace_back(outputField.base);
+		}
 	}
 
-	output.wgslSource = result;
+	// Generate interpolated structure here since it's based on vertex outputs
+	generateStruct(headerCode, vertexOutputStructName, vertexOutputStructFields);
+	generateStruct(headerCode, fragmentInputStructName, vertexOutputStructFields);
+
+	output.wgslSource = headerCode + stagesCode;
 
 	return output;
 }

@@ -480,14 +480,8 @@ struct RendererImpl {
 		shader::Generator generator;
 		generator.meshFormat = cachedPipeline.meshFormat;
 
-		FieldType positionFieldType(ShaderFieldBaseType::Float32, 4);
 		FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
-
-		generator.interpolatedFields.emplace_back("position", FieldType(ShaderFieldBaseType::Float32, 4));
 		generator.outputFields.emplace_back("color", colorFieldType);
-
-		// TODO: Deduce interpolated fields
-		generator.interpolatedFields.emplace_back("color", colorFieldType);
 
 		generator.viewBufferLayout = viewBufferLayout;
 		generator.objectBufferLayout = cachedPipeline.objectBufferLayout;
