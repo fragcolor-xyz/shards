@@ -48,6 +48,8 @@ struct GeneratorContext {
 struct GeneratorOutput {
 	String wgslSource;
 	std::vector<GeneratorError> errors;
+
+	static void dumpErrors(const GeneratorOutput &output);
 };
 
 struct Generator {

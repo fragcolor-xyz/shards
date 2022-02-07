@@ -514,10 +514,7 @@ struct RendererImpl {
 
 		shader::GeneratorOutput generatorOutput = generateShader(cachedPipeline);
 		if (generatorOutput.errors.size() > 0) {
-			spdlog::error("Failed to generate shader code:");
-			for (auto &error : generatorOutput.errors) {
-				spdlog::error(">  {}", error.error);
-			}
+			shader::GeneratorOutput::dumpErrors(generatorOutput);
 			assert(false);
 		}
 

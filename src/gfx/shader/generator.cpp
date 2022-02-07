@@ -7,6 +7,7 @@
 #include <magic_enum.hpp>
 #include <optional>
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 
 namespace gfx {
 namespace shader {
@@ -244,6 +245,10 @@ struct Stage {
 			context.inputs.insert_or_assign(input.name, &input);
 		}
 
+		for (auto &outputField : outputs) {
+			context.writtenOutputs.insert_or_assign(outputField.name, outputField.type);
+		}
+
 		const char *wgslStageName{};
 		switch (stage) {
 		case ProgrammableGraphicsStage::Vertex:
@@ -430,6 +435,15 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 	output.wgslSource = headerCode + stagesCode;
 
 	return output;
+}
+
+void GeneratorOutput::dumpErrors(const GeneratorOutput &output) {
+	if (!output.errors.empty()) {
+		spdlog::error("Failed to generate shader code:");
+		for (auto &error : output.errors) {
+			spdlog::error(">  {}", error.error);
+		}
+	}
 }
 } // namespace shader
 } // namespace gfx
