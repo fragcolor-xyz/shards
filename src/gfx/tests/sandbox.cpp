@@ -1,6 +1,8 @@
 #include "gfx/context.hpp"
 #include "gfx/drawable.hpp"
 #include "gfx/enums.hpp"
+#include "gfx/features/base_color.hpp"
+#include "gfx/features/transform.hpp"
 #include "gfx/geom.hpp"
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
@@ -33,6 +35,8 @@ struct App {
 	ViewPtr view;
 	std::shared_ptr<Renderer> renderer;
 	DrawQueue drawQueue;
+
+	PipelineSteps pipelineSteps;
 
 	App() {}
 
@@ -71,6 +75,14 @@ struct App {
 		renderer = std::make_shared<Renderer>(context);
 
 		buildDrawables();
+
+		pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
+			.features =
+				{
+					features::Transform::create(),
+					features::BaseColor::create(),
+				},
+		}));
 	}
 
 	std::vector<DrawablePtr> testDrawables;
@@ -96,7 +108,7 @@ struct App {
 			drawQueue.add(drawable);
 		}
 
-		renderer->render(drawQueue, view);
+		renderer->render(drawQueue, view, pipelineSteps);
 	}
 
 	void runMainLoop() {

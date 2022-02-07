@@ -1,6 +1,8 @@
 #include "test_data.hpp"
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
+#include <gfx/features/base_color.hpp>
+#include <gfx/features/transform.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/mesh.hpp>
 #include <gfx/renderer.hpp>
@@ -173,6 +175,18 @@ ViewPtr createTestProjectionView() {
 	return view;
 }
 
+PipelineSteps createTestPipelineSteps() {
+	return PipelineSteps{
+		makeDrawablePipelineStep(RenderDrawablesStep{
+			.features =
+				{
+					features::Transform::create(),
+					features::BaseColor::create(),
+				},
+		}),
+	};
+}
+
 TEST_CASE("Renderer capture", "[Renderer]") {
 	std::shared_ptr<Context> context = std::make_shared<Context>();
 	context->init();
@@ -187,7 +201,7 @@ TEST_CASE("Renderer capture", "[Renderer]") {
 
 	DrawQueue queue;
 	queue.add(drawable);
-	renderer.render(queue, view);
+	renderer.render(queue, view, createTestPipelineSteps());
 
 	TestData testData(TestPlatformId::get(*context.get()));
 	TestFrame testFrame = headlessRenderer->getTestFrame();
@@ -225,7 +239,7 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
 		offset += 2.0f;
 	}
 
-	renderer.render(queue, view);
+	renderer.render(queue, view, createTestPipelineSteps());
 
 	TestData testData(TestPlatformId::get(*context.get()));
 	TestFrame testFrame = headlessRenderer->getTestFrame();
@@ -260,7 +274,7 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 
 		DrawQueue queue;
 		queue.add(drawable);
-		renderer.render(queue, view);
+		renderer.render(queue, view, createTestPipelineSteps());
 	}
 
 	CHECK(meshWeak.expired());

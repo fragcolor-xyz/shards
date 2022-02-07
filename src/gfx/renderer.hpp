@@ -16,9 +16,21 @@ typedef std::shared_ptr<Drawable> DrawablePtr;
 struct View;
 typedef std::shared_ptr<View> ViewPtr;
 
-struct RendererImpl;
+struct Feature;
+typedef std::shared_ptr<Feature> FeaturePtr;
+
+struct RenderDrawablesStep {
+	std::vector<FeaturePtr> features;
+};
+
+typedef std::variant<RenderDrawablesStep> PipelineStep;
+typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
+typedef std::vector<PipelineStepPtr> PipelineSteps;
+
+PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step);
 
 // Instance that caches render pipelines
+struct RendererImpl;
 struct Renderer {
 	std::shared_ptr<RendererImpl> impl;
 
@@ -30,7 +42,7 @@ struct Renderer {
 
 public:
 	Renderer(Context &context);
-	void render(const DrawQueue &drawQueue, ViewPtr view);
+	void render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps);
 	void setMainOutput(const MainOutput &output);
 
 	// Call before frame rendering to swap buffers

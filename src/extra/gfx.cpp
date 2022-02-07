@@ -1,6 +1,8 @@
 #include "gfx.hpp"
 #include "gfx/buffer_vars.hpp"
 #include <gfx/context.hpp>
+#include <gfx/features/base_color.hpp>
+#include <gfx/features/transform.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/math.hpp>
 #include <gfx/mesh.hpp>
@@ -50,6 +52,8 @@ struct MainWindow : public Base {
 	ViewPtr mainView;
 	std::shared_ptr<MainWindowGlobals> globals;
 	::gfx::Loop loop;
+
+	PipelineSteps placeholderPipelineSteps;
 
 	void setParam(int index, const CBVar &value) {
 		switch (index) {
@@ -153,6 +157,14 @@ struct MainWindow : public Base {
 			FovDirection::Horizontal,
 		};
 
+		placeholderPipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
+			.features =
+				{
+					features::Transform::create(),
+					features::BaseColor::create(),
+				},
+		}));
+
 		_blocks.warmup(context);
 	}
 
@@ -203,7 +215,7 @@ struct MainWindow : public Base {
 			CBVar _blocksOutput{};
 			_blocks.activate(cbContext, input, _blocksOutput);
 
-			renderer->render(drawQueue, mainView);
+			renderer->render(drawQueue, mainView, placeholderPipelineSteps);
 			context->endFrame();
 		}
 
@@ -301,7 +313,7 @@ struct Draw : public BaseConsumer {
 		dq.add(drawable);
 	}
 
-	void updateCBDrawable(CBDrawable* cbDrawable) {
+	void updateCBDrawable(CBDrawable *cbDrawable) {
 		// Update transform if it's referencing a context variable
 		if (cbDrawable->transformVar.isVariable()) {
 			cbDrawable->drawable->transform = chainblocks::Mat4(cbDrawable->transformVar.get());

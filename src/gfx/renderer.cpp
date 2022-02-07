@@ -2,8 +2,6 @@
 #include "context.hpp"
 #include "drawable.hpp"
 #include "feature.hpp"
-#include "features/base_color.hpp"
-#include "features/transforms.hpp"
 #include "hasherxxh128.hpp"
 #include "mesh.hpp"
 #include "params.hpp"
@@ -23,6 +21,8 @@ namespace gfx {
 using shader::UniformBufferLayout;
 using shader::UniformBufferLayoutBuilder;
 using shader::UniformLayout;
+
+PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
 
 struct BindingLayout {
 	UniformBufferLayout uniformBuffers;
@@ -48,14 +48,16 @@ struct CachedPipeline {
 	std::vector<Drawable *> drawables;
 	std::vector<Drawable *> drawablesSorted;
 	std::vector<DrawGroup> drawGroups;
+
 	DynamicWGPUBufferPool instanceBufferPool;
 
-	void reset() {
-		instanceBufferPool.reset();
+	void resetDrawables() {
 		drawables.clear();
 		drawablesSorted.clear();
 		drawGroups.clear();
 	}
+
+	void resetPools() { instanceBufferPool.reset(); }
 
 	void release() {
 		wgpuPipelineLayoutRelease(pipelineLayout);
@@ -94,8 +96,10 @@ struct CachedDrawableData {
 };
 
 struct CachedViewData {
-	Swappable<DynamicWGPUBuffer, GFX_RENDERER_MAX_BUFFERED_FRAMES> viewBuffers;
+	DynamicWGPUBufferPool viewBuffers;
 	~CachedViewData() {}
+
+	void resetPools() { viewBuffers.reset(); }
 };
 typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
 
@@ -126,8 +130,6 @@ struct RendererImpl {
 
 	std::unique_ptr<ViewTexture> depthTexture = std::make_unique<ViewTexture>(WGPUTextureFormat_Depth24Plus);
 
-	std::vector<FeaturePtr> testFeatures;
-
 	RendererImpl(Context &context) : context(context) {
 		UniformBufferLayoutBuilder viewBufferLayoutBuilder;
 		viewBufferLayoutBuilder.push("view", ShaderParamType::Float4x4);
@@ -139,13 +141,6 @@ struct RendererImpl {
 
 		wgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
 		wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
-
-		initTestFeatures();
-	}
-
-	void initTestFeatures() {
-		testFeatures.push_back(features::Transform::create());
-		testFeatures.push_back(features::BaseColor::create());
 	}
 
 	~RendererImpl() {
@@ -174,7 +169,7 @@ struct RendererImpl {
 		mainOutput.size = context.getMainOutputSize();
 	}
 
-	void renderView(const DrawQueue &drawQueue, ViewPtr view) {
+	void renderView(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
 		if (shouldUpdateMainOutputFromContext) {
 			updateMainOutputFromContext();
 		}
@@ -204,7 +199,7 @@ struct RendererImpl {
 		}
 		CachedViewData &viewData = *it->second.get();
 
-		DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers(frameIndex);
+		DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
 		viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst, "viewUniform");
 
 		std::vector<uint8_t> stagingBuffer;
@@ -212,7 +207,16 @@ struct RendererImpl {
 		packDrawData(stagingBuffer.data(), stagingBuffer.size(), viewBufferLayout, viewDrawData);
 		wgpuQueueWriteBuffer(context.wgpuQueue, viewBuffer, 0, stagingBuffer.data(), stagingBuffer.size());
 
-		renderDrawablePass(drawQueue, view, viewport, viewBuffer);
+		for (auto &step : pipelineSteps) {
+			std::visit(
+				[&](auto &&arg) {
+					using T = std::decay_t<decltype(arg)>;
+					if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
+						renderDrawables(drawQueue, arg, view, viewport, viewBuffer);
+					}
+				},
+				*step.get());
+		}
 	}
 
 	WGPUBuffer createTransientBuffer(size_t size, WGPUBufferUsageFlags flags, const char *label = nullptr) {
@@ -240,6 +244,14 @@ struct RendererImpl {
 			cb();
 		}
 		postFrameQueue.clear();
+
+		for (auto &pair : viewCache) {
+			pair.second->resetPools();
+		}
+
+		for (auto &pair : pipelineCache) {
+			pair.second->resetPools();
+		}
 	}
 
 	struct Bindable {
@@ -266,12 +278,6 @@ struct RendererImpl {
 		desc.entryCount = entries.size();
 		desc.layout = layout;
 		return wgpuDeviceCreateBindGroup(device, &desc);
-	}
-
-	void clearPipelineCache() {
-		for (auto &pair : pipelineCache) {
-			pair.second->reset();
-		}
 	}
 
 	void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
@@ -341,7 +347,13 @@ struct RendererImpl {
 		}
 	}
 
-	void renderDrawablePass(const DrawQueue &drawQueue, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
+	void resetPipelineCacheDrawables() {
+		for (auto &pair : pipelineCache) {
+			pair.second->resetDrawables();
+		}
+	}
+
+	void renderDrawables(const DrawQueue &drawQueue, RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
 		WGPUDevice device = context.wgpuDevice;
 		WGPUCommandEncoderDescriptor desc = {};
 		WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
@@ -365,8 +377,8 @@ struct RendererImpl {
 		passDesc.colorAttachmentCount = 1;
 		passDesc.depthStencilAttachment = &depthAttach;
 
-		clearPipelineCache();
-		groupByPipeline(drawQueue.getDrawables());
+		resetPipelineCacheDrawables();
+		groupByPipeline(step, drawQueue.getDrawables());
 
 		for (auto &pair : pipelineCache) {
 			CachedPipeline &cachedPipeline = *pair.second.get();
@@ -422,10 +434,10 @@ struct RendererImpl {
 		wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
 	}
 
-	void groupByPipeline(const std::vector<DrawablePtr> &drawables) {
+	void groupByPipeline(RenderDrawablesStep &step, const std::vector<DrawablePtr> &drawables) {
 		// TODO: Paralellize
 		std::vector<const Feature *> features;
-		const std::vector<FeaturePtr> *featureSources[2] = {&testFeatures, nullptr};
+		const std::vector<FeaturePtr> *featureSources[2] = {&step.features, nullptr};
 		for (auto &drawable : drawables) {
 			Drawable *drawablePtr = drawable.get();
 			const Mesh &mesh = *drawablePtr->mesh.get();
@@ -450,7 +462,7 @@ struct RendererImpl {
 			auto drawableIt = drawableCache.find(drawablePtr);
 			if (drawableIt == drawableCache.end()) {
 				drawableIt = drawableCache.insert(std::make_pair(drawablePtr, CachedDrawableData{})).first;
-				auto& drawableCache = drawableIt->second;
+				auto &drawableCache = drawableIt->second;
 				drawableCache.drawable = drawablePtr;
 
 				HasherXXH128<HashStaticVistor> hasher;
@@ -639,7 +651,7 @@ Renderer::Renderer(Context &context) {
 }
 
 void Renderer::swapBuffers() { impl->swapBuffers(); }
-void Renderer::render(const DrawQueue &drawQueue, ViewPtr view) { impl->renderView(drawQueue, view); }
+void Renderer::render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(drawQueue, view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {
 	impl->mainOutput = output;
 	impl->shouldUpdateMainOutputFromContext = false;
