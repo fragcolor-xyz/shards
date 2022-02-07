@@ -513,6 +513,13 @@ struct RendererImpl {
 		WGPUDevice device = context.wgpuDevice;
 
 		shader::GeneratorOutput generatorOutput = generateShader(cachedPipeline);
+		if (generatorOutput.errors.size() > 0) {
+			spdlog::error("Failed to generate shader code:");
+			for (auto &error : generatorOutput.errors) {
+				spdlog::error(">  {}", error.error);
+			}
+			assert(false);
+		}
 
 		WGPUShaderModuleDescriptor moduleDesc = {};
 		WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
