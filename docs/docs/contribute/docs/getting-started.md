@@ -3,15 +3,22 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Installing required packages
+# Getting started
 
-We use MkDocs and MkDocs Material to generate the Fragocolor [documentation site](https://docs.fragcolor.xyz/).
+## Documentation requirements
 
-Python is a prerequisite for MkDocs and we use git as our version control system. 
+At Fragcolor, we use the following to generate and maintain the [documentation website](https://docs.fragcolor.xyz/).
 
-So, to contribute documentation to Fragcolor, you'll need all the above packages.
+- MkDocs & MkDocs Material - Documentation static site generator
+- Python - Prerequisite for MkDocs & MkDocs Material
+- git & GitHub - Document version control & contribution workflow
+- VS Code - Code & document editor
 
-## Git
+We follow the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/) to standardize our documentation.
+
+## Documentation build environment
+
+### Git & GitHub
 
 Git is a version control system that we can use to track and manage changes to our markdown files.
 
@@ -25,7 +32,9 @@ Choose your favorite editor as the default git editor. Git will use this editor 
 
 Keep the other installation defaults.
 
-## Python
+You'll can download/ clone the documentation repository via the HTTPS protocol. But you'll need an active [GitHub](https://github.com/) account to fork the documentation repository or contribute to it.
+
+### Python
 
 Python is a pre-requisite for both MkDocs and MkDocs Material.
 
@@ -84,7 +93,7 @@ Type `pip` to confirm PIP installation and version.
 
 *For more details, refer to the official Python installation [documentation](https://docs.python.org/3/using/windows.html#installation-steps).*
 
-## MkDocs
+### MkDocs
 
 MkDocs allows you to write documentation in markdown and then serve it as a static site. 
 
@@ -114,7 +123,7 @@ Then you can check the version of MkDocs installation by using the following com
 
 *For more details, refer to the official MkDocs installation [documentation](https://www.mkdocs.org/user-guide/installation/#installing-mkdocs).*
 
-## MkDocs Material
+### MkDocs Material
 
 MkDocs Material is a Material Design theme for MkDocs.
 

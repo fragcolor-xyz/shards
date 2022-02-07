@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Contributing to the API docs
+# Documenting the API
 
 *Note that as of 2021/10/25, the **API Documentation** for the blocks is extracted from the cbl binary using the infos_docs.edn script.*
 

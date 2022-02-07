@@ -18,11 +18,11 @@ To contribute code to any of the above projects, you'll first need to set up a d
 ## Development environment
 
 ### Setup git & GitHub
-To install git on your machine (for Windows, Linux, and Mac), refer to the [git installation](../../docs/installation/#git) section.
+To install git on your machine (for Windows, Linux, and Mac), refer to the [git installation](../../docs/getting-started/#git) section.
 
 You can download/ clone the code repository via the HTTPS protocol. But you'll need an active GitHub account to fork the repository or contribute to it.
 
-*If you're new to git or GitHub read the [Contributing changes](../../docs/making-changes/) section. This section covers these topics and applies to both code and documentation contributions.*
+*If you're new to git or GitHub read the [Contributing changes](../../docs/contributing-changes/) section. This section covers these topics and applies to both code and documentation contributions.*
 
 ### Get a code editor
 Although you can use any code editor, we recommend Visual Studio Code (VS Code). You can download and install it from [here](https://code.visualstudio.com/download).

@@ -1,5 +1,5 @@
 nav:
-  - installation.md
-  - making-changes.md
-  - api-docs.md
+  - getting-started.md
+  - contributing-changes.md
+  - documenting-the-api.md
   - ...
