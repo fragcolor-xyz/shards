@@ -2,12 +2,14 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/base_color.hpp>
+#include <gfx/features/debug_color.hpp>
 #include <gfx/features/transform.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/mesh.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/view.hpp>
 #include <spdlog/fmt/fmt.h>
+
 
 using namespace gfx;
 
@@ -182,6 +184,7 @@ PipelineSteps createTestPipelineSteps() {
 				{
 					features::Transform::create(),
 					features::BaseColor::create(),
+					features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex),
 				},
 		}),
 	};

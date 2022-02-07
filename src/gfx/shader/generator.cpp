@@ -17,8 +17,8 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
 void GeneratorContext::write(const StringView &str) { result += str; }
 
 void GeneratorContext::readGlobal(const char *name) {
-	auto it = writtenGlobals.find(name);
-	if (it == writtenGlobals.end()) {
+	auto it = globals.find(name);
+	if (it == globals.end()) {
 		pushError(formatError("Global {} does not exist", name));
 	} else {
 		result += fmt::format("{}.{}", globalsVariableName, name);
@@ -26,9 +26,9 @@ void GeneratorContext::readGlobal(const char *name) {
 }
 
 void GeneratorContext::writeGlobal(const char *name, const FieldType &type) {
-	auto it = writtenGlobals.find(name);
-	if (it == writtenGlobals.end()) {
-		writtenGlobals.insert_or_assign(name, type);
+	auto it = globals.find(name);
+	if (it == globals.end()) {
+		globals.insert_or_assign(name, type);
 	} else {
 		if (it->second != type) {
 			pushError(formatError("Global type doesn't match previously expected type"));
@@ -48,11 +48,13 @@ void GeneratorContext::readInput(const char *name) {
 	}
 }
 
+bool GeneratorContext::hasOutput(const char *name) { return outputs.find(name) != outputs.end(); }
+
 void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
-	auto it = writtenOutputs.find(name);
-	if (it == writtenOutputs.end()) {
+	auto it = outputs.find(name);
+	if (it == outputs.end()) {
 		if (canAddOutputs) {
-			writtenOutputs.insert_or_assign(name, type);
+			outputs.insert_or_assign(name, type);
 		} else {
 			pushError(formatError("Output {} does not exist", name));
 		}
@@ -246,7 +248,7 @@ struct Stage {
 		}
 
 		for (auto &outputField : outputs) {
-			context.writtenOutputs.insert_or_assign(outputField.name, outputField.type);
+			context.outputs.insert_or_assign(outputField.name, outputField.type);
 		}
 
 		const char *wgslStageName{};
@@ -291,9 +293,9 @@ struct Stage {
 		context.write("}\n");
 
 		String globalsHeader;
-		if (!context.writtenGlobals.empty()) {
+		if (!context.globals.empty()) {
 			std::vector<StructField> globalsStructFields;
-			for (auto &field : context.writtenGlobals) {
+			for (auto &field : context.globals) {
 				globalsStructFields.emplace_back(NamedField(field.first, field.second));
 			}
 			generateStruct(globalsHeader, globalsStructName, globalsStructFields);
@@ -301,7 +303,7 @@ struct Stage {
 		}
 
 		if (dynamicOutputStructure) {
-			for (auto &field : context.writtenOutputs) {
+			for (auto &field : context.outputs) {
 				dynamicOutputStructure->emplace_back(generateDynamicStructOutput(field.first, field.second, *dynamicOutputStructure));
 			}
 		}

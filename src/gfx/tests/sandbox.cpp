@@ -2,6 +2,7 @@
 #include "gfx/drawable.hpp"
 #include "gfx/enums.hpp"
 #include "gfx/features/base_color.hpp"
+#include "gfx/features/debug_color.hpp"
 #include "gfx/features/transform.hpp"
 #include "gfx/geom.hpp"
 #include "gfx/linalg.hpp"
@@ -81,6 +82,7 @@ struct App {
 				{
 					features::Transform::create(),
 					features::BaseColor::create(),
+					features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex),
 				},
 		}));
 	}
