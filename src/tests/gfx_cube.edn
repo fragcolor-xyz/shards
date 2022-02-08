@@ -39,13 +39,19 @@
     cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
     (Float3 0 0 0) (Math.Translation) >= .transform
     0.0 >= .time
-    (GFX.Drawable :Mesh .mesh :Transform .transform) >= .drawable
+    (GFX.Drawable :Mesh .mesh :Transform .transform) >> .drawables
+
+    (Float3 -3.0 0 0) (Math.Translation) >= .transform1
+    (GFX.Drawable :Mesh .mesh :Transform .transform1) >> .drawables
+
+    (Float3 3.0 0 0) (Math.Translation) >= .transform2
+    (GFX.Drawable :Mesh .mesh :Transform .transform2) >> .drawables
 
     ; Create render steps
     (Do create-render-steps) >= .render-steps
 
     ; Create view
-    {:Position (Float3 10 10 0) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+    {:Position (Float3 0 10 20) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
     (GFX.View :View .view-transform) >= .view)
    (GFX.MainWindow
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false
@@ -56,7 +62,7 @@
      .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
      .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
      .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) >= .transform
-     .drawable (GFX.Draw)
+     .drawables (GFX.Draw)
      (GFX.Render :Steps .render-steps :View .view)))))
 
 (schedule Root test-chain)

@@ -57,11 +57,12 @@ public:
 		other.capacity = 0;
 	}
 	DynamicWGPUBuffer &operator=(DynamicWGPUBuffer &&other) {
-		buffer = other.buffer;
 		capacity = other.capacity;
+		buffer = other.buffer;
 		usage = other.usage;
 		other.buffer = nullptr;
 		other.capacity = 0;
+		return *this;
 	}
 
 private:
@@ -106,7 +107,7 @@ struct DynamicWGPUBufferPool {
 	}
 
 	DynamicWGPUBuffer &allocateBuffer(size_t size) {
-		int64_t smallestDelta = ~0;
+		int64_t smallestDelta = INT64_MAX;
 		decltype(freeList)::iterator targetFreeListIt = freeList.end();
 		for (auto it = freeList.begin(); it != freeList.end(); ++it) {
 			size_t bufferIndex = freeList[*it];
