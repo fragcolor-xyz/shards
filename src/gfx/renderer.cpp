@@ -111,7 +111,6 @@ struct FrameReferences {
 struct RendererImpl {
 	Context &context;
 	WGPUSupportedLimits deviceLimits = {};
-	WGPUSupportedLimits adapterLimits = {};
 
 	UniformBufferLayout viewBufferLayout;
 
@@ -139,8 +138,7 @@ struct RendererImpl {
 		viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
 		viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
-		wgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
-		wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
+		gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
 	}
 
 	~RendererImpl() {
@@ -420,10 +418,10 @@ struct RendererImpl {
 			for (auto &drawGroup : drawGroups) {
 				auto meshContextData = drawGroup.mesh;
 
-				wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, 0);
+				wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, meshContextData->vertexBufferLength);
 				if (meshContextData->indexBuffer) {
 					WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
-					wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0, 0);
+					wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0, meshContextData->indexBufferLength);
 
 					wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0, drawGroup.startIndex);
 				} else {
@@ -542,7 +540,7 @@ struct RendererImpl {
 		moduleDesc.nextInChain = &wgslModuleDesc.chain;
 
 		wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-		wgslModuleDesc.code = generatorOutput.wgslSource.c_str();
+		wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
 		spdlog::info("Generated WGSL:\n {}", generatorOutput.wgslSource);
 
 		cachedPipeline.shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);

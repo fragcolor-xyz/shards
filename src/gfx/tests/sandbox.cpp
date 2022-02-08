@@ -26,6 +26,13 @@
 
 using namespace gfx;
 
+#if GFX_EMSCRIPTEN
+#include <emscripten/html5.h>
+void osYield() { emscripten_sleep(0); }
+#else
+void osYield() {}
+#endif
+
 struct App {
 	Window window;
 	Loop loop;
@@ -145,6 +152,8 @@ struct App {
 					spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
 					fpsCounter = 0.0f;
 				}
+			} else {
+				osYield();
 			}
 		}
 	}

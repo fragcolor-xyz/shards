@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 namespace gfx {
 namespace shader {

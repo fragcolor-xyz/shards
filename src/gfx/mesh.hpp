@@ -6,6 +6,7 @@
 #include "gfx_wgpu.hpp"
 #include "linalg/linalg.h"
 #include <string>
+#include <vector>
 
 namespace gfx {
 

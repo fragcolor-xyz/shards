@@ -1,6 +1,8 @@
 #include "context.hpp"
 #include "context_data.hpp"
 #include "error_utils.hpp"
+#include "platform.hpp"
+#include "platform_surface.hpp"
 #include "sdl_native_window.hpp"
 #include "window.hpp"
 #include <SDL_events.h>
@@ -8,6 +10,10 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
+
+#if GFX_EMSCRIPTEN
+#include <emscripten/html5.h>
+#endif
 
 namespace gfx {
 
@@ -32,32 +38,6 @@ void ErrorScope::staticCallback(WGPUErrorType type, char const *message, void *u
 	ErrorScope *self = (ErrorScope *)userData;
 	self->function(type, message);
 }
-
-struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
-	union {
-		WGPUChainedStruct chain;
-		WGPUSurfaceDescriptorFromXlib x11;
-		WGPUSurfaceDescriptorFromCanvasHTMLSelector html;
-		WGPUSurfaceDescriptorFromMetalLayer mtl;
-		WGPUSurfaceDescriptorFromWaylandSurface wayland;
-		WGPUSurfaceDescriptorFromWindowsHWND win;
-	} platformDesc;
-
-	WGPUPlatformSurfaceDescriptor(void *nativeSurfaceHandle) {
-		memset(this, 0, sizeof(WGPUPlatformSurfaceDescriptor));
-#if defined(_WIN32)
-		platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
-		platformDesc.win.hinstance = GetModuleHandle(nullptr);
-		platformDesc.win.hwnd = (HWND)nativeSurfaceHandle;
-#elif defined(__EMSCRIPTEN__)
-		platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
-		platformDesc.html.selector = (const char *)nativeSurfaceHandle;
-#else
-#error "Unsupported platform"
-#endif
-		nextInChain = &platformDesc.chain;
-	}
-};
 
 struct ContextMainOutput {
 	Window *window{};
@@ -180,34 +160,9 @@ void Context::initCommon(const ContextCreationOptions &options) {
 	}
 #endif
 
-	WGPURequiredLimits requiredLimits = {};
-	auto &limits = requiredLimits.limits;
-	limits.maxTextureDimension1D = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxTextureDimension2D = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxBindGroups = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxDynamicUniformBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxDynamicStorageBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxSampledTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxSamplersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxStorageBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxStorageTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxUniformBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxUniformBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED;
-	limits.maxStorageBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED;
-	limits.minUniformBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED;
-	limits.minStorageBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxVertexBuffers = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxInterStageShaderComponents = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxComputeWorkgroupStorageSize = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxComputeInvocationsPerWorkgroup = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxComputeWorkgroupSizeX = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxComputeWorkgroupSizeY = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxComputeWorkgroupSizeZ = WGPU_LIMIT_U32_UNDEFINED;
-	limits.maxComputeWorkgroupsPerDimension = WGPU_LIMIT_U32_UNDEFINED;
+	WGPURequiredLimits requiredLimits{
+		.limits = wgpuGetUndefinedLimits(),
+	};
 
 	WGPUDeviceDescriptor deviceDesc = {};
 	deviceDesc.requiredLimits = &requiredLimits;
@@ -342,9 +297,19 @@ void Context::submit(WGPUCommandBuffer cmdBuffer) {
 void Context::present() {
 	assert(mainOutput);
 	if (numPendingCommandsSubmitted > 0) {
+#if GFX_EMSCRIPTEN
+		auto callback = [](double time, void *userData) -> EM_BOOL {
+			spdlog::debug("Animation frame callback {}", time);
+			return true;
+		};
+		spdlog::debug("Animation frame queued");
+		emscripten_request_animation_frame(callback, this);
+		emscripten_sleep(0);
+#else
 		wgpuSwapChainPresent(mainOutput->wgpuSwapchain);
-		numPendingCommandsSubmitted = 0;
+#endif
 	}
+	numPendingCommandsSubmitted = 0;
 }
 
 } // namespace gfx

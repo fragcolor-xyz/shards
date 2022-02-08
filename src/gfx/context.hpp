@@ -8,6 +8,8 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <vector>
+#include <unordered_map>
 
 namespace gfx {
 struct ContextCreationOptions {

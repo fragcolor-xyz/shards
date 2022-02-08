@@ -60,48 +60,31 @@ if(EMSCRIPTEN)
   target_compile_options(gfx PUBLIC
     "SHELL:-s USE_SDL=2"
   )
+
   target_link_options(gfx PUBLIC
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"
-	  "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s USE_WEBGPU=1"
+    "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+    "SHELL:-s NO_DISABLE_EXCEPTION_CATCHING"
+    "SHELL:-s ASYNCIFY=1"
   )
+
+  if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    target_link_options(gfx PUBLIC
+      "SHELL:-s EXCEPTION_DEBUG=1"
+    )
+  endif()
 else()
   target_link_libraries(gfx SDL2-static)
 endif()
-
-list(APPEND GFX_SHADER_PATHS ${BGFX_DIR}/src)
-list(APPEND GFX_SHADER_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 
 set(GFX_GENERATED_INCLUDE_PATH "${CMAKE_CURRENT_BINARY_DIR}/include")
 file(MAKE_DIRECTORY "${GFX_GENERATED_INCLUDE_PATH}/gfx")
 target_include_directories(gfx PUBLIC ${GFX_GENERATED_INCLUDE_PATH})
 
-# Get shader paths relative to the root
-foreach(SHADER_PATH ${GFX_SHADER_PATHS})
-	file(RELATIVE_PATH SHADER_PATH ${CHAINBLOCKS_DIR} ${SHADER_PATH})
-	list(APPEND GFX_SHADER_PATHS_RELATIVE ${SHADER_PATH})
-endforeach()
-
-# Write relative shader include paths to shader_paths.hpp
-set(GFX_SHADER_PATHS_HEADER "${GFX_GENERATED_INCLUDE_PATH}/gfx/shader_paths.hpp")
-include(GenerateC)
-file(WRITE ${GFX_SHADER_PATHS_HEADER} "// auto-generated from ${CMAKE_CURRENT_LIST_FILE}\n#pragma once\n\n")
-file(APPEND ${GFX_SHADER_PATHS_HEADER} "namespace gfx {\n")
-generate_c_string_array(${GFX_SHADER_PATHS_HEADER} "shaderIncludePaths" GFX_SHADER_PATHS_RELATIVE)
-file(APPEND ${GFX_SHADER_PATHS_HEADER} "} // namespace gfx\n")
-
-# Bundle shader files on emscripten
-if(EMSCRIPTEN)
-	foreach(SHADER_PATH ${GFX_SHADER_PATHS})
-		file(RELATIVE_PATH SHADER_PATH ${CMAKE_BINARY_DIR} ${SHADER_PATH})
-		message(STATUS "--preload-file for shader path: ${SHADER_PATH}")
-		target_link_options(gfx PUBLIC "SHELL:--preload-file \"${SHADER_PATH}\"")
-	endforeach()
-endif()
-
 if(NOT EMSCRIPTEN)
-
   # wgpu-native target
   if(Rust_CARGO_TARGET)
     set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
