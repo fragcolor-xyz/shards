@@ -54,6 +54,8 @@ public:
 	std::vector<std::shared_ptr<ErrorScope>> errorScopes;
 	std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
 
+	size_t numPendingCommandsSubmitted = 0;
+
 public:
 	Context();
 	~Context();
@@ -79,6 +81,8 @@ public:
 	void beginFrame();
 	void endFrame();
 	void sync();
+
+	void submit(WGPUCommandBuffer cmdBuffer);
 
 	// start tracking an object implementing WithContextData so it's data is released with this context
 	void addContextDataInternal(std::weak_ptr<ContextData> ptr);

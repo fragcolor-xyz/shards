@@ -169,6 +169,12 @@ struct RendererImpl {
 		mainOutput.size = context.getMainOutputSize();
 	}
 
+	void renderViews(const DrawQueue &drawQueue, const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
+		for (auto &view : views) {
+			renderView(drawQueue, view, pipelineSteps);
+		}
+	}
+
 	void renderView(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
 		if (shouldUpdateMainOutputFromContext) {
 			updateMainOutputFromContext();
@@ -431,7 +437,7 @@ struct RendererImpl {
 		WGPUCommandBufferDescriptor cmdBufDesc = {};
 		WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
 
-		wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuf);
+		context.submit(cmdBuf);
 	}
 
 	void groupByPipeline(RenderDrawablesStep &step, const std::vector<DrawablePtr> &drawables) {
@@ -651,6 +657,9 @@ Renderer::Renderer(Context &context) {
 }
 
 void Renderer::swapBuffers() { impl->swapBuffers(); }
+void Renderer::render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) {
+	impl->renderViews(drawQueue, views, pipelineSteps);
+}
 void Renderer::render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(drawQueue, view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {
 	impl->mainOutput = output;

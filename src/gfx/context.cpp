@@ -334,9 +334,17 @@ void Context::sync() {
 #endif
 }
 
+void Context::submit(WGPUCommandBuffer cmdBuffer) {
+	wgpuQueueSubmit(wgpuQueue, 1, &cmdBuffer);
+	++numPendingCommandsSubmitted;
+}
+
 void Context::present() {
 	assert(mainOutput);
-	wgpuSwapChainPresent(mainOutput->wgpuSwapchain);
+	if (numPendingCommandsSubmitted > 0) {
+		wgpuSwapChainPresent(mainOutput->wgpuSwapchain);
+		numPendingCommandsSubmitted = 0;
+	}
 }
 
 } // namespace gfx

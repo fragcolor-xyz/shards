@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include "math.hpp"
 #include "opt.hpp"
 #include "types.hpp"
 
@@ -22,8 +22,8 @@ enum class FovDirection {
 };
 
 struct ViewPerspectiveProjection {
-	float fov;
-	FovDirection fovType = FovDirection::Vertical;
+	float fov = degToRad(45.0f);
+	FovDirection fovType = FovDirection::Horizontal;
 	float near = 0.1f;
 	float far = 800.0f;
 };

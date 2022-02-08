@@ -1,6 +1,7 @@
 #pragma once
 #include "gfx_wgpu.hpp"
 #include "linalg.hpp"
+#include "pipeline_step.hpp"
 #include <functional>
 #include <memory>
 
@@ -19,16 +20,6 @@ typedef std::shared_ptr<View> ViewPtr;
 struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
 
-struct RenderDrawablesStep {
-	std::vector<FeaturePtr> features;
-};
-
-typedef std::variant<RenderDrawablesStep> PipelineStep;
-typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
-typedef std::vector<PipelineStepPtr> PipelineSteps;
-
-PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step);
-
 // Instance that caches render pipelines
 struct RendererImpl;
 struct Renderer {
@@ -42,6 +33,7 @@ struct Renderer {
 
 public:
 	Renderer(Context &context);
+	void render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps);
 	void render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps);
 	void setMainOutput(const MainOutput &output);
 
