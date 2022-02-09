@@ -10,7 +10,6 @@
 #include <gfx/view.hpp>
 #include <spdlog/fmt/fmt.h>
 
-
 using namespace gfx;
 
 struct HeadlessRenderer {
@@ -247,6 +246,74 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
 	TestData testData(TestPlatformId::get(*context.get()));
 	TestFrame testFrame = headlessRenderer->getTestFrame();
 	CHECK(testData.checkFrame("vertexFormats", testFrame));
+
+	headlessRenderer.reset();
+	context.reset();
+}
+
+TEST_CASE("Pipeline states", "[Renderer]") {
+	std::shared_ptr<Context> context = std::make_shared<Context>();
+	context->init();
+
+	auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+	headlessRenderer->createRenderTarget(int2(512, 512));
+	Renderer &renderer = headlessRenderer->renderer;
+
+	geom::SphereGenerator sphere;
+	sphere.generate();
+
+	auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
+	for (auto &vert : redSphereVerts)
+		vert.setColor(float4(1, 0, 0, 0.5));
+
+	auto greenSphereVerts = convertVertices<VertexPC>(sphere.vertices);
+	for (auto &vert : greenSphereVerts)
+		vert.setColor(float4(0, 1, 0, 0.5));
+
+	MeshPtr redSphereMesh = createMesh(redSphereVerts, sphere.indices);
+	MeshPtr greenSphereMesh = createMesh(greenSphereVerts, sphere.indices);
+
+	ViewPtr view = std::make_shared<View>();
+	view->proj = ViewOrthographicProjection{
+		.size = 2.0f,
+		.sizeType = OrthographicSizeType::Horizontal,
+		.near = 0.0f,
+		.far = 4.0f,
+	};
+
+	DrawQueue queue;
+
+	float4x4 transform = linalg::translation_matrix(float3(-0.5f, 0.0f, -1.0f));
+	DrawablePtr drawable = std::make_shared<Drawable>(redSphereMesh, transform);
+	queue.add(drawable);
+
+	transform = linalg::translation_matrix(float3(0.5f, 0.0f, -3.0f));
+	drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
+	queue.add(drawable);
+
+	FeaturePtr blendFeature = std::make_shared<Feature>();
+	blendFeature->state.set_depthWrite(false);
+	blendFeature->state.set_blend(BlendState{
+		.color = BlendComponent::AlphaPremultiplied,
+		.alpha = BlendComponent::Opaque,
+	});
+
+	PipelineSteps steps{
+		makeDrawablePipelineStep(RenderDrawablesStep{
+			.features =
+				{
+					features::Transform::create(),
+					features::BaseColor::create(),
+					blendFeature,
+				},
+			.sortMode = SortMode::BackToFront,
+		}),
+	};
+	renderer.render(queue, view, steps);
+
+	TestData testData(TestPlatformId::get(*context.get()));
+	TestFrame testFrame = headlessRenderer->getTestFrame();
+	CHECK(testData.checkFrame("blendAlphaPremul", testFrame));
 
 	headlessRenderer.reset();
 	context.reset();

@@ -11,6 +11,7 @@
 #include "gfx/moving_average.hpp"
 #include "gfx/renderer.hpp"
 #include "gfx/types.hpp"
+#include "gfx/utils.hpp"
 #include "gfx/view.hpp"
 #include "gfx/window.hpp"
 #include "linalg/linalg.h"
@@ -33,6 +34,43 @@ void osYield() { emscripten_sleep(0); }
 void osYield() {}
 #endif
 
+struct VertexPC {
+	float position[3];
+	float color[4];
+
+	VertexPC() = default;
+	VertexPC(const geom::VertexPNT &other) {
+		setPosition(*(float3 *)other.position);
+		setColor(float4(1, 1, 1, 1));
+	}
+
+	void setPosition(const float3 &v) { memcpy(position, &v.x, sizeof(float) * 3); }
+	void setColor(const float4 &v) { memcpy(color, &v.x, sizeof(float) * 4); }
+
+	static std::vector<MeshVertexAttribute> getAttributes() {
+		std::vector<MeshVertexAttribute> attribs;
+		attribs.emplace_back("position", 3, VertexAttributeType::Float32);
+		attribs.emplace_back("color", 4, VertexAttributeType::Float32);
+		return attribs;
+	}
+};
+
+template <typename T> std::vector<T> convertVertices(const std::vector<geom::VertexPNT> &input) {
+	std::vector<T> result;
+	for (auto &vert : input)
+		result.emplace_back(vert);
+	return result;
+}
+
+template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std::vector<geom::GeneratorBase::index_t> &indices) {
+	MeshPtr mesh = std::make_shared<Mesh>();
+	MeshFormat format{
+		.vertexAttributes = T::getAttributes(),
+	};
+	mesh->update(format, verts.data(), verts.size() * sizeof(T), indices.data(), indices.size() * sizeof(geom::GeneratorBase::index_t));
+	return mesh;
+}
+
 struct App {
 	Window window;
 	Loop loop;
@@ -50,72 +88,70 @@ struct App {
 
 	void init(const char *hostElement) {
 		spdlog::debug("sandbox Init");
-		window.init();
+		window.init(WindowCreationOptions{.width = 512, .height = 512});
 
 		gfx::ContextCreationOptions contextOptions = {};
 		contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
 		contextOptions.debug = true;
 		context.init(window, contextOptions);
 
-		view = std::make_shared<View>();
-		view->view = linalg::lookat_matrix(float3(0, 50.0f, 50.0f), float3(0, 0, 0), float3(0, 1, 0));
-		view->proj = ViewPerspectiveProjection{
-			degToRad(45.0f),
-			FovDirection::Horizontal,
-		};
-
-		geom::SphereGenerator sphereGen;
-		sphereGen.generate();
-		sphereMesh = std::make_shared<Mesh>();
-		MeshFormat meshFormat = {
-			.vertexAttributes = geom::VertexPNT::getAttributes(),
-		};
-		sphereMesh->update(meshFormat, sphereGen.vertices.data(), sizeof(geom::VertexPNT) * sphereGen.vertices.size(), sphereGen.indices.data(),
-						   sizeof(geom::GeneratorBase::index_t) * sphereGen.indices.size());
-
-		geom::CubeGenerator cubeGen;
-		cubeGen.height = cubeGen.depth = cubeGen.width = 1.5f;
-		cubeGen.generate();
-		cubeMesh = std::make_shared<Mesh>();
-		cubeMesh->update(meshFormat, cubeGen.vertices.data(), sizeof(geom::VertexPNT) * cubeGen.vertices.size(), cubeGen.indices.data(),
-						 sizeof(geom::GeneratorBase::index_t) * cubeGen.indices.size());
-
 		renderer = std::make_shared<Renderer>(context);
 
-		buildDrawables();
+		FeaturePtr blendFeature = std::make_shared<Feature>();
+		blendFeature->state.set_blend(BlendState{
+			.color = BlendComponent::AlphaPremultiplied,
+			.alpha = BlendComponent::Opaque,
+		});
 
 		pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
 			.features =
 				{
 					features::Transform::create(),
 					features::BaseColor::create(),
-					features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex),
+					blendFeature,
 				},
+			.sortMode = SortMode::BackToFront,
 		}));
+
+		view = std::make_shared<View>();
+		view->proj = ViewOrthographicProjection{
+			.size = 2.0f,
+			.sizeType = OrthographicSizeType::Horizontal,
+			.near = 0.0f,
+			.far = 4.0f,
+		};
+		view->view = linalg::inverse(linalg::translation_matrix(float3(0, 0, 1.0f)));
+
+		geom::SphereGenerator sphere;
+		sphere.generate();
+
+		auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
+		for (auto &vert : redSphereVerts)
+			vert.setColor(float4(1, 0, 0, 0.5));
+
+		auto greenSphereVerts = convertVertices<VertexPC>(sphere.vertices);
+		for (auto &vert : greenSphereVerts)
+			vert.setColor(float4(0, 1, 0, 0.5));
+
+		redSphereMesh = createMesh(redSphereVerts, sphere.indices);
+		greenSphereMesh = createMesh(greenSphereVerts, sphere.indices);
 	}
 
-	std::vector<DrawablePtr> testDrawables;
-	void buildDrawables() {
-		testDrawables.clear();
-		int2 testGridDim = {64, 40};
-		for (size_t y = 0; y < testGridDim.y; y++) {
-			float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
-			for (size_t x = 0; x < testGridDim.x; x++) {
-				float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
-				auto mesh = (y % 2) == 0 ? cubeMesh : sphereMesh;
-				auto drawable = std::make_shared<Drawable>(mesh);
-				drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
-				testDrawables.push_back(drawable);
-			}
-		}
-	}
+	MeshPtr redSphereMesh;
+	MeshPtr greenSphereMesh;
 
 	void renderFrame() {
-		drawQueue.clear();
 
-		for (auto &drawable : testDrawables) {
-			drawQueue.add(drawable);
-		}
+		float4x4 transform;
+		DrawablePtr drawable;
+
+		transform = linalg::translation_matrix(float3(0.5f, 0.0f, 0.0f));
+		drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
+		drawQueue.add(drawable);
+
+		transform = linalg::translation_matrix(float3(-0.5f, 0.0f, -2.0f));
+		drawable = std::make_shared<Drawable>(redSphereMesh, transform);
+		drawQueue.add(drawable);
 
 		renderer->render(drawQueue, view, pipelineSteps);
 	}
@@ -140,7 +176,10 @@ struct App {
 			if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
 				context.beginFrame();
 				renderer->swapBuffers();
+				drawQueue.clear();
+
 				renderFrame();
+
 				context.endFrame();
 
 				static MovingAverage delaTimeMa(32);

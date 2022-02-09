@@ -28,6 +28,11 @@ struct BindingLayout {
 	UniformBufferLayout uniformBuffers;
 };
 
+struct SortableDrawable {
+	Drawable *drawable{};
+	float projectedDepth = 0.0f;
+};
+
 struct CachedPipeline {
 	struct DrawGroup {
 		MeshContextData *mesh;
@@ -46,7 +51,7 @@ struct CachedPipeline {
 	std::vector<WGPUBindGroupLayout> bindGroupLayouts;
 
 	std::vector<Drawable *> drawables;
-	std::vector<Drawable *> drawablesSorted;
+	std::vector<SortableDrawable> drawablesSorted;
 	std::vector<DrawGroup> drawGroups;
 
 	DynamicWGPUBufferPool instanceBufferPool;
@@ -97,6 +102,7 @@ struct CachedDrawableData {
 
 struct CachedViewData {
 	DynamicWGPUBufferPool viewBuffers;
+	float4x4 projectionMatrix;
 	~CachedViewData() {}
 
 	void resetPools() { viewBuffers.reset(); }
@@ -120,9 +126,9 @@ struct RendererImpl {
 	Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
 	Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
 
-	std::unordered_map<View *, CachedViewDataPtr> viewCache;
+	std::unordered_map<const View *, CachedViewDataPtr> viewCache;
 	std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
-	std::unordered_map<Drawable *, CachedDrawableData> drawableCache;
+	std::unordered_map<const Drawable *, CachedDrawableData> drawableCache;
 
 	size_t frameIndex = 0;
 	const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
@@ -190,18 +196,18 @@ struct RendererImpl {
 			viewport = Rect(0, 0, viewSize.x, viewSize.y);
 		}
 
-		DrawData viewDrawData;
-		viewDrawData.setParam("view", viewPtr->view);
-		viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
-		float4x4 projMatrix = viewPtr->getProjectionMatrix(viewSize);
-		viewDrawData.setParam("proj", projMatrix);
-		viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
-
 		auto it = viewCache.find(viewPtr);
 		if (it == viewCache.end()) {
 			it = viewCache.insert(std::make_pair(viewPtr, std::make_shared<CachedViewData>())).first;
 		}
 		CachedViewData &viewData = *it->second.get();
+
+		DrawData viewDrawData;
+		viewDrawData.setParam("view", viewPtr->view);
+		viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
+		float4x4 projMatrix = viewData.projectionMatrix = viewPtr->getProjectionMatrix(viewSize);
+		viewDrawData.setParam("proj", projMatrix);
+		viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
 
 		DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
 		viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst, "viewUniform");
@@ -293,7 +299,7 @@ struct RendererImpl {
 		std::vector<uint8_t> drawDataTempBuffer;
 		drawDataTempBuffer.resize(instanceBufferLength);
 		for (size_t i = 0; i < numObjects; i++) {
-			Drawable *drawable = cachedPipeline.drawablesSorted[i];
+			Drawable *drawable = cachedPipeline.drawablesSorted[i].drawable;
 
 			DrawData objectDrawData;
 			objectDrawData.setParam("world", drawable->transform);
@@ -315,23 +321,48 @@ struct RendererImpl {
 		wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
 	}
 
-	void groupDrawables(CachedPipeline &cachedPipeline) {
-		std::vector<Drawable *> &drawablesSorted = cachedPipeline.drawablesSorted;
+	void depthSortBackToFront(CachedPipeline &cachedPipeline, const View &view) {
+		const CachedViewData &viewData = *viewCache[&view].get();
+
+		float4x4 viewProjMatrix = linalg::mul(viewData.projectionMatrix, view.view);
+
+		size_t numDrawables = cachedPipeline.drawables.size();
+		for (size_t i = 0; i < numDrawables; i++) {
+			SortableDrawable &sortable = cachedPipeline.drawablesSorted[i];
+			float4 projected = mul(viewProjMatrix, mul(sortable.drawable->transform, float4(0, 0, 0, 1)));
+			sortable.projectedDepth = projected.z;
+		}
+
+		auto compareBackToFront = [](const SortableDrawable &left, const SortableDrawable &right) { return left.projectedDepth > right.projectedDepth; };
+		std::stable_sort(cachedPipeline.drawablesSorted.begin(), cachedPipeline.drawablesSorted.end(), compareBackToFront);
+	}
+
+	void groupDrawables(CachedPipeline &cachedPipeline, const RenderDrawablesStep &step, const View &view) {
+		std::vector<SortableDrawable> &drawablesSorted = cachedPipeline.drawablesSorted;
 
 		// Sort drawables based on mesh binding
 		for (auto &drawable : cachedPipeline.drawables) {
 			drawable->mesh->createContextDataConditional(context);
 			addFrameReference(drawable->mesh->contextData);
 
-			auto comparison = [](const Drawable *left, const Drawable *right) { return left->mesh->contextData < right->mesh->contextData; };
-			auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), drawable, comparison);
-			drawablesSorted.insert(it, drawable);
+			auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) {
+				return left.drawable->mesh->contextData < right.drawable->mesh->contextData;
+			};
+			SortableDrawable sortableDrawable{
+				.drawable = drawable,
+			};
+			auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
+			drawablesSorted.insert(it, sortableDrawable);
+		}
+
+		if (step.sortMode == SortMode::BackToFront) {
+			depthSortBackToFront(cachedPipeline, view);
 		}
 
 		// Creates draw call ranges based on mesh binding
 		if (drawablesSorted.size() > 0) {
 			size_t groupStart = 0;
-			MeshContextData *currentMeshData = drawablesSorted[0]->mesh->contextData.get();
+			MeshContextData *currentMeshData = drawablesSorted[0].drawable->mesh->contextData.get();
 
 			auto finishGroup = [&](size_t currentIndex) {
 				size_t groupLength = currentIndex - groupStart;
@@ -340,7 +371,7 @@ struct RendererImpl {
 				}
 			};
 			for (size_t i = 1; i < drawablesSorted.size(); i++) {
-				MeshContextData *meshData = drawablesSorted[i]->mesh->contextData.get();
+				MeshContextData *meshData = drawablesSorted[i].drawable->mesh->contextData.get();
 				if (meshData != currentMeshData) {
 					finishGroup(i);
 					groupStart = i;
@@ -391,7 +422,7 @@ struct RendererImpl {
 				buildPipeline(cachedPipeline);
 			}
 
-			groupDrawables(cachedPipeline);
+			groupDrawables(cachedPipeline, step, *view.get());
 		}
 
 		WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
@@ -444,6 +475,7 @@ struct RendererImpl {
 		const std::vector<FeaturePtr> *featureSources[2] = {&step.features, nullptr};
 		for (auto &drawable : drawables) {
 			Drawable *drawablePtr = drawable.get();
+			assert(drawablePtr->mesh);
 			const Mesh &mesh = *drawablePtr->mesh.get();
 
 			features.clear();
@@ -458,7 +490,7 @@ struct RendererImpl {
 
 			HasherXXH128 featureHasher;
 			for (auto &feature : features) {
-				// NOTE: Hashed by pointer since features are shared/ref-counted
+				// NOTE: Hashed by pointer since features are considered immutable & shared/ref-counted
 				featureHasher(feature);
 			}
 			Hash128 featureHash = featureHasher.getDigest();
@@ -524,8 +556,16 @@ struct RendererImpl {
 		cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
 	}
 
+	FeaturePipelineState computePipelineState(const std::vector<const Feature *> &features) {
+		FeaturePipelineState state{};
+		for (const Feature *feature : features) {
+			state = state.combine(feature->state);
+		}
+		return state;
+	}
+
 	void buildPipeline(CachedPipeline &cachedPipeline) {
-		FeaturePipelineState pipelineState{};
+		FeaturePipelineState pipelineState = computePipelineState(cachedPipeline.features);
 		WGPUDevice device = context.wgpuDevice;
 
 		shader::GeneratorOutput generatorOutput = generateShader(cachedPipeline);
