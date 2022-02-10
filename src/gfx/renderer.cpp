@@ -3,6 +3,7 @@
 #include "drawable.hpp"
 #include "feature.hpp"
 #include "hasherxxh128.hpp"
+#include "material.hpp"
 #include "mesh.hpp"
 #include "params.hpp"
 #include "renderer_types.hpp"
@@ -44,6 +45,7 @@ struct CachedPipeline {
 	MeshFormat meshFormat;
 	std::vector<const Feature *> features;
 	UniformBufferLayout objectBufferLayout;
+	DrawData baseDrawData;
 
 	WGPURenderPipeline pipeline = {};
 	WGPUShaderModule shaderModule = {};
@@ -301,9 +303,22 @@ struct RendererImpl {
 		for (size_t i = 0; i < numObjects; i++) {
 			Drawable *drawable = cachedPipeline.drawablesSorted[i].drawable;
 
-			DrawData objectDrawData;
+			DrawData objectDrawData = cachedPipeline.baseDrawData;
 			objectDrawData.setParam("world", drawable->transform);
 
+			// Grab draw data from material
+			if (Material *material = drawable->material.get()) {
+				for (auto &pair : material->parameters.basic) {
+					objectDrawData.setParam(pair.first, pair.second);
+				}
+			}
+
+			// Grab draw data from drawable
+			for (auto &pair : drawable->parameters.basic) {
+				objectDrawData.setParam(pair.first, pair.second);
+			}
+
+			// Grab draw data from features
 			FeatureCallbackContext callbackContext{context, view, drawable};
 			for (const Feature *feature : cachedPipeline.features) {
 				for (const FeatureDrawDataFunction &drawDataGenerator : feature->drawData) {
@@ -319,6 +334,14 @@ struct RendererImpl {
 		}
 
 		wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
+	}
+
+	void buildBaseObjectParameters(CachedPipeline &cachedPipeline) {
+		for (const Feature *feature : cachedPipeline.features) {
+			for (auto &param : feature->shaderParams) {
+				cachedPipeline.baseDrawData.setParam(param.name, param.defaultValue);
+			}
+		}
 	}
 
 	void depthSortBackToFront(CachedPipeline &cachedPipeline, const View &view) {
@@ -419,6 +442,7 @@ struct RendererImpl {
 			CachedPipeline &cachedPipeline = *pair.second.get();
 			if (!cachedPipeline.pipeline) {
 				buildObjectBufferLayout(cachedPipeline);
+				buildBaseObjectParameters(cachedPipeline);
 				buildPipeline(cachedPipeline);
 			}
 

@@ -22,6 +22,7 @@
 #include <cstring>
 #include <exception>
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -108,50 +109,50 @@ struct App {
 				{
 					features::Transform::create(),
 					features::BaseColor::create(),
-					blendFeature,
 				},
-			.sortMode = SortMode::BackToFront,
+			// .sortMode = SortMode::BackToFront,
 		}));
 
 		view = std::make_shared<View>();
-		view->proj = ViewOrthographicProjection{
-			.size = 2.0f,
-			.sizeType = OrthographicSizeType::Horizontal,
-			.near = 0.0f,
-			.far = 4.0f,
-		};
-		view->view = linalg::inverse(linalg::translation_matrix(float3(0, 0, 1.0f)));
+		view->proj = ViewPerspectiveProjection{};
+		view->view = linalg::lookat_matrix(float3(0, 30, 100), float3(0, 0, 0.0f), float3(0, 1, 0));
 
 		geom::SphereGenerator sphere;
 		sphere.generate();
 
-		auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
-		for (auto &vert : redSphereVerts)
-			vert.setColor(float4(1, 0, 0, 0.5));
+		sphereMesh = createMesh(sphere.vertices, sphere.indices);
+		buildDrawables();
 
-		auto greenSphereVerts = convertVertices<VertexPC>(sphere.vertices);
-		for (auto &vert : greenSphereVerts)
-			vert.setColor(float4(0, 1, 0, 0.5));
-
-		redSphereMesh = createMesh(redSphereVerts, sphere.indices);
-		greenSphereMesh = createMesh(greenSphereVerts, sphere.indices);
+		rnd.seed(time(nullptr));
 	}
 
-	MeshPtr redSphereMesh;
-	MeshPtr greenSphereMesh;
+	std::default_random_engine rnd;
+	std::vector<DrawablePtr> testDrawables;
+	void buildDrawables() {
+		testDrawables.clear();
+
+		std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+		int2 testGridDim = {64, 64};
+		for (size_t y = 0; y < testGridDim.y; y++) {
+			float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
+			for (size_t x = 0; x < testGridDim.x; x++) {
+				float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
+				auto drawable = std::make_shared<Drawable>(sphereMesh);
+				drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
+
+				float4 color(dist(rnd), dist(rnd), dist(rnd), 1.0f);
+				drawable->parameters.basic.insert_or_assign("baseColor", color);
+				testDrawables.push_back(drawable);
+			}
+		}
+	}
 
 	void renderFrame() {
-
-		float4x4 transform;
-		DrawablePtr drawable;
-
-		transform = linalg::translation_matrix(float3(0.5f, 0.0f, 0.0f));
-		drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
-		drawQueue.add(drawable);
-
-		transform = linalg::translation_matrix(float3(-0.5f, 0.0f, -2.0f));
-		drawable = std::make_shared<Drawable>(redSphereMesh, transform);
-		drawQueue.add(drawable);
+		buildDrawables();
+		for (auto &drawable : testDrawables) {
+			drawQueue.add(drawable);
+		}
 
 		renderer->render(drawQueue, view, pipelineSteps);
 	}

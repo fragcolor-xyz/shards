@@ -25,13 +25,14 @@ size_t getParamTypeSize(ShaderParamType type);
 size_t getParamTypeWGSLAlignment(ShaderParamType type);
 
 struct IDrawDataCollector {
-	virtual void setParam(const char *name, ParamVariant &&value) = 0;
+	virtual void setParam(const std::string &name, ParamVariant &&value) = 0;
 };
 
 struct DrawData : IDrawDataCollector {
 	std::unordered_map<std::string, ParamVariant> data;
 
-	void setParam(const char *name, ParamVariant &&value) { data.emplace(std::make_pair(name, std::move(value))); }
+	void setParam(const std::string &name, ParamVariant &&value) { data.insert_or_assign(name, std::move(value)); }
+	void setParam(const std::string &name, const ParamVariant &value) { data.insert_or_assign(name, value); }
 	void append(const DrawData &other) {
 		for (auto &it : other.data) {
 			data.insert_or_assign(it.first, it.second);

@@ -67,7 +67,6 @@ struct HeadlessRenderer {
 	}
 
 	TestFrame getTestFrame() {
-
 		WGPUCommandEncoderDescriptor ceDesc{};
 		WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &ceDesc);
 
@@ -227,7 +226,10 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
 	sphere.generate();
 	meshes.push_back(createMesh(sphere.vertices, sphere.indices));
 	meshes.push_back(createMesh(convertVertices<VertexP>(sphere.vertices), sphere.indices));
-	meshes.push_back(createMesh(convertVertices<VertexPC>(sphere.vertices), sphere.indices));
+	auto coloredVertices = convertVertices<VertexPC>(sphere.vertices);
+	for (auto &vert : coloredVertices)
+		vert.setColor(float4(0, 1, 0, 1));
+	meshes.push_back(createMesh(coloredVertices, sphere.indices));
 
 	ViewPtr view = createTestProjectionView();
 
@@ -314,6 +316,63 @@ TEST_CASE("Pipeline states", "[Renderer]") {
 	TestData testData(TestPlatformId::get(*context.get()));
 	TestFrame testFrame = headlessRenderer->getTestFrame();
 	CHECK(testData.checkFrame("blendAlphaPremul", testFrame));
+
+	headlessRenderer.reset();
+	context.reset();
+}
+
+TEST_CASE("Shader parameters", "[Renderer]") {
+	std::shared_ptr<Context> context = std::make_shared<Context>();
+	context->init();
+
+	auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+	headlessRenderer->createRenderTarget(int2(1280, 720));
+	Renderer &renderer = headlessRenderer->renderer;
+
+	MeshPtr sphereMesh = createSphereMesh();
+
+	ViewPtr view = std::make_shared<View>();
+	view->view = linalg::lookat_matrix(float3(0, 10.0f, 10.0f), float3(0, 0, 0), float3(0, 1, 0));
+	view->proj = ViewPerspectiveProjection{
+		degToRad(45.0f),
+		FovDirection::Horizontal,
+	};
+
+	DrawQueue queue;
+	float4x4 transform;
+	DrawablePtr drawable;
+
+	transform = linalg::translation_matrix(float3(-2.0f, 0.0f, 0.0f));
+	drawable = std::make_shared<Drawable>(sphereMesh, transform);
+	queue.add(drawable);
+
+	transform = linalg::translation_matrix(float3(0.0f, 0.0f, 0.0f));
+	drawable = std::make_shared<Drawable>(sphereMesh, transform);
+	drawable->parameters.set("baseColor", float4(1, 0, 0, 1));
+	queue.add(drawable);
+
+	auto material = std::make_shared<Material>();
+	material->parameters.set("baseColor", float4(0, 1, 0, 1));
+
+	transform = linalg::translation_matrix(float3(2.0f, 0.0f, 0.0f));
+	drawable = std::make_shared<Drawable>(sphereMesh, transform);
+	drawable->material = material;
+	queue.add(drawable);
+
+	PipelineSteps steps{
+		makeDrawablePipelineStep(RenderDrawablesStep{
+			.features =
+				{
+					features::Transform::create(),
+					features::BaseColor::create(),
+				},
+		}),
+	};
+	renderer.render(queue, view, steps);
+
+	TestData testData(TestPlatformId::get(*context.get()));
+	TestFrame testFrame = headlessRenderer->getTestFrame();
+	CHECK(testData.checkFrame("shaderParameters", testFrame));
 
 	headlessRenderer.reset();
 	context.reset();

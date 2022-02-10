@@ -19,10 +19,13 @@ struct BaseColor {
 		FeaturePtr feature = std::make_shared<Feature>();
 		feature->shaderParams.emplace_back("baseColor", float4(1, 1, 1, 1));
 
-		const char* defaultColor = "vec4<f32>(1.0, 0.0, 1.0, 1.0)";
+		const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
 
-		feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex,
-												WriteGlobal("color", colorFieldType, WithInput("color", ReadInput("color"), defaultColor)));
+		auto readColorParam = makeCompoundBlock(ReadBuffer("object"), ".baseColor");
+
+		feature->shaderEntryPoints.emplace_back(
+			"initColor", ProgrammableGraphicsStage::Vertex,
+			WriteGlobal("color", colorFieldType, WithInput("color", ReadInput("color"), defaultColor), "*", std::move(readColorParam)));
 		auto &writeColor =
 			feature->shaderEntryPoints.emplace_back("writeColor", ProgrammableGraphicsStage::Vertex, WriteOutput("color", colorFieldType, ReadGlobal("color")));
 		writeColor.dependencies.emplace_back("initColor");
