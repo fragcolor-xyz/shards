@@ -1,5 +1,6 @@
 #pragma once
 #include "enums.hpp"
+#include "fwd.hpp"
 #include "linalg.hpp"
 #include "params.hpp"
 #include <functional>
@@ -136,11 +137,6 @@ struct NamedShaderParam {
     hasher(flags);
   }
 };
-
-struct Drawable;
-struct View;
-struct Context;
-typedef std::shared_ptr<View> ViewPtr;
 
 struct FeatureCallbackContext {
   Context &context;

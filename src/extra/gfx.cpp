@@ -11,143 +11,14 @@
 #include <gfx/view.hpp>
 #include <gfx/window.hpp>
 #include <linalg_shim.hpp>
+#include <magic_enum.hpp>
 
 using namespace chainblocks;
 
 namespace gfx {
 using chainblocks::Mat4;
 
-void CBDrawable::updateVariables() {
-  if (transformVar.isVariable()) {
-    drawable->transform = chainblocks::Mat4(transformVar.get());
-  }
-}
-
-struct DrawableBlock {
-  static inline Type MeshVarType = Type::VariableOf(MeshType);
-  static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
-
-  static inline Parameters params{
-      {"Mesh", CBCCSTR("The mesh to draw"), {MeshVarType}},
-      {"Transform", CBCCSTR("The transform to use"), {TransformVarType}},
-  };
-
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return DrawableType; }
-  static CBParametersInfo parameters() { return params; }
-
-  ParamVar _meshVar{};
-  ParamVar _transformVar{};
-
-  void setParam(int index, const CBVar &value) {
-    switch (index) {
-    case 0:
-      _meshVar = value;
-      break;
-    case 1:
-      _transformVar = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  CBVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _meshVar;
-    case 1:
-      return _transformVar;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void warmup(CBContext *context) {
-    _meshVar.warmup(context);
-    _transformVar.warmup(context);
-  }
-
-  void cleanup() {
-    _meshVar.cleanup();
-    _transformVar.cleanup();
-  }
-
-  CBVar activate(CBContext *cbContext, const CBVar &input) {
-    MeshPtr *meshPtr = (MeshPtr *)_meshVar.get().payload.objectValue;
-    if (!meshPtr)
-      throw formatException("Mesh must be set");
-
-    CBDrawable *cbDrawable = DrawableObjectVar.New();
-    cbDrawable->drawable = std::make_shared<Drawable>(*meshPtr, chainblocks::Mat4(_transformVar.get()));
-    if (_transformVar.isVariable()) {
-      cbDrawable->transformVar = (CBVar &)_transformVar;
-      cbDrawable->transformVar.warmup(cbContext);
-    }
-
-    return DrawableObjectVar.Get(cbDrawable);
-  }
-};
-
-struct Draw : public BaseConsumer {
-  static inline Type DrawableSeqType = Type::SeqOf(DrawableType);
-  static inline Types DrawableTypes{DrawableType, DrawableSeqType};
-
-  static CBTypesInfo inputTypes() { return DrawableTypes; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBParametersInfo parameters() { return CBParametersInfo(); }
-
-  void warmup(CBContext *cbContext) { baseConsumerWarmup(cbContext); }
-  void cleanup() { baseConsumerCleanup(); }
-  CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.inputType.basicType == CBType::Seq) {
-      OVERRIDE_ACTIVATE(data, activateSeq);
-    } else {
-      OVERRIDE_ACTIVATE(data, activateSingle);
-    }
-    return CoreInfo::NoneType;
-  }
-
-  void addDrawableToQueue(DrawablePtr drawable) {
-    auto &dq = getMainWindowGlobals().drawQueue;
-    dq.add(drawable);
-  }
-
-  void updateCBDrawable(CBDrawable *cbDrawable) {
-    // Update transform if it's referencing a context variable
-    if (cbDrawable->transformVar.isVariable()) {
-      cbDrawable->drawable->transform = chainblocks::Mat4(cbDrawable->transformVar.get());
-    }
-  }
-
-  CBVar activateSeq(CBContext *cbContext, const CBVar &input) {
-    spdlog::debug("activate GFX.Draw [Seq]");
-
-    auto &seq = input.payload.seqValue;
-    for (size_t i = 0; i < seq.len; i++) {
-      CBDrawable *cbDrawable = (CBDrawable *)seq.elements[i].payload.objectValue;
-      assert(cbDrawable);
-      cbDrawable->updateVariables();
-      addDrawableToQueue(cbDrawable->drawable);
-    }
-
-    return CBVar{};
-  }
-
-  CBVar activateSingle(CBContext *cbContext, const CBVar &input) {
-    spdlog::debug("activate GFX.Draw [Single]");
-
-    CBDrawable *cbDrawable = (CBDrawable *)input.payload.objectValue;
-    updateCBDrawable(cbDrawable);
-    addDrawableToQueue(cbDrawable->drawable);
-
-    return CBVar{};
-  }
-
-  CBVar activate(CBContext *cbContext, const CBVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
-};
-
-struct BuiltinFeature {
+struct BuiltinFeatureBlock {
   enum class Id {
     Transform,
     BaseColor,
@@ -209,7 +80,7 @@ struct BuiltinFeature {
   CBVar activate(CBContext *context, const CBVar &input) { return FeatureObjectVar.Get(_feature); }
 };
 
-struct DrawablePass {
+struct DrawablePassBlock {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return PipelineStepType; }
 
@@ -338,7 +209,7 @@ struct ViewBlock {
   }
 };
 
-struct Render : public BaseConsumer {
+struct RenderBlock : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -456,14 +327,17 @@ struct Render : public BaseConsumer {
 
 extern void registerMainWindowBlocks();
 extern void registerMeshBlocks();
+extern void registerDrawableBlocks();
+extern void registerMaterialBlocks();
 void registerBlocks() {
   registerMainWindowBlocks();
   registerMeshBlocks();
-  REGISTER_CBLOCK("GFX.Drawable", DrawableBlock);
-  REGISTER_CBLOCK("GFX.Draw", Draw);
-  REGISTER_CBLOCK("GFX.BuiltinFeature", BuiltinFeature);
-  REGISTER_CBLOCK("GFX.DrawablePass", DrawablePass);
+  registerDrawableBlocks();
+  registerMaterialBlocks();
+
+  REGISTER_CBLOCK("GFX.BuiltinFeature", BuiltinFeatureBlock);
+  REGISTER_CBLOCK("GFX.DrawablePass", DrawablePassBlock);
   REGISTER_CBLOCK("GFX.View", ViewBlock);
-  REGISTER_CBLOCK("GFX.Render", Render);
+  REGISTER_CBLOCK("GFX.Render", RenderBlock);
 }
 } // namespace gfx

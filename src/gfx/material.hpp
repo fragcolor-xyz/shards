@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fwd.hpp"
 #include "params.hpp"
 #include <map>
 #include <memory>
@@ -14,8 +15,6 @@ struct MaterialParameters {
   void set(const std::string &key, ParamVariant &&param) { basic.insert_or_assign(key, std::move(param)); }
 };
 
-struct Feature;
-typedef std::shared_ptr<Feature> FeaturePtr;
 struct Material {
 public:
   std::vector<FeaturePtr> features;

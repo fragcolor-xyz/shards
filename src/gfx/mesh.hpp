@@ -88,6 +88,5 @@ protected:
   void initContextData(Context &context, MeshContextData &contextData);
   void releaseContextData();
 };
-using MeshPtr = std::shared_ptr<Mesh>;
 
 } // namespace gfx

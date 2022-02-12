@@ -5,6 +5,7 @@
 #define CB_UTILITY_HPP
 
 #include "chainblocks.hpp"
+#include <cassert>
 #include <future>
 #include <magic_enum.hpp>
 #include <memory>
@@ -215,12 +216,28 @@ public:
 
   explicit TParamVar(CBVar initialValue) { CB_CORE::cloneVar(_v, initialValue); }
 
+  TParamVar(const TParamVar &other) = delete;
+  TParamVar &operator=(const TParamVar &other) = delete;
+
+  TParamVar(TParamVar &&other) : _v(other._v), _cp(other._cp) {
+    other._cp = nullptr;
+    memset(&other._v, 0, sizeof(CBVar));
+  }
+
+  TParamVar &operator=(TParamVar &&other) {
+    _v = other._v;
+    _cp = other._cp;
+    other._cp = nullptr;
+    memset(&other._v, 0, sizeof(CBVar));
+  }
+
   ~TParamVar() {
     cleanup();
     CB_CORE::destroyVar(_v);
   }
 
   void warmup(CBContext *ctx) {
+    cleanup();
     if (_v.valueType == ContextVar) {
       assert(!_cp);
       _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
@@ -238,8 +255,8 @@ public:
   }
 
   CBVar &operator=(const CBVar &value) {
-    CB_CORE::cloneVar(_v, value);
     cleanup();
+    CB_CORE::cloneVar(_v, value);
     return _v;
   }
 

@@ -52,6 +52,5 @@ public:
 
   float4x4 getProjectionMatrix(const int2 &viewSize) const;
 };
-typedef std::shared_ptr<View> ViewPtr;
 
 } // namespace gfx

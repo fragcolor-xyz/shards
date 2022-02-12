@@ -1,9 +1,8 @@
 #pragma once
+#include "fwd.hpp"
 #include <vector>
 
 namespace gfx {
-struct Feature;
-typedef std::shared_ptr<Feature> FeaturePtr;
 
 enum class SortMode {
   // Optimal for batching
