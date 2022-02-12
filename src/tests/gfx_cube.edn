@@ -23,12 +23,6 @@
     2 3 6
     6 3 7]})
 
-(defchain create-render-steps
-  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
-  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-  (GFX.DrawablePass :Features .features) >> .render-steps
-  .render-steps)
-
 (def timestep (/ 1.0 120.0))
 (def Root (Node))
 (def test-chain
@@ -36,22 +30,18 @@
    "test-chain"
    :Looped
    (Setup
+    0.0 >= .time
     cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
     (Float3 0 0 0) (Math.Translation) >= .transform
-    0.0 >= .time
-    (GFX.Drawable :Mesh .mesh :Transform .transform) >> .drawables
-
-    (Float3 -3.0 0 0) (Math.Translation) >= .transform1
-    (GFX.Drawable :Mesh .mesh :Transform .transform1) >> .drawables
-
-    (Float3 3.0 0 0) (Math.Translation) >= .transform2
-    (GFX.Drawable :Mesh .mesh :Transform .transform2) >> .drawables
+    {:Transform .transform :Mesh .mesh} (GFX.Drawable :Transform .transform) >= .drawable
 
     ; Create render steps
-    (Do create-render-steps) >= .render-steps
+    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+    (GFX.DrawablePass :Features .features) >> .render-steps
 
     ; Create view
-    {:Position (Float3 0 10 20) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
     (GFX.View :View .view-transform) >= .view)
    (GFX.MainWindow
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false
@@ -62,7 +52,7 @@
      .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
      .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
      .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) >= .transform
-     .drawables (GFX.Draw)
+     .drawable (GFX.Draw)
      (GFX.Render :Steps .render-steps :View .view)))))
 
 (schedule Root test-chain)
