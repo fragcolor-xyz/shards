@@ -16,8 +16,6 @@
 #endif
 
 namespace gfx {
-
-
 struct ContextMainOutput {
 	Window *window{};
 	WGPUSwapChain wgpuSwapchain{};
@@ -245,9 +243,7 @@ void Context::releaseAllContextData() {
 	}
 }
 
-void Context::beginFrame() {
-	collectContextData();
-}
+void Context::beginFrame() { collectContextData(); }
 
 void Context::endFrame() {
 	if (!isHeadless())
