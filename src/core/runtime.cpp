@@ -1566,8 +1566,9 @@ CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data,
           return info.exposedType;
         }
       }
-      // not found! reset
-      *containsVariables = false;
+      // not found! set to any type in this case
+      // as it likely is a variable that will be resolved later
+      return CoreInfo::AnyType;
     }
     // if we reach this point, no variable was found...
     // not our job to trigger errors, just continue
