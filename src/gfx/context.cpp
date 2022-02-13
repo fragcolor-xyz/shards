@@ -17,27 +17,6 @@
 
 namespace gfx {
 
-void ErrorScope::push(WGPUErrorFilter filter) {
-#ifndef WEBGPU_NATIVE
-	wgpuDevicePushErrorScope(context->wgpuDevice, filter);
-#endif
-}
-void ErrorScope::pop(ErrorScope::Function &&function) {
-	this->function = [=, this](WGPUErrorType type, char const *message) {
-		function(type, message);
-		processed = true;
-	};
-
-#ifndef WEBGPU_NATIVE
-	wgpuDevicePopErrorScope(context->wgpuDevice, &staticCallback, this);
-#else
-	processed = true;
-#endif
-}
-void ErrorScope::staticCallback(WGPUErrorType type, char const *message, void *userData) {
-	ErrorScope *self = (ErrorScope *)userData;
-	self->function(type, message);
-}
 
 struct ContextMainOutput {
 	Window *window{};
@@ -238,13 +217,6 @@ WGPUTextureFormat Context::getMainOutputFormat() const {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
-ErrorScope &Context::pushErrorScope(WGPUErrorFilter filter) {
-	auto errorScope = std::make_shared<ErrorScope>(this);
-	errorScopes.push_back(errorScope);
-	errorScope->push(filter);
-	return *errorScope.get();
-}
-
 void Context::addContextDataInternal(std::weak_ptr<ContextData> ptr) {
 	std::shared_ptr<ContextData> sharedPtr = ptr.lock();
 	if (sharedPtr) {
@@ -275,7 +247,6 @@ void Context::releaseAllContextData() {
 
 void Context::beginFrame() {
 	collectContextData();
-	errorScopes.clear();
 }
 
 void Context::endFrame() {

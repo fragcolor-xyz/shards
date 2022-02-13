@@ -1,4 +1,5 @@
 #pragma once
+#include "fwd.hpp"
 #include "gfx_wgpu.hpp"
 #include "linalg.hpp"
 #include "pipeline_step.hpp"
@@ -6,19 +7,6 @@
 #include <memory>
 
 namespace gfx {
-
-struct Context;
-struct Pipeline;
-struct DrawQueue;
-
-struct Drawable;
-typedef std::shared_ptr<Drawable> DrawablePtr;
-
-struct View;
-typedef std::shared_ptr<View> ViewPtr;
-
-struct Feature;
-typedef std::shared_ptr<Feature> FeaturePtr;
 
 // Instance that caches render pipelines
 struct RendererImpl;

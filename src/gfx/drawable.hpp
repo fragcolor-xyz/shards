@@ -1,4 +1,5 @@
 #pragma once
+#include "fwd.hpp"
 #include "linalg.hpp"
 #include "linalg/linalg.h"
 #include "material.hpp"
@@ -6,21 +7,16 @@
 #include <vector>
 
 namespace gfx {
-
-struct Mesh;
-struct Material;
-struct Feature;
 struct Drawable {
-	std::shared_ptr<Mesh> mesh;
-	std::shared_ptr<Material> material;
-	std::vector<std::shared_ptr<Feature>> features;
+	MeshPtr mesh;
+	MaterialPtr material;
+	std::vector<FeaturePtr> features;
 	MaterialParameters parameters;
 	float4x4 transform;
 
-	Drawable(std::shared_ptr<Mesh> mesh, float4x4 transform = linalg::identity, std::shared_ptr<Material> material = std::shared_ptr<Material>())
+	Drawable(MeshPtr mesh, float4x4 transform = linalg::identity, MaterialPtr material = MaterialPtr())
 		: mesh(mesh), material(material), transform(transform) {}
 };
-typedef std::shared_ptr<Drawable> DrawablePtr;
 
 struct DrawQueue {
 private:

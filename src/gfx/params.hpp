@@ -1,4 +1,5 @@
 #pragma once
+#include "fwd.hpp"
 #include "linalg.hpp"
 #include <memory>
 #include <stdint.h>
@@ -8,8 +9,6 @@
 
 namespace gfx {
 
-struct Texture;
-typedef std::shared_ptr<Texture> TexturePtr;
 
 enum class ShaderParamType : uint8_t {
 #define PARAM_TYPE(_cppType, _displayName, ...) _displayName,

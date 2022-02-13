@@ -8,8 +8,8 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace gfx {
 struct ContextCreationOptions {
@@ -21,25 +21,7 @@ struct CopyBuffer {
 	std::vector<uint8_t> data;
 };
 
-struct Context;
-struct ErrorScope {
-	typedef std::function<void(WGPUErrorType type, char const *message)> Function;
-
-	bool processed = false;
-	Function function;
-	Context *context;
-
-	ErrorScope(Context *context) : context(context){};
-	void push(WGPUErrorFilter filter);
-	void pop(ErrorScope::Function &&function);
-	static void staticCallback(WGPUErrorType type, char const *message, void *userData);
-};
-
-struct ImguiContext;
-struct Primitive;
-struct MaterialBuilderContext;
 struct Window;
-struct ContextBackend;
 struct ContextData;
 struct ContextMainOutput;
 struct Context {
@@ -53,7 +35,6 @@ public:
 	WGPUDevice wgpuDevice = nullptr;
 	WGPUQueue wgpuQueue = nullptr;
 
-	std::vector<std::shared_ptr<ErrorScope>> errorScopes;
 	std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
 
 	size_t numPendingCommandsSubmitted = 0;
@@ -76,9 +57,6 @@ public:
 	WGPUTextureView getMainOutputTextureView();
 	WGPUTextureFormat getMainOutputFormat() const;
 	bool isHeadless() const;
-
-	// pushes state attached to a popErrorScope callback
-	ErrorScope &pushErrorScope(WGPUErrorFilter filter = WGPUErrorFilter::WGPUErrorFilter_Validation);
 
 	void beginFrame();
 	void endFrame();
