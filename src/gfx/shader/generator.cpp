@@ -66,21 +66,35 @@ void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
 	result += fmt::format("{}.{}", outputVariableName, name);
 }
 
-void GeneratorContext::texture(const char *name) {
+const TextureDefinition *GeneratorContext::getTexture(const char *name) {
 	auto it = textures.find(name);
 	if (it == textures.end()) {
 		pushError(formatError("Texture {} does not exist", name));
+		return nullptr;
 	} else {
-		result += it->second.variableName;
+		return &it->second;
+	}
+}
+
+void GeneratorContext::texture(const char *name) {
+	if (const TextureDefinition *texture = getTexture(name)) {
+		result += texture->variableName;
 	}
 }
 
 void GeneratorContext::textureDefaultTextureCoordinate(const char *name) {
-	auto it = textures.find(name);
-	if (it == textures.end()) {
-		pushError(formatError("Texture {} does not exist", name));
-	} else {
-		result += it->second.defaultTexcoordVariableName;
+	if (const TextureDefinition *texture = getTexture(name)) {
+		if (hasInput(texture->defaultTexcoordVariableName.c_str())) {
+			readInput(texture->defaultTexcoordVariableName.c_str());
+		} else {
+			result += "vec2<f32>(0.0, 0.0)";
+		}
+	}
+}
+
+void GeneratorContext::textureDefaultSampler(const char *name) {
+	if (const TextureDefinition *texture = getTexture(name)) {
+		result += texture->defaultSamplerVariableName;
 	}
 }
 
@@ -102,6 +116,17 @@ enum class BufferType {
 	Uniform,
 	Storage,
 };
+
+template <typename T> static void generateTextureVars(T &output, const TextureDefinition &def, size_t group, size_t binding, size_t samplerBinding) {
+	const char *textureFormat = "f32";
+	const char *textureType = "texture_2d";
+
+	output += fmt::format("[[group({}), binding({})]]\n", group, binding);
+	output += fmt::format("var {}: {}<{}>;\n", def.variableName, textureType, textureFormat);
+
+	output += fmt::format("[[group({}), binding({})]]\n", group, samplerBinding);
+	output += fmt::format("var {}: sampler;\n", def.defaultSamplerVariableName);
+}
 
 template <typename T>
 static void generateBuffer(T &output, const String &name, BufferType type, size_t group, size_t binding, const UniformBufferLayout &layout,
@@ -253,13 +278,14 @@ struct Stage {
 	}
 
 	StageOutput process(const std::vector<NamedField> &inputs, const std::vector<NamedField> &outputs, const std::map<String, BufferDefinition> &buffers,
-						std::vector<StructField> *dynamicOutputStructure) {
+						const std::map<String, TextureDefinition> &textureDefinitions, std::vector<StructField> *dynamicOutputStructure) {
 		GeneratorContext context;
 		context.buffers = buffers;
 		context.inputVariableName = inputVariableName;
 		context.outputVariableName = outputVariableName;
 		context.globalsVariableName = globalsVariableName;
 		context.canAddOutputs = dynamicOutputStructure != nullptr;
+		context.textures = textureDefinitions;
 
 		for (auto &input : inputs) {
 			context.inputs.insert_or_assign(input.name, &input);
@@ -399,8 +425,10 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 	// Interpolate instance index
 	stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
 
-	generateBuffer(headerCode, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
-	generateBuffer(headerCode, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
+	if (!viewBufferLayout.fieldNames.empty())
+		generateBuffer(headerCode, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
+	if (!objectBufferLayout.fieldNames.empty())
+		generateBuffer(headerCode, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
 
 	std::map<String, BufferDefinition> buffers = {
 		{"view", {"u_view"}},
@@ -411,6 +439,20 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 	std::vector<NamedField> fragmentInputFields;
 
 	vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), 0);
+
+	std::map<String, TextureDefinition> textureDefinitions;
+	size_t textureBindGroup = 1;
+	size_t textureBindingCounter = 0;
+	for (auto &texture : textureBindingLayout.bindings) {
+		TextureDefinition def;
+		def.variableName = "t_" + texture.name;
+		def.defaultSamplerVariableName = "s_" + texture.name;
+		def.defaultTexcoordVariableName = fmt::format("texCoord{}", texture.defaultTexcoordBinding);
+		size_t textureBinding = textureBindingCounter++;
+		size_t samplerBinding = textureBindingCounter++;
+		generateTextureVars(headerCode, def, textureBindGroup, textureBinding, samplerBinding);
+		textureDefinitions.insert_or_assign(texture.name, def);
+	}
 
 	String stagesCode;
 	stagesCode.reserve(2 << 12);
@@ -436,7 +478,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 			break;
 		}
 
-		StageOutput stageOutput = stage.process(*inputs, *outputs, buffers, generatedStructFields);
+		StageOutput stageOutput = stage.process(*inputs, *outputs, buffers, textureDefinitions, generatedStructFields);
 		for (auto &error : stageOutput.errors)
 			output.errors.emplace_back(error);
 

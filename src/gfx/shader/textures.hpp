@@ -9,6 +9,9 @@ namespace shader {
 struct TextureBinding {
 	String name;
 	size_t defaultTexcoordBinding{};
+
+	TextureBinding() = default;
+	TextureBinding(String name, size_t defaultTexcoordBinding = 0) : name(name), defaultTexcoordBinding(defaultTexcoordBinding) {}
 };
 
 struct TextureBindingLayout {

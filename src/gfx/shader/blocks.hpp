@@ -158,18 +158,54 @@ struct ReadBuffer : public Block {
 	BlockPtr clone() { return std::make_unique<ReadBuffer>(name); }
 };
 
-struct ReadTexture : public Block {
+struct SampleTexture : public Block {
 	String name;
+	BlockPtr sampleCoordinate;
 
-	ReadTexture(const String &name) : name(name) {}
-	ReadTexture(ReadTexture &&other) = default;
+	SampleTexture(const String &name) : name(name) {}
+	template <typename T>
+	SampleTexture(const String &name, T &&sampleCoordinate) : name(name), sampleCoordinate(ConvertToBlock<T>{}(std::forward<T>(sampleCoordinate))) {}
+	SampleTexture(SampleTexture &&other) = default;
 
 	void apply(GeneratorContext &context) const {
-		context.write("");
-		// context.readBuffer(name.c_str());
-    }
+		context.write("textureSample(");
+		context.texture(name.c_str());
+		context.write(", ");
+		context.textureDefaultSampler(name.c_str());
+		context.write(", ");
+		if (sampleCoordinate) {
+			sampleCoordinate->apply(context);
+		} else {
+			context.textureDefaultTextureCoordinate(name.c_str());
+		}
+		context.write(")");
+	}
 
-	BlockPtr clone() { return std::make_unique<ReadTexture>(name); }
+	BlockPtr clone() { return std::make_unique<SampleTexture>(name, sampleCoordinate); }
+};
+
+// Runs callback at code generation time
+struct Custom : public Block {
+	typedef std::function<void(GeneratorContext &context)> Callback;
+	Callback callback;
+
+	Custom(Callback &&callback) : callback(std::forward<Callback>(callback)) {}
+	Custom(Custom &&other) = default;
+	Custom(const Custom &other) = default;
+
+	void apply(GeneratorContext &context) const { callback(context); }
+
+	BlockPtr clone() { return std::make_unique<Custom>(*this); }
+};
+
+// Generates passthrough outputs for each input if an output is not already written to
+// this is only applied for inputs that match matchPrefixes
+struct DefaultInterpolation : public Block {
+	std::vector<String> matchPrefixes;
+
+	DefaultInterpolation();
+	void apply(GeneratorContext &context) const;
+	BlockPtr clone() { return std::make_unique<DefaultInterpolation>(*this); }
 };
 
 template <typename T> inline auto toBlock(T &&arg) { return ConvertibleToBlock(std::forward<T>(arg)); }

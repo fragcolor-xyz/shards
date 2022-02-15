@@ -188,3 +188,37 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
 
 	CHECK(validateShaderModule(context, output.wgslSource));
 }
+
+void interpolateTexcoord(GeneratorContext &context) {}
+
+TEST_CASE("Shader textures", "[Shader]") {
+	Generator generator;
+	generator.meshFormat.vertexAttributes = {
+		MeshVertexAttribute("position", 3),
+		MeshVertexAttribute("texCoord0", 2),
+	};
+
+	Context context;
+	context.init();
+
+	auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
+	auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
+
+	TextureBindingLayoutBuilder textureLayoutBuilder;
+	textureLayoutBuilder.addOrUpdateSlot("baseColor", 0);
+
+	generator.textureBindingLayout = textureLayoutBuilder.finalize();
+	generator.outputFields.emplace_back("color", colorFieldType);
+
+	std::vector<EntryPoint> entryPoints;
+	entryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment, blocks::WriteOutput("color", colorFieldType, blocks::SampleTexture("baseColor")));
+	entryPoints.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
+
+	GeneratorOutput output = generator.build(entryPoints);
+	spdlog::info(output.wgslSource);
+
+	GeneratorOutput::dumpErrors(output);
+	CHECK(output.errors.empty());
+
+	CHECK(validateShaderModule(context, output.wgslSource));
+}

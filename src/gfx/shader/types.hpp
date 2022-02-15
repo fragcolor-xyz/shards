@@ -41,6 +41,7 @@ struct BufferDefinition {
 struct TextureDefinition {
 	String variableName;
 	String defaultTexcoordVariableName;
+	String defaultSamplerVariableName;
 };
 
 } // namespace shader
