@@ -10,6 +10,8 @@
 #include "gfx/mesh.hpp"
 #include "gfx/moving_average.hpp"
 #include "gfx/renderer.hpp"
+#include "gfx/texture.hpp"
+#include "gfx/texture_file.hpp"
 #include "gfx/types.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/view.hpp"
@@ -82,6 +84,7 @@ struct App {
 	ViewPtr view;
 	std::shared_ptr<Renderer> renderer;
 	DrawQueue drawQueue;
+	TexturePtr texture;
 
 	PipelineSteps pipelineSteps;
 
@@ -122,6 +125,10 @@ struct App {
 
 		sphereMesh = createMesh(sphere.vertices, sphere.indices);
 		buildDrawables();
+
+		texture = textureFromFile(GFX_DATA_PATH "/assets/drawing.png");
+		assert(texture);
+		texture->createContextDataConditional(context);
 
 		rnd.seed(time(nullptr));
 	}

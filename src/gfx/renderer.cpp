@@ -10,6 +10,7 @@
 #include "shader/blocks.hpp"
 #include "shader/entry_point.hpp"
 #include "shader/generator.hpp"
+#include "shader/textures.hpp"
 #include "shader/uniforms.hpp"
 #include "view.hpp"
 #include "view_texture.hpp"
@@ -19,15 +20,13 @@
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 namespace gfx {
+using shader::TextureBindingLayout;
+using shader::TextureBindingLayoutBuilder;
 using shader::UniformBufferLayout;
 using shader::UniformBufferLayoutBuilder;
 using shader::UniformLayout;
 
 PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
-
-struct BindingLayout {
-	UniformBufferLayout uniformBuffers;
-};
 
 struct SortableDrawable {
 	Drawable *drawable{};
@@ -45,6 +44,7 @@ struct CachedPipeline {
 	MeshFormat meshFormat;
 	std::vector<const Feature *> features;
 	UniformBufferLayout objectBufferLayout;
+	TextureBindingLayout textureBindingLayout;
 	DrawData baseDrawData;
 
 	WGPURenderPipeline pipeline = {};
@@ -441,8 +441,6 @@ struct RendererImpl {
 		for (auto &pair : pipelineCache) {
 			CachedPipeline &cachedPipeline = *pair.second.get();
 			if (!cachedPipeline.pipeline) {
-				buildObjectBufferLayout(cachedPipeline);
-				buildBaseObjectParameters(cachedPipeline);
 				buildPipeline(cachedPipeline);
 			}
 
@@ -528,6 +526,9 @@ struct RendererImpl {
 				HasherXXH128<HashStaticVistor> hasher;
 				hasher(mesh.getFormat());
 				hasher(featureHash);
+				if (const Material *material = drawablePtr->material.get()) {
+					hasher(*material);
+				}
 				drawableCache.pipelineHash = hasher.getDigest();
 			}
 
@@ -538,11 +539,30 @@ struct RendererImpl {
 				CachedPipeline &cachedPipeline = *it1->second.get();
 				cachedPipeline.meshFormat = mesh.getFormat();
 				cachedPipeline.features = features;
+
+				buildTextureBindingLayout(cachedPipeline, drawablePtr->material.get());
 			}
 
 			CachedPipelinePtr &pipelineGroup = it1->second;
 			pipelineGroup->drawables.push_back(drawablePtr);
 		}
+	}
+
+	void buildTextureBindingLayout(CachedPipeline &cachedPipeline, const Material *material) {
+		TextureBindingLayoutBuilder textureBindingLayoutBuilder;
+		for (auto &feature : cachedPipeline.features) {
+			for (auto &textureParam : feature->textureParams) {
+				textureBindingLayoutBuilder.addOrUpdateSlot(textureParam.name, 0);
+			}
+		}
+
+		if (material) {
+			for (auto &pair : material->parameters.texture) {
+				textureBindingLayoutBuilder.addOrUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
+			}
+		}
+
+		cachedPipeline.textureBindingLayout = textureBindingLayoutBuilder.finalize();
 	}
 
 	shader::GeneratorOutput generateShader(const CachedPipeline &cachedPipeline) {
@@ -557,6 +577,7 @@ struct RendererImpl {
 
 		generator.viewBufferLayout = viewBufferLayout;
 		generator.objectBufferLayout = cachedPipeline.objectBufferLayout;
+		generator.textureBindingLayout = cachedPipeline.textureBindingLayout;
 
 		std::vector<const EntryPoint *> entryPoints;
 		for (auto &feature : cachedPipeline.features) {
@@ -589,6 +610,9 @@ struct RendererImpl {
 	}
 
 	void buildPipeline(CachedPipeline &cachedPipeline) {
+		buildObjectBufferLayout(cachedPipeline);
+		buildBaseObjectParameters(cachedPipeline);
+
 		FeaturePipelineState pipelineState = computePipelineState(cachedPipeline.features);
 		WGPUDevice device = context.wgpuDevice;
 

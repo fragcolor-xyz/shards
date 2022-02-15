@@ -1,8 +1,8 @@
 #pragma once
 #include "enums.hpp"
+#include "fwd.hpp"
 #include "linalg.hpp"
 #include "params.hpp"
-#include "fwd.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -118,7 +118,8 @@ public:
 
 enum class ShaderParamFlags {
 	None = 0,
-	Optional = 1 << 0,
+	// TODO(guus)
+	// Optional = 1 << 0,
 };
 
 struct NamedShaderParam {
@@ -133,6 +134,19 @@ struct NamedShaderParam {
 
 	template <typename T> void hashStatic(T &hasher) const {
 		hasher(type);
+		hasher(name);
+		hasher(flags);
+	}
+};
+
+struct NamedTextureParam {
+	std::string name;
+	ShaderParamFlags flags = ShaderParamFlags::None;
+
+	NamedTextureParam() = default;
+	NamedTextureParam(std::string name) : name(name) {}
+
+	template <typename T> void hashStatic(T &hasher) const {
 		hasher(name);
 		hasher(flags);
 	}
@@ -154,8 +168,10 @@ struct Feature {
 	FeaturePipelineState state;
 	// Per drawable draw data
 	std::vector<FeatureDrawDataFunction> drawData;
-	// Material parameters
+	// Shader parameters read from per-instance buffer
 	std::vector<NamedShaderParam> shaderParams;
+	// Texture parameters
+	std::vector<NamedTextureParam> textureParams;
 	// Shader entry points
 	std::vector<shader::EntryPoint> shaderEntryPoints;
 
@@ -165,6 +181,7 @@ struct Feature {
 		hasher(state);
 		hasher(shaderParams);
 		hasher(shaderEntryPoints);
+		hasher(textureParams);
 	}
 };
 typedef std::shared_ptr<Feature> FeaturePtr;

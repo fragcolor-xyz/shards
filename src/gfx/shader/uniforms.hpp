@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../params.hpp"
+#include "fwd.hpp"
 #include <cassert>
 #include <map>
 #include <vector>
@@ -15,7 +16,7 @@ struct UniformLayout {
 
 struct UniformBufferLayout {
 	std::vector<UniformLayout> items;
-	std::vector<std::string> fieldNames;
+	std::vector<String> fieldNames;
 	size_t size = ~0;
 	size_t maxAlignment = 0;
 
@@ -28,7 +29,7 @@ struct UniformBufferLayout {
 
 struct UniformBufferLayoutBuilder {
 private:
-	std::map<std::string, size_t> mapping;
+	std::map<String, size_t> mapping;
 	UniformBufferLayout bufferLayout;
 	size_t offset = 0;
 
@@ -41,7 +42,7 @@ public:
 		return result;
 	}
 
-	const UniformLayout &push(const std::string &name, UniformLayout &&layout) {
+	const UniformLayout &push(const String &name, UniformLayout &&layout) {
 		const UniformLayout &result = pushInternal(name, std::move(layout));
 		offset = std::max(offset, layout.offset + layout.size);
 		size_t fieldAlignment = getParamTypeWGSLAlignment(layout.type);
@@ -49,7 +50,7 @@ public:
 		return result;
 	}
 
-	const UniformLayout &push(const std::string &name, ShaderParamType paramType) { return push(name, generateNext(paramType)); }
+	const UniformLayout &push(const String &name, ShaderParamType paramType) { return push(name, generateNext(paramType)); }
 
 	UniformBufferLayout &&finalize() {
 		bufferLayout.size = offset;
@@ -57,7 +58,7 @@ public:
 	}
 
 private:
-	UniformLayout &pushInternal(const std::string &name, UniformLayout &&layout) {
+	UniformLayout &pushInternal(const String &name, UniformLayout &&layout) {
 		auto itExisting = mapping.find(name);
 		if (itExisting != mapping.end()) {
 

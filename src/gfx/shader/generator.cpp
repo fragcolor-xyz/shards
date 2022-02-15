@@ -66,15 +66,33 @@ void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
 	result += fmt::format("{}.{}", outputVariableName, name);
 }
 
+void GeneratorContext::texture(const char *name) {
+	auto it = textures.find(name);
+	if (it == textures.end()) {
+		pushError(formatError("Texture {} does not exist", name));
+	} else {
+		result += it->second.variableName;
+	}
+}
+
+void GeneratorContext::textureDefaultTextureCoordinate(const char *name) {
+	auto it = textures.find(name);
+	if (it == textures.end()) {
+		pushError(formatError("Texture {} does not exist", name));
+	} else {
+		result += it->second.defaultTexcoordVariableName;
+	}
+}
+
 void GeneratorContext::readBuffer(const char *name) {
 	auto bufferIt = buffers.find(name);
 	assert(bufferIt != buffers.end());
 
 	const BufferDefinition &buffer = bufferIt->second;
 	if (buffer.indexedBy) {
-		result += fmt::format("{}.elements[{}]", buffer.bufferVariableName, *buffer.indexedBy);
+		result += fmt::format("{}.elements[{}]", buffer.variableName, *buffer.indexedBy);
 	} else {
-		result += buffer.bufferVariableName;
+		result += buffer.variableName;
 	}
 }
 

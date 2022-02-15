@@ -2,6 +2,7 @@
 
 #include "block.hpp"
 #include "entry_point.hpp"
+#include "textures.hpp"
 #include "types.hpp"
 #include "uniforms.hpp"
 #include <gfx/mesh.hpp>
@@ -25,9 +26,11 @@ struct GeneratorContext {
 	String outputVariableName;
 	String globalsVariableName;
 	std::map<String, BufferDefinition> buffers;
+	std::map<String, TextureDefinition> textures;
 	std::map<String, const NamedField *> inputs;
 	std::map<String, FieldType> globals;
 	std::map<String, FieldType> outputs;
+	std::map<String, size_t> sampleTextures;
 	bool canAddOutputs = false;
 	std::vector<GeneratorError> errors;
 
@@ -41,6 +44,9 @@ struct GeneratorContext {
 
 	bool hasOutput(const char *name);
 	void writeOutput(const char *name, const FieldType &type);
+
+	void texture(const char *name);
+	void textureDefaultTextureCoordinate(const char *name);
 
 	void readBuffer(const char *name);
 
@@ -56,6 +62,7 @@ struct GeneratorOutput {
 
 struct Generator {
 	UniformBufferLayout objectBufferLayout;
+	TextureBindingLayout textureBindingLayout;
 	UniformBufferLayout viewBufferLayout;
 	MeshFormat meshFormat;
 	std::vector<NamedField> outputFields;

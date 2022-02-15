@@ -18,6 +18,7 @@ struct BaseColor {
 
 		FeaturePtr feature = std::make_shared<Feature>();
 		feature->shaderParams.emplace_back("baseColor", float4(1, 1, 1, 1));
+		// feature->
 
 		const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
 

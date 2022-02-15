@@ -23,6 +23,7 @@ add_library(gfx
   paths.cpp
   utils.cpp
   feature.cpp
+  texture.cpp
   shader/generator.cpp
   shader/blocks.cpp
   # cache_data.cpp
@@ -41,6 +42,9 @@ target_link_libraries(gfx
   spdlog stb xxHash Boost::headers
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+
+add_library(gfx_texture_file texture_file.cpp)
+target_link_libraries(gfx_texture_file PUBLIC gfx)
 
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)
 

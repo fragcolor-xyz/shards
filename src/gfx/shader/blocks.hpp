@@ -88,7 +88,8 @@ struct WriteOutput : public Block {
 	FieldType type;
 	BlockPtr inner;
 
-	template <typename T> WriteOutput(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+	template <typename T>
+	WriteOutput(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
 	template <typename... TArgs>
 	WriteOutput(const String &name, FieldType type, TArgs &&...inner) : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
 	WriteOutput(WriteOutput &&other) = default;
@@ -119,7 +120,8 @@ struct WriteGlobal : public Block {
 	FieldType type;
 	BlockPtr inner;
 
-	template <typename T> WriteGlobal(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+	template <typename T>
+	WriteGlobal(const String &name, FieldType type, T &&inner) : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
 	template <typename... TArgs>
 	WriteGlobal(const String &name, FieldType type, TArgs &&...inner) : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
 	WriteGlobal(WriteGlobal &&other) = default;
@@ -154,6 +156,20 @@ struct ReadBuffer : public Block {
 	void apply(GeneratorContext &context) const { context.readBuffer(name.c_str()); }
 
 	BlockPtr clone() { return std::make_unique<ReadBuffer>(name); }
+};
+
+struct ReadTexture : public Block {
+	String name;
+
+	ReadTexture(const String &name) : name(name) {}
+	ReadTexture(ReadTexture &&other) = default;
+
+	void apply(GeneratorContext &context) const {
+		context.write("");
+		// context.readBuffer(name.c_str());
+    }
+
+	BlockPtr clone() { return std::make_unique<ReadTexture>(name); }
 };
 
 template <typename T> inline auto toBlock(T &&arg) { return ConvertibleToBlock(std::forward<T>(arg)); }
