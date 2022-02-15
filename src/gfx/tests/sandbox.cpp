@@ -5,11 +5,15 @@
 #include "gfx/features/debug_color.hpp"
 #include "gfx/features/transform.hpp"
 #include "gfx/geom.hpp"
+#include "gfx/imgui.hpp"
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
 #include "gfx/mesh.hpp"
 #include "gfx/moving_average.hpp"
+#include "gfx/paths.hpp"
 #include "gfx/renderer.hpp"
+#include "gfx/texture.hpp"
+#include "gfx/texture_file.hpp"
 #include "gfx/types.hpp"
 #include "gfx/utils.hpp"
 #include "gfx/view.hpp"
@@ -73,6 +77,12 @@ template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std:
   return mesh;
 }
 
+MeshPtr createPlaneMesh() {
+  geom::PlaneGenerator gen;
+  gen.generate();
+  return createMesh(gen.vertices, gen.indices);
+}
+
 struct App {
   Window window;
   Loop loop;
@@ -82,7 +92,10 @@ struct App {
   MeshPtr cubeMesh;
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<ImGuiRenderer> imgui;
   DrawQueue drawQueue;
+
+  std::vector<TexturePtr> textures;
 
   PipelineSteps pipelineSteps;
 
@@ -90,7 +103,7 @@ struct App {
 
   void init(const char *hostElement) {
     spdlog::debug("sandbox Init");
-    window.init(WindowCreationOptions{.width = 512, .height = 512});
+    window.init(WindowCreationOptions{.width = 1280, .height = 720});
 
     gfx::ContextCreationOptions contextOptions = {};
     contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
@@ -98,11 +111,22 @@ struct App {
     context.init(window, contextOptions);
 
     renderer = std::make_shared<Renderer>(context);
+    imgui = std::make_shared<ImGuiRenderer>(context);
 
     FeaturePtr blendFeature = std::make_shared<Feature>();
     blendFeature->state.set_blend(BlendState{
-        .color = BlendComponent::AlphaPremultiplied,
-        .alpha = BlendComponent::Opaque,
+        .color =
+            BlendComponent{
+                .operation = WGPUBlendOperation_Add,
+                .srcFactor = WGPUBlendFactor_Zero,
+                .dstFactor = WGPUBlendFactor_Zero,
+            },
+        .alpha =
+            BlendComponent{
+                .operation = WGPUBlendOperation_Add,
+                .srcFactor = WGPUBlendFactor_Zero,
+                .dstFactor = WGPUBlendFactor_Zero,
+            },
     });
 
     pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
@@ -110,52 +134,129 @@ struct App {
             {
                 features::Transform::create(),
                 features::BaseColor::create(),
+                blendFeature,
             },
-        // .sortMode = SortMode::BackToFront,
+        .sortMode = SortMode::BackToFront,
     }));
 
     view = std::make_shared<View>();
-    view->proj = ViewPerspectiveProjection{};
-    view->view = linalg::lookat_matrix(float3(0, 30, 100), float3(0, 0, 0.0f), float3(0, 1, 0));
+    // view->proj = ViewPerspectiveProjection{};
+    // view->view = linalg::lookat_matrix(float3(0, 5, 20), float3(0, 0, 0.0f), float3(0, 1, 0));
 
-    geom::SphereGenerator sphere;
+    view->proj = ViewOrthographicProjection{
+        .size = 2.0f,
+        .near = -10.0f,
+        .far = 10.0f,
+    };
+
+    geom::CubeGenerator sphere;
     sphere.generate();
 
     sphereMesh = createMesh(sphere.vertices, sphere.indices);
-    buildDrawables();
+
+    std::vector<std::string> texturePaths = {// "src/gfx/tests/assets/logo.png",
+                                             // "src/gfx/tests/assets/fish.png",
+                                             // "src/gfx/tests/assets/abstract.jpg",
+                                             "src/gfx/tests/assets/pixely_sprite.png"};
+    for (auto path : texturePaths) {
+      auto texture = textureFromFile(resolveDataPath(path).string().c_str());
+      texture->setSamplerState(SamplerState{
+          .filterMode = WGPUFilterMode_Nearest,
+      });
+
+      textures.push_back(texture);
+    }
 
     rnd.seed(time(nullptr));
+    buildDrawables();
   }
 
   std::default_random_engine rnd;
+  struct DrawThing {
+    DrawablePtr drawable;
+    float2 coord;
+    float4 baseColor;
+    float3 spinVel;
+    float3 rot{};
+
+    DrawThing(float2 coord, MeshPtr mesh, TexturePtr texture, std::default_random_engine &rnd) : coord(coord) {
+      std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+      std::uniform_real_distribution<float> sdist(-1.0f, 1.0f);
+      baseColor = float4(dist(rnd), dist(rnd), dist(rnd), 1.0f);
+      spinVel = float3(sdist(rnd), sdist(rnd), sdist(rnd));
+
+      drawable = std::make_shared<Drawable>(mesh);
+      drawable->parameters.texture.insert_or_assign("baseColor", TextureParameter(texture));
+    }
+    DrawThing(DrawThing &&other) = default;
+    void update(float time, float deltaTime) {
+
+      drawable->transform = linalg::translation_matrix(float3(coord.x, 0.0f, coord.y));
+
+      rot += spinVel * deltaTime;
+      float4 rotQuat = linalg::rotation_quat(float3(1, 0, 0), rot.x);
+      rotQuat = linalg::qmul(rotQuat, linalg::rotation_quat(float3(0, 0, 1), rot.z));
+      rotQuat = linalg::qmul(rotQuat, linalg::rotation_quat(float3(0, 1, 0), rot.y));
+      drawable->transform = linalg::mul(drawable->transform, linalg::rotation_matrix(rotQuat));
+
+      drawable->parameters.basic.insert_or_assign("baseColor", baseColor);
+    }
+  };
+
+  std::vector<DrawThing> things;
   std::vector<DrawablePtr> testDrawables;
   void buildDrawables() {
     testDrawables.clear();
+    things.clear();
 
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    std::uniform_int_distribution<int> textureIndexDist(0, textures.size() - 1);
 
-    int2 testGridDim = {64, 64};
-    for (size_t y = 0; y < testGridDim.y; y++) {
-      float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
-      for (size_t x = 0; x < testGridDim.x; x++) {
-        float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
-        auto drawable = std::make_shared<Drawable>(sphereMesh);
-        drawable->transform = linalg::translation_matrix(float3(fx, 0.0f, fy));
+    MeshPtr planeMesh = createPlaneMesh();
 
-        float4 color(dist(rnd), dist(rnd), dist(rnd), 1.0f);
-        drawable->parameters.basic.insert_or_assign("baseColor", color);
-        testDrawables.push_back(drawable);
-      }
-    }
+    float4x4 transform;
+    DrawablePtr drawable;
+    transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
+    drawable = std::make_shared<Drawable>(planeMesh, transform);
+    drawable->parameters.set("baseColor", textures[0]);
+    testDrawables.push_back(drawable);
+
+    transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
+    drawable = std::make_shared<Drawable>(planeMesh, transform);
+    drawable->parameters.set("baseColor", textures[0]);
+    testDrawables.push_back(drawable);
+
+    // int2 testGridDim = {32, 32};
+    // for (size_t y = 0; y < testGridDim.y; y++) {
+    // 	float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
+    // 	for (size_t x = 0; x < testGridDim.x; x++) {
+    // 		float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
+
+    // 		auto texture = textures[textureIndexDist(rnd)];
+
+    // 		things.emplace_back(float2(fx, fy), sphereMesh, texture, rnd);
+    // 		testDrawables.push_back(things.back().drawable);
+    // 	}
+    // }
   }
 
-  void renderFrame() {
-    buildDrawables();
+  void renderFrame(float time, float deltaTime) {
+    for (auto &thing : things) {
+      thing.update(time, deltaTime);
+    }
+
     for (auto &drawable : testDrawables) {
       drawQueue.add(drawable);
     }
 
     renderer->render(drawQueue, view, pipelineSteps);
+  }
+
+  void renderUI(const std::vector<SDL_Event> &events) {
+    imgui->beginFrame(events);
+
+    ImGui::ShowDemoWindow();
+
+    imgui->endFrame();
   }
 
   void runMainLoop() {
@@ -177,11 +278,14 @@ struct App {
       float deltaTime;
       if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
         context.beginFrame();
-        renderer->swapBuffers();
+        renderer->beginFrame();
+
         drawQueue.clear();
 
-        renderFrame();
+        renderFrame(loop.getAbsoluteTime(), deltaTime);
+        renderUI(events);
 
+        renderer->endFrame();
         context.endFrame();
 
         static MovingAverage delaTimeMa(32);
@@ -206,3 +310,5 @@ int main() {
   instance.runMainLoop();
   return 0;
 }
+
+#include "imgui/imgui_demo.cpp"

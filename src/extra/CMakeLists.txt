@@ -6,11 +6,11 @@ set(extra_SOURCES
   gfx/mesh.cpp
   gfx/drawable.cpp
   gfx/material.cpp
-  # imgui.cpp
+  imgui.cpp
   # xr.cpp
   # gizmo.cpp
   dsp.cpp
-  # inputs.cpp
+  inputs.cpp
   snappy.cpp
   brotli.cpp
 )
@@ -38,7 +38,7 @@ endif()
 
 target_link_libraries(chainblocks-extra
   chainblocks-core
-  stb gfx
+  stb gfx gfx_imgui
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

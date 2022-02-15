@@ -43,10 +43,12 @@ template <typename T> struct TWithContextData {
     } else {
       assert(&contextData->getContext() == &context);
     }
+    updateContextData(context, *contextData.get());
   }
 
 protected:
   virtual void initContextData(Context &context, T &contextData) = 0;
+  virtual void updateContextData(Context &context, T &contextData) {}
 };
 
 } // namespace gfx

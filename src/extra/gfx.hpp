@@ -4,9 +4,10 @@
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/drawable.hpp>
+#include <gfx/fwd.hpp>
 
 namespace gfx {
-struct Context;
+struct ImGuiRenderer;
 struct Window;
 struct Renderer;
 
@@ -17,6 +18,7 @@ struct MainWindowGlobals {
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
   std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<ImGuiRenderer> imgui;
   std::vector<SDL_Event> events;
   ::gfx::DrawQueue drawQueue;
 };
@@ -32,6 +34,7 @@ struct Base {
   MainWindowGlobals &getMainWindowGlobals();
   ::gfx::Context &getContext();
   ::gfx::Window &getWindow();
+  SDL_Window *getSdlWindow();
 };
 
 struct BaseConsumer : public Base {

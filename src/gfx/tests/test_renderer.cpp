@@ -6,7 +6,10 @@
 #include <gfx/features/transform.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/mesh.hpp>
+#include <gfx/paths.hpp>
 #include <gfx/renderer.hpp>
+#include <gfx/texture.hpp>
+#include <gfx/texture_file.hpp>
 #include <gfx/view.hpp>
 #include <spdlog/fmt/fmt.h>
 
@@ -166,6 +169,12 @@ MeshPtr createSphereMesh() {
   return createMesh(gen.vertices, gen.indices);
 }
 
+MeshPtr createPlaneMesh() {
+  geom::PlaneGenerator gen;
+  gen.generate();
+  return createMesh(gen.vertices, gen.indices);
+}
+
 ViewPtr createTestProjectionView() {
   ViewPtr view = std::make_shared<View>();
   view->view = linalg::lookat_matrix(float3(0, 10.0f, 10.0f), float3(0, 0, 0), float3(0, 1, 0));
@@ -294,29 +303,32 @@ TEST_CASE("Pipeline states", "[Renderer]") {
   drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
   queue.add(drawable);
 
-  FeaturePtr blendFeature = std::make_shared<Feature>();
-  blendFeature->state.set_depthWrite(false);
-  blendFeature->state.set_blend(BlendState{
-      .color = BlendComponent::AlphaPremultiplied,
-      .alpha = BlendComponent::Opaque,
-  });
+  auto testBlendState = [&](const char *name, const BlendState &state) {
+    FeaturePtr blendFeature = std::make_shared<Feature>();
+    blendFeature->state.set_depthWrite(false);
+    blendFeature->state.set_blend(state);
 
-  PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
-          .features =
-              {
-                  features::Transform::create(),
-                  features::BaseColor::create(),
-                  blendFeature,
-              },
-          .sortMode = SortMode::BackToFront,
-      }),
+    PipelineSteps steps{
+        makeDrawablePipelineStep(RenderDrawablesStep{
+            .features =
+                {
+                    features::Transform::create(),
+                    features::BaseColor::create(),
+                    blendFeature,
+                },
+            .sortMode = SortMode::BackToFront,
+        }),
+    };
+    renderer.render(queue, view, steps);
+
+    TestData testData(TestPlatformId::get(*context.get()));
+    TestFrame testFrame = headlessRenderer->getTestFrame();
+    CHECK(testData.checkFrame(name, testFrame));
   };
-  renderer.render(queue, view, steps);
 
-  TestData testData(TestPlatformId::get(*context.get()));
-  TestFrame testFrame = headlessRenderer->getTestFrame();
-  CHECK(testData.checkFrame("blendAlphaPremul", testFrame));
+  testBlendState("blendAlphaPremul", BlendState{.color = BlendComponent::AlphaPremultiplied, .alpha = BlendComponent::Opaque});
+  testBlendState("blendAlpha", BlendState{.color = BlendComponent::Alpha, .alpha = BlendComponent::Opaque});
+  testBlendState("blendAdditive", BlendState{.color = BlendComponent::Additive, .alpha = BlendComponent::Opaque});
 
   headlessRenderer.reset();
   context.reset();
@@ -413,11 +425,79 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 
   context->sync();
   for (size_t i = 0; i < 2; i++) {
-    renderer.swapBuffers();
+    renderer.beginFrame();
+    renderer.endFrame();
   }
+  context->sync();
 
   // Should be released now
   CHECK(meshContextData.expired());
+
+  headlessRenderer.reset();
+  context.reset();
+}
+
+TEST_CASE("Textures", "[Renderer]") {
+  std::shared_ptr<Context> context = std::make_shared<Context>();
+  context->init();
+
+  auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
+  headlessRenderer->createRenderTarget(int2(1280, 720));
+  Renderer &renderer = headlessRenderer->renderer;
+
+  MeshPtr planeMesh = createPlaneMesh();
+
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewOrthographicProjection{
+      .size = 2.0f,
+      .near = -10.0f,
+      .far = 10.0f,
+  };
+
+  DrawQueue queue;
+  float4x4 transform;
+  DrawablePtr drawable;
+
+  // Texture with default sampler state (linear filtering)
+  TexturePtr textureA = textureFromFile(resolveDataPath("src/gfx/tests/assets/pixely_sprite.png").string().c_str());
+
+  // Texture with modified sampler (point filtering)
+  TexturePtr textureB = textureA->clone();
+  textureB->setSamplerState(SamplerState{
+      .filterMode = WGPUFilterMode_Nearest,
+  });
+
+  transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
+  drawable = std::make_shared<Drawable>(planeMesh, transform);
+  drawable->parameters.set("baseColor", textureA);
+  queue.add(drawable);
+
+  transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
+  drawable = std::make_shared<Drawable>(planeMesh, transform);
+  drawable->parameters.set("baseColor", textureB);
+  queue.add(drawable);
+
+  FeaturePtr blendFeature = std::make_shared<Feature>();
+  blendFeature->state.set_blend(BlendState{
+      .color = BlendComponent::Alpha,
+      .alpha = BlendComponent::Opaque,
+  });
+
+  PipelineSteps steps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+                  blendFeature,
+              },
+      }),
+  };
+  renderer.render(queue, view, steps);
+
+  TestData testData(TestPlatformId::get(*context.get()));
+  TestFrame testFrame = headlessRenderer->getTestFrame();
+  CHECK(testData.checkFrame("textures", testFrame));
 
   headlessRenderer.reset();
   context.reset();

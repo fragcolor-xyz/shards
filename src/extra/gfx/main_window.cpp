@@ -1,5 +1,6 @@
 #include "../gfx.hpp"
 #include <gfx/context.hpp>
+#include <gfx/imgui.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
@@ -16,6 +17,7 @@ MainWindowGlobals &Base::getMainWindowGlobals() {
 }
 Context &Base::getContext() { return *getMainWindowGlobals().context.get(); }
 Window &Base::getWindow() { return *getMainWindowGlobals().window.get(); }
+SDL_Window *Base::getSdlWindow() { return getWindow().window; }
 
 struct MainWindow : public Base {
   static inline Parameters params{
@@ -132,6 +134,7 @@ struct MainWindow : public Base {
     globals->context->init(*globals->window.get(), contextOptions);
 
     globals->renderer = std::make_shared<Renderer>(*globals->context.get());
+    globals->imgui = std::make_shared<ImGuiRenderer>(*globals->context.get());
 
     _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
     _mainWindowGlobalsVar->payload.objectTypeId = MainWindowGlobals::TypeId;
@@ -163,6 +166,7 @@ struct MainWindow : public Base {
     auto &context = globals->context;
     auto &window = globals->window;
     auto &events = globals->events;
+    auto &imgui = globals->imgui;
 
     window->pollEvents(events);
     for (auto &event : events) {
@@ -182,11 +186,16 @@ struct MainWindow : public Base {
     auto &drawQueue = globals->drawQueue;
     if (loop.beginFrame(0.0f, deltaTime)) {
       context->beginFrame();
-      renderer->swapBuffers();
+      imgui->beginFrame(events);
+      renderer->beginFrame();
+
       drawQueue.clear();
 
       CBVar _blocksOutput{};
       _blocks.activate(cbContext, input, _blocksOutput);
+
+      renderer->endFrame();
+      imgui->endFrame();
 
       context->endFrame();
     }

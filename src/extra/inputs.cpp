@@ -1,30 +1,18 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include "./bgfx.hpp"
 #include "SDL.h"
 #include "blocks/shared.hpp"
+#include "gfx.hpp"
+#include <gfx/window.hpp>
+
+using namespace linalg::aliases;
 
 namespace chainblocks {
 namespace Inputs {
-struct Base {
+struct Base : public gfx::BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  static inline CBExposedTypeInfo ContextInfo =
-      ExposedInfo::Variable("GFX.CurrentWindow", CBCCSTR("The required SDL window."), BGFX::BaseConsumer::windowType);
-  static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
-
-  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(requiredInfo); }
-
-  CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw ComposeError("Inputs Blocks cannot be used on a worker thread (e.g. "
-                         "within an Await block)");
-    }
-    return CoreInfo::NoneType; // on purpose to trigger assertion during
-                               // validation
-  }
 };
 
 struct MousePixelPos : public Base {
@@ -41,54 +29,37 @@ struct MousePixelPos : public Base {
     SDL_GetMouseState(&mouseX, &mouseY);
     return Var(mouseX, mouseY);
   }
+
+  void cleanup() {}
 };
 
 struct MouseDelta : public Base {
-  CBVar *_sdlWinVar{nullptr};
-  Uint32 _windowId{0};
-  int _width;
-  int _height;
-
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // sdlEvents is not thread safe
-    Base::compose(data);
+    composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
 
-  void warmup(CBContext *context) {
-    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-    _windowId = SDL_GetWindowID(window);
-    SDL_GetWindowSize(window, &_width, &_height);
-  }
+  void warmup(CBContext *context) { baseConsumerWarmup(context); }
 
-  void cleanup() {
-    if (_sdlWinVar) {
-      releaseVariable(_sdlWinVar);
-      _sdlWinVar = nullptr;
-    }
-  }
+  void cleanup() { baseConsumerCleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    for (const auto &event : BGFX::Context::sdlEvents) {
-      if (event.type == SDL_MOUSEMOTION && event.motion.windowID == _windowId) {
-        return Var(float(event.motion.xrel) / float(_width), float(event.motion.yrel) / float(_height));
-      } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED &&
-                 event.window.windowID == _windowId) {
-        const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-        SDL_GetWindowSize(window, &_width, &_height);
+    int2 windowSize = getWindow().getSize();
+
+    for (auto &event : getMainWindowGlobals().events) {
+      if (event.type == SDL_MOUSEMOTION) {
+        return Var(float(event.motion.xrel) / float(windowSize.x), float(event.motion.yrel) / float(windowSize.y));
       }
     }
+
     return Var(0.0, 0.0);
   }
 };
 
 struct MousePos : public Base {
-  CBVar *_sdlWinVar{nullptr};
-  Uint32 _windowId{0};
   int _width;
   int _height;
 
@@ -96,77 +67,40 @@ struct MousePos : public Base {
   static CBTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // sdlEvents is not thread safe
-    Base::compose(data);
+    composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
 
-  void warmup(CBContext *context) {
-    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-    _windowId = SDL_GetWindowID(window);
-    SDL_GetWindowSize(window, &_width, &_height);
-  }
+  void warmup(CBContext *context) { baseConsumerWarmup(context); }
 
-  void cleanup() {
-    if (_sdlWinVar) {
-      releaseVariable(_sdlWinVar);
-      _sdlWinVar = nullptr;
-    }
-  }
+  void cleanup() { baseConsumerCleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    for (const auto &event : BGFX::Context::sdlEvents) {
-      if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == _windowId) {
-        const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-        SDL_GetWindowSize(window, &_width, &_height);
-      }
-    }
+    int2 windowSize = getWindow().getSize();
 
     int32_t mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    return Var(float(mouseX) / float(_width), float(mouseY) / float(_height));
+    return Var(float(mouseX) / float(windowSize.x), float(mouseY) / float(windowSize.y));
   }
 };
 
 struct WindowSize : public Base {
-  CBVar *_sdlWinVar{nullptr};
-  Uint32 _windowId{0};
-  int _width;
-  int _height;
-
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // sdlEvents is not thread safe
-    Base::compose(data);
-    return CoreInfo::Int2Type;
+    composeCheckMainThread(data);
+    return CoreInfo::Float2Type;
   }
 
-  void warmup(CBContext *context) {
-    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-    _windowId = SDL_GetWindowID(window);
-    SDL_GetWindowSize(window, &_width, &_height);
-  }
+  void warmup(CBContext *context) { baseConsumerWarmup(context); }
 
-  void cleanup() {
-    if (_sdlWinVar) {
-      releaseVariable(_sdlWinVar);
-      _sdlWinVar = nullptr;
-    }
-  }
+  void cleanup() { baseConsumerCleanup(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    for (const auto &event : BGFX::Context::sdlEvents) {
-      if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == _windowId) {
-        const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-        SDL_GetWindowSize(window, &_width, &_height);
-      }
-    }
-    return Var(_width, _height);
+    int2 windowSize = getWindow().getSize();
+    return Var(windowSize.x, windowSize.y);
   }
 };
 
@@ -175,10 +109,9 @@ struct Mouse : public Base {
   bool _isHidden{false};
   ParamVar _captured{Var(false)};
   bool _isCaptured{false};
-  SDL_Window *_capturedWindow{nullptr};
   ParamVar _relative{Var(false)};
   bool _isRelative{false};
-  CBVar *_sdlWinVar{nullptr};
+  SDL_Window *_capturedWindow{};
 
   static inline Parameters params{
       {"Hidden", CBCCSTR("If the cursor should be hidden."), {CoreInfo::BoolType}},
@@ -217,7 +150,7 @@ struct Mouse : public Base {
   }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // no base call.. Await should be fine here
+    composeCheckMainThread(data);
     return data.inputType;
   }
 
@@ -225,61 +158,52 @@ struct Mouse : public Base {
     _hidden.warmup(context);
     _captured.warmup(context);
     _relative.warmup(context);
-    _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
+    baseConsumerWarmup(context);
   }
 
   void cleanup() {
     _hidden.cleanup();
     _captured.cleanup();
     _relative.cleanup();
-    if (_sdlWinVar) {
-      releaseVariable(_sdlWinVar);
-      _sdlWinVar = nullptr;
-    }
 
-    if (_isHidden) {
-      SDL_ShowCursor(SDL_ENABLE);
-    }
-    _isHidden = false;
-    if (_isCaptured && _capturedWindow) {
-      SDL_SetWindowGrab(_capturedWindow, SDL_FALSE);
-      _capturedWindow = nullptr;
-    }
-    _isCaptured = false;
-    if (_isRelative) {
-      SDL_SetRelativeMouseMode(SDL_FALSE);
-    }
-    _isRelative = false;
+    setHidden(false);
+    setCaptured(false);
+    setRelative(false);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
-
-    const auto hidden = _hidden.get().payload.boolValue;
+  void setHidden(bool hidden) {
     if (hidden != _isHidden) {
       SDL_ShowCursor(hidden ? SDL_DISABLE : SDL_ENABLE);
       _isHidden = hidden;
     }
+  }
 
-    const auto captured = _captured.get().payload.boolValue;
-    if (captured != _isCaptured) {
-      SDL_SetWindowGrab(window, captured ? SDL_TRUE : SDL_FALSE);
-      _capturedWindow = captured ? window : nullptr;
-      _isCaptured = captured;
-    }
-
-    const auto relative = _relative.get().payload.boolValue;
+  void setRelative(bool relative) {
     if (relative != _isRelative) {
       SDL_SetRelativeMouseMode(relative ? SDL_TRUE : SDL_FALSE);
       _isRelative = relative;
     }
+  }
+
+  void setCaptured(bool captured) {
+    if (captured != _isCaptured) {
+      SDL_Window *windowToCapture = getSdlWindow();
+      SDL_SetWindowGrab(windowToCapture, captured ? SDL_TRUE : SDL_FALSE);
+      _capturedWindow = captured ? windowToCapture : nullptr;
+      _isCaptured = captured;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    setHidden(_hidden.get().payload.boolValue);
+    setCaptured(_captured.get().payload.boolValue);
+    setRelative(_relative.get().payload.boolValue);
 
     return input;
   }
 };
 
 template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
-
   static inline Parameters params{
       {"Left", CBCCSTR("The action to perform when the left mouse button is pressed down."), {CoreInfo::BlocksOrNone}},
       {"Right",
@@ -327,8 +251,7 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   BlocksVar _middleButton{};
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // sdlEvents is not thread safe
-    Base::compose(data);
+    composeCheckMainThread(data);
 
     _leftButton.compose(data);
     _rightButton.compose(data);
@@ -341,16 +264,18 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
     _leftButton.cleanup();
     _rightButton.cleanup();
     _middleButton.cleanup();
+    baseConsumerCleanup();
   }
 
   void warmup(CBContext *context) {
     _leftButton.warmup(context);
     _rightButton.warmup(context);
     _middleButton.warmup(context);
+    baseConsumerWarmup(context);
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    for (const auto &event : BGFX::Context::sdlEvents) {
+    for (auto &event : getMainWindowGlobals().events) {
       if (event.type == EVENT_TYPE) {
         CBVar output{};
         if (event.button.button == SDL_BUTTON_LEFT) {
@@ -370,7 +295,6 @@ using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
 using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
 
 template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
-
   static CBParametersInfo parameters() { return _params; }
 
   void setParam(int index, const CBVar &value) {
@@ -407,13 +331,18 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
     }
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() {
+    _blocks.cleanup();
+    baseConsumerCleanup();
+  }
 
-  void warmup(CBContext *context) { _blocks.warmup(context); }
+  void warmup(CBContext *context) {
+    _blocks.warmup(context);
+    baseConsumerWarmup(context);
+  }
 
   CBTypeInfo compose(const CBInstanceData &data) {
-    // sdlEvents is not thread safe
-    Base::compose(data);
+    composeCheckMainThread(data);
 
     _blocks.compose(data);
 
@@ -421,7 +350,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    for (const auto &event : BGFX::Context::sdlEvents) {
+    for (auto &event : getMainWindowGlobals().events) {
       if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
         if (_repeat || event.key.repeat == 0) {
           CBVar output{};

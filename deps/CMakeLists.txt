@@ -221,6 +221,14 @@ add_subdirectory(cpp-taskflow)
 add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
 
+add_library(imgui STATIC
+  imgui/imgui.cpp
+  imgui/imgui_tables.cpp
+  imgui/imgui_widgets.cpp
+  imgui/imgui_draw.cpp
+)
+target_include_directories(imgui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} imgui)
+
 add_library(imgui_club INTERFACE)
 target_include_directories(imgui_club INTERFACE imgui_club/imgui_memory_editor)
 
@@ -232,7 +240,7 @@ set(imguizmo_SOURCES
 )
 add_library(imguizmo STATIC ${imguizmo_SOURCES})
 target_include_directories(imguizmo PUBLIC imguizmo)
-target_link_libraries(imguizmo PUBLIC dear-imgui)
+target_link_libraries(imguizmo PUBLIC imgui)
 
 add_library(implot STATIC
   implot/implot.cpp
@@ -240,7 +248,7 @@ add_library(implot STATIC
 )
 target_include_directories(implot PUBLIC implot)
 target_link_libraries(implot
-  PUBLIC dear-imgui
+  PUBLIC imgui
   PRIVATE stb
 )
 

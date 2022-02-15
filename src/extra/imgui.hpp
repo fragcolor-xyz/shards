@@ -4,7 +4,7 @@
 #pragma once
 
 #include "foundation.hpp"
-#include "imgui.h"
+#include <gfx/imgui.hpp>
 
 #include "ImGuizmo.h"
 
@@ -14,25 +14,6 @@ namespace ImGuiExtra {
 
 namespace chainblocks {
 namespace ImGui {
-constexpr uint32_t ImGuiContextCC = 'gui ';
-
-struct Context {
-  static inline Type Info{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = ImGuiContextCC}}}};
-
-  // Useful to compare with with plugins, they might mismatch!
-  static inline const char *Version = ::ImGui::GetVersion();
-
-  // ImGuiContext *context = ::ImGui::CreateContext();
-
-  // ~Context() { ::ImGui::DestroyContext(context); }
-
-  // void Set() { ::ImGui::SetCurrentContext(context); }
-
-  // void Reset() {
-  //   ::ImGui::DestroyContext(context);
-  //   context = ::ImGui::CreateContext();
-  // }
-};
 
 struct Enums {
 #define REGISTER_FLAGS_EX(_NAME_, _CC_)                                \

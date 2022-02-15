@@ -70,9 +70,6 @@ private:
   std::vector<uint8_t> indexData;
 
 public:
-  Mesh() {}
-  ~Mesh() {}
-
   const MeshFormat &getFormat() const { return format; }
 
   size_t getNumVertices() const { return numVertices; }
@@ -86,7 +83,6 @@ public:
 protected:
   void update();
   void initContextData(Context &context, MeshContextData &contextData);
-  void releaseContextData();
 };
 
 } // namespace gfx

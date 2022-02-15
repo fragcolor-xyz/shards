@@ -60,6 +60,35 @@ struct WithInput : public Block {
   }
 };
 
+struct WithTexture : public Block {
+  String name;
+  BlockPtr inner;
+  BlockPtr innerElse;
+
+  template <typename T>
+  WithTexture(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  template <typename T1, typename T2>
+  WithTexture(const String &name, T1 &&inner, T2 &&innerElse)
+      : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
+        innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
+  WithTexture(WithTexture &&other) = default;
+
+  void apply(GeneratorContext &context) const {
+    if (context.hasTexture(name.c_str())) {
+      inner->apply(context);
+    } else if (innerElse) {
+      innerElse->apply(context);
+    }
+  }
+
+  BlockPtr clone() {
+    if (innerElse)
+      return std::make_unique<WithTexture>(name, inner->clone(), innerElse->clone());
+    else
+      return std::make_unique<WithTexture>(name, inner->clone());
+  }
+};
+
 struct WithOutput : public Block {
   String name;
   BlockPtr inner;
@@ -166,6 +195,57 @@ struct ReadBuffer : public Block {
   void apply(GeneratorContext &context) const { context.readBuffer(name.c_str()); }
 
   BlockPtr clone() { return std::make_unique<ReadBuffer>(name); }
+};
+
+struct SampleTexture : public Block {
+  String name;
+  BlockPtr sampleCoordinate;
+
+  SampleTexture(const String &name) : name(name) {}
+  template <typename T>
+  SampleTexture(const String &name, T &&sampleCoordinate)
+      : name(name), sampleCoordinate(ConvertToBlock<T>{}(std::forward<T>(sampleCoordinate))) {}
+  SampleTexture(SampleTexture &&other) = default;
+
+  void apply(GeneratorContext &context) const {
+    context.write("textureSample(");
+    context.texture(name.c_str());
+    context.write(", ");
+    context.textureDefaultSampler(name.c_str());
+    context.write(", ");
+    if (sampleCoordinate) {
+      sampleCoordinate->apply(context);
+    } else {
+      context.textureDefaultTextureCoordinate(name.c_str());
+    }
+    context.write(")");
+  }
+
+  BlockPtr clone() { return std::make_unique<SampleTexture>(name, sampleCoordinate); }
+};
+
+// Runs callback at code generation time
+struct Custom : public Block {
+  typedef std::function<void(GeneratorContext &context)> Callback;
+  Callback callback;
+
+  Custom(Callback &&callback) : callback(std::forward<Callback>(callback)) {}
+  Custom(Custom &&other) = default;
+  Custom(const Custom &other) = default;
+
+  void apply(GeneratorContext &context) const { callback(context); }
+
+  BlockPtr clone() { return std::make_unique<Custom>(*this); }
+};
+
+// Generates passthrough outputs for each input if an output is not already written to
+// this is only applied for inputs that match matchPrefixes
+struct DefaultInterpolation : public Block {
+  std::vector<String> matchPrefixes;
+
+  DefaultInterpolation();
+  void apply(GeneratorContext &context) const;
+  BlockPtr clone() { return std::make_unique<DefaultInterpolation>(*this); }
 };
 
 template <typename T> inline auto toBlock(T &&arg) { return ConvertibleToBlock(std::forward<T>(arg)); }

@@ -37,8 +37,6 @@ public:
 
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
 
-  size_t numPendingCommandsSubmitted = 0;
-
 public:
   Context();
   ~Context();

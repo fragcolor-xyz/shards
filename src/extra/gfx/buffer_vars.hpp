@@ -35,7 +35,9 @@ inline void validateVertexFormat(const std::vector<MeshVertexAttribute> &format,
   const CBSeq &seq = vertices.payload.seqValue;
 
   if ((seq.len % format.size()) != 0) {
-    throw formatException("Invalid number of vertices ({}), needs to be a multiple of {} (based on layout)", format.size());
+    throw formatException("Invalid number of vertices ({}), needs to be a "
+                          "multiple of {} (based on layout)",
+                          format.size());
   }
 
   for (size_t i = 0; i < seq.len;) {
@@ -43,7 +45,9 @@ inline void validateVertexFormat(const std::vector<MeshVertexAttribute> &format,
       const CBVar &attribute = seq.elements[i];
 
       if (!format[attrIndex].isSameDataFormat(getAttributeVertexFormat(attribute))) {
-        throw formatException("Vertex attribute {} (index: {}) does not match the previous format", attrIndex, i);
+        throw formatException("Vertex attribute {} (index: {}) does not match "
+                              "the previous format",
+                              attrIndex, i);
       }
     }
   }

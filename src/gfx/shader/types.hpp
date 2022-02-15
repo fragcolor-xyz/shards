@@ -1,12 +1,11 @@
 #pragma once
+#include "fwd.hpp"
 #include <gfx/enums.hpp>
 #include <optional>
 #include <string>
 
 namespace gfx {
 namespace shader {
-using String = std::string;
-using StringView = std::string_view;
 
 enum struct UniformBlock {
   View,
@@ -34,8 +33,15 @@ struct NamedField {
 };
 
 struct BufferDefinition {
-  String bufferVariableName;
+  String variableName;
   std::optional<String> indexedBy;
 };
+
+struct TextureDefinition {
+  String variableName;
+  String defaultTexcoordVariableName;
+  String defaultSamplerVariableName;
+};
+
 } // namespace shader
 } // namespace gfx

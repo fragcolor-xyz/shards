@@ -11,7 +11,6 @@
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
-#define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_write.h>
@@ -126,6 +125,7 @@ bool TestData::checkFrame(const char *id, const TestFrame &frame, float toleranc
 bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
   int2 size;
   int32_t numChannels;
+  stbi_set_flip_vertically_on_load(0);
   uint8_t *data = stbi_load(filePath, &size.x, &size.y, &numChannels, 4);
   if (numChannels != 4) {
     stbi_image_free(data);

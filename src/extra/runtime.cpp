@@ -18,6 +18,14 @@ extern void registerDesktopBlocks();
 #endif
 
 namespace chainblocks {
+namespace Inputs {
+extern void registerBlocks();
+}
+
+namespace ImGui {
+extern void registerBlocks();
+}
+
 namespace Snappy {
 extern void registerBlocks();
 }
@@ -43,10 +51,13 @@ void cbInitExtras() {
   Brotli::registerBlocks();
 
   gfx::registerBlocks();
+  chainblocks::ImGui::registerBlocks();
+  Inputs::registerBlocks();
   Audio::registerBlocks();
   DSP::registerBlocks();
 
 #ifdef _WIN32
+  Desktop::registerDesktopBlocks();
 #endif
 }
 }; // namespace chainblocks
