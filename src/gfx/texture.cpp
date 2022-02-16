@@ -130,6 +130,16 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
 		wgpuQueueWriteTexture(context.wgpuQueue, &dst, data.getData(), data.getLength(), &layout, &writeSize);
 	}
 
+	WGPUTextureViewDescriptor viewDesc{};
+	viewDesc.baseArrayLayer = 0;
+	viewDesc.arrayLayerCount = 1;
+	viewDesc.baseMipLevel = 0;
+	viewDesc.mipLevelCount = 1;
+	viewDesc.aspect = WGPUTextureAspect_All;
+	viewDesc.dimension = WGPUTextureViewDimension_2D;
+	viewDesc.format = desc.format;
+	contextData.defaultView = wgpuTextureCreateView(contextData.texture, &viewDesc);
+
 	// if (data) {
 	// 	auto &inputTextureFormatMap = getInputTextureFormatMap();
 	// 	auto it = inputTextureFormatMap.find(format.pixelFormat);

@@ -66,6 +66,8 @@ void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
 	result += fmt::format("{}.{}", outputVariableName, name);
 }
 
+bool GeneratorContext::hasTexture(const char *name) { return getTexture(name) != nullptr; }
+
 const TextureDefinition *GeneratorContext::getTexture(const char *name) {
 	auto it = textures.find(name);
 	if (it == textures.end()) {

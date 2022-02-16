@@ -56,6 +56,33 @@ struct WithInput : public Block {
 	}
 };
 
+struct WithTexture : public Block {
+	String name;
+	BlockPtr inner;
+	BlockPtr innerElse;
+
+	template <typename T> WithTexture(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+	template <typename T1, typename T2>
+	WithTexture(const String &name, T1 &&inner, T2 &&innerElse)
+		: name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))), innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
+	WithTexture(WithTexture &&other) = default;
+
+	void apply(GeneratorContext &context) const {
+		if (context.hasTexture(name.c_str())) {
+			inner->apply(context);
+		} else if (innerElse) {
+			innerElse->apply(context);
+		}
+	}
+
+	BlockPtr clone() {
+		if (innerElse)
+			return std::make_unique<WithTexture>(name, inner->clone(), innerElse->clone());
+		else
+			return std::make_unique<WithTexture>(name, inner->clone());
+	}
+};
+
 struct WithOutput : public Block {
 	String name;
 	BlockPtr inner;

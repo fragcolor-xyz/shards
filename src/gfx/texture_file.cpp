@@ -28,6 +28,7 @@ TexturePtr textureFromFile(const char *path) {
 	if (numComponents == 3)
 		numComponents = 4;
 
+	stbi_set_flip_vertically_on_load(1);
 	uint8_t *data = stbi_load(path, &size.x, &size.y, &numComponentsInFile, numComponents);
 	if (data) {
 		texture = std::make_shared<Texture>();

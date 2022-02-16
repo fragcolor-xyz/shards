@@ -45,6 +45,7 @@ struct GeneratorContext {
 	bool hasOutput(const char *name);
 	void writeOutput(const char *name, const FieldType &type);
 
+	bool hasTexture(const char* name);
 	const TextureDefinition* getTexture(const char *name);
 	void texture(const char *name);
 	void textureDefaultTextureCoordinate(const char *name);

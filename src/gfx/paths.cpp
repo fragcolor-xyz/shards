@@ -19,11 +19,14 @@ static inline std::string getModuleFilename() {
 
 static fs::path findRootFolder(fs::path searchPath) {
 	while (!searchPath.empty()) {
-		fs::path testContentPath = searchPath;
-		testContentPath /= "content";
+		fs::path testPath = searchPath;
+		testPath /= "assets";
 
-		if (fs::exists(testContentPath))
+		if (fs::exists(testPath))
 			return searchPath;
+
+		if (!searchPath.has_relative_path())
+			break;
 
 		searchPath = searchPath.parent_path();
 	}

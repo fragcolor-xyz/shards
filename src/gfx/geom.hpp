@@ -58,9 +58,9 @@ struct CubeGenerator : public GeneratorBase {
 	float height = 1;
 	float depth = 1;
 
-	size_t widthSegments = 2;
-	size_t heightSegments = 2;
-	size_t depthSegments = 2;
+	size_t widthSegments = 1;
+	size_t heightSegments = 1;
+	size_t depthSegments = 1;
 
 	void generate();
 };

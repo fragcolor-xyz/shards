@@ -52,9 +52,10 @@ public:
 	void init(const TextureFormat &format, int2 resolution);
 
 	// Creates or updates a texture with image data
-	void update(const TextureFormat &format, int2 resolution, const ImmutableSharedBuffer& data, size_t faceIndex = 0);
+	void update(const TextureFormat &format, int2 resolution, const ImmutableSharedBuffer &data, size_t faceIndex = 0);
 
 protected:
 	void initContextData(Context &context, TextureContextData &contextData);
 };
+
 } // namespace gfx
