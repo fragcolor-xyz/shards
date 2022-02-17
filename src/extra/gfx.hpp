@@ -31,7 +31,8 @@ struct Base {
 
 	MainWindowGlobals &getMainWindowGlobals();
 	::gfx::Context &getContext();
-	::gfx::Window &getWindow();
+  ::gfx::Window &getWindow();
+  SDL_Window* getSdlWindow();
 };
 
 struct BaseConsumer : public Base {

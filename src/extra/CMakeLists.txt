@@ -10,7 +10,7 @@ set(extra_SOURCES
   # xr.cpp
   # gizmo.cpp
   dsp.cpp
-  # inputs.cpp
+  inputs.cpp
   snappy.cpp
   brotli.cpp
 )

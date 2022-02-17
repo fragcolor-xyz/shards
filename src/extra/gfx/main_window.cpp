@@ -16,6 +16,7 @@ MainWindowGlobals &Base::getMainWindowGlobals() {
 }
 Context &Base::getContext() { return *getMainWindowGlobals().context.get(); }
 Window &Base::getWindow() { return *getMainWindowGlobals().window.get(); }
+SDL_Window* Base::getSdlWindow() { return getWindow().window; }
 
 struct MainWindow : public Base {
 	static inline Parameters params{
