@@ -22,6 +22,7 @@ struct ContextMainOutput {
 	WGPUSurface wgpuWindowSurface{};
 	WGPUTextureFormat swapchainFormat = WGPUTextureFormat_Undefined;
 	int2 currentSize{};
+	WGPUTextureView currentView{};
 
 	ContextMainOutput(Window &window) { this->window = &window; }
 	~ContextMainOutput() { cleanupSwapchain(); }
@@ -37,6 +38,29 @@ struct ContextMainOutput {
 		}
 
 		return wgpuWindowSurface;
+	}
+
+	void acquireFrame() {
+		assert(!currentView);
+		currentView = wgpuSwapChainGetCurrentTextureView(wgpuSwapchain);
+	}
+
+	void present() {
+		assert(currentView);
+
+#if GFX_EMSCRIPTEN
+		auto callback = [](double time, void *userData) -> EM_BOOL {
+			spdlog::debug("Animation frame callback {}", time);
+			return true;
+		};
+		spdlog::debug("Animation frame queued");
+		emscripten_request_animation_frame(callback, this);
+		emscripten_sleep(0);
+#else
+		wgpuSwapChainPresent(wgpuSwapchain);
+#endif
+
+		currentView = nullptr;
 	}
 
 	void init(WGPUAdapter adapter, WGPUDevice device) {
@@ -205,7 +229,7 @@ int2 Context::getMainOutputSize() const {
 WGPUTextureView Context::getMainOutputTextureView() {
 	assert(mainOutput);
 	assert(mainOutput->wgpuSwapchain);
-	return wgpuSwapChainGetCurrentTextureView(mainOutput->wgpuSwapchain);
+	return mainOutput->currentView;
 }
 
 WGPUTextureFormat Context::getMainOutputFormat() const {
@@ -243,7 +267,11 @@ void Context::releaseAllContextData() {
 	}
 }
 
-void Context::beginFrame() { collectContextData(); }
+void Context::beginFrame() {
+	collectContextData();
+	if (!isHeadless())
+		mainOutput->acquireFrame();
+}
 
 void Context::endFrame() {
 	if (!isHeadless())
@@ -264,18 +292,9 @@ void Context::submit(WGPUCommandBuffer cmdBuffer) {
 void Context::present() {
 	assert(mainOutput);
 	if (numPendingCommandsSubmitted > 0) {
-#if GFX_EMSCRIPTEN
-		auto callback = [](double time, void *userData) -> EM_BOOL {
-			spdlog::debug("Animation frame callback {}", time);
-			return true;
-		};
-		spdlog::debug("Animation frame queued");
-		emscripten_request_animation_frame(callback, this);
-		emscripten_sleep(0);
-#else
-		wgpuSwapChainPresent(mainOutput->wgpuSwapchain);
-#endif
+		//
 	}
+    mainOutput->present();
 	numPendingCommandsSubmitted = 0;
 }
 

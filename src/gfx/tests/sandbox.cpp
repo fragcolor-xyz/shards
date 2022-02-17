@@ -5,6 +5,7 @@
 #include "gfx/features/debug_color.hpp"
 #include "gfx/features/transform.hpp"
 #include "gfx/geom.hpp"
+#include "gfx/imgui.hpp"
 #include "gfx/linalg.hpp"
 #include "gfx/loop.hpp"
 #include "gfx/mesh.hpp"
@@ -84,6 +85,7 @@ struct App {
 	MeshPtr cubeMesh;
 	ViewPtr view;
 	std::shared_ptr<Renderer> renderer;
+	std::shared_ptr<ImGuiRenderer> imgui;
 	DrawQueue drawQueue;
 
 	std::vector<TexturePtr> textures;
@@ -102,6 +104,7 @@ struct App {
 		context.init(window, contextOptions);
 
 		renderer = std::make_shared<Renderer>(context);
+		imgui = std::make_shared<ImGuiRenderer>(context);
 
 		FeaturePtr blendFeature = std::make_shared<Feature>();
 		blendFeature->state.set_blend(BlendState{
@@ -129,9 +132,9 @@ struct App {
 		sphereMesh = createMesh(sphere.vertices, sphere.indices);
 
 		std::vector<std::string> texturePaths = {
-			"assets/drawing.png",
-			// "assets/pattern-g4073e58ef_1280.png",
-			// "assets/abstract-g9e60d84ae_1280.jpg",
+			"src/gfx/tests/assets/logo.png",
+			"src/gfx/tests/assets/fish.png",
+			"src/gfx/tests/assets/abstract.jpg",
 		};
 		for (auto path : texturePaths) {
 			auto texture = textureFromFile(resolveDataPath(path).string().c_str());
@@ -157,7 +160,7 @@ struct App {
 			spinVel = float3(sdist(rnd), sdist(rnd), sdist(rnd));
 
 			drawable = std::make_shared<Drawable>(mesh);
-			// drawable->parameters.texture.insert_or_assign("baseColor", TextureParameter(texture));
+			drawable->parameters.texture.insert_or_assign("baseColor", TextureParameter(texture));
 		}
 		DrawThing(DrawThing &&other) = default;
 		void update(float time, float deltaTime) {
@@ -207,6 +210,15 @@ struct App {
 		renderer->render(drawQueue, view, pipelineSteps);
 	}
 
+	void renderUI(const std::vector<SDL_Event> &events) {
+		imgui->beginFrame(events);
+
+		ImGui::ShowDemoWindow();
+
+		imgui->endFrame();
+		imgui->render();
+	}
+
 	void runMainLoop() {
 		bool quit = false;
 		while (!quit) {
@@ -230,6 +242,8 @@ struct App {
 				drawQueue.clear();
 
 				renderFrame(loop.getAbsoluteTime(), deltaTime);
+
+				renderUI(events);
 
 				context.endFrame();
 
@@ -255,3 +269,5 @@ int main() {
 	instance.runMainLoop();
 	return 0;
 }
+
+#include "imgui/imgui_demo.cpp"

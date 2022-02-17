@@ -37,14 +37,23 @@ target_include_directories(gfx
 )
 target_link_libraries(gfx
   tinygltf
-  # dear-imgui imgui_club implot imguizmo
   magic_enum
   spdlog stb xxHash Boost::headers
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 
 add_library(gfx_texture_file texture_file.cpp)
-target_link_libraries(gfx_texture_file PUBLIC gfx)
+target_link_libraries(gfx_texture_file gfx)
+
+add_library(gfx_imgui
+  imgui.cpp
+  imgui_impl_wgpu.cpp
+  imgui_impl_sdl.cpp
+)
+target_link_libraries(gfx_imgui
+  gfx
+  imgui imgui_club implot imguizmo
+)
 
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)
 
