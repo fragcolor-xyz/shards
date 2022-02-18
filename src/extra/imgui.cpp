@@ -2557,7 +2557,6 @@ struct Image : public Base {
 };
 #endif
 
-#if WITH_IMPLOT
 struct PlotContext {
   PlotContext() {
     context = ImPlot::CreateContext();
@@ -2753,7 +2752,7 @@ struct Plot : public Base {
       auto limitx = _xlimits.get().payload.float2Value[0];
       auto limity = _xlimits.get().payload.float2Value[1];
       auto locked = _lockx.get().payload.boolValue;
-      ImPlot::SetNextPlotLimitsX(limitx, limity,
+      ImPlot::SetupAxisLimits(ImAxis_X1, limitx, limity,
                                  locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
@@ -2761,7 +2760,7 @@ struct Plot : public Base {
       auto limitx = _ylimits.get().payload.float2Value[0];
       auto limity = _ylimits.get().payload.float2Value[1];
       auto locked = _locky.get().payload.boolValue;
-      ImPlot::SetNextPlotLimitsY(limitx, limity,
+      ImPlot::SetupAxisLimits(ImAxis_Y1, limitx, limity,
                                  locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
@@ -2888,7 +2887,7 @@ struct PlotLine : public PlottableBase {
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
                                seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     } else if (_kind == Kind::xAndIndex) {
       ImPlot::PlotLineG(
           _fullLabel.c_str(),
@@ -2898,7 +2897,7 @@ struct PlotLine : public PlottableBase {
             return ImPlotPoint(double(idx),
                                seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     }
     return input;
   }
@@ -2920,7 +2919,7 @@ struct PlotDigital : public PlottableBase {
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
                                seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     } else if (_kind == Kind::xAndIndex) {
       ImPlot::PlotDigitalG(
           _fullLabel.c_str(),
@@ -2930,7 +2929,7 @@ struct PlotDigital : public PlottableBase {
             return ImPlotPoint(double(idx),
                                seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     }
     return input;
   }
@@ -2952,7 +2951,7 @@ struct PlotScatter : public PlottableBase {
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
                                seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     } else if (_kind == Kind::xAndIndex) {
       ImPlot::PlotScatterG(
           _fullLabel.c_str(),
@@ -2962,7 +2961,7 @@ struct PlotScatter : public PlottableBase {
             return ImPlotPoint(double(idx),
                                seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     }
     return input;
   }
@@ -2970,8 +2969,8 @@ struct PlotScatter : public PlottableBase {
 
 struct PlotBars : public PlottableBase {
   typedef void (*PlotBarsProc)(const char *label_id,
-                               ImPlotPoint (*getter)(void *data, int idx),
-                               void *data, int count, double width, int offset);
+                               ImPlotGetter,
+                               void *data, int count, double bar_width);
 
   double _width = 0.67;
   bool _horizontal = false;
@@ -3032,7 +3031,7 @@ struct PlotBars : public PlottableBase {
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
                                seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), _width, 0);
+          (void *)&input, int(input.payload.seqValue.len), _width);
     } else if (_kind == Kind::xAndIndex) {
       _plot(
           _fullLabel.c_str(),
@@ -3042,12 +3041,11 @@ struct PlotBars : public PlottableBase {
             return ImPlotPoint(double(idx),
                                seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), _width, 0);
+          (void *)&input, int(input.payload.seqValue.len), _width);
     }
     return input;
   }
 };
-#endif
 
 struct HasPointer : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -4274,13 +4272,11 @@ void registerImGuiBlocks() {
 #if 0
   REGISTER_CBLOCK("GUI.Image", Image);
 #endif
-#if WITH_IMPLOT
   REGISTER_CBLOCK("GUI.Plot", Plot);
   REGISTER_CBLOCK("GUI.PlotLine", PlotLine);
   REGISTER_CBLOCK("GUI.PlotDigital", PlotDigital);
   REGISTER_CBLOCK("GUI.PlotScatter", PlotScatter);
   REGISTER_CBLOCK("GUI.PlotBars", PlotBars);
-#endif
   REGISTER_CBLOCK("GUI.GetClipboard", GetClipboard);
   REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
   REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
