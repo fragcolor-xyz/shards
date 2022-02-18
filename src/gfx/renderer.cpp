@@ -195,6 +195,8 @@ struct RendererImpl {
 	size_t frameIndex = 0;
 	const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
+	bool mainOutputWrittenTo = false;
+
 	std::unique_ptr<ViewTexture> depthTexture = std::make_unique<ViewTexture>(WGPUTextureFormat_Depth24Plus);
 	std::unique_ptr<PlaceholderTexture> placeholderTexture;
 
@@ -309,6 +311,42 @@ struct RendererImpl {
 	}
 
 	void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
+
+	void beginFrame() {
+		mainOutputWrittenTo = false;
+		swapBuffers();
+	}
+
+	void endFrame() {
+		// FIXME
+		if (!mainOutputWrittenTo && !context.isHeadless()) {
+			submitDummyRenderPass();
+		}
+	}
+
+	void submitDummyRenderPass() {
+		WGPUCommandEncoderDescriptor desc = {};
+		WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
+
+		WGPURenderPassDescriptor passDesc = {};
+		passDesc.colorAttachmentCount = 1;
+
+		WGPURenderPassColorAttachment mainAttach = {};
+		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
+		mainAttach.loadOp = WGPULoadOp_Clear;
+		mainAttach.view = context.getMainOutputTextureView();
+		mainAttach.storeOp = WGPUStoreOp_Store;
+
+		passDesc.colorAttachments = &mainAttach;
+		passDesc.colorAttachmentCount = 1;
+		WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
+		wgpuRenderPassEncoderEndPass(passEncoder);
+
+		WGPUCommandBufferDescriptor cmdBufDesc{};
+		WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
+
+		context.submit(cmdBuf);
+	}
 
 	void swapBuffers() {
 		frameIndex = (frameIndex + 1) % maxBufferedFrames;
@@ -542,7 +580,14 @@ struct RendererImpl {
 
 		WGPURenderPassColorAttachment mainAttach = {};
 		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
-		mainAttach.loadOp = WGPULoadOp_Clear;
+
+		// FIXME
+		if (!mainOutputWrittenTo) {
+			mainAttach.loadOp = WGPULoadOp_Clear;
+			mainOutputWrittenTo = true;
+		} else {
+			mainAttach.loadOp = WGPULoadOp_Load;
+		}
 		mainAttach.view = mainOutput.view;
 		mainAttach.storeOp = WGPUStoreOp_Store;
 
@@ -923,7 +968,6 @@ Renderer::Renderer(Context &context) {
 	}
 }
 
-void Renderer::swapBuffers() { impl->swapBuffers(); }
 void Renderer::render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) {
 	impl->renderViews(drawQueue, views, pipelineSteps);
 }
@@ -932,6 +976,10 @@ void Renderer::setMainOutput(const MainOutput &output) {
 	impl->mainOutput = output;
 	impl->shouldUpdateMainOutputFromContext = false;
 }
+
+void Renderer::beginFrame() { impl->beginFrame(); }
+void Renderer::endFrame() { impl->endFrame(); }
+
 void Renderer::cleanup() {
 	Context &context = impl->context;
 	impl.reset();

@@ -96,7 +96,7 @@ struct App {
 
 	void init(const char *hostElement) {
 		spdlog::debug("sandbox Init");
-		window.init(WindowCreationOptions{.width = 512, .height = 512});
+		window.init(WindowCreationOptions{.width = 1280, .height = 720});
 
 		gfx::ContextCreationOptions contextOptions = {};
 		contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
@@ -216,7 +216,6 @@ struct App {
 		ImGui::ShowDemoWindow();
 
 		imgui->endFrame();
-		imgui->render();
 	}
 
 	void runMainLoop() {
@@ -238,13 +237,14 @@ struct App {
 			float deltaTime;
 			if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
 				context.beginFrame();
-				renderer->swapBuffers();
+				renderer->beginFrame();
+
 				drawQueue.clear();
 
 				renderFrame(loop.getAbsoluteTime(), deltaTime);
-
 				renderUI(events);
 
+				renderer->endFrame();
 				context.endFrame();
 
 				static MovingAverage delaTimeMa(32);

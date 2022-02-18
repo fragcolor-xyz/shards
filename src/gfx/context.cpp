@@ -286,16 +286,11 @@ void Context::sync() {
 
 void Context::submit(WGPUCommandBuffer cmdBuffer) {
 	wgpuQueueSubmit(wgpuQueue, 1, &cmdBuffer);
-	++numPendingCommandsSubmitted;
 }
 
 void Context::present() {
 	assert(mainOutput);
-	if (numPendingCommandsSubmitted > 0) {
-		//
-	}
     mainOutput->present();
-	numPendingCommandsSubmitted = 0;
 }
 
 } // namespace gfx

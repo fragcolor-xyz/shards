@@ -412,8 +412,10 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 
 	context->sync();
 	for (size_t i = 0; i < 2; i++) {
-		renderer.swapBuffers();
+		renderer.beginFrame();
+		renderer.endFrame();
 	}
+	context->sync();
 
 	// Should be released now
 	CHECK(meshContextData.expired());

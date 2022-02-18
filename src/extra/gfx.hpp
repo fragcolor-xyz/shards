@@ -1,12 +1,13 @@
 #include "gfx/chainblocks_types.hpp"
+#include <gfx/fwd.hpp>
+#include <gfx/drawable.hpp>
 #include <SDL_events.h>
 #include <chainblocks.hpp>
 #include <common_types.hpp>
 #include <foundation.hpp>
-#include <gfx/drawable.hpp>
 
 namespace gfx {
-struct Context;
+struct ImGuiRenderer;
 struct Window;
 struct Renderer;
 
@@ -16,7 +17,8 @@ struct MainWindowGlobals {
 
 	std::shared_ptr<Context> context;
 	std::shared_ptr<Window> window;
-	std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<ImGuiRenderer> imgui;
 	std::vector<SDL_Event> events;
 	::gfx::DrawQueue drawQueue;
 };

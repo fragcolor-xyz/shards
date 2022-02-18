@@ -22,11 +22,11 @@ struct ImGuiRenderer {
 
 	void beginFrame(const std::vector<SDL_Event> &inputEvents);
 	void endFrame();
-	void render();
 
 private:
 	void init();
 	void cleanup();
+    void render();
 };
 
 } // namespace gfx

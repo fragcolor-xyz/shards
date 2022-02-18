@@ -14,7 +14,6 @@ ImGuiRenderer::~ImGuiRenderer() { cleanup(); }
 void ImGuiRenderer::beginFrame(const std::vector<SDL_Event> &inputEvents) {
 	ImGui::SetCurrentContext(imguiContext);
 
-	ImGuiIO &io = ImGui::GetIO();
 	if (!context.isHeadless()) {
 		ImGui_ImplSDL2_NewFrame();
 
@@ -28,7 +27,10 @@ void ImGuiRenderer::beginFrame(const std::vector<SDL_Event> &inputEvents) {
 	ImGui::NewFrame();
 }
 
-void ImGuiRenderer::endFrame() { ImGui::Render(); }
+void ImGuiRenderer::endFrame() {
+	ImGui::Render();
+	render();
+}
 
 void ImGuiRenderer::render() {
 	if (!context.isHeadless()) {

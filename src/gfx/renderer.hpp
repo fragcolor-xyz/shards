@@ -25,8 +25,8 @@ public:
 	void render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps);
 	void setMainOutput(const MainOutput &output);
 
-	// Call before frame rendering to swap buffers
-	void swapBuffers();
+	void beginFrame();
+	void endFrame();
 
 	// Flushes rendering and cleans up all cached data kept by the renderer
 	void cleanup();

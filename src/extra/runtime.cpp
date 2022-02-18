@@ -59,20 +59,20 @@ void cbInitExtras() {
   registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
 #endif
 
-	Snappy::registerBlocks();
-	Brotli::registerBlocks();
+  Snappy::registerBlocks();
+  Brotli::registerBlocks();
 
-	gfx::registerBlocks();
-	// chainblocks::ImGui::registerImGuiBlocks();
-	// chainblocks::Gizmo::registerGizmoBlocks();
-	// XR::registerBlocks();
-	// gltf::registerBlocks();
-	// Inputs::registerBlocks();
-	Audio::registerBlocks();
-	DSP::registerBlocks();
+  gfx::registerBlocks();
+  chainblocks::ImGui::registerImGuiBlocks();
+  // chainblocks::Gizmo::registerGizmoBlocks();
+  // XR::registerBlocks();
+  // gltf::registerBlocks();
+  Inputs::registerBlocks();
+  Audio::registerBlocks();
+  DSP::registerBlocks();
 
 #ifdef _WIN32
-	Desktop::registerDesktopBlocks();
+  Desktop::registerDesktopBlocks();
 #endif
 }
 }; // namespace chainblocks
