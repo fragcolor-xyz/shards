@@ -21,8 +21,8 @@
        (GUI.FPS) > .fps 1000.0 (Math.Divide .fps)
        (GUI.Text :Format "Application average {} ms/frame")
        (GUI.SameLine) .fps (GUI.Text :Format "({} FPS)")))
-  ;; (If (Get .showDemo) :Then (demo-window))
-  ;; (If (Get .showAnother) :Then (another-window))
+  (If (Get .showDemo) :Then (demo-window))
+  (If (Get .showAnother) :Then (another-window))
 )
 
 (defblocks another-window []
