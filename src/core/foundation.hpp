@@ -236,11 +236,19 @@ uint64_t deriveTypeHash(const CBTypeInfo &value);
 
 struct TypeInfo {
   TypeInfo() {}
+
   TypeInfo(const CBVar &var, const CBInstanceData &data,
            bool *containsVariables = nullptr) {
     _info = deriveTypeInfo(var, data, containsVariables);
   }
+
   TypeInfo(const CBTypeInfo &info) { _info = cloneTypeInfo(info); }
+
+  TypeInfo(TypeInfo &&info) {
+    _info = info._info;
+    info._info = {};
+  }
+
   TypeInfo &operator=(const CBTypeInfo &info) {
     freeDerivedInfo(_info);
     _info = cloneTypeInfo(info);

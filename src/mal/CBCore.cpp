@@ -79,6 +79,7 @@ void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env);
 
 static bool initDoneOnce = false;
 static std::map<MalString, malValuePtr> builtIns;
+static std::mutex observersMutex;
 static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
 void installCBCore(const malEnvPtr &env, const char *exePath,
@@ -2213,7 +2214,10 @@ CHAINBLOCKS_API __cdecl void *cbLispCreateSub(void *parent) {
 
 CHAINBLOCKS_API __cdecl void cbLispDestroy(void *env) {
   auto penv = (malEnvPtr *)env;
-  observers.erase((malEnv *)penv->ptr());
+  {
+    std::scoped_lock obsLock(observersMutex);
+    observers.erase((malEnv *)penv->ptr());
+  }
   delete penv;
 }
 
@@ -2243,9 +2247,14 @@ CHAINBLOCKS_API __cdecl CBBool cbLispEval(void *env, const char *str,
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();
   obs->_env = env;
-  std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
-  chainblocks::GetGlobals().Observers.emplace_back(obs);
-  observers[env.ptr()] = obs;
+  {
+    std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
+    chainblocks::GetGlobals().Observers.emplace_back(obs);
+  }
+  {
+    std::scoped_lock obsLock(observersMutex);
+    observers[env.ptr()] = obs;
+  }
 }
 
 namespace mal {

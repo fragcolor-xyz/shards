@@ -1568,7 +1568,8 @@ CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data,
       }
       // not found! reset containsVariables.
       *containsVariables = false;
-      CBLOG_WARNING("Could not find variable {} when deriving type info", varName);
+      CBLOG_WARNING("Could not find variable {} when deriving type info",
+                    varName);
     }
     // if we reach this point, no variable was found...
     // not our job to trigger errors, just continue
