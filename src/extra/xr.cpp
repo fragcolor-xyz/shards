@@ -241,7 +241,8 @@ struct RenderXR : public BGFX::BaseConsumer {
           auto session =
               emscripten_wait<emscripten::val>(context, dialog(_near, _far));
           if (session.as<bool>()) {
-            emscripten::val::global("ChainblocksWebXRSession") = session;
+            auto gSession = emscripten::val::global("ChainblocksWebXRSession");
+            gSession = session;
             _xrSession = session;
           }
         }
