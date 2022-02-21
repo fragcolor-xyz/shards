@@ -76,6 +76,12 @@ template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std:
 	return mesh;
 }
 
+MeshPtr createPlaneMesh() {
+	geom::PlaneGenerator gen;
+	gen.generate();
+	return createMesh(gen.vertices, gen.indices);
+}
+
 struct App {
 	Window window;
 	Loop loop;
@@ -108,8 +114,18 @@ struct App {
 
 		FeaturePtr blendFeature = std::make_shared<Feature>();
 		blendFeature->state.set_blend(BlendState{
-			.color = BlendComponent::AlphaPremultiplied,
-			.alpha = BlendComponent::Opaque,
+			.color =
+				BlendComponent{
+					.operation = WGPUBlendOperation_Add,
+					.srcFactor = WGPUBlendFactor_Zero,
+					.dstFactor = WGPUBlendFactor_Zero,
+				},
+			.alpha =
+				BlendComponent{
+					.operation = WGPUBlendOperation_Add,
+					.srcFactor = WGPUBlendFactor_Zero,
+					.dstFactor = WGPUBlendFactor_Zero,
+				},
 		});
 
 		pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
@@ -123,21 +139,30 @@ struct App {
 		}));
 
 		view = std::make_shared<View>();
-		view->proj = ViewPerspectiveProjection{};
-		view->view = linalg::lookat_matrix(float3(0, 5, 20), float3(0, 0, 0.0f), float3(0, 1, 0));
+		// view->proj = ViewPerspectiveProjection{};
+		// view->view = linalg::lookat_matrix(float3(0, 5, 20), float3(0, 0, 0.0f), float3(0, 1, 0));
+
+		view->proj = ViewOrthographicProjection{
+			.size = 2.0f,
+			.near = -10.0f,
+			.far = 10.0f,
+		};
 
 		geom::CubeGenerator sphere;
 		sphere.generate();
 
 		sphereMesh = createMesh(sphere.vertices, sphere.indices);
 
-		std::vector<std::string> texturePaths = {
-			"src/gfx/tests/assets/logo.png",
-			"src/gfx/tests/assets/fish.png",
-			"src/gfx/tests/assets/abstract.jpg",
-		};
+		std::vector<std::string> texturePaths = {// "src/gfx/tests/assets/logo.png",
+												 // "src/gfx/tests/assets/fish.png",
+												 // "src/gfx/tests/assets/abstract.jpg",
+												 "src/gfx/tests/assets/pixely_sprite.png"};
 		for (auto path : texturePaths) {
 			auto texture = textureFromFile(resolveDataPath(path).string().c_str());
+			texture->setSamplerState(SamplerState{
+				.filterMode = WGPUFilterMode_Nearest,
+			});
+
 			textures.push_back(texture);
 		}
 
@@ -176,6 +201,7 @@ struct App {
 			drawable->parameters.basic.insert_or_assign("baseColor", baseColor);
 		}
 	};
+
 	std::vector<DrawThing> things;
 	std::vector<DrawablePtr> testDrawables;
 	void buildDrawables() {
@@ -184,18 +210,32 @@ struct App {
 
 		std::uniform_int_distribution<int> textureIndexDist(0, textures.size() - 1);
 
-		int2 testGridDim = {32, 32};
-		for (size_t y = 0; y < testGridDim.y; y++) {
-			float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
-			for (size_t x = 0; x < testGridDim.x; x++) {
-				float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
+		MeshPtr planeMesh = createPlaneMesh();
 
-				auto texture = textures[textureIndexDist(rnd)];
+        float4x4 transform;
+        DrawablePtr drawable;
+		transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
+		drawable = std::make_shared<Drawable>(planeMesh, transform);
+		drawable->parameters.set("baseColor", textures[0]);
+		testDrawables.push_back(drawable);
 
-				things.emplace_back(float2(fx, fy), sphereMesh, texture, rnd);
-				testDrawables.push_back(things.back().drawable);
-			}
-		}
+		transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
+		drawable = std::make_shared<Drawable>(planeMesh, transform);
+		drawable->parameters.set("baseColor", textures[0]);
+		testDrawables.push_back(drawable);
+
+		// int2 testGridDim = {32, 32};
+		// for (size_t y = 0; y < testGridDim.y; y++) {
+		// 	float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
+		// 	for (size_t x = 0; x < testGridDim.x; x++) {
+		// 		float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
+
+		// 		auto texture = textures[textureIndexDist(rnd)];
+
+		// 		things.emplace_back(float2(fx, fy), sphereMesh, texture, rnd);
+		// 		testDrawables.push_back(things.back().drawable);
+		// 	}
+		// }
 	}
 
 	void renderFrame(float time, float deltaTime) {

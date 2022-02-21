@@ -44,7 +44,7 @@ TexturePtr textureFromFile(const char *path) {
 			pixelSize = 2;
 			break;
 		case 4:
-			format.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
+			format.pixelFormat = WGPUTextureFormat_RGBA8Unorm;
 			pixelSize = 4;
 			break;
 		default:
@@ -52,7 +52,7 @@ TexturePtr textureFromFile(const char *path) {
 		}
 
 		size_t dataSize = size.x * size.y * pixelSize;
-		texture->update(format, size, ImmutableSharedBuffer(data, dataSize, [](void *data, void *_) { stbi_image_free(data); }));
+		texture->init(format, size, SamplerState(), ImmutableSharedBuffer(data, dataSize, [](void *data, void *_) { stbi_image_free(data); }));
 	}
 
 	return texture;

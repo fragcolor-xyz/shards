@@ -61,13 +61,75 @@ static const InputTextureFormatMap &getInputTextureFormatMap() {
 	return instance;
 }
 
-void Texture::init(const TextureFormat &format, int2 resolution) {}
-
-void Texture::update(const TextureFormat &format, int2 resolution, const ImmutableSharedBuffer &data, size_t faceIndex) {
+void Texture::init(const TextureFormat &format, int2 resolution, const SamplerState &samplerState, const ImmutableSharedBuffer &data) {
 	contextData.reset();
 	this->format = format;
-	this->resolution = resolution;
 	this->data = data;
+	this->samplerState = samplerState;
+	this->resolution = resolution;
+}
+
+void Texture::setSamplerState(const SamplerState &samplerState) {
+	contextData.reset();
+	this->samplerState = samplerState;
+}
+
+std::shared_ptr<Texture> Texture::clone() {
+	std::shared_ptr<Texture> result = std::make_shared<Texture>(*this);
+	result->contextData.reset();
+	return result;
+}
+
+static WGPUSampler createSampler(Context &context, SamplerState samplerState, bool haveMips) {
+	WGPUSamplerDescriptor desc{};
+	desc.addressModeU = samplerState.addressModeU;
+	desc.addressModeV = samplerState.addressModeV;
+	desc.addressModeW = samplerState.addressModeW;
+	desc.lodMinClamp = 0;
+	desc.lodMaxClamp = 0;
+	desc.magFilter = samplerState.filterMode;
+	desc.minFilter = samplerState.filterMode;
+	desc.mipmapFilter = haveMips ? WGPUFilterMode_Linear : WGPUFilterMode_Nearest;
+	desc.maxAnisotropy = 0;
+	return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
+}
+
+static WGPUTextureView createView(const TextureFormat &format, WGPUTexture texture) {
+	WGPUTextureViewDescriptor viewDesc{};
+	viewDesc.baseArrayLayer = 0;
+	viewDesc.arrayLayerCount = 1;
+	viewDesc.baseMipLevel = 0;
+	viewDesc.mipLevelCount = 1;
+	viewDesc.aspect = WGPUTextureAspect_All;
+	viewDesc.dimension = WGPUTextureViewDimension_2D;
+	viewDesc.format = format.pixelFormat;
+	return wgpuTextureCreateView(texture, &viewDesc);
+}
+
+static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture, const ImmutableSharedBuffer &isb) {
+	auto &inputTextureFormatMap = getInputTextureFormatMap();
+	auto it = inputTextureFormatMap.find(format.pixelFormat);
+	if (it == inputTextureFormatMap.end()) {
+		throw formatException("Unsupported pixel format for texture initialization", magic_enum::enum_name(format.pixelFormat));
+	}
+
+	const InputTextureFormat &inputFormat = it->second;
+	uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
+
+	WGPUImageCopyTexture dst{
+		.texture = texture,
+		.mipLevel = 0,
+		.aspect = WGPUTextureAspect_All,
+	};
+	WGPUTextureDataLayout layout{
+		.bytesPerRow = rowDataLength,
+	};
+	WGPUExtent3D writeSize{
+		.width = uint32_t(resolution.x),
+		.height = uint32_t(resolution.y),
+		.depthOrArrayLayers = 1,
+	};
+	wgpuQueueWriteTexture(context.wgpuQueue, &dst, isb.getData(), isb.getLength(), &layout, &writeSize);
 }
 
 void Texture::initContextData(Context &context, TextureContextData &contextData) {
@@ -108,63 +170,13 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
 
 	contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &desc);
 
-	// Optionally upload data
-	if (data) {
-		auto &inputTextureFormatMap = getInputTextureFormatMap();
-		auto it = inputTextureFormatMap.find(format.pixelFormat);
-		if (it == inputTextureFormatMap.end()) {
-			throw formatException("Unsupported pixel format for texture initialization", magic_enum::enum_name(format.pixelFormat));
-		}
-		const InputTextureFormat &inputFormat = it->second;
-		uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
+	if (data)
+		writeTextureData(context, format, resolution, contextData.texture, data);
 
-		WGPUImageCopyTexture dst{
-			.texture = contextData.texture,
-			.mipLevel = 0,
-			.aspect = WGPUTextureAspect_All,
-		};
-		WGPUTextureDataLayout layout{
-			.bytesPerRow = rowDataLength,
-		};
-		WGPUExtent3D writeSize = contextData.size;
-		wgpuQueueWriteTexture(context.wgpuQueue, &dst, data.getData(), data.getLength(), &layout, &writeSize);
-	}
-
-	WGPUTextureViewDescriptor viewDesc{};
-	viewDesc.baseArrayLayer = 0;
-	viewDesc.arrayLayerCount = 1;
-	viewDesc.baseMipLevel = 0;
-	viewDesc.mipLevelCount = 1;
-	viewDesc.aspect = WGPUTextureAspect_All;
-	viewDesc.dimension = WGPUTextureViewDimension_2D;
-	viewDesc.format = desc.format;
-	contextData.defaultView = wgpuTextureCreateView(contextData.texture, &viewDesc);
-
-	// if (data) {
-	// 	auto &inputTextureFormatMap = getInputTextureFormatMap();
-	// 	auto it = inputTextureFormatMap.find(format.pixelFormat);
-	// 	if (it == inputTextureFormatMap.end()) {
-	// 		throw formatException("Unsupported pixel format for texture initialization", magic_enum::enum_name(format.pixelFormat));
-	// 	}
-
-	// 	const InputTextureFormat &inputFormat = it->second;
-	// 	size_t rowDataLength = inputFormat.pixelSize * resolution.x;
-	// 	size_t stagingBufferSize = rowDataLength * resolution.y;
-
-	// 	WGPUBuffer stagingBuffer;
-	// 	WGPUBufferDescriptor stagingBufferDesc;
-	// 	stagingBufferDesc.mappedAtCreation = true;
-	// 	stagingBufferDesc.size = stagingBufferSize;
-
-	// 	if (data.getLength() != stagingBufferSize) {
-	// 		throw formatException("Texture data length {} does not match expected length of {}", data.getLength(), stagingBufferSize);
-	// 	}
-
-	// 	stagingBuffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &stagingBufferDesc);
-	// 	void *mappedBufferData = wgpuBufferGetMappedRange(stagingBuffer, 0, stagingBufferSize);
-	// 	memcpy(mappedBufferData, data.getData(), stagingBufferSize);
-	// 	wgpuBufferUnmap(stagingBuffer);
-	// }
+	contextData.defaultView = createView(format, contextData.texture);
+	contextData.sampler = createSampler(context, samplerState, false);
 }
+
+void Texture::updateContextData(Context &context, TextureContextData &contextData) {}
 
 } // namespace gfx

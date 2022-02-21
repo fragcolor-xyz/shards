@@ -4,9 +4,9 @@
 namespace gfx {
 
 BlendComponent BlendComponent::Opaque = BlendComponent{
-	.operation = WGPUBlendOperation_Add,
+	.operation = WGPUBlendOperation_Max,
 	.srcFactor = WGPUBlendFactor::WGPUBlendFactor_One,
-	.dstFactor = WGPUBlendFactor::WGPUBlendFactor_Zero,
+	.dstFactor = WGPUBlendFactor::WGPUBlendFactor_One,
 };
 BlendComponent BlendComponent::Additive = BlendComponent{
 	.operation = WGPUBlendOperation_Add,

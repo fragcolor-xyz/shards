@@ -548,19 +548,21 @@ struct RendererImpl {
 		std::vector<WGPUBindGroupEntry> entries;
 		size_t bindingIndex = 0;
 		for (auto &id : textureIds.textures) {
-			WGPUBindGroupEntry &textureEntry = entries.emplace_back();
+			entries.emplace_back();
+			entries.emplace_back();
+			WGPUBindGroupEntry &textureEntry = entries.data()[entries.size() - 2];
 			textureEntry.binding = bindingIndex++;
+			WGPUBindGroupEntry &samplerEntry = entries.data()[entries.size() - 1];
+			samplerEntry.binding = bindingIndex++;
 
 			TextureContextData *textureData = cachedPipeline.textureIdMap.resolve(id);
 			if (textureData) {
 				textureEntry.textureView = textureData->defaultView;
+				samplerEntry.sampler = textureData->sampler;
 			} else {
 				textureEntry.textureView = placeholderTexture->textureView;
+				samplerEntry.sampler = placeholderTexture->sampler;
 			}
-
-			WGPUBindGroupEntry &samplerEntry = entries.emplace_back();
-			samplerEntry.binding = bindingIndex++;
-			samplerEntry.sampler = placeholderTexture->sampler;
 		}
 
 		WGPUBindGroupDescriptor textureBindGroupDesc{};
