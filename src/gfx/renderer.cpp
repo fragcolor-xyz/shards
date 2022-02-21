@@ -156,12 +156,6 @@ static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 	}
 }
 
-struct CachedDrawableData {
-	Drawable *drawable;
-	CachedPipeline *pipeline;
-	Hash128 pipelineHash;
-};
-
 struct CachedViewData {
 	DynamicWGPUBufferPool viewBuffers;
 	float4x4 projectionMatrix;
@@ -190,7 +184,6 @@ struct RendererImpl {
 
 	std::unordered_map<const View *, CachedViewDataPtr> viewCache;
 	std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
-	std::unordered_map<const Drawable *, CachedDrawableData> drawableCache;
 
 	size_t frameIndex = 0;
 	const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
@@ -324,6 +317,8 @@ struct RendererImpl {
 		}
 	}
 
+	WGPUColor clearColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+
 	void submitDummyRenderPass() {
 		WGPUCommandEncoderDescriptor desc = {};
 		WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
@@ -332,7 +327,7 @@ struct RendererImpl {
 		passDesc.colorAttachmentCount = 1;
 
 		WGPURenderPassColorAttachment mainAttach = {};
-		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
+		mainAttach.clearColor = clearColor;
 		mainAttach.loadOp = WGPULoadOp_Clear;
 		mainAttach.view = context.getMainOutputTextureView();
 		mainAttach.storeOp = WGPUStoreOp_Store;
@@ -496,7 +491,7 @@ struct RendererImpl {
 		return sortableDrawable;
 	}
 
-	void groupDrawables(CachedPipeline &cachedPipeline, const RenderDrawablesStep &step, const View &view) {
+	void sortAndBatchDrawables(CachedPipeline &cachedPipeline, const RenderDrawablesStep &step, const View &view) {
 		std::vector<SortableDrawable> &drawablesSorted = cachedPipeline.drawablesSorted;
 
 		// Sort drawables based on mesh/texture bindings
@@ -581,7 +576,7 @@ struct RendererImpl {
 		passDesc.colorAttachmentCount = 1;
 
 		WGPURenderPassColorAttachment mainAttach = {};
-		mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
+		mainAttach.clearColor = clearColor;
 
 		// FIXME
 		if (!mainOutputWrittenTo) {
@@ -612,7 +607,7 @@ struct RendererImpl {
 				buildPipeline(cachedPipeline);
 			}
 
-			groupDrawables(cachedPipeline, step, *view.get());
+			sortAndBatchDrawables(cachedPipeline, step, *view.get());
 		}
 
 		WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
@@ -620,6 +615,9 @@ struct RendererImpl {
 
 		for (auto &pair : pipelineCache) {
 			CachedPipeline &cachedPipeline = *pair.second.get();
+			if (cachedPipeline.drawables.empty())
+				continue;
+
 			size_t drawBufferLength = cachedPipeline.objectBufferLayout.size * cachedPipeline.drawables.size();
 
 			DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
@@ -689,22 +687,14 @@ struct RendererImpl {
 			}
 			Hash128 featureHash = featureHasher.getDigest();
 
-			auto drawableIt = drawableCache.find(drawablePtr);
-			if (drawableIt == drawableCache.end()) {
-				drawableIt = drawableCache.insert(std::make_pair(drawablePtr, CachedDrawableData{})).first;
-				auto &drawableCache = drawableIt->second;
-				drawableCache.drawable = drawablePtr;
-
-				HasherXXH128<HashStaticVistor> hasher;
-				hasher(mesh.getFormat());
-				hasher(featureHash);
-				if (const Material *material = drawablePtr->material.get()) {
-					hasher(*material);
-				}
-				drawableCache.pipelineHash = hasher.getDigest();
+			HasherXXH128<HashStaticVistor> hasher;
+			hasher(mesh.getFormat());
+			hasher(featureHash);
+			if (const Material *material = drawablePtr->material.get()) {
+				hasher(*material);
 			}
+			Hash128 pipelineHash = hasher.getDigest();
 
-			Hash128 pipelineHash = drawableIt->second.pipelineHash;
 			auto it1 = pipelineCache.find(pipelineHash);
 			if (it1 == pipelineCache.end()) {
 				it1 = pipelineCache.insert(std::make_pair(pipelineHash, std::make_shared<CachedPipeline>())).first;

@@ -302,29 +302,32 @@ TEST_CASE("Pipeline states", "[Renderer]") {
 	drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
 	queue.add(drawable);
 
-	FeaturePtr blendFeature = std::make_shared<Feature>();
-	blendFeature->state.set_depthWrite(false);
-	blendFeature->state.set_blend(BlendState{
-		.color = BlendComponent::AlphaPremultiplied,
-		.alpha = BlendComponent::Opaque,
-	});
+	auto testBlendState = [&](const char *name, const BlendState &state) {
+		FeaturePtr blendFeature = std::make_shared<Feature>();
+		blendFeature->state.set_depthWrite(false);
+		blendFeature->state.set_blend(state);
 
-	PipelineSteps steps{
-		makeDrawablePipelineStep(RenderDrawablesStep{
-			.features =
-				{
-					features::Transform::create(),
-					features::BaseColor::create(),
-					blendFeature,
-				},
-			.sortMode = SortMode::BackToFront,
-		}),
+		PipelineSteps steps{
+			makeDrawablePipelineStep(RenderDrawablesStep{
+				.features =
+					{
+						features::Transform::create(),
+						features::BaseColor::create(),
+						blendFeature,
+					},
+				.sortMode = SortMode::BackToFront,
+			}),
+		};
+		renderer.render(queue, view, steps);
+
+		TestData testData(TestPlatformId::get(*context.get()));
+		TestFrame testFrame = headlessRenderer->getTestFrame();
+		CHECK(testData.checkFrame(name, testFrame));
 	};
-	renderer.render(queue, view, steps);
 
-	TestData testData(TestPlatformId::get(*context.get()));
-	TestFrame testFrame = headlessRenderer->getTestFrame();
-	CHECK(testData.checkFrame("blendAlphaPremul", testFrame));
+	testBlendState("blendAlphaPremul", BlendState{.color = BlendComponent::AlphaPremultiplied, .alpha = BlendComponent::Opaque});
+	testBlendState("blendAlpha", BlendState{.color = BlendComponent::Alpha, .alpha = BlendComponent::Opaque});
+	testBlendState("blendAdditive", BlendState{.color = BlendComponent::Additive, .alpha = BlendComponent::Opaque});
 
 	headlessRenderer.reset();
 	context.reset();
