@@ -33,15 +33,28 @@ struct Common {
 };
 
 struct Socket {
+  Socket(bool secure) : _secure(secure) {}
+
   net::io_context ioCtx{};
   ssl::context secureCtx{ssl::context::tlsv12_client};
-  websocket::stream<beast::ssl_stream<tcp::socket>> socket{ioCtx, secureCtx};
+  websocket::stream<beast::ssl_stream<tcp::socket>> _ssl_socket{ioCtx,
+                                                                secureCtx};
+  websocket::stream<tcp::socket> _socket{ioCtx};
 
   void close() {
-    if (socket.is_open()) {
+    if (_socket.is_open()) {
       CBLOG_DEBUG("Closing WebSocket");
       try {
-        socket.close(websocket::close_code::normal);
+        _socket.close(websocket::close_code::normal);
+      } catch (const std::exception &ex) {
+        CBLOG_WARNING("Ignored an exception during WebSocket close: {}",
+                      ex.what());
+      }
+    }
+    if (_ssl_socket.is_open()) {
+      CBLOG_DEBUG("Closing WebSocket");
+      try {
+        _ssl_socket.close(websocket::close_code::normal);
       } catch (const std::exception &ex) {
         CBLOG_WARNING("Ignored an exception during WebSocket close: {}",
                       ex.what());
@@ -51,7 +64,19 @@ struct Socket {
 
   ~Socket() { close(); }
 
-  websocket::stream<beast::ssl_stream<tcp::socket>> &get() { return socket; }
+  websocket::stream<beast::ssl_stream<tcp::socket>> &get_secure() {
+    assert(_secure);
+    return _ssl_socket;
+  }
+
+  websocket::stream<tcp::socket> &get_unsecure() {
+    assert(!_secure);
+    return _socket;
+  }
+
+  constexpr bool secure() const { return _secure; }
+
+  bool _secure;
 };
 
 struct Client {
@@ -135,37 +160,55 @@ struct Client {
             CBLOG_TRACE("Websocket resolved remote host");
 
             // Make the connection on the IP address we get from a lookup
-            auto ep = net::connect(get_lowest_layer(ws->get()), resolved);
+            auto ep =
+                ssl ? net::connect(get_lowest_layer(ws->get_secure()), resolved)
+                    : net::connect(ws->get_unsecure().next_layer(), resolved);
             std::string h = host.get().payload.stringValue;
             h += ':' + std::to_string(ep.port());
 
             CBLOG_TRACE("Websocket connected with the remote host");
 
             // Set a decorator to change the User-Agent of the handshake
-            ws->get().set_option(websocket::stream_base::decorator(
-                [](websocket::request_type &req) {
-                  req.set(http::field::user_agent,
-                          std::string(BOOST_BEAST_VERSION_STRING) +
-                              " websocket-client-coro");
-                }));
+            if (ssl) {
+              ws->get_secure().set_option(websocket::stream_base::decorator(
+                  [](websocket::request_type &req) {
+                    req.set(http::field::user_agent,
+                            std::string(BOOST_BEAST_VERSION_STRING) +
+                                " websocket-client-coro");
+                  }));
+            } else {
+              ws->get_unsecure().set_option(websocket::stream_base::decorator(
+                  [](websocket::request_type &req) {
+                    req.set(http::field::user_agent,
+                            std::string(BOOST_BEAST_VERSION_STRING) +
+                                " websocket-client-coro");
+                  }));
+            }
 
             websocket::stream_base::timeout timeouts{
                 std::chrono::seconds(30), // handshake timeout
                 std::chrono::seconds(30), // idle timeout
                 true                      // send ping at half idle timeout
             };
-            ws->get().set_option(timeouts);
+
+            if (ssl)
+              ws->get_secure().set_option(timeouts);
+            else
+              ws->get_unsecure().set_option(timeouts);
 
             if (ssl) {
               // Perform the SSL handshake
-              ws->get().next_layer().handshake(ssl::stream_base::client);
+              ws->get_secure().next_layer().handshake(ssl::stream_base::client);
               CBLOG_TRACE("Websocket performed SSL handshake");
             }
 
             CBLOG_DEBUG("WebSocket handshake with: {}", h);
 
             // Perform the websocket handshake
-            ws->get().handshake(h, target.get().payload.stringValue);
+            if (ssl)
+              ws->get_secure().handshake(h, target.get().payload.stringValue);
+            else
+              ws->get_unsecure().handshake(h, target.get().payload.stringValue);
 
             CBLOG_TRACE("Websocket performed handshake");
 
@@ -202,7 +245,7 @@ struct Client {
     host.warmup(ctx);
     target.warmup(ctx);
 
-    ws = std::make_shared<Socket>();
+    ws = std::make_shared<Socket>(ssl);
     socket = referenceVariable(ctx, name.c_str());
   }
 
@@ -301,7 +344,14 @@ struct WriteString : public User {
 
     try {
       await(
-          context, [&]() { _ws->get().write(net::buffer(payload)); }, [] {});
+          context,
+          [&]() {
+            if (_ws->secure())
+              _ws->get_secure().write(net::buffer(payload));
+            else
+              _ws->get_unsecure().write(net::buffer(payload));
+          },
+          [] {});
     } catch (const std::exception &ex) {
       // TODO some exceptions could be left unhandled
       // or anyway should be fatal
@@ -334,10 +384,18 @@ struct ReadString : public User {
 
     bool done = false;
     boost::system::error_code done_err{};
-    _ws->get().async_read(_buffer, [&done, &done_err](auto err, auto size) {
-      done_err = err;
-      done = true;
-    });
+    if (_ws->secure())
+      _ws->get_secure().async_read(_buffer,
+                                   [&done, &done_err](auto err, auto size) {
+                                     done_err = err;
+                                     done = true;
+                                   });
+    else
+      _ws->get_unsecure().async_read(_buffer,
+                                     [&done, &done_err](auto err, auto size) {
+                                       done_err = err;
+                                       done = true;
+                                     });
 
     while (!done) {
       // we become the pollers in this case
