@@ -1006,8 +1006,42 @@ struct Assoc : public VariableBase {
   ExposedInfo _requiredInfo{};
   Type _tableTypes{};
 
+  static inline Parameters params{
+      {"Name",
+       CBCCSTR("The name of the array or the table to be updated."),
+       {CoreInfo::StringOrAnyVar}},
+      {"Key",
+       CBCCSTR("Table key for the value that is to be updated. Parameter "
+               "applicable only for table update."),
+       {CoreInfo::StringStringVarOrNone}},
+      {"Global",
+       CBCCSTR("If the variable is or should be available to all the chains in "
+               "the same node. Default (false) makes the variable local to the "
+               "chain."),
+       {CoreInfo::BoolType}}};
+  static CBParametersInfo parameters() { return params; }
+
+  static CBOptionalString help() {
+    return CBCCSTR("Updates an array (vector) or a table (associative array/ "
+                   "dictionary) on the basis of an input sequence.");
+  }
+
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR(
+        "Input sequence that identifies element to be updated and "
+        "its new value. The sequence must contain even-number of elements "
+        "with the 1st element in each pair denoting the target index to update "
+        "and the 2nd element holding the update value for corresponding "
+        "index.");
+  }
+
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR(
+        "Modified array or table. Has the same type as the array or table "
+        "on which Assoc was applied.");
+  }
 
   CBExposedTypesInfo requiredVariables() {
     _requiredInfo = ExposedInfo(ExposedInfo::Variable(
