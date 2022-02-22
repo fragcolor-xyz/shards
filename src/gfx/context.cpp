@@ -3,7 +3,6 @@
 #include "error_utils.hpp"
 #include "platform.hpp"
 #include "platform_surface.hpp"
-#include "sdl_native_window.hpp"
 #include "window.hpp"
 #include <SDL_events.h>
 #include <SDL_video.h>
@@ -24,16 +23,25 @@ struct ContextMainOutput {
   int2 currentSize{};
   WGPUTextureView currentView{};
 
+#if GFX_APPLE
+  std::unique_ptr<MetalViewContainer> metalViewContainer;
+#endif
+
   ContextMainOutput(Window &window) { this->window = &window; }
   ~ContextMainOutput() { cleanupSwapchain(); }
 
   WGPUSurface initSurface(WGPUInstance instance, void *overrideNativeWindowHandle) {
     if (!wgpuWindowSurface) {
       void *surfaceHandle = overrideNativeWindowHandle;
-      if (!surfaceHandle)
-        surfaceHandle = SDL_GetNativeWindowPtr(window->window);
 
-      WGPUPlatformSurfaceDescriptor surfDesc(surfaceHandle);
+#if GFX_APPLE
+      if (!surfaceHandle) {
+        metalViewContainer = std::make_unique<MetalViewContainer>(window->window);
+        surfaceHandle = metalViewContainer->layer;
+      }
+#endif
+
+      WGPUPlatformSurfaceDescriptor surfDesc(window->window, surfaceHandle);
       wgpuWindowSurface = wgpuInstanceCreateSurface(instance, &surfDesc);
     }
 
