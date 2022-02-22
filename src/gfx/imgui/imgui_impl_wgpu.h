@@ -12,8 +12,8 @@
 // online: https://github.com/ocornut/imgui/tree/master/docs
 
 #pragma once
-#include "gfx_wgpu.hpp"
 #include "imgui.h" // IMGUI_IMPL_API
+#include <gfx/gfx_wgpu.hpp>
 
 IMGUI_IMPL_API bool ImGui_ImplWGPU_Init(WGPUDevice device, int num_frames_in_flight, WGPUTextureFormat rt_format);
 IMGUI_IMPL_API void ImGui_ImplWGPU_Shutdown();

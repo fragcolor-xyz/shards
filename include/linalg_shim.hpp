@@ -8,7 +8,7 @@
 #include <vector>
 namespace chainblocks {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
-  Mat4() = default;
+  using linalg::aliases::float4x4::mat;
   Mat4(const CBVar &var) { *this = var; }
 
   template <typename NUMBER> static Mat4 FromVector(const std::vector<NUMBER> &mat) {

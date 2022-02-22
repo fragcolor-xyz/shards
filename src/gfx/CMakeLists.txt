@@ -37,13 +37,13 @@ target_link_libraries(gfx
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 
-add_library(gfx_texture_file texture_file.cpp)
+add_library(gfx_texture_file texture_file/texture_file.cpp)
 target_link_libraries(gfx_texture_file gfx)
 
 add_library(gfx_imgui
-  imgui.cpp
-  imgui_impl_wgpu.cpp
-  imgui_impl_sdl.cpp
+  imgui/imgui.cpp
+  imgui/imgui_impl_wgpu.cpp
+  imgui/imgui_impl_sdl.cpp
 )
 target_link_libraries(gfx_imgui
   gfx

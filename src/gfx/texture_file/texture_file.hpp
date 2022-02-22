@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fwd.hpp"
+#include <gfx/fwd.hpp>
 
 namespace gfx {
 TexturePtr textureFromFile(const char *path);

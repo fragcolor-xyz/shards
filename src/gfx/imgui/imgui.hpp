@@ -1,8 +1,8 @@
 #pragma once
-#include "fwd.hpp"
-#include "imgui/imgui.h"
-#include "linalg.hpp"
-#include "window.hpp"
+#include <gfx/fwd.hpp>
+#include <gfx/linalg.hpp>
+#include <gfx/window.hpp>
+#include <imgui.h>
 
 namespace gfx {
 

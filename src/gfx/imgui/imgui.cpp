@@ -1,10 +1,10 @@
 #include "imgui.hpp"
-#include "context.hpp"
 #include "imgui/imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_wgpu.h"
 #include <SDL.h>
 #include <SDL_events.h>
+#include <gfx/context.hpp>
 
 namespace gfx {
 ImGuiRenderer::ImGuiRenderer(Context &context) : context(context) { init(); }

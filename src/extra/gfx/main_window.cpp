@@ -1,6 +1,6 @@
 #include "../gfx.hpp"
 #include <gfx/context.hpp>
-#include <gfx/imgui.hpp>
+#include <gfx/imgui/imgui.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>

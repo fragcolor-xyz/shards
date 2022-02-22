@@ -16,9 +16,6 @@ struct WindowCreationOptions {
 
 struct Window {
   SDL_Window *window = nullptr;
-#if defined(__APPLE__)
-  SDL_MetalView metalView{nullptr};
-#endif
 
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();

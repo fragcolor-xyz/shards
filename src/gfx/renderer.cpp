@@ -39,6 +39,8 @@ struct TextureIds {
     return std::lexicographical_compare(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
   }
 
+  bool operator!=(const TextureIds &other) const { return !(*this == other); }
+
   bool operator<(const TextureIds &other) const {
     if (textures.size() != other.textures.size())
       return textures.size() < other.textures.size();

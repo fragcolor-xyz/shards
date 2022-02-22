@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SDL_metal.h"
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
 #include "sdl_native_window.hpp"

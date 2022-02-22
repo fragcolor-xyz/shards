@@ -1,13 +1,12 @@
 #include "texture_file.hpp"
 #include "spdlog/spdlog.h"
-#include "texture.hpp"
 #include <cassert>
+#include <gfx/texture.hpp>
 #include <memory>
 #include <spdlog/spdlog.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #pragma GCC diagnostic pop

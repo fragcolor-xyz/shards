@@ -22,8 +22,8 @@
 //  2021-01-28: Initial version.
 
 #include "imgui_impl_wgpu.h"
-#include "gfx_wgpu.hpp"
 #include "imgui.h"
+#include <gfx/gfx_wgpu.hpp>
 #include <limits.h>
 
 #define HAS_EMSCRIPTEN_VERSION(major, minor, tiny)                                                          \

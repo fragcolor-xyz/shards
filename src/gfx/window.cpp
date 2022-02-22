@@ -1,16 +1,17 @@
 #include "window.hpp"
 #include "error_utils.hpp"
+#include "platform.hpp"
 #include "sdl_native_window.hpp"
 #include <SDL.h>
 #include <SDL_video.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-#ifdef _WIN32
+#ifdef GFX_WINDOWS
 #include <Windows.h>
-#elif __APPLE__
+#elif GFX_APPLE
 #include <SDL_metal.h>
-#elif __EMSCRIPTEN__
+#elif GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
 #endif
 
@@ -27,10 +28,10 @@ void Window::init(const WindowCreationOptions &options) {
 
   uint32_t flags = SDL_WINDOW_SHOWN;
   flags |= SDL_WINDOW_RESIZABLE | (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-#ifndef __EMSCRIPTEN__
+#ifndef GFX_EMSCRIPTEN
   flags |= SDL_WINDOW_ALLOW_HIGHDPI;
 #endif
-#ifdef __APPLE__
+#ifdef GFX_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif
 
@@ -41,20 +42,9 @@ void Window::init(const WindowCreationOptions &options) {
   if (!window) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
   }
-
-#ifdef __APPLE__
-  metalView = SDL_Metal_CreateView(window);
-#endif
 }
 
 void Window::cleanup() {
-#ifdef __APPLE__
-  if (metalView) {
-    SDL_Metal_DestroyView(metalView);
-    metalView = nullptr;
-  }
-#endif
-
   if (window) {
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -71,9 +61,9 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 }
 
 void *Window::getNativeWindowHandle() {
-#ifdef __APPLE__
-  return (void *)SDL_Metal_GetLayer(metalView);
-#elif defined(__EMSCRIPTEN__)
+#if GFX_APPLE
+  return nullptr;
+#elif GFX_EMSCRIPTEN
   return (void *)("#canvas");
 #else
   return (void *)SDL_GetNativeWindowPtr(window);
@@ -88,7 +78,7 @@ float2 Window::getDrawScale() const {
 
 int2 Window::getDrawableSize() const {
   int2 r;
-#ifdef __APPLE__
+#if GFX_APPLE
   SDL_Metal_GetDrawableSize(window, &r.x, &r.y);
 #else
   r = getSize();

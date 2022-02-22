@@ -9,7 +9,7 @@
 #include <gfx/paths.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/texture.hpp>
-#include <gfx/texture_file.hpp>
+#include <gfx/texture_file/texture_file.hpp>
 #include <gfx/view.hpp>
 #include <spdlog/fmt/fmt.h>
 
