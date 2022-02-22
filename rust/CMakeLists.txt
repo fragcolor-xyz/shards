@@ -18,7 +18,7 @@ endif()
 
 set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}chainblocks${Rust_LIB_SUFFIX})
 
-file(GLOB_RECURSE SOURCES *.rs *.toml)
+file(GLOB_RECURSE SOURCES src/*.rs *.toml)
 
 # Bindgen dependency
 if(NOT SKIP_RUST_BINDGEN)

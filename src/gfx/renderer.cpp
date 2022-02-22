@@ -34,9 +34,21 @@ typedef uint16_t TextureId;
 
 struct TextureIds {
   std::vector<TextureId> textures;
-  bool operator==(const TextureIds &other) const = default;
-  auto operator<=>(const TextureIds &other) const = default;
-  bool operator<(const TextureIds &other) const = default;
+
+  bool operator==(const TextureIds &other) const {
+    return std::lexicographical_compare(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
+  }
+
+  bool operator<(const TextureIds &other) const {
+    if (textures.size() != other.textures.size())
+      return textures.size() < other.textures.size();
+    for (size_t i = 0; i < textures.size(); i++) {
+      if (textures[i] != other.textures[i]) {
+        return textures[i] < other.textures[i];
+      }
+    }
+    return false;
+  }
 };
 
 struct TextureIdMap {
@@ -80,9 +92,14 @@ struct DrawGroupKey {
   DrawGroupKey() = default;
   DrawGroupKey(const Drawable &drawable, const TextureIds &textureIds)
       : meshData(drawable.mesh->contextData.get()), textures(textureIds) {}
-  bool operator!=(const DrawGroupKey &other) const = default;
-  auto operator<=>(const DrawGroupKey &other) const = default;
-  bool operator<(const DrawGroupKey &other) const = default;
+
+  bool operator!=(const DrawGroupKey &other) const { return meshData != other.meshData || textures != other.textures; }
+  bool operator<(const DrawGroupKey &other) const {
+    if (meshData != other.meshData) {
+      return size_t(meshData) < size_t(other.meshData);
+    }
+    return textures < other.textures;
+  }
 };
 
 struct SortableDrawable {

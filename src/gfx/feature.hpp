@@ -26,8 +26,11 @@ struct BlendComponent {
     hasher(dstFactor);
     hasher(operation);
   }
-  bool operator==(const BlendComponent &other) const = default;
-  bool operator!=(const BlendComponent &other) const = default;
+
+  bool operator==(const BlendComponent &other) const {
+    return operation == other.operation && srcFactor == other.srcFactor && dstFactor == other.dstFactor;
+  }
+  bool operator!=(const BlendComponent &other) const { return !(*this == other); }
 
   static BlendComponent Opaque;
   static BlendComponent Additive;
@@ -45,8 +48,9 @@ struct BlendState {
     hasher(color);
     hasher(alpha);
   }
-  bool operator==(const BlendState &other) const = default;
-  bool operator!=(const BlendState &other) const = default;
+
+  bool operator==(const BlendState &other) const { return color == other.color && alpha == other.alpha; }
+  bool operator!=(const BlendState &other) const { return !(*this == other); }
 };
 } // namespace gfx
 
