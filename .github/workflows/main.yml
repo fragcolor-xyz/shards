@@ -42,8 +42,8 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget ninja-build
           cd emsdk
-          ./emsdk install 3.1.5
-          ./emsdk activate 3.1.5
+          ./emsdk install 3.1.6
+          ./emsdk activate 3.1.6
           cd .. && mkdir external && cd external
           wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
           tar xzf boost_1_78_0.tar.gz
@@ -407,6 +407,7 @@ jobs:
   Windows:
     runs-on: windows-2019
     strategy:
+      fail-fast: false
       matrix:
         build-type: ["Debug", "Release"]
         bitness: [32bits, 64bits]
