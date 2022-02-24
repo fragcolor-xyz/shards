@@ -28,10 +28,10 @@ void Window::init(const WindowCreationOptions &options) {
 
   uint32_t flags = SDL_WINDOW_SHOWN;
   flags |= SDL_WINDOW_RESIZABLE | (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-#ifndef GFX_EMSCRIPTEN
+#if !GFX_EMSCRIPTEN
   flags |= SDL_WINDOW_ALLOW_HIGHDPI;
 #endif
-#ifdef GFX_APPLE
+#if GFX_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif
 

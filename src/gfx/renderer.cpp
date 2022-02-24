@@ -357,7 +357,7 @@ struct RendererImpl {
     passDesc.colorAttachments = &mainAttach;
     passDesc.colorAttachmentCount = 1;
     WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
-    wgpuRenderPassEncoderEndPass(passEncoder);
+    wgpuRenderPassEncoderEnd(passEncoder);
 
     WGPUCommandBufferDescriptor cmdBufDesc{};
     WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
@@ -686,7 +686,7 @@ struct RendererImpl {
       }
     }
 
-    wgpuRenderPassEncoderEndPass(passEncoder);
+    wgpuRenderPassEncoderEnd(passEncoder);
 
     WGPUCommandBufferDescriptor cmdBufDesc = {};
     WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);

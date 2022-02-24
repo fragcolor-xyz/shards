@@ -54,7 +54,7 @@ void ImGuiRenderer::render() {
     ImDrawData *drawData = ImGui::GetDrawData();
     ImGui_ImplWGPU_RenderDrawData(drawData, passEncoder);
 
-    wgpuRenderPassEncoderEndPass(passEncoder);
+    wgpuRenderPassEncoderEnd(passEncoder);
 
     WGPUCommandBufferDescriptor cmdBufDesc{};
     WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);

@@ -116,8 +116,9 @@ if(NOT EMSCRIPTEN)
     IMPORTED_LOCATION ${GENERATED_LIB_PATH}
   )
   target_include_directories(wgpu-native INTERFACE ${WGPU_NATIVE_PATH}/ffi)
-  target_link_libraries(wgpu-native INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
-  # Userenv ws2_32 Bcrypt Crypt32 Secur32 NtDll Ncrypt
+  if(WIN32)
+    target_link_libraries(wgpu-native INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
+  endif()
 
   target_link_libraries(gfx wgpu-native)
   target_compile_definitions(gfx PUBLIC WEBGPU_NATIVE=1)
