@@ -10,6 +10,7 @@ namespace chainblocks {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   using linalg::aliases::float4x4::mat;
   Mat4(const CBVar &var) { *this = var; }
+  Mat4(const linalg::aliases::float4x4 &other) : linalg::aliases::float4x4(other) {}
 
   template <typename NUMBER> static Mat4 FromVector(const std::vector<NUMBER> &mat) {
     // used by gltf
