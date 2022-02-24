@@ -1008,39 +1008,36 @@ struct Assoc : public VariableBase {
 
   static inline Parameters params{
       {"Name",
-       CBCCSTR("The name of the array or the table to be updated."),
+       CBCCSTR("The name of the sequence or table to be updated."),
        {CoreInfo::StringOrAnyVar}},
       {"Key",
        CBCCSTR("Table key for the value that is to be updated. Parameter "
-               "applicable only for table update."),
+               "applicable if target is table."),
        {CoreInfo::StringStringVarOrNone}},
       {"Global",
        CBCCSTR("If the variable is or should be available to all the chains in "
-               "the same node. Default (false) makes the variable local to the "
-               "chain."),
+               "the same node. The default value (false) makes the variable "
+               "local to the chain."),
        {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
   static CBOptionalString help() {
-    return CBCCSTR("Updates an array (vector) or a table (associative array/ "
+    return CBCCSTR("Updates a sequence (array) or a table (associative array/ "
                    "dictionary) on the basis of an input sequence.");
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static CBOptionalString inputHelp() {
-    return CBCCSTR(
-        "Input sequence that identifies element to be updated and "
-        "its new value. The sequence must contain even-number of elements "
-        "with the 1st element in each pair denoting the target index to update "
-        "and the 2nd element holding the update value for corresponding "
-        "index.");
+    return CBCCSTR("Input sequence containing even number of elements, parsed "
+                   "as pairs, with the 1st element of each pair giving the "
+                   "index of the target element to update, and the 2nd element "
+                   "holding the new value to be written.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
   static CBOptionalString outputHelp() {
-    return CBCCSTR(
-        "Modified array or table. Has the same type as the array or table "
-        "on which Assoc was applied.");
+    return CBCCSTR("Modified array or table. Has the same type as the array or "
+                   "table on which Assoc was applied.");
   }
 
   CBExposedTypesInfo requiredVariables() {
