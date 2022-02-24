@@ -536,13 +536,6 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
 
   graphics_pipeline_desc.fragment = &fragment_state;
 
-  // Create depth-stencil State
-  WGPUDepthStencilState depth_stencil_state = {};
-  depth_stencil_state.depthBias = 0;
-  depth_stencil_state.depthBiasClamp = 0;
-  depth_stencil_state.depthBiasSlopeScale = 0;
-
-  // Configure disabled depth-stencil state
   graphics_pipeline_desc.depthStencil = nullptr;
 
   g_pipelineState = wgpuDeviceCreateRenderPipeline(g_wgpuDevice, &graphics_pipeline_desc);

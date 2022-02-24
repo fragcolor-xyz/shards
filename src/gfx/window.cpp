@@ -7,7 +7,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
-#ifdef GFX_WINDOWS
+#if GFX_WINDOWS
 #include <Windows.h>
 #elif GFX_APPLE
 #include <SDL_metal.h>
