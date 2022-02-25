@@ -232,7 +232,7 @@ jobs:
           run: |
             ./cbl ../src/tests/gfx_window.edn
             ./cbl ../src/tests/gfx_cube.edn
-            ./cbl ../src/tests/gfx_material.edn
+            ./cbl ../src/tests/gfx_materials.edn
       - name: Test Headless (imgui_demo)
         uses: chainblocks/xvfb-action@master
         with:
