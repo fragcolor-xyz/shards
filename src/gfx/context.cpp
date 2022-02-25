@@ -15,6 +15,17 @@
 #endif
 
 namespace gfx {
+
+static WGPUBackendType getDefaultWgpuBackendType() {
+#if GFX_WINDOWS
+  return WGPUBackendType_D3D12;
+#elif GFX_APPLE
+  return WGPUBackendType_Metal;
+#elif GFX_LINUX
+  return WGPUBackendType_Vulkan;
+#endif
+}
+
 struct ContextMainOutput {
   Window *window{};
   WGPUSwapChain wgpuSwapchain{};
@@ -129,7 +140,7 @@ void Context::initCommon(const ContextCreationOptions &options) {
   WGPUAdapterExtras adapterExtras = {};
   requestAdapter.nextInChain = &adapterExtras.chain;
   adapterExtras.chain.sType = (WGPUSType)WGPUSType_AdapterExtras;
-  adapterExtras.backend = WGPUBackendType_D3D12;
+  adapterExtras.backend = getDefaultWgpuBackendType();
 #endif
 
   WGPUAdapterReceiverData adapterReceiverData = {};
