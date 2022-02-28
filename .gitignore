@@ -8,6 +8,7 @@
 *.lib
 *.hpp.gch
 *.pyd
+imgui.ini
 Chainblocks.egg-info
 src/py/MANIFEST
 src/nim/tests/tcbvar.xml
