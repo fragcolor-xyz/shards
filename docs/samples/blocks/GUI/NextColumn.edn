@@ -33,4 +33,4 @@
 
 (defnode root)
 (schedule root main-chain)
-(run root (/ 1.0 60))
+(run root (/ 1.0 50) 100) ;; GUI Window will persist for 2 seconds (100 frames at 50 FPS)
