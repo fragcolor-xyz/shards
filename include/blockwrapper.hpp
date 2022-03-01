@@ -43,73 +43,56 @@ template <class T> struct BlockWrapper {
   static inline uint32_t crc = 0;
 
   static __cdecl CBlock *create() {
-    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{16})
-                                                    BlockWrapper<T>());
+    CBlock *result = reinterpret_cast<CBlock *>(new (std::align_val_t{16}) BlockWrapper<T>());
 
     // name
     if constexpr (has_name<T>::value) {
-      result->name = static_cast<CBNameProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.name();
-      });
+      result->name = static_cast<CBNameProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.name(); });
     } else {
       result->name = static_cast<CBNameProc>([](CBlock *b) { return name; });
     }
 
     // hash
     if constexpr (has_hash<T>::value) {
-      result->hash = static_cast<CBHashProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.hash();
-      });
+      result->hash = static_cast<CBHashProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.hash(); });
     } else {
       result->hash = static_cast<CBHashProc>([](CBlock *b) { return crc; });
     }
 
     // help
     if constexpr (has_help<T>::value) {
-      result->help = static_cast<CBHelpProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.help();
-      });
+      result->help = static_cast<CBHelpProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.help(); });
     } else {
-      result->help =
-          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
+      result->help = static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
     }
 
     // inputHelp
     if constexpr (has_inputHelp<T>::value) {
-      result->inputHelp = static_cast<CBHelpProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.inputHelp();
-      });
-    } else {
       result->inputHelp =
-          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
+          static_cast<CBHelpProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.inputHelp(); });
+    } else {
+      result->inputHelp = static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
     }
 
     // outputHelp
     if constexpr (has_outputHelp<T>::value) {
-      result->outputHelp = static_cast<CBHelpProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.outputHelp();
-      });
-    } else {
       result->outputHelp =
-          static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
+          static_cast<CBHelpProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.outputHelp(); });
+    } else {
+      result->outputHelp = static_cast<CBHelpProc>([](CBlock *b) { return CBOptionalString(); });
     }
 
     // properties
     if constexpr (has_properties<T>::value) {
-      result->properties =
-          static_cast<CBPropertiesProc>([](CBlock *b) -> const CBTable * {
-            return reinterpret_cast<BlockWrapper<T> *>(b)->block.properties();
-          });
-    } else {
       result->properties = static_cast<CBPropertiesProc>(
-          [](CBlock *b) -> const CBTable * { return nullptr; });
+          [](CBlock *b) -> const CBTable * { return reinterpret_cast<BlockWrapper<T> *>(b)->block.properties(); });
+    } else {
+      result->properties = static_cast<CBPropertiesProc>([](CBlock *b) -> const CBTable * { return nullptr; });
     }
 
     // setup
     if constexpr (has_setup<T>::value) {
-      result->setup = static_cast<CBSetupProc>([](CBlock *b) {
-        reinterpret_cast<BlockWrapper<T> *>(b)->block.setup();
-      });
+      result->setup = static_cast<CBSetupProc>([](CBlock *b) { reinterpret_cast<BlockWrapper<T> *>(b)->block.setup(); });
     } else {
       result->setup = static_cast<CBSetupProc>([](CBlock *b) {});
     }
@@ -131,84 +114,63 @@ template <class T> struct BlockWrapper {
     }
 
     // inputTypes
-    static_assert(has_inputTypes<T>::value,
-                  "Blocks must have an \"inputTypes\" method.");
+    static_assert(has_inputTypes<T>::value, "Blocks must have an \"inputTypes\" method.");
     if constexpr (has_inputTypes<T>::value) {
-      result->inputTypes = static_cast<CBInputTypesProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.inputTypes();
-      });
+      result->inputTypes =
+          static_cast<CBInputTypesProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.inputTypes(); });
     }
 
     // outputTypes
-    static_assert(has_outputTypes<T>::value,
-                  "Blocks must have an \"outputTypes\" method.");
+    static_assert(has_outputTypes<T>::value, "Blocks must have an \"outputTypes\" method.");
     if constexpr (has_outputTypes<T>::value) {
-      result->outputTypes = static_cast<CBOutputTypesProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.outputTypes();
-      });
+      result->outputTypes =
+          static_cast<CBOutputTypesProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.outputTypes(); });
     }
 
     // exposedVariables
     if constexpr (has_exposedVariables<T>::value) {
-      result->exposedVariables =
-          static_cast<CBExposedVariablesProc>([](CBlock *b) {
-            return reinterpret_cast<BlockWrapper<T> *>(b)
-                ->block.exposedVariables();
-          });
-    } else {
       result->exposedVariables = static_cast<CBExposedVariablesProc>(
-          [](CBlock *b) { return CBExposedTypesInfo(); });
+          [](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.exposedVariables(); });
+    } else {
+      result->exposedVariables = static_cast<CBExposedVariablesProc>([](CBlock *b) { return CBExposedTypesInfo(); });
     }
 
     // requiredVariables
     if constexpr (has_requiredVariables<T>::value) {
-      result->requiredVariables =
-          static_cast<CBRequiredVariablesProc>([](CBlock *b) {
-            return reinterpret_cast<BlockWrapper<T> *>(b)
-                ->block.requiredVariables();
-          });
-    } else {
       result->requiredVariables = static_cast<CBRequiredVariablesProc>(
-          [](CBlock *b) { return CBExposedTypesInfo(); });
+          [](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.requiredVariables(); });
+    } else {
+      result->requiredVariables = static_cast<CBRequiredVariablesProc>([](CBlock *b) { return CBExposedTypesInfo(); });
     }
 
     // parameters
     if constexpr (has_parameters<T>::value) {
-      result->parameters = static_cast<CBParametersProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.parameters();
-      });
+      result->parameters =
+          static_cast<CBParametersProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.parameters(); });
     } else {
-      result->parameters = static_cast<CBParametersProc>(
-          [](CBlock *b) { return CBParametersInfo(); });
+      result->parameters = static_cast<CBParametersProc>([](CBlock *b) { return CBParametersInfo(); });
     }
 
     // setParam
     if constexpr (has_setParam<T>::value) {
-      result->setParam =
-          static_cast<CBSetParamProc>([](CBlock *b, int i, const CBVar *v) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.setParam(i, *v);
-          });
+      result->setParam = static_cast<CBSetParamProc>(
+          [](CBlock *b, int i, const CBVar *v) { reinterpret_cast<BlockWrapper<T> *>(b)->block.setParam(i, *v); });
     } else {
-      result->setParam =
-          static_cast<CBSetParamProc>([](CBlock *b, int i, const CBVar *v) {});
+      result->setParam = static_cast<CBSetParamProc>([](CBlock *b, int i, const CBVar *v) {});
     }
 
     // getParam
     if constexpr (has_getParam<T>::value) {
-      result->getParam = static_cast<CBGetParamProc>([](CBlock *b, int i) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.getParam(i);
-      });
-    } else {
       result->getParam =
-          static_cast<CBGetParamProc>([](CBlock *b, int i) { return CBVar(); });
+          static_cast<CBGetParamProc>([](CBlock *b, int i) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.getParam(i); });
+    } else {
+      result->getParam = static_cast<CBGetParamProc>([](CBlock *b, int i) { return CBVar(); });
     }
 
     // compose
     if constexpr (has_compose<T>::value) {
-      result->compose =
-          static_cast<CBComposeProc>([](CBlock *b, CBInstanceData data) {
-            return reinterpret_cast<BlockWrapper<T> *>(b)->block.compose(data);
-          });
+      result->compose = static_cast<CBComposeProc>(
+          [](CBlock *b, CBInstanceData data) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.compose(data); });
     } else {
       // compose is optional!
       result->compose = nullptr;
@@ -216,11 +178,9 @@ template <class T> struct BlockWrapper {
 
     // composed
     if constexpr (has_composed<T>::value) {
-      result->composed = static_cast<CBComposedProc>(
-          [](CBlock *b, const CBChain *chain, const CBComposeResult *result) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.composed(chain,
-                                                                   result);
-          });
+      result->composed = static_cast<CBComposedProc>([](CBlock *b, const CBChain *chain, const CBComposeResult *result) {
+        reinterpret_cast<BlockWrapper<T> *>(b)->block.composed(chain, result);
+      });
     } else {
       // composed is optional!
       result->composed = nullptr;
@@ -228,9 +188,8 @@ template <class T> struct BlockWrapper {
 
     // warmup
     if constexpr (has_warmup<T>::value) {
-      result->warmup = static_cast<CBWarmupProc>([](CBlock *b, CBContext *ctx) {
-        reinterpret_cast<BlockWrapper<T> *>(b)->block.warmup(ctx);
-      });
+      result->warmup =
+          static_cast<CBWarmupProc>([](CBlock *b, CBContext *ctx) { reinterpret_cast<BlockWrapper<T> *>(b)->block.warmup(ctx); });
     } else {
       // warmup is optional!
       result->warmup = nullptr;
@@ -238,41 +197,32 @@ template <class T> struct BlockWrapper {
 
     // nextFrame
     if constexpr (has_nextFrame<T>::value) {
-      result->nextFrame =
-          static_cast<CBNextFrameProc>([](CBlock *b, CBContext *ctx) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.nextFrame(ctx);
-          });
+      result->nextFrame = static_cast<CBNextFrameProc>(
+          [](CBlock *b, CBContext *ctx) { reinterpret_cast<BlockWrapper<T> *>(b)->block.nextFrame(ctx); });
     } else {
       // nextFrame is optional!
       result->nextFrame = nullptr;
     }
 
     // activate
-    static_assert(has_activate<T>::value,
-                  "Blocks must have an \"activate\" method.");
+    static_assert(has_activate<T>::value, "Blocks must have an \"activate\" method.");
     if constexpr (has_activate<T>::value) {
-      result->activate = static_cast<CBActivateProc>(
-          [](CBlock *b, CBContext *ctx, const CBVar *v) {
-            return reinterpret_cast<BlockWrapper<T> *>(b)->block.activate(ctx,
-                                                                          *v);
-          });
+      result->activate = static_cast<CBActivateProc>([](CBlock *b, CBContext *ctx, const CBVar *v) {
+        return reinterpret_cast<BlockWrapper<T> *>(b)->block.activate(ctx, *v);
+      });
     }
 
     // cleanup
     if constexpr (has_cleanup<T>::value) {
-      result->cleanup = static_cast<CBCleanupProc>([](CBlock *b) {
-        reinterpret_cast<BlockWrapper<T> *>(b)->block.cleanup();
-      });
+      result->cleanup = static_cast<CBCleanupProc>([](CBlock *b) { reinterpret_cast<BlockWrapper<T> *>(b)->block.cleanup(); });
     } else {
       result->cleanup = static_cast<CBCleanupProc>([](CBlock *b) {});
     }
 
     // mutate
     if constexpr (has_mutate<T>::value) {
-      result->mutate =
-          static_cast<CBMutateProc>([](CBlock *b, CBTable options) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.mutate(options);
-          });
+      result->mutate = static_cast<CBMutateProc>(
+          [](CBlock *b, CBTable options) { reinterpret_cast<BlockWrapper<T> *>(b)->block.mutate(options); });
     } else {
       // mutate is optional!
       result->mutate = nullptr;
@@ -280,11 +230,9 @@ template <class T> struct BlockWrapper {
 
     // crossover
     if constexpr (has_crossover<T>::value) {
-      result->crossover = static_cast<CBCrossoverProc>(
-          [](CBlock *b, const CBVar *state0, const CBVar *state1) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.crossover(*state0,
-                                                                    *state1);
-          });
+      result->crossover = static_cast<CBCrossoverProc>([](CBlock *b, const CBVar *state0, const CBVar *state1) {
+        reinterpret_cast<BlockWrapper<T> *>(b)->block.crossover(*state0, *state1);
+      });
     } else {
       // crossover is optional!
       result->crossover = nullptr;
@@ -292,9 +240,8 @@ template <class T> struct BlockWrapper {
 
     // getState
     if constexpr (has_getState<T>::value) {
-      result->getState = static_cast<CBGetStateProc>([](CBlock *b) {
-        return reinterpret_cast<BlockWrapper<T> *>(b)->block.getState();
-      });
+      result->getState =
+          static_cast<CBGetStateProc>([](CBlock *b) { return reinterpret_cast<BlockWrapper<T> *>(b)->block.getState(); });
     } else {
       // getState is optional!
       result->getState = nullptr;
@@ -302,10 +249,8 @@ template <class T> struct BlockWrapper {
 
     // setState
     if constexpr (has_setState<T>::value) {
-      result->setState =
-          static_cast<CBSetStateProc>([](CBlock *b, const CBVar *state) {
-            reinterpret_cast<BlockWrapper<T> *>(b)->block.setState(*state);
-          });
+      result->setState = static_cast<CBSetStateProc>(
+          [](CBlock *b, const CBVar *state) { reinterpret_cast<BlockWrapper<T> *>(b)->block.setState(*state); });
     } else {
       // setState is optional!
       result->setState = nullptr;
@@ -313,9 +258,8 @@ template <class T> struct BlockWrapper {
 
     // resetState
     if constexpr (has_resetState<T>::value) {
-      result->resetState = static_cast<CBResetStateProc>([](CBlock *b) {
-        reinterpret_cast<BlockWrapper<T> *>(b)->block.resetState();
-      });
+      result->resetState =
+          static_cast<CBResetStateProc>([](CBlock *b) { reinterpret_cast<BlockWrapper<T> *>(b)->block.resetState(); });
     } else {
       // resetState is optional!
       result->resetState = nullptr;
@@ -325,26 +269,19 @@ template <class T> struct BlockWrapper {
   }
 };
 
-#define REGISTER_CBLOCK(__name__, __type__)                                    \
-  ::chainblocks::BlockWrapper<__type__>::name = __name__;                      \
-  ::chainblocks::BlockWrapper<__type__>::crc =                                 \
-      ::chainblocks::constant<::chainblocks::crc32(                            \
-          __name__ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                       \
-  ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name,    \
-                               &::chainblocks::BlockWrapper<__type__>::create, \
+#define REGISTER_CBLOCK(__name__, __type__)                                                                                 \
+  ::chainblocks::BlockWrapper<__type__>::name = __name__;                                                                   \
+  ::chainblocks::BlockWrapper<__type__>::crc =                                                                              \
+      ::chainblocks::constant<::chainblocks::crc32(__name__ CHAINBLOCKS_CURRENT_ABI_STR)>::value;                           \
+  ::chainblocks::registerBlock(::chainblocks::BlockWrapper<__type__>::name, &::chainblocks::BlockWrapper<__type__>::create, \
                                NAMEOF_FULL_TYPE(__type__))
 
-#define OVERRIDE_ACTIVATE(__data__, __func__)                                  \
-  __data__.block->activate = static_cast<CBActivateProc>(                      \
-      [](CBlock *b, CBContext *ctx, const CBVar *v) {                          \
-        return reinterpret_cast<BlockWrapper<                                  \
-            typename std::remove_pointer<decltype(this)>::type> *>(b)          \
-            ->block.__func__(ctx, *v);                                         \
-      })
+#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                \
+  __data__.block->activate = static_cast<CBActivateProc>([](CBlock *b, CBContext *ctx, const CBVar *v) {                     \
+    return reinterpret_cast<BlockWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->block.__func__(ctx, *v); \
+  })
 
-template <typename CBCORE, Parameters &Params, size_t NPARAMS, Type &InputType,
-          Type &OutputType>
-struct TSimpleBlock {
+template <typename CBCORE, Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType> struct TSimpleBlock {
   static CBTypesInfo inputTypes() { return InputType; }
   static CBTypesInfo outputTypes() { return OutputType; }
   static CBParametersInfo parameters() { return Params; }
@@ -376,8 +313,7 @@ private:
 };
 
 typedef CBVar (*LambdaActivate)(const CBVar &input);
-template <LambdaActivate F, Type &InputType, Type &OutputType>
-struct LambdaBlock {
+template <LambdaActivate F, Type &InputType, Type &OutputType> struct LambdaBlock {
   static CBTypesInfo inputTypes() { return InputType; }
   static CBTypesInfo outputTypes() { return OutputType; }
 

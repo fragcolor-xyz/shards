@@ -46,10 +46,9 @@ template <Type &OUTTYPE, CBType CBTYPE> struct Rand : public RandBase {
   }
 
 private:
-  static inline Parameters _params{
-      {"Max",
-       CBCCSTR("The maximum (if integer, not including) value to output."),
-       {CoreInfo::NoneType, OUTTYPE, Type::VariableOf(OUTTYPE)}}};
+  static inline Parameters _params{{"Max",
+                                    CBCCSTR("The maximum (if integer, not including) value to output."),
+                                    {CoreInfo::NoneType, OUTTYPE, Type::VariableOf(OUTTYPE)}}};
   ParamVar _max{};
 };
 
@@ -61,9 +60,7 @@ struct RandomBytes : public RandBase {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
   static CBParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
-    _size = value.payload.intValue;
-  }
+  void setParam(int index, const CBVar &value) { _size = value.payload.intValue; }
 
   CBVar getParam(int index) { return Var(_size); }
 
@@ -78,8 +75,7 @@ struct RandomBytes : public RandBase {
 private:
   int64_t _size{32};
   std::vector<uint8_t> _buffer;
-  static inline Parameters _params{
-      {"Size", CBCCSTR("The amount of bytes to output."), {CoreInfo::IntType}}};
+  static inline Parameters _params{{"Size", CBCCSTR("The amount of bytes to output."), {CoreInfo::IntType}}};
 };
 
 void registerBlocks() {

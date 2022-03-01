@@ -22,8 +22,7 @@ static void installFunctions(malEnvPtr env);
 //  Installs functions, macros and constants implemented in MAL.
 
 static void makeArgv(malEnvPtr env, int argc, const char *argv[]);
-static String safeRep(const String &input, malEnvPtr env,
-                      bool *failed = nullptr);
+static String safeRep(const String &input, malEnvPtr env, bool *failed = nullptr);
 static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
@@ -61,10 +60,7 @@ int malmain(int argc, const char *argv[]) {
   auto exePath = cblAbsPath.parent_path().string();
   auto scriptPath = exePath;
   if (argc > 1) {
-    scriptPath = std::filesystem::absolute(
-                     std::filesystem::absolute(std::filesystem::path(argv[1]))
-                         .parent_path())
-                     .string();
+    scriptPath = std::filesystem::absolute(std::filesystem::absolute(std::filesystem::path(argv[1])).parent_path()).string();
   }
 
   malinit(replEnv, exePath.c_str(), scriptPath.c_str());
@@ -80,8 +76,7 @@ int malmain(int argc, const char *argv[]) {
       auto scriptFilePath = std::filesystem::path(argv[1]);
       auto fileonly = scriptFilePath.filename().string();
       String filename = escape(fileonly);
-      String out =
-          safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);
+      String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);
       if (out.length() > 0 && out != "nil")
         std::cout << out << "\n";
     }
@@ -141,9 +136,7 @@ static void makeArgv(malEnvPtr env, int argc, const char *argv[]) {
   env->set("*command-line-args*", mal::list(args));
 }
 
-String rep(const String &input, malEnvPtr env) {
-  return PRINT(EVAL(READ(input), env));
-}
+String rep(const String &input, malEnvPtr env) { return PRINT(EVAL(READ(input), env)); }
 
 malValuePtr READ(const String &input) { return readStr(input); }
 
@@ -272,9 +265,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
         const malList *catchBlock = VALUE_CAST(malList, list->item(2));
 
         checkArgsIs("catch*", 2, catchBlock->count() - 1, list->item(2));
-        MAL_CHECK(VALUE_CAST(malSymbol, catchBlock->item(0))->value() ==
-                      "catch*",
-                  "catch block must begin with catch*");
+        MAL_CHECK(VALUE_CAST(malSymbol, catchBlock->item(0))->value() == "catch*", "catch block must begin with catch*");
 
         // We don't need excSym at this scope, but we want to check
         // that the catch block is valid always, not just in case of
@@ -319,11 +310,9 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
 
 String PRINT(malValuePtr ast) { return ast->print(true); }
 
-malValuePtr APPLY(malValuePtr op, malValueIter argsBegin,
-                  malValueIter argsEnd) {
+malValuePtr APPLY(malValuePtr op, malValueIter argsBegin, malValueIter argsEnd) {
   const malApplicable *handler = DYNAMIC_CAST(malApplicable, op);
-  MAL_CHECK(handler != NULL, "\"%s\" is not applicable, line: %u",
-            op->print(true).c_str(), op->line);
+  MAL_CHECK(handler != NULL, "\"%s\" is not applicable, line: %u", op->print(true).c_str(), op->line);
 
   return handler->apply(argsBegin, argsEnd);
 }
@@ -354,13 +343,11 @@ static malValuePtr quasiquote(malValuePtr obj) {
   if (innerSeq && isSymbol(innerSeq->item(0), "splice-unquote")) {
     checkArgsIs("splice-unquote", 1, innerSeq->count() - 1, obj);
     // (qq (sq '(a b c))) -> a b c
-    return mal::list(mal::symbol("concat"), innerSeq->item(1),
-                     quasiquote(seq->rest()));
+    return mal::list(mal::symbol("concat"), innerSeq->item(1), quasiquote(seq->rest()));
   } else {
     // (qq (a b c)) -> (list (qq a) (qq b) (qq c))
     // (qq xs     ) -> (cons (qq (car xs)) (qq (cdr xs)))
-    return mal::list(mal::symbol("cons"), quasiquote(seq->first()),
-                     quasiquote(seq->rest()));
+    return mal::list(mal::symbol("cons"), quasiquote(seq->first()), quasiquote(seq->rest()));
   }
 }
 

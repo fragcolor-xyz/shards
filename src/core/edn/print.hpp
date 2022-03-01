@@ -61,9 +61,7 @@ inline std::string pr_str(document &doc, token::Token &token) {
 
 inline std::string pr_str(document &doc, form::Form form);
 
-inline std::string pr_str(document &doc, form::FormWrapper formWrapper) {
-  return pr_str(doc, formWrapper.form);
-}
+inline std::string pr_str(document &doc, form::FormWrapper formWrapper) { return pr_str(doc, formWrapper.form); }
 
 template <class T> inline std::string pr_str(document &doc, T &list) {
   std::string s;
@@ -96,28 +94,18 @@ inline std::string pr_str(document &doc, form::Form form) {
   case form::TOKEN:
     return pr_str(doc, std::get<token::Token>(form));
   case form::LIST:
-    return "(" +
-           pr_str<std::list<form::FormWrapper>>(
-               doc, std::get<std::list<form::FormWrapper>>(form)) +
-           ")";
+    return "(" + pr_str<std::list<form::FormWrapper>>(doc, std::get<std::list<form::FormWrapper>>(form)) + ")";
   case form::VECTOR:
-    return "[" +
-           pr_str<std::vector<form::FormWrapper>>(
-               doc, std::get<std::vector<form::FormWrapper>>(form)) +
-           "]";
+    return "[" + pr_str<std::vector<form::FormWrapper>>(doc, std::get<std::vector<form::FormWrapper>>(form)) + "]";
   case form::MAP:
     return "{" + pr_str(doc, std::get<form::FormWrapperMap>(form)) + "}";
   case form::SET:
-    return "#{" +
-           pr_str<form::FormWrapperSet>(doc,
-                                        std::get<form::FormWrapperSet>(form)) +
-           "}";
+    return "#{" + pr_str<form::FormWrapperSet>(doc, std::get<form::FormWrapperSet>(form)) + "}";
   }
   return "";
 }
 
-inline std::string print(const std::list<form::Form> &forms,
-                         char separator = ' ') {
+inline std::string print(const std::list<form::Form> &forms, char separator = ' ') {
   std::string s;
   document doc;
   for (auto &form : forms) {

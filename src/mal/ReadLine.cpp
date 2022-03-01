@@ -8,9 +8,7 @@
 
 static replxx::Replxx rx{};
 
-ReadLine::ReadLine(const String &historyFile) : m_historyPath(historyFile) {
-  rx.history_load(m_historyPath.c_str());
-}
+ReadLine::ReadLine(const String &historyFile) : m_historyPath(historyFile) { rx.history_load(m_historyPath.c_str()); }
 
 ReadLine::~ReadLine() {}
 

@@ -61,10 +61,7 @@ private:
   size_t m_currentLine{1};
 };
 
-Tokeniser::Tokeniser(const String &input)
-    : m_iter(input.begin()), m_begin(input.begin()), m_end(input.end()) {
-  nextToken();
-}
+Tokeniser::Tokeniser(const String &input) : m_iter(input.begin()), m_begin(input.begin()), m_end(input.end()) { nextToken(); }
 
 bool Tokeniser::matchRegex(const Regex &regex) {
   if (eof()) {
@@ -77,8 +74,7 @@ bool Tokeniser::matchRegex(const Regex &regex) {
     return false;
   }
 
-  ASSERT(match.size() == 1, "Should only have one submatch, not %llu\n",
-         match.size());
+  ASSERT(match.size() == 1, "Should only have one submatch, not %llu\n", match.size());
   ASSERT(match.position(0) == 0, "Need to match first character\n");
   ASSERT(match.length(0) > 0, "Need to match a non-empty string\n");
 
@@ -97,9 +93,7 @@ void Tokeniser::nextToken() {
     return;
   }
 
-  m_currentLine +=
-      size_t(std::distance(std::sregex_iterator(m_begin, m_iter, newlineRegex),
-                           std::sregex_iterator()));
+  m_currentLine += size_t(std::distance(std::sregex_iterator(m_begin, m_iter, newlineRegex), std::sregex_iterator()));
   m_begin = m_iter;
 
   for (auto &it : tokenRegexes) {
@@ -122,17 +116,16 @@ void Tokeniser::skipWhitespace() {
   }
 }
 
-#define VALUE_WITH_LINE(__val__)                                               \
-  [&]() {                                                                      \
-    auto val = __val__;                                                        \
-    val->line = tokeniser.line();                                              \
-    return val;                                                                \
+#define VALUE_WITH_LINE(__val__)  \
+  [&]() {                         \
+    auto val = __val__;           \
+    val->line = tokeniser.line(); \
+    return val;                   \
   }()
 
 static malValuePtr readAtom(Tokeniser &tokeniser);
 static malValuePtr readForm(Tokeniser &tokeniser);
-static void readList(Tokeniser &tokeniser, malValueVec *items,
-                     const String &end);
+static void readList(Tokeniser &tokeniser, malValueVec *items, const String &end);
 static malValuePtr processMacro(Tokeniser &tokeniser, const String &symbol);
 
 malValuePtr readStr(const String &input) {
@@ -144,12 +137,10 @@ malValuePtr readStr(const String &input) {
 }
 
 static malValuePtr readForm(Tokeniser &tokeniser) {
-  MAL_CHECK(!tokeniser.eof(), "expected form, got EOF, line: %i",
-            tokeniser.line());
+  MAL_CHECK(!tokeniser.eof(), "expected form, got EOF, line: %i", tokeniser.line());
   String token = tokeniser.peek();
 
-  MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s', line: %i",
-            token.c_str(), tokeniser.line());
+  MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s', line: %i", token.c_str(), tokeniser.line());
 
   if (token == "(") {
     tokeniser.next();
@@ -165,8 +156,7 @@ static malValuePtr readForm(Tokeniser &tokeniser) {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
-    return VALUE_WITH_LINE(
-        mal::list(mal::symbol("chainify"), mal::vector(items.release())));
+    return VALUE_WITH_LINE(mal::list(mal::symbol("chainify"), mal::vector(items.release())));
   } else if (token == "{") {
     tokeniser.next();
     malValueVec items;
@@ -182,11 +172,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
     const char *token;
     const char *symbol;
   };
-  ReaderMacro macroTable[] = {{"@", "deref"},
-                              {"`", "quasiquote"},
-                              {"'", "quote"},
-                              {"~@", "splice-unquote"},
-                              {"~", "unquote"}};
+  ReaderMacro macroTable[] = {{"@", "deref"}, {"`", "quasiquote"}, {"'", "quote"}, {"~@", "splice-unquote"}, {"~", "unquote"}};
 
   struct Constant {
     const char *token;
@@ -250,11 +236,9 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
   return mal::symbol(token);
 }
 
-static void readList(Tokeniser &tokeniser, malValueVec *items,
-                     const String &end) {
+static void readList(Tokeniser &tokeniser, malValueVec *items, const String &end) {
   while (1) {
-    MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF, line: %i", end.c_str(),
-              tokeniser.line());
+    MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF, line: %i", end.c_str(), tokeniser.line());
     if (tokeniser.peek() == end) {
       tokeniser.next();
       return;

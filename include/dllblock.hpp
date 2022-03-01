@@ -32,8 +32,7 @@ struct CoreLoader {
     CBChainblocksInterface ifaceproc;
 #ifdef _WIN32
     auto handle = GetModuleHandle(NULL);
-    ifaceproc =
-        (CBChainblocksInterface)GetProcAddress(handle, "chainblocksInterface");
+    ifaceproc = (CBChainblocksInterface)GetProcAddress(handle, "chainblocksInterface");
 #else
     auto handle = dlopen(NULL, RTLD_NOW);
     ifaceproc = (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
@@ -44,13 +43,11 @@ struct CoreLoader {
 #ifdef _WIN32
       handle = GetModuleHandleA("libcb.dll");
       if (handle)
-        ifaceproc = (CBChainblocksInterface)GetProcAddress(
-            handle, "chainblocksInterface");
+        ifaceproc = (CBChainblocksInterface)GetProcAddress(handle, "chainblocksInterface");
 #else
       handle = dlopen("libcb.so", RTLD_NOW);
       if (handle)
-        ifaceproc =
-            (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
+        ifaceproc = (CBChainblocksInterface)dlsym(handle, "chainblocksInterface");
 #endif
     }
     assert(ifaceproc);
@@ -63,23 +60,19 @@ struct CoreLoader {
 
 class Core {
 public:
-  static void registerBlock(const char *fullName,
-                            CBBlockConstructor constructor) {
+  static void registerBlock(const char *fullName, CBBlockConstructor constructor) {
     sCore._core->registerBlock(fullName, constructor);
   }
 
-  static void registerObjectType(int32_t vendorId, int32_t typeId,
-                                 CBObjectInfo info) {
+  static void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {
     sCore._core->registerObjectType(vendorId, typeId, info);
   }
 
-  static void registerEnumType(int32_t vendorId, int32_t typeId,
-                               CBEnumInfo info) {
+  static void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {
     sCore._core->registerEnumType(vendorId, typeId, info);
   }
 
-  static void registerRunLoopCallback(const char *eventName,
-                                      CBCallback callback) {
+  static void registerRunLoopCallback(const char *eventName, CBCallback callback) {
     sCore._core->registerRunLoopCallback(eventName, callback);
   }
 
@@ -87,59 +80,36 @@ public:
     sCore._core->registerExitCallback(eventName, callback);
   }
 
-  static void unregisterRunLoopCallback(const char *eventName) {
-    sCore._core->unregisterRunLoopCallback(eventName);
-  }
+  static void unregisterRunLoopCallback(const char *eventName) { sCore._core->unregisterRunLoopCallback(eventName); }
 
-  static void unregisterExitCallback(const char *eventName) {
-    sCore._core->unregisterExitCallback(eventName);
-  }
+  static void unregisterExitCallback(const char *eventName) { sCore._core->unregisterExitCallback(eventName); }
 
-  static CBVar *referenceVariable(CBContext *context, const char *name) {
-    return sCore._core->referenceVariable(context, name);
-  }
+  static CBVar *referenceVariable(CBContext *context, const char *name) { return sCore._core->referenceVariable(context, name); }
 
-  static void releaseVariable(CBVar *variable) {
-    return sCore._core->releaseVariable(variable);
-  }
+  static void releaseVariable(CBVar *variable) { return sCore._core->releaseVariable(variable); }
 
-  static CBChainState suspend(CBContext *context, double seconds) {
-    return sCore._core->suspend(context, seconds);
-  }
+  static CBChainState suspend(CBContext *context, double seconds) { return sCore._core->suspend(context, seconds); }
 
-  static void cloneVar(CBVar &dst, const CBVar &src) {
-    sCore._core->cloneVar(&dst, &src);
-  }
+  static void cloneVar(CBVar &dst, const CBVar &src) { sCore._core->cloneVar(&dst, &src); }
 
   static void destroyVar(CBVar &var) { sCore._core->destroyVar(&var); }
 
-#define CB_ARRAY_INTERFACE(_arr_, _val_, _short_)                              \
-  static void _short_##Free(_arr_ &seq) { sCore._core->_short_##Free(&seq); }; \
-                                                                               \
-  static void _short_##Resize(_arr_ &seq, uint64_t size) {                     \
-    sCore._core->_short_##Resize(&seq, size);                                  \
-  };                                                                           \
-                                                                               \
-  static void _short_##Push(_arr_ &seq, const _val_ &value) {                  \
-    sCore._core->_short_##Push(&seq, &value);                                  \
-  };                                                                           \
-                                                                               \
-  static void _short_##Insert(_arr_ &seq, uint64_t index,                      \
-                              const _val_ &value) {                            \
-    sCore._core->_short_##Insert(&seq, index, &value);                         \
-  };                                                                           \
-                                                                               \
-  static _val_ _short_##Pop(_arr_ &seq) {                                      \
-    return sCore._core->_short_##Pop(&seq);                                    \
-  };                                                                           \
-                                                                               \
-  static void _short_##FastDelete(_arr_ &seq, uint64_t index) {                \
-    sCore._core->_short_##FastDelete(&seq, index);                             \
-  };                                                                           \
-                                                                               \
-  static void _short_##SlowDelete(_arr_ &seq, uint64_t index) {                \
-    sCore._core->_short_##SlowDelete(&seq, index);                             \
-  }
+#define CB_ARRAY_INTERFACE(_arr_, _val_, _short_)                                                                 \
+  static void _short_##Free(_arr_ &seq) { sCore._core->_short_##Free(&seq); };                                    \
+                                                                                                                  \
+  static void _short_##Resize(_arr_ &seq, uint64_t size) { sCore._core->_short_##Resize(&seq, size); };           \
+                                                                                                                  \
+  static void _short_##Push(_arr_ &seq, const _val_ &value) { sCore._core->_short_##Push(&seq, &value); };        \
+                                                                                                                  \
+  static void _short_##Insert(_arr_ &seq, uint64_t index, const _val_ &value) {                                   \
+    sCore._core->_short_##Insert(&seq, index, &value);                                                            \
+  };                                                                                                              \
+                                                                                                                  \
+  static _val_ _short_##Pop(_arr_ &seq) { return sCore._core->_short_##Pop(&seq); };                              \
+                                                                                                                  \
+  static void _short_##FastDelete(_arr_ &seq, uint64_t index) { sCore._core->_short_##FastDelete(&seq, index); }; \
+                                                                                                                  \
+  static void _short_##SlowDelete(_arr_ &seq, uint64_t index) { sCore._core->_short_##SlowDelete(&seq, index); }
 
   CB_ARRAY_INTERFACE(CBSeq, CBVar, seq);
   CB_ARRAY_INTERFACE(CBTypesInfo, CBTypeInfo, types);
@@ -148,35 +118,26 @@ public:
   CB_ARRAY_INTERFACE(CBExposedTypesInfo, CBExposedTypeInfo, expTypes);
   CB_ARRAY_INTERFACE(CBStrings, CBString, strings);
 
-  static CBComposeResult composeChain(CBChainRef chain,
-                                      CBValidationCallback callback,
-                                      void *userData, CBInstanceData data) {
+  static CBComposeResult composeChain(CBChainRef chain, CBValidationCallback callback, void *userData, CBInstanceData data) {
     return sCore._core->composeChain(chain, callback, userData, data);
   }
 
-  static CBRunChainOutput runChain(CBChainRef chain, CBContext *context,
-                                   const CBVar &input) {
+  static CBRunChainOutput runChain(CBChainRef chain, CBContext *context, const CBVar &input) {
     return sCore._core->runChain(chain, context, &input);
   }
 
-  static CBComposeResult composeBlocks(CBlocks blocks,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+  static CBComposeResult composeBlocks(CBlocks blocks, CBValidationCallback callback, void *userData, CBInstanceData data) {
     return sCore._core->composeBlocks(blocks, callback, userData, data);
   }
 
-  static CBChainState runBlocks(CBlocks blocks, CBContext *context,
-                                const CBVar &input, CBVar &output,
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context, const CBVar &input, CBVar &output,
                                 const bool handleReturn = false) {
-    return sCore._core->runBlocks(blocks, context, &input, &output,
-                                  handleReturn);
+    return sCore._core->runBlocks(blocks, context, &input, &output, handleReturn);
   }
 
   static void log(const char *msg) { sCore._core->log(msg); }
 
-  static void abortChain(CBContext *context, const char *msg) {
-    sCore._core->abortChain(context, msg);
-  }
+  static void abortChain(CBContext *context, const char *msg) { sCore._core->abortChain(context, msg); }
 
   static const char *rootPath() { return sCore._core->getRootPath(); }
 
@@ -237,9 +198,7 @@ public:
     return *this;
   }
 
-  std::ptrdiff_t operator-(PtrIterator const &other) const {
-    return ptr - other.ptr;
-  }
+  std::ptrdiff_t operator-(PtrIterator const &other) const { return ptr - other.ptr; }
 
   T &operator*() const { return *ptr; }
 
@@ -254,8 +213,7 @@ private:
   T *ptr;
 };
 
-template <typename S, typename T, void (*arrayResize)(S &, uint64_t),
-          void (*arrayFree)(S &), void (*arrayPush)(S &, const T &),
+template <typename S, typename T, void (*arrayResize)(S &, uint64_t), void (*arrayFree)(S &), void (*arrayPush)(S &, const T &),
           typename Allocator = std::allocator<T>>
 class IterableArray {
 public:
@@ -272,9 +230,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const CBVar &v) : _seq(v.payload.seqValue), _owned(false) {
-    assert(v.valueType == Seq);
-  }
+  IterableArray(const CBVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -285,8 +241,7 @@ public:
     }
   }
 
-  IterableArray(const_iterator first, const_iterator last)
-      : _seq({}), _owned(true) {
+  IterableArray(const_iterator first, const_iterator last) : _seq({}), _owned(true) {
     size_t size = last - first;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
@@ -341,12 +296,8 @@ public:
   const_iterator begin() const { return const_iterator(&_seq.elements[0]); }
   const_iterator cbegin() const { return const_iterator(&_seq.elements[0]); }
   iterator end() { return iterator(&_seq.elements[0] + size()); }
-  const_iterator end() const {
-    return const_iterator(&_seq.elements[0] + size());
-  }
-  const_iterator cend() const {
-    return const_iterator(&_seq.elements[0] + size());
-  }
+  const_iterator end() const { return const_iterator(&_seq.elements[0] + size()); }
+  const_iterator cend() const { return const_iterator(&_seq.elements[0] + size()); }
   // those (T&) casts are a bit unsafe
   // but needed when overriding CBVar with utility classes
   T &operator[](int index) { return (T &)_seq.elements[index]; }
@@ -364,26 +315,21 @@ public:
   operator seq_type() const { return _seq; }
 };
 
-using IterableSeq = IterableArray<CBSeq, CBVar, &Core::seqResize,
-                                  &Core::seqFree, &Core::seqPush>;
+using IterableSeq = IterableArray<CBSeq, CBVar, &Core::seqResize, &Core::seqFree, &Core::seqPush>;
 using IterableExposedInfo =
-    IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize,
-                  &Core::expTypesFree, &Core::expTypesPush>;
+    IterableArray<CBExposedTypesInfo, CBExposedTypeInfo, &Core::expTypesResize, &Core::expTypesFree, &Core::expTypesPush>;
 
 template <typename E> class EnumInfo : public TEnumInfo<Core, E> {
 public:
-  EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
-      : TEnumInfo<Core, E>(name, vendorId, enumId) {}
+  EnumInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<Core, E>(name, vendorId, enumId) {}
 };
 
 template <typename E> class ObjectVar : public TObjectVar<Core, E> {
 public:
-  ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
-      : TObjectVar<Core, E>(name, vendorId, objectId) {}
+  ObjectVar(const char *name, int32_t vendorId, int32_t objectId) : TObjectVar<Core, E>(name, vendorId, objectId) {}
 };
 
-inline void registerBlock(const char *fullName, CBBlockConstructor constructor,
-                          std::string_view _) {
+inline void registerBlock(const char *fullName, CBBlockConstructor constructor, std::string_view _) {
   Core::registerBlock(fullName, constructor);
 }
 }; // namespace chainblocks

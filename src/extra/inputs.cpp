@@ -11,20 +11,16 @@ struct Base {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
-      "GFX.CurrentWindow", CBCCSTR("The required SDL window."),
-      BGFX::BaseConsumer::windowType);
+  static inline CBExposedTypeInfo ContextInfo =
+      ExposedInfo::Variable("GFX.CurrentWindow", CBCCSTR("The required SDL window."), BGFX::BaseConsumer::windowType);
   static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
 
-  CBExposedTypesInfo requiredVariables() {
-    return CBExposedTypesInfo(requiredInfo);
-  }
+  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(requiredInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.onWorkerThread) {
-      throw ComposeError(
-          "Inputs Blocks cannot be used on a worker thread (e.g. "
-          "within an Await block)");
+      throw ComposeError("Inputs Blocks cannot be used on a worker thread (e.g. "
+                         "within an Await block)");
     }
     return CoreInfo::NoneType; // on purpose to trigger assertion during
                                // validation
@@ -64,8 +60,7 @@ struct MouseDelta : public Base {
 
   void warmup(CBContext *context) {
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-    const auto window =
-        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
     _windowId = SDL_GetWindowID(window);
     SDL_GetWindowSize(window, &_width, &_height);
   }
@@ -80,13 +75,10 @@ struct MouseDelta : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     for (const auto &event : BGFX::Context::sdlEvents) {
       if (event.type == SDL_MOUSEMOTION && event.motion.windowID == _windowId) {
-        return Var(float(event.motion.xrel) / float(_width),
-                   float(event.motion.yrel) / float(_height));
-      } else if (event.type == SDL_WINDOWEVENT &&
-                 event.window.event == SDL_WINDOWEVENT_RESIZED &&
+        return Var(float(event.motion.xrel) / float(_width), float(event.motion.yrel) / float(_height));
+      } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED &&
                  event.window.windowID == _windowId) {
-        const auto window =
-            reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+        const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
         SDL_GetWindowSize(window, &_width, &_height);
       }
     }
@@ -111,8 +103,7 @@ struct MousePos : public Base {
 
   void warmup(CBContext *context) {
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-    const auto window =
-        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
     _windowId = SDL_GetWindowID(window);
     SDL_GetWindowSize(window, &_width, &_height);
   }
@@ -126,11 +117,8 @@ struct MousePos : public Base {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     for (const auto &event : BGFX::Context::sdlEvents) {
-      if (event.type == SDL_WINDOWEVENT &&
-          event.window.event == SDL_WINDOWEVENT_RESIZED &&
-          event.window.windowID == _windowId) {
-        const auto window =
-            reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+      if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == _windowId) {
+        const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
         SDL_GetWindowSize(window, &_width, &_height);
       }
     }
@@ -159,8 +147,7 @@ struct WindowSize : public Base {
 
   void warmup(CBContext *context) {
     _sdlWinVar = referenceVariable(context, "GFX.CurrentWindow");
-    const auto window =
-        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
     _windowId = SDL_GetWindowID(window);
     SDL_GetWindowSize(window, &_width, &_height);
   }
@@ -174,11 +161,8 @@ struct WindowSize : public Base {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     for (const auto &event : BGFX::Context::sdlEvents) {
-      if (event.type == SDL_WINDOWEVENT &&
-          event.window.event == SDL_WINDOWEVENT_RESIZED &&
-          event.window.windowID == _windowId) {
-        const auto window =
-            reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+      if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == _windowId) {
+        const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
         SDL_GetWindowSize(window, &_width, &_height);
       }
     }
@@ -197,15 +181,9 @@ struct Mouse : public Base {
   CBVar *_sdlWinVar{nullptr};
 
   static inline Parameters params{
-      {"Hidden",
-       CBCCSTR("If the cursor should be hidden."),
-       {CoreInfo::BoolType}},
-      {"Capture",
-       CBCCSTR("If the mouse should be confined to the application window."),
-       {CoreInfo::BoolType}},
-      {"Relative",
-       CBCCSTR("If the mouse should only report relative movements."),
-       {CoreInfo::BoolType}}};
+      {"Hidden", CBCCSTR("If the cursor should be hidden."), {CoreInfo::BoolType}},
+      {"Capture", CBCCSTR("If the mouse should be confined to the application window."), {CoreInfo::BoolType}},
+      {"Relative", CBCCSTR("If the mouse should only report relative movements."), {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -275,8 +253,7 @@ struct Mouse : public Base {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    const auto window =
-        reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
+    const auto window = reinterpret_cast<SDL_Window *>(_sdlWinVar->payload.objectValue);
 
     const auto hidden = _hidden.get().payload.boolValue;
     if (hidden != _isHidden) {
@@ -304,10 +281,7 @@ struct Mouse : public Base {
 template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
 
   static inline Parameters params{
-      {"Left",
-       CBCCSTR(
-           "The action to perform when the left mouse button is pressed down."),
-       {CoreInfo::BlocksOrNone}},
+      {"Left", CBCCSTR("The action to perform when the left mouse button is pressed down."), {CoreInfo::BlocksOrNone}},
       {"Right",
        CBCCSTR("The action to perform when the right mouse button is pressed "
                "down."),
@@ -461,8 +435,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
 
   static SDL_Keycode keyStringToKeyCode(const std::string &str) {
     if (str.length() == 1) {
-      if ((str[0] >= ' ' && str[0] <= '@') ||
-          (str[0] >= '[' && str[0] <= 'z')) {
+      if ((str[0] >= ' ' && str[0] <= '@') || (str[0] >= '[' && str[0] <= 'z')) {
         return SDL_Keycode(str[0]);
       }
       if (str[0] >= 'A' && str[0] <= 'Z') {

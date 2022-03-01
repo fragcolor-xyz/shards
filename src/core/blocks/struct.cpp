@@ -73,23 +73,7 @@ private:
 // e.g i32 f32 b i8[256]
 
 struct StructBase {
-  enum Tags {
-    i8Array,
-    i16Array,
-    i32Array,
-    i64Array,
-    f32Array,
-    f64Array,
-    i8,
-    i16,
-    i32,
-    i64,
-    f32,
-    f64,
-    Bool,
-    Pointer,
-    String
-  };
+  enum Tags { i8Array, i16Array, i32Array, i64Array, f32Array, f64Array, i8, i16, i32, i64, f32, f64, Bool, Pointer, String };
 
   struct Desc {
     size_t arrlen;
@@ -117,10 +101,8 @@ struct StructBase {
 
   static inline std::regex arrlenx{"^.*\\[(\\d+)\\]$"};
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Definition",
-      CBCCSTR("A string defining the struct e.g. \"i32 f32 b i8[256]\"."),
-      CoreInfo::StringType));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Definition", CBCCSTR("A string defining the struct e.g. \"i32 f32 b i8[256]\"."), CoreInfo::StringType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -217,8 +199,7 @@ struct Pack : public StructBase {
 
   void ensureType(const CBVar &input, CBType wantedType) {
     if (input.valueType != wantedType) {
-      throw ActivationError("Expected " + type2Name(wantedType) +
-                            " instead was: " + type2Name(input.valueType));
+      throw ActivationError("Expected " + type2Name(wantedType) + " instead was: " + type2Name(input.valueType));
     }
   }
 
@@ -228,25 +209,21 @@ struct Pack : public StructBase {
   }
 
   template <typename T, CBType CBT, typename CT>
-  void writeMany(const CBSeq &input, CT CBVarPayload::*value, size_t offset,
-                 size_t len) {
+  void writeMany(const CBSeq &input, CT CBVarPayload::*value, size_t offset, size_t len) {
     if (len != (size_t)input.len) {
-      throw ActivationError("Expected " + std::to_string(len) +
-                            " size sequence as value");
+      throw ActivationError("Expected " + std::to_string(len) + " size sequence as value");
     }
 
     for (size_t i = 0; i < len; i++) {
       auto &val = input.elements[i];
       ensureType(val, CBT);
-      write<T, decltype(val.payload.*value)>(val.payload.*value,
-                                             offset + (i * sizeof(T)));
+      write<T, decltype(val.payload.*value)>(val.payload.*value, offset + (i * sizeof(T)));
     }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (_members.size() != (size_t)input.payload.seqValue.len) {
-      throw ActivationError("Expected " + std::to_string(_members.size()) +
-                            " members as input.");
+      throw ActivationError("Expected " + std::to_string(_members.size()) + " members as input.");
     }
 
     auto idx = 0;
@@ -255,9 +232,7 @@ struct Pack : public StructBase {
       switch (member.tag) {
       case Tags::i8Array:
         ensureType(seq.elements[idx], Seq);
-        writeMany<int8_t, Int>(seq.elements[idx].payload.seqValue,
-                               &CBVarPayload::intValue, member.offset,
-                               member.arrlen);
+        writeMany<int8_t, Int>(seq.elements[idx].payload.seqValue, &CBVarPayload::intValue, member.offset, member.arrlen);
         break;
       case Tags::i8:
         ensureType(seq.elements[idx], Int);
@@ -265,9 +240,7 @@ struct Pack : public StructBase {
         break;
       case Tags::i16Array:
         ensureType(seq.elements[idx], Seq);
-        writeMany<int16_t, Int>(seq.elements[idx].payload.seqValue,
-                                &CBVarPayload::intValue, member.offset,
-                                member.arrlen);
+        writeMany<int16_t, Int>(seq.elements[idx].payload.seqValue, &CBVarPayload::intValue, member.offset, member.arrlen);
         break;
       case Tags::i16:
         ensureType(seq.elements[idx], Int);
@@ -275,9 +248,7 @@ struct Pack : public StructBase {
         break;
       case Tags::i32Array:
         ensureType(seq.elements[idx], Seq);
-        writeMany<int32_t, Int>(seq.elements[idx].payload.seqValue,
-                                &CBVarPayload::intValue, member.offset,
-                                member.arrlen);
+        writeMany<int32_t, Int>(seq.elements[idx].payload.seqValue, &CBVarPayload::intValue, member.offset, member.arrlen);
         break;
       case Tags::i32:
         ensureType(seq.elements[idx], Int);
@@ -285,9 +256,7 @@ struct Pack : public StructBase {
         break;
       case Tags::i64Array:
         ensureType(seq.elements[idx], Seq);
-        writeMany<int64_t, Int>(seq.elements[idx].payload.seqValue,
-                                &CBVarPayload::intValue, member.offset,
-                                member.arrlen);
+        writeMany<int64_t, Int>(seq.elements[idx].payload.seqValue, &CBVarPayload::intValue, member.offset, member.arrlen);
         break;
       case Tags::i64:
         ensureType(seq.elements[idx], Int);
@@ -295,9 +264,7 @@ struct Pack : public StructBase {
         break;
       case Tags::f32Array:
         ensureType(seq.elements[idx], Seq);
-        writeMany<float, Float>(seq.elements[idx].payload.seqValue,
-                                &CBVarPayload::floatValue, member.offset,
-                                member.arrlen);
+        writeMany<float, Float>(seq.elements[idx].payload.seqValue, &CBVarPayload::floatValue, member.offset, member.arrlen);
         break;
       case Tags::f32:
         ensureType(seq.elements[idx], Float);
@@ -305,9 +272,7 @@ struct Pack : public StructBase {
         break;
       case Tags::f64Array:
         ensureType(seq.elements[idx], Seq);
-        writeMany<double, Float>(seq.elements[idx].payload.seqValue,
-                                 &CBVarPayload::floatValue, member.offset,
-                                 member.arrlen);
+        writeMany<double, Float>(seq.elements[idx].payload.seqValue, &CBVarPayload::floatValue, member.offset, member.arrlen);
         break;
       case Tags::f64:
         ensureType(seq.elements[idx], Float);
@@ -323,8 +288,7 @@ struct Pack : public StructBase {
         break;
       case Tags::String:
         ensureType(seq.elements[idx], CBType::String);
-        write<const char *>(seq.elements[idx].payload.stringValue,
-                            member.offset);
+        write<const char *>(seq.elements[idx].payload.stringValue, member.offset);
       }
       idx++;
     }
@@ -383,8 +347,7 @@ struct Unpack : public StructBase {
       case Tags::i32Array:
       case Tags::i64Array:
         _output.elements[idx].valueType = Seq;
-        chainblocks::arrayResize(_output.elements[idx].payload.seqValue,
-                                 member.arrlen);
+        chainblocks::arrayResize(_output.elements[idx].payload.seqValue, member.arrlen);
         for (size_t i = 0; i < member.arrlen; i++) {
           arr.elements[i].valueType = Int;
         }
@@ -398,8 +361,7 @@ struct Unpack : public StructBase {
       case Tags::f32Array:
       case Tags::f64Array:
         _output.elements[idx].valueType = Seq;
-        chainblocks::arrayResize(_output.elements[idx].payload.seqValue,
-                                 member.arrlen);
+        chainblocks::arrayResize(_output.elements[idx].payload.seqValue, member.arrlen);
         for (size_t i = 0; i < member.arrlen; i++) {
           arr.elements[i].valueType = Float;
         }
@@ -422,8 +384,7 @@ struct Unpack : public StructBase {
     }
   }
 
-  template <typename T, typename CT>
-  void read(CT &output, const CBVar &input, size_t offset) {
+  template <typename T, typename CT> void read(CT &output, const CBVar &input, size_t offset) {
     T x;
     memcpy(&x, input.payload.bytesValue + offset, sizeof(T));
     output = static_cast<CT>(x);
@@ -436,75 +397,60 @@ struct Unpack : public StructBase {
       switch (member.tag) {
       case Tags::i8Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int8_t>(arr.elements[i].payload.intValue, input,
-                       member.offset + i);
+          read<int8_t>(arr.elements[i].payload.intValue, input, member.offset + i);
         }
         break;
       case Tags::i8:
-        read<int8_t>(_output.elements[idx].payload.intValue, input,
-                     member.offset);
+        read<int8_t>(_output.elements[idx].payload.intValue, input, member.offset);
         break;
       case Tags::i16Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int16_t>(arr.elements[i].payload.intValue, input,
-                        member.offset + (2 * i));
+          read<int16_t>(arr.elements[i].payload.intValue, input, member.offset + (2 * i));
         }
         break;
       case Tags::i16:
-        read<int16_t>(_output.elements[idx].payload.intValue, input,
-                      member.offset);
+        read<int16_t>(_output.elements[idx].payload.intValue, input, member.offset);
         break;
       case Tags::i32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int32_t>(arr.elements[i].payload.intValue, input,
-                        member.offset + (4 * i));
+          read<int32_t>(arr.elements[i].payload.intValue, input, member.offset + (4 * i));
         }
         break;
       case Tags::i32:
-        read<int32_t>(_output.elements[idx].payload.intValue, input,
-                      member.offset);
+        read<int32_t>(_output.elements[idx].payload.intValue, input, member.offset);
         break;
       case Tags::i64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<int64_t>(arr.elements[i].payload.intValue, input,
-                        member.offset + (8 * i));
+          read<int64_t>(arr.elements[i].payload.intValue, input, member.offset + (8 * i));
         }
         break;
       case Tags::i64:
-        read<int64_t>(_output.elements[idx].payload.intValue, input,
-                      member.offset);
+        read<int64_t>(_output.elements[idx].payload.intValue, input, member.offset);
         break;
       case Tags::f32Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<float>(arr.elements[i].payload.floatValue, input,
-                      member.offset + (4 * i));
+          read<float>(arr.elements[i].payload.floatValue, input, member.offset + (4 * i));
         }
         break;
       case Tags::f32:
-        read<float>(_output.elements[idx].payload.floatValue, input,
-                    member.offset);
+        read<float>(_output.elements[idx].payload.floatValue, input, member.offset);
         break;
       case Tags::f64Array:
         for (size_t i = 0; i < member.arrlen; i++) {
-          read<double>(arr.elements[i].payload.floatValue, input,
-                       member.offset + (8 * i));
+          read<double>(arr.elements[i].payload.floatValue, input, member.offset + (8 * i));
         }
         break;
       case Tags::f64:
-        read<double>(_output.elements[idx].payload.floatValue, input,
-                     member.offset);
+        read<double>(_output.elements[idx].payload.floatValue, input, member.offset);
         break;
       case Tags::Bool:
-        read<bool>(_output.elements[idx].payload.boolValue, input,
-                   member.offset);
+        read<bool>(_output.elements[idx].payload.boolValue, input, member.offset);
         break;
       case Tags::Pointer:
-        read<uintptr_t>(_output.elements[idx].payload.intValue, input,
-                        member.offset);
+        read<uintptr_t>(_output.elements[idx].payload.intValue, input, member.offset);
         break;
       case Tags::String:
-        read<const char *>(_output.elements[idx].payload.stringValue, input,
-                           member.offset);
+        read<const char *>(_output.elements[idx].payload.stringValue, input, member.offset);
         break;
       }
       idx++;

@@ -26,9 +26,7 @@ using namespace chainblocks;
 struct Writer {
   std::vector<uint8_t> &_buffer;
   Writer(std::vector<uint8_t> &stream) : _buffer(stream) {}
-  void operator()(const uint8_t *buf, size_t size) {
-    _buffer.insert(_buffer.end(), buf, buf + size);
-  }
+  void operator()(const uint8_t *buf, size_t size) { _buffer.insert(_buffer.end(), buf, buf + size); }
 };
 
 struct Reader {
@@ -45,18 +43,18 @@ struct Reader {
   }
 };
 
-#define TEST_SERIALIZATION(_source_)                                           \
-  Serialization ws;                                                            \
-  std::vector<uint8_t> buffer;                                                 \
-  Writer w{buffer};                                                            \
-  ws.serialize(_source_, w);                                                   \
-  Var serialized(buffer.data(), buffer.size());                                \
-  CBVar output{};                                                              \
-  Serialization rs;                                                            \
-  Reader r(serialized);                                                        \
-  rs.reset();                                                                  \
-  rs.deserialize(r, output);                                                   \
-  REQUIRE(_source_ == output);                                                 \
+#define TEST_SERIALIZATION(_source_)            \
+  Serialization ws;                             \
+  std::vector<uint8_t> buffer;                  \
+  Writer w{buffer};                             \
+  ws.serialize(_source_, w);                    \
+  Var serialized(buffer.data(), buffer.size()); \
+  CBVar output{};                               \
+  Serialization rs;                             \
+  Reader r(serialized);                         \
+  rs.reset();                                   \
+  rs.deserialize(r, output);                    \
+  REQUIRE(_source_ == output);                  \
   rs.varFree(output)
 
 TEST_CASE("CBType-type2Name", "[ops]") {
@@ -151,12 +149,9 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     std::vector<float> b1(1024);
     std::vector<float> b2(1024);
     std::vector<float> b3(1024);
-    CBVar x{.payload = {.audioValue = CBAudio{44100, 512, 2, b1.data()}},
-            .valueType = CBType::Audio};
-    CBVar y{.payload = {.audioValue = CBAudio{44100, 512, 2, b2.data()}},
-            .valueType = CBType::Audio};
-    CBVar z{.payload = {.audioValue = CBAudio{44100, 1024, 1, b3.data()}},
-            .valueType = CBType::Audio};
+    CBVar x{.payload = {.audioValue = CBAudio{44100, 512, 2, b1.data()}}, .valueType = CBType::Audio};
+    CBVar y{.payload = {.audioValue = CBAudio{44100, 512, 2, b2.data()}}, .valueType = CBType::Audio};
+    CBVar z{.payload = {.audioValue = CBAudio{44100, 1024, 1, b3.data()}}, .valueType = CBType::Audio};
     auto empty = Var::Empty;
     REQUIRE(x == y);
     REQUIRE(x != z);
@@ -233,36 +228,36 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     TEST_SERIALIZATION(f1);
   }
 
-#define CBVECTOR_TESTS                                                         \
-  REQUIRE(f1 == f2);                                                           \
-  REQUIRE(v1 == v2);                                                           \
-  REQUIRE(f1 != f3);                                                           \
-  REQUIRE(v1 != v3);                                                           \
-  REQUIRE(f1 != i1);                                                           \
-  REQUIRE_THROWS(f1 < i1);                                                     \
-  REQUIRE_THROWS(f1 <= i1);                                                    \
-  REQUIRE(f1 <= f2);                                                           \
-  REQUIRE(v1 <= v2);                                                           \
-  REQUIRE_FALSE(f3 <= f1);                                                     \
-  REQUIRE_FALSE(v3 <= v1);                                                     \
-  REQUIRE(f1 < f4);                                                            \
-  REQUIRE(v1 < v4);                                                            \
-  REQUIRE(f1 >= f2);                                                           \
-  REQUIRE(v1 >= v2);                                                           \
-  REQUIRE(f1 < f3);                                                            \
-  REQUIRE(v1 < v3);                                                            \
-  REQUIRE((f3 > f1 and f3 > f2));                                              \
-  REQUIRE((v3 > v1 and v3 > v2));                                              \
-  REQUIRE((f4 >= f1 and f4 >= f2));                                            \
-  REQUIRE((v4 >= v1 and v4 >= v2));                                            \
-  REQUIRE_FALSE(f3 < f1);                                                      \
-  REQUIRE_FALSE(v3 < v1);                                                      \
-  auto hash1 = hash(f1);                                                       \
-  auto hash2 = hash(f2);                                                       \
-  auto hash3 = hash(f3);                                                       \
-  REQUIRE(hash1 == hash2);                                                     \
-  REQUIRE_FALSE(hash1 == hash3);                                               \
-  CBLOG_INFO(f1);                                                              \
+#define CBVECTOR_TESTS              \
+  REQUIRE(f1 == f2);                \
+  REQUIRE(v1 == v2);                \
+  REQUIRE(f1 != f3);                \
+  REQUIRE(v1 != v3);                \
+  REQUIRE(f1 != i1);                \
+  REQUIRE_THROWS(f1 < i1);          \
+  REQUIRE_THROWS(f1 <= i1);         \
+  REQUIRE(f1 <= f2);                \
+  REQUIRE(v1 <= v2);                \
+  REQUIRE_FALSE(f3 <= f1);          \
+  REQUIRE_FALSE(v3 <= v1);          \
+  REQUIRE(f1 < f4);                 \
+  REQUIRE(v1 < v4);                 \
+  REQUIRE(f1 >= f2);                \
+  REQUIRE(v1 >= v2);                \
+  REQUIRE(f1 < f3);                 \
+  REQUIRE(v1 < v3);                 \
+  REQUIRE((f3 > f1 and f3 > f2));   \
+  REQUIRE((v3 > v1 and v3 > v2));   \
+  REQUIRE((f4 >= f1 and f4 >= f2)); \
+  REQUIRE((v4 >= v1 and v4 >= v2)); \
+  REQUIRE_FALSE(f3 < f1);           \
+  REQUIRE_FALSE(v3 < v1);           \
+  auto hash1 = hash(f1);            \
+  auto hash2 = hash(f2);            \
+  auto hash3 = hash(f3);            \
+  REQUIRE(hash1 == hash2);          \
+  REQUIRE_FALSE(hash1 == hash3);    \
+  CBLOG_INFO(f1);                   \
   TEST_SERIALIZATION(f1)
 
   SECTION("Float2") {
@@ -795,35 +790,35 @@ TEST_CASE("VarPayload") {
   }
 }
 
-#define SET_TABLE_COMMON_TESTS                                                 \
-  CBInstanceData data{};                                                       \
-  auto hash1 = hash(vxx);                                                      \
-  auto hash2 = hash(vx);                                                       \
-  auto hash3 = hash(vyy);                                                      \
-  REQUIRE(hash1 == hash2);                                                     \
-  REQUIRE(hash1 == hash3);                                                     \
-  auto typeHash1 = deriveTypeHash(vxx);                                        \
-  auto typeInfo1 = deriveTypeInfo(vxx, data);                                  \
-  auto typeInfo2 = deriveTypeInfo(vx, data);                                   \
-  auto typeInfo3 = deriveTypeInfo(Var::Empty, data);                           \
-  REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);                             \
-  auto stypeHash = std::hash<CBTypeInfo>()(typeInfo1);                         \
-  REQUIRE(stypeHash != 0);                                                     \
-  REQUIRE(typeInfo1 == typeInfo2);                                             \
-  REQUIRE(typeInfo1 != typeInfo3);                                             \
-  freeDerivedInfo(typeInfo1);                                                  \
-  freeDerivedInfo(typeInfo2);                                                  \
-  freeDerivedInfo(typeInfo3);                                                  \
-  auto typeHash2 = deriveTypeHash(vx);                                         \
-  auto typeHash3 = deriveTypeHash(vyy);                                        \
-  CBLOG_INFO("{} - {} - {}", typeHash1, typeHash2, typeHash3);                 \
-  REQUIRE(typeHash1 == typeHash2);                                             \
-  REQUIRE(typeHash1 == typeHash3);                                             \
-  vyy = vz;                                                                    \
-  REQUIRE(vyy != vy);                                                          \
-  auto typeHash4 = deriveTypeHash(vyy);                                        \
-  REQUIRE(typeHash4 == typeHash3);                                             \
-  auto typeHash5 = deriveTypeHash(vz);                                         \
+#define SET_TABLE_COMMON_TESTS                                 \
+  CBInstanceData data{};                                       \
+  auto hash1 = hash(vxx);                                      \
+  auto hash2 = hash(vx);                                       \
+  auto hash3 = hash(vyy);                                      \
+  REQUIRE(hash1 == hash2);                                     \
+  REQUIRE(hash1 == hash3);                                     \
+  auto typeHash1 = deriveTypeHash(vxx);                        \
+  auto typeInfo1 = deriveTypeInfo(vxx, data);                  \
+  auto typeInfo2 = deriveTypeInfo(vx, data);                   \
+  auto typeInfo3 = deriveTypeInfo(Var::Empty, data);           \
+  REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);             \
+  auto stypeHash = std::hash<CBTypeInfo>()(typeInfo1);         \
+  REQUIRE(stypeHash != 0);                                     \
+  REQUIRE(typeInfo1 == typeInfo2);                             \
+  REQUIRE(typeInfo1 != typeInfo3);                             \
+  freeDerivedInfo(typeInfo1);                                  \
+  freeDerivedInfo(typeInfo2);                                  \
+  freeDerivedInfo(typeInfo3);                                  \
+  auto typeHash2 = deriveTypeHash(vx);                         \
+  auto typeHash3 = deriveTypeHash(vyy);                        \
+  CBLOG_INFO("{} - {} - {}", typeHash1, typeHash2, typeHash3); \
+  REQUIRE(typeHash1 == typeHash2);                             \
+  REQUIRE(typeHash1 == typeHash3);                             \
+  vyy = vz;                                                    \
+  REQUIRE(vyy != vy);                                          \
+  auto typeHash4 = deriveTypeHash(vyy);                        \
+  REQUIRE(typeHash4 == typeHash3);                             \
+  auto typeHash5 = deriveTypeHash(vz);                         \
   REQUIRE(typeHash4 == typeHash5)
 
 TEST_CASE("CBMap") {
@@ -935,12 +930,7 @@ TEST_CASE("CBHashSet") {
 
 TEST_CASE("CXX-Chain-DSL") {
   // TODO, improve this
-  auto chain = chainblocks::Chain("test-chain")
-                   .looped(true)
-                   .let(1)
-                   .block("Log")
-                   .block("Math.Add", 2)
-                   .block("Assert.Is", 3, true);
+  auto chain = chainblocks::Chain("test-chain").looped(true).let(1).block("Log").block("Math.Add", 2).block("Assert.Is", 3, true);
   assert(chain->blocks.size() == 4);
 }
 
@@ -996,8 +986,7 @@ TEST_CASE("DynamicArray") {
 
 TEST_CASE("Type") {
   SECTION("TableOf") {
-    Types VerticesSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type,
-                            CoreInfo::Float3Type, CoreInfo::ColorType}};
+    Types VerticesSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType}};
     Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
     Types IndicesSeqTypes{{
         CoreInfo::IntType,  // Triangle strip
@@ -1065,10 +1054,8 @@ TEST_CASE("linalg compatibility") {
   static_assert(sizeof(linalg::aliases::float4) == sizeof(Vec4));
   Var a{1.0, 2.0, 3.0, 4.0};
   Var b{4.0, 3.0, 2.0, 1.0};
-  const linalg::aliases::float4 *va =
-      reinterpret_cast<linalg::aliases::float4 *>(&a.payload.float4Value);
-  const linalg::aliases::float4 *vb =
-      reinterpret_cast<linalg::aliases::float4 *>(&b.payload.float4Value);
+  const linalg::aliases::float4 *va = reinterpret_cast<linalg::aliases::float4 *>(&a.payload.float4Value);
+  const linalg::aliases::float4 *vb = reinterpret_cast<linalg::aliases::float4 *>(&b.payload.float4Value);
   auto c = (*va) + (*vb);
   linalg::aliases::float4 rc{5.0, 5.0, 5.0, 5.0};
   REQUIRE(c == rc);
@@ -1076,16 +1063,10 @@ TEST_CASE("linalg compatibility") {
   rc = {4.0, 6.0, 6.0, 4.0};
   REQUIRE(c == rc);
 
-  std::vector<Var> ad{Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0),
-                      Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0)};
+  std::vector<Var> ad{Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0), Var(1.0, 2.0, 3.0, 4.0)};
   Var d(ad);
-  const linalg::aliases::float4x4 *md =
-      reinterpret_cast<linalg::aliases::float4x4 *>(
-          &d.payload.seqValue.elements[0]);
-  linalg::aliases::float4x4 rd{{1.0, 2.0, 3.0, 4.0},
-                               {1.0, 2.0, 3.0, 4.0},
-                               {1.0, 2.0, 3.0, 4.0},
-                               {1.0, 2.0, 3.0, 4.0}};
+  const linalg::aliases::float4x4 *md = reinterpret_cast<linalg::aliases::float4x4 *>(&d.payload.seqValue.elements[0]);
+  linalg::aliases::float4x4 rd{{1.0, 2.0, 3.0, 4.0}, {1.0, 2.0, 3.0, 4.0}, {1.0, 2.0, 3.0, 4.0}, {1.0, 2.0, 3.0, 4.0}};
   REQUIRE((*md) == rd);
 
   Mat4 sm{rd};
@@ -1113,9 +1094,7 @@ struct GamePadTable : public TableVar {
 
 struct HandTable : public GamePadTable {
   static constexpr uint32_t HandednessCC = 'xrha';
-  static inline Type HandEnumType{
-      {CBType::Enum,
-       {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
+  static inline Type HandEnumType{{CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
   static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
 
   HandTable()
@@ -1213,22 +1192,18 @@ TEST_CASE("Number Types") {
 
   double d = 3.14;
   float f = 0.f;
-  typeLookup.getConversion(NumberType::Float64, NumberType::Float32)
-      ->convertOne(&d, &f);
+  typeLookup.getConversion(NumberType::Float64, NumberType::Float32)->convertOne(&d, &f);
   CHECK(f == 3.14f);
 
   int32_t i32 = 0;
-  typeLookup.getConversion(NumberType::Float32, NumberType::Int32)
-      ->convertOne(&f, &i32);
+  typeLookup.getConversion(NumberType::Float32, NumberType::Int32)->convertOne(&f, &i32);
   CHECK(i32 == 3);
 
   uint8_t u8 = 0;
-  typeLookup.getConversion(NumberType::Float32, NumberType::UInt8)
-      ->convertOne(&f, &u8);
+  typeLookup.getConversion(NumberType::Float32, NumberType::UInt8)->convertOne(&f, &u8);
   CHECK(u8 == 3);
 
-  typeLookup.getConversion(NumberType::UInt8, NumberType::Float64)
-      ->convertOne(&u8, &d);
+  typeLookup.getConversion(NumberType::UInt8, NumberType::Float64)->convertOne(&u8, &d);
   CHECK(d == 3.0);
 
   SECTION("Vector take") {
@@ -1237,17 +1212,15 @@ TEST_CASE("Number Types") {
 
     std::vector<Var> vec{Var(0)};
     Var seq = Var(vec);
-    CHECK_NOTHROW(
-        typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
-            ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
+    CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+                      ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)1.1f);
     CHECK(float2v[1] == 0.0);
 
     vec = {Var(3), Var(1)};
     seq = Var(vec);
-    CHECK_NOTHROW(
-        typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
-            ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
+    CHECK_NOTHROW(typeLookup.getConversion(NumberType::Float32, NumberType::Float64)
+                      ->convertMultipleSeq(float4v, float2v, 4, seq.payload.seqValue));
     CHECK(float2v[0] == (double)4.4f);
     CHECK(float2v[1] == (double)2.2f);
   }
@@ -1260,10 +1233,9 @@ TEST_CASE("Number Types") {
     Var seq = Var(vec);
 
     // Should return false
-    CHECK_THROWS_AS(
-        typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
-            ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue),
-        NumberConversionOutOfRangeEx);
+    CHECK_THROWS_AS(typeLookup.getConversion(NumberType::Float32, NumberType::Float32)
+                        ->convertMultipleSeq(float2v0, float2v1, 2, seq.payload.seqValue),
+                    NumberConversionOutOfRangeEx);
     CHECK(float2v1[0] == 0.f);
     CHECK(float2v1[1] == 0.f);
   }
@@ -1283,16 +1255,14 @@ TEST_CASE("Vector types") {
   }
 
   for (size_t i = 1; i < 4; i++) {
-    const VectorTypeTraits *compatibleType =
-        Typelookup.findCompatibleType(false, i);
+    const VectorTypeTraits *compatibleType = Typelookup.findCompatibleType(false, i);
     CHECK(compatibleType);
     CHECK(compatibleType->dimension >= i);
     CHECK(!compatibleType->isInteger);
   }
 
   for (size_t i = 1; i < 16; i++) {
-    const VectorTypeTraits *compatibleType =
-        Typelookup.findCompatibleType(true, i);
+    const VectorTypeTraits *compatibleType = Typelookup.findCompatibleType(true, i);
     CHECK(compatibleType);
     CHECK(compatibleType->dimension >= i);
     CHECK(compatibleType->isInteger);

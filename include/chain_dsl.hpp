@@ -22,22 +22,18 @@
 #define SetTable(_name, _key) .block("Set", #_name, _key)
 #define PushTable(_name, _key) .block("Push", #_name, _key)
 #define GetTable(_name, _key) block("Get", #_name, _key)
-#define GetTable_Default(_name, _key, _default)                                \
-  block("Get", #_name, _key, false, false, _default)
+#define GetTable_Default(_name, _key, _default) block("Get", #_name, _key, false, false, _default)
 #define Push(_name) .block("Push", #_name)
 #define Take(_idx_or_key) block("Take", _idx_or_key)
 #define Count(_name) block("Count", Var::ContextVar(#_name))
 
-#define If(_condition, _then, _else)                                           \
-  block("If", Blocks()._condition, Blocks()._then, Blocks()._else)
-#define When(_condition, _then)                                                \
-  block("When", Blocks()._condition, Blocks()._then)
+#define If(_condition, _then, _else) block("If", Blocks()._condition, Blocks()._then, Blocks()._else)
+#define When(_condition, _then) block("When", Blocks()._condition, Blocks()._then)
 #define Match()
 #define Is(_value) block("Is", _value)
 #define IsNot(_value) block("IsNot", _value)
 #define Maybe(_do, _else) block("Maybe", Blocks()._do, Blocks()._else)
-#define MaybeSilently(_do, _else)                                              \
-  block("Maybe", Blocks()._do, Blocks()._else, true)
+#define MaybeSilently(_do, _else) block("Maybe", Blocks()._do, Blocks()._else, true)
 
 #define Once(_blocks) block("Once", Blocks()._blocks)
 #define Log() block("Log")
@@ -53,8 +49,7 @@
 
 #define FS_Read_Bytes() block("FS.Read", true)
 #define FS_Read() block("FS.Read")
-#define FS_Write_Overwriting(_contents)                                        \
-  block("FS.Write", Var::ContextVar(#_contents), true)
+#define FS_Write_Overwriting(_contents) block("FS.Write", Var::ContextVar(#_contents), true)
 #ifdef LoadImage
 // mingw defines this
 #undef LoadImage
@@ -63,30 +58,23 @@
 #define ToJson() block("ToJson")
 #define FromJson() block("FromJson")
 
-#define Process_Run(_cmd, _args)                                               \
-  block("Process.Run", _cmd, Var::ContextVar(#_args))
+#define Process_Run(_cmd, _args) block("Process.Run", _cmd, Var::ContextVar(#_args))
 #define Wasm_Run(_cmd, _args) block("Wasm.Run", _cmd, Var::ContextVar(#_args))
 
-#define GFX_MainWindow(_name, _blocks)                                         \
-  block("GFX.MainWindow", _name, Var::Any, Var::Any, Blocks()._blocks)
+#define GFX_MainWindow(_name, _blocks) block("GFX.MainWindow", _name, Var::Any, Var::Any, Blocks()._blocks)
 #define GFX_Camera() block("GFX.Camera")
-#define GFX_Shader(_vs, _fs)                                                   \
-  block("GFX.Shader", Var::ContextVar(#_vs), Var::ContextVar(#_fs))
+#define GFX_Shader(_vs, _fs) block("GFX.Shader", Var::ContextVar(#_vs), Var::ContextVar(#_fs))
 #define GFX_Texture2D() block("GFX.Texture2D")
 #define GFX_CompileShader() block("GFX.CompileShader")
 #define GFX_SetUniform(_name, _elems) block("GFX.SetUniform", _name, _elems)
 
 #define GLTF_Load() block("GLTF.Load")
-#define GLTF_Load_WithTransformBefore(_transform)                              \
-  block("GLTF.Load", Var::Any, Var::Any, _transform)
-#define GLTF_Load_WithTransformAfter(_transform)                               \
-  block("GLTF.Load", Var::Any, Var::Any, Var::Any, _transform)
-#define GLTF_Load_WithTransforms(_before, _after)                              \
-  block("GLTF.Load", Var::Any, Var::Any, _before, _after)
+#define GLTF_Load_WithTransformBefore(_transform) block("GLTF.Load", Var::Any, Var::Any, _transform)
+#define GLTF_Load_WithTransformAfter(_transform) block("GLTF.Load", Var::Any, Var::Any, Var::Any, _transform)
+#define GLTF_Load_WithTransforms(_before, _after) block("GLTF.Load", Var::Any, Var::Any, _before, _after)
 #define GLTF_Load_NoShaders() block("GLTF.Load", Var::Any, false)
 #define GLTF_Draw(_model) block("GLTF.Draw", Var::ContextVar(#_model))
-#define GLTF_Draw_WithMaterials(_model, _mats)                                 \
-  block("GLTF.Draw", Var::ContextVar(#_model), Var::ContextVar(#_mats))
+#define GLTF_Draw_WithMaterials(_model, _mats) block("GLTF.Draw", Var::ContextVar(#_model), Var::ContextVar(#_mats))
 
 #define Brotli_Compress() block("Brotli.Compress")
 #define Brotli_Decompress() block("Brotli.Decompress")

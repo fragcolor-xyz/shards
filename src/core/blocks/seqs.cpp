@@ -110,55 +110,43 @@ struct Flatten {
       chainblocks::arrayPush(outputCache.payload.seqValue, input);
       break;
     case Color: {
-      chainblocks::arrayPush(outputCache.payload.seqValue,
-                             Var(input.payload.colorValue.r));
-      chainblocks::arrayPush(outputCache.payload.seqValue,
-                             Var(input.payload.colorValue.g));
-      chainblocks::arrayPush(outputCache.payload.seqValue,
-                             Var(input.payload.colorValue.b));
-      chainblocks::arrayPush(outputCache.payload.seqValue,
-                             Var(input.payload.colorValue.a));
+      chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.colorValue.r));
+      chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.colorValue.g));
+      chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.colorValue.b));
+      chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.colorValue.a));
       break;
     }
     case Int2:
       for (auto i = 0; i < 2; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.int2Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.int2Value[i]));
       break;
     case Int3:
       for (auto i = 0; i < 3; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.int3Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.int3Value[i]));
       break;
     case Int4:
       for (auto i = 0; i < 4; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.int4Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.int4Value[i]));
       break;
     case Int8:
       for (auto i = 0; i < 8; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.int8Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.int8Value[i]));
       break;
     case Int16:
       for (auto i = 0; i < 16; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.int16Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.int16Value[i]));
       break;
     case Float2:
       for (auto i = 0; i < 2; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.float2Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.float2Value[i]));
       break;
     case Float3:
       for (auto i = 0; i < 3; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.float3Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.float3Value[i]));
       break;
     case Float4:
       for (auto i = 0; i < 4; i++)
-        chainblocks::arrayPush(outputCache.payload.seqValue,
-                               Var(input.payload.float4Value[i]));
+        chainblocks::arrayPush(outputCache.payload.seqValue, Var(input.payload.float4Value[i]));
       break;
     case Seq:
       for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
@@ -219,17 +207,15 @@ struct IndexOf {
       return CoreInfo::IntType;
   }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Item",
-                        CBCCSTR("The item to find the index of from the input, "
-                                "if it's a sequence it will try to match all "
-                                "the items in the sequence, in sequence."),
-                        CoreInfo::AnyType),
-      ParamsInfo::Param(
-          "All",
-          CBCCSTR("If true will return a sequence with all the indices of "
-                  "Item, empty sequence if not found."),
-          CoreInfo::BoolType));
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Item",
+                                                                 CBCCSTR("The item to find the index of from the input, "
+                                                                         "if it's a sequence it will try to match all "
+                                                                         "the items in the sequence, in sequence."),
+                                                                 CoreInfo::AnyType),
+                                               ParamsInfo::Param("All",
+                                                                 CBCCSTR("If true will return a sequence with all the indices of "
+                                                                         "Item, empty sequence if not found."),
+                                                                 CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -267,8 +253,7 @@ struct IndexOf {
 
         auto ci = i;
         for (auto y = 0; y < itemLen; y++, ci++) {
-          if (item.payload.seqValue.elements[y] !=
-              input.payload.seqValue.elements[ci]) {
+          if (item.payload.seqValue.elements[y] != input.payload.seqValue.elements[ci]) {
             goto failed;
           }
         }

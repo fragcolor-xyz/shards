@@ -114,8 +114,7 @@ SHADER_FAST_INLINE float rcpSqrtNewtonRaphson(float inXHalf, float inRcpX) {
 // 2 ALU
 //
 SHADER_FAST_INLINE float fastRcpSqrtNR0(float inX) {
-  float xRcpSqrt =
-      rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR0);
+  float xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR0);
   return xRcpSqrt;
 }
 
@@ -127,8 +126,7 @@ SHADER_FAST_INLINE float fastRcpSqrtNR0(float inX) {
 //
 SHADER_FAST_INLINE float fastRcpSqrtNR1(float inX) {
   float xhalf = 0.5f * inX;
-  float xRcpSqrt =
-      rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR1);
+  float xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR1);
   xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
   return xRcpSqrt;
 }
@@ -141,8 +139,7 @@ SHADER_FAST_INLINE float fastRcpSqrtNR1(float inX) {
 //
 SHADER_FAST_INLINE float fastRcpSqrtNR2(float inX) {
   float xhalf = 0.5f * inX;
-  float xRcpSqrt =
-      rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR2);
+  float xRcpSqrt = rcpSqrtIEEEIntApproximation(inX, IEEE_INT_RCP_SQRT_CONST_NR2);
   xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
   xRcpSqrt = rcpSqrtNewtonRaphson(xhalf, xRcpSqrt);
   return xRcpSqrt;
@@ -202,9 +199,7 @@ SHADER_FAST_INLINE float rcpIEEEIntApproximation(float inX, const int inRcpConst
   return asfloat(x);
 }
 
-SHADER_FAST_INLINE float rcpNewtonRaphson(float inX, float inRcpX) {
-  return inRcpX * (-inRcpX * inX + 2.0f);
-}
+SHADER_FAST_INLINE float rcpNewtonRaphson(float inX, float inRcpX) { return inRcpX * (-inRcpX * inX + 2.0f); }
 
 //
 // Using 0 Newton Raphson iterations

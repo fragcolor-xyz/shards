@@ -21,13 +21,10 @@ namespace eval {
 class EvalException : public std::exception {
 public:
   explicit EvalException(std::string errmsg, int line) : errorMessage(errmsg) {
-    errorMessage = "\nScript evaluation error!\nline: " + std::to_string(line) +
-                   "\nerror: " + errorMessage;
+    errorMessage = "\nScript evaluation error!\nline: " + std::to_string(line) + "\nerror: " + errorMessage;
   }
 
-  [[nodiscard]] const char *what() const noexcept override {
-    return errorMessage.c_str();
-  }
+  [[nodiscard]] const char *what() const noexcept override { return errorMessage.c_str(); }
 
 private:
   std::string errorMessage;
@@ -42,17 +39,13 @@ class CBVarValue;
 class Lambda;
 class Node;
 class BuiltIn;
-using Value = std::variant<CBVarValue, Lambda, Node, form::Form,
-                           std::shared_ptr<BuiltIn>>;
+using Value = std::variant<CBVarValue, Lambda, Node, form::Form, std::shared_ptr<BuiltIn>>;
 
 class ValueBase {
 public:
-  ValueBase(const token::Token &token, const std::shared_ptr<Environment> &env)
-      : _token(token), _owner(env) {}
+  ValueBase(const token::Token &token, const std::shared_ptr<Environment> &env) : _token(token), _owner(env) {}
 
-  virtual std::string pr_str(document &doc) {
-    return ::chainblocks::edn::pr_str(doc, _token);
-  }
+  virtual std::string pr_str(document &doc) { return ::chainblocks::edn::pr_str(doc, _token); }
 
 protected:
   token::Token _token;
@@ -61,8 +54,7 @@ protected:
 
 class CBVarValue : public ValueBase {
 public:
-  CBVarValue(const token::Token &token, const std::shared_ptr<Environment> &env)
-      : ValueBase(token, env), _var({}) {}
+  CBVarValue(const token::Token &token, const std::shared_ptr<Environment> &env) : ValueBase(token, env), _var({}) {}
 
   const CBVar &value() const { return _var; }
 
@@ -72,15 +64,12 @@ protected:
 
 class NilValue : public CBVarValue {
 public:
-  NilValue(const token::Token &token, const std::shared_ptr<Environment> &env)
-      : CBVarValue(token, env) {}
+  NilValue(const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {}
 };
 
 class IntValue : public CBVarValue {
 public:
-  IntValue(int64_t value, const token::Token &token,
-           const std::shared_ptr<Environment> &env)
-      : CBVarValue(token, env) {
+  IntValue(int64_t value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
     _var.valueType = Int;
     _var.payload.intValue = value;
   }
@@ -88,9 +77,7 @@ public:
 
 class FloatValue : public CBVarValue {
 public:
-  FloatValue(double value, const token::Token &token,
-             const std::shared_ptr<Environment> &env)
-      : CBVarValue(token, env) {
+  FloatValue(double value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
     _var.valueType = Float;
     _var.payload.floatValue = value;
   }
@@ -98,8 +85,7 @@ public:
 
 class StringValue : public CBVarValue {
 public:
-  StringValue(std::string value, const token::Token &token,
-              const std::shared_ptr<Environment> &env)
+  StringValue(std::string value, const token::Token &token, const std::shared_ptr<Environment> &env)
       : CBVarValue(token, env), _storage(value) {
     _var.valueType = String;
     _var.payload.stringValue = _storage.c_str();
@@ -111,9 +97,7 @@ private:
 
 class BoolValue : public CBVarValue {
 public:
-  BoolValue(bool value, const token::Token &token,
-            const std::shared_ptr<Environment> &env)
-      : CBVarValue(token, env) {
+  BoolValue(bool value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
     _var.valueType = Bool;
     _var.payload.boolValue = value;
   }
@@ -121,9 +105,7 @@ public:
 
 class BlockValue : public CBVarValue {
 public:
-  BlockValue(CBlockPtr value, const token::Token &token,
-             const std::shared_ptr<Environment> &env)
-      : CBVarValue(token, env) {
+  BlockValue(CBlockPtr value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
     _var.valueType = Block;
     _var.payload.blockValue = value;
     _block = std::shared_ptr<CBlock>(value, [this](CBlock *blk) {
@@ -135,8 +117,7 @@ public:
 
   void consume() {
     if (_var.valueType != Block) {
-      throw EvalException("Attempt to use an already consumed block",
-                          _token.line);
+      throw EvalException("Attempt to use an already consumed block", _token.line);
     }
     _var = {};
   }
@@ -147,8 +128,7 @@ private:
 
 class Lambda : public ValueBase {
 public:
-  Lambda(const std::vector<std::string> &argNames,
-         const form::FormWrapper &body, const token::Token &token,
+  Lambda(const std::vector<std::string> &argNames, const form::FormWrapper &body, const token::Token &token,
          const std::shared_ptr<Environment> &env)
       : ValueBase(token, env), _argNames(argNames), _body(body) {}
 
@@ -162,10 +142,7 @@ private:
 
 class Node : public ValueBase {
 public:
-  Node(const token::Token &token, const std::shared_ptr<Environment> &env)
-      : ValueBase(token, env) {
-    _node = CBNode::make();
-  }
+  Node(const token::Token &token, const std::shared_ptr<Environment> &env) : ValueBase(token, env) { _node = CBNode::make(); }
 
 private:
   std::shared_ptr<CBNode> _node;
@@ -176,8 +153,7 @@ class Program {
 public:
   Program() { _rootEnv = std::make_shared<Environment>(); }
 
-  static Value eval(form::Form ast, std::shared_ptr<Environment> env,
-                    int *line);
+  static Value eval(form::Form ast, std::shared_ptr<Environment> env, int *line);
 
   Value eval(const std::string &code) {
     auto forms = read(code);
@@ -196,8 +172,7 @@ private:
 
 class BuiltIn {
 public:
-  virtual Value apply(const std::shared_ptr<Environment> &env,
-                      std::vector<Value> &args, int line) {
+  virtual Value apply(const std::shared_ptr<Environment> &env, std::vector<Value> &args, int line) {
     CBLOG_FATAL("invalid state");
     return args[0]; // fake value should not happen
   }
@@ -206,8 +181,7 @@ public:
 class First : public BuiltIn {
 public:
   virtual ~First() {}
-  Value apply(const std::shared_ptr<Environment> &env, std::vector<Value> &args,
-              int line) override {
+  Value apply(const std::shared_ptr<Environment> &env, std::vector<Value> &args, int line) override {
     if (args.size() != 1) {
       throw EvalException("first, expected a single argument", line);
     }

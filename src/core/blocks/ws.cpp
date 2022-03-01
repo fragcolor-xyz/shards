@@ -24,12 +24,9 @@ namespace WS {
 constexpr uint32_t WebSocketCC = 'webs';
 
 struct Common {
-  static inline Type WebSocket{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = WebSocketCC}}}};
+  static inline Type WebSocket{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = WebSocketCC}}}};
 
-  static inline Type WebSocketVar{
-      {CBType::ContextVar, {.contextVarTypes = WebSocket}}};
+  static inline Type WebSocketVar{{CBType::ContextVar, {.contextVarTypes = WebSocket}}};
 };
 
 struct Socket {
@@ -37,8 +34,7 @@ struct Socket {
 
   net::io_context ioCtx{};
   ssl::context secureCtx{ssl::context::tlsv12_client};
-  websocket::stream<beast::ssl_stream<tcp::socket>> _ssl_socket{ioCtx,
-                                                                secureCtx};
+  websocket::stream<beast::ssl_stream<tcp::socket>> _ssl_socket{ioCtx, secureCtx};
   websocket::stream<tcp::socket> _socket{ioCtx};
 
   void close() {
@@ -47,8 +43,7 @@ struct Socket {
       try {
         _socket.close(websocket::close_code::normal);
       } catch (const std::exception &ex) {
-        CBLOG_WARNING("Ignored an exception during WebSocket close: {}",
-                      ex.what());
+        CBLOG_WARNING("Ignored an exception during WebSocket close: {}", ex.what());
       }
     }
     if (_ssl_socket.is_open()) {
@@ -56,8 +51,7 @@ struct Socket {
       try {
         _ssl_socket.close(websocket::close_code::normal);
       } catch (const std::exception &ex) {
-        CBLOG_WARNING("Ignored an exception during WebSocket close: {}",
-                      ex.what());
+        CBLOG_WARNING("Ignored an exception during WebSocket close: {}", ex.what());
       }
     }
   }
@@ -84,21 +78,13 @@ struct Client {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Name",
-                              CBCCSTR("The name of this websocket instance."),
-                              {CoreInfo::StringType}},
-                             {"Host",
-                              CBCCSTR("The remote host address or IP."),
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
-                             {"Target",
-                              CBCCSTR("The remote host target path."),
-                              {CoreInfo::StringType, CoreInfo::StringVarType}},
-                             {"Port",
-                              CBCCSTR("The remote host port."),
-                              {CoreInfo::IntType, CoreInfo::IntVarType}},
-                             {"Secure",
-                              CBCCSTR("If the connection should be secured."),
-                              {CoreInfo::BoolType}}};
+    static Parameters params{
+        {"Name", CBCCSTR("The name of this websocket instance."), {CoreInfo::StringType}},
+        {"Host", CBCCSTR("The remote host address or IP."), {CoreInfo::StringType, CoreInfo::StringVarType}},
+        {"Target", CBCCSTR("The remote host target path."), {CoreInfo::StringType, CoreInfo::StringVarType}},
+        {"Port", CBCCSTR("The remote host port."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+        {"Secure", CBCCSTR("If the connection should be secured."), {CoreInfo::BoolType}},
+    };
     return params;
   }
 
@@ -149,9 +135,7 @@ struct Client {
           context,
           [&] {
             boost::system::error_code error;
-            auto resolved = resolver.resolve(
-                host.get().payload.stringValue,
-                std::to_string(port.get().payload.intValue), error);
+            auto resolved = resolver.resolve(host.get().payload.stringValue, std::to_string(port.get().payload.intValue), error);
 
             if (error) {
               throw ActivationError("Failed to resolve host");
@@ -160,9 +144,8 @@ struct Client {
             CBLOG_TRACE("Websocket resolved remote host");
 
             // Make the connection on the IP address we get from a lookup
-            auto ep =
-                ssl ? net::connect(get_lowest_layer(ws->get_secure()), resolved)
-                    : net::connect(ws->get_unsecure().next_layer(), resolved);
+            auto ep = ssl ? net::connect(get_lowest_layer(ws->get_secure()), resolved)
+                          : net::connect(ws->get_unsecure().next_layer(), resolved);
             std::string h = host.get().payload.stringValue;
             h += ':' + std::to_string(ep.port());
 
@@ -170,19 +153,13 @@ struct Client {
 
             // Set a decorator to change the User-Agent of the handshake
             if (ssl) {
-              ws->get_secure().set_option(websocket::stream_base::decorator(
-                  [](websocket::request_type &req) {
-                    req.set(http::field::user_agent,
-                            std::string(BOOST_BEAST_VERSION_STRING) +
-                                " websocket-client-coro");
-                  }));
+              ws->get_secure().set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
+                req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+              }));
             } else {
-              ws->get_unsecure().set_option(websocket::stream_base::decorator(
-                  [](websocket::request_type &req) {
-                    req.set(http::field::user_agent,
-                            std::string(BOOST_BEAST_VERSION_STRING) +
-                                " websocket-client-coro");
-                  }));
+              ws->get_unsecure().set_option(websocket::stream_base::decorator([](websocket::request_type &req) {
+                req.set(http::field::user_agent, std::string(BOOST_BEAST_VERSION_STRING) + " websocket-client-coro");
+              }));
             }
 
             websocket::stream_base::timeout timeouts{
@@ -250,8 +227,7 @@ struct Client {
   }
 
   CBExposedTypesInfo exposedVariables() {
-    _expInfo = CBExposedTypeInfo{
-        name.c_str(), CBCCSTR("The exposed websocket."), Common::WebSocket};
+    _expInfo = CBExposedTypeInfo{name.c_str(), CBCCSTR("The exposed websocket."), Common::WebSocket};
     _expInfo.isProtected = true;
     return CBExposedTypesInfo{&_expInfo, 1, 0};
   }
@@ -289,9 +265,7 @@ struct User {
   CBExposedTypeInfo _expInfo{};
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Socket",
-                              CBCCSTR("The websocket instance variable."),
-                              {Common::WebSocketVar}}};
+    static Parameters params{{"Socket", CBCCSTR("The websocket instance variable."), {Common::WebSocketVar}}};
     return params;
   }
 
@@ -308,15 +282,12 @@ struct User {
 
   void ensureSocket() {
     if (_ws == nullptr)
-      _ws = *reinterpret_cast<std::shared_ptr<Socket> *>(
-          _wsVar.get().payload.objectValue);
+      _ws = *reinterpret_cast<std::shared_ptr<Socket> *>(_wsVar.get().payload.objectValue);
   }
 
   CBExposedTypesInfo requiredVariables() {
     if (_wsVar.isVariable()) {
-      _expInfo = CBExposedTypeInfo{_wsVar.variableName(),
-                                   CBCCSTR("The required websocket."),
-                                   Common::WebSocket};
+      _expInfo = CBExposedTypeInfo{_wsVar.variableName(), CBCCSTR("The required websocket."), Common::WebSocket};
     } else {
       throw ComposeError("No websocket specified.");
     }
@@ -334,8 +305,7 @@ struct WriteString : public User {
     std::string_view payload{};
 
     if (input.payload.stringLen > 0) {
-      payload =
-          std::string_view(input.payload.stringValue, input.payload.stringLen);
+      payload = std::string_view(input.payload.stringValue, input.payload.stringLen);
     } else {
       payload = std::string_view(input.payload.stringValue);
     }

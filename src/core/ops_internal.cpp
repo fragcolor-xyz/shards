@@ -17,36 +17,29 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     os << "Any";
     break;
   case CBType::Object:
-    os << "Object: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
-       << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId
-       << std::dec;
+    os << "Object: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
+       << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId << std::dec;
     break;
   case CBType::Chain: {
     if (var.payload.chainValue) {
       auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-      os << "Chain: 0x" << std::hex
-         << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
+      os << "Chain: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
       os << " name: " << chain->name;
     } else {
       os << "Chain: 0x0";
     }
   } break;
   case CBType::Bytes:
-    os << "Bytes: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.bytesValue)
-       << " size: " << std::dec << var.payload.bytesSize;
+    os << "Bytes: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.bytesValue) << " size: " << std::dec
+       << var.payload.bytesSize;
     break;
   case CBType::Array:
-    os << "Array: 0x" << std::hex
-       << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements)
-       << " size: " << std::dec << var.payload.arrayValue.len
-       << " of: " << type2Name(var.innerType);
+    os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
+       << var.payload.arrayValue.len << " of: " << type2Name(var.innerType);
     break;
   case CBType::Enum:
-    os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x"
-       << var.payload.enumVendorId << " type: 0x" << var.payload.enumTypeId
-       << std::dec;
+    os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
+       << var.payload.enumTypeId << std::dec;
     break;
   case CBType::Bool:
     os << (var.payload.boolValue ? "true" : "false");
@@ -138,8 +131,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     os << ")";
     break;
   case CBType::Color:
-    os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g)
-       << ", " << int(var.payload.colorValue.b) << ", "
+    os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g) << ", " << int(var.payload.colorValue.b) << ", "
        << int(var.payload.colorValue.a);
     break;
   case CBType::Block:
@@ -374,8 +366,7 @@ bool _seqLess(const CBVar &a, const CBVar &b) {
   auto len = std::min(alen, blen);
 
   for (uint32_t i = 0; i < len; i++) {
-    auto c =
-        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
+    auto c = cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
     if (c < 0)
       return true;
     else if (c > 0)
@@ -428,8 +419,7 @@ bool _seqLessEq(const CBVar &a, const CBVar &b) {
   auto len = std::min(alen, blen);
 
   for (uint32_t i = 0; i < len; i++) {
-    auto c =
-        cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
+    auto c = cmp(a.payload.seqValue.elements[i], b.payload.seqValue.elements[i]);
     if (c < 0)
       return true;
     else if (c > 0)
@@ -499,8 +489,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       for (uint32_t i = 0; i < a.seqTypes.len; i++) {
         for (uint32_t j = 0; j < b.seqTypes.len; j++) {
           // consider recursive self a match
-          if (a.seqTypes.elements[i].recursiveSelf ==
-              b.seqTypes.elements[j].recursiveSelf)
+          if (a.seqTypes.elements[i].recursiveSelf == b.seqTypes.elements[j].recursiveSelf)
             goto matched_seq;
           if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
             goto matched_seq;
@@ -526,8 +515,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
       for (uint32_t i = 0; i < a.setTypes.len; i++) {
         for (uint32_t j = 0; j < b.setTypes.len; j++) {
           // consider recursive self a match
-          if (a.setTypes.elements[i].recursiveSelf ==
-              b.setTypes.elements[j].recursiveSelf)
+          if (a.setTypes.elements[i].recursiveSelf == b.setTypes.elements[j].recursiveSelf)
             goto matched_set;
           if (a.setTypes.elements[i] == b.setTypes.elements[j])
             goto matched_set;

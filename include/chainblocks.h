@@ -138,11 +138,11 @@ typedef void *CBArray;
 // But also for compatibility, chainblocks supports 32bit systems
 // So the max array size should be INT32_SIZE indeed
 // Also most of array index operators in c++ use int
-#define CB_ARRAY_DECL(_seq_, _val_)                                            \
-  typedef struct _seq_ {                                                       \
-    _val_ *elements;                                                           \
-    uint32_t len;                                                              \
-    uint32_t cap;                                                              \
+#define CB_ARRAY_DECL(_seq_, _val_) \
+  typedef struct _seq_ {            \
+    _val_ *elements;                \
+    uint32_t len;                   \
+    uint32_t cap;                   \
   } _seq_
 
 // Forward declarations
@@ -299,11 +299,8 @@ struct CBAudio {
 };
 
 // table interface
-typedef void(__cdecl *CBTableGetIterator)(struct CBTable table,
-                                          CBTableIterator *outIter);
-typedef CBBool(__cdecl *CBTableNext)(struct CBTable table,
-                                     CBTableIterator *inIter, CBString *outKey,
-                                     struct CBVar *outValue);
+typedef void(__cdecl *CBTableGetIterator)(struct CBTable table, CBTableIterator *outIter);
+typedef CBBool(__cdecl *CBTableNext)(struct CBTable table, CBTableIterator *inIter, CBString *outKey, struct CBVar *outValue);
 typedef size_t(__cdecl *CBTableSize)(struct CBTable table);
 typedef CBBool(__cdecl *CBTableContains)(struct CBTable table, CBString key);
 typedef struct CBVar *(__cdecl *CBTableAt)(struct CBTable table, CBString key);
@@ -323,10 +320,8 @@ struct CBTableInterface {
 };
 
 // set interface
-typedef void(__cdecl *CBSetGetIterator)(struct CBSet set,
-                                        CBSetIterator *outIter);
-typedef CBBool(__cdecl *CBSetNext)(struct CBSet set, CBSetIterator *inIter,
-                                   struct CBVar *outValue);
+typedef void(__cdecl *CBSetGetIterator)(struct CBSet set, CBSetIterator *outIter);
+typedef CBBool(__cdecl *CBSetNext)(struct CBSet set, CBSetIterator *inIter, struct CBVar *outValue);
 typedef size_t(__cdecl *CBSetSize)(struct CBSet table);
 typedef CBBool(__cdecl *CBSetContains)(struct CBSet table, struct CBVar value);
 typedef CBBool(__cdecl *CBSetInclude)(struct CBSet table, struct CBVar value);
@@ -438,9 +433,7 @@ struct CBTypeInfo {
 
 // if outData is NULL will just give you a valid outLen
 // still must check result is true!
-typedef CBBool(__cdecl *CBObjectSerializer)(CBPointer, uint8_t **outData,
-                                            size_t *outLen,
-                                            CBPointer *customHandle);
+typedef CBBool(__cdecl *CBObjectSerializer)(CBPointer, uint8_t **outData, size_t *outLen, CBPointer *customHandle);
 typedef void(__cdecl *CBObjectSerializerFree)(CBPointer customHandle);
 typedef CBPointer(__cdecl *CBObjectDeserializer)(uint8_t *data, size_t len);
 typedef void(__cdecl *CBObjectReference)(CBPointer);
@@ -646,8 +639,7 @@ struct CBComposeResult {
   bool flowStopper;
 };
 
-typedef void(__cdecl *CBComposeError)(void *privateContext, CBString errorText,
-                                      CBBool warningOnly);
+typedef void(__cdecl *CBComposeError)(void *privateContext, CBString errorText, CBBool warningOnly);
 
 struct CBInstanceData {
   // Used to optimize activations,
@@ -693,21 +685,15 @@ typedef CBExposedTypesInfo(__cdecl *CBExposedVariablesProc)(struct CBlock *);
 typedef CBExposedTypesInfo(__cdecl *CBRequiredVariablesProc)(struct CBlock *);
 
 typedef CBParametersInfo(__cdecl *CBParametersProc)(struct CBlock *);
-typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int,
-                                      const struct CBVar *);
+typedef void(__cdecl *CBSetParamProc)(struct CBlock *, int, const struct CBVar *);
 typedef struct CBVar(__cdecl *CBGetParamProc)(struct CBlock *, int);
 
-typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *,
-                                                  struct CBInstanceData data);
+typedef struct CBTypeInfo(__cdecl *CBComposeProc)(struct CBlock *, struct CBInstanceData data);
 
-typedef void(__cdecl *CBComposedProc)(struct CBlock *,
-                                      const struct CBChain *chain,
-                                      const struct CBComposeResult *data);
+typedef void(__cdecl *CBComposedProc)(struct CBlock *, const struct CBChain *chain, const struct CBComposeResult *data);
 
 // The core of the block processing, avoid syscalls here
-typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *,
-                                              struct CBContext *,
-                                              const struct CBVar *);
+typedef struct CBVar(__cdecl *CBActivateProc)(struct CBlock *, struct CBContext *, const struct CBVar *);
 
 // Generally when stop() is called
 typedef void(__cdecl *CBCleanupProc)(struct CBlock *);
@@ -719,14 +705,11 @@ typedef void(__cdecl *CBNextFrameProc)(struct CBlock *, struct CBContext *);
 // Genetic programming optional mutation procedure
 typedef void(__cdecl *CBMutateProc)(struct CBlock *, struct CBTable options);
 // Genetic programming optional crossover (inplace/3way) procedure
-typedef void(__cdecl *CBCrossoverProc)(struct CBlock *,
-                                       const struct CBVar *state0,
-                                       const struct CBVar *state1);
+typedef void(__cdecl *CBCrossoverProc)(struct CBlock *, const struct CBVar *state0, const struct CBVar *state1);
 
 // Used for serialization, to deep serialize internal block state
 typedef struct CBVar(__cdecl *CBGetStateProc)(struct CBlock *);
-typedef void(__cdecl *CBSetStateProc)(struct CBlock *,
-                                      const struct CBVar *state);
+typedef void(__cdecl *CBSetStateProc)(struct CBlock *, const struct CBVar *state);
 typedef void(__cdecl *CBResetStateProc)(struct CBlock *);
 
 struct CBlock {
@@ -743,11 +726,11 @@ struct CBlock {
 
   // \-- The interface to fill --/
 
-  CBNameProc name; // Returns the name of the block, do not free the string,
-                   // generally const
-  CBHashProc hash; // Returns the hash of the block, useful for serialization
-  CBHelpProc help; // Returns the help text of the block, do not free the
-                   // string, generally const
+  CBNameProc name;             // Returns the name of the block, do not free the string,
+                               // generally const
+  CBHashProc hash;             // Returns the hash of the block, useful for serialization
+  CBHelpProc help;             // Returns the help text of the block, do not free the
+                               // string, generally const
   CBHelpProc inputHelp;        // optional help text for the input
   CBHelpProc outputHelp;       // optional help text for the output
   CBPropertiesProc properties; // optional properties
@@ -810,16 +793,12 @@ struct CBChainProviderUpdate {
 typedef void(__cdecl *CBProviderReset)(struct CBChainProvider *provider);
 
 typedef CBBool(__cdecl *CBProviderReady)(struct CBChainProvider *provider);
-typedef void(__cdecl *CBProviderSetup)(struct CBChainProvider *provider,
-                                       CBString path,
-                                       struct CBInstanceData data);
+typedef void(__cdecl *CBProviderSetup)(struct CBChainProvider *provider, CBString path, struct CBInstanceData data);
 
 typedef CBBool(__cdecl *CBProviderUpdated)(struct CBChainProvider *provider);
-typedef struct CBChainProviderUpdate(__cdecl *CBProviderAcquire)(
-    struct CBChainProvider *provider);
+typedef struct CBChainProviderUpdate(__cdecl *CBProviderAcquire)(struct CBChainProvider *provider);
 
-typedef void(__cdecl *CBProviderReleaseChain)(struct CBChainProvider *provider,
-                                              struct CBChain *chain);
+typedef void(__cdecl *CBProviderReleaseChain)(struct CBChainProvider *provider, struct CBChain *chain);
 
 struct CBChainProvider {
   CBProviderReset reset;
@@ -835,58 +814,43 @@ struct CBChainProvider {
   void *userData;
 };
 
-typedef void(__cdecl *CBValidationCallback)(const struct CBlock *errorBlock,
-                                            CBString errorTxt,
-                                            CBBool nonfatalWarning,
+typedef void(__cdecl *CBValidationCallback)(const struct CBlock *errorBlock, CBString errorTxt, CBBool nonfatalWarning,
                                             void *userData);
 
-typedef void(__cdecl *CBRegisterBlock)(CBString fullName,
-                                       CBBlockConstructor constructor);
+typedef void(__cdecl *CBRegisterBlock)(CBString fullName, CBBlockConstructor constructor);
 
-typedef void(__cdecl *CBRegisterObjectType)(int32_t vendorId, int32_t typeId,
-                                            struct CBObjectInfo info);
+typedef void(__cdecl *CBRegisterObjectType)(int32_t vendorId, int32_t typeId, struct CBObjectInfo info);
 
-typedef void(__cdecl *CBRegisterEnumType)(int32_t vendorId, int32_t typeId,
-                                          struct CBEnumInfo info);
+typedef void(__cdecl *CBRegisterEnumType)(int32_t vendorId, int32_t typeId, struct CBEnumInfo info);
 
-typedef void(__cdecl *CBRegisterRunLoopCallback)(CBString eventName,
-                                                 CBCallback callback);
+typedef void(__cdecl *CBRegisterRunLoopCallback)(CBString eventName, CBCallback callback);
 
-typedef void(__cdecl *CBRegisterExitCallback)(CBString eventName,
-                                              CBCallback callback);
+typedef void(__cdecl *CBRegisterExitCallback)(CBString eventName, CBCallback callback);
 
 typedef void(__cdecl *CBUnregisterRunLoopCallback)(CBString eventName);
 
 typedef void(__cdecl *CBUnregisterExitCallback)(CBString eventName);
 
-typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context,
-                                                     CBString name);
-typedef struct CBVar *(__cdecl *CBReferenceChainVariable)(CBChainRef chain,
-                                                          CBString name);
+typedef struct CBVar *(__cdecl *CBReferenceVariable)(struct CBContext *context, CBString name);
+typedef struct CBVar *(__cdecl *CBReferenceChainVariable)(CBChainRef chain, CBString name);
 
-typedef void(__cdecl *CBSetExternalVariable)(CBChainRef chain, CBString name,
-                                             struct CBVar *pVar);
+typedef void(__cdecl *CBSetExternalVariable)(CBChainRef chain, CBString name, struct CBVar *pVar);
 
-typedef void(__cdecl *CBRemoveExternalVariable)(CBChainRef chain,
-                                                CBString name);
+typedef void(__cdecl *CBRemoveExternalVariable)(CBChainRef chain, CBString name);
 
-typedef struct CBVar *(__cdecl *CBAllocExternalVariable)(CBChainRef chain,
-                                                         CBString name);
+typedef struct CBVar *(__cdecl *CBAllocExternalVariable)(CBChainRef chain, CBString name);
 
 typedef void(__cdecl *CBFreeExternalVariable)(CBChainRef chain, CBString name);
 
 typedef void(__cdecl *CBReleaseVariable)(struct CBVar *variable);
 
-typedef void(__cdecl *CBAbortChain)(struct CBContext *context,
-                                    CBString errorText);
+typedef void(__cdecl *CBAbortChain)(struct CBContext *context, CBString errorText);
 
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
-typedef enum CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
-                                              double seconds);
+typedef enum CBChainState(__cdecl *CBSuspend)(struct CBContext *context, double seconds);
 typedef enum CBChainState(__cdecl *CBGetState)(struct CBContext *context);
 #else
-typedef CBChainState(__cdecl *CBSuspend)(struct CBContext *context,
-                                         double seconds);
+typedef CBChainState(__cdecl *CBSuspend)(struct CBContext *context, double seconds);
 typedef CBChainState(__cdecl *CBGetState)(struct CBContext *context);
 #endif
 
@@ -894,39 +858,26 @@ typedef void(__cdecl *CBCloneVar)(struct CBVar *dst, const struct CBVar *src);
 
 typedef void(__cdecl *CBDestroyVar)(struct CBVar *var);
 
-typedef CBBool(__cdecl *CBValidateSetParam)(struct CBlock *block, int index,
-                                            const struct CBVar *param,
-                                            CBValidationCallback callback,
-                                            void *userData);
+typedef CBBool(__cdecl *CBValidateSetParam)(struct CBlock *block, int index, const struct CBVar *param,
+                                            CBValidationCallback callback, void *userData);
 
-typedef struct CBComposeResult(__cdecl *CBComposeBlocks)(
-    CBlocks blocks, CBValidationCallback callback, void *userData,
-    struct CBInstanceData data);
+typedef struct CBComposeResult(__cdecl *CBComposeBlocks)(CBlocks blocks, CBValidationCallback callback, void *userData,
+                                                         struct CBInstanceData data);
 
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
-typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
-                                                struct CBContext *context,
-                                                const struct CBVar *input,
+typedef enum CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks, struct CBContext *context, const struct CBVar *input,
                                                 struct CBVar *output);
 #else
-typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks,
-                                           struct CBContext *context,
-                                           const struct CBVar *input,
+typedef CBChainState(__cdecl *CBRunBlocks)(CBlocks blocks, struct CBContext *context, const struct CBVar *input,
                                            struct CBVar *output);
 #endif
 
 #if defined(__cplusplus) || defined(CB_USE_ENUMS)
-typedef enum CBChainState(__cdecl *CBRunBlocksHashed)(CBlocks blocks,
-                                                      struct CBContext *context,
-                                                      const struct CBVar *input,
-                                                      struct CBVar *output,
-                                                      struct CBVar *outHash);
+typedef enum CBChainState(__cdecl *CBRunBlocksHashed)(CBlocks blocks, struct CBContext *context, const struct CBVar *input,
+                                                      struct CBVar *output, struct CBVar *outHash);
 #else
-typedef CBChainState(__cdecl *CBRunBlocksHashed)(CBlocks blocks,
-                                                 struct CBContext *context,
-                                                 const struct CBVar *input,
-                                                 struct CBVar *output,
-                                                 struct CBVar *outHash);
+typedef CBChainState(__cdecl *CBRunBlocksHashed)(CBlocks blocks, struct CBContext *context, const struct CBVar *input,
+                                                 struct CBVar *output, struct CBVar *outHash);
 #endif
 
 typedef void(__cdecl *CBLog)(CBString msg);
@@ -942,12 +893,9 @@ typedef void(__cdecl *CBAddBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBRemBlock)(CBChainRef chain, CBlockPtr block);
 typedef void(__cdecl *CBDestroyChain)(CBChainRef chain);
 typedef struct CBVar(__cdecl *CBStopChain)(CBChainRef chain);
-typedef struct CBComposeResult(__cdecl *CBComposeChain)(
-    CBChainRef chain, CBValidationCallback callback, void *userData,
-    struct CBInstanceData data);
-typedef struct CBRunChainOutput(__cdecl *CBRunChain)(CBChainRef chain,
-                                                     struct CBContext *context,
-                                                     const struct CBVar *input);
+typedef struct CBComposeResult(__cdecl *CBComposeChain)(CBChainRef chain, CBValidationCallback callback, void *userData,
+                                                        struct CBInstanceData data);
+typedef struct CBRunChainOutput(__cdecl *CBRunChain)(CBChainRef chain, struct CBContext *context, const struct CBVar *input);
 typedef CBChainRef(__cdecl *CBGetGlobalChain)(CBString name);
 typedef void(__cdecl *CBSetGlobalChain)(CBString name, CBChainRef chain);
 typedef void(__cdecl *CBUnsetGlobalChain)(CBString name);
@@ -958,14 +906,13 @@ typedef void(__cdecl *CBSchedule)(CBNodeRef node, CBChainRef chain);
 typedef CBBool(__cdecl *CBTick)(CBNodeRef node);
 typedef void(__cdecl *CBSleep)(double seconds, CBBool runCallbacks);
 
-#define CB_ARRAY_TYPE(_array_, _value_)                                        \
-  typedef void(__cdecl * _array_##Free)(_array_ *);                            \
-  typedef void(__cdecl * _array_##Push)(_array_ *, const _value_ *);           \
-  typedef void(__cdecl * _array_##Insert)(_array_ *, uint32_t,                 \
-                                          const _value_ *);                    \
-  typedef _value_(__cdecl *_array_##Pop)(_array_ *);                           \
-  typedef void(__cdecl * _array_##Resize)(_array_ *, uint32_t);                \
-  typedef void(__cdecl * _array_##FastDelete)(_array_ *, uint32_t);            \
+#define CB_ARRAY_TYPE(_array_, _value_)                                          \
+  typedef void(__cdecl * _array_##Free)(_array_ *);                              \
+  typedef void(__cdecl * _array_##Push)(_array_ *, const _value_ *);             \
+  typedef void(__cdecl * _array_##Insert)(_array_ *, uint32_t, const _value_ *); \
+  typedef _value_(__cdecl *_array_##Pop)(_array_ *);                             \
+  typedef void(__cdecl * _array_##Resize)(_array_ *, uint32_t);                  \
+  typedef void(__cdecl * _array_##FastDelete)(_array_ *, uint32_t);              \
   typedef void(__cdecl * _array_##SlowDelete)(_array_ *, uint32_t)
 
 CB_ARRAY_TYPE(CBSeq, struct CBVar);
@@ -976,13 +923,13 @@ CB_ARRAY_TYPE(CBExposedTypesInfo, struct CBExposedTypeInfo);
 CB_ARRAY_TYPE(CBEnums, CBEnum);
 CB_ARRAY_TYPE(CBStrings, CBString);
 
-#define CB_ARRAY_PROCS(_array_, _short_)                                       \
-  _array_##Free _short_##Free;                                                 \
-  _array_##Push _short_##Push;                                                 \
-  _array_##Insert _short_##Insert;                                             \
-  _array_##Pop _short_##Pop;                                                   \
-  _array_##Resize _short_##Resize;                                             \
-  _array_##FastDelete _short_##FastDelete;                                     \
+#define CB_ARRAY_PROCS(_array_, _short_)   \
+  _array_##Free _short_##Free;             \
+  _array_##Push _short_##Push;             \
+  _array_##Insert _short_##Insert;         \
+  _array_##Pop _short_##Pop;               \
+  _array_##Resize _short_##Resize;         \
+  _array_##FastDelete _short_##FastDelete; \
   _array_##SlowDelete _short_##SlowDelete
 
 typedef struct CBTable(__cdecl *CBTableNew)();
@@ -992,15 +939,12 @@ typedef struct CBSet(__cdecl *CBSetNew)();
 typedef CBString(__cdecl *CBGetRootPath)();
 typedef void(__cdecl *CBSetRootPath)(CBString);
 
-typedef struct CBVar(__cdecl *CBAsyncActivateProc)(struct CBContext *context,
-                                                   void *userData);
+typedef struct CBVar(__cdecl *CBAsyncActivateProc)(struct CBContext *context, void *userData);
 
-typedef void(__cdecl *CBAsyncCancelProc)(struct CBContext *context,
-                                         void *userData);
+typedef void(__cdecl *CBAsyncCancelProc)(struct CBContext *context, void *userData);
 
-typedef struct CBVar(__cdecl *CBRunAsyncActivate)(
-    struct CBContext *context, void *userData, CBAsyncActivateProc call,
-    CBAsyncCancelProc cancel_call);
+typedef struct CBVar(__cdecl *CBRunAsyncActivate)(struct CBContext *context, void *userData, CBAsyncActivateProc call,
+                                                  CBAsyncCancelProc cancel_call);
 
 typedef CBStrings(__cdecl *CBGetBlocks)();
 
@@ -1023,16 +967,12 @@ typedef struct CBChainInfo(__cdecl *CBGetChainInfo)(CBChainRef chainref);
 typedef CBOptionalString(__cdecl *CBReadCachedString)(uint32_t id);
 // the string is not copied! should be constant.
 // use this when the cache is not precompiled
-typedef CBOptionalString(__cdecl *CBWriteCachedString)(uint32_t id,
-                                                       const char *str);
+typedef CBOptionalString(__cdecl *CBWriteCachedString)(uint32_t id, const char *str);
 
-typedef CBBool(__cdecl *CBIsEqualVar)(const struct CBVar *v1,
-                                      const struct CBVar *v2);
-typedef CBBool(__cdecl *CBIsEqualType)(const struct CBTypeInfo *t1,
-                                       const struct CBTypeInfo *t2);
+typedef CBBool(__cdecl *CBIsEqualVar)(const struct CBVar *v1, const struct CBVar *v2);
+typedef CBBool(__cdecl *CBIsEqualType)(const struct CBTypeInfo *t1, const struct CBTypeInfo *t2);
 
-typedef struct CBTypeInfo(__cdecl *CBDeriveTypeInfo)(
-    const struct CBVar *v, const struct CBInstanceData *data);
+typedef struct CBTypeInfo(__cdecl *CBDeriveTypeInfo)(const struct CBVar *v, const struct CBInstanceData *data);
 typedef void(__cdecl *CBFreeDerivedTypeInfo)(struct CBTypeInfo *t);
 
 typedef void *(__cdecl *CBAlloc)(uint32_t size);
@@ -1216,9 +1156,9 @@ CHAINBLOCKS_API CBCore *__cdecl chainblocksInterface(uint32_t abi_version);
 #else
 #define CB_DEBUG_MODE 0
 #endif
-#define cb_debug_only(__CODE__)                                                \
-  if (CB_DEBUG_MODE) {                                                         \
-    __CODE__;                                                                  \
+#define cb_debug_only(__CODE__) \
+  if (CB_DEBUG_MODE) {          \
+    __CODE__;                   \
   }
 
 #define CB_CAT_IMPL(s1, s2) s1##s2

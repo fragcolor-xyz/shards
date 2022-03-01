@@ -38,9 +38,7 @@ struct Delta {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  void warmup(CBContext *context) {
-    _clock.Start = std::chrono::high_resolution_clock::now();
-  }
+  void warmup(CBContext *context) { _clock.Start = std::chrono::high_resolution_clock::now(); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
@@ -65,8 +63,7 @@ struct EpochMs {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     using namespace std::chrono;
-    milliseconds ms =
-        duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+    milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
     return Var(ms.count());
   }
 };
@@ -77,11 +74,10 @@ struct Pop {
   static inline Type VPSeqType = Type::VariableOf(PSeqTypes);
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static inline Parameters Params{
-      {"Sequence",
-       CBCCSTR("A variables sequence of pairs [value "
-               "pop-epoch-time-ms] with types [Any Int]"),
-       {VPSeqType, CoreInfo::NoneType}}};
+  static inline Parameters Params{{"Sequence",
+                                   CBCCSTR("A variables sequence of pairs [value "
+                                           "pop-epoch-time-ms] with types [Any Int]"),
+                                   {VPSeqType, CoreInfo::NoneType}}};
 
   CBOptionalString help() {
     return CBCCSTR("This blocks delays its output until one of the values of "
@@ -103,8 +99,7 @@ struct Pop {
 
     for (auto info : data.shared) {
       if (strcmp(info.name, _pseq.variableName()) == 0) {
-        if (info.exposedType.basicType != Seq ||
-            info.exposedType.seqTypes.len != 2)
+        if (info.exposedType.basicType != Seq || info.exposedType.seqTypes.len != 2)
           throw ComposeError("Time.Pop expected a sequence of pairs");
 
         if (!info.isMutable)
@@ -128,8 +123,7 @@ struct Pop {
     using namespace std::chrono;
     while (true) {
       auto &seq = _pseq.get();
-      milliseconds ms =
-          duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+      milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
       auto now = ms.count();
       for (uint32_t idx = 0; idx < seq.payload.seqValue.len; idx++) {
         auto &v = seq.payload.seqValue.elements[idx];

@@ -13,8 +13,7 @@
 #include <fstream>
 #include <iostream>
 
-static String printValues(malValueIter begin, malValueIter end,
-                          const String &sep, bool readably);
+static String printValues(malValueIter begin, malValueIter end, const String &sep, bool readably);
 
 static StaticList<malBuiltIn *> handlers;
 
@@ -22,37 +21,34 @@ static StaticList<malBuiltIn *> handlers;
 
 #define FUNCNAME(uniq) builtIn##uniq
 #define HRECNAME(uniq) handler##uniq
-#define BUILTIN_DEF(uniq, symbol)                                              \
-  static malBuiltIn::ApplyFunc FUNCNAME(uniq);                                 \
-  static StaticList<malBuiltIn *>::Node HRECNAME(uniq)(                        \
-      handlers, new malBuiltIn(symbol, FUNCNAME(uniq)));                       \
-  malValuePtr FUNCNAME(uniq)(const String &name, malValueIter argsBegin,       \
-                             malValueIter argsEnd)
+#define BUILTIN_DEF(uniq, symbol)                                                                         \
+  static malBuiltIn::ApplyFunc FUNCNAME(uniq);                                                            \
+  static StaticList<malBuiltIn *>::Node HRECNAME(uniq)(handlers, new malBuiltIn(symbol, FUNCNAME(uniq))); \
+  malValuePtr FUNCNAME(uniq)(const String &name, malValueIter argsBegin, malValueIter argsEnd)
 
 #define BUILTIN(symbol) BUILTIN_DEF(__LINE__, symbol)
 
-#define BUILTIN_ISA(symbol, type)                                              \
-  BUILTIN(symbol) {                                                            \
-    CHECK_ARGS_IS(1);                                                          \
-    return mal::boolean(DYNAMIC_CAST(type, *argsBegin));                       \
+#define BUILTIN_ISA(symbol, type)                        \
+  BUILTIN(symbol) {                                      \
+    CHECK_ARGS_IS(1);                                    \
+    return mal::boolean(DYNAMIC_CAST(type, *argsBegin)); \
   }
 
-#define BUILTIN_IS(op, constant)                                               \
-  BUILTIN(op) {                                                                \
-    CHECK_ARGS_IS(1);                                                          \
-    return mal::boolean(*argsBegin == mal::constant());                        \
+#define BUILTIN_IS(op, constant)                        \
+  BUILTIN(op) {                                         \
+    CHECK_ARGS_IS(1);                                   \
+    return mal::boolean(*argsBegin == mal::constant()); \
   }
 
-#define BUILTIN_INTOP(op, checkDivByZero)                                      \
-  BUILTIN(#op) {                                                               \
-    CHECK_ARGS_IS(2);                                                          \
-    ARG(malNumber, lhs);                                                       \
-    ARG(malNumber, rhs);                                                       \
-    if (checkDivByZero) {                                                      \
-      MAL_CHECK(rhs->value() != 0, "Division by zero");                        \
-    }                                                                          \
-    return mal::number(lhs->value() op rhs->value(),                           \
-                       lhs->isInteger() && rhs->isInteger());                  \
+#define BUILTIN_INTOP(op, checkDivByZero)                                                   \
+  BUILTIN(#op) {                                                                            \
+    CHECK_ARGS_IS(2);                                                                       \
+    ARG(malNumber, lhs);                                                                    \
+    ARG(malNumber, rhs);                                                                    \
+    if (checkDivByZero) {                                                                   \
+      MAL_CHECK(rhs->value() != 0, "Division by zero");                                     \
+    }                                                                                       \
+    return mal::number(lhs->value() op rhs->value(), lhs->isInteger() && rhs->isInteger()); \
   }
 
 BUILTIN_ISA("atom?", malAtom);
@@ -81,8 +77,7 @@ BUILTIN("-") {
   }
 
   ARG(malNumber, rhs);
-  return mal::number(lhs->value() - rhs->value(),
-                     lhs->isInteger() && rhs->isInteger());
+  return mal::number(lhs->value() - rhs->value(), lhs->isInteger() && rhs->isInteger());
 }
 
 BUILTIN("%") {
@@ -252,8 +247,7 @@ BUILTIN("eval") {
   return EVAL(*argsBegin, NULL);
 }
 
-template <typename I>
-std::string n2hexstr(I w, size_t hex_len = sizeof(I) << 1) {
+template <typename I> std::string n2hexstr(I w, size_t hex_len = sizeof(I) << 1) {
   static const char *digits = "0123456789ABCDEF";
   std::string rc(hex_len, '0');
   for (size_t i = 0, j = (hex_len - 1) * 4; i < hex_len; ++i, j -= 4)
@@ -388,9 +382,7 @@ BUILTIN("reverse") {
   return malValuePtr(rseq);
 }
 
-BUILTIN("pr-str") {
-  return mal::string(printValues(argsBegin, argsEnd, " ", true));
-}
+BUILTIN("pr-str") { return mal::string(printValues(argsBegin, argsEnd, " ", true)); }
 
 BUILTIN("println") {
   std::cout << printValues(argsBegin, argsEnd, " ", false) << "\n";
@@ -442,8 +434,7 @@ BUILTIN("seq") {
     return mal::nilValue();
   }
   if (const malSequence *seq = DYNAMIC_CAST(malSequence, arg)) {
-    return seq->isEmpty() ? mal::nilValue()
-                          : mal::list(seq->begin(), seq->end());
+    return seq->isEmpty() ? mal::nilValue() : mal::list(seq->begin(), seq->end());
   }
   if (const malString *strVal = DYNAMIC_CAST(malString, arg)) {
     const String str = strVal->value();
@@ -475,9 +466,7 @@ BUILTIN("slurp") {
   return mal::string(data);
 }
 
-BUILTIN("str") {
-  return mal::string(printValues(argsBegin, argsEnd, "", false));
-}
+BUILTIN("str") { return mal::string(printValues(argsBegin, argsEnd, "", false)); }
 
 BUILTIN("swap!") {
   CHECK_ARGS_AT_LEAST(2);
@@ -508,8 +497,7 @@ BUILTIN("time-ms") {
   CHECK_ARGS_IS(0);
 
   using namespace std::chrono;
-  milliseconds ms = duration_cast<milliseconds>(
-      high_resolution_clock::now().time_since_epoch());
+  milliseconds ms = duration_cast<milliseconds>(high_resolution_clock::now().time_since_epoch());
 
   return mal::number(ms.count(), true);
 }
@@ -546,8 +534,7 @@ void installCore(malEnvPtr env) {
   }
 }
 
-static String printValues(malValueIter begin, malValueIter end,
-                          const String &sep, bool readably) {
+static String printValues(malValueIter begin, malValueIter end, const String &sep, bool readably) {
   String out;
 
   if (begin != end) {

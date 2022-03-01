@@ -50,14 +50,13 @@ using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
 #define CUSTOM_XXH3_kSecret XXH3_kSecret
 #endif
 
-#define CB_SUSPEND(_ctx_, _secs_)                                              \
-  const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_);             \
-  if (_suspend_state != CBChainState::Continue)                                \
+#define CB_SUSPEND(_ctx_, _secs_)                                  \
+  const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_); \
+  if (_suspend_state != CBChainState::Continue)                    \
   return Var::Empty
 
 #define CB_STOP() std::rethrow_exception(chainblocks::GetGlobals().StopChainEx);
-#define CB_RESTART()                                                           \
-  std::rethrow_exception(chainblocks::GetGlobals().RestartChainEx);
+#define CB_RESTART() std::rethrow_exception(chainblocks::GetGlobals().RestartChainEx);
 
 struct CBContext {
   CBContext(
@@ -126,9 +125,7 @@ struct CBContext {
 
   constexpr void continueFlow() { state = CBChainState::Continue; }
 
-  constexpr bool shouldContinue() const {
-    return state == CBChainState::Continue;
-  }
+  constexpr bool shouldContinue() const { return state == CBChainState::Continue; }
 
   constexpr bool shouldReturn() const { return state == CBChainState::Return; }
 
@@ -142,13 +139,9 @@ struct CBContext {
 
   constexpr CBVar getFlowStorage() const { return flowStorage; }
 
-  void registerNextFrameCallback(const CBlock *block) const {
-    nextFrameBlocks.push_back(block);
-  }
+  void registerNextFrameCallback(const CBlock *block) const { nextFrameBlocks.push_back(block); }
 
-  const std::vector<const CBlock *> &nextFrameCallbacks() const {
-    return nextFrameBlocks;
-  }
+  const std::vector<const CBlock *> &nextFrameCallbacks() const { return nextFrameBlocks; }
 
 private:
   CBChainState state = CBChainState::Continue;
@@ -161,21 +154,15 @@ private:
 };
 
 namespace chainblocks {
-[[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBSeq chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBChain *chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain, CBValidationCallback callback, void *userData,
+                                           CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback, void *userData,
+                                           CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBSeq chain, CBValidationCallback callback, void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBChain *chain, CBValidationCallback callback, void *userData,
+                                           CBInstanceData data);
 
-bool validateSetParam(CBlock *block, int index, const CBVar &value,
-                      CBValidationCallback callback, void *userData);
+bool validateSetParam(CBlock *block, int index, const CBVar &value, CBValidationCallback callback, void *userData);
 } // namespace chainblocks
 
 #include "blocks/core.hpp"
@@ -185,8 +172,7 @@ namespace chainblocks {
 
 void installSignalHandlers();
 
-FLATTEN ALWAYS_INLINE inline CBVar
-activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
+FLATTEN ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   switch (blk->inlineBlockId) {
   case NoopBlock:
     return input;
@@ -243,8 +229,7 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     return cblock->core.activate(context, input);
   }
   case CoreForRange: {
-    auto cblock =
-        reinterpret_cast<chainblocks::BlockWrapper<ForRangeBlock> *>(blk);
+    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<ForRangeBlock> *>(blk);
     return cblock->block.activate(context, input);
   }
   case CoreRepeat: {
@@ -328,8 +313,7 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
     return cblock->core.activateSingle(context, input);
   }
   case MathFastInvSqrt: {
-    auto cblock =
-        reinterpret_cast<chainblocks::Math::FastInvSqrtRuntime *>(blk);
+    auto cblock = reinterpret_cast<chainblocks::Math::FastInvSqrtRuntime *>(blk);
     return cblock->core.activateSingle(context, input);
   }
 #if 0
@@ -457,11 +441,9 @@ activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
   }
 }
 
-CBRunChainOutput runChain(CBChain *chain, CBContext *context,
-                          const CBVar &chainInput);
+CBRunChainOutput runChain(CBChain *chain, CBContext *context, const CBVar &chainInput);
 
-inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
-                                    const CBVar &input) {
+inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context, const CBVar &input) {
   // push to chain stack
   context->chainStack.push_back(chain);
   DEFER({ context->chainStack.pop_back(); });
@@ -470,8 +452,7 @@ inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context,
 }
 
 #ifndef __EMSCRIPTEN__
-boost::context::continuation run(CBChain *chain, CBFlow *flow,
-                                 boost::context::continuation &&sink);
+boost::context::continuation run(CBChain *chain, CBFlow *flow, boost::context::continuation &&sink);
 #else
 void run(CBChain *chain, CBFlow *flow, CBCoro *coro);
 #endif
@@ -492,11 +473,9 @@ inline void prepare(CBChain *chain, CBFlow *flow) {
   if (!chain->stackMem) {
     chain->stackMem = new (std::align_val_t{16}) uint8_t[chain->stackSize];
   }
-  chain->coro = boost::context::callcc(
-      std::allocator_arg, CBStackAllocator{chain->stackSize, chain->stackMem},
-      [chain, flow](boost::context::continuation &&sink) {
-        return run(chain, flow, std::move(sink));
-      });
+  chain->coro =
+      boost::context::callcc(std::allocator_arg, CBStackAllocator{chain->stackSize, chain->stackMem},
+                             [chain, flow](boost::context::continuation &&sink) { return run(chain, flow, std::move(sink)); });
 #else
   chain->coro.emplace(chain->stackSize);
   chain->coro->init([=]() { run(chain, flow, &(*chain->coro)); });
@@ -538,8 +517,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 
   if (chain->coro) {
     // Run until exit if alive, need to propagate to all suspended blocks!
-    if ((*chain->coro) && chain->state > CBChain::State::Stopped &&
-        chain->state < CBChain::State::Failed) {
+    if ((*chain->coro) && chain->state > CBChain::State::Stopped && chain->state < CBChain::State::Failed) {
       // set abortion flag, we always have a context in this case
       chain->context->stopFlow(Var::Empty);
       chain->context->onLastResume = true;
@@ -584,8 +562,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
 
 inline bool isRunning(CBChain *chain) {
   const auto state = chain->state.load(); // atomic
-  return state >= CBChain::State::Starting &&
-         state <= CBChain::State::IterationEnded;
+  return state >= CBChain::State::Starting && state <= CBChain::State::IterationEnded;
 }
 
 inline bool tick(CBChain *chain, CBDuration now, CBVar rootInput = {}) {
@@ -614,9 +591,7 @@ inline bool tick(CBChain *chain, CBDuration now, CBVar rootInput = {}) {
   return true;
 }
 
-inline bool hasEnded(CBChain *chain) {
-  return chain->state > CBChain::State::IterationEnded;
-}
+inline bool hasEnded(CBChain *chain) { return chain->state > CBChain::State::IterationEnded; }
 
 inline bool isCanceled(CBContext *context) { return context->shouldStop(); }
 
@@ -672,25 +647,18 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
 
 struct RuntimeCallbacks {
   // TODO, turn them into filters maybe?
-  virtual void registerBlock(const char *fullName,
-                             CBBlockConstructor constructor) = 0;
-  virtual void registerObjectType(int32_t vendorId, int32_t typeId,
-                                  CBObjectInfo info) = 0;
-  virtual void registerEnumType(int32_t vendorId, int32_t typeId,
-                                CBEnumInfo info) = 0;
+  virtual void registerBlock(const char *fullName, CBBlockConstructor constructor) = 0;
+  virtual void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) = 0;
+  virtual void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) = 0;
 };
 }; // namespace chainblocks
 
 using namespace chainblocks;
 
 struct CBNode : public std::enable_shared_from_this<CBNode> {
-  static std::shared_ptr<CBNode> make() {
-    return std::shared_ptr<CBNode>(new CBNode());
-  }
+  static std::shared_ptr<CBNode> make() { return std::shared_ptr<CBNode>(new CBNode()); }
 
-  static std::shared_ptr<CBNode> *makePtr() {
-    return new std::shared_ptr<CBNode>(new CBNode());
-  }
+  static std::shared_ptr<CBNode> *makePtr() { return new std::shared_ptr<CBNode>(new CBNode()); }
 
   ~CBNode() { terminate(); }
 
@@ -703,11 +671,9 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   };
 
   template <class Observer>
-  void schedule(Observer observer, const std::shared_ptr<CBChain> &chain,
-                CBVar input = Var::Empty, bool compose = true) {
+  void schedule(Observer observer, const std::shared_ptr<CBChain> &chain, CBVar input = Var::Empty, bool compose = true) {
     if (chain->warmedUp) {
-      CBLOG_ERROR("Attempted to schedule a chain multiple times, chain: {}",
-                  chain->name);
+      CBLOG_ERROR("Attempted to schedule a chain multiple times, chain: {}", chain->name);
       throw CBException("Multiple chain schedule");
     }
 
@@ -727,15 +693,12 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       data.inputType = deriveTypeInfo(input, data);
       auto validation = composeChain(
           chain.get(),
-          [](const CBlock *errorBlock, const char *errorTxt,
-             bool nonfatalWarning, void *userData) {
+          [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
             auto blk = const_cast<CBlock *>(errorBlock);
             if (!nonfatalWarning) {
-              throw ComposeError(std::string(errorTxt) + ", input block: " +
-                                 std::string(blk->name(blk)));
+              throw ComposeError(std::string(errorTxt) + ", input block: " + std::string(blk->name(blk)));
             } else {
-              CBLOG_INFO("Validation warning: {} input block: {}", errorTxt,
-                         blk->name(blk));
+              CBLOG_INFO("Validation warning: {} input block: {}", errorTxt, blk->name(blk));
             }
           },
           this, data);
@@ -753,14 +716,12 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     scheduled.insert(chain);
   }
 
-  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = Var::Empty,
-                bool compose = true) {
+  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = Var::Empty, bool compose = true) {
     EmptyObserver obs;
     schedule(obs, chain, input, compose);
   }
 
-  template <class Observer>
-  bool tick(Observer observer, CBVar input = Var::Empty) {
+  template <class Observer> bool tick(Observer observer, CBVar input = Var::Empty) {
     auto noErrors = true;
     _errors.clear();
     if (GetGlobals().SigIntTerm > 0) {
@@ -819,8 +780,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
   void remove(const std::shared_ptr<CBChain> &chain) {
     stop(chain.get());
-    _flows.remove_if(
-        [chain](auto &flow) { return flow->chain == chain.get(); });
+    _flows.remove_if([chain](auto &flow) { return flow->chain == chain.get(); });
     chain->node.reset();
     visitedChains.erase(chain.get());
     scheduled.erase(chain);
@@ -830,10 +790,8 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
 
   const std::vector<std::string> &errors() { return _errors; }
 
-  std::unordered_map<std::string, CBVar, std::hash<std::string>,
-                     std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<
-                         std::pair<const std::string, CBVar>, 16>>
+  std::unordered_map<std::string, CBVar, std::hash<std::string>, std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<std::pair<const std::string, CBVar>, 16>>
       variables;
 
   std::unordered_map<std::string, CBVar *> refs;
@@ -867,8 +825,7 @@ struct Serialization {
 
   ~Serialization() { reset(); }
 
-  template <class BinaryReader>
-  void deserialize(BinaryReader &read, CBVar &output) {
+  template <class BinaryReader> void deserialize(BinaryReader &read, CBVar &output) {
     // we try to recycle memory so pass a empty None as first timer!
     CBType nextType;
     read((uint8_t *)&nextType, sizeof(output.valueType));
@@ -928,8 +885,7 @@ struct Serialization {
       break;
     case CBType::Bytes: {
       auto availBytes = recycle ? output.payload.bytesCapacity : 0;
-      read((uint8_t *)&output.payload.bytesSize,
-           sizeof(output.payload.bytesSize));
+      read((uint8_t *)&output.payload.bytesSize, sizeof(output.payload.bytesSize));
 
       if (availBytes > 0 && availBytes < output.payload.bytesSize) {
         // not enough space, ideally realloc, but for now just delete
@@ -942,8 +898,7 @@ struct Serialization {
       } // else got enough space to recycle!
 
       // record actualSize for further recycling usage
-      output.payload.bytesCapacity =
-          std::max(availBytes, output.payload.bytesSize);
+      output.payload.bytesCapacity = std::max(availBytes, output.payload.bytesSize);
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
@@ -953,8 +908,7 @@ struct Serialization {
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
       chainblocks::arrayResize(output.payload.arrayValue, len);
-      read((uint8_t *)&output.payload.arrayValue.elements[0],
-           len * sizeof(CBVarPayload));
+      read((uint8_t *)&output.payload.arrayValue.elements[0], len * sizeof(CBVarPayload));
       break;
     }
     case CBType::Path:
@@ -1062,37 +1016,27 @@ struct Serialization {
       size_t currentSize = 0;
       if (recycle) {
         auto bpp = 1;
-        if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-            CBIMAGE_FLAGS_16BITS_INT)
+        if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
           bpp = 2;
-        else if ((output.payload.imageValue.flags &
-                  CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
+        else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
           bpp = 4;
-        currentSize = output.payload.imageValue.channels *
-                      output.payload.imageValue.height *
-                      output.payload.imageValue.width * bpp;
+        currentSize =
+            output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * bpp;
       }
 
-      read((uint8_t *)&output.payload.imageValue.channels,
-           sizeof(output.payload.imageValue.channels));
-      read((uint8_t *)&output.payload.imageValue.flags,
-           sizeof(output.payload.imageValue.flags));
-      read((uint8_t *)&output.payload.imageValue.width,
-           sizeof(output.payload.imageValue.width));
-      read((uint8_t *)&output.payload.imageValue.height,
-           sizeof(output.payload.imageValue.height));
+      read((uint8_t *)&output.payload.imageValue.channels, sizeof(output.payload.imageValue.channels));
+      read((uint8_t *)&output.payload.imageValue.flags, sizeof(output.payload.imageValue.flags));
+      read((uint8_t *)&output.payload.imageValue.width, sizeof(output.payload.imageValue.width));
+      read((uint8_t *)&output.payload.imageValue.height, sizeof(output.payload.imageValue.height));
 
       auto pixsize = 1;
-      if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-          CBIMAGE_FLAGS_16BITS_INT)
+      if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               CBIMAGE_FLAGS_32BITS_FLOAT)
+      else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
 
-      size_t size = output.payload.imageValue.channels *
-                    output.payload.imageValue.height *
-                    output.payload.imageValue.width * pixsize;
+      size_t size =
+          output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * pixsize;
 
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
@@ -1109,31 +1053,22 @@ struct Serialization {
     case CBType::Audio: {
       size_t currentSize = 0;
       if (recycle) {
-        currentSize = output.payload.audioValue.nsamples *
-                      output.payload.audioValue.channels * sizeof(float);
+        currentSize = output.payload.audioValue.nsamples * output.payload.audioValue.channels * sizeof(float);
       }
 
-      read((uint8_t *)&output.payload.audioValue.nsamples,
-           sizeof(output.payload.audioValue.nsamples));
-      read((uint8_t *)&output.payload.audioValue.channels,
-           sizeof(output.payload.audioValue.channels));
-      read((uint8_t *)&output.payload.audioValue.sampleRate,
-           sizeof(output.payload.audioValue.sampleRate));
+      read((uint8_t *)&output.payload.audioValue.nsamples, sizeof(output.payload.audioValue.nsamples));
+      read((uint8_t *)&output.payload.audioValue.channels, sizeof(output.payload.audioValue.channels));
+      read((uint8_t *)&output.payload.audioValue.sampleRate, sizeof(output.payload.audioValue.sampleRate));
 
-      size_t size = output.payload.audioValue.nsamples *
-                    output.payload.audioValue.channels * sizeof(float);
+      size_t size = output.payload.audioValue.nsamples * output.payload.audioValue.channels * sizeof(float);
 
       if (currentSize > 0 && currentSize < size) {
         // delete first & alloc
         delete[] output.payload.audioValue.samples;
-        output.payload.audioValue.samples =
-            new float[output.payload.audioValue.nsamples *
-                      output.payload.audioValue.channels];
+        output.payload.audioValue.samples = new float[output.payload.audioValue.nsamples * output.payload.audioValue.channels];
       } else if (currentSize == 0) {
         // just alloc
-        output.payload.audioValue.samples =
-            new float[output.payload.audioValue.nsamples *
-                      output.payload.audioValue.channels];
+        output.payload.audioValue.samples = new float[output.payload.audioValue.nsamples * output.payload.audioValue.channels];
       }
 
       read((uint8_t *)output.payload.audioValue.samples, size);
@@ -1191,8 +1126,7 @@ struct Serialization {
       // search if we already have this chain!
       auto cit = chains.find(&buf[0]);
       if (cit != chains.end()) {
-        CBLOG_TRACE("Skipping deserializing chain: {}",
-                    CBChain::sharedFromRef(cit->second)->name);
+        CBLOG_TRACE("Skipping deserializing chain: {}", CBChain::sharedFromRef(cit->second)->name);
         output.payload.chainValue = CBChain::addRef(cit->second);
         break;
       }
@@ -1240,8 +1174,7 @@ struct Serialization {
             info.reference(output.payload.objectValue);
           }
         } else {
-          throw chainblocks::CBException(
-              "Failed to find object type in registry.");
+          throw chainblocks::CBException("Failed to find object type in registry.");
         }
       }
       break;
@@ -1249,8 +1182,7 @@ struct Serialization {
     }
   }
 
-  template <class BinaryWriter>
-  size_t serialize(const CBVar &input, BinaryWriter &write) {
+  template <class BinaryWriter> size_t serialize(const CBVar &input, BinaryWriter &write) {
     size_t total = 0;
     write((const uint8_t *)&input.valueType, sizeof(input.valueType));
     total += sizeof(input.valueType);
@@ -1312,8 +1244,7 @@ struct Serialization {
       total += sizeof(CBColor);
       break;
     case CBType::Bytes:
-      write((const uint8_t *)&input.payload.bytesSize,
-            sizeof(input.payload.bytesSize));
+      write((const uint8_t *)&input.payload.bytesSize, sizeof(input.payload.bytesSize));
       total += sizeof(input.payload.bytesSize);
       write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
       total += input.payload.bytesSize;
@@ -1330,10 +1261,9 @@ struct Serialization {
     case CBType::Path:
     case CBType::String:
     case CBType::ContextVar: {
-      uint32_t len =
-          input.payload.stringLen > 0 || input.payload.stringValue == nullptr
-              ? input.payload.stringLen
-              : uint32_t(strlen(input.payload.stringValue));
+      uint32_t len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr
+                         ? input.payload.stringLen
+                         : uint32_t(strlen(input.payload.stringValue));
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
       write((const uint8_t *)input.payload.stringValue, len);
@@ -1395,46 +1325,34 @@ struct Serialization {
     }
     case CBType::Image: {
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-          CBIMAGE_FLAGS_16BITS_INT)
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               CBIMAGE_FLAGS_32BITS_FLOAT)
+      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
-      write((const uint8_t *)&input.payload.imageValue.channels,
-            sizeof(input.payload.imageValue.channels));
+      write((const uint8_t *)&input.payload.imageValue.channels, sizeof(input.payload.imageValue.channels));
       total += sizeof(input.payload.imageValue.channels);
-      write((const uint8_t *)&input.payload.imageValue.flags,
-            sizeof(input.payload.imageValue.flags));
+      write((const uint8_t *)&input.payload.imageValue.flags, sizeof(input.payload.imageValue.flags));
       total += sizeof(input.payload.imageValue.flags);
-      write((const uint8_t *)&input.payload.imageValue.width,
-            sizeof(input.payload.imageValue.width));
+      write((const uint8_t *)&input.payload.imageValue.width, sizeof(input.payload.imageValue.width));
       total += sizeof(input.payload.imageValue.width);
-      write((const uint8_t *)&input.payload.imageValue.height,
-            sizeof(input.payload.imageValue.height));
+      write((const uint8_t *)&input.payload.imageValue.height, sizeof(input.payload.imageValue.height));
       total += sizeof(input.payload.imageValue.height);
-      auto size = input.payload.imageValue.channels *
-                  input.payload.imageValue.height *
-                  input.payload.imageValue.width * pixsize;
+      auto size = input.payload.imageValue.channels * input.payload.imageValue.height * input.payload.imageValue.width * pixsize;
       write((const uint8_t *)input.payload.imageValue.data, size);
       total += size;
       break;
     }
     case CBType::Audio: {
-      write((const uint8_t *)&input.payload.audioValue.nsamples,
-            sizeof(input.payload.audioValue.nsamples));
+      write((const uint8_t *)&input.payload.audioValue.nsamples, sizeof(input.payload.audioValue.nsamples));
       total += sizeof(input.payload.audioValue.nsamples);
 
-      write((const uint8_t *)&input.payload.audioValue.channels,
-            sizeof(input.payload.audioValue.channels));
+      write((const uint8_t *)&input.payload.audioValue.channels, sizeof(input.payload.audioValue.channels));
       total += sizeof(input.payload.audioValue.channels);
 
-      write((const uint8_t *)&input.payload.audioValue.sampleRate,
-            sizeof(input.payload.audioValue.sampleRate));
+      write((const uint8_t *)&input.payload.audioValue.sampleRate, sizeof(input.payload.audioValue.sampleRate));
       total += sizeof(input.payload.audioValue.sampleRate);
 
-      auto size = input.payload.audioValue.nsamples *
-                  input.payload.audioValue.channels * sizeof(float);
+      auto size = input.payload.audioValue.nsamples * input.payload.audioValue.channels * sizeof(float);
 
       write((const uint8_t *)input.payload.audioValue.samples, size);
       total += size;
@@ -1457,10 +1375,7 @@ struct Serialization {
       // well, this is bad and should be fixed somehow at some point
       // we are creating a block just to compare to figure default values
       auto model =
-          defaultBlocks
-              .emplace(name, std::shared_ptr<CBlock>(
-                                 createBlock(name),
-                                 [](CBlock *block) { block->destroy(block); }))
+          defaultBlocks.emplace(name, std::shared_ptr<CBlock>(createBlock(name), [](CBlock *block) { block->destroy(block); }))
               .first->second.get();
       if (!model) {
         CBLOG_FATAL("Could not create block: {}.", name);
@@ -1527,20 +1442,16 @@ struct Serialization {
       break;
     }
     case CBType::Object: {
-      int64_t id = (int64_t)input.payload.objectVendorId << 32 |
-                   input.payload.objectTypeId;
+      int64_t id = (int64_t)input.payload.objectVendorId << 32 | input.payload.objectTypeId;
       write((const uint8_t *)&id, sizeof(int64_t));
       total += sizeof(int64_t);
-      if ((input.flags & CBVAR_FLAGS_USES_OBJINFO) ==
-              CBVAR_FLAGS_USES_OBJINFO &&
-          input.objectInfo && input.objectInfo->serialize) {
+      if ((input.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO && input.objectInfo &&
+          input.objectInfo->serialize) {
         size_t len = 0;
         uint8_t *data = nullptr;
         CBPointer handle = nullptr;
-        if (!input.objectInfo->serialize(input.payload.objectValue, &data, &len,
-                                         &handle)) {
-          throw chainblocks::CBException(
-              "Failed to serialize custom object variable!");
+        if (!input.objectInfo->serialize(input.payload.objectValue, &data, &len, &handle)) {
+          throw chainblocks::CBException("Failed to serialize custom object variable!");
         }
         uint64_t ulen = uint64_t(len);
         write((const uint8_t *)&ulen, sizeof(uint64_t));
@@ -1590,8 +1501,7 @@ template <typename T> struct ChainDoppelgangerPool {
       auto fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->chain = chain;
       composer.compose(chain.get());
-      fresh->chain->name =
-          fresh->chain->name + "-" + std::to_string(_pool.size());
+      fresh->chain->name = fresh->chain->name + "-" + std::to_string(_pool.size());
       return fresh;
     } else {
       auto res = _avail.extract(_avail.begin());
@@ -1605,17 +1515,13 @@ private:
   struct Writer {
     std::stringstream &stream;
     Writer(std::stringstream &stream) : stream(stream) {}
-    void operator()(const uint8_t *buf, size_t size) {
-      stream.write((const char *)buf, size);
-    }
+    void operator()(const uint8_t *buf, size_t size) { stream.write((const char *)buf, size); }
   };
 
   struct Reader {
     std::stringstream &stream;
     Reader(std::stringstream &stream) : stream(stream) {}
-    void operator()(uint8_t *buf, size_t size) {
-      stream.read((char *)buf, size);
-    }
+    void operator()(uint8_t *buf, size_t size) { stream.read((char *)buf, size); }
   };
 
   // keep our pool in a deque in order to keep them alive
@@ -1627,10 +1533,8 @@ private:
 };
 
 #ifdef __EMSCRIPTEN__
-template <typename T>
-inline T emscripten_wait(CBContext *context, emscripten::val promise) {
-  const static emscripten::val futs =
-      emscripten::val::global("ChainblocksBonder");
+template <typename T> inline T emscripten_wait(CBContext *context, emscripten::val promise) {
+  const static emscripten::val futs = emscripten::val::global("ChainblocksBonder");
   emscripten::val fut = futs.new_(promise);
   fut.call<void>("run");
 
@@ -1655,8 +1559,7 @@ extern Shared<boost::asio::thread_pool> SharedThreadPool;
 #endif
 
 template <typename FUNC, typename CANCELLATION>
-inline CBVar awaitne(CBContext *context, FUNC &&func,
-                     CANCELLATION &&cancel) noexcept {
+inline CBVar awaitne(CBContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
@@ -1699,8 +1602,7 @@ inline CBVar awaitne(CBContext *context, FUNC &&func,
 #endif
 }
 
-template <typename FUNC, typename CANCELLATION>
-inline void await(CBContext *context, FUNC &&func, CANCELLATION &&cancel) {
+template <typename FUNC, typename CANCELLATION> inline void await(CBContext *context, FUNC &&func, CANCELLATION &&cancel) {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else

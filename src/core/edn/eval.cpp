@@ -5,8 +5,7 @@
 
 using namespace chainblocks::edn::eval;
 
-Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
-                    int *line) {
+Value Program::eval(form::Form ast, std::shared_ptr<Environment> env, int *line) {
   while (1) {
     auto idx = ast.index();
     if (idx == form::LIST) {
@@ -24,8 +23,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
             auto &value = std::get<std::string>(token.value);
             if (value == "do") {
               if (list.size() == 0) {
-                throw EvalException("do requires at least one argument",
-                                    token.line);
+                throw EvalException("do requires at least one argument", token.line);
               }
 
               // take the last for tail calling
@@ -48,15 +46,11 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
               auto fname = list.front().form;
               auto fbody = list.back().form;
               if (fname.index() != form::TOKEN) {
-                throw EvalException(
-                    "def first argument should be a valid symbol name",
-                    token.line);
+                throw EvalException("def first argument should be a valid symbol name", token.line);
               }
               auto tname = std::get<token::Token>(fname);
               if (tname.type != token::type::SYMBOL) {
-                throw EvalException(
-                    "def first argument should be a valid symbol name",
-                    tname.line);
+                throw EvalException("def first argument should be a valid symbol name", tname.line);
               }
 
               auto name = std::get<std::string>(tname.value);
@@ -74,25 +68,19 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
               auto fbindings = list.front().form;
               auto fbody = list.back().form;
               if (fbindings.index() != form::VECTOR) {
-                throw EvalException("fn first arguments should be a vector",
-                                    token.line);
+                throw EvalException("fn first arguments should be a vector", token.line);
               }
 
               std::vector<std::string> args;
-              auto bindings =
-                  std::get<std::vector<form::FormWrapper>>(fbindings);
+              auto bindings = std::get<std::vector<form::FormWrapper>>(fbindings);
               for (auto &binding : bindings) {
                 auto &fbind = binding.form;
                 if (fbind.index() != form::TOKEN) {
-                  throw EvalException(
-                      "fn arguments have to be a valid symbol name",
-                      token.line);
+                  throw EvalException("fn arguments have to be a valid symbol name", token.line);
                 }
                 auto &tbind = std::get<token::Token>(fbind);
                 if (tbind.type != token::type::SYMBOL) {
-                  throw EvalException(
-                      "fn arguments have to be a valid symbol name",
-                      tbind.line);
+                  throw EvalException("fn arguments have to be a valid symbol name", tbind.line);
                 }
                 auto &name = std::get<std::string>(tbind.value);
                 args.push_back(name);
@@ -101,8 +89,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
               return Lambda(args, fbody, token, env);
             } else if (value == "if") {
               if (list.size() < 2 || list.size() > 3) {
-                throw EvalException("if expects between 1 or 2 arguments",
-                                    token.line);
+                throw EvalException("if expects between 1 or 2 arguments", token.line);
               }
 
               auto &pred = list.front().form;
@@ -112,8 +99,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
               if (res.index() == value::types::Var) {
                 // is cbvarvalue
                 auto &var = std::get<CBVarValue>(res);
-                if (var.value().valueType == Bool &&
-                    var.value().payload.boolValue) {
+                if (var.value().valueType == Bool && var.value().payload.boolValue) {
                   // is true
                   ast = list.front().form;
                   *line = token.line;
@@ -137,14 +123,12 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
               auto fexprs = list.back().form;
 
               if (fbinds.index() != form::VECTOR) {
-                throw EvalException("let bindings should be a vector",
-                                    token.line);
+                throw EvalException("let bindings should be a vector", token.line);
               }
               auto binds = std::get<std::vector<form::FormWrapper>>(fbinds);
 
               if ((binds.size() % 2) != 0) {
-                throw EvalException("let expected bindings in pairs",
-                                    token.line);
+                throw EvalException("let expected bindings in pairs", token.line);
               }
 
               // create a env with args
@@ -161,8 +145,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
                 if (tbname.type != token::type::SYMBOL) {
                   throw EvalException("symbol expected", tbname.line);
                 }
-                subenv->set(std::get<std::string>(tbname.value),
-                            eval(fbexpr, env, line));
+                subenv->set(std::get<std::string>(tbname.value), eval(fbexpr, env, line));
               }
               ast = fexprs;
               env = subenv;
@@ -176,11 +159,9 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
             } else if (value == "quasiquote") {
               // https://docs.racket-lang.org/reference/quasiquote.html
               if (list.size() != 1) {
-                throw EvalException("quasiquote expected 1 argument",
-                                    token.line);
+                throw EvalException("quasiquote expected 1 argument", token.line);
               }
-              throw EvalException("quasiquote not implemented yet!",
-                                  token.line);
+              throw EvalException("quasiquote not implemented yet!", token.line);
             } else if (value == "Node") {
               return Node(token, env);
             } else {
@@ -203,9 +184,7 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env,
                   auto args = lmbd.args();
                   for (auto &arg : args) {
                     if (list.size() == 0) {
-                      throw EvalException("Not enough arguments for call: " +
-                                              value,
-                                          token.line);
+                      throw EvalException("Not enough arguments for call: " + value, token.line);
                     }
                     auto argAst = list.front().form;
                     list.pop_front();

@@ -86,13 +86,10 @@ struct CBCoro {
 #endif
 
 #ifdef CB_COMPRESSED_STRINGS
-#define CBCCSTR(_str_)                                                         \
-  ::chainblocks::getCompiledCompressedString(                                  \
-      ::chainblocks::constant<::chainblocks::crc32(_str_)>::value)
+#define CBCCSTR(_str_) ::chainblocks::getCompiledCompressedString(::chainblocks::constant<::chainblocks::crc32(_str_)>::value)
 #else
-#define CBCCSTR(_str_)                                                         \
-  ::chainblocks::setCompiledCompressedString(                                  \
-      ::chainblocks::constant<::chainblocks::crc32(_str_)>::value, _str_)
+#define CBCCSTR(_str_) \
+  ::chainblocks::setCompiledCompressedString(::chainblocks::constant<::chainblocks::crc32(_str_)>::value, _str_)
 #endif
 
 #define CBLOG_TRACE SPDLOG_TRACE
@@ -100,10 +97,10 @@ struct CBCoro {
 #define CBLOG_INFO SPDLOG_INFO
 #define CBLOG_WARNING SPDLOG_WARN
 #define CBLOG_ERROR SPDLOG_ERROR
-#define CBLOG_FATAL(...)                                                       \
-  {                                                                            \
-    SPDLOG_CRITICAL(__VA_ARGS__);                                              \
-    std::abort();                                                              \
+#define CBLOG_FATAL(...)          \
+  {                               \
+    SPDLOG_CRITICAL(__VA_ARGS__); \
+    std::abort();                 \
   }
 
 namespace chainblocks {
@@ -115,29 +112,20 @@ CBOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 
 CBString getString(uint32_t crc);
 void setString(uint32_t crc, CBString str);
-[[nodiscard]] CBComposeResult composeChain(const CBlocks chain,
-                                           CBValidationCallback callback,
-                                           void *userData, CBInstanceData data);
+[[nodiscard]] CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback, void *userData,
+                                           CBInstanceData data);
 // caller does not handle return
-CBChainState activateBlocks(CBSeq blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output);
+CBChainState activateBlocks(CBSeq blocks, CBContext *context, const CBVar &chainInput, CBVar &output);
 // caller handles return
-CBChainState activateBlocks2(CBSeq blocks, CBContext *context,
-                             const CBVar &chainInput, CBVar &output);
+CBChainState activateBlocks2(CBSeq blocks, CBContext *context, const CBVar &chainInput, CBVar &output);
 // caller does not handle return
-CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output);
+CBChainState activateBlocks(CBlocks blocks, CBContext *context, const CBVar &chainInput, CBVar &output);
 // caller handles return
-CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
-                             const CBVar &chainInput, CBVar &output);
+CBChainState activateBlocks2(CBlocks blocks, CBContext *context, const CBVar &chainInput, CBVar &output);
 // caller does not handle return
-CBChainState activateBlocks(CBlocks blocks, CBContext *context,
-                            const CBVar &chainInput, CBVar &output,
-                            CBVar &outHash);
+CBChainState activateBlocks(CBlocks blocks, CBContext *context, const CBVar &chainInput, CBVar &output, CBVar &outHash);
 // caller handles return
-CBChainState activateBlocks2(CBlocks blocks, CBContext *context,
-                             const CBVar &chainInput, CBVar &output,
-                             CBVar &outHash);
+CBChainState activateBlocks2(CBlocks blocks, CBContext *context, const CBVar &chainInput, CBVar &output, CBVar &outHash);
 CBVar *referenceGlobalVariable(CBContext *ctx, const char *name);
 CBVar *referenceVariable(CBContext *ctx, const char *name);
 void releaseVariable(CBVar *variable);
@@ -149,8 +137,7 @@ void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info);
 
 CBlock *createBlock(std::string_view name);
 void registerCoreBlocks();
-void registerBlock(std::string_view name, CBBlockConstructor constructor,
-                   std::string_view fullTypeName = std::string_view());
+void registerBlock(std::string_view name, CBBlockConstructor constructor, std::string_view fullTypeName = std::string_view());
 void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info);
 void registerRunLoopCallback(std::string_view eventName, CBCallback callback);
@@ -162,12 +149,9 @@ void registerChain(CBChain *chain);
 void unregisterChain(CBChain *chain);
 
 struct RuntimeObserver {
-  virtual void registerBlock(const char *fullName,
-                             CBBlockConstructor constructor) {}
-  virtual void registerObjectType(int32_t vendorId, int32_t typeId,
-                                  CBObjectInfo info) {}
-  virtual void registerEnumType(int32_t vendorId, int32_t typeId,
-                                CBEnumInfo info) {}
+  virtual void registerBlock(const char *fullName, CBBlockConstructor constructor) {}
+  virtual void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) {}
+  virtual void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) {}
 };
 
 inline void cloneVar(CBVar &dst, const CBVar &src);
@@ -197,8 +181,7 @@ template <std::size_t Size = 512> struct bumping_memory_resource {
   void deallocate(void *) noexcept {}
 };
 
-template <typename T, typename Resource = bumping_memory_resource<512>>
-struct stack_allocator {
+template <typename T, typename Resource = bumping_memory_resource<512>> struct stack_allocator {
   Resource _res;
   using value_type = T;
 
@@ -206,29 +189,18 @@ struct stack_allocator {
 
   stack_allocator(const stack_allocator &) = default;
 
-  template <typename U>
-  stack_allocator(const stack_allocator<U, Resource> &other)
-      : _res(other._res) {}
+  template <typename U> stack_allocator(const stack_allocator<U, Resource> &other) : _res(other._res) {}
 
-  T *allocate(std::size_t n) {
-    return static_cast<T *>(_res.allocate(sizeof(T) * n));
-  }
+  T *allocate(std::size_t n) { return static_cast<T *>(_res.allocate(sizeof(T) * n)); }
   void deallocate(T *ptr, std::size_t) { _res.deallocate(ptr); }
 
-  friend bool operator==(const stack_allocator &lhs,
-                         const stack_allocator &rhs) {
-    return lhs._res == rhs._res;
-  }
+  friend bool operator==(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res == rhs._res; }
 
-  friend bool operator!=(const stack_allocator &lhs,
-                         const stack_allocator &rhs) {
-    return lhs._res != rhs._res;
-  }
+  friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
 
 void freeDerivedInfo(CBTypeInfo info);
-CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data,
-                          bool *containsVariables = nullptr);
+CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data, bool *containsVariables = nullptr);
 CBTypeInfo cloneTypeInfo(const CBTypeInfo &other);
 
 uint64_t deriveTypeHash(const CBVar &value);
@@ -237,8 +209,7 @@ uint64_t deriveTypeHash(const CBTypeInfo &value);
 struct TypeInfo {
   TypeInfo() {}
 
-  TypeInfo(const CBVar &var, const CBInstanceData &data,
-           bool *containsVariables = nullptr) {
+  TypeInfo(const CBVar &var, const CBInstanceData &data, bool *containsVariables = nullptr) {
     _info = deriveTypeInfo(var, data, containsVariables);
   }
 
@@ -292,27 +263,15 @@ struct CBStackAllocator {
 #endif
 
 struct CBChain : public std::enable_shared_from_this<CBChain> {
-  static std::shared_ptr<CBChain> make(std::string_view chain_name) {
-    return std::shared_ptr<CBChain>(new CBChain(chain_name));
-  }
+  static std::shared_ptr<CBChain> make(std::string_view chain_name) { return std::shared_ptr<CBChain>(new CBChain(chain_name)); }
 
-  static std::shared_ptr<CBChain> make() {
-    return std::shared_ptr<CBChain>(new CBChain());
-  }
+  static std::shared_ptr<CBChain> make() { return std::shared_ptr<CBChain>(new CBChain()); }
 
   static std::shared_ptr<CBChain> *makePtr(std::string_view chain_name) {
     return new std::shared_ptr<CBChain>(new CBChain(chain_name));
   }
 
-  enum State {
-    Stopped,
-    Prepared,
-    Starting,
-    Iterating,
-    IterationEnded,
-    Failed,
-    Ended
-  };
+  enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
 
   ~CBChain() {
     reset();
@@ -384,10 +343,8 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
 
   std::vector<CBlock *> blocks;
 
-  std::unordered_map<std::string, CBVar, std::hash<std::string>,
-                     std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<
-                         std::pair<const std::string, CBVar>, 16>>
+  std::unordered_map<std::string, CBVar, std::hash<std::string>, std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<std::pair<const std::string, CBVar>, 16>>
       variables;
 
   // variables with lifetime managed externally
@@ -399,31 +356,23 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   uint8_t *stackMem{nullptr};
   size_t stackSize{CB_BASE_STACK_SIZE};
 
-  static std::shared_ptr<CBChain> sharedFromRef(CBChainRef ref) {
-    return *reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
-  }
+  static std::shared_ptr<CBChain> sharedFromRef(CBChainRef ref) { return *reinterpret_cast<std::shared_ptr<CBChain> *>(ref); }
 
   static void deleteRef(CBChainRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<CBChain> *>(ref);
-    CBLOG_TRACE("{} chain deleteRef - use_count: {}", (*pref)->name,
-                pref->use_count());
+    CBLOG_TRACE("{} chain deleteRef - use_count: {}", (*pref)->name, pref->use_count());
     delete pref;
   }
 
-  CBChainRef newRef() {
-    return reinterpret_cast<CBChainRef>(
-        new std::shared_ptr<CBChain>(shared_from_this()));
-  }
+  CBChainRef newRef() { return reinterpret_cast<CBChainRef>(new std::shared_ptr<CBChain>(shared_from_this())); }
 
   static CBChainRef weakRef(const std::shared_ptr<CBChain> &shared) {
-    return reinterpret_cast<CBChainRef>(
-        &const_cast<std::shared_ptr<CBChain> &>(shared));
+    return reinterpret_cast<CBChainRef>(&const_cast<std::shared_ptr<CBChain> &>(shared));
   }
 
   static CBChainRef addRef(CBChainRef ref) {
     auto cref = sharedFromRef(ref);
-    CBLOG_TRACE("{} chain addRef - use_count: {}", cref->name,
-                cref.use_count());
+    CBLOG_TRACE("{} chain addRef - use_count: {}", cref->name, cref.use_count());
     auto res = new std::shared_ptr<CBChain>(cref);
     return reinterpret_cast<CBChainRef>(res);
   }
@@ -432,9 +381,7 @@ struct CBChain : public std::enable_shared_from_this<CBChain> {
   std::vector<std::function<void()>> onStop;
 
 private:
-  CBChain(std::string_view chain_name) : name(chain_name) {
-    CBLOG_TRACE("Creating chain: {}", name);
-  }
+  CBChain(std::string_view chain_name) : name(chain_name) { CBLOG_TRACE("Creating chain: {}", name); }
 
   CBChain() { CBLOG_TRACE("Creating chain"); }
 
@@ -443,14 +390,11 @@ private:
 
 namespace chainblocks {
 using CBHashSet =
-    std::unordered_set<OwnedVar, std::hash<CBVar>, std::equal_to<CBVar>,
-                       boost::alignment::aligned_allocator<OwnedVar, 16>>;
+    std::unordered_set<OwnedVar, std::hash<CBVar>, std::equal_to<CBVar>, boost::alignment::aligned_allocator<OwnedVar, 16>>;
 using CBHashSetIt = CBHashSet::iterator;
 
-using CBMap = std::unordered_map<
-    std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
-    boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>,
-                                        16>>;
+using CBMap = std::unordered_map<std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+                                 boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>, 16>>;
 using CBMapIt = CBMap::iterator;
 
 struct StopChainException : public CBException {
@@ -467,8 +411,7 @@ struct Globals {
 
   int SigIntTerm{0};
   std::unordered_map<std::string_view, CBBlockConstructor> BlocksRegister;
-  std::unordered_map<std::string_view, std::string_view>
-      BlockNamesToFullTypeNames;
+  std::unordered_map<std::string_view, std::string_view> BlockNamesToFullTypeNames;
   std::unordered_map<int64_t, CBObjectInfo> ObjectTypesRegister;
   std::unordered_map<int64_t, CBEnumInfo> EnumTypesRegister;
 
@@ -493,21 +436,16 @@ struct Globals {
           [](CBTable table, CBTableIterator *outIter) {
             if (outIter == nullptr)
               CBLOG_FATAL("tableGetIterator - outIter was nullptr");
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
-            chainblocks::CBMapIt *mapIt =
-                reinterpret_cast<chainblocks::CBMapIt *>(outIter);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMapIt *mapIt = reinterpret_cast<chainblocks::CBMapIt *>(outIter);
             *mapIt = map->begin();
           },
       .tableNext =
-          [](CBTable table, CBTableIterator *inIter, CBString *outKey,
-             CBVar *outVar) {
+          [](CBTable table, CBTableIterator *inIter, CBString *outKey, CBVar *outVar) {
             if (inIter == nullptr)
               CBLOG_FATAL("tableGetIterator - inIter was nullptr");
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
-            chainblocks::CBMapIt *mapIt =
-                reinterpret_cast<chainblocks::CBMapIt *>(inIter);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMapIt *mapIt = reinterpret_cast<chainblocks::CBMapIt *>(inIter);
             if ((*mapIt) != map->end()) {
               *outKey = (*(*mapIt)).first.c_str();
               *outVar = (*(*mapIt)).second;
@@ -519,61 +457,52 @@ struct Globals {
           },
       .tableSize =
           [](CBTable table) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             return map->size();
           },
       .tableContains =
           [](CBTable table, const char *key) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             return map->count(key) > 0;
           },
       .tableAt =
           [](CBTable table, const char *key) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             CBVar &vref = (*map)[key];
             return &vref;
           },
       .tableRemove =
           [](CBTable table, const char *key) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             map->erase(key);
           },
       .tableClear =
           [](CBTable table) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             map->clear();
           },
       .tableFree =
           [](CBTable table) {
-            chainblocks::CBMap *map =
-                reinterpret_cast<chainblocks::CBMap *>(table.opaque);
+            chainblocks::CBMap *map = reinterpret_cast<chainblocks::CBMap *>(table.opaque);
             delete map;
-          }};
+          },
+  };
 
   CBSetInterface SetInterface{
       .setGetIterator =
           [](CBSet cbset, CBSetIterator *outIter) {
             if (outIter == nullptr)
               CBLOG_FATAL("setGetIterator - outIter was nullptr");
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
-            chainblocks::CBHashSetIt *setIt =
-                reinterpret_cast<chainblocks::CBHashSetIt *>(outIter);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSetIt *setIt = reinterpret_cast<chainblocks::CBHashSetIt *>(outIter);
             *setIt = set->begin();
           },
       .setNext =
           [](CBSet cbset, CBSetIterator *inIter, CBVar *outVar) {
             if (inIter == nullptr)
               CBLOG_FATAL("setGetIterator - inIter was nullptr");
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
-            chainblocks::CBHashSetIt *setIt =
-                reinterpret_cast<chainblocks::CBHashSetIt *>(inIter);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSetIt *setIt = reinterpret_cast<chainblocks::CBHashSetIt *>(inIter);
             if ((*setIt) != set->end()) {
               *outVar = (*(*setIt));
               (*setIt)++;
@@ -584,50 +513,43 @@ struct Globals {
           },
       .setSize =
           [](CBSet cbset) {
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             return set->size();
           },
       .setContains =
           [](CBSet cbset, CBVar value) {
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             return set->count(value) > 0;
           },
       .setInclude =
           [](CBSet cbset, CBVar value) {
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             auto [_, inserted] = set->emplace(value);
             return inserted;
           },
       .setExclude =
           [](CBSet cbset, CBVar value) {
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             return set->erase(value) > 0;
           },
       .setClear =
           [](CBSet cbset) {
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             set->clear();
           },
       .setFree =
           [](CBSet cbset) {
-            chainblocks::CBHashSet *set =
-                reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
+            chainblocks::CBHashSet *set = reinterpret_cast<chainblocks::CBHashSet *>(cbset.opaque);
             delete set;
-          }};
+          },
+  };
 };
 
 Globals &GetGlobals();
 
-template <typename T>
-inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
+template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   // safety check to make sure this is not a borrowed foreign array!
-  assert((arr.cap == 0 && arr.elements == nullptr) ||
-         (arr.cap > 0 && arr.elements != nullptr));
+  assert((arr.cap == 0 && arr.elements == nullptr) || (arr.cap > 0 && arr.elements != nullptr));
 
   size_t min_len = arr.len + addlen;
 
@@ -643,8 +565,7 @@ inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
     min_cap = 2 * arr.cap;
 
   // TODO investigate realloc
-  auto newbuf =
-      new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
+  auto newbuf = new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
     memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
     ::operator delete[](arr.elements, std::align_val_t{16});
@@ -676,13 +597,11 @@ template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   arr.len = size;
 }
 
-template <typename T, typename V>
-inline void arrayInsert(T &arr, uint32_t index, const V &val) {
+template <typename T, typename V> inline void arrayInsert(T &arr, uint32_t index, const V &val) {
   if ((arr.len + 1) > arr.cap) {
     arrayGrow(arr, 1);
   }
-  memmove(&arr.elements[index + 1], &arr.elements[index],
-          sizeof(V) * (arr.len - index));
+  memmove(&arr.elements[index + 1], &arr.elements[index], sizeof(V) * (arr.len - index));
   arr.len++;
   arr.elements[index] = val;
 }
@@ -760,9 +679,7 @@ public:
     return *this;
   }
 
-  std::ptrdiff_t operator-(PtrIterator const &other) const {
-    return ptr - other.ptr;
-  }
+  std::ptrdiff_t operator-(PtrIterator const &other) const { return ptr - other.ptr; }
 
   T &operator*() const { return *ptr; }
 
@@ -777,8 +694,7 @@ private:
   T *ptr;
 };
 
-template <typename S, typename T, typename Allocator = std::allocator<T>>
-class IterableArray {
+template <typename S, typename T, typename Allocator = std::allocator<T>> class IterableArray {
 public:
   typedef S seq_type;
   typedef T value_type;
@@ -793,9 +709,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const CBVar &v) : _seq(v.payload.seqValue), _owned(false) {
-    assert(v.valueType == Seq);
-  }
+  IterableArray(const CBVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -814,8 +728,7 @@ public:
     }
   }
 
-  IterableArray(const_iterator first, const_iterator last)
-      : _seq({}), _owned(true) {
+  IterableArray(const_iterator first, const_iterator last) : _seq({}), _owned(true) {
     size_t size = last - first;
     arrayResize(_seq, size);
     for (size_t i = 0; i < size; i++) {
@@ -872,12 +785,8 @@ public:
   const_iterator begin() const { return const_iterator(&_seq.elements[0]); }
   const_iterator cbegin() const { return const_iterator(&_seq.elements[0]); }
   iterator end() { return iterator(&_seq.elements[0] + size()); }
-  const_iterator end() const {
-    return const_iterator(&_seq.elements[0] + size());
-  }
-  const_iterator cend() const {
-    return const_iterator(&_seq.elements[0] + size());
-  }
+  const_iterator end() const { return const_iterator(&_seq.elements[0] + size()); }
+  const_iterator cend() const { return const_iterator(&_seq.elements[0] + size()); }
   T &operator[](int index) { return _seq.elements[index]; }
   const T &operator[](int index) const { return _seq.elements[index]; }
   T &front() { return _seq.elements[0]; }
@@ -894,8 +803,7 @@ public:
 };
 
 using IterableSeq = IterableArray<CBSeq, CBVar>;
-using IterableExposedInfo =
-    IterableArray<CBExposedTypesInfo, CBExposedTypeInfo>;
+using IterableExposedInfo = IterableArray<CBExposedTypesInfo, CBExposedTypeInfo>;
 using IterableTypesInfo = IterableArray<CBTypesInfo, CBTypeInfo>;
 } // namespace chainblocks
 
@@ -947,8 +855,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
     arrayFree(var.payload.arrayValue);
     break;
   case Object:
-    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
-        var.objectInfo && var.objectInfo->release) {
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->release) {
       // in this case the custom object needs actual destruction
       var.objectInfo->release(var.payload.objectValue);
     }
@@ -965,8 +872,7 @@ ALWAYS_INLINE inline void destroyVar(CBVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(CBVar &dst, const CBVar &src) {
-  if (src.valueType < EndOfBlittableTypes &&
-      dst.valueType < EndOfBlittableTypes) {
+  if (src.valueType < EndOfBlittableTypes && dst.valueType < EndOfBlittableTypes) {
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(CBVarPayload));
   } else if (src.valueType < EndOfBlittableTypes) {
@@ -994,23 +900,15 @@ struct InternalCore {
     return res;
   }
 
-  static CBVar *referenceVariable(CBContext *context, const char *name) {
-    return chainblocks::referenceVariable(context, name);
-  }
+  static CBVar *referenceVariable(CBContext *context, const char *name) { return chainblocks::referenceVariable(context, name); }
 
-  static void releaseVariable(CBVar *variable) {
-    chainblocks::releaseVariable(variable);
-  }
+  static void releaseVariable(CBVar *variable) { chainblocks::releaseVariable(variable); }
 
-  static void cloneVar(CBVar &dst, const CBVar &src) {
-    chainblocks::cloneVar(dst, src);
-  }
+  static void cloneVar(CBVar &dst, const CBVar &src) { chainblocks::cloneVar(dst, src); }
 
   static void destroyVar(CBVar &var) { chainblocks::destroyVar(var); }
 
-  template <typename T> static void arrayFree(T &arr) {
-    chainblocks::arrayFree<T>(arr);
-  }
+  template <typename T> static void arrayFree(T &arr) { chainblocks::arrayFree<T>(arr); }
 
   static void seqPush(CBSeq *s, const CBVar *v) { arrayPush(*s, *v); }
 
@@ -1020,80 +918,60 @@ struct InternalCore {
 
   static void log(const char *msg) { CBLOG_INFO(msg); }
 
-  static void registerEnumType(int32_t vendorId, int32_t enumId,
-                               CBEnumInfo info) {
+  static void registerEnumType(int32_t vendorId, int32_t enumId, CBEnumInfo info) {
     chainblocks::registerEnumType(vendorId, enumId, info);
   }
 
-  static void registerObjectType(int32_t vendorId, int32_t objectId,
-                                 CBObjectInfo info) {
+  static void registerObjectType(int32_t vendorId, int32_t objectId, CBObjectInfo info) {
     chainblocks::registerObjectType(vendorId, objectId, info);
   }
 
-  static CBComposeResult composeBlocks(CBlocks blocks,
-                                       CBValidationCallback callback,
-                                       void *userData, CBInstanceData data) {
+  static CBComposeResult composeBlocks(CBlocks blocks, CBValidationCallback callback, void *userData, CBInstanceData data) {
     return chainblocks::composeChain(blocks, callback, userData, data);
   }
 
-  static CBChainState runBlocks(CBlocks blocks, CBContext *context,
-                                const CBVar &input, CBVar &output) {
+  static CBChainState runBlocks(CBlocks blocks, CBContext *context, const CBVar &input, CBVar &output) {
     return chainblocks::activateBlocks(blocks, context, input, output);
   }
 
-  static CBChainState runBlocks2(CBlocks blocks, CBContext *context,
-                                 const CBVar &input, CBVar &output) {
+  static CBChainState runBlocks2(CBlocks blocks, CBContext *context, const CBVar &input, CBVar &output) {
     return chainblocks::activateBlocks2(blocks, context, input, output);
   }
 
-  static CBChainState runBlocksHashed(CBlocks blocks, CBContext *context,
-                                      const CBVar &input, CBVar &output,
-                                      CBVar &outHash) {
+  static CBChainState runBlocksHashed(CBlocks blocks, CBContext *context, const CBVar &input, CBVar &output, CBVar &outHash) {
     return chainblocks::activateBlocks(blocks, context, input, output, outHash);
   }
 
-  static CBChainState runBlocksHashed2(CBlocks blocks, CBContext *context,
-                                       const CBVar &input, CBVar &output,
-                                       CBVar &outHash) {
-    return chainblocks::activateBlocks2(blocks, context, input, output,
-                                        outHash);
+  static CBChainState runBlocksHashed2(CBlocks blocks, CBContext *context, const CBVar &input, CBVar &output, CBVar &outHash) {
+    return chainblocks::activateBlocks2(blocks, context, input, output, outHash);
   }
 
-  static CBChainState suspend(CBContext *ctx, double seconds) {
-    return chainblocks::suspend(ctx, seconds);
-  }
+  static CBChainState suspend(CBContext *ctx, double seconds) { return chainblocks::suspend(ctx, seconds); }
 };
 
 typedef TParamVar<InternalCore> ParamVar;
 
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
-struct SimpleBlock : public TSimpleBlock<InternalCore, Params, NPARAMS,
-                                         InputType, OutputType> {};
+struct SimpleBlock : public TSimpleBlock<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
-template <typename E>
-class EnumInfo : public TEnumInfo<InternalCore, E, false> {
+template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E, false> {
 public:
-  EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
-      : TEnumInfo<InternalCore, E, false>(name, vendorId, enumId) {}
+  EnumInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<InternalCore, E, false>(name, vendorId, enumId) {}
 };
 
-template <typename E>
-class FlagsInfo : public TEnumInfo<InternalCore, E, true> {
+template <typename E> class FlagsInfo : public TEnumInfo<InternalCore, E, true> {
 public:
-  FlagsInfo(const char *name, int32_t vendorId, int32_t enumId)
-      : TEnumInfo<InternalCore, E, true>(name, vendorId, enumId) {}
+  FlagsInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<InternalCore, E, true>(name, vendorId, enumId) {}
 };
 
-#define REGISTER_ENUM(_NAME_, _CC_)                                            \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
-  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,             \
-                                                  _NAME_##CC};                 \
+#define REGISTER_ENUM(_NAME_, _CC_)                                             \
+  static constexpr uint32_t _NAME_##CC = _CC_;                                  \
+  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC, _NAME_##CC}; \
   static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
 
-#define REGISTER_FLAGS(_NAME_, _CC_)                                           \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                 \
-  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC,            \
-                                                   _NAME_##CC};                \
+#define REGISTER_FLAGS(_NAME_, _CC_)                                             \
+  static constexpr uint32_t _NAME_##CC = _CC_;                                   \
+  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC, _NAME_##CC}; \
   static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
 
 template <typename E> static E getFlags(CBVar var) {
@@ -1103,15 +981,12 @@ template <typename E> static E getFlags(CBVar var) {
     flags = E(var.payload.enumValue);
     break;
   case CBType::Seq: {
-    assert(var.payload.seqValue.len == 0 ||
-           var.payload.seqValue.elements[0].valueType == CBType::Enum);
+    assert(var.payload.seqValue.len == 0 || var.payload.seqValue.elements[0].valueType == CBType::Enum);
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       // note: can't use namespace magic_enum::bitwise_operators because of
       // potential conflicts with other implementations
-      flags = static_cast<E>(
-          static_cast<magic_enum::underlying_type_t<E>>(flags) |
-          static_cast<magic_enum::underlying_type_t<E>>(
-              var.payload.seqValue.elements[i].payload.enumValue));
+      flags = static_cast<E>(static_cast<magic_enum::underlying_type_t<E>>(flags) |
+                             static_cast<magic_enum::underlying_type_t<E>>(var.payload.seqValue.elements[i].payload.enumValue));
     }
   } break;
   default:
@@ -1121,14 +996,11 @@ template <typename E> static E getFlags(CBVar var) {
 };
 
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr,
-          void (*BeforeDelete)(const E &) = nullptr>
-class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer,
-                                    BeforeDelete> {
+          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr>
+class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete> {
 public:
   ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
-      : TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete>(
-            name, vendorId, objectId) {}
+      : TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete>(name, vendorId, objectId) {}
 };
 
 typedef TBlocksVar<InternalCore> BlocksVar;
@@ -1157,8 +1029,7 @@ struct ParamsInfo {
     return *this;
   }
 
-  template <typename... Types>
-  explicit ParamsInfo(CBParameterInfo first, Types... types) {
+  template <typename... Types> explicit ParamsInfo(CBParameterInfo first, Types... types) {
     std::vector<CBParameterInfo> vec = {first, types...};
     _innerInfo = {};
     for (auto pi : vec) {
@@ -1166,9 +1037,7 @@ struct ParamsInfo {
     }
   }
 
-  template <typename... Types>
-  explicit ParamsInfo(const ParamsInfo &other, CBParameterInfo first,
-                      Types... types) {
+  template <typename... Types> explicit ParamsInfo(const ParamsInfo &other, CBParameterInfo first, Types... types) {
     _innerInfo = {};
 
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
@@ -1181,8 +1050,7 @@ struct ParamsInfo {
     }
   }
 
-  static CBParameterInfo Param(CBString name, CBOptionalString help,
-                               CBTypesInfo types) {
+  static CBParameterInfo Param(CBString name, CBOptionalString help, CBTypesInfo types) {
     CBParameterInfo res = {name, help, types};
     return res;
   }
@@ -1216,8 +1084,7 @@ struct ExposedInfo {
     return *this;
   }
 
-  template <typename... Types>
-  explicit ExposedInfo(const ExposedInfo &other, Types... types) {
+  template <typename... Types> explicit ExposedInfo(const ExposedInfo &other, Types... types) {
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
       chainblocks::arrayPush(_innerInfo, other._innerInfo.elements[i]);
     }
@@ -1228,8 +1095,7 @@ struct ExposedInfo {
     }
   }
 
-  template <typename... Types>
-  explicit ExposedInfo(const CBExposedTypesInfo other, Types... types) {
+  template <typename... Types> explicit ExposedInfo(const CBExposedTypesInfo other, Types... types) {
     for (uint32_t i = 0; i < other.len; i++) {
       chainblocks::arrayPush(_innerInfo, other.elements[i]);
     }
@@ -1240,35 +1106,28 @@ struct ExposedInfo {
     }
   }
 
-  template <typename... Types>
-  explicit ExposedInfo(const CBExposedTypeInfo first, Types... types) {
+  template <typename... Types> explicit ExposedInfo(const CBExposedTypeInfo first, Types... types) {
     std::vector<CBExposedTypeInfo> vec = {first, types...};
     for (auto pi : vec) {
       chainblocks::arrayPush(_innerInfo, pi);
     }
   }
 
-  constexpr static CBExposedTypeInfo
-  Variable(CBString name, CBOptionalString help, CBTypeInfo type,
-           bool isMutable = false, bool isTableField = false) {
-    CBExposedTypeInfo res = {name,  help,         type, isMutable,
-                             false, isTableField, false};
+  constexpr static CBExposedTypeInfo Variable(CBString name, CBOptionalString help, CBTypeInfo type, bool isMutable = false,
+                                              bool isTableField = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable, false, isTableField, false};
     return res;
   }
 
-  constexpr static CBExposedTypeInfo ProtectedVariable(CBString name,
-                                                       CBOptionalString help,
-                                                       CBTypeInfo type,
+  constexpr static CBExposedTypeInfo ProtectedVariable(CBString name, CBOptionalString help, CBTypeInfo type,
                                                        bool isMutable = false) {
     CBExposedTypeInfo res = {name, help, type, isMutable, true, false, false};
     return res;
   }
 
-  constexpr static CBExposedTypeInfo
-  GlobalVariable(CBString name, CBOptionalString help, CBTypeInfo type,
-                 bool isMutable = false, bool isTableField = false) {
-    CBExposedTypeInfo res = {name,  help,         type, isMutable,
-                             false, isTableField, true};
+  constexpr static CBExposedTypeInfo GlobalVariable(CBString name, CBOptionalString help, CBTypeInfo type, bool isMutable = false,
+                                                    bool isTableField = false) {
+    CBExposedTypeInfo res = {name, help, type, isMutable, false, isTableField, true};
     return res;
   }
 
@@ -1350,13 +1209,11 @@ struct VarStringStream {
       cache.reset();
       std::ostream stream(&cache);
       if (var.valueType == Int) {
-        stream << "0x" << std::hex << std::setw(2) << std::setfill('0')
-               << var.payload.intValue;
+        stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << var.payload.intValue;
       } else if (var.valueType == Bytes) {
         stream << "0x" << std::hex;
         for (uint32_t i = 0; i < var.payload.bytesSize; i++)
-          stream << std::setw(2) << std::setfill('0')
-                 << (int)var.payload.bytesValue[i];
+          stream << std::setw(2) << std::setfill('0') << (int)var.payload.bytesValue[i];
       } else if (var.valueType == String) {
         stream << "0x" << std::hex;
         auto len = var.payload.stringLen;
@@ -1364,8 +1221,7 @@ struct VarStringStream {
           len = strlen(var.payload.stringValue);
         }
         for (uint32_t i = 0; i < len; i++)
-          stream << std::setw(2) << std::setfill('0')
-                 << (int)var.payload.stringValue[i];
+          stream << std::setw(2) << std::setfill('0') << (int)var.payload.stringValue[i];
       } else {
         throw ActivationError("Cannot convert type to hex");
       }
@@ -1377,12 +1233,10 @@ struct VarStringStream {
   const char *str() { return cache.str(); }
 };
 
-using BlocksCollection =
-    std::variant<const CBChain *, CBlockPtr, CBlocks, CBVar>;
+using BlocksCollection = std::variant<const CBChain *, CBlockPtr, CBlocks, CBVar>;
 
 struct CBlockInfo {
-  CBlockInfo(const std::string_view &name, const CBlock *block)
-      : name(name), block(block) {}
+  CBlockInfo(const std::string_view &name, const CBlock *block) : name(name), block(block) {}
   std::string_view name;
   const CBlock *block;
 };
@@ -1401,13 +1255,11 @@ struct VariableResolver {
       _vals.emplace_back(&slot);
     } else if (base.valueType == CBType::Seq) {
       for (uint32_t i = 0; i < base.payload.seqValue.len; i++) {
-        warmup(base.payload.seqValue.elements[i],
-               slot.payload.seqValue.elements[i], context);
+        warmup(base.payload.seqValue.elements[i], slot.payload.seqValue.elements[i], context);
       }
     } else if (base.valueType == CBType::Table) {
       ForEach(base.payload.tableValue, [&](auto key, auto &val) {
-        auto vptr =
-            slot.payload.tableValue.api->tableAt(slot.payload.tableValue, key);
+        auto vptr = slot.payload.tableValue.api->tableAt(slot.payload.tableValue, key);
         warmup(val, *vptr, context);
       });
     }

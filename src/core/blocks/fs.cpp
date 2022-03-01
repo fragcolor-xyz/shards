@@ -32,10 +32,7 @@ struct Iterate {
   bool _recursive = true;
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Recursive",
-      CBCCSTR(
-          "If the iteration should be recursive, following sub-directories."),
-      CoreInfo::BoolType));
+      "Recursive", CBCCSTR("If the iteration should be recursive, following sub-directories."), CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, const CBVar &value) {
@@ -153,10 +150,8 @@ struct Filename {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "NoExtension",
-      CBCCSTR("If the extension should be stripped from the result."),
-      CoreInfo::BoolType));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("NoExtension", CBCCSTR("If the extension should be stripped from the result."), CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, const CBVar &value) {
@@ -200,9 +195,8 @@ struct Read {
       return CoreInfo::StringType;
   }
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Bytes", CBCCSTR("If the output should be Bytes instead of String."),
-      CoreInfo::BoolType));
+  static inline ParamsInfo params =
+      ParamsInfo(ParamsInfo::Param("Bytes", CBCCSTR("If the output should be Bytes instead of String."), CoreInfo::BoolType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, const CBVar &value) {
@@ -255,14 +249,9 @@ struct Write {
   static inline Parameters params{
       {"Contents",
        CBCCSTR("The string or bytes to write as the file's contents."),
-       {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType,
-        CoreInfo::BytesVarType, CoreInfo::NoneType}},
-      {"Overwrite",
-       CBCCSTR("Overwrite the file if it already exists."),
-       {CoreInfo::BoolType}},
-      {"Append",
-       CBCCSTR("If we should append Contents to an existing file."),
-       {CoreInfo::BoolType}}};
+       {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::NoneType}},
+      {"Overwrite", CBCCSTR("Overwrite the file if it already exists."), {CoreInfo::BoolType}},
+      {"Append", CBCCSTR("If we should append Contents to an existing file."), {CoreInfo::BoolType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -296,12 +285,10 @@ struct Write {
   CBExposedTypesInfo requiredVariables() {
     if (_contents.isVariable()) {
       _requiring[0].name = _contents.variableName();
-      _requiring[0].help =
-          CBCCSTR("The required variable containing the data to be written.");
+      _requiring[0].help = CBCCSTR("The required variable containing the data to be written.");
       _requiring[0].exposedType = CoreInfo::StringType;
       _requiring[1].name = _contents.variableName();
-      _requiring[1].help =
-          CBCCSTR("The required variable containing the data to be written.");
+      _requiring[1].help = CBCCSTR("The required variable containing the data to be written.");
       _requiring[1].exposedType = CoreInfo::BytesType;
       return {_requiring.data(), 2, 0};
     } else {
@@ -317,8 +304,7 @@ struct Write {
     if (contents.valueType != None) {
       fs::path p(input.payload.stringValue);
       if (!_overwrite && !_append && fs::exists(p)) {
-        throw ActivationError(
-            "FS.Write, file already exists and overwrite flag is not on!.");
+        throw ActivationError("FS.Write, file already exists and overwrite flag is not on!.");
       }
 
       // make sure to create directories
@@ -332,14 +318,12 @@ struct Write {
       }
       std::ofstream file(p.string(), flags);
       if (contents.valueType == String) {
-        auto len = contents.payload.stringLen > 0 ||
-                           contents.payload.stringValue == nullptr
+        auto len = contents.payload.stringLen > 0 || contents.payload.stringValue == nullptr
                        ? contents.payload.stringLen
                        : strlen(contents.payload.stringValue);
         file.write((const char *)contents.payload.stringValue, len);
       } else {
-        file.write((const char *)contents.payload.bytesValue,
-                   contents.payload.bytesSize);
+        file.write((const char *)contents.payload.bytesValue, contents.payload.bytesSize);
       }
     }
     return input;
@@ -349,8 +333,7 @@ struct Write {
 struct Copy {
   enum class OverBehavior { Fail, Skip, Overwrite, Update };
   static inline EnumInfo<OverBehavior> OverWEnum{"IfExists", CoreCC, 'fsow'};
-  static inline Type OverWEnumType{
-      {CBType::Enum, {.enumeration = {CoreCC, 'fsow'}}}};
+  static inline Type OverWEnumType{{CBType::Enum, {.enumeration = {CoreCC, 'fsow'}}}};
 
   ParamVar _destination{};
   OverBehavior _overwrite{OverBehavior::Fail};
@@ -358,15 +341,10 @@ struct Copy {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param(
-          "Destination",
-          CBCCSTR("The destination path, can be a file or a directory."),
-          CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param(
-          "Behavior",
-          CBCCSTR("What to do when the destination already exists."),
-          OverWEnumType));
+  static inline ParamsInfo params =
+      ParamsInfo(ParamsInfo::Param("Destination", CBCCSTR("The destination path, can be a file or a directory."),
+                                   CoreInfo::StringStringVarOrNone),
+                 ParamsInfo::Param("Behavior", CBCCSTR("What to do when the destination already exists."), OverWEnumType));
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
   void setParam(int index, const CBVar &value) {
@@ -421,8 +399,7 @@ struct Copy {
     const auto dst = fs::path(dstVar.payload.stringValue);
 
     std::error_code err;
-    if (fs::is_regular_file(src) &&
-        (!fs::exists(dst) || fs::is_regular_file(dst))) {
+    if (fs::is_regular_file(src) && (!fs::exists(dst) || fs::is_regular_file(dst))) {
       fs::copy_file(src, dst, options, err);
       if (err) {
         CBLOG_ERROR("copy error: {}", err.message());

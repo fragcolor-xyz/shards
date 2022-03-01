@@ -29,17 +29,11 @@ struct Run {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   static inline Parameters params{
-      {"Executable",
-       CBCCSTR("The executable to run."),
-       {CoreInfo::PathType, CoreInfo::StringType}},
+      {"Executable", CBCCSTR("The executable to run."), {CoreInfo::PathType, CoreInfo::StringType}},
       {"Arguments",
        CBCCSTR("The arguments to pass to the executable."),
-       {CoreInfo::NoneType, CoreInfo::StringSeqType,
-        CoreInfo::StringVarSeqType}},
-      {"Timeout",
-       CBCCSTR(
-           "The maximum time to wait for the executable to finish in seconds."),
-       {CoreInfo::IntType}}};
+       {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType}},
+      {"Timeout", CBCCSTR("The maximum time to wait for the executable to finish in seconds."), {CoreInfo::IntType}}};
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
@@ -85,15 +79,13 @@ struct Run {
           if (argsVar.valueType == Seq) {
             for (auto &arg : argsVar) {
               if (arg.payload.stringLen > 0) {
-                argsArray.emplace_back(arg.payload.stringValue,
-                                       arg.payload.stringLen);
+                argsArray.emplace_back(arg.payload.stringValue, arg.payload.stringLen);
               } else {
                 // if really empty likely it's an error (also windows will fail
                 // converting to utf16) if not maybe the string just didn't have
                 // len set
                 if (strlen(arg.payload.stringValue) == 0) {
-                  throw ActivationError(
-                      "Empty argument passed, this most likely is a mistake.");
+                  throw ActivationError("Empty argument passed, this most likely is a mistake.");
                 } else {
                   argsArray.emplace_back(arg.payload.stringValue);
                 }
@@ -120,9 +112,7 @@ struct Run {
 
           exePath = exePath.make_preferred();
 
-          boost::process::child cmd(exePath, argsArray,
-                                    boost::process::std_out > ostr,
-                                    boost::process::std_err > estr,
+          boost::process::child cmd(exePath, argsArray, boost::process::std_out > ostr, boost::process::std_err > estr,
                                     boost::process::std_in < ipipe, ios);
 
           if (!ipipe) {

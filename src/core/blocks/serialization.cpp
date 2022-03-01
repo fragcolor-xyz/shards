@@ -17,9 +17,7 @@ struct FileBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Parameters params{{"File",
-                                   CBCCSTR("The file to read/write from."),
-                                   {CoreInfo::StringStringVarOrNone}}};
+  static inline Parameters params{{"File", CBCCSTR("The file to read/write from."), {CoreInfo::StringStringVarOrNone}}};
 
   ParamVar _filename{};
   OwnedVar _currentFileName{};
@@ -51,8 +49,7 @@ struct FileBase {
     return res;
   }
 
-  bool getFilename(CBContext *context, std::string &filename,
-                   bool checkExists = true) {
+  bool getFilename(CBContext *context, std::string &filename, bool checkExists = true) {
     auto &ctxFile = _filename.get();
     if (ctxFile.valueType != String)
       return false;
@@ -81,9 +78,7 @@ struct WriteFile : public FileBase {
         CBCCSTR("If we should append to the file if existed already or "
                 "truncate. (default: false)."),
         {CoreInfo::BoolType}},
-       {"Flush",
-        CBCCSTR("If the file should be flushed to disk after every write."),
-        {CoreInfo::BoolType}}}};
+       {"Flush", CBCCSTR("If the file should be flushed to disk after every write."), {CoreInfo::BoolType}}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -122,16 +117,13 @@ struct WriteFile : public FileBase {
   struct Writer {
     std::ofstream &_fileStream;
     Writer(std::ofstream &stream) : _fileStream(stream) {}
-    void operator()(const uint8_t *buf, size_t size) {
-      _fileStream.write((const char *)buf, size);
-    }
+    void operator()(const uint8_t *buf, size_t size) { _fileStream.write((const char *)buf, size); }
   };
 
   Serialization serial;
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_fileStream.is_open() ||
-        (_filename.isVariable() && _filename.get() != _currentFileName)) {
+    if (!_fileStream.is_open() || (_filename.isVariable() && _filename.get() != _currentFileName)) {
       std::string filename;
       if (!getFilename(context, filename, false)) {
         return input;
@@ -148,8 +140,7 @@ struct WriteFile : public FileBase {
       if (_append)
         _fileStream = std::ofstream(filename, std::ios::app | std::ios::binary);
       else
-        _fileStream =
-            std::ofstream(filename, std::ios::trunc | std::ios::binary);
+        _fileStream = std::ofstream(filename, std::ios::trunc | std::ios::binary);
     }
 
     Writer s(_fileStream);
@@ -177,16 +168,13 @@ struct ReadFile : public FileBase {
   struct Reader {
     std::ifstream &_fileStream;
     Reader(std::ifstream &stream) : _fileStream(stream) {}
-    void operator()(uint8_t *buf, size_t size) {
-      _fileStream.read((char *)buf, size);
-    }
+    void operator()(uint8_t *buf, size_t size) { _fileStream.read((char *)buf, size); }
   };
 
   Serialization serial;
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    if (!_fileStream.is_open() ||
-        (_filename.isVariable() && _filename.get() != _currentFileName)) {
+    if (!_fileStream.is_open() || (_filename.isVariable() && _filename.get() != _currentFileName)) {
       std::string filename;
       if (!getFilename(context, filename)) {
         return Var::Empty;
@@ -217,9 +205,7 @@ struct ToBytes {
   struct Writer {
     std::vector<uint8_t> &_buffer;
     Writer(std::vector<uint8_t> &stream) : _buffer(stream) {}
-    void operator()(const uint8_t *buf, size_t size) {
-      _buffer.insert(_buffer.end(), buf, buf + size);
-    }
+    void operator()(const uint8_t *buf, size_t size) { _buffer.insert(_buffer.end(), buf, buf + size); }
   };
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -265,17 +251,13 @@ struct FromBytes {
 struct LoadImage : public FileBase {
   enum class BPP { u8, u16, f32 };
   static inline EnumInfo<BPP> BPPEnum{"BPP", CoreCC, 'ibpp'};
-  static inline Type BPPEnumInfo{
-      {CBType::Enum, {.enumeration = {CoreCC, 'ibpp'}}}};
+  static inline Type BPPEnumInfo{{CBType::Enum, {.enumeration = {CoreCC, 'ibpp'}}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters params{
-      FileBase::params,
-      {{"BPP",
-        CBCCSTR("bits per pixel (HDR images loading and such!)"),
-        {BPPEnumInfo}}}};
+  static inline Parameters params{FileBase::params,
+                                  {{"BPP", CBCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo}}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -324,20 +306,17 @@ struct LoadImage : public FileBase {
     _output.valueType = Image;
     int x, y, n;
     if (_bpp == BPP::u8) {
-      _output.payload.imageValue.data =
-          (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
+      _output.payload.imageValue.data = (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
     } else if (_bpp == BPP::u16) {
-      _output.payload.imageValue.data =
-          (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
+      _output.payload.imageValue.data = (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
     } else {
-      _output.payload.imageValue.data =
-          (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
+      _output.payload.imageValue.data = (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
@@ -368,11 +347,9 @@ struct WritePNG : public FileBase {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     if (pixsize != 1) {
@@ -389,9 +366,7 @@ struct WritePNG : public FileBase {
     int c = int(input.payload.imageValue.channels);
 
     // demultiply alpha if needed, limited to 4 channels
-    if (c == 4 &&
-        (input.payload.imageValue.flags & CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
-            CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
+    if (c == 4 && (input.payload.imageValue.flags & CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
       _scratch.resize(w * h * 4 * pixsize);
       int lineSize = w * 4;
       for (int ih = 0; ih < h; ih++) {
@@ -408,8 +383,7 @@ struct WritePNG : public FileBase {
             uint8_t b = input.payload.imageValue.data[baseIdx + 2];
             _scratch[baseIdx + 2] = fa > 0.0 ? uint8_t(float(b) / fa) : 0;
           } else if (pixsize == 2) {
-            uint16_t *source =
-                reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+            uint16_t *source = reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
             uint16_t *dest = reinterpret_cast<uint16_t *>(_scratch.data());
             uint16_t a = source[baseIdx + 3];
             float fa = float(a) / 65535.0f;
@@ -421,8 +395,7 @@ struct WritePNG : public FileBase {
             uint16_t b = source[baseIdx + 2];
             dest[baseIdx + 2] = fa > 0.0 ? uint16_t(float(b) / fa) : 0;
           } else if (pixsize == 4) {
-            float *source =
-                reinterpret_cast<float *>(input.payload.imageValue.data);
+            float *source = reinterpret_cast<float *>(input.payload.imageValue.data);
             float *dest = reinterpret_cast<float *>(_scratch.data());
             float fa = source[baseIdx + 3];
             dest[baseIdx + 3] = fa;
@@ -437,13 +410,11 @@ struct WritePNG : public FileBase {
       }
 
       // all done, write the file
-      if (0 ==
-          stbi_write_png(filename.c_str(), w, h, c, _scratch.data(), w * c))
+      if (0 == stbi_write_png(filename.c_str(), w, h, c, _scratch.data(), w * c))
         throw ActivationError("Failed to write PNG file.");
     } else {
       // just write the file in this case straight
-      if (0 == stbi_write_png(filename.c_str(), w, h, c,
-                              input.payload.imageValue.data, w * c))
+      if (0 == stbi_write_png(filename.c_str(), w, h, c, input.payload.imageValue.data, w * c))
         throw ActivationError("Failed to write PNG file.");
     }
 

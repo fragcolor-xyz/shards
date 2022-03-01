@@ -21,14 +21,11 @@ struct JointOp {
   static inline Type anyVarSeq = Type::VariableOf(CoreInfo::AnySeqType);
   static inline Type anyVarSeqSeq = Type::SeqOf(anyVarSeq);
 
-  static inline Parameters joinOpParams{
-      {"From",
-       CBCCSTR("The name of the sequence variable to edit in place."),
-       {anyVarSeq}},
-      {"Join",
-       CBCCSTR("Other columns to join sort/filter using the input (they "
-               "must be of the same length)."),
-       {anyVarSeq, anyVarSeqSeq}}};
+  static inline Parameters joinOpParams{{"From", CBCCSTR("The name of the sequence variable to edit in place."), {anyVarSeq}},
+                                        {"Join",
+                                         CBCCSTR("Other columns to join sort/filter using the input (they "
+                                                 "must be of the same length)."),
+                                         {anyVarSeq, anyVarSeqSeq}}};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -84,23 +81,19 @@ struct JointOp {
             if (target && target->valueType == Seq) {
               auto mseqLen = target->payload.seqValue.len;
               if (len != mseqLen) {
-                throw ActivationError(
-                    "JointOp: All the sequences to be processed must have "
-                    "the same length as the input sequence.");
+                throw ActivationError("JointOp: All the sequences to be processed must have "
+                                      "the same length as the input sequence.");
               }
               _multiSortColumns.push_back(target);
             }
           }
-        } else if (_columns.valueType ==
-                   ContextVar) { // normal single context var
-          auto target =
-              referenceVariable(context, _columns.payload.stringValue);
+        } else if (_columns.valueType == ContextVar) { // normal single context var
+          auto target = referenceVariable(context, _columns.payload.stringValue);
           if (target && target->valueType == Seq) {
             auto mseqLen = target->payload.seqValue.len;
             if (len != mseqLen) {
-              throw ActivationError(
-                  "JointOp: All the sequences to be processed must have "
-                  "the same length as the input sequence.");
+              throw ActivationError("JointOp: All the sequences to be processed must have "
+                                    "the same length as the input sequence.");
             }
             _multiSortColumns.push_back(target);
           }
@@ -110,9 +103,8 @@ struct JointOp {
           const auto &seq = seqVar->payload.seqValue;
           auto mseqLen = seq.len;
           if (len != mseqLen) {
-            throw ActivationError(
-                "JointOp: All the sequences to be processed must have "
-                "the same length as the input sequence.");
+            throw ActivationError("JointOp: All the sequences to be processed must have "
+                                  "the same length as the input sequence.");
           }
         }
       }
@@ -141,10 +133,7 @@ struct Sort : public ActionJointOp {
 
   static inline Parameters paramsInfo{
       joinOpParams,
-      {{"Desc",
-        CBCCSTR(
-            "If sorting should be in descending order, defaults ascending."),
-        {CoreInfo::BoolType}},
+      {{"Desc", CBCCSTR("If sorting should be in descending order, defaults ascending."), {CoreInfo::BoolType}},
        {"Key",
         CBCCSTR("The blocks to use to transform the collection's items "
                 "before they are compared. Can be None."),
@@ -231,8 +220,7 @@ struct Sort : public ActionJointOp {
     }
   } blocksKeyFn;
 
-  template <class Compare, class KeyFn>
-  void insertSort(CBVar seq[], int64_t n, Compare comp, KeyFn keyfn) {
+  template <class Compare, class KeyFn> void insertSort(CBVar seq[], int64_t n, Compare comp, KeyFn keyfn) {
     int64_t i, j;
     CBVar key{};
     for (i = 1; i < n; i++) {
@@ -243,9 +231,8 @@ struct Sort : public ActionJointOp {
       for (const auto &seqVar : _multiSortColumns) {
         const auto &col = seqVar->payload.seqValue;
         if (col.len != n) {
-          throw ActivationError(
-              "Sort: All the sequences to be processed must have "
-              "the same length as the input sequence.");
+          throw ActivationError("Sort: All the sequences to be processed must have "
+                                "the same length as the input sequence.");
         }
         _multiSortKeys.push_back(col.elements[i]);
       }
@@ -281,11 +268,9 @@ struct Sort : public ActionJointOp {
     if (_blks) {
       blocksKeyFn._ctx = context;
       if (!_desc) {
-        insertSort(_input->payload.seqValue.elements, len, sortAsc,
-                   blocksKeyFn);
+        insertSort(_input->payload.seqValue.elements, len, sortAsc, blocksKeyFn);
       } else {
-        insertSort(_input->payload.seqValue.elements, len, sortDesc,
-                   blocksKeyFn);
+        insertSort(_input->payload.seqValue.elements, len, sortDesc, blocksKeyFn);
       }
     } else {
       if (!_desc) {
@@ -301,16 +286,15 @@ struct Sort : public ActionJointOp {
 struct Remove : public ActionJointOp {
   bool _fast = false;
 
-  static inline Parameters paramsInfo{
-      joinOpParams,
-      {{"Predicate",
-        CBCCSTR("The blocks to use as predicate, if true the "
-                "item will be popped from the sequence."),
-        {CoreInfo::Blocks}},
-       {"Unordered",
-        CBCCSTR("Turn on to remove items very quickly but will "
-                "not preserve the sequence items order."),
-        {CoreInfo::BoolType}}}};
+  static inline Parameters paramsInfo{joinOpParams,
+                                      {{"Predicate",
+                                        CBCCSTR("The blocks to use as predicate, if true the "
+                                                "item will be popped from the sequence."),
+                                        {CoreInfo::Blocks}},
+                                       {"Unordered",
+                                        CBCCSTR("Turn on to remove items very quickly but will "
+                                                "not preserve the sequence items order."),
+                                        {CoreInfo::BoolType}}}};
 
   static CBParametersInfo parameters() { return paramsInfo; }
 
@@ -381,8 +365,7 @@ struct Remove : public ActionJointOp {
     for (uint32_t i = len; i > 0; i--) {
       const auto &var = _input->payload.seqValue.elements[i - 1];
       // conditional flow so we might have "returns" form (And) (Or)
-      if (unlikely(_blks.activate<true>(context, var, output) >
-                   CBChainState::Return))
+      if (unlikely(_blks.activate<true>(context, var, output) > CBChainState::Return))
         return *_input;
 
       if (output == Var::True) {
@@ -394,9 +377,7 @@ struct Remove : public ActionJointOp {
         // remove from joined
         for (const auto &seqVar : _multiSortColumns) {
           auto &seq = seqVar->payload.seqValue;
-          if (seq.elements ==
-              _input->payload.seqValue
-                  .elements) // avoid removing from same seq as input!
+          if (seq.elements == _input->payload.seqValue.elements) // avoid removing from same seq as input!
             continue;
 
           if (seq.len >= i) {
@@ -417,11 +398,8 @@ struct Profile {
   CBExposedTypesInfo _exposed{};
   std::string _label{"<no label>"};
 
-  static inline Parameters _params{
-      {"Action", CBCCSTR("The action blocks to profile."), {CoreInfo::Blocks}},
-      {"Label",
-       CBCCSTR("The label to print when outputting time data."),
-       {CoreInfo::StringType}}};
+  static inline Parameters _params{{"Action", CBCCSTR("The action blocks to profile."), {CoreInfo::Blocks}},
+                                   {"Label", CBCCSTR("The label to print when outputting time data."), {CoreInfo::StringType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -470,18 +448,14 @@ struct Profile {
     const auto start = std::chrono::high_resolution_clock::now();
     activateBlocks(CBVar(_blocks).payload.seqValue, context, input, output);
     const auto stop = std::chrono::high_resolution_clock::now();
-    const auto dur =
-        std::chrono::duration_cast<std::chrono::microseconds>(stop - start)
-            .count();
+    const auto dur = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
     CBLOG_INFO("{} took {} microseconds.", dur);
     return output;
   }
 };
 
 struct XPendBase {
-  static inline Types xpendTypes{{CoreInfo::AnyVarSeqType,
-                                  CoreInfo::StringVarType,
-                                  CoreInfo::BytesVarType}};
+  static inline Types xpendTypes{{CoreInfo::AnyVarSeqType, CoreInfo::StringVarType, CoreInfo::BytesVarType}};
 };
 
 struct XpendTo : public XPendBase {
@@ -492,35 +466,29 @@ struct XpendTo : public XPendBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Collection", CBCCSTR("The collection to add the input to."),
-      xpendTypes));
+  static inline ParamsInfo paramsInfo =
+      ParamsInfo(ParamsInfo::Param("Collection", CBCCSTR("The collection to add the input to."), xpendTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
-        if (cons.exposedType.basicType != CBType::Seq &&
-            cons.exposedType.basicType != CBType::Bytes &&
+        if (cons.exposedType.basicType != CBType::Seq && cons.exposedType.basicType != CBType::Bytes &&
             cons.exposedType.basicType != CBType::String) {
           throw ComposeError("AppendTo/PrependTo expects either a Seq, String "
                              "or Bytes variable as collection.");
         } else {
-          if (cons.exposedType.basicType != CBType::Seq &&
-              cons.exposedType != data.inputType) {
-            CBLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}",
-                        data.inputType, cons.exposedType);
+          if (cons.exposedType.basicType != CBType::Seq && cons.exposedType != data.inputType) {
+            CBLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}", data.inputType, cons.exposedType);
             throw ComposeError("Input type not matching the variable.");
           }
         }
         if (!cons.isMutable) {
-          throw ComposeError(
-              "AppendTo/PrependTo expects a mutable variable (Set/Push).");
+          throw ComposeError("AppendTo/PrependTo expects a mutable variable (Set/Push).");
         }
         if (cons.exposedType.basicType == Seq &&
-            (cons.exposedType.seqTypes.len != 1 ||
-             cons.exposedType.seqTypes.elements[0] != data.inputType)) {
+            (cons.exposedType.seqTypes.len != 1 || cons.exposedType.seqTypes.elements[0] != data.inputType)) {
           throw ComposeError("AppendTo/PrependTo input type is not compatible "
                              "with the backing Seq.");
         }
@@ -528,8 +496,7 @@ struct XpendTo : public XPendBase {
         return data.inputType;
       }
     }
-    throw ComposeError("AppendTo/PrependTo: Failed to find variable: " +
-                       std::string(_collection.variableName()));
+    throw ComposeError("AppendTo/PrependTo: Failed to find variable: " + std::string(_collection.variableName()));
   }
 
   void setParam(int index, const CBVar &value) {
@@ -572,8 +539,7 @@ struct AppendTo : public XpendTo {
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
       _scratchStr().clear();
-      _scratchStr().append(collection.payload.stringValue,
-                           CBSTRLEN(collection));
+      _scratchStr().append(collection.payload.stringValue, CBSTRLEN(collection));
       _scratchStr().append(input.payload.stringValue, CBSTRLEN(input));
       Var tmp(_scratchStr());
       cloneVar(collection, tmp);
@@ -583,10 +549,8 @@ struct AppendTo : public XpendTo {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
       _scratchStr().clear();
-      _scratchStr().append((char *)collection.payload.bytesValue,
-                           collection.payload.bytesSize);
-      _scratchStr().append((char *)input.payload.bytesValue,
-                           input.payload.bytesSize);
+      _scratchStr().append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
+      _scratchStr().append((char *)input.payload.bytesValue, input.payload.bytesSize);
       Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
       cloneVar(collection, tmp);
     } break;
@@ -615,8 +579,7 @@ struct PrependTo : public XpendTo {
       // all we have to do use to clone our scratch on top of it
       _scratchStr().clear();
       _scratchStr().append(input.payload.stringValue, CBSTRLEN(input));
-      _scratchStr().append(collection.payload.stringValue,
-                           CBSTRLEN(collection));
+      _scratchStr().append(collection.payload.stringValue, CBSTRLEN(collection));
       Var tmp(_scratchStr());
       cloneVar(collection, tmp);
       break;
@@ -625,10 +588,8 @@ struct PrependTo : public XpendTo {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
       _scratchStr().clear();
-      _scratchStr().append((char *)input.payload.bytesValue,
-                           input.payload.bytesSize);
-      _scratchStr().append((char *)collection.payload.bytesValue,
-                           collection.payload.bytesSize);
+      _scratchStr().append((char *)input.payload.bytesValue, input.payload.bytesSize);
+      _scratchStr().append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
       Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
       cloneVar(collection, tmp);
     } break;
@@ -654,8 +615,7 @@ struct ForEachBlock {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.inputType.basicType != Seq && data.inputType.basicType != Table) {
-      throw ComposeError(
-          "ForEach block expected a sequence or a table as input.");
+      throw ComposeError("ForEach block expected a sequence or a table as input.");
     }
 
     auto dataCopy = data;
@@ -719,10 +679,7 @@ struct ForEachBlock {
   }
 
 private:
-  static inline Parameters _params{
-      {"Apply",
-       CBCCSTR("The function to apply to each item of the sequence."),
-       {CoreInfo::Blocks}}};
+  static inline Parameters _params{{"Apply", CBCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Blocks}}};
 
   BlocksVar _blocks{};
 };
@@ -742,8 +699,7 @@ struct Map {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.inputType.seqTypes.len != 1) {
-      throw CBException(
-          "Map: Invalid sequence inner type, must be a single defined type.");
+      throw CBException("Map: Invalid sequence inner type, must be a single defined type.");
     }
     CBInstanceData dataCopy = data;
     dataCopy.inputType = data.inputType.seqTypes.elements[0];
@@ -774,10 +730,7 @@ struct Map {
   }
 
 private:
-  static inline Parameters _params{
-      {"Apply",
-       CBCCSTR("The function to apply to each item of the sequence."),
-       {CoreInfo::Blocks}}};
+  static inline Parameters _params{{"Apply", CBCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Blocks}}};
 
   CBVar _output{};
   BlocksVar _blocks{};
@@ -854,10 +807,7 @@ struct Reduce {
   }
 
 private:
-  static inline Parameters _params{
-      {"Apply",
-       CBCCSTR("The function to apply to each item of the sequence."),
-       {CoreInfo::Blocks}}};
+  static inline Parameters _params{{"Apply", CBCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Blocks}}};
 
   CBVar *_tmp = nullptr;
   CBVar _output{};
@@ -907,25 +857,19 @@ struct Erase : SeqUser {
     // Figure if we output a sequence or not
     if (_indices->valueType == Seq) {
       if (_indices->payload.seqValue.len > 0) {
-        if ((_indices->payload.seqValue.elements[0].valueType == Int &&
-             !_isTable) ||
-            (_indices->payload.seqValue.elements[0].valueType == String &&
-             _isTable)) {
+        if ((_indices->payload.seqValue.elements[0].valueType == Int && !_isTable) ||
+            (_indices->payload.seqValue.elements[0].valueType == String && _isTable)) {
           valid = true;
         }
       }
-    } else if ((!_isTable && _indices->valueType == Int) ||
-               (_isTable && _indices->valueType == String)) {
+    } else if ((!_isTable && _indices->valueType == Int) || (_isTable && _indices->valueType == String)) {
       valid = true;
     } else { // ContextVar
       for (auto &info : data.shared) {
         if (strcmp(info.name, _indices->payload.stringValue) == 0) {
-          if (info.exposedType.basicType == Seq &&
-              info.exposedType.seqTypes.len == 1 &&
-              ((info.exposedType.seqTypes.elements[0].basicType == Int &&
-                !_isTable) ||
-               (info.exposedType.seqTypes.elements[0].basicType == String &&
-                _isTable))) {
+          if (info.exposedType.basicType == Seq && info.exposedType.seqTypes.len == 1 &&
+              ((info.exposedType.seqTypes.elements[0].basicType == Int && !_isTable) ||
+               (info.exposedType.seqTypes.elements[0].basicType == String && _isTable))) {
             valid = true;
             break;
           } else if (info.exposedType.basicType == Int && !_isTable) {
@@ -935,8 +879,7 @@ struct Erase : SeqUser {
             valid = true;
             break;
           } else {
-            auto msg = "Take indices variable " + std::string(info.name) +
-                       " expected to be either Seq, Int or String";
+            auto msg = "Take indices variable " + std::string(info.name) + " expected to be either Seq, Int or String";
             throw CBException(msg);
           }
         }
@@ -954,16 +897,13 @@ struct Erase : SeqUser {
       if (indices.valueType == String) {
         // single key
         const auto key = indices.payload.stringValue;
-        _target->payload.tableValue.api->tableRemove(
-            _target->payload.tableValue, key);
+        _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
       } else {
         // multiple keys
         const uint32_t nkeys = indices.payload.seqValue.len;
         for (uint32_t i = 0; nkeys > i; i++) {
-          const auto key =
-              indices.payload.seqValue.elements[i].payload.stringValue;
-          _target->payload.tableValue.api->tableRemove(
-              _target->payload.tableValue, key);
+          const auto key = indices.payload.seqValue.elements[i].payload.stringValue;
+          _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
         }
       }
     } else {
@@ -974,8 +914,7 @@ struct Erase : SeqUser {
         // ensure we delete from highest index
         // so to keep indices always valid
         IterableSeq sindices(indices);
-        pdqsort(sindices.begin(), sindices.end(),
-                [](CBVar a, CBVar b) { return a > b; });
+        pdqsort(sindices.begin(), sindices.end(), [](CBVar a, CBVar b) { return a > b; });
         for (auto &idx : sindices) {
           const auto index = idx.payload.intValue;
           arrayDel(_target->payload.seqValue, index);
@@ -988,8 +927,7 @@ struct Erase : SeqUser {
 private:
   ParamVar _indices{};
   static inline Parameters _params = {
-      {"Indices", CBCCSTR("One or multiple indices to filter from a sequence."),
-       CoreInfo::TakeTypes},
+      {"Indices", CBCCSTR("One or multiple indices to filter from a sequence."), CoreInfo::TakeTypes},
       {"Name", CBCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar},
       {"Key",
        CBCCSTR("The key of the value to read/write from/in the table (this "
@@ -1007,9 +945,7 @@ struct Assoc : public VariableBase {
   Type _tableTypes{};
 
   static inline Parameters params{
-      {"Name",
-       CBCCSTR("The name of the sequence or table to be updated."),
-       {CoreInfo::StringOrAnyVar}},
+      {"Name", CBCCSTR("The name of the sequence or table to be updated."), {CoreInfo::StringOrAnyVar}},
       {"Key",
        CBCCSTR("Table key for the value that is to be updated. Parameter "
                "applicable if target is table."),
@@ -1041,8 +977,7 @@ struct Assoc : public VariableBase {
   }
 
   CBExposedTypesInfo requiredVariables() {
-    _requiredInfo = ExposedInfo(ExposedInfo::Variable(
-        _name.c_str(), CBCCSTR("The required variable."), CoreInfo::AnyType));
+    _requiredInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), CBCCSTR("The required variable."), CoreInfo::AnyType));
     return CBExposedTypesInfo(_requiredInfo);
   }
 
@@ -1134,11 +1069,9 @@ struct Assoc : public VariableBase {
       if (_isTable) {
         if (_target->valueType == Table) {
           auto &kv = _key.get();
-          if (_target->payload.tableValue.api->tableContains(
-                  _target->payload.tableValue, kv.payload.stringValue)) {
+          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv.payload.stringValue)) {
             // Has it
-            CBVar *vptr = _target->payload.tableValue.api->tableAt(
-                _target->payload.tableValue, kv.payload.stringValue);
+            CBVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
             // Pin fast cell
             _cell = vptr;
           } else {
@@ -1167,13 +1100,11 @@ struct Replace {
   static inline Parameters params{
       {"Patterns",
        CBCCSTR("The patterns to find."),
-       {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType,
-        CoreInfo::AnyVarSeqType, CoreInfo::AnySeqType}},
+       {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType, CoreInfo::AnyVarSeqType, CoreInfo::AnySeqType}},
       {"Replacements",
        CBCCSTR("The replacements to apply to the input, if a single value is "
                "provided every match will be replaced with that single value."),
-       {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType,
-        CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
+       {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType, CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}}};
 
   static CBTypesInfo inputTypes() { return inTypes; }
   static CBTypesInfo outputTypes() { return inTypes; }
@@ -1261,10 +1192,8 @@ struct Replace {
   }
 
   CBVar activateString(CBContext *context, const CBVar &input) {
-    const auto source = input.payload.stringLen > 0
-                            ? std::string_view(input.payload.stringValue,
-                                               input.payload.stringLen)
-                            : std::string_view(input.payload.stringValue);
+    const auto source = input.payload.stringLen > 0 ? std::string_view(input.payload.stringValue, input.payload.stringLen)
+                                                    : std::string_view(input.payload.stringValue);
     _stringOutput.assign(source);
     const auto &patterns = _patterns.get();
     const auto &replacements = _replacements.get();
@@ -1276,28 +1205,20 @@ struct Replace {
       for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
         const auto &p = patterns.payload.seqValue.elements[i];
         const auto &r = replacements.payload.seqValue.elements[i];
-        const auto pattern =
-            p.payload.stringLen > 0
-                ? std::string_view(p.payload.stringValue, p.payload.stringLen)
-                : std::string_view(p.payload.stringValue);
-        const auto replacement =
-            r.payload.stringLen > 0
-                ? std::string_view(r.payload.stringValue, r.payload.stringLen)
-                : std::string_view(r.payload.stringValue);
+        const auto pattern = p.payload.stringLen > 0 ? std::string_view(p.payload.stringValue, p.payload.stringLen)
+                                                     : std::string_view(p.payload.stringValue);
+        const auto replacement = r.payload.stringLen > 0 ? std::string_view(r.payload.stringValue, r.payload.stringLen)
+                                                         : std::string_view(r.payload.stringValue);
         boost::replace_all(_stringOutput, pattern, replacement);
       }
     } else {
-      const auto replacement =
-          replacements.payload.stringLen > 0
-              ? std::string_view(replacements.payload.stringValue,
-                                 replacements.payload.stringLen)
-              : std::string_view(replacements.payload.stringValue);
+      const auto replacement = replacements.payload.stringLen > 0
+                                   ? std::string_view(replacements.payload.stringValue, replacements.payload.stringLen)
+                                   : std::string_view(replacements.payload.stringValue);
       for (uint32_t i = 0; i < patterns.payload.seqValue.len; i++) {
         const auto &p = patterns.payload.seqValue.elements[i];
-        const auto pattern =
-            p.payload.stringLen > 0
-                ? std::string_view(p.payload.stringValue, p.payload.stringLen)
-                : std::string_view(p.payload.stringValue);
+        const auto pattern = p.payload.stringLen > 0 ? std::string_view(p.payload.stringValue, p.payload.stringLen)
+                                                     : std::string_view(p.payload.stringValue);
 
         boost::replace_all(_stringOutput, pattern, replacement);
       }
@@ -1305,17 +1226,12 @@ struct Replace {
     return Var(_stringOutput);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    throw ActivationError("Invalid activation function");
-  }
+  CBVar activate(CBContext *context, const CBVar &input) { throw ActivationError("Invalid activation function"); }
 };
 
 struct UnsafeActivate {
   static inline Parameters params{
-      {"Pointer",
-       CBCCSTR(
-           "The function address, must be of type CBVar f(Context*, CBVar*)."),
-       {CoreInfo::IntType}}};
+      {"Pointer", CBCCSTR("The function address, must be of type CBVar f(Context*, CBVar*)."), {CoreInfo::IntType}}};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -1344,9 +1260,7 @@ struct UnsafeActivate {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return _func(context, &input);
-  }
+  CBVar activate(CBContext *context, const CBVar &input) { return _func(context, &input); }
 };
 
 // Register And
@@ -1674,9 +1588,7 @@ LOGIC_OP_DESC(AllLessEqual);
 
 CBVar unreachableActivation(const CBVar &input) { throw; }
 
-CBVar exitProgramActivation(const CBVar &input) {
-  exit(input.payload.intValue);
-}
+CBVar exitProgramActivation(const CBVar &input) { exit(input.payload.intValue); }
 
 CBVar hashActivation(const CBVar &input) { return chainblocks::hash(input); }
 
@@ -1727,8 +1639,7 @@ struct EmscriptenAsyncEval {
   CBVar activate(CBContext *context, const CBVar &input) {
     static thread_local std::string str;
     const static emscripten::val eval = emscripten::val::global("eval");
-    str = emscripten_wait<std::string>(
-        context, eval(emscripten::val(input.payload.stringValue)));
+    str = emscripten_wait<std::string>(context, eval(emscripten::val(input.payload.stringValue)));
     return Var(str);
   }
 };
@@ -1837,32 +1748,24 @@ void registerBlocksCoreBlocks() {
   REGISTER_CBLOCK("PrependTo", PrependTo);
   REGISTER_CBLOCK("Assoc", Assoc);
 
-  using PassMockBlock =
-      LambdaBlock<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
-  using ExitBlock =
-      LambdaBlock<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
+  using PassMockBlock = LambdaBlock<unreachableActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
+  using ExitBlock = LambdaBlock<exitProgramActivation, CoreInfo::IntType, CoreInfo::NoneType>;
   REGISTER_CBLOCK("Pass", PassMockBlock);
   REGISTER_CBLOCK("Exit", ExitBlock);
 
-  using HasherBlock =
-      LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type>;
+  using HasherBlock = LambdaBlock<hashActivation, CoreInfo::AnyType, CoreInfo::Int2Type>;
   REGISTER_CBLOCK("Hash", HasherBlock);
 
-  using BlockingSleepBlock = LambdaBlock<blockingSleepActivation,
-                                         CoreInfo::AnyType, CoreInfo::AnyType>;
+  using BlockingSleepBlock = LambdaBlock<blockingSleepActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
   REGISTER_CBLOCK("SleepBlocking!", BlockingSleepBlock);
 
 #ifdef __EMSCRIPTEN__
-  using EmscriptenEvalBlock =
-      LambdaBlock<emscriptenEvalActivation, CoreInfo::StringType,
-                  CoreInfo::StringType>;
+  using EmscriptenEvalBlock = LambdaBlock<emscriptenEvalActivation, CoreInfo::StringType, CoreInfo::StringType>;
   // _ prefix = internal block
   REGISTER_CBLOCK("_Emscripten.Eval", EmscriptenEvalBlock);
   // _ prefix = internal block
   REGISTER_CBLOCK("_Emscripten.EvalAsync", EmscriptenAsyncEval);
-  using EmscriptenBrowseBlock =
-      LambdaBlock<emscriptenBrowseActivation, CoreInfo::StringType,
-                  CoreInfo::StringType>;
+  using EmscriptenBrowseBlock = LambdaBlock<emscriptenBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_CBLOCK("Browse", EmscriptenBrowseBlock);
 #endif
 

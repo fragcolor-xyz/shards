@@ -21,8 +21,7 @@ enum class Renderer { None, DirectX11, Vulkan, OpenGL, Metal };
 
 #if defined(BGFX_CONFIG_RENDERER_VULKAN)
 constexpr Renderer CurrentRenderer = Renderer::Vulkan;
-#elif defined(__linux__) || defined(__EMSCRIPTEN__) ||                         \
-    defined(BGFX_CONFIG_RENDERER_OPENGL)
+#elif defined(__linux__) || defined(__EMSCRIPTEN__) || defined(BGFX_CONFIG_RENDERER_OPENGL)
 constexpr Renderer CurrentRenderer = Renderer::OpenGL;
 #elif defined(_WIN32)
 constexpr Renderer CurrentRenderer = Renderer::DirectX11;
@@ -44,8 +43,7 @@ constexpr bgfx::ViewId PickingViewId = BlittingViewId - 1;
 
 // FROM BGFX, MIGHT BREAK IF BGFX CHANGES
 constexpr bool isShaderVerLess(uint32_t _magic, uint8_t _version) {
-  return (_magic & BX_MAKEFOURCC(0, 0, 0, 0xff)) <
-         BX_MAKEFOURCC(0, 0, 0, _version);
+  return (_magic & BX_MAKEFOURCC(0, 0, 0, 0xff)) < BX_MAKEFOURCC(0, 0, 0, _version);
 }
 // ~ FROM BGFX, MIGHT BREAK IF BGFX CHANGES
 
@@ -67,8 +65,7 @@ inline void overrideShaderInputHash(const bgfx::Memory *mem, uint32_t hash) {
   *(uint32_t *)(mem->data + 4) = hash;
 }
 
-inline const bgfx::EmbeddedShader::Data &
-findEmbeddedShader(const bgfx::EmbeddedShader &shader) {
+inline const bgfx::EmbeddedShader::Data &findEmbeddedShader(const bgfx::EmbeddedShader &shader) {
   bgfx::RendererType::Enum type = bgfx::getRendererType();
   for (uint32_t i = 0; i < bgfx::RendererType::Count; ++i) {
     if (shader.data[i].type == type) {
@@ -81,8 +78,7 @@ findEmbeddedShader(const bgfx::EmbeddedShader &shader) {
 struct Enums {
   enum class CullMode { None, Front, Back };
   static constexpr uint32_t CullModeCC = 'gfxC';
-  static inline EnumInfo<CullMode> CullModeEnumInfo{"CullMode", CoreCC,
-                                                    CullModeCC};
+  static inline EnumInfo<CullMode> CullModeEnumInfo{"CullMode", CoreCC, CullModeCC};
   static inline Type CullModeType = Type::Enum(CoreCC, CullModeCC);
 
   enum class Blend {
@@ -164,9 +160,7 @@ struct Enums {
 };
 
 struct NativeWindow {
-  static inline Type Info{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = BgfxNativeWindowCC}}}};
+  static inline Type Info{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = BgfxNativeWindowCC}}}};
 };
 
 struct alignas(16) ViewInfo {
@@ -237,12 +231,9 @@ struct IDrawable {
 };
 
 struct Context {
-  static inline bgfx::EmbeddedShader PickingShaderData =
-      BGFX_EMBEDDED_SHADER(fs_picking);
+  static inline bgfx::EmbeddedShader PickingShaderData = BGFX_EMBEDDED_SHADER(fs_picking);
 
-  static inline Type Info{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = BgfxContextCC}}}};
+  static inline Type Info{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = BgfxContextCC}}}};
 
   // Useful to compare with with plugins, they might mismatch!
   const static inline uint32_t BgfxABIVersion = BGFX_API_VERSION;
@@ -314,8 +305,7 @@ struct Context {
     if (index >= nSamplers) {
       std::string name("DrawSampler_");
       name.append(std::to_string(index));
-      return _samplers.emplace_back(
-          bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
+      return _samplers.emplace_back(bgfx::createUniform(name.c_str(), bgfx::UniformType::Sampler));
     } else {
       return _samplers[index];
     }
@@ -336,8 +326,7 @@ struct Context {
 
   const bgfx::UniformHandle getPickingUniform() {
     if (_pickingUniform.idx == bgfx::kInvalidHandle) {
-      _pickingUniform =
-          bgfx::createUniform("u_picking_id", bgfx::UniformType::Vec4);
+      _pickingUniform = bgfx::createUniform("u_picking_id", bgfx::UniformType::Vec4);
     }
     return _pickingUniform;
   }
@@ -347,8 +336,7 @@ struct Context {
   static inline std::vector<SDL_Event> sdlEvents;
 
 private:
-  std::deque<ViewInfo, boost::alignment::aligned_allocator<ViewInfo>>
-      _viewsStack;
+  std::deque<ViewInfo, boost::alignment::aligned_allocator<ViewInfo>> _viewsStack;
   bgfx::ViewId _nextViewCounter{0};
 
   std::deque<bgfx::UniformHandle> _samplers;
@@ -367,15 +355,12 @@ private:
 };
 
 struct Texture {
-  static inline Type ObjType{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = BgfxTextureHandleCC}}}};
+  static inline Type ObjType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = BgfxTextureHandleCC}}}};
   static inline Type SeqType = Type::SeqOf(ObjType);
   static inline Type VarType = Type::VariableOf(ObjType);
   static inline Type VarSeqType = Type::VariableOf(SeqType);
 
-  static inline ObjectVar<Texture> Var{"BGFX-Texture", CoreCC,
-                                       BgfxTextureHandleCC};
+  static inline ObjectVar<Texture> Var{"BGFX-Texture", CoreCC, BgfxTextureHandleCC};
 
   bgfx::TextureHandle handle = BGFX_INVALID_HANDLE;
   uint16_t width = 0;
@@ -391,94 +376,70 @@ struct Texture {
 };
 
 // utility macro to load textures of different sizes
-#define BGFX_TEXTURE2D_CREATE(_bits, _components, _texture)                    \
-  if (_bits == 8) {                                                            \
-    switch (_components) {                                                     \
-    case 1:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::R8);                      \
-      break;                                                                   \
-    case 2:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RG8);                     \
-      break;                                                                   \
-    case 3:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RGB8);                    \
-      break;                                                                   \
-    case 4:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RGBA8);                   \
-      break;                                                                   \
-    default:                                                                   \
-      CBLOG_FATAL("invalid state");                                            \
-      break;                                                                   \
-    }                                                                          \
-  } else if (_bits == 16) {                                                    \
-    switch (_components) {                                                     \
-    case 1:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::R16);                     \
-      break;                                                                   \
-    case 2:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RG16);                    \
-      break;                                                                   \
-    case 3:                                                                    \
-      throw ActivationError("Format not supported, it seems bgfx has no "      \
-                            "RGB16, try using RGBA16 instead (FillAlpha).");   \
-      break;                                                                   \
-    case 4:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RGBA16);                  \
-      break;                                                                   \
-    default:                                                                   \
-      CBLOG_FATAL("invalid state");                                            \
-      break;                                                                   \
-    }                                                                          \
-  } else if (_bits == 32) {                                                    \
-    switch (_components) {                                                     \
-    case 1:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::R32F);                    \
-      break;                                                                   \
-    case 2:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RG32F);                   \
-      break;                                                                   \
-    case 3:                                                                    \
-      throw ActivationError(                                                   \
-          "Format not supported, it seems bgfx has no RGB32F, try using "      \
-          "RGBA32F instead (FillAlpha).");                                     \
-      break;                                                                   \
-    case 4:                                                                    \
-      _texture->handle =                                                       \
-          bgfx::createTexture2D(_texture->width, _texture->height, false, 1,   \
-                                bgfx::TextureFormat::RGBA32F);                 \
-      break;                                                                   \
-    default:                                                                   \
-      CBLOG_FATAL("invalid state");                                            \
-      break;                                                                   \
-    }                                                                          \
+#define BGFX_TEXTURE2D_CREATE(_bits, _components, _texture)                                                                \
+  if (_bits == 8) {                                                                                                        \
+    switch (_components) {                                                                                                 \
+    case 1:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::R8);      \
+      break;                                                                                                               \
+    case 2:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RG8);     \
+      break;                                                                                                               \
+    case 3:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGB8);    \
+      break;                                                                                                               \
+    case 4:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGBA8);   \
+      break;                                                                                                               \
+    default:                                                                                                               \
+      CBLOG_FATAL("invalid state");                                                                                        \
+      break;                                                                                                               \
+    }                                                                                                                      \
+  } else if (_bits == 16) {                                                                                                \
+    switch (_components) {                                                                                                 \
+    case 1:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::R16);     \
+      break;                                                                                                               \
+    case 2:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RG16);    \
+      break;                                                                                                               \
+    case 3:                                                                                                                \
+      throw ActivationError("Format not supported, it seems bgfx has no "                                                  \
+                            "RGB16, try using RGBA16 instead (FillAlpha).");                                               \
+      break;                                                                                                               \
+    case 4:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGBA16);  \
+      break;                                                                                                               \
+    default:                                                                                                               \
+      CBLOG_FATAL("invalid state");                                                                                        \
+      break;                                                                                                               \
+    }                                                                                                                      \
+  } else if (_bits == 32) {                                                                                                \
+    switch (_components) {                                                                                                 \
+    case 1:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::R32F);    \
+      break;                                                                                                               \
+    case 2:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RG32F);   \
+      break;                                                                                                               \
+    case 3:                                                                                                                \
+      throw ActivationError("Format not supported, it seems bgfx has no RGB32F, try using "                                \
+                            "RGBA32F instead (FillAlpha).");                                                               \
+      break;                                                                                                               \
+    case 4:                                                                                                                \
+      _texture->handle = bgfx::createTexture2D(_texture->width, _texture->height, false, 1, bgfx::TextureFormat::RGBA32F); \
+      break;                                                                                                               \
+    default:                                                                                                               \
+      CBLOG_FATAL("invalid state");                                                                                        \
+      break;                                                                                                               \
+    }                                                                                                                      \
   }
 
 struct ShaderHandle {
-  static inline Type ObjType{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = BgfxShaderHandleCC}}}};
+  static inline Type ObjType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = BgfxShaderHandleCC}}}};
   static inline Type VarType = Type::VariableOf(ObjType);
 
-  static inline ObjectVar<ShaderHandle> Var{"BGFX-Shader", CoreCC,
-                                            BgfxShaderHandleCC};
+  static inline ObjectVar<ShaderHandle> Var{"BGFX-Shader", CoreCC, BgfxShaderHandleCC};
 
   bgfx::ProgramHandle handle = BGFX_INVALID_HANDLE;
   bgfx::ProgramHandle pickingHandle = BGFX_INVALID_HANDLE;
@@ -494,13 +455,10 @@ struct ShaderHandle {
 };
 
 struct ModelHandle {
-  static inline Type ObjType{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = BgfxModelHandleCC}}}};
+  static inline Type ObjType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = BgfxModelHandleCC}}}};
   static inline Type VarType = Type::VariableOf(ObjType);
 
-  static inline ObjectVar<ModelHandle> Var{"BGFX-Model", CoreCC,
-                                           BgfxModelHandleCC};
+  static inline ObjectVar<ModelHandle> Var{"BGFX-Model", CoreCC, BgfxModelHandleCC};
 
   struct StaticModel {
     bgfx::VertexBufferHandle vb;
@@ -515,8 +473,7 @@ struct ModelHandle {
   uint64_t topologyStateFlag{0}; // Triangle list
   Enums::CullMode cullMode{Enums::CullMode::Back};
 
-  std::variant<StaticModel, DynamicModel> model{
-      StaticModel{BGFX_INVALID_HANDLE, BGFX_INVALID_HANDLE}};
+  std::variant<StaticModel, DynamicModel> model{StaticModel{BGFX_INVALID_HANDLE, BGFX_INVALID_HANDLE}};
 
   void reset() {
     std::visit(
@@ -541,16 +498,12 @@ struct Base {
 };
 
 struct BaseConsumer : public Base {
-  static inline Type windowType{
-      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
+  static inline Type windowType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
 
-  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
-      "GFX.Context", CBCCSTR("The BGFX Context."), Context::Info);
+  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable("GFX.Context", CBCCSTR("The BGFX Context."), Context::Info);
   static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
 
-  CBExposedTypesInfo requiredVariables() {
-    return CBExposedTypesInfo(requiredInfo);
-  }
+  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(requiredInfo); }
 
   // Required before _bgfxCtx can be used
   void _warmup(CBContext *context) {

@@ -38,12 +38,9 @@ typedef void (*NumberConvertOneFunction)(const void *src, void *dst);
 
 // Applies combined conversion and swizzle operation
 // Throws NumberConversionOutOfRangeEx false on out of range index
-typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst,
-                                                 size_t srcLen,
-                                                 const CBSeq &sequence);
+typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst, size_t srcLen, const CBSeq &sequence);
 
-typedef void (*NumberConvertParse)(void *dst, const char *input,
-                                   char **inputEnd);
+typedef void (*NumberConvertParse)(void *dst, const char *input, char **inputEnd);
 
 struct NumberConversion {
   size_t inStride;

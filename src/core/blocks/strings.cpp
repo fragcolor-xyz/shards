@@ -8,8 +8,7 @@
 namespace chainblocks {
 namespace Regex {
 struct Common {
-  static inline Parameters params{
-      {"Regex", CBCCSTR("The regular expression."), {CoreInfo::StringType}}};
+  static inline Parameters params{{"Regex", CBCCSTR("The regular expression."), {CoreInfo::StringType}}};
 
   std::regex _re;
   std::string _re_str;
@@ -96,10 +95,7 @@ struct Replace : public Common {
   std::string _output;
 
   static inline Parameters params{
-      Common::params,
-      {{"Replacement",
-        CBCCSTR("The replacement expression."),
-        {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+      Common::params, {{"Replacement", CBCCSTR("The replacement expression."), {CoreInfo::StringType, CoreInfo::StringVarType}}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -131,8 +127,7 @@ struct Replace : public Common {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _subject.assign(input.payload.stringValue, CBSTRLEN(input));
-    _replacementStr.assign(_replacement.get().payload.stringValue,
-                           CBSTRLEN(_replacement.get()));
+    _replacementStr.assign(_replacement.get().payload.stringValue, CBSTRLEN(_replacement.get()));
     _output.assign(std::regex_replace(_subject, _re, _replacementStr));
     return Var(_output);
   }
@@ -162,8 +157,7 @@ struct Trim {
 
   static std::string_view trim(std::string_view s) {
     s.remove_prefix(std::min(s.find_first_not_of(" \t\r\v\n"), s.size()));
-    s.remove_suffix(
-        std::min(s.size() - s.find_last_not_of(" \t\r\v\n") - 1, s.size()));
+    s.remove_suffix(std::min(s.size() - s.find_last_not_of(" \t\r\v\n") - 1, s.size()));
 
     return s;
   }
@@ -185,16 +179,13 @@ struct ParseInt : public Parser {
 
   int _base{10};
 
-  static inline Parameters params{
-      {"Base",
-       CBCCSTR("Numerical base (radix) that determines the valid characters "
-               "and their interpretation."),
-       {CoreInfo::IntType}}};
+  static inline Parameters params{{"Base",
+                                   CBCCSTR("Numerical base (radix) that determines the valid characters "
+                                           "and their interpretation."),
+                                   {CoreInfo::IntType}}};
   CBParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
-    _base = value.payload.intValue;
-  }
+  void setParam(int index, const CBVar &value) { _base = value.payload.intValue; }
 
   CBVar getParam(int index) { return Var(_base); }
 

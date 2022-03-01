@@ -11,8 +11,7 @@ static TableVar experimental{{"experimental", Var(true)}};
 
 namespace Helper {
 static const float identity[16] = {
-    1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f,
-    0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f,
+    1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f,
 };
 
 const float PI = 3.141592653589793238463f;
@@ -26,18 +25,12 @@ struct CubeView : public BGFX::BaseConsumer {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is not used and will pass through.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is not used and will pass through."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The output of this block will be its input.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The output of this block will be its input."); }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -92,12 +85,10 @@ struct CubeView : public BGFX::BaseConsumer {
     Mat4::ToArrayUnsafe(mat, arrView.data());
 
     ImGuiIO &io = ::ImGui::GetIO();
-    float viewManipulateRight =
-        io.DisplaySize.x;        // TODO: make it a param (% of viewport?)
-    float viewManipulateTop = 0; // TODO: make it a param
-    ImGuizmo::ViewManipulate(
-        arrView.data(), 5, ImVec2(viewManipulateRight - 128, viewManipulateTop),
-        ImVec2(128, 128), 0x10101010); // TODO: make offset and size a param
+    float viewManipulateRight = io.DisplaySize.x; // TODO: make it a param (% of viewport?)
+    float viewManipulateTop = 0;                  // TODO: make it a param
+    ImGuizmo::ViewManipulate(arrView.data(), 5, ImVec2(viewManipulateRight - 128, viewManipulateTop), ImVec2(128, 128),
+                             0x10101010); // TODO: make offset and size a param
 
     chainblocks::cloneVar(view, Mat4::FromArrayUnsafe(arrView.data()));
 
@@ -105,11 +96,9 @@ struct CubeView : public BGFX::BaseConsumer {
   }
 
 private:
-  static inline Parameters _params = {
-      {"ViewMatrix",
-       CBCCSTR(
-           "A variable that points to the vuew matrix that will be modified."),
-       {Type::VariableOf(CoreInfo::Float4x4Type)}}};
+  static inline Parameters _params = {{"ViewMatrix",
+                                       CBCCSTR("A variable that points to the vuew matrix that will be modified."),
+                                       {Type::VariableOf(CoreInfo::Float4x4Type)}}};
 
   ParamVar _view{};
   std::array<CBExposedTypeInfo, 2> _required;
@@ -119,18 +108,12 @@ struct Grid : public BGFX::BaseConsumer {
   static CBOptionalString help() { return CBCCSTR("Displays a grid."); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is not used and will pass through.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is not used and will pass through."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The output of this block will be its input.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The output of this block will be its input."); }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -210,8 +193,7 @@ struct Grid : public BGFX::BaseConsumer {
       break;
     }
 
-    auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
+    auto *ctx = reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
     _matView = linalg::mul(currentView.view, linalg::rotation_matrix(rot));
@@ -223,8 +205,7 @@ struct Grid : public BGFX::BaseConsumer {
 
     ImGuiIO &io = ::ImGui::GetIO();
     ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-    ImGuizmo::DrawGrid(arrView.data(), arrProj.data(), Helper::identity,
-                       _size.get().payload.floatValue);
+    ImGuizmo::DrawGrid(arrView.data(), arrProj.data(), Helper::identity, _size.get().payload.floatValue);
 
     return input;
   }
@@ -232,12 +213,8 @@ struct Grid : public BGFX::BaseConsumer {
 private:
   static inline Parameters _params = {
       // TODO: allow to pass a user (float3) as axis?)
-      {"Axis",
-       CBCCSTR("The normal axis of the grid plane"),
-       {Enums::GridAxisType, Type::VariableOf(Enums::GridAxisType)}},
-      {"Size",
-       CBCCSTR("The size of the extents of the grid in all directions."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Axis", CBCCSTR("The normal axis of the grid plane"), {Enums::GridAxisType, Type::VariableOf(Enums::GridAxisType)}},
+      {"Size", CBCCSTR("The size of the extents of the grid in all directions."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
   };
 
   // params
@@ -255,18 +232,12 @@ struct Transform : public BGFX::BaseConsumer {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is not used and will pass through.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is not used and will pass through."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The output of this block will be its input.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The output of this block will be its input."); }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -358,8 +329,7 @@ struct Transform : public BGFX::BaseConsumer {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto *ctx =
-        reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
+    auto *ctx = reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
     const auto &currentView = ctx->currentView();
 
     aligned_array<float, 16> arrView;
@@ -378,15 +348,10 @@ struct Transform : public BGFX::BaseConsumer {
 
     auto &snap = _snap.get();
     auto useSnap = snap.valueType == CBType::Float3;
-    auto snapPtr = useSnap
-                       ? reinterpret_cast<float *>(&snap.payload.float3Value)
-                       : nullptr;
+    auto snapPtr = useSnap ? reinterpret_cast<float *>(&snap.payload.float3Value) : nullptr;
 
-    ImGuizmo::Manipulate(
-        arrView.data(), arrProj.data(),
-        Enums::OperationToGuizmo(_operation.get().payload.enumValue),
-        Enums::ModeToGuizmo(_mode.get().payload.enumValue), arrMatrix.data(),
-        nullptr, snapPtr);
+    ImGuizmo::Manipulate(arrView.data(), arrProj.data(), Enums::OperationToGuizmo(_operation.get().payload.enumValue),
+                         Enums::ModeToGuizmo(_mode.get().payload.enumValue), arrMatrix.data(), nullptr, snapPtr);
 
     chainblocks::cloneVar(matrix, Mat4::FromArrayUnsafe(arrMatrix.data()));
 
@@ -395,9 +360,7 @@ struct Transform : public BGFX::BaseConsumer {
 
 private:
   static inline Parameters _params = {
-      {"Matrix",
-       CBCCSTR("Object matrix modified by this transform gizmo."),
-       {Type::VariableOf(CoreInfo::Float4x4Type)}},
+      {"Matrix", CBCCSTR("Object matrix modified by this transform gizmo."), {Type::VariableOf(CoreInfo::Float4x4Type)}},
       {"Mode",
        CBCCSTR("Type of coordinates used. Either local to the object or global "
                "(world)."),

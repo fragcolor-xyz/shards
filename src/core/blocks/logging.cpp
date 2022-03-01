@@ -12,15 +12,12 @@ struct LoggingBase {
 };
 
 struct Log : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Prefix", CBCCSTR("The prefix message to the value to log."),
-      CoreInfo::StringType));
+  static inline ParamsInfo msgParamsInfo =
+      ParamsInfo(ParamsInfo::Param("Prefix", CBCCSTR("The prefix message to the value to log."), CoreInfo::StringType));
 
   std::string msg;
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(msgParamsInfo);
-  }
+  static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
 
   void setParam(int index, const CBVar &inValue) {
     switch (index) {
@@ -57,14 +54,12 @@ struct Log : public LoggingBase {
 };
 
 struct Msg : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Message", CBCCSTR("The message to log."), CoreInfo::StringType));
+  static inline ParamsInfo msgParamsInfo =
+      ParamsInfo(ParamsInfo::Param("Message", CBCCSTR("The message to log."), CoreInfo::StringType));
 
   std::string msg;
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(msgParamsInfo);
-  }
+  static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
 
   void setParam(int index, const CBVar &inValue) {
     switch (index) {

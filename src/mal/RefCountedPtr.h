@@ -34,22 +34,16 @@ public:
 
   RefCountedPtr(T *object) : m_object(nullptr) { acquire(object); }
 
-  RefCountedPtr(const RefCountedPtr &rhs) : m_object(nullptr) {
-    acquire(rhs.m_object);
-  }
+  RefCountedPtr(const RefCountedPtr &rhs) : m_object(nullptr) { acquire(rhs.m_object); }
 
   const RefCountedPtr &operator=(const RefCountedPtr &rhs) {
     acquire(rhs.m_object);
     return *this;
   }
 
-  bool operator==(const RefCountedPtr &rhs) const {
-    return m_object == rhs.m_object;
-  }
+  bool operator==(const RefCountedPtr &rhs) const { return m_object == rhs.m_object; }
 
-  bool operator!=(const RefCountedPtr &rhs) const {
-    return m_object != rhs.m_object;
-  }
+  bool operator!=(const RefCountedPtr &rhs) const { return m_object != rhs.m_object; }
 
   operator bool() const { return m_object != NULL; }
 

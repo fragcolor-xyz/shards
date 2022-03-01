@@ -13,8 +13,7 @@ namespace Desktop {
 constexpr uint32_t windowCC = 'hwnd';
 
 struct Globals {
-  static inline Type windowType{
-      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
+  static inline Type windowType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = windowCC}}}};
   static inline Types windowVarOrNone{{windowType, CoreInfo::NoneType}};
 };
 
@@ -28,9 +27,7 @@ public:
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(windowParams);
-  }
+  static CBParametersInfo parameters() { return CBParametersInfo(windowParams); }
 
   virtual void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -59,13 +56,9 @@ public:
   }
 
 protected:
-  static inline ParamsInfo windowParams = ParamsInfo(
-      ParamsInfo::Param("Title",
-                        CBCCSTR("The title of the window to look for."),
-                        CoreInfo::StringType),
-      ParamsInfo::Param(
-          "Class", CBCCSTR("An optional and platform dependent window class."),
-          CoreInfo::StringType));
+  static inline ParamsInfo windowParams =
+      ParamsInfo(ParamsInfo::Param("Title", CBCCSTR("The title of the window to look for."), CoreInfo::StringType),
+                 ParamsInfo::Param("Class", CBCCSTR("An optional and platform dependent window class."), CoreInfo::StringType));
 
   static T WindowDefault();
   std::string _winName;
@@ -95,10 +88,8 @@ struct SizeBase {
 
 struct ResizeWindowBase : public WinOpBase {
   static inline ParamsInfo sizeParams =
-      ParamsInfo(ParamsInfo::Param("Width", CBCCSTR("The desired width."),
-                                   CoreInfo::IntType),
-                 ParamsInfo::Param("Height", CBCCSTR("The desired height."),
-                                   CoreInfo::IntType));
+      ParamsInfo(ParamsInfo::Param("Width", CBCCSTR("The desired width."), CoreInfo::IntType),
+                 ParamsInfo::Param("Height", CBCCSTR("The desired height."), CoreInfo::IntType));
 
   int _width;
   int _height;
@@ -133,11 +124,9 @@ struct ResizeWindowBase : public WinOpBase {
 };
 
 struct MoveWindowBase : public WinOpBase {
-  static inline ParamsInfo posParams = ParamsInfo(
-      ParamsInfo::Param("X", CBCCSTR("The desired horizontal coordinates."),
-                        CoreInfo::IntType),
-      ParamsInfo::Param("Y", CBCCSTR("The desired vertical coordinates."),
-                        CoreInfo::IntType));
+  static inline ParamsInfo posParams =
+      ParamsInfo(ParamsInfo::Param("X", CBCCSTR("The desired horizontal coordinates."), CoreInfo::IntType),
+                 ParamsInfo::Param("Y", CBCCSTR("The desired vertical coordinates."), CoreInfo::IntType));
 
   int _x;
   int _y;
@@ -172,21 +161,16 @@ struct MoveWindowBase : public WinOpBase {
 };
 
 struct SetTitleBase : public WinOpBase {
-  static inline ParamsInfo windowParams = ParamsInfo(ParamsInfo::Param(
-      "Title", CBCCSTR("The title of the window to look for."),
-      CoreInfo::StringType));
+  static inline ParamsInfo windowParams =
+      ParamsInfo(ParamsInfo::Param("Title", CBCCSTR("The title of the window to look for."), CoreInfo::StringType));
 
   std::string _title;
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(windowParams);
-  }
+  static CBParametersInfo parameters() { return CBParametersInfo(windowParams); }
 
   CBVar getParam(int index) { return Var(_title); }
 
-  virtual void setParam(int index, const CBVar &value) {
-    _title = value.payload.stringValue;
-  }
+  virtual void setParam(int index, const CBVar &value) { _title = value.payload.stringValue; }
 };
 
 struct WaitKeyEventBase {
@@ -194,20 +178,18 @@ struct WaitKeyEventBase {
   static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   static CBOptionalString help() {
-    return CBCCSTR(
-        "### Pauses the chain and waits for keyboard events.\n#### The output "
-        "of this block will be a Int2.\n * The first integer will be 0 for Key "
-        "down/push events and 1 for Key up/release events.\n * The second "
-        "integer will the scancode of the key.\n");
+    return CBCCSTR("### Pauses the chain and waits for keyboard events.\n#### The output "
+                   "of this block will be a Int2.\n * The first integer will be 0 for Key "
+                   "down/push events and 1 for Key up/release events.\n * The second "
+                   "integer will the scancode of the key.\n");
   }
 };
 
 struct SendKeyEventBase {
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Window",
-                        CBCCSTR("None or a window variable if we wish to send "
-                                "the event only to a specific target window."),
-                        Globals::windowVarOrNone));
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Window",
+                                                                 CBCCSTR("None or a window variable if we wish to send "
+                                                                         "the event only to a specific target window."),
+                                                                 Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -237,9 +219,8 @@ struct SendKeyEventBase {
       _windowVarName.clear();
     } else {
       _windowVarName = value.payload.stringValue;
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-          _windowVarName.c_str(), CBCCSTR("The window to send events to."),
-          Globals::windowType));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_windowVarName.c_str(), CBCCSTR("The window to send events to."), Globals::windowType));
     }
   }
 
@@ -257,9 +238,7 @@ struct MousePosBase {
   ExposedInfo _consuming{};
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Window",
-      CBCCSTR("None or a window variable we wish to use as relative origin."),
-      Globals::windowVarOrNone));
+      "Window", CBCCSTR("None or a window variable we wish to use as relative origin."), Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -268,8 +247,7 @@ struct MousePosBase {
 
   CBExposedTypesInfo requiredVariables() {
     if (_window.isVariable()) {
-      _consuming = ExposedInfo(ExposedInfo::Variable(
-          _window.variableName(), CBCCSTR("The window."), Globals::windowType));
+      _consuming = ExposedInfo(ExposedInfo::Variable(_window.variableName(), CBCCSTR("The window."), Globals::windowType));
       return CBExposedTypesInfo(_consuming);
     } else {
       return {};

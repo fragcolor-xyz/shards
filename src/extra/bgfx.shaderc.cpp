@@ -35,25 +35,21 @@
 #elif defined(__APPLE__)
 #define Shader_Model() let("metal")
 #elif defined(_WIN32)
-#define Shader_Model()                                                         \
-  Get(shader_type)                                                             \
-      .If(Is("v"), let("vs_5_0"), If(Is("f"), let("ps_5_0"), let("cs_5_0")))
+#define Shader_Model() Get(shader_type).If(Is("v"), let("vs_5_0"), If(Is("f"), let("ps_5_0"), let("cs_5_0")))
 #endif
 
 #ifdef _WIN32
-#define Shaderc_Command(_args)                                                 \
-  let("").Process_Run("shaders/shadercRelease.exe", _args)
+#define Shaderc_Command(_args) let("").Process_Run("shaders/shadercRelease.exe", _args)
 #elif defined(__EMSCRIPTEN__)
-#define Shaderc_Command(_args)                                                 \
-  Get(varyings) SetTable(_args_em, "varyings")                                 \
-      .Get(shader_code) SetTable(_args_em, "shader_code")                      \
-      .Get(_args) SetTable(_args_em, "params")                                 \
-      .Get(_args_em)                                                           \
-      .ToJson()                                                                \
+#define Shaderc_Command(_args)                            \
+  Get(varyings) SetTable(_args_em, "varyings")            \
+      .Get(shader_code) SetTable(_args_em, "shader_code") \
+      .Get(_args) SetTable(_args_em, "params")            \
+      .Get(_args_em)                                      \
+      .ToJson()                                           \
       .block("_Emscripten.CompileShader")
 #else
-#define Shaderc_Command(_args)                                                 \
-  let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
+#define Shaderc_Command(_args) let("").Wasm_Run("shaders/shadercRelease.wasm", _args)
 #endif
 
 #ifndef NDEBUG
@@ -93,16 +89,13 @@ struct EmscriptenShaderCompiler {
     const auto cb = emscripten::val::global("chainblocks");
     const auto compiler = cb["compileShaderFromJson"];
     const auto sres =
-        emscripten_wait<emscripten::val>(
-            context, compiler(emscripten::val(input.payload.stringValue)))
-            .as<std::string>();
+        emscripten_wait<emscripten::val>(context, compiler(emscripten::val(input.payload.stringValue))).as<std::string>();
     auto res = sres.c_str();
 #else
     auto res = emCompileShaderBlocking(input.payload.stringValue);
     const auto check = reinterpret_cast<intptr_t>(res);
     if (check == -1) {
-      throw ActivationError(
-          "Exception while compiling a shader, check the JS console");
+      throw ActivationError("Exception while compiling a shader, check the JS console");
     }
     DEFER(free(res));
 #endif
@@ -272,8 +265,7 @@ struct ShaderCompiler : public IShaderCompiler {
       for (auto &error : errors) {
         CBLOG_ERROR(error);
       }
-      throw CBException(
-          "Shader compiler failed to compile, check errors above.");
+      throw CBException("Shader compiler failed to compile, check errors above.");
     }
 #endif
 
@@ -287,7 +279,5 @@ private:
   chainblocks::Chain _chain;
 };
 
-std::unique_ptr<IShaderCompiler> makeShaderCompiler() {
-  return std::make_unique<ShaderCompiler>();
-}
+std::unique_ptr<IShaderCompiler> makeShaderCompiler() { return std::make_unique<ShaderCompiler>(); }
 } // namespace chainblocks

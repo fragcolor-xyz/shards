@@ -39,8 +39,8 @@
 #include <sys/types.h>
 #include <time.h>
 
-#if defined(__wasi__) || defined(__APPLE__) || defined(__ANDROID_API__) ||     \
-    defined(__OpenBSD__) || defined(__linux__) || defined(__EMSCRIPTEN__)
+#if defined(__wasi__) || defined(__APPLE__) || defined(__ANDROID_API__) || defined(__OpenBSD__) || defined(__linux__) || \
+    defined(__EMSCRIPTEN__)
 #include <sys/uio.h>
 #include <unistd.h>
 #if defined(__APPLE__)
@@ -87,11 +87,7 @@ typedef struct Preopen {
   const char *real_path;
 } Preopen;
 
-Preopen preopen[PREOPEN_CNT] = {{0, "<stdin>", ""},
-                                {1, "<stdout>", ""},
-                                {2, "<stderr>", ""},
-                                {-1, "/", "./"},
-                                {-1, "./", "./"}};
+Preopen preopen[PREOPEN_CNT] = {{0, "<stdin>", ""}, {1, "<stdout>", ""}, {2, "<stderr>", ""}, {-1, "/", "./"}, {-1, "./", "./"}};
 
 static __wasi_errno_t errno_to_wasi(int errnum) {
   switch (errnum) {
@@ -249,8 +245,7 @@ static inline __wasi_timestamp_t convert_timespec(const struct timespec *ts) {
 
 #if defined(HAS_IOVEC)
 
-static inline void copy_iov_to_host(void *_mem, struct iovec *host_iov,
-                                    wasi_iovec_t *wasi_iov, int32_t iovs_len) {
+static inline void copy_iov_to_host(void *_mem, struct iovec *host_iov, wasi_iovec_t *wasi_iov, int32_t iovs_len) {
   // Convert wasi memory offsets to host addresses
   for (int i = 0; i < iovs_len; i++) {
     host_iov[i].iov_base = m3ApiOffsetToPtr(m3ApiReadMem32(&wasi_iov[i].buf));
@@ -406,19 +401,15 @@ m3ApiRawFunction(m3_wasi_unstable_fd_fdstat_get) {
   }
   fstat(fd, &fd_stat);
   int mode = fd_stat.st_mode;
-  fdstat->fs_filetype =
-      (S_ISBLK(mode) ? __WASI_FILETYPE_BLOCK_DEVICE : 0) |
-      (S_ISCHR(mode) ? __WASI_FILETYPE_CHARACTER_DEVICE : 0) |
-      (S_ISDIR(mode) ? __WASI_FILETYPE_DIRECTORY : 0) |
-      (S_ISREG(mode) ? __WASI_FILETYPE_REGULAR_FILE : 0) |
-      //(S_ISSOCK(mode)  ? __WASI_FILETYPE_SOCKET_STREAM    : 0) |
-      (S_ISLNK(mode) ? __WASI_FILETYPE_SYMBOLIC_LINK : 0);
-  m3ApiWriteMem16(&fdstat->fs_flags,
-                  ((fl & O_APPEND) ? __WASI_FDFLAGS_APPEND : 0) |
-                      ((fl & O_DSYNC) ? __WASI_FDFLAGS_DSYNC : 0) |
-                      ((fl & O_NONBLOCK) ? __WASI_FDFLAGS_NONBLOCK : 0) |
-                      //((fl & O_RSYNC)     ? __WASI_FDFLAGS_RSYNC     : 0) |
-                      ((fl & O_SYNC) ? __WASI_FDFLAGS_SYNC : 0));
+  fdstat->fs_filetype = (S_ISBLK(mode) ? __WASI_FILETYPE_BLOCK_DEVICE : 0) |
+                        (S_ISCHR(mode) ? __WASI_FILETYPE_CHARACTER_DEVICE : 0) | (S_ISDIR(mode) ? __WASI_FILETYPE_DIRECTORY : 0) |
+                        (S_ISREG(mode) ? __WASI_FILETYPE_REGULAR_FILE : 0) |
+                        //(S_ISSOCK(mode)  ? __WASI_FILETYPE_SOCKET_STREAM    : 0) |
+                        (S_ISLNK(mode) ? __WASI_FILETYPE_SYMBOLIC_LINK : 0);
+  m3ApiWriteMem16(&fdstat->fs_flags, ((fl & O_APPEND) ? __WASI_FDFLAGS_APPEND : 0) | ((fl & O_DSYNC) ? __WASI_FDFLAGS_DSYNC : 0) |
+                                         ((fl & O_NONBLOCK) ? __WASI_FDFLAGS_NONBLOCK : 0) |
+                                         //((fl & O_RSYNC)     ? __WASI_FDFLAGS_RSYNC     : 0) |
+                                         ((fl & O_SYNC) ? __WASI_FDFLAGS_SYNC : 0));
   fdstat->fs_rights_base = (uint64_t)-1;       // all rights
   fdstat->fs_rights_inheriting = (uint64_t)-1; // all rights
   m3ApiReturn(__WASI_ERRNO_SUCCESS);
@@ -624,13 +615,10 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
 #if defined(_WIN32)
   // TODO: This all needs a proper implementation
 
-  int flags = ((oflags & __WASI_OFLAGS_CREAT) ? _O_CREAT : 0) |
-              ((oflags & __WASI_OFLAGS_EXCL) ? _O_EXCL : 0) |
-              ((oflags & __WASI_OFLAGS_TRUNC) ? _O_TRUNC : 0) |
-              ((fs_flags & __WASI_FDFLAGS_APPEND) ? _O_APPEND : 0);
+  int flags = ((oflags & __WASI_OFLAGS_CREAT) ? _O_CREAT : 0) | ((oflags & __WASI_OFLAGS_EXCL) ? _O_EXCL : 0) |
+              ((oflags & __WASI_OFLAGS_TRUNC) ? _O_TRUNC : 0) | ((fs_flags & __WASI_FDFLAGS_APPEND) ? _O_APPEND : 0);
 
-  if ((fs_rights_base & __WASI_RIGHTS_FD_READ) &&
-      (fs_rights_base & __WASI_RIGHTS_FD_WRITE)) {
+  if ((fs_rights_base & __WASI_RIGHTS_FD_READ) && (fs_rights_base & __WASI_RIGHTS_FD_WRITE)) {
     flags |= _O_RDWR;
   } else if ((fs_rights_base & __WASI_RIGHTS_FD_WRITE)) {
     flags |= _O_WRONLY;
@@ -651,15 +639,12 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
   // translate o_flags and fs_flags into flags and mode
   int flags = ((oflags & __WASI_OFLAGS_CREAT) ? O_CREAT : 0) |
               //((oflags & __WASI_OFLAGS_DIRECTORY)         ? O_DIRECTORY : 0) |
-              ((oflags & __WASI_OFLAGS_EXCL) ? O_EXCL : 0) |
-              ((oflags & __WASI_OFLAGS_TRUNC) ? O_TRUNC : 0) |
-              ((fs_flags & __WASI_FDFLAGS_APPEND) ? O_APPEND : 0) |
-              ((fs_flags & __WASI_FDFLAGS_DSYNC) ? O_DSYNC : 0) |
+              ((oflags & __WASI_OFLAGS_EXCL) ? O_EXCL : 0) | ((oflags & __WASI_OFLAGS_TRUNC) ? O_TRUNC : 0) |
+              ((fs_flags & __WASI_FDFLAGS_APPEND) ? O_APPEND : 0) | ((fs_flags & __WASI_FDFLAGS_DSYNC) ? O_DSYNC : 0) |
               ((fs_flags & __WASI_FDFLAGS_NONBLOCK) ? O_NONBLOCK : 0) |
               //((fs_flags & __WASI_FDFLAGS_RSYNC)      ? O_RSYNC     : 0) |
               ((fs_flags & __WASI_FDFLAGS_SYNC) ? O_SYNC : 0);
-  if ((fs_rights_base & __WASI_RIGHTS_FD_READ) &&
-      (fs_rights_base & __WASI_RIGHTS_FD_WRITE)) {
+  if ((fs_rights_base & __WASI_RIGHTS_FD_READ) && (fs_rights_base & __WASI_RIGHTS_FD_WRITE)) {
     flags |= O_RDWR;
   } else if ((fs_rights_base & __WASI_RIGHTS_FD_WRITE)) {
     flags |= O_WRONLY;
@@ -834,8 +819,7 @@ m3ApiRawFunction(m3_wasi_unstable_fd_datasync) {
   int ret = _commit(fd);
 #elif defined(__APPLE__)
   int ret = fsync(fd);
-#elif defined(__ANDROID_API__) || defined(__OpenBSD__) ||                      \
-    defined(__linux__) || defined(__EMSCRIPTEN__)
+#elif defined(__ANDROID_API__) || defined(__OpenBSD__) || defined(__linux__) || defined(__EMSCRIPTEN__)
   int ret = fdatasync(fd);
 #else
   int ret = __WASI_ERRNO_NOSYS;
@@ -853,12 +837,10 @@ m3ApiRawFunction(m3_wasi_unstable_random_get) {
   while (1) {
     ssize_t retlen = 0;
 
-#if defined(__wasi__) || defined(__APPLE__) || defined(__ANDROID_API__) ||     \
-    defined(__OpenBSD__) || defined(__EMSCRIPTEN__)
+#if defined(__wasi__) || defined(__APPLE__) || defined(__ANDROID_API__) || defined(__OpenBSD__) || defined(__EMSCRIPTEN__)
     size_t reqlen = M3_MIN(buflen, 256);
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
-    retlen =
-        SecRandomCopyBytes(kSecRandomDefault, reqlen, buf) < 0 ? -1 : reqlen;
+    retlen = SecRandomCopyBytes(kSecRandomDefault, reqlen, buf) < 0 ? -1 : reqlen;
 #else
     retlen = getentropy(buf, reqlen) < 0 ? -1 : reqlen;
 #endif
@@ -968,87 +950,60 @@ M3Result m3_LinkWASI(IM3Module module) {
   }
 #endif
 
-  static const char *namespaces[2] = {"wasi_unstable",
-                                      "wasi_snapshot_preview1"};
+  static const char *namespaces[2] = {"wasi_unstable", "wasi_snapshot_preview1"};
 
   for (int i = 0; i < 2; i++) {
     const char *wasi = namespaces[i];
 
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "args_get", "i(**)", &m3_wasi_unstable_args_get)));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "args_sizes_get", "i(**)",
-                           &m3_wasi_unstable_args_sizes_get)));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "clock_res_get", "i(i*)",
-                           &m3_wasi_unstable_clock_res_get)));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "clock_time_get", "i(iI*)",
-                           &m3_wasi_unstable_clock_time_get)));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "environ_get", "i(**)", &m3_wasi_unstable_environ_get)));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "environ_sizes_get", "i(**)",
-                           &m3_wasi_unstable_environ_sizes_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "args_get", "i(**)", &m3_wasi_unstable_args_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "args_sizes_get", "i(**)", &m3_wasi_unstable_args_sizes_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "clock_res_get", "i(i*)", &m3_wasi_unstable_clock_res_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "clock_time_get", "i(iI*)", &m3_wasi_unstable_clock_time_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "environ_get", "i(**)", &m3_wasi_unstable_environ_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "environ_sizes_get", "i(**)", &m3_wasi_unstable_environ_sizes_get)));
 
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_advise",            "i(iIIi)", ))); _     (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "fd_allocate",          "i(iII)",  )));
-    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_close", "i(i)",
-                                               &m3_wasi_unstable_fd_close)));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "fd_datasync", "i(i)", &m3_wasi_unstable_fd_datasync)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_close", "i(i)", &m3_wasi_unstable_fd_close)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_datasync", "i(i)", &m3_wasi_unstable_fd_datasync)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_fdstat_get", "i(i*)", &m3_wasi_unstable_fd_fdstat_get)));
     _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "fd_fdstat_get", "i(i*)",
-                           &m3_wasi_unstable_fd_fdstat_get)));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "fd_fdstat_set_flags", "i(ii)",
-                           &m3_wasi_unstable_fd_fdstat_set_flags)));
+        m3_LinkRawFunction(module, wasi, "fd_fdstat_set_flags", "i(ii)", &m3_wasi_unstable_fd_fdstat_set_flags)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_fdstat_set_rights", "i(iII)",  )));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "fd_filestat_get", "i(i*)",
-                           &m3_wasi_unstable_fd_filestat_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_filestat_get", "i(i*)", &m3_wasi_unstable_fd_filestat_get)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_filestat_set_size", "i(iI)",   ))); _     (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "fd_filestat_set_times","i(iIIi)", )));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_pread",             "i(i*iI*)",)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_prestat_get", "i(i*)", &m3_wasi_unstable_fd_prestat_get)));
     _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "fd_prestat_get", "i(i*)",
-                           &m3_wasi_unstable_fd_prestat_get)));
-    _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "fd_prestat_dir_name", "i(i*i)",
-                           &m3_wasi_unstable_fd_prestat_dir_name)));
+        m3_LinkRawFunction(module, wasi, "fd_prestat_dir_name", "i(i*i)", &m3_wasi_unstable_fd_prestat_dir_name)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_pwrite",            "i(i*iI*)",)));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "fd_read", "i(i*i*)", &m3_wasi_unstable_fd_read)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_read", "i(i*i*)", &m3_wasi_unstable_fd_read)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"fd_readdir",           "i(i*iI*)",))); _     (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "fd_renumber",          "i(ii)",   )));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "fd_seek", "i(iIi*)", &m3_wasi_unstable_fd_seek)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_seek", "i(iIi*)", &m3_wasi_unstable_fd_seek)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi, "fd_sync",
     //"i(i)",    ))); _     (SuppressLookupFailure (m3_LinkRawFunction (module,
     // wasi, "fd_tell",              "i(i*)",   )));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "fd_write", "i(i*i*)", &m3_wasi_unstable_fd_write)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "fd_write", "i(i*i*)", &m3_wasi_unstable_fd_write)));
 
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"path_create_directory",    "i(i*i)",       )));
 
     _(SuppressLookupFailure(
-        m3_LinkRawFunction(module, wasi, "path_filestat_get", "i(ii*i*)",
-                           &m3_wasi_unstable_path_filestat_get)));
+        m3_LinkRawFunction(module, wasi, "path_filestat_get", "i(ii*i*)", &m3_wasi_unstable_path_filestat_get)));
 
     // _     (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "path_filestat_set_times",
     //"i(ii*iIIi)",   ))); _     (SuppressLookupFailure (m3_LinkRawFunction
     //(module, wasi, "path_link",                "i(ii*ii*i)",   )));
-    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "path_open",
-                                               "i(ii*iiIIi*)",
-                                               &m3_wasi_unstable_path_open)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "path_open", "i(ii*iiIIi*)", &m3_wasi_unstable_path_open)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"path_readlink",            "i(i*i*i*)",    ))); _ (SuppressLookupFailure
     //(m3_LinkRawFunction (module, wasi, "path_remove_directory",    "i(i*i)",
@@ -1060,12 +1015,10 @@ M3Result m3_LinkWASI(IM3Module module) {
 
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"poll_oneoff",          "i(**i*)", &m3_wasi_unstable_poll_oneoff)));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "proc_exit", "v(i)", &m3_wasi_unstable_proc_exit)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "proc_exit", "v(i)", &m3_wasi_unstable_proc_exit)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"proc_raise",           "i(i)",    )));
-    _(SuppressLookupFailure(m3_LinkRawFunction(
-        module, wasi, "random_get", "i(*i)", &m3_wasi_unstable_random_get)));
+    _(SuppressLookupFailure(m3_LinkRawFunction(module, wasi, "random_get", "i(*i)", &m3_wasi_unstable_random_get)));
     //_     (SuppressLookupFailure (m3_LinkRawFunction (module, wasi,
     //"sched_yield",          "i()",     )));
 
@@ -1081,23 +1034,22 @@ _catch:
 }
 } // namespace WASI
 
-#define CHECK_COMPOSE_ERR(_err_)                                               \
-  if (_err_ != m3Err_none) {                                                   \
-    std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": ");      \
-    _errMsg.append(_err_);                                                     \
-    throw ComposeError(_errMsg);                                               \
+#define CHECK_COMPOSE_ERR(_err_)                                          \
+  if (_err_ != m3Err_none) {                                              \
+    std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": "); \
+    _errMsg.append(_err_);                                                \
+    throw ComposeError(_errMsg);                                          \
   }
 
-#define CHECK_ACTIVATION_ERR(_err_)                                            \
-  if (_err_ != m3Err_none) {                                                   \
-    throw ActivationError(_err_);                                              \
+#define CHECK_ACTIVATION_ERR(_err_) \
+  if (_err_ != m3Err_none) {        \
+    throw ActivationError(_err_);   \
   }
 
 struct Run {
   static constexpr CBString wasmExt = ".wasm";
   static constexpr CBStrings wasmExts = {(const char **)&wasmExt, 1, 0};
-  static constexpr CBTypeInfo wasmFileType{
-      CBType::Path, {.path = {wasmExts, true, true, true}}};
+  static constexpr CBTypeInfo wasmFileType{CBType::Path, {.path = {wasmExts, true, true, true}}};
   static inline Type WasmFilePath{wasmFileType};
 
   std::string _moduleName;
@@ -1119,19 +1071,12 @@ struct Run {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   static inline Parameters params{
-      {"Module",
-       CBCCSTR("The wasm module to run."),
-       {WasmFilePath, CoreInfo::StringType}},
+      {"Module", CBCCSTR("The wasm module to run."), {WasmFilePath, CoreInfo::StringType}},
       {"Arguments",
        CBCCSTR("The arguments to pass to the module entrypoint function."),
-       {CoreInfo::NoneType, CoreInfo::StringSeqType,
-        CoreInfo::StringVarSeqType}},
-      {"EntryPoint",
-       CBCCSTR("The entry point function to call when activating."),
-       {CoreInfo::StringType}},
-      {"StackSize",
-       CBCCSTR("The stack size in kilobytes to use."),
-       {CoreInfo::IntType}},
+       {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType}},
+      {"EntryPoint", CBCCSTR("The entry point function to call when activating."), {CoreInfo::StringType}},
+      {"StackSize", CBCCSTR("The stack size in kilobytes to use."), {CoreInfo::IntType}},
       {"ResetRuntime",
        CBCCSTR("If the runtime should be reset every activation, altho slow "
                "this might be useful if certain modules fail to execute "
@@ -1211,11 +1156,9 @@ struct Run {
     // apparently if we use std::copy we need to make sure this is set
     wasmFile.unsetf(std::ios::skipws);
     _byteCode.clear();
-    std::copy(std::istream_iterator<uint8_t>(wasmFile),
-              std::istream_iterator<uint8_t>(), std::back_inserter(_byteCode));
+    std::copy(std::istream_iterator<uint8_t>(wasmFile), std::istream_iterator<uint8_t>(), std::back_inserter(_byteCode));
     IM3Module pmodule;
-    M3Result err =
-        m3_ParseModule(_env.get(), &pmodule, &_byteCode[0], _byteCode.size());
+    M3Result err = m3_ParseModule(_env.get(), &pmodule, &_byteCode[0], _byteCode.size());
     CHECK_COMPOSE_ERR(err);
 
     err = m3_LoadModule(_runtime.get(), pmodule);
@@ -1263,11 +1206,9 @@ struct Run {
           _serr.reset();
           std::ostream sout{&_sout};
           std::ostream serr{&_serr};
-          StringStreamBuf sinbuf{
-              input.payload.stringLen > 0
-                  ? std::string_view(input.payload.stringValue,
-                                     input.payload.stringLen)
-                  : std::string_view(input.payload.stringValue)};
+          StringStreamBuf sinbuf{input.payload.stringLen > 0
+                                     ? std::string_view(input.payload.stringValue, input.payload.stringLen)
+                                     : std::string_view(input.payload.stringValue)};
           std::istream sin{&sinbuf};
 
           _data.sin = &sin;
@@ -1331,8 +1272,7 @@ struct Run {
               _sout.done();
               CBLOG_INFO(_sout.str());
               CBLOG_ERROR(_serr.str());
-              std::string emsg("Wasm module run failed, exit code: " +
-                               std::to_string(_data.exit_code));
+              std::string emsg("Wasm module run failed, exit code: " + std::to_string(_data.exit_code));
               throw ActivationError(emsg);
             }
           } else if (result) {

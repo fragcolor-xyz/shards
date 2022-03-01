@@ -13,23 +13,17 @@ using namespace chainblocks;
 namespace chainblocks {
 namespace ImGui {
 struct Base {
-  static inline CBExposedTypeInfo ContextInfo = ExposedInfo::Variable(
-      "GUI.Context", CBCCSTR("The ImGui Context."), Context::Info);
+  static inline CBExposedTypeInfo ContextInfo =
+      ExposedInfo::Variable("GUI.Context", CBCCSTR("The ImGui Context."), Context::Info);
   static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
 
-  CBExposedTypesInfo requiredVariables() {
-    return CBExposedTypesInfo(requiredInfo);
-  }
+  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(requiredInfo); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is not used and will pass through.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is not used and will pass through."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The output of this block will be its input.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The output of this block will be its input."); }
 };
 
 struct IDContext {
@@ -126,8 +120,7 @@ struct Style : public Base {
 
   GuiStyle _key{};
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Style", CBCCSTR("A style key to set."), GuiStyleType));
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param("Style", CBCCSTR("A style key to set."), GuiStyleType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -176,8 +169,7 @@ struct Style : public Base {
     case CurveTessellationTol:
     case Alpha:
       if (data.inputType.basicType != Float) {
-        throw CBException(
-            "this GUI Style block expected a Float variable as input!");
+        throw CBException("this GUI Style block expected a Float variable as input!");
       }
       break;
     case WindowPadding:
@@ -192,8 +184,7 @@ struct Style : public Base {
     case DisplayWindowPadding:
     case DisplaySafeAreaPadding:
       if (data.inputType.basicType != Float2) {
-        throw CBException(
-            "this GUI Style block expected a Float2 variable as input!");
+        throw CBException("this GUI Style block expected a Float2 variable as input!");
       }
       break;
     case TextColor:
@@ -245,8 +236,7 @@ struct Style : public Base {
     case NavWindowingDimBgColor:
     case ModalWindowDimBgColor:
       if (data.inputType.basicType != Color) {
-        throw CBException(
-            "this GUI Style block expected a Color variable as input!");
+        throw CBException("this GUI Style block expected a Color variable as input!");
       }
       break;
     }
@@ -269,9 +259,7 @@ struct Style : public Base {
     return res;
   }
 
-  static ImVec4 color2Vec4(const CBVar &input) {
-    return color2Vec4(input.payload.colorValue);
-  }
+  static ImVec4 color2Vec4(const CBVar &input) { return color2Vec4(input.payload.colorValue); }
 
   static CBColor vec42Color(const ImVec4 &color) {
     CBColor res;
@@ -543,21 +531,16 @@ struct Window : public Base {
   std::string _title;
   bool firstActivation{true};
   Var _pos{}, _width{}, _height{};
-  ParamVar _flags{Var::Enum((int(Enums::GuiWindowFlags::NoResize) |
-                             int(Enums::GuiWindowFlags::NoMove) |
-                             int(Enums::GuiWindowFlags::NoCollapse)),
-                            CoreCC, Enums::GuiWindowFlagsCC)};
+  ParamVar _flags{Var::Enum(
+      (int(Enums::GuiWindowFlags::NoResize) | int(Enums::GuiWindowFlags::NoMove) | int(Enums::GuiWindowFlags::NoCollapse)),
+      CoreCC, Enums::GuiWindowFlagsCC)};
   ParamVar _notClosed{Var::True};
   std::array<CBExposedTypeInfo, 2> _required;
 
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static inline Parameters _params{
-      {"Title",
-       CBCCSTR("The title of the window to create."),
-       {CoreInfo::StringType}},
+      {"Title", CBCCSTR("The title of the window to create."), {CoreInfo::StringType}},
       {"Pos",
        CBCCSTR("The x/y position of the window to create. If the value is a "
                "Float2, it will be interpreted as relative to the container "
@@ -568,17 +551,14 @@ struct Window : public Base {
                "will be interpreted as relative to the container window size."),
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
       {"Height",
-       CBCCSTR(
-           "The height of the window to create. If the value is a Float, it "
-           "will be interpreted as relative to the container window size."),
+       CBCCSTR("The height of the window to create. If the value is a Float, it "
+               "will be interpreted as relative to the container window size."),
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
-      {"Contents", CBCCSTR("The inner contents blocks."),
-       CoreInfo::BlocksOrNone},
+      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
       {"Flags",
        CBCCSTR("Flags to enable window options. The defaults are NoResize | "
                "NoMove | NoCollapse."),
-       {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType,
-        Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType,
+       {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType, Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType,
         CoreInfo::NoneType}},
       {"OnClose",
        CBCCSTR("Passing a variable will display a close button in the "
@@ -677,16 +657,13 @@ struct Window : public Base {
     if (!_blks)
       return input;
 
-    auto flags = ::ImGuiWindowFlags_NoSavedSettings |
-                 ::ImGuiWindowFlags(
-                     chainblocks::getFlags<Enums::GuiWindowFlags>(_flags));
+    auto flags = ::ImGuiWindowFlags_NoSavedSettings | ::ImGuiWindowFlags(chainblocks::getFlags<Enums::GuiWindowFlags>(_flags));
 
     if (firstActivation) {
       const ImGuiIO &io = ::ImGui::GetIO();
 
       if (_pos.valueType == Int2) {
-        ImVec2 pos = {float(_pos.payload.int2Value[0]),
-                      float(_pos.payload.int2Value[1])};
+        ImVec2 pos = {float(_pos.payload.int2Value[0]), float(_pos.payload.int2Value[1])};
         ::ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
       } else if (_pos.valueType == Float2) {
         const auto x = double(io.DisplaySize.x) * _pos.payload.float2Value[0];
@@ -715,10 +692,7 @@ struct Window : public Base {
       firstActivation = false;
     }
 
-    auto active = ::ImGui::Begin(
-        _title.c_str(),
-        _notClosed.isVariable() ? &_notClosed.get().payload.boolValue : nullptr,
-        flags);
+    auto active = ::ImGui::Begin(_title.c_str(), _notClosed.isVariable() ? &_notClosed.get().payload.boolValue : nullptr, flags);
     DEFER(::ImGui::End());
     if (active) {
       CBVar output{};
@@ -735,23 +709,13 @@ struct ChildWindow : public Base {
   static inline ImGuiID windowIds{0};
   ImGuiID _wndId = ++windowIds;
 
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Width",
-                        CBCCSTR("The width of the child window to create"),
-                        CoreInfo::IntOrNone),
-      ParamsInfo::Param("Height",
-                        CBCCSTR("The height of the child window to create."),
-                        CoreInfo::IntOrNone),
-      ParamsInfo::Param(
-          "Border",
-          CBCCSTR("If we want to draw a border frame around the child window."),
-          CoreInfo::BoolType),
-      ParamsInfo::Param("Contents", CBCCSTR("The inner contents blocks."),
-                        CoreInfo::BlocksOrNone));
+      ParamsInfo::Param("Width", CBCCSTR("The width of the child window to create"), CoreInfo::IntOrNone),
+      ParamsInfo::Param("Height", CBCCSTR("The height of the child window to create."), CoreInfo::IntOrNone),
+      ParamsInfo::Param("Border", CBCCSTR("If we want to draw a border frame around the child window."), CoreInfo::BoolType),
+      ParamsInfo::Param("Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -826,9 +790,7 @@ struct ChildWindow : public Base {
 Parameters &VariableParamsInfo() {
   static Parameters params{
       {"Label", CBCCSTR("The label for this widget."), CoreInfo::StringOrNone},
-      {"Variable",
-       CBCCSTR("The variable that holds the input value."),
-       {CoreInfo::AnyVarType, CoreInfo::NoneType}},
+      {"Variable", CBCCSTR("The variable that holds the input value."), {CoreInfo::AnyVarType, CoreInfo::NoneType}},
   };
   return params;
 }
@@ -860,8 +822,7 @@ template <CBType CT> struct Variable : public Base {
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw CBException(
-                "GUI - Variable: Existing variable is not mutable.");
+            throw CBException("GUI - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -872,11 +833,8 @@ template <CBType CT> struct Variable : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
-      _expInfo = ExposedInfo(
-          requiredInfo,
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The required input variable."),
-                                CBTypeInfo(varType)));
+      _expInfo = ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(),
+                                                                 CBCCSTR("The required input variable."), CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -885,11 +843,8 @@ template <CBType CT> struct Variable : public Base {
 
   CBExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
-      _expInfo = ExposedInfo(
-          requiredInfo,
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The exposed input variable."),
-                                CBTypeInfo(varType), true));
+      _expInfo = ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."),
+                                                                 CBTypeInfo(varType), true));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -952,15 +907,13 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
           // we found a variable, make sure it's the right type and mark
           // exposing off
           _exposing = false;
-          if (var.exposedType.basicType != CT1 &&
-              var.exposedType.basicType != CT2) {
+          if (var.exposedType.basicType != CT1 && var.exposedType.basicType != CT2) {
             throw CBException("GUI - Variable: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw CBException(
-                "GUI - Variable: Existing variable is not mutable.");
+            throw CBException("GUI - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -973,12 +926,8 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
     if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(
           requiredInfo,
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The required input variable."),
-                                CBTypeInfo(varType1)),
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The required input variable."),
-                                CBTypeInfo(varType2)));
+          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType1)),
+          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType2)));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -989,12 +938,8 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
     if (_variable.isVariable() && _exposing) {
       _expInfo = ExposedInfo(
           requiredInfo,
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The exposed input variable."),
-                                CBTypeInfo(varType1), true),
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The exposed input variable."),
-                                CBTypeInfo(varType2), true));
+          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType1), true),
+          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType2), true));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -1037,9 +982,7 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
 
 struct Checkbox : public Variable<CBType::Bool> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static CBOptionalString outputHelp() {
@@ -1053,8 +996,7 @@ struct Checkbox : public Variable<CBType::Bool> {
     auto result = Var::False;
     if (_variable.isVariable()) {
       _variable.get().valueType = CBType::Bool;
-      if (::ImGui::Checkbox(_label.c_str(),
-                            &_variable.get().payload.boolValue)) {
+      if (::ImGui::Checkbox(_label.c_str(), &_variable.get().payload.boolValue)) {
         result = Var::True;
       }
     } else {
@@ -1070,9 +1012,7 @@ struct Checkbox : public Variable<CBType::Bool> {
 
 struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static CBOptionalString outputHelp() {
@@ -1118,8 +1058,7 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
       } else {
         flags = reinterpret_cast<int *>(&_tmp.payload.intValue);
       }
-      if (::ImGui::CheckboxFlags(_label.c_str(), flags,
-                                 int(_value.payload.intValue))) {
+      if (::ImGui::CheckboxFlags(_label.c_str(), flags, int(_value.payload.intValue))) {
         result = Var::True;
       }
     } break;
@@ -1131,8 +1070,7 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
       } else {
         flags = reinterpret_cast<int *>(&_tmp.payload.enumValue);
       }
-      if (::ImGui::CheckboxFlags(_label.c_str(), flags,
-                                 int(_value.payload.enumValue))) {
+      if (::ImGui::CheckboxFlags(_label.c_str(), flags, int(_value.payload.enumValue))) {
         result = Var::True;
       }
     } break;
@@ -1145,10 +1083,7 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
 
 private:
   static inline Parameters _params{
-      VariableParamsInfo(),
-      {{"Value",
-        CBCCSTR("The flag value to set or unset."),
-        {CoreInfo::IntType, CoreInfo::AnyEnumType}}}};
+      VariableParamsInfo(), {{"Value", CBCCSTR("The flag value to set or unset."), {CoreInfo::IntType, CoreInfo::AnyEnumType}}}};
 
   CBVar _value{};
   CBVar _tmp{};
@@ -1156,9 +1091,7 @@ private:
 
 struct RadioButton : public Variable<CBType::Any> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static CBOptionalString outputHelp() {
@@ -1184,11 +1117,9 @@ struct RadioButton : public Variable<CBType::Any> {
 
   CBExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
-      _expInfo = ExposedInfo(
-          requiredInfo,
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The required input variable."),
-                                CBTypeInfo({_value.valueType})));
+      _expInfo =
+          ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."),
+                                                          CBTypeInfo({_value.valueType})));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -1197,11 +1128,8 @@ struct RadioButton : public Variable<CBType::Any> {
 
   CBExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
-      _expInfo = ExposedInfo(
-          requiredInfo,
-          ExposedInfo::Variable(_variable.variableName(),
-                                CBCCSTR("The exposed input variable."),
-                                CBTypeInfo({_value.valueType}), true));
+      _expInfo = ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."),
+                                                                 CBTypeInfo({_value.valueType}), true));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -1230,17 +1158,14 @@ struct RadioButton : public Variable<CBType::Any> {
   }
 
 private:
-  static inline Parameters paramsInfo{
-      VariableParamsInfo(),
-      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::AnyType}}}};
+  static inline Parameters paramsInfo{VariableParamsInfo(),
+                                      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::AnyType}}}};
 
   CBVar _value{};
 };
 
 struct Text : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value to display.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value to display."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1335,22 +1260,14 @@ struct Text : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label",
-       CBCCSTR("An optional label for the value."),
-       {CoreInfo::StringOrNone}},
-      {"Color",
-       CBCCSTR("The optional color of the text."),
-       {CoreInfo::ColorOrNone}},
-      {"Format",
-       CBCCSTR("An optional format for the text."),
-       {CoreInfo::StringOrNone}},
+      {"Label", CBCCSTR("An optional label for the value."), {CoreInfo::StringOrNone}},
+      {"Color", CBCCSTR("The optional color of the text."), {CoreInfo::ColorOrNone}},
+      {"Format", CBCCSTR("An optional format for the text."), {CoreInfo::StringOrNone}},
       {"Wrap",
        CBCCSTR("Whether to wrap the text to the next line if it doesn't fit "
                "horizontally."),
        {CoreInfo::BoolType}},
-      {"Bullet",
-       CBCCSTR("Display a small circle before the text."),
-       {CoreInfo::BoolType}},
+      {"Bullet", CBCCSTR("Display a small circle before the text."), {CoreInfo::BoolType}},
   };
 
   std::string _label;
@@ -1369,9 +1286,7 @@ struct Bullet : public Base {
 
 struct Button : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static CBOptionalString outputHelp() {
@@ -1430,10 +1345,10 @@ struct Button : public Base {
 
   void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
 
-#define IMBTN_RUN_ACTION                                                       \
-  {                                                                            \
-    CBVar output = Var::Empty;                                                 \
-    _blocks.activate(context, input, output);                                  \
+#define IMBTN_RUN_ACTION                      \
+  {                                           \
+    CBVar output = Var::Empty;                \
+    _blocks.activate(context, input, output); \
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -1493,16 +1408,11 @@ struct Button : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label",
-       CBCCSTR("The text label of this button."),
-       {CoreInfo::StringType}},
-      {"Action", CBCCSTR("The blocks to execute when the button is pressed."),
-       CoreInfo::BlocksOrNone},
+      {"Label", CBCCSTR("The text label of this button."), {CoreInfo::StringType}},
+      {"Action", CBCCSTR("The blocks to execute when the button is pressed."), CoreInfo::BlocksOrNone},
       {"Type", CBCCSTR("The button type."), {Enums::GuiButtonType}},
       {"Size", CBCCSTR("The optional size override."), {CoreInfo::Float2Type}},
-      {"Repeat",
-       CBCCSTR("Whether to repeat the action while the button is pressed."),
-       {CoreInfo::BoolType}},
+      {"Repeat", CBCCSTR("Whether to repeat the action while the button is pressed."), {CoreInfo::BoolType}},
   };
 
   std::string _label;
@@ -1516,9 +1426,7 @@ struct HexViewer : public Base {
   // TODO use a variable so edits are possible and easy
 
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value to display in the viewer.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value to display in the viewer."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
@@ -1632,14 +1540,10 @@ struct Unindent : public Base {
 
 struct GetClipboard : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The content of the clipboard.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The content of the clipboard."); }
 
   static CBVar activate(CBContext *context, const CBVar &input) {
     auto contents = ::ImGui::GetClipboardText();
@@ -1652,9 +1556,7 @@ struct GetClipboard : public Base {
 
 struct SetClipboard : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value to set in the clipboard.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value to set in the clipboard."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -1665,14 +1567,10 @@ struct SetClipboard : public Base {
 };
 
 struct TreeNode : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the tree node is open.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the tree node is open."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1728,8 +1626,7 @@ struct TreeNode : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
-    auto flags = ::ImGuiTreeNodeFlags(
-        chainblocks::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
+    auto flags = ::ImGuiTreeNodeFlags(chainblocks::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
 
     if (_defaultOpen) {
       flags |= ::ImGuiTreeNodeFlags_DefaultOpen;
@@ -1750,16 +1647,12 @@ struct TreeNode : public Base {
 private:
   static inline Parameters _params = {
       {"Label", CBCCSTR("The label of this node."), {CoreInfo::StringType}},
-      {"Contents", CBCCSTR("The contents of this node."),
-       CoreInfo::BlocksOrNone},
-      {"StartOpen",
-       CBCCSTR("If this node should start in the open state."),
-       {CoreInfo::BoolType}},
+      {"Contents", CBCCSTR("The contents of this node."), CoreInfo::BlocksOrNone},
+      {"StartOpen", CBCCSTR("If this node should start in the open state."), {CoreInfo::BoolType}},
       {"Flags",
        CBCCSTR("Flags to enable tree node options."),
-       {Enums::GuiTreeNodeFlagsType, Enums::GuiTreeNodeFlagsVarType,
-        Enums::GuiTreeNodeFlagsSeqType, Enums::GuiTreeNodeFlagsVarSeqType,
-        CoreInfo::NoneType}},
+       {Enums::GuiTreeNodeFlagsType, Enums::GuiTreeNodeFlagsVarType, Enums::GuiTreeNodeFlagsSeqType,
+        Enums::GuiTreeNodeFlagsVarSeqType, CoreInfo::NoneType}},
   };
 
   std::string _label;
@@ -1769,14 +1662,10 @@ private:
 };
 
 struct CollapsingHeader : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the header is open.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the header is open."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1835,12 +1724,8 @@ struct CollapsingHeader : public Base {
 private:
   static inline Parameters _params = {
       {"Label", CBCCSTR("The label of this node."), {CoreInfo::StringType}},
-      {"Contents",
-       CBCCSTR("The contents under this header."),
-       {CoreInfo::BlocksOrNone}},
-      {"StartOpen",
-       CBCCSTR("If this header should start in the open state."),
-       {CoreInfo::BoolType}},
+      {"Contents", CBCCSTR("The contents under this header."), {CoreInfo::BlocksOrNone}},
+      {"StartOpen", CBCCSTR("If this header should start in the open state."), {CoreInfo::BoolType}},
   };
 
   std::string _label;
@@ -1851,10 +1736,8 @@ private:
 template <CBType CBT> struct DragBase : public Variable<CBT> {
   float _speed{1.0};
 
-  static inline Parameters paramsInfo{
-      VariableParamsInfo(),
-      {{"Speed", CBCCSTR("The speed multiplier for this drag widget."),
-        CoreInfo::StringOrNone}}};
+  static inline Parameters paramsInfo{VariableParamsInfo(),
+                                      {{"Speed", CBCCSTR("The speed multiplier for this drag widget."), CoreInfo::StringOrNone}}};
 
   static CBParametersInfo parameters() { return paramsInfo; }
 
@@ -1873,71 +1756,60 @@ template <CBType CBT> struct DragBase : public Variable<CBT> {
   }
 };
 
-#define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                            \
-  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                        \
-    _T_ _tmp;                                                                  \
-                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
-    static CBOptionalString inputHelp() {                                      \
-      return CBCCSTR("The input value is ignored.");                           \
-    }                                                                          \
-                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
-    static CBOptionalString outputHelp() {                                     \
-      return CBCCSTR("The value produced by this block.");                     \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      IDContext idCtx(this);                                                   \
-                                                                               \
-      if (_variable.isVariable()) {                                            \
-        auto &var = _variable.get();                                           \
-        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_, \
-                            _speed);                                           \
-                                                                               \
-        var.valueType = CBType::_CBT_;                                         \
-        return var;                                                            \
-      } else {                                                                 \
-        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, _speed);     \
-        return Var(_tmp);                                                      \
-      }                                                                        \
-    }                                                                          \
+#define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                                               \
+  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                                           \
+    _T_ _tmp;                                                                                     \
+                                                                                                  \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                \
+    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }        \
+                                                                                                  \
+    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }                                 \
+    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); } \
+                                                                                                  \
+    CBVar activate(CBContext *context, const CBVar &input) {                                      \
+      IDContext idCtx(this);                                                                      \
+                                                                                                  \
+      if (_variable.isVariable()) {                                                               \
+        auto &var = _variable.get();                                                              \
+        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_, _speed);           \
+                                                                                                  \
+        var.valueType = CBType::_CBT_;                                                            \
+        return var;                                                                               \
+      } else {                                                                                    \
+        ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, _speed);                        \
+        return Var(_tmp);                                                                         \
+      }                                                                                           \
+    }                                                                                             \
   }
 
 IMGUIDRAG(Int, int64_t, IntType, ImGuiDataType_S64, intValue);
 IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
 
-#define IMGUIDRAG2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                    \
-  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                        \
-    CBVar _tmp;                                                                \
-                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
-    static CBOptionalString inputHelp() {                                      \
-      return CBCCSTR("The input value is ignored.");                           \
-    }                                                                          \
-                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }              \
-    static CBOptionalString outputHelp() {                                     \
-      return CBCCSTR("The value produced by this block.");                     \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      IDContext idCtx(this);                                                   \
-                                                                               \
-      if (_variable.isVariable()) {                                            \
-        auto &var = _variable.get();                                           \
-        ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
-                             (void *)&var.payload._VAL_, _CMP_, _speed);       \
-                                                                               \
-        var.valueType = CBType::_CBT_;                                         \
-        return var;                                                            \
-      } else {                                                                 \
-        _tmp.valueType = CBType::_CBT_;                                        \
-        ::ImGui::DragScalarN(_label.c_str(), _IMT_,                            \
-                             (void *)&_tmp.payload._VAL_, _CMP_, _speed);      \
-        return _tmp;                                                           \
-      }                                                                        \
-    }                                                                          \
+#define IMGUIDRAG2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                                       \
+  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                                           \
+    CBVar _tmp;                                                                                   \
+                                                                                                  \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                \
+    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }        \
+                                                                                                  \
+    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }                                 \
+    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); } \
+                                                                                                  \
+    CBVar activate(CBContext *context, const CBVar &input) {                                      \
+      IDContext idCtx(this);                                                                      \
+                                                                                                  \
+      if (_variable.isVariable()) {                                                               \
+        auto &var = _variable.get();                                                              \
+        ::ImGui::DragScalarN(_label.c_str(), _IMT_, (void *)&var.payload._VAL_, _CMP_, _speed);   \
+                                                                                                  \
+        var.valueType = CBType::_CBT_;                                                            \
+        return var;                                                                               \
+      } else {                                                                                    \
+        _tmp.valueType = CBType::_CBT_;                                                           \
+        ::ImGui::DragScalarN(_label.c_str(), _IMT_, (void *)&_tmp.payload._VAL_, _CMP_, _speed);  \
+        return _tmp;                                                                              \
+      }                                                                                           \
+    }                                                                                             \
   }
 
 IMGUIDRAG2(Int2, int64_t, Int2Type, ImGuiDataType_S64, int2Value, 2);
@@ -1947,201 +1819,182 @@ IMGUIDRAG2(Float2, double, Float2Type, ImGuiDataType_Double, float2Value, 2);
 IMGUIDRAG2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, 3);
 IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
 
-#define IMGUIINPUT(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                            \
-  struct _CBT_##Input : public Variable<CBType::_CBT_> {                       \
-    _T_ _tmp;                                                                  \
-                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
-    static CBOptionalString inputHelp() {                                      \
-      return CBCCSTR("The input value is ignored.");                           \
-    }                                                                          \
-                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }         \
-    static CBOptionalString outputHelp() {                                     \
-      return CBCCSTR("The value that was input.");                             \
-    }                                                                          \
-                                                                               \
-    static CBParametersInfo parameters() { return paramsInfo; }                \
-                                                                               \
-    void cleanup() {                                                           \
-      _step.cleanup();                                                         \
-      _stepFast.cleanup();                                                     \
-      Variable<CBType::_CBT_>::cleanup();                                      \
-    }                                                                          \
-                                                                               \
-    void warmup(CBContext *context) {                                          \
-      Variable<CBType::_CBT_>::warmup(context);                                \
-      _step.warmup(context);                                                   \
-      _stepFast.warmup(context);                                               \
-    }                                                                          \
-                                                                               \
-    void setParam(int index, const CBVar &value) {                             \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        Variable<CBType::_CBT_>::setParam(index, value);                       \
-        break;                                                                 \
-      case 2:                                                                  \
-        _step = value;                                                         \
-        break;                                                                 \
-      case 3:                                                                  \
-        _stepFast = value;                                                     \
-        break;                                                                 \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar getParam(int index) {                                                \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        return Variable<CBType::_CBT_>::getParam(index);                       \
-      case 2:                                                                  \
-        return _step;                                                          \
-      case 3:                                                                  \
-        return _stepFast;                                                      \
-      default:                                                                 \
-        return Var::Empty;                                                     \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      IDContext idCtx(this);                                                   \
-                                                                               \
-      _T_ step = _step.get().payload._VAL_##Value;                             \
-      _T_ step_fast = _stepFast.get().payload._VAL_##Value;                    \
-      if (_variable.isVariable()) {                                            \
-        auto &var = _variable.get();                                           \
-        ::ImGui::InputScalar(_label.c_str(), _IMT_,                            \
-                             (void *)&var.payload._VAL_##Value,                \
-                             step > 0 ? &step : nullptr,                       \
-                             step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);  \
-                                                                               \
-        var.valueType = CBType::_CBT_;                                         \
-        return var;                                                            \
-      } else {                                                                 \
-        ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp,             \
-                             step > 0 ? &step : nullptr,                       \
-                             step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);  \
-        return Var(_tmp);                                                      \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-  private:                                                                     \
-    static inline Parameters paramsInfo{                                       \
-        VariableParamsInfo(),                                                  \
-        {{"Step",                                                              \
-          CBCCSTR("The value of a single increment."),                         \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
-         {"StepFast",                                                          \
-          CBCCSTR("The value of a single increment, when holding Ctrl"),       \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
-    };                                                                         \
-                                                                               \
-    ParamVar _step{Var((_T_)0)};                                               \
-    ParamVar _stepFast{Var((_T_)0)};                                           \
+#define IMGUIINPUT(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                                                                \
+  struct _CBT_##Input : public Variable<CBType::_CBT_> {                                                           \
+    _T_ _tmp;                                                                                                      \
+                                                                                                                   \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                 \
+    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                         \
+                                                                                                                   \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }                                             \
+    static CBOptionalString outputHelp() { return CBCCSTR("The value that was input."); }                          \
+                                                                                                                   \
+    static CBParametersInfo parameters() { return paramsInfo; }                                                    \
+                                                                                                                   \
+    void cleanup() {                                                                                               \
+      _step.cleanup();                                                                                             \
+      _stepFast.cleanup();                                                                                         \
+      Variable<CBType::_CBT_>::cleanup();                                                                          \
+    }                                                                                                              \
+                                                                                                                   \
+    void warmup(CBContext *context) {                                                                              \
+      Variable<CBType::_CBT_>::warmup(context);                                                                    \
+      _step.warmup(context);                                                                                       \
+      _stepFast.warmup(context);                                                                                   \
+    }                                                                                                              \
+                                                                                                                   \
+    void setParam(int index, const CBVar &value) {                                                                 \
+      switch (index) {                                                                                             \
+      case 0:                                                                                                      \
+      case 1:                                                                                                      \
+        Variable<CBType::_CBT_>::setParam(index, value);                                                           \
+        break;                                                                                                     \
+      case 2:                                                                                                      \
+        _step = value;                                                                                             \
+        break;                                                                                                     \
+      case 3:                                                                                                      \
+        _stepFast = value;                                                                                         \
+        break;                                                                                                     \
+      default:                                                                                                     \
+        break;                                                                                                     \
+      }                                                                                                            \
+    }                                                                                                              \
+                                                                                                                   \
+    CBVar getParam(int index) {                                                                                    \
+      switch (index) {                                                                                             \
+      case 0:                                                                                                      \
+      case 1:                                                                                                      \
+        return Variable<CBType::_CBT_>::getParam(index);                                                           \
+      case 2:                                                                                                      \
+        return _step;                                                                                              \
+      case 3:                                                                                                      \
+        return _stepFast;                                                                                          \
+      default:                                                                                                     \
+        return Var::Empty;                                                                                         \
+      }                                                                                                            \
+    }                                                                                                              \
+                                                                                                                   \
+    CBVar activate(CBContext *context, const CBVar &input) {                                                       \
+      IDContext idCtx(this);                                                                                       \
+                                                                                                                   \
+      _T_ step = _step.get().payload._VAL_##Value;                                                                 \
+      _T_ step_fast = _stepFast.get().payload._VAL_##Value;                                                        \
+      if (_variable.isVariable()) {                                                                                \
+        auto &var = _variable.get();                                                                               \
+        ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##Value, step > 0 ? &step : nullptr, \
+                             step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);                                      \
+                                                                                                                   \
+        var.valueType = CBType::_CBT_;                                                                             \
+        return var;                                                                                                \
+      } else {                                                                                                     \
+        ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp, step > 0 ? &step : nullptr,                     \
+                             step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);                                      \
+        return Var(_tmp);                                                                                          \
+      }                                                                                                            \
+    }                                                                                                              \
+                                                                                                                   \
+  private:                                                                                                         \
+    static inline Parameters paramsInfo{                                                                           \
+        VariableParamsInfo(),                                                                                      \
+        {{"Step", CBCCSTR("The value of a single increment."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}, \
+         {"StepFast",                                                                                              \
+          CBCCSTR("The value of a single increment, when holding Ctrl"),                                           \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                                                     \
+    };                                                                                                             \
+                                                                                                                   \
+    ParamVar _step{Var((_T_)0)};                                                                                   \
+    ParamVar _stepFast{Var((_T_)0)};                                                                               \
   }
 
 IMGUIINPUT(Int, int64_t, ImGuiDataType_S64, int, "%lld");
 IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
 
-#define IMGUIINPUT2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                    \
-  struct _CBT_##_CMP_##Input : public Variable<CBType::_CBT_##_CMP_> {         \
-    CBVar _tmp;                                                                \
-                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
-    static CBOptionalString inputHelp() {                                      \
-      return CBCCSTR("The input value is ignored.");                           \
-    }                                                                          \
-                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }  \
-    static CBOptionalString outputHelp() {                                     \
-      return CBCCSTR("The value that was input.");                             \
-    }                                                                          \
-                                                                               \
-    static CBParametersInfo parameters() { return paramsInfo; }                \
-                                                                               \
-    void cleanup() {                                                           \
-      _step.cleanup();                                                         \
-      _stepFast.cleanup();                                                     \
-      Variable<CBType::_CBT_##_CMP_>::cleanup();                               \
-    }                                                                          \
-                                                                               \
-    void warmup(CBContext *context) {                                          \
-      Variable<CBType::_CBT_##_CMP_>::warmup(context);                         \
-      _step.warmup(context);                                                   \
-      _stepFast.warmup(context);                                               \
-    }                                                                          \
-                                                                               \
-    void setParam(int index, const CBVar &value) {                             \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                \
-        break;                                                                 \
-      case 2:                                                                  \
-        _step = value;                                                         \
-        break;                                                                 \
-      case 3:                                                                  \
-        _stepFast = value;                                                     \
-        break;                                                                 \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar getParam(int index) {                                                \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                \
-      case 2:                                                                  \
-        return _step;                                                          \
-      case 3:                                                                  \
-        return _stepFast;                                                      \
-      default:                                                                 \
-        return Var::Empty;                                                     \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      IDContext idCtx(this);                                                   \
-                                                                               \
-      _T_ step = _step.get().payload._VAL_##Value;                             \
-      _T_ step_fast = _stepFast.get().payload._VAL_##Value;                    \
-      if (_variable.isVariable()) {                                            \
-        auto &var = _variable.get();                                           \
-        ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
-                              (void *)&var.payload._VAL_##_CMP_##Value, _CMP_, \
-                              step > 0 ? &step : nullptr,                      \
-                              step_fast > 0 ? &step_fast : nullptr, _FMT_, 0); \
-                                                                               \
-        var.valueType = CBType::_CBT_;                                         \
-        return var;                                                            \
-      } else {                                                                 \
-        _tmp.valueType = CBType::_CBT_;                                        \
-        ::ImGui::InputScalarN(_label.c_str(), _IMT_,                           \
-                              (void *)&_tmp.payload._VAL_##_CMP_##Value,       \
-                              _CMP_, step > 0 ? &step : nullptr,               \
-                              step_fast > 0 ? &step_fast : nullptr, _FMT_, 0); \
-        return _tmp;                                                           \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-  private:                                                                     \
-    static inline Parameters paramsInfo{                                       \
-        VariableParamsInfo(),                                                  \
-        {{"Step",                                                              \
-          CBCCSTR("The value of a single increment."),                         \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
-         {"StepFast",                                                          \
-          CBCCSTR("The value of a single increment, when holding Ctrl"),       \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
-    };                                                                         \
-                                                                               \
-    ParamVar _step{Var((_T_)0)};                                               \
-    ParamVar _stepFast{Var((_T_)0)};                                           \
+#define IMGUIINPUT2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                                                        \
+  struct _CBT_##_CMP_##Input : public Variable<CBType::_CBT_##_CMP_> {                                             \
+    CBVar _tmp;                                                                                                    \
+                                                                                                                   \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                 \
+    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                         \
+                                                                                                                   \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }                                      \
+    static CBOptionalString outputHelp() { return CBCCSTR("The value that was input."); }                          \
+                                                                                                                   \
+    static CBParametersInfo parameters() { return paramsInfo; }                                                    \
+                                                                                                                   \
+    void cleanup() {                                                                                               \
+      _step.cleanup();                                                                                             \
+      _stepFast.cleanup();                                                                                         \
+      Variable<CBType::_CBT_##_CMP_>::cleanup();                                                                   \
+    }                                                                                                              \
+                                                                                                                   \
+    void warmup(CBContext *context) {                                                                              \
+      Variable<CBType::_CBT_##_CMP_>::warmup(context);                                                             \
+      _step.warmup(context);                                                                                       \
+      _stepFast.warmup(context);                                                                                   \
+    }                                                                                                              \
+                                                                                                                   \
+    void setParam(int index, const CBVar &value) {                                                                 \
+      switch (index) {                                                                                             \
+      case 0:                                                                                                      \
+      case 1:                                                                                                      \
+        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                                                    \
+        break;                                                                                                     \
+      case 2:                                                                                                      \
+        _step = value;                                                                                             \
+        break;                                                                                                     \
+      case 3:                                                                                                      \
+        _stepFast = value;                                                                                         \
+        break;                                                                                                     \
+      default:                                                                                                     \
+        break;                                                                                                     \
+      }                                                                                                            \
+    }                                                                                                              \
+                                                                                                                   \
+    CBVar getParam(int index) {                                                                                    \
+      switch (index) {                                                                                             \
+      case 0:                                                                                                      \
+      case 1:                                                                                                      \
+        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                                                    \
+      case 2:                                                                                                      \
+        return _step;                                                                                              \
+      case 3:                                                                                                      \
+        return _stepFast;                                                                                          \
+      default:                                                                                                     \
+        return Var::Empty;                                                                                         \
+      }                                                                                                            \
+    }                                                                                                              \
+                                                                                                                   \
+    CBVar activate(CBContext *context, const CBVar &input) {                                                       \
+      IDContext idCtx(this);                                                                                       \
+                                                                                                                   \
+      _T_ step = _step.get().payload._VAL_##Value;                                                                 \
+      _T_ step_fast = _stepFast.get().payload._VAL_##Value;                                                        \
+      if (_variable.isVariable()) {                                                                                \
+        auto &var = _variable.get();                                                                               \
+        ::ImGui::InputScalarN(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##_CMP_##Value, _CMP_,              \
+                              step > 0 ? &step : nullptr, step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);         \
+                                                                                                                   \
+        var.valueType = CBType::_CBT_;                                                                             \
+        return var;                                                                                                \
+      } else {                                                                                                     \
+        _tmp.valueType = CBType::_CBT_;                                                                            \
+        ::ImGui::InputScalarN(_label.c_str(), _IMT_, (void *)&_tmp.payload._VAL_##_CMP_##Value, _CMP_,             \
+                              step > 0 ? &step : nullptr, step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);         \
+        return _tmp;                                                                                               \
+      }                                                                                                            \
+    }                                                                                                              \
+                                                                                                                   \
+  private:                                                                                                         \
+    static inline Parameters paramsInfo{                                                                           \
+        VariableParamsInfo(),                                                                                      \
+        {{"Step", CBCCSTR("The value of a single increment."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}, \
+         {"StepFast",                                                                                              \
+          CBCCSTR("The value of a single increment, when holding Ctrl"),                                           \
+          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                                                     \
+    };                                                                                                             \
+                                                                                                                   \
+    ParamVar _step{Var((_T_)0)};                                                                                   \
+    ParamVar _stepFast{Var((_T_)0)};                                                                               \
   }
 
 IMGUIINPUT2(Int, 2, int64_t, ImGuiDataType_S64, int, "%lld");
@@ -2152,195 +2005,173 @@ IMGUIINPUT2(Float, 2, double, ImGuiDataType_Double, float, "%.3f");
 IMGUIINPUT2(Float, 3, float, ImGuiDataType_Float, float, "%.3f");
 IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 
-#define IMGUISLIDER(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                           \
-  struct _CBT_##Slider : public Variable<CBType::_CBT_> {                      \
-                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
-    static CBOptionalString inputHelp() {                                      \
-      return CBCCSTR("The input value is ignored.");                           \
-    }                                                                          \
-                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }         \
-    static CBOptionalString outputHelp() {                                     \
-      return CBCCSTR("The value produced by this block.");                     \
-    }                                                                          \
-                                                                               \
-    static CBParametersInfo parameters() { return paramsInfo; }                \
-                                                                               \
-    void cleanup() {                                                           \
-      _min.cleanup();                                                          \
-      _max.cleanup();                                                          \
-      Variable<CBType::_CBT_>::cleanup();                                      \
-    }                                                                          \
-                                                                               \
-    void warmup(CBContext *context) {                                          \
-      Variable<CBType::_CBT_>::warmup(context);                                \
-      _min.warmup(context);                                                    \
-      _max.warmup(context);                                                    \
-    }                                                                          \
-                                                                               \
-    void setParam(int index, const CBVar &value) {                             \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        Variable<CBType::_CBT_>::setParam(index, value);                       \
-        break;                                                                 \
-      case 2:                                                                  \
-        _min = value;                                                          \
-        break;                                                                 \
-      case 3:                                                                  \
-        _max = value;                                                          \
-        break;                                                                 \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar getParam(int index) {                                                \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        return Variable<CBType::_CBT_>::getParam(index);                       \
-      case 2:                                                                  \
-        return _min;                                                           \
-      case 3:                                                                  \
-        return _max;                                                           \
-      default:                                                                 \
-        return Var::Empty;                                                     \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      IDContext idCtx(this);                                                   \
-                                                                               \
-      _T_ min = _min.get().payload._VAL_##Value;                               \
-      _T_ max = _max.get().payload._VAL_##Value;                               \
-      if (_variable.isVariable()) {                                            \
-        auto &var = _variable.get();                                           \
-        ::ImGui::SliderScalar(_label.c_str(), _IMT_,                           \
-                              (void *)&var.payload._VAL_##Value, &min, &max,   \
-                              _FMT_, 0);                                       \
-                                                                               \
-        var.valueType = CBType::_CBT_;                                         \
-        return var;                                                            \
-      } else {                                                                 \
-        ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&_tmp, &min,      \
-                              &max, _FMT_, 0);                                 \
-        return Var(_tmp);                                                      \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-  private:                                                                     \
-    static inline Parameters paramsInfo{                                       \
-        VariableParamsInfo(),                                                  \
-        {{"Min",                                                               \
-          CBCCSTR("The minimum value."),                                       \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
-         {"Max",                                                               \
-          CBCCSTR("The maximum value."),                                       \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
-    };                                                                         \
-                                                                               \
-    ParamVar _min{Var((_T_)0)};                                                \
-    ParamVar _max{Var((_T_)100)};                                              \
-    _T_ _tmp;                                                                  \
+#define IMGUISLIDER(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                                                           \
+  struct _CBT_##Slider : public Variable<CBType::_CBT_> {                                                      \
+                                                                                                               \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                             \
+    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                     \
+                                                                                                               \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }                                         \
+    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); }              \
+                                                                                                               \
+    static CBParametersInfo parameters() { return paramsInfo; }                                                \
+                                                                                                               \
+    void cleanup() {                                                                                           \
+      _min.cleanup();                                                                                          \
+      _max.cleanup();                                                                                          \
+      Variable<CBType::_CBT_>::cleanup();                                                                      \
+    }                                                                                                          \
+                                                                                                               \
+    void warmup(CBContext *context) {                                                                          \
+      Variable<CBType::_CBT_>::warmup(context);                                                                \
+      _min.warmup(context);                                                                                    \
+      _max.warmup(context);                                                                                    \
+    }                                                                                                          \
+                                                                                                               \
+    void setParam(int index, const CBVar &value) {                                                             \
+      switch (index) {                                                                                         \
+      case 0:                                                                                                  \
+      case 1:                                                                                                  \
+        Variable<CBType::_CBT_>::setParam(index, value);                                                       \
+        break;                                                                                                 \
+      case 2:                                                                                                  \
+        _min = value;                                                                                          \
+        break;                                                                                                 \
+      case 3:                                                                                                  \
+        _max = value;                                                                                          \
+        break;                                                                                                 \
+      default:                                                                                                 \
+        break;                                                                                                 \
+      }                                                                                                        \
+    }                                                                                                          \
+                                                                                                               \
+    CBVar getParam(int index) {                                                                                \
+      switch (index) {                                                                                         \
+      case 0:                                                                                                  \
+      case 1:                                                                                                  \
+        return Variable<CBType::_CBT_>::getParam(index);                                                       \
+      case 2:                                                                                                  \
+        return _min;                                                                                           \
+      case 3:                                                                                                  \
+        return _max;                                                                                           \
+      default:                                                                                                 \
+        return Var::Empty;                                                                                     \
+      }                                                                                                        \
+    }                                                                                                          \
+                                                                                                               \
+    CBVar activate(CBContext *context, const CBVar &input) {                                                   \
+      IDContext idCtx(this);                                                                                   \
+                                                                                                               \
+      _T_ min = _min.get().payload._VAL_##Value;                                                               \
+      _T_ max = _max.get().payload._VAL_##Value;                                                               \
+      if (_variable.isVariable()) {                                                                            \
+        auto &var = _variable.get();                                                                           \
+        ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##Value, &min, &max, _FMT_, 0); \
+                                                                                                               \
+        var.valueType = CBType::_CBT_;                                                                         \
+        return var;                                                                                            \
+      } else {                                                                                                 \
+        ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&_tmp, &min, &max, _FMT_, 0);                     \
+        return Var(_tmp);                                                                                      \
+      }                                                                                                        \
+    }                                                                                                          \
+                                                                                                               \
+  private:                                                                                                     \
+    static inline Parameters paramsInfo{                                                                       \
+        VariableParamsInfo(),                                                                                  \
+        {{"Min", CBCCSTR("The minimum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},            \
+         {"Max", CBCCSTR("The maximum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},           \
+    };                                                                                                         \
+                                                                                                               \
+    ParamVar _min{Var((_T_)0)};                                                                                \
+    ParamVar _max{Var((_T_)100)};                                                                              \
+    _T_ _tmp;                                                                                                  \
   }
 
 IMGUISLIDER(Int, int64_t, ImGuiDataType_S64, int, "%lld");
 IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
 
-#define IMGUISLIDER2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                   \
-  struct _CBT_##_CMP_##Slider : public Variable<CBType::_CBT_##_CMP_> {        \
-                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }             \
-    static CBOptionalString inputHelp() {                                      \
-      return CBCCSTR("The input value is ignored.");                           \
-    }                                                                          \
-                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }  \
-    static CBOptionalString outputHelp() {                                     \
-      return CBCCSTR("The value produced by this block.");                     \
-    }                                                                          \
-                                                                               \
-    static CBParametersInfo parameters() { return paramsInfo; }                \
-                                                                               \
-    void cleanup() {                                                           \
-      _min.cleanup();                                                          \
-      _max.cleanup();                                                          \
-      Variable<CBType::_CBT_##_CMP_>::cleanup();                               \
-    }                                                                          \
-                                                                               \
-    void warmup(CBContext *context) {                                          \
-      Variable<CBType::_CBT_##_CMP_>::warmup(context);                         \
-      _min.warmup(context);                                                    \
-      _max.warmup(context);                                                    \
-    }                                                                          \
-                                                                               \
-    void setParam(int index, const CBVar &value) {                             \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                \
-        break;                                                                 \
-      case 2:                                                                  \
-        _min = value;                                                          \
-        break;                                                                 \
-      case 3:                                                                  \
-        _max = value;                                                          \
-        break;                                                                 \
-      default:                                                                 \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar getParam(int index) {                                                \
-      switch (index) {                                                         \
-      case 0:                                                                  \
-      case 1:                                                                  \
-        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                \
-      case 2:                                                                  \
-        return _min;                                                           \
-      case 3:                                                                  \
-        return _max;                                                           \
-      default:                                                                 \
-        return Var::Empty;                                                     \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                   \
-      IDContext idCtx(this);                                                   \
-                                                                               \
-      _T_ min = _min.get().payload._VAL_##Value;                               \
-      _T_ max = _max.get().payload._VAL_##Value;                               \
-      if (_variable.isVariable()) {                                            \
-        auto &var = _variable.get();                                           \
-        ::ImGui::SliderScalarN(_label.c_str(), _IMT_,                          \
-                               (void *)&var.payload._VAL_##_CMP_##Value,       \
-                               _CMP_, &min, &max, _FMT_, 0);                   \
-                                                                               \
-        var.valueType = CBType::_CBT_;                                         \
-        return var;                                                            \
-      } else {                                                                 \
-        ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&_tmp, _CMP_,    \
-                               &min, &max, _FMT_, 0);                          \
-        return Var(_tmp);                                                      \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-  private:                                                                     \
-    static inline Parameters paramsInfo{                                       \
-        VariableParamsInfo(),                                                  \
-        {{"Min",                                                               \
-          CBCCSTR("The minimum value."),                                       \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                  \
-         {"Max",                                                               \
-          CBCCSTR("The maximum value."),                                       \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                 \
-    };                                                                         \
-                                                                               \
-    ParamVar _min{Var((_T_)0)};                                                \
-    ParamVar _max{Var((_T_)100)};                                              \
-    _T_ _tmp;                                                                  \
+#define IMGUISLIDER2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                                                                  \
+  struct _CBT_##_CMP_##Slider : public Variable<CBType::_CBT_##_CMP_> {                                                       \
+                                                                                                                              \
+    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                            \
+    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                                    \
+                                                                                                                              \
+    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }                                                 \
+    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); }                             \
+                                                                                                                              \
+    static CBParametersInfo parameters() { return paramsInfo; }                                                               \
+                                                                                                                              \
+    void cleanup() {                                                                                                          \
+      _min.cleanup();                                                                                                         \
+      _max.cleanup();                                                                                                         \
+      Variable<CBType::_CBT_##_CMP_>::cleanup();                                                                              \
+    }                                                                                                                         \
+                                                                                                                              \
+    void warmup(CBContext *context) {                                                                                         \
+      Variable<CBType::_CBT_##_CMP_>::warmup(context);                                                                        \
+      _min.warmup(context);                                                                                                   \
+      _max.warmup(context);                                                                                                   \
+    }                                                                                                                         \
+                                                                                                                              \
+    void setParam(int index, const CBVar &value) {                                                                            \
+      switch (index) {                                                                                                        \
+      case 0:                                                                                                                 \
+      case 1:                                                                                                                 \
+        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                                                               \
+        break;                                                                                                                \
+      case 2:                                                                                                                 \
+        _min = value;                                                                                                         \
+        break;                                                                                                                \
+      case 3:                                                                                                                 \
+        _max = value;                                                                                                         \
+        break;                                                                                                                \
+      default:                                                                                                                \
+        break;                                                                                                                \
+      }                                                                                                                       \
+    }                                                                                                                         \
+                                                                                                                              \
+    CBVar getParam(int index) {                                                                                               \
+      switch (index) {                                                                                                        \
+      case 0:                                                                                                                 \
+      case 1:                                                                                                                 \
+        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                                                               \
+      case 2:                                                                                                                 \
+        return _min;                                                                                                          \
+      case 3:                                                                                                                 \
+        return _max;                                                                                                          \
+      default:                                                                                                                \
+        return Var::Empty;                                                                                                    \
+      }                                                                                                                       \
+    }                                                                                                                         \
+                                                                                                                              \
+    CBVar activate(CBContext *context, const CBVar &input) {                                                                  \
+      IDContext idCtx(this);                                                                                                  \
+                                                                                                                              \
+      _T_ min = _min.get().payload._VAL_##Value;                                                                              \
+      _T_ max = _max.get().payload._VAL_##Value;                                                                              \
+      if (_variable.isVariable()) {                                                                                           \
+        auto &var = _variable.get();                                                                                          \
+        ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##_CMP_##Value, _CMP_, &min, &max, _FMT_, 0); \
+                                                                                                                              \
+        var.valueType = CBType::_CBT_;                                                                                        \
+        return var;                                                                                                           \
+      } else {                                                                                                                \
+        ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&_tmp, _CMP_, &min, &max, _FMT_, 0);                            \
+        return Var(_tmp);                                                                                                     \
+      }                                                                                                                       \
+    }                                                                                                                         \
+                                                                                                                              \
+  private:                                                                                                                    \
+    static inline Parameters paramsInfo{                                                                                      \
+        VariableParamsInfo(),                                                                                                 \
+        {{"Min", CBCCSTR("The minimum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                           \
+         {"Max", CBCCSTR("The maximum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                          \
+    };                                                                                                                        \
+                                                                                                                              \
+    ParamVar _min{Var((_T_)0)};                                                                                               \
+    ParamVar _max{Var((_T_)100)};                                                                                             \
+    _T_ _tmp;                                                                                                                 \
   }
 
 IMGUISLIDER2(Int, 2, int64_t, ImGuiDataType_S64, int, "%lld");
@@ -2354,14 +2185,10 @@ IMGUISLIDER2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 struct TextInput : public Variable<CBType::String> {
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The string that was input.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The string that was input."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -2429,15 +2256,12 @@ struct TextInput : public Variable<CBType::String> {
     auto *hint = _hint.size() > 0 ? _hint.c_str() : nullptr;
     if (_variable.isVariable()) {
       auto &var = _variable.get();
-      ::ImGui::InputTextWithHint(
-          _label.c_str(), hint, (char *)var.payload.stringValue,
-          var.payload.stringCapacity, ImGuiInputTextFlags_CallbackResize,
-          &InputTextCallback, this);
+      ::ImGui::InputTextWithHint(_label.c_str(), hint, (char *)var.payload.stringValue, var.payload.stringCapacity,
+                                 ImGuiInputTextFlags_CallbackResize, &InputTextCallback, this);
       return var;
     } else {
-      ::ImGui::InputTextWithHint(
-          _label.c_str(), hint, (char *)_buffer.c_str(), _buffer.capacity() + 1,
-          ImGuiInputTextFlags_CallbackResize, &InputTextCallback, this);
+      ::ImGui::InputTextWithHint(_label.c_str(), hint, (char *)_buffer.c_str(), _buffer.capacity() + 1,
+                                 ImGuiInputTextFlags_CallbackResize, &InputTextCallback, this);
       return Var(_buffer);
     }
   }
@@ -2445,9 +2269,7 @@ struct TextInput : public Variable<CBType::String> {
 private:
   static inline Parameters _params{
       VariableParamsInfo(),
-      {{"Hint",
-        CBCCSTR("A hint text displayed when the control is empty."),
-        {CoreInfo::StringType}}},
+      {{"Hint", CBCCSTR("A hint text displayed when the control is empty."), {CoreInfo::StringType}}},
   };
 
   // fallback, used only when no variable name is set
@@ -2460,14 +2282,10 @@ struct ColorInput : public Variable<CBType::Color> {
   ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The color that was input.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The color that was input."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
@@ -2508,12 +2326,9 @@ struct Image : public Base {
 
   static CBTypesInfo outputTypes() { return BGFX::Texture::ObjType; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."),
-                        CoreInfo::Float2Type),
-      ParamsInfo::Param("TrueSize",
-                        CBCCSTR("If the given size is in true image pixels."),
-                        CoreInfo::BoolType));
+  static inline ParamsInfo paramsInfo =
+      ParamsInfo(ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."), CoreInfo::Float2Type),
+                 ParamsInfo::Param("TrueSize", CBCCSTR("If the given size is in true image pixels."), CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -2577,51 +2392,31 @@ private:
 struct Plot : public Base {
   Shared<PlotContext> _context{};
 
-  static inline Types Plottable{
-      {CoreInfo::FloatSeqType, CoreInfo::Float2SeqType}};
+  static inline Types Plottable{{CoreInfo::FloatSeqType, CoreInfo::Float2SeqType}};
 
   BlocksVar _blocks;
   CBVar _width{}, _height{};
   std::string _title;
-  std::string _fullTitle{"##" +
-                         std::to_string(reinterpret_cast<uintptr_t>(this))};
+  std::string _fullTitle{"##" + std::to_string(reinterpret_cast<uintptr_t>(this))};
   std::string _xlabel;
   std::string _ylabel;
   ParamVar _xlimits{}, _ylimits{};
   ParamVar _lockx{Var::False}, _locky{Var::False};
   std::array<CBExposedTypeInfo, 5> _required;
 
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static inline Parameters params{
-      {"Title",
-       CBCCSTR("The title of the plot to create."),
-       {CoreInfo::StringType}},
-      {"Contents",
-       CBCCSTR("The blocks describing this plot."),
-       {CoreInfo::BlocksOrNone}},
-      {"Width",
-       CBCCSTR("The width of the plot area to create."),
-       {CoreInfo::IntOrNone}},
-      {"Height",
-       CBCCSTR("The height of the plot area to create."),
-       {CoreInfo::IntOrNone}},
+      {"Title", CBCCSTR("The title of the plot to create."), {CoreInfo::StringType}},
+      {"Contents", CBCCSTR("The blocks describing this plot."), {CoreInfo::BlocksOrNone}},
+      {"Width", CBCCSTR("The width of the plot area to create."), {CoreInfo::IntOrNone}},
+      {"Height", CBCCSTR("The height of the plot area to create."), {CoreInfo::IntOrNone}},
       {"X_Label", CBCCSTR("The X axis label."), {CoreInfo::StringType}},
       {"Y_Label", CBCCSTR("The Y axis label."), {CoreInfo::StringType}},
-      {"X_Limits",
-       CBCCSTR("The X axis limits."),
-       {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
-      {"Y_Limits",
-       CBCCSTR("The Y axis limits."),
-       {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
-      {"Lock_X",
-       CBCCSTR("If the X axis should be locked into its limits."),
-       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
-      {"Lock_Y",
-       CBCCSTR("If the Y axis should be locked into its limits."),
-       {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
+      {"X_Limits", CBCCSTR("The X axis limits."), {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
+      {"Y_Limits", CBCCSTR("The Y axis limits."), {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
+      {"Lock_X", CBCCSTR("If the X axis should be locked into its limits."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Lock_Y", CBCCSTR("If the Y axis should be locked into its limits."), {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -2629,8 +2424,7 @@ struct Plot : public Base {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
-      _fullTitle =
-          _title + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
+      _fullTitle = _title + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
       break;
     case 1:
       _blocks = value;
@@ -2754,16 +2548,14 @@ struct Plot : public Base {
       auto limitx = _xlimits.get().payload.float2Value[0];
       auto limity = _xlimits.get().payload.float2Value[1];
       auto locked = _lockx.get().payload.boolValue;
-      ImPlot::SetNextPlotLimitsX(limitx, limity,
-                                 locked ? ImGuiCond_Always : ImGuiCond_Once);
+      ImPlot::SetNextPlotLimitsX(limitx, limity, locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
     if (_ylimits.get().valueType == Float2) {
       auto limitx = _ylimits.get().payload.float2Value[0];
       auto limity = _ylimits.get().payload.float2Value[1];
       auto locked = _locky.get().payload.boolValue;
-      ImPlot::SetNextPlotLimitsY(limitx, limity,
-                                 locked ? ImGuiCond_Always : ImGuiCond_Once);
+      ImPlot::SetNextPlotLimitsY(limitx, limity, locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
     ImVec2 size{0, 0};
@@ -2774,9 +2566,8 @@ struct Plot : public Base {
       size.y = float(_height.payload.intValue);
     }
 
-    if (ImPlot::BeginPlot(
-            _fullTitle.c_str(), _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
-            _ylabel.size() > 0 ? _ylabel.c_str() : nullptr, size)) {
+    if (ImPlot::BeginPlot(_fullTitle.c_str(), _xlabel.size() > 0 ? _xlabel.c_str() : nullptr,
+                          _ylabel.size() > 0 ? _ylabel.c_str() : nullptr, size)) {
       DEFER(ImPlot::EndPlot());
 
       CBVar output{};
@@ -2789,33 +2580,26 @@ struct Plot : public Base {
 
 struct PlottableBase : public Base {
   std::string _label;
-  std::string _fullLabel{"##" +
-                         std::to_string(reinterpret_cast<uintptr_t>(this))};
+  std::string _fullLabel{"##" + std::to_string(reinterpret_cast<uintptr_t>(this))};
   enum class Kind { unknown, xAndIndex, xAndY };
   Kind _kind{};
   CBVar _color{};
 
   static CBTypesInfo inputTypes() { return Plot::Plottable; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("A sequence of values.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of values."); }
 
   static CBTypesInfo outputTypes() { return Plot::Plottable; }
 
   static constexpr int nparams = 2;
-  static inline Parameters params{
-      {"Label", CBCCSTR("The plot's label."), {CoreInfo::StringType}},
-      {"Color",
-       CBCCSTR("The plot's color."),
-       {CoreInfo::NoneType, CoreInfo::ColorType}}};
+  static inline Parameters params{{"Label", CBCCSTR("The plot's label."), {CoreInfo::StringType}},
+                                  {"Color", CBCCSTR("The plot's color."), {CoreInfo::NoneType, CoreInfo::ColorType}}};
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
-      _fullLabel =
-          _label + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
+      _fullLabel = _label + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
       break;
     case 1:
       _color = value;
@@ -2839,8 +2623,7 @@ struct PlottableBase : public Base {
   CBTypeInfo compose(const CBInstanceData &data) {
     assert(data.inputType.basicType == Seq);
     if (data.inputType.seqTypes.len != 1 ||
-        (data.inputType.seqTypes.elements[0].basicType != Float &&
-         data.inputType.seqTypes.elements[0].basicType != Float2)) {
+        (data.inputType.seqTypes.elements[0].basicType != Float && data.inputType.seqTypes.elements[0].basicType != Float2)) {
       throw ComposeError("Expected either a Float or Float2 sequence.");
     }
 
@@ -2854,10 +2637,8 @@ struct PlottableBase : public Base {
 
   void applyModifiers() {
     if (_color.valueType == CBType::Color) {
-      ImPlot::PushStyleColor(ImPlotCol_Line,
-                             Style::color2Vec4(_color.payload.colorValue));
-      ImPlot::PushStyleColor(ImPlotCol_Fill,
-                             Style::color2Vec4(_color.payload.colorValue));
+      ImPlot::PushStyleColor(ImPlotCol_Line, Style::color2Vec4(_color.payload.colorValue));
+      ImPlot::PushStyleColor(ImPlotCol_Fill, Style::color2Vec4(_color.payload.colorValue));
     }
   }
 
@@ -2886,8 +2667,7 @@ struct PlotLine : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
-                               seq.elements[idx].payload.float2Value[1]);
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     } else if (_kind == Kind::xAndIndex) {
@@ -2896,8 +2676,7 @@ struct PlotLine : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(double(idx),
-                               seq.elements[idx].payload.floatValue);
+            return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     }
@@ -2918,8 +2697,7 @@ struct PlotDigital : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
-                               seq.elements[idx].payload.float2Value[1]);
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     } else if (_kind == Kind::xAndIndex) {
@@ -2928,8 +2706,7 @@ struct PlotDigital : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(double(idx),
-                               seq.elements[idx].payload.floatValue);
+            return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     }
@@ -2950,8 +2727,7 @@ struct PlotScatter : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
-                               seq.elements[idx].payload.float2Value[1]);
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     } else if (_kind == Kind::xAndIndex) {
@@ -2960,8 +2736,7 @@ struct PlotScatter : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(double(idx),
-                               seq.elements[idx].payload.floatValue);
+            return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
           (void *)&input, int(input.payload.seqValue.len), 0);
     }
@@ -2970,9 +2745,8 @@ struct PlotScatter : public PlottableBase {
 };
 
 struct PlotBars : public PlottableBase {
-  typedef void (*PlotBarsProc)(const char *label_id,
-                               ImPlotPoint (*getter)(void *data, int idx),
-                               void *data, int count, double width, int offset);
+  typedef void (*PlotBarsProc)(const char *label_id, ImPlotPoint (*getter)(void *data, int idx), void *data, int count,
+                               double width, int offset);
 
   double _width = 0.67;
   bool _horizontal = false;
@@ -2981,9 +2755,7 @@ struct PlotBars : public PlottableBase {
   static inline Parameters params{
       PlottableBase::params,
       {{"Width", CBCCSTR("The width of each bar"), {CoreInfo::FloatType}},
-       {"Horizontal",
-        CBCCSTR("If the bar should be horiziontal rather than vertical"),
-        {CoreInfo::BoolType}}},
+       {"Horizontal", CBCCSTR("If the bar should be horiziontal rather than vertical"), {CoreInfo::BoolType}}},
   };
 
   static CBParametersInfo parameters() { return params; }
@@ -3030,8 +2802,7 @@ struct PlotBars : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(seq.elements[idx].payload.float2Value[0],
-                               seq.elements[idx].payload.float2Value[1]);
+            return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
           (void *)&input, int(input.payload.seqValue.len), _width, 0);
     } else if (_kind == Kind::xAndIndex) {
@@ -3040,8 +2811,7 @@ struct PlotBars : public PlottableBase {
           [](void *data, int idx) {
             auto input = reinterpret_cast<CBVar *>(data);
             auto seq = input->payload.seqValue;
-            return ImPlotPoint(double(idx),
-                               seq.elements[idx].payload.floatValue);
+            return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
           (void *)&input, int(input.payload.seqValue.len), _width, 0);
     }
@@ -3051,28 +2821,20 @@ struct PlotBars : public PlottableBase {
 
 struct HasPointer : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static CBOptionalString outputHelp() { return CBCCSTR("A boolean."); }
 
-  static CBVar activate(CBContext *context, const CBVar &input) {
-    return Var(::ImGui::IsAnyItemHovered());
-  }
+  static CBVar activate(CBContext *context, const CBVar &input) { return Var(::ImGui::IsAnyItemHovered()); }
 };
 
 struct FPS : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The current framerate.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The current framerate."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     ImGuiIO &io = ::ImGui::GetIO();
@@ -3081,9 +2843,7 @@ struct FPS : public Base {
 };
 
 struct Tooltip : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -3129,9 +2889,7 @@ struct Tooltip : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Contents",
-       CBCCSTR("The inner contents blocks."),
-       {CoreInfo::BlocksOrNone}},
+      {"Contents", CBCCSTR("The inner contents blocks."), {CoreInfo::BlocksOrNone}},
   };
 
   BlocksVar _blocks{};
@@ -3186,9 +2944,7 @@ struct HelpMarker : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Description",
-       CBCCSTR("The text displayed in a popup."),
-       {CoreInfo::StringType}},
+      {"Description", CBCCSTR("The text displayed in a popup."), {CoreInfo::StringType}},
       {"Inline", CBCCSTR("Display on the same line."), {CoreInfo::BoolType}},
   };
 
@@ -3198,9 +2954,7 @@ private:
 
 struct ProgressBar : public Base {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value to display.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value to display."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
@@ -3237,23 +2991,17 @@ struct ProgressBar : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Overlay",
-       CBCCSTR("The text displayed inside the progress bar."),
-       {CoreInfo::StringType}},
+      {"Overlay", CBCCSTR("The text displayed inside the progress bar."), {CoreInfo::StringType}},
   };
 
   std::string _overlay;
 };
 
 struct MenuBase : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the menu is visible.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the menu is visible."); }
 
   static CBParametersInfo parameters() { return params; }
 
@@ -3288,8 +3036,7 @@ struct MenuBase : public Base {
 
 protected:
   static inline Parameters params = {
-      {"Contents", CBCCSTR("The inner contents blocks."),
-       CoreInfo::BlocksOrNone},
+      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
   };
 
   BlocksVar blocks{};
@@ -3379,8 +3126,7 @@ struct Menu : public MenuBase {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto active =
-        ::ImGui::BeginMenu(_label.c_str(), _isEnabled.get().payload.boolValue);
+    auto active = ::ImGui::BeginMenu(_label.c_str(), _isEnabled.get().payload.boolValue);
     if (active) {
       DEFER(::ImGui::EndMenu());
       CBVar output{};
@@ -3390,13 +3136,12 @@ struct Menu : public MenuBase {
   }
 
 private:
-  static inline Parameters _params{
-      {{"Label", CBCCSTR("The label of the menu"), {CoreInfo::StringType}},
-       {"IsEnabled",
-        CBCCSTR("Sets whether this menu is enabled. A disabled item cannot be "
-                "selected or clicked."),
-        {CoreInfo::BoolType, CoreInfo::BoolVarType}}},
-      MenuBase::params};
+  static inline Parameters _params{{{"Label", CBCCSTR("The label of the menu"), {CoreInfo::StringType}},
+                                    {"IsEnabled",
+                                     CBCCSTR("Sets whether this menu is enabled. A disabled item cannot be "
+                                             "selected or clicked."),
+                                     {CoreInfo::BoolType, CoreInfo::BoolVarType}}},
+                                   MenuBase::params};
 
   std::string _label;
   ParamVar _isEnabled{Var::True};
@@ -3404,9 +3149,7 @@ private:
 };
 
 struct MenuItem : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Action blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Action blocks."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -3506,8 +3249,7 @@ struct MenuItem : public Base {
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw CBException(
-                "GUI - MenuItem: Existing variable is not mutable.");
+            throw CBException("GUI - MenuItem: Existing variable is not mutable.");
           }
           found = true;
           break;
@@ -3524,12 +3266,10 @@ struct MenuItem : public Base {
   CBVar activate(CBContext *context, const CBVar &input) {
     bool active;
     if (_isChecked.isVariable()) {
-      active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(),
-                                 &_isChecked.get().payload.boolValue,
+      active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(), &_isChecked.get().payload.boolValue,
                                  _isEnabled.get().payload.boolValue);
     } else {
-      active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(),
-                                 _isChecked.get().payload.boolValue,
+      active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(), _isChecked.get().payload.boolValue,
                                  _isEnabled.get().payload.boolValue);
     }
     if (active) {
@@ -3547,9 +3287,7 @@ private:
                "displays a check mark on the side."),
        {CoreInfo::BoolType, CoreInfo::BoolVarType}},
       {"Action", CBCCSTR(""), {CoreInfo::BlocksOrNone}},
-      {"Shortcut",
-       CBCCSTR("A keyboard shortcut to activate that item"),
-       {CoreInfo::StringType}},
+      {"Shortcut", CBCCSTR("A keyboard shortcut to activate that item"), {CoreInfo::StringType}},
       {"IsEnabled",
        CBCCSTR("Sets whether this menu item is enabled. A disabled item cannot "
                "be selected or clicked."),
@@ -3566,14 +3304,10 @@ private:
 
 struct Combo : public Variable<CBType::Int> {
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("A sequence of values.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of values."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The selected value.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The selected value."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto count = input.payload.seqValue.len;
@@ -3642,14 +3376,10 @@ struct ListBox : public Variable<CBType::Int> {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("A sequence of values.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of values."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The currently selected value.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The currently selected value."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto count = input.payload.seqValue.len;
@@ -3686,9 +3416,7 @@ struct ListBox : public Variable<CBType::Int> {
 private:
   static inline Parameters _params = {
       VariableParamsInfo(),
-      {{"ItemsHeight",
-        CBCCSTR("Height of the list in number of items"),
-        {CoreInfo::IntType}}},
+      {{"ItemsHeight", CBCCSTR("Height of the list in number of items"), {CoreInfo::IntType}}},
   };
 
   int _n{0};
@@ -3697,23 +3425,17 @@ private:
 
 struct Selectable : public Variable<CBType::Bool> {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR(
-        "A boolean indicating whether this item is currently selected.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether this item is currently selected."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     IDContext idCtx(this);
 
     auto result = Var::False;
     if (_variable.isVariable()) {
-      if (::ImGui::Selectable(_label.c_str(),
-                              &_variable.get().payload.boolValue)) {
+      if (::ImGui::Selectable(_label.c_str(), &_variable.get().payload.boolValue)) {
         _variable.get().valueType = CBType::Bool;
         result = Var::True;
       }
@@ -3729,14 +3451,10 @@ struct Selectable : public Variable<CBType::Bool> {
 };
 
 struct TabBase : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the tab is visible.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the tab is visible."); }
 
   static CBParametersInfo parameters() { return params; }
 
@@ -3771,8 +3489,7 @@ struct TabBase : public Base {
 
 protected:
   static inline Parameters params = {
-      {"Contents", CBCCSTR("The inner contents blocks."),
-       CoreInfo::BlocksOrNone},
+      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
   };
 
   BlocksVar blocks{};
@@ -3823,9 +3540,7 @@ struct TabBar : public TabBase {
 
 private:
   static inline Parameters _params = {
-      {{"Name",
-        CBCCSTR("A unique name for this tab bar."),
-        {CoreInfo::StringType}}},
+      {{"Name", CBCCSTR("A unique name for this tab bar."), {CoreInfo::StringType}}},
       TabBase::params,
   };
 
@@ -3884,9 +3599,7 @@ private:
 };
 
 struct Group : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -3929,17 +3642,14 @@ struct Group : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Contents", CBCCSTR("The inner contents blocks."),
-       CoreInfo::BlocksOrNone},
+      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
   };
 
   BlocksVar _blocks{};
 };
 
 struct Disable : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -4008,12 +3718,8 @@ struct Disable : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Contents",
-       CBCCSTR("The inner contents blocks."),
-       {CoreInfo::BlocksOrNone}},
-      {"Disable",
-       CBCCSTR("Sets whether the contents should be disabled."),
-       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Contents", CBCCSTR("The inner contents blocks."), {CoreInfo::BlocksOrNone}},
+      {"Disable", CBCCSTR("Sets whether the contents should be disabled."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
   };
 
   ParamVar _disable{Var::True};
@@ -4022,14 +3728,10 @@ private:
 };
 
 struct Table : public Base {
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value will be passed to the Contents blocks.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the table is visible.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the table is visible."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -4088,8 +3790,7 @@ struct Table : public Base {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags = ::ImGuiTableFlags(
-        chainblocks::getFlags<Enums::GuiTableFlags>(_flags.get()));
+    auto flags = ::ImGuiTableFlags(chainblocks::getFlags<Enums::GuiTableFlags>(_flags.get()));
     auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTable";
     auto active = ::ImGui::BeginTable(str_id, _columns, flags);
     if (active) {
@@ -4102,16 +3803,12 @@ struct Table : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Name",
-       CBCCSTR("A unique name for this table."),
-       {CoreInfo::StringType}},
+      {"Name", CBCCSTR("A unique name for this table."), {CoreInfo::StringType}},
       {"Columns", CBCCSTR("The number of columns."), {CoreInfo::IntType}},
-      {"Contents", CBCCSTR("The inner contents blocks."),
-       CoreInfo::BlocksOrNone},
+      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
       {"Flags",
        CBCCSTR("Flags to enable table options."),
-       {Enums::GuiTableFlagsType, Enums::GuiTableFlagsVarType,
-        Enums::GuiTableFlagsSeqType, Enums::GuiTableFlagsVarSeqType,
+       {Enums::GuiTableFlagsType, Enums::GuiTableFlagsVarType, Enums::GuiTableFlagsSeqType, Enums::GuiTableFlagsVarSeqType,
         CoreInfo::NoneType}},
   };
 
@@ -4129,18 +3826,12 @@ struct TableHeadersRow : public Base {
 };
 
 struct TableNextColumn : public Base {
-  static CBOptionalString help() {
-    return CBCCSTR("Creates a new column for GUI.Table to process and render.");
-  }
+  static CBOptionalString help() { return CBCCSTR("Creates a new column for GUI.Table to process and render."); }
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The input value is ignored.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the table column is visible.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the table column is visible."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto active = ::ImGui::TableNextColumn();
@@ -4160,9 +3851,7 @@ struct TableSetColumnIndex : public Base {
   static CBOptionalString inputHelp() { return CBCCSTR("The table index."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the table column is visible.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the table column is visible."); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     auto &index = input.payload.intValue;
@@ -4209,8 +3898,7 @@ struct TableSetupColumn : public Base {
   void warmup(CBContext *context) { _flags.warmup(context); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags = ::ImGuiTableColumnFlags(
-        chainblocks::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
+    auto flags = ::ImGuiTableColumnFlags(chainblocks::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
     ::ImGui::TableSetupColumn(_label.c_str(), flags);
     return input;
   }
@@ -4220,9 +3908,8 @@ private:
       {"Label", CBCCSTR("Column header"), {CoreInfo::StringType}},
       {"Flags",
        CBCCSTR("Flags to enable column options."),
-       {Enums::GuiTableColumnFlagsType, Enums::GuiTableColumnFlagsVarType,
-        Enums::GuiTableColumnFlagsSeqType, Enums::GuiTableColumnFlagsVarSeqType,
-        CoreInfo::NoneType}},
+       {Enums::GuiTableColumnFlagsType, Enums::GuiTableColumnFlagsVarType, Enums::GuiTableColumnFlagsSeqType,
+        Enums::GuiTableColumnFlagsVarSeqType, CoreInfo::NoneType}},
   };
 
   std::string _label;

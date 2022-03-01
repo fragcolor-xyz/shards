@@ -57,17 +57,14 @@ struct ChannelDesc {
 struct Device {
   static constexpr uint32_t DeviceCC = 'sndd';
 
-  static inline Type ObjType{
-      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = DeviceCC}}}};
+  static inline Type ObjType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = DeviceCC}}}};
 
   // TODO add blocks used as insert for the final mix
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   mutable ma_device _device;
   mutable bool _open{false};
@@ -77,11 +74,8 @@ struct Device {
 
   // (bus, channels hash)
   // don't use those when auto thread is running
-  std::unordered_map<uint32_t,
-                     std::unordered_map<uint64_t, std::vector<ChannelData *>>>
-      channels;
-  std::unordered_map<uint32_t, std::unordered_map<uint64_t, std::vector<float>>>
-      outputBuffers;
+  std::unordered_map<uint32_t, std::unordered_map<uint64_t, std::vector<ChannelData *>>> channels;
+  std::unordered_map<uint32_t, std::unordered_map<uint64_t, std::vector<float>>> outputBuffers;
 
   mutable boost::lockfree::queue<ChannelDesc> newChannels{16};
 
@@ -109,8 +103,7 @@ struct Device {
   std::atomic_bool hasErrors{false};
   std::string errorMessage;
 
-  static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput,
-                          ma_uint32 frameCount) {
+  static void pcmCallback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount) {
     assert(pDevice->capture.format == ma_format_f32);
     assert(pDevice->playback.format == ma_format_f32);
 
@@ -161,26 +154,22 @@ struct Device {
         if (nbus == 0) {
           if (kind == device->inputHash) {
             // this is the full device input, just copy it
-            memcpy(device->inputScratch.data(), pInput,
-                   sizeof(float) * nchannels * frameCount);
+            memcpy(device->inputScratch.data(), pInput, sizeof(float) * nchannels * frameCount);
           } else {
             auto *finput = reinterpret_cast<const float *>(pInput);
             // need to properly compose the input
             for (uint32_t c = 0; c < nchannels; c++) {
               for (ma_uint32 i = 0; i < frameCount; i++) {
-                device->inputScratch[(i * nchannels) + c] =
-                    finput[(i * nchannels) + channels[0]->inChannels[c]];
+                device->inputScratch[(i * nchannels) + c] = finput[(i * nchannels) + channels[0]->inChannels[c]];
               }
             }
           }
         } else {
           const auto inputBuffer = device->outputBuffers[nbus][kind];
           if (inputBuffer.size() != 0) {
-            std::copy(inputBuffer.begin(), inputBuffer.end(),
-                      device->inputScratch.begin());
+            std::copy(inputBuffer.begin(), inputBuffer.end(), device->inputScratch.begin());
           } else {
-            memset(device->inputScratch.data(), 0x0,
-                   device->inputScratch.size() * sizeof(float));
+            memset(device->inputScratch.data(), 0x0, device->inputScratch.size() * sizeof(float));
           }
         }
 
@@ -194,8 +183,7 @@ struct Device {
         for (auto channel : channels) {
           CBVar output{};
           device->dspChain->currentInput = inputVar;
-          if (channel->blocks.activate(&device->dspContext, inputVar, output) ==
-              CBChainState::Stop) {
+          if (channel->blocks.activate(&device->dspContext, inputVar, output) == CBChainState::Stop) {
             device->stopped = true;
             // always cleanup or we risk to break someone's ears
             memset(pOutput, 0x0, frameCount * sizeof(float));
@@ -213,8 +201,7 @@ struct Device {
             }
             auto &a = output.payload.audioValue;
             for (uint32_t i = 0; i < a.channels * a.nsamples; i++) {
-              channel->outputBuffer[i] +=
-                  a.samples[i] * channel->volume.get().payload.floatValue;
+              channel->outputBuffer[i] += a.samples[i] * channel->volume.get().payload.floatValue;
             }
           }
         }
@@ -224,8 +211,7 @@ struct Device {
     // finally bake the device buffer
     auto &output = device->outputBuffers[0][device->outputHash];
     if (output.size() > 0) {
-      memcpy(pOutput, output.data(),
-             frameCount * sizeof(float) * device->outChannels);
+      memcpy(pOutput, output.data(), frameCount * sizeof(float) * device->outChannels);
     } else {
       // always cleanup or we risk to break someone's ears
       memset(pOutput, 0x0, frameCount * sizeof(float) * device->outChannels);
@@ -278,8 +264,7 @@ struct Device {
       uint32_t bus{0};
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
-      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
       for (CBInt i = 0; i < CBInt(inChannels); i++) {
         XXH3_64bits_update(&hashState, &i, sizeof(CBInt));
@@ -293,8 +278,7 @@ struct Device {
       uint32_t bus{0};
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
-      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
       for (CBInt i = 0; i < CBInt(outChannels); i++) {
         XXH3_64bits_update(&hashState, &i, sizeof(CBInt));
@@ -360,9 +344,7 @@ struct Channel {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   ChannelData _data{};
   CBVar *_device{nullptr};
@@ -381,24 +363,12 @@ struct Channel {
   }
 
   static inline Parameters Params{
-      {"InputBus",
-       CBCCSTR("The input bus number, 0 is the audio device ADC."),
-       {CoreInfo::IntType}},
-      {"InputChannels",
-       CBCCSTR("The list of input channels to pass as input to Blocks."),
-       {CoreInfo::IntSeqType}},
-      {"OutputBus",
-       CBCCSTR("The output bus number, 0 is the audio device DAC."),
-       {CoreInfo::IntType}},
-      {"OutputChannels",
-       CBCCSTR("The list of output channels to write from Blocks's output."),
-       {CoreInfo::IntSeqType}},
-      {"Volume",
-       CBCCSTR("The volume of this channel."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType}},
-      {"Blocks",
-       CBCCSTR("The blocks that will process audio data."),
-       {CoreInfo::BlocksOrNone}}};
+      {"InputBus", CBCCSTR("The input bus number, 0 is the audio device ADC."), {CoreInfo::IntType}},
+      {"InputChannels", CBCCSTR("The list of input channels to pass as input to Blocks."), {CoreInfo::IntSeqType}},
+      {"OutputBus", CBCCSTR("The output bus number, 0 is the audio device DAC."), {CoreInfo::IntType}},
+      {"OutputChannels", CBCCSTR("The list of output channels to write from Blocks's output."), {CoreInfo::IntSeqType}},
+      {"Volume", CBCCSTR("The volume of this channel."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Blocks", CBCCSTR("The blocks that will process audio data."), {CoreInfo::BlocksOrNone}}};
 
   CBParametersInfo parameters() { return Params; }
 
@@ -460,13 +430,11 @@ struct Channel {
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
-      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(uint32_t));
       if (_inChannels.valueType == CBType::Seq) {
         for (auto &channel : _inChannels) {
-          XXH3_64bits_update(&hashState, &channel.payload.intValue,
-                             sizeof(CBInt));
+          XXH3_64bits_update(&hashState, &channel.payload.intValue, sizeof(CBInt));
           _data.inChannels.emplace_back(channel.payload.intValue);
         }
       }
@@ -475,22 +443,19 @@ struct Channel {
     {
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
-      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret,
-                                   XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(uint32_t));
       if (_outChannels.valueType == CBType::Seq) {
         outChannels = _outChannels.payload.seqValue.len;
         for (auto &channel : _outChannels) {
-          XXH3_64bits_update(&hashState, &channel.payload.intValue,
-                             sizeof(CBInt));
+          XXH3_64bits_update(&hashState, &channel.payload.intValue, sizeof(CBInt));
           _data.outChannels.emplace_back(channel.payload.intValue);
         }
       }
       outHash = XXH3_64bits_digest(&hashState);
     }
 
-    ChannelDesc cd{_inBusNumber, inHash,      _outBusNumber,
-                   outHash,      outChannels, &_data};
+    ChannelDesc cd{_inBusNumber, inHash, _outBusNumber, outHash, outChannels, &_data};
     d->newChannels.push(cd);
 
     // blocks warmup done in audio thread!
@@ -522,8 +487,7 @@ struct Channel {
 struct Oscillator {
   enum class Waveform { Sine, Square, Triangle, Sawtooth };
   static constexpr uint32_t WaveformCC = 'wave';
-  static inline EnumInfo<Waveform> WaveformEnumInfo{"Waveform", CoreCC,
-                                                    WaveformCC};
+  static inline EnumInfo<Waveform> WaveformEnumInfo{"Waveform", CoreCC, WaveformCC};
   static inline Type WaveformType = Type::Enum(CoreCC, WaveformCC);
 
   ma_waveform _wave;
@@ -543,18 +507,12 @@ struct Oscillator {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters params{
       {"Type", CBCCSTR("The waveform type to oscillate."), {WaveformType}},
-      {"Amplitude",
-       CBCCSTR("The waveform amplitude."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType}},
-      {"Channels",
-       CBCCSTR("The number of desired output audio channels."),
-       {CoreInfo::IntType}},
+      {"Amplitude", CBCCSTR("The waveform amplitude."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
+      {"Channels", CBCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
       {"SampleRate",
        CBCCSTR("The desired output sampling rate. Ignored if inside an "
                "Audio.Channel."),
@@ -621,8 +579,7 @@ struct Oscillator {
       wtype = ma_waveform_type_sawtooth;
       break;
     }
-    ma_waveform_config config = ma_waveform_config_init(
-        ma_format_f32, _channels, _sampleRate, wtype, 0.0, 1.0);
+    ma_waveform_config config = ma_waveform_config_init(ma_format_f32, _channels, _sampleRate, wtype, 0.0, 1.0);
     ma_result res = ma_waveform_init(&config, &_wave);
     if (res != MA_SUCCESS) {
       throw ActivationError("Failed to init waveform");
@@ -665,8 +622,7 @@ struct Oscillator {
 
     ma_waveform_read_pcm_frames(&_wave, _buffer.data(), _nsamples);
 
-    return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels),
-                       _buffer.data()});
+    return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels), _buffer.data()});
   }
 };
 
@@ -693,17 +649,11 @@ struct ReadFile {
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters params{
-      {"File",
-       CBCCSTR("The audio file to read from (wav,ogg,mp3,flac)."),
-       {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Channels",
-       CBCCSTR("The number of desired output audio channels."),
-       {CoreInfo::IntType}},
+      {"File", CBCCSTR("The audio file to read from (wav,ogg,mp3,flac)."), {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Channels", CBCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
       {"SampleRate",
        CBCCSTR("The desired output sampling rate. Ignored if inside an "
                "Audio.Channel."),
@@ -716,12 +666,8 @@ struct ReadFile {
        CBCCSTR("If the file should be played in loop or should stop the chain "
                "when it ends."),
        {CoreInfo::BoolType}},
-      {"From",
-       CBCCSTR("The starting time in seconds."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}},
-      {"To",
-       CBCCSTR("The end time in seconds."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
+      {"From", CBCCSTR("The starting time in seconds."), {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}},
+      {"To", CBCCSTR("The end time in seconds."), {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -775,8 +721,7 @@ struct ReadFile {
   }
 
   void initFile(const std::string_view &filename) {
-    ma_decoder_config config =
-        ma_decoder_config_init(ma_format_f32, _channels, _sampleRate);
+    ma_decoder_config config = ma_decoder_config_init(ma_format_f32, _channels, _sampleRate);
     ma_result res = ma_decoder_init_file(filename.data(), &config, &_decoder);
     if (res != MA_SUCCESS) {
       CBLOG_ERROR("Failed to open audio file {}", filename);
@@ -848,8 +793,7 @@ struct ReadFile {
 
     const auto from = _fromSample.get();
     if (unlikely(from.valueType == CBType::Float && _progress == 0)) {
-      const auto sfrom =
-          ma_uint64(double(_sampleRate) * from.payload.floatValue);
+      const auto sfrom = ma_uint64(double(_sampleRate) * from.payload.floatValue);
       ma_result res = ma_decoder_seek_to_pcm_frame(&_decoder, sfrom);
       _progress = sfrom;
       if (res != MA_SUCCESS) {
@@ -868,8 +812,7 @@ struct ReadFile {
     }
 
     // read pcm data every iteration
-    ma_uint64 framesRead =
-        ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading);
+    ma_uint64 framesRead = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading);
     _progress += framesRead;
     if (framesRead < _nsamples) {
       // Reached the end.
@@ -879,8 +822,7 @@ struct ReadFile {
       memset(_buffer.data() + framesRead, 0x0, sizeof(float) * remains);
     }
 
-    return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels),
-                       _buffer.data()});
+    return Var(CBAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels), _buffer.data()});
   }
 };
 
@@ -896,20 +838,12 @@ struct WriteFile {
   static CBTypesInfo inputTypes() { return CoreInfo::AudioType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AudioType; }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters params{
-      {"File",
-       CBCCSTR("The audio file to read from (wav,ogg,mp3,flac)."),
-       {CoreInfo::StringType, CoreInfo::StringVarType}},
-      {"Channels",
-       CBCCSTR("The number of desired output audio channels."),
-       {CoreInfo::IntType}},
-      {"SampleRate",
-       CBCCSTR("The desired output sampling rate."),
-       {CoreInfo::IntType}}};
+      {"File", CBCCSTR("The audio file to read from (wav,ogg,mp3,flac)."), {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"Channels", CBCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
+      {"SampleRate", CBCCSTR("The desired output sampling rate."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -943,8 +877,7 @@ struct WriteFile {
   }
 
   void initFile(const std::string_view &filename) {
-    ma_encoder_config config = ma_encoder_config_init(
-        ma_resource_format_wav, ma_format_f32, _channels, _sampleRate);
+    ma_encoder_config config = ma_encoder_config_init(ma_resource_format_wav, ma_format_f32, _channels, _sampleRate);
     ma_result res = ma_encoder_init_file(filename.data(), &config, &_encoder);
     if (res != MA_SUCCESS) {
       CBLOG_ERROR("Failed to open audio encoder on file {}", filename);
@@ -979,8 +912,7 @@ struct WriteFile {
     if (input.payload.audioValue.channels != _channels) {
       throw ActivationError("Input has an invalid number of audio channels");
     }
-    ma_encoder_write_pcm_frames(&_encoder, input.payload.audioValue.samples,
-                                input.payload.audioValue.nsamples);
+    ma_encoder_write_pcm_frames(&_encoder, input.payload.audioValue.samples, input.payload.audioValue.nsamples);
     return input;
   }
 };

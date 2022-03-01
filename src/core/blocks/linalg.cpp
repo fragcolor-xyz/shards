@@ -15,8 +15,7 @@ struct VectorUnaryBase : public UnaryBase {
 
   CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
 
-  template <class Operation>
-  CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
+  template <class Operation> CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
     if (input.valueType == Seq) {
       _result.valueType = Seq;
       chainblocks::arrayResize(_result.payload.seqValue, 0);
@@ -39,13 +38,12 @@ struct VectorBinaryBase : public BinaryBase {
 
   static CBTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param(
-      "Operand", CBCCSTR("The operand."), CoreInfo::FloatVectorsOrVar));
+  static inline ParamsInfo paramsInfo =
+      ParamsInfo(ParamsInfo::Param("Operand", CBCCSTR("The operand."), CoreInfo::FloatVectorsOrVar));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
-  template <class Operation>
-  CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
+  template <class Operation> CBVar doActivate(CBContext *context, const CBVar &input, Operation operate) {
     auto &operand = _operand.get();
     if (_opType == Normal) {
       CBVar scratch;
@@ -63,12 +61,9 @@ struct VectorBinaryBase : public BinaryBase {
     } else {
       _result.valueType = Seq;
       chainblocks::arrayResize(_result.payload.seqValue, 0);
-      for (uint32_t i = 0;
-           i < input.payload.seqValue.len && i < operand.payload.seqValue.len;
-           i++) {
+      for (uint32_t i = 0; i < input.payload.seqValue.len && i < operand.payload.seqValue.len; i++) {
         CBVar scratch;
-        operate(scratch, input.payload.seqValue.elements[i],
-                operand.payload.seqValue.elements[i]);
+        operate(scratch, input.payload.seqValue.elements[i], operand.payload.seqValue.elements[i]);
         chainblocks::arrayPush(_result.payload.seqValue, scratch);
       }
       return _result;
@@ -116,36 +111,26 @@ struct Dot : public VectorBinaryBase {
   struct Operation {
     void operator()(CBVar &output, const CBVar &input, const CBVar &operand) {
       if (operand.valueType != input.valueType)
-        throw ActivationError(
-            "LinAlg.Dot works only with same input and operand types.");
+        throw ActivationError("LinAlg.Dot works only with same input and operand types.");
 
       switch (input.valueType) {
       case Float2: {
         output.valueType = Float;
-        output.payload.floatValue =
-            input.payload.float2Value[0] * operand.payload.float2Value[0];
-        output.payload.floatValue +=
-            input.payload.float2Value[1] * operand.payload.float2Value[1];
+        output.payload.floatValue = input.payload.float2Value[0] * operand.payload.float2Value[0];
+        output.payload.floatValue += input.payload.float2Value[1] * operand.payload.float2Value[1];
       } break;
       case Float3: {
         output.valueType = Float;
-        output.payload.floatValue =
-            input.payload.float3Value[0] * operand.payload.float3Value[0];
-        output.payload.floatValue +=
-            input.payload.float3Value[1] * operand.payload.float3Value[1];
-        output.payload.floatValue +=
-            input.payload.float3Value[2] * operand.payload.float3Value[2];
+        output.payload.floatValue = input.payload.float3Value[0] * operand.payload.float3Value[0];
+        output.payload.floatValue += input.payload.float3Value[1] * operand.payload.float3Value[1];
+        output.payload.floatValue += input.payload.float3Value[2] * operand.payload.float3Value[2];
       } break;
       case Float4: {
         output.valueType = Float;
-        output.payload.floatValue =
-            input.payload.float4Value[0] * operand.payload.float4Value[0];
-        output.payload.floatValue +=
-            input.payload.float4Value[1] * operand.payload.float4Value[1];
-        output.payload.floatValue +=
-            input.payload.float4Value[2] * operand.payload.float4Value[2];
-        output.payload.floatValue +=
-            input.payload.float4Value[3] * operand.payload.float4Value[3];
+        output.payload.floatValue = input.payload.float4Value[0] * operand.payload.float4Value[0];
+        output.payload.floatValue += input.payload.float4Value[1] * operand.payload.float4Value[1];
+        output.payload.floatValue += input.payload.float4Value[2] * operand.payload.float4Value[2];
+        output.payload.floatValue += input.payload.float4Value[3] * operand.payload.float4Value[3];
       } break;
       default:
         break;
@@ -169,9 +154,7 @@ struct LengthSquared : public VectorUnaryBase {
 
   struct Operation {
     Dot::Operation dotOp;
-    void operator()(CBVar &output, const CBVar &input) {
-      dotOp(output, input, input);
-    }
+    void operator()(CBVar &output, const CBVar &input) { dotOp(output, input, input); }
   };
   CBVar activate(CBContext *context, const CBVar &input) {
     const Operation op;
@@ -219,16 +202,11 @@ struct Normalize : public VectorUnaryBase {
   }
 
   static inline Parameters Params{
-      {"Positive",
-       CBCCSTR(
-           "If the output should be in the range 0.0~1.0 instead of -1.0~1.0."),
-       {CoreInfo::BoolType}}};
+      {"Positive", CBCCSTR("If the output should be in the range 0.0~1.0 instead of -1.0~1.0."), {CoreInfo::BoolType}}};
 
   CBParametersInfo parameters() { return Params; }
 
-  void setParam(int index, const CBVar &value) {
-    _positiveOnly = value.payload.boolValue;
-  }
+  void setParam(int index, const CBVar &value) { _positiveOnly = value.payload.boolValue; }
 
   CBVar getParam(int index) { return Var(_positiveOnly); }
 
@@ -257,9 +235,7 @@ struct Normalize : public VectorUnaryBase {
       case Float3: {
         output.valueType = Float3;
         if (len.payload.floatValue > 0 || !positiveOnly) {
-          CBFloat3 vlen = {float(len.payload.floatValue),
-                           float(len.payload.floatValue),
-                           float(len.payload.floatValue)};
+          CBFloat3 vlen = {float(len.payload.floatValue), float(len.payload.floatValue), float(len.payload.floatValue)};
           output.payload.float3Value = input.payload.float3Value / vlen;
           if (positiveOnly) {
             output.payload.float3Value += 1.0;
@@ -272,9 +248,8 @@ struct Normalize : public VectorUnaryBase {
       case Float4: {
         output.valueType = Float4;
         if (len.payload.floatValue > 0 || !positiveOnly) {
-          CBFloat4 vlen = {
-              float(len.payload.floatValue), float(len.payload.floatValue),
-              float(len.payload.floatValue), float(len.payload.floatValue)};
+          CBFloat4 vlen = {float(len.payload.floatValue), float(len.payload.floatValue), float(len.payload.floatValue),
+                           float(len.payload.floatValue)};
           output.payload.float4Value = input.payload.float4Value / vlen;
           if (positiveOnly) {
             output.payload.float4Value += 1.0;
@@ -346,17 +321,14 @@ struct MatMul : public VectorBinaryBase {
     auto &operand = _operand.get();
     // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
     if (_opType == SeqSeq) {
-#define MATMUL_OP(_v1_, _v2_, _n_)                                             \
-  chainblocks::arrayResize(_result.payload.seqValue, _n_);                     \
-  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(        \
-      &input.payload.seqValue.elements[0]);                                    \
-  linalg::aliases::_v1_ *b = reinterpret_cast<linalg::aliases::_v1_ *>(        \
-      &operand.payload.seqValue.elements[0]);                                  \
-  linalg::aliases::_v1_ *c = reinterpret_cast<linalg::aliases::_v1_ *>(        \
-      &_result.payload.seqValue.elements[0]);                                  \
-  *c = linalg::mul(*a, *b);                                                    \
-  for (auto i = 0; i < _n_; i++) {                                             \
-    _result.payload.seqValue.elements[i].valueType = _v2_;                     \
+#define MATMUL_OP(_v1_, _v2_, _n_)                                                                             \
+  chainblocks::arrayResize(_result.payload.seqValue, _n_);                                                     \
+  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(&input.payload.seqValue.elements[0]);   \
+  linalg::aliases::_v1_ *b = reinterpret_cast<linalg::aliases::_v1_ *>(&operand.payload.seqValue.elements[0]); \
+  linalg::aliases::_v1_ *c = reinterpret_cast<linalg::aliases::_v1_ *>(&_result.payload.seqValue.elements[0]); \
+  *c = linalg::mul(*a, *b);                                                                                    \
+  for (auto i = 0; i < _n_; i++) {                                                                             \
+    _result.payload.seqValue.elements[i].valueType = _v2_;                                                     \
   }
       _result.valueType = Seq;
       switch (input.payload.seqValue.elements[0].valueType) {
@@ -375,14 +347,11 @@ struct MatMul : public VectorBinaryBase {
 #undef MATMUL_OP
       return _result;
     } else if (_opType == Seq1) {
-#define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                                \
-  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(        \
-      &input.payload.seqValue.elements[0]);                                    \
-  linalg::aliases::_v3_ *b =                                                   \
-      reinterpret_cast<linalg::aliases::_v3_ *>(&operand.payload._v3v_);       \
-  linalg::aliases::_v3_ *c =                                                   \
-      reinterpret_cast<linalg::aliases::_v3_ *>(&_result.payload._v3v_);       \
-  *c = linalg::mul(*a, *b);                                                    \
+#define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                                                              \
+  linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(&input.payload.seqValue.elements[0]); \
+  linalg::aliases::_v3_ *b = reinterpret_cast<linalg::aliases::_v3_ *>(&operand.payload._v3v_);              \
+  linalg::aliases::_v3_ *c = reinterpret_cast<linalg::aliases::_v3_ *>(&_result.payload._v3v_);              \
+  *c = linalg::mul(*a, *b);                                                                                  \
   _result.valueType = _v2_;
       switch (input.payload.seqValue.elements[0].valueType) {
       case Float2: {
@@ -399,9 +368,8 @@ struct MatMul : public VectorBinaryBase {
       }
       return _result;
     } else {
-      throw ActivationError(
-          "MatMul expects either Mat (Seq of FloatX) @ Mat or "
-          "Mat @ Vec (FloatX)");
+      throw ActivationError("MatMul expects either Mat (Seq of FloatX) @ Mat or "
+                            "Mat @ Vec (FloatX)");
     }
   }
 };
@@ -538,20 +506,16 @@ struct Orthographic : VectorUnaryBase {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    return CoreInfo::Float4SeqType;
-  }
+  CBTypeInfo compose(const CBInstanceData &data) { return CoreInfo::Float4SeqType; }
 
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4SeqType; }
 
   // left, right, bottom, top, near, far
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Width", CBCCSTR("Width size."), CoreInfo::IntOrFloat),
-      ParamsInfo::Param("Height", CBCCSTR("Height size."),
-                        CoreInfo::IntOrFloat),
-      ParamsInfo::Param("Near", CBCCSTR("Near plane."), CoreInfo::IntOrFloat),
-      ParamsInfo::Param("Far", CBCCSTR("Far plane."), CoreInfo::IntOrFloat));
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Width", CBCCSTR("Width size."), CoreInfo::IntOrFloat),
+                                               ParamsInfo::Param("Height", CBCCSTR("Height size."), CoreInfo::IntOrFloat),
+                                               ParamsInfo::Param("Near", CBCCSTR("Near plane."), CoreInfo::IntOrFloat),
+                                               ParamsInfo::Param("Far", CBCCSTR("Far plane."), CoreInfo::IntOrFloat));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -595,17 +559,12 @@ struct Orthographic : VectorUnaryBase {
     auto top = 0.5 * _height;
     auto bottom = -top;
     auto zrange = 1.0 / (_far - _near);
-    _result.payload.seqValue.elements[0].payload.float4Value[0] =
-        2.0 / (right - left);
-    _result.payload.seqValue.elements[1].payload.float4Value[1] =
-        2.0 / (top - bottom);
+    _result.payload.seqValue.elements[0].payload.float4Value[0] = 2.0 / (right - left);
+    _result.payload.seqValue.elements[1].payload.float4Value[1] = 2.0 / (top - bottom);
     _result.payload.seqValue.elements[2].payload.float4Value[2] = -zrange;
-    _result.payload.seqValue.elements[3].payload.float4Value[0] =
-        (left + right) / (left - right);
-    _result.payload.seqValue.elements[3].payload.float4Value[1] =
-        (top + bottom) / (bottom - top);
-    _result.payload.seqValue.elements[3].payload.float4Value[2] =
-        -_near * zrange;
+    _result.payload.seqValue.elements[3].payload.float4Value[0] = (left + right) / (left - right);
+    _result.payload.seqValue.elements[3].payload.float4Value[1] = (top + bottom) / (bottom - top);
+    _result.payload.seqValue.elements[3].payload.float4Value[2] = -_near * zrange;
     _result.payload.seqValue.elements[3].payload.float4Value[3] = 1.0;
     return _result;
   }
@@ -655,11 +614,9 @@ struct Rotation {
 };
 
 struct LookAt {
-  static inline Types InputTableTypes{
-      {CoreInfo::Float3Type, CoreInfo::Float3Type}};
+  static inline Types InputTableTypes{{CoreInfo::Float3Type, CoreInfo::Float3Type}};
   static inline std::array<CBString, 2> InputTableKeys{"Position", "Target"};
-  static inline Type InputTable =
-      Type::TableOf(InputTableTypes, InputTableKeys);
+  static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
   static CBTypesInfo inputTypes() { return InputTable; }
   static CBTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -690,8 +647,7 @@ struct LookAt {
       }
     }
 
-    assert(position.valueType == CBType::Float3 &&
-           target.valueType == CBType::Float3);
+    assert(position.valueType == CBType::Float3 && target.valueType == CBType::Float3);
 
     auto eye = reinterpret_cast<const Vec3 *>(&position);
     auto center = reinterpret_cast<const Vec3 *>(&target);
@@ -725,9 +681,7 @@ struct Deg2Rad {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return Var(input.payload.floatValue * (PI / 180.0));
-  }
+  CBVar activate(CBContext *context, const CBVar &input) { return Var(input.payload.floatValue * (PI / 180.0)); }
 };
 
 struct Rad2Deg {
@@ -736,9 +690,7 @@ struct Rad2Deg {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return Var(input.payload.floatValue * (180.0 / PI));
-  }
+  CBVar activate(CBContext *context, const CBVar &input) { return Var(input.payload.floatValue * (180.0 / PI)); }
 };
 
 void registerBlocks() {

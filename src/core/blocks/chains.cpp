@@ -15,30 +15,22 @@ enum RunChainMode { Inline, Detached, Stepped };
 
 struct ChainBase {
   typedef EnumInfo<RunChainMode> RunChainModeInfo;
-  static inline RunChainModeInfo runChainModeInfo{"RunChainMode", CoreCC,
-                                                  'runC'};
-  static inline Type ModeType{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'runC'}}}};
+  static inline RunChainModeInfo runChainModeInfo{"RunChainMode", CoreCC, 'runC'};
+  static inline Type ModeType{{CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'runC'}}}};
 
-  static inline Types ChainTypes{
-      {CoreInfo::ChainType, CoreInfo::StringType, CoreInfo::NoneType}};
+  static inline Types ChainTypes{{CoreInfo::ChainType, CoreInfo::StringType, CoreInfo::NoneType}};
 
   static inline Types ChainVarTypes{ChainTypes, {CoreInfo::ChainVarType}};
 
   static inline Parameters waitParamsInfo{
       {"Chain", CBCCSTR("The chain to wait."), {ChainVarTypes}},
-      {"Passthrough",
-       CBCCSTR("The output of this block will be its input."),
-       {CoreInfo::BoolType}}};
+      {"Passthrough", CBCCSTR("The output of this block will be its input."), {CoreInfo::BoolType}}};
 
   static inline Parameters stopChainParamsInfo{
       {"Chain", CBCCSTR("The chain to stop."), {ChainVarTypes}},
-      {"Passthrough",
-       CBCCSTR("The output of this block will be its input."),
-       {CoreInfo::BoolType}}};
+      {"Passthrough", CBCCSTR("The output of this block will be its input."), {CoreInfo::BoolType}}};
 
-  static inline Parameters runChainParamsInfo{
-      {"Chain", CBCCSTR("The chain to run."), {ChainTypes}}};
+  static inline Parameters runChainParamsInfo{{"Chain", CBCCSTR("The chain to run."), {ChainTypes}}};
 
   ParamVar chainref{};
   std::shared_ptr<CBChain> chain;
@@ -58,8 +50,7 @@ struct ChainBase {
   std::unordered_set<const CBChain *> &gatheringChains() {
 #ifdef WIN32
     // we have to leak.. or windows tls emulation will crash at process end
-    thread_local std::unordered_set<const CBChain *> *chains =
-        new std::unordered_set<const CBChain *>();
+    thread_local std::unordered_set<const CBChain *> *chains = new std::unordered_set<const CBChain *>();
     return *chains;
 #else
     thread_local std::unordered_set<const CBChain *> chains;
@@ -92,9 +83,7 @@ struct ChainBase {
     assert(data.chain);
 
     if (chain.get() == data.chain) {
-      CBLOG_DEBUG(
-          "ChainBase::compose early return, data.chain == chain, name: {}",
-          chain->name);
+      CBLOG_DEBUG("ChainBase::compose early return, data.chain == chain, name: {}", chain->name);
       return data.inputType; // we don't know yet...
     }
 
@@ -112,29 +101,23 @@ struct ChainBase {
 
     // avoid stackoverflow
     if (chain->isRoot || gatheringChains().count(chain.get())) {
-      CBLOG_DEBUG(
-          "ChainBase::compose early return, chain is being visited, name: {}",
-          chain->name);
+      CBLOG_DEBUG("ChainBase::compose early return, chain is being visited, name: {}", chain->name);
       return data.inputType; // we don't know yet...
     }
 
-    CBLOG_TRACE("ChainBase::compose, source: {} composing: {} inputType: {}",
-                data.chain->name, chain->name, data.inputType);
+    CBLOG_TRACE("ChainBase::compose, source: {} composing: {} inputType: {}", data.chain->name, chain->name, data.inputType);
 
     // we can add early in this case!
     // useful for Resume/Start
     if (passthrough) {
       auto [_, done] = node->visitedChains.emplace(chain.get(), data.inputType);
       if (done) {
-        CBLOG_TRACE("Pre-Marking as composed: {} ptr: {}", chain->name,
-                    (void *)chain.get());
+        CBLOG_TRACE("Pre-Marking as composed: {} ptr: {}", chain->name, (void *)chain.get());
       }
     } else if (mode == Stepped) {
-      auto [_, done] =
-          node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
+      auto [_, done] = node->visitedChains.emplace(chain.get(), CoreInfo::AnyType);
       if (done) {
-        CBLOG_TRACE("Pre-Marking as composed: {} ptr: {}", chain->name,
-                    (void *)chain.get());
+        CBLOG_TRACE("Pre-Marking as composed: {} ptr: {}", chain->name, (void *)chain.get());
       }
     }
 
@@ -148,9 +131,7 @@ struct ChainBase {
     IterableExposedInfo sharedCopy;
     if (mode == RunChainMode::Detached) {
       // keep only globals
-      auto end =
-          std::remove_if(shared.begin(), shared.end(),
-                         [](const CBExposedTypeInfo &x) { return !x.global; });
+      auto end = std::remove_if(shared.begin(), shared.end(), [](const CBExposedTypeInfo &x) { return !x.global; });
       sharedCopy = IterableExposedInfo(shared.begin(), end);
     } else {
       // we allow Detached but they need to be referenced during warmup
@@ -165,15 +146,12 @@ struct ChainBase {
       CBLOG_TRACE("Running {} compose", chain->name);
       chainValidation = composeChain(
           chain.get(),
-          [](const CBlock *errorBlock, const char *errorTxt,
-             bool nonfatalWarning, void *userData) {
+          [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
-              CBLOG_ERROR("RunChain: failed inner chain validation, error: {}",
-                          errorTxt);
+              CBLOG_ERROR("RunChain: failed inner chain validation, error: {}", errorTxt);
               throw ComposeError("RunChain: failed inner chain validation");
             } else {
-              CBLOG_INFO("RunChain: warning during inner chain validation: {}",
-                         errorTxt);
+              CBLOG_INFO("RunChain: warning during inner chain validation: {}", errorTxt);
             }
           },
           this, dataCopy);
@@ -182,17 +160,13 @@ struct ChainBase {
       IterableExposedInfo exposing(chainValidation.exposedInfo);
       // keep only globals
       exposedInfo = IterableExposedInfo(
-          exposing.begin(),
-          std::remove_if(exposing.begin(), exposing.end(),
-                         [](CBExposedTypeInfo &x) { return !x.global; }));
+          exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](CBExposedTypeInfo &x) { return !x.global; }));
       CBLOG_TRACE("Chain {} composed", chain->name);
     } else {
       CBLOG_TRACE("Skipping {} compose", chain->name);
       // verify input type
-      if (!passthrough && mode != Stepped &&
-          data.inputType != chain->inputType) {
-        CBLOG_ERROR("Previous chain composed type {} requested call type {}",
-                    *chain->inputType, data.inputType);
+      if (!passthrough && mode != Stepped && data.inputType != chain->inputType) {
+        CBLOG_ERROR("Previous chain composed type {} requested call type {}", *chain->inputType, data.inputType);
         throw ComposeError("Attempted to call an already composed chain with a "
                            "different input type! chain: " +
                            chain->name);
@@ -204,14 +178,12 @@ struct ChainBase {
       // ensure requirements match our input data
       for (auto req : chain->requiredVariables) {
         // find each in shared
-        auto res = std::find_if(shared.begin(), shared.end(),
-                                [&](CBExposedTypeInfo &x) {
-                                  std::string_view vx(x.name);
-                                  return req == vx;
-                                });
+        auto res = std::find_if(shared.begin(), shared.end(), [&](CBExposedTypeInfo &x) {
+          std::string_view vx(x.name);
+          return req == vx;
+        });
         if (res == shared.end()) {
-          throw ComposeError("Attempted to call an already composed chain (" +
-                             chain->name +
+          throw ComposeError("Attempted to call an already composed chain (" + chain->name +
                              ") with "
                              "a missing required variable: " +
                              req);
@@ -233,10 +205,8 @@ struct ChainBase {
     if (!passthrough && mode != Stepped) {
       auto [_, done] = node->visitedChains.emplace(chain.get(), outputType);
       if (done) {
-        CBLOG_TRACE(
-            "Marking as composed: {} ptr: {} inputType: {} outputType: {}",
-            chain->name, (void *)chain.get(), *chain->inputType,
-            chain->outputType);
+        CBLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", chain->name, (void *)chain.get(),
+                    *chain->inputType, chain->outputType);
       }
     }
 
@@ -310,9 +280,7 @@ struct Wait : public ChainBase {
 
   CBExposedTypesInfo requiredVariables() {
     if (chainref.isVariable()) {
-      _requiredChain =
-          CBExposedTypeInfo{chainref.variableName(),
-                            CBCCSTR("The chain to run."), CoreInfo::ChainType};
+      _requiredChain = CBExposedTypeInfo{chainref.variableName(), CBCCSTR("The chain to run."), CoreInfo::ChainType};
       return {&_requiredChain, 1, 0};
     } else {
       return {};
@@ -357,10 +325,7 @@ struct Wait : public ChainBase {
 };
 
 struct StopChain : public ChainBase {
-  CBOptionalString help() {
-    return CBCCSTR(
-        "Stops another chain. If no chain is given, stops the current chain.");
-  }
+  CBOptionalString help() { return CBCCSTR("Stops another chain. If no chain is given, stops the current chain."); }
 
   void setup() { passthrough = true; }
 
@@ -376,8 +341,7 @@ struct StopChain : public ChainBase {
   }
 
   void composed(const CBChain *chain, const CBComposeResult *result) {
-    if (!chain && chainref->valueType == None &&
-        _inputType != result->outputType) {
+    if (!chain && chainref->valueType == None && _inputType != result->outputType) {
       CBLOG_ERROR("Stop input and chain output type mismatch, Stop input must "
                   "be the same type of the chain's output (regular flow), "
                   "chain: {} expected: {}",
@@ -420,9 +384,7 @@ struct StopChain : public ChainBase {
 
   CBExposedTypesInfo requiredVariables() {
     if (chainref.isVariable()) {
-      _requiredChain =
-          CBExposedTypeInfo{chainref.variableName(),
-                            CBCCSTR("The chain to run."), CoreInfo::ChainType};
+      _requiredChain = CBExposedTypeInfo{chainref.variableName(), CBCCSTR("The chain to run."), CoreInfo::ChainType};
       return {&_requiredChain, 1, 0};
     } else {
       return {};
@@ -469,8 +431,7 @@ struct Resume : public ChainBase {
     mode = Detached;
   }
 
-  static inline Parameters params{
-      {"Chain", CBCCSTR("The name of the chain to switch to."), {ChainTypes}}};
+  static inline Parameters params{{"Chain", CBCCSTR("The name of the chain to switch to."), {ChainTypes}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -674,8 +635,7 @@ struct BaseRunner : public ChainBase {
     // Only inline mode ensures that variables will be really avail
     // step and detach will run at different timing
     CBExposedTypesInfo empty{};
-    return mode == RunChainMode::Inline ? CBExposedTypesInfo(exposedInfo)
-                                        : empty;
+    return mode == RunChainMode::Inline ? CBExposedTypesInfo(exposedInfo) : empty;
   }
 
   void cleanup() {
@@ -691,8 +651,7 @@ struct BaseRunner : public ChainBase {
   }
 
   void doWarmup(CBContext *context) {
-    if (mode == RunChainMode::Inline && chain &&
-        chain->chainUsers.count(this) == 0) {
+    if (mode == RunChainMode::Inline && chain && chain->chainUsers.count(this) == 0) {
       chain->chainUsers.emplace(this);
       chain->warmup(context);
     }
@@ -738,8 +697,7 @@ struct BaseRunner : public ChainBase {
   }
 };
 
-template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE>
-struct RunChain : public BaseRunner {
+template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE> struct RunChain : public BaseRunner {
   void setup() {
     passthrough = INPUT_PASSTHROUGH;
     mode = CHAIN_MODE;
@@ -874,27 +832,24 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
   BlocksVar _onReloadBlocks{};
   BlocksVar _onErrorBlocks{};
 
-  static inline Parameters params{
-      {"Provider",
-       CBCCSTR("The chainblocks chain provider."),
-       {ChainProvider::ProviderOrNone}},
-      {"Mode",
-       CBCCSTR("The way to run the chain. Inline: will run the sub chain "
-               "inline within the root chain, a pause in the child chain will "
-               "pause the root too; Detached: will run the chain separately in "
-               "the same node, a pause in this chain will not pause the root; "
-               "Stepped: the chain will run as a child, the root will tick the "
-               "chain every activation of this block and so a child pause "
-               "won't pause the root."),
-       {ModeType}},
-      {"OnReload",
-       CBCCSTR("Blocks to execute when the chain is reloaded, the input of "
-               "this flow will be the reloaded chain."),
-       {CoreInfo::BlocksOrNone}},
-      {"OnError",
-       CBCCSTR("Blocks to execute when a chain reload failed, the input of "
-               "this flow will be the error message."),
-       {CoreInfo::BlocksOrNone}}};
+  static inline Parameters params{{"Provider", CBCCSTR("The chainblocks chain provider."), {ChainProvider::ProviderOrNone}},
+                                  {"Mode",
+                                   CBCCSTR("The way to run the chain. Inline: will run the sub chain "
+                                           "inline within the root chain, a pause in the child chain will "
+                                           "pause the root too; Detached: will run the chain separately in "
+                                           "the same node, a pause in this chain will not pause the root; "
+                                           "Stepped: the chain will run as a child, the root will tick the "
+                                           "chain every activation of this block and so a child pause "
+                                           "won't pause the root."),
+                                   {ModeType}},
+                                  {"OnReload",
+                                   CBCCSTR("Blocks to execute when the chain is reloaded, the input of "
+                                           "this flow will be the reloaded chain."),
+                                   {CoreInfo::BlocksOrNone}},
+                                  {"OnError",
+                                   CBCCSTR("Blocks to execute when a chain reload failed, the input of "
+                                           "this flow will be the error message."),
+                                   {CoreInfo::BlocksOrNone}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -982,8 +937,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
     if (unlikely(_provider->updated(_provider))) {
       auto update = _provider->acquire(_provider);
       if (unlikely(update.error != nullptr)) {
-        CBLOG_ERROR("Failed to reload a chain via ChainLoader, reason: {}",
-                    update.error);
+        CBLOG_ERROR("Failed to reload a chain via ChainLoader, reason: {}", update.error);
         CBVar output{};
         _onErrorBlocks.activate(context, Var(update.error), output);
       } else {
@@ -993,8 +947,7 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
         }
 
         // but let the provider release the pointer!
-        chain.reset(update.chain,
-                    [&](CBChain *x) { _provider->release(_provider, x); });
+        chain.reset(update.chain, [&](CBChain *x) { _provider->release(_provider, x); });
         doWarmup(context);
         CBLOG_INFO("Chain {} has been reloaded", update.chain->name);
         CBVar output{};
@@ -1012,19 +965,16 @@ struct ChainLoader : public BaseLoader<ChainLoader> {
 };
 
 struct ChainRunner : public BaseLoader<ChainRunner> {
-  static inline Parameters params{
-      {"Chain",
-       CBCCSTR("The chain variable to compose and run."),
-       {CoreInfo::ChainVarType}},
-      {"Mode",
-       CBCCSTR("The way to run the chain. Inline: will run the sub chain "
-               "inline within the root chain, a pause in the child chain will "
-               "pause the root too; Detached: will run the chain separately in "
-               "the same node, a pause in this chain will not pause the root; "
-               "Stepped: the chain will run as a child, the root will tick the "
-               "chain every activation of this block and so a child pause "
-               "won't pause the root."),
-       {ModeType}}};
+  static inline Parameters params{{"Chain", CBCCSTR("The chain variable to compose and run."), {CoreInfo::ChainVarType}},
+                                  {"Mode",
+                                   CBCCSTR("The way to run the chain. Inline: will run the sub chain "
+                                           "inline within the root chain, a pause in the child chain will "
+                                           "pause the root too; Detached: will run the chain separately in "
+                                           "the same node, a pause in this chain will not pause the root; "
+                                           "Stepped: the chain will run as a child, the root will tick the "
+                                           "chain every activation of this block and so a child pause "
+                                           "won't pause the root."),
+                                   {ModeType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -1062,9 +1012,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
 
   CBExposedTypesInfo requiredVariables() {
     if (_chain.isVariable()) {
-      _requiredChain =
-          CBExposedTypeInfo{_chain.variableName(), CBCCSTR("The chain to run."),
-                            CoreInfo::ChainType};
+      _requiredChain = CBExposedTypeInfo{_chain.variableName(), CBCCSTR("The chain to run."), CoreInfo::ChainType};
       return {&_requiredChain, 1, 0};
     } else {
       return {};
@@ -1088,15 +1036,12 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     // We need to validate the sub chain to figure it out!
     auto res = composeChain(
         chain.get(),
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
-            CBLOG_ERROR("RunChain: failed inner chain validation, error: {}",
-                        errorTxt);
+            CBLOG_ERROR("RunChain: failed inner chain validation, error: {}", errorTxt);
             throw CBException("RunChain: failed inner chain validation");
           } else {
-            CBLOG_INFO("RunChain: warning during inner chain validation: {}",
-                       errorTxt);
+            CBLOG_INFO("RunChain: warning during inner chain validation: {}", errorTxt);
           }
         },
         this, data);
@@ -1111,8 +1056,7 @@ struct ChainRunner : public BaseLoader<ChainRunner> {
     if (unlikely(!chain))
       return input;
 
-    if (_chainHash.valueType == None || _chainHash != chain->composedHash ||
-        _chainPtr != chain.get()) {
+    if (_chainHash.valueType == None || _chainHash != chain->composedHash || _chainPtr != chain.get()) {
       // Compose and hash in a thread
       await(
           context,
@@ -1150,22 +1094,13 @@ struct ManyChain : public std::enable_shared_from_this<ManyChain> {
 struct ParallelBase : public ChainBase {
   typedef EnumInfo<WaitUntil> WaitUntilInfo;
   static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
-  static inline Type WaitUntilType{
-      {CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
+  static inline Type WaitUntilType{{CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
 
   static inline Parameters _params{
-      {"Chain",
-       CBCCSTR("The chain to spawn and try to run many times concurrently."),
-       ChainBase::ChainVarTypes},
-      {"Policy",
-       CBCCSTR("The execution policy in terms of chains success."),
-       {WaitUntilType}},
-      {"Threads",
-       CBCCSTR("The number of cpu threads to use."),
-       {CoreInfo::IntType}},
-      {"Coroutines",
-       CBCCSTR("The number of coroutines to run on each thread."),
-       {CoreInfo::IntType}}};
+      {"Chain", CBCCSTR("The chain to spawn and try to run many times concurrently."), ChainBase::ChainVarTypes},
+      {"Policy", CBCCSTR("The execution policy in terms of chains success."), {WaitUntilType}},
+      {"Threads", CBCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}},
+      {"Coroutines", CBCCSTR("The number of coroutines to run on each thread."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1233,8 +1168,7 @@ struct ParallelBase : public ChainBase {
       chain->node = context->main->node;
       auto res = composeChain(
           chain,
-          [](const struct CBlock *errorBlock, const char *errorTxt,
-             CBBool nonfatalWarning, void *userData) {
+          [](const struct CBlock *errorBlock, const char *errorTxt, CBBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               CBLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler chain compose failed");
@@ -1251,8 +1185,7 @@ struct ParallelBase : public ChainBase {
   void warmup(CBContext *context) {
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
     if (_threads > 1) {
-      const auto threads =
-          std::min(_threads, int64_t(std::thread::hardware_concurrency()));
+      const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
       if (!_exec || _exec->num_workers() != (size_t(threads))) {
         _exec.reset(new tf::Executor(size_t(threads)));
       }
@@ -1276,8 +1209,7 @@ struct ParallelBase : public ChainBase {
     _chains.clear();
   }
 
-  virtual CBVar getInput(const std::shared_ptr<ManyChain> &mc,
-                         const CBVar &input) = 0;
+  virtual CBVar getInput(const std::shared_ptr<ManyChain> &mc, const CBVar &input) = 0;
 
   virtual size_t getLength(const CBVar &input) = 0;
 
@@ -1340,8 +1272,7 @@ struct ParallelBase : public ChainBase {
 
             // Tick the chain on the flow that this chain created
             CBDuration now = CBClock::now().time_since_epoch();
-            chainblocks::tick(cref->chain->context->flow->chain, now,
-                              getInput(cref, input));
+            chainblocks::tick(cref->chain->context->flow->chain, now, getInput(cref, input));
 
             if (!isRunning(cref->chain.get())) {
               if (cref->chain->state == CBChain::State::Ended) {
@@ -1387,8 +1318,7 @@ struct ParallelBase : public ChainBase {
 
                 // Tick the chain on the flow that this chain created
                 CBDuration now = CBClock::now().time_since_epoch();
-                chainblocks::tick(cref->chain->context->flow->chain, now,
-                                  getInput(cref, input));
+                chainblocks::tick(cref->chain->context->flow->chain, now, getInput(cref, input));
                 // also tick the node
                 cref->node->tick();
               },
@@ -1481,14 +1411,11 @@ struct TryMany : public ParallelBase {
     }
   }
 
-  CBVar getInput(const std::shared_ptr<ManyChain> &mc,
-                 const CBVar &input) override {
+  CBVar getInput(const std::shared_ptr<ManyChain> &mc, const CBVar &input) override {
     return input.payload.seqValue.elements[mc->index];
   }
 
-  size_t getLength(const CBVar &input) override {
-    return size_t(input.payload.seqValue.len);
-  }
+  size_t getLength(const CBVar &input) override { return size_t(input.payload.seqValue.len); }
 };
 
 struct Expand : public ParallelBase {
@@ -1497,9 +1424,8 @@ struct Expand : public ParallelBase {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  static inline Parameters _params{
-      {{"Size", CBCCSTR("The maximum expansion size."), {CoreInfo::IntType}}},
-      ParallelBase::_params};
+  static inline Parameters _params{{{"Size", CBCCSTR("The maximum expansion size."), {CoreInfo::IntType}}},
+                                   ParallelBase::_params};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1531,10 +1457,7 @@ struct Expand : public ParallelBase {
     return _outputSeqType;
   }
 
-  CBVar getInput(const std::shared_ptr<ManyChain> &mc,
-                 const CBVar &input) override {
-    return input;
-  }
+  CBVar getInput(const std::shared_ptr<ManyChain> &mc, const CBVar &input) override { return input; }
 
   size_t getLength(const CBVar &input) override { return size_t(_width); }
 };
@@ -1546,9 +1469,7 @@ struct Spawn : public ChainBase {
   static CBTypesInfo outputTypes() { return CoreInfo::ChainType; }
 
   static inline Parameters _params{
-      {"Chain",
-       CBCCSTR("The chain to spawn and try to run many times concurrently."),
-       ChainBase::ChainVarTypes}};
+      {"Chain", CBCCSTR("The chain to spawn and try to run many times concurrently."), ChainBase::ChainVarTypes}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1596,8 +1517,7 @@ struct Spawn : public ChainBase {
       chain->node = context->main->node;
       auto res = composeChain(
           chain,
-          [](const struct CBlock *errorBlock, const char *errorTxt,
-             CBBool nonfatalWarning, void *userData) {
+          [](const struct CBlock *errorBlock, const char *errorTxt, CBBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               CBLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler chain compose failed");
@@ -1636,10 +1556,9 @@ struct Branch {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
-    static Parameters params{
-        {"Chains",
-         CBCCSTR("The chains to schedule and run on this branch."),
-         {CoreInfo::ChainType, CoreInfo::ChainSeqType, CoreInfo::NoneType}}};
+    static Parameters params{{"Chains",
+                              CBCCSTR("The chains to schedule and run on this branch."),
+                              {CoreInfo::ChainType, CoreInfo::ChainSeqType, CoreInfo::NoneType}}};
     return params;
   }
 
@@ -1663,10 +1582,9 @@ struct Branch {
   }
 
   CBOptionalString help() {
-    return CBCCSTR(
-        "A branch is a child node that runs and is ticked when this block is "
-        "activated, chains on this node will inherit all of the available "
-        "exposed variables in the activator chain.");
+    return CBCCSTR("A branch is a child node that runs and is ticked when this block is "
+                   "activated, chains on this node will inherit all of the available "
+                   "exposed variables in the activator chain.");
   }
 
   void composeSubChain(const CBInstanceData &data, CBChainRef &chainref) {
@@ -1677,15 +1595,12 @@ struct Branch {
     dataCopy.inputType = data.inputType;
     auto cr = composeChain(
         chain.get(),
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
-            CBLOG_ERROR("Branch: failed inner chain validation, error: {}",
-                        errorTxt);
+            CBLOG_ERROR("Branch: failed inner chain validation, error: {}", errorTxt);
             throw ComposeError("RunChain: failed inner chain validation");
           } else {
-            CBLOG_INFO("Branch: warning during inner chain validation: {}",
-                       errorTxt);
+            CBLOG_INFO("Branch: warning during inner chain validation: {}", errorTxt);
           }
         },
         this, dataCopy);

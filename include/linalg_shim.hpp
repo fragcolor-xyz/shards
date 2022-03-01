@@ -8,8 +8,7 @@
 #include <vector>
 namespace chainblocks {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
-  template <typename NUMBER>
-  static Mat4 FromVector(const std::vector<NUMBER> &mat) {
+  template <typename NUMBER> static Mat4 FromVector(const std::vector<NUMBER> &mat) {
     // used by gltf
     assert(mat.size() == 16);
     int idx = 0;
@@ -23,8 +22,7 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return res;
   }
 
-  template <typename NUMBER>
-  static Mat4 FromArray(const std::array<NUMBER, 16> &mat) {
+  template <typename NUMBER> static Mat4 FromArray(const std::array<NUMBER, 16> &mat) {
     // used by gltf
     assert(mat.size() == 16);
     int idx = 0;
@@ -92,8 +90,7 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   operator CBVar() const {
     CBVar res{};
     res.valueType = CBType::Seq;
-    res.payload.seqValue.elements =
-        reinterpret_cast<CBVar *>(const_cast<chainblocks::Mat4 *>(this));
+    res.payload.seqValue.elements = reinterpret_cast<CBVar *>(const_cast<chainblocks::Mat4 *>(this));
     res.payload.seqValue.len = 4;
     res.payload.seqValue.cap = 0;
     for (auto i = 0; i < 4; i++) {
@@ -113,8 +110,7 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
     return q;
   }
 
-  template <typename NUMBER>
-  static Vec4 FromVector(const std::vector<NUMBER> &vec) {
+  template <typename NUMBER> static Vec4 FromVector(const std::vector<NUMBER> &vec) {
     // used by gltf
     assert(vec.size() == 4);
     Vec4 res;
@@ -154,8 +150,7 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
     z = float(z_);
   }
 
-  template <typename NUMBER>
-  static Vec3 FromVector(const std::vector<NUMBER> &vec) {
+  template <typename NUMBER> static Vec3 FromVector(const std::vector<NUMBER> &vec) {
     // used by gltf
     assert(vec.size() == 3);
     Vec3 res;

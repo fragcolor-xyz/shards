@@ -24,18 +24,7 @@ namespace token {
 
 namespace type {
 
-enum Type {
-  WHITESPACE,
-  SPECIAL_CHARS,
-  SPECIAL_CHAR,
-  STRING,
-  RAW_STRING,
-  COMMENT,
-  HEX,
-  DOUBLE,
-  INT,
-  SYMBOL
-};
+enum Type { WHITESPACE, SPECIAL_CHARS, SPECIAL_CHAR, STRING, RAW_STRING, COMMENT, HEX, DOUBLE, INT, SYMBOL };
 
 }
 
@@ -47,18 +36,17 @@ enum Type { BOOL, CHAR, LONG, DOUBLE, STRING };
 
 } // namespace value
 
-const std::regex
-    REGEX("([\\s,]+)|"                                // type::WHITESPACE
-          "(~@|#\\{)|"                                // type::SPECIAL_CHARS
-          "([\\[\\]{}()\'`~^@])|"                     // type::SPECIAL_CHAR
-          "(\"(?:\\\\.|[^\\\\\"])*\"?)|"              // type::STRING
-          "(#\"(?:\\\\.|[^\\\\\"])*\"?)|"             // type::RAW_STRING
-          "(;.*)|"                                    // type::COMMENT
-          "(0[xX][0-9a-fA-F]+)|"                      // type::HEX
-          "([-+]?[0-9]*\\.[0-9]+([eE][-+]?[0-9]+)?)|" // type::DOUBLE
-          "([-+]?\\d+)|"                              // type::INT
-          "([^\\s\\[\\]{}(\'\"`,;)]+)"                // type::SYMBOL
-    );
+const std::regex REGEX("([\\s,]+)|"                                // type::WHITESPACE
+                       "(~@|#\\{)|"                                // type::SPECIAL_CHARS
+                       "([\\[\\]{}()\'`~^@])|"                     // type::SPECIAL_CHAR
+                       "(\"(?:\\\\.|[^\\\\\"])*\"?)|"              // type::STRING
+                       "(#\"(?:\\\\.|[^\\\\\"])*\"?)|"             // type::RAW_STRING
+                       "(;.*)|"                                    // type::COMMENT
+                       "(0[xX][0-9a-fA-F]+)|"                      // type::HEX
+                       "([-+]?[0-9]*\\.[0-9]+([eE][-+]?[0-9]+)?)|" // type::DOUBLE
+                       "([-+]?\\d+)|"                              // type::INT
+                       "([^\\s\\[\\]{}(\'\"`,;)]+)"                // type::SYMBOL
+);
 
 struct Token {
   value::Value value;
@@ -66,16 +54,11 @@ struct Token {
   int line;
   int column;
 
-  Token(value::Value v, type::Type t, int l, int c)
-      : value(v), type(t), line(l), column(c) {}
+  Token(value::Value v, type::Type t, int l, int c) : value(v), type(t), line(l), column(c) {}
 
-  bool operator==(const Token &t) const {
-    return (value == t.value) && (type == t.type);
-  }
+  bool operator==(const Token &t) const { return (value == t.value) && (type == t.type); }
 
-  bool operator<(const Token &t) const {
-    return (value < t.value) || (type < t.type);
-  }
+  bool operator<(const Token &t) const { return (value < t.value) || (type < t.type); }
 };
 
 } // namespace token
@@ -87,16 +70,11 @@ struct Special {
   std::string message;
   std::optional<token::Token> token;
 
-  Special(std::string n, std::string m, std::optional<token::Token> t)
-      : name(n), message(m), token(t) {}
+  Special(std::string n, std::string m, std::optional<token::Token> t) : name(n), message(m), token(t) {}
 
-  bool operator==(const Special &re) const {
-    return (!message.compare(re.message)) && (token == re.token);
-  }
+  bool operator==(const Special &re) const { return (!message.compare(re.message)) && (token == re.token); }
 
-  bool operator<(const Special &re) const {
-    return (message < re.message) || (token < re.token);
-  }
+  bool operator<(const Special &re) const { return (message < re.message) || (token < re.token); }
 };
 
 struct FormWrapper;
@@ -105,8 +83,7 @@ using FormWrapperMap = boost::container::map<FormWrapper, FormWrapper>;
 using FormWrapperSet = boost::container::set<FormWrapper>;
 
 using Form =
-    std::variant<Special, token::Token, std::list<FormWrapper>,
-                 std::vector<FormWrapper>, FormWrapperMap, FormWrapperSet>;
+    std::variant<Special, token::Token, std::list<FormWrapper>, std::vector<FormWrapper>, FormWrapperMap, FormWrapperSet>;
 
 enum Type { SPECIAL, TOKEN, LIST, VECTOR, MAP, SET };
 
@@ -120,8 +97,7 @@ bool isLess(const FormWrapper &fw1, const FormWrapper &fw2);
 
 inline void hash_combine(std::size_t &seed) {}
 
-template <typename T, typename... Rest>
-inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
+template <typename T, typename... Rest> inline void hash_combine(std::size_t &seed, const T &v, Rest... rest) {
   std::hash<T> hasher;
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   hash_combine(seed, rest...);
@@ -139,15 +115,11 @@ template <> struct hash<chainblocks::edn::token::Token> {
 };
 
 template <> struct hash<chainblocks::edn::form::Special> {
-  size_t operator()(const chainblocks::edn::form::Special &x) const {
-    return std::hash<std::string>()(x.message);
-  }
+  size_t operator()(const chainblocks::edn::form::Special &x) const { return std::hash<std::string>()(x.message); }
 };
 
 template <> struct hash<chainblocks::edn::form::FormWrapper> {
-  size_t operator()(const chainblocks::edn::form::FormWrapper &x) const {
-    return chainblocks::edn::form::hash(x);
-  }
+  size_t operator()(const chainblocks::edn::form::FormWrapper &x) const { return chainblocks::edn::form::hash(x); }
 };
 
 } // namespace std
@@ -262,11 +234,9 @@ inline std::size_t hash(const FormWrapper &fw) {
   case TOKEN:
     return std::hash<token::Token>()(std::get<token::Token>(fw.form));
   case LIST:
-    return hash<std::list<FormWrapper>>(
-        std::get<std::list<FormWrapper>>(fw.form));
+    return hash<std::list<FormWrapper>>(std::get<std::list<FormWrapper>>(fw.form));
   case VECTOR:
-    return hash<std::vector<FormWrapper>>(
-        std::get<std::vector<FormWrapper>>(fw.form));
+    return hash<std::vector<FormWrapper>>(std::get<std::vector<FormWrapper>>(fw.form));
   case MAP:
     return hash(std::get<FormWrapperMap>(fw.form));
   case SET:
@@ -357,38 +327,28 @@ inline bool isLess(const FormWrapper &fw1, const FormWrapper &fw2) {
 
 } // namespace form
 
-const std::unordered_map<std::variant<char, std::string>, std::string>
-    SYMBOL_TO_NAME = {{'\'', "quote"},    {'`', "quasiquote"},
-                      {'~', "unquote"},   {'@', "deref"},
-                      {'^', "with-meta"}, {"~@", "splice-unquote"}};
+const std::unordered_map<std::variant<char, std::string>, std::string> SYMBOL_TO_NAME = {
+    {'\'', "quote"}, {'`', "quasiquote"}, {'~', "unquote"}, {'@', "deref"}, {'^', "with-meta"}, {"~@", "splice-unquote"}};
 
-const std::unordered_map<std::variant<char, std::string>, form::Type>
-    DELIMITER_TO_TYPE = {
-        {'(', form::LIST},
-        {'[', form::VECTOR},
-        {'{', form::MAP},
-        {"#{", form::SET},
+const std::unordered_map<std::variant<char, std::string>, form::Type> DELIMITER_TO_TYPE = {
+    {'(', form::LIST},
+    {'[', form::VECTOR},
+    {'{', form::MAP},
+    {"#{", form::SET},
 };
 
 const std::unordered_map<form::Type, char> TYPE_TO_DELIMITER = {
     {form::LIST, ')'}, {form::VECTOR, ']'}, {form::MAP, '}'}, {form::SET, '}'}};
 
-inline std::pair<form::Form, std::list<token::Token>::const_iterator>
-read_form(const std::list<token::Token> *tokens,
-          std::list<token::Token>::const_iterator it);
-inline std::optional<
-    std::pair<form::Form, std::list<token::Token>::const_iterator>>
-read_useful_form(const std::list<token::Token> *tokens,
-                 std::list<token::Token>::const_iterator it);
-inline std::optional<
-    std::pair<token::Token, std::list<token::Token>::const_iterator>>
-read_useful_token(const std::list<token::Token> *tokens,
-                  std::list<token::Token>::const_iterator it);
+inline std::pair<form::Form, std::list<token::Token>::const_iterator> read_form(const std::list<token::Token> *tokens,
+                                                                                std::list<token::Token>::const_iterator it);
+inline std::optional<std::pair<form::Form, std::list<token::Token>::const_iterator>>
+read_useful_form(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it);
+inline std::optional<std::pair<token::Token, std::list<token::Token>::const_iterator>>
+read_useful_token(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it);
 
 inline form::Form list_to_vector(const std::list<form::FormWrapper> list) {
-  return std::vector<form::FormWrapper>{
-      std::make_move_iterator(std::begin(list)),
-      std::make_move_iterator(std::end(list))};
+  return std::vector<form::FormWrapper>{std::make_move_iterator(std::begin(list)), std::make_move_iterator(std::end(list))};
 }
 
 inline form::Form list_to_map(const std::list<form::FormWrapper> list) {
@@ -399,8 +359,7 @@ inline form::Form list_to_map(const std::list<form::FormWrapper> list) {
     auto key = *list_it;
     ++list_it;
     if (list_it == list.end()) {
-      return form::Special{
-          "ReaderError", "Map must contain even number of forms", std::nullopt};
+      return form::Special{"ReaderError", "Map must contain even number of forms", std::nullopt};
     } else {
       auto val = *list_it;
       ++list_it;
@@ -420,8 +379,7 @@ inline form::Form list_to_set(const std::list<form::FormWrapper> list) {
 }
 
 inline std::pair<form::Form, std::list<token::Token>::const_iterator>
-read_coll(const std::list<token::Token> *tokens,
-          std::list<token::Token>::const_iterator it, form::Type form_type) {
+read_coll(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it, form::Type form_type) {
   char end_delimiter = TYPE_TO_DELIMITER.at(form_type);
   std::list<form::FormWrapper> forms;
   while (auto ret_opt = read_useful_token(tokens, it)) {
@@ -446,10 +404,7 @@ read_coll(const std::list<token::Token> *tokens,
         case ')':
         case ']':
         case '}':
-          return std::make_pair(
-              form::Special{"ReaderError",
-                            "Unmatched delimiter: " + std::string(1, c), token},
-              tokens->end());
+          return std::make_pair(form::Special{"ReaderError", "Unmatched delimiter: " + std::string(1, c), token}, tokens->end());
         }
       }
     }
@@ -457,49 +412,34 @@ read_coll(const std::list<token::Token> *tokens,
     forms.push_back(form::FormWrapper{ret2.first});
     it = ret2.second;
   }
-  return std::make_pair(
-      form::Special{"ReaderError",
-                    "EOF: no " + std::string(1, end_delimiter) + " found",
-                    std::nullopt},
-      tokens->end());
+  return std::make_pair(form::Special{"ReaderError", "EOF: no " + std::string(1, end_delimiter) + " found", std::nullopt},
+                        tokens->end());
 }
 
 inline std::pair<form::Form, std::list<token::Token>::const_iterator>
-expand_quoted_form(const std::list<token::Token> *tokens,
-                   std::list<token::Token>::const_iterator it,
-                   token::Token token) {
+expand_quoted_form(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it, token::Token token) {
   if (auto ret_opt = read_useful_form(tokens, it)) {
     auto ret = ret_opt.value();
     std::list<form::FormWrapper> list{form::FormWrapper{token}, ret.first};
     return std::make_pair(list, ret.second);
   } else {
-    return std::make_pair(
-        form::Special{"ReaderError", "EOF: Nothing found after quote", token},
-        tokens->end());
+    return std::make_pair(form::Special{"ReaderError", "EOF: Nothing found after quote", token}, tokens->end());
   }
 }
 
 inline std::pair<form::Form, std::list<token::Token>::const_iterator>
-expand_meta_quoted_form(const std::list<token::Token> *tokens,
-                        std::list<token::Token>::const_iterator it,
-                        token::Token token) {
+expand_meta_quoted_form(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it, token::Token token) {
   if (auto ret_opt = read_useful_form(tokens, it)) {
     auto ret = ret_opt.value();
     if (auto ret_opt2 = read_useful_form(tokens, ret.second)) {
       auto ret2 = ret_opt2.value();
-      std::list<form::FormWrapper> list{form::FormWrapper{token}, ret2.first,
-                                        ret.first};
+      std::list<form::FormWrapper> list{form::FormWrapper{token}, ret2.first, ret.first};
       return std::make_pair(list, ret2.second);
     } else {
-      return std::make_pair(form::Special{"ReaderError",
-                                          "EOF: Nothing found after metadata",
-                                          token},
-                            tokens->end());
+      return std::make_pair(form::Special{"ReaderError", "EOF: Nothing found after metadata", token}, tokens->end());
     }
   } else {
-    return std::make_pair(
-        form::Special{"ReaderError", "EOF: Nothing found after ^", token},
-        tokens->end());
+    return std::make_pair(form::Special{"ReaderError", "EOF: Nothing found after ^", token}, tokens->end());
   }
 }
 
@@ -529,9 +469,8 @@ inline std::string &unescape(std::string &in) {
   return in;
 }
 
-inline std::pair<form::Form, std::list<token::Token>::const_iterator>
-read_form(const std::list<token::Token> *tokens,
-          std::list<token::Token>::const_iterator it) {
+inline std::pair<form::Form, std::list<token::Token>::const_iterator> read_form(const std::list<token::Token> *tokens,
+                                                                                std::list<token::Token>::const_iterator it) {
   auto token = *it;
   switch (token.type) {
   case token::type::SPECIAL_CHARS: {
@@ -539,10 +478,7 @@ read_form(const std::list<token::Token> *tokens,
     if (s == "#{") {
       return read_coll(tokens, ++it, DELIMITER_TO_TYPE.at(s));
     } else if (s == "~@") {
-      return expand_quoted_form(tokens, ++it,
-                                token::Token{SYMBOL_TO_NAME.at(s),
-                                             token::type::SYMBOL, token.line,
-                                             token.column});
+      return expand_quoted_form(tokens, ++it, token::Token{SYMBOL_TO_NAME.at(s), token::type::SYMBOL, token.line, token.column});
     }
     break;
   }
@@ -556,32 +492,22 @@ read_form(const std::list<token::Token> *tokens,
     case ')':
     case ']':
     case '}':
-      return std::make_pair(
-          form::Special{"ReaderError",
-                        "Unmatched delimiter: " + std::string(1, c), token},
-          tokens->end());
+      return std::make_pair(form::Special{"ReaderError", "Unmatched delimiter: " + std::string(1, c), token}, tokens->end());
     case '\'':
     case '`':
     case '~':
     case '@':
-      return expand_quoted_form(tokens, ++it,
-                                token::Token{SYMBOL_TO_NAME.at(c),
-                                             token::type::SYMBOL, token.line,
-                                             token.column});
+      return expand_quoted_form(tokens, ++it, token::Token{SYMBOL_TO_NAME.at(c), token::type::SYMBOL, token.line, token.column});
     case '^':
       return expand_meta_quoted_form(tokens, ++it,
-                                     token::Token{SYMBOL_TO_NAME.at(c),
-                                                  token::type::SYMBOL,
-                                                  token.line, token.column});
+                                     token::Token{SYMBOL_TO_NAME.at(c), token::type::SYMBOL, token.line, token.column});
     }
     break;
   }
   case token::type::STRING: {
     std::string s = std::get<std::string>(token.value);
     if (s.size() < 2 || s.back() != '"') {
-      return std::make_pair(
-          form::Special{"ReaderError", "EOF: unbalanced quote", token},
-          tokens->end());
+      return std::make_pair(form::Special{"ReaderError", "EOF: unbalanced quote", token}, tokens->end());
     } else {
       s = s.substr(1, s.size() - 2);
       token.value = unescape(s);
@@ -591,9 +517,7 @@ read_form(const std::list<token::Token> *tokens,
   case token::type::RAW_STRING: {
     std::string s = std::get<std::string>(token.value);
     if (s.size() < 3 || s.back() != '"') {
-      return std::make_pair(
-          form::Special{"ReaderError", "EOF: unbalanced quote", token},
-          tokens->end());
+      return std::make_pair(form::Special{"ReaderError", "EOF: unbalanced quote", token}, tokens->end());
     } else {
       token.value = s.substr(2, s.size() - 3);
     }
@@ -605,10 +529,8 @@ read_form(const std::list<token::Token> *tokens,
   return std::make_pair(token, ++it);
 }
 
-inline std::optional<
-    std::pair<token::Token, std::list<token::Token>::const_iterator>>
-read_useful_token(const std::list<token::Token> *tokens,
-                  std::list<token::Token>::const_iterator it) {
+inline std::optional<std::pair<token::Token, std::list<token::Token>::const_iterator>>
+read_useful_token(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it) {
   while (it != tokens->end()) {
     auto token = *it;
     switch (token.type) {
@@ -623,10 +545,8 @@ read_useful_token(const std::list<token::Token> *tokens,
   return std::nullopt;
 }
 
-inline std::optional<
-    std::pair<form::Form, std::list<token::Token>::const_iterator>>
-read_useful_form(const std::list<token::Token> *tokens,
-                 std::list<token::Token>::const_iterator it) {
+inline std::optional<std::pair<form::Form, std::list<token::Token>::const_iterator>>
+read_useful_form(const std::list<token::Token> *tokens, std::list<token::Token>::const_iterator it) {
   if (auto ret_opt = read_useful_token(tokens, it)) {
     auto ret = ret_opt.value();
     return read_form(tokens, ret.second);

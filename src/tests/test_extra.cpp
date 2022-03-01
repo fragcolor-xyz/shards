@@ -26,40 +26,30 @@ int main(int argc, char *argv[]) {
 
 namespace chainblocks {
 namespace BGFX_Tests {
-  extern void testVertexAttribute();
-  extern void testModel();
-  extern void testCamera();
-  extern void testDraw();
-  extern void testUniforms();
-  extern void testShaderCompiler();
-  extern void testScreenshot();
-}
+extern void testVertexAttribute();
+extern void testModel();
+extern void testCamera();
+extern void testDraw();
+extern void testUniforms();
+extern void testShaderCompiler();
+extern void testScreenshot();
+} // namespace BGFX_Tests
 namespace GLTF_Tests {
-  extern void testLoad();
+extern void testLoad();
 }
-}
+} // namespace chainblocks
 
 using namespace chainblocks;
 
-TEST_CASE("GFX-VertexAttribute", "[gfx]") {
-  BGFX_Tests::testVertexAttribute();
-}
+TEST_CASE("GFX-VertexAttribute", "[gfx]") { BGFX_Tests::testVertexAttribute(); }
 
-TEST_CASE("GFX-Model", "[gfx]") {
-  BGFX_Tests::testModel();
-}
+TEST_CASE("GFX-Model", "[gfx]") { BGFX_Tests::testModel(); }
 
-TEST_CASE("GFX-Camera", "[gfx]") {
-  BGFX_Tests::testCamera();
-}
+TEST_CASE("GFX-Camera", "[gfx]") { BGFX_Tests::testCamera(); }
 
-TEST_CASE("GFX-Draw", "[gfx]") {
-  BGFX_Tests::testDraw();
-}
+TEST_CASE("GFX-Draw", "[gfx]") { BGFX_Tests::testDraw(); }
 
-TEST_CASE("GFX-Uniforms", "[gfx]") {
-  BGFX_Tests::testUniforms();
-}
+TEST_CASE("GFX-Uniforms", "[gfx]") { BGFX_Tests::testUniforms(); }
 
 TEST_CASE("GFX-ShaderCompiler", "[gfx]") { //[!mayfail]
   BGFX_Tests::testShaderCompiler();
@@ -69,6 +59,4 @@ TEST_CASE("GFX-Screenshot", "[gfx]") { //[!mayfail]
   BGFX_Tests::testScreenshot();
 }
 
-TEST_CASE("GLTF-Load", "[gltf]") {
-  GLTF_Tests::testLoad();
-}
+TEST_CASE("GLTF-Load", "[gltf]") { GLTF_Tests::testLoad(); }

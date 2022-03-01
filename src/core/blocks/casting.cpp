@@ -11,19 +11,16 @@
 namespace chainblocks {
 struct FromImage {
   // TODO SIMD this
-  template <CBType OF>
-  void toSeq(std::vector<Var> &output, const CBVar &input) {
+  template <CBType OF> void toSeq(std::vector<Var> &output, const CBVar &input) {
     if constexpr (OF == CBType::Float) {
       // assume we want 0-1 normalized values
       if (input.valueType != CBType::Image)
         throw ActivationError("Expected Image type.");
 
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-          CBIMAGE_FLAGS_16BITS_INT)
+      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               CBIMAGE_FLAGS_32BITS_FLOAT)
+      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
 
       const int w = int(input.payload.imageValue.width);
@@ -39,15 +36,13 @@ struct FromImage {
           output[i].payload.floatValue = fval;
         }
       } else if (pixsize == 2) {
-        const auto u16 =
-            reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
+        const auto u16 = reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
         for (int i = 0; i < flatsize; i++) {
           const auto fval = double(u16[i]) / 65535.0;
           output[i].payload.floatValue = fval;
         }
       } else if (pixsize == 4) {
-        const auto f32 =
-            reinterpret_cast<float *>(input.payload.imageValue.data);
+        const auto f32 = reinterpret_cast<float *>(input.payload.imageValue.data);
         for (int i = 0; i < flatsize; i++) {
           output[i].payload.floatValue = f32[i];
         }
@@ -59,9 +54,7 @@ struct FromImage {
 };
 
 struct FromSeq {
-  template <CBType OF>
-  void toImage(std::vector<uint8_t> &buffer, int w, int h, int c,
-               const CBVar &input) {
+  template <CBType OF> void toImage(std::vector<uint8_t> &buffer, int w, int h, int c, const CBVar &input) {
     // TODO SIMD this
     if (input.payload.seqValue.len == 0)
       throw ActivationError("Input sequence was empty.");
@@ -72,16 +65,14 @@ struct FromSeq {
     if constexpr (OF == CBType::Float) {
       // assuming it's scaled 0-1
       for (int i = 0; i < flatsize; i++) {
-        buffer[i] = uint8_t(
-            input.payload.seqValue.elements[i].payload.floatValue * 255.0);
+        buffer[i] = uint8_t(input.payload.seqValue.elements[i].payload.floatValue * 255.0);
       }
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
     }
   }
 
-  template <CBType OF>
-  void toBytes(std::vector<uint8_t> &buffer, const CBVar &input) {
+  template <CBType OF> void toBytes(std::vector<uint8_t> &buffer, const CBVar &input) {
     // TODO SIMD this
     if (input.payload.seqValue.len == 0)
       throw ActivationError("Input sequence was empty.");
@@ -103,8 +94,7 @@ struct FromSeq {
 };
 
 struct FromBytes {
-  template <CBType OF>
-  void toSeq(std::vector<Var> &output, const CBVar &input) {
+  template <CBType OF> void toSeq(std::vector<Var> &output, const CBVar &input) {
     if constexpr (OF == CBType::Int) {
       // assume we want 0-1 normalized values
       if (input.valueType != CBType::Bytes)
@@ -159,8 +149,7 @@ template <CBType CBTYPE> struct ToString1 {
     // do not .clear here, for speed, let From manage that
     if constexpr (CBTYPE == CBType::Bytes) {
       _output.clear();
-      _output.assign((const char *)input.payload.bytesValue,
-                     size_t(input.payload.bytesSize));
+      _output.assign((const char *)input.payload.bytesValue, size_t(input.payload.bytesSize));
     } else {
       throw ActivationError("Conversion pair not implemented yet.");
     }
@@ -175,14 +164,9 @@ template <CBType FROMTYPE> struct ToImage {
   static CBTypesInfo inputTypes() { return _inputType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters _params{
-      {"Width", CBCCSTR("The width of the output image."), {CoreInfo::IntType}},
-      {"Height",
-       CBCCSTR("The height of the output image."),
-       {CoreInfo::IntType}},
-      {"Channels",
-       CBCCSTR("The channels of the output image."),
-       {CoreInfo::IntType}}};
+  static inline Parameters _params{{"Width", CBCCSTR("The width of the output image."), {CoreInfo::IntType}},
+                                   {"Height", CBCCSTR("The height of the output image."), {CoreInfo::IntType}},
+                                   {"Channels", CBCCSTR("The channels of the output image."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -208,16 +192,14 @@ template <CBType FROMTYPE> struct ToImage {
       _height = uint16_t(value.payload.intValue);
       break;
     case 2:
-      _channels = uint8_t(
-          std::min(CBInt(4), std::max(CBInt(1), value.payload.intValue)));
+      _channels = uint8_t(std::min(CBInt(4), std::max(CBInt(1), value.payload.intValue)));
       break;
     }
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     FromSeq c;
-    c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels),
-                        input);
+    c.toImage<FROMTYPE>(_buffer, int(_width), int(_height), int(_channels), input);
     return Var(&_buffer.front(), _width, _height, _channels, 0);
   }
 
@@ -270,8 +252,7 @@ template <CBType ToType> struct ToNumber {
     return result;
   }
 
-  const NumberTypeTraits *
-  determineFixedSeqNumberType(const CBTypeInfo &typeInfo) {
+  const NumberTypeTraits *determineFixedSeqNumberType(const CBTypeInfo &typeInfo) {
     if (!typeInfo.fixedSize) {
       return nullptr;
     }
@@ -279,8 +260,7 @@ template <CBType ToType> struct ToNumber {
     const NumberTypeTraits *fixedElemNumberType = nullptr;
     for (size_t i = 0; i < typeInfo.seqTypes.len; i++) {
       const CBTypeInfo &elementType = typeInfo.seqTypes.elements[i];
-      const NumberTypeTraits *currentElemNumberType =
-          NumberTypeLookup::getInstance().get(elementType.basicType);
+      const NumberTypeTraits *currentElemNumberType = NumberTypeLookup::getInstance().get(elementType.basicType);
       if (!currentElemNumberType)
         return nullptr;
       if (i == 0) {
@@ -301,21 +281,17 @@ template <CBType ToType> struct ToNumber {
       throw ComposeError("Conversion not implemented for this type");
     }
 
-    _outputNumberType =
-        NumberTypeLookup::getInstance().get(_outputVectorType->numberType);
-    _inputVectorType =
-        VectorTypeLookup::getInstance().get(data.inputType.basicType);
+    _outputNumberType = NumberTypeLookup::getInstance().get(_outputVectorType->numberType);
+    _inputVectorType = VectorTypeLookup::getInstance().get(data.inputType.basicType);
 
     if (_inputVectorType) {
-      _numberConversion = NumberTypeLookup::getInstance().getConversion(
-          _inputVectorType->numberType, _outputVectorType->numberType);
+      _numberConversion =
+          NumberTypeLookup::getInstance().getConversion(_inputVectorType->numberType, _outputVectorType->numberType);
       cbassert(_numberConversion);
     } else if (data.inputType.basicType == Seq) {
-      const NumberTypeTraits *fixedNumberType =
-          determineFixedSeqNumberType(data.inputType);
+      const NumberTypeTraits *fixedNumberType = determineFixedSeqNumberType(data.inputType);
       if (fixedNumberType) {
-        _numberConversion =
-            fixedNumberType->conversionTable.get(_outputNumberType->type);
+        _numberConversion = fixedNumberType->conversionTable.get(_outputNumberType->type);
         cbassert(_numberConversion);
 
         OVERRIDE_ACTIVATE(data, activateSeqElementsFixed);
@@ -327,8 +303,7 @@ template <CBType ToType> struct ToNumber {
 
   void parseVector(CBVar &output, const CBVar &input) {
     const VectorTypeTraits *inputVectorType =
-        _inputVectorType ? _inputVectorType
-                         : VectorTypeLookup::getInstance().get(input.valueType);
+        _inputVectorType ? _inputVectorType : VectorTypeLookup::getInstance().get(input.valueType);
     if (!inputVectorType) {
       throw ActivationError("Cannot cast given input type.");
     }
@@ -336,16 +311,14 @@ template <CBType ToType> struct ToNumber {
     const NumberConversion *conversion =
         _numberConversion
             ? _numberConversion
-            : NumberTypeLookup::getInstance().getConversion(
-                  inputVectorType->numberType, _outputVectorType->numberType);
+            : NumberTypeLookup::getInstance().getConversion(inputVectorType->numberType, _outputVectorType->numberType);
     cbassert(conversion);
 
     // Can reduce call overhead by adding a single ConvertMultiple function with
     // in/out lengths
     uint8_t *srcPtr = (uint8_t *)&input.payload;
     uint8_t *dstPtr = (uint8_t *)&output.payload;
-    size_t numToConvert =
-        std::min(_outputVectorType->dimension, inputVectorType->dimension);
+    size_t numToConvert = std::min(_outputVectorType->dimension, inputVectorType->dimension);
     for (size_t i = 0; i < numToConvert; i++) {
       conversion->convertOne(srcPtr, dstPtr);
       srcPtr += conversion->inStride;
@@ -358,14 +331,12 @@ template <CBType ToType> struct ToNumber {
     for (size_t i = 0; i < sequence.len; i++) {
       const CBVar &elem = sequence.elements[i];
 
-      const NumberTypeTraits *elemNumberType =
-          NumberTypeLookup::getInstance().get(elem.valueType);
+      const NumberTypeTraits *elemNumberType = NumberTypeLookup::getInstance().get(elem.valueType);
       if (!elemNumberType) {
         throw ActivationError("Cannot cast given sequence element type.");
       }
 
-      const NumberConversion *conversion =
-          elemNumberType->conversionTable.get(_outputVectorType->numberType);
+      const NumberConversion *conversion = elemNumberType->conversionTable.get(_outputVectorType->numberType);
       cbassert(conversion);
 
       conversion->convertOne(&elem.payload, dstPtr);
@@ -374,8 +345,7 @@ template <CBType ToType> struct ToNumber {
   }
 
   void skipStringSeparators(const char *&strPtr) {
-    while (*strPtr &&
-           (std::isspace(strPtr[0]) || strPtr[0] == ',' || strPtr[0] == ';')) {
+    while (*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == ',' || strPtr[0] == ';')) {
       ++strPtr;
     }
   }
@@ -385,8 +355,7 @@ template <CBType ToType> struct ToNumber {
     const char *strPtr = str;
 
     // Skip seq header
-    while (*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == '(' ||
-                       strPtr[0] == '{' || strPtr[0] == '[')) {
+    while (*strPtr && (std::isspace(strPtr[0]) || strPtr[0] == '(' || strPtr[0] == '{' || strPtr[0] == '[')) {
       ++strPtr;
     }
 
@@ -398,8 +367,7 @@ template <CBType ToType> struct ToNumber {
   }
 
   void parseEnumValue(CBVar &output, CBEnum value) {
-    _numberConversion =
-        getEnumNumberType()->conversionTable.get(_outputVectorType->numberType);
+    _numberConversion = getEnumNumberType()->conversionTable.get(_outputVectorType->numberType);
     cbassert(_numberConversion);
 
     _numberConversion->convertOne(&value, &output.payload);
@@ -438,8 +406,7 @@ template <CBType ToType> struct ToNumber {
       parseEnumValue(output, input.payload.enumValue);
       break;
     case String:
-      parseStringElements(output, input.payload.stringValue,
-                          input.payload.stringLen);
+      parseStringElements(output, input.payload.stringValue, input.payload.stringLen);
       break;
     default:
       parseVector(output, input);
@@ -468,8 +435,7 @@ RUNTIME_BLOCK_END(ToString);
 
 struct ToHex {
   VarStringStream stream;
-  static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType,
-                                 CoreInfo::StringType};
+  static inline Types toHexTypes{CoreInfo::IntType, CoreInfo::BytesType, CoreInfo::StringType};
   static CBTypesInfo inputTypes() { return toHexTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -541,19 +507,18 @@ template <CBType ET> struct ExpectX {
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != ET)) {
       CBLOG_ERROR("Unexpected value: {}", input);
-      throw ActivationError("Expected type " + type2Name(ET) + " got instead " +
-                            type2Name(input.valueType));
+      throw ActivationError("Expected type " + type2Name(ET) + " got instead " + type2Name(input.valueType));
     }
     return input;
   }
 };
 
-#define EXPECT_BLOCK(_name_, _cbtype_)                                         \
-  struct Expect##_name_ : public ExpectX<_cbtype_> {};                         \
-  RUNTIME_CORE_BLOCK(Expect##_name_);                                          \
-  RUNTIME_BLOCK_inputTypes(Expect##_name_);                                    \
-  RUNTIME_BLOCK_outputTypes(Expect##_name_);                                   \
-  RUNTIME_BLOCK_activate(Expect##_name_);                                      \
+#define EXPECT_BLOCK(_name_, _cbtype_)                 \
+  struct Expect##_name_ : public ExpectX<_cbtype_> {}; \
+  RUNTIME_CORE_BLOCK(Expect##_name_);                  \
+  RUNTIME_BLOCK_inputTypes(Expect##_name_);            \
+  RUNTIME_BLOCK_outputTypes(Expect##_name_);           \
+  RUNTIME_BLOCK_activate(Expect##_name_);              \
   RUNTIME_BLOCK_END(Expect##_name_);
 
 EXPECT_BLOCK(Float, Float);
@@ -573,11 +538,10 @@ EXPECT_BLOCK(Table, Table);
 EXPECT_BLOCK(Chain, CBType::Chain);
 
 template <Type &ET> struct ExpectXComplex {
-  static inline Parameters params{
-      {"Unsafe",
-       CBCCSTR("If we should skip performing deep type hashing and comparison. "
-               "(generally fast but this might improve performance)"),
-       {CoreInfo::BoolType}}};
+  static inline Parameters params{{"Unsafe",
+                                   CBCCSTR("If we should skip performing deep type hashing and comparison. "
+                                           "(generally fast but this might improve performance)"),
+                                   {CoreInfo::BoolType}}};
   static inline uint64_t ExpectedHash = deriveTypeHash(ET);
 
   bool _unsafe{false};
@@ -585,9 +549,7 @@ template <Type &ET> struct ExpectXComplex {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return ET; }
 
-  void setParam(int index, const CBVar &value) {
-    _unsafe = value.payload.boolValue;
-  }
+  void setParam(int index, const CBVar &value) { _unsafe = value.payload.boolValue; }
 
   CBVar getParam(int index) { return Var(_unsafe); }
 
@@ -595,14 +557,12 @@ template <Type &ET> struct ExpectXComplex {
     const static CBTypeInfo info = ET;
     if (unlikely(input.valueType != info.basicType)) {
       CBLOG_ERROR("Unexpected value: {} expected type: {}", input, info);
-      throw ActivationError("Expected type " + type2Name(info.basicType) +
-                            " got instead " + type2Name(input.valueType));
+      throw ActivationError("Expected type " + type2Name(info.basicType) + " got instead " + type2Name(input.valueType));
     } else if (!_unsafe) {
       auto inputTypeHash = deriveTypeHash(input);
       if (unlikely(inputTypeHash != ExpectedHash)) {
         CBLOG_ERROR("Unexpected value: {} expected type: {}", input, info);
-        throw ActivationError("Expected type " + type2Name(info.basicType) +
-                              " got instead " + type2Name(input.valueType));
+        throw ActivationError("Expected type " + type2Name(info.basicType) + " got instead " + type2Name(input.valueType));
       }
     }
     return input;
@@ -620,15 +580,14 @@ struct ExpectLike {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Parameters params{
-      {"Example",
-       CBCCSTR("The example value to expect, in the case of a used chain, the "
-               "output type of that chain will be used."),
-       {CoreInfo::AnyType}},
-      {"Unsafe",
-       CBCCSTR("If we should skip performing deep type hashing and comparison. "
-               "(generally fast but this might improve performance)"),
-       {CoreInfo::BoolType}}};
+  static inline Parameters params{{"Example",
+                                   CBCCSTR("The example value to expect, in the case of a used chain, the "
+                                           "output type of that chain will be used."),
+                                   {CoreInfo::AnyType}},
+                                  {"Unsafe",
+                                   CBCCSTR("If we should skip performing deep type hashing and comparison. "
+                                           "(generally fast but this might improve performance)"),
+                                   {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
@@ -655,8 +614,7 @@ struct ExpectLike {
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (_example.isVariable()) {
-      throw ComposeError(
-          "The example value of ExpectLike cannot be a variable");
+      throw ComposeError("The example value of ExpectLike cannot be a variable");
     } else {
       if (_expectedType.basicType != None && _dispose) {
         freeDerivedInfo(_expectedType);
@@ -680,14 +638,12 @@ struct ExpectLike {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (unlikely(input.valueType != _expectedType.basicType)) {
-      CBLOG_ERROR("Unexpected value: {} expected type: {}", input,
-                  _expectedType);
+      CBLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
       throw ActivationError("Unexpected input type");
     } else if (!_unsafe) {
       auto inputTypeHash = deriveTypeHash(input);
       if (unlikely(inputTypeHash != _outputTypeHash)) {
-        CBLOG_ERROR("Unexpected value: {} expected type: {}", input,
-                    _expectedType);
+        CBLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
         throw ActivationError("Unexpected input type");
       }
     }
@@ -703,21 +659,16 @@ struct ToBase64 {
   CBVar activate(CBContext *context, const CBVar &input) {
     output.clear();
     if (input.valueType == Bytes) {
-      auto req =
-          boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
+      auto req = boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
       output.resize(req);
-      auto written = boost::beast::detail::base64::encode(
-          output.data(), input.payload.bytesValue, input.payload.bytesSize);
+      auto written = boost::beast::detail::base64::encode(output.data(), input.payload.bytesValue, input.payload.bytesSize);
       output.resize(written);
     } else {
-      const auto len =
-          input.payload.stringLen > 0 || input.payload.stringValue == nullptr
-              ? input.payload.stringLen
-              : strlen(input.payload.stringValue);
+      const auto len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr ? input.payload.stringLen
+                                                                                           : strlen(input.payload.stringValue);
       auto req = boost::beast::detail::base64::encoded_size(len);
       output.resize(req);
-      auto written = boost::beast::detail::base64::encode(
-          output.data(), input.payload.stringValue, len);
+      auto written = boost::beast::detail::base64::encode(output.data(), input.payload.stringValue, len);
       output.resize(written);
     }
     return Var(output);
@@ -730,14 +681,11 @@ struct FromBase64 {
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
   CBVar activate(CBContext *context, const CBVar &input) {
     output.clear();
-    auto len =
-        input.payload.stringLen > 0 || input.payload.stringValue == nullptr
-            ? input.payload.stringLen
-            : strlen(input.payload.stringValue);
+    auto len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr ? input.payload.stringLen
+                                                                                   : strlen(input.payload.stringValue);
     auto req = boost::beast::detail::base64::decoded_size(len);
     output.resize(req);
-    auto [written, _] = boost::beast::detail::base64::decode(
-        output.data(), input.payload.stringValue, len);
+    auto [written, _] = boost::beast::detail::base64::decode(output.data(), input.payload.stringValue, len);
     output.resize(written);
     return Var(output.data(), output.size());
   }

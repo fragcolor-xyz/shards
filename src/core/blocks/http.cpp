@@ -60,31 +60,19 @@ namespace Http {
 // those blocks for non emscripten platforms are implemented in Rust
 
 struct Base {
-  static inline Types FullStrOutputTypes{
-      {CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::StringType}};
-  static inline Types FullBytesOutputTypes{
-      {CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::BytesType}};
-  static inline std::array<CBString, 3> FullOutputKeys{"status", "headers",
-                                                       "body"};
-  static inline Type FullStrOutputType =
-      Type::TableOf(FullStrOutputTypes, FullOutputKeys);
-  static inline Type FullBytesOutputType =
-      Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
+  static inline Types FullStrOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::StringType}};
+  static inline Types FullBytesOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::BytesType}};
+  static inline std::array<CBString, 3> FullOutputKeys{"status", "headers", "body"};
+  static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys);
+  static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
 
   static inline Parameters params{
-      {"URL",
-       CBCCSTR("The url to request to"),
-       {CoreInfo::StringType, CoreInfo::StringVarType}},
+      {"URL", CBCCSTR("The url to request to"), {CoreInfo::StringType, CoreInfo::StringVarType}},
       {"Headers",
        CBCCSTR("The headers to use for the request."),
-       {CoreInfo::NoneType, CoreInfo::StringTableType,
-        CoreInfo::StringVarTableType}},
-      {"Timeout",
-       CBCCSTR("How many seconds to wait for the request to complete."),
-       {CoreInfo::IntType}},
-      {"Bytes",
-       CBCCSTR("If instead of a string the block should outout bytes."),
-       {CoreInfo::BoolType}},
+       {CoreInfo::NoneType, CoreInfo::StringTableType, CoreInfo::StringVarTableType}},
+      {"Timeout", CBCCSTR("How many seconds to wait for the request to complete."), {CoreInfo::IntType}},
+      {"Bytes", CBCCSTR("If instead of a string the block should outout bytes."), {CoreInfo::BoolType}},
       {"FullResponse",
        CBCCSTR("If the output should be a table with the full response, "
                "including headers and status."),
@@ -170,8 +158,7 @@ struct Base {
     if (self->fullResponse) {
       const auto len = emscripten_fetch_get_response_headers_length(fetch);
       self->hbuffer.resize(len + 1); // well I think the + 1 is not needed
-      emscripten_fetch_get_response_headers(fetch, self->hbuffer.data(),
-                                            len + 1);
+      emscripten_fetch_get_response_headers(fetch, self->hbuffer.data(), len + 1);
       auto &mvar = self->outMap["headers"];
       auto m = reinterpret_cast<CBMap *>(mvar.payload.tableValue.opaque);
       std::istringstream resp(self->hbuffer);
@@ -215,8 +202,7 @@ struct Base {
 };
 
 template <const string_view &METHOD> struct GetLike : public Base {
-  static inline Types InputTypes{
-      {CoreInfo::NoneType, CoreInfo::StringTableType}};
+  static inline Types InputTypes{{CoreInfo::NoneType, CoreInfo::StringTableType}};
   static CBTypesInfo inputTypes() { return InputTypes; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -297,8 +283,7 @@ constexpr string_view HEAD = "HEAD";
 using Head = GetLike<HEAD>;
 
 template <const string_view &METHOD> struct PostLike : public Base {
-  static inline Types InputTypes{{CoreInfo::NoneType, CoreInfo::StringTableType,
-                                  CoreInfo::BytesType, CoreInfo::StringType}};
+  static inline Types InputTypes{{CoreInfo::NoneType, CoreInfo::StringTableType, CoreInfo::BytesType, CoreInfo::StringType}};
   static CBTypesInfo inputTypes() { return InputTypes; }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -318,8 +303,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         std::string data(key);
-        std::transform(data.begin(), data.end(), data.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+        std::transform(data.begin(), data.end(), data.begin(), [](unsigned char c) { return std::tolower(c); });
         if (data == "content-type") {
           hasContentType = true;
         }
@@ -412,8 +396,7 @@ using Delete = PostLike<DELETE>;
 
 struct Peer : public std::enable_shared_from_this<Peer> {
   static constexpr uint32_t PeerCC = 'httP';
-  static inline Type Info{
-      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
+  static inline Type Info{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
 
   std::shared_ptr<CBChain> chain;
   std::shared_ptr<tcp::socket> socket;
@@ -427,15 +410,9 @@ struct PeerError {
 
 struct Server {
   static inline Parameters params{
-      {"Handler",
-       CBCCSTR("The chain that will be spawned and handle a remote request."),
-       {CoreInfo::ChainOrNone}},
-      {"Endpoint",
-       CBCCSTR("The URL from where your service can be accessed by a client."),
-       {CoreInfo::StringType}},
-      {"Port",
-       CBCCSTR("The port this service will use."),
-       {CoreInfo::IntType}}};
+      {"Handler", CBCCSTR("The chain that will be spawned and handle a remote request."), {CoreInfo::ChainOrNone}},
+      {"Endpoint", CBCCSTR("The URL from where your service can be accessed by a client."), {CoreInfo::StringType}},
+      {"Port", CBCCSTR("The port this service will use."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -448,8 +425,7 @@ struct Server {
     case 0: {
       _handlerMaster = val;
       if (_handlerMaster.valueType == CBType::Chain)
-        _pool.reset(
-            new ChainDoppelgangerPool<Peer>(_handlerMaster.payload.chainValue));
+        _pool.reset(new ChainDoppelgangerPool<Peer>(_handlerMaster.payload.chainValue));
     } break;
     case 1:
       _endpoint = val.payload.stringValue;
@@ -492,23 +468,21 @@ struct Server {
         _pool->release(p);
     });
     peer->socket.reset(new tcp::socket(*_ioc));
-    _acceptor->async_accept(
-        *peer->socket, [context, peer, this](beast::error_code ec) {
-          if (!ec) {
-            auto node = context->main->node.lock();
-            if (node) {
-              peer->chain->variables["Http.Server.Socket"] =
-                  Var::Object(peer.get(), CoreCC, Peer::PeerCC);
-              node->schedule(peer->chain, Var::Empty, false);
-            } else {
-              _pool->release(peer);
-            }
-          } else {
-            _pool->release(peer);
-          }
-          // continue accepting the next
-          accept_once(context);
-        });
+    _acceptor->async_accept(*peer->socket, [context, peer, this](beast::error_code ec) {
+      if (!ec) {
+        auto node = context->main->node.lock();
+        if (node) {
+          peer->chain->variables["Http.Server.Socket"] = Var::Object(peer.get(), CoreCC, Peer::PeerCC);
+          node->schedule(peer->chain, Var::Empty, false);
+        } else {
+          _pool->release(peer);
+        }
+      } else {
+        _pool->release(peer);
+      }
+      // continue accepting the next
+      accept_once(context);
+    });
   }
 
   void warmup(CBContext *context) {
@@ -530,8 +504,7 @@ struct Server {
     try {
       _ioc->poll();
     } catch (PeerError pe) {
-      CBLOG_DEBUG("Http request error: {} from {} - closing connection.",
-                  pe.ec.message(), pe.source);
+      CBLOG_DEBUG("Http request error: {} from {} - closing connection.", pe.ec.message(), pe.source);
       stop(pe.peer->chain.get());
     }
     return input;
@@ -549,8 +522,7 @@ struct Server {
       chain->node = context->main->node;
       auto res = composeChain(
           chain,
-          [](const struct CBlock *errorBlock, const char *errorTxt,
-             CBBool nonfatalWarning, void *userData) {
+          [](const struct CBlock *errorBlock, const char *errorTxt, CBBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               CBLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler chain compose failed");
@@ -602,16 +574,15 @@ struct Read {
     request.body().clear();
     request.clear();
     buffer.clear();
-    http::async_read(*peer->socket, buffer, request,
-                     [&, peer](beast::error_code ec, std::size_t nbytes) {
-                       if (ec) {
-                         // notice there is likehood of done not being valid
-                         // anymore here
-                         throw PeerError{"Read", ec, peer};
-                       } else {
-                         done = true;
-                       }
-                     });
+    http::async_read(*peer->socket, buffer, request, [&, peer](beast::error_code ec, std::size_t nbytes) {
+      if (ec) {
+        // notice there is likehood of done not being valid
+        // anymore here
+        throw PeerError{"Read", ec, peer};
+      } else {
+        done = true;
+      }
+    });
 
     // we suspend here, that's why we captured & above!!
     while (!done) {
@@ -659,14 +630,10 @@ struct Response {
   static CBTypesInfo inputTypes() { return PostInTypes; }
   static CBTypesInfo outputTypes() { return PostInTypes; }
 
-  static inline Parameters params{
-      {"Status",
-       CBCCSTR("The HTTP status code to return."),
-       {CoreInfo::IntType}},
-      {"Headers",
-       CBCCSTR("The headers to attach to this response."),
-       {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
-        CoreInfo::NoneType}}};
+  static inline Parameters params{{"Status", CBCCSTR("The HTTP status code to return."), {CoreInfo::IntType}},
+                                  {"Headers",
+                                   CBCCSTR("The headers to attach to this response."),
+                                   {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -721,16 +688,14 @@ struct Response {
     _response.prepare_payload();
 
     bool done = false;
-    http::async_write(*peer->socket, _response,
-                      [&, peer](beast::error_code ec, std::size_t nbytes) {
-                        if (ec) {
-                          throw PeerError{"Response", ec, peer};
-                        } else {
-                          CBLOG_TRACE("Response: async_write bytes: {}",
-                                      nbytes);
-                          done = true;
-                        }
-                      });
+    http::async_write(*peer->socket, _response, [&, peer](beast::error_code ec, std::size_t nbytes) {
+      if (ec) {
+        throw PeerError{"Response", ec, peer};
+      } else {
+        CBLOG_TRACE("Response: async_write bytes: {}", nbytes);
+        done = true;
+      }
+    });
 
     // we suspend here, that's why we captured & above!!
     while (!done) {
@@ -750,11 +715,9 @@ struct SendFile {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline Parameters params{
-      {"Headers",
-       CBCCSTR("The headers to attach to this response."),
-       {CoreInfo::StringTableType, CoreInfo::StringVarTableType,
-        CoreInfo::NoneType}}};
+  static inline Parameters params{{"Headers",
+                                   CBCCSTR("The headers to attach to this response."),
+                                   {CoreInfo::StringTableType, CoreInfo::StringVarTableType, CoreInfo::NoneType}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -850,21 +813,18 @@ struct SendFile {
       _404_response.body() = "File not found.";
       _404_response.prepare_payload();
 
-      http::async_write(*peer->socket, _404_response,
-                        [&, peer](beast::error_code ec, std::size_t nbytes) {
-                          if (ec) {
-                            throw PeerError{"SendFile:1", ec, peer};
-                          } else {
-                            CBLOG_TRACE("SendFile:1: async_write bytes: {}",
-                                        nbytes);
-                            done = true;
-                          }
-                        });
+      http::async_write(*peer->socket, _404_response, [&, peer](beast::error_code ec, std::size_t nbytes) {
+        if (ec) {
+          throw PeerError{"SendFile:1", ec, peer};
+        } else {
+          CBLOG_TRACE("SendFile:1: async_write bytes: {}", nbytes);
+          done = true;
+        }
+      });
     } else {
       _response.clear();
       _response.result(http::status::ok);
-      _response.set(http::field::content_type,
-                    mime_type(input.payload.stringValue));
+      _response.set(http::field::content_type, mime_type(input.payload.stringValue));
       _response.body() = std::move(file);
 
       // add custom headers
@@ -878,16 +838,14 @@ struct SendFile {
 
       _response.prepare_payload();
 
-      http::async_write(*peer->socket, _response,
-                        [&, peer](beast::error_code ec, std::size_t nbytes) {
-                          if (ec) {
-                            throw PeerError{"SendFile:2", ec, peer};
-                          } else {
-                            CBLOG_TRACE("SendFile:2: async_write bytes: {}",
-                                        nbytes);
-                            done = true;
-                          }
-                        });
+      http::async_write(*peer->socket, _response, [&, peer](beast::error_code ec, std::size_t nbytes) {
+        if (ec) {
+          throw PeerError{"SendFile:2", ec, peer};
+        } else {
+          CBLOG_TRACE("SendFile:2: async_write bytes: {}", nbytes);
+          done = true;
+        }
+      });
     }
 
     // we suspend here, that's why we captured & above!!

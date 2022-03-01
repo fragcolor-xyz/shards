@@ -24,8 +24,7 @@ struct FFTBase {
   std::vector<float> _fscratch;
   std::vector<CBVar> _vscratch;
 
-  static inline Types FloatTypes{
-      {CoreInfo::FloatSeqType, CoreInfo::Float2SeqType, CoreInfo::AudioType}};
+  static inline Types FloatTypes{{CoreInfo::FloatSeqType, CoreInfo::Float2SeqType, CoreInfo::AudioType}};
 
   void cleanup() {
     if (_state) {
@@ -43,13 +42,9 @@ struct FFTBase {
 struct FFT : public FFTBase {
   static CBTypesInfo inputTypes() { return FloatTypes; }
 
-  static CBTypesInfo outputTypes() {
-    return CoreInfo::Float2SeqType;
-  } // complex numbers
+  static CBTypesInfo outputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     if (data.inputType.basicType == CBType::Audio) {
@@ -65,8 +60,7 @@ struct FFT : public FFTBase {
     return CoreInfo::Float2SeqType;
   }
 
-  template <CBType ITYPE>
-  CBVar tactivate(CBContext *context, const CBVar &input) {
+  template <CBType ITYPE> CBVar tactivate(CBContext *context, const CBVar &input) {
     int len = 0;
     if constexpr (ITYPE == CBType::Float || ITYPE == CBType::Float2) {
       len = int(input.payload.seqValue.len);
@@ -109,8 +103,7 @@ struct FFT : public FFTBase {
     if constexpr (ITYPE == CBType::Float2) {
       int idx = 0;
       for (const auto &fvar : input) {
-        _cscratch2[idx++] = {float(fvar.payload.float2Value[0]),
-                             float(fvar.payload.float2Value[1])};
+        _cscratch2[idx++] = {float(fvar.payload.float2Value[0]), float(fvar.payload.float2Value[1])};
       }
       kiss_fft(_state, _cscratch2.data(), _cscratch.data());
     } else if constexpr (ITYPE == CBType::Float) {
@@ -131,40 +124,26 @@ struct FFT : public FFTBase {
     return Var(_vscratch);
   }
 
-  CBVar activateAudio(CBContext *context, const CBVar &input) {
-    return tactivate<CBType::Audio>(context, input);
-  }
+  CBVar activateAudio(CBContext *context, const CBVar &input) { return tactivate<CBType::Audio>(context, input); }
 
-  CBVar activateFloat(CBContext *context, const CBVar &input) {
-    return tactivate<CBType::Float>(context, input);
-  }
+  CBVar activateFloat(CBContext *context, const CBVar &input) { return tactivate<CBType::Float>(context, input); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return tactivate<CBType::Float2>(context, input);
-  }
+  CBVar activate(CBContext *context, const CBVar &input) { return tactivate<CBType::Float2>(context, input); }
 };
 
 struct IFFT : public FFTBase {
   bool _asAudio{false};
   bool _complex{false};
 
-  static CBTypesInfo inputTypes() {
-    return CoreInfo::Float2SeqType;
-  } // complex numbers
+  static CBTypesInfo inputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
 
   static CBTypesInfo outputTypes() { return FloatTypes; }
 
-  static const CBTable *properties() {
-    return &experimental.payload.tableValue;
-  }
+  static const CBTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters Params{
-      {"Audio",
-       CBCCSTR("If the output should be an Audio chunk."),
-       {CoreInfo::BoolType}},
-      {"Complex",
-       CBCCSTR("If the output should be complex numbers (only if not Audio)."),
-       {CoreInfo::BoolType}}};
+      {"Audio", CBCCSTR("If the output should be an Audio chunk."), {CoreInfo::BoolType}},
+      {"Complex", CBCCSTR("If the output should be complex numbers (only if not Audio)."), {CoreInfo::BoolType}}};
 
   CBParametersInfo parameters() { return Params; }
 
@@ -205,8 +184,7 @@ struct IFFT : public FFTBase {
     }
   }
 
-  template <CBType OTYPE>
-  CBVar tactivate(CBContext *context, const CBVar &input) {
+  template <CBType OTYPE> CBVar tactivate(CBContext *context, const CBVar &input) {
     const int len = int(input.payload.seqValue.len);
     if (len <= 0) {
       throw ActivationError("Expected a positive input length");
@@ -238,8 +216,7 @@ struct IFFT : public FFTBase {
 
     int idx = 0;
     for (const auto &vf : input) {
-      _cscratch[idx++] = {float(vf.payload.float2Value[0]),
-                          float(vf.payload.float2Value[1])};
+      _cscratch[idx++] = {float(vf.payload.float2Value[0]), float(vf.payload.float2Value[1])};
     }
 
     if constexpr (OTYPE == CBType::Audio) {
@@ -266,17 +243,11 @@ struct IFFT : public FFTBase {
     }
   }
 
-  CBVar activateFloat(CBContext *context, const CBVar &input) {
-    return tactivate<CBType::Float>(context, input);
-  }
+  CBVar activateFloat(CBContext *context, const CBVar &input) { return tactivate<CBType::Float>(context, input); }
 
-  CBVar activateAudio(CBContext *context, const CBVar &input) {
-    return tactivate<CBType::Audio>(context, input);
-  }
+  CBVar activateAudio(CBContext *context, const CBVar &input) { return tactivate<CBType::Audio>(context, input); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    return tactivate<CBType::Float2>(context, input);
-  }
+  CBVar activate(CBContext *context, const CBVar &input) { return tactivate<CBType::Float2>(context, input); }
 };
 
 #if 0

@@ -80,18 +80,15 @@ struct Base {
   std::string _name;
   bool _noCopy = false;
 
-  static inline Parameters producerParams{
-      {"Name", CBCCSTR("The name of the channel."), {CoreInfo::StringType}},
-      {"NoCopy!!",
-       CBCCSTR("Unsafe flag that will improve performance by not copying "
-               "values when sending them thru the channel."),
-       {CoreInfo::BoolType}}};
+  static inline Parameters producerParams{{"Name", CBCCSTR("The name of the channel."), {CoreInfo::StringType}},
+                                          {"NoCopy!!",
+                                           CBCCSTR("Unsafe flag that will improve performance by not copying "
+                                                   "values when sending them thru the channel."),
+                                           {CoreInfo::BoolType}}};
 
   static inline Parameters consumerParams{
       {"Name", CBCCSTR("The name of the channel."), {CoreInfo::StringType}},
-      {"Buffer",
-       CBCCSTR("The amount of values to buffer before outputting them."),
-       {CoreInfo::IntType}}};
+      {"Buffer", CBCCSTR("The amount of values to buffer before outputting them."), {CoreInfo::IntType}}};
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -116,10 +113,8 @@ struct Base {
     return CBVar();
   }
 
-  template <typename T>
-  void verifyInputType(T &channel, const CBInstanceData &data) {
-    if (channel.type.basicType != CBType::None &&
-        channel.type != data.inputType) {
+  template <typename T> void verifyInputType(T &channel, const CBInstanceData &data) {
+    if (channel.type.basicType != CBType::None && channel.type != data.inputType) {
       throw CBException("Produce attempted to change produced type: " + _name);
     }
   }
@@ -217,8 +212,7 @@ struct Broadcast : public Base {
     // so we need to lock this operation
     // furthermore we allow multiple broadcasters so the erase needs this
     std::scoped_lock<std::mutex> lock(_mpchannel->submutex);
-    for (auto it = _mpchannel->subscribers.begin();
-         it != _mpchannel->subscribers.end();) {
+    for (auto it = _mpchannel->subscribers.begin(); it != _mpchannel->subscribers.end();) {
       if (it->closed) {
         it = _mpchannel->subscribers.erase(it);
       } else {

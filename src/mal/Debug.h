@@ -18,8 +18,8 @@
 
 #define DEBUG_TRACE_FILE stderr
 
-#define NOOP                                                                   \
-  do {                                                                         \
+#define NOOP \
+  do {       \
   } while (false)
 #define NOTRACE(...) NOOP
 
@@ -41,15 +41,14 @@
 #define TRACE_ENV NOTRACE
 #endif
 
-#define _ASSERT(file, line, condition, ...)                                    \
-  if (!(condition)) {                                                          \
-    printf("Assertion failed at %s(%d): ", file, line);                        \
-    printf(__VA_ARGS__);                                                       \
-    exit(1);                                                                   \
-  } else {                                                                     \
+#define _ASSERT(file, line, condition, ...)             \
+  if (!(condition)) {                                   \
+    printf("Assertion failed at %s(%d): ", file, line); \
+    printf(__VA_ARGS__);                                \
+    exit(1);                                            \
+  } else {                                              \
   }
 
-#define ASSERT(condition, ...)                                                 \
-  _ASSERT(__FILE__, __LINE__, condition, __VA_ARGS__)
+#define ASSERT(condition, ...) _ASSERT(__FILE__, __LINE__, condition, __VA_ARGS__)
 
 #endif // INCLUDE_DEBUG_H

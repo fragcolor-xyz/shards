@@ -40,20 +40,16 @@ enum class BasicTypes {
 struct CoreInfo {
   static inline Type NoneType{{CBType::None}};
 
-#define CB_CORE_TYPE_DEF(_cbtype_)                                             \
-  static inline Type _cbtype_##Type{{CBType::_cbtype_}};                       \
-  static inline Type _cbtype_##SeqType{                                        \
-      {CBType::Seq, {.seqTypes = _cbtype_##Type}}};                            \
-  static inline Type _cbtype_##TableType{                                      \
-      {CBType::Table, {.table = {.types = _cbtype_##Type}}}};                  \
-  static inline Type _cbtype_##VarType{                                        \
-      {CBType::ContextVar, {.contextVarTypes = _cbtype_##Type}}};              \
-  static inline Type _cbtype_##VarSeqType{                                     \
-      {CBType::ContextVar, {.contextVarTypes = _cbtype_##SeqType}}};           \
-  static inline Type _cbtype_##VarTableType {                                  \
-    {                                                                          \
-      CBType::ContextVar, { .contextVarTypes = _cbtype_##TableType }           \
-    }                                                                          \
+#define CB_CORE_TYPE_DEF(_cbtype_)                                                                       \
+  static inline Type _cbtype_##Type{{CBType::_cbtype_}};                                                 \
+  static inline Type _cbtype_##SeqType{{CBType::Seq, {.seqTypes = _cbtype_##Type}}};                     \
+  static inline Type _cbtype_##TableType{{CBType::Table, {.table = {.types = _cbtype_##Type}}}};         \
+  static inline Type _cbtype_##VarType{{CBType::ContextVar, {.contextVarTypes = _cbtype_##Type}}};       \
+  static inline Type _cbtype_##VarSeqType{{CBType::ContextVar, {.contextVarTypes = _cbtype_##SeqType}}}; \
+  static inline Type _cbtype_##VarTableType {                                                            \
+    {                                                                                                    \
+      CBType::ContextVar, { .contextVarTypes = _cbtype_##TableType }                                     \
+    }                                                                                                    \
   }
 
   CB_CORE_TYPE_DEF(Any);
@@ -93,36 +89,27 @@ struct CoreInfo {
 
   static inline Types NoneIntOrFloat{{NoneType, IntType, FloatType}};
 
-  static inline Types Indexables{{Int2Type, Int3Type, Int4Type, Int8Type,
-                                  Int16Type, Float2Type, Float3Type, Float4Type,
-                                  BytesType, ColorType, StringType, AnySeqType,
-                                  AnyTableType}};
+  static inline Types Indexables{{Int2Type, Int3Type, Int4Type, Int8Type, Int16Type, Float2Type, Float3Type, Float4Type,
+                                  BytesType, ColorType, StringType, AnySeqType, AnyTableType}};
 
   static inline Types RIndexables{{BytesType, StringType, AnySeqType}};
 
-  static inline Types FloatVectors{{Float2Type, Float2SeqType, Float3Type,
-                                    Float3SeqType, Float4Type, Float4SeqType}};
-  static inline Types FloatSeqs{
-      {FloatSeqType, Float2SeqType, Float3SeqType, Float4SeqType}};
+  static inline Types FloatVectors{{Float2Type, Float2SeqType, Float3Type, Float3SeqType, Float4Type, Float4SeqType}};
+  static inline Types FloatSeqs{{FloatSeqType, Float2SeqType, Float3SeqType, Float4SeqType}};
   static inline Types FloatSeqsOrAudio{FloatSeqs, {AudioType}};
   static inline Types FloatVectorsOrFloatSeq{
-      {FloatSeqType, Float2Type, Float2SeqType, Float3Type, Float3SeqType,
-       Float4Type, Float4SeqType}};
-  static inline Types FloatVectorsOrVar{FloatVectors,
-                                        {Float2VarType, Float2VarSeqType,
-                                         Float3VarType, Float3VarSeqType,
-                                         Float4VarType, Float4VarSeqType}};
+      {FloatSeqType, Float2Type, Float2SeqType, Float3Type, Float3SeqType, Float4Type, Float4SeqType}};
+  static inline Types FloatVectorsOrVar{
+      FloatVectors, {Float2VarType, Float2VarSeqType, Float3VarType, Float3VarSeqType, Float4VarType, Float4VarSeqType}};
 
   static inline Types IntOrNone{{IntType, NoneType}};
 
   static inline Types IntsVar{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
 
-  static inline Types TakeTypes{{IntType, IntSeqType, IntVarType, IntVarSeqType,
-                                 StringType, StringSeqType, StringVarType,
-                                 StringVarSeqType}};
+  static inline Types TakeTypes{
+      {IntType, IntSeqType, IntVarType, IntVarSeqType, StringType, StringSeqType, StringVarType, StringVarSeqType}};
 
-  static inline Types RTakeTypes{
-      {IntType, IntSeqType, IntVarType, IntVarSeqType}};
+  static inline Types RTakeTypes{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
 
   static inline Types IntsVarOrNone{IntsVar, {NoneType}};
 
@@ -148,18 +135,14 @@ struct CoreInfo {
 
   static inline Types ColorOrNone{{ColorType, NoneType}};
 
-  static inline Types AnyNumbers{
-      {IntType,       IntSeqType,   Int2Type,      Int2SeqType,  Int3Type,
-       Int3SeqType,   Int4Type,     Int4SeqType,   Int8Type,     Int8SeqType,
-       Int16Type,     Int16SeqType, FloatType,     FloatSeqType, Float2Type,
-       Float2SeqType, Float3Type,   Float3SeqType, Float4Type,   Float4SeqType,
-       ColorType,     ColorSeqType}};
+  static inline Types AnyNumbers{{IntType,    IntSeqType,    Int2Type,   Int2SeqType,   Int3Type,   Int3SeqType,
+                                  Int4Type,   Int4SeqType,   Int8Type,   Int8SeqType,   Int16Type,  Int16SeqType,
+                                  FloatType,  FloatSeqType,  Float2Type, Float2SeqType, Float3Type, Float3SeqType,
+                                  Float4Type, Float4SeqType, ColorType,  ColorSeqType}};
 
-  static inline Types StringOrBytesVarOrNone{
-      {StringVarType, BytesVarType, NoneType}};
+  static inline Types StringOrBytesVarOrNone{{StringVarType, BytesVarType, NoneType}};
 
-  static inline Types StringStringVarOrNone{
-      {StringType, StringVarType, NoneType}};
+  static inline Types StringStringVarOrNone{{StringType, StringVarType, NoneType}};
 
   static inline Types IntOrIntVar{{IntType, IntVarType}};
 };

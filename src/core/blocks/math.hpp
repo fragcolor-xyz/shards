@@ -15,11 +15,9 @@
 namespace chainblocks {
 namespace Math {
 struct Base {
-  static inline Types MathTypes{
-      {CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type,
-       CoreInfo::Int4Type, CoreInfo::Int8Type, CoreInfo::Int16Type,
-       CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
-       CoreInfo::Float4Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
+  static inline Types MathTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
+                                 CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::FloatType, CoreInfo::Float2Type,
+                                 CoreInfo::Float3Type, CoreInfo::Float4Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
   CBVar _result{};
 
@@ -29,9 +27,8 @@ struct Base {
 
   static CBTypesInfo inputTypes() { return MathTypes; }
   static CBOptionalString inputHelp() {
-    return CBCCSTR(
-        "Any valid integer(s) or floating point number(s) supported by "
-        "this operation.");
+    return CBCCSTR("Any valid integer(s) or floating point number(s) supported by "
+                   "this operation.");
   }
 
   static CBTypesInfo outputTypes() { return MathTypes; }
@@ -43,8 +40,7 @@ struct Base {
 
 struct UnaryBase : public Base {
   static inline Types FloatOrSeqTypes{
-      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
-       CoreInfo::Float4Type, CoreInfo::AnySeqType}};
+      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type, CoreInfo::AnySeqType}};
 
   static CBTypesInfo inputTypes() { return FloatOrSeqTypes; }
   static CBOptionalString inputHelp() {
@@ -58,21 +54,13 @@ struct BinaryBase : public Base {
   enum OpType { Invalid, Normal, Seq1, SeqSeq };
 
   static inline Types MathTypesOrVar{
-      {CoreInfo::IntType,    CoreInfo::IntVarType,
-       CoreInfo::Int2Type,   CoreInfo::Int2VarType,
-       CoreInfo::Int3Type,   CoreInfo::Int3VarType,
-       CoreInfo::Int4Type,   CoreInfo::Int4VarType,
-       CoreInfo::Int8Type,   CoreInfo::Int8VarType,
-       CoreInfo::Int16Type,  CoreInfo::Int16VarType,
-       CoreInfo::FloatType,  CoreInfo::FloatVarType,
-       CoreInfo::Float2Type, CoreInfo::Float2VarType,
-       CoreInfo::Float3Type, CoreInfo::Float3VarType,
-       CoreInfo::Float4Type, CoreInfo::Float4VarType,
-       CoreInfo::ColorType,  CoreInfo::ColorVarType,
-       CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType}};
+      {CoreInfo::IntType,       CoreInfo::IntVarType,   CoreInfo::Int2Type,      CoreInfo::Int2VarType,  CoreInfo::Int3Type,
+       CoreInfo::Int3VarType,   CoreInfo::Int4Type,     CoreInfo::Int4VarType,   CoreInfo::Int8Type,     CoreInfo::Int8VarType,
+       CoreInfo::Int16Type,     CoreInfo::Int16VarType, CoreInfo::FloatType,     CoreInfo::FloatVarType, CoreInfo::Float2Type,
+       CoreInfo::Float2VarType, CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
+       CoreInfo::ColorType,     CoreInfo::ColorVarType, CoreInfo::AnySeqType,    CoreInfo::AnyVarSeqType}};
 
-  static inline ParamsInfo mathParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Operand", CBCCSTR("The operand."), MathTypesOrVar));
+  static inline ParamsInfo mathParamsInfo = ParamsInfo(ParamsInfo::Param("Operand", CBCCSTR("The operand."), MathTypesOrVar));
 
   ParamVar _operand{Var(0)};
   ExposedInfo _requiredInfo{};
@@ -82,64 +70,47 @@ struct BinaryBase : public Base {
 
   void warmup(CBContext *context) { _operand.warmup(context); }
 
-  static CBParametersInfo parameters() {
-    return CBParametersInfo(mathParamsInfo);
-  }
+  static CBParametersInfo parameters() { return CBParametersInfo(mathParamsInfo); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     CBVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         // normal variable
-        if (strcmp(data.shared.elements[i].name,
-                   operandSpec.payload.stringValue) == 0) {
-          if (data.shared.elements[i].exposedType.basicType != Seq &&
-              data.inputType.basicType != Seq) {
+        if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
+          if (data.shared.elements[i].exposedType.basicType != Seq && data.inputType.basicType != Seq) {
             if (data.shared.elements[i].exposedType != data.inputType)
-              throw ComposeError(
-                  "Operation not supported between different types");
+              throw ComposeError("Operation not supported between different types");
             _opType = Normal;
-          } else if (data.shared.elements[i].exposedType.basicType != Seq &&
-                     data.inputType.basicType == Seq) {
-            if (data.inputType.seqTypes.len != 1 ||
-                data.shared.elements[i].exposedType !=
-                    data.inputType.seqTypes.elements[0])
-              throw ComposeError(
-                  "Operation not supported between different types");
+          } else if (data.shared.elements[i].exposedType.basicType != Seq && data.inputType.basicType == Seq) {
+            if (data.inputType.seqTypes.len != 1 || data.shared.elements[i].exposedType != data.inputType.seqTypes.elements[0])
+              throw ComposeError("Operation not supported between different types");
             _opType = Seq1;
-          } else if (data.shared.elements[i].exposedType.basicType == Seq &&
-                     data.inputType.basicType == Seq) {
+          } else if (data.shared.elements[i].exposedType.basicType == Seq && data.inputType.basicType == Seq) {
             // TODO need to have deeper types compatibility at least
             _opType = SeqSeq;
           } else {
-            throw ComposeError(
-                "Math broadcasting not supported between given types!");
+            throw ComposeError("Math broadcasting not supported between given types!");
           }
         }
       }
       if (_opType == Invalid) {
-        throw ComposeError("Math operand variable not found: " +
-                           std::string(operandSpec.payload.stringValue));
+        throw ComposeError("Math operand variable not found: " + std::string(operandSpec.payload.stringValue));
       }
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
         if (operandSpec.valueType != data.inputType.basicType)
           throw ComposeError("Operation not supported between different types");
         _opType = Normal;
-      } else if (operandSpec.valueType != Seq &&
-                 data.inputType.basicType == Seq) {
-        if (data.inputType.seqTypes.len != 1 ||
-            operandSpec.valueType !=
-                data.inputType.seqTypes.elements[0].basicType)
+      } else if (operandSpec.valueType != Seq && data.inputType.basicType == Seq) {
+        if (data.inputType.seqTypes.len != 1 || operandSpec.valueType != data.inputType.seqTypes.elements[0].basicType)
           throw ComposeError("Operation not supported between different types");
         _opType = Seq1;
-      } else if (operandSpec.valueType == Seq &&
-                 data.inputType.basicType == Seq) {
+      } else if (operandSpec.valueType == Seq && data.inputType.basicType == Seq) {
         // TODO need to have deeper types compatibility at least
         _opType = SeqSeq;
       } else {
-        throw ComposeError(
-            "Math broadcasting not supported between given types!");
+        throw ComposeError("Math broadcasting not supported between given types!");
       }
     }
     return data.inputType;
@@ -148,9 +119,8 @@ struct BinaryBase : public Base {
   CBExposedTypesInfo requiredVariables() {
     CBVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
-      _requiredInfo = ExposedInfo(ExposedInfo::Variable(
-          operandSpec.payload.stringValue, CBCCSTR("The required operand."),
-          CoreInfo::AnyType));
+      _requiredInfo = ExposedInfo(
+          ExposedInfo::Variable(operandSpec.payload.stringValue, CBCCSTR("The required operand."), CoreInfo::AnyType));
       return CBExposedTypesInfo(_requiredInfo);
     }
     return {};
@@ -202,8 +172,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
     }
   }
 
-  ALWAYS_INLINE void operateFast(OpType opType, CBVar &output, const CBVar &a,
-                                 const CBVar &b) {
+  ALWAYS_INLINE void operateFast(OpType opType, CBVar &output, const CBVar &a, const CBVar &b) {
     OP op;
     if (likely(opType == Normal)) {
       op(output, a, b, this);
@@ -232,10 +201,8 @@ template <class OP> struct BinaryOperation : public BinaryBase {
 };
 
 template <class OP> struct BinaryIntOperation : public BinaryOperation<OP> {
-  static inline Types IntOrSeqTypes{
-      {CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type,
-       CoreInfo::Int4Type, CoreInfo::Int8Type, CoreInfo::Int16Type,
-       CoreInfo::ColorType, CoreInfo::AnySeqType}};
+  static inline Types IntOrSeqTypes{{CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
+                                     CoreInfo::Int8Type, CoreInfo::Int16Type, CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
   static CBTypesInfo inputTypes() { return IntOrSeqTypes; }
   static CBOptionalString inputHelp() {
@@ -247,134 +214,106 @@ template <class OP> struct BinaryIntOperation : public BinaryOperation<OP> {
 
 // TODO implement CBVar operators
 // and replace with functional std::plus etc
-#define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                     \
-  struct NAME##Op final {                                                      \
-    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand, void *) {              \
-      switch (input.valueType) {                                               \
-      case Int:                                                                \
-        output.valueType = Int;                                                \
-        output.payload.intValue =                                              \
-            input.payload.intValue OPERATOR operand.payload.intValue;          \
-        break;                                                                 \
-      case Int2:                                                               \
-        output.valueType = Int2;                                               \
-        output.payload.int2Value =                                             \
-            input.payload.int2Value OPERATOR operand.payload.int2Value;        \
-        break;                                                                 \
-      case Int3:                                                               \
-        output.valueType = Int3;                                               \
-        output.payload.int3Value =                                             \
-            input.payload.int3Value OPERATOR operand.payload.int3Value;        \
-        break;                                                                 \
-      case Int4:                                                               \
-        output.valueType = Int4;                                               \
-        output.payload.int4Value =                                             \
-            input.payload.int4Value OPERATOR operand.payload.int4Value;        \
-        break;                                                                 \
-      case Int8:                                                               \
-        output.valueType = Int8;                                               \
-        output.payload.int8Value =                                             \
-            input.payload.int8Value OPERATOR operand.payload.int8Value;        \
-        break;                                                                 \
-      case Int16:                                                              \
-        output.valueType = Int16;                                              \
-        output.payload.int16Value =                                            \
-            input.payload.int16Value OPERATOR operand.payload.int16Value;      \
-        break;                                                                 \
-      case Float:                                                              \
-        output.valueType = Float;                                              \
-        output.payload.floatValue =                                            \
-            input.payload.floatValue OPERATOR operand.payload.floatValue;      \
-        break;                                                                 \
-      case Float2:                                                             \
-        output.valueType = Float2;                                             \
-        output.payload.float2Value =                                           \
-            input.payload.float2Value OPERATOR operand.payload.float2Value;    \
-        break;                                                                 \
-      case Float3:                                                             \
-        output.valueType = Float3;                                             \
-        output.payload.float3Value =                                           \
-            input.payload.float3Value OPERATOR operand.payload.float3Value;    \
-        break;                                                                 \
-      case Float4:                                                             \
-        output.valueType = Float4;                                             \
-        output.payload.float4Value =                                           \
-            input.payload.float4Value OPERATOR operand.payload.float4Value;    \
-        break;                                                                 \
-      case Color:                                                              \
-        output.valueType = Color;                                              \
-        output.payload.colorValue.r =                                          \
-            input.payload.colorValue.r OPERATOR operand.payload.colorValue.r;  \
-        output.payload.colorValue.g =                                          \
-            input.payload.colorValue.g OPERATOR operand.payload.colorValue.g;  \
-        output.payload.colorValue.b =                                          \
-            input.payload.colorValue.b OPERATOR operand.payload.colorValue.b;  \
-        output.payload.colorValue.a =                                          \
-            input.payload.colorValue.a OPERATOR operand.payload.colorValue.a;  \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError(                                                 \
-            #NAME " operation not supported between given types!");            \
-      }                                                                        \
-    }                                                                          \
-  };                                                                           \
-  using NAME = BinaryOperation<NAME##Op>;                                      \
+#define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                                              \
+  struct NAME##Op final {                                                                               \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input, const CBVar &operand, void *) {    \
+      switch (input.valueType) {                                                                        \
+      case Int:                                                                                         \
+        output.valueType = Int;                                                                         \
+        output.payload.intValue = input.payload.intValue OPERATOR operand.payload.intValue;             \
+        break;                                                                                          \
+      case Int2:                                                                                        \
+        output.valueType = Int2;                                                                        \
+        output.payload.int2Value = input.payload.int2Value OPERATOR operand.payload.int2Value;          \
+        break;                                                                                          \
+      case Int3:                                                                                        \
+        output.valueType = Int3;                                                                        \
+        output.payload.int3Value = input.payload.int3Value OPERATOR operand.payload.int3Value;          \
+        break;                                                                                          \
+      case Int4:                                                                                        \
+        output.valueType = Int4;                                                                        \
+        output.payload.int4Value = input.payload.int4Value OPERATOR operand.payload.int4Value;          \
+        break;                                                                                          \
+      case Int8:                                                                                        \
+        output.valueType = Int8;                                                                        \
+        output.payload.int8Value = input.payload.int8Value OPERATOR operand.payload.int8Value;          \
+        break;                                                                                          \
+      case Int16:                                                                                       \
+        output.valueType = Int16;                                                                       \
+        output.payload.int16Value = input.payload.int16Value OPERATOR operand.payload.int16Value;       \
+        break;                                                                                          \
+      case Float:                                                                                       \
+        output.valueType = Float;                                                                       \
+        output.payload.floatValue = input.payload.floatValue OPERATOR operand.payload.floatValue;       \
+        break;                                                                                          \
+      case Float2:                                                                                      \
+        output.valueType = Float2;                                                                      \
+        output.payload.float2Value = input.payload.float2Value OPERATOR operand.payload.float2Value;    \
+        break;                                                                                          \
+      case Float3:                                                                                      \
+        output.valueType = Float3;                                                                      \
+        output.payload.float3Value = input.payload.float3Value OPERATOR operand.payload.float3Value;    \
+        break;                                                                                          \
+      case Float4:                                                                                      \
+        output.valueType = Float4;                                                                      \
+        output.payload.float4Value = input.payload.float4Value OPERATOR operand.payload.float4Value;    \
+        break;                                                                                          \
+      case Color:                                                                                       \
+        output.valueType = Color;                                                                       \
+        output.payload.colorValue.r = input.payload.colorValue.r OPERATOR operand.payload.colorValue.r; \
+        output.payload.colorValue.g = input.payload.colorValue.g OPERATOR operand.payload.colorValue.g; \
+        output.payload.colorValue.b = input.payload.colorValue.b OPERATOR operand.payload.colorValue.b; \
+        output.payload.colorValue.a = input.payload.colorValue.a OPERATOR operand.payload.colorValue.a; \
+        break;                                                                                          \
+      default:                                                                                          \
+        throw ActivationError(#NAME " operation not supported between given types!");                   \
+      }                                                                                                 \
+    }                                                                                                   \
+  };                                                                                                    \
+  using NAME = BinaryOperation<NAME##Op>;                                                               \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
-#define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                              \
-  struct NAME##Op final {                                                      \
-    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand, void *) {              \
-      switch (input.valueType) {                                               \
-      case Int:                                                                \
-        output.valueType = Int;                                                \
-        output.payload.intValue =                                              \
-            input.payload.intValue OPERATOR operand.payload.intValue;          \
-        break;                                                                 \
-      case Int2:                                                               \
-        output.valueType = Int2;                                               \
-        output.payload.int2Value =                                             \
-            input.payload.int2Value OPERATOR operand.payload.int2Value;        \
-        break;                                                                 \
-      case Int3:                                                               \
-        output.valueType = Int3;                                               \
-        output.payload.int3Value =                                             \
-            input.payload.int3Value OPERATOR operand.payload.int3Value;        \
-        break;                                                                 \
-      case Int4:                                                               \
-        output.valueType = Int4;                                               \
-        output.payload.int4Value =                                             \
-            input.payload.int4Value OPERATOR operand.payload.int4Value;        \
-        break;                                                                 \
-      case Int8:                                                               \
-        output.valueType = Int8;                                               \
-        output.payload.int8Value =                                             \
-            input.payload.int8Value OPERATOR operand.payload.int8Value;        \
-        break;                                                                 \
-      case Int16:                                                              \
-        output.valueType = Int16;                                              \
-        output.payload.int16Value =                                            \
-            input.payload.int16Value OPERATOR operand.payload.int16Value;      \
-        break;                                                                 \
-      case Color:                                                              \
-        output.valueType = Color;                                              \
-        output.payload.colorValue.r =                                          \
-            input.payload.colorValue.r OPERATOR operand.payload.colorValue.r;  \
-        output.payload.colorValue.g =                                          \
-            input.payload.colorValue.g OPERATOR operand.payload.colorValue.g;  \
-        output.payload.colorValue.b =                                          \
-            input.payload.colorValue.b OPERATOR operand.payload.colorValue.b;  \
-        output.payload.colorValue.a =                                          \
-            input.payload.colorValue.a OPERATOR operand.payload.colorValue.a;  \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError(                                                 \
-            #NAME " operation not supported between given types!");            \
-      }                                                                        \
-    }                                                                          \
-  };                                                                           \
-  using NAME = BinaryIntOperation<NAME##Op>;                                   \
+#define MATH_BINARY_INT_OPERATION(NAME, OPERATOR)                                                       \
+  struct NAME##Op final {                                                                               \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input, const CBVar &operand, void *) {    \
+      switch (input.valueType) {                                                                        \
+      case Int:                                                                                         \
+        output.valueType = Int;                                                                         \
+        output.payload.intValue = input.payload.intValue OPERATOR operand.payload.intValue;             \
+        break;                                                                                          \
+      case Int2:                                                                                        \
+        output.valueType = Int2;                                                                        \
+        output.payload.int2Value = input.payload.int2Value OPERATOR operand.payload.int2Value;          \
+        break;                                                                                          \
+      case Int3:                                                                                        \
+        output.valueType = Int3;                                                                        \
+        output.payload.int3Value = input.payload.int3Value OPERATOR operand.payload.int3Value;          \
+        break;                                                                                          \
+      case Int4:                                                                                        \
+        output.valueType = Int4;                                                                        \
+        output.payload.int4Value = input.payload.int4Value OPERATOR operand.payload.int4Value;          \
+        break;                                                                                          \
+      case Int8:                                                                                        \
+        output.valueType = Int8;                                                                        \
+        output.payload.int8Value = input.payload.int8Value OPERATOR operand.payload.int8Value;          \
+        break;                                                                                          \
+      case Int16:                                                                                       \
+        output.valueType = Int16;                                                                       \
+        output.payload.int16Value = input.payload.int16Value OPERATOR operand.payload.int16Value;       \
+        break;                                                                                          \
+      case Color:                                                                                       \
+        output.valueType = Color;                                                                       \
+        output.payload.colorValue.r = input.payload.colorValue.r OPERATOR operand.payload.colorValue.r; \
+        output.payload.colorValue.g = input.payload.colorValue.g OPERATOR operand.payload.colorValue.g; \
+        output.payload.colorValue.b = input.payload.colorValue.b OPERATOR operand.payload.colorValue.b; \
+        output.payload.colorValue.a = input.payload.colorValue.a OPERATOR operand.payload.colorValue.a; \
+        break;                                                                                          \
+      default:                                                                                          \
+        throw ActivationError(#NAME " operation not supported between given types!");                   \
+      }                                                                                                 \
+    }                                                                                                   \
+  };                                                                                                    \
+  using NAME = BinaryIntOperation<NAME##Op>;                                                            \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 MATH_BINARY_OPERATION(Add, +, 0);
@@ -391,12 +330,12 @@ MATH_BINARY_INT_OPERATION(RShift, >>);
 #if 0
 // Not used for now...
 
-#define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                                 \
-  struct NAME##UnaryFuncD {                                                    \
-    ALWAYS_INLINE double operator()(double x) { return FUNCD(x); }             \
-  };                                                                           \
-  struct NAME##UnaryFuncF {                                                    \
-    ALWAYS_INLINE float operator()(float x) { return FUNCF(x); }               \
+#define MATH_UNARY_FUNCTOR(NAME, FUNCD, FUNCF)                     \
+  struct NAME##UnaryFuncD {                                        \
+    ALWAYS_INLINE double operator()(double x) { return FUNCD(x); } \
+  };                                                               \
+  struct NAME##UnaryFuncF {                                        \
+    ALWAYS_INLINE float operator()(float x) { return FUNCF(x); }   \
   };
 
 MATH_UNARY_FUNCTOR(Abs, __builtin_fabs, __builtin_fabsf);
@@ -459,78 +398,74 @@ template <CBType CBT, typename FuncD, typename FuncF> struct UnaryOperation {
 
 #endif
 
-#define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                \
-  struct NAME : public UnaryBase {                                             \
-    static CBOptionalString help() {                                           \
-      return CBCCSTR("Calculates `" #NAME                                      \
-                     "()` on the input value and returns its result, or a "    \
-                     "sequence of results if input is a sequence.");           \
-    }                                                                          \
-                                                                               \
-    CBTypeInfo compose(const CBInstanceData &data) {                           \
-      if (data.inputType.basicType == CBType::Seq) {                           \
-        OVERRIDE_ACTIVATE(data, activateSeq);                                  \
-        static_cast<CBlock *>(data.block)->inlineBlockId = NotInline;          \
-      } else {                                                                 \
-        OVERRIDE_ACTIVATE(data, activateSingle);                               \
-        static_cast<CBlock *>(data.block)->inlineBlockId =                     \
-            CBInlineBlocks::Math##NAME;                                        \
-      }                                                                        \
-      return data.inputType;                                                   \
-    }                                                                          \
-                                                                               \
-    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {            \
-      switch (input.valueType) {                                               \
-      case Float:                                                              \
-        output.valueType = Float;                                              \
-        output.payload.floatValue = FUNC(input.payload.floatValue);            \
-        break;                                                                 \
-      case Float2:                                                             \
-        output.valueType = Float2;                                             \
-        output.payload.float2Value[0] = FUNC(input.payload.float2Value[0]);    \
-        output.payload.float2Value[1] = FUNC(input.payload.float2Value[1]);    \
-        break;                                                                 \
-      case Float3:                                                             \
-        output.valueType = Float3;                                             \
-        output.payload.float3Value[0] = FUNCF(input.payload.float3Value[0]);   \
-        output.payload.float3Value[1] = FUNCF(input.payload.float3Value[1]);   \
-        output.payload.float3Value[2] = FUNCF(input.payload.float3Value[2]);   \
-        break;                                                                 \
-      case Float4:                                                             \
-        output.valueType = Float4;                                             \
-        output.payload.float4Value[0] = FUNCF(input.payload.float4Value[0]);   \
-        output.payload.float4Value[1] = FUNCF(input.payload.float4Value[1]);   \
-        output.payload.float4Value[2] = FUNCF(input.payload.float4Value[2]);   \
-        output.payload.float4Value[3] = FUNCF(input.payload.float4Value[3]);   \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError(#NAME                                            \
-                              " operation not supported on given types!");     \
-      }                                                                        \
-    }                                                                          \
-                                                                               \
-    ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {  \
-      _result.valueType = Seq;                                                 \
-      chainblocks::arrayResize(_result.payload.seqValue, 0);                   \
-      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {              \
-        CBVar scratch;                                                         \
-        operate(scratch, input.payload.seqValue.elements[i]);                  \
-        chainblocks::arrayPush(_result.payload.seqValue, scratch);             \
-      }                                                                        \
-      return _result;                                                          \
-    }                                                                          \
-                                                                               \
-    ALWAYS_INLINE CBVar activateSingle(CBContext *context,                     \
-                                       const CBVar &input) {                   \
-      CBVar scratch;                                                           \
-      operate(scratch, input);                                                 \
-      return scratch;                                                          \
-    }                                                                          \
-                                                                               \
-    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {     \
-      throw ActivationError("Invalid activation function");                    \
-    }                                                                          \
-  };                                                                           \
+#define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                                  \
+  struct NAME : public UnaryBase {                                                               \
+    static CBOptionalString help() {                                                             \
+      return CBCCSTR("Calculates `" #NAME "()` on the input value and returns its result, or a " \
+                     "sequence of results if input is a sequence.");                             \
+    }                                                                                            \
+                                                                                                 \
+    CBTypeInfo compose(const CBInstanceData &data) {                                             \
+      if (data.inputType.basicType == CBType::Seq) {                                             \
+        OVERRIDE_ACTIVATE(data, activateSeq);                                                    \
+        static_cast<CBlock *>(data.block)->inlineBlockId = NotInline;                            \
+      } else {                                                                                   \
+        OVERRIDE_ACTIVATE(data, activateSingle);                                                 \
+        static_cast<CBlock *>(data.block)->inlineBlockId = CBInlineBlocks::Math##NAME;           \
+      }                                                                                          \
+      return data.inputType;                                                                     \
+    }                                                                                            \
+                                                                                                 \
+    ALWAYS_INLINE void operate(CBVar &output, const CBVar &input) {                              \
+      switch (input.valueType) {                                                                 \
+      case Float:                                                                                \
+        output.valueType = Float;                                                                \
+        output.payload.floatValue = FUNC(input.payload.floatValue);                              \
+        break;                                                                                   \
+      case Float2:                                                                               \
+        output.valueType = Float2;                                                               \
+        output.payload.float2Value[0] = FUNC(input.payload.float2Value[0]);                      \
+        output.payload.float2Value[1] = FUNC(input.payload.float2Value[1]);                      \
+        break;                                                                                   \
+      case Float3:                                                                               \
+        output.valueType = Float3;                                                               \
+        output.payload.float3Value[0] = FUNCF(input.payload.float3Value[0]);                     \
+        output.payload.float3Value[1] = FUNCF(input.payload.float3Value[1]);                     \
+        output.payload.float3Value[2] = FUNCF(input.payload.float3Value[2]);                     \
+        break;                                                                                   \
+      case Float4:                                                                               \
+        output.valueType = Float4;                                                               \
+        output.payload.float4Value[0] = FUNCF(input.payload.float4Value[0]);                     \
+        output.payload.float4Value[1] = FUNCF(input.payload.float4Value[1]);                     \
+        output.payload.float4Value[2] = FUNCF(input.payload.float4Value[2]);                     \
+        output.payload.float4Value[3] = FUNCF(input.payload.float4Value[3]);                     \
+        break;                                                                                   \
+      default:                                                                                   \
+        throw ActivationError(#NAME " operation not supported on given types!");                 \
+      }                                                                                          \
+    }                                                                                            \
+                                                                                                 \
+    ALWAYS_INLINE CBVar activateSeq(CBContext *context, const CBVar &input) {                    \
+      _result.valueType = Seq;                                                                   \
+      chainblocks::arrayResize(_result.payload.seqValue, 0);                                     \
+      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                                \
+        CBVar scratch;                                                                           \
+        operate(scratch, input.payload.seqValue.elements[i]);                                    \
+        chainblocks::arrayPush(_result.payload.seqValue, scratch);                               \
+      }                                                                                          \
+      return _result;                                                                            \
+    }                                                                                            \
+                                                                                                 \
+    ALWAYS_INLINE CBVar activateSingle(CBContext *context, const CBVar &input) {                 \
+      CBVar scratch;                                                                             \
+      operate(scratch, input);                                                                   \
+      return scratch;                                                                            \
+    }                                                                                            \
+                                                                                                 \
+    ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) {                       \
+      throw ActivationError("Invalid activation function");                                      \
+    }                                                                                            \
+  };                                                                                             \
   RUNTIME_BLOCK_TYPE(Math, NAME);
 
 MATH_UNARY_OPERATION(Abs, __builtin_fabs, __builtin_fabsf);
@@ -607,31 +542,21 @@ struct Mean {
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
   static inline EnumInfo<MeanKind> _meanEnum{"Mean", CoreCC, 'mean'};
 
-  static CBOptionalString help() {
-    return CBCCSTR(
-        "Calculates the mean of a sequence of floating point numbers.");
-  }
+  static CBOptionalString help() { return CBCCSTR("Calculates the mean of a sequence of floating point numbers."); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqType; }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("A sequence of floating point numbers.");
-  }
+  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of floating point numbers."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("The calculated mean.");
-  }
+  static CBOptionalString outputHelp() { return CBCCSTR("The calculated mean."); }
 
   static CBParametersInfo parameters() {
     static Type kind{{CBType::Enum, {.enumeration = {CoreCC, 'mean'}}}};
-    static Parameters params{
-        {"Kind", CBCCSTR("The kind of Pythagorean means."), {kind}}};
+    static Parameters params{{"Kind", CBCCSTR("The kind of Pythagorean means."), {kind}}};
     return params;
   }
 
-  void setParam(int index, const CBVar &value) {
-    mean = MeanKind(value.payload.enumValue);
-  }
+  void setParam(int index, const CBVar &value) { mean = MeanKind(value.payload.enumValue); }
 
   CBVar getParam(int index) { return Var::Enum(mean, CoreCC, 'mean'); }
 
@@ -666,10 +591,8 @@ template <class T> struct UnaryBin : public T {
   static inline Parameters params{
       {"Value",
        CBCCSTR("The value to increase/decrease."),
-       {CoreInfo::IntVarType, CoreInfo::Int2VarType, CoreInfo::Int3VarType,
-        CoreInfo::Int4VarType, CoreInfo::Int8VarType, CoreInfo::Int16VarType,
-        CoreInfo::FloatVarType, CoreInfo::Float2VarType,
-        CoreInfo::Float3VarType, CoreInfo::Float4VarType,
+       {CoreInfo::IntVarType, CoreInfo::Int2VarType, CoreInfo::Int3VarType, CoreInfo::Int4VarType, CoreInfo::Int8VarType,
+        CoreInfo::Int16VarType, CoreInfo::FloatVarType, CoreInfo::Float2VarType, CoreInfo::Float3VarType, CoreInfo::Float4VarType,
         CoreInfo::ColorVarType, CoreInfo::AnyVarSeqType}}};
 
   static CBParametersInfo parameters() { return params; }
@@ -719,13 +642,11 @@ template <class T> struct UnaryBin : public T {
         if (share.isProtected)
           throw ComposeError("Math.Inc/Dec cannot write protected variables");
         if (!share.isMutable)
-          throw ComposeError(
-              "Math.Inc/Dec attempt to write immutable variable");
+          throw ComposeError("Math.Inc/Dec attempt to write immutable variable");
         switch (share.exposedType.basicType) {
         case Seq: {
           if (share.exposedType.seqTypes.len != 1)
-            throw ComposeError(
-                "Math.Inc/Dec expected a Seq with just one type as input");
+            throw ComposeError("Math.Inc/Dec expected a Seq with just one type as input");
           setOperand(share.exposedType.seqTypes.elements[0].basicType);
         } break;
         default:
@@ -754,64 +675,50 @@ using Inc = UnaryBin<Add>;
 using Dec = UnaryBin<Subtract>;
 
 struct MaxOp final {
-  ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,
-                                const CBVar &operand, void *) {
+  ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input, const CBVar &operand, void *) {
     output = std::max(input, operand);
   }
 };
 using Max = BinaryOperation<MaxOp>;
 
 struct MinOp final {
-  ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,
-                                const CBVar &operand, void *) {
+  ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input, const CBVar &operand, void *) {
     output = std::min(input, operand);
   }
 };
 using Min = BinaryOperation<MinOp>;
 
-#define MATH_BINARY_FLOAT_PROC(NAME, PROC)                                     \
-  struct NAME##Op final {                                                      \
-    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input,           \
-                                  const CBVar &operand, void *) {              \
-      switch (input.valueType) {                                               \
-      case Float:                                                              \
-        output.valueType = Float;                                              \
-        output.payload.floatValue =                                            \
-            PROC(input.payload.floatValue, operand.payload.floatValue);        \
-        break;                                                                 \
-      case Float2:                                                             \
-        output.valueType = Float2;                                             \
-        output.payload.float2Value[0] = PROC(input.payload.float2Value[0],     \
-                                             operand.payload.float2Value[0]);  \
-        output.payload.float2Value[1] = PROC(input.payload.float2Value[1],     \
-                                             operand.payload.float2Value[1]);  \
-        break;                                                                 \
-      case Float3:                                                             \
-        output.valueType = Float3;                                             \
-        output.payload.float3Value[0] = PROC(input.payload.float3Value[0],     \
-                                             operand.payload.float3Value[0]);  \
-        output.payload.float3Value[1] = PROC(input.payload.float3Value[1],     \
-                                             operand.payload.float3Value[1]);  \
-        output.payload.float3Value[2] = PROC(input.payload.float3Value[2],     \
-                                             operand.payload.float3Value[2]);  \
-        break;                                                                 \
-      case Float4:                                                             \
-        output.valueType = Float4;                                             \
-        output.payload.float4Value[0] = PROC(input.payload.float4Value[0],     \
-                                             operand.payload.float4Value[0]);  \
-        output.payload.float4Value[1] = PROC(input.payload.float4Value[1],     \
-                                             operand.payload.float4Value[1]);  \
-        output.payload.float4Value[2] = PROC(input.payload.float4Value[2],     \
-                                             operand.payload.float4Value[2]);  \
-        output.payload.float4Value[3] = PROC(input.payload.float4Value[3],     \
-                                             operand.payload.float4Value[3]);  \
-        break;                                                                 \
-      default:                                                                 \
-        throw ActivationError(                                                 \
-            #NAME " operation not supported between given types!");            \
-      }                                                                        \
-    }                                                                          \
-  };                                                                           \
+#define MATH_BINARY_FLOAT_PROC(NAME, PROC)                                                                  \
+  struct NAME##Op final {                                                                                   \
+    ALWAYS_INLINE void operator()(CBVar &output, const CBVar &input, const CBVar &operand, void *) {        \
+      switch (input.valueType) {                                                                            \
+      case Float:                                                                                           \
+        output.valueType = Float;                                                                           \
+        output.payload.floatValue = PROC(input.payload.floatValue, operand.payload.floatValue);             \
+        break;                                                                                              \
+      case Float2:                                                                                          \
+        output.valueType = Float2;                                                                          \
+        output.payload.float2Value[0] = PROC(input.payload.float2Value[0], operand.payload.float2Value[0]); \
+        output.payload.float2Value[1] = PROC(input.payload.float2Value[1], operand.payload.float2Value[1]); \
+        break;                                                                                              \
+      case Float3:                                                                                          \
+        output.valueType = Float3;                                                                          \
+        output.payload.float3Value[0] = PROC(input.payload.float3Value[0], operand.payload.float3Value[0]); \
+        output.payload.float3Value[1] = PROC(input.payload.float3Value[1], operand.payload.float3Value[1]); \
+        output.payload.float3Value[2] = PROC(input.payload.float3Value[2], operand.payload.float3Value[2]); \
+        break;                                                                                              \
+      case Float4:                                                                                          \
+        output.valueType = Float4;                                                                          \
+        output.payload.float4Value[0] = PROC(input.payload.float4Value[0], operand.payload.float4Value[0]); \
+        output.payload.float4Value[1] = PROC(input.payload.float4Value[1], operand.payload.float4Value[1]); \
+        output.payload.float4Value[2] = PROC(input.payload.float4Value[2], operand.payload.float4Value[2]); \
+        output.payload.float4Value[3] = PROC(input.payload.float4Value[3], operand.payload.float4Value[3]); \
+        break;                                                                                              \
+      default:                                                                                              \
+        throw ActivationError(#NAME " operation not supported between given types!");                       \
+      }                                                                                                     \
+    }                                                                                                       \
+  };                                                                                                        \
   using NAME = BinaryOperation<NAME##Op>;
 
 MATH_BINARY_FLOAT_PROC(Pow, std::pow);

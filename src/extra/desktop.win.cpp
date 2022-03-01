@@ -17,11 +17,11 @@
 #define DBG_CHECK_OFF 0
 #endif
 
-#define DBG_CHECK(_expr_)                                                      \
-  if (DBG_CHECK_OFF) {                                                         \
-    assert((_expr_));                                                          \
-  } else {                                                                     \
-    (_expr_);                                                                  \
+#define DBG_CHECK(_expr_) \
+  if (DBG_CHECK_OFF) {    \
+    assert((_expr_));     \
+  } else {                \
+    (_expr_);             \
   }
 
 namespace Desktop {
@@ -38,16 +38,12 @@ public:
 
     switch (index) {
     case 0:
-      _wTitle.resize(
-          MultiByteToWideChar(CP_UTF8, 0, _winName.c_str(), -1, 0, 0));
-      MultiByteToWideChar(CP_UTF8, 0, _winName.c_str(), -1, &_wTitle[0],
-                          _wTitle.size());
+      _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, _winName.c_str(), -1, 0, 0));
+      MultiByteToWideChar(CP_UTF8, 0, _winName.c_str(), -1, &_wTitle[0], _wTitle.size());
       break;
     case 1:
-      _wClass.resize(
-          MultiByteToWideChar(CP_UTF8, 0, _winClass.c_str(), -1, 0, 0));
-      MultiByteToWideChar(CP_UTF8, 0, _winClass.c_str(), -1, &_wClass[0],
-                          _wClass.size());
+      _wClass.resize(MultiByteToWideChar(CP_UTF8, 0, _winClass.c_str(), -1, 0, 0));
+      MultiByteToWideChar(CP_UTF8, 0, _winClass.c_str(), -1, &_wClass[0], _wClass.size());
       break;
     default:
       break;
@@ -94,8 +90,7 @@ public:
 };
 
 static HWND AsHWND(const CBVar &var) {
-  if (var.valueType == Object && var.payload.objectVendorId == CoreCC &&
-      var.payload.objectTypeId == windowCC) {
+  if (var.valueType == Object && var.payload.objectVendorId == CoreCC && var.payload.objectTypeId == windowCC) {
     return reinterpret_cast<HWND>(var.payload.objectValue);
   }
   return NULL;
@@ -232,8 +227,7 @@ struct SetBorderless : public WinOpBase {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       LONG lStyle = GetWindowLong(hwnd, GWL_STYLE);
-      lStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE |
-                  WS_SYSMENU);
+      lStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
       SetWindowLong(hwnd, GWL_STYLE, lStyle);
       LONG lExStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
       lExStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
@@ -285,8 +279,7 @@ struct SetTopmost : public WinOpBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
-      SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                   SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+      SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     } else {
       throw ActivationError("Input object was not a Desktop's window!");
     }
@@ -298,8 +291,7 @@ struct UnsetTopmost : public WinOpBase {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
-      SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
-                   SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+      SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     } else {
       throw ActivationError("Input object was not a Desktop's window!");
     }
@@ -314,8 +306,7 @@ struct SetTitle : public SetTitleBase {
     SetTitleBase::setParam(index, value);
 
     _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, _title.c_str(), -1, 0, 0));
-    MultiByteToWideChar(CP_UTF8, 0, _title.c_str(), -1, &_wTitle[0],
-                        _wTitle.size());
+    MultiByteToWideChar(CP_UTF8, 0, _title.c_str(), -1, &_wTitle[0], _wTitle.size());
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
@@ -333,10 +324,8 @@ struct SetTitle : public SetTitleBase {
 struct PixelBase {
   std::string variableName;
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Window",
-      CBCCSTR("The window variable name to use as coordinate origin."),
-      Globals::windowVarOrNone));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Window", CBCCSTR("The window variable name to use as coordinate origin."), Globals::windowVarOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -363,9 +352,8 @@ struct PixelBase {
     case 0:
       if (value.valueType == ContextVar) {
         variableName = value.payload.stringValue;
-        exposedInfo = ExposedInfo(ExposedInfo::Variable(
-            variableName.c_str(), CBCCSTR("The window to use as origin."),
-            Globals::windowType));
+        exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(variableName.c_str(), CBCCSTR("The window to use as origin."), Globals::windowType));
       } else {
         variableName.clear();
       }
@@ -398,8 +386,7 @@ struct PixelBase {
 
   static DXGIDesktopCapture *findOrCreate(int x, int y) {
     for (auto &grabber : Grabbers) {
-      if (x >= grabber->left() && x < grabber->right() && y >= grabber->top() &&
-          y < grabber->bottom()) {
+      if (x >= grabber->left() && x < grabber->right() && y >= grabber->top() && y < grabber->bottom()) {
         return grabber.get();
       }
     }
@@ -418,8 +405,7 @@ struct PixelBase {
           for (int i = len - 1; i >= 0; i--) {
             auto &grabber = Grabbers[i];
             auto state = grabber->capture();
-            if (state != DXGIDesktopCapture::Timeout &&
-                state != DXGIDesktopCapture::Normal) {
+            if (state != DXGIDesktopCapture::Timeout && state != DXGIDesktopCapture::Normal) {
               Grabbers.erase(Grabbers.begin() + i);
             } else {
               grabber->update();
@@ -427,8 +413,7 @@ struct PixelBase {
           }
         });
 
-        chainblocks::registerExitCallback("fragcolor.desktop.grabber",
-                                          [] { Grabbers.clear(); });
+        chainblocks::registerExitCallback("fragcolor.desktop.grabber", [] { Grabbers.clear(); });
       }
 
       return grabber;
@@ -527,8 +512,7 @@ struct Pixels : public PixelBase {
       h = std::clamp(h, 2, grabber->height());
 
       // ensure storage for the image
-      if (w != _output.payload.imageValue.width ||
-          h != _output.payload.imageValue.height) {
+      if (w != _output.payload.imageValue.width || h != _output.payload.imageValue.height) {
         // recreate output buffer
         if (_output.payload.imageValue.data) {
           delete[] _output.payload.imageValue.data;
@@ -574,14 +558,11 @@ struct WaitKeyEvent : public WaitKeyEventBase {
   bool attached = false;
   std::deque<CBVar> events;
 
-  void keyboardEvent(int state, int vkCode) {
-    events.push_back(Var(state, vkCode));
-  }
+  void keyboardEvent(int state, int vkCode) { events.push_back(Var(state, vkCode)); }
 
   void cleanup() {
     if (attached && hookState) {
-      auto selfIt = std::find(hookState->receivers.begin(),
-                              hookState->receivers.end(), this);
+      auto selfIt = std::find(hookState->receivers.begin(), hookState->receivers.end(), this);
       hookState->receivers.erase(selfIt);
       hookState->refCount--;
       if (hookState->refCount == 0) {
@@ -594,8 +575,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
     }
   }
 
-  static LRESULT __attribute__((stdcall))
-  Hookproc(int nCode, WPARAM wParam, LPARAM lParam) {
+  static LRESULT __attribute__((stdcall)) Hookproc(int nCode, WPARAM wParam, LPARAM lParam) {
     auto wp = int(wParam);
     auto lp = reinterpret_cast<KBDLLHOOKSTRUCT *>(lParam);
     for (auto &rcvr : hookState->receivers) {
@@ -728,20 +708,17 @@ struct SetMousePos : public MousePosBase {
 
 struct Tap : public MousePosBase {
   typedef BOOL (*InitializeTouchInjectionProc)(UINT32 maxCount, DWORD dwMode);
-  typedef BOOL (*InjectTouchInputProc)(UINT32 count,
-                                       const POINTER_TOUCH_INFO *contacts);
+  typedef BOOL (*InjectTouchInputProc)(UINT32 count, const POINTER_TOUCH_INFO *contacts);
   struct GlobalInjector {
     static inline InjectTouchInputProc InjectTouch;
     GlobalInjector() {
       // win7 compatibility
       auto user32 = LoadLibraryA("User32.dll");
       assert(user32);
-      auto touchInit = (InitializeTouchInjectionProc)GetProcAddress(
-          user32, "InitializeTouchInjection");
+      auto touchInit = (InitializeTouchInjectionProc)GetProcAddress(user32, "InitializeTouchInjection");
       if (touchInit) {
         DBG_CHECK(touchInit(10, TOUCH_FEEDBACK_NONE));
-        InjectTouch =
-            (InjectTouchInputProc)GetProcAddress(user32, "InjectTouchInput");
+        InjectTouch = (InjectTouchInputProc)GetProcAddress(user32, "InjectTouchInput");
       } else {
         InjectTouch = nullptr;
       }
@@ -766,10 +743,7 @@ struct Tap : public MousePosBase {
                         CBCCSTR("A big delay will be injected after tap down "
                                 "to simulate a long tap."),
                         CoreInfo::BoolType),
-      ParamsInfo::Param(
-          "Natural",
-          CBCCSTR("Small pauses will be injected after tap events down & up."),
-          CoreInfo::BoolType));
+      ParamsInfo::Param("Natural", CBCCSTR("Small pauses will be injected after tap events down & up."), CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -806,8 +780,7 @@ struct Tap : public MousePosBase {
     pinfo.pointerInfo.pointerType = PT_TOUCH;
     pinfo.pointerInfo.pointerId = 0;
     pinfo.touchFlags = TOUCH_FLAG_NONE;
-    pinfo.touchMask =
-        TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION | TOUCH_MASK_PRESSURE;
+    pinfo.touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION | TOUCH_MASK_PRESSURE;
     pinfo.orientation = 90; // 0~359 afaik
     pinfo.pressure = 1024;  // 0~1024 afaik
 
@@ -831,8 +804,7 @@ struct Tap : public MousePosBase {
     pinfo.rcContact.bottom = pinfo.pointerInfo.ptPixelLocation.y + 2;
 
     // down
-    pinfo.pointerInfo.pointerFlags =
-        POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+    pinfo.pointerInfo.pointerFlags = POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
       CBLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
       throw ActivationError("InjectTouchInput failed.");
@@ -845,8 +817,7 @@ struct Tap : public MousePosBase {
     if (_longTap) {
       // we need to send updates or it will fail, a simple sleep is not enough
       for (auto i = 0; i < 10; i++) {
-        pinfo.pointerInfo.pointerFlags =
-            POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
+        pinfo.pointerInfo.pointerFlags = POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
         if (!GlobalInjector::InjectTouch(1, &pinfo)) {
           CBLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
           throw ActivationError("InjectTouchInput failed.");
@@ -875,11 +846,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
 
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
-      ParamsInfo::Param(
-          "Natural",
-          CBCCSTR(
-              "Small pauses will be injected after click events down & up."),
-          CoreInfo::BoolType));
+      ParamsInfo::Param("Natural", CBCCSTR("Small pauses will be injected after click events down & up."), CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -981,8 +948,7 @@ struct CursorBitmap {
     _img.height = iconh;
 
     _hdcMem = CreateCompatibleDC(0);
-    _bitmap = CreateDIBSection(_hdcMem, &info, DIB_RGB_COLORS,
-                               (void **)&_img.data, 0, 0);
+    _bitmap = CreateDIBSection(_hdcMem, &info, DIB_RGB_COLORS, (void **)&_img.data, 0, 0);
     assert(_img.data != nullptr);
   }
 
@@ -1005,8 +971,7 @@ struct CursorBitmap {
   }
 };
 
-extern "C" NTSYSAPI NTSTATUS NTAPI NtSetTimerResolution(
-    ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
+extern "C" NTSYSAPI NTSTATUS NTAPI NtSetTimerResolution(ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
 
 struct SetTimerResolution {
   static CBTypesInfo inputTypes() { return CoreInfo::IntType; }

@@ -7,13 +7,9 @@
 
 #include <algorithm>
 
-malEnv::malEnv(malEnvPtr outer) : m_outer(outer) {
-  TRACE_ENV("Creating malEnv %p, outer=%p\n", this, m_outer.ptr());
-}
+malEnv::malEnv(malEnvPtr outer) : m_outer(outer) { TRACE_ENV("Creating malEnv %p, outer=%p\n", this, m_outer.ptr()); }
 
-malEnv::malEnv(malEnvPtr outer, const StringVec &bindings,
-               malValueIter argsBegin, malValueIter argsEnd)
-    : m_outer(outer) {
+malEnv::malEnv(malEnvPtr outer, const StringVec &bindings, malValueIter argsBegin, malValueIter argsEnd) : m_outer(outer) {
   TRACE_ENV("Creating malEnv %p, outer=%p\n", this, m_outer.ptr());
   int n = bindings.size();
   auto it = argsBegin;
@@ -31,9 +27,7 @@ malEnv::malEnv(malEnvPtr outer, const StringVec &bindings,
   MAL_CHECK(it == argsEnd, "Too many parameters");
 }
 
-malEnv::~malEnv() {
-  TRACE_ENV("Destroying malEnv %p, outer=%p\n", this, m_outer.ptr());
-}
+malEnv::~malEnv() { TRACE_ENV("Destroying malEnv %p, outer=%p\n", this, m_outer.ptr()); }
 
 malEnvPtr malEnv::find(const String &symbol) {
   for (malEnvPtr env = this; env; env = env->m_outer) {

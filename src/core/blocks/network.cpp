@@ -24,8 +24,7 @@ struct SocketData {
 struct NetworkBase {
   BlocksVar _blks{};
 
-  static inline Type SocketInfo{
-      {CBType::Object, {.object = {.vendorId = CoreCC, .typeId = SocketCC}}}};
+  static inline Type SocketInfo{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = SocketCC}}}};
 
   static inline boost::asio::io_context _io_context;
   static inline int64_t _io_context_refc = 0;
@@ -41,16 +40,9 @@ struct NetworkBase {
   SocketData _socket{};
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param(
-          "Address", CBCCSTR("The local bind address or the remote address."),
-          CoreInfo::StringOrStringVar),
-      ParamsInfo::Param(
-          "Port",
-          CBCCSTR("The port to bind if server or to connect to if client."),
-          CoreInfo::IntOrIntVar),
-      ParamsInfo::Param(
-          "Receive", CBCCSTR("The flow to execute when a packet is received."),
-          CoreInfo::BlocksOrNone));
+      ParamsInfo::Param("Address", CBCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
+      ParamsInfo::Param("Port", CBCCSTR("The port to bind if server or to connect to if client."), CoreInfo::IntOrIntVar),
+      ParamsInfo::Param("Receive", CBCCSTR("The flow to execute when a packet is received."), CoreInfo::BlocksOrNone));
 
   static CBParametersInfo parameters() { return CBParametersInfo(params); }
 
@@ -58,8 +50,7 @@ struct NetworkBase {
     if (_io_context_refc == 0) {
       auto worker = std::thread([] {
         // Force run to run even without work
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type>
-            g = boost::asio::make_work_guard(_io_context);
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g = boost::asio::make_work_guard(_io_context);
         try {
           // CBLOG_DEBUG("Boost asio context running...");
           _io_context.run();
@@ -124,9 +115,7 @@ struct NetworkBase {
 
   CBTypeInfo compose(CBInstanceData &data) {
     // inject our special context vars
-    auto endpointInfo =
-        ExposedInfo::Variable("Network.Socket", CBCCSTR("The active socket."),
-                              CBTypeInfo(SocketInfo));
+    auto endpointInfo = ExposedInfo::Variable("Network.Socket", CBCCSTR("The active socket."), CBTypeInfo(SocketInfo));
     chainblocks::arrayPush(data.shared, endpointInfo);
     _blks.compose(data);
     return data.inputType;
@@ -241,39 +230,37 @@ struct Server : public NetworkBase {
   Serialization deserial;
 
   void do_receive() {
-    _socket.socket->async_receive_from(
-        boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
-        _sender, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-          if (!ec && bytes_recvd > 0) {
-            ClientPkt pkt{};
+    _socket.socket->async_receive_from(boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()), _sender,
+                                       [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                         if (!ec && bytes_recvd > 0) {
+                                           ClientPkt pkt{};
 
-            // try reuse vars internal memory smartly
-            if (!_empty_queue.empty()) {
-              _empty_queue.pop(pkt);
-              *pkt.remote = _sender;
-            } else {
-              pkt.remote = new udp::endpoint(_sender);
-            }
+                                           // try reuse vars internal memory smartly
+                                           if (!_empty_queue.empty()) {
+                                             _empty_queue.pop(pkt);
+                                             *pkt.remote = _sender;
+                                           } else {
+                                             pkt.remote = new udp::endpoint(_sender);
+                                           }
 
-            // deserialize from buffer
-            Reader r(&_recv_buffer().front(), bytes_recvd);
-            deserial.reset();
-            deserial.deserialize(r, pkt.payload);
+                                           // deserialize from buffer
+                                           Reader r(&_recv_buffer().front(), bytes_recvd);
+                                           deserial.reset();
+                                           deserial.deserialize(r, pkt.payload);
 
-            // add ready packet to queue
-            _queue.push(pkt);
+                                           // add ready packet to queue
+                                           _queue.push(pkt);
 
-            // keep receiving
-            do_receive();
-          }
-        });
+                                           // keep receiving
+                                           do_receive();
+                                         }
+                                       });
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_socket.socket) {
       // first activation, let's init
-      _socket.socket = new udp::socket(
-          _io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
+      _socket.socket = new udp::socket(_io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
 
       // start receiving
       boost::asio::post(_io_context, [this]() { do_receive(); });
@@ -288,8 +275,7 @@ struct Server : public NetworkBase {
         CBVar output{};
         // update remote as pops in context variable
         _socket.endpoint = pkt.remote;
-        activateBlocks(CBVar(_blks).payload.seqValue, context, pkt.payload,
-                       output);
+        activateBlocks(CBVar(_blks).payload.seqValue, context, pkt.payload, output);
         // release the var once done
         // will recycle internal buffers
         _empty_queue.push(pkt);
@@ -343,42 +329,39 @@ struct Client : public NetworkBase {
   Serialization deserial;
 
   void do_receive() {
-    _socket.socket->async_receive_from(
-        boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()),
-        _server, [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-          if (!ec && bytes_recvd > 0) {
-            CBVar v{};
+    _socket.socket->async_receive_from(boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()), _server,
+                                       [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                         if (!ec && bytes_recvd > 0) {
+                                           CBVar v{};
 
-            // try reuse vars internal memory smartly
-            if (!_empty_queue.empty()) {
-              _empty_queue.pop(v);
-            }
+                                           // try reuse vars internal memory smartly
+                                           if (!_empty_queue.empty()) {
+                                             _empty_queue.pop(v);
+                                           }
 
-            // deserialize from buffer
-            Reader r(&_recv_buffer().front(), bytes_recvd);
-            deserial.reset();
-            deserial.deserialize(r, v);
+                                           // deserialize from buffer
+                                           Reader r(&_recv_buffer().front(), bytes_recvd);
+                                           deserial.reset();
+                                           deserial.deserialize(r, v);
 
-            // process a packet
-            _queue.push(v);
+                                           // process a packet
+                                           _queue.push(v);
 
-            // keep receiving
-            do_receive();
-          }
-        });
+                                           // keep receiving
+                                           do_receive();
+                                         }
+                                       });
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (!_socket.socket) {
       // first activation, let's init
-      _socket.socket =
-          new udp::socket(_io_context, udp::endpoint(udp::v4(), 0));
+      _socket.socket = new udp::socket(_io_context, udp::endpoint(udp::v4(), 0));
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
       auto sport = std::to_string(_port.get().payload.intValue);
-      udp::resolver::query query(udp::v4(), _addr.get().payload.stringValue,
-                                 sport);
+      udp::resolver::query query(udp::v4(), _addr.get().payload.stringValue, sport);
       _server = *resolver.resolve(query);
 
       // start receiving
@@ -458,8 +441,7 @@ struct Send {
     serializer.reset();
     auto size = serializer.serialize(input, w);
     // use async, avoid syscalls!
-    socket->socket->send_to(boost::asio::buffer(&_send_buffer().front(), size),
-                            *socket->endpoint);
+    socket->socket->send_to(boost::asio::buffer(&_send_buffer().front(), size), *socket->endpoint);
     return input;
   }
 };

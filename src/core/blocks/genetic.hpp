@@ -106,15 +106,12 @@ struct Evolve {
     vdata.chain = data.chain;
     auto res = composeChain(
         bchain.get(),
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
-            CBLOG_ERROR("Evolve: failed subject chain validation, error: {}",
-                        errorTxt);
+            CBLOG_ERROR("Evolve: failed subject chain validation, error: {}", errorTxt);
             throw CBException("Evolve: failed subject chain validation");
           } else {
-            CBLOG_INFO("Evolve: warning during subject chain validation: {}",
-                       errorTxt);
+            CBLOG_INFO("Evolve: warning during subject chain validation: {}", errorTxt);
           }
         },
         this, vdata);
@@ -124,22 +121,17 @@ struct Evolve {
     vdata.inputType = res.outputType;
     res = composeChain(
         fchain.get(),
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning,
-           void *userData) {
+        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
-            CBLOG_ERROR("Evolve: failed fitness chain validation, error: {}",
-                        errorTxt);
+            CBLOG_ERROR("Evolve: failed fitness chain validation, error: {}", errorTxt);
             throw CBException("Evolve: failed fitness chain validation");
           } else {
-            CBLOG_INFO("Evolve: warning during fitness chain validation: {}",
-                       errorTxt);
+            CBLOG_INFO("Evolve: warning during fitness chain validation: {}", errorTxt);
           }
         },
         this, vdata);
     if (res.outputType.basicType != CBType::Float) {
-      throw ComposeError(
-          "Evolve: fitness chain should output a Float, but instead got " +
-          type2Name(res.outputType.basicType));
+      throw ComposeError("Evolve: fitness chain should output a Float, but instead got " + type2Name(res.outputType.basicType));
     }
     arrayFree(res.exposedInfo);
     arrayFree(res.requiredInfo);
@@ -150,22 +142,17 @@ struct Evolve {
   struct Writer {
     std::stringstream &_stream;
     Writer(std::stringstream &stream) : _stream(stream) {}
-    void operator()(const uint8_t *buf, size_t size) {
-      _stream.write((const char *)buf, size);
-    }
+    void operator()(const uint8_t *buf, size_t size) { _stream.write((const char *)buf, size); }
   };
 
   struct Reader {
     std::stringstream &_stream;
     Reader(std::stringstream &stream) : _stream(stream) {}
-    void operator()(uint8_t *buf, size_t size) {
-      _stream.read((char *)buf, size);
-    }
+    void operator()(uint8_t *buf, size_t size) { _stream.read((char *)buf, size); }
   };
 
   void warmup(CBContext *context) {
-    const auto threads =
-        std::min(_threads, int64_t(std::thread::hardware_concurrency()));
+    const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
     if (!_exec || _exec->num_workers() != (size_t(threads) + 1)) {
       _exec.reset(new tf::Executor(size_t(threads) + 1));
     }
@@ -174,18 +161,16 @@ struct Evolve {
   void cleanup() {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
-      cleanupFlow.for_each_dynamic(
-          _population.begin(), _population.end(), [&](Individual &i) {
-            // Free and release chain
-            i.node->terminate();
-            auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
-            stop(chain.get());
-            Serialization::varFree(i.chain);
-            auto fitchain =
-                CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-            stop(fitchain.get());
-            Serialization::varFree(i.fitnessChain);
-          });
+      cleanupFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+        // Free and release chain
+        i.node->terminate();
+        auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+        stop(chain.get());
+        Serialization::varFree(i.chain);
+        auto fitchain = CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+        stop(fitchain.get());
+        Serialization::varFree(i.fitnessChain);
+      });
       _exec->run(cleanupFlow).get();
       _exec.reset(nullptr);
       _sortedPopulation.clear();
@@ -221,23 +206,21 @@ struct Evolve {
             _nelites = size_t(double(_popsize) * _elitism);
 
             tf::Taskflow initFlow;
-            initFlow.for_each_dynamic(
-                _population.begin(), _population.end(), [&](Individual &i) {
-                  Serialization deserial;
-                  std::stringstream i1Stream(chainStr);
-                  Reader r1(i1Stream);
-                  deserial.reset();
-                  deserial.deserialize(r1, i.chain);
-                  auto chain =
-                      CBChain::sharedFromRef(i.chain.payload.chainValue);
-                  gatherMutants(chain.get(), i.mutants);
-                  resetState(i);
+            initFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+              Serialization deserial;
+              std::stringstream i1Stream(chainStr);
+              Reader r1(i1Stream);
+              deserial.reset();
+              deserial.deserialize(r1, i.chain);
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              gatherMutants(chain.get(), i.mutants);
+              resetState(i);
 
-                  std::stringstream i2Stream(fitnessStr);
-                  Reader r2(i2Stream);
-                  deserial.reset();
-                  deserial.deserialize(r2, i.fitnessChain);
-                });
+              std::stringstream i2Stream(fitnessStr);
+              Reader r2(i2Stream);
+              deserial.reset();
+              deserial.deserialize(r2, i.fitnessChain);
+            });
             _exec->run(initFlow).get();
 
             size_t idx = 0;
@@ -263,24 +246,17 @@ struct Evolve {
                 // there is a chance also to keep current values
                 // so this is effectively tree way crossover
                 // Select from high fitness individuals
-                const auto parent0Idx =
-                    int(std::pow(Random::nextDouble(), 4) * double(_popsize));
+                const auto parent0Idx = int(std::pow(Random::nextDouble(), 4) * double(_popsize));
                 auto parent0 = _sortedPopulation[parent0Idx];
 
-                const auto parent1Idx =
-                    int(std::pow(Random::nextDouble(), 4) * double(_popsize));
+                const auto parent1Idx = int(std::pow(Random::nextDouble(), 4) * double(_popsize));
                 auto parent1 = _sortedPopulation[parent1Idx];
 
-                if (currentIdx != parent0Idx && currentIdx != parent1Idx &&
-                    parent0Idx != parent1Idx &&
-                    parent0->parent0Idx != currentIdx &&
-                    parent0->parent1Idx != currentIdx &&
-                    parent1->parent0Idx != currentIdx &&
+                if (currentIdx != parent0Idx && currentIdx != parent1Idx && parent0Idx != parent1Idx &&
+                    parent0->parent0Idx != currentIdx && parent0->parent1Idx != currentIdx && parent1->parent0Idx != currentIdx &&
                     parent1->parent1Idx != currentIdx) {
                   ind->crossoverTask =
-                      crossoverFlow.emplace([this, ind, parent0, parent1]() {
-                        crossover(*ind, *parent0, *parent1);
-                      });
+                      crossoverFlow.emplace([this, ind, parent0, parent1]() { crossover(*ind, *parent0, *parent1); });
 #if 0
               ind.get().crossoverTask.name(std::to_string(currentIdx) + " = " +
                                            std::to_string(parent0Idx) + " + " +
@@ -313,8 +289,7 @@ struct Evolve {
             // hack/fix
             // it is likely possible that the best chain we outputted
             // was used and so warmedup
-            auto best = CBChain::sharedFromRef(
-                _sortedPopulation.front()->chain.payload.chainValue);
+            auto best = CBChain::sharedFromRef(_sortedPopulation.front()->chain.payload.chainValue);
             best->cleanup(true);
             best->composedHash = Var::Empty;
             best->chainUsers.clear();
@@ -329,13 +304,10 @@ struct Evolve {
             tf::Taskflow flow;
 
             flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin()
-                          : _sortedPopulation.begin() + _nelites,
-                _sortedPopulation.end(),
+                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   // Evaluate our brain chain
-                  auto chain =
-                      CBChain::sharedFromRef(i->chain.payload.chainValue);
+                  auto chain = CBChain::sharedFromRef(i->chain.payload.chainValue);
                   i->node->schedule(chain);
                 },
                 _coros);
@@ -347,9 +319,7 @@ struct Evolve {
             tf::Taskflow flow;
 
             flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin()
-                          : _sortedPopulation.begin() + _nelites,
-                _sortedPopulation.end(),
+                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   if (!i->node->empty())
                     i->node->tick();
@@ -373,16 +343,12 @@ struct Evolve {
             tf::Taskflow flow;
 
             flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin()
-                          : _sortedPopulation.begin() + _nelites,
-                _sortedPopulation.end(),
+                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   // compute the fitness
                   TickObserver obs{*i};
-                  auto fitchain = CBChain::sharedFromRef(
-                      i->fitnessChain.payload.chainValue);
-                  auto chain =
-                      CBChain::sharedFromRef(i->chain.payload.chainValue);
+                  auto fitchain = CBChain::sharedFromRef(i->fitnessChain.payload.chainValue);
+                  auto chain = CBChain::sharedFromRef(i->chain.payload.chainValue);
                   i->node->schedule(obs, fitchain, chain->finishedOutput);
                 },
                 _coros);
@@ -394,9 +360,7 @@ struct Evolve {
             tf::Taskflow flow;
 
             flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin()
-                          : _sortedPopulation.begin() + _nelites,
-                _sortedPopulation.end(),
+                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   if (!i->node->empty()) {
                     TickObserver obs{*i};
@@ -424,26 +388,23 @@ struct Evolve {
           // From validation to end, every iteration/era
           {
             tf::Taskflow runFlow;
-            runFlow.for_each_dynamic(
-                _population.begin(), _population.end(), [&](Individual &i) {
-                  TickObserver obs{i};
+            runFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+              TickObserver obs{i};
 
-                  // Evaluate our brain chain
-                  auto chain =
-                      CBChain::sharedFromRef(i.chain.payload.chainValue);
-                  i.node->schedule(chain);
-                  while (!node.empty()) {
-                    i.node->tick();
-                  }
+              // Evaluate our brain chain
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              i.node->schedule(chain);
+              while (!node.empty()) {
+                i.node->tick();
+              }
 
-                  // compute the fitness
-                  auto fitchain =
-                      CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-                  i.node->schedule(obs, fitchain, chain->finishedOutput);
-                  while (!i.node->empty()) {
-                    i.node->tick(obs);
-                  }
-                });
+              // compute the fitness
+              auto fitchain = CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+              i.node->schedule(obs, fitchain, chain->finishedOutput);
+              while (!i.node->empty()) {
+                i.node->tick(obs);
+              }
+            });
             _exec->run(runFlow).get();
           }
 #endif
@@ -451,63 +412,54 @@ struct Evolve {
           { // Stop all the population chains
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
-                _population.begin(), _population.end(), [](Individual &i) {
-                  auto chain =
-                      CBChain::sharedFromRef(i.chain.payload.chainValue);
-                  auto fitchain =
-                      CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
-                  stop(chain.get());
-                  chain->composedHash = Var::Empty;
-                  stop(fitchain.get());
-                  fitchain->composedHash = Var::Empty;
-                  i.node->terminate();
-                });
+            flow.for_each_dynamic(_population.begin(), _population.end(), [](Individual &i) {
+              auto chain = CBChain::sharedFromRef(i.chain.payload.chainValue);
+              auto fitchain = CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
+              stop(chain.get());
+              chain->composedHash = Var::Empty;
+              stop(fitchain.get());
+              fitchain->composedHash = Var::Empty;
+              i.node->terminate();
+            });
 
             _exec->run(flow).get();
           }
 
           CBLOG_TRACE("Evolve, sorting");
           // remove non normal fitness (sort needs this or crashes will happen)
-          std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(),
-                        [](auto &i) {
-                          if (!std::isnormal(i->fitness)) {
-                            i->fitness = -std::numeric_limits<float>::max();
-                          }
-                        });
+          std::for_each(_sortedPopulation.begin(), _sortedPopulation.end(), [](auto &i) {
+            if (!std::isnormal(i->fitness)) {
+              i->fitness = -std::numeric_limits<float>::max();
+            }
+          });
           pdqsort(_sortedPopulation.begin(), _sortedPopulation.end(),
-                  [](const auto &a, const auto &b) {
-                    return a->fitness > b->fitness;
-                  });
+                  [](const auto &a, const auto &b) { return a->fitness > b->fitness; });
 
           CBLOG_TRACE("Evolve, resetting flags");
           // reset flags
-          std::for_each(_sortedPopulation.begin(),
-                        _sortedPopulation.end() - _nkills, [](auto &i) {
-                          i->extinct = false;
-                          i->parent0Idx = -1;
-                          i->parent1Idx = -1;
-                        });
-          std::for_each(_sortedPopulation.end() - _nkills,
-                        _sortedPopulation.end(), [](auto &i) {
-                          i->extinct = true;
-                          i->parent0Idx = -1;
-                          i->parent1Idx = -1;
-                        });
+          std::for_each(_sortedPopulation.begin(), _sortedPopulation.end() - _nkills, [](auto &i) {
+            i->extinct = false;
+            i->parent0Idx = -1;
+            i->parent1Idx = -1;
+          });
+          std::for_each(_sortedPopulation.end() - _nkills, _sortedPopulation.end(), [](auto &i) {
+            i->extinct = true;
+            i->parent0Idx = -1;
+            i->parent1Idx = -1;
+          });
 
           CBLOG_TRACE("Evolve, run mutations");
           // Do mutations at end, yet when contexts are still valid!
           // since we might need them
           {
             tf::Taskflow mutFlow;
-            mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites,
-                                     _sortedPopulation.end(), [&](auto &i) {
-                                       // reset the individual if extinct
-                                       if (i->extinct) {
-                                         resetState(*i);
-                                       }
-                                       mutate(*i);
-                                     });
+            mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites, _sortedPopulation.end(), [&](auto &i) {
+              // reset the individual if extinct
+              if (i->extinct) {
+                resetState(*i);
+              }
+              mutate(*i);
+            });
             _exec->run(mutFlow).get();
           }
 
@@ -516,8 +468,7 @@ struct Evolve {
           // hack/fix
           // it is likely possible that the best chain we outputted
           // was used and so warmedup
-          auto best = CBChain::sharedFromRef(
-              _sortedPopulation.front()->chain.payload.chainValue);
+          auto best = CBChain::sharedFromRef(_sortedPopulation.front()->chain.payload.chainValue);
           best->cleanup(true);
           best->composedHash = Var::Empty;
           best->chainUsers.clear();
@@ -543,8 +494,7 @@ private:
     std::vector<std::tuple<int, OwnedVar>> originalParams;
   };
 
-  static inline void gatherMutants(CBChain *chain,
-                                   std::vector<MutantInfo> &out);
+  static inline void gatherMutants(CBChain *chain, std::vector<MutantInfo> &out);
 
   struct Individual {
     ~Individual() {
@@ -595,39 +545,23 @@ private:
     }
   };
 
-  inline void crossover(Individual &child, const Individual &parent0,
-                        const Individual &parent1);
+  inline void crossover(Individual &child, const Individual &parent0, const Individual &parent1);
   inline void mutate(Individual &individual);
   inline void resetState(Individual &individual);
 
   static inline Parameters _params{
-      {"Chain",
-       CBCCSTR("The chain to optimize and evolve."),
-       {CoreInfo::ChainType}},
+      {"Chain", CBCCSTR("The chain to optimize and evolve."), {CoreInfo::ChainType}},
       {"Fitness",
-       CBCCSTR(
-           "The fitness chain to run at the end of the main chain evaluation "
-           "and using its last output; should output a Float fitness value."),
+       CBCCSTR("The fitness chain to run at the end of the main chain evaluation "
+               "and using its last output; should output a Float fitness value."),
        {CoreInfo::ChainType}},
       {"Population", CBCCSTR("The population size."), {CoreInfo::IntType}},
-      {"Mutation",
-       CBCCSTR("The rate of mutation, 0.1 = 10%."),
-       {CoreInfo::FloatType}},
-      {"Crossover",
-       CBCCSTR("The rate of crossover, 0.1 = 10%."),
-       {CoreInfo::FloatType}},
-      {"Extinction",
-       CBCCSTR("The rate of extinction, 0.1 = 10%."),
-       {CoreInfo::FloatType}},
-      {"Elitism",
-       CBCCSTR("The rate of elitism, 0.1 = 10%."),
-       {CoreInfo::FloatType}},
-      {"Threads",
-       CBCCSTR("The number of cpu threads to use."),
-       {CoreInfo::IntType}},
-      {"Coroutines",
-       CBCCSTR("The number of coroutines to run on each thread."),
-       {CoreInfo::IntType}}};
+      {"Mutation", CBCCSTR("The rate of mutation, 0.1 = 10%."), {CoreInfo::FloatType}},
+      {"Crossover", CBCCSTR("The rate of crossover, 0.1 = 10%."), {CoreInfo::FloatType}},
+      {"Extinction", CBCCSTR("The rate of extinction, 0.1 = 10%."), {CoreInfo::FloatType}},
+      {"Elitism", CBCCSTR("The rate of elitism, 0.1 = 10%."), {CoreInfo::FloatType}},
+      {"Threads", CBCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}},
+      {"Coroutines", CBCCSTR("The number of coroutines to run on each thread."), {CoreInfo::IntType}}};
   static inline Types _outputTypes{{CoreInfo::FloatType, CoreInfo::ChainType}};
   static inline Type _outputType{{CBType::Seq, {.seqTypes = _outputTypes}}};
 
@@ -638,8 +572,7 @@ private:
   std::vector<CBVar> _result;
   std::vector<Individual> _population;
   std::vector<Individual *> _sortedPopulation;
-  std::vector<std::tuple<Individual *, Individual *, Individual *>>
-      _crossingOver;
+  std::vector<std::tuple<Individual *, Individual *, Individual *>> _crossingOver;
   int64_t _popsize = 64;
   int64_t _coros = 8;
   int64_t _threads = 2;
@@ -805,9 +738,7 @@ struct Mutant {
           }
         } else if (mut.valueType == Seq) {
           auto res = composeChain(
-              mut.payload.seqValue,
-              [](const CBlock *errorBlock, const char *errorTxt,
-                 bool nonfatalWarning, void *userData) {},
+              mut.payload.seqValue, [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {},
               nullptr, dataCopy);
           if (res.outputType != ptype) {
             throw CBException("Expected same type as input in parameter "
@@ -861,9 +792,7 @@ private:
   OwnedVar _options{};
   static inline Parameters _params{
       {"Block", CBCCSTR("The block to mutate."), {CoreInfo::BlockType}},
-      {"Indices",
-       CBCCSTR("The parameter indices to mutate of the inner block."),
-       {CoreInfo::IntSeqType}},
+      {"Indices", CBCCSTR("The parameter indices to mutate of the inner block."), {CoreInfo::IntSeqType}},
       {"Mutations",
        CBCCSTR("Optional chains of blocks (or Nones) to call when mutating one "
                "of the parameters, if empty a default operator will be used."),
@@ -905,8 +834,7 @@ inline void mutateVar(CBVar &var) {
   } break;
   case CBType::Int16: {
     for (auto i = 0; i < 16; i++) {
-      const auto add =
-          Random::nextNormal1() * double(var.payload.int16Value[i]);
+      const auto add = Random::nextNormal1() * double(var.payload.int16Value[i]);
       var.payload.int16Value[i] += int8_t(add);
     }
   } break;
@@ -930,13 +858,10 @@ inline void mutateVar(CBVar &var) {
   }
 }
 
-inline void Evolve::gatherMutants(CBChain *chain,
-                                  std::vector<MutantInfo> &out) {
+inline void Evolve::gatherMutants(CBChain *chain, std::vector<MutantInfo> &out) {
   std::vector<CBlockInfo> blocks;
   gatherBlocks(chain, blocks);
-  auto pos =
-      std::remove_if(std::begin(blocks), std::end(blocks),
-                     [](CBlockInfo &info) { return info.name != "Mutant"; });
+  auto pos = std::remove_if(std::begin(blocks), std::end(blocks), [](CBlockInfo &info) { return info.name != "Mutant"; });
   if (pos != std::end(blocks)) {
     std::for_each(std::begin(blocks), pos, [&](CBlockInfo &info) {
       auto mutator = reinterpret_cast<const BlockWrapper<Mutant> *>(info.block);
@@ -952,13 +877,11 @@ inline void Evolve::gatherMutants(CBChain *chain,
   }
 }
 
-inline void Evolve::crossover(Individual &child, const Individual &parent0,
-                              const Individual &parent1) {
+inline void Evolve::crossover(Individual &child, const Individual &parent0, const Individual &parent1) {
   auto cmuts = child.mutants.cbegin();
   auto p0muts = parent0.mutants.cbegin();
   auto p1muts = parent1.mutants.cbegin();
-  for (; cmuts != child.mutants.end() && p0muts != parent0.mutants.end() &&
-         p1muts != parent1.mutants.end();
+  for (; cmuts != child.mutants.end() && p0muts != parent0.mutants.end() && p1muts != parent1.mutants.end();
        ++cmuts, ++p0muts, ++p1muts) {
     auto cb = cmuts->block.get().mutant();
     auto p0b = p0muts->block.get().mutant();
@@ -1002,88 +925,77 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
   CBContext ctx(&foo, chain.get(), &flow);
 #endif
   ctx.chainStack.push_back(chain.get());
-  std::for_each(
-      std::begin(individual.mutants), std::end(individual.mutants),
-      [&](MutantInfo &info) {
-        if (Random::nextDouble() > _mutation) {
-          return;
-        }
+  std::for_each(std::begin(individual.mutants), std::end(individual.mutants), [&](MutantInfo &info) {
+    if (Random::nextDouble() > _mutation) {
+      return;
+    }
 
-        auto &mutator = info.block.get();
-        auto &options = mutator._options;
-        if (info.block.get().mutant()) {
-          auto mutant = info.block.get().mutant();
-          auto &indices = mutator._indices;
-          if (mutant->mutate && (indices.valueType == None || rand() < 0.5)) {
-            // In the case the block has `mutate`
-            auto table = options.valueType == Table ? options.payload.tableValue
-                                                    : CBTable();
-            mutant->mutate(mutant, table);
-          } else if (indices.valueType == Seq) {
-            auto &iseq = indices.payload.seqValue;
-            // do stuff on the param
-            // select a random one
-            auto rparam = Random::nextInt() % iseq.len;
-            auto current = mutant->getParam(
-                mutant, int(iseq.elements[rparam].payload.intValue));
-            // if we have mutation blocks use them
-            // if not use default operation
-            if (mutator._mutations.valueType == Seq &&
-                uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
-              // we need to warmup / cleanup in this case
-              // mutant mini chain also currently is not composed! FIXME?
-              mutator.warmupMutations(&ctx);
-              auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
-              if (mblks.valueType == Block) {
-                auto blk = mblks.payload.blockValue;
-                current = blk->activate(blk, &ctx, &current);
-              } else if (mblks.valueType == Seq) {
-                auto blks = mblks.payload.seqValue;
-                CBVar out{};
-                activateBlocks(blks, &ctx, current, out);
-                current = out;
-              } else {
-                // Was likely None, so use default op
-                mutateVar(current);
-              }
-              mutator.cleanupMutations();
-            } else {
-              mutateVar(current);
-            }
-            mutant->setParam(
-                mutant, int(iseq.elements[rparam].payload.intValue), &current);
+    auto &mutator = info.block.get();
+    auto &options = mutator._options;
+    if (info.block.get().mutant()) {
+      auto mutant = info.block.get().mutant();
+      auto &indices = mutator._indices;
+      if (mutant->mutate && (indices.valueType == None || rand() < 0.5)) {
+        // In the case the block has `mutate`
+        auto table = options.valueType == Table ? options.payload.tableValue : CBTable();
+        mutant->mutate(mutant, table);
+      } else if (indices.valueType == Seq) {
+        auto &iseq = indices.payload.seqValue;
+        // do stuff on the param
+        // select a random one
+        auto rparam = Random::nextInt() % iseq.len;
+        auto current = mutant->getParam(mutant, int(iseq.elements[rparam].payload.intValue));
+        // if we have mutation blocks use them
+        // if not use default operation
+        if (mutator._mutations.valueType == Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
+          // we need to warmup / cleanup in this case
+          // mutant mini chain also currently is not composed! FIXME?
+          mutator.warmupMutations(&ctx);
+          auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
+          if (mblks.valueType == Block) {
+            auto blk = mblks.payload.blockValue;
+            current = blk->activate(blk, &ctx, &current);
+          } else if (mblks.valueType == Seq) {
+            auto blks = mblks.payload.seqValue;
+            CBVar out{};
+            activateBlocks(blks, &ctx, current, out);
+            current = out;
+          } else {
+            // Was likely None, so use default op
+            mutateVar(current);
           }
+          mutator.cleanupMutations();
+        } else {
+          mutateVar(current);
         }
-      });
+        mutant->setParam(mutant, int(iseq.elements[rparam].payload.intValue), &current);
+      }
+    }
+  });
 }
 
 inline void Evolve::resetState(Evolve::Individual &individual) {
   // Reset params and state
-  std::for_each(std::begin(individual.mutants), std::end(individual.mutants),
-                [](MutantInfo &info) {
-                  auto mutant = info.block.get().mutant();
-                  if (!mutant)
-                    return;
+  std::for_each(std::begin(individual.mutants), std::end(individual.mutants), [](MutantInfo &info) {
+    auto mutant = info.block.get().mutant();
+    if (!mutant)
+      return;
 
-                  if (mutant->resetState)
-                    mutant->resetState(mutant);
+    if (mutant->resetState)
+      mutant->resetState(mutant);
 
-                  for (auto [idx, val] : info.originalParams) {
-                    mutant->setParam(mutant, idx, &val);
-                  }
-                });
+    for (auto [idx, val] : info.originalParams) {
+      mutant->setParam(mutant, idx, &val);
+    }
+  });
 }
 
 struct DBlock {
   static CBOptionalString help() { return CBCCSTR("A dynamic block."); }
 
   static inline Parameters _params{
-      {"Name",
-       CBCCSTR("The name of the block to wrap."),
-       {CoreInfo::StringType}},
-      {"Parameters",
-       CBCCSTR("The parameters to pass to the wrapped block."),
-       {CoreInfo::AnySeqType}}};
+      {"Name", CBCCSTR("The name of the block to wrap."), {CoreInfo::StringType}},
+      {"Parameters", CBCCSTR("The parameters to pass to the wrapped block."), {CoreInfo::AnySeqType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1121,8 +1033,7 @@ struct DBlock {
       CBVar res{};
       res.valueType = Seq;
       const auto nparams = _wrappedParams.size();
-      res.payload.seqValue.elements =
-          nparams > 0 ? &_wrappedParams.front() : nullptr;
+      res.payload.seqValue.elements = nparams > 0 ? &_wrappedParams.front() : nullptr;
       res.payload.seqValue.len = nparams;
       res.payload.seqValue.cap = 0;
       return res;
@@ -1141,11 +1052,8 @@ struct DBlock {
     for (uint32_t i = 0; i < params.len; i++) {
       if (!validateSetParam(
               _wrapped, i, _wrappedParams[i],
-              [](const CBlock *errorBlock, const char *errorTxt,
-                 bool nonfatalWarning, void *userData) {},
-              nullptr))
-        throw CBException(
-            "Failed to validate a parameter within a wrapped DBlock.");
+              [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {}, nullptr))
+        throw CBException("Failed to validate a parameter within a wrapped DBlock.");
       _wrapped->setParam(_wrapped, int(i), &_wrappedParams[i]);
     }
     // and compose finally
@@ -1154,8 +1062,7 @@ struct DBlock {
     } else {
       // need to return something valid following runtime validation
       auto outputTypes = _wrapped->outputTypes(_wrapped);
-      if (outputTypes.len == 1 &&
-          outputTypes.elements[0].basicType != CBType::Any) {
+      if (outputTypes.len == 1 && outputTypes.elements[0].basicType != CBType::Any) {
         return outputTypes.elements[0];
       } else {
         return {};

@@ -20,18 +20,15 @@ void CBCoro::init(const std::function<void()> &func) {
   CBLOG_TRACE("EM FIBER INIT");
   this->func = func;
   c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
-  emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size,
-                        asyncify_stack, as_stack_size);
+  emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size, asyncify_stack, as_stack_size);
 }
 
 NO_INLINE void CBCoro::resume() {
-  CBLOG_TRACE("EM FIBER SWAP RESUME {}",
-              reinterpret_cast<uintptr_t>(&em_fiber));
+  CBLOG_TRACE("EM FIBER SWAP RESUME {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // ensure local thread is setup
   if (!em_main_coro.stack_ptr) {
     CBLOG_DEBUG("CBCoro - initialization of new thread");
-    emscripten_fiber_init_from_current_context(
-        &em_main_coro, em_asyncify_main_stack, CBCoro::as_stack_size);
+    emscripten_fiber_init_from_current_context(&em_main_coro, em_asyncify_main_stack, CBCoro::as_stack_size);
   }
   // ensure we have a local coro
   if (!em_local_coro) {

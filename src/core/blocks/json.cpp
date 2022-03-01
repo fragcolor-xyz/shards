@@ -46,8 +46,7 @@ void _releaseMemory(CBVar &var) {
     CBChain::deleteRef(var.payload.chainValue);
   } break;
   case CBType::Object: {
-    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
-        var.objectInfo && var.objectInfo->release) {
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->release) {
       var.objectInfo->release(var.payload.objectValue);
     }
   } break;
@@ -80,34 +79,26 @@ void to_json(json &j, const CBVar &var) {
     break;
   }
   case CBType::Int3: {
-    auto vec = {var.payload.int3Value[0], var.payload.int3Value[1],
-                var.payload.int3Value[2]};
+    auto vec = {var.payload.int3Value[0], var.payload.int3Value[1], var.payload.int3Value[2]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
   case CBType::Int4: {
-    auto vec = {var.payload.int4Value[0], var.payload.int4Value[1],
-                var.payload.int4Value[2], var.payload.int4Value[3]};
+    auto vec = {var.payload.int4Value[0], var.payload.int4Value[1], var.payload.int4Value[2], var.payload.int4Value[3]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
   case CBType::Int8: {
-    auto vec = {var.payload.int8Value[0], var.payload.int8Value[1],
-                var.payload.int8Value[2], var.payload.int8Value[3],
-                var.payload.int8Value[4], var.payload.int8Value[5],
-                var.payload.int8Value[6], var.payload.int8Value[7]};
+    auto vec = {var.payload.int8Value[0], var.payload.int8Value[1], var.payload.int8Value[2], var.payload.int8Value[3],
+                var.payload.int8Value[4], var.payload.int8Value[5], var.payload.int8Value[6], var.payload.int8Value[7]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
   case CBType::Int16: {
-    auto vec = {var.payload.int16Value[0],  var.payload.int16Value[1],
-                var.payload.int16Value[2],  var.payload.int16Value[3],
-                var.payload.int16Value[4],  var.payload.int16Value[5],
-                var.payload.int16Value[6],  var.payload.int16Value[7],
-                var.payload.int16Value[8],  var.payload.int16Value[9],
-                var.payload.int16Value[10], var.payload.int16Value[11],
-                var.payload.int16Value[12], var.payload.int16Value[13],
-                var.payload.int16Value[14], var.payload.int16Value[15]};
+    auto vec = {var.payload.int16Value[0],  var.payload.int16Value[1],  var.payload.int16Value[2],  var.payload.int16Value[3],
+                var.payload.int16Value[4],  var.payload.int16Value[5],  var.payload.int16Value[6],  var.payload.int16Value[7],
+                var.payload.int16Value[8],  var.payload.int16Value[9],  var.payload.int16Value[10], var.payload.int16Value[11],
+                var.payload.int16Value[12], var.payload.int16Value[13], var.payload.int16Value[14], var.payload.int16Value[15]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
@@ -121,14 +112,12 @@ void to_json(json &j, const CBVar &var) {
     break;
   }
   case CBType::Float3: {
-    auto vec = {var.payload.float3Value[0], var.payload.float3Value[1],
-                var.payload.float3Value[2]};
+    auto vec = {var.payload.float3Value[0], var.payload.float3Value[1], var.payload.float3Value[2]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
   case CBType::Float4: {
-    auto vec = {var.payload.float4Value[0], var.payload.float4Value[1],
-                var.payload.float4Value[2], var.payload.float4Value[3]};
+    auto vec = {var.payload.float4Value[0], var.payload.float4Value[1], var.payload.float4Value[2], var.payload.float4Value[3]};
     j = json{{"type", valType}, {"value", vec}};
     break;
   }
@@ -140,23 +129,17 @@ void to_json(json &j, const CBVar &var) {
   }
   case CBType::Color: {
     j = json{{"type", valType},
-             {"value",
-              {var.payload.colorValue.r, var.payload.colorValue.g,
-               var.payload.colorValue.b, var.payload.colorValue.a}}};
+             {"value", {var.payload.colorValue.r, var.payload.colorValue.g, var.payload.colorValue.b, var.payload.colorValue.a}}};
     break;
   }
   case CBType::Image: {
     if (var.payload.imageValue.data) {
       auto pixsize = 1;
-      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-          CBIMAGE_FLAGS_16BITS_INT)
+      if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-               CBIMAGE_FLAGS_32BITS_FLOAT)
+      else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
-      auto binsize = var.payload.imageValue.width *
-                     var.payload.imageValue.height *
-                     var.payload.imageValue.channels * pixsize;
+      auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels * pixsize;
       std::vector<uint8_t> buffer;
       buffer.resize(binsize);
       memcpy(&buffer[0], var.payload.imageValue.data, binsize);
@@ -173,8 +156,7 @@ void to_json(json &j, const CBVar &var) {
   }
   case CBType::Audio: {
     if (var.payload.audioValue.samples) {
-      auto size =
-          var.payload.audioValue.nsamples * var.payload.audioValue.channels;
+      auto size = var.payload.audioValue.nsamples * var.payload.audioValue.channels;
       std::vector<float> buffer;
       buffer.resize(size);
       memcpy(&buffer[0], var.payload.audioValue.samples, size * sizeof(float));
@@ -200,11 +182,8 @@ void to_json(json &j, const CBVar &var) {
     std::vector<uint8_t> buffer;
     buffer.resize(var.payload.arrayValue.len * sizeof(CBVarPayload));
     if (var.payload.arrayValue.len > 0)
-      memcpy(&buffer[0], &var.payload.arrayValue.elements[0],
-             var.payload.arrayValue.len * sizeof(CBVarPayload));
-    j = json{{"type", valType},
-             {"inner", magic_enum::enum_name(var.innerType)},
-             {"data", buffer}};
+      memcpy(&buffer[0], &var.payload.arrayValue.elements[0], var.payload.arrayValue.len * sizeof(CBVarPayload));
+    j = json{{"type", valType}, {"inner", magic_enum::enum_name(var.innerType)}, {"data", buffer}};
     break;
   }
   case Enum: {
@@ -260,10 +239,7 @@ void to_json(json &j, const CBVar &var) {
       params.push_back(param_obj);
     }
     if (blk->getState) {
-      j = json{{"type", valType},
-               {"name", blk->name(blk)},
-               {"params", params},
-               {"state", blk->getState(blk)}};
+      j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}, {"state", blk->getState(blk)}};
     } else {
       j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
     }
@@ -275,18 +251,13 @@ void to_json(json &j, const CBVar &var) {
     break;
   }
   case CBType::Object: {
-    j = json{{"type", valType},
-             {"vendorId", var.payload.objectVendorId},
-             {"typeId", var.payload.objectTypeId}};
-    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO &&
-        var.objectInfo && var.objectInfo->serialize) {
+    j = json{{"type", valType}, {"vendorId", var.payload.objectVendorId}, {"typeId", var.payload.objectTypeId}};
+    if ((var.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->serialize) {
       size_t len = 0;
       uint8_t *data = nullptr;
       CBPointer handle = nullptr;
-      if (!var.objectInfo->serialize(var.payload.objectValue, &data, &len,
-                                     &handle)) {
-        throw chainblocks::CBException(
-            "Failed to serialize custom object variable!");
+      if (!var.objectInfo->serialize(var.payload.objectValue, &data, &len, &handle)) {
+        throw chainblocks::CBException("Failed to serialize custom object variable!");
       }
       std::vector<uint8_t> buf;
       buf.resize(len);
@@ -431,15 +402,11 @@ void from_json(const json &j, CBVar &var) {
     var.payload.imageValue.channels = j.at("channels").get<int32_t>();
     var.payload.imageValue.flags = j.at("flags").get<int32_t>();
     auto pixsize = 1;
-    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
+    if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((var.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
-    auto binsize = var.payload.imageValue.width *
-                   var.payload.imageValue.height *
-                   var.payload.imageValue.channels * pixsize;
+    auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels * pixsize;
     var.payload.imageValue.data = new uint8_t[binsize];
     auto buffer = j.at("data").get<std::vector<uint8_t>>();
     memcpy(var.payload.imageValue.data, &buffer[0], binsize);
@@ -457,8 +424,7 @@ void from_json(const json &j, CBVar &var) {
     var.payload.audioValue.sampleRate = j.at("sampleRate").get<float>();
     var.payload.audioValue.nsamples = j.at("nsamples").get<uint16_t>();
     var.payload.audioValue.channels = j.at("channels").get<uint16_t>();
-    auto size =
-        var.payload.audioValue.nsamples * var.payload.audioValue.channels;
+    auto size = var.payload.audioValue.nsamples * var.payload.audioValue.channels;
     var.payload.audioValue.samples = new float[size];
     auto buffer = j.at("samples").get<std::vector<float>>();
     memcpy(var.payload.audioValue.samples, &buffer[0], size * sizeof(float));
@@ -567,8 +533,7 @@ void from_json(const json &j, CBVar &var) {
     var.payload.objectVendorId = CBEnum(j.at("vendorId").get<int32_t>());
     var.payload.objectTypeId = CBEnum(j.at("typeId").get<int32_t>());
     var.payload.objectValue = nullptr;
-    int64_t id =
-        (int64_t)var.payload.objectVendorId << 32 | var.payload.objectTypeId;
+    int64_t id = (int64_t)var.payload.objectVendorId << 32 | var.payload.objectTypeId;
     auto it = chainblocks::GetGlobals().ObjectTypesRegister.find(id);
     if (it != chainblocks::GetGlobals().ObjectTypesRegister.end()) {
       auto &info = it->second;
@@ -579,8 +544,7 @@ void from_json(const json &j, CBVar &var) {
       if (info.reference)
         info.reference(var.payload.objectValue);
     } else {
-      throw chainblocks::ActivationError(
-          "Failed to find object type in registry.");
+      throw chainblocks::ActivationError("Failed to find object type in registry.");
     }
     break;
   }
@@ -626,14 +590,11 @@ struct ToJson {
   bool _pure{true};
 
   static CBParametersInfo parameters() {
-    static Parameters params{
-        {"Pure",
-         CBCCSTR("If the input string is generic pure json rather then "
-                 "chainblocks flavored json."),
-         {CoreInfo::BoolType}},
-        {"Indent",
-         CBCCSTR("How many spaces to use as json prettify indent."),
-         {CoreInfo::IntType}}};
+    static Parameters params{{"Pure",
+                              CBCCSTR("If the input string is generic pure json rather then "
+                                      "chainblocks flavored json."),
+                              {CoreInfo::BoolType}},
+                             {"Indent", CBCCSTR("How many spaces to use as json prettify indent."), {CoreInfo::IntType}}};
     return params;
   }
 
@@ -694,8 +655,7 @@ struct ToJson {
       j = nullptr;
     } break;
     default: {
-      CBLOG_ERROR("Unexpected type for pure JSON conversion: {}",
-                  type2Name(input.valueType));
+      CBLOG_ERROR("Unexpected type for pure JSON conversion: {}", type2Name(input.valueType));
       throw ActivationError("Type not supported for pure JSON conversion");
     }
     }
@@ -729,17 +689,14 @@ struct FromJson {
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static CBParametersInfo parameters() {
-    static Parameters params{
-        {"Pure",
-         CBCCSTR("If the input string is generic pure json rather then "
-                 "chainblocks flavored json."),
-         {CoreInfo::BoolType}}};
+    static Parameters params{{"Pure",
+                              CBCCSTR("If the input string is generic pure json rather then "
+                                      "chainblocks flavored json."),
+                              {CoreInfo::BoolType}}};
     return params;
   }
 
-  void setParam(int index, const CBVar &value) {
-    _pure = value.payload.boolValue;
-  }
+  void setParam(int index, const CBVar &value) { _pure = value.payload.boolValue; }
 
   CBVar getParam(int index) { return Var(_pure); }
 
@@ -773,8 +730,7 @@ struct FromJson {
     } else if (j.is_object()) {
       storage.valueType = Table;
       auto map = new chainblocks::CBMap();
-      storage.payload.tableValue.api =
-          &chainblocks::GetGlobals().TableInterface;
+      storage.payload.tableValue.api = &chainblocks::GetGlobals().TableInterface;
       storage.payload.tableValue.opaque = map;
       for (auto &[key, value] : j.items()) {
         anyParse(value, (*map)[key]);

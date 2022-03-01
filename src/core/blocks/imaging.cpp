@@ -15,14 +15,11 @@ struct Convolve {
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters _params{
-      {"Radius",
-       CBCCSTR("The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and "
-               "so on."),
-       {CoreInfo::IntType}},
-      {"Step",
-       CBCCSTR("How many pixels to advance each activation."),
-       {CoreInfo::IntType}}};
+  static inline Parameters _params{{"Radius",
+                                    CBCCSTR("The radius of the kernel, e.g. 1 = 1x1; 2 = 3x3; 3 = 5x5 and "
+                                            "so on."),
+                                    {CoreInfo::IntType}},
+                                   {"Step", CBCCSTR("How many pixels to advance each activation."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -55,8 +52,7 @@ struct Convolve {
     _yindex = 0;
   }
 
-  template <typename T>
-  void process(const CBVar &pixels, int32_t w, int32_t h, int32_t c) {
+  template <typename T> void process(const CBVar &pixels, int32_t w, int32_t h, int32_t c) {
     const int high = _radius - 1;
     const int low = high * -1;
     int index = 0;
@@ -82,11 +78,9 @@ struct Convolve {
     int32_t c = int32_t(input.payload.imageValue.channels);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(_kernel * _kernel * c * pixsize);
@@ -110,8 +104,7 @@ struct Convolve {
     // advance the scan
     _xindex += _step;
 
-    return Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel),
-               input.payload.imageValue.channels,
+    return Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel), input.payload.imageValue.channels,
                input.payload.imageValue.flags);
   }
 
@@ -150,11 +143,9 @@ struct StripAlpha {
     int32_t h = int32_t(input.payload.imageValue.height);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(w * h * 3 * pixsize);
@@ -167,8 +158,7 @@ struct StripAlpha {
       process<float>(input, w, h);
     }
 
-    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3,
-               input.payload.imageValue.flags);
+    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3, input.payload.imageValue.flags);
   }
 
 private:
@@ -179,8 +169,7 @@ struct FillAlpha {
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  template <typename T, typename TA>
-  void process(const CBVar &input, int32_t w, int32_t h, TA alpha_value) {
+  template <typename T, typename TA> void process(const CBVar &input, int32_t w, int32_t h, TA alpha_value) {
     const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
     auto to = reinterpret_cast<T *>(&_bytes[0]);
     for (auto y = 0; y < h; y++) {
@@ -207,11 +196,9 @@ struct FillAlpha {
     int32_t h = int32_t(input.payload.imageValue.height);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(w * h * 4 * pixsize);
@@ -224,8 +211,7 @@ struct FillAlpha {
       process<float>(input, w, h, 1.0);
     }
 
-    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4,
-               input.payload.imageValue.flags);
+    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
   }
 
 private:
@@ -236,9 +222,8 @@ struct Resize {
   static CBTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters _params{
-      {"Width", CBCCSTR("The target width."), {CoreInfo::IntType}},
-      {"Height", CBCCSTR("How target height."), {CoreInfo::IntType}}};
+  static inline Parameters _params{{"Width", CBCCSTR("The target width."), {CoreInfo::IntType}},
+                                   {"Height", CBCCSTR("How target height."), {CoreInfo::IntType}}};
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -267,51 +252,42 @@ struct Resize {
     int c = uint32_t(input.payload.imageValue.channels);
 
     auto pixsize = 1;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) ==
-        CBIMAGE_FLAGS_16BITS_INT)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
       pixsize = 2;
-    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) ==
-             CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
       pixsize = 4;
 
     _bytes.resize(_width * _height * c * pixsize);
 
     int flags = 0;
-    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) ==
-        CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
+    if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == CBIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
       flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
 
     if (pixsize == 1) {
-      auto res = stbir_resize_uint8_generic(
-          input.payload.imageValue.data, w, h, w * c, &_bytes.front(), _width,
-          _height, _width * c, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
-          STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB,
-          nullptr);
+      auto res = stbir_resize_uint8_generic(input.payload.imageValue.data, w, h, w * c, &_bytes.front(), _width, _height,
+                                            _width * c, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
+                                            STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     } else if (pixsize == 2) {
-      auto res = stbir_resize_uint16_generic(
-          (uint16_t *)input.payload.imageValue.data, w, h, w * c * 2,
-          (uint16_t *)&_bytes.front(), _width, _height, _width * c * 2, c,
-          c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
-          STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
+      auto res =
+          stbir_resize_uint16_generic((uint16_t *)input.payload.imageValue.data, w, h, w * c * 2, (uint16_t *)&_bytes.front(),
+                                      _width, _height, _width * c * 2, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
+                                      STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     } else if (pixsize == 4) {
-      auto res = stbir_resize_float_generic(
-          (float *)input.payload.imageValue.data, w, h, w * c * 4,
-          (float *)&_bytes.front(), _width, _height, _width * c * 4, c,
-          c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
-          STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR, nullptr);
+      auto res = stbir_resize_float_generic((float *)input.payload.imageValue.data, w, h, w * c * 4, (float *)&_bytes.front(),
+                                            _width, _height, _width * c * 4, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
+                                            STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     }
 
-    return Var(&_bytes.front(), uint16_t(_width), uint16_t(_height),
-               input.payload.imageValue.channels,
+    return Var(&_bytes.front(), uint16_t(_width), uint16_t(_height), input.payload.imageValue.channels,
                input.payload.imageValue.flags);
   }
 

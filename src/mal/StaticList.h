@@ -15,9 +15,7 @@ public:
 
   class Node {
   public:
-    Node(StaticList<T> &list, T item) : m_item(item), m_next(list.m_head) {
-      list.m_head = this;
-    }
+    Node(StaticList<T> &list, T item) : m_item(item), m_next(list.m_head) { list.m_head = this; }
 
   private:
     friend class Iterator;

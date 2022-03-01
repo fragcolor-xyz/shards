@@ -13,8 +13,7 @@ namespace Gizmo {
 struct Enums {
   enum class GridAxis { X, Y, Z };
   static constexpr uint32_t GridAxisCC = 'gizA';
-  static inline EnumInfo<GridAxis> GridAxisEnumInfo{"GizmoGridAxis", CoreCC,
-                                                    GridAxisCC};
+  static inline EnumInfo<GridAxis> GridAxisEnumInfo{"GizmoGridAxis", CoreCC, GridAxisCC};
   static inline Type GridAxisType = Type::Enum(CoreCC, GridAxisCC);
 
   enum class Mode { Local, World };
@@ -24,8 +23,7 @@ struct Enums {
 
   enum class Operation { Translate, Rotate, Scale, Universal };
   static constexpr uint32_t OperationCC = 'gizO';
-  static inline EnumInfo<Operation> OperationEnumInfo{"GizmoOperation", CoreCC,
-                                                      OperationCC};
+  static inline EnumInfo<Operation> OperationEnumInfo{"GizmoOperation", CoreCC, OperationCC};
   static inline Type OperationType = Type::Enum(CoreCC, OperationCC);
 
   static constexpr ImGuizmo::MODE ModeToGuizmo(CBEnum eval) {

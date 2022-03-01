@@ -7,9 +7,8 @@ namespace chainblocks {
 namespace reflection {
 struct Blocks {
   CBOptionalString help() {
-    return CBCCSTR(
-        "Given a chain as input it will recurse deep inside it and gather all "
-        "blocks in the chain, its sub-chains and sub-flows.");
+    return CBCCSTR("Given a chain as input it will recurse deep inside it and gather all "
+                   "blocks in the chain, its sub-chains and sub-flows.");
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::ChainType; }

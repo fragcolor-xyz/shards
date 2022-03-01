@@ -3,28 +3,27 @@
 
 #include "eval.hpp"
 #include "print.hpp"
-#include <string>
 #include <fstream>
 #include <streambuf>
+#include <string>
 
 using namespace chainblocks::edn::eval;
 
-int main(int argc, const char** argv) {
+int main(int argc, const char **argv) {
   Program p;
   chainblocks::edn::document doc;
-  
-  if(argc > 1) {
+
+  if (argc > 1) {
     std::ifstream f(argv[1]);
-    std::string str((std::istreambuf_iterator<char>(f)),
-		    std::istreambuf_iterator<char>());
+    std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     auto res = p.eval(str);
 
-    switch(res.index()) {
+    switch (res.index()) {
     case 0: {
       auto v = std::get<CBVarValue>(res);
       std::cout << v.pr_str(doc) << "\n";
     } break;
-     case 1: {
+    case 1: {
       auto v = std::get<Lambda>(res);
       std::cout << v.pr_str(doc) << "\n";
     } break;
@@ -39,7 +38,7 @@ int main(int argc, const char** argv) {
     default:
       break;
     }
-    
+
   } else {
     auto node = p.eval("(def Root (Node))");
     auto call = p.eval("(def callme (fn [] Root))");

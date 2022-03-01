@@ -56,11 +56,9 @@ public:
     err = CreateDXGIFactory1(__uuidof(factory), (void **)&factory);
     assert(err == 0);
 
-    while (factory->EnumAdapters(aindex, &result.adapter) !=
-           DXGI_ERROR_NOT_FOUND) {
+    while (factory->EnumAdapters(aindex, &result.adapter) != DXGI_ERROR_NOT_FOUND) {
       UINT oindex = 0;
-      while (result.adapter->EnumOutputs(oindex, &result.output) !=
-             DXGI_ERROR_NOT_FOUND) {
+      while (result.adapter->EnumOutputs(oindex, &result.output) != DXGI_ERROR_NOT_FOUND) {
         DXGI_OUTPUT_DESC desc;
         MONITORINFO minfo;
 
@@ -73,8 +71,7 @@ public:
         auto yes = GetMonitorInfo(result.screen, &minfo);
         assert(yes);
 
-        if (x >= minfo.rcMonitor.left && x < minfo.rcMonitor.right &&
-            y >= minfo.rcMonitor.top && y < minfo.rcMonitor.bottom) {
+        if (x >= minfo.rcMonitor.left && x < minfo.rcMonitor.right && y >= minfo.rcMonitor.top && y < minfo.rcMonitor.bottom) {
           factory->Release();
           return result;
         } else {
@@ -110,8 +107,7 @@ public:
     D3D_FEATURE_LEVEL features;
     D3D_FEATURE_LEVEL inFeats = {D3D_FEATURE_LEVEL_11_0};
 
-    err = D3D11CreateDevice(screen.adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
-                            initFlags, &inFeats, 1, D3D11_SDK_VERSION, &_device,
+    err = D3D11CreateDevice(screen.adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, initFlags, &inFeats, 1, D3D11_SDK_VERSION, &_device,
                             &features, &_ctx);
     // if you crash here, don't panic! you are just missing DX debug layers most
     // likely!
@@ -194,15 +190,15 @@ public:
     D3D11_TEXTURE2D_DESC desc, desc2;
     texture->GetDesc(&desc);
 
-#define CREATE_BUFFER                                                          \
-  {                                                                            \
-    desc2 = desc;                                                              \
-    desc2.Usage = D3D11_USAGE_STAGING;                                         \
-    desc2.CPUAccessFlags = D3D11_CPU_ACCESS_READ;                              \
-    desc2.MiscFlags = 0;                                                       \
-    desc2.BindFlags = 0;                                                       \
-    err = _device->CreateTexture2D(&desc2, nullptr, &buffer.texture);          \
-    assert(err == 0);                                                          \
+#define CREATE_BUFFER                                                 \
+  {                                                                   \
+    desc2 = desc;                                                     \
+    desc2.Usage = D3D11_USAGE_STAGING;                                \
+    desc2.CPUAccessFlags = D3D11_CPU_ACCESS_READ;                     \
+    desc2.MiscFlags = 0;                                              \
+    desc2.BindFlags = 0;                                              \
+    err = _device->CreateTexture2D(&desc2, nullptr, &buffer.texture); \
+    assert(err == 0);                                                 \
   }
 
     auto &buffer = _buffers[_bufferIndex];

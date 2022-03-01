@@ -15,11 +15,10 @@ struct Compress {
   static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  static inline Parameters params{
-      {"Quality",
-       CBCCSTR("Compression quality, higher is better but slower, valid values "
-               "from 1 to 11."),
-       {CoreInfo::IntType}}};
+  static inline Parameters params{{"Quality",
+                                   CBCCSTR("Compression quality, higher is better but slower, valid values "
+                                           "from 1 to 11."),
+                                   {CoreInfo::IntType}}};
 
   CBParametersInfo parameters() { return params; }
 
@@ -34,10 +33,8 @@ struct Compress {
     auto maxLen = BrotliEncoderMaxCompressedSize(input.payload.bytesSize);
     _buffer.resize(maxLen + sizeof(uint32_t));
     size_t outputLen = maxLen;
-    auto res = BrotliEncoderCompress(
-        _quality, BROTLI_DEFAULT_WINDOW, BROTLI_DEFAULT_MODE,
-        input.payload.bytesSize, input.payload.bytesValue, &outputLen,
-        &_buffer[sizeof(uint32_t)]);
+    auto res = BrotliEncoderCompress(_quality, BROTLI_DEFAULT_WINDOW, BROTLI_DEFAULT_MODE, input.payload.bytesSize,
+                                     input.payload.bytesValue, &outputLen, &_buffer[sizeof(uint32_t)]);
     if (res != BROTLI_TRUE) {
       throw ActivationError("Failed to compress");
     }

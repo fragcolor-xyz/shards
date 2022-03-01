@@ -14,11 +14,10 @@ struct Uglify {
   std::vector<CBVar> _full;
   CBContext *_context{nullptr};
 
-  static inline Parameters params{
-      {"Hooks",
-       CBCCSTR("A list of pairs to hook, [<symbol name> <blocks to execute>], "
-               "blocks will have as input the contents of the symbols's list."),
-       {CoreInfo::AnySeqType}}};
+  static inline Parameters params{{"Hooks",
+                                   CBCCSTR("A list of pairs to hook, [<symbol name> <blocks to execute>], "
+                                           "blocks will have as input the contents of the symbols's list."),
+                                   {CoreInfo::AnySeqType}}};
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
@@ -93,9 +92,7 @@ struct Uglify {
     }
   }
 
-  void rewrite(form::FormWrapper &formWrapper, CBVar &v) {
-    rewrite(formWrapper.form, v);
-  }
+  void rewrite(form::FormWrapper &formWrapper, CBVar &v) { rewrite(formWrapper.form, v); }
 
   void rewrite(form::FormWrapperMap &map, CBVar &v) {
     BOOST_FOREACH (auto &item, map) {
@@ -114,12 +111,10 @@ struct Uglify {
       rewrite(std::get<token::Token>(form), v);
       break;
     case form::LIST:
-      rewrite<std::list<form::FormWrapper>>(
-          std::get<std::list<form::FormWrapper>>(form), v);
+      rewrite<std::list<form::FormWrapper>>(std::get<std::list<form::FormWrapper>>(form), v);
       break;
     case form::VECTOR:
-      rewrite<std::vector<form::FormWrapper>>(
-          std::get<std::vector<form::FormWrapper>>(form), v);
+      rewrite<std::vector<form::FormWrapper>>(std::get<std::vector<form::FormWrapper>>(form), v);
       break;
     case form::MAP:
       rewrite(std::get<form::FormWrapperMap>(form), v);
@@ -153,9 +148,7 @@ struct Uglify {
     return Var(vars);
   }
 
-  OwnedVar to_var(form::FormWrapper &formWrapper) {
-    return to_var(formWrapper.form);
-  }
+  OwnedVar to_var(form::FormWrapper &formWrapper) { return to_var(formWrapper.form); }
 
   CBMap to_var(form::FormWrapperMap &map) {
     CBMap res;
@@ -179,11 +172,9 @@ struct Uglify {
     case form::TOKEN:
       return to_var(std::get<token::Token>(form));
     case form::LIST:
-      return to_var<std::list<form::FormWrapper>>(
-          std::get<std::list<form::FormWrapper>>(form));
+      return to_var<std::list<form::FormWrapper>>(std::get<std::list<form::FormWrapper>>(form));
     case form::VECTOR:
-      return to_var<std::vector<form::FormWrapper>>(
-          std::get<std::vector<form::FormWrapper>>(form));
+      return to_var<std::vector<form::FormWrapper>>(std::get<std::vector<form::FormWrapper>>(form));
     case form::MAP: {
       CBMap m = to_var(std::get<form::FormWrapperMap>(form));
       CBVar tmp{};
@@ -199,8 +190,7 @@ struct Uglify {
   }
 
   bool find_symbols(token::Token &token) {
-    if (token.value.index() == token::value::STRING &&
-        token.type >= token::type::SYMBOL) {
+    if (token.value.index() == token::value::STRING && token.type >= token::type::SYMBOL) {
       return true;
     } else {
       return false;
@@ -238,9 +228,7 @@ struct Uglify {
     }
   }
 
-  bool find_symbols(form::FormWrapper &formWrapper) {
-    return find_symbols(formWrapper.form);
-  }
+  bool find_symbols(form::FormWrapper &formWrapper) { return find_symbols(formWrapper.form); }
 
   void find_symbols(form::FormWrapperMap &map) {
     BOOST_FOREACH (auto &item, map) { find_symbols(item.second.form); }
@@ -256,19 +244,16 @@ struct Uglify {
     case form::TOKEN:
       return find_symbols(std::get<token::Token>(form));
     case form::LIST:
-      find_symbols<std::list<form::FormWrapper>>(
-          std::get<std::list<form::FormWrapper>>(form), true);
+      find_symbols<std::list<form::FormWrapper>>(std::get<std::list<form::FormWrapper>>(form), true);
       break;
     case form::VECTOR:
-      find_symbols<std::vector<form::FormWrapper>>(
-          std::get<std::vector<form::FormWrapper>>(form), false);
+      find_symbols<std::vector<form::FormWrapper>>(std::get<std::vector<form::FormWrapper>>(form), false);
       break;
     case form::MAP:
       find_symbols(std::get<form::FormWrapperMap>(form));
       break;
     case form::SET:
-      find_symbols<form::FormWrapperSet>(std::get<form::FormWrapperSet>(form),
-                                         false);
+      find_symbols<form::FormWrapperSet>(std::get<form::FormWrapperSet>(form), false);
       break;
     }
     return false;
@@ -307,10 +292,8 @@ struct Uglify {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     _context = context;
-    const auto s =
-        input.payload.stringLen > 0
-            ? std::string(input.payload.stringValue, input.payload.stringLen)
-            : std::string(input.payload.stringValue);
+    const auto s = input.payload.stringLen > 0 ? std::string(input.payload.stringValue, input.payload.stringLen)
+                                               : std::string(input.payload.stringValue);
     auto forms = read(s);
     if (_cases.size())
       find_symbols(forms);

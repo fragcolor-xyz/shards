@@ -17,9 +17,7 @@ namespace ImGui {
 constexpr uint32_t ImGuiContextCC = 'gui ';
 
 struct Context {
-  static inline Type Info{
-      {CBType::Object,
-       {.object = {.vendorId = CoreCC, .typeId = ImGuiContextCC}}}};
+  static inline Type Info{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = ImGuiContextCC}}}};
 
   // Useful to compare with with plugins, they might mismatch!
   static inline const char *Version = ::ImGui::GetVersion();
@@ -37,21 +35,13 @@ struct Context {
 };
 
 struct Enums {
-#define REGISTER_FLAGS_EX(_NAME_, _CC_)                                        \
-  REGISTER_FLAGS(_NAME_, _CC_);                                                \
-  static inline Type _NAME_##SeqType = Type::SeqOf(_NAME_##Type);              \
-  static inline Type _NAME_##VarType = Type::VariableOf(_NAME_##Type);         \
+#define REGISTER_FLAGS_EX(_NAME_, _CC_)                                \
+  REGISTER_FLAGS(_NAME_, _CC_);                                        \
+  static inline Type _NAME_##SeqType = Type::SeqOf(_NAME_##Type);      \
+  static inline Type _NAME_##VarType = Type::VariableOf(_NAME_##Type); \
   static inline Type _NAME_##VarSeqType = Type::VariableOf(_NAME_##SeqType)
 
-  enum class GuiButton {
-    Normal,
-    Small,
-    Invisible,
-    ArrowLeft,
-    ArrowRight,
-    ArrowUp,
-    ArrowDown
-  };
+  enum class GuiButton { Normal, Small, Invisible, ArrowLeft, ArrowRight, ArrowUp, ArrowDown };
   REGISTER_ENUM(GuiButton, 'guiB'); // FourCC = 0x67756942
 
   enum class GuiTableFlags {
