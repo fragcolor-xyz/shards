@@ -1,1 +1,7 @@
 BasedOnStyle: LLVM
+IndentWidth: 2
+TabWidth: 2
+AccessModifierOffset: -2
+UseTab: Never
+ColumnLimit: 130
+AlignEscapedNewlines: Left
