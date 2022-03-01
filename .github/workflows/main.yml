@@ -458,7 +458,7 @@ jobs:
   # Build chainblocks for Windows
   #
   Windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     strategy:
       matrix:
         build-type: ["Debug", "Release"]
@@ -541,7 +541,7 @@ jobs:
   #
   Windows-test:
     needs: Windows
-    runs-on: windows-latest
+    runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
@@ -648,7 +648,7 @@ jobs:
   #
   docs-samples:
     needs: Windows
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -682,7 +682,7 @@ jobs:
   #
   docs-markdown:
     needs: Windows
-    runs-on: windows-latest
+    runs-on: windows-2019
     steps:
       - name: Checkout
         uses: actions/checkout@v2
