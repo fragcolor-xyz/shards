@@ -1,0 +1,32 @@
+#!/bin/bash
+
+PIDCounter=0
+function FormatFolderRecursiveAsync() {
+    while read file; do
+        if [[ $file == src/gfx/wgpu-native* ]]; then
+            echo "Ignoring $file"
+            continue
+        fi
+
+        echo "Formatting $file"
+        clang-format -i $file &
+        local PID=$!
+        PIDs[${PIDCounter}]=$PID
+        PIDCounter=$(($PIDCounter+1))
+    done <<<$(find "$1" -regex '.*\.\(cpp\|hpp\|h\)')
+}
+
+function AsyncWait() {
+    for pid in ${PIDs[*]}; do
+        wait $pid
+    done
+}
+
+FormatFolderRecursiveAsync include
+FormatFolderRecursiveAsync src/core
+FormatFolderRecursiveAsync src/mal
+FormatFolderRecursiveAsync src/tests
+FormatFolderRecursiveAsync src/gfx
+FormatFolderRecursiveAsync src/extra
+AsyncWait
+echo "Formatted ${#PIDs[@]} files"
