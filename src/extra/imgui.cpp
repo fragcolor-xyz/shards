@@ -4129,6 +4129,9 @@ struct TableHeadersRow : public Base {
 };
 
 struct TableNextColumn : public Base {
+  static CBOptionalString help() {
+    return CBCCSTR("Creates a new column for GUI.Table to process and render.");
+  }
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBOptionalString inputHelp() {
     return CBCCSTR("The input value is ignored.");
