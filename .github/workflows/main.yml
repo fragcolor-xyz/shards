@@ -806,7 +806,7 @@ jobs:
   # Build chainblocks for macOS
   #
   macOS:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     strategy:
       matrix:
         build-type: ["Debug", "Release"]
@@ -852,7 +852,7 @@ jobs:
   #
   macOS-test:
     needs: macOS
-    runs-on: macos-latest
+    runs-on: macos-10.15
     strategy:
       fail-fast: false
       matrix:
@@ -912,7 +912,7 @@ jobs:
   # Build chainblocks for iOS
   #
   iOS:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     steps:
       - name: Checkout
         uses: actions/checkout@v2
