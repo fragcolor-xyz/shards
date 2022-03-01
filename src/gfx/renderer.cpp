@@ -261,10 +261,6 @@ struct RendererImpl {
   }
 
   void renderView(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
-    if (shouldUpdateMainOutputFromContext) {
-      updateMainOutputFromContext();
-    }
-
     View *viewPtr = view.get();
 
     Rect viewport;
@@ -329,6 +325,11 @@ struct RendererImpl {
 
   void beginFrame() {
     mainOutputWrittenTo = false;
+
+    if (shouldUpdateMainOutputFromContext) {
+      updateMainOutputFromContext();
+    }
+
     swapBuffers();
   }
 
