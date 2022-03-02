@@ -264,8 +264,6 @@ struct Client {
       socket->payload.objectValue = &ws;
     }
 
-    ws->ioCtx.poll();
-
     return input;
   }
 
@@ -378,34 +376,19 @@ struct ReadString : public User {
 
     _buffer.clear();
 
-    // poll once, if we have data we will be done quick
-    // we become the pollers in this case
-    _ws->ioCtx.poll();
-
-    bool done = false;
-    boost::system::error_code done_err{};
-    if (_ws->secure())
-      _ws->get_secure().async_read(_buffer,
-                                   [&done, &done_err](auto err, auto size) {
-                                     done_err = err;
-                                     done = true;
-                                   });
-    else
-      _ws->get_unsecure().async_read(_buffer,
-                                     [&done, &done_err](auto err, auto size) {
-                                       done_err = err;
-                                       done = true;
-                                     });
-
-    while (!done) {
-      // we become the pollers in this case
-      _ws->ioCtx.poll();
-      CB_SUSPEND(context, 0);
-    }
-
-    if (done_err.failed()) {
-      auto errorMsg = done_err.message();
-      throw ActivationError(errorMsg);
+    try {
+      await(
+          context,
+          [&]() {
+            if (_ws->secure())
+              _ws->get_secure().read(_buffer);
+            else
+              _ws->get_unsecure().read(_buffer);
+          },
+          [] {});
+    } catch (const std::exception &ex) {
+      CBLOG_WARNING("WebSocket read failed: {}", ex.what());
+      throw ActivationError("WebSocket read failed.");
     }
 
     _output.clear();
