@@ -11,6 +11,10 @@ namespace BGFX {
 extern void registerBGFXBlocks();
 }
 
+namespace gfx {
+extern void registerBlocks();
+}
+
 #ifdef _WIN32
 namespace Desktop {
 extern void registerDesktopBlocks();
@@ -70,12 +74,13 @@ void cbInitExtras() {
   registerEmscriptenShaderCompiler();
 #endif
 
-  BGFX::registerBGFXBlocks();
-  chainblocks::ImGui::registerImGuiBlocks();
-  chainblocks::Gizmo::registerGizmoBlocks();
-  XR::registerBlocks();
-  gltf::registerBlocks();
-  Inputs::registerBlocks();
+  // BGFX::registerBGFXBlocks();
+  // gfx::registerBlocks();
+  // chainblocks::ImGui::registerImGuiBlocks();
+  // chainblocks::Gizmo::registerGizmoBlocks();
+  // XR::registerBlocks();
+  // gltf::registerBlocks();
+  // Inputs::registerBlocks();
   Audio::registerBlocks();
   DSP::registerBlocks();
 
