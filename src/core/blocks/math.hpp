@@ -12,7 +12,7 @@
 #include <variant>
 
 #define _PC
-#include "../../extra/shaders/include/ShaderFastMathLib.h"
+#include "ShaderFastMathLib.h"
 #undef _PC
 
 namespace chainblocks {
