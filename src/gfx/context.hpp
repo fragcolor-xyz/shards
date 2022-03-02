@@ -36,14 +36,12 @@ struct ErrorScope {
 struct ImguiContext;
 struct Primitive;
 struct MaterialBuilderContext;
-struct FrameRenderer;
 struct Window;
 struct ContextImpl;
 struct WithContextData;
 struct Context {
 private:
   std::shared_ptr<ContextImpl> impl;
-  FrameRenderer *currentFrameRenderer = nullptr;
   Window *window;
   int2 mainOutputSize;
   bool initialized = false;
@@ -58,7 +56,6 @@ public:
   WGPUTextureFormat swapchainFormat;
 
   std::vector<std::shared_ptr<ErrorScope>> errorScopes;
-  std::vector<std::shared_ptr<CopyBuffer>> copyBuffers;
   std::unordered_map<WithContextData *, std::weak_ptr<WithContextData>> contextDataObjects;
 
 public:
@@ -82,19 +79,17 @@ public:
   // pushes state attached to a popErrorScope callback
   ErrorScope &pushErrorScope(WGPUErrorFilter filter = WGPUErrorFilter::WGPUErrorFilter_Validation);
 
-  // pushes a buffer used for CPU->GPU copy
-  std::shared_ptr<CopyBuffer> pushCopyBuffer();
-
-  void beginFrame(FrameRenderer *frameRenderer);
-  void endFrame(FrameRenderer *frameRenderer);
-  void sync();
-  FrameRenderer *getFrameRenderer() { return currentFrameRenderer; }
+  void beginFrame();
+  void endFrame();
 
   // start tracking an object implementing WithContextData so it's data is released with this context
   void addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr);
   void removeContextDataObjectInternal(WithContextData *ptr);
 
 private:
+  void present();
+  void sync();
+
   void collectContextDataObjects();
   void releaseAllContextDataObjects();
 };

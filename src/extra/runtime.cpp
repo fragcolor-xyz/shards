@@ -7,6 +7,10 @@
 extern "C" void registerRustBlocks(CBCore *core);
 #endif
 
+namespace gfx {
+extern void registerBlocks();
+}
+
 #ifdef _WIN32
 namespace Desktop {
 extern void registerDesktopBlocks();
@@ -38,11 +42,11 @@ void cbInitExtras() {
   Snappy::registerBlocks();
   Brotli::registerBlocks();
 
+  gfx::registerBlocks();
   Audio::registerBlocks();
   DSP::registerBlocks();
 
 #ifdef _WIN32
-  Desktop::registerDesktopBlocks();
 #endif
 }
 }; // namespace chainblocks

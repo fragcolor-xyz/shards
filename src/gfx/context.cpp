@@ -231,12 +231,6 @@ ErrorScope &Context::pushErrorScope(WGPUErrorFilter filter) {
   return *errorScope.get();
 }
 
-std::shared_ptr<CopyBuffer> Context::pushCopyBuffer() {
-  auto buffer = std::make_shared<CopyBuffer>();
-  copyBuffers.push_back(buffer);
-  return buffer;
-}
-
 void Context::addContextDataObjectInternal(std::weak_ptr<WithContextData> ptr) {
   std::shared_ptr<WithContextData> sharedPtr = ptr.lock();
   if (sharedPtr) {
@@ -265,23 +259,19 @@ void Context::releaseAllContextDataObjects() {
   contextDataObjects.clear();
 }
 
-void Context::beginFrame(FrameRenderer *frameRenderer) {
-  if (currentFrameRenderer != nullptr)
-    throw std::runtime_error("Frame already being rendered");
-  currentFrameRenderer = frameRenderer;
-}
-
-void Context::endFrame(FrameRenderer *frameRenderer) {
-  assert(currentFrameRenderer == frameRenderer);
-  currentFrameRenderer = nullptr;
-
+void Context::beginFrame() {
+  sync();
   collectContextDataObjects();
+  errorScopes.clear();
 }
+void Context::endFrame() { present(); }
 
 void Context::sync() {
 #ifdef WEBGPU_NATIVE
   wgpuDevicePoll(wgpuDevice, true);
 #endif
 }
+
+void Context::present() { wgpuSwapChainPresent(wgpuSwapchain); }
 
 } // namespace gfx

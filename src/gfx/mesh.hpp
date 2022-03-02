@@ -5,17 +5,23 @@
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
 #include "linalg/linalg.h"
+#include <string>
 
 namespace gfx {
 
 struct MeshVertexAttribute {
-  const char *name;
+  std::string name;
   uint8_t numComponents;
   VertexAttributeType type;
 
   MeshVertexAttribute() = default;
   MeshVertexAttribute(const char *name, uint8_t numComponents, VertexAttributeType type = VertexAttributeType::Float32)
       : name(name), numComponents(numComponents), type(type) {}
+
+  // Compares everthing except for the name
+  bool isSameDataFormat(const MeshVertexAttribute &other) const {
+    return numComponents == other.numComponents && type == other.type;
+  }
 
   template <typename T> void hashStatic(T &hasher) const {
     hasher(name);
@@ -66,8 +72,11 @@ public:
   // Updates mesh data with length in bytes
   void update(const Format &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData,
               size_t indexDataLength);
+  void update(const Format &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData);
 
 private:
+  void update();
+
   void createContextData();
   void releaseContextData();
 };

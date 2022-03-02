@@ -16,19 +16,32 @@ void Mesh::update(const Format &format, const void *inVertexData, size_t vertexD
   indexData.resize(indexDataLength);
   memcpy(indexData.data(), inIndexData, indexDataLength);
 
+  update();
+}
+
+void Mesh::update(const Format &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData) {
+  this->format = format;
+  this->vertexData = std::move(vertexData);
+  this->indexData = std::move(indexData);
+
+  update();
+}
+
+void Mesh::update() {
   size_t vertexSize = 0;
   for (auto &attr : format.vertexAttributes) {
     size_t typeSize = getVertexAttributeTypeSize(attr.type);
     vertexSize += attr.numComponents * typeSize;
   }
 
-  numVertices = vertexDataLength / vertexSize;
-  assert(numVertices * vertexSize == vertexDataLength);
+  numVertices = vertexData.size() / vertexSize;
+  assert(numVertices * vertexSize == vertexData.size());
 
   size_t indexSize = getIndexFormatSize(format.indexFormat);
-  numIndices = indexDataLength / indexSize;
-  assert(numIndices * indexSize == indexDataLength);
+  numIndices = indexData.size() / indexSize;
+  assert(numIndices * indexSize == indexData.size());
 
+  // This causes the GPU data to be recreated the next time it is requested
   releaseContextDataCondtional();
 }
 
@@ -44,10 +57,7 @@ void Mesh::createContextData() {
   contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
   contextData.vertexBufferLength = desc.size;
 
-  auto vertexCopyBuffer = context->pushCopyBuffer();
-  vertexCopyBuffer->data = vertexData;
-  wgpuQueueWriteBuffer(context->wgpuQueue, contextData.vertexBuffer, 0, vertexCopyBuffer->data.data(),
-                       vertexCopyBuffer->data.size());
+  wgpuQueueWriteBuffer(context->wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
 
   if (indexData.size() > 0) {
     desc.size = indexData.size();
@@ -55,10 +65,7 @@ void Mesh::createContextData() {
     contextData.indexBuffer = wgpuDeviceCreateBuffer(device, &desc);
     contextData.indexBufferLength = desc.size;
 
-    auto indexCopyBuffer = context->pushCopyBuffer();
-    indexCopyBuffer->data = indexData;
-    wgpuQueueWriteBuffer(context->wgpuQueue, contextData.indexBuffer, 0, indexCopyBuffer->data.data(),
-                         indexCopyBuffer->data.size());
+    wgpuQueueWriteBuffer(context->wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
   }
 
   validation.pop([](WGPUErrorType type, const char *msg) {

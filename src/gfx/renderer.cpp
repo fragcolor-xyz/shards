@@ -145,7 +145,7 @@ struct RendererImpl {
     wgpuAdapterGetLimits(context.wgpuAdapter, &adapterLimits);
   }
 
-  ~RendererImpl() { processPostFrameQueue(); }
+  ~RendererImpl() { swapBuffers(); }
 
   size_t alignToMinUniformOffset(size_t size) const {
     size_t alignment = deviceLimits.limits.minUniformBufferOffsetAlignment;
@@ -197,7 +197,7 @@ struct RendererImpl {
   }
 
   void onPostFrame(std::function<void()> &&callback) { postFrameQueue.emplace_back(std::move(callback)); }
-  void processPostFrameQueue() {
+  void swapBuffers() {
     for (auto &cb : postFrameQueue) {
       cb();
     }
@@ -472,7 +472,7 @@ struct RendererImpl {
 
 Renderer::Renderer(Context &context) { impl = std::make_shared<RendererImpl>(context); }
 
-void Renderer::postFrameCleanup() { impl->processPostFrameQueue(); }
+void Renderer::swapBuffers() { impl->swapBuffers(); }
 void Renderer::render(const DrawQueue &drawQueue, ViewPtr view) { impl->renderView(drawQueue, view); }
 
 } // namespace gfx
