@@ -218,18 +218,6 @@ option(TF_BUILD_TESTS "" OFF)
 option(TF_BUILD_EXAMPLES "" OFF)
 add_subdirectory(cpp-taskflow)
 
-option(BGFX_BUILD_EXAMPLES "" OFF)
-option(BGFX_INSTALL "" OFF)
-option(BIMG_DECODE_ENABLE "" OFF)
-set(BX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bx)
-set(BIMG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bimg)
-set(BGFX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bgfx)
-add_subdirectory(bgfx.cmake)
-
-add_library(bgfx-examples INTERFACE)
-target_include_directories(bgfx-examples INTERFACE ${BGFX_DIR}/examples/common/imgui)
-target_include_directories(bgfx-examples INTERFACE ${BGFX_DIR}/examples/chainblocks)
-
 add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
 
@@ -244,7 +232,6 @@ set(imguizmo_SOURCES
 )
 add_library(imguizmo STATIC ${imguizmo_SOURCES})
 target_include_directories(imguizmo PUBLIC imguizmo)
-target_include_directories(imguizmo PUBLIC bgfx/3rdparty/dear-imgui)
 target_link_libraries(imguizmo PUBLIC dear-imgui)
 
 add_library(implot STATIC
@@ -252,7 +239,6 @@ add_library(implot STATIC
   implot/implot_items.cpp
 )
 target_include_directories(implot PUBLIC implot)
-target_include_directories(implot PUBLIC bgfx/3rdparty/dear-imgui)
 target_link_libraries(implot
   PUBLIC dear-imgui
   PRIVATE stb
