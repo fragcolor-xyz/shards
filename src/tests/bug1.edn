@@ -1,0 +1,15 @@
+(defchain count-chain
+  (If (Is 1)
+      :Then (Pass)
+      :Else
+      (If (-> (Math.Mod 2) (Is 0))
+          :Then (-> (Log "n") (Math.Divide 2) (Recur) (Math.Add 1))
+          :Else (-> (Log "n") (Math.Multiply 3) (Math.Add 1) (Recur) (Math.Add 1)))))
+
+(defchain main-chain
+  837799 (Do count-chain)
+  (Log "Answer"))
+
+(defnode root)
+(schedule root main-chain)
+(run root)
