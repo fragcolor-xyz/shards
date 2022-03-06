@@ -682,7 +682,7 @@ std::unordered_set<const CBChain *> &gatheringChains() {
 }
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
-ALWAYS_INLINE CBChainState blocksActivation(T blocks, CBContext *context, const CBVar &chainInput, CBVar &output,
+ALWAYS_INLINE CBChainState blocksActivation(T &blocks, CBContext *context, const CBVar &chainInput, CBVar &output,
                                             CBVar *outHash = nullptr) {
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
