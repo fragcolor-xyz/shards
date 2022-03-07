@@ -931,12 +931,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
       - name: Build device
         run: |
-          mkdir build
+          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS
           cd build
-          cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS ..
           xcodebuild -target chainblocks-core-static -sdk iphoneos -arch arm64
       - name: Build simulator x86
         run: |
+          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1
           cd build
-          cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1 ..
           xcodebuild -target chainblocks-core-static -sdk iphonesimulator -arch x86_64
