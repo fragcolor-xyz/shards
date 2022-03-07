@@ -86,9 +86,11 @@ target_link_libraries(chainblocks-core-static
   pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
 )
 
-if(NOT EMSCRIPTEN)
+if(NOT (IOS OR EMSCRIPTEN))
   target_sources(chainblocks-core-static PRIVATE ${os_SOURCES})
-else()
+endif()
+
+if(EMSCRIPTEN)
   target_sources(chainblocks-core-static PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
