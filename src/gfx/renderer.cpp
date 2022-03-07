@@ -333,7 +333,7 @@ struct RendererImpl {
   }
 
   void endFrame() {
-    // FIXME
+    // FIXME Add renderer graph to handle clearing
     if (!mainOutputWrittenTo && !context.isHeadless()) {
       submitDummyRenderPass();
     }
@@ -606,7 +606,7 @@ struct RendererImpl {
     WGPURenderPassColorAttachment mainAttach = {};
     mainAttach.clearColor = clearColor;
 
-    // FIXME
+    // FIXME Add renderer graph to handle clearing
     if (!mainOutputWrittenTo) {
       mainAttach.loadOp = WGPULoadOp_Clear;
       mainOutputWrittenTo = true;
