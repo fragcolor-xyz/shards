@@ -33,7 +33,7 @@ endif()
 
 target_link_libraries(chainblocks-extra
   chainblocks-core
-  stb
+  stb gfx
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

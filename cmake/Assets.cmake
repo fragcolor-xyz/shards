@@ -1,0 +1,13 @@
+function(bundle_asset_path TARGET ASSET_PATH)
+	if(EMSCRIPTEN)
+		file(RELATIVE_PATH RELATIVE_PATH ${PROJECT_BINARY_DIR} ${ASSET_PATH})
+		target_link_options(${TARGET} PUBLIC "SHELL:--preload-file \"${RELATIVE_PATH}\"")
+		message(STATUS "Bundling asset folder \"${ASSET_PATH}\" for target ${TARGET}")
+	endif()
+endfunction()
+
+function(add_asset_path_definition TARGET VISIBILITY DEFINE_NAME ASSET_PATH)
+	file(RELATIVE_PATH RELATIVE_PATH ${PROJECT_SOURCE_DIR} ${ASSET_PATH})
+	target_compile_definitions(${TARGET} ${VISIBILITY} ${DEFINE_NAME}=\"${RELATIVE_PATH}\")
+	message(STATUS "Defining path ${DEFINE_NAME}=\"${RELATIVE_PATH}\ for target ${TARGET}")
+endfunction()

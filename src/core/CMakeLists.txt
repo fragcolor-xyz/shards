@@ -136,10 +136,12 @@ target_compile_options(chainblocks-core-static
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
 )
 
-target_compile_options(chainblocks-core-static
-  PUBLIC -Wno-multichar
-  PRIVATE -Wno-missing-field-initializers -Wno-deprecated-copy
-)
+if(NOT MSVC)
+  # target_compile_options(chainblocks-core-static
+  #   PUBLIC -Wno-multichar
+  #   PRIVATE -Wno-missing-field-initializers -Wno-deprecated-copy
+  # )
+endif()
 
 # TODO: Modularize block registration to remove Core=>Rust dependency
 if(CHAINBLOCKS_WITH_EXTRA_BLOCKS)

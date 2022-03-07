@@ -79,3 +79,6 @@
 [submodule "deps/snappy"]
 	path = deps/snappy
 	url = https://github.com/chainblocks/snappy.git
+[submodule "src/gfx/wgpu-native"]
+	path = src/gfx/wgpu-native
+	url = https://github.com/gfx-rs/wgpu-native.git
