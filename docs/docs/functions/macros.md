@@ -129,10 +129,37 @@ A node is a self-contained execution-context and software environment (like a se
 
 Defines a new chain that is looped.
 
+Such a chain, when invoked (via `run <node>`), executes in a loop at the frequency given by the 2nd parameter of the `run` command and for a number of iterations specified by the 3rd parameter of the `run`command.
+
 === "Code"
 
     ```clojure linenums="1"
+    (defnode main)
+    ;; define a looped chain (chain-hello)
+    (defloop chain-hi
+        (Msg "Hello World!"))
+    ;; define another looped chain (chain-bye)
+    (defloop chain-bye
+        (Msg "Goodbye World"))
+    ;; schedule the looped chains on this node
+    (schedule main chain-hi)
+    (schedule main chain-bye)
+    ;; run all the chains on this node at 50 FPS and for a max 5 iterations
+    (run main 0.02 5)
+    ```
+=== "Result"
 
+    ```
+    [info] [2022-03-07 22:28:54.682] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 22:28:54.682] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
+    [info] [2022-03-07 22:28:54.715] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 22:28:54.715] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
+    [info] [2022-03-07 22:28:54.731] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 22:28:54.732] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
+    [info] [2022-03-07 22:28:54.746] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 22:28:54.747] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
+    [info] [2022-03-07 22:28:54.763] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 22:28:54.763] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
     ```
 
 ??? info "See also"
