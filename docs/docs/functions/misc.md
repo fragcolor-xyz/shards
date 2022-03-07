@@ -115,6 +115,39 @@ Executes all the chains that have been scheduled on a given node.
     [info] [2022-03-07 21:42:12.413] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
     ```
 
+## schedule
+
+Queues a chain for execution on a given node.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; define a node (main)
+    (defnode main)
+    ;; define a looped chain
+    (defloop chain-hi
+        (Msg "Hello World!"))
+    ;; define a non-looped chain
+    (defchain chain-bye
+        (Msg "Goodbye World"))
+    ;; schedule both the chains on this node
+    (schedule main chain-hi)
+    (schedule main chain-bye)
+    ;; run all the scheduled chains on this loop (main)
+    (run main 0.02 5)
+    ```
+
+=== "Result"
+
+    ```
+    [info] [2022-03-07 21:42:12.324] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 21:42:12.325] [T-18096] [logging.cpp::94] [chain-bye] Goodbye World
+    [info] [2022-03-07 21:42:12.351] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 21:42:12.367] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 21:42:12.397] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 21:42:12.413] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    ```
+
 ## swap!
 
 ```clojure linenums="1"
