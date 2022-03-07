@@ -133,6 +133,55 @@ struct Replace : public Common {
   }
 };
 
+struct Join {
+  static CBTypesInfo inputTypes() { return CoreInfo::StringSeqType; }
+  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+
+  void setParam(int index, const CBVar &value) {
+    switch (index) {
+    case 0:
+      _separator = value.payload.stringValue;
+      break;
+    default:
+      break;
+    }
+  }
+
+  CBVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_separator);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
+    if (input.payload.seqValue.len == 0)
+      return Var::Empty; // FIXME or Var("")?
+
+    std::ostringstream ss;
+    ss << input.payload.seqValue.elements[0].payload.stringValue;
+
+    for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
+      assert(input.payload.seqValue.elements[i].valueType == String);
+      auto str = input.payload.seqValue.elements[i].payload.stringValue;
+      ss << _separator << str;
+    }
+
+    CBVar output{};
+    ::chainblocks::cloneVar(output, Var(ss.str()));
+    return output;
+  }
+
+private:
+  static inline Parameters params{{"Separator", CBCCSTR("The separator."), {CoreInfo::StringType}}};
+
+  std::string _separator;
+};
+
 struct ToUpper {
   static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
   static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -222,6 +271,7 @@ void registerBlocks() {
   REGISTER_CBLOCK("Regex.Replace", Replace);
   REGISTER_CBLOCK("Regex.Search", Search);
   REGISTER_CBLOCK("Regex.Match", Match);
+  REGISTER_CBLOCK("String.Join", Join);
   REGISTER_CBLOCK("String.ToUpper", ToUpper);
   REGISTER_CBLOCK("String.ToLower", ToLower);
   REGISTER_CBLOCK("ParseInt", ParseInt);
