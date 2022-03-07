@@ -10,17 +10,13 @@ inline MeshVertexAttribute getAttributeVertexFormat(const CBVar &attribute) {
   switch (attribute.valueType) {
   case CBType::Float2:
     return MeshVertexAttribute("", 2, VertexAttributeType::Float32);
-    break;
   case CBType::Float3:
     return MeshVertexAttribute("", 3, VertexAttributeType::Float32);
-    break;
   case CBType::Float4:
     return MeshVertexAttribute("", 4, VertexAttributeType::Float32);
-    break;
   case CBType::Int4:
   case CBType::Color:
     return MeshVertexAttribute("", 4, VertexAttributeType::UNorm8);
-    break;
   default:
     throw formatException("Unsupported vertex attribute type {} {}", magic_enum::enum_name(attribute.valueType),
                           uint8_t(attribute.valueType));
