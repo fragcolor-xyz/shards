@@ -13,9 +13,6 @@
 [submodule "magic_enum"]
 	path = deps/magic_enum
 	url = https://github.com/chainblocks/magic_enum.git
-[submodule "boost-context"]
-	path = deps/boost-context
-	url = https://github.com/chainblocks/context.git
 [submodule "cpp-taskflow"]
 	path = deps/cpp-taskflow
 	url = https://github.com/chainblocks/cpp-taskflow.git
@@ -85,3 +82,6 @@
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "deps/boost"]
+	path = deps/boost
+	url = https://github.com/boostorg/boost.git

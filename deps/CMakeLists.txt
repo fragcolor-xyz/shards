@@ -49,6 +49,7 @@ add_subdirectory(nameof)
 add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
+add_subdirectory(boost)
 
 set(SDL_BUILD_PATH ${CMAKE_CURRENT_BINARY_DIR}/sdl_a)
 if(NOT EMSCRIPTEN)

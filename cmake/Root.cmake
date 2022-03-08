@@ -23,8 +23,6 @@ include(Rust)
 # disable targets being added by CTestTargets.cmake
 set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 
-include(Boost)
-
 add_subdirectory(${CHAINBLOCKS_DIR}/deps deps)
 
 add_subdirectory(${CHAINBLOCKS_DIR}/src/core src/core)
