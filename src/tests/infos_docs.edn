@@ -122,12 +122,18 @@
     (-> "--8<-- \"" >> .o name (getFilename detailsPath ".md") >> .o "\"\r\n" >> .o
         "\r\n\r\n" >> .o))
 
-   "=== \"Code\"\r\n\r\n" >> .o
-   "    ```clojure linenums=\"1\"\r\n" >> .o
-   "    --8<-- \"" >> .o (getSampleFilename name) >> .o "\"\r\n" >> .o
-   "    ```\r\n" >> .o
+   ;; examples (optional)
+   (When
+    (-> name (getFilename (str basePath samplePath) ".edn") (FS.IsFile))
+    (->
+     "## Examples\r\n\r\n" >> .o
 
-   "\r\n\r\n" >> .o
+     "=== \"Code\"\r\n\r\n" >> .o
+     "    ```clojure linenums=\"1\"\r\n" >> .o
+     "    --8<-- \"" >> .o name (getFilename samplePath ".edn") >> .o "\"\r\n" >> .o
+     "    ```\r\n" >> .o
+     "\r\n\r\n" >> .o))
+
    "--8<-- \"includes/license.md\"\r\n" >> .o
 
    .o (String.Join) = .content
