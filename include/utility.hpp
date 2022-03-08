@@ -237,7 +237,7 @@ public:
   }
 
   void warmup(CBContext *ctx) {
-    cleanup();
+    assert(!_cp);
     if (_v.valueType == ContextVar) {
       assert(!_cp);
       _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
