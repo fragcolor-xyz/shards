@@ -5,17 +5,18 @@
 
 ;; path definitions
 (def basePath "../../docs/")
-(def outputPath (str basePath "docs/blocks/"))
+(def blocksPath "docs/blocks/")
+(def detailsPath "details/blocks/")
 (def samplePath "samples/blocks/")
 
 ;; computes the filename from the block name
-(defn getFilename [basePath extension]
+(defn getFilename [path extension]
   (Maybe
    (->
     (Regex.Match #"(\w+)\.(.*)")
     (| (Take 1) = .first)
     (| (Take 2) = .second)
-    basePath >= .f
+    path >= .f
     .first (AppendTo .f)
     "/" (AppendTo .f)
     .second (AppendTo .f)
@@ -23,14 +24,10 @@
     .f (ToString))
    (->
     >= .f
-    (str basePath "General/") (PrependTo .f)
+    (str path "General/") (PrependTo .f)
     extension (AppendTo .f)
     .f (ToString))
    true))
-
-;; computes the path of the sample file
-(defn getSampleFilename [name]
-  (-> name (getFilename samplePath ".edn")))
 
 ;; dumps the generated content to the final file
 (defn dump [name]
@@ -45,7 +42,7 @@
     (Get .record "outputHelp") = .outputHelp
     (Get .record "properties" :Default {}) = .properties
     (Get .record "parameters") = .parameters
-    name (getFilename outputPath ".md") = .filename
+    name (getFilename (str basePath blocksPath) ".md") = .filename
     [""] >= .o)
 
    ; metadata (front matter)
@@ -119,7 +116,11 @@
 
    "\r\n\r\n" >> .o
 
-   "## Examples\r\n\r\n" >> .o
+   ;; details (optional)
+   (When
+    (-> name (getFilename (str basePath detailsPath) ".md") (FS.IsFile))
+    (-> "--8<-- \"" >> .o name (getFilename detailsPath ".md") >> .o "\"\r\n" >> .o
+        "\r\n\r\n" >> .o))
 
    "=== \"Code\"\r\n\r\n" >> .o
    "    ```clojure linenums=\"1\"\r\n" >> .o
