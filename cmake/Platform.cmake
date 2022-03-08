@@ -160,14 +160,21 @@ endif()
 add_compile_definitions(BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 add_compile_options(-Wall)
 
-if(APPLE)
+if(ANDROID OR APPLE)
   # This tells FindPackage(Threads) that threads are built in
-  set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+  if(ANDROID)
+    # Bundled in the standard C library
+    set(CMAKE_THREAD_LIBS_INIT "-lc")
+  else()
+    set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+  endif()
   set(CMAKE_HAVE_THREADS_LIBRARY 1)
   set(CMAKE_USE_WIN32_THREADS_INIT 0)
   set(CMAKE_USE_PTHREADS_INIT 1)
   set(THREADS_PREFER_PTHREAD_FLAG ON)
+endif()
 
+if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
   add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
 endif()

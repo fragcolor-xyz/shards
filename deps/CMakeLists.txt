@@ -1,4 +1,9 @@
 set(BUILD_SHARED_LIBS OFF)
+
+# Find & cache git using (only considering host tools)
+set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
+find_package(Git REQUIRED)
+
 include(ExternalProject)
 
 set(EXTERNAL_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
