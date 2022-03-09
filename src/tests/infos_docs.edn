@@ -124,15 +124,18 @@
 
    ;; examples (optional)
    (When
-    (-> name (getFilename (str basePath samplePath) ".edn") (FS.IsFile))
+    (-> name (getFilename (str basePath samplePath) "") (FS.IsDirectory))
     (->
      "## Examples\r\n\r\n" >> .o
 
-     "=== \"Code\"\r\n\r\n" >> .o
-     "    ```clojure linenums=\"1\"\r\n" >> .o
-     "    --8<-- \"" >> .o name (getFilename samplePath ".edn") >> .o "\"\r\n" >> .o
-     "    ```\r\n" >> .o
-     "\r\n\r\n" >> .o))
+     name (getFilename (str basePath samplePath) "") (FS.Iterate)
+     (ForEach
+      (-> (| "=== \"Code\"\r\n\r\n" >> .o)
+          (| "    ```clojure linenums=\"1\"\r\n" >> .o)
+          (| "    --8<-- \"" >> .o name (getFilename samplePath "/") >> .o)
+          (FS.Filename) >> .o "\"\r\n" >> .o
+          "    ```\r\n" >> .o
+          "&nbsp;\r\n\r\n" >> .o))))
 
    "--8<-- \"includes/license.md\"\r\n" >> .o
 
@@ -146,4 +149,5 @@
 (map
  (fn* [name] (schedule root (dump name)))
  (blocks))
+;; (schedule root (dump "Assoc"))
 (run root)
