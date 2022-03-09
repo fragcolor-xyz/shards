@@ -48,13 +48,12 @@ inline const char *getParamWGSLTypeName(ShaderParamType type) {
     return "vec4<f32>";
   case ShaderParamType::Float4x4:
     return "mat4x4<f32>";
-    break;
   default:
     assert(false);
-    break;
+    return "";
   }
 }
-static String getFieldWGSLTypeName(const FieldType &type) {
+inline String getFieldWGSLTypeName(const FieldType &type) {
   const char *baseType = nullptr;
   switch (type.baseType) {
   case ShaderFieldBaseType::UInt8:
