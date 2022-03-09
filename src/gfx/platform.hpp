@@ -2,6 +2,8 @@
 
 #if defined(_WIN32)
 #define GFX_WINDOWS 1
+#elif defined(__ANDROID__)
+#define GFX_ANDROID 1
 #elif defined(__EMSCRIPTEN__)
 #define GFX_EMSCRIPTEN 1
 #elif defined(__APPLE__)
@@ -10,6 +12,10 @@
 #define GFX_LINUX 1
 #else
 #define GFX_UNKNOWN 1
+#endif
+
+#ifndef GFX_ANDROID
+#define GFX_ANDROID 0
 #endif
 
 #ifndef GFX_APPLE

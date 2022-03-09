@@ -2,7 +2,7 @@
 
 #include <SDL.h>
 
-#define NEED_SYSWM (GFX_WINDOWS || GFX_LINUX)
+#define NEED_SYSWM (GFX_WINDOWS || GFX_ANDROID || GFX_LINUX)
 
 #include <SDL_syswm.h>
 
@@ -23,6 +23,8 @@ inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
 
 #if GFX_WINDOWS
   return winInfo.info.win.window;
+#elif GFX_ANDROID
+  return winInfo.info.android.window;
 #elif GFX_LINUX
   return (void *)winInfo.info.x11.window;
 #else

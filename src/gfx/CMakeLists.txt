@@ -33,7 +33,7 @@ target_include_directories(gfx
 target_link_libraries(gfx
   tinygltf
   magic_enum
-  spdlog stb xxHash Boost::headers
+  spdlog stb xxHash Boost::algorithm
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 
@@ -88,6 +88,11 @@ else()
   target_link_libraries(gfx SDL2-static)
 endif()
 
+
+if(ANDROID)
+  target_link_libraries(gfx android OpenSLES)
+endif()
+
 if(NOT EMSCRIPTEN)
   # wgpu-native target
   if(Rust_CARGO_TARGET)
@@ -120,6 +125,7 @@ if(NOT EMSCRIPTEN)
     IMPORTED_LOCATION ${GENERATED_LIB_PATH}
   )
   target_include_directories(wgpu-native INTERFACE ${WGPU_NATIVE_PATH}/ffi)
+
   if(WIN32)
     target_link_libraries(wgpu-native INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
   endif()

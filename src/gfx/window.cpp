@@ -13,6 +13,8 @@
 #include <SDL_metal.h>
 #elif GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
+#elif GFX_ANDROID
+#include <android/native_window.h>
 #endif
 
 namespace gfx {
@@ -36,6 +38,7 @@ void Window::init(const WindowCreationOptions &options) {
 #endif
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+  SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
   window = SDL_CreateWindow(options.title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                             options.fullscreen ? 0 : options.width, options.fullscreen ? 0 : options.height, flags);
 
@@ -80,6 +83,21 @@ int2 Window::getDrawableSize() const {
   int2 r;
 #if GFX_APPLE
   SDL_Metal_GetDrawableSize(window, &r.x, &r.y);
+#elif GFX_ANDROID
+  ANativeWindow *nativeWindow = (ANativeWindow *)SDL_GetNativeWindowPtr(window);
+  r.x = ANativeWindow_getWidth(nativeWindow);
+  r.y = ANativeWindow_getHeight(nativeWindow);
+
+  // Prerorate image
+  SDL_DisplayOrientation orientation = SDL_GetDisplayOrientation(0);
+  switch (orientation) {
+  case SDL_DisplayOrientation::SDL_ORIENTATION_LANDSCAPE:
+  case SDL_DisplayOrientation::SDL_ORIENTATION_LANDSCAPE_FLIPPED:
+    std::swap(r.x, r.y);
+    break;
+  default:
+    break;
+  }
 #else
   r = getSize();
 #endif

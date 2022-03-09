@@ -34,6 +34,7 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
     WGPUSurfaceDescriptorFromMetalLayer mtl;
     WGPUSurfaceDescriptorFromWaylandSurface wayland;
     WGPUSurfaceDescriptorFromWindowsHWND win;
+    WGPUSurfaceDescriptorFromAndroidNativeWindow android;
 #endif
   } platformDesc;
 
@@ -42,6 +43,7 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
       nativeSurfaceHandle = SDL_GetNativeWindowPtr(sdlWindow);
 
     memset(this, 0, sizeof(WGPUPlatformSurfaceDescriptor));
+
 #if GFX_WINDOWS
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
     platformDesc.win.hinstance = GetModuleHandle(nullptr);
@@ -50,6 +52,9 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlib;
     platformDesc.x11.window = uint32_t(size_t(nativeSurfaceHandle));
     platformDesc.x11.display = SDL_GetNativeDisplayPtr(sdlWindow);
+#elif GFX_ANDROID
+    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromAndroidNativeWindow;
+    platformDesc.android.window = nativeSurfaceHandle;
 #elif GFX_APPLE
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromMetalLayer;
     platformDesc.mtl.layer = nativeSurfaceHandle;

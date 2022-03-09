@@ -6,6 +6,7 @@
 #include "window.hpp"
 #include <SDL_events.h>
 #include <SDL_video.h>
+#include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -21,8 +22,10 @@ static WGPUBackendType getDefaultWgpuBackendType() {
   return WGPUBackendType_D3D12;
 #elif GFX_APPLE
   return WGPUBackendType_Metal;
-#elif GFX_LINUX
+#elif GFX_LINUX || GFX_ANDROID
   return WGPUBackendType_Vulkan;
+#else
+#error "No graphics backend defined for platform"
 #endif
 }
 
