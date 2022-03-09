@@ -160,25 +160,24 @@ struct Join {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     if (input.payload.seqValue.len == 0)
-      return Var::Empty; // FIXME or Var("")?
+      return Var("");
 
-    std::ostringstream ss;
-    ss << input.payload.seqValue.elements[0].payload.stringValue;
+    _buffer.clear();
+    _buffer.append(input.payload.seqValue.elements[0].payload.stringValue, CBSTRLEN(input.payload.seqValue.elements[0]));
 
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
       assert(input.payload.seqValue.elements[i].valueType == String);
-      auto str = input.payload.seqValue.elements[i].payload.stringValue;
-      ss << _separator << str;
+      _buffer.append(_separator);
+      _buffer.append(input.payload.seqValue.elements[i].payload.stringValue, CBSTRLEN(input.payload.seqValue.elements[i]));
     }
 
-    CBVar output{};
-    ::chainblocks::cloneVar(output, Var(ss.str()));
-    return output;
+    return Var(_buffer);
   }
 
 private:
   static inline Parameters params{{"Separator", CBCCSTR("The separator."), {CoreInfo::StringType}}};
 
+  std::string _buffer;
   std::string _separator;
 };
 
