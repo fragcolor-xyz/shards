@@ -119,7 +119,8 @@
    ;; details (optional)
    (When
     (-> name (getFilename (str basePath detailsPath) ".md") (FS.IsFile))
-    (-> "--8<-- \"" >> .o name (getFilename detailsPath ".md") >> .o "\"\r\n" >> .o
+    (-> "## Details\r\n\r\n" >> .o
+        "--8<-- \"" >> .o name (getFilename detailsPath ".md") >> .o "\"\r\n" >> .o
         "\r\n\r\n" >> .o))
 
    ;; examples (optional)
