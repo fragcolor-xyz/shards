@@ -1,3 +1,4 @@
+;; Render a GUI.table with a NextColumn block
 (def grid-cols 3)
 (def input-grid [1 2 3 4 5 ])  ;; input data for GUI.Table
 
@@ -8,13 +9,6 @@
    (ForEach
     (-> (| (GUI.NextColumn))
         (| (GUI.Text))))))
-
-;; GUI.Table render without using the GUI.NextColumn
-(defblocks renderNoNxtCol []
-  (GUI.Table
-   :Columns grid-cols :Contents
-   (ForEach
-    (-> (GUI.Text)))))
 
 ;; toggle .grid render statements (33, 34) to see how the output
 ;; looks like with and without the GUI.NextColumn function 
@@ -29,7 +23,6 @@
                 GuiWindowFlags.NoMove GuiWindowFlags.NoCollapse]
         :Contents
         (-> .grid (renderNxtCol))))))    ;; new col for every value => GUI shows data
-        ;; (-> .grid (renderNoNxtCol))))))  ;; no new col created => no GUI data shown
 
 (defnode root)
 (schedule root main-chain)

@@ -964,10 +964,8 @@ struct Assoc : public VariableBase {
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static CBOptionalString inputHelp() {
-    return CBCCSTR("Input sequence containing even number of elements, parsed "
-                   "as pairs, with the 1st element of each pair giving the "
-                   "index of the target element to update, and the 2nd element "
-                   "holding the new value to be written.");
+    return CBCCSTR("Input sequence that defines which element in the target sequence or table needs to be updated and with what "
+                   "value. Should have even number of elements.");
   }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnySeqType; }

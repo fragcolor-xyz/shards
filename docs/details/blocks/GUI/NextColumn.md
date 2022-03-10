@@ -1,0 +1,1 @@
+This block, whenever it's called within a table (i.e. a `GUI.Table`), automatically generates a new column that can be processed and then rendered as part of that parent table. For example, the output of every iteration of a `ForEach` block can be rendered as a new column using this block (see **Examples** below).
