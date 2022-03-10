@@ -216,7 +216,7 @@ jobs:
       - name: Get sample files
         run: |
           mkdir external && cd external
-          wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
+          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -875,7 +875,7 @@ jobs:
       - name: Get sample files
         run: |
           mkdir external && cd external
-          wget https://file-examples-com.github.io/uploads/2017/11/file_example_OOG_1MG.ogg
+          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
       - name: Test
         env:
           RUST_BACKTRACE: 1
