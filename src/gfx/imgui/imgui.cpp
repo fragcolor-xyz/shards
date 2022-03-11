@@ -91,6 +91,12 @@ void ImGuiRenderer::init() {
 
     ImGui_ImplSDL2_Init(sdlWindow);
   }
+
+  auto &io = ImGui::GetIO();
+  io.Fonts->Clear();
+  ImFontConfig config{};
+  config.SizePixels = 13.0f * 4.0f;
+  io.Fonts->AddFontDefault(&config);
 }
 
 void ImGuiRenderer::initContextData() {
