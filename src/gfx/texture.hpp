@@ -50,8 +50,8 @@ struct TextureContextData : public ContextData {
 
   WGPUExtent3D size{};
 
-  ~TextureContextData() { releaseConditional(); }
-  void release() {
+  ~TextureContextData() { releaseContextDataConditional(); }
+  void releaseContextData() override {
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
     WGPU_SAFE_RELEASE(wgpuTextureViewRelease, defaultView);
     WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);

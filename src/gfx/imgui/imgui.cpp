@@ -9,10 +9,14 @@
 namespace gfx {
 ImGuiRenderer::ImGuiRenderer(Context &context) : context(context) { init(); }
 
-ImGuiRenderer::~ImGuiRenderer() { cleanup(); }
+ImGuiRenderer::~ImGuiRenderer() { releaseContextDataConditional(); }
 
 void ImGuiRenderer::beginFrame(const std::vector<SDL_Event> &inputEvents) {
   ImGui::SetCurrentContext(imguiContext);
+
+  if (!isBoundToContext()) {
+    initContextData();
+  }
 
   if (!context.isHeadless()) {
     ImGui_ImplSDL2_NewFrame();
@@ -30,6 +34,18 @@ void ImGuiRenderer::beginFrame(const std::vector<SDL_Event> &inputEvents) {
 void ImGuiRenderer::endFrame() {
   ImGui::Render();
   render();
+}
+
+void ImGuiRenderer::releaseContextData() {
+  if (imguiContext) {
+    ImGui::SetCurrentContext(imguiContext);
+
+    ImGui_ImplWGPU_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+
+    ImGui::DestroyContext(imguiContext);
+    imguiContext = nullptr;
+  }
 }
 
 void ImGuiRenderer::render() {
@@ -70,8 +86,6 @@ void ImGuiRenderer::init() {
   ImGui::SetCurrentContext(imguiContext);
 
   if (!context.isHeadless()) {
-    ImGui_ImplWGPU_Init(context.wgpuDevice, 2, context.getMainOutputFormat());
-
     Window &window = context.getWindow();
     sdlWindow = window.window;
 
@@ -79,16 +93,9 @@ void ImGuiRenderer::init() {
   }
 }
 
-void ImGuiRenderer::cleanup() {
-  if (imguiContext) {
-    ImGui::SetCurrentContext(imguiContext);
-
-    ImGui_ImplWGPU_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-
-    ImGui::DestroyContext(imguiContext);
-    imguiContext = nullptr;
-  }
+void ImGuiRenderer::initContextData() {
+  ImGui_ImplWGPU_Init(context.wgpuDevice, 2, context.getMainOutputFormat());
+  bindToContext(context);
 }
 
 } // namespace gfx

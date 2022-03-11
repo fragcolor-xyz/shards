@@ -14,20 +14,20 @@ private:
 
 public:
   ViewTexture(WGPUTextureFormat format) : format(format) {}
-  ~ViewTexture() { releaseConditional(); }
+  ~ViewTexture() { releaseContextDataConditional(); }
 
   ViewTexture(const ViewTexture &other) = delete;
   ViewTexture &operator=(const ViewTexture &other) = delete;
   WGPUTextureFormat getFormat() const { return format; }
 
-  void release() {
+  void releaseContextData() override {
     WGPU_SAFE_RELEASE(wgpuTextureViewRelease, textureView);
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
   }
 
   WGPUTextureView update(Context &context, int2 size) {
     if (!texture || !textureView || size != this->size) {
-      releaseConditional();
+      releaseContextDataConditional();
       this->size = size;
 
       WGPUTextureDescriptor textureDesc{};

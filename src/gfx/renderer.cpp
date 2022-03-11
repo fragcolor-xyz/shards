@@ -155,6 +155,8 @@ struct CachedPipeline {
       wgpuBindGroupLayoutRelease(layout);
     }
   }
+
+  ~CachedPipeline() { release(); }
 };
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 
@@ -226,7 +228,7 @@ struct RendererImpl final : public ContextData {
     placeholderTexture = std::make_unique<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
   }
 
-  ~RendererImpl() { releaseConditional(); }
+  ~RendererImpl() { releaseContextDataConditional(); }
 
   void initializeContextData() {
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
@@ -235,7 +237,7 @@ struct RendererImpl final : public ContextData {
     placeholderTexture->createContextDataConditional(context);
   }
 
-  virtual void release() {
+  virtual void releaseContextData() override {
     context.sync();
     // Flush in-flight frame resources
     for (size_t i = 0; i < maxBufferedFrames; i++) {
@@ -336,7 +338,7 @@ struct RendererImpl final : public ContextData {
   void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
 
   void beginFrame() {
-    // This registers ContextData so that release is called when GPU resources are invalidated
+    // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
     if (!isBoundToContext())
       initializeContextData();
 
@@ -1026,6 +1028,6 @@ void Renderer::setMainOutput(const MainOutput &output) {
 void Renderer::beginFrame() { impl->beginFrame(); }
 void Renderer::endFrame() { impl->endFrame(); }
 
-void Renderer::cleanup() { impl->releaseConditional(); }
+void Renderer::cleanup() { impl->releaseContextDataConditional(); }
 
 } // namespace gfx

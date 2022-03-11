@@ -209,7 +209,7 @@ void Context::releaseAllContextData() {
   auto contextDatas = std::move(this->contextDatas);
   for (auto &obj : contextDatas) {
     if (!obj.second.expired()) {
-      obj.first->releaseConditional();
+      obj.first->releaseContextDataConditional();
     }
   }
 }

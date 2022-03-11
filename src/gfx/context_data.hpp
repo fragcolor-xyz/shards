@@ -8,7 +8,7 @@ template <typename T> struct TWithContextData;
 struct Context;
 
 // Can be assigned to a context to be notified when GPU resources should be released
-// NOTE: Your destructor should manually call releaseConditional!!!
+// NOTE: Your destructor should manually call releaseContextDataConditional!!!
 struct ContextData : public std::enable_shared_from_this<ContextData> {
 private:
   Context *context = nullptr;
@@ -17,7 +17,7 @@ public:
   ContextData() = default;
   virtual ~ContextData() = default;
 
-  void releaseConditional();
+  void releaseContextDataConditional();
   Context &getContext() {
     assert(context);
     return *context;
@@ -25,7 +25,7 @@ public:
   bool isBoundToContext() const { return context; }
 
 protected:
-  virtual void release() = 0;
+  virtual void releaseContextData() = 0;
 
 protected:
   template <typename T> friend struct TWithContextData;

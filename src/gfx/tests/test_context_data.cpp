@@ -7,8 +7,8 @@ using namespace gfx;
 struct TestContextData : public ContextData {
   WGPUBuffer buffer;
 
-  ~TestContextData() { releaseConditional(); }
-  void release() { WGPU_SAFE_RELEASE(wgpuBufferRelease, buffer); }
+  ~TestContextData() { releaseContextDataConditional(); }
+  void releaseContextData() override { WGPU_SAFE_RELEASE(wgpuBufferRelease, buffer); }
 };
 struct TestObject : public TWithContextData<TestContextData> {
 protected:
@@ -38,7 +38,7 @@ TEST_CASE("Context data", "[Context]") {
   }
 }
 
-TEST_CASE("Context data release", "[Context]") {
+TEST_CASE("Context data releaseContextData", "[Context]") {
   std::shared_ptr<TestContextData> testContextData;
   {
     gfx::Context context;

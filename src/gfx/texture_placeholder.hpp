@@ -12,8 +12,8 @@ struct PlaceholderTextureContextData : public ContextData {
   WGPUTextureView textureView;
   WGPUSampler sampler;
 
-  ~PlaceholderTextureContextData() { releaseConditional(); }
-  void release() {
+  ~PlaceholderTextureContextData() { releaseContextDataConditional(); }
+  void releaseContextData() override {
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
     WGPU_SAFE_RELEASE(wgpuTextureViewRelease, textureView);
     WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);

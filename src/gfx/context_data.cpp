@@ -14,9 +14,9 @@ void ContextData::unbindFromContext() {
   context = nullptr;
 }
 
-void ContextData::releaseConditional() {
+void ContextData::releaseContextDataConditional() {
   if (context) {
-    release();
+    releaseContextData();
     unbindFromContext();
   }
 }
