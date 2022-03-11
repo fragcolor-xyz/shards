@@ -19,6 +19,8 @@
 #define wgpuRenderPassEncoderRelease(...)
 #define wgpuSwapChainRelease(...)
 #define wgpuQueueRelease(...)
+#define wgpuAdapterRelease(...)
+#define wgpuSurfaceRelease(...)
 
 #define wgpuRenderPassEncoderEnd(_pass) wgpuRenderPassEncoderEndPass(_pass)
 extern "C" {

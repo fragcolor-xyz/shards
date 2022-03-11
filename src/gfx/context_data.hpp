@@ -7,6 +7,7 @@ namespace gfx {
 template <typename T> struct TWithContextData;
 struct Context;
 
+// Can be assigned to a context to be notified when GPU resources should be released
 // NOTE: Your destructor should manually call releaseConditional!!!
 struct ContextData : public std::enable_shared_from_this<ContextData> {
 private:
@@ -21,11 +22,12 @@ public:
     assert(context);
     return *context;
   }
+  bool isBoundToContext() const { return context; }
 
 protected:
   virtual void release() = 0;
 
-private:
+protected:
   template <typename T> friend struct TWithContextData;
   void bindToContext(Context &context);
   void unbindFromContext();
@@ -35,8 +37,9 @@ private:
 template <typename T> struct TWithContextData {
   std::shared_ptr<T> contextData;
 
-  void createContextDataConditional(Context &context) {
-    if (!contextData) {
+  T &createContextDataConditional(Context &context) {
+    // Create or reinitialize context data
+    if (!contextData || !contextData->context) {
       contextData = std::make_shared<T>();
       contextData->bindToContext(context);
       initContextData(context, *contextData.get());
@@ -44,6 +47,8 @@ template <typename T> struct TWithContextData {
       assert(&contextData->getContext() == &context);
     }
     updateContextData(context, *contextData.get());
+
+    return *contextData.get();
   }
 
 protected:

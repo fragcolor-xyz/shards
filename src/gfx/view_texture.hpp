@@ -1,10 +1,11 @@
 #pragma once
+#include "context_data.hpp"
 #include "gfx_wgpu.hpp"
 #include "linalg.hpp"
 
 namespace gfx {
 
-struct ViewTexture {
+struct ViewTexture : public ContextData {
 private:
   WGPUTexture texture{};
   WGPUTextureView textureView{};
@@ -13,20 +14,20 @@ private:
 
 public:
   ViewTexture(WGPUTextureFormat format) : format(format) {}
-  ~ViewTexture() { cleanup(); }
+  ~ViewTexture() { releaseConditional(); }
 
   ViewTexture(const ViewTexture &other) = delete;
   ViewTexture &operator=(const ViewTexture &other) = delete;
   WGPUTextureFormat getFormat() const { return format; }
 
-  void cleanup() {
+  void release() {
     WGPU_SAFE_RELEASE(wgpuTextureViewRelease, textureView);
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
   }
 
-  WGPUTextureView update(WGPUDevice device, int2 size) {
+  WGPUTextureView update(Context &context, int2 size) {
     if (!texture || !textureView || size != this->size) {
-      cleanup();
+      releaseConditional();
       this->size = size;
 
       WGPUTextureDescriptor textureDesc{};
@@ -38,7 +39,7 @@ public:
       textureDesc.size.depthOrArrayLayers = 1;
       textureDesc.size.width = size.x;
       textureDesc.size.height = size.y;
-      texture = wgpuDeviceCreateTexture(device, &textureDesc);
+      texture = wgpuDeviceCreateTexture(context.wgpuDevice, &textureDesc);
 
       WGPUTextureViewDescriptor viewDesc{};
       viewDesc.arrayLayerCount = 1;
@@ -49,6 +50,8 @@ public:
       viewDesc.aspect = WGPUTextureAspect_All;
       viewDesc.format = format;
       textureView = wgpuTextureCreateView(texture, &viewDesc);
+
+      bindToContext(context);
     }
 
     return textureView;

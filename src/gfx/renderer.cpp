@@ -191,7 +191,7 @@ struct FrameReferences {
   void clear() { contextDataReferences.clear(); }
 };
 
-struct RendererImpl {
+struct RendererImpl final : public ContextData {
   Context &context;
   WGPUSupportedLimits deviceLimits = {};
 
@@ -211,7 +211,7 @@ struct RendererImpl {
 
   bool mainOutputWrittenTo = false;
 
-  std::unique_ptr<ViewTexture> depthTexture = std::make_unique<ViewTexture>(WGPUTextureFormat_Depth24Plus);
+  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth24Plus);
   std::unique_ptr<PlaceholderTexture> placeholderTexture;
 
   RendererImpl(Context &context) : context(context) {
@@ -223,14 +223,26 @@ struct RendererImpl {
     viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
-    gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
-
-    placeholderTexture = std::make_unique<PlaceholderTexture>(context, int2(2, 2), float4(1, 1, 1, 1));
+    placeholderTexture = std::make_unique<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
   }
 
-  ~RendererImpl() {
+  ~RendererImpl() { releaseConditional(); }
+
+  void initializeContextData() {
+    gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
+
+    bindToContext(context);
+    placeholderTexture->createContextDataConditional(context);
+  }
+
+  virtual void release() {
     context.sync();
-    swapBuffers();
+    // Flush in-flight frame resources
+    for (size_t i = 0; i < maxBufferedFrames; i++) {
+      swapBuffers();
+    }
+    pipelineCache.clear();
+    viewCache.clear();
   }
 
   size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
@@ -324,6 +336,10 @@ struct RendererImpl {
   void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
 
   void beginFrame() {
+    // This registers ContextData so that release is called when GPU resources are invalidated
+    if (!isBoundToContext())
+      initializeContextData();
+
     mainOutputWrittenTo = false;
 
     if (shouldUpdateMainOutputFromContext) {
@@ -583,8 +599,9 @@ struct RendererImpl {
         textureEntry.textureView = textureData->defaultView;
         samplerEntry.sampler = textureData->sampler;
       } else {
-        textureEntry.textureView = placeholderTexture->textureView;
-        samplerEntry.sampler = placeholderTexture->sampler;
+        PlaceholderTextureContextData &data = placeholderTexture->createContextDataConditional(context);
+        textureEntry.textureView = data.textureView;
+        samplerEntry.sampler = data.sampler;
       }
     }
 
@@ -621,7 +638,7 @@ struct RendererImpl {
     depthAttach.clearDepth = 1.0f;
     depthAttach.depthLoadOp = WGPULoadOp_Clear;
     depthAttach.depthStoreOp = WGPUStoreOp_Store;
-    depthAttach.view = depthTexture->update(device, viewport.getSize());
+    depthAttach.view = depthTexture->update(context, viewport.getSize());
 
     passDesc.colorAttachments = &mainAttach;
     passDesc.colorAttachmentCount = 1;
@@ -992,6 +1009,7 @@ Renderer::Renderer(Context &context) {
   if (!context.isHeadless()) {
     impl->shouldUpdateMainOutputFromContext = true;
   }
+  impl->initializeContextData();
 }
 
 void Renderer::render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) {
@@ -1008,10 +1026,6 @@ void Renderer::setMainOutput(const MainOutput &output) {
 void Renderer::beginFrame() { impl->beginFrame(); }
 void Renderer::endFrame() { impl->endFrame(); }
 
-void Renderer::cleanup() {
-  Context &context = impl->context;
-  impl.reset();
-  impl = std::make_shared<RendererImpl>(context);
-}
+void Renderer::cleanup() { impl->releaseConditional(); }
 
 } // namespace gfx

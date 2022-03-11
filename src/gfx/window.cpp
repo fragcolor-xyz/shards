@@ -87,17 +87,6 @@ int2 Window::getDrawableSize() const {
   ANativeWindow *nativeWindow = (ANativeWindow *)SDL_GetNativeWindowPtr(window);
   r.x = ANativeWindow_getWidth(nativeWindow);
   r.y = ANativeWindow_getHeight(nativeWindow);
-
-  // Prerorate image
-  SDL_DisplayOrientation orientation = SDL_GetDisplayOrientation(0);
-  switch (orientation) {
-  case SDL_DisplayOrientation::SDL_ORIENTATION_LANDSCAPE:
-  case SDL_DisplayOrientation::SDL_ORIENTATION_LANDSCAPE_FLIPPED:
-    std::swap(r.x, r.y);
-    break;
-  default:
-    break;
-  }
 #else
   r = getSize();
 #endif

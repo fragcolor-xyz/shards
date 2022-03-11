@@ -2,6 +2,7 @@
 
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
+#include "platform.hpp"
 #include "types.hpp"
 #include <cassert>
 #include <list>
@@ -21,19 +22,33 @@ struct CopyBuffer {
   std::vector<uint8_t> data;
 };
 
+enum class ContextState {
+  Uninitialized,
+  Ok,
+  Incomplete,
+};
+
+enum class ContextFrameState {
+  Ok,
+  WaitingForEnd,
+};
+
 struct Window;
 struct ContextData;
 struct ContextMainOutput;
 struct Context {
 private:
   std::shared_ptr<ContextMainOutput> mainOutput;
-  bool initialized = false;
+  ContextState state = ContextState::Uninitialized;
+  ContextFrameState frameState = ContextFrameState::Ok;
+  bool suspended = false;
 
 public:
   WGPUInstance wgpuInstance = nullptr;
   WGPUAdapter wgpuAdapter = nullptr;
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
+  ContextCreationOptions options;
 
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
 
@@ -46,8 +61,8 @@ public:
   // Initialize headless context
   void init(const ContextCreationOptions &options = ContextCreationOptions{});
 
-  void cleanup();
-  bool isInitialized() const { return initialized; }
+  void release();
+  bool isInitialized() const { return state != ContextState::Uninitialized; }
 
   Window &getWindow();
   void resizeMainOutputConditional(const int2 &newSize);
@@ -56,9 +71,16 @@ public:
   WGPUTextureFormat getMainOutputFormat() const;
   bool isHeadless() const;
 
-  void beginFrame();
+  // Returns when a frame can be rendered
+  // Returns false while device is lost an can not be reacquired
+  bool beginFrame();
   void endFrame();
   void sync();
+
+  // When entering background, releases all graphics resources and pause rendering
+  void suspend();
+  // Call after suspend when resuming, will recreate graphics device and continue rendering
+  void resume();
 
   void submit(WGPUCommandBuffer cmdBuffer);
 
@@ -67,7 +89,18 @@ public:
   void removeContextDataInternal(ContextData *ptr);
 
 private:
-  void initCommon(const ContextCreationOptions &options);
+  void deviceLost();
+
+  void acquireDevice();
+  bool tryAcquireDevice();
+  void releaseDevice();
+
+  WGPUSurface getOrCreateSurface();
+
+  void createAdapter();
+  void releaseAdapter();
+
+  void initCommon();
 
   void present();
 

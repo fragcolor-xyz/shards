@@ -1,19 +1,35 @@
 #pragma once
 #include "context.hpp"
+#include "context_data.hpp"
 #include "gfx_wgpu.hpp"
 #include <vector>
 
 namespace gfx {
 
 // Texture filled with a single color used as placeholder for unbound texture slots
-struct PlaceholderTexture {
+struct PlaceholderTextureContextData : public ContextData {
   WGPUTexture texture;
   WGPUTextureView textureView;
   WGPUSampler sampler;
 
+  ~PlaceholderTextureContextData() { releaseConditional(); }
+  void release() {
+    WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
+    WGPU_SAFE_RELEASE(wgpuTextureViewRelease, textureView);
+    WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);
+  }
+};
+
+struct PlaceholderTexture final : public TWithContextData<PlaceholderTextureContextData> {
+  int2 resolution = int2(2, 2);
+  float4 fillColor = float4(0, 0, 0, 0);
+
   PlaceholderTexture() = default;
   PlaceholderTexture(const PlaceholderTexture &other) = delete;
-  PlaceholderTexture(Context &context, int2 resolution, float4 fillColor) {
+  PlaceholderTexture(int2 resolution, float4 fillColor) : resolution(resolution), fillColor(fillColor) {}
+
+protected:
+  void initContextData(Context &context, PlaceholderTextureContextData &data) {
     std::vector<uint32_t> pixelData;
     size_t numPixels = resolution.x * resolution.y;
     pixelData.resize(numPixels);
@@ -32,10 +48,10 @@ struct PlaceholderTexture {
     desc.size.height = resolution.y;
     desc.size.depthOrArrayLayers = 1;
     desc.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst;
-    texture = wgpuDeviceCreateTexture(context.wgpuDevice, &desc);
+    data.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &desc);
 
     WGPUImageCopyTexture copyTextureDst{};
-    copyTextureDst.texture = texture;
+    copyTextureDst.texture = data.texture;
     copyTextureDst.aspect = WGPUTextureAspect_All;
     copyTextureDst.mipLevel = 0;
     WGPUTextureDataLayout layout{};
@@ -51,7 +67,7 @@ struct PlaceholderTexture {
     viewDesc.aspect = WGPUTextureAspect_All;
     viewDesc.dimension = WGPUTextureViewDimension_2D;
     viewDesc.format = desc.format;
-    textureView = wgpuTextureCreateView(texture, &viewDesc);
+    data.textureView = wgpuTextureCreateView(data.texture, &viewDesc);
 
     WGPUSamplerDescriptor samplerDesc{};
     samplerDesc.addressModeU = WGPUAddressMode_Repeat;
@@ -63,13 +79,7 @@ struct PlaceholderTexture {
     samplerDesc.minFilter = WGPUFilterMode_Nearest;
     samplerDesc.mipmapFilter = WGPUFilterMode_Nearest;
     samplerDesc.maxAnisotropy = 0;
-    sampler = wgpuDeviceCreateSampler(context.wgpuDevice, &samplerDesc);
-  }
-
-  ~PlaceholderTexture() {
-    WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
-    WGPU_SAFE_RELEASE(wgpuTextureViewRelease, textureView);
-    WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);
+    data.sampler = wgpuDeviceCreateSampler(context.wgpuDevice, &samplerDesc);
   }
 };
 } // namespace gfx

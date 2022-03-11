@@ -1,5 +1,13 @@
 #pragma once
 
+#ifndef GFX_DEBUG
+#ifdef NDEBUG
+#define GFX_DEBUG 0
+#else
+#define GFX_DEBUG 1
+#endif
+#endif
+
 #if defined(_WIN32)
 #define GFX_WINDOWS 1
 #elif defined(__ANDROID__)
