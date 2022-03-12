@@ -8,10 +8,10 @@
 #include "runtime.hpp"
 #include <implot.h>
 
-using namespace chainblocks;
-
 namespace chainblocks {
 namespace ImGui {
+using namespace chainblocks;
+
 struct Base {
   CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(gfx::Base::requiredInfo); }
 

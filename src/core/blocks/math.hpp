@@ -64,7 +64,7 @@ struct BinaryBase : public Base {
   static inline ParamsInfo mathParamsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", CBCCSTR("The operand for this operation."), MathTypesOrVar));
 
-  ParamVar _operand{Var(0)};
+  ParamVar _operand{chainblocks::Var(0)};
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
@@ -566,21 +566,21 @@ struct Mean {
 
   void setParam(int index, const CBVar &value) { mean = MeanKind(value.payload.enumValue); }
 
-  CBVar getParam(int index) { return Var::Enum(mean, CoreCC, 'mean'); }
+  CBVar getParam(int index) { return chainblocks::Var::Enum(mean, CoreCC, 'mean'); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     switch (mean) {
     case MeanKind::Arithmetic: {
       ArithMean m;
-      return Var(m(input.payload.seqValue));
+      return chainblocks::Var(m(input.payload.seqValue));
     }
     case MeanKind::Geometric: {
       GeoMean m;
-      return Var(m(input.payload.seqValue));
+      return chainblocks::Var(m(input.payload.seqValue));
     }
     case MeanKind::Harmonic: {
       HarmoMean m;
-      return Var(m(input.payload.seqValue));
+      return chainblocks::Var(m(input.payload.seqValue));
     }
     default:
       throw ActivationError("Invalid mean case.");
@@ -612,28 +612,28 @@ template <class T> struct UnaryBin : public T {
   void setOperand(CBType type) {
     switch (type) {
     case CBType::Int:
-      T::_operand = Var(1);
+      T::_operand = chainblocks::Var(1);
       break;
     case CBType::Int2:
-      T::_operand = Var(1, 1);
+      T::_operand = chainblocks::Var(1, 1);
       break;
     case CBType::Int3:
-      T::_operand = Var(1, 1, 1);
+      T::_operand = chainblocks::Var(1, 1, 1);
       break;
     case CBType::Int4:
-      T::_operand = Var(1, 1, 1, 1);
+      T::_operand = chainblocks::Var(1, 1, 1, 1);
       break;
     case CBType::Float:
-      T::_operand = Var(1.0);
+      T::_operand = chainblocks::Var(1.0);
       break;
     case CBType::Float2:
-      T::_operand = Var(1.0, 1.0);
+      T::_operand = chainblocks::Var(1.0, 1.0);
       break;
     case CBType::Float3:
-      T::_operand = Var(1.0, 1.0, 1.0);
+      T::_operand = chainblocks::Var(1.0, 1.0, 1.0);
       break;
     case CBType::Float4:
-      T::_operand = Var(1.0, 1.0, 1.0, 1.0);
+      T::_operand = chainblocks::Var(1.0, 1.0, 1.0, 1.0);
       break;
     default:
       throw ActivationError("Type not supported for unary math operation");

@@ -1,8 +1,8 @@
 #pragma once
+#include <gfx/context_data.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/window.hpp>
-#include <gfx/context_data.hpp>
 #include <imgui.h>
 
 namespace gfx {

@@ -30,6 +30,8 @@
 #include "../core/cbccstrings.hpp"
 #endif
 
+using namespace chainblocks;
+
 #define ARG(type, name) type *name = VALUE_CAST(type, *argsBegin++)
 
 static StaticList<malBuiltIn *> handlers;

@@ -75,21 +75,21 @@ struct Evolve {
     case 1:
       return _fitnessChain;
     case 2:
-      return Var(_popsize);
+      return chainblocks::Var(_popsize);
     case 3:
-      return Var(_mutation);
+      return chainblocks::Var(_mutation);
     case 4:
-      return Var(_crossover);
+      return chainblocks::Var(_crossover);
     case 5:
-      return Var(_extinction);
+      return chainblocks::Var(_extinction);
     case 6:
-      return Var(_elitism);
+      return chainblocks::Var(_elitism);
     case 7:
-      return Var(_threads);
+      return chainblocks::Var(_threads);
     case 8:
-      return Var(_coros);
+      return chainblocks::Var(_coros);
     default:
-      return Var::Empty;
+      return chainblocks::Var::Empty;
     }
   }
 
@@ -485,9 +485,9 @@ struct Evolve {
           best->chainUsers.clear();
 
           _result.clear();
-          _result.emplace_back(Var(_sortedPopulation.front()->fitness));
+          _result.emplace_back(chainblocks::Var(_sortedPopulation.front()->fitness));
           _result.emplace_back(_sortedPopulation.front()->chain);
-          return Var(_result);
+          return chainblocks::Var(_result);
         },
         [] {
           // TODO CANCELLATION
@@ -1039,7 +1039,7 @@ struct DBlock {
   CBVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_name);
+      return chainblocks::Var(_name);
     case 1: {
       CBVar res{};
       res.valueType = Seq;

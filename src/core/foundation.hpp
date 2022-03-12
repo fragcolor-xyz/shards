@@ -589,14 +589,14 @@ template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_ca
 
 template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap) {
-    arrayGrow(arr, 1);
+    chainblocks::arrayGrow(arr, 1);
   }
   arr.elements[arr.len++] = val;
 }
 
 template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   if (arr.cap < size) {
-    arrayGrow(arr, size - arr.len);
+    chainblocks::arrayGrow(arr, size - arr.len);
   }
   arr.len = size;
 }
@@ -1273,7 +1273,7 @@ struct VariableResolver {
     if (_refs.size() > 0) {
       for (auto val : _vals) {
         // we do this to avoid double freeing, we don't really own this value
-        *val = Var::Empty;
+        *val = chainblocks::Var::Empty;
       }
       for (auto ref : _refs) {
         releaseVariable(ref);

@@ -17,6 +17,8 @@
 #include <string.h>
 #include <unordered_set>
 
+using namespace chainblocks;
+
 #ifdef __EMSCRIPTEN__
 // clang-format off
 EM_JS(void, cb_emscripten_init, (), {

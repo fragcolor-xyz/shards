@@ -53,7 +53,7 @@ using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
 #define CB_SUSPEND(_ctx_, _secs_)                                  \
   const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_); \
   if (_suspend_state != CBChainState::Continue)                    \
-  return Var::Empty
+  return chainblocks::Var::Empty
 
 #define CB_STOP() std::rethrow_exception(chainblocks::GetGlobals().StopChainEx);
 #define CB_RESTART() std::rethrow_exception(chainblocks::GetGlobals().RestartChainEx);
@@ -519,7 +519,7 @@ inline bool stop(CBChain *chain, CBVar *result = nullptr) {
     // Run until exit if alive, need to propagate to all suspended blocks!
     if ((*chain->coro) && chain->state > CBChain::State::Stopped && chain->state < CBChain::State::Failed) {
       // set abortion flag, we always have a context in this case
-      chain->context->stopFlow(Var::Empty);
+      chain->context->stopFlow(chainblocks::Var::Empty);
       chain->context->onLastResume = true;
 
       // BIG Warning: chain->context existed in the coro stack!!!
@@ -570,7 +570,7 @@ inline bool tick(CBChain *chain, CBDuration now, CBVar rootInput = {}) {
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= chain->context->next) {
-    if (rootInput != Var::Empty) {
+    if (rootInput != chainblocks::Var::Empty) {
       cloneVar(chain->rootTickInput, rootInput);
     }
 #ifdef CB_USE_TSAN
@@ -653,8 +653,6 @@ struct RuntimeCallbacks {
 };
 }; // namespace chainblocks
 
-using namespace chainblocks;
-
 struct CBNode : public std::enable_shared_from_this<CBNode> {
   static std::shared_ptr<CBNode> make() { return std::shared_ptr<CBNode>(new CBNode()); }
 
@@ -671,10 +669,11 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   };
 
   template <class Observer>
-  void schedule(Observer observer, const std::shared_ptr<CBChain> &chain, CBVar input = Var::Empty, bool compose = true) {
+  void schedule(Observer observer, const std::shared_ptr<CBChain> &chain, CBVar input = chainblocks::Var::Empty,
+                bool compose = true) {
     if (chain->warmedUp) {
       CBLOG_ERROR("Attempted to schedule a chain multiple times, chain: {}", chain->name);
-      throw CBException("Multiple chain schedule");
+      throw chainblocks::CBException("Multiple chain schedule");
     }
 
     // this is to avoid recursion during compose
@@ -690,41 +689,41 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
       // compose the chain
       CBInstanceData data = instanceData;
       data.chain = chain.get();
-      data.inputType = deriveTypeInfo(input, data);
-      auto validation = composeChain(
+      data.inputType = chainblocks::deriveTypeInfo(input, data);
+      auto validation = chainblocks::composeChain(
           chain.get(),
           [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
             auto blk = const_cast<CBlock *>(errorBlock);
             if (!nonfatalWarning) {
-              throw ComposeError(std::string(errorTxt) + ", input block: " + std::string(blk->name(blk)));
+              throw chainblocks::ComposeError(std::string(errorTxt) + ", input block: " + std::string(blk->name(blk)));
             } else {
               CBLOG_INFO("Validation warning: {} input block: {}", errorTxt, blk->name(blk));
             }
           },
           this, data);
-      arrayFree(validation.exposedInfo);
-      arrayFree(validation.requiredInfo);
-      freeDerivedInfo(data.inputType);
+      chainblocks::arrayFree(validation.exposedInfo);
+      chainblocks::arrayFree(validation.requiredInfo);
+      chainblocks::freeDerivedInfo(data.inputType);
     }
 
     observer.before_prepare(chain.get());
     // create a flow as well
-    prepare(chain.get(), _flows.emplace_back(new CBFlow{chain.get()}).get());
+    chainblocks::prepare(chain.get(), _flows.emplace_back(new CBFlow{chain.get()}).get());
     observer.before_start(chain.get());
-    start(chain.get(), input);
+    chainblocks::start(chain.get(), input);
 
     scheduled.insert(chain);
   }
 
-  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = Var::Empty, bool compose = true) {
+  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = chainblocks::Var::Empty, bool compose = true) {
     EmptyObserver obs;
     schedule(obs, chain, input, compose);
   }
 
-  template <class Observer> bool tick(Observer observer, CBVar input = Var::Empty) {
+  template <class Observer> bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
     auto noErrors = true;
     _errors.clear();
-    if (GetGlobals().SigIntTerm > 0) {
+    if (chainblocks::GetGlobals().SigIntTerm > 0) {
       terminate();
     } else {
       CBDuration now = CBClock::now().time_since_epoch();
@@ -732,12 +731,12 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
         auto &flow = *it;
         observer.before_tick(flow->chain);
         chainblocks::tick(flow->chain, now, input);
-        if (unlikely(!isRunning(flow->chain))) {
+        if (unlikely(!chainblocks::isRunning(flow->chain))) {
           if (flow->chain->finishedError.size() > 0) {
             _errors.emplace_back(flow->chain->finishedError);
           }
           observer.before_stop(flow->chain);
-          if (!stop(flow->chain)) {
+          if (!chainblocks::stop(flow->chain)) {
             noErrors = false;
           }
           flow->chain->node.reset();
@@ -750,14 +749,14 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     return noErrors;
   }
 
-  bool tick(CBVar input = Var::Empty) {
+  bool tick(CBVar input = chainblocks::Var::Empty) {
     EmptyObserver obs;
     return tick(obs, input);
   }
 
   void terminate() {
     for (auto chain : scheduled) {
-      stop(chain.get());
+      chainblocks::stop(chain.get());
       chain->node.reset();
     }
 
@@ -779,7 +778,7 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
   }
 
   void remove(const std::shared_ptr<CBChain> &chain) {
-    stop(chain.get());
+    chainblocks::stop(chain.get());
     _flows.remove_if([chain](auto &flow) { return flow->chain == chain.get(); });
     chain->node.reset();
     visitedChains.erase(chain.get());
@@ -1084,15 +1083,15 @@ struct Serialization {
       buf[len] = 0;
       blk = createBlock(&buf[0]);
       if (!blk) {
-        throw CBException("Block not found! name: " + std::string(&buf[0]));
+        throw chainblocks::CBException("Block not found! name: " + std::string(&buf[0]));
       }
       // validate the hash of the block
       uint32_t crc;
       read((uint8_t *)&crc, sizeof(uint32_t));
       if (blk->hash(blk) != crc) {
-        throw CBException("Block hash mismatch, the serialized version is "
-                          "probably different: " +
-                          std::string(&buf[0]));
+        throw chainblocks::CBException("Block hash mismatch, the serialized version is "
+                                       "probably different: " +
+                                       std::string(&buf[0]));
       }
       blk->setup(blk);
       auto params = blk->parameters(blk).len + 1;
@@ -1473,7 +1472,7 @@ struct Serialization {
 
 template <typename T> struct ChainDoppelgangerPool {
   ChainDoppelgangerPool(CBChainRef master) {
-    auto vchain = Var(master);
+    auto vchain = chainblocks::Var(master);
     std::stringstream stream;
     Writer w(stream);
     Serialization serializer;

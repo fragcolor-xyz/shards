@@ -11,6 +11,8 @@
 #include "desktop.capture.win.hpp"
 #include "desktop.hpp"
 
+using namespace chainblocks;
+
 #ifndef NDEBUG
 #define DBG_CHECK_OFF 1
 #else
