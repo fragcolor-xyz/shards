@@ -2412,7 +2412,7 @@ struct Take {
 
 #define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                            \
   ALWAYS_INLINE CBVar __name__(CBContext *context, const CBVar &input) {          \
-    const auto inputLen = ssize_t(__len__);                                       \
+    const auto inputLen = size_t(__len__);                                       \
     const auto &indices = _indicesVar ? *_indicesVar : _indices;                  \
     if (likely(!_seqOutput)) {                                                    \
       const auto index = indices.payload.intValue;                                \
