@@ -2215,7 +2215,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
 
     auto &t = src.payload.tableValue;
-    CBTableIterator tit;
+    CBTableIterator tit{};
     t.api->tableGetIterator(t, &tit);
     CBString k;
     CBVar v;
@@ -2240,7 +2240,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
 
     auto &s = src.payload.setValue;
-    CBSetIterator sit;
+    CBSetIterator sit{};
     s.api->setGetIterator(s, &sit);
     CBVar v;
     while (s.api->setNext(s, &sit, &v)) {
