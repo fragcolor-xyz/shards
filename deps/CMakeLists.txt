@@ -274,3 +274,9 @@ target_include_directories(utf8.h INTERFACE utf8.h)
 
 add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
+
+set(OPENSSL_USE_STATIC_LIBS ON)
+find_package(OpenSSL REQUIRED)
+add_library(OpenSSL INTERFACE)
+target_link_libraries(OpenSSL INTERFACE ${OPENSSL_LIBRARIES})
+target_include_directories(OpenSSL INTERFACE ${OPENSSL_INCLUDE_DIR})

@@ -79,7 +79,17 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem)
+target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem Boost::asio Boost::lockfree Boost::foreach Boost::beast Boost::multiprecision Boost::process)
+
+if(WIN32)
+  target_link_libraries(chainblocks-core-static Boost::stacktrace_windbg_cached)
+
+  # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
+  # 0x0A00 = Windows 10
+  target_compile_definitions(chainblocks-core-static PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
+else()
+  target_link_libraries(chainblocks-core-static Boost::stacktrace_backtrace)
+endif()
 
 target_link_libraries(chainblocks-core-static
   spdlog magic_enum nameof linalg xxHash
@@ -94,42 +104,13 @@ if(EMSCRIPTEN)
   target_sources(chainblocks-core-static PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
-if(WIN32)
-  target_link_libraries(chainblocks-core-static ssl crypto ws2_32 mswsock Secur32 Crypt32 NCrypt)
-elseif(APPLE)
-  if(NOT IOS)
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-      # these have to be full path or cmake will revert to use -l resulting in dynamic linking
-      if(EXISTS "/usr/local/opt/openssl@1.1/lib/libssl.a")
-        target_link_libraries(chainblocks-core-static
-          /usr/local/opt/openssl@1.1/lib/libssl.a
-          /usr/local/opt/openssl@1.1/lib/libcrypto.a
-        )
-      else()
-        target_link_libraries(chainblocks-core-static
-          /opt/homebrew/opt/openssl@1.1/lib/libssl.a
-          /opt/homebrew/opt/openssl@1.1/lib/libcrypto.a
-        )
-      endif()
-    else()
-      target_link_libraries(chainblocks-core-static
-        -lssl -lcrypto
-      )
-    endif()
-  endif()
+# Required by Boost::asio
+target_link_libraries(chainblocks-core-static OpenSSL)
 
-  target_include_directories(chainblocks-core-static PUBLIC
-    /usr/local/include
-    /usr/local/opt/openssl@1.1/include
-    /opt/homebrew/opt/openssl@1.1/include
-  )
-  target_link_directories(chainblocks-core-static PUBLIC
-    /usr/local/lib
-    /usr/local/opt/openssl@1.1/lib
-    /opt/homebrew/opt/openssl@1.1/lib
-  )
+if(WIN32)
+  target_link_libraries(chainblocks-core-static ws2_32 mswsock Secur32 Crypt32 NCrypt)
 elseif(UNIX AND NOT EMSCRIPTEN)
-  target_link_libraries(chainblocks-core-static ssl crypto pthread dl rt)
+  target_link_libraries(chainblocks-core-static pthread dl rt)
 endif()
 
 target_compile_options(chainblocks-core-static
