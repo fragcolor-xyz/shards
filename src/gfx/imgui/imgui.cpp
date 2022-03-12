@@ -9,7 +9,7 @@
 namespace gfx {
 ImGuiRenderer::ImGuiRenderer(Context &context) : context(context) { init(); }
 
-ImGuiRenderer::~ImGuiRenderer() { releaseContextDataConditional(); }
+ImGuiRenderer::~ImGuiRenderer() { cleanup(); }
 
 void ImGuiRenderer::beginFrame(const std::vector<SDL_Event> &inputEvents) {
   ImGui::SetCurrentContext(imguiContext);
@@ -36,16 +36,23 @@ void ImGuiRenderer::endFrame() {
   render();
 }
 
-void ImGuiRenderer::releaseContextData() {
+void ImGuiRenderer::cleanup() {
+  releaseContextDataConditional();
+
   if (imguiContext) {
     ImGui::SetCurrentContext(imguiContext);
 
-    ImGui_ImplWGPU_Shutdown();
     ImGui_ImplSDL2_Shutdown();
 
     ImGui::DestroyContext(imguiContext);
     imguiContext = nullptr;
   }
+}
+
+void ImGuiRenderer::releaseContextData() {
+  assert(imguiContext);
+  ImGui::SetCurrentContext(imguiContext);
+  ImGui_ImplWGPU_Shutdown();
 }
 
 void ImGuiRenderer::render() {

@@ -23,11 +23,13 @@ struct ImGuiRenderer : public ContextData {
   void beginFrame(const std::vector<SDL_Event> &inputEvents);
   void endFrame();
 
+protected:
   void releaseContextData() override;
 
 private:
   void init();
   void initContextData();
+  void cleanup();
   void render();
 };
 
