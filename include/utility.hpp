@@ -92,16 +92,16 @@ public:
   T &get() {
     if (!_tp) {
       // create
-      auto p = new T(); // keep for debugging sanity
-      auto mem = &_tp;  // keep for debugging sanity
+      auto p = new T();          // keep for debugging sanity
+      auto mem = &_tp; // keep for debugging sanity
       _tp = p;
-      // lock now since _ptrs is shared
-      std::unique_lock<std::mutex> lock(_m);
+      // lock now since ptrs is shared
+      std::unique_lock<std::mutex> lock(getState().mutex);
 
       // store thread local location
-      _ptrs.push_back(mem);
+      getState().ptrs.push_back(mem);
       // also store the pointer in the global list
-      _objs.push_back(p);
+      getState().objs.push_back(p);
     }
 
     return *_tp;
@@ -113,25 +113,25 @@ public:
 
 private:
   void addRef() {
-    std::unique_lock<std::mutex> lock(_m);
+    std::unique_lock<std::mutex> lock(getState().mutex);
 
-    _refs++;
+    getState().refs++;
   }
 
   void decRef() {
-    std::unique_lock<std::mutex> lock(_m);
+    std::unique_lock<std::mutex> lock(getState().mutex);
 
-    _refs--;
+    getState().refs--;
 
-    if (_refs == 0) {
-      for (auto ptr : _ptrs) {
+    if (getState().refs == 0) {
+      for (auto ptr : getState().ptrs) {
         // null the thread local
         // the idea is that we clean up even the thread still exists
         *ptr = nullptr;
       }
-      _ptrs.clear();
+      getState().ptrs.clear();
 
-      for (auto ptr : _objs) {
+      for (auto ptr : getState().objs) {
         if (!ptr)
           continue;
 
@@ -141,15 +141,22 @@ private:
         // delete the internal object
         delete ptr;
       }
-      _objs.clear();
+      getState().objs.clear();
     }
   }
 
-  static inline std::mutex _m;
-  static inline uint64_t _refs = 0;
+  struct State {
+    std::mutex mutex;
+    uint64_t refs = 0;
+    std::vector<T **> ptrs;
+    std::vector<T *> objs;
+  };
   static inline thread_local T *_tp = nullptr;
-  static inline std::vector<T **> _ptrs;
-  static inline std::vector<T *> _objs;
+
+  static State &getState() {
+    static State state;
+    return state;
+  }
 };
 
 /*
@@ -162,19 +169,19 @@ public:
   ~Shared() { decRef(); }
 
   T &get() {
-    if (!_tp) {
-      std::unique_lock<std::mutex> lock(_m);
+    if (!getState().tp) {
+      std::unique_lock<std::mutex> lock(getState().mutex);
       // check again as another thread might have locked
       if constexpr (!std::is_same<ARG, void *>::value) {
-        if (!_tp)
-          _tp = new T(defaultValue);
+        if (!getState().tp)
+          getState().tp = new T(defaultValue);
       } else {
-        if (!_tp)
-          _tp = new T();
+        if (!getState().tp)
+          getState().tp = new T();
       }
     }
 
-    return *_tp;
+    return *getState().tp;
   }
 
   T &operator()() { return get(); }
@@ -183,27 +190,34 @@ public:
 
 private:
   void addRef() {
-    std::unique_lock<std::mutex> lock(_m);
+    std::unique_lock<std::mutex> lock(getState().mutex);
 
-    _refs++;
+    getState().refs++;
   }
 
   void decRef() {
-    std::unique_lock<std::mutex> lock(_m);
+    std::unique_lock<std::mutex> lock(getState().mutex);
 
-    _refs--;
+    getState().refs--;
 
-    if (_refs == 0 && _tp) {
+    if (getState().refs == 0 && getState().tp) {
       // delete the internal object
-      delete _tp;
+      delete getState().tp;
       // null the thread local
-      _tp = nullptr;
+      getState().tp = nullptr;
     }
   }
 
-  static inline std::mutex _m;
-  static inline uint64_t _refs = 0;
-  static inline T *_tp = nullptr;
+  struct State {
+    std::mutex mutex;
+    uint64_t refs = 0;
+    T *tp = nullptr;
+  };
+
+  static State &getState() {
+    static State state;
+    return state;
+  }
 };
 
 template <class CB_CORE> class TParamVar {
