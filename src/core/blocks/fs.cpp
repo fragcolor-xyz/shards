@@ -312,7 +312,7 @@ struct Write {
       if (!parent_path.empty() && !fs::exists(parent_path))
         fs::create_directories(p.parent_path());
 
-      auto flags = std::ios::binary;
+      std::ios::openmode flags = std::ios::binary;
       if (_append) {
         flags |= std::ios::app;
       }
