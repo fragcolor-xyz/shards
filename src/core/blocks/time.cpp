@@ -6,6 +6,16 @@
 
 namespace chainblocks {
 namespace Time {
+
+template <typename TDur> inline CBVar DurationToVar(const TDur &dur) {
+  using CountType = decltype(dur.count());
+  static_assert(sizeof(CountType) <= sizeof(int64_t));
+
+  CBVar result{};
+  *(CountType *)&result.payload.intValue = dur.count();
+  return result;
+}
+
 struct ProcessClock {
   decltype(std::chrono::high_resolution_clock::now()) Start;
   ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
@@ -20,7 +30,7 @@ struct Now {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dt = tnow - _clock.Start;
-    return Var(dt.count());
+    return DurationToVar(dt);
   }
 };
 
@@ -28,7 +38,7 @@ struct NowMs : public Now {
   CBVar activate(CBContext *context, const CBVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
-    return Var(dt.count());
+    return DurationToVar(dt);
   }
 };
 
@@ -44,7 +54,7 @@ struct Delta {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> dt = tnow - _clock.Start;
     _clock.Start = tnow; // reset timer
-    return Var(dt.count());
+    return DurationToVar(dt);
   }
 };
 
@@ -53,7 +63,7 @@ struct DeltaMs : public Delta {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
     _clock.Start = tnow; // reset timer
-    return Var(dt.count());
+    return DurationToVar(dt);
   }
 };
 
@@ -63,8 +73,7 @@ struct EpochMs {
 
   CBVar activate(CBContext *context, const CBVar &input) {
     using namespace std::chrono;
-    milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-    return Var(ms.count());
+    return DurationToVar(duration_cast<milliseconds>(system_clock::now().time_since_epoch()));
   }
 };
 
