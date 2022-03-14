@@ -1,4 +1,4 @@
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT (APPLE OR ANDROID OR EMSCRIPTEN))
   set(LINUX TRUE)
 endif()
 
@@ -132,7 +132,7 @@ if(PROFILE_GPROF)
 endif()
 
 option(USE_UBSAN "Use undefined behaviour sanitizer" ON)
-set(UBSAN_SUPPORTED NOT WIN32 AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT IOS)
+set(UBSAN_SUPPORTED LINUX)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(${UBSAN_SUPPORTED} AND USE_UBSAN)
     add_compile_options(-fsanitize=undefined)
