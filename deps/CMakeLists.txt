@@ -275,6 +275,8 @@ target_include_directories(utf8.h INTERFACE utf8.h)
 add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
 
-find_package(LibreSSL REQUIRED)
+add_subdirectory(libressl)
+
 add_library(OpenSSL INTERFACE)
-target_link_libraries(OpenSSL INTERFACE LibreSSL::SSL)
+target_link_libraries(OpenSSL INTERFACE ssl)
+target_include_directories(OpenSSL INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libressl/include)
