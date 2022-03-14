@@ -85,3 +85,6 @@
 [submodule "deps/boost"]
 	path = deps/boost
 	url = https://github.com/boostorg/boost.git
+[submodule "deps/libressl"]
+	path = deps/libressl
+	url = https://github.com/guusw/portable.git
