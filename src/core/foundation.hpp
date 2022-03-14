@@ -54,6 +54,14 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #define CB_BASE_STACK_SIZE 128 * 1024
 #endif
 
+#if defined(_WIN32) && defined(__clang__)
+#define CB_STACK_ALLOCATOR_SUPPORTED 0
+#endif
+
+#ifndef CB_STACK_ALLOCATOR_SUPPORTED
+#define CB_STACK_ALLOCATOR_SUPPORTED 1
+#endif
+
 #ifndef __EMSCRIPTEN__
 // For coroutines/context switches
 #include <boost/context/continuation.hpp>
@@ -164,6 +172,7 @@ inline void destroyVar(CBVar &src);
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 
+#if CB_STACK_ALLOCATOR_SUPPORTED
 // utility stack allocator (stolen from stackoverflow)
 template <std::size_t Size = 512> struct bumping_memory_resource {
   char buffer[Size];
@@ -202,6 +211,12 @@ template <typename T, typename Resource = bumping_memory_resource<512>> struct s
 
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
+#else
+template <typename T> struct stack_allocator : public std::allocator<T> {
+  using Base = std::allocator<T>;
+  using Base::allocator;
+};
+#endif
 
 void freeDerivedInfo(CBTypeInfo info);
 CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data, bool *containsVariables = nullptr);
