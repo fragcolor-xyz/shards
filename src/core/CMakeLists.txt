@@ -87,6 +87,8 @@ if(WIN32)
   # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
   # 0x0A00 = Windows 10
   target_compile_definitions(chainblocks-core-static PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
+elseif(ANDROID OR IOS)
+  target_link_libraries(chainblocks-core-static Boost::stacktrace_basic)
 else()
   target_link_libraries(chainblocks-core-static Boost::stacktrace_backtrace)
 endif()
