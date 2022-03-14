@@ -59,10 +59,16 @@ if(EMSCRIPTEN)
 endif()
 
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  set(WINDOWS_ABI "msvc")
+
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
   add_compile_definitions(_SCL_SECURE_NO_WARNINGS=1)
   add_compile_definitions(NOMINMAX=1)
-  set(WINDOWS_ABI "msvc")
+
+  # We can not keep iterators in memory without freeing with iterator debugging
+  # See CBTable/Set iterator internals
+  add_compile_definitions(_ITERATOR_DEBUG_LEVEL=1)
+  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=1")
 else()
   set(WINDOWS_ABI "gnu")
 endif()
