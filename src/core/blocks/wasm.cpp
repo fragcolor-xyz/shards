@@ -841,6 +841,11 @@ m3ApiRawFunction(m3_wasi_unstable_random_get) {
     size_t reqlen = M3_MIN(buflen, 256);
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
     retlen = SecRandomCopyBytes(kSecRandomDefault, reqlen, buf) < 0 ? -1 : reqlen;
+#elif defined(__ANDROID_API__)
+    int urandom = open("/dev/urandom", O_RDONLY);
+    assert(urandom >= 0);
+    retlen = read(urandom, buf, reqlen);
+    close(urandom);
 #else
     retlen = getentropy(buf, reqlen) < 0 ? -1 : reqlen;
 #endif
