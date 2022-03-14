@@ -307,7 +307,7 @@ void registerCoreBlocks() {
   edn::registerBlocks();
   reflection::registerBlocks();
 
-#ifndef __EMSCRIPTEN__
+#ifndef CHAINBLOCKS_NO_OS_BLOCKS
   // registerOSBlocks();
   registerProcessBlocks();
   Genetic::registerBlocks();

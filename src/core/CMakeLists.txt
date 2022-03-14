@@ -98,8 +98,10 @@ target_link_libraries(chainblocks-core-static
   pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
 )
 
-if(NOT (IOS OR EMSCRIPTEN))
+if(NOT (ANDROID OR IOS OR EMSCRIPTEN))
   target_sources(chainblocks-core-static PRIVATE ${os_SOURCES})
+else()
+  target_compile_definitions(chainblocks-core-static PRIVATE CHAINBLOCKS_NO_OS_BLOCKS=1)
 endif()
 
 if(EMSCRIPTEN)
@@ -111,7 +113,7 @@ target_link_libraries(chainblocks-core-static OpenSSL)
 
 if(WIN32)
   target_link_libraries(chainblocks-core-static ws2_32 mswsock Secur32 Crypt32 NCrypt)
-elseif(UNIX AND NOT EMSCRIPTEN)
+elseif(LINUX)
   target_link_libraries(chainblocks-core-static pthread dl rt)
 endif()
 
