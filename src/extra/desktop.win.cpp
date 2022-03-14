@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#define WINVER 0x0602
-
 #include <winsock2.h>
 
 #include <Windows.h>
