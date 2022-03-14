@@ -5,12 +5,14 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "shared.hpp"
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <future>
 #include <stb_image.h>
 #include <stb_image_write.h>
 #include <string>
+
+namespace fs = boost::filesystem;
 
 namespace chainblocks {
 struct FileBase {
@@ -58,9 +60,9 @@ struct FileBase {
     _currentFileName = _filename.get();
 
     // if absolute we are fine to begin with
-    std::filesystem::path fp(filename);
+    fs::path fp(filename);
     if (checkExists) {
-      return std::filesystem::exists(fp);
+      return fs::exists(fp);
     } else {
       return true;
     }
@@ -129,7 +131,7 @@ struct WriteFile : public FileBase {
         return input;
       }
 
-      namespace fs = std::filesystem;
+      namespace fs = boost::filesystem;
 
       // make sure to create directories
       fs::path p(filename);

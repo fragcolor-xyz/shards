@@ -16,7 +16,7 @@
 #include <boost/process/environment.hpp>
 #endif
 #include <chrono>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <ostream>
 #include <set>
@@ -68,7 +68,7 @@ typedef RefCountedPtr<malCBVar> malCBVarPtr;
 void registerKeywords(malEnvPtr env);
 malCBVarPtr varify(const malValuePtr &arg);
 
-namespace fs = std::filesystem;
+namespace fs = boost::filesystem;
 
 namespace chainblocks {
 CBlock *createBlockInnerCall();
@@ -550,7 +550,7 @@ struct ChainFileWatcher {
         inputTypeInfo(data.inputType), shared(data.shared) {
     node = data.chain->node;
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-    localRoot = std::filesystem::path(path).string();
+    localRoot = fs::path(path).string();
     try {
       malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
       if (this->autoexec != nullptr) {
@@ -574,7 +574,7 @@ struct ChainFileWatcher {
     }
 #else
     worker = std::thread([this] {
-      localRoot = std::filesystem::path(path).string();
+      localRoot = fs::path(path).string();
       try {
         malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
         if (this->autoexec != nullptr) {
@@ -1698,7 +1698,7 @@ BUILTIN("override-root-path") {
 
   std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   chainblocks::GetGlobals().RootPath = value->ref();
-  std::filesystem::current_path(value->ref());
+  fs::current_path(value->ref());
   return mal::nilValue();
 }
 
@@ -1879,7 +1879,7 @@ BUILTIN("import") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
-  auto filepath = std::filesystem::path(value->value());
+  auto filepath = fs::path(value->value());
 
   auto lib_name_str = filepath.string();
   auto lib_name = lib_name_str.c_str();

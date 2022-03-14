@@ -3,11 +3,13 @@
 
 #include "shared.hpp"
 #include <cstdio>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <sstream>
+
+namespace fs = boost::filesystem;
 
 // for now a carbon copy of wasm3 simple wasi
 
@@ -454,9 +456,9 @@ m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
 
   CBLOG_TRACE("WASI m3_wasi_unstable_path_filestat_get, path: {}", path);
 
-  std::filesystem::path fp{path};
-  std::filesystem::path rp{chainblocks::GetGlobals().RootPath};
-  std::filesystem::path p = rp / fp;
+  fs::path fp{path};
+  fs::path rp{chainblocks::GetGlobals().RootPath};
+  fs::path p = rp / fp;
   auto ps = p.string();
 
   if (runtime == NULL || filestat == NULL) {
@@ -1143,8 +1145,8 @@ struct Run {
     _env.reset();
 
     // here we load the module, that's why Module parameter is not variable
-    std::filesystem::path p(_moduleName);
-    if (!std::filesystem::exists(p)) {
+    fs::path p(_moduleName);
+    if (!fs::exists(p)) {
       throw ComposeError("Wasm module not found at the given path");
     }
 

@@ -10,8 +10,8 @@
 #include <ghc/filesystem.hpp>
 namespace fs = ghc::filesystem;
 #else
-#include <filesystem>
-namespace fs = std::filesystem;
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 #endif
 
 namespace chainblocks {

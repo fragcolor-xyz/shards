@@ -79,7 +79,7 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem Boost::asio Boost::lockfree Boost::foreach Boost::beast Boost::multiprecision Boost::process)
+target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem Boost::asio Boost::lockfree Boost::foreach Boost::beast Boost::multiprecision)
 
 if(WIN32)
   target_link_libraries(chainblocks-core-static Boost::stacktrace_windbg_cached)
@@ -100,6 +100,7 @@ target_link_libraries(chainblocks-core-static
 
 if(NOT (ANDROID OR IOS OR EMSCRIPTEN))
   target_sources(chainblocks-core-static PRIVATE ${os_SOURCES})
+  target_link_libraries(chainblocks-core-static Boost::process)
 else()
   target_compile_definitions(chainblocks-core-static PRIVATE CHAINBLOCKS_NO_OS_BLOCKS=1)
 endif()

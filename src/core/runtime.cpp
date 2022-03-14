@@ -11,11 +11,13 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 #include <pdqsort.h>
 #include <set>
 #include <string.h>
 #include <unordered_set>
+
+namespace fs = boost::filesystem;
 
 using namespace chainblocks;
 
@@ -155,14 +157,14 @@ extern "C" void __sanitizer_set_report_path(const char *path);
 #endif
 
 void loadExternalBlocks(std::string from) {
-  namespace fs = std::filesystem;
+  namespace fs = boost::filesystem;
   auto root = fs::path(from);
   auto pluginPath = root / "cblocks";
   if (!fs::exists(pluginPath))
     return;
 
   for (auto &p : fs::recursive_directory_iterator(pluginPath)) {
-    if (p.is_regular_file()) {
+    if (p.status().type() == fs::file_type::regular_file) {
       auto ext = p.path().extension();
       if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
         auto filename = p.path().filename();
@@ -192,15 +194,15 @@ void registerCoreBlocks() {
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
-    std::filesystem::current_path(GetGlobals().RootPath);
+    fs::current_path(GetGlobals().RootPath);
   } else {
     // set current path as root path
-    auto cp = std::filesystem::current_path();
+    auto cp = fs::current_path();
     GetGlobals().RootPath = cp.string();
   }
 
 #ifdef CB_USE_UBSAN
-  auto absPath = std::filesystem::absolute(GetGlobals().RootPath);
+  auto absPath = fs::absolute(GetGlobals().RootPath);
   auto absPathStr = absPath.string();
   CBLOG_TRACE("Setting ASAN report path to: {}", absPathStr);
   __sanitizer_set_report_path(absPathStr.c_str());
@@ -209,7 +211,7 @@ void registerCoreBlocks() {
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
-  namespace fs = std::filesystem;
+  namespace fs = boost::filesystem;
   if (GetGlobals().ExePath.size() > 0) {
     auto pluginPath = fs::absolute(GetGlobals().ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
@@ -3175,7 +3177,7 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   result->setRootPath = [](const char *p) noexcept {
     chainblocks::GetGlobals().RootPath = p;
     chainblocks::loadExternalBlocks(p);
-    std::filesystem::current_path(p);
+    fs::current_path(p);
   };
 
   result->asyncActivate = [](CBContext *context, void *userData, CBAsyncActivateProc call, CBAsyncCancelProc cancel_call) {
