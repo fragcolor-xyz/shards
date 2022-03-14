@@ -1165,7 +1165,8 @@ private:
 };
 
 struct Text : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value to display."); }
+  static CBOptionalString help() { return CBCCSTR("Displays the input string as GUI text."); }
+  static CBOptionalString inputHelp() { return CBCCSTR("The text/ string to display."); }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -1260,14 +1261,19 @@ struct Text : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("An optional label for the value."), {CoreInfo::StringOrNone}},
-      {"Color", CBCCSTR("The optional color of the text."), {CoreInfo::ColorOrNone}},
-      {"Format", CBCCSTR("An optional format for the text."), {CoreInfo::StringOrNone}},
+      {"Label", CBCCSTR("Optional label for the displayed string. Prints to the screen."), {CoreInfo::StringOrNone}},
+      {"Color", CBCCSTR("Optional color of the displayed text. Default is white."), {CoreInfo::ColorOrNone}},
+      {"Format",
+       CBCCSTR("Optional string containing a placeholder `{}` for the input string text. The output is a composite string to "
+               "display."),
+       {CoreInfo::StringOrNone}},
       {"Wrap",
-       CBCCSTR("Whether to wrap the text to the next line if it doesn't fit "
-               "horizontally."),
+       CBCCSTR("Either wraps the text into the next line (if set to `true`) or truncates it (if set to `false`) when the text "
+               "doesn't fit horizontally."),
        {CoreInfo::BoolType}},
-      {"Bullet", CBCCSTR("Display a small circle before the text."), {CoreInfo::BoolType}},
+      {"Bullet",
+       CBCCSTR("Prints the text as a bullet-point (i.e. displays a small circle before the text), if set to `true`."),
+       {CoreInfo::BoolType}},
   };
 
   std::string _label;

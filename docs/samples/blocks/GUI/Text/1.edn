@@ -1,0 +1,24 @@
+(defloop main-chain
+  (GFX.MainWindow
+   :Title "Code Output" :Width 480 :Height 360
+   :Contents
+   (-> (GUI.Window
+        :Title "canvas" :Width 1.0 :Height 1.0 :Pos (int2 0 0)
+        :Flags [GuiWindowFlags.NoTitleBar GuiWindowFlags.NoResize
+                GuiWindowFlags.NoMove GuiWindowFlags.NoCollapse]
+        :Contents
+            ;; Display a text string and its label
+        (-> "Display text." (GUI.Text :Label "<Display text's label>")
+            ;; Set text color to yellow
+            "Yellow colored text." (GUI.Text :Color (color 255 255 0 255))
+            ;; Embed the input string within an existing string using placeholder {}
+            "*substitute text*" (GUI.Text :Format "This is the {} that was passed as input.")
+            ;; Truncate the text if it doesn't fit horizontally
+            "Wrap is false by default hence the sentence will truncate once it reaches the end of the available space for this line." (GUI.Text)
+            ;; Wrap the text if it doesn't fit horizontally
+            "Wrap is set to true hence sentence will wrap around to continue in the next line once it reaches the end of the available space for this line." (GUI.Text :Wrap true)
+            ;; Display text as bullet-point
+            "Bullet-point style text" (GUI.Text :Bullet true))))))
+(defnode root)
+(schedule root main-chain)
+(run root 1 2)
