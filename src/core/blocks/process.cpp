@@ -11,11 +11,16 @@
 #ifndef __kernel_entry
 #define __kernel_entry
 #endif
+
+#pragma clang diagnostic push
+// Disable warning inside boost process posix implementation 
+#pragma clang diagnostic ignored "-Wc++11-narrowing"
 #include <boost/asio.hpp>
 #include <boost/process.hpp>
 #include <boost/stacktrace.hpp>
 #include <sstream>
 #include <string>
+#pragma clang diagnostic pop
 
 namespace chainblocks {
 namespace Process {
