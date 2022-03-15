@@ -131,12 +131,19 @@
 
      name (getFilename (str basePath samplePath) "") (FS.Iterate)
      (ForEach
-      (-> (| "=== \"Code\"\r\n\r\n" >> .o)
-          (| "    ```clojure linenums=\"1\"\r\n" >> .o)
-          (| "    --8<-- \"" >> .o name (getFilename samplePath "/") >> .o)
-          (FS.Filename) >> .o "\"\r\n" >> .o
-          "    ```\r\n" >> .o
-          "&nbsp;\r\n\r\n" >> .o))))
+      (-> (When
+           (-> (FS.Extension) (Is ".edn"))
+           (-> (| "=== \"Code\"\r\n\r\n" >> .o
+                  "    ```clojure linenums=\"1\"\r\n" >> .o
+                  "    --8<-- \"" >> .o name (getFilename samplePath "/") >> .o)
+               (| (FS.Filename) >> .o "\"\r\n" >> .o)
+               (| "    ```\r\n\r\n" >> .o
+                  "=== \"Output\"\r\n\r\n" >> .o
+                  "    ```\r\n" >> .o
+                  "    --8<-- \"" >> .o name (getFilename samplePath "/") >> .o)
+               (| (FS.Filename) >> .o ".log\"\r\n" >> .o
+                  "    ```\r\n" >> .o
+                  "&nbsp;\r\n\r\n" >> .o)))))))
 
    "--8<-- \"includes/license.md\"\r\n" >> .o
 
