@@ -1,0 +1,13 @@
+#!/bin/bash
+
+CHAINBLOCKS_ROOT=$( cd "$(dirname "$0")" ; pwd -P )
+echo "Using CHAINBLOCKS_ROOT=${CHAINBLOCKS_ROOT}"
+
+pushd $CHAINBLOCKS_ROOT/deps
+echo "Setting up dependencies"
+./bootstrap; Res=$?
+if [ ! $Res -eq 0 ]; then
+  echo "Failed to set-up dependencies ($Res)"
+  exit 1
+fi
+popd
