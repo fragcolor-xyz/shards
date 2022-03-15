@@ -656,10 +656,10 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - name: Download artifact
+      - name: Download cbl
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Debug
+          name: cbl-win64 Release
           path: docs/samples
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
@@ -667,8 +667,6 @@ jobs:
           msystem: MINGW64
           release: false
           path-type: inherit
-          install: >-
-            mingw-w64-x86_64-boost
       - name: Run samples
         shell: msys2 {0}
         run: |
@@ -676,8 +674,14 @@ jobs:
           for i in $(find blocks -name '*.edn');
           do
             echo "Running sample $i";
-            ./cbl.exe run_sample.edn --file "$i";
+            ./cbl.exe run_sample.edn --file "$i" > >(tee "$i.log");
           done
+      - name: Upload samples logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: samples-logs
+          path: docs/samples/**/*.log
+          if-no-files-found: error
 
   #
   # Generate blocks documentation (markdown)
@@ -690,7 +694,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - name: Download artifact
+      - name: Download cbl
         uses: actions/download-artifact@v2
         with:
           name: cbl-win64 Debug
@@ -705,7 +709,7 @@ jobs:
       - name: Generate markdown
         shell: msys2 {0}
         run: ./cbl.exe src/tests/infos_docs.edn
-      - name: Upload artifact
+      - name: Upload markdown
         uses: actions/upload-artifact@v2
         with:
           name: docs-markdown
@@ -718,7 +722,7 @@ jobs:
   # Build documentation website
   #
   docs-website-build:
-    needs: docs-markdown
+    needs: [docs-markdown, docs-samples]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -734,11 +738,16 @@ jobs:
           pip install mkdocs-material
           pip install mkdocs-awesome-pages-plugin
           pip install mkdocs-macros-plugin
-      - name: Download artifact
+      - name: Download markdown
         uses: actions/download-artifact@v2
         with:
           name: docs-markdown
           path: docs/docs/blocks
+      - name: Download samples logs
+        uses: actions/download-artifact@v2
+        with:
+          name: samples-logs
+          path: docs/samples
       - name: Build website
         run: |
           cd docs
