@@ -5,14 +5,9 @@
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 
-#ifdef WIN32
-// windows mingw has bugged copy/copyfile
-#include <ghc/filesystem.hpp>
-namespace fs = ghc::filesystem;
-#else
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
-#endif
+using ErrorCode = boost::system::error_code;
 
 namespace chainblocks {
 namespace FS {
@@ -398,7 +393,7 @@ struct Copy {
       throw ActivationError("Destination is not a valid");
     const auto dst = fs::path(dstVar.payload.stringValue);
 
-    std::error_code err;
+    ErrorCode err;
     if (fs::is_regular_file(src) && (!fs::exists(dst) || fs::is_regular_file(dst))) {
       fs::copy_file(src, dst, options, err);
       if (err) {
