@@ -75,8 +75,10 @@ if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
 
   # We can not keep iterators in memory without freeing with iterator debugging
   # See CBTable/Set iterator internals
-  add_compile_definitions(_ITERATOR_DEBUG_LEVEL=1)
-  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=1")
+  if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_definitions(_ITERATOR_DEBUG_LEVEL=1)
+    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=1")
+  endif()
 else()
   set(WINDOWS_ABI "gnu")
 endif()
