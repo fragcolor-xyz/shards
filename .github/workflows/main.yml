@@ -351,6 +351,7 @@ jobs:
           ./test_runtime
       - name: Test Headless
         uses: chainblocks/xvfb-action@master
+        if: false # Disabled until new graphics backend is merged
         with:
           working-directory: ./build
           run: |
