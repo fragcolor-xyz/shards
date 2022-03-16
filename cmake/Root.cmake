@@ -16,6 +16,7 @@ include(Sanitizers)
 include(Platform)
 include(Tidy)
 include(Utils)
+include(Tools)
 
 # Rust build support
 include(Rust)

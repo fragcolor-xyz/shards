@@ -11,3 +11,12 @@ if [ ! $Res -eq 0 ]; then
   exit 1
 fi
 popd
+
+echo "Setting up tools"
+pushd $CHAINBLOCKS_ROOT/src/tools
+./bootstrap; Res=$?
+if [ ! $Res -eq 0 ]; then
+  echo "Failed to set-up tools ($Res)"
+  exit 1
+fi
+popd
