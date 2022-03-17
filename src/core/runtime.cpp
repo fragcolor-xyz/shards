@@ -6,6 +6,9 @@
 #include "spdlog/sinks/dist_sink.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#ifdef __ANDROID__
+#include <spdlog/sinks/android_sink.h>
+#endif
 #include "utility.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/stacktrace.hpp>
