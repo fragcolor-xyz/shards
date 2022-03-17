@@ -95,7 +95,7 @@ Defines a new macro.
 
 Defines a new node on which chains can be scheduled (to run).
 
-A node is a self-contained execution-context and software environment (like a server) that executes the chain code logic. It can run both on the local hardware as well as  peer-to-peer hardware over the network (blockchain). 
+A node is a self-contained execution-context and software environment (like a server) that executes the chain code logic. It can run both on the local hardware as well as peer-to-peer hardware over the network (blockchain). 
 
 === "Code"
 
@@ -111,8 +111,8 @@ A node is a self-contained execution-context and software environment (like a se
     ;; schedule both the chains on this node
     (schedule main chain-hi)
     (schedule main chain-bye)
-    ;; run all the scheduled chains on this node (FPS and iterations apply only to looped chains)
-    (run main 0.02 5)
+    ;; run all the scheduled chains on this node
+    (run main 0.02)
     ```
 === "Result"
 
