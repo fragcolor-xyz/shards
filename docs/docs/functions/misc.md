@@ -76,11 +76,11 @@ license: CC-BY-SA-4.0
 
 ## run
 
-Executes all the chains that have been scheduled on a given node.
+Executes all the chains that have been scheduled on a given `node`.
 
-`run` takes three arguments: the name of the node, number of seconds to elapse between chain executions, and the maximum number of chain executions allowed. 
+`(run <params>)` takes two arguments: name of the node, and node iteration interval (no. of seconds between two node iterations).
 
-*The last two arguments apply only to looped (defloop) chains and are ignored for other (defchain) chains.*
+*An optional 3rd argument defines the maximum node iterations to run. This argument is a debug parameter - do not use for production.*
 
 === "Code"
 
@@ -96,11 +96,11 @@ Executes all the chains that have been scheduled on a given node.
     ;; schedule both the chains on this node
     (schedule main chain-hi)
     (schedule main chain-bye)
-    ;; run the scheduled chains:
-    ;; 1. the looped chain will run once every 0.02 secs (i.e. at 50 FPS) and for 5 iterations
-    ;; 2. the non-looped chain will run only once (FPS and iterations are ignored)
+    ;; run the node to execute scheduled chains
+    ;; time between node iterations - 0.02 secs
+    ;; max node iterations allowed - 5
     (run main 0.02 5)
-    ;; The last two args may also be passed as mathematical expressions
+    ;; The last two args  may also be passed as mathematical expressions
     ;; (run main (/ 1 50) (+ 2 3))
     ```
 
@@ -119,6 +119,8 @@ Executes all the chains that have been scheduled on a given node.
 
 Queues a chain for execution on a given node.
 
+Multiple chains can be scheduled on the same `node`. When a node is run, all the chains on it are executed.
+
 === "Code"
 
     ```clojure linenums="1"
@@ -133,8 +135,8 @@ Queues a chain for execution on a given node.
     ;; schedule both the chains on this node
     (schedule main chain-hi)
     (schedule main chain-bye)
-    ;; run all the scheduled chains on this loop (main)
-    (run main 0.02 5)
+    ;; run all the scheduled chains on this node (main)
+    (run main)
     ```
 
 === "Result"
