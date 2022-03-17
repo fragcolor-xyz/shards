@@ -37,9 +37,22 @@ Defines new blocks that can be inserted into an existing chain.
 
 ## defchain
 
-Defines a new chain that isn't looped.
+Defines a new non-looped chain.
 
-Such a chain executes only once when invoked (via `run <node>`).
+`(defchain my-chain)` is actually a shorthand for the more verbose non-looped chain definition.
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; defchain
+    (def my-chain
+    (Chain "my-chain"
+        ;; blocks here
+    ))
+    ```
+
+For a chain to be executed, it must first be scheduled on a `node` and then that that node needs to run.
+
+A node will execute a non-looped chain only once (even though node itself may continue running).
 
 === "Code"
 
@@ -57,8 +70,6 @@ Such a chain executes only once when invoked (via `run <node>`).
     (schedule main chain-bye)
     ;; run all the scheduled chains on the node
     (run main)
-    ;; Even if provided, the FPS and iteration parameters are ignored for non-looped chains
-    ;; (run main 0.02 5)
     ```
 
 === "Result"
@@ -93,7 +104,7 @@ Defines a new macro.
 
 ## defnode
 
-Defines a new node on which chains can be scheduled (to run).
+Defines a new `node` on which chains can be scheduled and then run.
 
 A node is a self-contained execution-context and software environment (like a server) that executes the chain code logic. It can run both on the local hardware as well as peer-to-peer hardware over the network (blockchain). 
 
@@ -112,7 +123,7 @@ A node is a self-contained execution-context and software environment (like a se
     (schedule main chain-hi)
     (schedule main chain-bye)
     ;; run all the scheduled chains on this node
-    (run main 0.02)
+    (run main)
     ```
 === "Result"
 
@@ -127,9 +138,22 @@ A node is a self-contained execution-context and software environment (like a se
 
 ## defloop
 
-Defines a new chain that is looped.
+Defines a new looped chain.
 
-Such a chain, when invoked (via `run <node>`), executes in a loop at the frequency given by the 2nd parameter of the `run` command and for a number of iterations specified by the 3rd parameter of the `run`command.
+`(defchain my-loop)` is actually a shorthand for the more verbose looped chain definition.
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; defloop
+    (def my-loop
+    (Chain "my-loop" :Looped
+        ;; blocks here
+    ))
+    ```
+    
+For a chain to be executed, it must first be scheduled on a `node` and then that that node needs to run.
+
+A node will continue executing a looped chain till the node itself stops running (or the chain execution is stopped via a logic condition).
 
 === "Code"
 
@@ -144,8 +168,8 @@ Such a chain, when invoked (via `run <node>`), executes in a loop at the frequen
     ;; schedule the looped chains on this node
     (schedule main chain-hi)
     (schedule main chain-bye)
-    ;; run all the chains on this node at 50 FPS and for a max 5 iterations
-    (run main 0.02 5)
+    ;; run all the chains on this node
+    (run main)
     ```
 === "Result"
 
