@@ -24,7 +24,7 @@ endif()
 
 # Default arch if ARCH is not set
 if(NOT ARCH)
-  if(X86 AND NOT EMSCRIPTEN)
+  if(X86 AND NOT (EMSCRIPTEN OR APPLE))
     set(ARCH "sandybridge")
   endif()
 endif()
