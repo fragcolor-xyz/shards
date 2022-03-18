@@ -67,8 +67,8 @@ static int run_bin2c(const Options &options) {
   }
 
   outSourceFile << "#include <stdint.h>" << endl;
-  outSourceFile << fmt::format("static struct File {{ uint64_t length; uint64_t flags; {} data[{}]; }} _{} = ", wordType, numWords,
-                               options.varName);
+  outSourceFile << fmt::format("static struct File {{ uint64_t length; uint64_t flags; {} data[{}]; }} _{} = ", wordType,
+                               numWords, options.varName);
   outSourceFile << fmt::format("{{ {}, {}, {{", dataLength, flags);
   int column = 0;
   for (int i = 0; i < data.size(); i += wordSize) {
@@ -81,11 +81,12 @@ static int run_bin2c(const Options &options) {
   outSourceFile << "} };" << endl;
   outSourceFile << fmt::format("void* {0} = &_{0};", options.varName) << endl;
 
-  bool includeMinimalAPI = true;
-
   outHeaderFile << "#pragma once" << endl;
-  if (includeMinimalAPI)
+  bool includeMinimalAPI = true;
+  if (includeMinimalAPI) {
     outHeaderFile << "#include <stdint.h>" << endl;
+    outHeaderFile << "#include <stddef.h>" << endl;
+  }
   outHeaderFile << "#ifdef __cplusplus" << endl;
   outHeaderFile << "extern \"C\" {" << endl;
   outHeaderFile << "#endif" << endl;
