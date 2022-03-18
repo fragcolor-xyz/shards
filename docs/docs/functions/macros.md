@@ -140,7 +140,7 @@ A node is a self-contained execution-context and software environment (like a se
 
 Defines a new looped chain.
 
-`(defchain my-loop)` is actually a shorthand for the more verbose looped chain definition.
+`(defloop my-loop)` is actually a shorthand for the more verbose looped chain definition.
 === "Code"
 
     ```clojure linenums="1"
