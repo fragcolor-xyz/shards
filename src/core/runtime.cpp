@@ -11,10 +11,10 @@
 #endif
 #include "utility.hpp"
 #include <boost/asio/thread_pool.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
-#include <boost/filesystem.hpp>
 #include <pdqsort.h>
 #include <set>
 #include <string.h>
@@ -204,9 +204,8 @@ static void setupSpdLog() {
   logger->flush_on(spdlog::level::err);
   spdlog::set_default_logger(logger);
 
-#ifdef  __ANDROID__
-  auto android_sink =
-      std::make_shared<spdlog::sinks::android_sink_mt>("android");
+#ifdef __ANDROID__
+  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("android");
   logger->sinks().push_back(android_sink);
 #endif
 

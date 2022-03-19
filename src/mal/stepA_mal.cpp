@@ -10,9 +10,9 @@
 #endif
 #include "Types.h"
 
+#include <boost/filesystem.hpp>
 #include <cassert>
 #include <cstring>
-#include <boost/filesystem.hpp>
 #include <iostream>
 #include <memory>
 

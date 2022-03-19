@@ -92,8 +92,8 @@ public:
   T &get() {
     if (!_tp) {
       // create
-      auto p = new T();          // keep for debugging sanity
-      auto mem = &_tp; // keep for debugging sanity
+      auto p = new T(); // keep for debugging sanity
+      auto mem = &_tp;  // keep for debugging sanity
       _tp = p;
       // lock now since ptrs is shared
       std::unique_lock<std::mutex> lock(getState().mutex);

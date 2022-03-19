@@ -41,7 +41,7 @@
 #define TRACE_ENV NOTRACE
 #endif
 
-#define _CB_ASSERT(file, line, condition, ...)             \
+#define _CB_ASSERT(file, line, condition, ...)          \
   if (!(condition)) {                                   \
     printf("Assertion failed at %s(%d): ", file, line); \
     printf(__VA_ARGS__);                                \

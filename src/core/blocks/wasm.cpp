@@ -2,8 +2,8 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "shared.hpp"
-#include <cstdio>
 #include <boost/filesystem.hpp>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <optional>
