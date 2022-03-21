@@ -108,7 +108,7 @@ if(EMSCRIPTEN)
 endif()
 
 # Required by Boost::asio
-# target_link_libraries(chainblocks-core-static OpenSSL)
+target_link_libraries(chainblocks-core-static OpenSSL)
 
 if(WIN32)
   target_link_libraries(chainblocks-core-static ws2_32 mswsock Secur32 Crypt32 NCrypt)
