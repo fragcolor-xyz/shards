@@ -14,27 +14,70 @@ add_subdirectory(nameof)
 add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
+
+add_subdirectory(libressl)
+add_library(OpenSSL INTERFACE)
+target_link_libraries(OpenSSL INTERFACE ssl)
+target_include_directories(OpenSSL INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libressl/include)
+
 add_subdirectory(boost)
 
 if(NOT EMSCRIPTEN)
-  if(WIN32 AND EXTERNAL_BUILD_TYPE MATCHES "Debug")
+  if(EXTERNAL_BUILD_TYPE MATCHES "Debug")
     set(SDL_LIB_SUFFIX "d")
   endif()
 
   cb_add_external_project(
     NAME sdl_a
     TARGETS SDL2-static
+    LIB_NAMES SDL2
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
-    CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF
+    RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2
+    CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF -DBUILD_SHARED_LIBS=OFF
     REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
+
+
+  if(APPLE)
+    target_link_libraries(SDL2-static INTERFACE
+      "-framework Foundation"
+      "-framework CoreAudio"
+      "-framework AudioToolbox"
+      "-framework CoreVideo"
+      "-framework IOKit"
+      "-framework QuartzCore"
+      "-framework Metal"
+      "-framework Security"
+      "-framework CoreHaptics"
+      "-framework GameController"
+      "-framework CoreBluetooth"
+      -liconv
+    )
+
+    if(IOS)
+      target_link_libraries(SDL2-static INTERFACE
+        "-framework AVFoundation"
+        "-framework CoreMotion"
+        "-framework CoreGraphics"
+        "-framework UIKit"
+      )
+    else()
+      target_link_libraries(SDL2-static INTERFACE
+        "-framework Cocoa"
+        "-framework Carbon"
+        "-framework ForceFeedback"
+      )
+    endif()
+  endif()
 endif()
+
 
 cb_add_external_project(
   NAME wasm3_a
   TARGETS m3
+  LIB_RELATIVE_DIRS source/
   CMAKE_ARGS -DBUILD_NATIVE=0
-  RELATIVE_INCLUDE_PATHS .
+  RELATIVE_INCLUDE_PATHS source
   REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/wasm3)
 
 cb_add_external_project(
@@ -42,6 +85,7 @@ cb_add_external_project(
   TARGETS snappy
   CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0
   RELATIVE_INCLUDE_PATHS .
+  RELATIVE_BINARY_INCLUDE_PATHS .
   REPO_ARGS GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
             GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e)
 
@@ -66,7 +110,10 @@ cb_add_external_project(
 
 cb_add_external_project(
   NAME kissfft_a
+  TARGETS kissfft
+  LIB_SUFFIX -float
   CMAKE_ARGS -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
+  RELATIVE_INCLUDE_PATHS .
   REPO_ARGS URL ${CHAINBLOCKS_DIR}/deps/kissfft)
 
 add_library(tinygltf INTERFACE)
@@ -124,9 +171,3 @@ target_include_directories(utf8.h INTERFACE utf8.h)
 
 add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
-
-add_subdirectory(libressl)
-
-add_library(OpenSSL INTERFACE)
-target_link_libraries(OpenSSL INTERFACE ssl)
-target_include_directories(OpenSSL INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libressl/include)

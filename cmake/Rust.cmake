@@ -1,6 +1,9 @@
 # Automatic rust target config
 set(Rust_BUILD_SUBDIR_HAS_TARGET ON)
 
+set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
+find_program(CARGO_EXE NAMES "cargo" REQUIRED)
+
 if(NOT Rust_CARGO_TARGET)
   if(ANDROID)
     if(ANDROID_ABI MATCHES "arm64-v8a")
@@ -13,6 +16,9 @@ if(NOT Rust_CARGO_TARGET)
   elseif(APPLE)
     if(IOS)
       set(PLATFORM "ios")
+      if(XCODE_SDK MATCHES ".*simulator$")
+        string(APPEND PLATFORM "-sim")
+      endif()
     else()
       set(PLATFORM "darwin")
     endif()
@@ -35,7 +41,6 @@ if(NOT Rust_CARGO_TARGET)
     message(FATAL_ERROR "Unsupported rust target")
   endif()
 endif()
-
 
 set(Rust_LIB_PREFIX ${LIB_PREFIX})
 set(Rust_LIB_SUFFIX ${LIB_SUFFIX})
