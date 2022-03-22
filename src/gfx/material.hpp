@@ -4,6 +4,7 @@
 #include "params.hpp"
 #include <map>
 #include <memory>
+#include <string_view>
 
 namespace gfx {
 
@@ -12,9 +13,9 @@ struct MaterialParameters {
   std::map<std::string, ParamVariant> basic;
   std::map<std::string, TextureParameter> texture;
 
-  void set(const std::string &key, const ParamVariant &param) { basic.insert_or_assign(key, (param)); }
-  void set(const std::string &key, ParamVariant &&param) { basic.insert_or_assign(key, std::move(param)); }
-  void set(const std::string &key, const TextureParameter &param) { texture.insert_or_assign(key, (param)); }
+  void set(const std::string_view &key, const ParamVariant &param) { basic.insert_or_assign(std::string(key), (param)); }
+  void set(const std::string_view &key, ParamVariant &&param) { basic.insert_or_assign(std::string(key), std::move(param)); }
+  void set(const std::string_view &key, const TextureParameter &param) { texture.insert_or_assign(std::string(key), (param)); }
 
   template <typename THash> void hashStatic(THash &hash) const {
     for (auto &pair : texture) {
