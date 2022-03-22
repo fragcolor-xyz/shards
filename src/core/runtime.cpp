@@ -186,6 +186,45 @@ void loadExternalBlocks(std::string from) {
   }
 }
 
+static void setupSpdLog() {
+  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+
+  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  dist_sink->add_sink(sink1);
+
+#ifdef CHAINBLOCKS_DESKTOP
+  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("chainblocks.log", 1048576, 3, false);
+  dist_sink->add_sink(sink2);
+#endif
+
+  auto logger = std::make_shared<spdlog::logger>("chainblocks_logger", dist_sink);
+  logger->flush_on(spdlog::level::err);
+  spdlog::set_default_logger(logger);
+
+#ifdef  __ANDROID__
+  auto android_sink =
+      std::make_shared<spdlog::sinks::android_sink_mt>("android");
+  logger->sinks().push_back(android_sink);
+#endif
+
+#ifdef __ANDROID
+  // Logcat already countains timestamps & log level
+  spdlog::set_pattern("[T-%t] [%s::%#] %v");
+#else
+  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+#endif
+
+#ifdef NDEBUG
+#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
+  spdlog::set_level(spdlog::level::debug);
+#else
+  spdlog::set_level(spdlog::level::info);
+#endif
+#else
+  spdlog::set_level(spdlog::level::trace);
+#endif
+}
+
 void registerCoreBlocks() {
   if (globalRegisterDone)
     return;
@@ -226,31 +265,7 @@ void registerCoreBlocks() {
   }
 #endif
 
-  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
-
-  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  dist_sink->add_sink(sink1);
-
-#ifndef __EMSCRIPTEN__
-  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("chainblocks.log", 1048576, 3, false);
-  dist_sink->add_sink(sink2);
-#endif
-
-  auto logger = std::make_shared<spdlog::logger>("chainblocks_logger", dist_sink);
-  logger->flush_on(spdlog::level::err);
-  spdlog::set_default_logger(logger);
-
-#ifdef NDEBUG
-#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
-  spdlog::set_level(spdlog::level::debug);
-#else
-  spdlog::set_level(spdlog::level::info);
-#endif
-#else
-  spdlog::set_level(spdlog::level::trace);
-#endif
-
-  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+  setupSpdLog();
 
   CBLOG_DEBUG("Registering blocks");
 
@@ -309,7 +324,7 @@ void registerCoreBlocks() {
   edn::registerBlocks();
   reflection::registerBlocks();
 
-#ifndef CHAINBLOCKS_NO_OS_BLOCKS
+#ifdef CHAINBLOCKS_DESKTOP
   // registerOSBlocks();
   registerProcessBlocks();
   Genetic::registerBlocks();

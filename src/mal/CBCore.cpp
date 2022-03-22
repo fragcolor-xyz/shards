@@ -12,7 +12,7 @@
 #include "../core/runtime.hpp"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
 #include <boost/process/environment.hpp>
 #endif
 #include <chrono>
@@ -188,6 +188,8 @@ void installCBCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(def || Await)", env);
 #if defined(_WIN32)
   rep("(def platform \"windows\")", env);
+#elif defined(__ANDROID__)
+  rep("(def platform \"android\")", env);
 #elif defined(__EMSCRIPTEN__)
   rep("(def platform \"emscripten\")", env);
 #elif defined(__linux__)
@@ -1910,7 +1912,7 @@ BUILTIN("import") {
 BUILTIN("getenv") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
   auto envs = boost::this_process::environment();
   auto env_value = envs[value->value()].to_string();
   return mal::string(env_value);
@@ -1923,7 +1925,7 @@ BUILTIN("setenv") {
   CHECK_ARGS_IS(2);
   ARG(malString, key);
   ARG(malString, value);
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
   auto envs = boost::this_process::environment();
   envs[key->value()] = value->value();
   return mal::trueValue();

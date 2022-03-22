@@ -2,6 +2,14 @@ if(UNIX AND NOT (APPLE OR ANDROID OR EMSCRIPTEN))
   set(LINUX TRUE)
 endif()
 
+if(APPLE AND NOT IOS)
+  set(MACOSX TRUE)
+endif()
+
+if(WIN32 OR MACOSX OR LINUX)
+  set(DESKTOP TRUE)
+endif()
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
   set(X86 TRUE)
 else()

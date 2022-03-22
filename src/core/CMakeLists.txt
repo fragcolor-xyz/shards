@@ -98,11 +98,10 @@ target_link_libraries(chainblocks-core-static
   pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
 )
 
-if(NOT (ANDROID OR IOS OR EMSCRIPTEN))
+if(DESKTOP)
   target_sources(chainblocks-core-static PRIVATE ${os_SOURCES})
   target_link_libraries(chainblocks-core-static Boost::process)
-else()
-  target_compile_definitions(chainblocks-core-static PRIVATE CHAINBLOCKS_NO_OS_BLOCKS=1)
+  target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_DESKTOP=1)
 endif()
 
 if(EMSCRIPTEN)
