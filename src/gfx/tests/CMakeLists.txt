@@ -19,6 +19,6 @@ add_executable(test_gfx
 
 set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
-target_link_libraries(test_gfx gfx gfx_texture_file Catch2WithMain Catch2)
+target_link_libraries(test_gfx gfx gfx_texture_file Catch2Main Catch2)
 target_precompile_headers(test_gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 add_asset_path_definition(test_gfx PUBLIC GFX_TEST_DATA_PATH ${GFX_TEST_DATA_PATH})
