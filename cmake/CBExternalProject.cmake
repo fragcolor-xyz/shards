@@ -3,9 +3,6 @@ include(ExternalProject)
 # Inherit build type
 set(EXTERNAL_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
 
-# Clear
-set(EXTERNAL_CMAKE_ARGS)
-
 # Toolchain file
 if(CMAKE_TOOLCHAIN_FILE)
   list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
