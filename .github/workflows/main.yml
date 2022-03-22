@@ -40,13 +40,11 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget ninja-build
+          sudo apt-get -y install build-essential autoconf git cmake wget ninja-build
+          ./bootstrap
           cd emsdk
           ./emsdk install 3.1.6
           ./emsdk activate 3.1.6
-          cd .. && mkdir external && cd external
-          wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
-          tar xzf boost_1_78_0.tar.gz
           rustup update
           rustup default nightly
           rustup target add wasm32-unknown-emscripten
@@ -118,7 +116,8 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          ./bootstrap
           rustup update
           rustup default nightly
       - uses: Swatinem/rust-cache@v1
@@ -158,7 +157,8 @@ jobs:
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
+          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
+          ./bootstrap
           rustup update
           rustup default nightly
       - uses: Swatinem/rust-cache@v1
@@ -278,7 +278,8 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
+          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
+          ./bootstrap
           rustup update
           rustup default nightly
       - uses: Swatinem/rust-cache@v1
@@ -338,7 +339,7 @@ jobs:
           tags: "latest"
       - name: Build and Test
         run: |
-          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
           mkdir build
           docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
       - name: Build and upload to hub runtime image
@@ -402,7 +403,7 @@ jobs:
           docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
       - name: Test
         run: |
-          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCHAINBLOCKS_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DCHAINBLOCKS_WITH_EXTRA_BLOCKS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/bug1.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
+          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DCHAINBLOCKS_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DCHAINBLOCKS_WITH_EXTRA_BLOCKS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/bug1.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
 
   #
   # Build chainblocks for Windows
@@ -447,6 +448,7 @@ jobs:
           path-type: inherit
           install: >-
             base-devel
+            automake
             mingw-w64-${{ matrix.arch }}-toolchain
             mingw-w64-${{ matrix.arch }}-cmake
             mingw-w64-${{ matrix.arch }}-boost
@@ -467,6 +469,7 @@ jobs:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
         run: |
+          ./bootstrap
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} -DSKIP_RUST_BINDGEN=${{ matrix.bitness == '32bits' }} ..
@@ -790,8 +793,8 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
-          brew install boost cmake ninja clang-format
-          brew install openssl@1.1
+          brew install boost cmake ninja clang-format automake libtool
+          ./bootstrap
           rustup update
           rustup default nightly
       - uses: Swatinem/rust-cache@v1
@@ -894,8 +897,8 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
-          brew install boost cmake clang-format
-          brew install openssl@1.1
+          brew install boost cmake clang-format automake libtool
+          ./bootstrap
           rustup update
           rustup default nightly
           rustup +nightly target add x86_64-apple-ios
