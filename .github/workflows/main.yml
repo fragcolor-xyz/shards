@@ -120,6 +120,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev mesa-utils
           rustup update
+          rustup default nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -159,6 +160,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
           rustup update
+          rustup default nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ matrix.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
         with:
@@ -278,6 +280,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
           rustup update
+          rustup default nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -431,7 +434,7 @@ jobs:
           RUSTUP_USE_CURL: 1
         run: |
           rustup update
-          rustup default stable-${{ matrix.arch }}-pc-windows-gnu
+          rustup default nightly-${{ matrix.arch }}-pc-windows-gnu
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -790,6 +793,7 @@ jobs:
           brew install boost cmake ninja clang-format
           brew install openssl@1.1
           rustup update
+          rustup default nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -893,17 +897,16 @@ jobs:
           brew install boost cmake clang-format
           brew install openssl@1.1
           rustup update
-          rustup target add x86_64-apple-ios
-          rustup target add aarch64-apple-ios
+          rustup default nightly
+          rustup +nightly target add x86_64-apple-ios
+          rustup +nightly target add aarch64-apple-ios
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
       - name: Build device
         run: |
-          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS
-          cd build
-          xcodebuild -target chainblocks-core-static -sdk iphoneos -arch arm64
+          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
+          cmake --build build --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
       - name: Build simulator x86
         run: |
-          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1
-          cd build
-          xcodebuild -target chainblocks-core-static -sdk iphonesimulator -arch x86_64
+          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphonesimulator
+          cmake --build build --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
