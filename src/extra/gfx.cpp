@@ -93,6 +93,9 @@ struct DrawablePassBlock {
   PipelineStepPtr *_step{};
   ParamVar _features{};
 
+  std::vector<FeaturePtr> _collectedFeatures;
+  std::vector<Var> _featureVars;
+
   void setParam(int index, const CBVar &value) {
     switch (index) {
     case 0:
@@ -124,14 +127,20 @@ struct DrawablePassBlock {
   }
 
   std::vector<FeaturePtr> collectFeatures(const CBVar &input) {
-    std::vector<FeaturePtr> result;
-    std::vector<Var> featureVars(Var(_features.get()));
-    for (auto &featureVar : featureVars) {
+    _collectedFeatures.clear();
+
+    Var featuresVar(_features.get());
+    featuresVar.intoVector(_featureVars);
+
+    for (auto &featureVar : _featureVars) {
       if (featureVar.payload.objectValue) {
-        result.push_back(*(FeaturePtr *)featureVar.payload.objectValue);
+        _collectedFeatures.push_back(*(FeaturePtr *)featureVar.payload.objectValue);
       }
     }
-    return result;
+
+    _featureVars.clear();
+
+    return _collectedFeatures;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
