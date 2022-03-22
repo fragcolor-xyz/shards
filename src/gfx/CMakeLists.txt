@@ -103,9 +103,7 @@ if(NOT EMSCRIPTEN)
   set(GENERATED_LIB_PATH ${WGPU_NATIVE_PATH}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}wgpu_native${Rust_LIB_SUFFIX})
   file(GLOB_RECURSE SOURCES ${WGPU_NATIVE_PATH}/src/*.rs ${WGPU_NATIVE_PATH}/ffi/*.h ${WGPU_NATIVE_PATH}/*.toml)
 
-  if(ANDROID)
-    list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
-  endif()
+  list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
 
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}

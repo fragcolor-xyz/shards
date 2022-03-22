@@ -33,8 +33,9 @@ if(IOS)
   set(BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/osx_rust_build.sh")
 endif()
 
+list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
+
 if(ANDROID OR LINUX)
-  list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
   set(NEED_OPENSSL_SYS ON)
 endif()
 
