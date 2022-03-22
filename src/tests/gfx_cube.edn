@@ -47,11 +47,11 @@
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false
     :Contents
     (->
-     .time (Math.Add timestep) >= .time
+     .time (Math.Add timestep) > .time
      .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
      .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
      .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
-     .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) >= .transform
+     .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) > .transform
      .drawable (GFX.Draw)
      (GFX.Render :Steps .render-steps :View .view)))))
 

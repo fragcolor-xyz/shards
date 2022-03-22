@@ -65,12 +65,12 @@
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false
     :Contents
     (->
-     .time (Math.Add timestep) >= .time
+     .time (Math.Add timestep) > .time
      .time (Math.Multiply 0.9) (Math.Add 0.0) (Math.FMod 1.0) (Push "c")
      .time (Math.Multiply 1.2) (Math.Add 0.3) (Math.FMod 1.0) (Push "c")
      .time (Math.Multiply 1.4) (Math.Add 0.6) (Math.FMod 1.0) (Push "c")
      1.0 (Push "c")
-     .c (ToFloat4) >= .color-var
+     .c (ToFloat4) > .color-var
      .drawables-0 (GFX.Draw)
      .drawables-1 (GFX.Draw)
      (GFX.Render :Steps .render-steps :View .view)))))
