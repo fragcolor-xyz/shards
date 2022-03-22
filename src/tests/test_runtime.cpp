@@ -16,7 +16,7 @@
 
 int main(int argc, char *argv[]) {
   chainblocks::GetGlobals().RootPath = "./";
-  registerCoreBlocks();
+  chainblocks::registerCoreBlocks();
   int result = Catch::Session().run(argc, argv);
   return result;
 }

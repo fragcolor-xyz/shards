@@ -15,7 +15,7 @@
 
 int main(int argc, char *argv[]) {
   chainblocks::GetGlobals().RootPath = "./";
-  registerCoreBlocks();
+  chainblocks::registerCoreBlocks();
   int result = Catch::Session().run(argc, argv);
 #ifdef __EMSCRIPTEN_PTHREADS__
   // in this case we need to call exit our self
