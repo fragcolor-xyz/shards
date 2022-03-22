@@ -61,7 +61,7 @@ if(RUST_USE_LTO)
   set(Rust_FLAGS ${Rust_FLAGS} -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
 endif()
 
-if(ANDROID)
+if(ANDROID OR LINUX)
   list(APPEND Rust_CARGO_UNSTABLE_FLAGS -Zunstable-options)
   set(Rust_CARGO_TOOLCHAIN "+nightly")
 endif()
