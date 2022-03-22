@@ -8,6 +8,11 @@ fi
 
 PIDCounter=0
 function FormatFolderRecursiveAsync() {
+    if [[ ! -d "$1" ]]; then
+        echo "Folder not found: $1"
+        return
+    fi
+
     while read file; do
         if [[ $file == src/gfx/wgpu-native* ]]; then
             echo "Ignoring $file"
