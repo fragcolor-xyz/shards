@@ -233,8 +233,10 @@ struct RenderBlock : public BaseConsumer {
   ParamVar _steps{};
   ParamVar _view{};
   ParamVar _views{};
-  ViewPtr defaultView;
-  std::vector<ViewPtr> views;
+  ViewPtr _defaultView;
+  std::vector<ViewPtr> _collectedViews;
+  std::vector<Var> _collectedPipelineStepVars;
+  PipelineSteps _collectedPipelineSteps;
 
   void setParam(int index, const CBVar &value) {
     switch (index) {
@@ -268,7 +270,7 @@ struct RenderBlock : public BaseConsumer {
     _steps.cleanup();
     _view.cleanup();
     _views.cleanup();
-    defaultView.reset();
+    _defaultView.reset();
   }
 
   void warmup(CBContext *context) {
@@ -279,9 +281,9 @@ struct RenderBlock : public BaseConsumer {
   }
 
   ViewPtr getDefaultView() {
-    if (!defaultView)
-      defaultView = std::make_shared<View>();
-    return defaultView;
+    if (!_defaultView)
+      _defaultView = std::make_shared<View>();
+    return _defaultView;
   }
 
   void validateViewParameters() {
@@ -297,34 +299,37 @@ struct RenderBlock : public BaseConsumer {
   }
 
   const std::vector<ViewPtr> &updateAndCollectViews() {
-    views.clear();
+    _collectedViews.clear();
     if (_view->valueType != CBType::None) {
       const CBVar &var = _view.get();
       CBView *cbView = (CBView *)var.payload.objectValue;
       cbView->updateVariables();
-      views.push_back(cbView->view);
+      _collectedViews.push_back(cbView->view);
     } else if (_views->valueType != CBType::None) {
       SeqVar &seq = (SeqVar &)_views.get();
       for (size_t i = 0; i < seq.size(); i++) {
         const CBVar &viewVar = seq[i];
         CBView *cbView = (CBView *)viewVar.payload.objectValue;
         cbView->updateVariables();
-        views.push_back(cbView->view);
+        _collectedViews.push_back(cbView->view);
       }
     } else {
-      views.push_back(getDefaultView());
+      _collectedViews.push_back(getDefaultView());
     }
-    return views;
+    return _collectedViews;
   }
 
   PipelineSteps collectPipelineSteps() {
-    PipelineSteps steps;
+    _collectedPipelineSteps.clear();
+
     Var stepsCBVar(_steps.get());
-    std::vector<Var> stepVars(stepsCBVar);
-    for (const auto &stepVar : stepVars) {
-      steps.push_back(*(PipelineStepPtr *)stepVar.payload.objectValue);
+    stepsCBVar.intoVector(_collectedPipelineStepVars);
+
+    for (const auto &stepVar : _collectedPipelineStepVars) {
+      _collectedPipelineSteps.push_back(*(PipelineStepPtr *)stepVar.payload.objectValue);
     }
-    return steps;
+
+    return _collectedPipelineSteps;
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
