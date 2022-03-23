@@ -16,6 +16,8 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
 if(NOT EMSCRIPTEN)
+  # NOTE: External project doesn't work with Xcode here
+  #  since ssl/cypto builds into object library referenced by static library
   add_subdirectory(libressl)
   add_library(OpenSSL INTERFACE)
   target_link_libraries(OpenSSL INTERFACE ssl)
