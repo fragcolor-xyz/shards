@@ -903,5 +903,5 @@ jobs:
           cmake --build build --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
       - name: Build simulator x86
         run: |
-          cmake -Bbuild -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphonesimulator
+          cmake -Bbuild -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
           cmake --build build --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
