@@ -545,15 +545,6 @@ jobs:
           msystem: ${{ matrix.msystem }}
           release: false
           path-type: inherit
-      - name: Set up MSYS2 (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            mingw-w64-${{ matrix.arch }}-boost
       - name: Test
         env:
           RUST_BACKTRACE: 1
