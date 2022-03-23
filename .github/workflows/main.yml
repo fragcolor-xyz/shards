@@ -452,6 +452,7 @@ jobs:
           install: >-
             base-devel
             automake
+            libtool
             autoconf-wrapper
             mingw-w64-${{ matrix.arch }}-toolchain
             mingw-w64-${{ matrix.arch }}-cmake
