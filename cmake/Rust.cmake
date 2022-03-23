@@ -67,17 +67,21 @@ if(RUST_USE_LTO)
   set(Rust_FLAGS ${Rust_FLAGS} -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
 endif()
 
+if(WIN32)
+  set(Rust_TOOLCHAIN_POSTFIX "-${WINDOWS_ABI}")
+endif()
+
 # Currently required for --crate-type argument
 set(RUST_NIGHTLY TRUE)
 if(RUST_NIGHTLY)
   list(APPEND Rust_CARGO_UNSTABLE_FLAGS -Zunstable-options)
-  set(Rust_CARGO_TOOLCHAIN "+nightly")
+  set(Rust_CARGO_TOOLCHAIN "+nightly${Rust_TOOLCHAIN_POSTFIX}")
 endif()
 
 if(EMSCRIPTEN_PTHREADS)
   list(APPEND Rust_FLAGS -Ctarget-feature=+atomics,+bulk-memory)
   list(APPEND Rust_CARGO_UNSTABLE_FLAGS -Zbuild-std=panic_abort,std)
-  set(Rust_CARGO_TOOLCHAIN "+nightly")
+  set(Rust_CARGO_TOOLCHAIN "+nightly${Rust_TOOLCHAIN_POSTFIX}")
 endif()
 
 macro(ADD_RUST_FEATURE VAR FEATURE)
