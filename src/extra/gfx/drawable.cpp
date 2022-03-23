@@ -23,25 +23,25 @@ void CBDrawable::updateVariables() {
 }
 
 struct DrawableBlock {
-  static inline Type MeshVarType = Type::VariableOf(MeshType);
+  static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
   static inline std::map<std::string, Type> InputTableTypes = {
       std::make_pair("Transform", CoreInfo::Float4x4Type),
-      std::make_pair("Mesh", MeshType),
-      std::make_pair("Params", ShaderParamTableType),
-      std::make_pair("Material", MaterialType),
+      std::make_pair("Mesh", Types::Mesh),
+      std::make_pair("Params", Types::ShaderParamTable),
+      std::make_pair("Material", Types::Material),
   };
 
   static inline Parameters params{
       {"Transform", CBCCSTR("The transform variable to use"), {TransformVarType}},
       {"Params",
        CBCCSTR("The params variable to use"),
-       {Type::TableOf(ShaderParamVarTypes), Type::VariableOf(Type::TableOf(ShaderParamVarTypes))}},
+       {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static CBTypesInfo outputTypes() { return DrawableType; }
+  static CBTypesInfo outputTypes() { return Types::Drawable; }
   static CBParametersInfo parameters() { return params; }
 
   ParamVar _transformVar{};
@@ -105,7 +105,7 @@ struct DrawableBlock {
 
   CBTypeInfo compose(CBInstanceData &data) {
     validateInputTableType(data.inputType);
-    return DrawableType;
+    return Types::Drawable;
   }
 
   bool getFromTable(CBContext *cbContext, const CBTable &table, const char *key, CBVar &outVar) {
@@ -145,11 +145,11 @@ struct DrawableBlock {
       cbMaterial = (CBMaterial *)materialVar.payload.objectValue;
     }
 
-    CBDrawable *cbDrawable = DrawableObjectVar.New();
+    CBDrawable *cbDrawable = Types::DrawableObjectVar.New();
     cbDrawable->drawable = std::make_shared<Drawable>(*meshPtr, transform);
 
     if (cbMaterial) {
-      cbDrawable->materialVar = MaterialObjectVar.Get(cbMaterial);
+      cbDrawable->materialVar = Types::MaterialObjectVar.Get(cbMaterial);
       cbDrawable->materialVar.warmup(cbContext);
       cbDrawable->drawable->material = cbMaterial->material;
     }
@@ -168,13 +168,13 @@ struct DrawableBlock {
       cbDrawable->transformVar.warmup(cbContext);
     }
 
-    return DrawableObjectVar.Get(cbDrawable);
+    return Types::DrawableObjectVar.Get(cbDrawable);
   }
 };
 
 struct DrawBlock : public BaseConsumer {
-  static inline Type DrawableSeqType = Type::SeqOf(DrawableType);
-  static inline Types DrawableTypes{DrawableType, DrawableSeqType};
+  static inline Type DrawableSeqType = Type::SeqOf(Types::Drawable);
+  static inline chainblocks::Types DrawableTypes{Types::Drawable, DrawableSeqType};
 
   static CBTypesInfo inputTypes() { return DrawableTypes; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }

@@ -2,7 +2,6 @@ set(extra_SOURCES
   runtime.cpp
   gfx.cpp
   gfx/main_window.cpp
-  gfx/chainblocks_types.cpp
   gfx/mesh.cpp
   gfx/drawable.cpp
   gfx/material.cpp

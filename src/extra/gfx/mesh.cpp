@@ -7,22 +7,22 @@ namespace gfx {
 
 struct MeshBlock {
   static inline Type VertexAttributeSeqType = Type::SeqOf(CoreInfo::StringType);
-  static inline Types VerticesSeqTypes{
+  static inline chainblocks::Types VerticesSeqTypes{
       {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType, CoreInfo::Int4Type}};
   static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
-  static inline Types IndicesSeqTypes{{CoreInfo::IntType}};
+  static inline chainblocks::Types IndicesSeqTypes{{CoreInfo::IntType}};
   static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
-  static inline Types InputTableTypes{{VerticesSeq, IndicesSeq}};
+  static inline chainblocks::Types InputTableTypes{{VerticesSeq, IndicesSeq}};
   static inline const char *InputVerticesTableKey = "Vertices";
   static inline const char *InputIndicesTableKey = "Indices";
   static inline std::array<CBString, 2> InputTableKeys{InputVerticesTableKey, InputIndicesTableKey};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
   static CBTypesInfo inputTypes() { return InputTable; }
-  static CBTypesInfo outputTypes() { return MeshType; }
+  static CBTypesInfo outputTypes() { return Types::Mesh; }
 
   static inline Parameters params{{"Layout", CBCCSTR("The names for each vertex attribute."), {VertexAttributeSeqType}},
-                                  {"WindingOrder", CBCCSTR("Front facing winding order for this mesh."), {WindingOrderType}}};
+                                  {"WindingOrder", CBCCSTR("Front facing winding order for this mesh."), {Types::WindingOrder}}};
 
   static CBParametersInfo parameters() { return params; }
 
@@ -47,7 +47,7 @@ struct MeshBlock {
     case 0:
       return Var(_layout);
     case 1:
-      return Var::Enum(_windingOrder, VendorId, WindingOrderTypeId);
+      return Var::Enum(_windingOrder, VendorId, Types::WindingOrderTypeId);
     default:
       return Var::Empty;
     }
@@ -55,13 +55,13 @@ struct MeshBlock {
 
   void cleanup() {
     if (_mesh) {
-      MeshObjectVar.Release(_mesh);
+      Types::MeshObjectVar.Release(_mesh);
       _mesh = nullptr;
     }
   }
 
   void warmup(CBContext *context) {
-    _mesh = MeshObjectVar.New();
+    _mesh = Types::MeshObjectVar.New();
     MeshPtr mesh = (*_mesh) = std::make_shared<Mesh>();
   }
 
@@ -111,7 +111,7 @@ struct MeshBlock {
 
     mesh->update(meshFormat, std::move(vertexData), std::move(indexData));
 
-    return MeshObjectVar.Get(_mesh);
+    return Types::MeshObjectVar.Get(_mesh);
   }
 };
 

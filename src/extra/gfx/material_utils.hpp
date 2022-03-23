@@ -90,7 +90,7 @@ inline void validateShaderParamsType(CBTypeInfo &type) {
     const char *key = type.table.keys.elements[i];
     auto valueType = type.table.types.elements[i];
     bool matched = false;
-    for (auto &supportedType : ShaderParamTypes._types) {
+    for (auto &supportedType : Types::ShaderParamTypes._types) {
       if (valueType == supportedType) {
         matched = true;
         break;

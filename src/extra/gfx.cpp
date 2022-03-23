@@ -30,7 +30,7 @@ struct BuiltinFeatureBlock {
   static inline chainblocks::EnumInfo<Id> IdEnumInfo{"BuiltinFeatureId", VendorId, IdTypeId};
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return FeatureType; }
+  static CBTypesInfo outputTypes() { return Types::Feature; }
 
   static inline Parameters params{{"Id", CBCCSTR("Builtin feature id."), {IdType}}};
   static CBParametersInfo parameters() { return params; }
@@ -57,13 +57,13 @@ struct BuiltinFeatureBlock {
 
   void cleanup() {
     if (_feature) {
-      FeatureObjectVar.Release(_feature);
+      Types::FeatureObjectVar.Release(_feature);
       _feature = nullptr;
     }
   }
 
   void warmup(CBContext *context) {
-    _feature = FeatureObjectVar.New();
+    _feature = Types::FeatureObjectVar.New();
     switch (_id) {
     case Id::Transform:
       *_feature = features::Transform::create();
@@ -77,16 +77,15 @@ struct BuiltinFeatureBlock {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return FeatureObjectVar.Get(_feature); }
+  CBVar activate(CBContext *context, const CBVar &input) { return Types::FeatureObjectVar.Get(_feature); }
 };
 
 struct DrawablePassBlock {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return PipelineStepType; }
+  static CBTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  static inline Type PipelineStepSeqType = Type::SeqOf(PipelineStepType);
   static inline Parameters params{
-      {"Features", CBCCSTR("Features to use."), {Type::VariableOf(PipelineStepSeqType), PipelineStepSeqType}},
+      {"Features", CBCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
   };
   static CBParametersInfo parameters() { return params; }
 
@@ -115,14 +114,14 @@ struct DrawablePassBlock {
 
   void cleanup() {
     if (_step) {
-      PipelineStepObjectVar.Release(_step);
+      Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
     _features.cleanup();
   }
 
   void warmup(CBContext *context) {
-    _step = PipelineStepObjectVar.New();
+    _step = Types::PipelineStepObjectVar.New();
     _features.warmup(context);
   }
 
@@ -147,7 +146,7 @@ struct DrawablePassBlock {
     *_step = makeDrawablePipelineStep(RenderDrawablesStep{
         .features = collectFeatures(_features),
     });
-    return PipelineStepObjectVar.Get(_step);
+    return Types::PipelineStepObjectVar.Get(_step);
   }
 };
 
@@ -159,9 +158,8 @@ void CBView::updateVariables() {
 
 struct ViewBlock {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return ViewType; }
+  static CBTypesInfo outputTypes() { return Types::View; }
 
-  static inline Type PipelineStepSeqType = Type::SeqOf(PipelineStepType);
   static inline Parameters params{
       {"View", CBCCSTR("The view matrix."), {Type::VariableOf(CoreInfo::Float4x4Type), CoreInfo::Float4x4Type}},
   };
@@ -189,14 +187,14 @@ struct ViewBlock {
 
   void cleanup() {
     if (_view) {
-      ViewObjectVar.Release(_view);
+      Types::ViewObjectVar.Release(_view);
       _view = nullptr;
     }
     _viewTransform.cleanup();
   }
 
   void warmup(CBContext *context) {
-    _view = ViewObjectVar.New();
+    _view = Types::ViewObjectVar.New();
     _viewTransform.warmup(context);
   }
 
@@ -214,7 +212,7 @@ struct ViewBlock {
       _view->viewTransformVar = (CBVar &)_viewTransform;
       _view->viewTransformVar.warmup(context);
     }
-    return ViewObjectVar.Get(_view);
+    return Types::ViewObjectVar.Get(_view);
   }
 };
 
@@ -222,11 +220,10 @@ struct RenderBlock : public BaseConsumer {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Type PipelineStepSeqType = Type::SeqOf(PipelineStepType);
   static inline Parameters params{
-      {"Steps", CBCCSTR("Render steps to follow."), {Type::VariableOf(PipelineStepSeqType), PipelineStepSeqType}},
-      {"View", CBCCSTR("The view to render into."), {Type::VariableOf(ViewType), ViewType}},
-      {"Views", CBCCSTR("The views to render into."), {Type::VariableOf(ViewSeqType), ViewSeqType}},
+      {"Steps", CBCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
+      {"View", CBCCSTR("The view to render into."), {Type::VariableOf(Types::View), Types::View}},
+      {"Views", CBCCSTR("The views to render into."), {Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
   };
   static CBParametersInfo parameters() { return params; }
 

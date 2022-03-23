@@ -19,7 +19,7 @@ void CBShaderParameters::updateVariables(MaterialParameters &output) {
 void CBMaterial::updateVariables() { shaderParameters.updateVariables(material->parameters); }
 
 struct MaterialBlock {
-  static inline Type MeshVarType = Type::VariableOf(MeshType);
+  static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
   static inline std::map<std::string, Type> InputTableTypes{};
@@ -27,11 +27,11 @@ struct MaterialBlock {
   static inline Parameters params{
       {"Params",
        CBCCSTR("The params variable to use"),
-       {Type::TableOf(ShaderParamVarTypes), Type::VariableOf(Type::TableOf(ShaderParamVarTypes))}},
+       {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static CBTypesInfo outputTypes() { return MaterialType; }
+  static CBTypesInfo outputTypes() { return Types::Material; }
   static CBParametersInfo parameters() { return params; }
 
   ParamVar _paramsVar{};
@@ -74,13 +74,13 @@ struct MaterialBlock {
 
   CBTypeInfo compose(CBInstanceData &data) {
     validateInputTableType(data.inputType);
-    return MaterialType;
+    return Types::Material;
   }
 
   CBVar activate(CBContext *cbContext, const CBVar &input) {
     const CBTable &inputTable = input.payload.tableValue;
 
-    CBMaterial *cbMaterial = MaterialObjectVar.New();
+    CBMaterial *cbMaterial = Types::MaterialObjectVar.New();
     cbMaterial->material = std::make_shared<Material>();
 
     CBVar paramsVar{};
@@ -92,7 +92,7 @@ struct MaterialBlock {
       initReferencedShaderParams(cbContext, cbMaterial->shaderParameters, _paramsVar.get().payload.tableValue);
     }
 
-    return MaterialObjectVar.Get(cbMaterial);
+    return Types::MaterialObjectVar.Get(cbMaterial);
   }
 };
 
