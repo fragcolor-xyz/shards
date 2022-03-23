@@ -900,9 +900,9 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' }}
       - name: Build device
         run: |
-          cmake -Bbuild -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
-          cmake --build build --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
+          cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
+          cmake --build build_arm64 --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
       - name: Build simulator x86
         run: |
-          cmake -Bbuild -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
-          cmake --build build --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
+          cmake -Bbuild_sim_x86 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
+          cmake --build build_sim_x86 --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
