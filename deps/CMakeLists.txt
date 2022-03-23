@@ -15,10 +15,12 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
-add_subdirectory(libressl)
-add_library(OpenSSL INTERFACE)
-target_link_libraries(OpenSSL INTERFACE ssl)
-target_include_directories(OpenSSL INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libressl/include)
+if(NOT EMSCRIPTEN)
+  add_subdirectory(libressl)
+  add_library(OpenSSL INTERFACE)
+  target_link_libraries(OpenSSL INTERFACE ssl)
+  target_include_directories(OpenSSL INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libressl/include)
+endif()
 
 add_subdirectory(boost)
 

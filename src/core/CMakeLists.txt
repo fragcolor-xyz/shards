@@ -107,8 +107,10 @@ if(EMSCRIPTEN)
   target_sources(chainblocks-core-static PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
-# Required by Boost::asio
-target_link_libraries(chainblocks-core-static OpenSSL)
+if(NOT EMSCRIPTEN)
+  # Required by Boost::asio
+  target_link_libraries(chainblocks-core-static OpenSSL)
+endif()
 
 if(WIN32)
   target_link_libraries(chainblocks-core-static ws2_32 mswsock Secur32 Crypt32 NCrypt)
