@@ -51,5 +51,6 @@ public:
 private:
   bool loadFrame(TestFrame &frame, const char *filePath);
   void storeFrame(const TestFrame &frame, const char *filePath);
+  void writeRejectionDetails(const char *id, const TestFrame &frame, const TestFrame &referenceFrame, const CompareRejection &rej);
 };
 } // namespace gfx

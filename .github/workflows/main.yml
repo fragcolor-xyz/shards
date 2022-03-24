@@ -499,6 +499,12 @@ jobs:
           name: ${{ matrix.artifact }} ${{ matrix.build-type }}
           path: build/cbl.exe
           if-no-files-found: error
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ${{ matrix.artifact }} rejected test data
+          path: src/gfx/tests/data/wgpu/rejected
+          if-no-files-found: warn
 
   #
   # Test chainblocks for Windows

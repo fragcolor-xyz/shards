@@ -1,6 +1,7 @@
 #include "test_data.hpp"
 #include <SDL_stdinc.h>
 #include <cassert>
+#include <fstream>
 #include <gfx/paths.hpp>
 #include <gfx/types.hpp>
 #include <gfx/utils.hpp>
@@ -116,14 +117,44 @@ bool TestData::checkFrame(const char *id, const TestFrame &frame, float toleranc
   fs::path filePath = basePath;
   filePath /= filename;
 
+  CompareRejection rejLocal{};
+  rejection = rejection ? rejection : &rejLocal;
+
   TestFrame referenceFrame;
   if (!overwriteAll && loadFrame(referenceFrame, filePath.string().c_str())) {
-    return referenceFrame.compare(frame, tolerance, rejection);
+    if (!referenceFrame.compare(frame, tolerance, rejection)) {
+      writeRejectionDetails(id, frame, referenceFrame, *rejection);
+      return false;
+    }
+    return true;
   } else {
     // Write reference
     storeFrame(frame, filePath.string().c_str());
     return true;
   }
+}
+
+void TestData::writeRejectionDetails(const char *id, const TestFrame &frame, const TestFrame &referenceFrame,
+                                     const CompareRejection &rej) {
+  using std::endl;
+  using std::ofstream;
+
+  fs::path rejectedDirPath = basePath / "rejected";
+  fs::create_directories(rejectedDirPath);
+
+  fs::path baseFilePath = rejectedDirPath / id;
+  fs::path imagePath = baseFilePath.replace_extension(".png");
+  fs::path logPath = baseFilePath.replace_extension(".log");
+
+  ofstream outLog;
+  outLog.open(logPath.string());
+  size_t pixelIndex = rej.position.x + rej.position.y * referenceFrame.getSize().x;
+  outLog << fmt::format("Comparison failed at ({}, {})", rej.position.x, rej.position.y) << endl;
+  outLog << fmt::format(" Reference Color   : 0x{:08x}", referenceFrame.getPixels()[pixelIndex]) << endl;
+  outLog << fmt::format(" Test Result Color : 0x{:08x} (ABGR)", frame.getPixels()[pixelIndex]) << endl;
+  outLog.close();
+
+  storeFrame(frame, imagePath.string().c_str());
 }
 
 bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
