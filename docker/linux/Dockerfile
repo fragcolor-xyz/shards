@@ -6,7 +6,7 @@ FROM ubuntu:21.10
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -y update
 RUN apt-get -y install tzdata
-RUN apt-get -y install build-essential autoconf git cmake wget clang ninja-build valgrind xorg-dev libdbus-1-dev libssl-dev lcov ca-certificates
+RUN apt-get -y install build-essential autoconf libtool git cmake wget clang ninja-build valgrind xorg-dev libdbus-1-dev libssl-dev lcov ca-certificates
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
