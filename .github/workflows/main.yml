@@ -45,13 +45,12 @@ jobs:
           cd emsdk
           ./emsdk install 3.1.6
           ./emsdk activate 3.1.6
-          rustup update
-          rustup default nightly
-          rustup target add wasm32-unknown-emscripten
+          rustup toolchain install nightly
+          rustup +nightly target add wasm32-unknown-emscripten
       - name: Set up rust (mt)
         if: ${{ matrix.threading == 'mt' }}
         run: |
-          rustup component add rust-src --toolchain nightly
+          rustup +nightly component add rust-src
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -117,8 +116,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
           ./bootstrap
-          rustup update
-          rustup default nightly
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -158,8 +156,8 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
           ./bootstrap
-          rustup update
-          rustup default nightly
+          rustup toolchain install nightly
+          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
       - uses: Swatinem/rust-cache@v1
         if: ${{ matrix.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
         with:
@@ -279,8 +277,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
           ./bootstrap
-          rustup update
-          rustup default nightly
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -437,8 +434,8 @@ jobs:
         env:
           RUSTUP_USE_CURL: 1
         run: |
-          rustup update
-          rustup default nightly-${{ matrix.arch }}-pc-windows-gnu
+          rustup toolchain install nightly
+          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -792,8 +789,7 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode.app
           brew install cmake ninja clang-format automake libtool
           ./bootstrap
-          rustup update
-          rustup default nightly
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -892,10 +888,9 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode.app
           brew install cmake clang-format automake libtool
           ./bootstrap
-          rustup update
-          rustup default nightly
-          rustup +nightly target add x86_64-apple-ios
+          rustup toolchain install nightly
           rustup +nightly target add aarch64-apple-ios
+          rustup +nightly target add x86_64-apple-ios-sim
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
       - name: Build device
