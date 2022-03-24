@@ -537,33 +537,33 @@ struct Window : public Base {
   ParamVar _notClosed{Var::True};
   std::array<CBExposedTypeInfo, 2> _required;
 
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static CBOptionalString help() { return CBCCSTR("Renders a GUI window within the main container window `GFX.MainWindow`."); }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The value that will be passed to the Contents blocks of the rendered window.");
+  }
 
   static inline Parameters _params{
-      {"Title", CBCCSTR("The title of the window to create."), {CoreInfo::StringType}},
+      {"Title", CBCCSTR("The title to be displayed on the title-bar of the rendered window."), {CoreInfo::StringType}},
       {"Pos",
-       CBCCSTR("The x/y position of the window to create. If the value is a "
-               "Float2, it will be interpreted as relative to the container "
-               "window size."),
+       CBCCSTR("The (x,y) position of the rendered window as pixels (type Int2) or as a fraction of container's position (type "
+               "Float2)."),
        {CoreInfo::Int2Type, CoreInfo::Float2Type, CoreInfo::NoneType}},
       {"Width",
-       CBCCSTR("The width of the window to create. If the value is a Float, it "
-               "will be interpreted as relative to the container window size."),
+       CBCCSTR("The width of the rendered window as pixels (type Int) or as a fraction of container's width (type Float)."),
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
       {"Height",
-       CBCCSTR("The height of the window to create. If the value is a Float, it "
-               "will be interpreted as relative to the container window size."),
+       CBCCSTR("The height of the rendered window as pixels (type Int) or as a fraction of container's height (type Float)."),
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
-      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
+      {"Contents", CBCCSTR("Code to generate and control the UI elements that will be displayed in the rendered window."),
+       CoreInfo::BlocksOrNone},
       {"Flags",
-       CBCCSTR("Flags to enable window options. The defaults are NoResize | "
-               "NoMove | NoCollapse."),
+       CBCCSTR("Flags to control the rendered window attributes like menu-bar, title-bar, resize, move, collapse etc. Defaults "
+               "are show and allow."),
        {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType, Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType,
         CoreInfo::NoneType}},
       {"OnClose",
-       CBCCSTR("Passing a variable will display a close button in the "
-               "upper-right corner. Clicking will set the variable to false "
-               "and hide the window."),
+       CBCCSTR("Flag that shows a close [x] button on the rendered window based on an input boolean variable (show if boolean "
+               "`true`). Rendered window is hidden and boolean set to `false` if the close button is clicked."),
        {CoreInfo::BoolVarType}},
   };
 
