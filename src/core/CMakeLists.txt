@@ -78,10 +78,10 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(chainblocks-core-static Boost::filesystem Boost::asio Boost::lockfree Boost::foreach Boost::beast Boost::multiprecision)
+target_link_libraries(chainblocks-core-static Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision)
 
 if(NOT EMSCRIPTEN)
-  target_link_libraries(chainblocks-core-static Boost::context)
+  target_link_libraries(chainblocks-core-static Boost::beast Boost::asio Boost::context)
 endif()
 
 if(WIN32)
