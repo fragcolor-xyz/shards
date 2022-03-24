@@ -22,6 +22,8 @@ static WGPUBackendType getDefaultWgpuBackendType() {
   return WGPUBackendType_Metal;
 #elif GFX_LINUX || GFX_ANDROID
   return WGPUBackendType_Vulkan;
+#elif GFX_EMSCRIPTEN
+  return WGPUBackendType_WebGPU;
 #else
 #error "No graphics backend defined for platform"
 #endif
