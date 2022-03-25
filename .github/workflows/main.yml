@@ -157,7 +157,6 @@ jobs:
           sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
           ./bootstrap
           rustup toolchain install nightly
-          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
       - uses: Swatinem/rust-cache@v1
         if: ${{ matrix.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
         with:
