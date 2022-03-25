@@ -76,6 +76,8 @@ if(NOT EMSCRIPTEN)
 
   if(WIN32)
     target_link_libraries(SDL2-static INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
+  elseif(LINUX)
+    target_link_libraries(SDL2-static INTERFACE dl)
   endif()
 endif()
 
