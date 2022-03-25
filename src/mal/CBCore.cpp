@@ -50,6 +50,9 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin)); \
   }
 
+namespace chainblocks {
+extern void setupSpdLog();
+}
 extern void cbRegisterAllBlocks();
 
 #ifndef CB_CORE_ONLY
@@ -83,6 +86,9 @@ static std::mutex observersMutex;
 static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
 void installCBCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
+  // Setup logging first
+  chainblocks::setupSpdLog();
+
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);
 

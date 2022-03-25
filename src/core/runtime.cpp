@@ -189,7 +189,7 @@ void loadExternalBlocks(std::string from) {
   }
 }
 
-static void setupSpdLog() {
+void setupSpdLog() {
   auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
   auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -233,6 +233,8 @@ void registerCoreBlocks() {
 
   globalRegisterDone = true;
 
+  setupSpdLog();
+
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
     fs::current_path(GetGlobals().RootPath);
@@ -266,8 +268,6 @@ void registerCoreBlocks() {
     AddDllDirectory(pluginPathStr.c_str());
   }
 #endif
-
-  setupSpdLog();
 
   CBLOG_DEBUG("Registering blocks");
 
