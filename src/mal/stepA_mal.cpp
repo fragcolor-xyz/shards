@@ -55,17 +55,17 @@ int malmain(int argc, const char *argv[]) {
 
   // do the following before malinit
 
-  auto cblAbsPath = fs::absolute(argv[0]).lexically_normal();
-  auto cblAbsStr = cblAbsPath.string();
-  replEnv->set("*cbl*", mal::string(cblAbsStr));
+  auto cblAbsPath = fs::canonical(argv[0]);
+  replEnv->set("*cbl*", mal::string(cblAbsPath.string()));
 
-  auto exePath = cblAbsPath.parent_path().string();
-  auto scriptPath = exePath;
+  auto exeDirPath = cblAbsPath.parent_path();
+  auto scriptDirPath = exeDirPath;
   if (argc > 1) {
-    scriptPath = fs::absolute(fs::absolute(fs::path(argv[1])).parent_path()).string();
+    fs::path scriptPath = fs::canonical(fs::path(argv[1]));
+    scriptDirPath = scriptPath.parent_path();
   }
 
-  malinit(replEnv, exePath.c_str(), scriptPath.c_str());
+  malinit(replEnv, exeDirPath.string().c_str(), scriptDirPath.string().c_str());
 
   makeArgv(replEnv, argc - 2, argv + 2);
   bool failed = false;
