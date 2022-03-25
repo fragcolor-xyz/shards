@@ -15,6 +15,8 @@
 
 using namespace gfx;
 
+static constexpr float comparisonTolerance = 0.05f;
+
 struct HeadlessRenderer {
   Context &context;
   Renderer renderer;
@@ -216,7 +218,7 @@ TEST_CASE("Renderer capture", "[Renderer]") {
 
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
-  CHECK(testData.checkFrame("capture", testFrame));
+  CHECK(testData.checkFrame("capture", testFrame, comparisonTolerance));
 
   headlessRenderer.reset();
   context.reset();
@@ -257,7 +259,7 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
 
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
-  CHECK(testData.checkFrame("vertexFormats", testFrame));
+  CHECK(testData.checkFrame("vertexFormats", testFrame, comparisonTolerance));
 
   headlessRenderer.reset();
   context.reset();
@@ -323,7 +325,7 @@ TEST_CASE("Pipeline states", "[Renderer]") {
 
     TestData testData(TestPlatformId::get(*context.get()));
     TestFrame testFrame = headlessRenderer->getTestFrame();
-    CHECK(testData.checkFrame(name, testFrame));
+    CHECK(testData.checkFrame(name, testFrame, comparisonTolerance));
   };
 
   testBlendState("blendAlphaPremul", BlendState{.color = BlendComponent::AlphaPremultiplied, .alpha = BlendComponent::Opaque});
@@ -385,7 +387,7 @@ TEST_CASE("Shader parameters", "[Renderer]") {
 
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
-  CHECK(testData.checkFrame("shaderParameters", testFrame));
+  CHECK(testData.checkFrame("shaderParameters", testFrame, comparisonTolerance));
 
   headlessRenderer.reset();
   context.reset();
@@ -497,7 +499,7 @@ TEST_CASE("Textures", "[Renderer]") {
 
   TestData testData(TestPlatformId::get(*context.get()));
   TestFrame testFrame = headlessRenderer->getTestFrame();
-  CHECK(testData.checkFrame("textures", testFrame));
+  CHECK(testData.checkFrame("textures", testFrame, comparisonTolerance));
 
   headlessRenderer.reset();
   context.reset();
