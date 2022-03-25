@@ -179,25 +179,30 @@ struct MainWindow : public Base {
           gfx::int2 newSize = window->getDrawableSize();
           context->resizeMainOutputConditional(newSize);
         }
+      } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
+        context->suspend();
+      } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+        context->resume();
       }
     }
 
     float deltaTime = 0.0;
     auto &drawQueue = globals->drawQueue;
     if (loop.beginFrame(0.0f, deltaTime)) {
-      context->beginFrame();
-      imgui->beginFrame(events);
-      renderer->beginFrame();
+      if (context->beginFrame()) {
+        imgui->beginFrame(events);
+        renderer->beginFrame();
 
-      drawQueue.clear();
+        drawQueue.clear();
 
-      CBVar _blocksOutput{};
-      _blocks.activate(cbContext, input, _blocksOutput);
+        CBVar _blocksOutput{};
+        _blocks.activate(cbContext, input, _blocksOutput);
 
-      renderer->endFrame();
-      imgui->endFrame();
+        renderer->endFrame();
+        imgui->endFrame();
 
-      context->endFrame();
+        context->endFrame();
+      }
     }
 
     return CBVar{};

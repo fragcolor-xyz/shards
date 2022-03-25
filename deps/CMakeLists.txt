@@ -33,8 +33,8 @@ if(NOT EMSCRIPTEN)
 
   cb_add_external_project(
     NAME sdl_a
-    TARGETS SDL2-static
-    LIB_NAMES SDL2
+    TARGETS   SDL2-static SDL2main
+    LIB_NAMES SDL2        SDL2main
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
     RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2

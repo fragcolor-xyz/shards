@@ -261,6 +261,8 @@ void Context::suspend() {
 
   if (mainOutput)
     mainOutput->releaseSurface();
+#elif GFX_APPLE
+  deviceLost();
 #endif
 
   suspended = true;
