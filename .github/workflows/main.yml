@@ -223,20 +223,26 @@ jobs:
         run: |
           cd build
           ./cbl ../src/tests/blocks.clj
-      - name: Test Headless (gfx)
+      - name: Test Headless (gfx_window)
         uses: chainblocks/xvfb-action@master
         with:
           working-directory: ./build
-          run: |
-            ./cbl ../src/tests/gfx_window.edn
-            ./cbl ../src/tests/gfx_cube.edn
-            ./cbl ../src/tests/gfx_materials.edn
+          run: ./cbl ../src/tests/gfx_window.edn
+      - name: Test Headless (gfx_cube)
+        uses: chainblocks/xvfb-action@master
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/gfx_cube.edn
+      - name: Test Headless (gfx_materials)
+        uses: chainblocks/xvfb-action@master
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/gfx_materials.edn
       - name: Test Headless (imgui_demo)
         uses: chainblocks/xvfb-action@master
         with:
           working-directory: ./build
-          run: |
-            ./cbl ../src/tests/imgui_demo.edn
+          run: ./cbl ../src/tests/imgui_demo.edn
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
