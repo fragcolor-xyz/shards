@@ -440,6 +440,12 @@ jobs:
           RUSTUP_USE_CURL: 1
         run: |
           rustup toolchain install nightly
+          rustup +nightly target add x86_64-pc-windows-gnu
+      - name: Set up rust (32-bits)
+        env:
+          RUSTUP_USE_CURL: 1
+        if: ${{ matrix.bitness == '32bits' }}
+        run: |
           rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -478,7 +484,7 @@ jobs:
           ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} -DSKIP_RUST_BINDGEN=${{ matrix.bitness == '32bits' }} ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} ..
           ninja cbl
       - name: Test runtime (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
