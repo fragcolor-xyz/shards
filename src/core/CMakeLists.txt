@@ -84,6 +84,8 @@ if(NOT EMSCRIPTEN)
   target_link_libraries(chainblocks-core-static Boost::beast Boost::asio Boost::context)
 else()
   target_include_directories(chainblocks-core-static PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
+  # For usage of boost/beast/core/detail/base64.hpp
+  target_include_directories(chainblocks-core-static PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 if(WIN32)
