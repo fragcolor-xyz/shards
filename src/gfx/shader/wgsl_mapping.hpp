@@ -4,7 +4,9 @@
 #include "types.hpp"
 #include <cassert>
 #include <gfx/params.hpp>
+#include <nameof.hpp>
 #include <spdlog/fmt/fmt.h>
+
 
 namespace gfx {
 namespace shader {
@@ -83,12 +85,10 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
     baseType = "f32";
     break;
   default:
-    assert(false);
-    break;
+    throw std::out_of_range(NAMEOF(FieldType::baseType).str());
   }
   const char *vecType = nullptr;
   switch (type.numComponents) {
-  default:
   case 1:
     break;
   case 2:
@@ -100,6 +100,11 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
   case 4:
     vecType = "vec4";
     break;
+  case 16:
+    vecType = "mat4x4";
+    break;
+  default:
+    throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
   }
   return vecType ? fmt::format("{}<{}>", vecType, baseType) : baseType;
 }

@@ -4,7 +4,7 @@
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/params.hpp>
-#include <gfx/shader/shards.hpp>
+#include <gfx/shader/blocks.hpp>
 #include <memory>
 
 namespace gfx {
@@ -13,7 +13,7 @@ namespace features {
 struct BaseColor {
   static inline FeaturePtr create() {
     using namespace shader;
-    using namespace shader::shards;
+    using namespace shader::blocks;
 
     FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
@@ -23,7 +23,7 @@ struct BaseColor {
 
     const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
 
-    auto readColorParam = makeCompoundShard(ReadBuffer("object"), ".baseColor");
+    auto readColorParam = makeCompoundBlock(ReadBuffer("object"), ".baseColor");
 
     feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex,
                                             WriteGlobal("color", colorFieldType,
@@ -37,7 +37,7 @@ struct BaseColor {
     EntryPoint &applyVertexColor = feature->shaderEntryPoints.emplace_back(
         "applyVertexColor", ProgrammableGraphicsStage::Vertex,
         WithInput("color",
-                  WriteGlobal("color", colorFieldType, makeCompoundShard(ReadGlobal("color"), "*", ReadInput("color"), ";"))));
+                  WriteGlobal("color", colorFieldType, makeCompoundBlock(ReadGlobal("color"), "*", ReadInput("color"), ";"))));
     applyVertexColor.dependencies.emplace_back("initColor", DependencyType::After);
     applyVertexColor.dependencies.emplace_back("writeColor", DependencyType::Before);
 

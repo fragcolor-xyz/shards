@@ -340,11 +340,15 @@ extern void registerMainWindowShards();
 extern void registerMeshShards();
 extern void registerDrawableShards();
 extern void registerMaterialShards();
+namespace shader {
+extern void registerTranslatorShards();
+}
 void registerShards() {
   registerMainWindowShards();
   registerMeshShards();
   registerDrawableShards();
   registerMaterialShards();
+  shader::registerTranslatorShards();
 
   REGISTER_SHARD("GFX.BuiltinFeature", BuiltinFeatureShard);
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);

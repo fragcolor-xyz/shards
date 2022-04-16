@@ -7,7 +7,7 @@
 #include "mesh.hpp"
 #include "params.hpp"
 #include "renderer_types.hpp"
-#include "shader/shards.hpp"
+#include "shader/blocks.hpp"
 #include "shader/entry_point.hpp"
 #include "shader/generator.hpp"
 #include "shader/textures.hpp"
@@ -782,7 +782,7 @@ struct RendererImpl final : public ContextData {
 
   shader::GeneratorOutput generateShader(const CachedPipeline &cachedPipeline) {
     using namespace shader;
-    using namespace shader::shards;
+    using namespace shader::blocks;
 
     shader::Generator generator;
     generator.meshFormat = cachedPipeline.meshFormat;
@@ -803,7 +803,7 @@ struct RendererImpl final : public ContextData {
 
     static const std::vector<EntryPoint> &builtinEntryPoints = []() -> const std::vector<EntryPoint> & {
       static std::vector<EntryPoint> builtin;
-      builtin.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, shards::DefaultInterpolation());
+      builtin.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
       return builtin;
     }();
     for (auto &builtinEntryPoint : builtinEntryPoints) {

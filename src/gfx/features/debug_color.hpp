@@ -4,7 +4,7 @@
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/params.hpp>
-#include <gfx/shader/shards.hpp>
+#include <gfx/shader/blocks.hpp>
 #include <memory>
 
 namespace gfx {
@@ -14,7 +14,7 @@ struct DebugColor {
   enum class Stage { Vertex, Fragment };
   static inline FeaturePtr create(const char *fieldName, gfx::ProgrammableGraphicsStage stage) {
     using namespace shader;
-    using namespace shader::shards;
+    using namespace shader::blocks;
 
     FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 

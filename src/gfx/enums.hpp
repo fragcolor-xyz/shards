@@ -15,7 +15,8 @@ enum class IndexFormat { UInt16, UInt32 };
 
 size_t getVertexAttributeTypeSize(const VertexAttributeType &type);
 size_t getIndexFormatSize(const IndexFormat &type);
-bool isInteger(const ShaderFieldBaseType& type);
+bool isIntegerType(const ShaderFieldBaseType& type);
+bool isFloatType(const ShaderFieldBaseType &type);
 WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim);
 WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type);
 

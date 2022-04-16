@@ -1,7 +1,7 @@
 #ifndef GFX_SHADER_GENERATOR
 #define GFX_SHADER_GENERATOR
 
-#include "shard.hpp"
+#include "block.hpp"
 #include "entry_point.hpp"
 #include "textures.hpp"
 #include "types.hpp"

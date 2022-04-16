@@ -4,7 +4,7 @@
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/params.hpp>
-#include <gfx/shader/shards.hpp>
+#include <gfx/shader/blocks.hpp>
 #include <memory>
 
 namespace gfx {
@@ -13,12 +13,12 @@ namespace features {
 struct Transform {
   static inline FeaturePtr create() {
     using namespace shader;
-    using namespace shader::shards;
+    using namespace shader::blocks;
 
     FeaturePtr feature = std::make_shared<Feature>();
 
     FieldType positionFieldType(ShaderFieldBaseType::Float32, 4);
-    auto vec4Pos = makeCompoundShard("vec4<f32>(", ReadInput("position"), ".xyz, 1.0)");
+    auto vec4Pos = makeCompoundBlock("vec4<f32>(", ReadInput("position"), ".xyz, 1.0)");
 
     feature->shaderEntryPoints.emplace_back(
         "initWorldPosition", ProgrammableGraphicsStage::Vertex,

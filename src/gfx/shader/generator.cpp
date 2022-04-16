@@ -186,7 +186,7 @@ template <typename T> static void generateStruct(T &output, const String &typeNa
     std::string typeName = getFieldWGSLTypeName(field.base.type);
 
     String extraTags;
-    if (isInteger(field.base.type.baseType)) {
+    if (isIntegerType(field.base.type.baseType)) {
       // integer vertex outputs requires flat interpolation
       extraTags = "@interpolate(flat)";
     }

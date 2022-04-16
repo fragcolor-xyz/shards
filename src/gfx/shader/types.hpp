@@ -15,6 +15,9 @@ enum struct UniformShard {
 };
 
 struct FieldType {
+  // Special value for numCompontens to specify a square 4x4 matrix
+  static constexpr inline size_t Mat4x4 = 16;
+
   ShaderFieldBaseType baseType = ShaderFieldBaseType::Float32;
   size_t numComponents = 1;
 

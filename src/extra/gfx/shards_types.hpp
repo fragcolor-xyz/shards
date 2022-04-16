@@ -85,6 +85,10 @@ struct Container {
   static inline Type Feature = Type::Enum(VendorId, FeatureTypeId);
   static inline ObjectVar<FeaturePtr> FeatureObjectVar{"GFX.Feature", VendorId, FeatureTypeId};
 
+  static constexpr uint32_t ShaderFieldBaseTypeId = 'typ0';
+  static inline Type ShaderFieldBaseType = Type::Enum(VendorId, ShaderFieldBaseTypeId);
+  static inline EnumInfo<gfx::ShaderFieldBaseType> ShaderFieldBaseTypeEnumInfo{"ShaderType", VendorId, ShaderFieldBaseTypeId};
+
   static constexpr uint32_t PipelineStepTypeId = 'pips';
   static inline Type PipelineStep{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = PipelineStepTypeId}}}};
   static inline ObjectVar<PipelineStepPtr> PipelineStepObjectVar{"GFX.PipelineStep", VendorId, PipelineStepTypeId};
