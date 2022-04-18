@@ -61,7 +61,7 @@ int malmain(int argc, const char *argv[]) {
   auto exeDirPath = cblAbsPath.parent_path();
   auto scriptDirPath = exeDirPath;
   if (argc > 1) {
-    fs::path scriptPath = fs::canonical(fs::path(argv[1]));
+    fs::path scriptPath = fs::weakly_canonical(fs::path(argv[1]));
     scriptDirPath = scriptPath.parent_path();
   }
 
