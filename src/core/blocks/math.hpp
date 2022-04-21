@@ -27,8 +27,7 @@ struct Base {
 
   static CBTypesInfo inputTypes() { return MathTypes; }
   static CBOptionalString inputHelp() {
-    return CBCCSTR("Any valid integer(s) or floating point number(s) supported by "
-                   "this operation.");
+    return CBCCSTR("Any valid integer(s), floating point number(s), or a sequence of such entities supported by this operation.");
   }
 
   static CBTypesInfo outputTypes() { return MathTypes; }
@@ -44,8 +43,7 @@ struct UnaryBase : public Base {
 
   static CBTypesInfo inputTypes() { return FloatOrSeqTypes; }
   static CBOptionalString inputHelp() {
-    return CBCCSTR("Any valid floating point number(s) supported by "
-                   "this operation.");
+    return CBCCSTR("Any valid floating point number(s) or a sequence of such entities supported by this operation.");
   }
   static CBTypesInfo outputTypes() { return FloatOrSeqTypes; }
 };
@@ -60,7 +58,8 @@ struct BinaryBase : public Base {
        CoreInfo::Float2VarType, CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
        CoreInfo::ColorType,     CoreInfo::ColorVarType, CoreInfo::AnySeqType,    CoreInfo::AnyVarSeqType}};
 
-  static inline ParamsInfo mathParamsInfo = ParamsInfo(ParamsInfo::Param("Operand", CBCCSTR("The operand."), MathTypesOrVar));
+  static inline ParamsInfo mathParamsInfo =
+      ParamsInfo(ParamsInfo::Param("Operand", CBCCSTR("The operand for this operation."), MathTypesOrVar));
 
   ParamVar _operand{Var(0)};
   ExposedInfo _requiredInfo{};
@@ -133,9 +132,8 @@ struct BinaryBase : public Base {
 
 template <class OP> struct BinaryOperation : public BinaryBase {
   static CBOptionalString help() {
-    return CBCCSTR("Applies the binary operation on the input value and "
-                   "operand and returns its result, or a sequence of results "
-                   "if input and operand are sequences.");
+    return CBCCSTR("Applies the binary operation on the input value and the operand and returns the result (or a sequence of "
+                   "results if the input and the operand are sequences).");
   }
   void operate(OpType opType, CBVar &output, const CBVar &a, const CBVar &b) {
     if (opType == SeqSeq) {
@@ -206,8 +204,7 @@ template <class OP> struct BinaryIntOperation : public BinaryOperation<OP> {
 
   static CBTypesInfo inputTypes() { return IntOrSeqTypes; }
   static CBOptionalString inputHelp() {
-    return CBCCSTR("Any valid integer(s) supported by "
-                   "this operation.");
+    return CBCCSTR("Any valid integer(s) or a sequence of such entities supported by this operation.");
   }
   static CBTypesInfo outputTypes() { return IntOrSeqTypes; }
 };
