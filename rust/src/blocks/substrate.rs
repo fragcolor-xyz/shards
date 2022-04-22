@@ -35,7 +35,7 @@ use core::time::Duration;
 use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 use sp_core::storage::StorageKey;
-use sp_core::{blake2_128, ed25519, sr25519, ecdsa, twox_128};
+use sp_core::{blake2_128, ecdsa, ed25519, sr25519, twox_128};
 use sp_runtime::generic::Era;
 use sp_runtime::{MultiAddress, MultiSignature, MultiSigner};
 use std::convert::{TryFrom, TryInto};
@@ -48,6 +48,12 @@ lazy_static! {
     cstr!("ECDSA"),
     cbccstr!("If the input public key is an ECDSA and not the default Sr25519/Ed25519."),
     vec![common_type::bool]
+  )
+    .into(),
+  (
+    cstr!("Version"),
+    cbccstr!("The substrate version prefix."),
+    vec![common_type::int]
   )
     .into()];
   static ref STORAGE_PARAMETERS: Parameters = vec![(
@@ -74,6 +80,12 @@ lazy_static! {
     cstr!("Hints"),
     cbccstr!("The hints of the types to decode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"c\" for Compact int, \"a\" for AccountId or nil for other types."),
     vec![*STRINGS_OR_NONE_TYPE]
+  )
+    .into(),
+  (
+    cstr!("Version"),
+    cbccstr!("The substrate version prefix."),
+    vec![common_type::int]
   )
     .into()];
   static ref METADATA_TYPE: Type = {
@@ -107,10 +119,20 @@ fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
   }
 }
 
-#[derive(Default)]
 struct AccountId {
   output: ClonedVar,
   is_ecdsa: bool,
+  version: i64,
+}
+
+impl Default for AccountId {
+  fn default() -> Self {
+    Self {
+      output: ClonedVar::default(),
+      is_ecdsa: false,
+      version: 42, // substrate default
+    }
+  }
 }
 
 impl Block for AccountId {
@@ -155,6 +177,7 @@ impl Block for AccountId {
   fn setParam(&mut self, index: i32, value: &Var) {
     match index {
       0 => self.is_ecdsa = value.try_into().unwrap(),
+      1 => self.version = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
@@ -162,20 +185,22 @@ impl Block for AccountId {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.is_ecdsa.into(),
+      1 => self.version.into(),
       _ => unreachable!(),
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: &[u8] = input.as_ref().try_into()?;
+    let prefix: u16 = self.version.try_into().map_err(|_| "Invalid version, out of u16 range")?;
     let id: String = if self.is_ecdsa {
       let raw: [u8; 33] = bytes.try_into().map_err(|_| "Invalid key length")?;
       let key = ecdsa::Public::from_raw(raw);
-      key.to_ss58check()
+      key.to_ss58check_with_version(prefix.into())
     } else {
       let raw: [u8; 32] = bytes.try_into().map_err(|_| "Invalid key length")?;
       let key = sr25519::Public::from_raw(raw);
-      key.to_ss58check()
+      key.to_ss58check_with_version(prefix.into())
     };
     self.output = id.into();
     Ok(self.output.0)
@@ -254,7 +279,7 @@ impl Block for CBStorageMap {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("Substrate.StorageMap-rust-0x20200101")
+    compile_time_crc32::crc32!("Substrate.StorageMap-rusts-0x20200101")
   }
 
   fn name(&mut self) -> &str {
@@ -527,6 +552,7 @@ struct CBDecode {
   output: Seq,
   hints: ClonedVar,
   types: ClonedVar,
+  version: i64,
 }
 
 impl Default for CBDecode {
@@ -535,6 +561,7 @@ impl Default for CBDecode {
       output: Seq::new(),
       hints: ClonedVar(Var::default()),
       types: ClonedVar(Var::default()),
+      version: 42, // substrate default
     }
   }
 }
@@ -580,6 +607,7 @@ impl Block for CBDecode {
     match index {
       0 => self.types = value.into(),
       1 => self.hints = value.into(),
+      2 => self.version = value.try_into().expect("A valid integer var"),
       _ => unreachable!(),
     }
   }
@@ -588,6 +616,7 @@ impl Block for CBDecode {
     match index {
       0 => self.types.0,
       1 => self.hints.0,
+      2 => self.version.into(),
       _ => unreachable!(),
     }
   }
@@ -694,9 +723,10 @@ impl Block for CBDecode {
           };
           let mut bytes = &bytes[offset..];
           if account {
+            let prefix: u16 = self.version.try_into().map_err(|_| "Invalid version, out of u16 range")?;
             let value = AccountId32::decode(&mut bytes)
               .map_err(|_| "Invalid account")?
-              .to_ss58check();
+              .to_ss58check_with_version(prefix.into());
             offset += value.encoded_size();
             self.output.push(value.as_str().into());
           } else {
