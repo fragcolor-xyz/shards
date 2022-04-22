@@ -345,6 +345,11 @@ struct Evolve {
             flow.for_each_dynamic(
                 _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
+                  // reset fitness
+                  i->fitness = -std::numeric_limits<float>::max();
+                  // avoid scheduling if errors
+                  if(!i->node->errors().empty())
+                    return;
                   // compute the fitness
                   TickObserver obs{*i};
                   auto fitchain = CBChain::sharedFromRef(i->fitnessChain.payload.chainValue);
@@ -397,6 +402,12 @@ struct Evolve {
               while (!node.empty()) {
                 i.node->tick();
               }
+
+              // reset fitness
+              i->fitness = -std::numeric_limits<float>::max();
+              // avoid scheduling if errors
+              if(!i->node->errors().empty())
+                return;
 
               // compute the fitness
               auto fitchain = CBChain::sharedFromRef(i.fitnessChain.payload.chainValue);
