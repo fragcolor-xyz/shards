@@ -242,7 +242,7 @@ struct ParseInt : public Parser {
     const auto len = CBSTRLEN(input);
     _cache.assign(str, len);
     size_t parsed;
-    auto v = int64_t(std::stoul(_cache, &parsed, _base));
+    auto v = int64_t(std::stoull(_cache, &parsed, _base));
     if (parsed != len) {
       throw ActivationError("ParseInt: Invalid integer string");
     }
