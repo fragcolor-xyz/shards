@@ -1334,7 +1334,7 @@ BUILTIN("Chain") {
       } else if (v->value() == ":Unsafe") {
         chain->unsafe = true;
       } else if (v->value() == ":LStack") {
-        chain->stackSize = 1024 * 1024;     // 1mb
+        chain->stackSize = 4 * 1024 * 1024; // 4mb
       } else if (v->value() == ":SStack") { // default is 128kb
         chain->stackSize = 32 * 1024;       // 32kb
       }
