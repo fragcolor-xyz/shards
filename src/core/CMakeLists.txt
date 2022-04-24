@@ -141,9 +141,6 @@ if(EMSCRIPTEN)
 
   target_compile_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
-    "SHELL:-s FETCH=1"
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
   )
 
   target_link_options(chainblocks-core-static PUBLIC
@@ -156,11 +153,9 @@ if(EMSCRIPTEN)
     "SHELL:-s LLD_REPORT_UNDEFINED"
     "SHELL:-s MODULARIZE=1"
     "SHELL:-s EXPORT_NAME=cbl"
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_chainblocksInterface', '_malloc', '_free', '_emscripten_get_now']\""
-    "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval', 'emCompileShaderBlocking']\""
-    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'GL', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
+    "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval']\""
+    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
 endif()
 
