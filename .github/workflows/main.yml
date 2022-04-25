@@ -522,7 +522,7 @@ jobs:
         if: failure()
         with:
           name: ${{ matrix.artifact }} rejected test data
-          path: src/gfx/tests/data/wgpu/rejected
+          path: src/gfx/tests/data/github-windows/rejected
           if-no-files-found: warn
 
   #
