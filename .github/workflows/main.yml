@@ -449,11 +449,12 @@ jobs:
         env:
           RUSTUP_USE_CURL: 1
         if: ${{ matrix.bitness == '32bits' }}
+        shell: bash
         run: |
           rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
           # Native libClang required for rust bindgen
           # choco exit with code 1 after successful install
-          choco install -y --force llvm | exit 0
+          choco install -y --force llvm || exit 0
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
