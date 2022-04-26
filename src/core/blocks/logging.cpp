@@ -54,8 +54,8 @@ struct Log : public LoggingBase {
 };
 
 struct Msg : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Message", CBCCSTR("The message to log."), CoreInfo::StringType));
+  static inline ParamsInfo msgParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Message", CBCCSTR("The message to display on the user's screen or console."), CoreInfo::StringType));
 
   std::string msg;
 
