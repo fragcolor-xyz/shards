@@ -13,7 +13,7 @@ struct LoggingBase {
 
 struct Log : public LoggingBase {
   static inline ParamsInfo msgParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Prefix", CBCCSTR("The prefix message to the value to log."), CoreInfo::StringType));
+      ParamsInfo(ParamsInfo::Param("Prefix", CBCCSTR("The message to prefix to the logged output."), CoreInfo::StringType));
 
   std::string msg;
 
