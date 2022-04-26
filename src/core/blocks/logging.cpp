@@ -19,6 +19,11 @@ struct Log : public LoggingBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
 
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Logs the output of a block or the value of a variable to the console (along with an optional prefix string).");
+  }
+
   void setParam(int index, const CBVar &inValue) {
     switch (index) {
     case 0:
@@ -61,6 +66,10 @@ struct Msg : public LoggingBase {
 
   static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
 
+  static CBOptionalString help() {
+    return CBCCSTR("Displays the passed message string or the passed variable's value to the user via standard output.");
+  }
+
   void setParam(int index, const CBVar &inValue) {
     switch (index) {
     case 0:
@@ -93,6 +102,7 @@ struct Msg : public LoggingBase {
 
 // Register Log
 RUNTIME_CORE_BLOCK(Log);
+RUNTIME_BLOCK_help(Log);
 RUNTIME_BLOCK_inputTypes(Log);
 RUNTIME_BLOCK_outputTypes(Log);
 RUNTIME_BLOCK_parameters(Log);
@@ -103,6 +113,7 @@ RUNTIME_BLOCK_END(Log);
 
 // Register Msg
 RUNTIME_CORE_BLOCK(Msg);
+RUNTIME_BLOCK_help(Msg);
 RUNTIME_BLOCK_inputTypes(Msg);
 RUNTIME_BLOCK_outputTypes(Msg);
 RUNTIME_BLOCK_parameters(Msg);
