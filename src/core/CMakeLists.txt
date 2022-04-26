@@ -179,9 +179,11 @@ if(CHAINBLOCKS_BUILD_TESTS)
     chainblocks-core Catch2 Catch2Main
   )
 
-  target_link_options(test_runtime PUBLIC
-    "SHELL:-s MODULARIZE=1"
-    "SHELL:-s EXPORT_NAME=test"
-    "SHELL:-s NO_EXIT_RUNTIME=1"
-  )
+  if(EMSCRIPTEN)
+    target_link_options(test_runtime PUBLIC
+      "SHELL:-s MODULARIZE=1"
+      "SHELL:-s EXPORT_NAME=test"
+      "SHELL:-s NO_EXIT_RUNTIME=1"
+    )
+  endif()
 endif()
