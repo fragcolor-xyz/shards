@@ -51,4 +51,10 @@ if(EMSCRIPTEN)
   else()
     set_target_properties(cbl PROPERTIES SUFFIX "-st.js")
   endif()
+
+  target_link_options(cbl PUBLIC
+    "SHELL:-s MODULARIZE=1"
+    "SHELL:-s EXPORT_NAME=cbl"
+    "SHELL:-s NO_EXIT_RUNTIME=1"
+  )
 endif()

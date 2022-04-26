@@ -37,10 +37,6 @@ add_library(chainblocks-core-static STATIC ${core_SOURCES})
 target_include_directories(chainblocks-core-static PUBLIC ../../include)
 target_include_directories(chainblocks-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(EMSCRIPTEN)
-  target_compile_options(chainblocks-core-static PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
-endif()
-
 if(CHAINBLOCKS_NO_BIGINT_BLOCKS)
   target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_NO_BIGINT_BLOCKS=1)
 else()
@@ -145,18 +141,19 @@ if(EMSCRIPTEN)
 
   target_link_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
-    "SHELL:-s NO_EXIT_RUNTIME=1"
     "SHELL:-s INITIAL_MEMORY=209715200"
     "SHELL:-s FETCH=1"
+    "SHELL:-s FETCH_SUPPORT_INDEXEDDB=0"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
-    "SHELL:-s ASYNCIFY=1"
     "SHELL:-s LLD_REPORT_UNDEFINED"
-    "SHELL:-s MODULARIZE=1"
-    "SHELL:-s EXPORT_NAME=cbl"
     "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_chainblocksInterface', '_malloc', '_free', '_emscripten_get_now']\""
     "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval']\""
     "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
+
+  # Require optimizations when building with asyncify too keep size/build time reasonable
+  target_compile_options(chainblocks-core-static PUBLIC "-O2")
+  target_link_options(chainblocks-core-static PUBLIC "-O2" "SHELL:-s ASYNCIFY=1")
 endif()
 
 if(IOS)
@@ -180,5 +177,11 @@ if(CHAINBLOCKS_BUILD_TESTS)
 
   target_link_libraries(test_runtime
     chainblocks-core Catch2 Catch2Main
+  )
+
+  target_link_options(test_runtime PUBLIC
+    "SHELL:-s MODULARIZE=1"
+    "SHELL:-s EXPORT_NAME=test"
+    "SHELL:-s NO_EXIT_RUNTIME=1"
   )
 endif()

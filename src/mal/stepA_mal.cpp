@@ -55,7 +55,7 @@ int malmain(int argc, const char *argv[]) {
 
   // do the following before malinit
 
-  auto cblAbsPath = fs::canonical(argv[0]);
+  auto cblAbsPath = fs::weakly_canonical(argv[0]);
   replEnv->set("*cbl*", mal::string(cblAbsPath.string()));
 
   auto exeDirPath = cblAbsPath.parent_path();
