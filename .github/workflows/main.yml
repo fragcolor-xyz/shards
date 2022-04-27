@@ -615,6 +615,7 @@ jobs:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
         run: |
+          cd build
           echo "Running test: gfx_window"
           ./cbl ../src/tests/gfx_window.edn
           echo "Running test: gfx_cube"
