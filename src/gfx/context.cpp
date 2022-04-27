@@ -153,6 +153,7 @@ struct ContextMainOutput {
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
+    preferredFormat = WGPUTextureFormat_BGRA8Unorm;
     if (preferredFormat != swapchainFormat) {
       getLogger()->debug("swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
       swapchainFormat = preferredFormat;

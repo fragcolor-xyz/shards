@@ -8,7 +8,7 @@ namespace gfx {
 struct MeshShard {
   static inline Type VertexAttributeSeqType = Type::SeqOf(CoreInfo::StringType);
   static inline shards::Types VerticesSeqTypes{
-      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType, CoreInfo::Int4Type}};
+      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type, CoreInfo::ColorType}};
   static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
   static inline shards::Types IndicesSeqTypes{{CoreInfo::IntType}};
   static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);

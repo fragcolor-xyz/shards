@@ -1,9 +1,6 @@
 #include "gfx.hpp"
 #include "gfx/buffer_vars.hpp"
 #include <gfx/context.hpp>
-#include <gfx/features/base_color.hpp>
-#include <gfx/features/debug_color.hpp>
-#include <gfx/features/transform.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/math.hpp>
 #include <gfx/mesh.hpp>
@@ -17,68 +14,6 @@ using namespace shards;
 
 namespace gfx {
 using shards::Mat4;
-
-struct BuiltinFeatureShard {
-  enum class Id {
-    Transform,
-    BaseColor,
-    VertexColorFromNormal,
-  };
-
-  static constexpr uint32_t IdTypeId = 'feid';
-  static inline shards::Type IdType = shards::Type::Enum(VendorId, IdTypeId);
-  static inline shards::EnumInfo<Id> IdEnumInfo{"BuiltinFeatureId", VendorId, IdTypeId};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return Types::Feature; }
-
-  static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {IdType}}};
-  static SHParametersInfo parameters() { return params; }
-
-  Id _id{};
-  FeaturePtr *_feature{};
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _id = Id(value.payload.enumValue);
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var::Enum(_id, VendorId, IdTypeId);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void cleanup() {
-    if (_feature) {
-      Types::FeatureObjectVar.Release(_feature);
-      _feature = nullptr;
-    }
-  }
-
-  void warmup(SHContext *context) {
-    _feature = Types::FeatureObjectVar.New();
-    switch (_id) {
-    case Id::Transform:
-      *_feature = features::Transform::create();
-      break;
-    case Id::BaseColor:
-      *_feature = features::BaseColor::create();
-      break;
-    case Id::VertexColorFromNormal:
-      *_feature = features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex);
-      break;
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) { return Types::FeatureObjectVar.Get(_feature); }
-};
 
 struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -340,6 +275,7 @@ extern void registerMainWindowShards();
 extern void registerMeshShards();
 extern void registerDrawableShards();
 extern void registerMaterialShards();
+extern void registerFeatureShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
@@ -348,9 +284,9 @@ void registerShards() {
   registerMeshShards();
   registerDrawableShards();
   registerMaterialShards();
+  registerFeatureShards();
   shader::registerTranslatorShards();
 
-  REGISTER_SHARD("GFX.BuiltinFeature", BuiltinFeatureShard);
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.Render", RenderShard);

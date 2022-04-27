@@ -1,0 +1,84 @@
+(def cube-layout ["position", "color"])
+(def cube
+  {"Vertices"
+   [(Float3 -1.0  1.0  1.0) (Float4 1.0 0.0 0.0 0.4)
+    (Float3  1.0  1.0  1.0) (Float4 0.0 1.0 0.0 0.4)
+    (Float3 -1.0 -1.0  1.0) (Float4 0.0 0.0 1.0 0.4)
+    (Float3  1.0 -1.0  1.0) (Float4 0.0 0.0 0.0 0.4)
+    (Float3 -1.0  1.0 -1.0) (Float4 0.0 0.0 0.0 0.4)
+    (Float3  1.0  1.0 -1.0) (Float4 0.0 0.0 0.0 0.4)
+    (Float3 -1.0 -1.0 -1.0) (Float4 0.0 0.0 0.0 0.4)
+    (Float3  1.0 -1.0 -1.0) (Float4 0.0 0.0 0.0 0.4)]
+   "Indices"
+   [0 1 2
+    1 3 2
+    4 6 5
+    5 6 7
+    0 2 4
+    4 2 6
+    1 5 3
+    5 7 3
+    0 4 1
+    4 5 1
+    2 3 6
+    6 3 7]})
+
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+(def BlendAdd {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
+(def BlendAlpha {:Operation BlendOperation.Add :Src BlendFactor.SrcAlpha :Dst BlendFactor.OneMinusSrcAlpha})
+(def BlendOne {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
+
+
+(defn spin-transform [t location]
+  (->
+   t >= .tmp-0
+   .tmp-0 (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+   .tmp-0 (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+   .tmp-0 (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+   location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ)))
+
+(defloop test-wire
+   (Setup
+    0.0 >= .time
+    cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
+    (Float3 -1 0 0) (Math.Translation) >= .transform-0
+    (Float3 1 0 0) (Math.Translation) >= .transform-1
+    {:Mesh .mesh} (GFX.Drawable :Transform .transform-0) >> .drawables
+    {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
+
+    ; Create render steps
+    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+    {:Shaders [{:Name "mainColor"
+                :Stage ProgrammableGraphicsStage.Vertex
+                :EntryPoint (->
+                             (Shader.ReadInput :Dimension 4 :Name "color")
+                             (Shader.WriteOutput "color"))}
+               {:Name "mainColor"
+                :Stage ProgrammableGraphicsStage.Fragment
+                :EntryPoint (->
+                             (Shader.ReadInput :Dimension 4 :Name "color")
+                             (Float4 0.4 0.3 0.2 1.0)
+                             (Shader.WriteOutput "color"))}]
+     :State {:DepthCompare CompareFunction.Always
+             :ColorWrite [ColorMask.Red ColorMask.Blue]
+             :Blend {:Color BlendAdd
+                     :Alpha BlendOne}}}
+    (GFX.Feature) >> .features
+    (GFX.DrawablePass :Features .features) >> .render-steps
+
+    ; Create view
+    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+    (GFX.View :View .view-transform) >= .view)
+   (GFX.MainWindow
+    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+    :Contents
+    (->
+     .time (Math.Add timestep) > .time
+     (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
+     (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
+     .drawables (GFX.Draw)
+     (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule root test-wire)
+(run root timestep)

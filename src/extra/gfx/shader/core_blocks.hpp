@@ -210,9 +210,9 @@ struct IOBase {
     case 0:
       return _name;
     case 1:
-      return Var::Enum(_fieldType.baseType, VendorId, Types::ShaderFieldBaseTypeId);
+      return Var::Enum(_fieldType.baseType, VendorId, Types::ShaderFieldBaseTypeTypeId);
     case 2:
-      return Var(_fieldType.numComponents);
+      return Var(int(_fieldType.numComponents));
     default:
       return Var::Empty;
     }

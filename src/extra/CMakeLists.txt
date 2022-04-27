@@ -5,6 +5,7 @@ set(extra_SOURCES
   gfx/mesh.cpp
   gfx/drawable.cpp
   gfx/material.cpp
+  gfx/feature.cpp
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
   imgui.cpp
