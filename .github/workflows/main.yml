@@ -505,7 +505,8 @@ jobs:
           ninja test_runtime
           ./test_runtime
       - name: Test graphics (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ matrix.build-type == 'Debug' && matrix.bitness == '64bits' }}
         env:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
@@ -602,6 +603,19 @@ jobs:
           # ./cbl ../src/tests/ws.clj
           echo "Running test: bigint"
           ./cbl ../src/tests/bigint.clj
+          echo "Running test: wasm"
+          ./cbl ../src/tests/wasm.clj
+          echo "Running test: eth"
+          ./cbl ../src/tests/eth.edn
+          echo "Running test: crypto"
+          ./cbl ../src/tests/crypto.edn
+      - name: Graphics Test (64bits)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ matrix.bitness == '64bits' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
           echo "Running test: gfx_window"
           ./cbl ../src/tests/gfx_window.edn
           echo "Running test: gfx_cube"
@@ -610,12 +624,6 @@ jobs:
           ./cbl ../src/tests/gfx_materials.edn
           echo "Running test: imgui_demo"
           ./cbl ../src/tests/imgui_demo.edn
-          echo "Running test: wasm"
-          ./cbl ../src/tests/wasm.clj
-          echo "Running test: eth"
-          ./cbl ../src/tests/eth.edn
-          echo "Running test: crypto"
-          ./cbl ../src/tests/crypto.edn
       - name: Test (64bits)
         if: ${{ matrix.bitness == '64bits' }}
         env:
