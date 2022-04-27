@@ -562,8 +562,7 @@ jobs:
         with:
           name: ${{ matrix.artifact }} ${{ matrix.build-type }}
           path: build
-      - name: Set up MSYS2 (Release)
-        if: ${{ matrix.build-type == 'Release' }}
+      - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
