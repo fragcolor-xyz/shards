@@ -1,0 +1,16 @@
+;; No match + no nil case + passthrough
+(defloop main-chain
+    false
+    (Match
+        :Cases
+            [true (-> (Msg "Not a match")) ;; no match
+            true (-> (Msg "Not a match either"))] ;; no match
+            ;; reached end of cases with no match found => no blocks activated
+        :Passthrough 
+            true) ;; input allowed to passthrough to Match block's output
+    (Log) ;; print Match block's output => "false"
+)
+
+(defnode root)
+(schedule root main-chain)
+(run root 1 1)

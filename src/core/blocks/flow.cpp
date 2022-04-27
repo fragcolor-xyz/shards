@@ -768,24 +768,25 @@ private:
 
 struct Match {
   static CBOptionalString help() {
-    return CBCCSTR("Compares the input with specific cases and activate the corresponding "
-                   "block. Cases are compared in declaring order.");
+    return CBCCSTR("Compares the input with the declared cases (in order of the declaration) and activates the block of the "
+                   "first matched case.");
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The value to compare against."); }
+  static CBOptionalString inputHelp() { return CBCCSTR("The value that's compared with the declared cases."); }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static CBOptionalString outputHelp() {
-    return CBCCSTR("The output of the matched block, or the same value as "
-                   "inoput when `Passthrough` is `true`.");
+    return CBCCSTR("Same value as input if `:Passthrough` is `true` else the output of the matched case's block if "
+                   "`:Passthrough` is `false`.");
   }
 
-  static inline Parameters params{{"Cases",
-                                   CBCCSTR("The cases to match the input against, a nil/None case will "
-                                           "match anything."),
-                                   {CoreInfo::AnySeqType}},
-                                  {"Passthrough", CBCCSTR("The output of this block will be its input."), {CoreInfo::BoolType}}};
+  static inline Parameters params{
+      {"Cases", CBCCSTR("Values to match against the input. A `nil` case will match anything."), {CoreInfo::AnySeqType}},
+      {"Passthrough",
+       CBCCSTR("Parameter to control the block's output. `true` allows the `Match` block's input itself to appear as its output; "
+               "`false` allows the matched block's output to appear as `Match` block's output."),
+       {CoreInfo::BoolType}}};
   static CBParametersInfo parameters() { return params; }
 
   void setParam(int index, const CBVar &value) {
