@@ -918,19 +918,21 @@ struct Sub {
   CBComposeResult _composition{};
 
   static CBOptionalString help() {
-    return CBCCSTR("Activates a block or a sequence of blocks independently, without "
-                   "consuming the input. In other words, the ouput of the sub flow will "
-                   "be its input regardless of the blocks activated in this sub flow.");
+    return CBCCSTR("Activates a block or a sequence of blocks independently, without consuming the input. I.e. the input of the "
+                   "Sub flow will also be its output regardless of the blocks activated in this Sub flow.");
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The value given to the block or sequence of blocks in this sub flow."); }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The input value passed to this Sub flow (and hence to the block or sequence of blocks in this Sub flow).");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The output of this block will be its input."); }
+  static CBOptionalString outputHelp() { return CBCCSTR("The output of this Sub flow (which is the same as its input)."); }
 
   static CBParametersInfo parameters() {
-    static Parameters params{{"Blocks", CBCCSTR("The blocks to execute in the sub flow."), {CoreInfo::BlocksOrNone}}};
+    static Parameters params{
+        {"Blocks", CBCCSTR("The block or sequence of blocks to execute in the Sub flow."), {CoreInfo::BlocksOrNone}}};
     return params;
   }
 
