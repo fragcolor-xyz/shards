@@ -84,7 +84,7 @@
 	url = https://github.com/ocornut/imgui.git
 [submodule "deps/boost"]
 	path = deps/boost
-	url = https://github.com/boostorg/boost.git
+	url = https://github.com/chainblocks/boost.git
 [submodule "deps/libressl"]
 	path = deps/libressl
 	url = https://github.com/guusw/portable.git
