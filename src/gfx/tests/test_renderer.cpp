@@ -265,7 +265,7 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
   context.reset();
 }
 
-TEST_CASE("Pipeline states", "[Renderer]") {
+TEST_CASE("Pipeline states", "[Renderer][!mayfail]") {
   std::shared_ptr<Context> context = std::make_shared<Context>();
   context->init();
 
@@ -278,11 +278,11 @@ TEST_CASE("Pipeline states", "[Renderer]") {
 
   auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
   for (auto &vert : redSphereVerts)
-    vert.setColor(float4(1, 0, 0, 0.5));
+    vert.setColor(float4(1, 1, 0, 0.5));
 
   auto greenSphereVerts = convertVertices<VertexPC>(sphere.vertices);
   for (auto &vert : greenSphereVerts)
-    vert.setColor(float4(0, 1, 0, 0.5));
+    vert.setColor(float4(0, 1, 1, 0.5));
 
   MeshPtr redSphereMesh = createMesh(redSphereVerts, sphere.indices);
   MeshPtr greenSphereMesh = createMesh(greenSphereVerts, sphere.indices);
