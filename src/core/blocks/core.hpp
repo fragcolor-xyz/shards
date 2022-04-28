@@ -2152,8 +2152,8 @@ struct PopFront : SeqUser {
 };
 
 struct Take {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Indices/Keys", CBCCSTR("One or more indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Indices/Keys", CBCCSTR("One or more indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
   static CBOptionalString help() {
     return CBCCSTR("Extracts one or more elements/key-values from a sequence or a table by using the provided sequence "
                    "index/indices or table key(s). Operation is non-destructive; doesn't modify target sequence/table.");
@@ -2493,12 +2493,21 @@ struct Take {
 struct RTake : public Take {
   // works only for seqs tho
   // TODO need to add string and bytes
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Indices", CBCCSTR("One or multiple indices to extract from a sequence."), CoreInfo::RTakeTypes));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Indices", CBCCSTR("One or more indices (counted backwards from the last element) to extract from a sequence."),
+      CoreInfo::RTakeTypes));
+  static CBOptionalString help() {
+    return CBCCSTR("Works exactly like `Take` except that the selection indices are counted backwards from the last element in "
+                   "the target sequence. Also, `RTake` works only on sequences, not on tables.");
+  }
 
   static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::RIndexables; }
+  static CBOptionalString inputHelp() { return CBCCSTR("The sequence from which elements have to be extracted."); }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("The extracted elements."); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     CBTypeInfo result = Take::compose(data);
