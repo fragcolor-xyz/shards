@@ -2152,8 +2152,12 @@ struct PopFront : SeqUser {
 };
 
 struct Take {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Indices", CBCCSTR("One or multiple indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Indices/Keys", CBCCSTR("One or more indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
+  static CBOptionalString help() {
+    return CBCCSTR("Extracts one or more elements/key-values from a sequence or a table by using the provided sequence "
+                   "index/indices or table key(s). Operation is non-destructive; doesn't modify target sequence/table.");
+  }
 
   CBSeq _cachedSeq{};
   CBVar _output{};
@@ -2187,8 +2191,12 @@ struct Take {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::Indexables; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The sequence or table from which elements/key-values have to be extracted.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("The extracted elements/key-values."); }
 
   static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
