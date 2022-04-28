@@ -2545,10 +2545,23 @@ struct RTake : public Take {
 };
 
 struct Slice {
-  static inline ParamsInfo indicesParamsInfo =
-      ParamsInfo(ParamsInfo::Param("From", CBCCSTR("From index."), CoreInfo::IntsVar),
-                 ParamsInfo::Param("To", CBCCSTR("To index (excluding)."), CoreInfo::IntsVarOrNone),
-                 ParamsInfo::Param("Step", CBCCSTR("The increment between each index."), CoreInfo::IntType));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
+      ParamsInfo::Param("From",
+                        CBCCSTR("The position/index of the first character or element that is to be extracted (including). "
+                                "Negative position/indices simply loop over the target string/sequence counting backwards."),
+                        CoreInfo::IntsVar),
+      ParamsInfo::Param("To",
+                        CBCCSTR("The position/index of the last character or element that is to be extracted (excluding). "
+                                "Negative position/indices simply loop over the target string/sequence counting backwards."),
+                        CoreInfo::IntsVarOrNone),
+      ParamsInfo::Param("Step",
+                        CBCCSTR("The increment between each position/index. Chooses every nth sample to extract, where n is the "
+                                "increment. Value has to be greater than zero."),
+                        CoreInfo::IntType));
+  static CBOptionalString help() {
+    return CBCCSTR("Extracts characters from a string or elements from a sequence based on the start and end positions/indices "
+                   "and an increment parameter. Operation is non-destructive; the target string/sequence is not modified.");
+  }
 
   CBSeq _cachedSeq{};
   std::vector<uint8_t> _cachedBytes{};
@@ -2587,8 +2600,12 @@ struct Slice {
   static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType}};
 
   static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The string or sequence from which characters/elements have to be extracted.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("The extracted characters/elements."); }
 
   static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
