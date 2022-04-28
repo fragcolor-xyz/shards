@@ -8,4 +8,4 @@
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false)))
 
 (schedule Root test-chain)
-(run Root timestep)
+(run Root timestep 100)

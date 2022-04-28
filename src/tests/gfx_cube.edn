@@ -56,4 +56,4 @@
      (GFX.Render :Steps .render-steps :View .view)))))
 
 (schedule Root test-chain)
-(run Root timestep)
+(run Root timestep 100)
