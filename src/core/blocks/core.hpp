@@ -3175,11 +3175,15 @@ struct Once {
     next = current + CBDuration(0.0);
   }
 
-  static inline Parameters params{{"Action", CBCCSTR("The blocks to execute."), {CoreInfo::Blocks}},
+  static inline Parameters params{{"Action", CBCCSTR("The block or sequence of blocks to execute."), {CoreInfo::Blocks}},
                                   {"Every",
                                    CBCCSTR("The number of seconds to wait until repeating the action, if 0 "
                                            "the action will happen only once per chain flow execution."),
                                    {CoreInfo::FloatType}}};
+
+  static CBOptionalString help() {
+    return CBCCSTR("Executes the block or sequence of blocks with the desired frequency in a chain flow execution.");
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
