@@ -603,9 +603,19 @@ struct PrependTo : public XpendTo {
 struct ForEachBlock {
   static inline Types _types{{CoreInfo::AnySeqType, CoreInfo::AnyTableType}};
 
+  static CBOptionalString help() {
+    return CBCCSTR("Processes every element or key-value pair of a sequence/table with a given block or sequence of blocks.");
+  }
+
   static CBTypesInfo inputTypes() { return _types; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Sequence/table whose elements or key-value pairs need to be processed.");
+  }
 
   static CBTypesInfo outputTypes() { return _types; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output from processing the sequence/table elements or key-value pairs.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -679,7 +689,10 @@ struct ForEachBlock {
   }
 
 private:
-  static inline Parameters _params{{"Apply", CBCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Blocks}}};
+  static inline Parameters _params{
+      {"Apply",
+       CBCCSTR("The processing logic (in the form of a block or sequence of blocks) to apply to the input sequence/table."),
+       {CoreInfo::Blocks}}};
 
   BlocksVar _blocks{};
 };
