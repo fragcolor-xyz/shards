@@ -334,6 +334,10 @@ void registerCoreShards() {
   WS::registerShards();
 #endif
 
+#ifdef SHARDS_WITH_EXTRA_SHARDS
+  shInitExtras();
+#endif
+
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : GetGlobals().EnumTypesRegister) {
     int32_t vendorId = (int32_t)((einfo.first & 0xFFFFFFFF00000000) >> 32);
@@ -345,10 +349,6 @@ void registerCoreShards() {
       obs->registerEnumType(vendorId, enumId, einfo.second);
     }
   }
-
-#ifdef SHARDS_WITH_EXTRA_SHARDS
-  shInitExtras();
-#endif
 
   // re run early shards registration!
   for (auto &pair : earlyshards) {
