@@ -1,6 +1,0 @@
-3.14159
-(Sub
- ;:Blocks
- (->
-  (ToString)
-  (Assert.Is "3.14159" true)))

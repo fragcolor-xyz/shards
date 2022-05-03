@@ -150,6 +150,12 @@
   result->name = static_cast<CBSetupProc>([](CBlock *block) { return reinterpret_cast<_name_##Runtime *>(block)->core.name(); });
 #define RUNTIME_BLOCK_help(_name_) \
   result->help = static_cast<CBHelpProc>([](CBlock *block) { return reinterpret_cast<_name_##Runtime *>(block)->core.help(); });
+#define RUNTIME_BLOCK_inputHelp(_name_) \
+  result->inputHelp =                   \
+      static_cast<CBHelpProc>([](CBlock *block) { return reinterpret_cast<_name_##Runtime *>(block)->core.inputHelp(); });
+#define RUNTIME_BLOCK_outputHelp(_name_) \
+  result->outputHelp =                   \
+      static_cast<CBHelpProc>([](CBlock *block) { return reinterpret_cast<_name_##Runtime *>(block)->core.outputHelp(); });
 
 #define RUNTIME_BLOCK_setup(_name_) \
   result->setup = static_cast<CBSetupProc>([](CBlock *block) { reinterpret_cast<_name_##Runtime *>(block)->core.setup(); });

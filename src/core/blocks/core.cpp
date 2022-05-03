@@ -603,9 +603,19 @@ struct PrependTo : public XpendTo {
 struct ForEachBlock {
   static inline Types _types{{CoreInfo::AnySeqType, CoreInfo::AnyTableType}};
 
+  static CBOptionalString help() {
+    return CBCCSTR("Processes every element or key-value pair of a sequence/table with a given block or sequence of blocks.");
+  }
+
   static CBTypesInfo inputTypes() { return _types; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("Sequence/table whose elements or key-value pairs need to be processed.");
+  }
 
   static CBTypesInfo outputTypes() { return _types; }
+  static CBOptionalString outputHelp() {
+    return CBCCSTR("The output from processing the sequence/table elements or key-value pairs.");
+  }
 
   static CBParametersInfo parameters() { return _params; }
 
@@ -679,7 +689,10 @@ struct ForEachBlock {
   }
 
 private:
-  static inline Parameters _params{{"Apply", CBCCSTR("The function to apply to each item of the sequence."), {CoreInfo::Blocks}}};
+  static inline Parameters _params{
+      {"Apply",
+       CBCCSTR("The processing logic (in the form of a block or sequence of blocks) to apply to the input sequence/table."),
+       {CoreInfo::Blocks}}};
 
   BlocksVar _blocks{};
 };
@@ -1472,8 +1485,11 @@ RUNTIME_CORE_BLOCK_FACTORY(Take);
 RUNTIME_BLOCK_destroy(Take);
 RUNTIME_BLOCK_cleanup(Take);
 RUNTIME_BLOCK_requiredVariables(Take);
+RUNTIME_BLOCK_help(Take);
 RUNTIME_BLOCK_inputTypes(Take);
+RUNTIME_BLOCK_inputHelp(Take);
 RUNTIME_BLOCK_outputTypes(Take);
+RUNTIME_BLOCK_outputHelp(Take);
 RUNTIME_BLOCK_parameters(Take);
 RUNTIME_BLOCK_compose(Take);
 RUNTIME_BLOCK_setParam(Take);
@@ -1487,8 +1503,11 @@ RUNTIME_CORE_BLOCK_FACTORY(RTake);
 RUNTIME_BLOCK_destroy(RTake);
 RUNTIME_BLOCK_cleanup(RTake);
 RUNTIME_BLOCK_requiredVariables(RTake);
+RUNTIME_BLOCK_help(RTake);
 RUNTIME_BLOCK_inputTypes(RTake);
+RUNTIME_BLOCK_inputHelp(RTake);
 RUNTIME_BLOCK_outputTypes(RTake);
+RUNTIME_BLOCK_outputHelp(RTake);
 RUNTIME_BLOCK_parameters(RTake);
 RUNTIME_BLOCK_compose(RTake);
 RUNTIME_BLOCK_setParam(RTake);
@@ -1502,8 +1521,11 @@ RUNTIME_CORE_BLOCK_FACTORY(Slice);
 RUNTIME_BLOCK_destroy(Slice);
 RUNTIME_BLOCK_cleanup(Slice);
 RUNTIME_BLOCK_requiredVariables(Slice);
+RUNTIME_BLOCK_help(Slice);
 RUNTIME_BLOCK_inputTypes(Slice);
+RUNTIME_BLOCK_inputHelp(Slice);
 RUNTIME_BLOCK_outputTypes(Slice);
+RUNTIME_BLOCK_outputHelp(Slice);
 RUNTIME_BLOCK_parameters(Slice);
 RUNTIME_BLOCK_compose(Slice);
 RUNTIME_BLOCK_setParam(Slice);

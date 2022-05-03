@@ -40,7 +40,7 @@ Python is a pre-requisite for both MkDocs and MkDocs Material.
 
 *Python comes pre-installed on most Mac & Linux machines. If it's not on your machine you can get the relevant Python package [here](https://www.python.org/downloads/).*
 
-For windows, you can grab the latest Python release installer [here](https://www.python.org/downloads/windows/").
+For windows, you can grab the latest Python release installer [here](https://www.python.org/downloads/windows/).
 
 Download the installer and follow the on-screen instructions after starting the installation. 
 

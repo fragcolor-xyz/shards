@@ -1,0 +1,13 @@
+;; RTake
+(defnode Main)
+(defloop test
+    ;; RTake on sequences
+    [10 20 30 40] (RTake 1)
+    (Log) ;; => 30
+    [10 20 30 40] (RTake [0 1])
+    (Log) ;; => [40, 30]
+
+    ;; RTake not valid on tables
+)
+(schedule Main test)
+(run Main 1 1)

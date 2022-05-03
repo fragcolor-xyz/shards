@@ -1,0 +1,21 @@
+;; Take
+(defnode Main)
+(defloop test
+    ;; Take on sequences
+    [10 20 30 40] (Take 1)
+    (Log) ;; => 20
+    [10 20 30 40] (Take [1 2])
+    (Log) ;; => [20, 30]
+
+    ;; Take on tables
+    {"Hello" 10 "World" 20} (Take "Hello")
+    (Log) ;; => 10
+    {"Hello" 10 "World" 20} (Take ["World" "Hello"])
+    (Log) ;; => [20, 10]
+    {"Hello" 10 "World" 20} (Take "Universe")
+    (Log) ;; => None
+    {:abc 10 :def 20} (Take "def")
+    (Log) ;; => 20
+)
+(schedule Main test)
+(run Main 1 1)

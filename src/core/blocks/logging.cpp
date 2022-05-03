@@ -13,11 +13,16 @@ struct LoggingBase {
 
 struct Log : public LoggingBase {
   static inline ParamsInfo msgParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Prefix", CBCCSTR("The prefix message to the value to log."), CoreInfo::StringType));
+      ParamsInfo(ParamsInfo::Param("Prefix", CBCCSTR("The message to prefix to the logged output."), CoreInfo::StringType));
 
   std::string msg;
 
   static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
+
+  static CBOptionalString help() {
+    return CBCCSTR(
+        "Logs the output of a block or the value of a variable to the console (along with an optional prefix string).");
+  }
 
   void setParam(int index, const CBVar &inValue) {
     switch (index) {
@@ -54,12 +59,16 @@ struct Log : public LoggingBase {
 };
 
 struct Msg : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Message", CBCCSTR("The message to log."), CoreInfo::StringType));
+  static inline ParamsInfo msgParamsInfo = ParamsInfo(
+      ParamsInfo::Param("Message", CBCCSTR("The message to display on the user's screen or console."), CoreInfo::StringType));
 
   std::string msg;
 
   static CBParametersInfo parameters() { return CBParametersInfo(msgParamsInfo); }
+
+  static CBOptionalString help() {
+    return CBCCSTR("Displays the passed message string or the passed variable's value to the user via standard output.");
+  }
 
   void setParam(int index, const CBVar &inValue) {
     switch (index) {
@@ -93,6 +102,7 @@ struct Msg : public LoggingBase {
 
 // Register Log
 RUNTIME_CORE_BLOCK(Log);
+RUNTIME_BLOCK_help(Log);
 RUNTIME_BLOCK_inputTypes(Log);
 RUNTIME_BLOCK_outputTypes(Log);
 RUNTIME_BLOCK_parameters(Log);
@@ -103,6 +113,7 @@ RUNTIME_BLOCK_END(Log);
 
 // Register Msg
 RUNTIME_CORE_BLOCK(Msg);
+RUNTIME_BLOCK_help(Msg);
 RUNTIME_BLOCK_inputTypes(Msg);
 RUNTIME_BLOCK_outputTypes(Msg);
 RUNTIME_BLOCK_parameters(Msg);

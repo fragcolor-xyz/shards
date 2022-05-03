@@ -2153,7 +2153,11 @@ struct PopFront : SeqUser {
 
 struct Take {
   static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
-      "Indices", CBCCSTR("One or multiple indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
+      "Indices/Keys", CBCCSTR("One or more indices/keys to extract from a sequence/table."), CoreInfo::TakeTypes));
+  static CBOptionalString help() {
+    return CBCCSTR("Extracts one or more elements/key-values from a sequence or a table by using the provided sequence "
+                   "index/indices or table key(s). Operation is non-destructive; doesn't modify target sequence/table.");
+  }
 
   CBSeq _cachedSeq{};
   CBVar _output{};
@@ -2187,8 +2191,12 @@ struct Take {
   }
 
   static CBTypesInfo inputTypes() { return CoreInfo::Indexables; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The sequence or table from which elements/key-values have to be extracted.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("The extracted elements/key-values."); }
 
   static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
@@ -2485,12 +2493,21 @@ struct Take {
 struct RTake : public Take {
   // works only for seqs tho
   // TODO need to add string and bytes
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Indices", CBCCSTR("One or multiple indices to extract from a sequence."), CoreInfo::RTakeTypes));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(ParamsInfo::Param(
+      "Indices", CBCCSTR("One or more indices (counted backwards from the last element) to extract from a sequence."),
+      CoreInfo::RTakeTypes));
+  static CBOptionalString help() {
+    return CBCCSTR("Works exactly like `Take` except that the selection indices are counted backwards from the last element in "
+                   "the target sequence. Also, `RTake` works only on sequences, not on tables.");
+  }
 
   static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::RIndexables; }
+  static CBOptionalString inputHelp() { return CBCCSTR("The sequence from which elements have to be extracted."); }
+
+  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("The extracted elements."); }
 
   CBTypeInfo compose(const CBInstanceData &data) {
     CBTypeInfo result = Take::compose(data);
@@ -2528,10 +2545,23 @@ struct RTake : public Take {
 };
 
 struct Slice {
-  static inline ParamsInfo indicesParamsInfo =
-      ParamsInfo(ParamsInfo::Param("From", CBCCSTR("From index."), CoreInfo::IntsVar),
-                 ParamsInfo::Param("To", CBCCSTR("To index (excluding)."), CoreInfo::IntsVarOrNone),
-                 ParamsInfo::Param("Step", CBCCSTR("The increment between each index."), CoreInfo::IntType));
+  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
+      ParamsInfo::Param("From",
+                        CBCCSTR("The position/index of the first character or element that is to be extracted (including). "
+                                "Negative position/indices simply loop over the target string/sequence counting backwards."),
+                        CoreInfo::IntsVar),
+      ParamsInfo::Param("To",
+                        CBCCSTR("The position/index of the last character or element that is to be extracted (excluding). "
+                                "Negative position/indices simply loop over the target string/sequence counting backwards."),
+                        CoreInfo::IntsVarOrNone),
+      ParamsInfo::Param("Step",
+                        CBCCSTR("The increment between each position/index. Chooses every nth sample to extract, where n is the "
+                                "increment. Value has to be greater than zero."),
+                        CoreInfo::IntType));
+  static CBOptionalString help() {
+    return CBCCSTR("Extracts characters from a string or elements from a sequence based on the start and end positions/indices "
+                   "and an increment parameter. Operation is non-destructive; the target string/sequence is not modified.");
+  }
 
   CBSeq _cachedSeq{};
   std::vector<uint8_t> _cachedBytes{};
@@ -2570,8 +2600,12 @@ struct Slice {
   static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType}};
 
   static CBTypesInfo inputTypes() { return InputTypes; }
+  static CBOptionalString inputHelp() {
+    return CBCCSTR("The string or sequence from which characters/elements have to be extracted.");
+  }
 
   static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static CBOptionalString outputHelp() { return CBCCSTR("The extracted characters/elements."); }
 
   static CBParametersInfo parameters() { return CBParametersInfo(indicesParamsInfo); }
 
@@ -3141,11 +3175,15 @@ struct Once {
     next = current + CBDuration(0.0);
   }
 
-  static inline Parameters params{{"Action", CBCCSTR("The blocks to execute."), {CoreInfo::Blocks}},
+  static inline Parameters params{{"Action", CBCCSTR("The block or sequence of blocks to execute."), {CoreInfo::Blocks}},
                                   {"Every",
                                    CBCCSTR("The number of seconds to wait until repeating the action, if 0 "
                                            "the action will happen only once per chain flow execution."),
                                    {CoreInfo::FloatType}}};
+
+  static CBOptionalString help() {
+    return CBCCSTR("Executes the block or sequence of blocks with the desired frequency in a chain flow execution.");
+  }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
 

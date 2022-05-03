@@ -1,0 +1,20 @@
+;; usage of parameter :Flags
+(defloop main-chain
+  (GFX.MainWindow
+   :Title "Main Window" :Width 800 :Height 600
+   :Contents
+   (-> (GUI.Window
+          :Title "canvas1"  :Width 400 :Height 300  :Pos (int2 10 10)
+          :Flags [                     ;; comment-out/ enable following flags to see effect on window
+            GuiWindowFlags.MenuBar     ;; displays a menu-bar below the title-bar
+            GuiWindowFlags.NoTitleBar  ;; supresses the title-bar
+            GuiWindowFlags.NoResize    ;; prevents resizing of the window
+            GuiWindowFlags.NoMove      ;; prevents moving the window around
+            GuiWindowFlags.NoCollapse  ;; prevents collapsing the window
+          ]
+          :Contents
+          (-> "A window" (GUI.Text)))))
+)
+(defnode root)
+(schedule root main-chain)
+(run root 1 2) ;; increase value of `run` args to display window for longer
