@@ -62,6 +62,10 @@ jobs:
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
           ninja cbl && ninja test_runtime
+      # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
       - name: Test (st)
         if: ${{ matrix.threading == 'st' }}
         run: |
