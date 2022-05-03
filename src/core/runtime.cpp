@@ -189,7 +189,7 @@ void loadExternalShards(std::string from) {
   }
 }
 
-void setupSpdLog() {
+static void setupSpdLog() {
   auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
   auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -227,13 +227,21 @@ void setupSpdLog() {
 #endif
 }
 
+void setupSpdLogConditional() {
+  static bool initialized = false;
+  if (!initialized) {
+    initialized = true;
+    setupSpdLog();
+  }
+}
+
 void registerCoreShards() {
   if (globalRegisterDone)
     return;
 
   globalRegisterDone = true;
 
-  setupSpdLog();
+  setupSpdLogConditional();
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
@@ -459,13 +467,22 @@ Shard *createShard(std::string_view name) {
   return blkp;
 }
 
+inline void setupRegisterLogging() {
+#if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_TRACE
+  setupSpdLogConditional();
+#endif
+}
+
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName) {
+  setupRegisterLogging();
+  SHLOG_TRACE("registerBlock({})", name);
+
   auto findIt = GetGlobals().ShardsRegister.find(name);
   if (findIt == GetGlobals().ShardsRegister.end()) {
     GetGlobals().ShardsRegister.insert(std::make_pair(name, constructor));
   } else {
     GetGlobals().ShardsRegister[name] = constructor;
-    SHLOG_INFO("Overriding shard: {}", name);
+    SHLOG_WARNING("Overriding shard: {}", name);
   }
 
   GetGlobals().ShardNamesToFullTypeNames[name] = fullTypeName;
@@ -479,6 +496,9 @@ void registerShard(std::string_view name, SHShardConstructor constructor, std::s
 }
 
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
+  setupRegisterLogging();
+  SHLOG_TRACE("registerObjectType({})", info.name);
+
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
   auto findIt = GetGlobals().ObjectTypesRegister.find(id);
@@ -486,7 +506,7 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
     GetGlobals().ObjectTypesRegister.insert(std::make_pair(id, info));
   } else {
     GetGlobals().ObjectTypesRegister[id] = info;
-    SHLOG_INFO("Overriding object type: {}", typeName);
+    SHLOG_WARNING("Overriding object type: {}", typeName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {
@@ -498,6 +518,9 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
 }
 
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
+  setupRegisterLogging();
+  SHLOG_TRACE("registerEnumType({})", info.name);
+
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
   auto findIt = GetGlobals().EnumTypesRegister.find(id);
@@ -505,7 +528,7 @@ void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
     GetGlobals().EnumTypesRegister.insert(std::make_pair(id, info));
   } else {
     GetGlobals().EnumTypesRegister[id] = info;
-    SHLOG_DEBUG("Overriding enum type: {}", typeName);
+    SHLOG_WARNING("Overriding enum type: {}", typeName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {

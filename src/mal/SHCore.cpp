@@ -51,7 +51,7 @@ static StaticList<malBuiltIn *> handlers;
   }
 
 namespace shards {
-extern void setupSpdLog();
+extern void setupSpdLogConditional();
 }
 extern void shRegisterAllShards();
 
@@ -87,7 +87,7 @@ static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
 void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
   // Setup logging first
-  shards::setupSpdLog();
+  shards::setupSpdLogConditional();
 
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);
@@ -160,6 +160,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   // this is not efficient as it likely will repeat inserting the first time!
   // See Observer down
   for (auto &v : builtIns) {
+    SPDLOG_TRACE("env->set({})", v.first);
     env->set(v.first, v.second.ptr());
   }
 
