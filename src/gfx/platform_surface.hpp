@@ -49,7 +49,7 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
     platformDesc.win.hinstance = GetModuleHandle(nullptr);
     platformDesc.win.hwnd = (HWND)nativeSurfaceHandle;
 #elif GFX_LINUX
-    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlib;
+    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlibWindow;
     platformDesc.x11.window = uint32_t(size_t(nativeSurfaceHandle));
     platformDesc.x11.display = SDL_GetNativeDisplayPtr(sdlWindow);
 #elif GFX_ANDROID
