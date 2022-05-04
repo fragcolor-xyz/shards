@@ -30,7 +30,7 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
 #if GFX_EMSCRIPTEN
     WGPUSurfaceDescriptorFromCanvasHTMLSelector html;
 #else
-    WGPUSurfaceDescriptorFromXlib x11;
+    WGPUSurfaceDescriptorFromXlibWindow x11;
     WGPUSurfaceDescriptorFromMetalLayer mtl;
     WGPUSurfaceDescriptorFromWaylandSurface wayland;
     WGPUSurfaceDescriptorFromWindowsHWND win;

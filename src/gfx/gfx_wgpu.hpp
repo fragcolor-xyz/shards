@@ -22,7 +22,6 @@
 #define wgpuAdapterRelease(...)
 #define wgpuSurfaceRelease(...)
 
-#define wgpuRenderPassEncoderEnd(_pass) wgpuRenderPassEncoderEndPass(_pass)
 extern "C" {
 #include <wgpu.h>
 }

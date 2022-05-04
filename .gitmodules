@@ -78,7 +78,7 @@
 	url = https://github.com/chainblocks/snappy.git
 [submodule "src/gfx/wgpu-native"]
 	path = src/gfx/wgpu-native
-	url = https://github.com/gfx-rs/wgpu-native.git
+	url = https://github.com/chainblocks/wgpu-native.git
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git

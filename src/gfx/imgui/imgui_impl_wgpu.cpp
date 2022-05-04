@@ -51,8 +51,10 @@ struct RenderResources {
   WGPUBindGroup CommonBindGroup;   // Resources bind-group to bind the common resources to pipeline
   ImGuiStorage ImageBindGroups;    // Resources bind-group to bind the font/image resources to pipeline (this is a key->value map)
   WGPUBindGroup ImageBindGroup;    // Default font-resource of Dear ImGui
-  WGPUBindGroupLayout ImageBindGroupLayout; // Cache layout used for the image bind group. Avoids allocating unnecessary JS
-                                            // objects when working with WebASM
+  WGPUBindGroupLayout CommonBindGroupLayout;
+  WGPUBindGroupLayout ImageBindGroupLayout;
+  WGPUPipelineLayout PipelineLayout;
+  WGPUShaderModule ShaderModule;
 };
 static RenderResources g_resources;
 
@@ -77,34 +79,34 @@ struct Uniforms {
 //-----------------------------------------------------------------------------
 static const char *__wgsl_shader = R"(
 struct Block0 {
-    mvp: mat4x4<f32>;
+    mvp: mat4x4<f32>,
 };
 
-[[group(0), binding(0)]]
+@group(0) @binding(0)
 var<uniform> block0: Block0;
 
-[[group(0), binding(1)]]
+@group(0) @binding(1)
 var s_color: sampler;
 
-[[group(1), binding(0)]]
+@group(1) @binding(0)
 var t_color: texture_2d<f32>;
 
 struct VSOut {
-    [[builtin(position)]] Position: vec4<f32>;
-    [[location(0)]] Color: vec4<f32>;
-    [[location(1)]] UV: vec2<f32>;
+    @builtin(position) Position: vec4<f32>,
+    @location(0) Color: vec4<f32>,
+    @location(1) UV: vec2<f32>,
 };
 
 struct FSIn {
-    [[location(0)]] Color: vec4<f32>;
-    [[location(1)]] UV: vec2<f32>;
+    @location(0) Color: vec4<f32>,
+    @location(1) UV: vec2<f32>,
 };
 
-[[stage(vertex)]]
+@stage(vertex)
 fn vs_main(
-    [[location(0)]] aPos: vec2<f32>,
-    [[location(1)]] aUV: vec2<f32>,
-    [[location(2)]] aColor: vec4<f32>) -> VSOut {
+    @location(0) aPos: vec2<f32>,
+    @location(1) aUV: vec2<f32>,
+    @location(2) aColor: vec4<f32>) -> VSOut {
     var Out: VSOut;
     Out.Color = aColor;
     Out.UV = aUV;
@@ -112,8 +114,8 @@ fn vs_main(
     return Out;
 }
 
-[[stage(fragment)]]
-fn fs_main(In: FSIn) -> [[location(0)]] vec4<f32> {
+@stage(fragment)
+fn fs_main(In: FSIn) -> @location(0) vec4<f32> {
     return In.Color * textureSample(t_color, s_color, In.UV);
 }
 )";
@@ -193,6 +195,9 @@ static void SafeRelease(RenderResources &res) {
   SafeRelease(res.Uniforms);
   SafeRelease(res.CommonBindGroup);
   SafeRelease(res.ImageBindGroup);
+  SafeRelease(res.ShaderModule);
+  SafeRelease(res.PipelineLayout);
+  SafeRelease(res.CommonBindGroupLayout);
   SafeRelease(res.ImageBindGroupLayout);
 };
 
@@ -417,7 +422,7 @@ static void ImGui_ImplWGPU_CreateFontsTexture() {
     WGPUSamplerDescriptor sampler_desc = {};
     sampler_desc.minFilter = WGPUFilterMode_Linear;
     sampler_desc.magFilter = WGPUFilterMode_Linear;
-    sampler_desc.mipmapFilter = WGPUFilterMode_Linear;
+    sampler_desc.mipmapFilter = WGPUMipmapFilterMode_Linear;
     sampler_desc.addressModeU = WGPUAddressMode_Repeat;
     sampler_desc.addressModeV = WGPUAddressMode_Repeat;
     sampler_desc.addressModeW = WGPUAddressMode_Repeat;
@@ -466,15 +471,18 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   block1_layout_desc.entries = &layout_entries[2];
   block1_layout_desc.entryCount = 1;
 
+  g_resources.CommonBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block0_layout_desc);
+  g_resources.ImageBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block1_layout_desc);
+
   WGPUBindGroupLayout bind_group_layouts[2] = {
-      wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block0_layout_desc),
-      wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block1_layout_desc),
+    g_resources.CommonBindGroupLayout,
+    g_resources.ImageBindGroupLayout,
   };
 
   WGPUPipelineLayoutDescriptor pipeline_layout_desc{};
   pipeline_layout_desc.bindGroupLayouts = bind_group_layouts;
   pipeline_layout_desc.bindGroupLayoutCount = 2;
-  WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(g_wgpuDevice, &pipeline_layout_desc);
+  g_resources.PipelineLayout = wgpuDeviceCreatePipelineLayout(g_wgpuDevice, &pipeline_layout_desc);
 
   // Create render pipeline
   WGPURenderPipelineDescriptor graphics_pipeline_desc = {};
@@ -485,7 +493,7 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   graphics_pipeline_desc.multisample.count = 1;
   graphics_pipeline_desc.multisample.mask = UINT_MAX;
   graphics_pipeline_desc.multisample.alphaToCoverageEnabled = false;
-  graphics_pipeline_desc.layout = pipeline_layout;
+  graphics_pipeline_desc.layout = g_resources.PipelineLayout;
 
   // Compile the shader module
   WGPUShaderModuleDescriptor shaderModuleDesc{};
@@ -493,9 +501,9 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   shaderModuleWgslDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
   shaderModuleDesc.nextInChain = &shaderModuleWgslDesc.chain;
   wgpuShaderModuleWGSLDescriptorSetCode(shaderModuleWgslDesc, __wgsl_shader);
-  WGPUShaderModule shaderModule = wgpuDeviceCreateShaderModule(g_wgpuDevice, &shaderModuleDesc);
+  g_resources.ShaderModule = wgpuDeviceCreateShaderModule(g_wgpuDevice, &shaderModuleDesc);
 
-  graphics_pipeline_desc.vertex.module = shaderModule;
+  graphics_pipeline_desc.vertex.module = g_resources.ShaderModule;
   graphics_pipeline_desc.vertex.entryPoint = "vs_main";
 
   // Vertex input configuration
@@ -529,7 +537,7 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   color_state.writeMask = WGPUColorWriteMask_All;
 
   WGPUFragmentState fragment_state = {};
-  fragment_state.module = shaderModule;
+  fragment_state.module = g_resources.ShaderModule;
   fragment_state.entryPoint = "fs_main";
   fragment_state.targetCount = 1;
   fragment_state.targets = &color_state;
@@ -549,20 +557,13 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   };
 
   WGPUBindGroupDescriptor common_bg_descriptor = {};
-  common_bg_descriptor.layout = bind_group_layouts[0];
+  common_bg_descriptor.layout = g_resources.CommonBindGroupLayout;
   common_bg_descriptor.entryCount = sizeof(common_bg_entries) / sizeof(WGPUBindGroupEntry);
   common_bg_descriptor.entries = common_bg_entries;
   g_resources.CommonBindGroup = wgpuDeviceCreateBindGroup(g_wgpuDevice, &common_bg_descriptor);
 
-  WGPUBindGroup image_bind_group = ImGui_ImplWGPU_CreateImageBindGroup(bind_group_layouts[1], g_resources.FontTextureView);
-  g_resources.ImageBindGroup = image_bind_group;
-  g_resources.ImageBindGroupLayout = bind_group_layouts[1];
-  g_resources.ImageBindGroups.SetVoidPtr(ImHashData(&g_resources.FontTextureView, sizeof(ImTextureID)), image_bind_group);
-
-  SafeRelease(shaderModule);
-  SafeRelease(pipeline_layout);
-  SafeRelease(bind_group_layouts[0]);
-  SafeRelease(bind_group_layouts[1]);
+  g_resources.ImageBindGroup = ImGui_ImplWGPU_CreateImageBindGroup(g_resources.ImageBindGroupLayout, g_resources.FontTextureView);
+  g_resources.ImageBindGroups.SetVoidPtr(ImHashData(&g_resources.FontTextureView, sizeof(ImTextureID)), g_resources.ImageBindGroup);
 
   return true;
 }
@@ -602,6 +603,7 @@ bool ImGui_ImplWGPU_Init(WGPUDevice device, int num_frames_in_flight, WGPUTextur
   g_resources.CommonBindGroup = NULL;
   g_resources.ImageBindGroups.Data.reserve(100);
   g_resources.ImageBindGroup = NULL;
+  g_resources.CommonBindGroupLayout = NULL;
   g_resources.ImageBindGroupLayout = NULL;
 
   // Create buffers with a default size (they will later be grown as needed)

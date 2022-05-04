@@ -77,7 +77,7 @@ protected:
     samplerDesc.lodMaxClamp = 0;
     samplerDesc.magFilter = WGPUFilterMode_Nearest;
     samplerDesc.minFilter = WGPUFilterMode_Nearest;
-    samplerDesc.mipmapFilter = WGPUFilterMode_Nearest;
+    samplerDesc.mipmapFilter = WGPUMipmapFilterMode_Nearest;
     samplerDesc.maxAnisotropy = 0;
     data.sampler = wgpuDeviceCreateSampler(context.wgpuDevice, &samplerDesc);
   }

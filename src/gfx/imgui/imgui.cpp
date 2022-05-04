@@ -64,7 +64,7 @@ void ImGuiRenderer::render() {
     passDesc.colorAttachmentCount = 1;
 
     WGPURenderPassColorAttachment mainAttach = {};
-    mainAttach.clearColor = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
+    mainAttach.clearValue = WGPUColor{.r = 0.1f, .g = 0.1f, .b = 0.1f, .a = 1.0f};
     mainAttach.loadOp = WGPULoadOp_Load;
     mainAttach.view = context.getMainOutputTextureView();
     mainAttach.storeOp = WGPUStoreOp_Store;

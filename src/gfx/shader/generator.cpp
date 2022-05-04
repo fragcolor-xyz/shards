@@ -126,10 +126,10 @@ static void generateTextureVars(T &output, const TextureDefinition &def, size_t 
   const char *textureFormat = "f32";
   const char *textureType = "texture_2d";
 
-  output += fmt::format("[[group({}), binding({})]]\n", group, binding);
+  output += fmt::format("@group({}) @binding({})\n", group, binding);
   output += fmt::format("var {}: {}<{}>;\n", def.variableName, textureType, textureFormat);
 
-  output += fmt::format("[[group({}), binding({})]]\n", group, samplerBinding);
+  output += fmt::format("@group({}) @binding({})\n", group, samplerBinding);
   output += fmt::format("var {}: sampler;\n", def.defaultSamplerVariableName);
 }
 
@@ -140,7 +140,7 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
-    output += fmt::format("\t{}: {};\n", layout.fieldNames[i], getParamWGSLTypeName(layout.items[i].type));
+    output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getParamWGSLTypeName(layout.items[i].type));
   }
   output += "};\n";
 
@@ -148,7 +148,7 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   const char *varType = structName.c_str();
   String containerTypeName = name + "_container";
   if (isArray) {
-    output += fmt::format("struct {} {{ elements: array<{}>; }};\n", containerTypeName, structName);
+    output += fmt::format("struct {} {{ elements: array<{}> }};\n", containerTypeName, structName);
     varType = containerTypeName.c_str();
   }
 
@@ -162,7 +162,7 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
     varStorageType = "storage";
     break;
   }
-  output += fmt::format("[[group({}), binding({})]]\n", group, binding);
+  output += fmt::format("@group({}) @binding({})\n", group, binding);
   output += fmt::format("var<{}> {}: {};\n", varStorageType, name, varType);
 }
 
@@ -185,11 +185,11 @@ template <typename T> static void generateStruct(T &output, const String &typeNa
   for (auto &field : fields) {
     std::string typeName = getFieldWGSLTypeName(field.base.type);
     if (field.hasBuiltinTag()) {
-      output += fmt::format("\t[[builtin({})]] ", field.builtinTag);
+      output += fmt::format("\t@builtin({}) ", field.builtinTag);
     } else if (field.hasLocation()) {
-      output += fmt::format("\t[[location({})]] ", field.location);
+      output += fmt::format("\t@location({}) ", field.location);
     }
-    output += fmt::format("{}: {};\n", field.base.name, typeName);
+    output += fmt::format("{}: {},\n", field.base.name, typeName);
   }
   output += "};\n";
 }
@@ -331,7 +331,7 @@ struct Stage {
       entryPointParams += ", " + boost::algorithm::join(extraEntryPointParameters, ", ");
     }
 
-    context.write(fmt::format("[[stage({})]]\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams,
+    context.write(fmt::format("@stage({})\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams,
                               outputStructName));
     context.write(fmt::format("\t{} = in;\n", inputVariableName));
 
@@ -428,7 +428,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   generateStruct(headerCode, vertexInputStructName, vertexInputStructFields);
   generateStruct(headerCode, fragmentOutputStructName, fragmentOutputStructFields);
 
-  stages[0].extraEntryPointParameters.push_back("[[builtin(instance_index)]] _instanceIndex: u32");
+  stages[0].extraEntryPointParameters.push_back("@builtin(instance_index) _instanceIndex: u32");
   stages[0].mainFunctionHeader += fmt::format("{} = _instanceIndex;\n", instanceIndexer);
   stages[1].mainFunctionHeader += fmt::format("{} = {}.instanceIndex;\n", instanceIndexer, stages[1].inputVariableName);
 

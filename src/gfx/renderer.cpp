@@ -368,7 +368,7 @@ struct RendererImpl final : public ContextData {
     passDesc.colorAttachmentCount = 1;
 
     WGPURenderPassColorAttachment mainAttach = {};
-    mainAttach.clearColor = clearColor;
+    mainAttach.clearValue = clearColor;
     mainAttach.loadOp = WGPULoadOp_Clear;
     mainAttach.view = context.getMainOutputTextureView();
     mainAttach.storeOp = WGPUStoreOp_Store;
@@ -624,7 +624,7 @@ struct RendererImpl final : public ContextData {
     passDesc.colorAttachmentCount = 1;
 
     WGPURenderPassColorAttachment mainAttach = {};
-    mainAttach.clearColor = clearColor;
+    mainAttach.clearValue = clearColor;
 
     // FIXME Add renderer graph to handle clearing
     if (!mainOutputWrittenTo) {
@@ -637,9 +637,11 @@ struct RendererImpl final : public ContextData {
     mainAttach.storeOp = WGPUStoreOp_Store;
 
     WGPURenderPassDepthStencilAttachment depthAttach = {};
-    depthAttach.clearDepth = 1.0f;
+    depthAttach.depthClearValue = 1.0f;
     depthAttach.depthLoadOp = WGPULoadOp_Clear;
     depthAttach.depthStoreOp = WGPUStoreOp_Store;
+    depthAttach.stencilLoadOp = WGPULoadOp_Clear;
+    depthAttach.stencilStoreOp = WGPUStoreOp_Discard;
     depthAttach.view = depthTexture->update(context, viewport.getSize());
 
     passDesc.colorAttachments = &mainAttach;
