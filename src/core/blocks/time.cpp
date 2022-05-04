@@ -12,7 +12,8 @@ template <typename TDur> inline CBVar DurationToVar(const TDur &dur) {
   static_assert(sizeof(CountType) <= sizeof(int64_t));
 
   CBVar result{};
-  *(CountType *)&result.payload.intValue = dur.count();
+  result.valueType = CBType::Float;
+  result.payload.floatValue = CBFloat(dur.count());
   return result;
 }
 
