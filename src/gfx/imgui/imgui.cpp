@@ -102,7 +102,7 @@ void ImGuiRenderer::init() {
   auto &io = ImGui::GetIO();
   io.Fonts->Clear();
   ImFontConfig config{};
-  config.SizePixels = 13.0f * 4.0f;
+  config.SizePixels = 13.0f * 1.0f;
   io.Fonts->AddFontDefault(&config);
 }
 
