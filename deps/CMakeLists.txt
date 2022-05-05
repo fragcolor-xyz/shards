@@ -30,6 +30,9 @@ if(NOT EMSCRIPTEN)
   add_library(OpenSSL INTERFACE)
   target_link_libraries(OpenSSL INTERFACE ssl)
   target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
+
+  # Set source dir property used later by rust openssl-sys
+  set_property(GLOBAL PROPERTY OPENSSL_SOURCE_DIR ${libressl_SOURCE_DIR})
 endif()
 
 add_subdirectory(boost)
