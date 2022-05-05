@@ -2,15 +2,3 @@
 
 set -e
 
-function boostrapLibreSSL {
-  echo "Setting up LibreSSL"
-  pushd libressl
-  if [ ! -f "autogen.sh" ]; then
-    echo "!! libressl/autogen.sh does not exist, update git submodules!"
-    exit 1
-  fi
-  ./autogen.sh
-  popd
-}
-
-boostrapLibreSSL
