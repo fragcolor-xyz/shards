@@ -16,12 +16,20 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
 if(NOT EMSCRIPTEN)
+  message(STATUS "Fetching libressl")
+  FetchContent_Declare(
+    libressl
+    URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.2.tar.gz
+    URL_HASH SHA256=56feab8e21c3fa6549f8b7d7511658b8e98518162838a795314732654adf3e5f
+  )
+  FetchContent_MakeAvailable(libressl)
+  message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
+
   # NOTE: External project doesn't work with Xcode here
   #  since ssl/cypto builds into object library referenced by static library
-  add_subdirectory(libressl)
   add_library(OpenSSL INTERFACE)
   target_link_libraries(OpenSSL INTERFACE ssl)
-  target_include_directories(OpenSSL INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libressl/include)
+  target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
 endif()
 
 add_subdirectory(boost)
