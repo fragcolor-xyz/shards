@@ -91,5 +91,7 @@ var cbl_core = {
   // }
 }
 
+#if FETCH
 autoAddDeps(cbl_core, '$Fetch');
+#endif
 mergeInto(LibraryManager.library, cbl_core);

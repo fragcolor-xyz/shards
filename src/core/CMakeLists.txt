@@ -133,17 +133,28 @@ if(CHAINBLOCKS_WITH_EXTRA_BLOCKS)
 endif()
 
 if(EMSCRIPTEN)
+  set(FETCH_SUPPORTED ON)
+  if(NODEJS)
+    message(STATUS "Building chainblocks-core for node.js, disabling Fetch support")
+    set(FETCH_SUPPORTED OFF)
+  endif()
+
   em_link_js_library(chainblocks-core-static blocks/core.js)
 
   target_compile_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
   )
 
+  if(FETCH_SUPPORTED)
+    target_link_options(chainblocks-core-static PUBLIC
+      "SHELL:-s FETCH=1")
+  else()
+    set(NO_HTTP_BLOCKS ON)
+  endif()
+
   target_link_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-s INITIAL_MEMORY=209715200"
-    "SHELL:-s FETCH=1"
-    "SHELL:-s FETCH_SUPPORT_INDEXEDDB=0"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s LLD_REPORT_UNDEFINED"
     "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_chainblocksInterface', '_malloc', '_free', '_emscripten_get_now']\""
@@ -157,6 +168,11 @@ if(EMSCRIPTEN)
 endif()
 
 if(IOS)
+  set(NO_HTTP_BLOCKS ON)
+endif()
+
+if(NO_HTTP_BLOCKS)
+  message(STATUS "Building chainblocks-core without HTTP blocks")
   target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_NO_HTTP_BLOCKS=1)
 endif()
 
