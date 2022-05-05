@@ -31,6 +31,12 @@ extern "C" {
 }
 #endif
 
+#ifndef WEBGPU_NATIVE
+#define WGPUMipmapFilterMode_Nearest WGPUFilterMode_Nearest
+#define WGPUMipmapFilterMode_Linear WGPUFilterMode_Linear
+#define WGPUMipmapFilterMode WGPUFilterMode
+#endif
+
 struct WGPUAdapterReceiverData {
   bool completed = false;
   WGPURequestAdapterStatus status;

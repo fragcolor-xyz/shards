@@ -15,6 +15,7 @@
 
 namespace gfx {
 
+#ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
 #if GFX_WINDOWS
   return WGPUBackendType_D3D12;
@@ -28,6 +29,7 @@ static WGPUBackendType getDefaultWgpuBackendType() {
 #error "No graphics backend defined for platform"
 #endif
 }
+#endif
 
 struct ContextMainOutput {
   Window *window{};
