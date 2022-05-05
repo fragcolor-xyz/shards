@@ -445,14 +445,13 @@ jobs:
           RUSTUP_USE_CURL: 1
         run: |
           rustup toolchain install nightly
-          rustup +nightly target add x86_64-pc-windows-gnu
+          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
       - name: Set up rust (32-bits)
         env:
           RUSTUP_USE_CURL: 1
         if: ${{ matrix.bitness == '32bits' }}
         shell: bash
         run: |
-          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
           # Native libClang required for rust bindgen
           # choco exit with code 1 after successful install
           choco install -y --force llvm || exit 0
