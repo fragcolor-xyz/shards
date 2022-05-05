@@ -434,10 +434,6 @@ jobs:
             arch: x86_64
             artifact: cbl-win64
     steps:
-      - name: Change git line endings
-        run: |
-          git config --system core.autocrlf false
-          git config --system core.eol lf
       - name: Checkout
         uses: actions/checkout@v2
         with:
