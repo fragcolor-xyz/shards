@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_SHADER_BLOCKS
+#define GFX_SHADER_BLOCKS
 
 #include "block.hpp"
 #include "generator.hpp"
@@ -256,3 +257,5 @@ template <typename T, typename... TArgs> inline auto makeBlock(TArgs &&...args) 
 } // namespace blocks
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_BLOCKS

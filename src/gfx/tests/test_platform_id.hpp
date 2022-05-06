@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_TESTS_TEST_PLATFORM_ID
+#define GFX_TESTS_TEST_PLATFORM_ID
+
 #include "gfx/context.hpp"
 #include <string>
 
@@ -10,3 +12,5 @@ struct TestPlatformId {
   operator std::string() const;
 };
 } // namespace gfx
+
+#endif // GFX_TESTS_TEST_PLATFORM_ID

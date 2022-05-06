@@ -1,4 +1,6 @@
-#pragma once
+#ifndef EXTRA_GFX_CHAINBLOCKS_UTILS
+#define EXTRA_GFX_CHAINBLOCKS_UTILS
+
 #include <chainblocks.hpp>
 #include <foundation.hpp>
 
@@ -19,3 +21,5 @@ inline bool getFromTable(CBContext *cbContext, const CBTable &table, const char 
   return false;
 }
 } // namespace gfx
+
+#endif // EXTRA_GFX_CHAINBLOCKS_UTILS

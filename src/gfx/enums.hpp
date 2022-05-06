@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_ENUMS
+#define GFX_ENUMS
 
 #include "gfx_wgpu.hpp"
 #include <string_view>
@@ -18,3 +19,5 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
 WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type);
 
 } // namespace gfx
+
+#endif // GFX_ENUMS

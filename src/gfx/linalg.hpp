@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_LINALG
+#define GFX_LINALG
 
 #include <linalg/linalg.h>
 
@@ -13,3 +14,5 @@ inline void packFloat4x4(const float4x4 &mat, float *dst) {
 }
 
 } // namespace gfx
+
+#endif // GFX_LINALG

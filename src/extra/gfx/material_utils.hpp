@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_MATERIAL_UTILS
+#define CB_EXTRA_GFX_MATERIAL_UTILS
+
 #include "chainblocks_types.hpp"
 #include <chainblocks.hpp>
 #include <foundation.hpp>
@@ -104,3 +106,5 @@ inline void validateShaderParamsType(CBTypeInfo &type) {
   }
 }
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_MATERIAL_UTILS

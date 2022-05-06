@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_VIEW_TEXTURE
+#define GFX_VIEW_TEXTURE
+
 #include "context_data.hpp"
 #include "gfx_wgpu.hpp"
 #include "linalg.hpp"
@@ -59,3 +61,5 @@ public:
 };
 
 } // namespace gfx
+
+#endif // GFX_VIEW_TEXTURE

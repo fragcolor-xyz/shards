@@ -11,7 +11,9 @@
 // backends you need. If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp. Read
 // online: https://github.com/ocornut/imgui/tree/master/docs
 
-#pragma once
+#ifndef GFX_IMGUI_IMGUI_IMPL_WGPU
+#define GFX_IMGUI_IMGUI_IMPL_WGPU
+
 #include "imgui.h" // IMGUI_IMPL_API
 #include <gfx/gfx_wgpu.hpp>
 
@@ -23,3 +25,5 @@ IMGUI_IMPL_API void ImGui_ImplWGPU_RenderDrawData(ImDrawData *draw_data, WGPURen
 // Use if you want to reset your rendering device without losing Dear ImGui state.
 IMGUI_IMPL_API void ImGui_ImplWGPU_InvalidateDeviceObjects();
 IMGUI_IMPL_API bool ImGui_ImplWGPU_CreateDeviceObjects();
+
+#endif // GFX_IMGUI_IMGUI_IMPL_WGPU

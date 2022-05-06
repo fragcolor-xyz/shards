@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_TEXTURE_PLACEHOLDER
+#define GFX_TEXTURE_PLACEHOLDER
+
 #include "context.hpp"
 #include "context_data.hpp"
 #include "gfx_wgpu.hpp"
@@ -83,3 +85,5 @@ protected:
   }
 };
 } // namespace gfx
+
+#endif // GFX_TEXTURE_PLACEHOLDER

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_ISB
+#define GFX_ISB
+
 #include <functional>
 #include <stdint.h>
 #include <string.h>
@@ -66,3 +68,5 @@ public:
 };
 
 } // namespace gfx
+
+#endif // GFX_ISB

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_PLATFORM_SURFACE
+#define GFX_PLATFORM_SURFACE
 
 #include "SDL_metal.h"
 #include "gfx_wgpu.hpp"
@@ -71,3 +72,5 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   }
 };
 } // namespace gfx
+
+#endif // GFX_PLATFORM_SURFACE

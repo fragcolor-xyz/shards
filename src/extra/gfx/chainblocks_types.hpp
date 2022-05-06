@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_CHAINBLOCKS_TYPES
+#define CB_EXTRA_GFX_CHAINBLOCKS_TYPES
+
 #include <chainblocks.hpp>
 #include <common_types.hpp>
 #include <foundation.hpp>
@@ -101,3 +103,5 @@ struct Container {
 using Types = detail::Container;
 
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_CHAINBLOCKS_TYPES

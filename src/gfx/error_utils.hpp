@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_ERROR_UTILS
+#define GFX_ERROR_UTILS
 
 #include <spdlog/fmt/fmt.h>
 #include <stdexcept>
@@ -8,3 +9,5 @@ template <typename... TArgs> std::runtime_error formatException(const char *form
   return std::runtime_error(fmt::format(format, args...));
 }
 } // namespace gfx
+
+#endif // GFX_ERROR_UTILS

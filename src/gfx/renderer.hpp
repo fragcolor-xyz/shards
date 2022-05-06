@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_RENDERER
+#define GFX_RENDERER
+
 #include "fwd.hpp"
 #include "gfx_wgpu.hpp"
 #include "linalg.hpp"
@@ -33,3 +35,5 @@ public:
 };
 
 } // namespace gfx
+
+#endif // GFX_RENDERER

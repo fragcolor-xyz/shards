@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_GEOM
+#define GFX_GEOM
+
 #include "linalg.hpp"
 #include "math.hpp"
 #include "mesh.hpp"
@@ -67,3 +69,5 @@ struct CubeGenerator : public GeneratorBase {
 
 } // namespace geom
 } // namespace gfx
+
+#endif // GFX_GEOM

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_WINDOW
+#define GFX_WINDOW
 
 #include "linalg.hpp"
 #include <string>
@@ -34,3 +35,5 @@ struct Window {
   ~Window();
 };
 }; // namespace gfx
+
+#endif // GFX_WINDOW

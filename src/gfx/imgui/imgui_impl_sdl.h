@@ -18,7 +18,9 @@
 // backends you need. If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp. Read
 // online: https://github.com/ocornut/imgui/tree/master/docs
 
-#pragma once
+#ifndef GFX_IMGUI_IMGUI_IMPL_SDL
+#define GFX_IMGUI_IMGUI_IMPL_SDL
+
 #include "imgui.h" // IMGUI_IMPL_API
 
 struct SDL_Window;
@@ -33,3 +35,5 @@ IMGUI_IMPL_API bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event *event);
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 static inline void ImGui_ImplSDL2_NewFrame(SDL_Window *) { ImGui_ImplSDL2_NewFrame(); } // 1.84: removed unnecessary parameter
 #endif
+
+#endif // GFX_IMGUI_IMGUI_IMPL_SDL

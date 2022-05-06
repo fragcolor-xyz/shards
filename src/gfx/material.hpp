@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_MATERIAL
+#define GFX_MATERIAL
 
 #include "fwd.hpp"
 #include "params.hpp"
@@ -39,3 +40,5 @@ public:
 };
 
 } // namespace gfx
+
+#endif // GFX_MATERIAL

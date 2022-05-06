@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_SHADER_GENERATOR
+#define GFX_SHADER_GENERATOR
 
 #include "block.hpp"
 #include "entry_point.hpp"
@@ -75,3 +76,5 @@ struct Generator {
 };
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_GENERATOR

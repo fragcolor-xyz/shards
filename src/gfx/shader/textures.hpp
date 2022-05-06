@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_SHADER_TEXTURES
+#define GFX_SHADER_TEXTURES
+
 #include "fwd.hpp"
 #include <map>
 #include <vector>
@@ -40,3 +42,5 @@ public:
 };
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_TEXTURES

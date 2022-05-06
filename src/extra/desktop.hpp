@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#pragma once
+#ifndef CB_EXTRA_DESKTOP
+#define CB_EXTRA_DESKTOP
 
 #include "blocks/shared.hpp"
 #include "runtime.hpp"
@@ -269,3 +270,5 @@ struct LastInputBase {
   static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::FloatType; }
 };
 }; // namespace Desktop
+
+#endif // CB_EXTRA_DESKTOP

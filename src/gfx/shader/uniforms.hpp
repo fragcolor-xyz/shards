@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_SHADER_UNIFORMS
+#define GFX_SHADER_UNIFORMS
 
 #include "../params.hpp"
 #include "fwd.hpp"
@@ -73,3 +74,5 @@ private:
 };
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_UNIFORMS

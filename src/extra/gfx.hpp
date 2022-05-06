@@ -1,3 +1,6 @@
+#ifndef CB_EXTRA_GFX
+#define CB_EXTRA_GFX
+
 #include "gfx/chainblocks_types.hpp"
 #include <SDL_events.h>
 #include <chainblocks.hpp>
@@ -69,3 +72,5 @@ struct BaseConsumer : public Base {
   CBTypeInfo compose(const CBInstanceData &data) { return composeCheckMainThread(data); }
 };
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX

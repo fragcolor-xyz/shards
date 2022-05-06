@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_FWD
+#define GFX_FWD
 
 namespace gfx {
 
@@ -25,3 +26,5 @@ struct Texture;
 typedef std::shared_ptr<Texture> TexturePtr;
 
 } // namespace gfx
+
+#endif // GFX_FWD

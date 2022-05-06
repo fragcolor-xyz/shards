@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#pragma once
+#ifndef CB_CORE_BLOCKS_CORE
+#define CB_CORE_BLOCKS_CORE
 
 #include "../blocks_macros.hpp"
 // circular warning this is self inclusive on purpose
@@ -3279,3 +3280,5 @@ RUNTIME_CORE_BLOCK_TYPE(DropFront);
 RUNTIME_CORE_BLOCK_TYPE(Count);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks
+
+#endif // CB_CORE_BLOCKS_CORE

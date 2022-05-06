@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_IMGUI_IMGUI
+#define GFX_IMGUI_IMGUI
+
 #include <gfx/context_data.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/linalg.hpp>
@@ -34,3 +36,5 @@ private:
 };
 
 } // namespace gfx
+
+#endif // GFX_IMGUI_IMGUI

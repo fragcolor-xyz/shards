@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_RUNTIME_HPP
-#define CB_RUNTIME_HPP
+#ifndef CB_CORE_RUNTIME
+#define CB_CORE_RUNTIME
 
 // must go first
 #if _WIN32
@@ -1636,4 +1636,4 @@ template <typename FUNC, typename CANCELLATION> inline void await(CBContext *con
 }
 } // namespace chainblocks
 
-#endif
+#endif // CB_CORE_RUNTIME

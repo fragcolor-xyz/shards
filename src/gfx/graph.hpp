@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_GRAPH
+#define GFX_GRAPH
 
 #include <cassert>
 #include <deque>
@@ -80,3 +81,5 @@ bool topologicalSort(const Graph &graph, std::vector<size_t> &sorted) {
 }
 
 } // namespace graph
+
+#endif // GFX_GRAPH

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_HASHERXXH128
+#define GFX_HASHERXXH128
 
 #include "hash.hpp"
 #include "linalg.hpp"
@@ -81,3 +82,5 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
   template <typename TVal> static constexpr auto canVisit(char) -> bool { return false; }
 };
 } // namespace gfx
+
+#endif // GFX_HASHERXXH128

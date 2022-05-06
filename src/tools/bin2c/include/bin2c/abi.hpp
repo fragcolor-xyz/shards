@@ -1,4 +1,6 @@
-#pragma once
+#ifndef BIN2C_ABI
+#define BIN2C_ABI
+
 #include <stdint.h>
 
 namespace bin2c {
@@ -13,3 +15,5 @@ struct File {
   uint8_t data[1];
 };
 } // namespace bin2c
+
+#endif // BIN2C_ABI

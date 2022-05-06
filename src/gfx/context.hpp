@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_CONTEXT
+#define GFX_CONTEXT
 
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
@@ -109,3 +110,5 @@ private:
 };
 
 } // namespace gfx
+
+#endif // GFX_CONTEXT

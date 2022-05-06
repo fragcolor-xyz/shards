@@ -1,5 +1,5 @@
-
-#pragma once
+#ifndef GFX_MESH
+#define GFX_MESH
 
 #include "context_data.hpp"
 #include "enums.hpp"
@@ -86,3 +86,5 @@ protected:
 };
 
 } // namespace gfx
+
+#endif // GFX_MESH

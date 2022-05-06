@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_FEATURE
+#define GFX_FEATURE
+
 #include "enums.hpp"
 #include "fwd.hpp"
 #include "linalg.hpp"
@@ -191,3 +193,5 @@ struct Feature {
 typedef std::shared_ptr<Feature> FeaturePtr;
 
 } // namespace gfx
+
+#endif // GFX_FEATURE

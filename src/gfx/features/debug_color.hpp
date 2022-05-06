@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_FEATURES_DEBUG_COLOR
+#define GFX_FEATURES_DEBUG_COLOR
 
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
@@ -54,3 +55,5 @@ struct DebugColor {
 
 } // namespace features
 } // namespace gfx
+
+#endif // GFX_FEATURES_DEBUG_COLOR

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_CONTEXT_DATA
+#define GFX_CONTEXT_DATA
+
 #include <cassert>
 #include <memory>
 
@@ -57,3 +59,5 @@ protected:
 };
 
 } // namespace gfx
+
+#endif // GFX_CONTEXT_DATA

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_TESTS_TEST_DATA
+#define GFX_TESTS_TEST_DATA
+
 #include "test_platform_id.hpp"
 #include <gfx/filesystem.hpp>
 #include <gfx/linalg.hpp>
@@ -51,6 +53,9 @@ public:
 private:
   bool loadFrame(TestFrame &frame, const char *filePath);
   void storeFrame(const TestFrame &frame, const char *filePath);
-  void writeRejectionDetails(const char *id, const TestFrame &frame, const TestFrame &referenceFrame, const CompareRejection &rej);
+  void writeRejectionDetails(const char *id, const TestFrame &frame, const TestFrame &referenceFrame,
+                             const CompareRejection &rej);
 };
 } // namespace gfx
+
+#endif // GFX_TESTS_TEST_DATA

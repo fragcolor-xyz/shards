@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#pragma once
+#ifndef CB_EXTRA_GIZMO
+#define CB_EXTRA_GIZMO
 
 #include "./bgfx.hpp"
 #include "blocks/shared.hpp"
@@ -53,3 +54,5 @@ struct Enums {
 
 } // namespace Gizmo
 } // namespace chainblocks
+
+#endif // CB_EXTRA_GIZMO

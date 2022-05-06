@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_MATH
+#define GFX_MATH
 
 namespace gfx {
 constexpr float pi = 3.14159265359f;
@@ -11,3 +12,5 @@ inline float degToRad(float v) { return v * degToRadFactor; }
 constexpr float radToDegFactor = (180.0f / pi);
 inline float radToDeg(float v) { return v * radToDegFactor; }
 } // namespace gfx
+
+#endif // GFX_MATH

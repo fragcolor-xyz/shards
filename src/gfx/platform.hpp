@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_PLATFORM
+#define GFX_PLATFORM
 
 #ifndef GFX_DEBUG
 #ifdef NDEBUG
@@ -41,3 +42,5 @@
 #ifndef GFX_EMSCRIPTEN
 #define GFX_EMSCRIPTEN 0
 #endif
+
+#endif // GFX_PLATFORM

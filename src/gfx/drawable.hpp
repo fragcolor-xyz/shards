@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_DRAWABLE
+#define GFX_DRAWABLE
+
 #include "fwd.hpp"
 #include "linalg.hpp"
 #include "linalg/linalg.h"
@@ -29,3 +31,5 @@ public:
 };
 
 } // namespace gfx
+
+#endif // GFX_DRAWABLE

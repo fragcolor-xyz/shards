@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_SHADER_BLOCK
+#define GFX_SHADER_BLOCK
+
 #include <memory>
 #include <string>
 
@@ -43,3 +45,5 @@ template <typename T> struct ConvertToBlock<T, typename std::enable_if<!std::is_
 } // namespace blocks
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_BLOCK

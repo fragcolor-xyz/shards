@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_UTILS
+#define GFX_UTILS
 
 #include <cinttypes>
 #include <string>
@@ -9,3 +10,5 @@ namespace gfx {
 bool getEnvFlag(const char *name);
 
 } // namespace gfx
+
+#endif // GFX_UTILS

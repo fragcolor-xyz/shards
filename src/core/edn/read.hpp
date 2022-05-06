@@ -199,7 +199,9 @@ template <class T> inline std::size_t hash(T list) {
 
 inline std::size_t hash(FormWrapperSet set) {
   std::vector<std::size_t> hashes;
-  BOOST_FOREACH (auto &item, set) { hashes.push_back(hash(item)); }
+  BOOST_FOREACH (auto &item, set) {
+    hashes.push_back(hash(item));
+  }
 
   std::sort(hashes.begin(), hashes.end());
 

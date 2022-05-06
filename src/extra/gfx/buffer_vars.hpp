@@ -1,3 +1,6 @@
+#ifndef CB_EXTRA_GFX_BUFFER_VARS
+#define CB_EXTRA_GFX_BUFFER_VARS
+
 #include <chainblocks.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/mesh.hpp>
@@ -182,3 +185,5 @@ template <typename Appender> inline void packIntoIndexBuffer(Appender &output, I
   }
 }
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_BUFFER_VARS

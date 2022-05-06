@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_GFX_WGPU
+#define GFX_GFX_WGPU
 
 #ifdef WEBGPU_NATIVE
 #define wgpuBufferRelease(...) wgpuBufferDrop(__VA_ARGS__)
@@ -77,3 +78,5 @@ WGPULimits wgpuGetUndefinedLimits();
 
 // workaround for emscripten not implementing limits
 void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
+
+#endif // GFX_GFX_WGPU

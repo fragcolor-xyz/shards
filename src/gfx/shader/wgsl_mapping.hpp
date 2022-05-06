@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_SHADER_WGSL_MAPPING
+#define GFX_SHADER_WGSL_MAPPING
+
 #include "types.hpp"
 #include <cassert>
 #include <gfx/params.hpp>
@@ -103,3 +105,5 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
 }
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_WGSL_MAPPING

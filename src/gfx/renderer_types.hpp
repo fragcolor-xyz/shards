@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_RENDERER_TYPES
+#define GFX_RENDERER_TYPES
+
 #include "gfx_wgpu.hpp"
 #include <cassert>
 #include <vector>
@@ -132,3 +134,5 @@ struct DynamicWGPUBufferPool {
 };
 
 } // namespace gfx
+
+#endif // GFX_RENDERER_TYPES

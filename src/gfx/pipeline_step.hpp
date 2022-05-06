@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_PIPELINE_STEP
+#define GFX_PIPELINE_STEP
+
 #include "fwd.hpp"
 #include <vector>
 
@@ -22,3 +24,5 @@ typedef std::vector<PipelineStepPtr> PipelineSteps;
 
 PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step);
 } // namespace gfx
+
+#endif // GFX_PIPELINE_STEP

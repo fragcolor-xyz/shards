@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+#ifndef CB_CORE_BLOCKS_GENETIC
+#define CB_CORE_BLOCKS_GENETIC
+
 #include "blockwrapper.hpp"
 #include "chainblocks.h"
 #include "chainblocks.hpp"
@@ -348,7 +351,7 @@ struct Evolve {
                   // reset fitness
                   i->fitness = -std::numeric_limits<float>::max();
                   // avoid scheduling if errors
-                  if(!i->node->errors().empty())
+                  if (!i->node->errors().empty())
                     return;
                   // compute the fitness
                   TickObserver obs{*i};
@@ -406,7 +409,7 @@ struct Evolve {
               // reset fitness
               i->fitness = -std::numeric_limits<float>::max();
               // avoid scheduling if errors
-              if(!i->node->errors().empty())
+              if (!i->node->errors().empty())
                 return;
 
               // compute the fitness
@@ -1172,3 +1175,5 @@ void registerBlocks() {
 }
 } // namespace Genetic
 } // namespace chainblocks
+
+#endif // CB_CORE_BLOCKS_GENETIC

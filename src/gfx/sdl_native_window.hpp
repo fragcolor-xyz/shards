@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_SDL_NATIVE_WINDOW
+#define GFX_SDL_NATIVE_WINDOW
 
 #include <SDL.h>
 
@@ -49,3 +50,5 @@ inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
   return nullptr;
 #endif
 }
+
+#endif // GFX_SDL_NATIVE_WINDOW

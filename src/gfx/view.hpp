@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_VIEW
+#define GFX_VIEW
 
 #include "math.hpp"
 #include "types.hpp"
@@ -53,3 +54,5 @@ public:
 };
 
 } // namespace gfx
+
+#endif // GFX_VIEW

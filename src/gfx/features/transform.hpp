@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_FEATURES_TRANSFORM
+#define GFX_FEATURES_TRANSFORM
 
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
@@ -39,3 +40,5 @@ struct Transform {
 
 } // namespace features
 } // namespace gfx
+
+#endif // GFX_FEATURES_TRANSFORM

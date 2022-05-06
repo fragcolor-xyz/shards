@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_STRINGS
+#define GFX_STRINGS
 
 #include <algorithm>
 #include <cctype>
@@ -16,3 +17,5 @@ inline bool containsCaseInsensitive(const std::string &str, const std::string &t
 }
 
 } // namespace gfx
+
+#endif // GFX_STRINGS

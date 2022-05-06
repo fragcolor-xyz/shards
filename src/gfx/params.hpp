@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_PARAMS
+#define GFX_PARAMS
+
 #include "fwd.hpp"
 #include "linalg.hpp"
 #include <memory>
@@ -55,3 +57,5 @@ struct DrawData : public IDrawDataCollector {
 };
 
 } // namespace gfx
+
+#endif // GFX_PARAMS

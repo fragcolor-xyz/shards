@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#pragma once
+#ifndef CB_EXTRA_IMGUI
+#define CB_EXTRA_IMGUI
 
 #include "foundation.hpp"
 #include <gfx/imgui/imgui.hpp>
@@ -81,3 +82,5 @@ struct Enums {
 };
 }; // namespace ImGui
 }; // namespace chainblocks
+
+#endif // CB_EXTRA_IMGUI

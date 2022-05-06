@@ -475,8 +475,8 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   g_resources.ImageBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block1_layout_desc);
 
   WGPUBindGroupLayout bind_group_layouts[2] = {
-    g_resources.CommonBindGroupLayout,
-    g_resources.ImageBindGroupLayout,
+      g_resources.CommonBindGroupLayout,
+      g_resources.ImageBindGroupLayout,
   };
 
   WGPUPipelineLayoutDescriptor pipeline_layout_desc{};
@@ -563,7 +563,8 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   g_resources.CommonBindGroup = wgpuDeviceCreateBindGroup(g_wgpuDevice, &common_bg_descriptor);
 
   g_resources.ImageBindGroup = ImGui_ImplWGPU_CreateImageBindGroup(g_resources.ImageBindGroupLayout, g_resources.FontTextureView);
-  g_resources.ImageBindGroups.SetVoidPtr(ImHashData(&g_resources.FontTextureView, sizeof(ImTextureID)), g_resources.ImageBindGroup);
+  g_resources.ImageBindGroups.SetVoidPtr(ImHashData(&g_resources.FontTextureView, sizeof(ImTextureID)),
+                                         g_resources.ImageBindGroup);
 
   return true;
 }

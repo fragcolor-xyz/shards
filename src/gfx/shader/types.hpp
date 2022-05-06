@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_SHADER_TYPES
+#define GFX_SHADER_TYPES
+
 #include "fwd.hpp"
 #include <gfx/enums.hpp>
 #include <optional>
@@ -45,3 +47,5 @@ struct TextureDefinition {
 
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_TYPES

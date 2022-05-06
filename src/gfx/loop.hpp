@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_LOOP
+#define GFX_LOOP
+
 #include <chrono>
 
 namespace gfx {
@@ -17,3 +19,5 @@ struct Loop {
   float getAbsoluteTime() const;
 };
 } // namespace gfx
+
+#endif // GFX_LOOP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_SHADER_ENTRY_POINT
+#define GFX_SHADER_ENTRY_POINT
 
 #include "block.hpp"
 #include <gfx/enums.hpp>
@@ -48,3 +49,5 @@ struct EntryPoint {
 
 } // namespace shader
 } // namespace gfx
+
+#endif // GFX_SHADER_ENTRY_POINT

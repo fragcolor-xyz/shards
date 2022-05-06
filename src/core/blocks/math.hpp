@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#pragma once
-
 // TODO, remove most of C macros, use more templates
+
+#ifndef CB_CORE_BLOCKS_MATH
+#define CB_CORE_BLOCKS_MATH
 
 #include "chainblocks.h"
 #include "chainblocks.hpp"
@@ -791,3 +792,5 @@ inline void registerBlocks() {
 
 }; // namespace Math
 }; // namespace chainblocks
+
+#endif // CB_CORE_BLOCKS_MATH

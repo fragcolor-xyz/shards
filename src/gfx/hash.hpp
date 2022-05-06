@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_HASH
+#define GFX_HASH
 
 #include <functional>
 #include <stdint.h>
@@ -24,3 +25,5 @@ template <> struct hash<gfx::Hash128> {
   size_t operator()(const gfx::Hash128 &h) const { return size_t(h.low); }
 };
 } // namespace std
+
+#endif // GFX_HASH

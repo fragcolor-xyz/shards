@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GFX_FEATURES_BASE_COLOR
+#define GFX_FEATURES_BASE_COLOR
 
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
@@ -64,3 +65,5 @@ struct BaseColor {
 
 } // namespace features
 } // namespace gfx
+
+#endif // GFX_FEATURES_BASE_COLOR

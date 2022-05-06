@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_MOVING_AVERAGE
+#define GFX_MOVING_AVERAGE
+
 #include <vector>
 
 namespace gfx {
@@ -48,3 +50,5 @@ float MovingAverage::getAverage() const {
 }
 
 } // namespace gfx
+
+#endif // GFX_MOVING_AVERAGE

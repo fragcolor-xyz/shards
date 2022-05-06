@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GFX_TEXTURE
+#define GFX_TEXTURE
+
 #include "context_data.hpp"
 #include "gfx_wgpu.hpp"
 #include "isb.hpp"
@@ -82,3 +84,5 @@ protected:
 };
 
 } // namespace gfx
+
+#endif // GFX_TEXTURE

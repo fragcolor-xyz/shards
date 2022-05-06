@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_CORE_HPP
-#define CB_CORE_HPP
+#ifndef CB_CORE_FOUNDATION
+#define CB_CORE_FOUNDATION
 
 // must go first
 #if _WIN32
@@ -1307,4 +1307,4 @@ struct VariableResolver {
 };
 }; // namespace chainblocks
 
-#endif
+#endif // CB_CORE_FOUNDATION
