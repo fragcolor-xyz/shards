@@ -65,7 +65,8 @@ jobs:
       # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          # Node 18.1.0 has a change in fetch() that causes it to fail loading the wasm module
+          node-version: 18.0.0
       - name: Test (st)
         if: ${{ matrix.threading == 'st' }}
         run: |
