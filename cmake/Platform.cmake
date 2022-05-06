@@ -57,12 +57,10 @@ if(EMSCRIPTEN)
     add_link_options(-pthread)
   endif()
 
-  if(EMSCRIPTEN_IDBFS)
-    add_link_options(-lidbfs.js)
-  endif()
-
-  if(EMSCRIPTEN_NODEFS)
+  if(NODEJS)
     add_link_options(-lnodefs.js)
+  else()
+    add_link_options(-lidbfs.js)
   endif()
 endif()
 
