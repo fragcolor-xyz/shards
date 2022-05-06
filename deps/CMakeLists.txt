@@ -19,8 +19,8 @@ if(NOT EMSCRIPTEN)
   message(STATUS "Fetching libressl")
   FetchContent_Declare(
     libressl
-    URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.5.2.tar.gz
-    URL_HASH SHA256=56feab8e21c3fa6549f8b7d7511658b8e98518162838a795314732654adf3e5f
+    URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+    URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
   )
   FetchContent_MakeAvailable(libressl)
   message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
