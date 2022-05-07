@@ -25,6 +25,7 @@ struct CopyBuffer {
 
 enum class ContextState {
   Uninitialized,
+  Requesting,
   Ok,
   Incomplete,
 };
@@ -37,8 +38,12 @@ enum class ContextFrameState {
 struct Window;
 struct ContextData;
 struct ContextMainOutput;
+struct DeviceRequest;
+struct AdapterRequest;
 struct Context {
 private:
+  std::shared_ptr<DeviceRequest> deviceRequest;
+  std::shared_ptr<AdapterRequest> adapterRequest;
   std::shared_ptr<ContextMainOutput> mainOutput;
   ContextState state = ContextState::Uninitialized;
   ContextFrameState frameState = ContextFrameState::Ok;
@@ -65,6 +70,13 @@ public:
   void release();
   bool isInitialized() const { return state != ContextState::Uninitialized; }
 
+  // Checks if the the context is ready to use
+  // while requesting a device this returns false
+  bool isReady() const { return state != ContextState::Requesting; }
+
+  // While isReady returns false, this ticks device/adapter initialization
+  void tickRequesting();
+
   Window &getWindow();
   void resizeMainOutputConditional(const int2 &newSize);
   int2 getMainOutputSize() const;
@@ -73,7 +85,7 @@ public:
   bool isHeadless() const;
 
   // Returns when a frame can be rendered
-  // Returns false while device is lost an can not be reacquired
+  // Returns false while device is lost an can not be rerequestd
   bool beginFrame();
   void endFrame();
   void sync();
@@ -92,14 +104,15 @@ public:
 private:
   void deviceLost();
 
-  void acquireDevice();
-  bool tryAcquireDevice();
+  void deviceObtained();
+
+  void requestAdapter();
+  void releaseAdapter();
+
+  void requestDevice();
   void releaseDevice();
 
   WGPUSurface getOrCreateSurface();
-
-  void createAdapter();
-  void releaseAdapter();
 
   void initCommon();
 

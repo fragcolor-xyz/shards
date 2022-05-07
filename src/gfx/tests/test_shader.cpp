@@ -1,9 +1,11 @@
+#include "test_context.hpp"
 #include <catch2/catch_all.hpp>
 #include <cctype>
 #include <gfx/context.hpp>
 #include <gfx/shader/blocks.hpp>
 #include <gfx/shader/generator.hpp>
 #include <spdlog/spdlog.h>
+
 
 using namespace gfx;
 using namespace gfx::shader;
@@ -111,8 +113,7 @@ TEST_CASE("Shader basic", "[Shader]") {
       MeshVertexAttribute("texcoord1", 3),
   };
 
-  Context context;
-  context.init();
+  std::shared_ptr<Context> context = createTestContext();
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
   viewLayoutBuilder.push("viewProj", ShaderParamType::Float4x4);
@@ -144,7 +145,7 @@ TEST_CASE("Shader basic", "[Shader]") {
   GeneratorOutput::dumpErrors(output);
   CHECK(output.errors.empty());
 
-  CHECK(validateShaderModule(context, output.wgslSource));
+  CHECK(validateShaderModule(*context.get(), output.wgslSource));
 }
 
 TEST_CASE("Shader globals & dependencies", "[Shader]") {
@@ -153,8 +154,7 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
       MeshVertexAttribute("position", 3),
   };
 
-  Context context;
-  context.init();
+  std::shared_ptr<Context> context = createTestContext();
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
   viewLayoutBuilder.push("viewProj", ShaderParamType::Float4x4);
@@ -190,7 +190,7 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
   GeneratorOutput::dumpErrors(output);
   CHECK(output.errors.empty());
 
-  CHECK(validateShaderModule(context, output.wgslSource));
+  CHECK(validateShaderModule(*context.get(), output.wgslSource));
 }
 
 void interpolateTexcoord(GeneratorContext &context) {}
@@ -202,8 +202,7 @@ TEST_CASE("Shader textures", "[Shader]") {
       MeshVertexAttribute("texCoord0", 2),
   };
 
-  Context context;
-  context.init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
   auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
@@ -225,5 +224,5 @@ TEST_CASE("Shader textures", "[Shader]") {
   GeneratorOutput::dumpErrors(output);
   CHECK(output.errors.empty());
 
-  CHECK(validateShaderModule(context, output.wgslSource));
+  CHECK(validateShaderModule(*context.get(), output.wgslSource));
 }

@@ -1,3 +1,4 @@
+#include "test_context.hpp"
 #include "test_data.hpp"
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
@@ -12,6 +13,7 @@
 #include <gfx/texture_file/texture_file.hpp>
 #include <gfx/view.hpp>
 #include <spdlog/fmt/fmt.h>
+
 
 using namespace gfx;
 
@@ -201,8 +203,7 @@ PipelineSteps createTestPipelineSteps() {
 }
 
 TEST_CASE("Renderer capture", "[Renderer]") {
-  std::shared_ptr<Context> context = std::make_shared<Context>();
-  context->init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
   headlessRenderer->createRenderTarget(int2(1280, 720));
@@ -225,8 +226,7 @@ TEST_CASE("Renderer capture", "[Renderer]") {
 }
 
 TEST_CASE("Multiple vertex formats", "[Renderer]") {
-  std::shared_ptr<Context> context = std::make_shared<Context>();
-  context->init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
   headlessRenderer->createRenderTarget(int2(1280, 720));
@@ -266,8 +266,7 @@ TEST_CASE("Multiple vertex formats", "[Renderer]") {
 }
 
 TEST_CASE("Pipeline states", "[Renderer][!mayfail]") {
-  std::shared_ptr<Context> context = std::make_shared<Context>();
-  context->init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
   headlessRenderer->createRenderTarget(int2(512, 512));
@@ -278,11 +277,11 @@ TEST_CASE("Pipeline states", "[Renderer][!mayfail]") {
 
   auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
   for (auto &vert : redSphereVerts)
-    vert.setColor(float4(1, 1, 0, 0.5));
+    vert.setColor(float4(1, 0, 0, 0.5));
 
   auto greenSphereVerts = convertVertices<VertexPC>(sphere.vertices);
   for (auto &vert : greenSphereVerts)
-    vert.setColor(float4(0, 1, 1, 0.5));
+    vert.setColor(float4(0, 1, 0, 0.5));
 
   MeshPtr redSphereMesh = createMesh(redSphereVerts, sphere.indices);
   MeshPtr greenSphereMesh = createMesh(greenSphereVerts, sphere.indices);
@@ -337,8 +336,7 @@ TEST_CASE("Pipeline states", "[Renderer][!mayfail]") {
 }
 
 TEST_CASE("Shader parameters", "[Renderer]") {
-  std::shared_ptr<Context> context = std::make_shared<Context>();
-  context->init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
   headlessRenderer->createRenderTarget(int2(1280, 720));
@@ -394,8 +392,7 @@ TEST_CASE("Shader parameters", "[Renderer]") {
 }
 
 TEST_CASE("Reference tracking", "[Renderer]") {
-  std::shared_ptr<Context> context = std::make_shared<Context>();
-  context->init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
   headlessRenderer->createRenderTarget(int2(1280, 720));
@@ -440,8 +437,7 @@ TEST_CASE("Reference tracking", "[Renderer]") {
 }
 
 TEST_CASE("Textures", "[Renderer]") {
-  std::shared_ptr<Context> context = std::make_shared<Context>();
-  context->init();
+  std::shared_ptr<Context> context = createTestContext();
 
   auto headlessRenderer = std::make_shared<HeadlessRenderer>(*context.get());
   headlessRenderer->createRenderTarget(int2(1280, 720));

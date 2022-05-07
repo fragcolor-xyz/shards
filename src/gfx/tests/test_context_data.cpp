@@ -1,6 +1,8 @@
+#include "test_context.hpp"
 #include "test_data.hpp"
 #include <gfx/context.hpp>
 #include <gfx/context_data.hpp>
+
 
 using namespace gfx;
 
@@ -21,14 +23,13 @@ protected:
 };
 
 TEST_CASE("Context data", "[Context]") {
-  gfx::Context context;
-  context.init();
+  std::shared_ptr<Context> context = createTestContext();
 
   SECTION("Weak reference by context") {
     std::weak_ptr<TestContextData> weakTestContextData;
     {
       TestObject a;
-      a.createContextDataConditional(context);
+      a.createContextDataConditional(*context.get());
       weakTestContextData = a.contextData;
 
       CHECK(!weakTestContextData.expired());
@@ -41,11 +42,10 @@ TEST_CASE("Context data", "[Context]") {
 TEST_CASE("Context data releaseContextData", "[Context]") {
   std::shared_ptr<TestContextData> testContextData;
   {
-    gfx::Context context;
-    context.init();
+    std::shared_ptr<Context> context = createTestContext();
 
     TestObject a;
-    a.createContextDataConditional(context);
+    a.createContextDataConditional(*context.get());
     testContextData = a.contextData;
 
     CHECK(testContextData->buffer);

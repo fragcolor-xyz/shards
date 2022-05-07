@@ -15,6 +15,14 @@
 
 namespace gfx {
 
+static inline std::shared_ptr<spdlog::logger> &getLogger() {
+  static std::shared_ptr<spdlog::logger> logger = []() {
+    auto defaultLogger = spdlog::default_logger();
+    return defaultLogger->clone("GFX.Context");
+  }();
+  return logger;
+}
+
 #ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
 #if GFX_WINDOWS
@@ -30,6 +38,56 @@ static WGPUBackendType getDefaultWgpuBackendType() {
 #endif
 }
 #endif
+
+struct AdapterRequest {
+  typedef AdapterRequest Self;
+
+  WGPURequestAdapterStatus status;
+  WGPUAdapter adapter;
+  bool finished{};
+  std::string message;
+
+  static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
+    auto result = std::make_shared<Self>();
+    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
+                               new std::shared_ptr<Self>(result));
+    return result;
+  };
+
+  static void callback(WGPURequestAdapterStatus status, WGPUAdapter adapter, char const *message, std::shared_ptr<Self> *handle) {
+    (*handle)->status = status;
+    (*handle)->adapter = adapter;
+    if (message)
+      (*handle)->message = message;
+    (*handle)->finished = true;
+    delete handle;
+  };
+};
+
+struct DeviceRequest {
+  typedef DeviceRequest Self;
+
+  WGPURequestDeviceStatus status;
+  WGPUDevice device;
+  bool finished{};
+  std::string message;
+
+  static std::shared_ptr<Self> create(WGPUAdapter wgpuAdapter, const WGPUDeviceDescriptor &deviceDesc) {
+    auto result = std::make_shared<Self>();
+    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPURequestDeviceCallback)&Self::callback,
+                             new std::shared_ptr<Self>(result));
+    return result;
+  };
+
+  static void callback(WGPURequestDeviceStatus status, WGPUDevice device, char const *message, std::shared_ptr<Self> *handle) {
+    (*handle)->status = status;
+    (*handle)->device = device;
+    if (message)
+      (*handle)->message = message;
+    (*handle)->finished = true;
+    delete handle;
+  };
+};
 
 struct ContextMainOutput {
   Window *window{};
@@ -67,7 +125,7 @@ struct ContextMainOutput {
     return wgpuWindowSurface;
   }
 
-  bool acquireFrame() {
+  bool requestFrame() {
     assert(!currentView);
     currentView = wgpuSwapChainGetCurrentTextureView(wgpuSwapchain);
 
@@ -79,10 +137,10 @@ struct ContextMainOutput {
 
 #if GFX_EMSCRIPTEN
     auto callback = [](double time, void *userData) -> EM_BOOL {
-      spdlog::debug("Animation frame callback {}", time);
+      getLogger()->debug("Animation frame callback {}", time);
       return true;
     };
-    spdlog::debug("Animation frame queued");
+    getLogger()->debug("Animation frame queued");
     emscripten_request_animation_frame(callback, this);
     emscripten_sleep(0);
 #else
@@ -101,7 +159,7 @@ struct ContextMainOutput {
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
     if (preferredFormat != swapchainFormat) {
-      spdlog::debug("GFX.Context swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
+      getLogger()->debug("swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
       swapchainFormat = preferredFormat;
     }
 
@@ -110,7 +168,7 @@ struct ContextMainOutput {
     assert(wgpuWindowSurface);
     assert(swapchainFormat != WGPUTextureFormat_Undefined);
 
-    spdlog::debug("GFX.Context resized width: {} height: {}", newSize.x, newSize.y);
+    getLogger()->debug("resized width: {} height: {}", newSize.x, newSize.y);
     currentSize = newSize;
 
     releaseSwapchain();
@@ -148,7 +206,7 @@ void Context::init(const ContextCreationOptions &inOptions) {
 }
 
 void Context::release() {
-  spdlog::debug("GFX.Context release");
+  getLogger()->debug("release");
   state = ContextState::Uninitialized;
 
   releaseAdapter();
@@ -220,19 +278,24 @@ void Context::releaseAllContextData() {
 
 bool Context::beginFrame() {
   assert(frameState == ContextFrameState::Ok);
-  assert(state != ContextState::Uninitialized);
+
+  // Automatically request
+  if (state == ContextState::Incomplete) {
+    requestDevice();
+  }
+
+  if (!isReady())
+    tickRequesting();
+
+  if (state != ContextState::Ok)
+    return false;
 
   if (suspended)
     return false;
 
-  if (state == ContextState::Incomplete) {
-    if (!tryAcquireDevice())
-      return false;
-  }
-
   collectContextData();
   if (!isHeadless()) {
-    if (!mainOutput->acquireFrame())
+    if (!mainOutput->requestFrame())
       return false;
   }
 
@@ -276,79 +339,101 @@ void Context::submit(WGPUCommandBuffer cmdBuffer) { wgpuQueueSubmit(wgpuQueue, 1
 
 void Context::deviceLost() {
   if (state != ContextState::Incomplete) {
-    spdlog::debug("Device lost");
+    getLogger()->debug("Device lost");
     state = ContextState::Incomplete;
 
     releaseDevice();
   }
 }
 
-void Context::acquireDevice() {
-  assert(!wgpuDevice);
-  assert(!wgpuQueue);
-
+void Context::tickRequesting() {
+  getLogger()->debug("tickRequesting");
   try {
-    if (!wgpuAdapter) {
-      createAdapter();
-    }
+    if (adapterRequest) {
+      if (adapterRequest->finished) {
+        if (adapterRequest->status != WGPURequestAdapterStatus_Success) {
+          throw formatException("Failed to create adapter: {} {}", magic_enum::enum_name(adapterRequest->status),
+                                adapterRequest->message);
+        }
 
-    state = ContextState::Ok;
+        wgpuAdapter = adapterRequest->adapter;
+        adapterRequest.reset();
 
-    WGPURequiredLimits requiredLimits{
-        .limits = wgpuGetUndefinedLimits(),
-    };
-
-    WGPUDeviceDescriptor deviceDesc = {};
-    deviceDesc.requiredLimits = &requiredLimits;
-
-#ifdef WEBGPU_NATIVE
-    WGPUDeviceExtras deviceExtras = {};
-    deviceDesc.nextInChain = &deviceExtras.chain;
-#endif
-
-    WGPUDeviceReceiverData deviceReceiverData = {};
-    wgpuDevice = wgpuAdapterRequestDeviceSync(wgpuAdapter, &deviceDesc, &deviceReceiverData);
-    if (deviceReceiverData.status != WGPURequestDeviceStatus_Success) {
-      throw formatException("Failed to create device: {} {}", deviceReceiverData.status, deviceReceiverData.message);
-    }
-    spdlog::debug("Create wgpuDevice");
-
-    auto errorCallback = [](WGPUErrorType type, char const *message, void *userdata) {
-      Context &context = *(Context *)userdata;
-      std::string msgString(message);
-      spdlog::error("WEBGPU: {} ({})", message, type);
-      if (type == WGPUErrorType_DeviceLost) {
-        context.deviceLost();
+        // Immediately request a device from the adapter
+        requestDevice();
       }
-    };
-    wgpuDeviceSetUncapturedErrorCallback(wgpuDevice, errorCallback, this);
-    wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
-
-    if (mainOutput) {
-      getOrCreateSurface();
-      mainOutput->initSwapchain(wgpuAdapter, wgpuDevice);
     }
 
-    WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
-      spdlog::warn("Device lost: {} ()", message, magic_enum::enum_name(reason));
-    };
-    wgpuDeviceSetDeviceLostCallback(wgpuDevice, deviceLostCallback, this);
+    if (deviceRequest) {
+      if (deviceRequest->finished) {
+        if (deviceRequest->status != WGPURequestDeviceStatus_Success) {
+          throw formatException("Failed to create device: {} {}", magic_enum::enum_name(deviceRequest->status),
+                                deviceRequest->message);
+        }
+        wgpuDevice = deviceRequest->device;
+        deviceRequest.reset();
+        deviceObtained();
+      }
+    }
   } catch (...) {
     deviceLost();
     throw;
   }
-
-  state = ContextState::Ok;
 }
 
-bool Context::tryAcquireDevice() {
-  try {
-    acquireDevice();
-  } catch (std::exception &ex) {
-    spdlog::error("Failed to acquire device: {}", ex.what());
-    return false;
+void Context::deviceObtained() {
+  state = ContextState::Ok;
+  getLogger()->debug("wgpuDevice obtained");
+
+  auto errorCallback = [](WGPUErrorType type, char const *message, void *userdata) {
+    Context &context = *(Context *)userdata;
+    std::string msgString(message);
+    getLogger()->error("{} ({})", message, type);
+    if (type == WGPUErrorType_DeviceLost) {
+      context.deviceLost();
+    }
+  };
+  wgpuDeviceSetUncapturedErrorCallback(wgpuDevice, errorCallback, this);
+  wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
+
+  if (mainOutput) {
+    getOrCreateSurface();
+    mainOutput->initSwapchain(wgpuAdapter, wgpuDevice);
   }
-  return true;
+
+  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
+    getLogger()->warn("Device lost: {} ()", message, magic_enum::enum_name(reason));
+  };
+  wgpuDeviceSetDeviceLostCallback(wgpuDevice, deviceLostCallback, this);
+}
+
+void Context::requestDevice() {
+  assert(!wgpuDevice);
+  assert(!wgpuQueue);
+
+  // Request adapter first
+  if (!wgpuAdapter) {
+    requestAdapter();
+    tickRequesting(); // This chains into another requestDevice call once the adapter is obtained
+    return;
+  }
+
+  state = ContextState::Requesting;
+
+  WGPURequiredLimits requiredLimits{
+      .limits = wgpuGetUndefinedLimits(),
+  };
+
+  WGPUDeviceDescriptor deviceDesc = {};
+  deviceDesc.requiredLimits = &requiredLimits;
+
+#ifdef WEBGPU_NATIVE
+  WGPUDeviceExtras deviceExtras = {};
+  deviceDesc.nextInChain = &deviceExtras.chain;
+#endif
+
+  getLogger()->debug("Requesting wgpu device");
+  deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
 }
 
 void Context::releaseDevice() {
@@ -368,7 +453,11 @@ WGPUSurface Context::getOrCreateSurface() {
   return nullptr;
 }
 
-void Context::createAdapter() {
+void Context::requestAdapter() {
+  assert(!wgpuAdapter);
+
+  state = ContextState::Requesting;
+
   WGPURequestAdapterOptions requestAdapter = {};
   requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
   requestAdapter.compatibleSurface = getOrCreateSurface();
@@ -381,12 +470,8 @@ void Context::createAdapter() {
   adapterExtras.backend = getDefaultWgpuBackendType();
 #endif
 
-  WGPUAdapterReceiverData adapterReceiverData = {};
-  wgpuAdapter = wgpuInstanceRequestAdapterSync(wgpuInstance, &requestAdapter, &adapterReceiverData);
-  if (adapterReceiverData.status != WGPURequestAdapterStatus_Success) {
-    throw formatException("Failed to create wgpuAdapter: {} {}", adapterReceiverData.status, adapterReceiverData.message);
-  }
-  spdlog::debug("Created wgpuAdapter");
+  getLogger()->debug("Requesting wgpu adapter");
+  adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
 }
 
 void Context::releaseAdapter() {
@@ -395,7 +480,7 @@ void Context::releaseAdapter() {
 }
 
 void Context::initCommon() {
-  spdlog::debug("GFX.Context init");
+  getLogger()->debug("initCommon");
 
   assert(!isInitialized());
 
@@ -403,19 +488,19 @@ void Context::initCommon() {
   wgpuSetLogCallback([](WGPULogLevel level, const char *msg) {
     switch (level) {
     case WGPULogLevel_Error:
-      spdlog::error("WEBGPU: {}", msg);
+      getLogger()->error("{}", msg);
       break;
     case WGPULogLevel_Warn:
-      spdlog::warn("WEBGPU: {}", msg);
+      getLogger()->warn("{}", msg);
       break;
     case WGPULogLevel_Info:
-      spdlog::info("WEBGPU: {}", msg);
+      getLogger()->info("{}", msg);
       break;
     case WGPULogLevel_Debug:
-      spdlog::debug("WEBGPU: {}", msg);
+      getLogger()->debug("{}", msg);
       break;
     case WGPULogLevel_Trace:
-      spdlog::trace("WEBGPU: {}", msg);
+      getLogger()->trace("{}", msg);
       break;
     default:
       break;
@@ -429,7 +514,7 @@ void Context::initCommon() {
   }
 #endif
 
-  acquireDevice();
+  requestDevice();
 }
 
 void Context::present() {
