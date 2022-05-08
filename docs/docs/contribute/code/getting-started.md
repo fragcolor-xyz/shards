@@ -29,23 +29,63 @@ Although you can use any code editor, we recommend Visual Studio Code (VS Code).
 
 *Download the appropriate installation file for your platform and follow the on-screen instructions.*
 
-### Install C++
+### Install & setup C++
 
-If you're using VS Code, you can set up C++ by referring to Microsoft's official documentation for the same.
+If you're using VS Code, you can set up C++ (and the appropriate compiler for your operating system) by referring to Microsoft's official documentation.
 
-- C++ and GCC (MinGW) on [Windows](https://code.visualstudio.com/docs/cpp/config-mingw)
-- C++ and GCC on [Linux](https://code.visualstudio.com/docs/cpp/config-linux)
-- C++ and Clang/ LLVM on [Mac](https://code.visualstudio.com/docs/cpp/config-clang-mac)
+- C++ and GCC (MinGW) for [Windows](https://code.visualstudio.com/docs/cpp/config-mingw)
+- C++ and GCC for [Linux](https://code.visualstudio.com/docs/cpp/config-linux)
+- C++ and Clang/ LLVM for [Mac](https://code.visualstudio.com/docs/cpp/config-clang-mac)
   
 *For other code editors, refer to the official C++ installation [documentation](https://isocpp.org/get-started).*
 
-### Install Rust
+### Install & setup Rust
 
 Refer to the official Rust [documentation](https://www.rust-lang.org/tools/install) to install Rust on your machine.
 
 After installation, you can set up Rust to work with VS Code for [Windows](https://docs.microsoft.com/en-us/windows/dev-environment/rust/setup#install-rust), [Linux](https://www.nayab.xyz/rust/rust-010-setting-up-rust-vscode-linux), or [Mac](https://levelup.gitconnected.com/rust-with-visual-studio-code-46404befed8), as needed.
 
-### VS Code extensions
+Before attempting to build a Rust project, ensure that you've covered the following development dependencies:
+
+- Get latest package information 
+  ```
+  sudo apt-get update
+  ```
+
+- Install the `rust gcc toolchain`
+  ```
+  sudo apt install build-essential
+  ```
+  
+- Install `clang` 
+  ```
+  sudo apt install clang
+  ```
+  
+- Install the `rust wasm toolchain`
+  ```
+  rustup target add wasm32-unknown-unknown --toolchain nightly
+  ```
+
+In our projects we use the nightly version of the Rust tools. Since the nightly build is updated every week, you should run the following update command weekly as well:
+```
+rustup update
+```
+
+To switch from the stable build to the nightly build, use:
+```
+rustup default nightly
+```
+
+And to switch back to the stable build, use:
+```
+rustup default stable
+```
+
+??? note
+    If you're using Windows you might want to check out [WSL](https://docs.microsoft.com/en-us/windows/wsl/) for a Linux-like development experience. 
+
+### Get VS Code extensions
 
 Here are a few VS Code extensions that we recommend you should check out:
 
@@ -56,7 +96,7 @@ Here are a few VS Code extensions that we recommend you should check out:
 5. [CMake](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) Tools by Microsoft
 6. [YAML](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) by Red Hat
 
-## Building from sources
+## Build a project from sources
 
 Now you can pick up a project you'd like to contribute to and build it from the sources.
 
