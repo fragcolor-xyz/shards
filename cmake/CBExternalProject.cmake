@@ -44,21 +44,33 @@ if(CMAKE_GENERATOR STREQUAL Xcode)
 endif()
 
 # Utility function for adding external projects that generate static libraries
+#
+# Usage looks like:
+#   cb_add_external_project(
+#     NAME <name>
+#     TARGETS <targetName>
+#     REPO_ARGS <URL/GIT/etc.>
+#   )
+#
+# This add a target named <targetName> that can be linked against
+# For additional parameters check the ARGS/MULTI_ARGS below
 function(cb_add_external_project)
-  set(OPTS 
-    INSTALL)
-  set(ARGS 
-    NAME 
-    LIB_SUFFIX)
+  set(OPTS
+    INSTALL             # (Optional) When enabled, will build the external project using cmake install and reference the generated libraries through the generated instalation
+  )
+  set(ARGS
+    NAME                # (Required) The name of the external project target
+    LIB_SUFFIX          # (Optional) String to append to library names ("-debug" => libsnappy-debug.a)
+  )
   set(MULTI_ARGS
-    TARGETS 
-    LIB_NAMES
-    LIB_RELATIVE_DIRS
-    CMAKE_ARGS 
-    REPO_ARGS 
-    RELATIVE_INCLUDE_PATHS  # Include paths relative to source dir (without INSTALL)
-    RELATIVE_BINARY_INCLUDE_PATHS # Include paths relative to binary dir (without INSTALL)
-    RELATIVE_INSTALL_INCLUDE_PATHS # Include paths relative to install dir (with INSTALL)
+    TARGETS             # (Required) The list of target to build
+    LIB_NAMES           # (Optional) For each target, overrides the library name that is generated. If not set the library name is derived from the target name (snappy -> libsnappy.a, etc.)
+    LIB_RELATIVE_DIRS   # (Optional) For each target, overrides the location where the built library is found relative to the cmake binary directory (source/ -> source/libsnappy.a)
+    CMAKE_ARGS          # (Optional) Extra CMake arguments to pass to external project configure
+    REPO_ARGS           # (Required) Arguments to initialize the source repository (GIT_REPOSITORY, URL, etc.)
+    RELATIVE_INCLUDE_PATHS          # (Optional) Include paths relative to source dir added to targets (without INSTALL)
+    RELATIVE_BINARY_INCLUDE_PATHS   # (Optional) Include paths relative to binary dir added to targets (without INSTALL)
+    RELATIVE_INSTALL_INCLUDE_PATHS  # (Optional) Include paths relative to install dir added to targets (with INSTALL)
   )
   cmake_parse_arguments(PROJ "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
