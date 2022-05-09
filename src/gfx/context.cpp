@@ -18,7 +18,8 @@ namespace gfx {
 static inline std::shared_ptr<spdlog::logger> &getLogger() {
   static std::shared_ptr<spdlog::logger> logger = []() {
     auto defaultLogger = spdlog::default_logger();
-    return defaultLogger->clone("GFX.Context");
+    auto gfxLogger = defaultLogger->clone("GFX.Context");
+    return gfxLogger;
   }();
   return logger;
 }
@@ -135,15 +136,9 @@ struct ContextMainOutput {
   void present() {
     assert(currentView);
 
-#if GFX_EMSCRIPTEN
-    auto callback = [](double time, void *userData) -> EM_BOOL {
-      getLogger()->debug("Animation frame callback {}", time);
-      return true;
-    };
-    getLogger()->debug("Animation frame queued");
-    emscripten_request_animation_frame(callback, this);
-    emscripten_sleep(0);
-#else
+    // Web doesn't have a swapchain, it automatically present the current texture when control
+    // is returned to the browser
+#ifdef WEBGPU_NATIVE
     wgpuSwapChainPresent(wgpuSwapchain);
 #endif
 
@@ -219,7 +214,7 @@ Window &Context::getWindow() {
 }
 
 void Context::resizeMainOutputConditional(const int2 &newSize) {
-  if (state == ContextState::Incomplete)
+  if (state != ContextState::Ok)
     return;
 
   assert(mainOutput);

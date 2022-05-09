@@ -34,7 +34,11 @@ using namespace gfx;
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
-void osYield() { emscripten_sleep(0); }
+void osYield() {
+  auto callback = [](double time, void *userData) -> EM_BOOL { return false; };
+  emscripten_request_animation_frame(callback, nullptr);
+  emscripten_sleep(0);
+}
 #else
 void osYield() {}
 #endif
@@ -88,8 +92,6 @@ struct App {
   Loop loop;
   Context context;
 
-  MeshPtr sphereMesh;
-  MeshPtr cubeMesh;
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
@@ -113,103 +115,31 @@ struct App {
     renderer = std::make_shared<Renderer>(context);
     imgui = std::make_shared<ImGuiRenderer>(context);
 
-    FeaturePtr blendFeature = std::make_shared<Feature>();
-    blendFeature->state.set_blend(BlendState{
-        .color =
-            BlendComponent{
-                .operation = WGPUBlendOperation_Add,
-                .srcFactor = WGPUBlendFactor_Zero,
-                .dstFactor = WGPUBlendFactor_Zero,
-            },
-        .alpha =
-            BlendComponent{
-                .operation = WGPUBlendOperation_Add,
-                .srcFactor = WGPUBlendFactor_Zero,
-                .dstFactor = WGPUBlendFactor_Zero,
-            },
-    });
-
     pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
         .features =
             {
                 features::Transform::create(),
                 features::BaseColor::create(),
-                blendFeature,
             },
         .sortMode = SortMode::BackToFront,
     }));
 
     view = std::make_shared<View>();
-    // view->proj = ViewPerspectiveProjection{};
-    // view->view = linalg::lookat_matrix(float3(0, 5, 20), float3(0, 0, 0.0f), float3(0, 1, 0));
-
     view->proj = ViewOrthographicProjection{
-        .size = 2.0f,
+        .size = 4.0f,
         .near = -10.0f,
         .far = 10.0f,
     };
-
-    geom::CubeGenerator sphere;
-    sphere.generate();
-
-    sphereMesh = createMesh(sphere.vertices, sphere.indices);
-
-    std::vector<std::string> texturePaths = {// "src/gfx/tests/assets/logo.png",
-                                             // "src/gfx/tests/assets/fish.png",
-                                             // "src/gfx/tests/assets/abstract.jpg",
-                                             "src/gfx/tests/assets/pixely_sprite.png"};
-    for (auto path : texturePaths) {
-      auto texture = textureFromFile(resolveDataPath(path).string().c_str());
-      texture->setSamplerState(SamplerState{
-          .filterMode = WGPUFilterMode_Nearest,
-      });
-
-      textures.push_back(texture);
-    }
 
     rnd.seed(time(nullptr));
     buildDrawables();
   }
 
   std::default_random_engine rnd;
-  struct DrawThing {
-    DrawablePtr drawable;
-    float2 coord;
-    float4 baseColor;
-    float3 spinVel;
-    float3 rot{};
-
-    DrawThing(float2 coord, MeshPtr mesh, TexturePtr texture, std::default_random_engine &rnd) : coord(coord) {
-      std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-      std::uniform_real_distribution<float> sdist(-1.0f, 1.0f);
-      baseColor = float4(dist(rnd), dist(rnd), dist(rnd), 1.0f);
-      spinVel = float3(sdist(rnd), sdist(rnd), sdist(rnd));
-
-      drawable = std::make_shared<Drawable>(mesh);
-      drawable->parameters.texture.insert_or_assign("baseColor", TextureParameter(texture));
-    }
-    DrawThing(DrawThing &&other) = default;
-    void update(float time, float deltaTime) {
-
-      drawable->transform = linalg::translation_matrix(float3(coord.x, 0.0f, coord.y));
-
-      rot += spinVel * deltaTime;
-      float4 rotQuat = linalg::rotation_quat(float3(1, 0, 0), rot.x);
-      rotQuat = linalg::qmul(rotQuat, linalg::rotation_quat(float3(0, 0, 1), rot.z));
-      rotQuat = linalg::qmul(rotQuat, linalg::rotation_quat(float3(0, 1, 0), rot.y));
-      drawable->transform = linalg::mul(drawable->transform, linalg::rotation_matrix(rotQuat));
-
-      drawable->parameters.basic.insert_or_assign("baseColor", baseColor);
-    }
-  };
-
-  std::vector<DrawThing> things;
   std::vector<DrawablePtr> testDrawables;
+
   void buildDrawables() {
     testDrawables.clear();
-    things.clear();
-
-    std::uniform_int_distribution<int> textureIndexDist(0, textures.size() - 1);
 
     MeshPtr planeMesh = createPlaneMesh();
 
@@ -217,33 +147,16 @@ struct App {
     DrawablePtr drawable;
     transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
     drawable = std::make_shared<Drawable>(planeMesh, transform);
-    drawable->parameters.set("baseColor", textures[0]);
+    drawable->parameters.set("baseColor", float4(1, 0, 0, 1));
     testDrawables.push_back(drawable);
 
     transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
     drawable = std::make_shared<Drawable>(planeMesh, transform);
-    drawable->parameters.set("baseColor", textures[0]);
+    drawable->parameters.set("baseColor", float4(0, 1, 0, 1));
     testDrawables.push_back(drawable);
-
-    // int2 testGridDim = {32, 32};
-    // for (size_t y = 0; y < testGridDim.y; y++) {
-    // 	float fy = (y - float(testGridDim.y) / 2.0f) * 2.0f;
-    // 	for (size_t x = 0; x < testGridDim.x; x++) {
-    // 		float fx = (x - float(testGridDim.x) / 2.0f) * 2.0f;
-
-    // 		auto texture = textures[textureIndexDist(rnd)];
-
-    // 		things.emplace_back(float2(fx, fy), sphereMesh, texture, rnd);
-    // 		testDrawables.push_back(things.back().drawable);
-    // 	}
-    // }
   }
 
   void renderFrame(float time, float deltaTime) {
-    for (auto &thing : things) {
-      thing.update(time, deltaTime);
-    }
-
     for (auto &drawable : testDrawables) {
       drawQueue.add(drawable);
     }
@@ -277,29 +190,29 @@ struct App {
 
       float deltaTime;
       if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
-        context.beginFrame();
-        renderer->beginFrame();
+        if (context.beginFrame()) {
+          renderer->beginFrame();
 
-        drawQueue.clear();
+          drawQueue.clear();
 
-        renderFrame(loop.getAbsoluteTime(), deltaTime);
-        renderUI(events);
+          renderFrame(loop.getAbsoluteTime(), deltaTime);
+          // renderUI(events);
 
-        renderer->endFrame();
-        context.endFrame();
+          renderer->endFrame();
+          context.endFrame();
 
-        static MovingAverage delaTimeMa(32);
-        delaTimeMa.add(deltaTime);
+          static MovingAverage delaTimeMa(32);
+          delaTimeMa.add(deltaTime);
 
-        static float fpsCounter = 0.0f;
-        fpsCounter += deltaTime;
-        if (fpsCounter >= 1.0f) {
-          spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
-          fpsCounter = 0.0f;
+          static float fpsCounter = 0.0f;
+          fpsCounter += deltaTime;
+          if (fpsCounter >= 1.0f) {
+            spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
+            fpsCounter = 0.0f;
+          }
         }
-      } else {
-        osYield();
       }
+      osYield();
     }
   }
 };

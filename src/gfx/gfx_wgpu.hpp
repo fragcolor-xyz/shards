@@ -36,6 +36,11 @@ extern "C" {
 #define WGPUMipmapFilterMode_Nearest WGPUFilterMode_Nearest
 #define WGPUMipmapFilterMode_Linear WGPUFilterMode_Linear
 #define WGPUMipmapFilterMode WGPUFilterMode
+
+#else // WEBGPU_NATIVE
+// Alias Undefined to Clear so wgpu is satisfied
+#define WGPULoadOp_Undefined WGPULoadOp_Clear
+#define WGPUStoreOp_Undefined WGPUStoreOp_Discard
 #endif
 
 struct WGPUAdapterReceiverData {

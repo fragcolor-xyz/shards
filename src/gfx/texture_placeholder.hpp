@@ -58,6 +58,7 @@ protected:
     copyTextureDst.mipLevel = 0;
     WGPUTextureDataLayout layout{};
     layout.bytesPerRow = sizeof(uint32_t) * resolution.x;
+    layout.rowsPerImage = uint32_t(resolution.y);
     wgpuQueueWriteTexture(context.wgpuQueue, &copyTextureDst, pixelData.data(), pixelData.size() * sizeof(uint32_t), &layout,
                           &desc.size);
 

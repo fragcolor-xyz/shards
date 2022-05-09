@@ -39,6 +39,20 @@ size_t getIndexFormatSize(const IndexFormat &type) {
   }
 }
 
+bool isInteger(const ShaderFieldBaseType &type) {
+  switch (type) {
+  case ShaderFieldBaseType::UInt8:
+  case ShaderFieldBaseType::Int8:
+  case ShaderFieldBaseType::UInt16:
+  case ShaderFieldBaseType::Int16:
+  case ShaderFieldBaseType::UInt32:
+  case ShaderFieldBaseType::Int32:
+    return true;
+  default:
+    return false;
+  }
+}
+
 WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim) {
   switch (type) {
   case VertexAttributeType::UInt8:

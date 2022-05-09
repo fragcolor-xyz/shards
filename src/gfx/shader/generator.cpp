@@ -184,10 +184,17 @@ template <typename T> static void generateStruct(T &output, const String &typeNa
   output += fmt::format("struct {} {{\n", typeName);
   for (auto &field : fields) {
     std::string typeName = getFieldWGSLTypeName(field.base.type);
+
+    String extraTags;
+    if (isInteger(field.base.type.baseType)) {
+      // integer vertex outputs requires flat interpolation
+      extraTags = "@interpolate(flat)";
+    }
+
     if (field.hasBuiltinTag()) {
-      output += fmt::format("\t@builtin({}) ", field.builtinTag);
+      output += fmt::format("\t@builtin({}) {}", field.builtinTag, extraTags);
     } else if (field.hasLocation()) {
-      output += fmt::format("\t@location({}) ", field.location);
+      output += fmt::format("\t@location({}) {}", field.location, extraTags);
     }
     output += fmt::format("{}: {},\n", field.base.name, typeName);
   }

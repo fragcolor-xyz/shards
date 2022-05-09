@@ -232,9 +232,7 @@ struct RendererImpl final : public ContextData {
 
   void initializeContextData() {
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
-
     bindToContext(context);
-    placeholderTexture->createContextDataConditional(context);
   }
 
   virtual void releaseContextData() override {
@@ -369,7 +367,7 @@ struct RendererImpl final : public ContextData {
 
     WGPURenderPassColorAttachment mainAttach = {};
     mainAttach.clearValue = clearColor;
-    mainAttach.loadOp = WGPULoadOp_Clear;
+    mainAttach.loadOp = WGPULoadOp_Undefined;
     mainAttach.view = context.getMainOutputTextureView();
     mainAttach.storeOp = WGPUStoreOp_Store;
 
@@ -640,8 +638,8 @@ struct RendererImpl final : public ContextData {
     depthAttach.depthClearValue = 1.0f;
     depthAttach.depthLoadOp = WGPULoadOp_Clear;
     depthAttach.depthStoreOp = WGPUStoreOp_Store;
-    depthAttach.stencilLoadOp = WGPULoadOp_Clear;
-    depthAttach.stencilStoreOp = WGPUStoreOp_Discard;
+    depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
+    depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
     depthAttach.view = depthTexture->update(context, viewport.getSize());
 
     passDesc.colorAttachments = &mainAttach;
