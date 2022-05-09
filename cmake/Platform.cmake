@@ -111,6 +111,8 @@ if(USE_LTO)
   add_link_options(-flto)
 endif()
 
+add_compile_options(-Wall)
+
 if(NOT MSVC)
   add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
 endif()
@@ -173,7 +175,6 @@ if(VERBOSE_BGFX_LOGGING)
 endif()
 
 add_compile_definitions(BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
-add_compile_options(-Wall)
 
 if(ANDROID OR APPLE)
   # This tells FindPackage(Threads) that threads are built in
