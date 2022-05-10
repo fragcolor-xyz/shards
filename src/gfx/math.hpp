@@ -11,6 +11,18 @@ inline float degToRad(float v) { return v * degToRadFactor; }
 
 constexpr float radToDegFactor = (180.0f / pi);
 inline float radToDeg(float v) { return v * radToDegFactor; }
+
+inline size_t alignTo(size_t size, size_t alignTo) {
+  size_t alignment = alignTo;
+  if (alignment == 0)
+    return size;
+
+  size_t remainder = size % alignment;
+  if (remainder > 0) {
+    return size + (alignment - remainder);
+  }
+  return size;
+}
 } // namespace gfx
 
 #endif // GFX_MATH

@@ -7,6 +7,7 @@
 #include <gfx/enums.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/pipeline_step.hpp>
+#include <gfx/shader/types.hpp>
 #include <gfx/shader/entry_point.hpp>
 #include <memory>
 #include <vector>

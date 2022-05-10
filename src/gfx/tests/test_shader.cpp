@@ -6,7 +6,6 @@
 #include <gfx/shader/generator.hpp>
 #include <spdlog/spdlog.h>
 
-
 using namespace gfx;
 using namespace gfx::shader;
 using String = std::string;
@@ -116,11 +115,11 @@ TEST_CASE("Shader basic", "[Shader]") {
   std::shared_ptr<Context> context = createTestContext();
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
-  viewLayoutBuilder.push("viewProj", ShaderParamType::Float4x4);
+  viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
   generator.viewBufferLayout = viewLayoutBuilder.finalize();
 
   UniformBufferLayoutBuilder objectLayoutBuilder;
-  objectLayoutBuilder.push("world", ShaderParamType::Float4x4);
+  objectLayoutBuilder.push("world", FieldTypes::Float4x4);
   generator.objectBufferLayout = objectLayoutBuilder.finalize();
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
@@ -130,10 +129,11 @@ TEST_CASE("Shader basic", "[Shader]") {
 
   std::vector<EntryPoint> entryPoints;
   auto vec4Pos = blocks::makeCompoundBlock("vec4<f32>(", blocks::ReadInput("position"), ".xyz, 1.0)");
-  entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,
-                           blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, std::move(vec4Pos), "*",
-                                                                         blocks::ReadBuffer("object"), ".world", "*",
-                                                                         blocks::ReadBuffer("view"), ".viewProj")));
+  entryPoints.emplace_back(
+      "position", ProgrammableGraphicsStage::Vertex,
+      blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, std::move(vec4Pos), "*",
+                                                    blocks::ReadBuffer("world", FieldTypes::Float4x4), "*",
+                                                    blocks::ReadBuffer("viewProj", FieldTypes::Float4x4, "view"))));
 
   entryPoints.emplace_back(
       "color", ProgrammableGraphicsStage::Fragment,
@@ -157,11 +157,11 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
   std::shared_ptr<Context> context = createTestContext();
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
-  viewLayoutBuilder.push("viewProj", ShaderParamType::Float4x4);
+  viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
   generator.viewBufferLayout = viewLayoutBuilder.finalize();
 
   UniformBufferLayoutBuilder objectLayoutBuilder;
-  objectLayoutBuilder.push("world", ShaderParamType::Float4x4);
+  objectLayoutBuilder.push("world", FieldTypes::Float4x4);
   generator.objectBufferLayout = objectLayoutBuilder.finalize();
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
@@ -171,10 +171,11 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
 
   std::vector<EntryPoint> entryPoints;
   auto vec4Pos = blocks::makeCompoundBlock("vec4<f32>(", blocks::ReadInput("position"), ".xyz, 1.0)");
-  entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,
-                           blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, std::move(vec4Pos), "*",
-                                                                         blocks::ReadBuffer("object"), ".world", "*",
-                                                                         blocks::ReadBuffer("view"), ".viewProj")));
+  entryPoints.emplace_back(
+      "position", ProgrammableGraphicsStage::Vertex,
+      blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, std::move(vec4Pos), "*",
+                                                    blocks::ReadBuffer("world", FieldTypes::Float4x4), "*",
+                                                    blocks::ReadBuffer("viewProj", FieldTypes::Float4x4, "view"))));
 
   entryPoints.emplace_back(
       "colorDefault", ProgrammableGraphicsStage::Fragment,

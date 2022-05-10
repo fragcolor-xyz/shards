@@ -9,6 +9,7 @@
 #include "renderer_types.hpp"
 #include "shader/blocks.hpp"
 #include "shader/entry_point.hpp"
+#include "shader/fmt.hpp"
 #include "shader/generator.hpp"
 #include "shader/textures.hpp"
 #include "shader/uniforms.hpp"
@@ -22,6 +23,8 @@
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 namespace gfx {
+using shader::FieldType;
+using shader::FieldTypes;
 using shader::TextureBindingLayout;
 using shader::TextureBindingLayoutBuilder;
 using shader::UniformBufferLayout;
@@ -166,10 +169,9 @@ static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
     auto drawDataIt = drawData.data.find(fieldName);
     if (drawDataIt != drawData.data.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
-      ShaderParamType drawDataFieldType = getParamVariantType(drawDataIt->second);
+      FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
-        spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", magic_enum::enum_name(itemLayout.type),
-                     magic_enum::enum_name(drawDataFieldType));
+        spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", itemLayout.type, drawDataFieldType);
         continue;
       }
 
@@ -218,11 +220,11 @@ struct RendererImpl final : public ContextData {
 
   RendererImpl(Context &context) : context(context) {
     UniformBufferLayoutBuilder viewBufferLayoutBuilder;
-    viewBufferLayoutBuilder.push("view", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("proj", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("invView", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("invProj", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
+    viewBufferLayoutBuilder.push("view", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("proj", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("invView", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("invProj", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("viewport", FieldTypes::Float4);
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
     placeholderTexture = std::make_unique<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
@@ -247,18 +249,6 @@ struct RendererImpl final : public ContextData {
 
   size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
   size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
-
-  size_t alignTo(size_t size, size_t alignTo) const {
-    size_t alignment = alignTo;
-    if (alignment == 0)
-      return size;
-
-    size_t remainder = size % alignment;
-    if (remainder > 0) {
-      return size + (alignment - remainder);
-    }
-    return size;
-  }
 
   void updateMainOutputFromContext() {
     mainOutput.format = context.getMainOutputFormat();
@@ -815,7 +805,7 @@ struct RendererImpl final : public ContextData {
 
   void buildObjectBufferLayout(CachedPipeline &cachedPipeline) {
     UniformBufferLayoutBuilder objectBufferLayoutBuilder;
-    objectBufferLayoutBuilder.push("world", ShaderParamType::Float4x4);
+    objectBufferLayoutBuilder.push("world", FieldTypes::Float4x4);
     for (const Feature *feature : cachedPipeline.features) {
       for (auto &param : feature->shaderParams) {
         objectBufferLayoutBuilder.push(param.name, param.type);

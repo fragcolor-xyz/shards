@@ -22,11 +22,11 @@ struct Transform {
 
     feature->shaderEntryPoints.emplace_back(
         "initWorldPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("worldPosition", positionFieldType, ReadBuffer("object"), ".world", "*", vec4Pos->clone()));
-    auto &initScreenPosition =
-        feature->shaderEntryPoints.emplace_back("initScreenPosition", ProgrammableGraphicsStage::Vertex,
-                                                WriteGlobal("screenPosition", positionFieldType, ReadBuffer("view"), ".proj", "*",
-                                                            ReadBuffer("view"), ".view", "*", ReadGlobal("worldPosition")));
+        WriteGlobal("worldPosition", positionFieldType, ReadBuffer("world", FieldTypes::Float4x4), "*", vec4Pos->clone()));
+    auto &initScreenPosition = feature->shaderEntryPoints.emplace_back(
+        "initScreenPosition", ProgrammableGraphicsStage::Vertex,
+        WriteGlobal("screenPosition", positionFieldType, ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*",
+                    ReadBuffer("view", FieldTypes::Float4x4, "view"), "*", ReadGlobal("worldPosition")));
     initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
     auto &writePosition =

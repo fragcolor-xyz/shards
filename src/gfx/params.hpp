@@ -3,6 +3,7 @@
 
 #include "fwd.hpp"
 #include "linalg.hpp"
+#include "shader/types.hpp"
 #include <memory>
 #include <stdint.h>
 #include <string>
@@ -10,12 +11,6 @@
 #include <variant>
 
 namespace gfx {
-
-enum class ShaderParamType : uint8_t {
-#define PARAM_TYPE(_cppType, _displayName, ...) _displayName,
-#include "param_types.def"
-#undef PARAM_TYPE
-};
 
 typedef std::variant<std::monostate, float, float2, float3, float4, float4x4> ParamVariant;
 
@@ -28,9 +23,7 @@ struct TextureParameter {
 };
 
 size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &variant);
-ShaderParamType getParamVariantType(const ParamVariant &variant);
-size_t getParamTypeSize(ShaderParamType type);
-size_t getParamTypeWGSLAlignment(ShaderParamType type);
+gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
 
 struct IDrawDataCollector {
   virtual void setParam(const std::string &name, ParamVariant &&value) = 0;

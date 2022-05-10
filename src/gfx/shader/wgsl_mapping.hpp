@@ -1,12 +1,11 @@
 #ifndef GFX_SHADER_WGSL_MAPPING
 #define GFX_SHADER_WGSL_MAPPING
 
+#include "../params.hpp"
 #include "types.hpp"
 #include <cassert>
-#include <gfx/params.hpp>
 #include <nameof.hpp>
 #include <spdlog/fmt/fmt.h>
-
 
 namespace gfx {
 namespace shader {
@@ -40,23 +39,6 @@ inline ShaderFieldBaseType getCompatibleShaderFieldBaseType(VertexAttributeType 
   }
 }
 
-inline const char *getParamWGSLTypeName(ShaderParamType type) {
-  switch (type) {
-  case ShaderParamType::Float:
-    return "f32";
-  case ShaderParamType::Float2:
-    return "vec2<f32>";
-  case ShaderParamType::Float3:
-    return "vec3<f32>";
-  case ShaderParamType::Float4:
-    return "vec4<f32>";
-  case ShaderParamType::Float4x4:
-    return "mat4x4<f32>";
-  default:
-    assert(false);
-    return "";
-  }
-}
 inline String getFieldWGSLTypeName(const FieldType &type) {
   const char *baseType = nullptr;
   switch (type.baseType) {

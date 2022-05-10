@@ -51,12 +51,12 @@ struct TestTranslator {
     Generator shaderGenerator;
     {
       UniformBufferLayoutBuilder builder;
-      builder.push("world", ShaderParamType::Float4x4);
+      builder.push("world", FieldTypes::Float4x4);
       shaderGenerator.objectBufferLayout = builder.finalize();
     }
     {
       UniformBufferLayoutBuilder builder;
-      builder.push("view", ShaderParamType::Float4x4);
+      builder.push("view", FieldTypes::Float4x4);
       shaderGenerator.viewBufferLayout = builder.finalize();
     }
     shaderGenerator.meshFormat.vertexAttributes = {

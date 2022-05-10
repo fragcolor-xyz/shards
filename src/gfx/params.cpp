@@ -2,6 +2,7 @@
 #include "linalg/linalg.h"
 #include "spdlog/fmt/bundled/core.h"
 #include <cassert>
+#include <nameof.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <type_traits>
 
@@ -47,55 +48,29 @@ size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &
   return std::visit(visitor, variant);
 }
 
-ShaderParamType getParamVariantType(const ParamVariant &variant) {
-  ShaderParamType result = {};
+using shader::FieldType;
+FieldType getParamVariantType(const ParamVariant &variant) {
+  FieldType result = {};
   std::visit(
       [&](auto &&arg) {
         using T = std::decay_t<decltype(arg)>;
 
-        if (false) {
-          // ignored
-        }
-#define PARAM_TYPE(_cppType, _displayName, ...)     \
-  else if constexpr (std::is_same_v<T, _cppType>) { \
-    result = ShaderParamType::_displayName;         \
-  }
-#include "param_types.def"
-#undef PARAM_TYPE
-        else {
-          assert(false);
+        if constexpr (std::is_same_v<T, float>) {
+          result = FieldType(ShaderFieldBaseType::Float32);
+        } else if constexpr (std::is_same_v<T, float2>) {
+          result = FieldType(ShaderFieldBaseType::Float32, 2);
+        } else if constexpr (std::is_same_v<T, float3>) {
+          result = FieldType(ShaderFieldBaseType::Float32, 3);
+        } else if constexpr (std::is_same_v<T, float4>) {
+          result = FieldType(ShaderFieldBaseType::Float32, 4);
+        } else if constexpr (std::is_same_v<T, float4x4>) {
+          result = FieldType(ShaderFieldBaseType::Float32, FieldType::Float4x4Components);
+        } else {
+          throw std::logic_error(fmt::format("Type {} not suported by ParamVariant", NAMEOF_TYPE(T)));
         }
       },
       variant);
   return result;
-}
-
-size_t getParamTypeSize(ShaderParamType type) {
-  switch (type) {
-#define PARAM_TYPE(_cppType, _displayName, _size, ...) \
-  case ShaderParamType::_displayName: {                \
-    return _size;                                      \
-  } break;
-#include "param_types.def"
-#undef PARAM_TYPE
-  default:
-    assert(false);
-    return ~0;
-  }
-}
-
-size_t getParamTypeWGSLAlignment(ShaderParamType type) {
-  switch (type) {
-#define PARAM_TYPE(_0, _displayName, _1, _alignment, ...) \
-  case ShaderParamType::_displayName: {                   \
-    return _alignment;                                    \
-  } break;
-#include "param_types.def"
-#undef PARAM_TYPE
-  default:
-    assert(false);
-    return ~0;
-  }
 }
 
 } // namespace gfx

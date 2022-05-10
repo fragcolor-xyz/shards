@@ -21,6 +21,7 @@ add_library(gfx
   texture.cpp
   shader/generator.cpp
   shader/blocks.cpp
+  shader/types.cpp
   # cache_data.cpp
 )
 

@@ -188,14 +188,17 @@ struct ReadGlobal : public Block {
 };
 
 struct ReadBuffer : public Block {
-  String name;
+  String fieldName;
+  FieldType type;
+  String bufferName;
 
-  ReadBuffer(const String &name) : name(name) {}
+  ReadBuffer(const String &fieldName, const FieldType& type, const String& bufferName = "object")
+      : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 
-  void apply(GeneratorContext &context) const { context.readBuffer(name.c_str()); }
+  void apply(GeneratorContext &context) const { context.readBuffer(fieldName.c_str(), type, bufferName.c_str()); }
 
-  BlockPtr clone() { return std::make_unique<ReadBuffer>(name); }
+  BlockPtr clone() { return std::make_unique<ReadBuffer>(fieldName, type, bufferName); }
 };
 
 struct SampleTexture : public Block {

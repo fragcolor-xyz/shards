@@ -14,6 +14,8 @@ struct BaseColor {
   static inline FeaturePtr create() {
     using namespace shader;
     using namespace shader::blocks;
+    using shader::FieldType;
+    using shader::FieldTypes;
 
     FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
@@ -23,7 +25,7 @@ struct BaseColor {
 
     const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
 
-    auto readColorParam = makeCompoundBlock(ReadBuffer("object"), ".baseColor");
+    auto readColorParam = makeCompoundBlock(ReadBuffer("baseColor", FieldTypes::Float4));
 
     feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex,
                                             WriteGlobal("color", colorFieldType,

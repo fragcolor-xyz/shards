@@ -153,7 +153,7 @@ static inline shards::Type fieldTypeToShardsType(const FieldType &type) {
       return CoreInfo::Float3Type;
     case 4:
       return CoreInfo::Float4Type;
-    case FieldType::Mat4x4:
+    case FieldType::Float4x4Components:
       return CoreInfo::Float4x4Type;
     default:
       throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
@@ -168,8 +168,6 @@ static inline shards::Type fieldTypeToShardsType(const FieldType &type) {
       return CoreInfo::Int3Type;
     case 4:
       return CoreInfo::Int4Type;
-    case FieldType::Mat4x4:
-      return CoreInfo::Float4x4Type;
     default:
       throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
     }
@@ -273,8 +271,7 @@ struct ReadBuffer final : public IOBase {
     SHString varName = _name.payload.stringValue;
     SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, varName);
 
-    context.setWGSLTop<WGSLBlock>(
-        _fieldType, blocks::makeCompoundBlock(blocks::makeBlock<blocks::ReadBuffer>(_bufferName), fmt::format(".{}", varName)));
+    context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<blocks::ReadBuffer>(varName, _fieldType, _bufferName));
   }
 };
 
