@@ -12,6 +12,8 @@ if(NOT CMAKE_PROPERTIES_TO_DUPLICATE)
   endforeach()
 endif()
 
+# Helper function that duplicates a library target into a new type
+# This allows defining a static library and duplicating it into a shared library target (with different defines, etc.)
 function(duplicate_library_target TARGET TYPE NEW_TARGET)
   add_library(${NEW_TARGET} ${TYPE})
 

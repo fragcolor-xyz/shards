@@ -1,0 +1,5 @@
+function(add_asset_path_definition TARGET VISIBILITY DEFINE_NAME ASSET_PATH)
+	file(RELATIVE_PATH RELATIVE_PATH ${CHAINBLOCKS_DIR} ${ASSET_PATH})
+	target_compile_definitions(${TARGET} ${VISIBILITY} ${DEFINE_NAME}=\"${RELATIVE_PATH}\")
+	message(STATUS "Defining path ${DEFINE_NAME}=\"${RELATIVE_PATH}\ for target ${TARGET}")
+endfunction()

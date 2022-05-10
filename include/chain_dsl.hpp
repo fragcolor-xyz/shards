@@ -6,12 +6,12 @@
 
 #include "./chainblocks.hpp"
 
-#define Variable(_name) Var::ContextVar(#_name)
+#define Variable(_name) chainblocks::Var::ContextVar(#_name)
 
 #define DefChain(_name) auto _name = chainblocks::Chain(#_name)
 #define Looped() looped(true)
 
-#define None() .let(Var::Empty)
+#define None() .let(chainblocks::Var::Empty)
 
 #define Input() block("Input")
 #define Pass() block("Pass")
@@ -25,7 +25,7 @@
 #define GetTable_Default(_name, _key, _default) block("Get", #_name, _key, false, false, _default)
 #define Push(_name) .block("Push", #_name)
 #define Take(_idx_or_key) block("Take", _idx_or_key)
-#define Count(_name) block("Count", Var::ContextVar(#_name))
+#define Count(_name) block("Count", chainblocks::Var::ContextVar(#_name))
 
 #define If(_condition, _then, _else) block("If", Blocks()._condition, Blocks()._then, Blocks()._else)
 #define When(_condition, _then) block("When", Blocks()._condition, Blocks()._then)
@@ -44,12 +44,12 @@
 #define ToBytes() block("ToBytes")
 #define ToBase58() block("ToBase58")
 
-#define PrependTo(_var) .block("PrependTo", Var::ContextVar(#_var))
-#define AppendTo(_var) .block("AppendTo", Var::ContextVar(#_var))
+#define PrependTo(_var) .block("PrependTo", chainblocks::Var::ContextVar(#_var))
+#define AppendTo(_var) .block("AppendTo", chainblocks::Var::ContextVar(#_var))
 
 #define FS_Read_Bytes() block("FS.Read", true)
 #define FS_Read() block("FS.Read")
-#define FS_Write_Overwriting(_contents) block("FS.Write", Var::ContextVar(#_contents), true)
+#define FS_Write_Overwriting(_contents) block("FS.Write", chainblocks::Var::ContextVar(#_contents), true)
 #ifdef LoadImage
 // mingw defines this
 #undef LoadImage
@@ -58,23 +58,26 @@
 #define ToJson() block("ToJson")
 #define FromJson() block("FromJson")
 
-#define Process_Run(_cmd, _args) block("Process.Run", _cmd, Var::ContextVar(#_args))
-#define Wasm_Run(_cmd, _args) block("Wasm.Run", _cmd, Var::ContextVar(#_args))
+#define Process_Run(_cmd, _args) block("Process.Run", _cmd, chainblocks::Var::ContextVar(#_args))
+#define Wasm_Run(_cmd, _args) block("Wasm.Run", _cmd, chainblocks::Var::ContextVar(#_args))
 
-#define GFX_MainWindow(_name, _blocks) block("GFX.MainWindow", _name, Var::Any, Var::Any, Blocks()._blocks)
+#define GFX_MainWindow(_name, _blocks) \
+  block("GFX.MainWindow", _name, chainblocks::Var::Any, chainblocks::Var::Any, Blocks()._blocks)
 #define GFX_Camera() block("GFX.Camera")
-#define GFX_Shader(_vs, _fs) block("GFX.Shader", Var::ContextVar(#_vs), Var::ContextVar(#_fs))
+#define GFX_Shader(_vs, _fs) block("GFX.Shader", chainblocks::Var::ContextVar(#_vs), chainblocks::Var::ContextVar(#_fs))
 #define GFX_Texture2D() block("GFX.Texture2D")
 #define GFX_CompileShader() block("GFX.CompileShader")
-#define GFX_SetUniform(_name, _elems) block("GFX.SetUniform", _name, _elems)
 
 #define GLTF_Load() block("GLTF.Load")
-#define GLTF_Load_WithTransformBefore(_transform) block("GLTF.Load", Var::Any, Var::Any, _transform)
-#define GLTF_Load_WithTransformAfter(_transform) block("GLTF.Load", Var::Any, Var::Any, Var::Any, _transform)
-#define GLTF_Load_WithTransforms(_before, _after) block("GLTF.Load", Var::Any, Var::Any, _before, _after)
-#define GLTF_Load_NoShaders() block("GLTF.Load", Var::Any, false)
-#define GLTF_Draw(_model) block("GLTF.Draw", Var::ContextVar(#_model))
-#define GLTF_Draw_WithMaterials(_model, _mats) block("GLTF.Draw", Var::ContextVar(#_model), Var::ContextVar(#_mats))
+#define GLTF_Load_WithTransformBefore(_transform) block("GLTF.Load", chainblocks::Var::Any, chainblocks::Var::Any, _transform)
+#define GLTF_Load_WithTransformAfter(_transform) \
+  block("GLTF.Load", chainblocks::Var::Any, chainblocks::Var::Any, chainblocks::Var::Any, _transform)
+#define GLTF_Load_WithTransforms(_before, _after) \
+  block("GLTF.Load", chainblocks::Var::Any, chainblocks::Var::Any, _before, _after)
+#define GLTF_Load_NoShaders() block("GLTF.Load", chainblocks::Var::Any, false)
+#define GLTF_Draw(_model) block("GLTF.Draw", chainblocks::Var::ContextVar(#_model))
+#define GLTF_Draw_WithMaterials(_model, _mats) \
+  block("GLTF.Draw", chainblocks::Var::ContextVar(#_model), chainblocks::Var::ContextVar(#_mats))
 
 #define Brotli_Compress() block("Brotli.Compress")
 #define Brotli_Decompress() block("Brotli.Decompress")

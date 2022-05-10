@@ -1,0 +1,7 @@
+PIPELINE_STATE(depthCompare, WGPUCompareFunction)
+PIPELINE_STATE(depthWrite, bool)
+PIPELINE_STATE(colorWrite, WGPUColorWriteMask)
+PIPELINE_STATE(blend, BlendState)
+PIPELINE_STATE(flipFrontFace, bool)
+PIPELINE_STATE(culling, bool)
+#undef PIPELINE_STATE

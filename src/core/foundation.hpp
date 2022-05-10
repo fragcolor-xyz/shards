@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_CORE_HPP
-#define CB_CORE_HPP
+#ifndef CB_CORE_FOUNDATION
+#define CB_CORE_FOUNDATION
 
 // must go first
 #if _WIN32
@@ -48,7 +48,19 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <boost/align/aligned_allocator.hpp>
 
 // TODO make it into a run-time param
+#ifndef NDEBUG
+#define CB_BASE_STACK_SIZE 1024 * 1024
+#else
 #define CB_BASE_STACK_SIZE 128 * 1024
+#endif
+
+#if defined(_WIN32) && defined(__clang__)
+#define CB_STACK_ALLOCATOR_SUPPORTED 0
+#endif
+
+#ifndef CB_STACK_ALLOCATOR_SUPPORTED
+#define CB_STACK_ALLOCATOR_SUPPORTED 1
+#endif
 
 #ifndef __EMSCRIPTEN__
 // For coroutines/context switches
@@ -160,6 +172,7 @@ inline void destroyVar(CBVar &src);
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 
+#if CB_STACK_ALLOCATOR_SUPPORTED
 // utility stack allocator (stolen from stackoverflow)
 template <std::size_t Size = 512> struct bumping_memory_resource {
   char buffer[Size];
@@ -198,6 +211,12 @@ template <typename T, typename Resource = bumping_memory_resource<512>> struct s
 
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
+#else
+template <typename T> struct stack_allocator : public std::allocator<T> {
+  using Base = std::allocator<T>;
+  using Base::allocator;
+};
+#endif
 
 void freeDerivedInfo(CBTypeInfo info);
 CBTypeInfo deriveTypeInfo(const CBVar &value, const CBInstanceData &data, bool *containsVariables = nullptr);
@@ -585,14 +604,14 @@ template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_ca
 
 template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap) {
-    arrayGrow(arr, 1);
+    chainblocks::arrayGrow(arr, 1);
   }
   arr.elements[arr.len++] = val;
 }
 
 template <typename T> inline void arrayResize(T &arr, uint32_t size) {
   if (arr.cap < size) {
-    arrayGrow(arr, size - arr.len);
+    chainblocks::arrayGrow(arr, size - arr.len);
   }
   arr.len = size;
 }
@@ -1269,7 +1288,7 @@ struct VariableResolver {
     if (_refs.size() > 0) {
       for (auto val : _vals) {
         // we do this to avoid double freeing, we don't really own this value
-        *val = Var::Empty;
+        *val = chainblocks::Var::Empty;
       }
       for (auto ref : _refs) {
         releaseVariable(ref);
@@ -1288,4 +1307,4 @@ struct VariableResolver {
 };
 }; // namespace chainblocks
 
-#endif
+#endif // CB_CORE_FOUNDATION

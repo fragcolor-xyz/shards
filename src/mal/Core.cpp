@@ -8,10 +8,12 @@
 #include "Types.h"
 
 #include <algorithm>
+#include <boost/filesystem.hpp>
 #include <chrono>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
+
+namespace fs = boost::filesystem;
 
 static String printValues(malValueIter begin, malValueIter end, const String &sep, bool readably);
 
@@ -455,7 +457,7 @@ BUILTIN("slurp") {
   CHECK_ARGS_IS(1);
   ARG(malString, filename);
 
-  auto filepath = std::filesystem::path(filename->value());
+  auto filepath = fs::path(filename->value());
 
   std::ifstream file(filepath.c_str(), std::ios::binary);
   MAL_CHECK(!file.fail(), "Cannot open %s", filename->value().c_str());

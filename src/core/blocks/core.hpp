@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#pragma once
+#ifndef CB_CORE_BLOCKS_CORE
+#define CB_CORE_BLOCKS_CORE
 
 #include "../blocks_macros.hpp"
 // circular warning this is self inclusive on purpose
@@ -24,8 +25,8 @@ struct CoreInfo2 {
 };
 
 struct Const {
-  static inline ParamsInfo constParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Value", CBCCSTR("The constant value to insert in the chain."), CoreInfo::AnyType));
+  static inline chainblocks::ParamsInfo constParamsInfo = chainblocks::ParamsInfo(
+      chainblocks::ParamsInfo::Param("Value", CBCCSTR("The constant value to insert in the chain."), CoreInfo::AnyType));
 
   OwnedVar _value{};
   OwnedVar _clone{};
@@ -52,7 +53,7 @@ struct Const {
       _clone = _value;
       const_cast<CBlock *>(data.block)->inlineBlockId = CBInlineBlocks::NotInline;
     } else {
-      _clone = Var::Empty;
+      _clone = chainblocks::Var::Empty;
       const_cast<CBlock *>(data.block)->inlineBlockId = CBInlineBlocks::CoreConst;
     }
     return _innerInfo;
@@ -61,7 +62,7 @@ struct Const {
   void cleanup() { resolver.cleanup(); }
 
   void warmup(CBContext *context) {
-    if (_clone != Var::Empty)
+    if (_clone != chainblocks::Var::Empty)
       resolver.warmup(_value, _clone, context);
   }
 
@@ -72,8 +73,8 @@ struct Const {
   }
 };
 
-static ParamsInfo compareParamsInfo =
-    ParamsInfo(ParamsInfo::Param("Value", CBCCSTR("The value to test against for equality."), CoreInfo::AnyType));
+static chainblocks::ParamsInfo compareParamsInfo = chainblocks::ParamsInfo(
+    chainblocks::ParamsInfo::Param("Value", CBCCSTR("The value to test against for equality."), CoreInfo::AnyType));
 
 struct BaseOpsBin {
   CBVar _value{};
@@ -110,7 +111,7 @@ struct BaseOpsBin {
     case 0:
       return _value;
     default:
-      return Var::Empty;
+      return chainblocks::Var::Empty;
     }
   }
 
@@ -125,9 +126,9 @@ struct BaseOpsBin {
     FLATTEN ALWAYS_INLINE CBVar activate(CBContext *context, const CBVar &input) { \
       const auto &value = *_target;                                                \
       if (input OP value) {                                                        \
-        return Var::True;                                                          \
+        return chainblocks::Var::True;                                             \
       }                                                                            \
-      return Var::False;                                                           \
+      return chainblocks::Var::False;                                              \
     }                                                                              \
   };                                                                               \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -150,31 +151,31 @@ LOGIC_OP(IsLessEqual, <=);
           throw ActivationError("Failed to compare, input len > value len.");             \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i]) { \
-            return Var::True;                                                             \
+            return chainblocks::Var::True;                                                \
           }                                                                               \
         }                                                                                 \
-        return Var::False;                                                                \
+        return chainblocks::Var::False;                                                   \
       } else if (input.valueType == Seq && value.valueType != Seq) {                      \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value) {                              \
-            return Var::True;                                                             \
+            return chainblocks::Var::True;                                                \
           }                                                                               \
         }                                                                                 \
-        return Var::False;                                                                \
+        return chainblocks::Var::False;                                                   \
       } else if (input.valueType != Seq && value.valueType == Seq) {                      \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                       \
           if (input OP value.payload.seqValue.elements[i]) {                              \
-            return Var::True;                                                             \
+            return chainblocks::Var::True;                                                \
           }                                                                               \
         }                                                                                 \
-        return Var::False;                                                                \
+        return chainblocks::Var::False;                                                   \
       } else if (input.valueType != Seq && value.valueType != Seq) {                      \
         if (input OP value) {                                                             \
-          return Var::True;                                                               \
+          return chainblocks::Var::True;                                                  \
         }                                                                                 \
-        return Var::False;                                                                \
+        return chainblocks::Var::False;                                                   \
       }                                                                                   \
-      return Var::False;                                                                  \
+      return chainblocks::Var::False;                                                     \
     }                                                                                     \
   };                                                                                      \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -190,31 +191,31 @@ LOGIC_OP(IsLessEqual, <=);
           throw ActivationError("Failed to compare, input len > value len.");                \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i])) { \
-            return Var::False;                                                               \
+            return chainblocks::Var::False;                                                  \
           }                                                                                  \
         }                                                                                    \
-        return Var::True;                                                                    \
+        return chainblocks::Var::True;                                                       \
       } else if (input.valueType == Seq && value.valueType != Seq) {                         \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value)) {                              \
-            return Var::False;                                                               \
+            return chainblocks::Var::False;                                                  \
           }                                                                                  \
         }                                                                                    \
-        return Var::True;                                                                    \
+        return chainblocks::Var::True;                                                       \
       } else if (input.valueType != Seq && value.valueType == Seq) {                         \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                          \
           if (!(input OP value.payload.seqValue.elements[i])) {                              \
-            return Var::False;                                                               \
+            return chainblocks::Var::False;                                                  \
           }                                                                                  \
         }                                                                                    \
-        return Var::True;                                                                    \
+        return chainblocks::Var::True;                                                       \
       } else if (input.valueType != Seq && value.valueType != Seq) {                         \
         if (!(input OP value)) {                                                             \
-          return Var::False;                                                                 \
+          return chainblocks::Var::False;                                                    \
         }                                                                                    \
-        return Var::True;                                                                    \
+        return chainblocks::Var::True;                                                       \
       }                                                                                      \
-      return Var::False;                                                                     \
+      return chainblocks::Var::False;                                                        \
     }                                                                                        \
   };                                                                                         \
   RUNTIME_CORE_BLOCK_TYPE(NAME);
@@ -339,7 +340,7 @@ struct Comment {
 
   void setParam(int index, const CBVar &value) { _comment = value.payload.stringValue; }
 
-  CBVar getParam(int index) { return Var(_comment); }
+  CBVar getParam(int index) { return chainblocks::Var(_comment); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     // We are a NOOP block
@@ -389,13 +390,13 @@ struct OnCleanup {
       // we need to reset the state or only the first block will run
       _context->resetCancelFlow();
       _context->onCleanup = true; // this is kind of a hack
-      _blocks.activate(_context, Var(error), output);
+      _blocks.activate(_context, chainblocks::Var(error), output);
       // restore the terminal state
       if (error.size() > 0) {
         _context->cancelFlow(error);
       } else {
         // var should not matter at this point
-        _context->stopFlow(Var::Empty);
+        _context->stopFlow(chainblocks::Var::Empty);
       }
       _context = nullptr;
     }
@@ -445,19 +446,19 @@ struct Or {
 struct Not {
   static CBTypesInfo inputTypes() { return CoreInfo::BoolType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  CBVar activate(CBContext *context, const CBVar &input) { return Var(!input.payload.boolValue); }
+  CBVar activate(CBContext *context, const CBVar &input) { return chainblocks::Var(!input.payload.boolValue); }
 };
 
 struct IsNone {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  CBVar activate(CBContext *context, const CBVar &input) { return Var(input.valueType == None); }
+  CBVar activate(CBContext *context, const CBVar &input) { return chainblocks::Var(input.valueType == None); }
 };
 
 struct IsNotNone {
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  CBVar activate(CBContext *context, const CBVar &input) { return Var(input.valueType != None); }
+  CBVar activate(CBContext *context, const CBVar &input) { return chainblocks::Var(input.valueType != None); }
 };
 
 struct Restart {
@@ -499,7 +500,7 @@ struct Fail {
 struct IsValidNumber {
   static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  CBVar activate(CBContext *context, const CBVar &input) { return Var(std::isnormal(input.payload.floatValue)); }
+  CBVar activate(CBContext *context, const CBVar &input) { return chainblocks::Var(std::isnormal(input.payload.floatValue)); }
 };
 
 struct NaNTo0 {
@@ -517,7 +518,7 @@ struct NaNTo0 {
 
   CBVar activateSingle(CBContext *context, const CBVar &input) {
     if (std::isnan(input.payload.floatValue)) {
-      return Var(0);
+      return chainblocks::Var(0);
     } else {
       return input;
     }
@@ -895,20 +896,21 @@ struct Get : public VariableBase {
   std::vector<CBString> _tableKeys{};
   CBlock *_block{nullptr};
 
-  static inline ParamsInfo getParamsInfo =
-      ParamsInfo(variableParamsInfo, ParamsInfo::Param("Default",
-                                                       CBCCSTR("The default value to use to infer types and output if the "
-                                                               "variable is not set, key is not there and/or type "
-                                                               "mismatches."),
-                                                       CoreInfo::AnyType));
+  static inline chainblocks::ParamsInfo getParamsInfo = chainblocks::ParamsInfo(
+      variableParamsInfo, chainblocks::ParamsInfo::Param("Default",
+                                                         CBCCSTR("The default value to use to infer types and output if the "
+                                                                 "variable is not set, key is not there and/or type "
+                                                                 "mismatches."),
+                                                         CoreInfo::AnyType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(getParamsInfo); }
 
   void setParam(int index, const CBVar &value) {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
-    else if (index == variableParamsInfoLen + 0)
+    else if (index == variableParamsInfoLen + 0) {
       cloneVar(_defaultValue, value);
+    }
   }
 
   CBVar getParam(int index) {
@@ -1077,7 +1079,7 @@ struct Get : public VariableBase {
     if (unlikely(_cell != nullptr)) {
       // we override block id, this should not happen
       assert(false);
-      return Var::Empty;
+      return chainblocks::Var::Empty;
     } else {
       if (_isTable) {
         if (_target->valueType == Table) {
@@ -1130,9 +1132,9 @@ struct Get : public VariableBase {
 };
 
 struct Swap {
-  static inline ParamsInfo swapParamsInfo =
-      ParamsInfo(ParamsInfo::Param("NameA", CBCCSTR("The name of first variable."), CoreInfo::StringOrAnyVar),
-                 ParamsInfo::Param("NameB", CBCCSTR("The name of second variable."), CoreInfo::StringOrAnyVar));
+  static inline chainblocks::ParamsInfo swapParamsInfo = chainblocks::ParamsInfo(
+      chainblocks::ParamsInfo::Param("NameA", CBCCSTR("The name of first variable."), CoreInfo::StringOrAnyVar),
+      chainblocks::ParamsInfo::Param("NameB", CBCCSTR("The name of second variable."), CoreInfo::StringOrAnyVar));
 
   std::string _nameA;
   std::string _nameB;
@@ -1178,9 +1180,9 @@ struct Swap {
 
   CBVar getParam(int index) {
     if (index == 0)
-      return Var(_nameA.c_str());
+      return chainblocks::Var(_nameA.c_str());
     else if (index == 1)
-      return Var(_nameB.c_str());
+      return chainblocks::Var(_nameB.c_str());
     throw CBException("Param index out of range.");
   }
 
@@ -1267,11 +1269,11 @@ struct Push : public SeqBase {
   CBTypeInfo _seqInfo{};
   CBTypeInfo _seqInnerInfo{};
 
-  static inline ParamsInfo pushParams =
-      ParamsInfo(variableParamsInfo, ParamsInfo::Param("Clear",
-                                                       CBCCSTR("If we should clear this sequence at every chain iteration; "
-                                                               "works only if this is the first push; default: true."),
-                                                       CoreInfo::BoolType));
+  static inline chainblocks::ParamsInfo pushParams = chainblocks::ParamsInfo(
+      variableParamsInfo, chainblocks::ParamsInfo::Param("Clear",
+                                                         CBCCSTR("If we should clear this sequence at every chain iteration; "
+                                                                 "works only if this is the first push; default: true."),
+                                                         CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
@@ -1287,7 +1289,7 @@ struct Push : public SeqBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
-      return Var(_clear);
+      return chainblocks::Var(_clear);
     throw CBException("Param index out of range.");
   }
 
@@ -1381,17 +1383,18 @@ struct Push : public SeqBase {
 };
 
 struct Sequence : public SeqBase {
-  ParamVar _types{Var::Enum(BasicTypes::Any, CoreCC, 'type')};
+  ParamVar _types{chainblocks::Var::Enum(BasicTypes::Any, CoreCC, 'type')};
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 
-  static inline ParamsInfo pushParams =
-      ParamsInfo(variableParamsInfo,
-                 ParamsInfo::Param("Clear",
-                                   CBCCSTR("If we should clear this sequence at every chain iteration; "
-                                           "works only if this is the first push; default: true."),
-                                   CoreInfo::BoolType),
-                 ParamsInfo::Param("Types", CBCCSTR("The sequence inner types to forward declare."), CoreInfo2::BasicTypesTypes));
+  static inline chainblocks::ParamsInfo pushParams =
+      chainblocks::ParamsInfo(variableParamsInfo,
+                              chainblocks::ParamsInfo::Param("Clear",
+                                                             CBCCSTR("If we should clear this sequence at every chain iteration; "
+                                                                     "works only if this is the first push; default: true."),
+                                                             CoreInfo::BoolType),
+                              chainblocks::ParamsInfo::Param("Types", CBCCSTR("The sequence inner types to forward declare."),
+                                                             CoreInfo2::BasicTypesTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
@@ -1409,7 +1412,7 @@ struct Sequence : public SeqBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
-      return Var(_clear);
+      return chainblocks::Var(_clear);
     else if (index == variableParamsInfoLen + 1)
       return _types;
     throw CBException("Param index out of range.");
@@ -1657,13 +1660,13 @@ struct TableDecl : public VariableBase {
       chainblocks::arrayFree(_tableInfo.table.types);
   }
 
-  ParamVar _types{Var::Enum(BasicTypes::Any, CoreCC, 'type')};
+  ParamVar _types{chainblocks::Var::Enum(BasicTypes::Any, CoreCC, 'type')};
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 
-  static inline ParamsInfo pushParams =
-      ParamsInfo(variableParamsInfo,
-                 ParamsInfo::Param("Types", CBCCSTR("The table inner types to forward declare."), CoreInfo2::BasicTypesTypes));
+  static inline chainblocks::ParamsInfo pushParams = chainblocks::ParamsInfo(
+      variableParamsInfo,
+      chainblocks::ParamsInfo::Param("Types", CBCCSTR("The table inner types to forward declare."), CoreInfo2::BasicTypesTypes));
 
   static CBParametersInfo parameters() { return CBParametersInfo(pushParams); }
 
@@ -1913,17 +1916,17 @@ struct Count : SeqUser {
     }
 
     if (likely(_cell->valueType == Seq)) {
-      return Var(int64_t(_cell->payload.seqValue.len));
+      return chainblocks::Var(int64_t(_cell->payload.seqValue.len));
     } else if (_cell->valueType == Table) {
-      return Var(int64_t(_cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
+      return chainblocks::Var(int64_t(_cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
     } else if (_cell->valueType == Bytes) {
-      return Var(int64_t(_cell->payload.bytesSize));
+      return chainblocks::Var(int64_t(_cell->payload.bytesSize));
     } else if (_cell->valueType == String) {
-      return Var(int64_t(_cell->payload.stringLen > 0 || _cell->payload.stringValue == nullptr
-                             ? _cell->payload.stringLen
-                             : strlen(_cell->payload.stringValue)));
+      return chainblocks::Var(int64_t(_cell->payload.stringLen > 0 || _cell->payload.stringValue == nullptr
+                                          ? _cell->payload.stringLen
+                                          : strlen(_cell->payload.stringValue)));
     } else {
-      return Var(0);
+      return chainblocks::Var(0);
     }
   }
 };
@@ -2395,7 +2398,7 @@ struct Take {
     default:
       break;
     }
-    return Var::Empty;
+    return chainblocks::Var::Empty;
   }
 
   struct OutOfRangeEx : public ActivationError {
@@ -2412,7 +2415,7 @@ struct Take {
 
 #define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                            \
   ALWAYS_INLINE CBVar __name__(CBContext *context, const CBVar &input) {          \
-    const auto inputLen = ssize_t(__len__);                                       \
+    const auto inputLen = size_t(__len__);                                        \
     const auto &indices = _indicesVar ? *_indicesVar : _indices;                  \
     if (likely(!_seqOutput)) {                                                    \
       const auto index = indices.payload.intValue;                                \
@@ -2430,13 +2433,13 @@ struct Take {
         }                                                                         \
         _cachedSeq.elements[i] = __val__;                                         \
       }                                                                           \
-      return Var(_cachedSeq);                                                     \
+      return chainblocks::Var(_cachedSeq);                                        \
     }                                                                             \
   }
 
   ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len, input.payload.seqValue.elements[index])
-  ACTIVATE_INDEXABLE(activateString, CBSTRLEN(input), Var(input.payload.stringValue[index]))
-  ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, Var(input.payload.bytesValue[index]))
+  ACTIVATE_INDEXABLE(activateString, CBSTRLEN(input), chainblocks::Var(input.payload.stringValue[index]))
+  ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, chainblocks::Var(input.payload.bytesValue[index]))
 
   CBVar activateTable(CBContext *context, const CBVar &input) {
     // TODO, if the strings are static at compose time, make sure to cache the
@@ -2539,7 +2542,7 @@ struct RTake : public Take {
         }
         _cachedSeq.elements[i] = input.payload.seqValue.elements[inputLen - 1 - index];
       }
-      return Var(_cachedSeq);
+      return chainblocks::Var(_cachedSeq);
     }
   }
 };
@@ -2565,7 +2568,7 @@ struct Slice {
 
   CBSeq _cachedSeq{};
   std::vector<uint8_t> _cachedBytes{};
-  CBVar _from{Var(0)};
+  CBVar _from{chainblocks::Var(0)};
   CBVar *_fromVar = nullptr;
   CBVar _to{};
   CBVar *_toVar = nullptr;
@@ -2694,11 +2697,11 @@ struct Slice {
     case 1:
       return _to;
     case 2:
-      return Var(_step);
+      return chainblocks::Var(_step);
     default:
       break;
     }
-    return Var::Empty;
+    return chainblocks::Var::Empty;
   }
 
   struct OutOfRangeEx : public ActivationError {
@@ -2747,7 +2750,7 @@ struct Slice {
         _cachedBytes[idx] = input.payload.bytesValue[i];
         idx++;
       }
-      return Var(&_cachedBytes.front(), uint32_t(actualLen));
+      return chainblocks::Var(&_cachedBytes.front(), uint32_t(actualLen));
     } else {
       throw ActivationError("Slice's Step must be greater then 0");
     }
@@ -2789,7 +2792,7 @@ struct Slice {
         idx++;
       }
       _cachedBytes[idx] = '\0';
-      return Var((const char *)_cachedBytes.data(), uint32_t(actualLen));
+      return chainblocks::Var((const char *)_cachedBytes.data(), uint32_t(actualLen));
     } else {
       throw ActivationError("Slice's Step must be greater then 0");
     }
@@ -2835,7 +2838,7 @@ struct Slice {
         cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
         idx++;
       }
-      return Var(_cachedSeq);
+      return chainblocks::Var(_cachedSeq);
     } else {
       throw ActivationError("Slice's Step must be greater then 0");
     }
@@ -2845,8 +2848,8 @@ struct Slice {
 };
 
 struct Limit {
-  static inline ParamsInfo indicesParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Max", CBCCSTR("How many maximum elements to take from the input sequence."), CoreInfo::IntType));
+  static inline chainblocks::ParamsInfo indicesParamsInfo = chainblocks::ParamsInfo(chainblocks::ParamsInfo::Param(
+      "Max", CBCCSTR("How many maximum elements to take from the input sequence."), CoreInfo::IntType));
 
   CBSeq _cachedResult{};
   int64_t _max = 0;
@@ -2883,7 +2886,7 @@ struct Limit {
 
   void setParam(int index, const CBVar &value) { _max = value.payload.intValue; }
 
-  CBVar getParam(int index) { return Var(_max); }
+  CBVar getParam(int index) { return chainblocks::Var(_max); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     int64_t inputLen = input.payload.seqValue.len;
@@ -2902,7 +2905,7 @@ struct Limit {
       for (uint64_t i = 0; i < nindices; i++) {
         _cachedResult.elements[i] = input.payload.seqValue.elements[i];
       }
-      return Var(_cachedResult);
+      return chainblocks::Var(_cachedResult);
     }
   }
 };
@@ -3084,14 +3087,14 @@ struct Repeat {
       return _blks;
     case 1:
       if (_ctxVar.size() == 0) {
-        return Var(_times);
+        return chainblocks::Var(_times);
       } else {
-        auto ctxTimes = Var(_ctxVar);
+        auto ctxTimes = chainblocks::Var(_ctxVar);
         ctxTimes.valueType = ContextVar;
         return ctxTimes;
       }
     case 2:
-      return Var(_forever);
+      return chainblocks::Var(_forever);
     case 3:
       return _pred;
     default:
@@ -3277,3 +3280,5 @@ RUNTIME_CORE_BLOCK_TYPE(DropFront);
 RUNTIME_CORE_BLOCK_TYPE(Count);
 RUNTIME_CORE_BLOCK_TYPE(Repeat);
 }; // namespace chainblocks
+
+#endif // CB_CORE_BLOCKS_CORE

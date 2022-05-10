@@ -93,7 +93,7 @@ template <NumberType Type> struct TNumberTypeTraits {};
 #define NUMBER_TYPE_TRAITS(_Type, _CType)                                         \
   template <> struct TNumberTypeTraits<_Type> : public NumberTypeTraits {         \
     typedef _CType TInner;                                                        \
-    TNumberTypeTraits<_Type>() {                                                  \
+    TNumberTypeTraits() {                                                         \
       type = _Type;                                                               \
       isInteger = std::is_integral<_CType>::value;                                \
       size = sizeof(_CType);                                                      \

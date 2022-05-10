@@ -16,9 +16,9 @@ if(Rust_CARGO_TARGET)
   set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
 endif()
 
-set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/libchainblocks.a)
+set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}chainblocks${Rust_LIB_SUFFIX})
 
-file(GLOB_RECURSE SOURCES *.rs *.toml)
+file(GLOB_RECURSE SOURCES src/*.rs *.toml)
 
 # Bindgen dependency
 if(NOT SKIP_RUST_BINDGEN)
@@ -33,9 +33,24 @@ if(IOS)
   set(BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/osx_rust_build.sh")
 endif()
 
+list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
+
+if(ANDROID OR LINUX)
+  set(NEED_OPENSSL_SYS ON)
+endif()
+
+if(NEED_OPENSSL_SYS)
+  get_property(SSL_DIR GLOBAL PROPERTY OPENSSL_SOURCE_DIR)
+  set(SSL_ENV OPENSSL_DIR=${SSL_DIR} OPENSSL_INCLUDE_DIR=${SSL_DIR}/include OPENSSL_LIBS=$<TARGET_FILE_BASE_NAME:ssl> OPENSSL_LIB_DIR=$<TARGET_FILE_DIR:ssl> OPENSSL_STATIC=1)
+endif()
+
+if(IOS)
+  set(BUILD_SCRIPT "${CHAINBLOCKS_DIR}/cmake/osx_rust_build.sh")
+endif()
+
 add_custom_command(
   OUTPUT ${GENERATED_LIB_PATH}
-  COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS}" ${BUILD_SCRIPT} cargo ${Rust_CARGO_TOOLCHAIN} build ${Rust_CARGO_UNSTABLE_FLAGS} ${FEATURES_ARG} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
+  COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS}" ${SSL_ENV} ${BUILD_SCRIPT} ${CARGO_EXE} ${Rust_CARGO_TOOLCHAIN} rustc ${Rust_CARGO_UNSTABLE_FLAGS} ${FEATURES_ARG} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
   WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
   DEPENDS ${SOURCES}
   USES_TERMINAL
@@ -44,6 +59,10 @@ add_custom_target(
   cargo-chainblocks-rust
   DEPENDS ${GENERATED_LIB_PATH}
 )
+
+if(NEED_OPENSSL_SYS)
+  add_dependencies(cargo-chainblocks-rust ssl)
+endif()
 
 add_library(chainblocks-rust STATIC IMPORTED GLOBAL)
 add_dependencies(chainblocks-rust cargo-chainblocks-rust)
@@ -54,4 +73,9 @@ set_target_properties(chainblocks-rust PROPERTIES
 if(WIN32)
   target_link_libraries(chainblocks-rust INTERFACE Userenv)
   target_link_libraries(chainblocks-rust INTERFACE ws2_32 Bcrypt Crypt32 Secur32 NtDll Ncrypt)
+endif()
+
+if(NOT (APPLE OR EMSCRIPTEN OR WIN32))
+  # Required by openssl-sys
+  target_link_libraries(chainblocks-rust INTERFACE OpenSSL)
 endif()

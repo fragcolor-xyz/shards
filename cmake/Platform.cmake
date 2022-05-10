@@ -1,5 +1,19 @@
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT (APPLE OR ANDROID OR EMSCRIPTEN))
   set(LINUX TRUE)
+endif()
+
+if(APPLE AND NOT IOS)
+  set(MACOSX TRUE)
+endif()
+
+if(WIN32 OR MACOSX OR LINUX)
+  set(DESKTOP TRUE)
+endif()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
+  set(X86 TRUE)
+else()
+  set(X86 FALSE)
 endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -10,7 +24,7 @@ endif()
 
 # Default arch if ARCH is not set
 if(NOT ARCH)
-  if(X86 AND NOT EMSCRIPTEN)
+  if(X86 AND NOT (EMSCRIPTEN OR APPLE))
     set(ARCH "sandybridge")
   endif()
 endif()
@@ -43,13 +57,28 @@ if(EMSCRIPTEN)
     add_link_options(-pthread)
   endif()
 
-  if(EMSCRIPTEN_IDBFS)
+  if(NODEJS)
+    add_link_options(-lnodefs.js)
+  else()
     add_link_options(-lidbfs.js)
   endif()
+endif()
 
-  if(EMSCRIPTEN_NODEFS)
-    add_link_options(-lnodefs.js)
+if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  set(WINDOWS_ABI "msvc")
+
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
+  add_compile_definitions(_SCL_SECURE_NO_WARNINGS=1)
+  add_compile_definitions(NOMINMAX=1)
+
+  # We can not keep iterators in memory without freeing with iterator debugging
+  # See CBTable/Set iterator internals
+  if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    add_compile_definitions(_ITERATOR_DEBUG_LEVEL=1)
+    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=1")
   endif()
+else()
+  set(WINDOWS_ABI "gnu")
 endif()
 
 # mingw32 static runtime
@@ -82,7 +111,9 @@ if(USE_LTO)
   add_link_options(-flto)
 endif()
 
-add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+if(NOT MSVC)
+  add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+endif()
 
 if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   add_link_options(-fuse-ld=lld)
@@ -109,8 +140,9 @@ if(PROFILE_GPROF)
 endif()
 
 option(USE_UBSAN "Use undefined behaviour sanitizer" ON)
+set(UBSAN_SUPPORTED LINUX)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(NOT WIN32 AND NOT EMSCRIPTEN AND USE_UBSAN)
+  if(${UBSAN_SUPPORTED} AND USE_UBSAN)
     add_compile_options(-fsanitize=undefined)
     add_link_options(-fsanitize=undefined)
     add_compile_definitions(CB_USE_UBSAN)
@@ -143,14 +175,30 @@ endif()
 add_compile_definitions(BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 add_compile_options(-Wall)
 
-if(APPLE)
+if(ANDROID OR APPLE)
   # This tells FindPackage(Threads) that threads are built in
-  set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+  if(ANDROID)
+    # Bundled in the standard C library
+    set(CMAKE_THREAD_LIBS_INIT "-lc")
+  else()
+    set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+  endif()
   set(CMAKE_HAVE_THREADS_LIBRARY 1)
   set(CMAKE_USE_WIN32_THREADS_INIT 0)
   set(CMAKE_USE_PTHREADS_INIT 1)
   set(THREADS_PREFER_PTHREAD_FLAG ON)
+endif()
 
+if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
   add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
+endif()
+
+
+if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+  set(LIB_PREFIX "")
+  set(LIB_SUFFIX ".lib")
+else()
+  set(LIB_PREFIX "lib")
+  set(LIB_SUFFIX ".a")
 endif()

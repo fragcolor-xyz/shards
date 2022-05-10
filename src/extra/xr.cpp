@@ -223,8 +223,7 @@ struct RenderXR : public BGFX::BaseConsumer {
           // and we need to fetch session
           auto session = emscripten_wait<emscripten::val>(context, dialog(_near, _far));
           if (session.as<bool>()) {
-            auto gSession = emscripten::val::global("ChainblocksWebXRSession");
-            gSession = session;
+            emscripten::val::global("ChainblocksWebXRSession") = session;
             _xrSession = session;
           }
         }
@@ -405,8 +404,8 @@ struct RenderXR : public BGFX::BaseConsumer {
   }
 
   CBVar activate(CBContext *context, const CBVar &input) {
-    const auto ctx = reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
 #ifdef __EMSCRIPTEN__
+    gfx::FrameRenderer &frameRenderer = getFrameRenderer();
     if (likely(bool(_cb))) {
       _frame = (*_cb)["frame"];
       DEFER(_frame.reset()); // let's not hold this reference
@@ -435,8 +434,8 @@ struct RenderXR : public BGFX::BaseConsumer {
           const auto vHeight = viewport["height"].as<int>();
 
           // push _viewId
-          auto &currentView = ctx->pushView({_views[i], vWidth, vHeight});
-          DEFER({ ctx->popView(); });
+          auto &currentView = frameRenderer.pushView({_views[i], vWidth, vHeight});
+          DEFER({ frameRenderer.popView(); });
 
           // Touch _viewId
           bgfx::touch(_views[i]);

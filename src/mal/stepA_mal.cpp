@@ -10,11 +10,13 @@
 #endif
 #include "Types.h"
 
+#include <boost/filesystem.hpp>
 #include <cassert>
 #include <cstring>
-#include <filesystem>
 #include <iostream>
 #include <memory>
+
+namespace fs = boost::filesystem;
 
 malValuePtr READ(const String &input);
 String PRINT(malValuePtr ast);
@@ -53,17 +55,17 @@ int malmain(int argc, const char *argv[]) {
 
   // do the following before malinit
 
-  auto cblAbsPath = std::filesystem::absolute(argv[0]).lexically_normal();
-  auto cblAbsStr = cblAbsPath.string();
-  replEnv->set("*cbl*", mal::string(cblAbsStr));
+  auto cblAbsPath = fs::weakly_canonical(argv[0]);
+  replEnv->set("*cbl*", mal::string(cblAbsPath.string()));
 
-  auto exePath = cblAbsPath.parent_path().string();
-  auto scriptPath = exePath;
+  auto exeDirPath = cblAbsPath.parent_path();
+  auto scriptDirPath = exeDirPath;
   if (argc > 1) {
-    scriptPath = std::filesystem::absolute(std::filesystem::absolute(std::filesystem::path(argv[1])).parent_path()).string();
+    fs::path scriptPath = fs::weakly_canonical(fs::path(argv[1]));
+    scriptDirPath = scriptPath.parent_path();
   }
 
-  malinit(replEnv, exePath.c_str(), scriptPath.c_str());
+  malinit(replEnv, exeDirPath.string().c_str(), scriptDirPath.string().c_str());
 
   makeArgv(replEnv, argc - 2, argv + 2);
   bool failed = false;
@@ -73,7 +75,7 @@ int malmain(int argc, const char *argv[]) {
       String out = safeRep(argv[2], replEnv, &failed);
       std::cout << out << "\n";
     } else {
-      auto scriptFilePath = std::filesystem::path(argv[1]);
+      auto scriptFilePath = fs::path(argv[1]);
       auto fileonly = scriptFilePath.filename().string();
       String filename = escape(fileonly);
       String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);

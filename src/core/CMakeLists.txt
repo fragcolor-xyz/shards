@@ -37,10 +37,6 @@ add_library(chainblocks-core-static STATIC ${core_SOURCES})
 target_include_directories(chainblocks-core-static PUBLIC ../../include)
 target_include_directories(chainblocks-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(EMSCRIPTEN)
-  target_compile_options(chainblocks-core-static PRIVATE "SHELL:-s DISABLE_EXCEPTION_CATCHING=0")
-endif()
-
 if(CHAINBLOCKS_NO_BIGINT_BLOCKS)
   target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_NO_BIGINT_BLOCKS=1)
 else()
@@ -64,7 +60,6 @@ if(APPLE)
 
   if(IOS)
     target_link_libraries(chainblocks-core-static
-      "-framework hidapi"
       "-framework AVFoundation"
       "-framework CoreMotion"
       "-framework CoreGraphics"
@@ -79,66 +74,56 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(chainblocks-core-static Boost::context Boost::filesystem)
+target_link_libraries(chainblocks-core-static Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision)
+
+if(NOT EMSCRIPTEN)
+  target_link_libraries(chainblocks-core-static Boost::beast Boost::asio Boost::context)
+else()
+  target_include_directories(chainblocks-core-static PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
+  # For usage of boost/beast/core/detail/base64.hpp
+  target_include_directories(chainblocks-core-static PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
+endif()
+
+if(WIN32)
+  target_link_libraries(chainblocks-core-static Boost::stacktrace_windbg_cached)
+
+  # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
+  # 0x0A00 = Windows 10
+  target_compile_definitions(chainblocks-core-static PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
+elseif(LINUX)
+  target_link_libraries(chainblocks-core-static Boost::stacktrace_addr2line)
+else()
+  target_link_libraries(chainblocks-core-static Boost::stacktrace_basic)
+endif()
 
 target_link_libraries(chainblocks-core-static
   spdlog magic_enum nameof linalg xxHash
   pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
 )
 
-if(NOT (IOS OR EMSCRIPTEN))
+if(DESKTOP)
   target_sources(chainblocks-core-static PRIVATE ${os_SOURCES})
+  target_link_libraries(chainblocks-core-static Boost::process)
+  target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_DESKTOP=1)
 endif()
 
 if(EMSCRIPTEN)
   target_sources(chainblocks-core-static PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
-if(WIN32)
-  target_link_libraries(chainblocks-core-static ssl crypto ws2_32 mswsock Secur32 Crypt32 NCrypt)
-elseif(APPLE)
-  if(NOT IOS)
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-      # these have to be full path or cmake will revert to use -l resulting in dynamic linking
-      if(EXISTS "/usr/local/opt/openssl@1.1/lib/libssl.a")
-        target_link_libraries(chainblocks-core-static
-          /usr/local/opt/openssl@1.1/lib/libssl.a
-          /usr/local/opt/openssl@1.1/lib/libcrypto.a
-        )
-      else()
-        target_link_libraries(chainblocks-core-static
-          /opt/homebrew/opt/openssl@1.1/lib/libssl.a
-          /opt/homebrew/opt/openssl@1.1/lib/libcrypto.a
-        )
-      endif()
-    else()
-      target_link_libraries(chainblocks-core-static
-        -lssl -lcrypto
-      )
-    endif()
-  endif()
+if(NOT EMSCRIPTEN)
+  # Required by Boost::asio
+  target_link_libraries(chainblocks-core-static OpenSSL)
+endif()
 
-  target_include_directories(chainblocks-core-static PUBLIC
-    /usr/local/include
-    /usr/local/opt/openssl@1.1/include
-    /opt/homebrew/opt/openssl@1.1/include
-  )
-  target_link_directories(chainblocks-core-static PUBLIC
-    /usr/local/lib
-    /usr/local/opt/openssl@1.1/lib
-    /opt/homebrew/opt/openssl@1.1/lib
-  )
-elseif(UNIX AND NOT EMSCRIPTEN)
-  target_link_libraries(chainblocks-core-static ssl crypto pthread dl rt)
+if(WIN32)
+  target_link_libraries(chainblocks-core-static ws2_32 mswsock Secur32 Crypt32 NCrypt)
+elseif(LINUX)
+  target_link_libraries(chainblocks-core-static pthread dl rt)
 endif()
 
 target_compile_options(chainblocks-core-static
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
-)
-
-target_compile_options(chainblocks-core-static
-  PUBLIC -Wno-multichar
-  PRIVATE -Wno-missing-field-initializers -Wno-deprecated-copy
 )
 
 # TODO: Modularize block registration to remove Core=>Rust dependency
@@ -148,34 +133,46 @@ if(CHAINBLOCKS_WITH_EXTRA_BLOCKS)
 endif()
 
 if(EMSCRIPTEN)
+  set(FETCH_SUPPORTED ON)
+  if(NODEJS)
+    message(STATUS "Building chainblocks-core for node.js, disabling Fetch support")
+    set(FETCH_SUPPORTED OFF)
+  endif()
+
   em_link_js_library(chainblocks-core-static blocks/core.js)
 
   target_compile_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
-    "SHELL:-s FETCH=1"
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
   )
+
+  if(FETCH_SUPPORTED)
+    target_link_options(chainblocks-core-static PUBLIC
+      "SHELL:-s FETCH=1")
+  else()
+    set(NO_HTTP_BLOCKS ON)
+  endif()
 
   target_link_options(chainblocks-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
-    "SHELL:-s NO_EXIT_RUNTIME=1"
     "SHELL:-s INITIAL_MEMORY=209715200"
-    "SHELL:-s FETCH=1"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
-    "SHELL:-s ASYNCIFY=1"
     "SHELL:-s LLD_REPORT_UNDEFINED"
-    "SHELL:-s MODULARIZE=1"
-    "SHELL:-s EXPORT_NAME=cbl"
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_chainblocksInterface', '_malloc', '_free', '_emscripten_get_now']\""
-    "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval', 'emCompileShaderBlocking']\""
-    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'GL', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
+    "SHELL:-s \"ASYNCIFY_IMPORTS=['emEval']\""
+    "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
+
+  # Require optimizations when building with asyncify too keep size/build time reasonable
+  target_compile_options(chainblocks-core-static PUBLIC "-O2")
+  target_link_options(chainblocks-core-static PUBLIC "-O2" "SHELL:-s ASYNCIFY=1")
 endif()
 
 if(IOS)
+  set(NO_HTTP_BLOCKS ON)
+endif()
+
+if(NO_HTTP_BLOCKS)
+  message(STATUS "Building chainblocks-core without HTTP blocks")
   target_compile_definitions(chainblocks-core-static PUBLIC CHAINBLOCKS_NO_HTTP_BLOCKS=1)
 endif()
 
@@ -195,6 +192,14 @@ if(CHAINBLOCKS_BUILD_TESTS)
   add_executable(test_runtime ../tests/test_runtime.cpp)
 
   target_link_libraries(test_runtime
-    chainblocks-core Catch2 Catch2WithMain
+    chainblocks-core Catch2 Catch2Main
   )
+
+  if(EMSCRIPTEN)
+    target_link_options(test_runtime PUBLIC
+      "SHELL:-s MODULARIZE=1"
+      "SHELL:-s EXPORT_NAME=test"
+      "SHELL:-s NO_EXIT_RUNTIME=1"
+    )
+  endif()
 endif()

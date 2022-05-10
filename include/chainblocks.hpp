@@ -612,27 +612,26 @@ struct Var : public CBVar {
     }
   }
 
-  template <typename T> explicit operator std::vector<T>() const {
+  template <typename T> void intoVector(std::vector<T> &outVec) const {
     if (valueType != Seq) {
       throw InvalidVarTypeError("Invalid variable casting! expected Seq");
     }
-    std::vector<T> res;
-    res.resize(payload.seqValue.len);
+    outVec.resize(payload.seqValue.len);
     for (uint32_t i = 0; i < payload.seqValue.len; i++) {
-      res[i] = T(*reinterpret_cast<Var *>(&payload.seqValue.elements[i]));
+      outVec[i] = T(*reinterpret_cast<Var *>(&payload.seqValue.elements[i]));
     }
-    return res;
+  }
+
+  template <typename T> explicit operator std::vector<T>() const {
+    std::vector<T> result;
+    intoVector(result);
+    return result;
   }
 
   explicit operator std::vector<Var>() const {
-    if (valueType != Seq) {
-      throw InvalidVarTypeError("Invalid variable casting! expected Seq");
-    }
-    std::vector<Var> res{size_t(payload.seqValue.len)};
-    for (uint32_t i = 0; i < payload.seqValue.len; i++) {
-      res[i] = *reinterpret_cast<Var *>(&payload.seqValue.elements[i]);
-    }
-    return res;
+    std::vector<Var> result;
+    intoVector(result);
+    return result;
   }
 
   constexpr static CBVar Empty{};

@@ -16,7 +16,7 @@
 
 int main(int argc, char *argv[]) {
   chainblocks::GetGlobals().RootPath = "./";
-  registerCoreBlocks();
+  chainblocks::registerCoreBlocks();
   int result = Catch::Session().run(argc, argv);
   return result;
 }
@@ -679,7 +679,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
 
   SECTION("Bytes") {
     std::random_device rd;
-    std::uniform_int_distribution<uint8_t> dist(0, 0x07);
+    std::uniform_int_distribution<uint32_t> dist(0, 0x07);
 
     std::vector<uint8_t> data1(1024);
     for (auto &b : data1) {

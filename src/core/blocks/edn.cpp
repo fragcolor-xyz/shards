@@ -144,7 +144,9 @@ struct Uglify {
 
   template <class T> OwnedVar to_var(T &list) {
     std::vector<OwnedVar> vars;
-    BOOST_FOREACH (auto &item, list) { vars.emplace_back(to_var(item)); }
+    BOOST_FOREACH (auto &item, list) {
+      vars.emplace_back(to_var(item));
+    }
     return Var(vars);
   }
 
@@ -231,7 +233,9 @@ struct Uglify {
   bool find_symbols(form::FormWrapper &formWrapper) { return find_symbols(formWrapper.form); }
 
   void find_symbols(form::FormWrapperMap &map) {
-    BOOST_FOREACH (auto &item, map) { find_symbols(item.second.form); }
+    BOOST_FOREACH (auto &item, map) {
+      find_symbols(item.second.form);
+    }
   }
 
   bool find_symbols(form::Form &form) {

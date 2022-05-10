@@ -43,7 +43,7 @@ endif()
 # mal static library
 duplicate_library_target(chainblocks-core-static STATIC cbl-static)
 setup_cbl_library_target(cbl-static)
-set_target_properties(cbl-static PROPERTIES OUTPUT_NAME "${LIB_PREFIX}cbl")
+set_target_properties(cbl-static PROPERTIES OUTPUT_NAME "${LIB_PREFIX}cbl-static")
 
 if(EMSCRIPTEN)
   if(EMSCRIPTEN_PTHREADS)
@@ -51,4 +51,10 @@ if(EMSCRIPTEN)
   else()
     set_target_properties(cbl PROPERTIES SUFFIX "-st.js")
   endif()
+
+  target_link_options(cbl PUBLIC
+    "SHELL:-s MODULARIZE=1"
+    "SHELL:-s EXPORT_NAME=cbl"
+    "SHELL:-s NO_EXIT_RUNTIME=1"
+  )
 endif()

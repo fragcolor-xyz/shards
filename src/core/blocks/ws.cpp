@@ -4,6 +4,8 @@
 #ifndef CHAINBLOCKS_NO_HTTP_BLOCKS
 #define BOOST_ERROR_CODE_HEADER_ONLY
 
+#include "shared.hpp"
+
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
@@ -16,8 +18,6 @@ namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
-
-#include "shared.hpp"
 
 namespace chainblocks {
 namespace WS {

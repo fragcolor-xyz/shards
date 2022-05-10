@@ -39,12 +39,7 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/blocks/random.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/imaging.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/http.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/bgfx.cpp
   ${CHAINBLOCKS_DIR}/src/extra/audio.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/bgfx.shaderc.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/bgfx.hpp
-  ${CHAINBLOCKS_DIR}/src/extra/imgui.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/imgui.hpp
   ${CHAINBLOCKS_DIR}/src/extra/runtime.cpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.hpp
   ${CHAINBLOCKS_DIR}/src/extra/desktop.win.cpp
@@ -59,12 +54,8 @@ set(
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.hpp
   ${CHAINBLOCKS_DIR}/src/core/edn/eval.cpp
   ${CHAINBLOCKS_DIR}/src/extra/snappy.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/bgfx_tests.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/gltf_tests.cpp
   ${CHAINBLOCKS_DIR}/src/extra/brotli.cpp
   ${CHAINBLOCKS_DIR}/src/extra/xr.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/inputs.cpp
-  ${CHAINBLOCKS_DIR}/src/extra/gltf.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/ws.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/bigint.cpp
   ${CHAINBLOCKS_DIR}/src/core/blocks/wasm.cpp
@@ -81,6 +72,7 @@ set(
   ${MY_PROJECT_HEADER_PATHS}
   -I${CHAINBLOCKS_DIR}/include
   -I${CHAINBLOCKS_DIR}/src/core
+  -I${CHAINBLOCKS_DIR}/src/gfx
   -I${CHAINBLOCKS_DIR}/deps/replxx/include
   -I${CHAINBLOCKS_DIR}/deps/spdlog/include
   -I${CHAINBLOCKS_DIR}/deps/SPSCQueue/include

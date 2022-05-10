@@ -2,12 +2,14 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "shared.hpp"
+#include <boost/filesystem.hpp>
 #include <cstdio>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <sstream>
+
+namespace fs = boost::filesystem;
 
 // for now a carbon copy of wasm3 simple wasi
 
@@ -454,9 +456,9 @@ m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
 
   CBLOG_TRACE("WASI m3_wasi_unstable_path_filestat_get, path: {}", path);
 
-  std::filesystem::path fp{path};
-  std::filesystem::path rp{chainblocks::GetGlobals().RootPath};
-  std::filesystem::path p = rp / fp;
+  fs::path fp{path};
+  fs::path rp{chainblocks::GetGlobals().RootPath};
+  fs::path p = rp / fp;
   auto ps = p.string();
 
   if (runtime == NULL || filestat == NULL) {
@@ -841,6 +843,11 @@ m3ApiRawFunction(m3_wasi_unstable_random_get) {
     size_t reqlen = M3_MIN(buflen, 256);
 #if defined(__APPLE__) && (TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR)
     retlen = SecRandomCopyBytes(kSecRandomDefault, reqlen, buf) < 0 ? -1 : reqlen;
+#elif defined(__ANDROID_API__)
+    int urandom = open("/dev/urandom", O_RDONLY);
+    assert(urandom >= 0);
+    retlen = read(urandom, buf, reqlen);
+    close(urandom);
 #else
     retlen = getentropy(buf, reqlen) < 0 ? -1 : reqlen;
 #endif
@@ -1138,8 +1145,8 @@ struct Run {
     _env.reset();
 
     // here we load the module, that's why Module parameter is not variable
-    std::filesystem::path p(_moduleName);
-    if (!std::filesystem::exists(p)) {
+    fs::path p(_moduleName);
+    if (!fs::exists(p)) {
       throw ComposeError("Wasm module not found at the given path");
     }
 

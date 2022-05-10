@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#define WINVER 0x0602
-
 #include <winsock2.h>
 
 #include <Windows.h>
@@ -10,6 +8,8 @@
 
 #include "desktop.capture.win.hpp"
 #include "desktop.hpp"
+
+using namespace chainblocks;
 
 #ifndef NDEBUG
 #define DBG_CHECK_OFF 1

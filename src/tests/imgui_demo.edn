@@ -438,7 +438,7 @@
 (defnode main)
 (defloop ui-chain
   (GFX.MainWindow
-   :Title "UI Chainblocks Example" :Width 1280 :Height 768 :Debug true :Fullscreen false
+   :Title "UI Chainblocks Example" :Width 1280 :Height 768 :Debug false
    :Contents
    (-> (Setup
         true >= .showDemo

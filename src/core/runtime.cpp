@@ -6,16 +6,23 @@
 #include "spdlog/sinks/dist_sink.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#ifdef __ANDROID__
+#include <spdlog/sinks/android_sink.h>
+#endif
 #include "utility.hpp"
 #include <boost/asio/thread_pool.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
-#include <filesystem>
 #include <pdqsort.h>
 #include <set>
 #include <string.h>
 #include <unordered_set>
+
+namespace fs = boost::filesystem;
+
+using namespace chainblocks;
 
 #ifdef __EMSCRIPTEN__
 // clang-format off
@@ -153,14 +160,14 @@ extern "C" void __sanitizer_set_report_path(const char *path);
 #endif
 
 void loadExternalBlocks(std::string from) {
-  namespace fs = std::filesystem;
+  namespace fs = boost::filesystem;
   auto root = fs::path(from);
   auto pluginPath = root / "cblocks";
   if (!fs::exists(pluginPath))
     return;
 
   for (auto &p : fs::recursive_directory_iterator(pluginPath)) {
-    if (p.is_regular_file()) {
+    if (p.status().type() == fs::file_type::regular_file) {
       auto ext = p.path().extension();
       if (ext == ".dll" || ext == ".so" || ext == ".dylib") {
         auto filename = p.path().filename();
@@ -182,23 +189,63 @@ void loadExternalBlocks(std::string from) {
   }
 }
 
+void setupSpdLog() {
+  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
+
+  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  dist_sink->add_sink(sink1);
+
+#ifdef CHAINBLOCKS_DESKTOP
+  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("chainblocks.log", 1048576, 3, false);
+  dist_sink->add_sink(sink2);
+#endif
+
+  auto logger = std::make_shared<spdlog::logger>("chainblocks_logger", dist_sink);
+  logger->flush_on(spdlog::level::err);
+  spdlog::set_default_logger(logger);
+
+#ifdef __ANDROID__
+  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("android");
+  logger->sinks().push_back(android_sink);
+#endif
+
+#ifdef __ANDROID
+  // Logcat already countains timestamps & log level
+  spdlog::set_pattern("[T-%t] [%s::%#] %v");
+#else
+  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
+#endif
+
+#ifdef NDEBUG
+#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
+  spdlog::set_level(spdlog::level::debug);
+#else
+  spdlog::set_level(spdlog::level::info);
+#endif
+#else
+  spdlog::set_level(spdlog::level::trace);
+#endif
+}
+
 void registerCoreBlocks() {
   if (globalRegisterDone)
     return;
 
   globalRegisterDone = true;
 
+  setupSpdLog();
+
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
-    std::filesystem::current_path(GetGlobals().RootPath);
+    fs::current_path(GetGlobals().RootPath);
   } else {
     // set current path as root path
-    auto cp = std::filesystem::current_path();
+    auto cp = fs::current_path();
     GetGlobals().RootPath = cp.string();
   }
 
 #ifdef CB_USE_UBSAN
-  auto absPath = std::filesystem::absolute(GetGlobals().RootPath);
+  auto absPath = fs::absolute(GetGlobals().RootPath);
   auto absPathStr = absPath.string();
   CBLOG_TRACE("Setting ASAN report path to: {}", absPathStr);
   __sanitizer_set_report_path(absPathStr.c_str());
@@ -207,7 +254,7 @@ void registerCoreBlocks() {
 // UTF8 on windows
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
-  namespace fs = std::filesystem;
+  namespace fs = boost::filesystem;
   if (GetGlobals().ExePath.size() > 0) {
     auto pluginPath = fs::absolute(GetGlobals().ExePath) / "cblocks";
     auto pluginPathStr = pluginPath.wstring();
@@ -221,32 +268,6 @@ void registerCoreBlocks() {
     AddDllDirectory(pluginPathStr.c_str());
   }
 #endif
-
-  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
-
-  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  dist_sink->add_sink(sink1);
-
-#ifndef __EMSCRIPTEN__
-  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("chainblocks.log", 1048576, 3, false);
-  dist_sink->add_sink(sink2);
-#endif
-
-  auto logger = std::make_shared<spdlog::logger>("chainblocks_logger", dist_sink);
-  logger->flush_on(spdlog::level::err);
-  spdlog::set_default_logger(logger);
-
-#ifdef NDEBUG
-#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
-  spdlog::set_level(spdlog::level::debug);
-#else
-  spdlog::set_level(spdlog::level::info);
-#endif
-#else
-  spdlog::set_level(spdlog::level::trace);
-#endif
-
-  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
 
   CBLOG_DEBUG("Registering blocks");
 
@@ -305,7 +326,7 @@ void registerCoreBlocks() {
   edn::registerBlocks();
   reflection::registerBlocks();
 
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
   // registerOSBlocks();
   registerProcessBlocks();
   Genetic::registerBlocks();
@@ -2213,7 +2234,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
 
     auto &t = src.payload.tableValue;
-    CBTableIterator tit;
+    CBTableIterator tit{};
     t.api->tableGetIterator(t, &tit);
     CBString k;
     CBVar v;
@@ -2238,7 +2259,7 @@ NO_INLINE void _cloneVarSlow(CBVar &dst, const CBVar &src) {
     }
 
     auto &s = src.payload.setValue;
-    CBSetIterator sit;
+    CBSetIterator sit{};
     s.api->setGetIterator(s, &sit);
     CBVar v;
     while (s.api->setNext(s, &sit, &v)) {
@@ -3173,7 +3194,7 @@ CBCore *__cdecl chainblocksInterface(uint32_t abi_version) {
   result->setRootPath = [](const char *p) noexcept {
     chainblocks::GetGlobals().RootPath = p;
     chainblocks::loadExternalBlocks(p);
-    std::filesystem::current_path(p);
+    fs::current_path(p);
   };
 
   result->asyncActivate = [](CBContext *context, void *userData, CBAsyncActivateProc call, CBAsyncCancelProc cancel_call) {

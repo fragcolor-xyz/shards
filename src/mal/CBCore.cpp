@@ -12,11 +12,11 @@
 #include "../core/runtime.hpp"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
 #include <boost/process/environment.hpp>
 #endif
+#include <boost/filesystem.hpp>
 #include <chrono>
-#include <filesystem>
 #include <fstream>
 #include <ostream>
 #include <set>
@@ -29,6 +29,8 @@
 #ifdef CB_COMPRESSED_STRINGS
 #include "../core/cbccstrings.hpp"
 #endif
+
+using namespace chainblocks;
 
 #define ARG(type, name) type *name = VALUE_CAST(type, *argsBegin++)
 
@@ -48,6 +50,9 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin)); \
   }
 
+namespace chainblocks {
+extern void setupSpdLog();
+}
 extern void cbRegisterAllBlocks();
 
 #ifndef CB_CORE_ONLY
@@ -66,7 +71,7 @@ typedef RefCountedPtr<malCBVar> malCBVarPtr;
 void registerKeywords(malEnvPtr env);
 malCBVarPtr varify(const malValuePtr &arg);
 
-namespace fs = std::filesystem;
+namespace fs = boost::filesystem;
 
 namespace chainblocks {
 CBlock *createBlockInnerCall();
@@ -81,6 +86,9 @@ static std::mutex observersMutex;
 static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
 void installCBCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
+  // Setup logging first
+  chainblocks::setupSpdLog();
+
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);
 
@@ -186,6 +194,8 @@ void installCBCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(def || Await)", env);
 #if defined(_WIN32)
   rep("(def platform \"windows\")", env);
+#elif defined(__ANDROID__)
+  rep("(def platform \"android\")", env);
 #elif defined(__EMSCRIPTEN__)
   rep("(def platform \"emscripten\")", env);
 #elif defined(__linux__)
@@ -548,7 +558,7 @@ struct ChainFileWatcher {
         inputTypeInfo(data.inputType), shared(data.shared) {
     node = data.chain->node;
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-    localRoot = std::filesystem::path(path).string();
+    localRoot = fs::path(path).string();
     try {
       malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
       if (this->autoexec != nullptr) {
@@ -572,7 +582,7 @@ struct ChainFileWatcher {
     }
 #else
     worker = std::thread([this] {
-      localRoot = std::filesystem::path(path).string();
+      localRoot = fs::path(path).string();
       try {
         malinit(rootEnv, localRoot.c_str(), localRoot.c_str());
         if (this->autoexec != nullptr) {
@@ -1324,7 +1334,7 @@ BUILTIN("Chain") {
       } else if (v->value() == ":Unsafe") {
         chain->unsafe = true;
       } else if (v->value() == ":LStack") {
-        chain->stackSize = 1024 * 1024;     // 1mb
+        chain->stackSize = 4 * 1024 * 1024; // 4mb
       } else if (v->value() == ":SStack") { // default is 128kb
         chain->stackSize = 32 * 1024;       // 32kb
       }
@@ -1696,7 +1706,7 @@ BUILTIN("override-root-path") {
 
   std::scoped_lock lock(chainblocks::GetGlobals().GlobalMutex);
   chainblocks::GetGlobals().RootPath = value->ref();
-  std::filesystem::current_path(value->ref());
+  fs::current_path(value->ref());
   return mal::nilValue();
 }
 
@@ -1877,7 +1887,7 @@ BUILTIN("import") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
-  auto filepath = std::filesystem::path(value->value());
+  auto filepath = fs::path(value->value());
 
   auto lib_name_str = filepath.string();
   auto lib_name = lib_name_str.c_str();
@@ -1908,7 +1918,7 @@ BUILTIN("import") {
 BUILTIN("getenv") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
   auto envs = boost::this_process::environment();
   auto env_value = envs[value->value()].to_string();
   return mal::string(env_value);
@@ -1921,7 +1931,7 @@ BUILTIN("setenv") {
   CHECK_ARGS_IS(2);
   ARG(malString, key);
   ARG(malString, value);
-#ifndef __EMSCRIPTEN__
+#ifdef CHAINBLOCKS_DESKTOP
   auto envs = boost::this_process::environment();
   envs[key->value()] = value->value();
   return mal::trueValue();

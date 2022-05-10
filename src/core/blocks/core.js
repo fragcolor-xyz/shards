@@ -91,6 +91,7 @@ var cbl_core = {
   // }
 }
 
-autoAddDeps(cbl_core, '$GL');
+#if FETCH
 autoAddDeps(cbl_core, '$Fetch');
+#endif
 mergeInto(LibraryManager.library, cbl_core);

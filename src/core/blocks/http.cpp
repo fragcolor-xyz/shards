@@ -10,7 +10,9 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
+#include <boost/filesystem.hpp>
 
+namespace fs = boost::filesystem;
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
@@ -27,7 +29,6 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 #endif
 
 #include "shared.hpp"
-#include <filesystem>
 
 using namespace std;
 
@@ -799,7 +800,7 @@ struct SendFile {
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
-    std::filesystem::path p{GetGlobals().RootPath};
+    fs::path p{GetGlobals().RootPath};
     p += input.payload.stringValue;
 
     http::file_body::value_type file;

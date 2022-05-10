@@ -2,22 +2,18 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "imgui.hpp"
-
-#include "bgfx.hpp"
 #include "blocks/shared.hpp"
+#include "gfx.hpp"
+#include "gfx/chainblocks_types.hpp"
 #include "runtime.hpp"
 #include <implot.h>
 
-using namespace chainblocks;
-
 namespace chainblocks {
 namespace ImGui {
-struct Base {
-  static inline CBExposedTypeInfo ContextInfo =
-      ExposedInfo::Variable("GUI.Context", CBCCSTR("The ImGui Context."), Context::Info);
-  static inline ExposedInfo requiredInfo = ExposedInfo(ContextInfo);
+using namespace chainblocks;
 
-  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(requiredInfo); }
+struct Base {
+  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(gfx::Base::requiredInfo); }
 
   static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static CBOptionalString inputHelp() { return CBCCSTR("The input value is not used and will pass through."); }
@@ -638,7 +634,7 @@ struct Window : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     int idx = 0;
-    _required[idx] = Base::ContextInfo;
+    _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_notClosed.isVariable()) {
@@ -833,8 +829,9 @@ template <CBType CT> struct Variable : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
-      _expInfo = ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(),
-                                                                 CBCCSTR("The required input variable."), CBTypeInfo(varType)));
+      _expInfo = ExposedInfo(
+          gfx::Base::mainWindowGlobalsInfo,
+          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType)));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -843,8 +840,9 @@ template <CBType CT> struct Variable : public Base {
 
   CBExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
-      _expInfo = ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."),
-                                                                 CBTypeInfo(varType), true));
+      _expInfo = ExposedInfo(
+          gfx::Base::mainWindowGlobalsInfo,
+          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType), true));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -925,7 +923,7 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
   CBExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(
-          requiredInfo,
+          gfx::Base::mainWindowGlobalsInfo,
           ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType1)),
           ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType2)));
       return CBExposedTypesInfo(_expInfo);
@@ -937,7 +935,7 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
   CBExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() && _exposing) {
       _expInfo = ExposedInfo(
-          requiredInfo,
+          gfx::Base::mainWindowGlobalsInfo,
           ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType1), true),
           ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType2), true));
       return CBExposedTypesInfo(_expInfo);
@@ -1117,9 +1115,9 @@ struct RadioButton : public Variable<CBType::Any> {
 
   CBExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
-      _expInfo =
-          ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."),
-                                                          CBTypeInfo({_value.valueType})));
+      _expInfo = ExposedInfo(gfx::Base::mainWindowGlobalsInfo,
+                             ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."),
+                                                   CBTypeInfo({_value.valueType})));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -1128,8 +1126,9 @@ struct RadioButton : public Variable<CBType::Any> {
 
   CBExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
-      _expInfo = ExposedInfo(requiredInfo, ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."),
-                                                                 CBTypeInfo({_value.valueType}), true));
+      _expInfo = ExposedInfo(gfx::Base::mainWindowGlobalsInfo,
+                             ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."),
+                                                   CBTypeInfo({_value.valueType}), true));
       return CBExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -2323,6 +2322,7 @@ private:
   bool _init{true};
 };
 
+#if 0
 struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
   bool _trueSize = false;
@@ -2332,9 +2332,12 @@ struct Image : public Base {
 
   static CBTypesInfo outputTypes() { return BGFX::Texture::ObjType; }
 
-  static inline ParamsInfo paramsInfo =
-      ParamsInfo(ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."), CoreInfo::Float2Type),
-                 ParamsInfo::Param("TrueSize", CBCCSTR("If the given size is in true image pixels."), CoreInfo::BoolType));
+  static inline ParamsInfo paramsInfo = ParamsInfo(
+      ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."),
+                        CoreInfo::Float2Type),
+      ParamsInfo::Param("TrueSize",
+                        CBCCSTR("If the given size is in true image pixels."),
+                        CoreInfo::BoolType));
 
   static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
 
@@ -2379,6 +2382,7 @@ struct Image : public Base {
     return input;
   }
 };
+#endif
 
 struct PlotContext {
   PlotContext() {
@@ -2515,7 +2519,7 @@ struct Plot : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     int idx = 0;
-    _required[idx] = Base::ContextInfo;
+    _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_xlimits.isVariable()) {
@@ -2554,14 +2558,14 @@ struct Plot : public Base {
       auto limitx = _xlimits.get().payload.float2Value[0];
       auto limity = _xlimits.get().payload.float2Value[1];
       auto locked = _lockx.get().payload.boolValue;
-      ImPlot::SetNextPlotLimitsX(limitx, limity, locked ? ImGuiCond_Always : ImGuiCond_Once);
+      ImPlot::SetupAxisLimits(ImAxis_X1, limitx, limity, locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
     if (_ylimits.get().valueType == Float2) {
       auto limitx = _ylimits.get().payload.float2Value[0];
       auto limity = _ylimits.get().payload.float2Value[1];
       auto locked = _locky.get().payload.boolValue;
-      ImPlot::SetNextPlotLimitsY(limitx, limity, locked ? ImGuiCond_Always : ImGuiCond_Once);
+      ImPlot::SetupAxisLimits(ImAxis_Y1, limitx, limity, locked ? ImGuiCond_Always : ImGuiCond_Once);
     }
 
     ImVec2 size{0, 0};
@@ -2675,7 +2679,7 @@ struct PlotLine : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     } else if (_kind == Kind::xAndIndex) {
       ImPlot::PlotLineG(
           _fullLabel.c_str(),
@@ -2684,7 +2688,7 @@ struct PlotLine : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     }
     return input;
   }
@@ -2705,7 +2709,7 @@ struct PlotDigital : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     } else if (_kind == Kind::xAndIndex) {
       ImPlot::PlotDigitalG(
           _fullLabel.c_str(),
@@ -2714,7 +2718,7 @@ struct PlotDigital : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     }
     return input;
   }
@@ -2735,7 +2739,7 @@ struct PlotScatter : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     } else if (_kind == Kind::xAndIndex) {
       ImPlot::PlotScatterG(
           _fullLabel.c_str(),
@@ -2744,15 +2748,14 @@ struct PlotScatter : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), 0);
+          (void *)&input, int(input.payload.seqValue.len));
     }
     return input;
   }
 };
 
 struct PlotBars : public PlottableBase {
-  typedef void (*PlotBarsProc)(const char *label_id, ImPlotPoint (*getter)(void *data, int idx), void *data, int count,
-                               double width, int offset);
+  typedef void (*PlotBarsProc)(const char *label_id, ImPlotGetter, void *data, int count, double bar_width);
 
   double _width = 0.67;
   bool _horizontal = false;
@@ -2810,7 +2813,7 @@ struct PlotBars : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
-          (void *)&input, int(input.payload.seqValue.len), _width, 0);
+          (void *)&input, int(input.payload.seqValue.len), _width);
     } else if (_kind == Kind::xAndIndex) {
       _plot(
           _fullLabel.c_str(),
@@ -2819,7 +2822,7 @@ struct PlotBars : public PlottableBase {
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
-          (void *)&input, int(input.payload.seqValue.len), _width, 0);
+          (void *)&input, int(input.payload.seqValue.len), _width);
     }
     return input;
   }
@@ -3118,7 +3121,7 @@ struct Menu : public MenuBase {
 
   CBExposedTypesInfo requiredVariables() {
     int idx = 0;
-    _required[idx] = Base::ContextInfo;
+    _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_isEnabled.isVariable()) {
@@ -3220,7 +3223,7 @@ struct MenuItem : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     int idx = 0;
-    _required[idx] = Base::ContextInfo;
+    _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_isChecked.isVariable()) {
@@ -3696,7 +3699,7 @@ struct Disable : public Base {
 
   CBExposedTypesInfo requiredVariables() {
     int idx = 0;
-    _required[idx] = Base::ContextInfo;
+    _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_disable.isVariable()) {
@@ -3832,7 +3835,6 @@ struct TableHeadersRow : public Base {
 };
 
 struct TableNextColumn : public Base {
-  static CBOptionalString help() { return CBCCSTR("Creates a new column for GUI.Table to process and render."); }
   static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
 
@@ -3922,7 +3924,7 @@ private:
   ParamVar _flags{};
 };
 
-void registerImGuiBlocks() {
+void registerBlocks() {
   REGISTER_CBLOCK("GUI.Style", Style);
   REGISTER_CBLOCK("GUI.Window", Window);
   REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
@@ -3967,7 +3969,9 @@ void registerImGuiBlocks() {
   REGISTER_CBLOCK("GUI.Float3Slider", Float3Slider);
   REGISTER_CBLOCK("GUI.Float4Slider", Float4Slider);
   REGISTER_CBLOCK("GUI.TextInput", TextInput);
+#if 0
   REGISTER_CBLOCK("GUI.Image", Image);
+#endif
   REGISTER_CBLOCK("GUI.Plot", Plot);
   REGISTER_CBLOCK("GUI.PlotLine", PlotLine);
   REGISTER_CBLOCK("GUI.PlotDigital", PlotDigital);

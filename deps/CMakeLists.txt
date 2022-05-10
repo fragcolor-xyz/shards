@@ -1,40 +1,10 @@
 set(BUILD_SHARED_LIBS OFF)
-include(ExternalProject)
 
-if(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-  set(EXTERNAL_BUILD_TYPE "MinSizeRel")
-else()
-  set(EXTERNAL_BUILD_TYPE "Release")
-endif()
+# Find & cache git using (only considering host tools)
+set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
+find_package(Git REQUIRED)
 
-if(EMSCRIPTEN)
-  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
-  if(EMSCRIPTEN_PTHREADS)
-    list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-sUSE_PTHREADS=1 -DCMAKE_C_FLAGS=-sUSE_PTHREADS=1)
-  endif()
-elseif(IOS)
-  list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
-endif()
-
-if(IOS)
-  if(X86_IOS_SIMULATOR)
-  list(APPEND EXTRA_CMAKE_BUILD_ARGS -- -sdk iphonesimulator -arch x86_64)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      set(EXTRA_LIBS_DIR "Debug-iphonesimulator")
-    else()
-      set(EXTRA_LIBS_DIR "Release-iphonesimulator")
-    endif()
-  else()
-    list(APPEND EXTRA_CMAKE_BUILD_ARGS -- -sdk iphoneos -arch arm64)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      set(EXTRA_LIBS_DIR "Debug-iphoneos")
-    else()
-      set(EXTRA_LIBS_DIR "Release-iphoneos")
-    endif()
-  endif()
-endif()
-
-message(STATUS "External cmake args: ${EXTERNAL_CMAKE_ARGS}")
+include(CBExternalProject)
 
 add_subdirectory(filesystem)
 add_subdirectory(json)
@@ -45,167 +15,126 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
-set(SDL_BUILD_PATH ${CMAKE_CURRENT_BINARY_DIR}/sdl_a)
 if(NOT EMSCRIPTEN)
-  if(X86_IOS_SIMULATOR)
-    set(SDL_XCODE_BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -sdk iphonesimulator -arch x86_64)
-    set(SDL_LIB_PATH ${SDL_BUILD_PATH}/src/sdl_a/Xcode/SDL/build/Release-iphonesimulator/libSDL2.a)
-  elseif(IOS)
-    set(SDL_XCODE_BUILD_COMMAND cd Xcode/SDL && xcodebuild -configuration Release -target "Static Library-iOS" -sdk iphoneos -arch arm64)
-    set(SDL_LIB_PATH ${SDL_BUILD_PATH}/src/sdl_a/Xcode/SDL/build/Release-iphoneos/libSDL2.a)
+  message(STATUS "Fetching libressl")
+  FetchContent_Declare(
+    libressl
+    URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+    URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
+  )
+  FetchContent_MakeAvailable(libressl)
+  message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
+
+  # NOTE: External project doesn't work with Xcode here
+  #  since ssl/cypto builds into object library referenced by static library
+  add_library(OpenSSL INTERFACE)
+  target_link_libraries(OpenSSL INTERFACE ssl)
+  target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
+
+  # Set source dir property used later by rust openssl-sys
+  set_property(GLOBAL PROPERTY OPENSSL_SOURCE_DIR ${libressl_SOURCE_DIR})
+endif()
+
+add_subdirectory(boost)
+
+if(NOT EMSCRIPTEN)
+  if(EXTERNAL_BUILD_TYPE MATCHES "Debug")
+    set(SDL_LIB_SUFFIX "d")
   endif()
 
-  if(SDL_XCODE_BUILD_COMMAND)
-    set(SDL_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/SDL/include)
+  cb_add_external_project(
+    NAME sdl_a
+    TARGETS   SDL2-static SDL2main
+    LIB_NAMES SDL2        SDL2main
+    INSTALL
+    LIB_SUFFIX ${SDL_LIB_SUFFIX}
+    RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2
+    CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF -DBUILD_SHARED_LIBS=OFF
+    REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
 
-    ExternalProject_Add(sdl_a
-      URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL
-      PREFIX ${SDL_BUILD_PATH}
-      CONFIGURE_COMMAND ""
-      BUILD_IN_SOURCE true
-      BUILD_COMMAND ${SDL_XCODE_BUILD_COMMAND}
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${SDL_LIB_PATH}
+
+  if(APPLE)
+    target_link_libraries(SDL2-static INTERFACE
+      "-framework Foundation"
+      "-framework CoreAudio"
+      "-framework AudioToolbox"
+      "-framework CoreVideo"
+      "-framework IOKit"
+      "-framework QuartzCore"
+      "-framework Metal"
+      "-framework Security"
+      "-framework CoreHaptics"
+      "-framework GameController"
+      "-framework CoreBluetooth"
+      -liconv
     )
-  else()
-    set(SDL_INCLUDE_PATH ${SDL_BUILD_PATH}/include ${SDL_BUILD_PATH}/include/SDL2)
 
-    set(SDL_LIB_PATH ${SDL_BUILD_PATH}/lib/libSDL2.a)
-
-    ExternalProject_Add(sdl_a
-      URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL
-      PREFIX ${SDL_BUILD_PATH}
-      CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=${SDL_BUILD_PATH} ${EXTERNAL_CMAKE_ARGS}
-      BUILD_BYPRODUCTS ${SDL_LIB_PATH}
-    )
+    if(IOS)
+      target_link_libraries(SDL2-static INTERFACE
+        "-framework AVFoundation"
+        "-framework CoreMotion"
+        "-framework CoreGraphics"
+        "-framework UIKit"
+      )
+    else()
+      target_link_libraries(SDL2-static INTERFACE
+        "-framework Cocoa"
+        "-framework Carbon"
+        "-framework ForceFeedback"
+      )
+    endif()
   endif()
-
-  add_library(SDL2-static STATIC IMPORTED GLOBAL)
-  set_target_properties(SDL2-static PROPERTIES IMPORTED_LOCATION ${SDL_LIB_PATH})
-
-  file(MAKE_DIRECTORY ${SDL_BUILD_PATH}/include/SDL2)
-  target_include_directories(SDL2-static INTERFACE ${SDL_INCLUDE_PATH})
-  add_dependencies(SDL2-static sdl_a)
 
   if(WIN32)
-    target_link_libraries(SDL2-static INTERFACE Winmm Imm32 Setupapi Version)
+    target_link_libraries(SDL2-static INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
+  elseif(LINUX)
+    target_link_libraries(SDL2-static INTERFACE dl)
   endif()
 endif()
 
-ExternalProject_Add(wasm3_a
-  URL ${CHAINBLOCKS_DIR}/deps/wasm3
-  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/wasm3_a
-  BUILD_IN_SOURCE True
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_NATIVE=0 ${EXTERNAL_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target m3
-  INSTALL_COMMAND ""
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/wasm3_a/src/wasm3_a/source/libm3.a
-)
+cb_add_external_project(
+  NAME wasm3_a
+  TARGETS m3
+  LIB_RELATIVE_DIRS source/
+  CMAKE_ARGS -DBUILD_NATIVE=0
+  RELATIVE_INCLUDE_PATHS source
+  REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/wasm3)
 
-add_library(m3 STATIC IMPORTED GLOBAL)
-set_target_properties(m3 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/wasm3_a/src/wasm3_a/source/libm3.a)
-target_include_directories(m3 INTERFACE ${CHAINBLOCKS_DIR}/deps/wasm3/source)
-add_dependencies(m3 wasm3_a)
+cb_add_external_project(
+  NAME snappy_a
+  TARGETS snappy
+  CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0
+  RELATIVE_INCLUDE_PATHS .
+  RELATIVE_BINARY_INCLUDE_PATHS .
+  REPO_ARGS GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
+            GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e)
 
-ExternalProject_Add(snappy_a
-  GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
-  GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e
-  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/snappy_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DSNAPPY_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/snappy_a ${EXTERNAL_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target snappy ${EXTRA_CMAKE_BUILD_ARGS}
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include/snappy.h
-)
-add_library(snappy STATIC IMPORTED GLOBAL)
-set_target_properties(snappy PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/lib/libsnappy.a)
-target_include_directories(snappy INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/snappy_a/include)
-add_dependencies(snappy snappy_a)
-
-ExternalProject_Add(brotli_a
-  GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
-  GIT_TAG           e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348
-  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/brotli_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} -DBROTLI_BUNDLED_MODE=1 -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/brotli_a ${EXTERNAL_CMAKE_ARGS}
-  BUILD_COMMAND cmake --build . --target brotlicommon-static brotlidec-static brotlienc-static ${EXTRA_CMAKE_BUILD_ARGS}
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include/brotli/decode.h
-  INSTALL_COMMAND ""
-)
+cb_add_external_project(
+  NAME brotli_a
+  TARGETS brotlidec-static brotlienc-static brotlicommon-static
+  CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1
+  RELATIVE_INCLUDE_PATHS c/include
+  REPO_ARGS GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
+            GIT_TAG           e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348)
 
 
-add_library(brotlicommon-static STATIC IMPORTED GLOBAL)
-target_include_directories(brotlicommon-static INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
-add_dependencies(brotlicommon-static brotli_a)
-if(IOS)
-  set_target_properties(brotlicommon-static PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlicommon-static.a
-  )
-else()
-  set_target_properties(brotlicommon-static PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlicommon-static.a
-  )
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+  set(CATCH2_LIB_SUFFIX "d")
 endif()
+cb_add_external_project(
+  NAME catch2_a
+  INSTALL
+  TARGETS Catch2 Catch2Main
+  LIB_SUFFIX ${CATCH2_LIB_SUFFIX}
+  REPO_ARGS URL ${CHAINBLOCKS_DIR}/deps/Catch2)
 
-add_library(brotlidec-static STATIC IMPORTED GLOBAL)
-target_include_directories(brotlidec-static INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
-add_dependencies(brotlidec-static brotli_a)
-if(IOS)
-  set_target_properties(brotlidec-static PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlidec-static.a
-  )
-else()
-  set_target_properties(brotlidec-static PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlidec-static.a
-  )
-endif()
-
-add_library(brotlienc-static STATIC IMPORTED GLOBAL)
-target_include_directories(brotlienc-static INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a/c/include)
-add_dependencies(brotlienc-static brotli_a)
-if(IOS)
-  set_target_properties(brotlienc-static PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/${EXTRA_LIBS_DIR}/libbrotlienc-static.a
-  )
-else()
-  set_target_properties(brotlienc-static PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/brotli_a/src/brotli_a-build/libbrotlienc-static.a
-  )
-endif()
-
-ExternalProject_Add(catch2_a
-  URL ${CHAINBLOCKS_DIR}/deps/Catch2
-  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/catch2_a
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/catch2_a ${EXTERNAL_CMAKE_ARGS}
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a
-)
-
-add_library(Catch2 STATIC IMPORTED GLOBAL)
-set_target_properties(Catch2 PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2.a)
-target_include_directories(Catch2 INTERFACE ${CHAINBLOCKS_DIR}/deps/Catch2/src)
-add_dependencies(Catch2 catch2_a)
-
-add_library(Catch2WithMain STATIC IMPORTED GLOBAL)
-set_target_properties(Catch2WithMain PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/catch2_a/lib/libCatch2Main.a)
-target_include_directories(Catch2WithMain INTERFACE ${CHAINBLOCKS_DIR}/deps/Catch2/src)
-add_dependencies(Catch2WithMain catch2_a)
-
-ExternalProject_Add(kissfft_a
-  URL ${CHAINBLOCKS_DIR}/deps/kissfft
-  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a
-  BUILD_IN_SOURCE True
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} ${EXTERNAL_CMAKE_ARGS} -DKISSFFT_ARCH_FLAGS=${ARCH_FLAGS} -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
-  BUILD_COMMAND cmake --build .
-  INSTALL_COMMAND ""
-  BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a/src/kissfft_a/libkissfft-float.a
-)
-
-add_library(kissfft STATIC IMPORTED GLOBAL)
-set_target_properties(kissfft PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/kissfft_a/src/kissfft_a/libkissfft-float.a)
-target_include_directories(kissfft INTERFACE ${CHAINBLOCKS_DIR}/deps/kissfft)
-add_dependencies(kissfft kissfft_a)
+cb_add_external_project(
+  NAME kissfft_a
+  TARGETS kissfft
+  LIB_SUFFIX -float
+  CMAKE_ARGS -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
+  RELATIVE_INCLUDE_PATHS .
+  REPO_ARGS URL ${CHAINBLOCKS_DIR}/deps/kissfft)
 
 add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -214,20 +143,16 @@ option(TF_BUILD_TESTS "" OFF)
 option(TF_BUILD_EXAMPLES "" OFF)
 add_subdirectory(cpp-taskflow)
 
-option(BGFX_BUILD_EXAMPLES "" OFF)
-option(BGFX_INSTALL "" OFF)
-option(BIMG_DECODE_ENABLE "" OFF)
-set(BX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bx)
-set(BIMG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bimg)
-set(BGFX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bgfx)
-add_subdirectory(bgfx.cmake)
-
-add_library(bgfx-examples INTERFACE)
-target_include_directories(bgfx-examples INTERFACE ${BGFX_DIR}/examples/common/imgui)
-target_include_directories(bgfx-examples INTERFACE ${BGFX_DIR}/examples/chainblocks)
-
 add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
+
+add_library(imgui STATIC
+  imgui/imgui.cpp
+  imgui/imgui_tables.cpp
+  imgui/imgui_widgets.cpp
+  imgui/imgui_draw.cpp
+)
+target_include_directories(imgui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} imgui)
 
 add_library(imgui_club INTERFACE)
 target_include_directories(imgui_club INTERFACE imgui_club/imgui_memory_editor)
@@ -240,17 +165,15 @@ set(imguizmo_SOURCES
 )
 add_library(imguizmo STATIC ${imguizmo_SOURCES})
 target_include_directories(imguizmo PUBLIC imguizmo)
-target_include_directories(imguizmo PUBLIC bgfx/3rdparty/dear-imgui)
-target_link_libraries(imguizmo PUBLIC dear-imgui)
+target_link_libraries(imguizmo PUBLIC imgui)
 
 add_library(implot STATIC
   implot/implot.cpp
   implot/implot_items.cpp
 )
 target_include_directories(implot PUBLIC implot)
-target_include_directories(implot PUBLIC bgfx/3rdparty/dear-imgui)
 target_link_libraries(implot
-  PUBLIC dear-imgui
+  PUBLIC imgui
   PRIVATE stb
 )
 

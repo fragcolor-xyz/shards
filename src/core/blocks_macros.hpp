@@ -3,8 +3,8 @@
 
 // TODO, get rid of this, use Blockswrapper
 
-#ifndef CB_BLOCK_MACROS
-#define CB_BLOCK_MACROS
+#ifndef CB_CORE_BLOCKS_MACROS
+#define CB_CORE_BLOCKS_MACROS
 
 #define RUNTIME_BLOCK(_namespace_, _name_)                                                                                \
   struct _name_##Runtime {                                                                                                \
@@ -219,4 +219,4 @@
 #define REGISTER_BLOCK(_namespace_, _name_) chainblocks::registerBlock(#_namespace_ "." #_name_, _namespace_::createBlock##_name_)
 #define REGISTER_CORE_BLOCK(_name_) chainblocks::registerBlock(#_name_, createBlock##_name_)
 
-#endif
+#endif // CB_CORE_BLOCKS_MACROS

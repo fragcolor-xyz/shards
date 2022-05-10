@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#ifndef CB_EXTRA_DESKTOP_CAPTURE_WIN
+#define CB_EXTRA_DESKTOP_CAPTURE_WIN
+
 #include "chainblocks.h"
 #include <D3Dcommon.h>
 #include <Windows.h>
@@ -236,3 +239,5 @@ public:
   }
 };
 }; // namespace chainblocks
+
+#endif // CB_EXTRA_DESKTOP_CAPTURE_WIN

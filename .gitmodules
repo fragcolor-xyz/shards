@@ -4,15 +4,6 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/chainblocks/json.git
-[submodule "deps/bgfx"]
-	path = deps/bgfx
-	url = https://github.com/chainblocks/bgfx.git
-[submodule "deps/bx"]
-	path = deps/bx
-	url = https://github.com/chainblocks/bx.git
-[submodule "deps/bimg"]
-	path = deps/bimg
-	url = https://github.com/chainblocks/bimg.git
 [submodule "deps/imgui_club"]
 	path = deps/imgui_club
 	url = https://github.com/chainblocks/imgui_club.git
@@ -22,9 +13,6 @@
 [submodule "magic_enum"]
 	path = deps/magic_enum
 	url = https://github.com/chainblocks/magic_enum.git
-[submodule "boost-context"]
-	path = deps/boost-context
-	url = https://github.com/chainblocks/context.git
 [submodule "cpp-taskflow"]
 	path = deps/cpp-taskflow
 	url = https://github.com/chainblocks/cpp-taskflow.git
@@ -82,12 +70,18 @@
 [submodule "deps/imguizmo"]
 	path = deps/imguizmo
 	url = https://github.com/chainblocks/ImGuizmo.git
-[submodule "deps/bgfx.cmake"]
-	path = deps/bgfx.cmake
-	url = https://github.com/chainblocks/bgfx.cmake.git
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/chainblocks/brotli.git
 [submodule "deps/snappy"]
 	path = deps/snappy
 	url = https://github.com/chainblocks/snappy.git
+[submodule "src/gfx/wgpu-native"]
+	path = src/gfx/wgpu-native
+	url = https://github.com/chainblocks/wgpu-native.git
+[submodule "deps/imgui"]
+	path = deps/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "deps/boost"]
+	path = deps/boost
+	url = https://github.com/chainblocks/boost.git

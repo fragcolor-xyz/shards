@@ -64,7 +64,7 @@ struct EpochMs {
   CBVar activate(CBContext *context, const CBVar &input) {
     using namespace std::chrono;
     milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-    return Var(ms.count());
+    return Var(int(ms.count()));
   }
 };
 

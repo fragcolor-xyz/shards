@@ -1,15 +1,19 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#pragma once
-
 // TODO, remove most of C macros, use more templates
 
+#ifndef CB_CORE_BLOCKS_MATH
+#define CB_CORE_BLOCKS_MATH
+
+#include "chainblocks.h"
+#include "chainblocks.hpp"
 #include "core.hpp"
+#include <sstream>
 #include <variant>
 
 #define _PC
-#include "../../extra/shaders/include/ShaderFastMathLib.h"
+#include "ShaderFastMathLib.h"
 #undef _PC
 
 namespace chainblocks {
@@ -61,7 +65,7 @@ struct BinaryBase : public Base {
   static inline ParamsInfo mathParamsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", CBCCSTR("The operand for this operation."), MathTypesOrVar));
 
-  ParamVar _operand{Var(0)};
+  ParamVar _operand{chainblocks::Var(0)};
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
@@ -71,6 +75,14 @@ struct BinaryBase : public Base {
 
   static CBParametersInfo parameters() { return CBParametersInfo(mathParamsInfo); }
 
+  ComposeError formatTypeError(const CBType &inputType, const CBType &paramType) {
+    std::stringstream errStream;
+    errStream << "Operation not supported between different types ";
+    errStream << "(input=" << type2Name(inputType);
+    errStream << ", param=" << type2Name(paramType) << ")";
+    return ComposeError(errStream.str());
+  }
+
   CBTypeInfo compose(const CBInstanceData &data) {
     CBVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
@@ -79,11 +91,11 @@ struct BinaryBase : public Base {
         if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
           if (data.shared.elements[i].exposedType.basicType != Seq && data.inputType.basicType != Seq) {
             if (data.shared.elements[i].exposedType != data.inputType)
-              throw ComposeError("Operation not supported between different types");
+              throw formatTypeError(data.inputType.basicType, data.shared.elements[i].exposedType.basicType);
             _opType = Normal;
           } else if (data.shared.elements[i].exposedType.basicType != Seq && data.inputType.basicType == Seq) {
             if (data.inputType.seqTypes.len != 1 || data.shared.elements[i].exposedType != data.inputType.seqTypes.elements[0])
-              throw ComposeError("Operation not supported between different types");
+              throw formatTypeError(data.inputType.seqTypes.elements[0].basicType, data.shared.elements[i].exposedType.basicType);
             _opType = Seq1;
           } else if (data.shared.elements[i].exposedType.basicType == Seq && data.inputType.basicType == Seq) {
             // TODO need to have deeper types compatibility at least
@@ -99,11 +111,11 @@ struct BinaryBase : public Base {
     } else {
       if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
         if (operandSpec.valueType != data.inputType.basicType)
-          throw ComposeError("Operation not supported between different types");
+          throw formatTypeError(data.inputType.basicType, operandSpec.valueType);
         _opType = Normal;
       } else if (operandSpec.valueType != Seq && data.inputType.basicType == Seq) {
         if (data.inputType.seqTypes.len != 1 || operandSpec.valueType != data.inputType.seqTypes.elements[0].basicType)
-          throw ComposeError("Operation not supported between different types");
+          throw formatTypeError(data.inputType.seqTypes.elements[0].basicType, operandSpec.valueType);
         _opType = Seq1;
       } else if (operandSpec.valueType == Seq && data.inputType.basicType == Seq) {
         // TODO need to have deeper types compatibility at least
@@ -555,21 +567,21 @@ struct Mean {
 
   void setParam(int index, const CBVar &value) { mean = MeanKind(value.payload.enumValue); }
 
-  CBVar getParam(int index) { return Var::Enum(mean, CoreCC, 'mean'); }
+  CBVar getParam(int index) { return chainblocks::Var::Enum(mean, CoreCC, 'mean'); }
 
   CBVar activate(CBContext *context, const CBVar &input) {
     switch (mean) {
     case MeanKind::Arithmetic: {
       ArithMean m;
-      return Var(m(input.payload.seqValue));
+      return chainblocks::Var(m(input.payload.seqValue));
     }
     case MeanKind::Geometric: {
       GeoMean m;
-      return Var(m(input.payload.seqValue));
+      return chainblocks::Var(m(input.payload.seqValue));
     }
     case MeanKind::Harmonic: {
       HarmoMean m;
-      return Var(m(input.payload.seqValue));
+      return chainblocks::Var(m(input.payload.seqValue));
     }
     default:
       throw ActivationError("Invalid mean case.");
@@ -601,28 +613,28 @@ template <class T> struct UnaryBin : public T {
   void setOperand(CBType type) {
     switch (type) {
     case CBType::Int:
-      T::_operand = Var(1);
+      T::_operand = chainblocks::Var(1);
       break;
     case CBType::Int2:
-      T::_operand = Var(1, 1);
+      T::_operand = chainblocks::Var(1, 1);
       break;
     case CBType::Int3:
-      T::_operand = Var(1, 1, 1);
+      T::_operand = chainblocks::Var(1, 1, 1);
       break;
     case CBType::Int4:
-      T::_operand = Var(1, 1, 1, 1);
+      T::_operand = chainblocks::Var(1, 1, 1, 1);
       break;
     case CBType::Float:
-      T::_operand = Var(1.0);
+      T::_operand = chainblocks::Var(1.0);
       break;
     case CBType::Float2:
-      T::_operand = Var(1.0, 1.0);
+      T::_operand = chainblocks::Var(1.0, 1.0);
       break;
     case CBType::Float3:
-      T::_operand = Var(1.0, 1.0, 1.0);
+      T::_operand = chainblocks::Var(1.0, 1.0, 1.0);
       break;
     case CBType::Float4:
-      T::_operand = Var(1.0, 1.0, 1.0, 1.0);
+      T::_operand = chainblocks::Var(1.0, 1.0, 1.0, 1.0);
       break;
     default:
       throw ActivationError("Type not supported for unary math operation");
@@ -780,3 +792,5 @@ inline void registerBlocks() {
 
 }; // namespace Math
 }; // namespace chainblocks
+
+#endif // CB_CORE_BLOCKS_MATH

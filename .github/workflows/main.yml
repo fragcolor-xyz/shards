@@ -40,32 +40,33 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget ninja-build
+          sudo apt-get -y install build-essential autoconf git cmake wget ninja-build
+          ./bootstrap
           cd emsdk
-          ./emsdk install 3.1.5
-          ./emsdk activate 3.1.5
-          cd .. && mkdir external && cd external
-          wget -nv https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.gz
-          tar xzf boost_1_78_0.tar.gz
-          rustup update
-          rustup default nightly
-          rustup target add wasm32-unknown-emscripten
+          ./emsdk install 3.1.10
+          ./emsdk activate 3.1.10
+          rustup toolchain install nightly
+          rustup +nightly target add wasm32-unknown-emscripten
       - name: Set up rust (mt)
         if: ${{ matrix.threading == 'mt' }}
         run: |
-          rustup component add rust-src --toolchain nightly
+          rustup +nightly component add rust-src
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
           key: ${{ matrix.threading }}
       - name: Build
         run: |
-          BOOST_ROOT=`pwd`/external/boost_1_78_0
           source emsdk/emsdk_env.sh
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DBOOST_ROOT=$BOOST_ROOT -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
           ninja cbl && ninja test_runtime
+      # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
+      - uses: actions/setup-node@v3
+        with:
+          # Node 18.1.0 has a change in fetch() that causes it to fail loading the wasm module
+          node-version: 18.0.0
       - name: Test (st)
         if: ${{ matrix.threading == 'st' }}
         run: |
@@ -100,45 +101,6 @@ jobs:
           service: infura
           port: 5001
           protocol: https
-      - name: Copy Shaders
-        if: ${{ matrix.threading == 'st' }}
-        run: |
-          cp deps/bgfx/src/bgfx_shader.sh src/extra/shaders/include/bgfx_shader.h
-          cp deps/bgfx/src/bgfx_compute.sh src/extra/shaders/include/bgfx_compute.h
-          cp deps/bgfx/examples/common/shaderlib.sh src/extra/shaders/include/shaderlib.h
-      - name: Upload shaders to IPFS
-        if: ${{ matrix.threading == 'st' && github.event_name == 'push' }}
-        uses: chainblocks/ipfs-action@master
-        with:
-          path: src/extra/shaders/
-          service: infura
-          port: 5001
-          protocol: https
-
-  # WASI-modules:
-  #   runs-on: ubuntu-20.04
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: Setup
-  #     run: |
-  #       git submodule update --init --recursive
-  #       sudo apt-get -y update
-  #       sudo apt-get -y install build-essential
-  #       wget -nv https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-12/wasi-sdk-12.0-linux.tar.gz
-  #       tar xzf wasi-sdk-12.0-linux.tar.gz
-  #   - name: Build
-  #     run: |
-  #       export WASISDK=`pwd`/wasi-sdk-12.0
-  #       cd deps/bgfx
-  #       make projgen
-  #       ls
-  #       cd .build/projects/gmake-linux
-  #       sh ../../../build-wasi.sh
-  #   - uses: actions/upload-artifact@master
-  #     with:
-  #       name: wasi-modules
-  #       path: |
-  #         deps/bgfx/.build/linux32_gcc/bin/shadercRelease.wasm
 
   #
   # Build chainblocks for linux
@@ -157,8 +119,9 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev mesa-utils
-          rustup update
+          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          ./bootstrap
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -167,7 +130,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBGFX_OPENGL_VERSION=33 ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
           ninja cbl
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -196,8 +159,9 @@ jobs:
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
-          rustup update
+          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
+          ./bootstrap
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ matrix.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
         with:
@@ -207,7 +171,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
           ninja cbl
       - name: Download artifact (Release)
         if: ${{ matrix.build-type == 'Release' }}
@@ -264,24 +228,30 @@ jobs:
         run: |
           cd build
           ./cbl ../src/tests/blocks.clj
-      - name: Test Headless (bgfx)
+      - name: Test Headless (gfx_window)
         uses: chainblocks/xvfb-action@master
+        if: false # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: |
-            ./cbl ../src/tests/bgfx.clj
-      - name: Test Headless (gizmos)
+          run: ./cbl ../src/tests/gfx_window.edn
+      - name: Test Headless (gfx_cube)
         uses: chainblocks/xvfb-action@master
+        if: false # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: |
-            ./cbl ../src/tests/gizmos.edn
+          run: ./cbl ../src/tests/gfx_cube.edn
+      - name: Test Headless (gfx_materials)
+        uses: chainblocks/xvfb-action@master
+        if: false # Failed to create vulkan backend on github runner
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/gfx_materials.edn
       - name: Test Headless (imgui_demo)
         uses: chainblocks/xvfb-action@master
+        if: false # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: |
-            ./cbl ../src/tests/imgui_demo.edn
+          run: ./cbl ../src/tests/imgui_demo.edn
       - name: Coverage (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
@@ -304,10 +274,6 @@ jobs:
   Linux-test-extra:
     needs: Linux
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        test-tags: ["gfx", "gltf"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -323,43 +289,35 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build libboost-all-dev xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
-          rustup update
-          mkdir -p build/shaders/include
-          mkdir -p build/shaders/lib/gltf
-          cd build/shaders
-          wget https://github.com/fragcolor-xyz/chainblocks/files/5938139/shadercRelease.zip
-          unzip shadercRelease.zip
-          cp ../../deps/bgfx/src/bgfx_shader.sh include/bgfx_shader.h
-          cp ../../deps/bgfx/examples/common/shaderlib.sh include/shaderlib.h
-          cp ../../src/extra/shaders/gltf/*.* lib/gltf/
-          cp ../../src/extra/shaders/include/*.* include/
+          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
+          ./bootstrap
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
           sharedKey: Linux-Debug
       - name: Build
         run: |
+          cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DBGFX_OPENGL_VERSION=33 -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1 ..
-          ninja test_runtime && ninja test_extra
-      - name: Test
+          ninja test_runtime && ninja test_gfx
+      - name: Test runtime
         env:
           RUST_BACKTRACE: 1
         run: |
           cd build
           ./test_runtime
-      - name: Test Headless
+      - name: Test graphics
         uses: chainblocks/xvfb-action@master
-        if: false # Disabled until new graphics backend is merged
+        if: false # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
           run: |
-            ./test_extra [${{ matrix.test-tags }}]
+            ./test_gfx
       - name: CodeCov
         run: |
           mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
@@ -391,7 +349,7 @@ jobs:
           tags: "latest"
       - name: Build and Test
         run: |
-          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
           mkdir build
           docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
       - name: Build and upload to hub runtime image
@@ -455,7 +413,7 @@ jobs:
           docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
       - name: Test
         run: |
-          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "mkdir build && cd build && cmake -G Ninja -DCHAINBLOCKS_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DCHAINBLOCKS_WITH_EXTRA_BLOCKS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/bug1.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
+          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DCHAINBLOCKS_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DCHAINBLOCKS_WITH_EXTRA_BLOCKS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/bug1.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
 
   #
   # Build chainblocks for Windows
@@ -463,6 +421,7 @@ jobs:
   Windows:
     runs-on: windows-2019
     strategy:
+      fail-fast: false
       matrix:
         build-type: ["Debug", "Release"]
         bitness: [32bits, 64bits]
@@ -485,8 +444,19 @@ jobs:
         env:
           RUSTUP_USE_CURL: 1
         run: |
-          rustup update
-          rustup default stable-${{ matrix.arch }}-pc-windows-gnu
+          rustup toolchain install nightly
+          rustup +nightly target add x86_64-pc-windows-gnu
+      - name: Set up rust (32-bits)
+        env:
+          RUSTUP_USE_CURL: 1
+        if: ${{ matrix.bitness == '32bits' }}
+        shell: bash
+        run: |
+          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
+          # Native libClang required for rust bindgen
+          # choco exit with code 1 after successful install
+          choco install -y --force llvm || exit 0
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -499,9 +469,11 @@ jobs:
           path-type: inherit
           install: >-
             base-devel
+            automake
+            libtool
+            autoconf-wrapper
             mingw-w64-${{ matrix.arch }}-toolchain
             mingw-w64-${{ matrix.arch }}-cmake
-            mingw-w64-${{ matrix.arch }}-boost
             mingw-w64-${{ matrix.arch }}-ninja
             mingw-w64-${{ matrix.arch }}-clang
             mingw-w64-${{ matrix.arch }}-lld
@@ -519,9 +491,10 @@ jobs:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
         run: |
+          ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} -DSKIP_RUST_BINDGEN=${{ matrix.bitness == '32bits' }} ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} ..
           ninja cbl
       - name: Test runtime (Debug)
         if: ${{ matrix.build-type == 'Debug' }}
@@ -532,12 +505,28 @@ jobs:
           cd build
           ninja test_runtime
           ./test_runtime
+      - name: Test graphics (Debug)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ matrix.build-type == 'Debug' && matrix.bitness == '64bits' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          ninja test_gfx
+          GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.artifact }} ${{ matrix.build-type }}
           path: build/cbl.exe
           if-no-files-found: error
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ${{ matrix.artifact }} rejected test data
+          path: src/gfx/tests/data/github-windows/rejected
+          if-no-files-found: warn
 
   #
   # Test chainblocks for Windows
@@ -560,6 +549,10 @@ jobs:
             arch: x86_64
             artifact: cbl-win64
     steps:
+      - name: Change git line endings
+        run: |
+          git config --system core.autocrlf false
+          git config --system core.eol lf
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -570,22 +563,12 @@ jobs:
         with:
           name: ${{ matrix.artifact }} ${{ matrix.build-type }}
           path: build
-      - name: Set up MSYS2 (Release)
-        if: ${{ matrix.build-type == 'Release' }}
+      - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
           release: false
           path-type: inherit
-      - name: Set up MSYS2 (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            mingw-w64-${{ matrix.arch }}-boost
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -620,18 +603,28 @@ jobs:
           # ./cbl ../src/tests/ws.clj
           echo "Running test: bigint"
           ./cbl ../src/tests/bigint.clj
-          echo "Running test: bgfx"
-          ./cbl ../src/tests/bgfx.clj
-          echo "Running test: gizmos"
-          ./cbl ../src/tests/gizmos.edn
-          echo "Running test: imgui_demo"
-          ./cbl ../src/tests/imgui_demo.edn
           echo "Running test: wasm"
           ./cbl ../src/tests/wasm.clj
           echo "Running test: eth"
           ./cbl ../src/tests/eth.edn
           echo "Running test: crypto"
           ./cbl ../src/tests/crypto.edn
+      - name: Graphics Test (64bits)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ matrix.bitness == '64bits' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          echo "Running test: gfx_window"
+          ./cbl ../src/tests/gfx_window.edn
+          echo "Running test: gfx_cube"
+          ./cbl ../src/tests/gfx_cube.edn
+          echo "Running test: gfx_materials"
+          ./cbl ../src/tests/gfx_materials.edn
+          echo "Running test: imgui_demo"
+          ./cbl ../src/tests/imgui_demo.edn
       - name: Test (64bits)
         if: ${{ matrix.bitness == '64bits' }}
         env:
@@ -705,8 +698,6 @@ jobs:
           msystem: MINGW64
           release: false
           path-type: inherit
-          install: >-
-            mingw-w64-x86_64-boost
       - name: Generate markdown
         shell: msys2 {0}
         run: ./cbl.exe src/tests/infos_docs.edn
@@ -831,9 +822,9 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
-          brew install boost cmake ninja clang-format
-          brew install openssl@1.1
-          rustup update
+          brew install cmake ninja clang-format automake libtool
+          ./bootstrap
+          rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -875,10 +866,6 @@ jobs:
         with:
           fetch-depth: 1
           submodules: recursive
-      - name: Install boost
-        if: ${{ matrix.build-type == 'Debug' }}
-        run: |
-          brew install boost
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
@@ -934,20 +921,18 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
-          brew install boost cmake clang-format
-          brew install openssl@1.1
-          rustup update
-          rustup target add x86_64-apple-ios
-          rustup target add aarch64-apple-ios
+          brew install cmake clang-format automake libtool
+          ./bootstrap
+          rustup toolchain install nightly
+          rustup +nightly target add aarch64-apple-ios
+          rustup +nightly target add x86_64-apple-ios
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
       - name: Build device
         run: |
-          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS
-          cd build
-          xcodebuild -target chainblocks-core-static -sdk iphoneos -arch arm64
+          cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
+          cmake --build build_arm64 --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
       - name: Build simulator x86
         run: |
-          cmake -Bbuild -GXcode -DBOOST_ROOT=`brew --prefix boost` -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DX86_IOS_SIMULATOR=1
-          cd build
-          xcodebuild -target chainblocks-core-static -sdk iphonesimulator -arch x86_64
+          cmake -Bbuild_sim_x86 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
+          cmake --build build_sim_x86 --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator

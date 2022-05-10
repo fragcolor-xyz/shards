@@ -8,6 +8,10 @@
 #include <vector>
 namespace chainblocks {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
+  using linalg::aliases::float4x4::mat;
+  Mat4(const CBVar &var) { *this = var; }
+  Mat4(const linalg::aliases::float4x4 &other) : linalg::aliases::float4x4(other) {}
+
   template <typename NUMBER> static Mat4 FromVector(const std::vector<NUMBER> &mat) {
     // used by gltf
     assert(mat.size() == 16);
@@ -101,6 +105,8 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
 };
 
 struct alignas(16) Vec4 : public linalg::aliases::float4 {
+  using linalg::aliases::float4::vec;
+
   constexpr static Vec4 Quaternion() {
     Vec4 q;
     q.x = 0.0;
@@ -136,6 +142,8 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
 };
 
 struct alignas(16) Vec3 : public linalg::aliases::float3 {
+  using linalg::aliases::float3::vec;
+
   Vec3() : linalg::aliases::float3() {}
 
   template <typename XYZ_TYPE> Vec3(const XYZ_TYPE &vec) {

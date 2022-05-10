@@ -1,0 +1,24 @@
+#ifndef GFX_ENUMS
+#define GFX_ENUMS
+
+#include "gfx_wgpu.hpp"
+#include <string_view>
+
+namespace gfx {
+
+enum class PrimitiveType { TriangleList, TriangleStrip };
+enum class WindingOrder { CW, CCW };
+enum class ProgrammableGraphicsStage { Vertex, Fragment };
+enum class VertexAttributeType { UInt8, Int8, UNorm8, SNorm8, UInt16, Int16, UNorm16, SNorm16, UInt32, Int32, Float16, Float32 };
+enum class ShaderFieldBaseType { UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
+enum class IndexFormat { UInt16, UInt32 };
+
+size_t getVertexAttributeTypeSize(const VertexAttributeType &type);
+size_t getIndexFormatSize(const IndexFormat &type);
+bool isInteger(const ShaderFieldBaseType& type);
+WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim);
+WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type);
+
+} // namespace gfx
+
+#endif // GFX_ENUMS
