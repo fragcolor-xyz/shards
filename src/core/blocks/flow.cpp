@@ -796,9 +796,10 @@ struct Match {
       if (counter % 2)
         throw CBException("Match: first parameter must contain a sequence of pairs [variable "
                           "to compare & action to perform if matches].");
-      _pcases.resize(counter / 2);
-      _cases.resize(counter / 2);
-      _actions.resize(counter / 2);
+      _ncases = int(counter / 2);
+      _pcases.resize(_ncases);
+      _cases.resize(_ncases);
+      _actions.resize(_ncases);
       _full.resize(counter);
       auto idx = 0;
       for (uint32_t i = 0; i < counter; i += 2) {
@@ -809,7 +810,6 @@ struct Match {
         _full[i + 1] = _actions[idx];
         idx++;
       }
-      _ncases = int(counter);
     } break;
     case 1:
       _pass = value.payload.boolValue;
