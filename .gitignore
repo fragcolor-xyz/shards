@@ -14,7 +14,7 @@ src/py/MANIFEST
 src/nim/tests/tcbvar.xml
 src/nim/tcbvar.xml
 *.log
-build/
+build*/
 .vs/
 src/core/.DS_Store
 .DS_Store
