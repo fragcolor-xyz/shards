@@ -12,7 +12,7 @@ This guide will outline the process to build [Clamor](https://github.com/fragcol
 ## Windows
 
 !!! note
-    Fragcolor doesn't yet officially support building and developing Clamor on the Windows platform. Please use Linux or Mac for Clamor. You may use the Linux/Mac [instructions](#linuxmac) on Windows with [WSL](https://docs.microsoft.com/en-us/windows/wsl/) but your mileage may vary and results are not guaranteed. Clamor is based on [Substrate](https://substrate.io/) so you could also check out their [support for Windows](https://docs.substrate.io/v3/getting-started/windows-users/).
+    Clamor is based on [Substrate](https://substrate.io/) which doesn't have [native Windows support](https://docs.substrate.io/v3/getting-started/windows-users/) yet. You may try [WSL](https://docs.microsoft.com/en-us/windows/wsl/) and follow the [Linux/Mac instructions](#linuxmac), but results are not guaranteed.
 
 ## Linux/Mac
 
