@@ -46,6 +46,7 @@
     (Float3 1 0 0) (Math.Translation) >= .transform-1
     {:Mesh .mesh} (GFX.Drawable :Transform .transform-0) >> .drawables
     {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
+    (Float3 0 0 1) >= .light-direction
 
     ; Create render steps
     (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
@@ -57,9 +58,13 @@
                {:Name "mainColor"
                 :Stage ProgrammableGraphicsStage.Fragment
                 :EntryPoint (->
-                             (Shader.ReadInput :Dimension 4 :Name "color")
-                             (Float4 0.4 0.3 0.2 1.0)
+                             (Float4 0.8 0.8 0.8 1.0) >= .base-color
+                             (Shader.ReadBuffer :Dimension 3 :Name "lightColor") (ToFloat4) (Math.Add (Float4 0 0 0 1)) >= .light-color-4
+                             .base-color (Math.Multiply .light-color-4)
                              (Shader.WriteOutput "color"))}]
+     :Params [{:Name "lightColor" :Default (Float3 1 1 1)} {:Name "lightDirection" :Default (Float3 0.707 0.707 0)}]
+     :DrawData (->
+                {:lightColor (Float3 1 1 1) :lightDirection .light-direction})
      :State {:DepthCompare CompareFunction.Always
              :ColorWrite [ColorMask.Red ColorMask.Blue]
              :Blend {:Color BlendAdd

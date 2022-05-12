@@ -10,9 +10,8 @@ namespace gfx {
 void SHShaderParameters::updateVariables(MaterialParameters &output) {
   for (SHBasicShaderParameter &param : basic) {
     ParamVariant variant;
-    if (varToParam(param.var.get(), variant)) {
-      output.set(param.key, variant);
-    }
+    varToParam(param.var.get(), variant);
+    output.set(param.key, variant);
   }
 }
 

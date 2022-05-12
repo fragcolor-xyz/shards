@@ -1,5 +1,7 @@
 #include "../gfx.hpp"
 #include "buffer_vars.hpp"
+#include "shards_utils.hpp"
+#include "material_utils.hpp"
 #include "shader/translator.hpp"
 #include "shards_utils.hpp"
 #include <gfx/context.hpp>
@@ -86,12 +88,18 @@ struct FeatureShard {
       :State {
         :Blend {...}
       }
+      :DrawData [(-> ...)]/(-> ...)
+      :Params [
+        {:Name <string> :Type <type> :Dimension <number>}
+      ]
     }
   */
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
   static SHParametersInfo parameters() { return Parameters{}; }
+
+  IterableExposedInfo _sharedCopy;
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -109,6 +117,14 @@ struct FeatureShard {
 
   void cleanup() {}
   void warmup(SHContext *context) {}
+  SHTypeInfo compose(const SHInstanceData &data) {
+    // Capture variables for callbacks
+    // TODO: Refactor IterableArray
+    const IterableExposedInfo _hack(data.shared);
+    _sharedCopy = _hack;
+
+    return CoreInfo::NoneType; // not complete
+  }
 
   void applyBlendComponent(SHContext *context, BlendComponent &blendComponent, const SHVar &input) {
     checkType(input.valueType, SHType::Table, ":Blend Alpha/Color table");
@@ -301,6 +317,148 @@ struct FeatureShard {
     }
   }
 
+  static ParamVariant paramToVariant(SHContext *context, SHVar v) {
+    SHVar *ref{};
+    if (v.valueType == SHType::ContextVar) {
+      ref = referenceVariable(context, v.payload.stringValue);
+      v = *ref;
+    }
+
+    ParamVariant variant;
+    varToParam(v, variant);
+
+    if (ref)
+      releaseVariable(ref);
+
+    return variant;
+  }
+
+  static void applyDrawData(const FeatureCallbackContext &ctx, IDrawDataCollector &collector, const SHVar &input) {
+    checkType(input.valueType, SHType::Table, ":DrawData wire output");
+    const SHTable &inputTable = input.payload.tableValue;
+
+    ContextUserData *userData = ctx.context.userData.get<ContextUserData>();
+    assert(userData && userData->shardsContext);
+
+    ForEach(inputTable, [&](const char *k, SHVar v) {
+      ParamVariant variant = paramToVariant(userData->shardsContext, v);
+      collector.setParam(k, variant);
+    });
+  }
+
+  void applyDrawData(SHContext *context, Feature &feature, const SHVar &input) {
+    auto isWire = [](const SHVar &input) {
+      auto &seq = input.payload.seqValue;
+      if (input.valueType != SHType::Seq) {
+        return false;
+      }
+
+      for (size_t i = 0; i < seq.len; i++) {
+        if (seq.elements[i].valueType != SHType::ShardRef) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    auto apply = [&](const SHVar &input) {
+      if (!isWire(input))
+        throw formatException(":DrawData expects a wire or sequence of wires");
+
+      // TODO: Resolve how to capture these
+      struct Captured {
+        ShardsVar wire; // Is this safe to capture?
+      };
+      auto captured = std::make_shared<Captured>();
+      captured->wire = input;
+
+      SHInstanceData instanceData{};
+      instanceData.inputType = shards::CoreInfo::AnyTableType;
+      instanceData.shared = _sharedCopy;
+      captured->wire.warmup(context);
+      SHComposeResult composeResult = captured->wire.compose(instanceData);
+      assert(!composeResult.failed);
+
+      feature.drawData.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IDrawDataCollector &collector) {
+        ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
+        SHContext *SHContext = contextUserData->shardsContext;
+
+        SHVar input{};
+        SHVar output{};
+        SHWireState result = captured->wire.activate(SHContext, input, output);
+        assert(result == SHWireState::Continue);
+
+        applyDrawData(ctx, collector, output);
+      });
+    };
+
+    if (isWire(input)) {
+      apply(input);
+    } else if (input.valueType == SHType::Seq) {
+      const SHSeq &seq = input.payload.seqValue;
+      for (size_t i = 0; i < seq.len; i++) {
+        apply(seq.elements[i]);
+      }
+    } else {
+      throw formatException(":DrawData expects a wire or sequence of wires");
+    }
+  }
+
+  void applyShaderFieldType(SHContext *context, shader::FieldType &fieldType, const SHTable &inputTable) {
+    SHVar typeVar;
+    if (getFromTable(context, inputTable, "Type", typeVar)) {
+      checkEnumType(typeVar, Types::ShaderFieldBaseType, ":Type");
+      fieldType.baseType = ShaderFieldBaseType(typeVar.payload.enumValue);
+    } else {
+      // Default type if not specified:
+      fieldType.baseType = ShaderFieldBaseType::Float32;
+    }
+
+    SHVar dimVar;
+    if (getFromTable(context, inputTable, "Dimension", dimVar)) {
+      checkType(dimVar.valueType, SHType::Int, ":Dimension");
+      fieldType.numComponents = size_t(typeVar.payload.intValue);
+    } else {
+      // Default size if not specified:
+      fieldType.numComponents = 1;
+    }
+  }
+
+  void applyParam(SHContext *context, Feature &feature, const SHVar &input) {
+    NamedShaderParam &param = feature.shaderParams.emplace_back();
+
+    checkType(input.valueType, SHType::Table, ":Params Entry");
+    const SHTable &inputTable = input.payload.tableValue;
+
+    SHVar nameVar;
+    if (getFromTable(context, inputTable, "Name", nameVar)) {
+      checkType(nameVar.valueType, SHType::String, ":Params Name");
+      param.name = nameVar.payload.stringValue;
+    } else {
+      throw formatException(":Params Entry requires a :Name");
+    }
+
+    applyShaderFieldType(context, param.type, inputTable);
+
+    SHVar defaultVar;
+    if (getFromTable(context, inputTable, "Default", defaultVar)) {
+      param.defaultValue = paramToVariant(context, defaultVar);
+
+      // Derive type from default value
+      param.type = getParamVariantType(param.defaultValue);
+    }
+
+    // TODO: Also handle texture params here
+    // TODO: Parse ShaderParamFlags here too once we have functional ones
+  }
+
+  void applyParams(SHContext *context, Feature &feature, const SHVar &input) {
+    checkType(input.valueType, SHType::Seq, ":Params");
+    const SHSeq &inputSeq = input.payload.seqValue;
+
+    ForEach(inputSeq, [&](SHVar v) { applyParam(context, feature, v); });
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     FeaturePtr *varPtr = Types::FeatureObjectVar.New();
     *varPtr = std::make_shared<Feature>();
@@ -317,6 +475,14 @@ struct FeatureShard {
     SHVar stateVar;
     if (getFromTable(context, inputTable, "State", stateVar))
       applyState(context, feature.state, stateVar);
+
+    SHVar drawDataVar;
+    if (getFromTable(context, inputTable, "DrawData", drawDataVar))
+      applyDrawData(context, feature, drawDataVar);
+
+    SHVar paramsVar;
+    if (getFromTable(context, inputTable, "Params", paramsVar))
+      applyParams(context, feature, paramsVar);
 
     return Types::FeatureObjectVar.Get(varPtr);
   }

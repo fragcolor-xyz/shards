@@ -5,6 +5,7 @@
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
 #include "types.hpp"
+#include "user_data.hpp"
 #include <cassert>
 #include <list>
 #include <map>
@@ -57,6 +58,7 @@ public:
   ContextCreationOptions options;
 
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
+  TypedUserData userData;
 
 public:
   Context();
