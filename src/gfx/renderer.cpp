@@ -39,7 +39,7 @@ struct TextureIds {
   std::vector<TextureId> textures;
 
   bool operator==(const TextureIds &other) const {
-    return std::lexicographical_compare(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
+    return std::ranges::equal(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
   }
 
   bool operator!=(const TextureIds &other) const { return !(*this == other); }
@@ -433,6 +433,9 @@ struct RendererImpl final : public ContextData {
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
 
+      float4x4 worldViewInvTrans = linalg::inverse(linalg::mul(view->view, drawable->transform));
+      objectDrawData.setParam("worldViewInvTrans", drawable->transform);
+
       // Grab draw data from material
       if (Material *material = drawable->material.get()) {
         for (auto &pair : material->parameters.basic) {
@@ -806,6 +809,7 @@ struct RendererImpl final : public ContextData {
   void buildObjectBufferLayout(CachedPipeline &cachedPipeline) {
     UniformBufferLayoutBuilder objectBufferLayoutBuilder;
     objectBufferLayoutBuilder.push("world", FieldTypes::Float4x4);
+    objectBufferLayoutBuilder.push("worldViewInvTrans", FieldTypes::Float4x4);
     for (const Feature *feature : cachedPipeline.features) {
       for (auto &param : feature->shaderParams) {
         objectBufferLayoutBuilder.push(param.name, param.type);

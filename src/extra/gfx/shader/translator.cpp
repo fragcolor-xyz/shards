@@ -182,12 +182,23 @@ void registerTranslatorShards() {
   REGISTER_SHADER_SHARD("Shader.WriteGlobal", gfx::shader::Write<blocks::WriteGlobal>);
   REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::Write<blocks::WriteOutput>);
 
-  // Math shards
+  // Math blocks
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Add", shards::Math::Add, OperatorAdd);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Subtract", shards::Math::Subtract, OperatorSubtract);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Multiply", shards::Math::Multiply, OperatorMultiply);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Divide", shards::Math::Divide, OperatorDivide);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Mod", shards::Math::Mod, OperatorMod);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Cos", shards::Math::Cos, OperatorCos);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Sin", shards::Math::Sin, OperatorSin);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Tan", shards::Math::Tan, OperatorTan);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Max", shards::Math::Max, OperatorMax);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Min", shards::Math::Max, OperatorMin);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Pow", shards::Math::Pow, OperatorPow);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Log", shards::Math::Log, OperatorLog);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Exp", shards::Math::Exp, OperatorExp);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Floor", shards::Math::Floor, OperatorFloor);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Ceil", shards::Math::Ceil, OperatorCeil);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Round", shards::Math::Round, OperatorRound);
 
   // Casting blocks
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToInt", ToNumber<SHType::Int>);
@@ -203,11 +214,11 @@ void registerTranslatorShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToFloat4", ToNumber<SHType::Float4>);
 
   // Linalg blocks
-  REGISTER_EXTERNAL_SHADER_SHARD(MatMulTranslator, "Math.MatMul", LinAlg::MatMul);
-  REGISTER_EXTERNAL_SHADER_SHARD(VectorDotTranslator, "Math.Dot", LinAlg::Dot);
-  REGISTER_EXTERNAL_SHADER_SHARD(VectorCrossTranslator, "Math.Cross", LinAlg::Cross);
-  REGISTER_EXTERNAL_SHADER_SHARD(VectorNormalizeTranslator, "Math.Normalize", LinAlg::Normalize);
-  REGISTER_EXTERNAL_SHADER_SHARD(VectorLengthTranslator, "Math.Length", LinAlg::Length);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.MatMul", LinAlg::MatMul, OperatorMatMul);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Dot", LinAlg::Dot, OperatorDot);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Cross", LinAlg::Cross, OperatorCross);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Normalize", LinAlg::Normalize, OperatorNormalize);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Length", LinAlg::Length, OperatorLength);
 
   REGISTER_EXTERNAL_SHADER_SHARD(ConstTranslator, "Const", shards::Const);
   REGISTER_EXTERNAL_SHADER_SHARD(SetTranslator, "Set", shards::Set);

@@ -17,22 +17,33 @@ struct Transform {
 
     FeaturePtr feature = std::make_shared<Feature>();
 
-    FieldType positionFieldType(ShaderFieldBaseType::Float32, 4);
     auto vec4Pos = makeCompoundBlock("vec4<f32>(", ReadInput("position"), ".xyz, 1.0)");
 
     feature->shaderEntryPoints.emplace_back(
         "initWorldPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("worldPosition", positionFieldType, ReadBuffer("world", FieldTypes::Float4x4), "*", vec4Pos->clone()));
+        WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", vec4Pos->clone()));
     auto &initScreenPosition = feature->shaderEntryPoints.emplace_back(
         "initScreenPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("screenPosition", positionFieldType, ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*",
+        WriteGlobal("screenPosition", FieldTypes::Float4, ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*",
                     ReadBuffer("view", FieldTypes::Float4x4, "view"), "*", ReadGlobal("worldPosition")));
     initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
+    BlockPtr transformNormal = blocks::makeCompoundBlock("(", ReadBuffer("worldViewInvTrans", FieldTypes::Float4x4), "*",
+                                                         "vec4<f32>(", ReadInput("normal"), ".xyz, 1.0)", ").xyz");
+    feature->shaderEntryPoints.emplace_back(
+        "initWorldNormal", ProgrammableGraphicsStage::Vertex,
+        WriteGlobal("worldNormal", FieldTypes::Float3,
+                    WithInput("normal", std::move(transformNormal), blocks::Direct("vec3<f32>(0.0, 0.0, 1.0)"))));
+
     auto &writePosition =
         feature->shaderEntryPoints.emplace_back("writePosition", ProgrammableGraphicsStage::Vertex,
-                                                WriteOutput("position", positionFieldType, ReadGlobal("screenPosition")));
+                                                WriteOutput("position", FieldTypes::Float4, ReadGlobal("screenPosition")));
     writePosition.dependencies.emplace_back("initScreenPosition");
+
+    auto &writeNormal =
+        feature->shaderEntryPoints.emplace_back("writeNormal", ProgrammableGraphicsStage::Vertex,
+                                                WriteOutput("worldNormal", FieldTypes::Float3, ReadGlobal("worldNormal")));
+    writeNormal.dependencies.emplace_back("initWorldNormal");
 
     return feature;
   }
