@@ -39,20 +39,31 @@ Defines new blocks that can be inserted into an existing chain.
 
 Defines a new non-looped chain.
 
-`(defchain my-chain)` is actually a shorthand for the more verbose non-looped chain definition.
 === "Code"
 
     ```clojure linenums="1"
     ;; defchain
+    (defchain my-chain
+        ;; blocks here
+    )
+    ```
+
+`(defchain <chain-name>)` is actually a shorthand for the more verbose non-looped chain definition: `def <chain-name>` + `Chain "chain-name"`.
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; def + Chain
     (def my-chain
     (Chain "my-chain"
         ;; blocks here
     ))
     ```
 
-For a chain to be executed, it must first be scheduled on a `node` and then that that node needs to run.
+A chain is a stateful function.
 
-A node will execute a non-looped chain only once (even though node itself may continue running).
+To run it you must first schedule it on a node. When you run this node, all the chains scheduled on it are executed (in the order of scheduling).
+
+A node will execute a non-looped chain only once (even though the node itself may continue running).
 
 === "Code"
 
@@ -78,6 +89,30 @@ A node will execute a non-looped chain only once (even though node itself may co
     [info] [2022-03-07 20:45:35.681] [T-9044] [logging.cpp::94] [chain-hello] Hello World!
     [info] [2022-03-07 20:45:35.678] [T-9044] [logging.cpp::94] [chain-bye] Goodbye World
     ```
+
+`defchain` can also parse and save the chain's input into a variable.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)
+    (defchain mychain
+        = .chainvar                    ;; save mychain input to chainvar
+        .chainvar (Log "chain input")) ;; log mychain input to screen
+    (defchain mainchain 
+        "chainblocks" (Do mychain))    ;; invoke mychain with an input
+    (schedule main mainchain)
+    (run main)
+    ```
+
+=== "Result"
+
+    ```
+    [trace] [2022-05-12 21:25:49.714] [T-17336] [runtime.cpp::1998] chain mainchain starting
+    [info] [2022-05-12 21:25:49.715] [T-17336] [logging.cpp::53] [mychain] chain input: chainblocks
+    [debug] [2022-05-12 21:25:49.716] [T-17336] [runtime.cpp::2741] Running cleanup on chain: mainchain users count: 0
+    ```
+    
 
 ??? info "See also"
     * [defloop](#defloop)
