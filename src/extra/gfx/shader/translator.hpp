@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_SHADER_TRANSLATOR
+#define CB_EXTRA_GFX_SHADER_TRANSLATOR
 #include "wgsl.hpp"
 #include <gfx/shader/blocks.hpp>
 #include <map>
@@ -138,3 +139,5 @@ public:
 
 } // namespace shader
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_SHADER_TRANSLATOR

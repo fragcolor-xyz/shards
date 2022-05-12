@@ -204,6 +204,10 @@ void registerTranslatorShards() {
 
   // Linalg blocks
   REGISTER_EXTERNAL_SHADER_SHARD(MatMulTranslator, "Math.MatMul", LinAlg::MatMul);
+  REGISTER_EXTERNAL_SHADER_SHARD(VectorDotTranslator, "Math.Dot", LinAlg::Dot);
+  REGISTER_EXTERNAL_SHADER_SHARD(VectorCrossTranslator, "Math.Cross", LinAlg::Cross);
+  REGISTER_EXTERNAL_SHADER_SHARD(VectorNormalizeTranslator, "Math.Normalize", LinAlg::Normalize);
+  REGISTER_EXTERNAL_SHADER_SHARD(VectorLengthTranslator, "Math.Length", LinAlg::Length);
 
   REGISTER_EXTERNAL_SHADER_SHARD(ConstTranslator, "Const", shards::Const);
   REGISTER_EXTERNAL_SHADER_SHARD(SetTranslator, "Set", shards::Set);

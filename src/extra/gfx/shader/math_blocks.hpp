@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_SHADER_MATH_BLOCKS
+#define CB_EXTRA_GFX_SHADER_MATH_BLOCKS
 
 // Required before shard headers
 #include "../shards_types.hpp"
@@ -61,3 +62,5 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
 
 } // namespace shader
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_SHADER_MATH_BLOCKS

@@ -1,14 +1,12 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
+#define CB_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
 
-// Required before shard headers
 #include "shards/shared.hpp"
 #include "translator.hpp"
 #include <gfx/shader/wgsl_mapping.hpp>
 
 namespace gfx {
 namespace shader {
-using shards::CoreInfo;
-
 static inline std::string convertVariableName(std::string_view varName) {
   std::string result;
   result.reserve(varName.size());
@@ -83,3 +81,5 @@ static inline std::unique_ptr<IWGSLGenerated> referenceGlobal(const char *inVarN
 
 } // namespace shader
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_SHADER_TRANSLATOR_UTILS

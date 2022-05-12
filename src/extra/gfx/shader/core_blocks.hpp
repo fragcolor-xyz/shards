@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_SHADER_CORE_BLOCKS
+#define CB_EXTRA_GFX_SHADER_CORE_BLOCKS
 
 // Required before shard headers
 #include "../shards_types.hpp"
@@ -392,3 +393,5 @@ template <typename TShard> struct ToNumberTranslator {
 
 } // namespace shader
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_SHADER_CORE_BLOCKS

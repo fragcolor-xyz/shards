@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CB_EXTRA_GFX_SHADER_WGSL
+#define CB_EXTRA_GFX_SHADER_WGSL
 
 #include <gfx/shader/blocks.hpp>
 #include <gfx/shader/types.hpp>
@@ -39,3 +40,5 @@ struct WGSLBlock : public IWGSLGenerated {
 
 } // namespace shader
 } // namespace gfx
+
+#endif // CB_EXTRA_GFX_SHADER_WGSL
