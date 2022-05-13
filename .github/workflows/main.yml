@@ -40,7 +40,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential autoconf git cmake wget ninja-build
+          sudo apt-get -y install build-essential git cmake wget ninja-build
           ./bootstrap
           cd emsdk
           ./emsdk install 3.1.10
@@ -119,7 +119,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
           ./bootstrap
           rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
@@ -159,7 +159,7 @@ jobs:
         if: ${{ matrix.build-type == 'Debug' }}
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
           ./bootstrap
           rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
@@ -289,7 +289,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential autoconf git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
           ./bootstrap
           rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
@@ -469,9 +469,6 @@ jobs:
           path-type: inherit
           install: >-
             base-devel
-            automake
-            libtool
-            autoconf-wrapper
             mingw-w64-${{ matrix.arch }}-toolchain
             mingw-w64-${{ matrix.arch }}-cmake
             mingw-w64-${{ matrix.arch }}-ninja
@@ -822,7 +819,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
-          brew install cmake ninja clang-format automake libtool
+          brew install cmake ninja clang-format
           ./bootstrap
           rustup toolchain install nightly
       - uses: Swatinem/rust-cache@v1
@@ -921,7 +918,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
-          brew install cmake clang-format automake libtool
+          brew install cmake clang-format
           ./bootstrap
           rustup toolchain install nightly
           rustup +nightly target add aarch64-apple-ios
