@@ -143,8 +143,126 @@ Defines a new function.
 === "Code"
 
     ```clojure linenums="1"
+    (defn fn-name [fn-parms] ;; function-name followed by input parameters in '[]'
+        (Msg parm)           ;; function body that returns a value
+    )
+    ```
+
+The function definition consists of the function name followed by its input parameters (parms), in `[]`.
+
+If there are no input parms the `[]` remains empty. Multiple input parms may be passed as a sequence.
+
+The processing statements (value/expression/blocks) following the `[]` is the function's body and its evaluation is the function's return value. A function may return a single or none at all.
+
+A function can be invoked by calling it by name and passing its required parms.
+
+Function with no input parms:
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)    
+    (defn func []
+        (Msg "I got no parms"))         ;; prints string text to screen
+    (defchain mychain
+        (func))                         ;; function invoked without any parms
+    (schedule main mychain)
+    (run main)
+    ```
+=== "Result"
 
     ```
+    [info] [2022-05-13 14:04:22.268] [T-1204] [logging.cpp::98] [mychain] I got no parms 
+    ```
+
+Function with one input parm:
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)    
+    (defn func [parm]
+        (Msg parm))                     ;; prints the parm to screen
+    (defchain mychain
+        (func "The only parm"))         ;; function invoked with a single parm
+    (schedule main mychain)
+    (run main)
+    ```
+=== "Result"
+
+    ```
+    [info] [2022-05-13 14:03:58.125] [T-21336] [logging.cpp::98] [mychain] The only parm    
+    ```
+
+Function with multiple input parms:
+
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; multiple input parms
+    (defnode main)    
+    (defn func [parm1 parm2]
+        (Msg parm2))                    ;; prints the 2nd parm to screen
+    (defchain mychain
+        (func "1st parm" "2nd parm"))   ;; function invoked with multiple parms
+    (schedule main mychain)
+    (run main)
+    ```
+=== "Result"
+
+    ```
+    [info] [2022-05-13 14:03:38.570] [T-11468] [logging.cpp::98] [mychain] 2nd parm
+    ```
+
+The function cannot return multiple values. So if you need to process multiple blocks in the function's body you'll have to group them by wrapping them with either `defblocks`
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)   
+    (defblocks MsgParms [input]     ;; defblocks groups multiple blocks for processing
+        (Msg "name is:")
+        (Msg input))     
+    (defn letslog [name]
+        (MsgParms name))            ;; defblocks takes function input and returns single value
+    (defchain mychain
+        (letslog "chainblocks"))
+    (schedule main mychain)
+    (run main)
+    ```
+=== "Result"
+
+    ```
+    [info] [2022-05-13 14:44:51.293] [T-16928] [logging.cpp::98] [mychain] name is:
+    [info] [2022-05-13 14:44:51.294] [T-16928] [logging.cpp::98] [mychain] chainblocks
+    ```
+
+or with its alias, `->` (which is more succint than `defblocks`).
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)        
+    (defn letslog [name]
+    (->                             ;; defblocks replaced with `->`
+        (Msg "name is:")            ;; multiple blocks can now be written down sequentially
+        (Msg name)
+    )
+    )
+    (defchain mychain
+        (letslog "chainblocks"))
+    (schedule main mychain)
+    (run main)
+    ```
+=== "Result"
+
+    ```
+    [info] [2022-05-13 14:47:44.543] [T-21048] [logging.cpp::98] [mychain] name is:
+    [info] [2022-05-13 14:47:44.544] [T-21048] [logging.cpp::98] [mychain] chainblocks
+    ```
+
+??? info "See also"
+    * [defblocks](#defblocks)
 
 ## defmacro!
 
