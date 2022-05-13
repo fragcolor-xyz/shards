@@ -93,14 +93,14 @@ jobs:
           path: |
             build/cbl/
           if-no-files-found: error
-      - name: Upload cbl to IPFS
-        uses: chainblocks/ipfs-action@master
-        if: ${{ github.event_name == 'push' }}
-        with:
-          path: build/cbl/
-          service: infura
-          port: 5001
-          protocol: https
+      # - name: Upload cbl to IPFS
+      #   uses: chainblocks/ipfs-action@master
+      #   if: ${{ github.event_name == 'push' }}
+      #   with:
+      #     path: build/cbl/
+      #     service: infura
+      #     port: 5001
+      #     protocol: https
 
   #
   # Build chainblocks for linux
