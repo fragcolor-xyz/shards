@@ -1,4 +1,5 @@
 nav:
   - getting-started.md
   - building-chainblocks.md
+  - building-clamor.md
   - ...
