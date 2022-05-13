@@ -160,24 +160,34 @@ Defines a new macro.
 
 Defines a new `node` on which chains can be scheduled and then run.
 
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; defnode
+    (defnode main)     ;; define a node named 'main'
+    ```
+
+`(defnode <node-name>)` is actually a shorthand for the more verbose node definition: `def <node-name> (Node)`.
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; def + Node
+    (def main (Node))   ;; define a node named 'main'
+    ```
+
 A node is a self-contained execution-context and software environment (like a server) that executes the chain code logic. It can run both on the local hardware as well as peer-to-peer hardware over the network (blockchain). 
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; define a node (main)
-    (defnode main)
-    ;; define a looped chain
-    (defloop chain-hi
-        (Msg "Hello World!"))
-    ;; define a non-looped chain
-    (defchain chain-bye
+    (defnode main)             ;; define a node (main)
+    (defloop chain-hi          ;; define a looped chain
+        (Msg "Hello World!"))  
+    (defchain chain-bye        ;; define a non-looped chain
         (Msg "Goodbye World"))
-    ;; schedule both the chains on this node
-    (schedule main chain-hi)
-    (schedule main chain-bye)
-    ;; run all the scheduled chains on this node
-    (run main)
+    (schedule main chain-hi)   ;; schedule looped chain (chain-hi) on this node
+    (schedule main chain-bye)  ;; schedule non-looped chain (chain-hi) on this node
+    (run main)                 ;; run all the scheduled chains on this node
     ```
 === "Result"
 
@@ -188,7 +198,13 @@ A node is a self-contained execution-context and software environment (like a se
     [info] [2022-03-07 22:14:51.776] [T-14836] [logging.cpp::94] [chain-hi] Hello World!
     [info] [2022-03-07 22:14:51.791] [T-14836] [logging.cpp::94] [chain-hi] Hello World!
     [info] [2022-03-07 22:14:51.823] [T-14836] [logging.cpp::94] [chain-hi] Hello World!
+    .
+    .
+    .
     ```
+
+??? info "See also"
+    * [def](#def)
 
 ## defloop
 
