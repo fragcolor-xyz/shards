@@ -19,6 +19,7 @@
 #include "view_texture.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
+#include <algorithm>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
@@ -39,7 +40,7 @@ struct TextureIds {
   std::vector<TextureId> textures;
 
   bool operator==(const TextureIds &other) const {
-    return std::ranges::equal(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
+    return std::equal(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
   }
 
   bool operator!=(const TextureIds &other) const { return !(*this == other); }
