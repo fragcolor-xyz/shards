@@ -45,13 +45,43 @@ Defines an alias.
 
 ## defblocks
 
-Defines new blocks that can be inserted into an existing chain.
+Defines new blocks that can be grouped together and inserted into an existing chain program.
+
+A `defblocks` block looks structurally similar to a function (see [defn](#defn)), but can directly contain multiple blocks in its body (unlike a function).
 
 === "Code"
 
     ```clojure linenums="1"
+    (defblocks MsgParms [input]
+        (Msg "My name is")
+        (Msg input))  
+    ```
+
+Just like a function a `defblocks` block can be invoked by name and can process input parameters.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)   
+    (defblocks MsgParms [input]
+        (Msg "My name is")
+        (Msg input))     
+    (defchain mychain
+        (MsgParms "Chainblocks"))
+    (schedule main mychain)
+    (run main)
+    ```
+
+=== "Result"
 
     ```
+    [info] [2022-05-13 15:31:09.231] [T-4796] [logging.cpp::98] [mychain] My name is
+    [info] [2022-05-13 15:31:09.232] [T-4796] [logging.cpp::98] [mychain] Chainblocks
+    ```
+
+Since `defblocks` serves a very common use case an alias, `->`, is also provided. This alias is equivalent to `defblocks` but is much more succint to use.
+
+See the last two code examples in [defn](#defn) for a use case of `defblocks` and its alias `->`.
 
 ## defchain
 
