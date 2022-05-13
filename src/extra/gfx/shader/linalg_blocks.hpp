@@ -29,7 +29,7 @@ struct OperatorDot {
     if (a != b) {
       throw ShaderComposeError(fmt::format("Operand mismatch lhs!=rhs, left:{}, right:{}", a, b));
     }
-    if (isFloatType(a.baseType)) {
+    if (!isFloatType(a.baseType)) {
       throw ShaderComposeError(fmt::format("Dot product only supported on floating point types"));
     }
     return FieldType(a.baseType, 1);
@@ -42,7 +42,7 @@ struct OperatorCross {
     if (a != b) {
       throw ShaderComposeError(fmt::format("Operand mismatch lhs!=rhs, left:{}, right:{}", a, b));
     }
-    if (isFloatType(a.baseType)) {
+    if (!isFloatType(a.baseType)) {
       throw ShaderComposeError(fmt::format("Dot product only supported on floating point types"));
     }
     return a;

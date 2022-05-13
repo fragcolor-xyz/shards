@@ -105,6 +105,18 @@ struct OperatorSubtract {
 
 struct OperatorMultiply {
   static inline const char *op = "*";
+  static FieldType validateTypes(FieldType a, FieldType b) {
+    if (a.baseType == b.baseType) {
+      if (a.numComponents == 1 || b.numComponents == 1) {
+        FieldType vecType = a.numComponents == 1 ? b : a;
+        return vecType;
+      } else if (a.numComponents == b.numComponents) {
+        return a;
+      }
+    }
+
+    throw ShaderComposeError(fmt::format("Operand mismatch lhs != rhs, left:{}, right:{}", a, b));
+  }
 };
 
 struct OperatorDivide {

@@ -29,7 +29,7 @@ struct Transform {
     initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
     BlockPtr transformNormal = blocks::makeCompoundBlock("(", ReadBuffer("worldViewInvTrans", FieldTypes::Float4x4), "*",
-                                                         "vec4<f32>(", ReadInput("normal"), ".xyz, 1.0)", ").xyz");
+                                                         "vec4<f32>(", ReadInput("normal"), ".xyz, 0.0)", ").xyz");
     feature->shaderEntryPoints.emplace_back(
         "initWorldNormal", ProgrammableGraphicsStage::Vertex,
         WriteGlobal("worldNormal", FieldTypes::Float3,

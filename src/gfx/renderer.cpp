@@ -433,8 +433,8 @@ struct RendererImpl final : public ContextData {
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
 
-      float4x4 worldViewInvTrans = linalg::inverse(linalg::mul(view->view, drawable->transform));
-      objectDrawData.setParam("worldViewInvTrans", drawable->transform);
+      float4x4 worldViewInvTrans = linalg::transpose(linalg::inverse(linalg::mul(view->view, drawable->transform)));
+      objectDrawData.setParam("worldViewInvTrans", worldViewInvTrans);
 
       // Grab draw data from material
       if (Material *material = drawable->material.get()) {
@@ -660,7 +660,9 @@ struct RendererImpl final : public ContextData {
       if (cachedPipeline.drawables.empty())
         continue;
 
-      size_t drawBufferLength = cachedPipeline.objectBufferLayout.size * cachedPipeline.drawables.size();
+      size_t drawBufferLength =
+          alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment) *
+          cachedPipeline.drawables.size();
 
       DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
       fillInstanceBuffer(instanceBuffer, cachedPipeline, view.get());

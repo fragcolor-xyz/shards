@@ -1,34 +1,8 @@
-(def cube-layout ["position", "normal", "color"])
-(def cube
-  {"Vertices"
-   [(Float3 -1.0  1.0  1.0) (Float3 0 0 1)(Float4 1.0 0.0 0.0 0.4)
-    (Float3  1.0  1.0  1.0) (Float3 0 0 1)(Float4 0.0 1.0 0.0 0.4)
-    (Float3 -1.0 -1.0  1.0) (Float3 0 0 1)(Float4 0.0 0.0 1.0 0.4)
-    (Float3  1.0 -1.0  1.0) (Float3 0 0 1)(Float4 0.0 0.0 0.0 0.4)
-    (Float3 -1.0  1.0 -1.0) (Float3 0 0 1)(Float4 0.0 0.0 0.0 0.4)
-    (Float3  1.0  1.0 -1.0) (Float3 0 0 1)(Float4 0.0 0.0 0.0 0.4)
-    (Float3 -1.0 -1.0 -1.0) (Float3 0 0 1)(Float4 0.0 0.0 0.0 0.4)
-    (Float3  1.0 -1.0 -1.0) (Float3 0 0 1)(Float4 0.0 0.0 0.0 0.4)]
-   "Indices"
-   [0 1 2
-    1 3 2
-    4 6 5
-    5 6 7
-    0 2 4
-    4 2 6
-    1 5 3
-    5 7 3
-    0 4 1
-    4 5 1
-    2 3 6
-    6 3 7]})
-
 (def timestep (/ 1.0 120.0))
 (defmesh root)
 (def BlendAdd {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
 (def BlendAlpha {:Operation BlendOperation.Add :Src BlendFactor.SrcAlpha :Dst BlendFactor.OneMinusSrcAlpha})
 (def BlendOne {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
-
 
 (defn spin-transform [t location]
   (->
@@ -41,39 +15,42 @@
 (defloop test-wire
    (Setup
     0.0 >= .time
-    cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
+    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
     (Float3 -1 0 0) (Math.Translation) >= .transform-0
     (Float3 1 0 0) (Math.Translation) >= .transform-1
     {:Mesh .mesh} (GFX.Drawable :Transform .transform-0) >> .drawables
     {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
-    (Float3 0 0 1) >= .light-direction
+    (Float3 0 0 -1) (Math.Normalize) >= .light-direction
 
     ; Create render steps
     (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
-    {:Shaders [{:Name "mainColor"
-                :Stage ProgrammableGraphicsStage.Vertex
+    {:Shaders [{:Name "lighting"
+                :Stage ProgrammableGraphicsStage.Fragment
                 :EntryPoint (->
-                             (Shader.ReadInput :Dimension 4 :Name "color")
-                             (Shader.WriteOutput "color"))}
+                             (Shader.ReadInput :Dimension 3 :Name "worldNormal") >= .normal
+                             (Shader.ReadBuffer :Dimension 3 :Name "lightDirection") >= .light-dir
+                             (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
+                             .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
+                             (Shader.ReadBuffer :Dimension 3 :Name "lightColor") (Math.Multiply .n-dot-l)
+                             (Shader.WriteGlobal "lighting"))}
                {:Name "mainColor"
                 :Stage ProgrammableGraphicsStage.Fragment
                 :EntryPoint (->
-                             (Float4 0.8 0.8 0.8 1.0) >= .base-color
-                             (Shader.ReadInput :Dimension 3 :Name "worldNormal") >= .normal
-                             (Shader.ReadBuffer :Dimension 3 :Name "lightColor") (ToFloat4) (Math.Add (Float4 0 0 0 1)) >= .light-color-4
-                             .normal (Math.Normalize) (ToFloat4) (Math.Add (Float4 0 0 0 1))
-                            ;;  .base-color (Math.Multiply .light-color-4)
+                             (Shader.ReadBuffer :Name "time") >= .time
+                             .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
+                             (Shader.ReadGlobal :Dimension 3 :Name "lighting") (ToFloat4) >= .lighting-4
+                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
                              (Shader.WriteOutput "color"))}]
-     :Params [{:Name "lightColor" :Default (Float3 1 1 1)} {:Name "lightDirection" :Default (Float3 0.707 0.707 0)}]
-     :DrawData (->
-                {:lightColor (Float3 1 1 1) :lightDirection .light-direction})
-     :State {:DepthCompare CompareFunction.Always
-             :Blend {:Color BlendAdd
-                     :Alpha BlendOne}}}
+     :Params [{:Name "lightDirection" :Default .light-direction}
+              {:Name "lightColor" :Default (Float3 1 1 1)}
+              {:Name "time"}]
+     :DrawData (-> {:time .time})
+     :State {:DepthCompare CompareFunction.Less
+             :Blend {:Color BlendAlpha :Alpha BlendOne}}}
     (GFX.Feature) >> .features
     (GFX.DrawablePass :Features .features) >> .render-steps
 
-    ; Create view
+    ;; Create view
     {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
     (GFX.View :View .view-transform) >= .view)
    (GFX.MainWindow

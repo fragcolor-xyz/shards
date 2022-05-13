@@ -368,6 +368,9 @@ struct FeatureShard {
       // TODO: Resolve how to capture these
       struct Captured {
         ShardsVar wire; // Is this safe to capture?
+        ~Captured() {
+          wire.cleanup();
+        }
       };
       auto captured = std::make_shared<Captured>();
       captured->wire = input;
@@ -375,9 +378,11 @@ struct FeatureShard {
       SHInstanceData instanceData{};
       instanceData.inputType = shards::CoreInfo::AnyTableType;
       instanceData.shared = _sharedCopy;
-      captured->wire.warmup(context);
+
       SHComposeResult composeResult = captured->wire.compose(instanceData);
       assert(!composeResult.failed);
+
+      captured->wire.warmup(context);
 
       feature.drawData.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IDrawDataCollector &collector) {
         ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
