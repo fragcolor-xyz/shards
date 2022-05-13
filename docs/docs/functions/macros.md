@@ -9,11 +9,29 @@ license: CC-BY-SA-4.0
 
 Defines an alias for a value.
 
+This value may be data, the result of an expression, or the return value of a block.
+
 === "Code"
 
     ```clojure linenums="1"
+    ;; define an alias for data
+    (def sequence1 [2 4 6 8])
+    (def string1 "I'm a string")
 
+    ;; define an alias for an evaluated expression result
+    (def xresult (* 2 4))   
+
+    ;; define an alias for a block's return value
+    (def my-chain (Chain "my-chain"))   
+    (def my-looped-chain (Chain "my-looped-chain" :Looped))   
+    (def Root (Node))
+    (def - Math.Subtract)
     ```
+
+??? info "See also"
+    * [defchain](#defchain)
+    * [defloop](#defloop)
+    * [defnode](#defnode)
 
 ## def!
 
@@ -115,6 +133,7 @@ A node will execute a non-looped chain only once (even though the node itself ma
     
 
 ??? info "See also"
+    * [def](#def)
     * [defloop](#defloop)
 
 ## defn
