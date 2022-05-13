@@ -194,11 +194,20 @@ A node is a self-contained execution-context and software environment (like a se
 
 Defines a new looped chain.
 
-`(defloop my-loop)` is actually a shorthand for the more verbose looped chain definition.
 === "Code"
 
     ```clojure linenums="1"
     ;; defloop
+    (defloop my-loop       ;; define a looped chain
+        ;; blocks here
+    ))
+    ```
+
+`(defloop <looped chain-name)` is actually a shorthand for the more verbose looped chain definition: `def <looped chain-name>` + `Chain "looped chain-name"`.
+=== "Code"
+
+    ```clojure linenums="1"
+    ;; def + Chain
     (def my-loop
     (Chain "my-loop" :Looped
         ;; blocks here
@@ -207,23 +216,40 @@ Defines a new looped chain.
     
 For a chain to be executed, it must first be scheduled on a `node` and then that that node needs to run.
 
+=== "Code"
+
+    ```clojure linenums="1"
+    (defnode main)          ;; define a node
+    (defloop my-loop        ;; define a looped chain
+        (Msg "Hello World!"))
+    (schedule main my-loop) ;; 
+    (run main)              ;; run chains scheduled on this node
+    ```
+=== "Result"
+
+    ```
+    [info] [2022-05-13 09:48:01.692] [T-15068] [logging.cpp::98] [my-loop] Hello World!
+    [info] [2022-05-13 09:48:01.693] [T-15068] [logging.cpp::98] [my-loop] Hello World!
+    [info] [2022-05-13 09:48:01.694] [T-15068] [logging.cpp::98] [my-loop] Hello World!
+    .
+    .
+    .
+
+    ```
+
 A node will continue executing a looped chain till the node itself stops running (or the chain execution is stopped via a logic condition).
 
 === "Code"
 
     ```clojure linenums="1"
-    (defnode main)
-    ;; define a looped chain (chain-hello)
-    (defloop chain-hi
+    (defnode main)             ;; define a node
+    (defloop chain-hi          ;; define a looped chain (chain-hello)
         (Msg "Hello World!"))
-    ;; define another looped chain (chain-bye)
-    (defloop chain-bye
+    (defloop chain-bye         ;; define another looped chain (chain-bye)
         (Msg "Goodbye World"))
-    ;; schedule the looped chains on this node
-    (schedule main chain-hi)
-    (schedule main chain-bye)
-    ;; run all the chains on this node
-    (run main)
+    (schedule main chain-hi)   ;; schedule the chain (chain-hi) on the node
+    (schedule main chain-bye)  ;; schedule the chain (chain-bye) on the node
+    (run main)                 ;; run all the chains scheduled on this node
     ```
 === "Result"
 
@@ -234,13 +260,13 @@ A node will continue executing a looped chain till the node itself stops running
     [info] [2022-03-07 22:28:54.715] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
     [info] [2022-03-07 22:28:54.731] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
     [info] [2022-03-07 22:28:54.732] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
-    [info] [2022-03-07 22:28:54.746] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 22:28:54.747] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
-    [info] [2022-03-07 22:28:54.763] [T-8432] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 22:28:54.763] [T-8432] [logging.cpp::94] [chain-bye] Goodbye World
+    .
+    .
+    .
     ```
 
 ??? info "See also"
+    * [def](#def)
     * [defchain](#defchain)
 
 
