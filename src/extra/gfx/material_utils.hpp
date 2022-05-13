@@ -15,13 +15,13 @@ namespace gfx {
 inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
   switch (var.valueType) {
   case SHType::Float: {
-    float vec;
-    memcpy(&vec, &var.payload.floatValue, sizeof(float));
+    float vec = float(var.payload.floatValue);
     outVariant = vec;
   } break;
   case SHType::Float2: {
     float2 vec;
-    memcpy(&vec.x, &var.payload.float2Value, sizeof(float) * 2);
+    vec.x = float(var.payload.float2Value[0]);
+    vec.y = float(var.payload.float2Value[1]);
     outVariant = vec;
   } break;
   case SHType::Float3: {
