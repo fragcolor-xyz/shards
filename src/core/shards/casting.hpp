@@ -1,10 +1,10 @@
-#pragma once
+#ifndef SH_CORE_BLOCKS_CASTING
+#define SH_CORE_BLOCKS_CASTING
+
 #include "number_types.hpp"
 #include "shared.hpp"
 
-
 namespace shards {
-
 template <SHType ToType> struct ToNumber {
   const VectorTypeTraits *_outputVectorType{nullptr};
   const NumberTypeTraits *_outputNumberType{nullptr};
@@ -195,3 +195,4 @@ template <SHType ToType> struct ToNumber {
   }
 };
 } // namespace shards
+#endif // SH_CORE_BLOCKS_CASTING
