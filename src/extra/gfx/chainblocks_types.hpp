@@ -69,7 +69,7 @@ struct Container {
   }};
   static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
 
-  static constexpr uint32_t DrawableTypeId = 'mesh';
+  static constexpr uint32_t DrawableTypeId = 'draw';
   static inline Type Drawable{{CBType::Object, {.object = {.vendorId = VendorId, .typeId = DrawableTypeId}}}};
   static inline ObjectVar<CBDrawable> DrawableObjectVar{"GFX.Drawable", VendorId, DrawableTypeId};
 
