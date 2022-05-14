@@ -1,0 +1,6 @@
+(defnode root-node)
+(defloop main
+  (Msg "Tick")
+  (Pause 1.0))
+(schedule root-node main)
+(run root-node (/ 1.0 120))

@@ -1668,7 +1668,7 @@ BUILTIN("run") {
           // TODO warn sometimes and skip sleeping, skipping callbacks too
           next = now + dsleep;
         } else {
-          next = next + dsleep;
+          next = now + realSleepTime;
           chainblocks::sleep(realSleepTime.count());
         }
       }
