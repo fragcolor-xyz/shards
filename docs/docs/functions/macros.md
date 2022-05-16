@@ -107,7 +107,7 @@ Defines a new non-looped chain.
     ))
     ```
 
-A chain is a stateful function.
+A chain is a stateful function (read more about this [here](https://docs.fragcolor.xyz/architecture-guides/chainblocks#stateful-functions) and [here](https://learn.fragcolor.xyz/how-to/chainblocks-primer#stateful-functions)).
 
 To run it you must first schedule it on a node. When you run this node, all the chains scheduled on it are executed (in the order of scheduling).
 
