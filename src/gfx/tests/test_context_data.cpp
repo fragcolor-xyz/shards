@@ -1,8 +1,8 @@
-#include "test_context.hpp"
-#include "test_data.hpp"
+#include "./context.hpp"
+#include "./data.hpp"
 #include <gfx/context.hpp>
 #include <gfx/context_data.hpp>
-
+#include <catch2/catch_all.hpp>
 
 using namespace gfx;
 
@@ -23,7 +23,7 @@ protected:
 };
 
 TEST_CASE("Context data", "[Context]") {
-  std::shared_ptr<Context> context = createTestContext();
+  std::shared_ptr<TestContext> context = createTestContext();
 
   SECTION("Weak reference by context") {
     std::weak_ptr<TestContextData> weakTestContextData;
@@ -42,7 +42,7 @@ TEST_CASE("Context data", "[Context]") {
 TEST_CASE("Context data releaseContextData", "[Context]") {
   std::shared_ptr<TestContextData> testContextData;
   {
-    std::shared_ptr<Context> context = createTestContext();
+    std::shared_ptr<TestContext> context = createTestContext();
 
     TestObject a;
     a.createContextDataConditional(*context.get());

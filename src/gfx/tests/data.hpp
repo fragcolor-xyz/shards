@@ -1,7 +1,7 @@
-#ifndef GFX_TESTS_TEST_DATA
-#define GFX_TESTS_TEST_DATA
+#ifndef GFX_TESTS_DATA
+#define GFX_TESTS_DATA
 
-#include "test_platform_id.hpp"
+#include "./platform_id.hpp"
 #include <gfx/filesystem.hpp>
 #include <gfx/linalg.hpp>
 #include <stdint.h>
@@ -58,4 +58,4 @@ private:
 };
 } // namespace gfx
 
-#endif // GFX_TESTS_TEST_DATA
+#endif // GFX_TESTS_DATA

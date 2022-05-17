@@ -1,5 +1,5 @@
-#ifndef GFX_TESTS_TEST_PLATFORM_ID
-#define GFX_TESTS_TEST_PLATFORM_ID
+#ifndef GFX_TESTS_PLATFORM_ID
+#define GFX_TESTS_PLATFORM_ID
 
 #include "gfx/context.hpp"
 #include <string>
@@ -13,4 +13,4 @@ struct TestPlatformId {
 };
 } // namespace gfx
 
-#endif // GFX_TESTS_TEST_PLATFORM_ID
+#endif // GFX_TESTS_PLATFORM_ID

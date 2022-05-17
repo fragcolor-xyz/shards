@@ -1,4 +1,4 @@
-#include "test_context.hpp"
+#include "./context.hpp"
 #include <catch2/catch_all.hpp>
 #include <cctype>
 #include <gfx/context.hpp>
@@ -112,7 +112,7 @@ TEST_CASE("Shader basic", "[Shader]") {
       MeshVertexAttribute("texcoord1", 3),
   };
 
-  std::shared_ptr<Context> context = createTestContext();
+  std::shared_ptr<TestContext> context = createTestContext();
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
   viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
@@ -154,7 +154,7 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
       MeshVertexAttribute("position", 3),
   };
 
-  std::shared_ptr<Context> context = createTestContext();
+  std::shared_ptr<TestContext> context = createTestContext();
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
   viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
@@ -203,7 +203,7 @@ TEST_CASE("Shader textures", "[Shader]") {
       MeshVertexAttribute("texCoord0", 2),
   };
 
-  std::shared_ptr<Context> context = createTestContext();
+  std::shared_ptr<TestContext> context = createTestContext();
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
   auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
