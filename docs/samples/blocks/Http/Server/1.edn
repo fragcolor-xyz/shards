@@ -1,0 +1,21 @@
+(def headers-self {"Cross-Origin-Opener-Policy" "same-origin"
+                   "Cross-Origin-Embedder-Policy" "require-corp"})
+(def headers-embed {"X-Frame-Options" ""
+                    "Access-Control-Allow-Origin" "*"})
+(def headers headers-self)
+(defloop handler
+  (Http.Read) = .request
+  (Take "target") >= .target (Log "target")
+
+  ; filter out query params
+  (Regex.Search #"(.*)\?") >= .matches
+  (Count .matches) (When (Is 2) (-> .matches (Take 1) > .target))
+
+  .target ;;(Log "target")
+  (Match
+   ["/" (-> "/index.html" (Http.SendFile headers))
+    nil (-> .target (Http.SendFile headers))]))
+
+(Http.Server
+ :Port 7070
+ :Handler handler)
