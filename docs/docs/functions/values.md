@@ -100,7 +100,7 @@ Represents a vector of 2 signed integers.
 === "Code"
 
     ```clojure linenums="1"
-    (int2 1 2)
+    (int2 1 -2)
     ```
 
 ## int3
