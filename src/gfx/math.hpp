@@ -12,8 +12,7 @@ inline float degToRad(float v) { return v * degToRadFactor; }
 constexpr float radToDegFactor = (180.0f / pi);
 inline float radToDeg(float v) { return v * radToDegFactor; }
 
-inline size_t alignTo(size_t size, size_t alignTo) {
-  size_t alignment = alignTo;
+inline size_t alignTo(size_t size, size_t alignment) {
   if (alignment == 0)
     return size;
 

@@ -216,8 +216,8 @@ struct RendererImpl final : public ContextData {
 
   bool mainOutputWrittenTo = false;
 
-  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth24Plus);
-  std::unique_ptr<PlaceholderTexture> placeholderTexture;
+  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth24Plus, "Depth Buffer");
+  std::shared_ptr<PlaceholderTexture> placeholderTexture;
 
   RendererImpl(Context &context) : context(context) {
     UniformBufferLayoutBuilder viewBufferLayoutBuilder;
@@ -228,7 +228,7 @@ struct RendererImpl final : public ContextData {
     viewBufferLayoutBuilder.push("viewport", FieldTypes::Float4);
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
-    placeholderTexture = std::make_unique<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
+    placeholderTexture = std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
   }
 
   ~RendererImpl() { releaseContextDataConditional(); }
@@ -358,8 +358,8 @@ struct RendererImpl final : public ContextData {
 
     WGPURenderPassColorAttachment mainAttach = {};
     mainAttach.clearValue = clearColor;
-    mainAttach.loadOp = WGPULoadOp_Undefined;
-    mainAttach.view = context.getMainOutputTextureView();
+    mainAttach.view = mainOutput.view;
+    mainAttach.loadOp = WGPULoadOp_Clear;
     mainAttach.storeOp = WGPUStoreOp_Store;
 
     passDesc.colorAttachments = &mainAttach;

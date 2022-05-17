@@ -13,9 +13,10 @@ private:
   WGPUTextureView textureView{};
   int2 size{};
   WGPUTextureFormat format{};
+  std::string label{};
 
 public:
-  ViewTexture(WGPUTextureFormat format) : format(format) {}
+  ViewTexture(WGPUTextureFormat format, const char *label = "unknown ViewTexture") : format(format), label(label) {}
   ~ViewTexture() { releaseContextDataConditional(); }
 
   ViewTexture(const ViewTexture &other) = delete;
@@ -41,6 +42,7 @@ public:
       textureDesc.size.depthOrArrayLayers = 1;
       textureDesc.size.width = size.x;
       textureDesc.size.height = size.y;
+      textureDesc.label = label.c_str();
       texture = wgpuDeviceCreateTexture(context.wgpuDevice, &textureDesc);
 
       WGPUTextureViewDescriptor viewDesc{};

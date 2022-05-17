@@ -37,6 +37,8 @@ struct MeshFormat {
   IndexFormat indexFormat = IndexFormat::UInt16;
   std::vector<MeshVertexAttribute> vertexAttributes;
 
+  size_t computeVertexSize() const;
+
   template <typename T> void hashStatic(T &hasher) const {
     hasher(primitiveType);
     hasher(windingOrder);
@@ -81,6 +83,7 @@ public:
   void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData);
 
 protected:
+  void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);
   void update();
   void initContextData(Context &context, MeshContextData &contextData);
 };

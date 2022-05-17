@@ -10,6 +10,8 @@
 
 namespace gfx {
 struct Drawable {
+  typedef std::shared_ptr<Drawable> PtrType;
+
   MeshPtr mesh;
   MaterialPtr material;
   std::vector<FeaturePtr> features;
@@ -18,7 +20,23 @@ struct Drawable {
 
   Drawable(MeshPtr mesh, float4x4 transform = linalg::identity, MaterialPtr material = MaterialPtr())
       : mesh(mesh), material(material), transform(transform) {}
+
+  PtrType clone() const;
 };
+
+// Wraps Drawable in a classic transform tree
+struct DrawableHierarchy {
+  typedef std::shared_ptr<DrawableHierarchy> PtrType;
+
+  std::vector<PtrType> children;
+  std::vector<DrawablePtr> drawables;
+  float4x4 transform = linalg::identity;
+  std::string label;
+
+  PtrType clone() const;
+};
+
+typedef DrawableHierarchy::PtrType DrawableHierarchyPtr;
 
 struct DrawQueue {
 private:
@@ -26,6 +44,7 @@ private:
 
 public:
   void add(DrawablePtr drawable) { drawables.push_back(drawable); }
+  void add(DrawableHierarchyPtr hierarchy);
   void clear() { drawables.clear(); }
   const std::vector<DrawablePtr> &getDrawables() const { return drawables; }
 };

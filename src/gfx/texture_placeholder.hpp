@@ -42,6 +42,7 @@ protected:
     }
 
     WGPUTextureDescriptor desc{};
+    desc.label = "placeholder";
     desc.dimension = WGPUTextureDimension_2D;
     desc.format = WGPUTextureFormat_RGBA8UnormSrgb;
     desc.mipLevelCount = 1;
