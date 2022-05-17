@@ -434,8 +434,8 @@ struct RendererImpl final : public ContextData {
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
 
-      float4x4 worldViewInvTrans = linalg::transpose(linalg::inverse(linalg::mul(view->view, drawable->transform)));
-      objectDrawData.setParam("worldViewInvTrans", worldViewInvTrans);
+      float4x4 worldInvTrans = linalg::transpose(linalg::inverse( drawable->transform));
+      objectDrawData.setParam("worldInvTrans", worldInvTrans);
 
       // Grab draw data from material
       if (Material *material = drawable->material.get()) {
@@ -812,7 +812,7 @@ struct RendererImpl final : public ContextData {
   void buildObjectBufferLayout(CachedPipeline &cachedPipeline) {
     UniformBufferLayoutBuilder objectBufferLayoutBuilder;
     objectBufferLayoutBuilder.push("world", FieldTypes::Float4x4);
-    objectBufferLayoutBuilder.push("worldViewInvTrans", FieldTypes::Float4x4);
+    objectBufferLayoutBuilder.push("worldInvTrans", FieldTypes::Float4x4);
     for (const Feature *feature : cachedPipeline.features) {
       for (auto &param : feature->shaderParams) {
         objectBufferLayoutBuilder.push(param.name, param.type);
