@@ -176,11 +176,11 @@ static inline shards::Type fieldTypeToShardsType(const FieldType &type) {
 }
 
 struct IOBase {
-  SHVar _name;
+  std::string _name;
   FieldType _fieldType;
 
   static inline shards::Parameters params = {
-      {"Name", SHCCSTR("The name of the field to read/write"), CoreInfo::StringOrStringVar},
+      {"Name", SHCCSTR("The name of the field to read/write"), {CoreInfo::StringType}},
       {"Type", SHCCSTR("The expected type (default: Float32)"), {Types::ShaderFieldBaseType}},
       {"Dimension",
        SHCCSTR("The expected dimension of the type. 1 for scalars. 2,3,4 for vectors. (default: 1)"),
@@ -193,7 +193,7 @@ struct IOBase {
     using shards::Var;
     switch (index) {
     case 0:
-      this->_name = value;
+      this->_name = value.payload.stringValue;
       break;
     case 1:
       _fieldType.baseType = ShaderFieldBaseType(value.payload.enumValue);
@@ -207,7 +207,7 @@ struct IOBase {
     using shards::Var;
     switch (index) {
     case 0:
-      return _name;
+      return Var(_name);
     case 1:
       return Var::Enum(_fieldType.baseType, VendorId, Types::ShaderFieldBaseTypeTypeId);
     case 2:
@@ -225,16 +225,15 @@ template <typename TShard> struct Read final : public IOBase {
   SHTypesInfo outputTypes() { return fieldTypeToShardsType(_fieldType); }
 
   void translate(TranslationContext &context) {
-    SHString varName = _name.payload.stringValue;
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), varName);
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), _name);
 
-    context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<TShard>(varName));
+    context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<TShard>(_name));
   }
 };
 
 // Override for reading a value from a named buffer
 struct ReadBuffer final : public IOBase {
-  const char *_bufferName = "object";
+  std::string _bufferName = "object";
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -269,10 +268,9 @@ struct ReadBuffer final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SHString varName = _name.payload.stringValue;
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, varName);
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, _name);
 
-    context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<blocks::ReadBuffer>(varName, _fieldType, _bufferName));
+    context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<blocks::ReadBuffer>(_name, _fieldType, _bufferName));
   }
 };
 
@@ -281,8 +279,7 @@ template <typename TShard> struct Write : public IOBase {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
   void translate(TranslationContext &context) {
-    SHString varName = _name.payload.stringValue;
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), varName);
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), _name);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not write: value is required"));
@@ -290,7 +287,7 @@ template <typename TShard> struct Write : public IOBase {
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
     FieldType fieldType = wgslValue->getType();
 
-    context.addNew(blocks::makeBlock<TShard>(varName, fieldType, wgslValue->toBlock()));
+    context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
   }
 };
 
