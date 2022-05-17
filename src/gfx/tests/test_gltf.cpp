@@ -1,33 +1,64 @@
 #include "./data.hpp"
 #include "./renderer.hpp"
-#include "renderer_utils.hpp"
+#include "./renderer_utils.hpp"
+#include <catch2/catch_all.hpp>
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/gltf/gltf.hpp>
 #include <gfx/mesh.hpp>
 #include <gfx/paths.hpp>
 #include <spdlog/fmt/fmt.h>
-#include <catch2/catch_all.hpp>
 
 using namespace gfx;
 
-TEST_CASE("Fox.glb", "[glTF]") {
-  auto testPath = gfx::resolveDataPath("glTF-Sample-Models/2.0/fox/glTF-Binary/Fox.glb");
+struct TestModelDesc {
+  const char *name;
+  float scale;
+  float3 offset{};
+};
 
-  DrawableHierarchyPtr gltfScene;
-  CHECK_NOTHROW(gltfScene = loadGlTF(testPath.string().c_str()));
-  CHECK(gltfScene);
+// clang-format off
+static TestModelDesc testModels[] = {
+    {"Fox", 1.0f / 100.0f, float3(0, 0, 0)},
+    {"Duck", 1.0f / 2.0f, float3(0, 0, 0)},
+    {"BarramundiFish", 2.7f, float3(0, 0, 0)},
+    {"Avocado", 12.2f, float3(0, 0, 0)},
+    {"Lantern", 1.0f / 20.0f, float3(0, 0.f, 0)},
+};
+// clang-format on
 
-  std::shared_ptr<TestContext> context = createTestContext();
+TEST_CASE("glTF sample models", "[glTF]") {
+  auto testRenderer = createTestRenderer(int2(512,512));
 
-  auto testRenderer = std::make_shared<TestRenderer>(context);
-  testRenderer->createRenderTarget(int2(1280, 720));
-  Renderer &renderer = *testRenderer->renderer.get();
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewPerspectiveProjection{};
+  view->view = linalg::lookat_matrix(float3(2.f, 2.0f, 2.0f), float3(0, 0, 0.0f), float3(0, 1, 0));
 
-  ViewPtr view = createTestProjectionView();
-  DrawQueue queue;
-  queue.add(gltfScene);
+  auto pipeline = PipelineSteps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+              },
+      }),
+  };
 
-  TEST_RENDER_LOOP(testRenderer) { renderer.render(queue, view, createTestPipelineSteps()); };
-  CHECK(testRenderer->checkFrame("fox.glb"));
+  for (auto &testModel : testModels) {
+    DYNAMIC_SECTION("Test " << testModel.name) {
+      auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", testModel.name));
+      auto gltfScene = loadGlTF(glbPath.string().c_str());
+      assert(gltfScene);
+
+      gltfScene->transform =
+          linalg::mul(linalg::translation_matrix(testModel.offset), linalg::scaling_matrix(float3(testModel.scale)));
+
+      DrawQueue queue;
+      queue.add(gltfScene);
+      TEST_RENDER_LOOP(testRenderer) { testRenderer->renderer->render(queue, view, pipeline); };
+
+      std::string frameName = fmt::format("glTF.{}", testModel.name);
+      CHECK(testRenderer->checkFrame(frameName.c_str()));
+    }
+  }
 }
