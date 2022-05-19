@@ -90,26 +90,27 @@ struct BinaryBase : public Base {
     if (rhs != Seq && lhs.basicType != Seq) {
       _lhsVecType = VectorTypeLookup::getInstance().get(lhs.basicType);
       _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
+      if (_lhsVecType || _rhsVecType) {
+        if (!_lhsVecType || !_rhsVecType)
+          throw ComposeError("Unsupported type to Math.Multiply");
 
-      if (!_lhsVecType || !_rhsVecType)
-        throw ComposeError("Unsupported type to Math.Multiply");
-
-      bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
-      // Don't check number type here because we have to convert Float64 -> Float32 for broadcasting
-      if (!_lhsVecType->isInteger && !sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
-        _opType = Broadcast;
-        // Result is the vector type
-        if (_rhsVecType->dimension == 1) {
-          resultType = _lhsVecType->type;
+        bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
+        // Don't check number type here because we have to convert Float64 -> Float32 for broadcasting
+        if (!_lhsVecType->isInteger && !sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
+          _opType = Broadcast;
+          // Result is the vector type
+          if (_rhsVecType->dimension == 1) {
+            resultType = _lhsVecType->type;
+          } else {
+            resultType = _rhsVecType->type;
+          }
         } else {
-          resultType = _rhsVecType->type;
+          if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
+            throw ComposeError(
+                fmt::format("Can not multiply vector of size {} and {}", _lhsVecType->dimension, _rhsVecType->dimension));
+          }
+          _opType = Normal;
         }
-      } else {
-        if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
-          throw ComposeError(
-              fmt::format("Can not multiply vector of size {} and {}", _lhsVecType->dimension, _rhsVecType->dimension));
-        }
-        _opType = Normal;
       }
     } else if (rhs != Seq && lhs.basicType == Seq) {
       if (lhs.seqTypes.len != 1 || rhs != lhs.seqTypes.elements[0].basicType)

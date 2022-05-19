@@ -59,6 +59,10 @@ struct ToBigInt {
 };
 
 template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOperation<T> {
+  using Math::BinaryBase::_operand;
+  using Math::BinaryBase::_opType;
+  using Math::BinaryBase::OpType;
+
   std::deque<std::vector<uint8_t>> _buffers;
   size_t _offset{0};
 
@@ -75,6 +79,36 @@ template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOpera
     static Parameters params{
         {"Operand", SHCCSTR("The bytes variable representing the operand"), {CoreInfo::BytesVarType, CoreInfo::BytesVarSeqType}}};
     return params;
+  }
+
+  void validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+    if (lhs.basicType == SHType::Bytes && rhs == SHType::Bytes) {
+      _opType = OpType::Normal;
+      resultType = CoreInfo::BytesType;
+    } else {
+      Math::BinaryBase::validateTypes(lhs, rhs, resultType);
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    SHTypeInfo resultType = data.inputType;
+    SHVar operandSpec = _operand;
+    if (operandSpec.valueType == ContextVar) {
+      for (uint32_t i = 0; i < data.shared.len; i++) {
+        if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
+          validateTypes(data.inputType, data.shared.elements[i].exposedType.basicType, resultType);
+          break;
+        }
+      }
+    } else {
+      validateTypes(data.inputType, operandSpec.valueType, resultType);
+    }
+
+    if (_opType == OpType::Invalid) {
+      throw ComposeError("Math operand variable not found: " + std::string(operandSpec.payload.stringValue));
+    }
+
+    return resultType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
