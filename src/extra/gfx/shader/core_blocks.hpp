@@ -178,6 +178,7 @@ static inline shards::Type fieldTypeToShardsType(const FieldType &type) {
 struct IOBase {
   std::string _name;
   FieldType _fieldType;
+  shards::Types _shFieldTypes{CoreInfo::AnyType};
 
   static inline shards::Parameters params = {
       {"Name", SHCCSTR("The name of the field to read/write"), {CoreInfo::StringType}},
@@ -188,6 +189,11 @@ struct IOBase {
   };
 
   SHParametersInfo parameters() { return params; };
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shFieldTypes = shards::Types{fieldTypeToShardsType(_fieldType)};
+    return CoreInfo::NoneType;
+  }
 
   void setParam(int index, const SHVar &value) {
     using shards::Var;
@@ -222,7 +228,12 @@ struct IOBase {
 
 template <typename TShard> struct Read final : public IOBase {
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  SHTypesInfo outputTypes() { return fieldTypeToShardsType(_fieldType); }
+  SHTypesInfo outputTypes() { return _shFieldTypes; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shFieldTypes = shards::Types{fieldTypeToShardsType(_fieldType)};
+    return _shFieldTypes._types[0];
+  }
 
   void translate(TranslationContext &context) {
     SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), _name);
@@ -236,9 +247,12 @@ struct ReadBuffer final : public IOBase {
   std::string _bufferName = "object";
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  SHTypesInfo outputTypes() { return _shFieldTypes; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return fieldTypeToShardsType(_fieldType); }
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shFieldTypes = shards::Types{fieldTypeToShardsType(_fieldType)};
+    return _shFieldTypes._types[0];
+  }
 
   SHParametersInfo parameters() {
     using shards::CoreInfo;
