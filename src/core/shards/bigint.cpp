@@ -61,7 +61,6 @@ struct ToBigInt {
 template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOperation<T> {
   using Math::BinaryBase::_operand;
   using Math::BinaryBase::_opType;
-  using Math::BinaryBase::OpType;
 
   std::deque<std::vector<uint8_t>> _buffers;
   size_t _offset{0};
@@ -83,7 +82,7 @@ template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOpera
 
   void validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Bytes && rhs == SHType::Bytes) {
-      _opType = OpType::Normal;
+      _opType = Math::BinaryBase::OpType::Normal;
       resultType = CoreInfo::BytesType;
     } else {
       Math::BinaryBase::validateTypes(lhs, rhs, resultType);
@@ -104,7 +103,7 @@ template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOpera
       validateTypes(data.inputType, operandSpec.valueType, resultType);
     }
 
-    if (_opType == OpType::Invalid) {
+    if (_opType == Math::BinaryBase::OpType::Invalid) {
       throw ComposeError("Math operand variable not found: " + std::string(operandSpec.payload.stringValue));
     }
 
