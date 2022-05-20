@@ -30,14 +30,15 @@ Switch to the Rust GNU toolchain with the following rustup command (from any ter
 === "Command"
 
     ```
-    rustup default stable-x86_64-pc-windows-gnu
+    rustup default nightly-x86_64-pc-windows-gnu
+    rustup +nightly target add x86_64-pc-windows-gnu
     ```
 
 === "Output"
 
     ```
-    C:\Users\saten>rustup default stable-x86_64-pc-windows-gnu
-    info: syncing channel updates for 'stable-x86_64-pc-windows-gnu'
+    C:\Users\saten>rustup default nightly-x86_64-pc-windows-gnu
+    info: syncing channel updates for 'nightly-x86_64-pc-windows-gnu'
     info: latest update on 2022-01-20, rust version 1.58.1 (db9d1b20b 2022-01-20)
     info: downloading component 'cargo'
     info: downloading component 'clippy'
@@ -47,9 +48,9 @@ Switch to the Rust GNU toolchain with the following rustup command (from any ter
     .
     .
     info: installing component 'rustfmt'
-    info: default toolchain set to 'stable-x86_64-pc-windows-gnu'
-     stable-x86_64-pc-windows-gnu installed - rust 1.58.1 (db9d1b20b 2022-01-20)
-    
+    info: default toolchain set to 'nightly-x86_64-pc-windows-gnu'
+     nightly-x86_64-pc-windows-gnu installed - rust 1.58.1 (db9d1b20b 2022-01-20)
+
     C:\Users\saten>
     ```
 
@@ -58,12 +59,12 @@ Switch to the Rust GNU toolchain with the following rustup command (from any ter
 Go to the Windows start menu and search for the 'MSYS2 MSYS' terminal application. Start the terminal.
 
 Run the following command from the MYSYS2 MSYS terminal to update your packages:
-   
+
 === "Command"
 
     ```
     pacman -Syu --noconfirm
-    ``` 
+    ```
 
 === "Output"
 
@@ -80,7 +81,7 @@ Run the following command from the MYSYS2 MSYS terminal to update your packages:
     .
     .
     .
-    ``` 
+    ```
 
 Restart the terminal (if needed) and install the required dependencies with this command:
 
@@ -103,7 +104,7 @@ Restart the terminal (if needed) and install the required dependencies with this
     .
     (20/24) installing mingw-w64-x86_64-boost      [#####################] 100%
     (21/24) installing mingw-w64-x86_64-ninja      [#####################] 100%
-    (22/24) installing mingw-w64-x86_64-llvm       [#####################] 100%    
+    (22/24) installing mingw-w64-x86_64-llvm       [#####################] 100%
     (23/24) installing mingw-w64-x86_64-clang      [#####################] 100%
     (24/24) installing mingw-w64-x86_64-lld        [#####################] 100%
     ```
@@ -169,14 +170,14 @@ emsdk install latest
 ```
 
 Activate the latest SDK for the current user.
-  
+
 ```
 emsdk activate latest
 ```
 
 Activate the PATH/ environment variables for the current terminal session.
 
-``` 
+```
 emsdk_env.bat
 ```
 
@@ -186,7 +187,7 @@ Open a Windows or VS Code terminal and navigate to the Chainblocks directory. Ru
 
 ```
 mkdir build-wasm
-```     
+```
 
 ```
 cd build-wasm
