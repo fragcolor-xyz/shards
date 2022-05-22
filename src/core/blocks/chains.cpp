@@ -514,7 +514,7 @@ struct Start : public Resume {
         if (current->resumer) {
           return current->resumer;
         } else {
-          throw ActivationError("Resume, chain not found.");
+          throw ActivationError("Start, chain not found.");
         }
       } else {
         return chain.get();
