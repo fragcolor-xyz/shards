@@ -120,6 +120,9 @@ pub struct Node(pub CBNodeRef);
 #[derive(Copy, Clone)]
 pub struct ChainRef(pub CBChainRef);
 
+#[derive(Copy, Clone)]
+pub struct BlockRef(pub CBlockPtr);
+
 impl Default for Node {
   fn default() -> Self {
     Node(unsafe { (*Core).createNode.unwrap()() })
@@ -1849,6 +1852,32 @@ impl TryFrom<Var> for ChainRef {
   }
 }
 
+impl TryFrom<Var> for BlockRef {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Chain {
+      Err("Expected Block variable, but casting failed.")
+    } else {
+      unsafe { Ok(BlockRef(var.payload.__bindgen_anon_1.blockValue)) }
+    }
+  }
+}
+
+impl TryFrom<&Var> for BlockRef {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != CBType_Block {
+      Err("Expected Block variable, but casting failed.")
+    } else {
+      unsafe { Ok(BlockRef(var.payload.__bindgen_anon_1.blockValue)) }
+    }
+  }
+}
+
 impl AsRef<Var> for Var {
   #[inline(always)]
   fn as_ref(&self) -> &Var {
@@ -2326,7 +2355,7 @@ impl Table {
     }
   }
 
-  pub fn get_fast_static(&mut self, k: &'static str) -> &Var {
+  pub fn get_fast_static(&self, k: &'static str) -> &Var {
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
