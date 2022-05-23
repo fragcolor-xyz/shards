@@ -5,7 +5,8 @@ license: CC-BY-SA-4.0
 
 # Building Chainblocks
 
-*Before you start, ensure you've [set up your development environment](../getting-started/#development-environment).*
+!!! note
+    Before you start, ensure you've [set up your development environment](../getting-started/#development-environment).
 
 This guide will outline the process to build [Chainblocks](https://github.com/fragcolor-xyz/chainblocks) from the sources.
 
@@ -13,7 +14,8 @@ This guide will outline the process to build [Chainblocks](https://github.com/fr
 
 ### Requirements
 
-*We use GCC and Clang a lot; MSVC might work, but it's uncharted territory.*
+!!! note
+    We use GCC and Clang a lot; MSVC might work, but it's uncharted territory.
 
 For Windows, ensure your system environment PATH variable includess the MinGW bin location. This value can be set from: Settings > Edit environment variables for your account > User variables for 'user' > Path > Edit. This allows you to run MinGW from Powershell, VS Code, etc. The value of this PATH is usually `C:\msys64\mingw64\bin`.
 
@@ -25,13 +27,13 @@ Pull the Chainblocks repository with dependencies using the following command (f
 git submodule update --init --recursive
 ```
 
-Switch to the Rust GNU toolchain with the following rustup command (from any terminal).
+Install and switch to the Rust GNU toolchain with the following rustup commands (from any terminal).
 
 === "Command"
 
     ```
+    rustup toolchain install nightly
     rustup default nightly-x86_64-pc-windows-gnu
-    rustup +nightly target add x86_64-pc-windows-gnu
     ```
 
 === "Output"
@@ -54,11 +56,27 @@ Switch to the Rust GNU toolchain with the following rustup command (from any ter
     C:\Users\saten>
     ```
 
+When adding rust targets, ensure they're installed for nightly toolchain. For example to add the target `x86_64-pc-windows-gnu` run the following command.
+
+=== "Command"
+
+    ```
+    rustup +nightly target add x86_64-pc-windows-gnu
+    ```
+
+=== "Output"
+
+    ```
+    info: downloading component 'rust-std' for 'x86_64-pc-windows-gnu'
+    info: installing component 'rust-std' for 'x86_64-pc-windows-gnu'
+        24.5 MiB /  24.5 MiB (100 %)   6.0 MiB/s in  4s ETA:  0s
+    ```
+
 ### Update system packages
 
-Go to the Windows start menu and search for the 'MSYS2 MSYS' terminal application. Start the terminal.
+On Windows you'll need to run the commands in this section in a MingW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MingW' and click the version appropriate for your machine (x86 or x64).
 
-Run the following command from the MYSYS2 MSYS terminal to update your packages:
+Now run the following command to update your packages:
 
 === "Command"
 
@@ -83,49 +101,82 @@ Run the following command from the MYSYS2 MSYS terminal to update your packages:
     .
     ```
 
-Restart the terminal (if needed) and install the required dependencies with this command:
+Restart the MingW terminal (if needed) and install the required build dependencies with this command (replace the `w64-x86_64` as appropriate for your target OS/machine).
 
 === "Command"
 
     ```
-    pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld
+    pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
     ```
 
 === "Output"
 
     ```
-    $ pacman -S --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-boost mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld
+    :: Synchronizing package databases...
     warning: base-devel-2022.01-1 is up to date -- skipping
     warning: mingw-w64-x86_64-binutils-2.37-4 is up to date -- skipping
     warning: mingw-w64-x86_64-crt-git-9.0.0.6373.5be8fcd83-1 is up to date -- skipping
     .
     .
     .
-    .
-    (20/24) installing mingw-w64-x86_64-boost      [#####################] 100%
-    (21/24) installing mingw-w64-x86_64-ninja      [#####################] 100%
-    (22/24) installing mingw-w64-x86_64-llvm       [#####################] 100%
-    (23/24) installing mingw-w64-x86_64-clang      [#####################] 100%
-    (24/24) installing mingw-w64-x86_64-lld        [#####################] 100%
+    (13/15) upgrading mingw-w64-x86_64-clang           [#####################] 100%
+    (14/15) upgrading mingw-w64-x86_64-lld             [#####################] 100%
+    (15/15) upgrading wget                             [#####################] 100%
+    :: Running post-transaction hooks...
+    (1/1) Updating the info directory file...
     ```
 
 ### Build & run the project
 
-Open a Windows or VS Code terminal and go to the Chainblocks directory.
+Continuing in the MingW terminal, navigate to Chainblocks root directory, and run the `bootstrap` script via the following command.
 
-Now, create a build directory,
+=== "Command"
+
+    ```
+    ./bootstrap
+    ```
+
+=== "Output"
+
+    ```
+    Using CHAINBLOCKS_ROOT=/c/Users/saten/Desktop/code/chainblocks
+    /c/Users/saten/Desktop/code/chainblocks/deps /c/Users/saten/Desktop/code/chainblocks
+    Setting up dependencies
+    /c/Users/saten/Desktop/code/chainblocks
+    Setting up tools
+    /c/Users/saten/Desktop/code/chainblocks/src/tools /c/Users/saten/Desktop/code/chainblocks
+    -- Build spdlog: 1.8.5
+    -- Build type: Release
+    -- Configuring done
+    -- Generating done
+    -- Build files have been written to: C:/Users/saten/Desktop/code/chainblocks/src/tools/build
+    [1/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/stdout_sinks.cpp.obj
+    [2/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/color_sinks.cpp.obj
+    [3/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/fmt.cpp.obj
+    [4/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/spdlog.cpp.obj
+    [5/6] Linking CXX static library deps\spdlog\libspdlog.a
+    [6/6] Linking CXX executable bin\bin2c.exe
+    /c/Users/saten/Desktop/code/chainblocks
+    ```
+    
+Now you may continue in a normal Windows/VS Code terminal.
+
+Go to Chainblocks root and create a build directory,
 
 ```
 mkdir build
 ```
 
-and then navigate to it.
+then navigate to it.
 
 ```
 cd build
 ```
 
-Now run the following command to describe the build,
+!!!note
+    Running the `bootstrap` script and creating the build folder need only be done once, at set-up time.
+
+Now, run the following command to describe the build,
 
 ```
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..
@@ -181,7 +232,8 @@ Activate the PATH/ environment variables for the current terminal session.
 emsdk_env.bat
 ```
 
-*NOTE - For non-Windows systems, use these commands instead: `./emsdk install latest`, `./emsdk activate latest`, and `source emsdk_env.sh`.*
+!! note
+    For non-Windows systems, use these commands instead: `./emsdk install latest`, `./emsdk activate latest`, and `source emsdk_env.sh`.
 
 Open a Windows or VS Code terminal and navigate to the Chainblocks directory. Run the following commands in sequence to create and link the Web Assembly build.
 
