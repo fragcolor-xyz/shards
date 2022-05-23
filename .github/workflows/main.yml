@@ -418,117 +418,42 @@ jobs:
   #
   # Build chainblocks for Windows
   #
-  Windows:
-    runs-on: windows-2019
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-        bitness: [32bits, 64bits]
-        include:
-          - bitness: 32bits
-            msystem: MINGW32
-            arch: i686
-            artifact: cbl-win32
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up rust
-        env:
-          RUSTUP_USE_CURL: 1
-        run: |
-          rustup toolchain install nightly
-          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
-      - name: Set up rust (32-bits)
-        env:
-          RUSTUP_USE_CURL: 1
-        if: ${{ matrix.bitness == '32bits' }}
-        shell: bash
-        run: |
-          # Native libClang required for rust bindgen
-          # choco exit with code 1 after successful install
-          choco install -y --force llvm || exit 0
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          key: ${{ matrix.build-type }}
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            base-devel
-            mingw-w64-${{ matrix.arch }}-toolchain
-            mingw-w64-${{ matrix.arch }}-cmake
-            mingw-w64-${{ matrix.arch }}-ninja
-            mingw-w64-${{ matrix.arch }}-clang
-            mingw-w64-${{ matrix.arch }}-lld
-            wget
-      - name: Build libtrace (64bits)
-        if: ${{ matrix.bitness == '64bits' }}
-        shell: msys2 {0}
-        run: |
-          cd deps/libbacktrace
-          mkdir build
-          ./configure --prefix=`pwd`/build
-          make && make install
-      - name: Build
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          ./bootstrap
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} ..
-          ninja cbl
-      - name: Test runtime (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          ninja test_runtime
-          ./test_runtime
-      - name: Test graphics (Debug)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ matrix.build-type == 'Debug' && matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          ninja test_gfx
-          GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
-          path: build/cbl.exe
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: ${{ matrix.artifact }} rejected test data
-          path: src/gfx/tests/data/github-windows/rejected
-          if-no-files-found: warn
+  Windows-64bits-Debug:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 64bits
+      build-type: Debug
+  Windows-64bits-Release:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 64bits
+      build-type: Release
+  Windows-32bits-Debug:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 32bits
+      build-type: Debug
+  Windows-32bits-Release:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 32bits
+      build-type: Release
 
   #
   # Test chainblocks for Windows
   #
   Windows-test:
-    needs: Windows
+    needs:
+      [
+        Windows-64bits-Debug,
+        Windows-64bits-Release,
+        Windows-32bits-Debug,
+        Windows-32bits-Release,
+      ]
     runs-on: windows-2019
     strategy:
       fail-fast: false
@@ -639,7 +564,7 @@ jobs:
   # Run blocks documentation samples
   #
   docs-samples:
-    needs: Windows
+    needs: Windows-64bits-Release
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -677,7 +602,7 @@ jobs:
   # Generate blocks documentation (markdown)
   #
   docs-markdown:
-    needs: Windows
+    needs: Windows-64bits-Debug
     runs-on: windows-2019
     steps:
       - name: Checkout
