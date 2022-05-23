@@ -2419,7 +2419,7 @@ struct Take {
     const auto &indices = _indicesVar ? *_indicesVar : _indices;                  \
     if (likely(!_seqOutput)) {                                                    \
       const auto index = indices.payload.intValue;                                \
-      if (index < 0 || size_t(index) >= inputLen) {                                       \
+      if (index < 0 || size_t(index) >= inputLen) {                               \
         throw OutOfRangeEx(inputLen, index);                                      \
       }                                                                           \
       return __val__;                                                             \
@@ -2428,7 +2428,7 @@ struct Take {
       chainblocks::arrayResize(_cachedSeq, nindices);                             \
       for (uint32_t i = 0; nindices > i; i++) {                                   \
         const auto index = indices.payload.seqValue.elements[i].payload.intValue; \
-        if (index < 0 || size_t(index) >= inputLen) {                                     \
+        if (index < 0 || size_t(index) >= inputLen) {                             \
           throw OutOfRangeEx(inputLen, index);                                    \
         }                                                                         \
         _cachedSeq.elements[i] = __val__;                                         \

@@ -206,6 +206,7 @@ void installCBCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! defchain (fn* [name & blocks] `(def! ~(symbol (str name)) "
       "(Chain ~(str name) (chainify (vector ~@blocks))))))",
       env);
+  rep("(defmacro! deftrait (fn* [name & blocks] `(def! ~(symbol (str name)) (hash-map ~@blocks))))", env);
   rep("(defmacro! defloop (fn* [name & blocks] `(def! ~(symbol (str name)) "
       "(Chain ~(str name) :Looped (chainify (vector ~@blocks))))))",
       env);
@@ -307,6 +308,10 @@ public:
 
   malCBlock(const malCBlock &that, const malValuePtr &meta) = delete;
 
+  malCBlock(const malCBlock &that) = delete;
+
+  malCBlock(malCBlock &&that) = delete;
+
   ~malCBlock() {
     // unref all we hold  first
     m_refs.clear();
@@ -318,6 +323,7 @@ public:
   }
 
   virtual MalString print(bool readably) const {
+    assert(m_block);
     std::ostringstream stream;
     stream << "Block: " << m_block->name(m_block);
     return stream.str();
