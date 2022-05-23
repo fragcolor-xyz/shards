@@ -97,11 +97,9 @@ pub type Var = CBVar;
 pub type Type = CBTypeInfo;
 pub type InstanceData = CBInstanceData;
 pub type ComposeResult = CBComposeResult;
-pub type Block = CBlock;
 pub type ExposedInfo = CBExposedTypeInfo;
 pub type ParameterInfo = CBParameterInfo;
 pub type RawString = CBString;
-pub type Chain = CBChain;
 
 #[repr(transparent)] // force it same size of original
 #[derive(Default)]
@@ -142,6 +140,48 @@ impl Node {
 
   pub fn tick(&self) -> bool {
     unsafe { (*Core).tick.unwrap()(self.0) }
+  }
+}
+
+pub struct Chain(pub ChainRef);
+
+impl Default for Chain {
+  fn default() -> Self {
+    Chain(ChainRef(unsafe { (*Core).createChain.unwrap()() }))
+  }
+}
+
+impl Drop for Chain {
+  fn drop(&mut self) {
+    unsafe { (*Core).destroyChain.unwrap()(self.0 .0) }
+  }
+}
+
+impl Chain {
+  pub fn add_block(&self, block: BlockRef) {
+    unsafe { (*Core).addBlock.unwrap()(self.0 .0, block.0) }
+  }
+
+  pub fn set_looped(&self, looped: bool) {
+    unsafe { (*Core).setChainLooped.unwrap()(self.0 .0, looped) }
+  }
+
+  pub fn set_name(&self, name: &str) {
+    let c_name = CString::new(name).unwrap();
+    unsafe { (*Core).setChainName.unwrap()(self.0 .0, c_name.as_ptr()) }
+  }
+}
+
+impl BlockRef {
+  pub fn create(name: &str) -> Self {
+    let c_name = CString::new(name).unwrap();
+    BlockRef(unsafe { (*Core).createBlock.unwrap()(c_name.as_ptr()) })
+  }
+
+  pub fn set_parameter(&self, index: i32, value: Var) {
+    unsafe {
+      (*self.0).setParam.unwrap()(self.0, index, &value);
+    }
   }
 }
 
@@ -192,7 +232,7 @@ impl From<CBChainState> for ChainState {
 
 unsafe impl Send for Var {}
 unsafe impl Send for Context {}
-unsafe impl Send for Block {}
+unsafe impl Send for CBlock {}
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}
 unsafe impl Sync for OptionalString {}
@@ -1857,7 +1897,7 @@ impl TryFrom<Var> for BlockRef {
 
   #[inline(always)]
   fn try_from(var: Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Chain {
+    if var.valueType != CBType_Block {
       Err("Expected Block variable, but casting failed.")
     } else {
       unsafe { Ok(BlockRef(var.payload.__bindgen_anon_1.blockValue)) }

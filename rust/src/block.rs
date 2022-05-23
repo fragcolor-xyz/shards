@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+use crate::chainblocksc::CBChain;
 use crate::chainblocksc::CBContext;
 use crate::chainblocksc::CBExposedTypesInfo;
 use crate::chainblocksc::CBInstanceData;
@@ -77,7 +78,7 @@ pub trait Block {
   fn hasComposed() -> bool {
     false
   }
-  fn composed(&mut self, _chain: &Chain, _results: &ComposeResult) {}
+  fn composed(&mut self, _chain: &CBChain, _results: &ComposeResult) {}
 
   fn parameters(&mut self) -> Option<&Parameters> {
     None
@@ -266,7 +267,7 @@ unsafe extern "C" fn cblock_compose<T: Block>(
 
 unsafe extern "C" fn cblock_composed<T: Block>(
   arg1: *mut CBlock,
-  chain: *const Chain,
+  chain: *const CBChain,
   results: *const ComposeResult,
 ) {
   let blk = arg1 as *mut BlockWrapper<T>;

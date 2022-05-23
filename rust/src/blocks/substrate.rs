@@ -192,7 +192,10 @@ impl Block for AccountId {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: &[u8] = input.as_ref().try_into()?;
-    let prefix: u16 = self.version.try_into().map_err(|_| "Invalid version, out of u16 range")?;
+    let prefix: u16 = self
+      .version
+      .try_into()
+      .map_err(|_| "Invalid version, out of u16 range")?;
     let id: String = if self.is_ecdsa {
       let raw: [u8; 33] = bytes.try_into().map_err(|_| "Invalid key length")?;
       let key = ecdsa::Public::from_raw(raw);
@@ -723,7 +726,10 @@ impl Block for CBDecode {
           };
           let mut bytes = &bytes[offset..];
           if account {
-            let prefix: u16 = self.version.try_into().map_err(|_| "Invalid version, out of u16 range")?;
+            let prefix: u16 = self
+              .version
+              .try_into()
+              .map_err(|_| "Invalid version, out of u16 range")?;
             let value = AccountId32::decode(&mut bytes)
               .map_err(|_| "Invalid account")?
               .to_ss58check_with_version(prefix.into());
