@@ -1,0 +1,60 @@
+name: Build (Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: build in release or debug
+        required: true
+        default: Debug
+        type: choice
+        options:
+          - Debug
+          - Release
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        default: Debug
+        type: string
+
+jobs:
+  #
+  # Build chainblocks for linux
+  #
+  Linux:
+    name: Linux (${{ github.event.inputs.build-type || inputs.build-type }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        id: setup
+        shell: bash
+        run: |
+          echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          ./bootstrap
+          rustup toolchain install nightly
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          sharedKey: Linux-${{ steps.setup.outputs.build-type }}
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
+          ninja cbl
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cbl-linux ${{ steps.setup.outputs.build-type }}
+          path: build/cbl
+          if-no-files-found: error
