@@ -1,10 +1,4 @@
-(defloop main-chain
-    "I am a var" = .var
-    (* 2 4) (Log) ;; log previous block output
-    .var (Log)  ;; log a variable value
-    (+ 3 9) (Log :Prefix "String") ;; prefix a string to the logged output
-)
-
-(defnode root)
-(schedule root main-chain)
-(run root 1 1)
+"I am a var" = .var
+(* 2 4) (Log) ;; log previous block output
+.var (Log)  ;; log a variable value
+(+ 3 9) (Log :Prefix "String") ;; prefix a string to the logged output

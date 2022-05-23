@@ -1,16 +1,9 @@
 ;; Multiple matches + nil case at end + passthrough
-(defloop main-chain
-    true
-    (Match
-        :Cases
-            [true (-> (Msg "Match found")) ;; match found so rest of the cases ignored
-            true (-> (Msg "Another match found")) ;; unreachable case statement
-            nil (-> (Msg "Any Match is OK"))] ;; unreachable case statement
-        :Passthrough 
-            true) ;; 
-    (Log) ;; print Match block's output => "true"
-)
-
-(defnode root)
-(schedule root main-chain)
-(run root 1 1)
+true
+(Match :Cases
+       [true (-> (Msg "Match found")) ;; match found so rest of the cases ignored
+        true (-> (Msg "Another match found")) ;; unreachable case statement
+        nil (-> (Msg "Any Match is OK"))] ;; unreachable case statement
+       :Passthrough
+       true)
+(Log) ;; print Match block's output => "true"
