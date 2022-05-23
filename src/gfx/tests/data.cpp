@@ -149,8 +149,8 @@ void TestData::writeRejectionDetails(const char *id, const TestFrame &frame, con
   fs::create_directories(rejectedDirPath);
 
   fs::path baseFilePath = rejectedDirPath / id;
-  fs::path imagePath = baseFilePath.replace_extension(".png");
-  fs::path logPath = baseFilePath.replace_extension(".log");
+  fs::path imagePath = baseFilePath.append(".png");
+  fs::path logPath = baseFilePath.append(".log");
 
   ofstream outLog;
   outLog.open(logPath.string());
