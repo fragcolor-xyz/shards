@@ -1,25 +1,17 @@
-;; Using `Sub` and its alias `|`
-(defloop main-chain
 ;; Using `Sub`, with `->`
-    (int 5) 
-    (Sub (-> (Math.Multiply 2)
-             (Log))) ;; => 10
-    (Sub (-> (Math.Multiply 3)
-             (Log) ;; => 15
-             (Sub (-> (Math.Multiply 2)
-                      (Log))))) ;; => 30
+(int 5)
+(Sub (-> (Math.Multiply 2)
+         (Log))) ;; => 10
+(Sub (-> (Math.Multiply 3)
+         (Log) ;; => 15
+         (Sub (-> (Math.Multiply 2)
+                  (Log))))) ;; => 30
 
 ;; Using `|`, no need for `->`
-    (int 5) 
-    (| (Math.Multiply 2)
-       (Log)) ;; => 10
-    (| (Math.Multiply 3)
-       (Log) ;; => 15
-       (| (Math.Multiply 2)
-          (Log))) ;; => 30
-                
-)
-
-(defnode root)
-(schedule root main-chain)
-(run root 1 1)
+(int 5)
+(| (Math.Multiply 2)
+   (Log)) ;; => 10
+(| (Math.Multiply 3)
+   (Log) ;; => 15
+   (| (Math.Multiply 2)
+      (Log))) ;; => 30
