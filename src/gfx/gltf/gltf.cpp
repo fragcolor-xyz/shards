@@ -412,12 +412,18 @@ struct Loader {
       const Scene &gltfScene = model.scenes[i];
 
       DrawableHierarchyPtr &scene = sceneMap[i];
-      scene = std::make_shared<DrawableHierarchy>();
 
-      for (size_t i = 0; i < gltfScene.nodes.size(); i++) {
-        int nodeIndex = gltfScene.nodes[i];
-        DrawableHierarchyPtr node = nodeMap[nodeIndex];
-        scene->children.push_back(node);
+      if (gltfScene.nodes.size() == 1) {
+        // Extract single model node
+        scene = nodeMap[gltfScene.nodes[0]];
+      } else {
+        // Group into parent node
+        scene = std::make_shared<DrawableHierarchy>();
+        for (size_t i = 0; i < gltfScene.nodes.size(); i++) {
+          int nodeIndex = gltfScene.nodes[i];
+          DrawableHierarchyPtr node = nodeMap[nodeIndex];
+          scene->children.push_back(node);
+        }
       }
     }
   }

@@ -50,8 +50,8 @@ TEST_CASE("glTF sample models", "[glTF]") {
       auto gltfScene = loadGltfFromFile(glbPath.string().c_str());
       assert(gltfScene);
 
-      gltfScene->transform =
-          linalg::mul(linalg::translation_matrix(testModel.offset), linalg::scaling_matrix(float3(testModel.scale)));
+      float4x4 origTransform = gltfScene->transform;
+      gltfScene->transform = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset), linalg::scaling_matrix(float3(testModel.scale))));
 
       DrawQueue queue;
       queue.add(gltfScene);

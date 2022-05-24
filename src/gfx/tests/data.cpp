@@ -149,11 +149,11 @@ void TestData::writeRejectionDetails(const char *id, const TestFrame &frame, con
   fs::create_directories(rejectedDirPath);
 
   fs::path baseFilePath = rejectedDirPath / id;
-  fs::path imagePath = baseFilePath.append(".png");
-  fs::path logPath = baseFilePath.append(".log");
+  std::string imagePath = baseFilePath.string() + ".png";
+  std::string logPath = baseFilePath.string() + ".log";
 
   ofstream outLog;
-  outLog.open(logPath.string());
+  outLog.open(logPath);
   outLog << fmt::format("Comparison failed at ({}, {})", rej.position.x, rej.position.y) << endl;
   if (rej.position.x < 0 || rej.position.y < 0) {
     outLog << fmt::format("Image size mismatch new:({}, {}) => ref:({}, {})", frame.getSize().x, frame.getSize().y,
@@ -165,7 +165,7 @@ void TestData::writeRejectionDetails(const char *id, const TestFrame &frame, con
   }
   outLog.close();
 
-  storeFrame(frame, imagePath.string().c_str());
+  storeFrame(frame, imagePath.c_str());
 }
 
 bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
