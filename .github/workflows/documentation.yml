@@ -13,12 +13,14 @@ jobs:
     with:
       bitness: 64bits
       build-type: Debug
+      runtime-tests: false
   Windows-64bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
       bitness: 64bits
       build-type: Release
+      runtime-tests: false
 
   #
   # Run blocks documentation samples

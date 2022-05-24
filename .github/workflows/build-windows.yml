@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       bitness:
-        description: build for 32-bit or 64-bit
+        description: Build for 32-bit or 64-bit?
         required: true
         default: 64bits
         type: choice
@@ -12,13 +12,18 @@ on:
           - 32bits
           - 64bits
       build-type:
-        description: build in release or debug
+        description: Build in Release or Debug?
         required: true
         default: Debug
         type: choice
         options:
           - Debug
           - Release
+      runtime-tests:
+        description: Run the runtime tests?
+        required: true
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       bitness:
@@ -29,6 +34,10 @@ on:
         required: true
         default: Debug
         type: string
+      runtime-tests:
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   #
@@ -44,6 +53,7 @@ jobs:
         run: |
           echo "::set-output name=bitness::${{ github.event.inputs.bitness || inputs.bitness }}"
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
 
           if [ "${{ github.event.inputs.bitness || inputs.bitness }}" == "64bits" ]
           then
@@ -113,7 +123,7 @@ jobs:
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DUSE_LIBBACKTRACE=${{ steps.setup.outputs.bitness == '64bits' }} ..
           ninja cbl
       - name: Test runtime (Debug)
-        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        if: ${{ steps.setup.outputs.runtime-tests && steps.setup.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
@@ -123,7 +133,7 @@ jobs:
           ./test_runtime
       - name: Test graphics (Debug)
         # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
+        if: ${{ steps.setup.outputs.runtime-tests && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
         env:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
