@@ -105,45 +105,22 @@ jobs:
   #
   # Build chainblocks for linux
   #
-  Linux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
-          ./bootstrap
-          rustup toolchain install nightly
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          sharedKey: Linux-${{ matrix.build-type }}
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja cbl
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-linux ${{ matrix.build-type }}
-          path: build/cbl
-          if-no-files-found: error
+  Linux-Debug:
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    with:
+      build-type: Debug
+  Linux-Release:
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    with:
+      build-type: Release
 
   #
   # Test and coverage on linux
   #
   Linux-test:
-    needs: Linux
+    needs: [Linux-Debug, Linux-Release]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -272,7 +249,7 @@ jobs:
   # Extra tests and coverage on linux
   #
   Linux-test-extra:
-    needs: Linux
+    needs: [Linux-Debug, Linux-Release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
