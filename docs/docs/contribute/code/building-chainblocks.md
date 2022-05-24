@@ -341,8 +341,6 @@ This section gives the complete list of supported `cmake` targets.
 
 `cargo-chainblocks-rust` - Builds the rust project inside the rust folder.
 
-`cbedn` - ???
-
 ### Formatting targets
 
 `format` - Runs clang-format on a list of files defined in cmake/Tidy.cmake.
