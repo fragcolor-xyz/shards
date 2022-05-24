@@ -784,28 +784,5 @@ jobs:
   # Build chainblocks for iOS
   #
   iOS:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo xcode-select --switch /Applications/Xcode.app
-          brew install cmake clang-format
-          ./bootstrap
-          rustup toolchain install nightly
-          rustup +nightly target add aarch64-apple-ios
-          rustup +nightly target add x86_64-apple-ios
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-      - name: Build device
-        run: |
-          cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
-          cmake --build build_arm64 --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
-      - name: Build simulator x86
-        run: |
-          cmake -Bbuild_sim_x86 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
-          cmake --build build_sim_x86 --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
+    uses: ./.github/workflows/build-ios.yml
+    secrets: inherit
