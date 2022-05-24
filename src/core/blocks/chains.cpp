@@ -303,7 +303,8 @@ struct Wait : public ChainBase {
       CBLOG_WARNING("Wait's chain is void");
       return input;
     } else {
-      while (isRunning(chain.get())) {
+      // Make sure to actually wait only if the chain is running on another context.
+      while (chain->context != context && isRunning(chain.get())) {
         CB_SUSPEND(context, 0);
       }
 

@@ -3,8 +3,7 @@
   (Log)
   (Cond
    [(-> (Is 5))
-    (Stop)])
-  (Restart))
+    (Stop)]))
 
 0
 (Do Loop)
