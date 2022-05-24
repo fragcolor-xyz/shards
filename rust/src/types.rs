@@ -1892,6 +1892,21 @@ impl TryFrom<Var> for ChainRef {
   }
 }
 
+impl From<ChainRef> for Var {
+  #[inline(always)]
+  fn from(chain: ChainRef) -> Self {
+    Var {
+      valueType: CBType_Chain,
+      payload: CBVarPayload {
+        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+          chainValue: chain.0,
+        },
+      },
+      ..Default::default()
+    }
+  }
+}
+
 impl TryFrom<Var> for BlockRef {
   type Error = &'static str;
 
