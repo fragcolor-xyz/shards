@@ -1934,6 +1934,7 @@ CBRunChainOutput runChain(CBChain *chain, CBContext *context, const CBVar &chain
         blocksActivation<std::vector<CBlockPtr>, false, false>(chain->blocks, context, chainInput, chain->previousOutput);
     switch (state) {
     case CBChainState::Return:
+      return {context->getFlowStorage(), Stopped};
     case CBChainState::Restart:
       return {context->getFlowStorage(), Restarted};
     case CBChainState::Stop:

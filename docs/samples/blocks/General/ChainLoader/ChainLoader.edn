@@ -10,4 +10,3 @@
    RunChainMode.Inline))
 
 (Start loader)
-(Wait loader)
