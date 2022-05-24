@@ -745,7 +745,8 @@ template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE> struct RunChain : pub
         return chain->previousOutput;
       }
     } else {
-      // Run within the root flow
+    // Run within the root flow
+    run_chain_loop:
       auto runRes = runSubChain(chain.get(), context, input);
       if (unlikely(runRes.state == Failed)) {
         // meaning there was an exception while
@@ -753,10 +754,20 @@ template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE> struct RunChain : pub
         context->stopFlow(runRes.output);
         return runRes.output;
       } else {
-        if constexpr (INPUT_PASSTHROUGH) {
-          return input;
+        if (chain->looped && context->shouldContinue()) {
+          CB_SUSPEND(context, 0.0);
+          goto run_chain_loop;
         } else {
-          return runRes.output;
+          // we don't want to propagate a (Return)
+          if (unlikely(runRes.state == Restarted)) {
+            context->continueFlow();
+          }
+
+          if constexpr (INPUT_PASSTHROUGH) {
+            return input;
+          } else {
+            return runRes.output;
+          }
         }
       }
     }

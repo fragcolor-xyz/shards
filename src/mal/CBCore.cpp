@@ -318,6 +318,7 @@ public:
 
     // could be nullptr
     if (m_block) {
+      CBLOG_DEBUG("Deleting a non-consumed CBlock - {}", m_block->name(m_block));
       m_block->destroy(m_block);
     }
   }

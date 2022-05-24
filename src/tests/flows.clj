@@ -3,276 +3,287 @@
 
 (def Root (Node))
 
-;; Notice, if running with valgrind:
-;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
-;; To run this properly or valgrind will complain
+;; ;; Notice, if running with valgrind:
+;; ;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
+;; ;; To run this properly or valgrind will complain
 
-(def chain1
-  (Chain
-   "one"
-   (Msg "one - 1")
-   (Resume "two")
-   (Msg "one - 2")
-   (Msg "one - 3")
-   (Resume "two")
-   (Msg "one - Done")
-   (Resume "two")))
-
-(def chain2
-  (Chain
-   "two"
-   (Msg "two - 1")
-   (Resume "one")
-   (Msg "two - 2")
-   (Msg "two - 3")
-   (Resume "one")
-   (Msg "two - 4")
-   (Msg "two - Done")))
-
-(schedule Root chain1)
-(run Root 0.1)
-
-(def recursive
-  (Chain
-   "recur"
-   (Log "depth")
-   (Math.Add 1)
-   (Cond
-    [(-> (IsLess 5))
-     (Do "recur")])
-   (Log "res")))
-
-(def logicChain
-  (Chain
-   "dologic"
-   (IsMore 10)
-   (Or)
-   (IsLess 0)))
-
-;; ;; Broken for now indeed, until we implement jumps
-
-;; ;; (def recursiveAnd
-;; ;;   (Chain
-;; ;;    "recurAnd"
-;; ;;    (Log "depth")
-;; ;;    (Math.Inc)
-;; ;;    (Push)
-;; ;;    (IsLess 5)
-;; ;;    (And)
-;; ;;    (Pop)
-;; ;;    (Do "recurAnd")
-;; ;;    (Log "res")
-;; ;;    ))
-
-(schedule
- Root
- (Chain
-  "doit"
-  0
-  (Do recursive)
-  ;; (Do recursiveAnd)
-  ))
-
-;; test stack overflow, notice in this case (below) we could have tail call optimized,
-;; TODO implement TCO
-
-;; (def recursiveCrash
+;; (def chain1
 ;;   (Chain
-;;    "recurCrash"
+;;    "one"
+;;    (Msg "one - 1")
+;;    (Resume "two")
+;;    (Msg "one - 2")
+;;    (Msg "one - 3")
+;;    (Resume "two")
+;;    (Msg "one - Done")
+;;    (Resume "two")))
+
+;; (def chain2
+;;   (Chain
+;;    "two"
+;;    (Msg "two - 1")
+;;    (Resume "one")
+;;    (Msg "two - 2")
+;;    (Msg "two - 3")
+;;    (Resume "one")
+;;    (Msg "two - 4")
+;;    (Msg "two - Done")))
+
+;; (schedule Root chain1)
+;; (run Root 0.1)
+
+;; (def recursive
+;;   (Chain
+;;    "recur"
 ;;    (Log "depth")
-;;    (Math.Inc)
-;;    (Do "recurCrash")
-;;    ))
+;;    (Math.Add 1)
+;;    (Cond
+;;     [(-> (IsLess 5))
+;;      (Do "recur")])
+;;    (Log "res")))
+
+;; (def logicChain
+;;   (Chain
+;;    "dologic"
+;;    (IsMore 10)
+;;    (Or)
+;;    (IsLess 0)))
+
+;; ;; ;; Broken for now indeed, until we implement jumps
+
+;; ;; ;; (def recursiveAnd
+;; ;; ;;   (Chain
+;; ;; ;;    "recurAnd"
+;; ;; ;;    (Log "depth")
+;; ;; ;;    (Math.Inc)
+;; ;; ;;    (Push)
+;; ;; ;;    (IsLess 5)
+;; ;; ;;    (And)
+;; ;; ;;    (Pop)
+;; ;; ;;    (Do "recurAnd")
+;; ;; ;;    (Log "res")
+;; ;; ;;    ))
 
 ;; (schedule
 ;;  Root
 ;;  (Chain
 ;;   "doit"
 ;;   0
-;;   (Do recursiveCrash)))
+;;   (Do recursive)
+;;   ;; (Do recursiveAnd)
+;;   ))
 
-(def spawner
-  (Chain
-   "spawner"
-   (Spawn logicChain)))
+;; ;; test stack overflow, notice in this case (below) we could have tail call optimized,
+;; ;; TODO implement TCO
 
-(def Loop
-  (Chain
-   "Loop" :Looped
-   (Math.Add 1)
-   (Log)
-   (Cond
-    [(-> (Is 5))
-     (Stop)])
-   (Restart)))
+;; ;; (def recursiveCrash
+;; ;;   (Chain
+;; ;;    "recurCrash"
+;; ;;    (Log "depth")
+;; ;;    (Math.Inc)
+;; ;;    (Do "recurCrash")
+;; ;;    ))
 
-(schedule
- Root
- (Chain
-  "loop-test"
-  0
-  (Detach Loop)
-  (Wait Loop)
-  (Assert.Is 5 true)
-  (Log)
+;; ;; (schedule
+;; ;;  Root
+;; ;;  (Chain
+;; ;;   "doit"
+;; ;;   0
+;; ;;   (Do recursiveCrash)))
 
-  ;; test logic
-  ;; ensure a sub inline chain
-  ;; using Return mechanics
-  ;; is handled by (If)
-  -10
-  (If (Do logicChain)
-      (-> true)
-      (-> false))
-  (Assert.Is true false)
+;; (def spawner
+;;   (Chain
+;;    "spawner"
+;;    (Spawn logicChain)))
 
-  -10
-  (If (Do logicChain)
-      (-> true)
-      (-> false))
-  (Assert.IsNot false false)
+;; (def Loop
+;;   (Chain
+;;    "Loop" :Looped
+;;    (Math.Add 1)
+;;    (Log)
+;;    (Cond
+;;     [(-> (Is 5))
+;;      (Stop)])
+;;    (Restart)))
 
-  11
-  (If (Do logicChain)
-      (-> true)
-      (-> false))
-  (Assert.Is true false)
+;; (schedule
+;;  Root
+;;  (Chain
+;;   "loop-test"
+;;   0
+;;   (Detach Loop)
+;;   (Wait Loop)
+;;   (Assert.Is 5 true)
+;;   (Log)
 
-  11
-  (If (Do logicChain)
-      (-> true)
-      (-> false))
-  (Assert.IsNot false false)
+;;   ;; test logic
+;;   ;; ensure a sub inline chain
+;;   ;; using Return mechanics
+;;   ;; is handled by (If)
+;;   -10
+;;   (If (Do logicChain)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is true false)
 
-  0
-  (If (Do logicChain)
-      (-> true)
-      (-> false))
-  (Assert.Is false false)
+;;   -10
+;;   (If (Do logicChain)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot false false)
 
-  0
-  (If (Do logicChain)
-      (-> true)
-      (-> false))
-  (Assert.IsNot true false)
+;;   11
+;;   (If (Do logicChain)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is true false)
 
-  "Hello world" = .hello-var
+;;   11
+;;   (If (Do logicChain)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot false false)
 
-  (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "Ok"))
-  (Assert.Is ["Ok" "Ok" "Ok"] false)
-  (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
-  (Assert.Is "A" false)
+;;   0
+;;   (If (Do logicChain)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is false false)
 
-  (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) "Ok") :Threads 3)
-  (Assert.Is ["Ok" "Ok" "Ok"] false)
-  (Const ["A" "B" "C"])
-  (TryMany (Chain "print-stuff" (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
-  (Assert.Is "A" false)
+;;   0
+;;   (If (Do logicChain)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot true false)
 
-  (Repeat (-> 10
-              (Expand 10 (defchain wide-test (Math.Add 1)) :Threads 10)
-              (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
-              (Log))
-          :Times 10)
+;;   "Hello world" = .hello-var
 
-  (Repeat (-> 10
-              (Expand 10 (defchain wide-test (RandomBytes 8) (ToHex)) :Threads 10)
-              (Log))
-          :Times 10)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "Ok"))
+;;   (Assert.Is ["Ok" "Ok" "Ok"] false)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Chain "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
+;;   (Assert.Is "A" false)
 
-  10
-  (Expand 10 (defchain wide-test (Math.Add 1)))
-  (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
-  (Log)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Chain "print-stuff" (Log) "Ok") :Threads 3)
+;;   (Assert.Is ["Ok" "Ok" "Ok"] false)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Chain "print-stuff" (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
+;;   (Assert.Is "A" false)
 
-  -10
-  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
-      (-> true)
-      (-> false))
-  (Assert.IsNot false false)
+;;   (Repeat (-> 10
+;;               (Expand 10 (defchain wide-test (Math.Add 1)) :Threads 10)
+;;               (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+;;               (Log))
+;;           :Times 10)
 
-  11
-  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
-      (-> true)
-      (-> false))
-  (Assert.Is true false)
+;;   (Repeat (-> 10
+;;               (Expand 10 (defchain wide-test (RandomBytes 8) (ToHex)) :Threads 10)
+;;               (Log))
+;;           :Times 10)
 
-  (Msg "Done")))
+;;   10
+;;   (Expand 10 (defchain wide-test (Math.Add 1)))
+;;   (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+;;   (Log)
 
-(run Root 0.1)
+;;   -10
+;;   (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot false false)
 
-(def test-case-step
-  (Chain
-   "test-case-step"
-   :Looped
-   .x ?? 0
-   (Math.Add 1) >= .x
-   (Log "x")))
+;;   11
+;;   (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is true false)
 
-(prepare test-case-step)
-(start test-case-step)
-(tick test-case-step)
-(tick test-case-step)
+;;   (Msg "Done")))
 
-(schedule
- Root
- (Chain
-  "continue-stepping"
-  :Looped
-  (Step test-case-step)
-  (Assert.Is 3 true)
-  (Msg "Done")
-  (Stop)))
+;; (run Root 0.1)
 
-(run Root 0.1)
+;; (def test-case-step
+;;   (Chain
+;;    "test-case-step"
+;;    :Looped
+;;    .x ?? 0
+;;    (Math.Add 1) >= .x
+;;    (Log "x")))
 
-(if (hasBlock? "Http.Post")
-  (do
-    (defchain upload-to-ipfs
-      (let [boundary "----CB-IPFS-Upload-0xC0FFEE"
-            gateways ["https://ipfs.infura.io:5001"
-                      "https://ipfs.komputing.org"
-                      "http://hasten-ipfs.local:5001"
-                      "http://127.0.0.1:5001"]]
-        (->
-         >= .payload
-         (str "--" boundary "\r\nContent-Disposition: form-data; name=\"path\"\r\nContent-Type: application/octet-stream\r\n\r\n")
-         (PrependTo .payload)
-         (str "\r\n--" boundary "--")
-         (AppendTo .payload)
-         gateways
-         (TryMany (Chain "IPFS-Upload"
-                         >= .gateway
-                         "/api/v0/add?pin=true" (AppendTo .gateway)
-                         .payload
-                         (Http.Post .gateway
-                                    :Headers {"Content-Type" (str "multipart/form-data; boundary=" boundary)}))
-                  :Policy WaitUntil.SomeSuccess)
-         (Take 0) (FromJson) (ExpectTable)
-         (Take "Hash") (ExpectString)
-         (Assert.Is "QmNRCQWfgze6AbBCaT1rkrkV5tJ2aP4oTNPb5JZcXYywve" true))))
+;; (prepare test-case-step)
+;; (start test-case-step)
+;; (tick test-case-step)
+;; (tick test-case-step)
 
-    (defchain test-ipfs
-      "Hello world" (Do upload-to-ipfs) (Log "ipfs hash"))
+;; (schedule
+;;  Root
+;;  (Chain
+;;   "continue-stepping"
+;;   :Looped
+;;   (Step test-case-step)
+;;   (Assert.Is 3 true)
+;;   (Msg "Done")
+;;   (Stop)))
 
-    (schedule Root test-ipfs)
-    (run Root 0.1)))
+;; (run Root 0.1)
 
-(defchain hashed
-  10
-  (|#
-   (Math.Add 1)
-   (Math.Add 2)
-   (Math.Add 3)
-   (Math.Add 4)
-   (Math.Add 5)
-   (Math.Add 6))
-  (Log)
-  (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
+;; (if (hasBlock? "Http.Post")
+;;   (do
+;;     (defchain upload-to-ipfs
+;;       (let [boundary "----CB-IPFS-Upload-0xC0FFEE"
+;;             gateways ["https://ipfs.infura.io:5001"
+;;                       "https://ipfs.komputing.org"
+;;                       "http://hasten-ipfs.local:5001"
+;;                       "http://127.0.0.1:5001"]]
+;;         (->
+;;          >= .payload
+;;          (str "--" boundary "\r\nContent-Disposition: form-data; name=\"path\"\r\nContent-Type: application/octet-stream\r\n\r\n")
+;;          (PrependTo .payload)
+;;          (str "\r\n--" boundary "--")
+;;          (AppendTo .payload)
+;;          gateways
+;;          (TryMany (Chain "IPFS-Upload"
+;;                          >= .gateway
+;;                          "/api/v0/add?pin=true" (AppendTo .gateway)
+;;                          .payload
+;;                          (Http.Post .gateway
+;;                                     :Headers {"Content-Type" (str "multipart/form-data; boundary=" boundary)}))
+;;                   :Policy WaitUntil.SomeSuccess)
+;;          (Take 0) (FromJson) (ExpectTable)
+;;          (Take "Hash") (ExpectString)
+;;          (Assert.Is "QmNRCQWfgze6AbBCaT1rkrkV5tJ2aP4oTNPb5JZcXYywve" true))))
 
+;;     (defchain test-ipfs
+;;       "Hello world" (Do upload-to-ipfs) (Log "ipfs hash"))
 
-(schedule Root hashed)
+;;     (schedule Root test-ipfs)
+;;     (run Root 0.1)))
+
+;; (defchain hashed
+;;   10
+;;   (|#
+;;    (Math.Add 1)
+;;    (Math.Add 2)
+;;    (Math.Add 3)
+;;    (Math.Add 4)
+;;    (Math.Add 5)
+;;    (Math.Add 6))
+;;   (Log)
+;;   (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
+
+;; (schedule Root hashed)
+;; (run Root)
+
+(defloop chain-loop-inline
+  (Setup 0 >= .count)
+  (Math.Inc .count)
+  .count (Log) (When (IsMore 10) (-> (Return))))
+
+(defchain chain-loop-inline-parent
+  (Dispatch chain-loop-inline)
+  (Msg "Ok done looping..."))
+
+(schedule Root chain-loop-inline-parent)
 (run Root)
