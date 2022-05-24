@@ -710,53 +710,24 @@ jobs:
   #
   # Build chainblocks for macOS
   #
-  macOS:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo xcode-select --switch /Applications/Xcode.app
-          brew install cmake ninja clang-format
-          ./bootstrap
-          rustup toolchain install nightly
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          key: ${{ matrix.build-type }}
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja cbl
-      - name: Test runtime (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          ninja test_runtime
-          ./test_runtime
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-macos ${{ matrix.build-type }}
-          path: build/cbl
-          if-no-files-found: error
+  macOS-Debug:
+    uses: ./.github/workflows/build-macos.yml
+    secrets: inherit
+    with:
+      build-type: Debug
+      runtime-tests: true
+  macOS-Release:
+    uses: ./.github/workflows/build-macos.yml
+    secrets: inherit
+    with:
+      build-type: Release
+      runtime-tests: true
 
   #
   # Test chainblocks on macOS
   #
   macOS-test:
-    needs: macOS
+    needs: [macOS-Debug, macOS-Release]
     runs-on: macos-latest
     strategy:
       fail-fast: false
