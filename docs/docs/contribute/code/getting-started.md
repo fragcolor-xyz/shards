@@ -22,12 +22,13 @@ To install git on your machine (for Windows, Linux, and Mac), refer to the [git 
 
 You can download/ clone the code repository via the HTTPS protocol. But you'll need an active GitHub account to fork the repository or contribute to it.
 
-*If you're new to git or GitHub read the [Contributing changes](../../docs/contributing-changes/) section. This section covers these topics and applies to both code and documentation contributions.*
+!!! note
+    If you're new to git or GitHub read the [Contributing changes](../../docs/contributing-changes/) section. This section covers these topics and applies to both code and documentation contributions.
 
 ### Get a code editor
 Although you can use any code editor, we recommend Visual Studio Code (VS Code). You can download and install it from [here](https://code.visualstudio.com/download).
 
-*Download the appropriate installation file for your platform and follow the on-screen instructions.*
+Download the appropriate installation file for your platform and follow the on-screen instructions.
 
 ### Install & setup C++
 
@@ -37,7 +38,8 @@ If you're using VS Code, you can set up C++ (and the appropriate compiler for yo
 - C++ and GCC for [Linux](https://code.visualstudio.com/docs/cpp/config-linux)
 - C++ and Clang/ LLVM for [Mac](https://code.visualstudio.com/docs/cpp/config-clang-mac)
   
-*For other code editors, refer to the official C++ installation [documentation](https://isocpp.org/get-started).*
+??? note "Other code editors"
+    For other code editors, refer to the official C++ installation [documentation](https://isocpp.org/get-started).
 
 ### Install & setup Rust
 
@@ -82,7 +84,7 @@ And to switch back to the stable build, use:
 rustup default stable
 ```
 
-??? note
+??? note "WSL for Windows"
     If you're using Windows you might want to check out [WSL](https://docs.microsoft.com/en-us/windows/wsl/) for a Linux-like development experience. 
 
 ### Get VS Code extensions
@@ -102,7 +104,8 @@ Now you can pick up a project you'd like to contribute to and build it from the 
 
 For example, [Building Chainblocks](../building-chainblocks/).
 
-*For more details, also refer to that project's README file.*
+!!! note
+    For more details refer to the relevant project's README file.
 
 
 --8<-- "includes/license.md"
