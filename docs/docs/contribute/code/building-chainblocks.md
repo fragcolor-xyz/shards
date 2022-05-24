@@ -319,5 +319,57 @@ ninja format; ninja cbl
 
 Refer to the official Emscripten SDK [documentation](https://emscripten.org/docs/getting_started/downloads.html) for more details on building for Web Assembly.
 
+## Appendix A - Valid cmake targets
+
+You may also build for targets other than `cbl`. 
+
+This section gives the complete list of supported `cmake` targets.
+
+### Build Targets
+
+`cbl` - Builds cbl. the runtime + lisp interpreter.
+
+`cbl-dll` - Builds cbl as a dynamic library.
+
+`cbl-static` - Builds cbl as a static library.
+
+`chainblocks-core-shared` - Builds the chainblocks runtime as a dynamic library.
+
+`chainblocks-core-static` - Builds the chainblocks runtime as a static library.
+
+`chainblocks-extra` - Builds the chainblocks-extra library containing the blocks inside src/extra.
+
+`cargo-chainblocks-rust` - Builds the rust project inside the rust folder.
+
+`cbedn` - ???
+
+### Formatting targets
+
+`format` - Runs clang-format on a list of files defined in cmake/Tidy.cmake.
+
+`tidy` - Runs clang-tidy on a list of files defined in cmake/Tidy.cmake.
+
+### Test targets
+
+These contain tests written in c++ for chainblocks (separate from the edn scripts).
+
+`test_extra` - C++ Tests for extra blocks.
+
+`test_gfx` - C++ Tests for graphics/rendering.
+
+`test_runtime` - C++ Tests for the chainblocks runtime.
+
+### Graphics targets
+
+`gfx` - The graphics library.
+
+`gfx-sandbox` - Graphics test environment.
+
+`gfx_imgui` - ImGui backend library.
+
+`gfx_texture_file` - Texture loading utilities.
+
+`cargo-wgpu-native` - Builds the rust project inside src/gfx/wgpu-native.
+
 
 --8<-- "includes/license.md"
