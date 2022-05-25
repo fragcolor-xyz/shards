@@ -4,33 +4,55 @@ on:
   workflow_dispatch:
     inputs:
       build-type:
-        description: build in release or debug
+        description: Build in Release or Debug?
         required: true
         default: Debug
         type: choice
         options:
           - Debug
           - Release
+      run-tests:
+        description: Run the tests?
+        required: false
+        default: false
+        type: boolean
+      run-extra-tests:
+        description: Run the extra tests (Debug only)?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       build-type:
         required: true
         default: Debug
         type: string
+      run-tests:
+        required: false
+        default: false
+        type: boolean
+      run-extra-tests:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   #
   # Build chainblocks for linux
   #
   Linux:
-    name: Linux (${{ github.event.inputs.build-type || inputs.build-type }})
+    name: Build (${{ github.event.inputs.build-type || inputs.build-type }})
     runs-on: ubuntu-latest
+    outputs:
+      run-tests: ${{ steps.setup.outputs.run-tests }}
+      run-extra-tests: ${{ steps.setup.outputs.run-extra-tests }}
     steps:
       - name: Setup
         id: setup
-        shell: bash
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
+          echo "::set-output name=run-extra-tests::${{ github.event.inputs.run-extra-tests || inputs.run-extra-tests }}"
       - name: Checkout chainblocks
         uses: actions/checkout@v2
         with:
@@ -57,4 +79,197 @@ jobs:
         with:
           name: cbl-linux ${{ steps.setup.outputs.build-type }}
           path: build/cbl
+          if-no-files-found: error
+
+  #
+  # Test and coverage on linux
+  #
+  Linux-test:
+    if: ${{ needs.Linux.outputs.run-tests == 'true' }}
+    needs: Linux
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+          submodules: recursive
+      - name: Set up dependencies (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
+          ./bootstrap
+          rustup toolchain install nightly
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ steps.setup.outputs.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
+        with:
+          sharedKey: Linux-${{ steps.setup.outputs.build-type }}
+      - name: Build (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        run: |
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
+          ninja cbl
+      - name: Download artifact (Release)
+        if: ${{ steps.setup.outputs.build-type == 'Release' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: cbl-linux ${{ steps.setup.outputs.build-type }}
+          path: build
+      - name: Get sample files
+        run: |
+          mkdir external && cd external
+          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
+      - name: Test
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd build
+          chmod +x cbl
+          ./cbl ../src/tests/general.edn
+          ./cbl ../src/tests/variables.clj
+          ./cbl ../src/tests/subchains.clj
+          ./cbl ../src/tests/linalg.clj
+          ./cbl ../src/tests/loader.clj
+          ./cbl ../src/tests/network.clj
+          ./cbl ../src/tests/struct.clj
+          ./cbl ../src/tests/flows.clj
+          ./cbl ../src/tests/kdtree.clj
+          ./cbl ../src/tests/channels.clj
+          ./cbl ../src/tests/genetic.clj
+          ./cbl ../src/tests/imaging.clj
+          ./cbl ../src/tests/http.clj
+          ./cbl ../src/tests/ws.clj
+          ./cbl ../src/tests/bigint.clj
+          ./cbl ../src/tests/brotli.clj
+          ./cbl ../src/tests/snappy.clj
+          ./cbl ../src/tests/failures.clj
+          ./cbl ../src/tests/wasm.clj
+          ./cbl ../src/tests/shell.clj
+          ./cbl ../src/tests/rust.clj
+          ./cbl ../src/tests/crypto.edn
+          ./cbl ../src/tests/chain-macro.edn
+          ./cbl ../src/tests/edn.edn
+          ./cbl ../src/tests/const-vars.edn
+          ./cbl ../src/tests/branch.edn
+          ./cbl ../src/tests/audio.edn
+          ./cbl ../src/tests/time.edn
+          ./cbl ../src/tests/eth.edn
+          ./cbl ../src/tests/take.edn
+          ./cbl ../src/tests/casting_numbers.edn
+      - name: Test (Debug)
+        # Test that only works in Debug build go there
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd build
+          ./cbl ../src/tests/blocks.clj
+      - name: Test Headless (gfx_window)
+        uses: chainblocks/xvfb-action@master
+        if: ${{ false }} # Failed to create vulkan backend on github runner
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/gfx_window.edn
+      - name: Test Headless (gfx_cube)
+        uses: chainblocks/xvfb-action@master
+        if: ${{ false }} # Failed to create vulkan backend on github runner
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/gfx_cube.edn
+      - name: Test Headless (gfx_materials)
+        uses: chainblocks/xvfb-action@master
+        if: ${{ false }} # Failed to create vulkan backend on github runner
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/gfx_materials.edn
+      - name: Test Headless (imgui_demo)
+        uses: chainblocks/xvfb-action@master
+        if: ${{ false }} # Failed to create vulkan backend on github runner
+        with:
+          working-directory: ./build
+          run: ./cbl ../src/tests/imgui_demo.edn
+      - name: Coverage (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        run: |
+          mkdir coverage
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/mal/CMakeFiles/cbl.dir --directory build/src/extra/CMakeFiles --output-file coverage/coverage.info
+          lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
+          genhtml coverage/coverage.f.info --output-directory coverage/output
+          bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+      - name: Upload coverage
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: cbl-linux-coverage
+          path: coverage
+          if-no-files-found: error
+
+  #
+  # Extra tests and coverage on linux
+  #
+  Linux-test-extra:
+    if: ${{ needs.Linux.outputs.run-extra-tests == 'true' }}
+    needs: Linux
+    name: Extra Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+          submodules: recursive
+      - name: Checkout glTF-Sample-Models
+        uses: actions/checkout@v2
+        with:
+          repository: KhronosGroup/glTF-Sample-Models
+          path: external/glTF-Sample-Models
+          fetch-depth: 1
+      - name: Set up dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
+          ./bootstrap
+          rustup toolchain install nightly
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          sharedKey: Linux-Debug
+      - name: Build
+        run: |
+          cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1
+          cd build
+          ninja test_runtime && ninja test_gfx
+      - name: Test runtime
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd build
+          ./test_runtime
+      - name: Test graphics
+        uses: chainblocks/xvfb-action@master
+        if: ${{ false }} # Failed to create vulkan backend on github runner
+        with:
+          working-directory: ./build
+          run: |
+            ./test_gfx
+      - name: CodeCov
+        run: |
+          mkdir coverage
+          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
+          lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
+          genhtml coverage/coverage.f.info --output-directory coverage/output
+          bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+      - name: Upload coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: cbl-linux-coverage-extra
+          path: coverage
           if-no-files-found: error
