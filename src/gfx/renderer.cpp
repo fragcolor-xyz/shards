@@ -17,9 +17,9 @@
 #include "texture_placeholder.hpp"
 #include "view.hpp"
 #include "view_texture.hpp"
+#include <algorithm>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
-#include <algorithm>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
@@ -73,7 +73,10 @@ public:
     } else {
       texture->createContextDataConditional(context);
 
-      TextureId id = TextureId(textureData.size());
+      size_t newId = textureData.size();
+      assert(newId <= UINT16_MAX);
+
+      TextureId id = TextureId(newId);
       textureData.emplace_back(texture->contextData);
       mapping.insert_or_assign(texture, id);
       return id;
@@ -87,7 +90,10 @@ public:
     }
   }
 
-  void reset() { mapping.clear(); }
+  void reset() {
+    mapping.clear();
+    textureData.clear();
+  }
 };
 
 struct SortableDrawable;
