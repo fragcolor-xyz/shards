@@ -18,7 +18,7 @@
 Building a programming tool for the future.
 A future where the current *Screen* or *Desktop*, *Mouse* and *Keyboard* are replaced by virtual interfaces within a *VR/MR/AR* environment.
 
-We introduce a low code way of producing high performance and multi-platform apps in the form of a scripting tool that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
+We introduce a low-level code way of producing high performance and multi-platform apps in the form of a scripting tool that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
 
 ## Goals
 * Automation scripting for everyone
