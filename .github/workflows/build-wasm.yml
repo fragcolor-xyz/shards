@@ -1,0 +1,108 @@
+name: Build (Wasm)
+
+on:
+  workflow_dispatch:
+    inputs:
+      threading:
+        description: Single or multi-threading?
+        required: true
+        default: st
+        type: choice
+        options:
+          - st
+          - mt
+  workflow_call:
+    inputs:
+      threading:
+        required: true
+        default: st
+        type: string
+
+jobs:
+  #
+  # Build chainblocks for emscripten
+  #
+  wasm32-emscripten:
+    name: Wasm (${{ github.event.inputs.threading || inputs.threading }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        id: setup
+        shell: bash
+        run: |
+          echo "::set-output name=threading::${{ github.event.inputs.threading || inputs.threading }}"
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      - name: Checkout emsdk
+        uses: actions/checkout@v2
+        with:
+          repository: emscripten-core/emsdk
+          path: emsdk
+          fetch-depth: 1
+      - name: Set up dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget ninja-build
+          ./bootstrap
+          cd emsdk
+          ./emsdk install 3.1.10
+          ./emsdk activate 3.1.10
+          rustup toolchain install nightly
+          rustup +nightly target add wasm32-unknown-emscripten
+      - name: Set up rust (mt)
+        if: ${{ steps.setup.outputs.threading == 'mt' }}
+        run: |
+          rustup +nightly component add rust-src
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          key: ${{ steps.setup.outputs.threading }}
+      - name: Build
+        run: |
+          source emsdk/emsdk_env.sh
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ steps.setup.outputs.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+          ninja cbl && ninja test_runtime
+      # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
+      - uses: actions/setup-node@v3
+        with:
+          # Node 18.1.0 has a change in fetch() that causes it to fail loading the wasm module
+          node-version: 18.0.0
+      - name: Test (st)
+        if: ${{ steps.setup.outputs.threading == 'st' }}
+        run: |
+          cd build
+          node ../src/tests/test_cbl.js cbl-st.js || [[ $? == 143 ]] || exit
+          node ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
+          mkdir cbl
+          cp cbl-st.wasm cbl/
+          cp cbl-st.js cbl/
+      - name: Test (mt)
+        if: ${{ steps.setup.outputs.threading == 'mt' }}
+        run: |
+          cd build
+          node --experimental-wasm-threads ../src/tests/test_cbl.js cbl-mt.js || [[ $? == 143 ]] || exit
+          node --experimental-wasm-threads ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
+          mkdir cbl
+          cp cbl-mt.wasm cbl/
+          cp cbl-mt.js cbl/
+          cp cbl-mt.worker.js cbl/
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cbl-wasm ${{ steps.setup.outputs.threading }}
+          path: |
+            build/cbl/
+          if-no-files-found: error
+      # - name: Upload cbl to IPFS
+      #   uses: chainblocks/ipfs-action@master
+      #   if: ${{ github.event_name == 'push' }}
+      #   with:
+      #     path: build/cbl/
+      #     service: infura
+      #     port: 5001
+      #     protocol: https

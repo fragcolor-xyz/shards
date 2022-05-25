@@ -1,0 +1,155 @@
+name: Build (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bitness:
+        description: Build for 32-bit or 64-bit?
+        required: true
+        default: 64bits
+        type: choice
+        options:
+          - 32bits
+          - 64bits
+      build-type:
+        description: Build in Release or Debug?
+        required: true
+        default: Debug
+        type: choice
+        options:
+          - Debug
+          - Release
+      runtime-tests:
+        description: Run the runtime tests?
+        required: true
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      bitness:
+        required: true
+        default: 64bits
+        type: string
+      build-type:
+        required: true
+        default: Debug
+        type: string
+      runtime-tests:
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  #
+  # Build chainblocks for Windows
+  #
+  Windows:
+    name: Windows (${{ github.event.inputs.build-type || inputs.build-type }}, ${{ github.event.inputs.bitness || inputs.bitness }})
+    runs-on: windows-2019
+    steps:
+      - name: Setup
+        id: setup
+        shell: bash
+        run: |
+          echo "::set-output name=bitness::${{ github.event.inputs.bitness || inputs.bitness }}"
+          echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
+
+          if [ "${{ github.event.inputs.bitness || inputs.bitness }}" == "64bits" ]
+          then
+            echo "::set-output name=msystem::MINGW64"
+            echo "::set-output name=arch::x86_64"
+            echo "::set-output name=artifact::cbl-win64"
+          else
+            echo "::set-output name=msystem::MINGW32"
+            echo "::set-output name=arch::i686"
+            echo "::set-output name=artifact::cbl-win32"
+          fi
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up rust
+        env:
+          RUSTUP_USE_CURL: 1
+        run: |
+          rustup toolchain install nightly
+          rustup +nightly target add ${{ steps.setup.outputs.arch }}-pc-windows-gnu
+      - name: Set up rust (32-bits)
+        if: ${{ steps.setup.outputs.bitness == '32bits' }}
+        env:
+          RUSTUP_USE_CURL: 1
+        shell: bash
+        run: |
+          # Native libClang required for rust bindgen
+          # choco exit with code 1 after successful install
+          choco install -y --force llvm || exit 0
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+      - uses: Swatinem/rust-cache@v1
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          key: ${{ steps.setup.outputs.build-type }}
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ steps.setup.outputs.msystem }}
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-${{ steps.setup.outputs.arch }}-toolchain
+            mingw-w64-${{ steps.setup.outputs.arch }}-cmake
+            mingw-w64-${{ steps.setup.outputs.arch }}-ninja
+            mingw-w64-${{ steps.setup.outputs.arch }}-clang
+            mingw-w64-${{ steps.setup.outputs.arch }}-lld
+            wget
+      - name: Build libtrace (64bits)
+        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+        shell: msys2 {0}
+        run: |
+          cd deps/libbacktrace
+          mkdir build
+          ./configure --prefix=`pwd`/build
+          make && make install
+      - name: Build
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          ./bootstrap
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DUSE_LIBBACKTRACE=${{ steps.setup.outputs.bitness == '64bits' }} ..
+          ninja cbl
+      - name: Test runtime (Debug)
+        if: ${{ steps.setup.outputs.runtime-tests && steps.setup.outputs.build-type == 'Debug' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          ninja test_runtime
+          ./test_runtime
+      - name: Test graphics (Debug)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ steps.setup.outputs.runtime-tests && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          ninja test_gfx
+          GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
+          path: build/cbl.exe
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ${{ steps.setup.outputs.artifact }} rejected test data
+          path: src/gfx/tests/data/github-windows/rejected
+          if-no-files-found: warn

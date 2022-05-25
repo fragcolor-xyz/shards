@@ -1,0 +1,28 @@
+name: Build (Linux Valgrind)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  #
+  # Build chainblocks and run valgrind on Linux
+  #
+  Linux-valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      # TODO: use docker actions to build and run
+      #       see:
+      #         - https://github.com/docker/build-push-action
+      #         - https://github.com/addnab/docker-run-action
+      - name: Build docker
+        run: |
+          docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
+      - name: Build and Test
+        run: |
+          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DCHAINBLOCKS_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DCHAINBLOCKS_WITH_EXTRA_BLOCKS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/bug1.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"

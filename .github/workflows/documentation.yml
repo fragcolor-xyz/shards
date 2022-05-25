@@ -4,72 +4,29 @@ on:
   workflow_dispatch:
 
 jobs:
-
   #
   # Build chainblocks for Windows
   #
-  Windows:
-    runs-on: windows-2019
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-        bitness: [64bits]
-        include:
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up rust
-        env:
-          RUSTUP_USE_CURL: 1
-        run: |
-          rustup update
-          rustup default stable-${{ matrix.arch }}-pc-windows-gnu
-      - uses: Swatinem/rust-cache@v1
-        with:
-          key: ${{ matrix.build-type }}
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            base-devel
-            mingw-w64-${{ matrix.arch }}-toolchain
-            mingw-w64-${{ matrix.arch }}-cmake
-            mingw-w64-${{ matrix.arch }}-boost
-            mingw-w64-${{ matrix.arch }}-ninja
-            mingw-w64-${{ matrix.arch }}-clang
-            mingw-w64-${{ matrix.arch }}-lld
-            wget
-      - name: Build
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja cbl
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
-          path: build/cbl.exe
-          if-no-files-found: error
+  Windows-64bits-Debug:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 64bits
+      build-type: Debug
+      runtime-tests: false
+  Windows-64bits-Release:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 64bits
+      build-type: Release
+      runtime-tests: false
 
   #
   # Run blocks documentation samples
   #
   docs-samples:
-    needs: Windows
+    needs: Windows-64bits-Release
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -107,7 +64,7 @@ jobs:
   # Generate blocks documentation (markdown)
   #
   docs-markdown:
-    needs: Windows
+    needs: Windows-64bits-Debug
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -190,7 +147,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: "14"
       - name: Install ipfs-car
         run: |
           npm install ipfs-car@0.6.1

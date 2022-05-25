@@ -19,131 +19,36 @@ jobs:
   #
   # Build chainblocks for emscripten
   #
-  wasm32-emscripten:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        threading: ["st", "mt"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Checkout emsdk
-        uses: actions/checkout@v2
-        with:
-          repository: emscripten-core/emsdk
-          path: emsdk
-          fetch-depth: 1
-      - name: Set up dependencies
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget ninja-build
-          ./bootstrap
-          cd emsdk
-          ./emsdk install 3.1.10
-          ./emsdk activate 3.1.10
-          rustup toolchain install nightly
-          rustup +nightly target add wasm32-unknown-emscripten
-      - name: Set up rust (mt)
-        if: ${{ matrix.threading == 'mt' }}
-        run: |
-          rustup +nightly component add rust-src
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          key: ${{ matrix.threading }}
-      - name: Build
-        run: |
-          source emsdk/emsdk_env.sh
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ matrix.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-          ninja cbl && ninja test_runtime
-      # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
-      - uses: actions/setup-node@v3
-        with:
-          # Node 18.1.0 has a change in fetch() that causes it to fail loading the wasm module
-          node-version: 18.0.0
-      - name: Test (st)
-        if: ${{ matrix.threading == 'st' }}
-        run: |
-          cd build
-          node ../src/tests/test_cbl.js cbl-st.js || [[ $? == 143 ]] || exit
-          node ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
-          mkdir cbl
-          cp cbl-st.wasm cbl/
-          cp cbl-st.js cbl/
-      - name: Test (mt)
-        if: ${{ matrix.threading == 'mt' }}
-        run: |
-          cd build
-          node --experimental-wasm-threads ../src/tests/test_cbl.js cbl-mt.js || [[ $? == 143 ]] || exit
-          node --experimental-wasm-threads ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
-          mkdir cbl
-          cp cbl-mt.wasm cbl/
-          cp cbl-mt.js cbl/
-          cp cbl-mt.worker.js cbl/
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-wasm ${{ matrix.threading }}
-          path: |
-            build/cbl/
-          if-no-files-found: error
-      # - name: Upload cbl to IPFS
-      #   uses: chainblocks/ipfs-action@master
-      #   if: ${{ github.event_name == 'push' }}
-      #   with:
-      #     path: build/cbl/
-      #     service: infura
-      #     port: 5001
-      #     protocol: https
+  wasm32-emscripten-st:
+    uses: ./.github/workflows/build-wasm.yml
+    secrets: inherit
+    with:
+      threading: st
+  wasm32-emscripten-mt:
+    uses: ./.github/workflows/build-wasm.yml
+    secrets: inherit
+    with:
+      threading: mt
 
   #
   # Build chainblocks for linux
   #
-  Linux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
-          ./bootstrap
-          rustup toolchain install nightly
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          sharedKey: Linux-${{ matrix.build-type }}
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja cbl
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-linux ${{ matrix.build-type }}
-          path: build/cbl
-          if-no-files-found: error
+  Linux-Debug:
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    with:
+      build-type: Debug
+  Linux-Release:
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    with:
+      build-type: Release
 
   #
   # Test and coverage on linux
   #
   Linux-test:
-    needs: Linux
+    needs: [Linux-Debug, Linux-Release]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -272,7 +177,7 @@ jobs:
   # Extra tests and coverage on linux
   #
   Linux-test-extra:
-    needs: Linux
+    needs: [Linux-Debug, Linux-Release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -332,35 +237,8 @@ jobs:
   # Build chainblocks and publish docker image
   #
   Linux-docker:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Build and upload to hub devel image
-        uses: chainblocks/Publish-Docker-Github-Action@master
-        with:
-          name: chainblocks/devenv
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          dockerfile: docker/linux/Dockerfile
-          tags: "latest"
-      - name: Build and Test
-        run: |
-          docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
-          mkdir build
-          docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
-      - name: Build and upload to hub runtime image
-        uses: chainblocks/Publish-Docker-Github-Action@master
-        if: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
-        with:
-          name: chainblocks/cbl
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          dockerfile: docker/linux/Dockerfile-runtime
-          tags: "latest"
+    uses: ./.github/workflows/build-linux-docker.yml
+    secrets: inherit
 
   # Linux-docker-VK:
   #   runs-on: ubuntu-20.04
@@ -397,138 +275,52 @@ jobs:
   # Build chainblocks and run valgrind on Linux
   #
   Linux-valgrind:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      # TODO: use docker actions to build and run
-      #       see:
-      #         - https://github.com/docker/build-push-action
-      #         - https://github.com/addnab/docker-run-action
-      - name: Build
-        run: |
-          docker build -f docker/linux/Dockerfile -t chainblocks-test --build-arg USER_ID=`id -u` --build-arg GROUP_ID=`id -g` .
-      - name: Test
-        run: |
-          docker run --rm -t --cap-add=SYS_PTRACE -u`id -u`:`id -g` chainblocks-test bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DCHAINBLOCKS_NO_BIGINT_BLOCKS=1 -DUSE_VALGRIND=1 -DCHAINBLOCKS_WITH_EXTRA_BLOCKS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ninja test_runtime && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/bug1.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/general.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/variables.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/flows.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/linalg.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/kdtree.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/channels.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/genetic.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/wasm.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/subchains.clj && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/const-vars.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 ./cbl ../src/tests/chains_embed_issue.edn && valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test_runtime"
+    uses: ./.github/workflows/build-linux-valgrind.yml
+    secrets: inherit
 
   #
   # Build chainblocks for Windows
   #
-  Windows:
-    runs-on: windows-2019
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-        bitness: [32bits, 64bits]
-        include:
-          - bitness: 32bits
-            msystem: MINGW32
-            arch: i686
-            artifact: cbl-win32
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up rust
-        env:
-          RUSTUP_USE_CURL: 1
-        run: |
-          rustup toolchain install nightly
-          rustup +nightly target add ${{ matrix.arch }}-pc-windows-gnu
-      - name: Set up rust (32-bits)
-        env:
-          RUSTUP_USE_CURL: 1
-        if: ${{ matrix.bitness == '32bits' }}
-        shell: bash
-        run: |
-          # Native libClang required for rust bindgen
-          # choco exit with code 1 after successful install
-          choco install -y --force llvm || exit 0
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          key: ${{ matrix.build-type }}
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            base-devel
-            mingw-w64-${{ matrix.arch }}-toolchain
-            mingw-w64-${{ matrix.arch }}-cmake
-            mingw-w64-${{ matrix.arch }}-ninja
-            mingw-w64-${{ matrix.arch }}-clang
-            mingw-w64-${{ matrix.arch }}-lld
-            wget
-      - name: Build libtrace (64bits)
-        if: ${{ matrix.bitness == '64bits' }}
-        shell: msys2 {0}
-        run: |
-          cd deps/libbacktrace
-          mkdir build
-          ./configure --prefix=`pwd`/build
-          make && make install
-      - name: Build
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          ./bootstrap
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DUSE_LIBBACKTRACE=${{ matrix.bitness == '64bits' }} ..
-          ninja cbl
-      - name: Test runtime (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          ninja test_runtime
-          ./test_runtime
-      - name: Test graphics (Debug)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ matrix.build-type == 'Debug' && matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          ninja test_gfx
-          GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
-          path: build/cbl.exe
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: ${{ matrix.artifact }} rejected test data
-          path: src/gfx/tests/data/github-windows/rejected
-          if-no-files-found: warn
+  Windows-64bits-Debug:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 64bits
+      build-type: Debug
+      runtime-tests: true
+  Windows-64bits-Release:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 64bits
+      build-type: Release
+      runtime-tests: true
+  Windows-32bits-Debug:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 32bits
+      build-type: Debug
+      runtime-tests: true
+  Windows-32bits-Release:
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      bitness: 32bits
+      build-type: Release
+      runtime-tests: true
 
   #
   # Test chainblocks for Windows
   #
   Windows-test:
-    needs: Windows
+    needs:
+      [
+        Windows-64bits-Debug,
+        Windows-64bits-Release,
+        Windows-32bits-Debug,
+        Windows-32bits-Release,
+      ]
     runs-on: windows-2019
     strategy:
       fail-fast: false
@@ -639,7 +431,7 @@ jobs:
   # Run blocks documentation samples
   #
   docs-samples:
-    needs: Windows
+    needs: Windows-64bits-Release
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -677,7 +469,7 @@ jobs:
   # Generate blocks documentation (markdown)
   #
   docs-markdown:
-    needs: Windows
+    needs: Windows-64bits-Debug
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -804,53 +596,24 @@ jobs:
   #
   # Build chainblocks for macOS
   #
-  macOS:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo xcode-select --switch /Applications/Xcode.app
-          brew install cmake ninja clang-format
-          ./bootstrap
-          rustup toolchain install nightly
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          key: ${{ matrix.build-type }}
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} ..
-          ninja cbl
-      - name: Test runtime (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          ninja test_runtime
-          ./test_runtime
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-macos ${{ matrix.build-type }}
-          path: build/cbl
-          if-no-files-found: error
+  macOS-Debug:
+    uses: ./.github/workflows/build-macos.yml
+    secrets: inherit
+    with:
+      build-type: Debug
+      runtime-tests: true
+  macOS-Release:
+    uses: ./.github/workflows/build-macos.yml
+    secrets: inherit
+    with:
+      build-type: Release
+      runtime-tests: true
 
   #
   # Test chainblocks on macOS
   #
   macOS-test:
-    needs: macOS
+    needs: [macOS-Debug, macOS-Release]
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -907,28 +670,5 @@ jobs:
   # Build chainblocks for iOS
   #
   iOS:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo xcode-select --switch /Applications/Xcode.app
-          brew install cmake clang-format
-          ./bootstrap
-          rustup toolchain install nightly
-          rustup +nightly target add aarch64-apple-ios
-          rustup +nightly target add x86_64-apple-ios
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-      - name: Build device
-        run: |
-          cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
-          cmake --build build_arm64 --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
-      - name: Build simulator x86
-        run: |
-          cmake -Bbuild_sim_x86 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
-          cmake --build build_sim_x86 --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
+    uses: ./.github/workflows/build-ios.yml
+    secrets: inherit
