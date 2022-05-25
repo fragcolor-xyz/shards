@@ -102,13 +102,14 @@ jobs:
       bitness: 64bits
       build-type: Debug
       runtime-tests: true
+      run-tests: true
   Windows-64bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
       bitness: 64bits
       build-type: Release
-      runtime-tests: true
+      run-tests: true
   Windows-32bits-Debug:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
@@ -116,130 +117,14 @@ jobs:
       bitness: 32bits
       build-type: Debug
       runtime-tests: true
+      run-tests: true
   Windows-32bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
       bitness: 32bits
       build-type: Release
-      runtime-tests: true
-
-  #
-  # Test chainblocks for Windows
-  #
-  Windows-test:
-    needs:
-      [
-        Windows-64bits-Debug,
-        Windows-64bits-Release,
-        Windows-32bits-Debug,
-        Windows-32bits-Release,
-      ]
-    runs-on: windows-2019
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-        bitness: [32bits, 64bits]
-        include:
-          - bitness: 32bits
-            msystem: MINGW32
-            arch: i686
-            artifact: cbl-win32
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
-    steps:
-      - name: Change git line endings
-        run: |
-          git config --system core.autocrlf false
-          git config --system core.eol lf
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
-          path: build
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-      - name: Test
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          echo "Running test: general"
-          ./cbl ../src/tests/general.edn
-          echo "Running test: variables"
-          ./cbl ../src/tests/variables.clj
-          echo "Running test: linalg"
-          ./cbl ../src/tests/linalg.clj
-          echo "Running test: loader"
-          ./cbl ../src/tests/loader.clj
-          echo "Running test: network"
-          ./cbl ../src/tests/network.clj
-          echo "Running test: struct"
-          ./cbl ../src/tests/struct.clj
-          echo "Running test: flows"
-          ./cbl ../src/tests/flows.clj
-          echo "Running test: kdtree"
-          ./cbl ../src/tests/kdtree.clj
-          echo "Running test: channels"
-          ./cbl ../src/tests/channels.clj
-          echo "Running test: http"
-          ./cbl ../src/tests/http.clj
-          echo "Running test: brotli"
-          ./cbl ../src/tests/brotli.clj
-          echo "Running test: snappy"
-          ./cbl ../src/tests/snappy.clj
-          # echo "Running test: ws"
-          # ./cbl ../src/tests/ws.clj
-          echo "Running test: bigint"
-          ./cbl ../src/tests/bigint.clj
-          echo "Running test: wasm"
-          ./cbl ../src/tests/wasm.clj
-          echo "Running test: eth"
-          ./cbl ../src/tests/eth.edn
-          echo "Running test: crypto"
-          ./cbl ../src/tests/crypto.edn
-      - name: Graphics Test (64bits)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          echo "Running test: gfx_window"
-          ./cbl ../src/tests/gfx_window.edn
-          echo "Running test: gfx_cube"
-          ./cbl ../src/tests/gfx_cube.edn
-          echo "Running test: gfx_materials"
-          ./cbl ../src/tests/gfx_materials.edn
-          echo "Running test: imgui_demo"
-          ./cbl ../src/tests/imgui_demo.edn
-      - name: Test (64bits)
-        if: ${{ matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          echo "Running test: genetic"
-          ./cbl ../src/tests/genetic.clj
-          echo "Running test: time"
-          ./cbl ../src/tests/time.edn
-          echo "Running test: subchains"
-          ./cbl ../src/tests/subchains.clj
+      run-tests: true
 
   #
   # Run blocks documentation samples
