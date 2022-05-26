@@ -24,11 +24,13 @@ jobs:
     secrets: inherit
     with:
       threading: st
+      run-tests: true
   wasm32-emscripten-mt:
     uses: ./.github/workflows/build-wasm.yml
     secrets: inherit
     with:
       threading: mt
+      run-tests: true
 
   #
   # Build chainblocks for linux

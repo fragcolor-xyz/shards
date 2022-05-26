@@ -11,19 +11,28 @@ on:
         options:
           - st
           - mt
+      run-tests:
+        description: Run the tests?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       threading:
         required: true
         default: st
         type: string
+      run-tests:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   #
   # Build chainblocks for emscripten
   #
   wasm32-emscripten:
-    name: Wasm (${{ github.event.inputs.threading || inputs.threading }})
+    name: Build (${{ github.event.inputs.threading || inputs.threading }})
     runs-on: ubuntu-latest
     steps:
       - name: Setup
@@ -31,6 +40,7 @@ jobs:
         shell: bash
         run: |
           echo "::set-output name=threading::${{ github.event.inputs.threading || inputs.threading }}"
+          echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
       - name: Checkout chainblocks
         uses: actions/checkout@v2
         with:
@@ -53,7 +63,7 @@ jobs:
           rustup toolchain install nightly
           rustup +nightly target add wasm32-unknown-emscripten
       - name: Set up rust (mt)
-        if: ${{ steps.setup.outputs.threading == 'mt' }}
+        if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'mt' }}
         run: |
           rustup +nightly component add rust-src
       - uses: Swatinem/rust-cache@v1
@@ -73,7 +83,7 @@ jobs:
           # Node 18.1.0 has a change in fetch() that causes it to fail loading the wasm module
           node-version: 18.0.0
       - name: Test (st)
-        if: ${{ steps.setup.outputs.threading == 'st' }}
+        if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'st' }}
         run: |
           cd build
           node ../src/tests/test_cbl.js cbl-st.js || [[ $? == 143 ]] || exit
