@@ -303,69 +303,14 @@ jobs:
     with:
       build-type: Debug
       runtime-tests: true
+      run-tests: true
   macOS-Release:
     uses: ./.github/workflows/build-macos.yml
     secrets: inherit
     with:
       build-type: Release
       runtime-tests: true
-
-  #
-  # Test chainblocks on macOS
-  #
-  macOS-test:
-    needs: [macOS-Debug, macOS-Release]
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-macos ${{ matrix.build-type }}
-          path: build
-      - name: Get sample files
-        run: |
-          mkdir external && cd external
-          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
-      - name: Test
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          chmod +x cbl
-          ./cbl ../src/tests/general.edn
-          ./cbl ../src/tests/variables.clj
-          ./cbl ../src/tests/subchains.clj
-          ./cbl ../src/tests/linalg.clj
-          ./cbl ../src/tests/loader.clj
-          ./cbl ../src/tests/network.clj
-          ./cbl ../src/tests/struct.clj
-          ./cbl ../src/tests/flows.clj
-          ./cbl ../src/tests/kdtree.clj
-          ./cbl ../src/tests/channels.clj
-          ./cbl ../src/tests/imaging.clj
-          ./cbl ../src/tests/http.clj
-          ./cbl ../src/tests/ws.clj
-          ./cbl ../src/tests/bigint.clj
-          ./cbl ../src/tests/brotli.clj
-          ./cbl ../src/tests/snappy.clj
-          ./cbl ../src/tests/wasm.clj
-          ./cbl ../src/tests/infos.clj
-          ./cbl ../src/tests/rust.clj
-          ./cbl ../src/tests/crypto.edn
-          ./cbl ../src/tests/chain-macro.edn
-          ./cbl ../src/tests/branch.edn
-          ./cbl ../src/tests/audio.edn
-          ./cbl ../src/tests/time.edn
-          ./cbl ../src/tests/eth.edn
+      run-tests: true
 
   #
   # Build chainblocks for iOS
