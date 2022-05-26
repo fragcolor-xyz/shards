@@ -1,6 +1,8 @@
 #ifndef GFX_FWD
 #define GFX_FWD
 
+#include <memory>
+
 namespace gfx {
 
 struct Context;

@@ -2,6 +2,7 @@
 #define GFX_PIPELINE_STEP
 
 #include "fwd.hpp"
+#include <variant>
 #include <vector>
 
 namespace gfx {
