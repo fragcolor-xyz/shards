@@ -9,6 +9,7 @@ jobs:
   # Build chainblocks and run valgrind on Linux
   #
   Linux-valgrind:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout chainblocks
