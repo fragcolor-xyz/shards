@@ -62,6 +62,7 @@ jobs:
           ./emsdk activate 3.1.10
           rustup toolchain install nightly
           rustup +nightly target add wasm32-unknown-emscripten
+          rustup default nightly
       - name: Set up rust (mt)
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'mt' }}
         run: |
