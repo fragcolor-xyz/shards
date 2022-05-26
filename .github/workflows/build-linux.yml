@@ -95,11 +95,18 @@ jobs:
         id: setup
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+
+          if [ "${{ github.event.inputs.build-type || inputs.build-type }}" == "Debug" ]
+          then
+            echo "::set-output name=submodules::recursive"
+          else
+            echo "::set-output name=submodules::false"
+          fi
       - name: Checkout chainblocks
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
-          submodules: recursive
+          submodules: ${{ steps.setup.outputs.submodules }}
       - name: Set up dependencies (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
