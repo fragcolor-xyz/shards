@@ -7,9 +7,6 @@ license: CC-BY-SA-4.0
 
 This guide explains how to build [Chainblocks](https://github.com/fragcolor-xyz/chainblocks) from the sources, for Windows. 
 
-??? note "For Mac/Linux Users"
-    The software requirements and terminal commands for Mac/Linux machines are the same as given for Windows. Most of these packages are pre-installed on these machines, but if required can be easily installed/updated on via `brew [install/upgrade] <package-name>` on Mac, `sudo apt-get [install/update] <package-name>` on Linux.
-
 Before you start, ensure you've [set up your development environment](../getting-started/#development-environment).
 
 ## Requirements
@@ -82,13 +79,18 @@ You should update your system packages frequently and preferably every time you 
 
 On Windows you'll need to run these commands in a MingW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MingW' and click the version appropriate for your machine (x86 or x64).
 
-Update the Rust packages.
+Update the Rust packages with `rustup` (works with Windows, Mac, and Linux).
 
 ```
 rustup update
 ```
 
-Next, update other packages.
+Next, update other packages with `pacman`.
+
+!!! note
+    `pacman` comes preinstalled on Linux and as part of `MSYS2` on Windows. For Mac you can get it [here](https://github.com/kladd/pacman-osx) or use the pre-installed package manager, [Homebrew](https://formulae.brew.sh/).
+
+Sync, refresh, and update all local packages that have a newer version available.
 
 === "Command"
 
@@ -144,10 +146,15 @@ Restart the MingW terminal (if needed) and install the required build dependenci
 
 Continuing with the MingW terminal, navigate to Chainblocks root directory, and run the `bootstrap` shell script (to be run only once, when you build the project for the first time).
 
-=== "Command"
+=== "Windows"
 
     ```
     ./bootstrap
+    ```
+
+=== "Mac/Linux"
+    ```
+    bash bootstrap
     ```
 
 === "Output"
@@ -227,6 +234,7 @@ To verify your build was successful create an empty script file (*.edn) in the `
     (schedule main test)
     (run main 1 1)
     ```
+
 === "Run command"
 
     ```
@@ -277,27 +285,46 @@ git pull
 
 Update the SDK tools to the latest version.
 
-```
-emsdk install latest
-```
+=== "Windows"
+
+    ```
+    emsdk install latest
+    ```
+
+=== "Mac/Linux"
+
+    ```
+    ./emsdk install latest
+    ```
 
 Activate the latest SDK for the current user.
 
-```
-emsdk activate latest
-```
+=== "Windows"
+
+    ```
+    emsdk activate latest
+    ```
+
+=== "Mac/Linux"
+
+    ```
+    ./emsdk activate latest
+    ```
 
 Activate the PATH/ environment variables for the current terminal session.
 
-```
-emsdk_env.bat
-```
+=== "Windows"
 
-!!! note
-    For Mac/Linux, use the following commands instead: 
-    - `./emsdk install latest`
-    - `./emsdk activate latest`
-    - `source emsdk_env.sh`.
+    ```
+    emsdk_env.bat
+    ```
+
+=== "Mac/Linux"
+
+    ```
+    source emsdk_env.sh
+    ```
+
 
 Open a Windows or VS Code terminal and navigate to the Chainblocks directory. Run the following commands in sequence to create and link the Web Assembly build.
 
