@@ -16,6 +16,11 @@ on:
         required: true
         default: false
         type: boolean
+      run-tests:
+        description: Run the tests?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       build-type:
@@ -26,20 +31,28 @@ on:
         required: true
         default: false
         type: boolean
+      run-tests:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   #
   # Build chainblocks for macOS
   #
   macOS:
-    name: macOS (${{ github.event.inputs.build-type || inputs.build-type }})
+    name: Build (${{ github.event.inputs.build-type || inputs.build-type }})
     runs-on: macos-latest
+    outputs:
+      run-tests: ${{ steps.setup.outputs.run-tests }}
     steps:
       - name: Setup
         id: setup
         shell: bash
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
+          echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
       - name: Checkout chainblocks
         uses: actions/checkout@v2
         with:
@@ -51,6 +64,7 @@ jobs:
           brew install cmake ninja clang-format
           ./bootstrap
           rustup toolchain install nightly
+          rustup default nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -62,7 +76,7 @@ jobs:
           cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           ninja cbl
       - name: Test runtime (Debug)
-        if: ${{ steps.setup.outputs.runtime-tests && steps.setup.outputs.build-type == 'Debug' }}
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
         run: |
@@ -75,3 +89,66 @@ jobs:
           name: cbl-macos ${{ steps.setup.outputs.build-type }}
           path: build/cbl
           if-no-files-found: error
+
+  #
+  # Test chainblocks on macOS
+  #
+  macOS-test:
+    if: ${{ needs.macOS.outputs.run-tests == 'true' }}
+    needs: macOS
+    name: Test
+    runs-on: macos-latest
+    steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+      - name: Checkout chainblocks
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          submodules: false
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: cbl-macos ${{ steps.setup.outputs.build-type }}
+          path: build
+      - name: Get sample files
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: |
+            mkdir external && cd external
+            wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
+      - name: Test
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd build
+          chmod +x cbl
+          ./cbl ../src/tests/general.edn
+          ./cbl ../src/tests/variables.clj
+          ./cbl ../src/tests/subchains.clj
+          ./cbl ../src/tests/linalg.clj
+          ./cbl ../src/tests/loader.clj
+          ./cbl ../src/tests/network.clj
+          ./cbl ../src/tests/struct.clj
+          ./cbl ../src/tests/flows.clj
+          ./cbl ../src/tests/kdtree.clj
+          ./cbl ../src/tests/channels.clj
+          ./cbl ../src/tests/imaging.clj
+          ./cbl ../src/tests/http.clj
+          ./cbl ../src/tests/ws.clj
+          ./cbl ../src/tests/bigint.clj
+          ./cbl ../src/tests/brotli.clj
+          ./cbl ../src/tests/snappy.clj
+          ./cbl ../src/tests/wasm.clj
+          ./cbl ../src/tests/infos.clj
+          ./cbl ../src/tests/rust.clj
+          ./cbl ../src/tests/crypto.edn
+          ./cbl ../src/tests/chain-macro.edn
+          ./cbl ../src/tests/branch.edn
+          ./cbl ../src/tests/audio.edn
+          ./cbl ../src/tests/time.edn
+          ./cbl ../src/tests/eth.edn

@@ -24,11 +24,13 @@ jobs:
     secrets: inherit
     with:
       threading: st
+      run-tests: true
   wasm32-emscripten-mt:
     uses: ./.github/workflows/build-wasm.yml
     secrets: inherit
     with:
       threading: mt
+      run-tests: true
 
   #
   # Build chainblocks for linux
@@ -38,200 +40,14 @@ jobs:
     secrets: inherit
     with:
       build-type: Debug
+      run-tests: true
+      run-extra-tests: true
   Linux-Release:
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
     with:
       build-type: Release
-
-  #
-  # Test and coverage on linux
-  #
-  Linux-test:
-    needs: [Linux-Debug, Linux-Release]
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 2
-          submodules: recursive
-      - name: Set up dependencies (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils
-          ./bootstrap
-          rustup toolchain install nightly
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ matrix.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
-        with:
-          sharedKey: Linux-${{ matrix.build-type }}
-      - name: Build (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        run: |
-          mkdir build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
-          ninja cbl
-      - name: Download artifact (Release)
-        if: ${{ matrix.build-type == 'Release' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-linux ${{ matrix.build-type }}
-          path: build
-      - name: Get sample files
-        run: |
-          mkdir external && cd external
-          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
-      - name: Test
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          chmod +x cbl
-          ./cbl ../src/tests/general.edn
-          ./cbl ../src/tests/variables.clj
-          ./cbl ../src/tests/subchains.clj
-          ./cbl ../src/tests/linalg.clj
-          ./cbl ../src/tests/loader.clj
-          ./cbl ../src/tests/network.clj
-          ./cbl ../src/tests/struct.clj
-          ./cbl ../src/tests/flows.clj
-          ./cbl ../src/tests/kdtree.clj
-          ./cbl ../src/tests/channels.clj
-          ./cbl ../src/tests/genetic.clj
-          ./cbl ../src/tests/imaging.clj
-          ./cbl ../src/tests/http.clj
-          ./cbl ../src/tests/ws.clj
-          ./cbl ../src/tests/bigint.clj
-          ./cbl ../src/tests/brotli.clj
-          ./cbl ../src/tests/snappy.clj
-          ./cbl ../src/tests/failures.clj
-          ./cbl ../src/tests/wasm.clj
-          ./cbl ../src/tests/shell.clj
-          ./cbl ../src/tests/rust.clj
-          ./cbl ../src/tests/crypto.edn
-          ./cbl ../src/tests/chain-macro.edn
-          ./cbl ../src/tests/edn.edn
-          ./cbl ../src/tests/const-vars.edn
-          ./cbl ../src/tests/branch.edn
-          ./cbl ../src/tests/audio.edn
-          ./cbl ../src/tests/time.edn
-          ./cbl ../src/tests/eth.edn
-          ./cbl ../src/tests/take.edn
-          ./cbl ../src/tests/casting_numbers.edn
-      - name: Test (Debug)
-        # Test that only works in Debug build go there
-        if: ${{ matrix.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          ./cbl ../src/tests/blocks.clj
-      - name: Test Headless (gfx_window)
-        uses: chainblocks/xvfb-action@master
-        if: false # Failed to create vulkan backend on github runner
-        with:
-          working-directory: ./build
-          run: ./cbl ../src/tests/gfx_window.edn
-      - name: Test Headless (gfx_cube)
-        uses: chainblocks/xvfb-action@master
-        if: false # Failed to create vulkan backend on github runner
-        with:
-          working-directory: ./build
-          run: ./cbl ../src/tests/gfx_cube.edn
-      - name: Test Headless (gfx_materials)
-        uses: chainblocks/xvfb-action@master
-        if: false # Failed to create vulkan backend on github runner
-        with:
-          working-directory: ./build
-          run: ./cbl ../src/tests/gfx_materials.edn
-      - name: Test Headless (imgui_demo)
-        uses: chainblocks/xvfb-action@master
-        if: false # Failed to create vulkan backend on github runner
-        with:
-          working-directory: ./build
-          run: ./cbl ../src/tests/imgui_demo.edn
-      - name: Coverage (Debug)
-        if: ${{ matrix.build-type == 'Debug' }}
-        run: |
-          mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/mal/CMakeFiles/cbl.dir --directory build/src/extra/CMakeFiles --output-file coverage/coverage.info
-          lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
-          genhtml coverage/coverage.f.info --output-directory coverage/output
-          bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
-      - name: Upload coverage
-        if: ${{ matrix.build-type == 'Debug' }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-linux-coverage
-          path: coverage
-          if-no-files-found: error
-
-  #
-  # Extra tests and coverage on linux
-  #
-  Linux-test-extra:
-    needs: [Linux-Debug, Linux-Release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 2
-          submodules: recursive
-      - name: Checkout glTF-Sample-Models
-        uses: actions/checkout@v2
-        with:
-          repository: KhronosGroup/glTF-Sample-Models
-          path: external/glTF-Sample-Models
-          fetch-depth: 1
-      - name: Set up dependencies
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils unzip
-          ./bootstrap
-          rustup toolchain install nightly
-      - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        with:
-          sharedKey: Linux-Debug
-      - name: Build
-        run: |
-          cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1
-          cd build
-          ninja test_runtime && ninja test_gfx
-      - name: Test runtime
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          ./test_runtime
-      - name: Test graphics
-        uses: chainblocks/xvfb-action@master
-        if: false # Failed to create vulkan backend on github runner
-        with:
-          working-directory: ./build
-          run: |
-            ./test_gfx
-      - name: CodeCov
-        run: |
-          mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
-          lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
-          genhtml coverage/coverage.f.info --output-directory coverage/output
-          bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
-      - name: Upload coverage
-        uses: actions/upload-artifact@v2
-        with:
-          name: cbl-linux-coverage-extra-${{matrix.test-tags}}
-          path: coverage
-          if-no-files-found: error
+      run-tests: true
 
   #
   # Build chainblocks and publish docker image
@@ -288,13 +104,14 @@ jobs:
       bitness: 64bits
       build-type: Debug
       runtime-tests: true
+      run-tests: true
   Windows-64bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
       bitness: 64bits
       build-type: Release
-      runtime-tests: true
+      run-tests: true
   Windows-32bits-Debug:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
@@ -302,296 +119,24 @@ jobs:
       bitness: 32bits
       build-type: Debug
       runtime-tests: true
+      run-tests: true
   Windows-32bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
       bitness: 32bits
       build-type: Release
-      runtime-tests: true
+      run-tests: true
 
   #
-  # Test chainblocks for Windows
+  # Build the documentation
   #
-  Windows-test:
-    needs:
-      [
-        Windows-64bits-Debug,
-        Windows-64bits-Release,
-        Windows-32bits-Debug,
-        Windows-32bits-Release,
-      ]
-    runs-on: windows-2019
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-        bitness: [32bits, 64bits]
-        include:
-          - bitness: 32bits
-            msystem: MINGW32
-            arch: i686
-            artifact: cbl-win32
-          - bitness: 64bits
-            msystem: MINGW64
-            arch: x86_64
-            artifact: cbl-win64
-    steps:
-      - name: Change git line endings
-        run: |
-          git config --system core.autocrlf false
-          git config --system core.eol lf
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{ matrix.artifact }} ${{ matrix.build-type }}
-          path: build
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          release: false
-          path-type: inherit
-      - name: Test
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          echo "Running test: general"
-          ./cbl ../src/tests/general.edn
-          echo "Running test: variables"
-          ./cbl ../src/tests/variables.clj
-          echo "Running test: linalg"
-          ./cbl ../src/tests/linalg.clj
-          echo "Running test: loader"
-          ./cbl ../src/tests/loader.clj
-          echo "Running test: network"
-          ./cbl ../src/tests/network.clj
-          echo "Running test: struct"
-          ./cbl ../src/tests/struct.clj
-          echo "Running test: flows"
-          ./cbl ../src/tests/flows.clj
-          echo "Running test: kdtree"
-          ./cbl ../src/tests/kdtree.clj
-          echo "Running test: channels"
-          ./cbl ../src/tests/channels.clj
-          echo "Running test: http"
-          ./cbl ../src/tests/http.clj
-          echo "Running test: brotli"
-          ./cbl ../src/tests/brotli.clj
-          echo "Running test: snappy"
-          ./cbl ../src/tests/snappy.clj
-          # echo "Running test: ws"
-          # ./cbl ../src/tests/ws.clj
-          echo "Running test: bigint"
-          ./cbl ../src/tests/bigint.clj
-          echo "Running test: wasm"
-          ./cbl ../src/tests/wasm.clj
-          echo "Running test: eth"
-          ./cbl ../src/tests/eth.edn
-          echo "Running test: crypto"
-          ./cbl ../src/tests/crypto.edn
-      - name: Graphics Test (64bits)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          echo "Running test: gfx_window"
-          ./cbl ../src/tests/gfx_window.edn
-          echo "Running test: gfx_cube"
-          ./cbl ../src/tests/gfx_cube.edn
-          echo "Running test: gfx_materials"
-          ./cbl ../src/tests/gfx_materials.edn
-          echo "Running test: imgui_demo"
-          ./cbl ../src/tests/imgui_demo.edn
-      - name: Test (64bits)
-        if: ${{ matrix.bitness == '64bits' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: msys2 {0}
-        run: |
-          cd build
-          echo "Running test: genetic"
-          ./cbl ../src/tests/genetic.clj
-          echo "Running test: time"
-          ./cbl ../src/tests/time.edn
-          echo "Running test: subchains"
-          ./cbl ../src/tests/subchains.clj
-
-  #
-  # Run blocks documentation samples
-  #
-  docs-samples:
-    needs: Windows-64bits-Release
-    runs-on: windows-2019
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Download cbl
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-win64 Release
-          path: docs/samples
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          path-type: inherit
-      - name: Run samples
-        shell: msys2 {0}
-        run: |
-          cd docs/samples
-          for i in $(find blocks -name '*.edn');
-          do
-            echo "Running sample $i";
-            ./cbl.exe run_sample.edn --file "$i" > >(tee "$i.log");
-          done
-      - name: Upload samples logs
-        uses: actions/upload-artifact@v2
-        with:
-          name: samples-logs
-          path: docs/samples/**/*.log
-          if-no-files-found: error
-
-  #
-  # Generate blocks documentation (markdown)
-  #
-  docs-markdown:
-    needs: Windows-64bits-Debug
-    runs-on: windows-2019
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Download cbl
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-win64 Debug
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          path-type: inherit
-      - name: Generate markdown
-        shell: msys2 {0}
-        run: ./cbl.exe src/tests/infos_docs.edn
-      - name: Upload markdown
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs-markdown
-          path: |
-            docs/docs/blocks/**/*.md
-            !docs/docs/blocks/index.md
-          if-no-files-found: error
-
-  #
-  # Build documentation website
-  #
-  docs-website-build:
-    needs: [docs-markdown, docs-samples]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Set up python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.x
-      - name: Install mkdocs
-        run: |
-          pip install mkdocs-material
-          pip install mkdocs-awesome-pages-plugin
-          pip install mkdocs-macros-plugin
-      - name: Download markdown
-        uses: actions/download-artifact@v2
-        with:
-          name: docs-markdown
-          path: docs/docs/blocks
-      - name: Download samples logs
-        uses: actions/download-artifact@v2
-        with:
-          name: samples-logs
-          path: docs/samples
-      - name: Build website
-        run: |
-          cd docs
-          mkdocs build
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs-website
-          path: |
-            docs/site/
-          if-no-files-found: error
-
-  #
-  # Publish documentation website to IPFS
-  #
-  docs-website-publish:
-    if: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
-    needs: docs-website-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up node
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-      - name: Install ipfs-car
-        run: |
-          npm install ipfs-car@0.6.1
-          npm install --save blockstore-core@1.0.2
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: docs-website
-          path: docs/site
-      - name: Publish to NFT storage
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          command: |
-            ./node_modules/.bin/ipfs-car --pack docs/site --output chainblocks-docs.car
-            curl -X POST https://api.nft.storage/upload \
-                --data-binary @chainblocks-docs.car \
-                -H "Authorization: Bearer ${{ secrets.NFT_STORAGE_KEY }}" \
-                -H "Content-Type: application/car" \
-                > response.json
-            cat response.json
-            if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
-      - name: Set IPFS CID
-        id: set_ipfs_cid
-        run: |
-          echo "::set-output name=ipfs_cid::$(cat response.json | jq .value.cid)"
-      - name: Sync Cloudflare
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          command: |
-            curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/78646b6202c9ef585ff7dbe5670aaa7e" \
-                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
-                -H "Content-Type: application/json" \
-                -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${{ steps.set_ipfs_cid.outputs.ipfs_cid }}/site\", \"ttl\": 1 }" \
-                > response.json
-            cat response.json
-            if [ $(cat response.json | jq .success) != "true" ]; then exit 1; fi
+  docs:
+    needs: [Windows-64bits-Debug, Windows-64bits-Release]
+    uses: ./.github/workflows/build-doc.yml
+    secrets: inherit
+    with:
+      publish: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
 
   #
   # Build chainblocks for macOS
@@ -602,69 +147,14 @@ jobs:
     with:
       build-type: Debug
       runtime-tests: true
+      run-tests: true
   macOS-Release:
     uses: ./.github/workflows/build-macos.yml
     secrets: inherit
     with:
       build-type: Release
       runtime-tests: true
-
-  #
-  # Test chainblocks on macOS
-  #
-  macOS-test:
-    needs: [macOS-Debug, macOS-Release]
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: ["Debug", "Release"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-macos ${{ matrix.build-type }}
-          path: build
-      - name: Get sample files
-        run: |
-          mkdir external && cd external
-          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
-      - name: Test
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd build
-          chmod +x cbl
-          ./cbl ../src/tests/general.edn
-          ./cbl ../src/tests/variables.clj
-          ./cbl ../src/tests/subchains.clj
-          ./cbl ../src/tests/linalg.clj
-          ./cbl ../src/tests/loader.clj
-          ./cbl ../src/tests/network.clj
-          ./cbl ../src/tests/struct.clj
-          ./cbl ../src/tests/flows.clj
-          ./cbl ../src/tests/kdtree.clj
-          ./cbl ../src/tests/channels.clj
-          ./cbl ../src/tests/imaging.clj
-          ./cbl ../src/tests/http.clj
-          ./cbl ../src/tests/ws.clj
-          ./cbl ../src/tests/bigint.clj
-          ./cbl ../src/tests/brotli.clj
-          ./cbl ../src/tests/snappy.clj
-          ./cbl ../src/tests/wasm.clj
-          ./cbl ../src/tests/infos.clj
-          ./cbl ../src/tests/rust.clj
-          ./cbl ../src/tests/crypto.edn
-          ./cbl ../src/tests/chain-macro.edn
-          ./cbl ../src/tests/branch.edn
-          ./cbl ../src/tests/audio.edn
-          ./cbl ../src/tests/time.edn
-          ./cbl ../src/tests/eth.edn
+      run-tests: true
 
   #
   # Build chainblocks for iOS

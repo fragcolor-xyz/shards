@@ -2,6 +2,12 @@ name: Documentation
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the doc website?
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   #
@@ -13,178 +19,19 @@ jobs:
     with:
       bitness: 64bits
       build-type: Debug
-      runtime-tests: false
   Windows-64bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
       bitness: 64bits
       build-type: Release
-      runtime-tests: false
 
   #
-  # Run blocks documentation samples
+  # Build the documentation
   #
-  docs-samples:
-    needs: Windows-64bits-Release
-    runs-on: windows-2019
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Download cbl
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-win64 Release
-          path: docs/samples
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          path-type: inherit
-      - name: Run samples
-        shell: msys2 {0}
-        run: |
-          cd docs/samples
-          for i in $(find blocks -name '*.edn');
-          do
-            echo "Running sample $i";
-            ./cbl.exe run_sample.edn --file "$i" > >(tee "$i.log");
-          done
-      - name: Upload samples logs
-        uses: actions/upload-artifact@v2
-        with:
-          name: samples-logs
-          path: docs/samples/**/*.log
-          if-no-files-found: error
-
-  #
-  # Generate blocks documentation (markdown)
-  #
-  docs-markdown:
-    needs: Windows-64bits-Debug
-    runs-on: windows-2019
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Download cbl
-        uses: actions/download-artifact@v2
-        with:
-          name: cbl-win64 Debug
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          path-type: inherit
-          install: >-
-            mingw-w64-x86_64-boost
-      - name: Generate markdown
-        shell: msys2 {0}
-        run: ./cbl.exe src/tests/infos_docs.edn
-      - name: Upload markdown
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs-markdown
-          path: |
-            docs/docs/blocks/**/*.md
-            !docs/docs/blocks/index.md
-          if-no-files-found: error
-
-  #
-  # Build documentation website
-  #
-  docs-website-build:
-    needs: [docs-markdown, docs-samples]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Set up python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.x
-      - name: Install mkdocs
-        run: |
-          pip install mkdocs-material
-          pip install mkdocs-awesome-pages-plugin
-          pip install mkdocs-macros-plugin
-      - name: Download markdown
-        uses: actions/download-artifact@v2
-        with:
-          name: docs-markdown
-          path: docs/docs/blocks
-      - name: Download samples logs
-        uses: actions/download-artifact@v2
-        with:
-          name: samples-logs
-          path: docs/samples
-      - name: Build website
-        run: |
-          cd docs
-          mkdocs build
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: docs-website
-          path: |
-            docs/site/
-          if-no-files-found: error
-
-  #
-  # Publish documentation website to IPFS
-  #
-  docs-website-publish:
-    needs: docs-website-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up node
-        uses: actions/setup-node@v2
-        with:
-          node-version: "14"
-      - name: Install ipfs-car
-        run: |
-          npm install ipfs-car@0.6.1
-          npm install --save blockstore-core@1.0.2
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: docs-website
-          path: docs/site
-      - name: Publish to NFT storage
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          command: |
-            ./node_modules/.bin/ipfs-car --pack docs/site --output chainblocks-docs.car
-            curl -X POST https://api.nft.storage/upload \
-                --data-binary @chainblocks-docs.car \
-                -H "Authorization: Bearer ${{ secrets.NFT_STORAGE_KEY }}" \
-                -H "Content-Type: application/car" \
-                > response.json
-            cat response.json
-            if [ $(cat response.json | jq .ok) != "true" ]; then exit 1; fi
-      - name: Set IPFS CID
-        id: set_ipfs_cid
-        run: |
-          echo "::set-output name=ipfs_cid::$(cat response.json | jq .value.cid)"
-      - name: Sync Cloudflare
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          command: |
-            curl -X PUT "https://api.cloudflare.com/client/v4/zones/440ac84707c532c2e51fcb56dfccef22/dns_records/78646b6202c9ef585ff7dbe5670aaa7e" \
-                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_DNS_EDIT_API }}" \
-                -H "Content-Type: application/json" \
-                -d "{ \"type\": \"TXT\", \"name\": \"_dnslink.docs.fragcolor.xyz\", \"content\": \"dnslink=/ipfs/${{ steps.set_ipfs_cid.outputs.ipfs_cid }}/site\", \"ttl\": 1 }" \
-                > response.json
-            cat response.json
-            if [ $(cat response.json | jq .success) != "true" ]; then exit 1; fi
+  docs:
+    needs: [Windows-64bits-Debug, Windows-64bits-Release]
+    uses: ./.github/workflows/build-doc.yml
+    secrets: inherit
+    with:
+      publish: ${{ github.event.inputs.publish == 'true' }}

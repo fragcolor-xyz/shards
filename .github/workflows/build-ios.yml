@@ -24,6 +24,7 @@ jobs:
           rustup toolchain install nightly
           rustup +nightly target add aarch64-apple-ios
           rustup +nightly target add x86_64-apple-ios
+          rustup default nightly
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
       - name: Build device
