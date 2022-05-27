@@ -1,0 +1,5 @@
+"hello" (String.ToUpper) (Is "HELLO")
+(Assert.Is true :Abort true)
+
+2 (Math.Add 3) (Is 5)
+(Assert.Is true :Abort true)
