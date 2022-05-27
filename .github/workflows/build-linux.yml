@@ -181,6 +181,17 @@ jobs:
         run: |
           cd build
           ./cbl ../src/tests/blocks.clj
+      - name: Test samples (doc)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd docs/samples
+          for i in $(find blocks -name '*.edn');
+          do
+            echo "Running sample $i";
+            ../../build/cbl run_sample.edn --file "$i";
+          done
       - name: Test Headless (gfx_window)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
