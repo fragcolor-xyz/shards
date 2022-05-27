@@ -1,0 +1,5 @@
+"a" (IsLess "z")
+(Assert.Is true :Abort true)
+
+2 (IsLess 5)
+(Assert.Is true :Abort true)
