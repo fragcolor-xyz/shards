@@ -77,7 +77,7 @@ When adding rust targets, ensure they're installed for nightly toolchain. For ex
 
 You should update your system packages frequently and preferably every time you want to build the project.
 
-On Windows you'll need to run these commands in a MingW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MingW' and click the version appropriate for your machine (x86 or x64).
+On Windows you'll need to run these commands in a MinGW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MinGW' and click the version appropriate for your machine (x86 or x64).
 
 Update the Rust packages with `rustup` (works with Windows, Mac, and Linux).
 
@@ -115,7 +115,7 @@ Sync, refresh, and update all local packages that have a newer version available
     .
     ```
 
-Restart the MingW terminal (if needed) and install the required build dependencies with this command (replace the `w64-x86_64` as appropriate for your target OS/machine).
+Restart the MinGW terminal (if needed) and install the required build dependencies with this command (replace the `w64-x86_64` as appropriate for your target OS/machine).
 
 === "Command"
 
@@ -144,7 +144,7 @@ Restart the MingW terminal (if needed) and install the required build dependenci
 
 ### Bootstrap the project
 
-Continuing with the MingW terminal, navigate to Chainblocks root directory, and run the `bootstrap` shell script (to be run only once, when you build the project for the first time).
+Continuing with the MinGW terminal, navigate to Chainblocks root directory, and run the `bootstrap` shell script (to be run only once, when you build the project for the first time).
 
 === "Windows"
 
