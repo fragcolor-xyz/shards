@@ -303,7 +303,8 @@ struct Wait : public ChainBase {
       CBLOG_WARNING("Wait's chain is void");
       return input;
     } else {
-      while (isRunning(chain.get())) {
+      // Make sure to actually wait only if the chain is running on another context.
+      while (chain->context != context && isRunning(chain.get())) {
         CB_SUSPEND(context, 0);
       }
 
@@ -630,7 +631,7 @@ struct Recur : public ChainBase {
 };
 
 struct BaseRunner : public ChainBase {
-  // Only chain runners should expose varaibles to the context
+  // Only chain runners should expose variables to the context
   CBExposedTypesInfo exposedVariables() {
     // Only inline mode ensures that variables will be really avail
     // step and detach will run at different timing
@@ -725,15 +726,59 @@ template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE> struct RunChain : pub
     return Var::Empty;
   }
 
+  CBTypeInfo compose(const CBInstanceData &data) {
+    auto res = BaseRunner::compose(data);
+    if (!chain) {
+      OVERRIDE_ACTIVATE(data, activateNil);
+    } else if (chain->looped && CHAIN_MODE == RunChainMode::Inline) {
+      OVERRIDE_ACTIVATE(data, activateLoop);
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
+    }
+    return res;
+  }
+
   void warmup(CBContext *context) {
     ChainBase::warmup(context);
     doWarmup(context);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (unlikely(!chain))
-      return input;
+  CBVar activateNil(CBContext *, const CBVar &input) { return input; }
 
+  CBVar activateLoop(CBContext *context, const CBVar &input) {
+    auto inputCopy = input;
+  run_chain_loop:
+    auto runRes = runSubChain(chain.get(), context, inputCopy);
+    if (unlikely(runRes.state == Failed)) {
+      // meaning there was an exception while
+      // running the sub chain, stop the parent too
+      context->stopFlow(runRes.output);
+      return runRes.output;
+    } else {
+      if (runRes.state == Restarted) {
+        inputCopy = context->getFlowStorage();
+        context->continueFlow();
+        CB_SUSPEND(context, 0.0);
+        goto run_chain_loop;
+      } else if (context->shouldContinue()) {
+        CB_SUSPEND(context, 0.0);
+        goto run_chain_loop;
+      } else {
+        // we don't want to propagate a (Return)
+        if (unlikely(runRes.state == Stopped)) {
+          context->continueFlow();
+        }
+
+        if constexpr (INPUT_PASSTHROUGH) {
+          return input;
+        } else {
+          return runRes.output;
+        }
+      }
+    }
+  }
+
+  CBVar activate(CBContext *context, const CBVar &input) {
     if constexpr (CHAIN_MODE == RunChainMode::Detached) {
       activateDetached(context, input);
       return input;
@@ -753,6 +798,11 @@ template <bool INPUT_PASSTHROUGH, RunChainMode CHAIN_MODE> struct RunChain : pub
         context->stopFlow(runRes.output);
         return runRes.output;
       } else {
+        // we don't want to propagate a (Return)
+        if (unlikely(runRes.state == Stopped)) {
+          context->continueFlow();
+        }
+
         if constexpr (INPUT_PASSTHROUGH) {
           return input;
         } else {

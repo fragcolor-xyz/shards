@@ -273,6 +273,17 @@
   (Log)
   (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
 
-
 (schedule Root hashed)
+(run Root)
+
+(defloop chain-loop-inline
+  (Setup 0 >= .count)
+  (Math.Inc .count)
+  .count (Log) (When (IsMore 10) (-> (Return))))
+
+(defchain chain-loop-inline-parent
+  (Dispatch chain-loop-inline)
+  (Msg "Ok done looping..."))
+
+(schedule Root chain-loop-inline-parent)
 (run Root)
