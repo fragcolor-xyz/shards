@@ -15,6 +15,14 @@ One can think of it as a comprehensible JSON on steroids that can be evaluated o
 The execution of Chainblocks scripts is meant to be fast: the scripting language is just a description of the computational graph.
 The runtime itself is completely detached.
 
+??? note "Running code samples"
+    Many block code samples (like [Take](/General/Take)) do not include the chain/node context they need to run. To run these samples you need to navigate to `../chainblocks/docs/samples/`and use the following command to provide the necessary boilerplate code to these samples.
+
+    ```
+        cd docs/samples
+        ../../build/cbl.exe run_sample.edn --file "<relative-path-of-sample.edn>"
+    ```
+    
 ## Some examples
 
 ### Super simple example
