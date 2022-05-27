@@ -16,8 +16,13 @@ The execution of Chainblocks scripts is meant to be fast: the scripting language
 The runtime itself is completely detached.
 
 ??? note "Running code samples"
-    Many block code samples (like [Take](/General/Take)) do not include the chain/node context they need to run. To run these samples you need to navigate to `../chainblocks/docs/samples/`and use the command `../../build/cbl.exe run_sample.edn --file "<relative-script-path.edn>" > >(tee "<relative-script-path.edn>.log")`. This command provides the required boilerplate code to these samples. Use a Git/ Linux/ WSL shell for this as Windows terminals do not support the `tee` command.
+    Many block code samples (like [Take](/General/Take)) do not include the chain/node context they need to run. To run these samples you need to navigate to `../chainblocks/docs/samples/`and use the following command to provide the necessary boilerplate code to these samples.
 
+    ```
+        cd docs/samples
+        ../../build/cbl.exe run_sample.edn --file "<relative-path-of-sample.edn>"
+    ```
+    
 ## Some examples
 
 ### Super simple example
