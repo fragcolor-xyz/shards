@@ -1,0 +1,5 @@
+"z" (IsMoreEqual "a")
+(Assert.Is true :Abort true)
+
+5 (IsMoreEqual 2)
+(Assert.Is true :Abort true)
