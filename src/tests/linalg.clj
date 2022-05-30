@@ -24,8 +24,8 @@
 (def mat2t [(Float4 1 1 1 1)
             (Float4 2 2 2 2)])
 
-(def Root (Node))
-(schedule Root (Chain "tests"
+(def Root (Mesh))
+(schedule Root (Wire "tests"
   (Float3 1 2 3)
   (Math.Cross (Float3 2 2 2))
   (Log)

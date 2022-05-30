@@ -1,0 +1,10 @@
+;; Multiple matches + nil case at start + passthrough
+true
+(Match
+ :Cases
+ [nil (-> (Msg "Any Match is OK")) ;; nil case matches everything
+  true (-> (Msg "Match found")) ;; unreachable case statement
+  true (-> (Msg "Another match found"))] ;; unreachable case statement
+ :Passthrough
+ true)
+(Log) ;; print Match shard's output => "true"

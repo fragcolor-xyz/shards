@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_EXTRA_DESKTOP_CAPTURE_WIN
-#define CB_EXTRA_DESKTOP_CAPTURE_WIN
+#ifndef SH_EXTRA_DESKTOP_CAPTURE_WIN
+#define SH_EXTRA_DESKTOP_CAPTURE_WIN
 
-#include "chainblocks.h"
+#include "shards.h"
 #include <D3Dcommon.h>
 #include <Windows.h>
 #include <array>
@@ -14,7 +14,7 @@
 #include <dxgi1_2.h>
 #include <iostream>
 
-namespace chainblocks {
+namespace shards {
 struct ScreenInfo {
   IDXGIAdapter *adapter;
   IDXGIOutput *output;
@@ -238,6 +238,6 @@ public:
     }
   }
 };
-}; // namespace chainblocks
+}; // namespace shards
 
-#endif // CB_EXTRA_DESKTOP_CAPTURE_WIN
+#endif // SH_EXTRA_DESKTOP_CAPTURE_WIN

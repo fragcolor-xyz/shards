@@ -1,10 +1,10 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def fitness
-  (Chain
+  (Wire
    "fitness"
    (Math.Subtract 36)
    (ToFloat)
@@ -13,13 +13,13 @@
    (Log "evolution happens here... fitness")))
 
 (def evolveme
-  (Chain
+  (Wire
    "test"
-   (Sequence .best :Types [Type.Float Type.Chain])
+   (Sequence .best :Types [Type.Float Type.Wire])
    (Repeat
     (->
      (Evolve
-      (Chain
+      (Wire
        "evolveme"
        (Mutant (Const 10) [0])
        (Pause)
@@ -44,10 +44,10 @@
 (def fitness nil)
 (prn "Done 1")
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def fitness
-  (Chain
+  (Wire
    "fitness"
    (Math.Subtract 36)
    (ToFloat)
@@ -56,7 +56,7 @@
    (Log "evolution happens here... fitness")))
 
 (def state1
-  (Chain
+  (Wire
    "s1"
    (Msg "into state 1")
    (Start "s2")
@@ -64,26 +64,26 @@
    (Resume "stepped")))
 
 (def state2
-  (Chain
+  (Wire
    "s2"
    (Msg "into state 2")
    (Resume "s1")))
 
 (def evolveme
-  (Chain
+  (Wire
    "test"
-   (Sequence .best :Types [Type.Float Type.Chain])
+   (Sequence .best :Types [Type.Float Type.Wire])
    (Repeat
     (->
      (Evolve
-      (Chain
+      (Wire
        "evolveme"
        :Looped
        (Once (-> 0 >== .niters)) ;; global on purpose for testing
        (Math.Inc .niters)
        .niters
        (When (IsMore 10) (Stop))
-       (Step (Chain "stepped" (Start state1)))
+       (Step (Wire "stepped" (Start state1)))
        (Mutant (Const 10) [0])
        (Mutant (Math.Multiply 2) [0] [(->
                                        (RandomInt 10)
@@ -97,10 +97,10 @@
     4)
    .best
    (Log)
-   (Take 1) (ExpectChain) >= .bestChain
-   (ChainRunner .bestChain :Mode RunChainMode.Detached)
+   (Take 1) (ExpectWire) >= .bestWire
+   (WireRunner .bestWire :Mode RunWireMode.Detached)
    (Msg "Waiting...")
-   (Wait .bestChain)
+   (Wait .bestWire)
    (Msg "Exiting...")
    ))
 
@@ -111,10 +111,10 @@
 (def fitness nil)
 (prn "Done 2")
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def fitness
-  (Chain
+  (Wire
    "fitness"
    (Math.Subtract 36)
    (ToFloat)
@@ -123,7 +123,7 @@
    (Log "evolution happens here... fitness")))
 
 (def evolveme
-  (Chain
+  (Wire
    "test"
    :Looped
    (Once (-> 0 >= .ntimes))
@@ -133,7 +133,7 @@
                      (Msg "STOP OK!")
                      (Stop)))
    (Evolve
-    (Chain
+    (Wire
      "evolveme"
      (Mutant (Const 10) [0])
      (Pause)

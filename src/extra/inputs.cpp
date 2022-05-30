@@ -2,29 +2,29 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 #include "SDL.h"
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "gfx.hpp"
 #include <gfx/window.hpp>
 
 using namespace linalg::aliases;
 
-namespace chainblocks {
+namespace shards {
 namespace Inputs {
 struct Base : public gfx::BaseConsumer {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 };
 
 struct MousePixelPos : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     // no base call.. Await should be fine here
     return CoreInfo::Int2Type;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     int32_t mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
     return Var(mouseX, mouseY);
@@ -34,19 +34,19 @@ struct MousePixelPos : public Base {
 };
 
 struct MouseDelta : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::Float2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
 
-  void warmup(CBContext *context) { baseConsumerWarmup(context); }
+  void warmup(SHContext *context) { baseConsumerWarmup(context); }
 
   void cleanup() { baseConsumerCleanup(); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
 
     for (auto &event : getMainWindowGlobals().events) {
@@ -63,19 +63,19 @@ struct MousePos : public Base {
   int _width;
   int _height;
 
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::Float2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
 
-  void warmup(CBContext *context) { baseConsumerWarmup(context); }
+  void warmup(SHContext *context) { baseConsumerWarmup(context); }
 
   void cleanup() { baseConsumerCleanup(); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
 
     int32_t mouseX, mouseY;
@@ -86,19 +86,19 @@ struct MousePos : public Base {
 };
 
 struct WindowSize : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
 
-  void warmup(CBContext *context) { baseConsumerWarmup(context); }
+  void warmup(SHContext *context) { baseConsumerWarmup(context); }
 
   void cleanup() { baseConsumerCleanup(); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
     return Var(windowSize.x, windowSize.y);
   }
@@ -114,13 +114,13 @@ struct Mouse : public Base {
   SDL_Window *_capturedWindow{};
 
   static inline Parameters params{
-      {"Hidden", CBCCSTR("If the cursor should be hidden."), {CoreInfo::BoolType}},
-      {"Capture", CBCCSTR("If the mouse should be confined to the application window."), {CoreInfo::BoolType}},
-      {"Relative", CBCCSTR("If the mouse should only report relative movements."), {CoreInfo::BoolType}}};
+      {"Hidden", SHCCSTR("If the cursor should be hidden."), {CoreInfo::BoolType}},
+      {"Capture", SHCCSTR("If the mouse should be confined to the application window."), {CoreInfo::BoolType}},
+      {"Relative", SHCCSTR("If the mouse should only report relative movements."), {CoreInfo::BoolType}}};
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _hidden = value;
@@ -136,7 +136,7 @@ struct Mouse : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _hidden;
@@ -149,12 +149,12 @@ struct Mouse : public Base {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     composeCheckMainThread(data);
     return data.inputType;
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _hidden.warmup(context);
     _captured.warmup(context);
     _relative.warmup(context);
@@ -194,7 +194,7 @@ struct Mouse : public Base {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     setHidden(_hidden.get().payload.boolValue);
     setCaptured(_captured.get().payload.boolValue);
     setRelative(_relative.get().payload.boolValue);
@@ -205,19 +205,19 @@ struct Mouse : public Base {
 
 template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   static inline Parameters params{
-      {"Left", CBCCSTR("The action to perform when the left mouse button is pressed down."), {CoreInfo::BlocksOrNone}},
+      {"Left", SHCCSTR("The action to perform when the left mouse button is pressed down."), {CoreInfo::ShardsOrNone}},
       {"Right",
-       CBCCSTR("The action to perform when the right mouse button is pressed "
+       SHCCSTR("The action to perform when the right mouse button is pressed "
                "down."),
-       {CoreInfo::BlocksOrNone}},
+       {CoreInfo::ShardsOrNone}},
       {"Middle",
-       CBCCSTR("The action to perform when the middle mouse button is pressed "
+       SHCCSTR("The action to perform when the middle mouse button is pressed "
                "down."),
-       {CoreInfo::BlocksOrNone}}};
+       {CoreInfo::ShardsOrNone}}};
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _leftButton = value;
@@ -233,7 +233,7 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _leftButton;
@@ -246,11 +246,11 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
     }
   }
 
-  BlocksVar _leftButton{};
-  BlocksVar _rightButton{};
-  BlocksVar _middleButton{};
+  ShardsVar _leftButton{};
+  ShardsVar _rightButton{};
+  ShardsVar _middleButton{};
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     composeCheckMainThread(data);
 
     _leftButton.compose(data);
@@ -267,17 +267,17 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
     baseConsumerCleanup();
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _leftButton.warmup(context);
     _rightButton.warmup(context);
     _middleButton.warmup(context);
     baseConsumerWarmup(context);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     for (auto &event : getMainWindowGlobals().events) {
       if (event.type == EVENT_TYPE) {
-        CBVar output{};
+        SHVar output{};
         if (event.button.button == SDL_BUTTON_LEFT) {
           _leftButton.activate(context, input, output);
         } else if (event.button.button == SDL_BUTTON_RIGHT) {
@@ -295,9 +295,9 @@ using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
 using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
 
 template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -308,7 +308,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
       _keyCode = keyStringToKeyCode(_key);
     } break;
     case 1:
-      _blocks = value;
+      _shards = value;
       break;
     case 2:
       _repeat = value.payload.boolValue;
@@ -318,12 +318,12 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_key);
     case 1:
-      return _blocks;
+      return _shards;
     case 2:
       return Var(_repeat);
     default:
@@ -332,29 +332,29 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   }
 
   void cleanup() {
-    _blocks.cleanup();
+    _shards.cleanup();
     baseConsumerCleanup();
   }
 
-  void warmup(CBContext *context) {
-    _blocks.warmup(context);
+  void warmup(SHContext *context) {
+    _shards.warmup(context);
     baseConsumerWarmup(context);
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     composeCheckMainThread(data);
 
-    _blocks.compose(data);
+    _shards.compose(data);
 
     return data.inputType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     for (auto &event : getMainWindowGlobals().events) {
       if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
         if (_repeat || event.key.repeat == 0) {
-          CBVar output{};
-          _blocks.activate(context, input, output);
+          SHVar output{};
+          _shards.activate(context, input, output);
         }
       }
     }
@@ -381,12 +381,12 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Key", CBCCSTR("TODO!"), {{CoreInfo::StringType}}},
-      {"Action", CBCCSTR("TODO!"), {CoreInfo::BlocksOrNone}},
-      {"Repeat", CBCCSTR("TODO!"), {{CoreInfo::BoolType}}},
+      {"Key", SHCCSTR("TODO!"), {{CoreInfo::StringType}}},
+      {"Action", SHCCSTR("TODO!"), {CoreInfo::ShardsOrNone}},
+      {"Repeat", SHCCSTR("TODO!"), {{CoreInfo::BoolType}}},
   };
 
-  BlocksVar _blocks{};
+  ShardsVar _shards{};
   std::string _key;
   SDL_Keycode _keyCode;
   bool _repeat{false};
@@ -448,16 +448,16 @@ private:
 using KeyUp = KeyUpDown<SDL_KEYUP>;
 using KeyDown = KeyUpDown<SDL_KEYDOWN>;
 
-void registerBlocks() {
-  REGISTER_CBLOCK("Window.Size", WindowSize);
-  REGISTER_CBLOCK("Inputs.MousePixelPos", MousePixelPos);
-  REGISTER_CBLOCK("Inputs.MousePos", MousePos);
-  REGISTER_CBLOCK("Inputs.MouseDelta", MouseDelta);
-  REGISTER_CBLOCK("Inputs.Mouse", Mouse);
-  REGISTER_CBLOCK("Inputs.MouseUp", MouseUp);
-  REGISTER_CBLOCK("Inputs.MouseDown", MouseDown);
-  REGISTER_CBLOCK("Inputs.KeyUp", KeyUp);
-  REGISTER_CBLOCK("Inputs.KeyDown", KeyDown);
+void registerShards() {
+  REGISTER_SHARD("Window.Size", WindowSize);
+  REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
+  REGISTER_SHARD("Inputs.MousePos", MousePos);
+  REGISTER_SHARD("Inputs.MouseDelta", MouseDelta);
+  REGISTER_SHARD("Inputs.Mouse", Mouse);
+  REGISTER_SHARD("Inputs.MouseUp", MouseUp);
+  REGISTER_SHARD("Inputs.MouseDown", MouseDown);
+  REGISTER_SHARD("Inputs.KeyUp", KeyUp);
+  REGISTER_SHARD("Inputs.KeyDown", KeyDown);
 }
 } // namespace Inputs
-} // namespace chainblocks
+} // namespace shards

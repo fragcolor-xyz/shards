@@ -9,7 +9,7 @@ set(CMAKE_C_FLAGS_TSAN
   CACHE STRING "Flags used by the C compiler during ThreadSanitizer builds."
   FORCE)
 set(CMAKE_CXX_FLAGS_TSAN
-  "-DCB_USE_TSAN -fsanitize=thread -g -O1"
+  "-DSH_USE_TSAN -fsanitize=thread -g -O1"
   CACHE STRING "Flags used by the C++ compiler during ThreadSanitizer builds."
   FORCE)
 

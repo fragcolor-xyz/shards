@@ -1,10 +1,10 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def test
-  (Chain
+  (Wire
    "ws-test"
    (WebSocket.Client "ws1" "echo.websocket.events" :Target "/ws" :Secure false :Port 80)
    (Pause 2.0)

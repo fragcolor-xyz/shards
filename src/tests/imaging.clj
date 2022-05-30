@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (schedule
  Root
- (Chain
+ (Wire
   "test"
   (LoadImage "../../assets/simple1.PNG") >= .baseImg
   (StripAlpha)

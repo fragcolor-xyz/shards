@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_UTILITY_HPP
-#define CB_UTILITY_HPP
+#ifndef SH_UTILITY_HPP
+#define SH_UTILITY_HPP
 
-#include "chainblocks.hpp"
+#include "shards.hpp"
 #include <cassert>
 #include <future>
 #include <magic_enum.hpp>
@@ -14,12 +14,12 @@
 #include <string>
 #include <vector>
 
-namespace chainblocks {
-// CBVar strings can have an optional len field populated
-#define CBSTRLEN(_v_) \
+namespace shards {
+// SHVar strings can have an optional len field populated
+#define SHSTRLEN(_v_) \
   (_v_.payload.stringLen > 0 || _v_.payload.stringValue == nullptr ? _v_.payload.stringLen : strlen(_v_.payload.stringValue))
 
-#define CBSTRVIEW(_v_) std::string_view(_v_.payload.stringValue, CBSTRLEN(_v_))
+#define SHSTRVIEW(_v_) std::string_view(_v_.payload.stringValue, SHSTRLEN(_v_))
 
 // compile time CRC32
 constexpr uint32_t crc32(std::string_view str) {
@@ -58,10 +58,10 @@ constexpr uint32_t crc32(std::string_view str) {
 
 template <auto V> struct constant { constexpr static decltype(V) value = V; };
 
-inline CBOptionalString operator"" _optional(const char *s, size_t) { return CBOptionalString{s}; }
+inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 
 // SFINAE tests
-#define CB_HAS_MEMBER_TEST(_name_)                               \
+#define SH_HAS_MEMBER_TEST(_name_)                               \
   template <typename T> class has_##_name_ {                     \
     typedef char one;                                            \
     struct two {                                                 \
@@ -77,9 +77,9 @@ inline CBOptionalString operator"" _optional(const char *s, size_t) { return CBO
 /*
   Lazy initialization of a static variable.
 
-  The idea is that blocks on the same thread share this variable
-  And that as long as there is an instance of a block we don't deallocate
-  anything Once all blocks are gone we cleanup
+  The idea is that shards on the same thread share this variable
+  And that as long as there is an instance of a shard we don't deallocate
+  anything Once all shards are gone we cleanup
 
   To be used WITHOUT static keywords
 */
@@ -220,41 +220,41 @@ private:
   }
 };
 
-template <class CB_CORE> class TParamVar {
+template <class SH_CORE> class TParamVar {
 private:
-  CBVar _v{};
-  CBVar *_cp = nullptr;
+  SHVar _v{};
+  SHVar *_cp = nullptr;
 
 public:
   TParamVar() {}
 
-  explicit TParamVar(CBVar initialValue) { CB_CORE::cloneVar(_v, initialValue); }
+  explicit TParamVar(SHVar initialValue) { SH_CORE::cloneVar(_v, initialValue); }
 
   TParamVar(const TParamVar &other) = delete;
   TParamVar &operator=(const TParamVar &other) = delete;
 
   TParamVar(TParamVar &&other) : _v(other._v), _cp(other._cp) {
     other._cp = nullptr;
-    memset(&other._v, 0, sizeof(CBVar));
+    memset(&other._v, 0, sizeof(SHVar));
   }
 
   TParamVar &operator=(TParamVar &&other) {
     _v = other._v;
     _cp = other._cp;
     other._cp = nullptr;
-    memset(&other._v, 0, sizeof(CBVar));
+    memset(&other._v, 0, sizeof(SHVar));
   }
 
   ~TParamVar() {
     cleanup();
-    CB_CORE::destroyVar(_v);
+    SH_CORE::destroyVar(_v);
   }
 
-  void warmup(CBContext *ctx) {
+  void warmup(SHContext *ctx) {
     assert(!_cp);
     if (_v.valueType == ContextVar) {
       assert(!_cp);
-      _cp = CB_CORE::referenceVariable(ctx, _v.payload.stringValue);
+      _cp = SH_CORE::referenceVariable(ctx, _v.payload.stringValue);
     } else {
       _cp = &_v;
     }
@@ -263,21 +263,21 @@ public:
 
   void cleanup() {
     if (_v.valueType == ContextVar) {
-      CB_CORE::releaseVariable(_cp);
+      SH_CORE::releaseVariable(_cp);
     }
     _cp = nullptr;
   }
 
-  CBVar &operator=(const CBVar &value) {
+  SHVar &operator=(const SHVar &value) {
     cleanup();
-    CB_CORE::cloneVar(_v, value);
+    SH_CORE::cloneVar(_v, value);
     return _v;
   }
 
-  operator CBVar() const { return _v; }
-  const CBVar *operator->() const { return &_v; }
+  operator SHVar() const { return _v; }
+  const SHVar *operator->() const { return &_v; }
 
-  CBVar &get() {
+  SHVar &get() {
     assert(_cp);
     return *_cp;
   }
@@ -292,7 +292,7 @@ public:
   }
 };
 
-template <class CB_CORE, typename E, bool isFlag = false> class TEnumInfo {
+template <class SH_CORE, typename E, bool isFlag = false> class TEnumInfo {
 private:
   static constexpr auto enum_names() {
     if constexpr (isFlag) {
@@ -310,10 +310,10 @@ private:
   }
   static constexpr auto eseq = enum_names();
   static constexpr auto vseq = enum_values();
-  CBEnumInfo info;
+  SHEnumInfo info;
   std::vector<std::string> labels;
-  std::vector<CBString> clabels;
-  std::vector<CBEnum> values;
+  std::vector<SHString> clabels;
+  std::vector<SHEnum> values;
 
 public:
   TEnumInfo(const char *name, int32_t vendorId, int32_t enumId) {
@@ -328,21 +328,21 @@ public:
     info.labels.len = uint32_t(labels.size());
 
     for (auto &v : vseq) {
-      values.emplace_back(CBEnum(v));
+      values.emplace_back(SHEnum(v));
     }
     info.values.elements = &values[0];
     info.values.len = uint32_t(values.size());
 
     assert(info.values.len == info.labels.len);
-    CB_CORE::registerEnumType(vendorId, enumId, info);
+    SH_CORE::registerEnumType(vendorId, enumId, info);
   }
 };
 
-template <class CB_CORE, typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
+template <class SH_CORE, typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
           E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr>
 class TObjectVar {
 private:
-  CBObjectInfo info;
+  SHObjectInfo info;
   int32_t vendorId;
   int32_t typeId;
 
@@ -355,11 +355,11 @@ public:
   TObjectVar(const char *name, int32_t vendorId, int32_t typeId) : vendorId(vendorId), typeId(typeId) {
     info = {};
     info.name = name;
-    info.reference = [](CBPointer ptr) {
+    info.reference = [](SHPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
       p->refcount++;
     };
-    info.release = [](CBPointer ptr) {
+    info.release = [](SHPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
       p->refcount--;
       if (p->refcount == 0) {
@@ -367,7 +367,7 @@ public:
       }
     };
     if constexpr (Serializer != nullptr && Deserializer != nullptr) {
-      info.serialize = [](CBPointer obj, uint8_t **outData, size_t *outLen, CBPointer *customHandle) {
+      info.serialize = [](SHPointer obj, uint8_t **outData, size_t *outLen, SHPointer *customHandle) {
         auto tobj = reinterpret_cast<E *>(obj);
         auto holder = new std::vector<uint8_t>();
         *holder = Serializer(*tobj);
@@ -376,7 +376,7 @@ public:
         *outLen = holder->size();
         return true;
       };
-      info.free = [](CBPointer handle) {
+      info.free = [](SHPointer handle) {
         auto holder = reinterpret_cast<std::vector<uint8_t> *>(handle);
         delete holder;
       };
@@ -384,15 +384,15 @@ public:
         auto r = new ObjectRef();
         r->shared = Deserializer(std::string_view((char *)data, len));
         // don't bump ref count, deserializer is supposed to do that
-        return (CBPointer)r;
+        return (SHPointer)r;
       };
     }
-    CB_CORE::registerObjectType(vendorId, typeId, info);
+    SH_CORE::registerObjectType(vendorId, typeId, info);
   }
 
-  // the following methods are generally used by the block
+  // the following methods are generally used by the shard
   // that creates the object, that's it.
-  // other blocks use regular referenceVariable etc.
+  // other shards use regular referenceVariable etc.
 
   E *New() {
     auto r = new ObjectRef();
@@ -411,210 +411,210 @@ public:
     }
   }
 
-  CBVar Get(E *obj) {
-    CBVar res;
-    res.valueType = CBType::Object;
+  SHVar Get(E *obj) {
+    SHVar res;
+    res.valueType = SHType::Object;
     res.payload.objectValue = obj;
     res.payload.objectVendorId = vendorId;
     res.payload.objectTypeId = typeId;
-    res.flags = CBVAR_FLAGS_USES_OBJINFO;
+    res.flags = SHVAR_FLAGS_USES_OBJINFO;
     res.objectInfo = &info;
     return res;
   }
 };
 
-template <class CB_CORE> class TBlocksVar {
+template <class SH_CORE> class TShardsVar {
 private:
-  CBVar _blocksParam{};                // param cache
-  CBlocks _blocks{};                   // var wrapper we pass to validate and activate
-  std::vector<CBlockPtr> _blocksArray; // blocks actual storage
-  CBComposeResult _chainValidation{};
+  SHVar _shardsParam{};                // param cache
+  Shards _shards{};                   // var wrapper we pass to validate and activate
+  std::vector<ShardPtr> _shardsArray; // shards actual storage
+  SHComposeResult _wireValidation{};
 
   void destroy() {
-    for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
+    for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
       blk->cleanup(blk);
       blk->destroy(blk);
     }
-    _blocksArray.clear();
+    _shardsArray.clear();
   }
 
 public:
-  ~TBlocksVar() {
+  ~TShardsVar() {
     destroy();
-    CB_CORE::destroyVar(_blocksParam);
-    CB_CORE::expTypesFree(_chainValidation.exposedInfo);
-    CB_CORE::expTypesFree(_chainValidation.requiredInfo);
+    SH_CORE::destroyVar(_shardsParam);
+    SH_CORE::expTypesFree(_wireValidation.exposedInfo);
+    SH_CORE::expTypesFree(_wireValidation.requiredInfo);
   }
 
   void cleanup() {
-    for (auto it = _blocksArray.rbegin(); it != _blocksArray.rend(); ++it) {
+    for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
       try {
         blk->cleanup(blk);
       } catch (const std::exception &e) {
-        std::string msg = "Block cleanup error, failed block: " + std::string(blk->name(blk)) + ", error: " + e.what();
-        CB_CORE::log(msg.c_str());
+        std::string msg = "Shard cleanup error, failed shard: " + std::string(blk->name(blk)) + ", error: " + e.what();
+        SH_CORE::log(msg.c_str());
       } catch (...) {
-        std::string msg = "Block cleanup generic error, failed block: " + std::string(blk->name(blk));
-        CB_CORE::log(msg.c_str());
+        std::string msg = "Shard cleanup generic error, failed shard: " + std::string(blk->name(blk));
+        SH_CORE::log(msg.c_str());
       }
     }
   }
 
-  void warmup(CBContext *context) {
-    for (auto &blk : _blocksArray) {
+  void warmup(SHContext *context) {
+    for (auto &blk : _shardsArray) {
       if (blk->warmup)
         blk->warmup(blk, context);
     }
   }
 
-  CBVar &operator=(const CBVar &value) {
-    cbassert(value.valueType == None || value.valueType == Block || value.valueType == Seq);
+  SHVar &operator=(const SHVar &value) {
+    shassert(value.valueType == None || value.valueType == ShardRef || value.valueType == Seq);
 
-    CB_CORE::cloneVar(_blocksParam, value);
+    SH_CORE::cloneVar(_shardsParam, value);
 
     destroy();
-    if (_blocksParam.valueType == Block) {
-      assert(!_blocksParam.payload.blockValue->owned);
-      _blocksParam.payload.blockValue->owned = true;
-      _blocksArray.push_back(_blocksParam.payload.blockValue);
+    if (_shardsParam.valueType == ShardRef) {
+      assert(!_shardsParam.payload.shardValue->owned);
+      _shardsParam.payload.shardValue->owned = true;
+      _shardsArray.push_back(_shardsParam.payload.shardValue);
     } else {
-      for (uint32_t i = 0; i < _blocksParam.payload.seqValue.len; i++) {
-        auto blk = _blocksParam.payload.seqValue.elements[i].payload.blockValue;
+      for (uint32_t i = 0; i < _shardsParam.payload.seqValue.len; i++) {
+        auto blk = _shardsParam.payload.seqValue.elements[i].payload.shardValue;
         assert(!blk->owned);
         blk->owned = true;
-        _blocksArray.push_back(blk);
+        _shardsArray.push_back(blk);
       }
     }
 
     // We want to avoid copies in hot paths
     // So we write here the var we pass to CORE
-    const auto nblocks = _blocksArray.size();
-    _blocks.elements = nblocks > 0 ? &_blocksArray[0] : nullptr;
-    _blocks.len = uint32_t(nblocks);
+    const auto nshards = _shardsArray.size();
+    _shards.elements = nshards > 0 ? &_shardsArray[0] : nullptr;
+    _shards.len = uint32_t(nshards);
 
-    return _blocksParam;
+    return _shardsParam;
   }
 
-  operator CBVar() const { return _blocksParam; }
+  operator SHVar() const { return _shardsParam; }
 
-  CBComposeResult compose(const CBInstanceData &data) {
+  SHComposeResult compose(const SHInstanceData &data) {
     // Free any previous result!
-    CB_CORE::expTypesFree(_chainValidation.exposedInfo);
-    CB_CORE::expTypesFree(_chainValidation.requiredInfo);
+    SH_CORE::expTypesFree(_wireValidation.exposedInfo);
+    SH_CORE::expTypesFree(_wireValidation.requiredInfo);
 
-    _chainValidation = CB_CORE::composeBlocks(
-        _blocks,
-        [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
+    _wireValidation = SH_CORE::composeShards(
+        _shards,
+        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
-            auto msg = "Error during inner chain validation: " + std::string(errorTxt);
-            CB_CORE::log(msg.c_str());
-            throw chainblocks::ComposeError("Failed inner chain validation.");
+            auto msg = "Error during inner wire validation: " + std::string(errorTxt);
+            SH_CORE::log(msg.c_str());
+            throw shards::ComposeError("Failed inner wire validation.");
           } else {
-            auto msg = "Warning during inner chain validation: " + std::string(errorTxt);
-            CB_CORE::log(msg.c_str());
+            auto msg = "Warning during inner wire validation: " + std::string(errorTxt);
+            SH_CORE::log(msg.c_str());
           }
         },
         this, data);
-    return _chainValidation;
+    return _wireValidation;
   }
 
-  template <bool CALLER_HANDLES_RETURN = false> CBChainState activate(CBContext *context, const CBVar &input, CBVar &output) {
+  template <bool CALLER_HANDLES_RETURN = false> SHWireState activate(SHContext *context, const SHVar &input, SHVar &output) {
     if constexpr (CALLER_HANDLES_RETURN)
-      return CB_CORE::runBlocks2(_blocks, context, input, output);
+      return SH_CORE::runShards2(_shards, context, input, output);
     else
-      return CB_CORE::runBlocks(_blocks, context, input, output);
+      return SH_CORE::runShards(_shards, context, input, output);
   }
 
   template <bool CALLER_HANDLES_RETURN = false>
-  CBChainState activateHashed(CBContext *context, const CBVar &input, CBVar &output, CBVar &outHash) {
+  SHWireState activateHashed(SHContext *context, const SHVar &input, SHVar &output, SHVar &outHash) {
     if constexpr (CALLER_HANDLES_RETURN)
-      return CB_CORE::runBlocksHashed2(_blocks, context, input, output, outHash);
+      return SH_CORE::runShardsHashed2(_shards, context, input, output, outHash);
     else
-      return CB_CORE::runBlocksHashed(_blocks, context, input, output, outHash);
+      return SH_CORE::runShardsHashed(_shards, context, input, output, outHash);
   }
 
-  operator bool() const { return _blocksArray.size() > 0; }
+  operator bool() const { return _shardsArray.size() > 0; }
 
-  const CBlocks &blocks() const { return _blocks; }
+  const Shards &shards() const { return _shards; }
 };
 
-template <class CB_CORE> struct TOwnedVar : public CBVar {
-  TOwnedVar() : CBVar() {}
-  TOwnedVar(TOwnedVar &&source) : CBVar() { *this = source; }
-  TOwnedVar(const TOwnedVar &source) : CBVar() { CB_CORE::cloneVar(*this, source); }
-  TOwnedVar(const CBVar &source) : CBVar() { CB_CORE::cloneVar(*this, source); }
-  TOwnedVar &operator=(const CBVar &other) {
-    CB_CORE::cloneVar(*this, other);
+template <class SH_CORE> struct TOwnedVar : public SHVar {
+  TOwnedVar() : SHVar() {}
+  TOwnedVar(TOwnedVar &&source) : SHVar() { *this = source; }
+  TOwnedVar(const TOwnedVar &source) : SHVar() { SH_CORE::cloneVar(*this, source); }
+  TOwnedVar(const SHVar &source) : SHVar() { SH_CORE::cloneVar(*this, source); }
+  TOwnedVar &operator=(const SHVar &other) {
+    SH_CORE::cloneVar(*this, other);
     return *this;
   }
   TOwnedVar &operator=(const TOwnedVar &other) {
-    CB_CORE::cloneVar(*this, other);
+    SH_CORE::cloneVar(*this, other);
     return *this;
   }
   TOwnedVar &operator=(TOwnedVar &&other) {
-    CB_CORE::destroyVar(*this);
+    SH_CORE::destroyVar(*this);
     *this = other;
     return *this;
   }
-  ~TOwnedVar() { CB_CORE::destroyVar(*this); }
+  ~TOwnedVar() { SH_CORE::destroyVar(*this); }
 };
 
 // helper to create structured data tables
 // see XR's GamePadButtonTable for an example
-template <class CB_CORE> struct TTableVar : public CBVar {
-  TTableVar() : CBVar() {
-    valueType = CBType::Table;
-    payload.tableValue = CB_CORE::tableNew();
+template <class SH_CORE> struct TTableVar : public SHVar {
+  TTableVar() : SHVar() {
+    valueType = SHType::Table;
+    payload.tableValue = SH_CORE::tableNew();
   }
 
-  TTableVar(const TTableVar &other) : CBVar() { CB_CORE::cloneVar(*this, other); }
+  TTableVar(const TTableVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
 
   TTableVar &operator=(const TTableVar &other) {
-    CB_CORE::cloneVar(*this, other);
+    SH_CORE::cloneVar(*this, other);
     return *this;
   }
 
-  TTableVar(TTableVar &&other) : CBVar() { std::swap(*this, other); }
+  TTableVar(TTableVar &&other) : SHVar() { std::swap(*this, other); }
 
-  TTableVar(std::initializer_list<std::pair<std::string_view, CBVar>> pairs) : TTableVar() {
+  TTableVar(std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     for (auto &kv : pairs) {
       auto &rdst = (*this)[kv.first];
-      CB_CORE::cloneVar(rdst, kv.second);
+      SH_CORE::cloneVar(rdst, kv.second);
     }
   }
 
-  TTableVar(const TTableVar &others, std::initializer_list<std::pair<std::string_view, CBVar>> pairs) : TTableVar() {
+  TTableVar(const TTableVar &others, std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     const auto &table = others.payload.tableValue;
     ForEach(table, [&](auto &key, auto &val) {
       auto &rdst = (*this)[key];
-      CB_CORE::cloneVar(rdst, val);
+      SH_CORE::cloneVar(rdst, val);
     });
 
     for (auto &kv : pairs) {
       auto &rdst = (*this)[kv.first];
-      CB_CORE::cloneVar(rdst, kv.second);
+      SH_CORE::cloneVar(rdst, kv.second);
     }
   }
 
   TTableVar &operator=(TTableVar &&other) {
     std::swap(*this, other);
-    memset(&other, 0x0, sizeof(CBVar));
+    memset(&other, 0x0, sizeof(SHVar));
     return *this;
   }
 
-  ~TTableVar() { CB_CORE::destroyVar(*this); }
+  ~TTableVar() { SH_CORE::destroyVar(*this); }
 
-  CBVar &operator[](std::string_view key) {
+  SHVar &operator[](std::string_view key) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
     return *vp;
   }
 
   template <typename T> T &get(std::string_view key) {
-    static_assert(sizeof(T) == sizeof(CBVar), "Invalid T size, should be sizeof(CBVar)");
+    static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
-    if (vp->valueType == CBType::None) {
+    if (vp->valueType == SHType::None) {
       // try initialize in this case
       new (vp) T();
     }
@@ -622,47 +622,47 @@ template <class CB_CORE> struct TTableVar : public CBVar {
   }
 };
 
-template <class CB_CORE> struct TSeqVar : public CBVar {
-  TSeqVar() : CBVar() { valueType = CBType::Seq; }
+template <class SH_CORE> struct TSeqVar : public SHVar {
+  TSeqVar() : SHVar() { valueType = SHType::Seq; }
 
-  TSeqVar(const TSeqVar &other) : CBVar() { CB_CORE::cloneVar(*this, other); }
+  TSeqVar(const TSeqVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
 
   TSeqVar &operator=(const TSeqVar &other) {
-    CB_CORE::cloneVar(*this, other);
+    SH_CORE::cloneVar(*this, other);
     return *this;
   }
 
-  TSeqVar(TSeqVar &&other) : CBVar() { std::swap(*this, other); }
+  TSeqVar(TSeqVar &&other) : SHVar() { std::swap(*this, other); }
 
   TSeqVar &operator=(TSeqVar &&other) {
     std::swap(*this, other);
-    memset(&other, 0x0, sizeof(CBVar));
+    memset(&other, 0x0, sizeof(SHVar));
     return *this;
   }
 
-  ~TSeqVar() { CB_CORE::destroyVar(*this); }
+  ~TSeqVar() { SH_CORE::destroyVar(*this); }
 
-  CBVar &operator[](int index) { return payload.seqValue.elements[index]; }
-  const CBVar &operator[](int index) const { return payload.seqValue.elements[index]; }
+  SHVar &operator[](int index) { return payload.seqValue.elements[index]; }
+  const SHVar &operator[](int index) const { return payload.seqValue.elements[index]; }
 
-  CBVar *data() { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
+  SHVar *data() { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
 
   size_t size() const { return payload.seqValue.len; }
 
-  void resize(size_t nsize) { CB_CORE::seqResize(&payload.seqValue, nsize); }
+  void resize(size_t nsize) { SH_CORE::seqResize(&payload.seqValue, nsize); }
 
-  void push_back(const CBVar &value) { CB_CORE::seqPush(&payload.seqValue, &value); }
-  void push_back(CBVar &&value) {
-    CB_CORE::seqPush(&payload.seqValue, &value);
-    value.valueType = CBType::None;
+  void push_back(const SHVar &value) { SH_CORE::seqPush(&payload.seqValue, &value); }
+  void push_back(SHVar &&value) {
+    SH_CORE::seqPush(&payload.seqValue, &value);
+    value.valueType = SHType::None;
   }
 
-  void clear() { CB_CORE::seqResize(payload.seqValue, 0); }
+  void clear() { SH_CORE::seqResize(payload.seqValue, 0); }
 
   template <typename T> T &get(int index) {
-    static_assert(sizeof(T) == sizeof(CBVar), "Invalid T size, should be sizeof(CBVar)");
+    static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
     auto vp = &payload.seqValue.elements[index];
-    if (vp->valueType == CBType::None) {
+    if (vp->valueType == SHType::None) {
       // try initialize in this case
       new (vp) T();
     }
@@ -678,10 +678,10 @@ template <class Function> struct Defer {
 };
 
 #define DEFER_NAME(uniq) _defer##uniq
-#define DEFER_DEF(uniq, body) ::chainblocks::Defer DEFER_NAME(uniq)([&]() { body; })
+#define DEFER_DEF(uniq, body) ::shards::Defer DEFER_NAME(uniq)([&]() { body; })
 #define DEFER(body) DEFER_DEF(__LINE__, body)
 
 template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
-}; // namespace chainblocks
+}; // namespace shards
 
 #endif

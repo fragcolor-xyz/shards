@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode main)
+(defmesh main)
 
 (defloop c1
   .msg1 (Log))

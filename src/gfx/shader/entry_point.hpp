@@ -1,14 +1,14 @@
 #ifndef GFX_SHADER_ENTRY_POINT
 #define GFX_SHADER_ENTRY_POINT
 
-#include "block.hpp"
+#include "shard.hpp"
 #include <gfx/enums.hpp>
 #include <string>
 #include <vector>
 
 namespace gfx {
 namespace shader {
-using BlockPtr = std::unique_ptr<blocks::Block>;
+using ShardPtr = std::unique_ptr<shards::Shard>;
 
 enum class DependencyType { Before, After };
 struct NamedDependency {
@@ -27,14 +27,14 @@ struct NamedDependency {
 struct EntryPoint {
   ProgrammableGraphicsStage stage;
   std::string name;
-  BlockPtr code;
+  ShardPtr code;
   std::vector<NamedDependency> dependencies;
 
   EntryPoint() = default;
   template <typename T>
   EntryPoint(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment,
-             T &&code = BlockPtr())
-      : stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::move(code))) {}
+             T &&code = ShardPtr())
+      : stage(stage), name(name), code(shards::ConvertToShard<T>{}(std::move(code))) {}
 
   EntryPoint(EntryPoint &&other) = default;
   EntryPoint &operator=(EntryPoint &&other) = default;

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_CORE_RUNTIME
-#define CB_CORE_RUNTIME
+#ifndef SH_CORE_RUNTIME
+#define SH_CORE_RUNTIME
 
 // must go first
 #if _WIN32
@@ -14,7 +14,7 @@
 
 #include <string.h> // memset
 
-#include "blocks_macros.hpp"
+#include "shards_macros.hpp"
 #include "foundation.hpp"
 
 #include <chrono>
@@ -25,10 +25,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-using CBClock = std::chrono::high_resolution_clock;
-using CBTime = decltype(CBClock::now());
-using CBDuration = std::chrono::duration<double>;
-using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
+using SHClock = std::chrono::high_resolution_clock;
+using SHTime = decltype(SHClock::now());
+using SHDuration = std::chrono::duration<double>;
+using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 
 // For sleep
 #if _WIN32
@@ -45,27 +45,27 @@ using CBTimeDiff = decltype(CBClock::now() - CBDuration(0.0));
 #include <xxhash.h>
 
 #ifndef CUSTOM_XXH3_kSecret
-// Applications embedding chainblocks can override this and should.
+// Applications embedding shards can override this and should.
 // TODO add our secret
 #define CUSTOM_XXH3_kSecret XXH3_kSecret
 #endif
 
-#define CB_SUSPEND(_ctx_, _secs_)                                  \
-  const auto _suspend_state = chainblocks::suspend(_ctx_, _secs_); \
-  if (_suspend_state != CBChainState::Continue)                    \
-  return chainblocks::Var::Empty
+#define SH_SUSPEND(_ctx_, _secs_)                                  \
+  const auto _suspend_state = shards::suspend(_ctx_, _secs_); \
+  if (_suspend_state != SHWireState::Continue)                    \
+  return shards::Var::Empty
 
-#define CB_STOP() std::rethrow_exception(chainblocks::GetGlobals().StopChainEx);
-#define CB_RESTART() std::rethrow_exception(chainblocks::GetGlobals().RestartChainEx);
+#define SH_STOP() std::rethrow_exception(shards::GetGlobals().StopWireEx);
+#define SH_RESTART() std::rethrow_exception(shards::GetGlobals().RestartWireEx);
 
-struct CBContext {
-  CBContext(
+struct SHContext {
+  SHContext(
 #ifndef __EMSCRIPTEN__
-      CBCoro &&sink,
+      SHCoro &&sink,
 #else
-      CBCoro *coro,
+      SHCoro *coro,
 #endif
-      const CBChain *starter, CBFlow *flow)
+      const SHWire *starter, SHFlow *flow)
       : main(starter), flow(flow),
 #ifndef __EMSCRIPTEN__
         continuation(std::move(sink))
@@ -73,366 +73,366 @@ struct CBContext {
         continuation(coro)
 #endif
   {
-    chainStack.push_back(const_cast<CBChain *>(starter));
+    wireStack.push_back(const_cast<SHWire *>(starter));
   }
 
-  const CBChain *main;
-  CBFlow *flow;
-  std::vector<CBChain *> chainStack;
+  const SHWire *main;
+  SHFlow *flow;
+  std::vector<SHWire *> wireStack;
   bool onCleanup{false};
   bool onLastResume{false};
 
 // Used within the coro& stack! (suspend, etc)
 #ifndef __EMSCRIPTEN__
-  CBCoro &&continuation;
+  SHCoro &&continuation;
 #else
-  CBCoro *continuation{nullptr};
+  SHCoro *continuation{nullptr};
 #endif
-  CBDuration next{};
-#ifdef CB_USE_TSAN
+  SHDuration next{};
+#ifdef SH_USE_TSAN
   void *tsan_handle = nullptr;
 #endif
 
-  CBChain *currentChain() const { return chainStack.back(); }
+  SHWire *currentWire() const { return wireStack.back(); }
 
-  constexpr void stopFlow(const CBVar &lastValue) {
-    state = CBChainState::Stop;
+  constexpr void stopFlow(const SHVar &lastValue) {
+    state = SHWireState::Stop;
     flowStorage = lastValue;
   }
 
-  constexpr void restartFlow(const CBVar &lastValue) {
-    state = CBChainState::Restart;
+  constexpr void restartFlow(const SHVar &lastValue) {
+    state = SHWireState::Restart;
     flowStorage = lastValue;
   }
 
-  constexpr void returnFlow(const CBVar &lastValue) {
-    state = CBChainState::Return;
+  constexpr void returnFlow(const SHVar &lastValue) {
+    state = SHWireState::Return;
     flowStorage = lastValue;
   }
 
   void cancelFlow(std::string_view message) {
-    state = CBChainState::Stop;
+    state = SHWireState::Stop;
     errorMessage = message;
     hasError = true;
   }
 
   void resetCancelFlow() {
-    state = CBChainState::Continue;
+    state = SHWireState::Continue;
     hasError = false;
   }
 
-  constexpr void rebaseFlow() { state = CBChainState::Rebase; }
+  constexpr void rebaseFlow() { state = SHWireState::Rebase; }
 
-  constexpr void continueFlow() { state = CBChainState::Continue; }
+  constexpr void continueFlow() { state = SHWireState::Continue; }
 
-  constexpr bool shouldContinue() const { return state == CBChainState::Continue; }
+  constexpr bool shouldContinue() const { return state == SHWireState::Continue; }
 
-  constexpr bool shouldReturn() const { return state == CBChainState::Return; }
+  constexpr bool shouldReturn() const { return state == SHWireState::Return; }
 
-  constexpr bool shouldStop() const { return state == CBChainState::Stop; }
+  constexpr bool shouldStop() const { return state == SHWireState::Stop; }
 
   constexpr bool failed() const { return hasError; }
 
   constexpr const std::string &getErrorMessage() { return errorMessage; }
 
-  constexpr CBChainState getState() const { return state; }
+  constexpr SHWireState getState() const { return state; }
 
-  constexpr CBVar getFlowStorage() const { return flowStorage; }
+  constexpr SHVar getFlowStorage() const { return flowStorage; }
 
-  void registerNextFrameCallback(const CBlock *block) const { nextFrameBlocks.push_back(block); }
+  void registerNextFrameCallback(const Shard *shard) const { nextFrameShards.push_back(shard); }
 
-  const std::vector<const CBlock *> &nextFrameCallbacks() const { return nextFrameBlocks; }
+  const std::vector<const Shard *> &nextFrameCallbacks() const { return nextFrameShards; }
 
 private:
-  CBChainState state = CBChainState::Continue;
+  SHWireState state = SHWireState::Continue;
   // Used when flow is stopped/restart/return
   // to store the previous result
-  CBVar flowStorage{};
+  SHVar flowStorage{};
   bool hasError{false};
   std::string errorMessage;
-  mutable std::vector<const CBlock *> nextFrameBlocks;
+  mutable std::vector<const Shard *> nextFrameShards;
 };
 
-namespace chainblocks {
-[[nodiscard]] CBComposeResult composeChain(const std::vector<CBlock *> &chain, CBValidationCallback callback, void *userData,
-                                           CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBlocks chain, CBValidationCallback callback, void *userData,
-                                           CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBSeq chain, CBValidationCallback callback, void *userData, CBInstanceData data);
-[[nodiscard]] CBComposeResult composeChain(const CBChain *chain, CBValidationCallback callback, void *userData,
-                                           CBInstanceData data);
+namespace shards {
+[[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
+                                           SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData,
+                                           SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData,
+                                           SHInstanceData data);
 
-bool validateSetParam(CBlock *block, int index, const CBVar &value, CBValidationCallback callback, void *userData);
-} // namespace chainblocks
+bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
+} // namespace shards
 
-#include "blocks/core.hpp"
-#include "blocks/math.hpp"
+#include "shards/core.hpp"
+#include "shards/math.hpp"
 
-namespace chainblocks {
+namespace shards {
 
 void installSignalHandlers();
 
-FLATTEN ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context, const CBVar &input) {
-  switch (blk->inlineBlockId) {
-  case NoopBlock:
+FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
+  switch (blk->inlineShardId) {
+  case NoopShard:
     return input;
   case CoreConst: {
-    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Const> *>(blk);
-    return cblock->block._value;
+    auto shard = reinterpret_cast<shards::ShardWrapper<Const> *>(blk);
+    return shard->shard._value;
   }
   case CoreIs: {
-    auto cblock = reinterpret_cast<chainblocks::IsRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::IsRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreIsNot: {
-    auto cblock = reinterpret_cast<chainblocks::IsNotRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::IsNotRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreAnd: {
-    auto cblock = reinterpret_cast<chainblocks::AndRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::AndRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreOr: {
-    auto cblock = reinterpret_cast<chainblocks::OrRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::OrRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreNot: {
-    auto cblock = reinterpret_cast<chainblocks::NotRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::NotRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreIsMore: {
-    auto cblock = reinterpret_cast<chainblocks::IsMoreRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::IsMoreRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreIsLess: {
-    auto cblock = reinterpret_cast<chainblocks::IsLessRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::IsLessRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreIsMoreEqual: {
-    auto cblock = reinterpret_cast<chainblocks::IsMoreEqualRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::IsMoreEqualRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreIsLessEqual: {
-    auto cblock = reinterpret_cast<chainblocks::IsLessEqualRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::IsLessEqualRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreSleep: {
-    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Pause> *>(blk);
-    return cblock->block.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<Pause> *>(blk);
+    return shard->shard.activate(context, input);
   }
   case CoreInput: {
-    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Input> *>(blk);
-    return cblock->block.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<Input> *>(blk);
+    return shard->shard.activate(context, input);
   }
   case CorePush: {
-    auto cblock = reinterpret_cast<chainblocks::PushRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::PushRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreForRange: {
-    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<ForRangeBlock> *>(blk);
-    return cblock->block.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<ForRangeShard> *>(blk);
+    return shard->shard.activate(context, input);
   }
   case CoreRepeat: {
-    auto cblock = reinterpret_cast<chainblocks::RepeatRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::RepeatRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreOnce: {
-    auto cblock = reinterpret_cast<chainblocks::BlockWrapper<Once> *>(blk);
-    return cblock->block.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<Once> *>(blk);
+    return shard->shard.activate(context, input);
   }
   case CoreGet: {
-    auto cblock = reinterpret_cast<chainblocks::GetRuntime *>(blk);
-    return *cblock->core._cell;
+    auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
+    return *shard->core._cell;
   }
   case CoreSet: {
-    auto cblock = reinterpret_cast<chainblocks::SetRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreRefTable: {
-    auto cblock = reinterpret_cast<chainblocks::RefRuntime *>(blk);
-    return cblock->core.activateTable(context, input);
+    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
+    return shard->core.activateTable(context, input);
   }
   case CoreRefRegular: {
-    auto cblock = reinterpret_cast<chainblocks::RefRuntime *>(blk);
-    return cblock->core.activateRegular(context, input);
+    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
+    return shard->core.activateRegular(context, input);
   }
   case CoreUpdate: {
-    auto cblock = reinterpret_cast<chainblocks::UpdateRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::UpdateRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case CoreSwap: {
-    auto cblock = reinterpret_cast<chainblocks::SwapRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::SwapRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathAdd: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AddRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::AddRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathSubtract: {
-    auto cblock = reinterpret_cast<chainblocks::Math::SubtractRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::SubtractRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathMultiply: {
-    auto cblock = reinterpret_cast<chainblocks::Math::MultiplyRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::MultiplyRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathDivide: {
-    auto cblock = reinterpret_cast<chainblocks::Math::DivideRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::DivideRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathXor: {
-    auto cblock = reinterpret_cast<chainblocks::Math::XorRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::XorRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathAnd: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AndRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::AndRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathOr: {
-    auto cblock = reinterpret_cast<chainblocks::Math::OrRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::OrRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathMod: {
-    auto cblock = reinterpret_cast<chainblocks::Math::ModRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::ModRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathLShift: {
-    auto cblock = reinterpret_cast<chainblocks::Math::LShiftRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::LShiftRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathRShift: {
-    auto cblock = reinterpret_cast<chainblocks::Math::RShiftRuntime *>(blk);
-    return cblock->core.activate(context, input);
+    auto shard = reinterpret_cast<shards::Math::RShiftRuntime *>(blk);
+    return shard->core.activate(context, input);
   }
   case MathAbs: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AbsRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AbsRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathFastSqrt: {
-    auto cblock = reinterpret_cast<chainblocks::Math::FastSqrtRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::FastSqrtRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathFastInvSqrt: {
-    auto cblock = reinterpret_cast<chainblocks::Math::FastInvSqrtRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::FastInvSqrtRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
 #if 0
   case MathExp: {
-    auto cblock = reinterpret_cast<chainblocks::Math::ExpRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::ExpRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathExp2: {
-    auto cblock = reinterpret_cast<chainblocks::Math::Exp2Runtime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::Exp2Runtime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathExpm1: {
-    auto cblock = reinterpret_cast<chainblocks::Math::Expm1Runtime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::Expm1Runtime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathLog: {
-    auto cblock = reinterpret_cast<chainblocks::Math::LogRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::LogRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathLog10: {
-    auto cblock = reinterpret_cast<chainblocks::Math::Log10Runtime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::Log10Runtime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathLog2: {
-    auto cblock = reinterpret_cast<chainblocks::Math::Log2Runtime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::Log2Runtime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathLog1p: {
-    auto cblock = reinterpret_cast<chainblocks::Math::Log1pRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::Log1pRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathSqrt: {
-    auto cblock = reinterpret_cast<chainblocks::Math::SqrtRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::SqrtRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathCbrt: {
-    auto cblock = reinterpret_cast<chainblocks::Math::CbrtRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::CbrtRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathSin: {
-    auto cblock = reinterpret_cast<chainblocks::Math::SinRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::SinRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathCos: {
-    auto cblock = reinterpret_cast<chainblocks::Math::CosRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::CosRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathTan: {
-    auto cblock = reinterpret_cast<chainblocks::Math::TanRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::TanRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathAsin: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AsinRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AsinRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathAcos: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AcosRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AcosRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathAtan: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AtanRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AtanRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathSinh: {
-    auto cblock = reinterpret_cast<chainblocks::Math::SinhRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::SinhRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathCosh: {
-    auto cblock = reinterpret_cast<chainblocks::Math::CoshRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::CoshRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathTanh: {
-    auto cblock = reinterpret_cast<chainblocks::Math::TanhRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::TanhRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathAsinh: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AsinhRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AsinhRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathAcosh: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AcoshRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AcoshRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathAtanh: {
-    auto cblock = reinterpret_cast<chainblocks::Math::AtanhRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::AtanhRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathErf: {
-    auto cblock = reinterpret_cast<chainblocks::Math::ErfRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::ErfRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathErfc: {
-    auto cblock = reinterpret_cast<chainblocks::Math::ErfcRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::ErfcRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathTGamma: {
-    auto cblock = reinterpret_cast<chainblocks::Math::TGammaRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::TGammaRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathLGamma: {
-    auto cblock = reinterpret_cast<chainblocks::Math::LGammaRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::LGammaRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
 #endif
   case MathCeil: {
-    auto cblock = reinterpret_cast<chainblocks::Math::CeilRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::CeilRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathFloor: {
-    auto cblock = reinterpret_cast<chainblocks::Math::FloorRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::FloorRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathTrunc: {
-    auto cblock = reinterpret_cast<chainblocks::Math::TruncRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::TruncRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   case MathRound: {
-    auto cblock = reinterpret_cast<chainblocks::Math::RoundRuntime *>(blk);
-    return cblock->core.activateSingle(context, input);
+    auto shard = reinterpret_cast<shards::Math::RoundRuntime *>(blk);
+    return shard->core.activateSingle(context, input);
   }
   default: {
     // NotInline
@@ -441,159 +441,159 @@ FLATTEN ALWAYS_INLINE inline CBVar activateBlock(CBlock *blk, CBContext *context
   }
 }
 
-CBRunChainOutput runChain(CBChain *chain, CBContext *context, const CBVar &chainInput);
+SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput);
 
-inline CBRunChainOutput runSubChain(CBChain *chain, CBContext *context, const CBVar &input) {
-  // push to chain stack
-  context->chainStack.push_back(chain);
-  DEFER({ context->chainStack.pop_back(); });
-  auto runRes = chainblocks::runChain(chain, context, input);
+inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar &input) {
+  // push to wire stack
+  context->wireStack.push_back(wire);
+  DEFER({ context->wireStack.pop_back(); });
+  auto runRes = shards::runWire(wire, context, input);
   return runRes;
 }
 
 #ifndef __EMSCRIPTEN__
-boost::context::continuation run(CBChain *chain, CBFlow *flow, boost::context::continuation &&sink);
+boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink);
 #else
-void run(CBChain *chain, CBFlow *flow, CBCoro *coro);
+void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 #endif
 
-inline void prepare(CBChain *chain, CBFlow *flow) {
-  if (chain->coro)
+inline void prepare(SHWire *wire, SHFlow *flow) {
+  if (wire->coro)
     return;
 
-#ifdef CB_USE_TSAN
+#ifdef SH_USE_TSAN
   auto curr = __tsan_get_current_fiber();
-  if (chain->tsan_coro)
-    __tsan_destroy_fiber(chain->tsan_coro);
-  chain->tsan_coro = __tsan_create_fiber(0);
-  __tsan_switch_to_fiber(chain->tsan_coro, 0);
+  if (wire->tsan_coro)
+    __tsan_destroy_fiber(wire->tsan_coro);
+  wire->tsan_coro = __tsan_create_fiber(0);
+  __tsan_switch_to_fiber(wire->tsan_coro, 0);
 #endif
 
 #ifndef __EMSCRIPTEN__
-  if (!chain->stackMem) {
-    chain->stackMem = new (std::align_val_t{16}) uint8_t[chain->stackSize];
+  if (!wire->stackMem) {
+    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
   }
-  chain->coro =
-      boost::context::callcc(std::allocator_arg, CBStackAllocator{chain->stackSize, chain->stackMem},
-                             [chain, flow](boost::context::continuation &&sink) { return run(chain, flow, std::move(sink)); });
+  wire->coro =
+      boost::context::callcc(std::allocator_arg, SHStackAllocator{wire->stackSize, wire->stackMem},
+                             [wire, flow](boost::context::continuation &&sink) { return run(wire, flow, std::move(sink)); });
 #else
-  chain->coro.emplace(chain->stackSize);
-  chain->coro->init([=]() { run(chain, flow, &(*chain->coro)); });
-  chain->coro->resume();
+  wire->coro.emplace(wire->stackSize);
+  wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
+  wire->coro->resume();
 #endif
 
-#ifdef CB_USE_TSAN
+#ifdef SH_USE_TSAN
   __tsan_switch_to_fiber(curr, 0);
 #endif
 }
 
-inline void start(CBChain *chain, CBVar input = {}) {
-  if (chain->state != CBChain::State::Prepared) {
-    CBLOG_ERROR("Attempted to start a chain not ready for running!");
+inline void start(SHWire *wire, SHVar input = {}) {
+  if (wire->state != SHWire::State::Prepared) {
+    SHLOG_ERROR("Attempted to start a wire not ready for running!");
     return;
   }
 
-  if (!chain->coro || !(*chain->coro))
+  if (!wire->coro || !(*wire->coro))
     return; // check if not null and bool operator also to see if alive!
 
-  chainblocks::cloneVar(chain->rootTickInput, input);
-  chain->state = CBChain::State::Starting;
+  shards::cloneVar(wire->rootTickInput, input);
+  wire->state = SHWire::State::Starting;
 
-  for (auto &call : chain->onStart) {
+  for (auto &call : wire->onStart) {
     call();
   }
 }
 
-inline bool stop(CBChain *chain, CBVar *result = nullptr) {
-  if (chain->state == CBChain::State::Stopped) {
+inline bool stop(SHWire *wire, SHVar *result = nullptr) {
+  if (wire->state == SHWire::State::Stopped) {
     // Clone the results if we need them
     if (result)
-      cloneVar(*result, chain->finishedOutput);
+      cloneVar(*result, wire->finishedOutput);
 
     return true;
   }
 
-  CBLOG_TRACE("stopping chain: {}", chain->name);
+  SHLOG_TRACE("stopping wire: {}", wire->name);
 
-  if (chain->coro) {
-    // Run until exit if alive, need to propagate to all suspended blocks!
-    if ((*chain->coro) && chain->state > CBChain::State::Stopped && chain->state < CBChain::State::Failed) {
+  if (wire->coro) {
+    // Run until exit if alive, need to propagate to all suspended shards!
+    if ((*wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
       // set abortion flag, we always have a context in this case
-      chain->context->stopFlow(chainblocks::Var::Empty);
-      chain->context->onLastResume = true;
+      wire->context->stopFlow(shards::Var::Empty);
+      wire->context->onLastResume = true;
 
-      // BIG Warning: chain->context existed in the coro stack!!!
-      // after this resume chain->context is trash!
-#ifdef CB_USE_TSAN
+      // BIG Warning: wire->context existed in the coro stack!!!
+      // after this resume wire->context is trash!
+#ifdef SH_USE_TSAN
       auto curr = __tsan_get_current_fiber();
-      __tsan_switch_to_fiber(chain->tsan_coro, 0);
+      __tsan_switch_to_fiber(wire->tsan_coro, 0);
 #endif
 
-      chain->coro->resume();
+      wire->coro->resume();
 
-#ifdef CB_USE_TSAN
+#ifdef SH_USE_TSAN
       __tsan_switch_to_fiber(curr, 0);
 #endif
     }
 
     // delete also the coro ptr
-    chain->coro.reset();
+    wire->coro.reset();
   } else {
     // if we had a coro this will run inside it!
-    chain->cleanup(true);
+    wire->cleanup(true);
   }
 
   // return true if we ended, as in we did our job
-  auto res = chain->state == CBChain::State::Ended;
+  auto res = wire->state == SHWire::State::Ended;
 
-  chain->state = CBChain::State::Stopped;
-  destroyVar(chain->rootTickInput);
+  wire->state = SHWire::State::Stopped;
+  destroyVar(wire->rootTickInput);
 
   // Clone the results if we need them
   if (result)
-    cloneVar(*result, chain->finishedOutput);
+    cloneVar(*result, wire->finishedOutput);
 
-  for (auto &call : chain->onStop) {
+  for (auto &call : wire->onStop) {
     call();
   }
 
   return res;
 }
 
-inline bool isRunning(CBChain *chain) {
-  const auto state = chain->state.load(); // atomic
-  return state >= CBChain::State::Starting && state <= CBChain::State::IterationEnded;
+inline bool isRunning(SHWire *wire) {
+  const auto state = wire->state.load(); // atomic
+  return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
 }
 
-inline bool tick(CBChain *chain, CBDuration now, CBVar rootInput = {}) {
-  if (!chain->context || !chain->coro || !(*chain->coro) || !(isRunning(chain)))
+inline bool tick(SHWire *wire, SHDuration now, SHVar rootInput = {}) {
+  if (!wire->context || !wire->coro || !(*wire->coro) || !(isRunning(wire)))
     return false; // check if not null and bool operator also to see if alive!
 
-  if (now >= chain->context->next) {
-    if (rootInput != chainblocks::Var::Empty) {
-      cloneVar(chain->rootTickInput, rootInput);
+  if (now >= wire->context->next) {
+    if (rootInput != shards::Var::Empty) {
+      cloneVar(wire->rootTickInput, rootInput);
     }
-#ifdef CB_USE_TSAN
+#ifdef SH_USE_TSAN
     auto curr = __tsan_get_current_fiber();
-    __tsan_switch_to_fiber(chain->tsan_coro, 0);
+    __tsan_switch_to_fiber(wire->tsan_coro, 0);
 #endif
 
 #ifndef __EMSCRIPTEN__
-    *chain->coro = chain->coro->resume();
+    *wire->coro = wire->coro->resume();
 #else
-    chain->coro->resume();
+    wire->coro->resume();
 #endif
 
-#ifdef CB_USE_TSAN
+#ifdef SH_USE_TSAN
     __tsan_switch_to_fiber(curr, 0);
 #endif
   }
   return true;
 }
 
-inline bool hasEnded(CBChain *chain) { return chain->state > CBChain::State::IterationEnded; }
+inline bool hasEnded(SHWire *wire) { return wire->state > SHWire::State::IterationEnded; }
 
-inline bool isCanceled(CBContext *context) { return context->shouldStop(); }
+inline bool isCanceled(SHContext *context) { return context->shouldStop(); }
 
 inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // negative = no sleep, just run callbacks
@@ -602,19 +602,19 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   // Take note of how long it took and subtract from sleep time! if some time is
   // left sleep
   if (runCallbacks) {
-    CBDuration sleepTime(seconds);
-    auto pre = CBClock::now();
-    for (auto &cbinfo : GetGlobals().RunLoopHooks) {
-      if (cbinfo.second) {
-        cbinfo.second();
+    SHDuration sleepTime(seconds);
+    auto pre = SHClock::now();
+    for (auto &shinfo : GetGlobals().RunLoopHooks) {
+      if (shinfo.second) {
+        shinfo.second();
       }
     }
-    auto post = CBClock::now();
+    auto post = SHClock::now();
 
-    CBDuration cbsTime = post - pre;
-    CBDuration realSleepTime = sleepTime - cbsTime;
+    SHDuration shsTime = post - pre;
+    SHDuration realSleepTime = sleepTime - shsTime;
     if (seconds != -1.0 && realSleepTime.count() > 0.0) {
-      // Sleep actual time minus stuff we did in cbs
+      // Sleep actual time minus stuff we did in shs
       seconds = realSleepTime.count();
     } else {
       // Don't yield to kernel at all in this case!
@@ -647,99 +647,99 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
 
 struct RuntimeCallbacks {
   // TODO, turn them into filters maybe?
-  virtual void registerBlock(const char *fullName, CBBlockConstructor constructor) = 0;
-  virtual void registerObjectType(int32_t vendorId, int32_t typeId, CBObjectInfo info) = 0;
-  virtual void registerEnumType(int32_t vendorId, int32_t typeId, CBEnumInfo info) = 0;
+  virtual void registerShard(const char *fullName, SHShardConstructor constructor) = 0;
+  virtual void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) = 0;
+  virtual void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) = 0;
 };
-}; // namespace chainblocks
+}; // namespace shards
 
-struct CBNode : public std::enable_shared_from_this<CBNode> {
-  static std::shared_ptr<CBNode> make() { return std::shared_ptr<CBNode>(new CBNode()); }
+struct SHMesh : public std::enable_shared_from_this<SHMesh> {
+  static std::shared_ptr<SHMesh> make() { return std::shared_ptr<SHMesh>(new SHMesh()); }
 
-  static std::shared_ptr<CBNode> *makePtr() { return new std::shared_ptr<CBNode>(new CBNode()); }
+  static std::shared_ptr<SHMesh> *makePtr() { return new std::shared_ptr<SHMesh>(new SHMesh()); }
 
-  ~CBNode() { terminate(); }
+  ~SHMesh() { terminate(); }
 
   struct EmptyObserver {
-    void before_compose(CBChain *chain) {}
-    void before_tick(CBChain *chain) {}
-    void before_stop(CBChain *chain) {}
-    void before_prepare(CBChain *chain) {}
-    void before_start(CBChain *chain) {}
+    void before_compose(SHWire *wire) {}
+    void before_tick(SHWire *wire) {}
+    void before_stop(SHWire *wire) {}
+    void before_prepare(SHWire *wire) {}
+    void before_start(SHWire *wire) {}
   };
 
   template <class Observer>
-  void schedule(Observer observer, const std::shared_ptr<CBChain> &chain, CBVar input = chainblocks::Var::Empty,
+  void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty,
                 bool compose = true) {
-    if (chain->warmedUp) {
-      CBLOG_ERROR("Attempted to schedule a chain multiple times, chain: {}", chain->name);
-      throw chainblocks::CBException("Multiple chain schedule");
+    if (wire->warmedUp) {
+      SHLOG_ERROR("Attempted to schedule a wire multiple times, wire: {}", wire->name);
+      throw shards::SHException("Multiple wire schedule");
     }
 
     // this is to avoid recursion during compose
-    visitedChains.clear();
+    visitedWires.clear();
 
-    chain->node = shared_from_this();
-    chain->isRoot = true;
+    wire->mesh = shared_from_this();
+    wire->isRoot = true;
     // remove when done here
-    DEFER(chain->isRoot = false);
+    DEFER(wire->isRoot = false);
 
-    observer.before_compose(chain.get());
+    observer.before_compose(wire.get());
     if (compose) {
-      // compose the chain
-      CBInstanceData data = instanceData;
-      data.chain = chain.get();
-      data.inputType = chainblocks::deriveTypeInfo(input, data);
-      auto validation = chainblocks::composeChain(
-          chain.get(),
-          [](const CBlock *errorBlock, const char *errorTxt, bool nonfatalWarning, void *userData) {
-            auto blk = const_cast<CBlock *>(errorBlock);
+      // compose the wire
+      SHInstanceData data = instanceData;
+      data.wire = wire.get();
+      data.inputType = shards::deriveTypeInfo(input, data);
+      auto validation = shards::composeWire(
+          wire.get(),
+          [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+            auto blk = const_cast<Shard *>(errorShard);
             if (!nonfatalWarning) {
-              throw chainblocks::ComposeError(std::string(errorTxt) + ", input block: " + std::string(blk->name(blk)));
+              throw shards::ComposeError(std::string(errorTxt) + ", input shard: " + std::string(blk->name(blk)));
             } else {
-              CBLOG_INFO("Validation warning: {} input block: {}", errorTxt, blk->name(blk));
+              SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
             }
           },
           this, data);
-      chainblocks::arrayFree(validation.exposedInfo);
-      chainblocks::arrayFree(validation.requiredInfo);
-      chainblocks::freeDerivedInfo(data.inputType);
+      shards::arrayFree(validation.exposedInfo);
+      shards::arrayFree(validation.requiredInfo);
+      shards::freeDerivedInfo(data.inputType);
     }
 
-    observer.before_prepare(chain.get());
+    observer.before_prepare(wire.get());
     // create a flow as well
-    chainblocks::prepare(chain.get(), _flows.emplace_back(new CBFlow{chain.get()}).get());
-    observer.before_start(chain.get());
-    chainblocks::start(chain.get(), input);
+    shards::prepare(wire.get(), _flows.emplace_back(new SHFlow{wire.get()}).get());
+    observer.before_start(wire.get());
+    shards::start(wire.get(), input);
 
-    scheduled.insert(chain);
+    scheduled.insert(wire);
   }
 
-  void schedule(const std::shared_ptr<CBChain> &chain, CBVar input = chainblocks::Var::Empty, bool compose = true) {
+  void schedule(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
     EmptyObserver obs;
-    schedule(obs, chain, input, compose);
+    schedule(obs, wire, input, compose);
   }
 
-  template <class Observer> bool tick(Observer observer, CBVar input = chainblocks::Var::Empty) {
+  template <class Observer> bool tick(Observer observer, SHVar input = shards::Var::Empty) {
     auto noErrors = true;
     _errors.clear();
-    if (chainblocks::GetGlobals().SigIntTerm > 0) {
+    if (shards::GetGlobals().SigIntTerm > 0) {
       terminate();
     } else {
-      CBDuration now = CBClock::now().time_since_epoch();
+      SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flows.begin(); it != _flows.end();) {
         auto &flow = *it;
-        observer.before_tick(flow->chain);
-        chainblocks::tick(flow->chain, now, input);
-        if (unlikely(!chainblocks::isRunning(flow->chain))) {
-          if (flow->chain->finishedError.size() > 0) {
-            _errors.emplace_back(flow->chain->finishedError);
+        observer.before_tick(flow->wire);
+        shards::tick(flow->wire, now, input);
+        if (unlikely(!shards::isRunning(flow->wire))) {
+          if (flow->wire->finishedError.size() > 0) {
+            _errors.emplace_back(flow->wire->finishedError);
           }
-          observer.before_stop(flow->chain);
-          if (!chainblocks::stop(flow->chain)) {
+          observer.before_stop(flow->wire);
+          if (!shards::stop(flow->wire)) {
             noErrors = false;
           }
-          flow->chain->node.reset();
+          flow->wire->mesh.reset();
           it = _flows.erase(it);
         } else {
           ++it;
@@ -749,84 +749,84 @@ struct CBNode : public std::enable_shared_from_this<CBNode> {
     return noErrors;
   }
 
-  bool tick(CBVar input = chainblocks::Var::Empty) {
+  bool tick(SHVar input = shards::Var::Empty) {
     EmptyObserver obs;
     return tick(obs, input);
   }
 
   void terminate() {
-    for (auto chain : scheduled) {
-      chainblocks::stop(chain.get());
-      chain->node.reset();
+    for (auto wire : scheduled) {
+      shards::stop(wire.get());
+      wire->mesh.reset();
     }
 
     _flows.clear();
 
-    // release all chains
+    // release all wires
     scheduled.clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
       if (var.second.refcount > 0) {
-        CBLOG_ERROR("Found a dangling global variable: {}", var.first);
+        SHLOG_ERROR("Found a dangling global variable: {}", var.first);
       }
     }
     variables.clear();
 
-    // whichever block uses refs must clean them
+    // whichever shard uses refs must clean them
     refs.clear();
   }
 
-  void remove(const std::shared_ptr<CBChain> &chain) {
-    chainblocks::stop(chain.get());
-    _flows.remove_if([chain](auto &flow) { return flow->chain == chain.get(); });
-    chain->node.reset();
-    visitedChains.erase(chain.get());
-    scheduled.erase(chain);
+  void remove(const std::shared_ptr<SHWire> &wire) {
+    shards::stop(wire.get());
+    _flows.remove_if([wire](auto &flow) { return flow->wire == wire.get(); });
+    wire->mesh.reset();
+    visitedWires.erase(wire.get());
+    scheduled.erase(wire);
   }
 
   bool empty() { return _flows.empty(); }
 
   const std::vector<std::string> &errors() { return _errors; }
 
-  std::unordered_map<std::string, CBVar, std::hash<std::string>, std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<std::pair<const std::string, CBVar>, 16>>
+  std::unordered_map<std::string, SHVar, std::hash<std::string>, std::equal_to<std::string>,
+                     boost::alignment::aligned_allocator<std::pair<const std::string, SHVar>, 16>>
       variables;
 
-  std::unordered_map<std::string, CBVar *> refs;
+  std::unordered_map<std::string, SHVar *> refs;
 
-  std::unordered_map<CBChain *, CBTypeInfo> visitedChains;
+  std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
 
-  std::unordered_set<std::shared_ptr<CBChain>> scheduled;
+  std::unordered_set<std::shared_ptr<SHWire>> scheduled;
 
-  CBInstanceData instanceData{};
+  SHInstanceData instanceData{};
 
 private:
-  std::list<std::shared_ptr<CBFlow>> _flows;
+  std::list<std::shared_ptr<SHFlow>> _flows;
   std::vector<std::string> _errors;
-  CBNode() = default;
+  SHMesh() = default;
 };
 
-namespace chainblocks {
+namespace shards {
 struct Serialization {
-  static void varFree(CBVar &output);
+  static void varFree(SHVar &output);
 
-  std::unordered_map<std::string, CBChainRef> chains;
-  std::unordered_map<std::string, std::shared_ptr<CBlock>> defaultBlocks;
+  std::unordered_map<std::string, SHWireRef> wires;
+  std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
   void reset() {
-    for (auto &ref : chains) {
-      CBChain::deleteRef(ref.second);
+    for (auto &ref : wires) {
+      SHWire::deleteRef(ref.second);
     }
-    chains.clear();
-    defaultBlocks.clear();
+    wires.clear();
+    defaultShards.clear();
   }
 
   ~Serialization() { reset(); }
 
-  template <class BinaryReader> void deserialize(BinaryReader &read, CBVar &output) {
+  template <class BinaryReader> void deserialize(BinaryReader &read, SHVar &output) {
     // we try to recycle memory so pass a empty None as first timer!
-    CBType nextType;
+    SHType nextType;
     read((uint8_t *)&nextType, sizeof(output.valueType));
 
     // stop trying to recycle, types differ
@@ -839,50 +839,50 @@ struct Serialization {
     output.valueType = nextType;
 
     switch (output.valueType) {
-    case CBType::None:
-    case CBType::EndOfBlittableTypes:
-    case CBType::Any:
+    case SHType::None:
+    case SHType::EndOfBlittableTypes:
+    case SHType::Any:
       break;
-    case CBType::Enum:
+    case SHType::Enum:
       read((uint8_t *)&output.payload, sizeof(int32_t) * 3);
       break;
-    case CBType::Bool:
-      read((uint8_t *)&output.payload, sizeof(CBBool));
+    case SHType::Bool:
+      read((uint8_t *)&output.payload, sizeof(SHBool));
       break;
-    case CBType::Int:
-      read((uint8_t *)&output.payload, sizeof(CBInt));
+    case SHType::Int:
+      read((uint8_t *)&output.payload, sizeof(SHInt));
       break;
-    case CBType::Int2:
-      read((uint8_t *)&output.payload, sizeof(CBInt2));
+    case SHType::Int2:
+      read((uint8_t *)&output.payload, sizeof(SHInt2));
       break;
-    case CBType::Int3:
-      read((uint8_t *)&output.payload, sizeof(CBInt3));
+    case SHType::Int3:
+      read((uint8_t *)&output.payload, sizeof(SHInt3));
       break;
-    case CBType::Int4:
-      read((uint8_t *)&output.payload, sizeof(CBInt4));
+    case SHType::Int4:
+      read((uint8_t *)&output.payload, sizeof(SHInt4));
       break;
-    case CBType::Int8:
-      read((uint8_t *)&output.payload, sizeof(CBInt8));
+    case SHType::Int8:
+      read((uint8_t *)&output.payload, sizeof(SHInt8));
       break;
-    case CBType::Int16:
-      read((uint8_t *)&output.payload, sizeof(CBInt16));
+    case SHType::Int16:
+      read((uint8_t *)&output.payload, sizeof(SHInt16));
       break;
-    case CBType::Float:
-      read((uint8_t *)&output.payload, sizeof(CBFloat));
+    case SHType::Float:
+      read((uint8_t *)&output.payload, sizeof(SHFloat));
       break;
-    case CBType::Float2:
-      read((uint8_t *)&output.payload, sizeof(CBFloat2));
+    case SHType::Float2:
+      read((uint8_t *)&output.payload, sizeof(SHFloat2));
       break;
-    case CBType::Float3:
-      read((uint8_t *)&output.payload, sizeof(CBFloat3));
+    case SHType::Float3:
+      read((uint8_t *)&output.payload, sizeof(SHFloat3));
       break;
-    case CBType::Float4:
-      read((uint8_t *)&output.payload, sizeof(CBFloat4));
+    case SHType::Float4:
+      read((uint8_t *)&output.payload, sizeof(SHFloat4));
       break;
-    case CBType::Color:
-      read((uint8_t *)&output.payload, sizeof(CBColor));
+    case SHType::Color:
+      read((uint8_t *)&output.payload, sizeof(SHColor));
       break;
-    case CBType::Bytes: {
+    case SHType::Bytes: {
       auto availBytes = recycle ? output.payload.bytesCapacity : 0;
       read((uint8_t *)&output.payload.bytesSize, sizeof(output.payload.bytesSize));
 
@@ -902,17 +902,17 @@ struct Serialization {
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
     }
-    case CBType::Array: {
+    case SHType::Array: {
       read((uint8_t *)&output.innerType, sizeof(output.innerType));
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
-      chainblocks::arrayResize(output.payload.arrayValue, len);
-      read((uint8_t *)&output.payload.arrayValue.elements[0], len * sizeof(CBVarPayload));
+      shards::arrayResize(output.payload.arrayValue, len);
+      read((uint8_t *)&output.payload.arrayValue.elements[0], len * sizeof(SHVarPayload));
       break;
     }
-    case CBType::Path:
-    case CBType::String:
-    case CBType::ContextVar: {
+    case SHType::Path:
+    case SHType::String:
+    case SHType::ContextVar: {
       auto availChars = recycle ? output.payload.stringCapacity : 0;
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
@@ -934,23 +934,23 @@ struct Serialization {
       output.payload.stringLen = len;
       break;
     }
-    case CBType::Seq: {
+    case SHType::Seq: {
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
       // notice we assume all elements up to capacity are memset to 0x0
-      // or are valid CBVars we can overwrite
-      chainblocks::arrayResize(output.payload.seqValue, len);
+      // or are valid SHVars we can overwrite
+      shards::arrayResize(output.payload.seqValue, len);
       for (uint32_t i = 0; i < len; i++) {
         deserialize(read, output.payload.seqValue.elements[i]);
       }
       break;
     }
-    case CBType::Table: {
-      CBMap *map = nullptr;
+    case SHType::Table: {
+      SHMap *map = nullptr;
 
       if (recycle) {
         if (output.payload.tableValue.api && output.payload.tableValue.opaque) {
-          map = (CBMap *)output.payload.tableValue.opaque;
+          map = (SHMap *)output.payload.tableValue.opaque;
           map->clear();
         } else {
           varFree(output);
@@ -959,7 +959,7 @@ struct Serialization {
       }
 
       if (!map) {
-        map = new CBMap();
+        map = new SHMap();
         output.payload.tableValue.api = &GetGlobals().TableInterface;
         output.payload.tableValue.opaque = map;
       }
@@ -973,7 +973,7 @@ struct Serialization {
         keyBuf.resize(klen);
         read((uint8_t *)keyBuf.c_str(), klen);
         // TODO improve this, avoid allocations
-        CBVar tmp{};
+        SHVar tmp{};
         deserialize(read, tmp);
         auto &dst = (*map)[keyBuf];
         dst = tmp;
@@ -981,12 +981,12 @@ struct Serialization {
       }
       break;
     }
-    case CBType::Set: {
-      CBHashSet *set = nullptr;
+    case SHType::Set: {
+      SHHashSet *set = nullptr;
 
       if (recycle) {
         if (output.payload.setValue.api && output.payload.setValue.opaque) {
-          set = (CBHashSet *)output.payload.setValue.opaque;
+          set = (SHHashSet *)output.payload.setValue.opaque;
           set->clear();
         } else {
           varFree(output);
@@ -995,7 +995,7 @@ struct Serialization {
       }
 
       if (!set) {
-        set = new CBHashSet();
+        set = new SHHashSet();
         output.payload.setValue.api = &GetGlobals().SetInterface;
         output.payload.setValue.opaque = set;
       }
@@ -1004,20 +1004,20 @@ struct Serialization {
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
         // TODO improve this, avoid allocations
-        CBVar dst{};
+        SHVar dst{};
         deserialize(read, dst);
         (*set).emplace(dst);
         varFree(dst);
       }
       break;
     }
-    case CBType::Image: {
+    case SHType::Image: {
       size_t currentSize = 0;
       if (recycle) {
         auto bpp = 1;
-        if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
+        if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
           bpp = 2;
-        else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
+        else if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
           bpp = 4;
         currentSize =
             output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * bpp;
@@ -1029,9 +1029,9 @@ struct Serialization {
       read((uint8_t *)&output.payload.imageValue.height, sizeof(output.payload.imageValue.height));
 
       auto pixsize = 1;
-      if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
+      if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((output.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
+      else if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
 
       size_t size =
@@ -1049,7 +1049,7 @@ struct Serialization {
       read((uint8_t *)output.payload.imageValue.data, size);
       break;
     }
-    case CBType::Audio: {
+    case SHType::Audio: {
       size_t currentSize = 0;
       if (recycle) {
         currentSize = output.payload.audioValue.nsamples * output.payload.audioValue.channels * sizeof(float);
@@ -1073,23 +1073,23 @@ struct Serialization {
       read((uint8_t *)output.payload.audioValue.samples, size);
       break;
     }
-    case CBType::Block: {
-      CBlock *blk;
+    case SHType::ShardRef: {
+      Shard *blk;
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
       std::vector<char> buf;
       buf.resize(len + 1);
       read((uint8_t *)&buf[0], len);
       buf[len] = 0;
-      blk = createBlock(&buf[0]);
+      blk = createShard(&buf[0]);
       if (!blk) {
-        throw chainblocks::CBException("Block not found! name: " + std::string(&buf[0]));
+        throw shards::SHException("Shard not found! name: " + std::string(&buf[0]));
       }
-      // validate the hash of the block
+      // validate the hash of the shard
       uint32_t crc;
       read((uint8_t *)&crc, sizeof(uint32_t));
       if (blk->hash(blk) != crc) {
-        throw chainblocks::CBException("Block hash mismatch, the serialized version is "
+        throw shards::SHException("Shard hash mismatch, the serialized version is "
                                        "probably different: " +
                                        std::string(&buf[0]));
       }
@@ -1100,21 +1100,21 @@ struct Serialization {
         read((uint8_t *)&idx, sizeof(int));
         if (idx == -1)
           break;
-        CBVar tmp{};
+        SHVar tmp{};
         deserialize(read, tmp);
         blk->setParam(blk, idx, &tmp);
         varFree(tmp);
       }
       if (blk->setState) {
-        CBVar state{};
+        SHVar state{};
         deserialize(read, state);
         blk->setState(blk, &state);
         varFree(state);
       }
-      output.payload.blockValue = blk;
+      output.payload.shardValue = blk;
       break;
     }
-    case CBType::Chain: {
+    case SHType::Wire: {
       uint32_t len;
       read((uint8_t *)&len, sizeof(uint32_t));
       std::vector<char> buf;
@@ -1122,33 +1122,33 @@ struct Serialization {
       read((uint8_t *)&buf[0], len);
       buf[len] = 0;
 
-      // search if we already have this chain!
-      auto cit = chains.find(&buf[0]);
-      if (cit != chains.end()) {
-        CBLOG_TRACE("Skipping deserializing chain: {}", CBChain::sharedFromRef(cit->second)->name);
-        output.payload.chainValue = CBChain::addRef(cit->second);
+      // search if we already have this wire!
+      auto cit = wires.find(&buf[0]);
+      if (cit != wires.end()) {
+        SHLOG_TRACE("Skipping deserializing wire: {}", SHWire::sharedFromRef(cit->second)->name);
+        output.payload.wireValue = SHWire::addRef(cit->second);
         break;
       }
 
-      auto chain = CBChain::make(&buf[0]);
-      output.payload.chainValue = chain->newRef();
-      chains.emplace(chain->name, CBChain::addRef(output.payload.chainValue));
-      CBLOG_TRACE("Deserializing chain: {}", chain->name);
-      read((uint8_t *)&chain->looped, 1);
-      read((uint8_t *)&chain->unsafe, 1);
-      // blocks len
+      auto wire = SHWire::make(&buf[0]);
+      output.payload.wireValue = wire->newRef();
+      wires.emplace(wire->name, SHWire::addRef(output.payload.wireValue));
+      SHLOG_TRACE("Deserializing wire: {}", wire->name);
+      read((uint8_t *)&wire->looped, 1);
+      read((uint8_t *)&wire->unsafe, 1);
+      // shards len
       read((uint8_t *)&len, sizeof(uint32_t));
-      // blocks
+      // shards
       for (uint32_t i = 0; i < len; i++) {
-        CBVar blockVar{};
-        deserialize(read, blockVar);
-        assert(blockVar.valueType == Block);
-        chain->addBlock(blockVar.payload.blockValue);
-        // blow's owner is the chain
+        SHVar shardVar{};
+        deserialize(read, shardVar);
+        assert(shardVar.valueType == ShardRef);
+        wire->addShard(shardVar.payload.shardValue);
+        // blow's owner is the wire
       }
       break;
     }
-    case CBType::Object: {
+    case SHType::Object: {
       int64_t id;
       read((uint8_t *)&id, sizeof(int64_t));
       uint64_t len;
@@ -1166,14 +1166,14 @@ struct Serialization {
           int32_t typeId = (int32_t)(id & 0x00000000FFFFFFFF);
           output.payload.objectVendorId = vendorId;
           output.payload.objectTypeId = typeId;
-          output.flags |= CBVAR_FLAGS_USES_OBJINFO;
+          output.flags |= SHVAR_FLAGS_USES_OBJINFO;
           output.objectInfo = &info;
           // up ref count also, not included in deserialize op!
           if (info.reference) {
             info.reference(output.payload.objectValue);
           }
         } else {
-          throw chainblocks::CBException("Failed to find object type in registry.");
+          throw shards::SHException("Failed to find object type in registry.");
         }
       }
       break;
@@ -1181,85 +1181,85 @@ struct Serialization {
     }
   }
 
-  template <class BinaryWriter> size_t serialize(const CBVar &input, BinaryWriter &write) {
+  template <class BinaryWriter> size_t serialize(const SHVar &input, BinaryWriter &write) {
     size_t total = 0;
     write((const uint8_t *)&input.valueType, sizeof(input.valueType));
     total += sizeof(input.valueType);
     switch (input.valueType) {
-    case CBType::None:
-    case CBType::EndOfBlittableTypes:
-    case CBType::Any:
+    case SHType::None:
+    case SHType::EndOfBlittableTypes:
+    case SHType::Any:
       break;
-    case CBType::Enum:
+    case SHType::Enum:
       write((const uint8_t *)&input.payload, sizeof(int32_t) * 3);
       total += sizeof(int32_t) * 3;
       break;
-    case CBType::Bool:
-      write((const uint8_t *)&input.payload, sizeof(CBBool));
-      total += sizeof(CBBool);
+    case SHType::Bool:
+      write((const uint8_t *)&input.payload, sizeof(SHBool));
+      total += sizeof(SHBool);
       break;
-    case CBType::Int:
-      write((const uint8_t *)&input.payload, sizeof(CBInt));
-      total += sizeof(CBInt);
+    case SHType::Int:
+      write((const uint8_t *)&input.payload, sizeof(SHInt));
+      total += sizeof(SHInt);
       break;
-    case CBType::Int2:
-      write((const uint8_t *)&input.payload, sizeof(CBInt2));
-      total += sizeof(CBInt2);
+    case SHType::Int2:
+      write((const uint8_t *)&input.payload, sizeof(SHInt2));
+      total += sizeof(SHInt2);
       break;
-    case CBType::Int3:
-      write((const uint8_t *)&input.payload, sizeof(CBInt3));
-      total += sizeof(CBInt3);
+    case SHType::Int3:
+      write((const uint8_t *)&input.payload, sizeof(SHInt3));
+      total += sizeof(SHInt3);
       break;
-    case CBType::Int4:
-      write((const uint8_t *)&input.payload, sizeof(CBInt4));
-      total += sizeof(CBInt4);
+    case SHType::Int4:
+      write((const uint8_t *)&input.payload, sizeof(SHInt4));
+      total += sizeof(SHInt4);
       break;
-    case CBType::Int8:
-      write((const uint8_t *)&input.payload, sizeof(CBInt8));
-      total += sizeof(CBInt8);
+    case SHType::Int8:
+      write((const uint8_t *)&input.payload, sizeof(SHInt8));
+      total += sizeof(SHInt8);
       break;
-    case CBType::Int16:
-      write((const uint8_t *)&input.payload, sizeof(CBInt16));
-      total += sizeof(CBInt16);
+    case SHType::Int16:
+      write((const uint8_t *)&input.payload, sizeof(SHInt16));
+      total += sizeof(SHInt16);
       break;
-    case CBType::Float:
-      write((const uint8_t *)&input.payload, sizeof(CBFloat));
-      total += sizeof(CBFloat);
+    case SHType::Float:
+      write((const uint8_t *)&input.payload, sizeof(SHFloat));
+      total += sizeof(SHFloat);
       break;
-    case CBType::Float2:
-      write((const uint8_t *)&input.payload, sizeof(CBFloat2));
-      total += sizeof(CBFloat2);
+    case SHType::Float2:
+      write((const uint8_t *)&input.payload, sizeof(SHFloat2));
+      total += sizeof(SHFloat2);
       break;
-    case CBType::Float3:
-      write((const uint8_t *)&input.payload, sizeof(CBFloat3));
-      total += sizeof(CBFloat3);
+    case SHType::Float3:
+      write((const uint8_t *)&input.payload, sizeof(SHFloat3));
+      total += sizeof(SHFloat3);
       break;
-    case CBType::Float4:
-      write((const uint8_t *)&input.payload, sizeof(CBFloat4));
-      total += sizeof(CBFloat4);
+    case SHType::Float4:
+      write((const uint8_t *)&input.payload, sizeof(SHFloat4));
+      total += sizeof(SHFloat4);
       break;
-    case CBType::Color:
-      write((const uint8_t *)&input.payload, sizeof(CBColor));
-      total += sizeof(CBColor);
+    case SHType::Color:
+      write((const uint8_t *)&input.payload, sizeof(SHColor));
+      total += sizeof(SHColor);
       break;
-    case CBType::Bytes:
+    case SHType::Bytes:
       write((const uint8_t *)&input.payload.bytesSize, sizeof(input.payload.bytesSize));
       total += sizeof(input.payload.bytesSize);
       write((const uint8_t *)input.payload.bytesValue, input.payload.bytesSize);
       total += input.payload.bytesSize;
       break;
-    case CBType::Array: {
+    case SHType::Array: {
       write((const uint8_t *)&input.innerType, sizeof(input.innerType));
       total += sizeof(input.innerType);
       write((const uint8_t *)&input.payload.arrayValue.len, sizeof(uint32_t));
       total += sizeof(uint32_t);
-      auto size = input.payload.arrayValue.len * sizeof(CBVarPayload);
+      auto size = input.payload.arrayValue.len * sizeof(SHVarPayload);
       write((const uint8_t *)&input.payload.arrayValue.elements[0], size);
       total += size;
     } break;
-    case CBType::Path:
-    case CBType::String:
-    case CBType::ContextVar: {
+    case SHType::Path:
+    case SHType::String:
+    case SHType::ContextVar: {
       uint32_t len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr
                          ? input.payload.stringLen
                          : uint32_t(strlen(input.payload.stringValue));
@@ -1269,7 +1269,7 @@ struct Serialization {
       total += len;
       break;
     }
-    case CBType::Seq: {
+    case SHType::Seq: {
       uint32_t len = input.payload.seqValue.len;
       write((const uint8_t *)&len, sizeof(uint32_t));
       total += sizeof(uint32_t);
@@ -1278,16 +1278,16 @@ struct Serialization {
       }
       break;
     }
-    case CBType::Table: {
+    case SHType::Table: {
       if (input.payload.tableValue.api && input.payload.tableValue.opaque) {
         auto &t = input.payload.tableValue;
         uint64_t len = (uint64_t)t.api->tableSize(t);
         write((const uint8_t *)&len, sizeof(uint64_t));
         total += sizeof(uint64_t);
-        CBTableIterator tit;
+        SHTableIterator tit;
         t.api->tableGetIterator(t, &tit);
-        CBString k;
-        CBVar v;
+        SHString k;
+        SHVar v;
         while (t.api->tableNext(t, &tit, &k, &v)) {
           uint32_t klen = strlen(k);
           write((const uint8_t *)&klen, sizeof(uint32_t));
@@ -1303,15 +1303,15 @@ struct Serialization {
       }
       break;
     }
-    case CBType::Set: {
+    case SHType::Set: {
       if (input.payload.setValue.api && input.payload.setValue.opaque) {
         auto &s = input.payload.setValue;
         uint64_t len = (uint64_t)s.api->setSize(s);
         write((const uint8_t *)&len, sizeof(uint64_t));
         total += sizeof(uint64_t);
-        CBSetIterator sit;
+        SHSetIterator sit;
         s.api->setGetIterator(s, &sit);
-        CBVar v;
+        SHVar v;
         while (s.api->setNext(s, &sit, &v)) {
           total += serialize(v, write);
         }
@@ -1322,11 +1322,11 @@ struct Serialization {
       }
       break;
     }
-    case CBType::Image: {
+    case SHType::Image: {
       auto pixsize = 1;
-      if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
+      if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
         pixsize = 2;
-      else if ((input.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
+      else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
         pixsize = 4;
       write((const uint8_t *)&input.payload.imageValue.channels, sizeof(input.payload.imageValue.channels));
       total += sizeof(input.payload.imageValue.channels);
@@ -1341,7 +1341,7 @@ struct Serialization {
       total += size;
       break;
     }
-    case CBType::Audio: {
+    case SHType::Audio: {
       write((const uint8_t *)&input.payload.audioValue.nsamples, sizeof(input.payload.audioValue.nsamples));
       total += sizeof(input.payload.audioValue.nsamples);
 
@@ -1357,8 +1357,8 @@ struct Serialization {
       total += size;
       break;
     }
-    case CBType::Block: {
-      auto blk = input.payload.blockValue;
+    case SHType::ShardRef: {
+      auto blk = input.payload.shardValue;
       // name
       auto name = blk->name(blk);
       uint32_t len = uint32_t(strlen(name));
@@ -1366,18 +1366,18 @@ struct Serialization {
       total += sizeof(uint32_t);
       write((const uint8_t *)name, len);
       total += len;
-      // serialize the hash of the block as well
+      // serialize the hash of the shard as well
       auto crc = blk->hash(blk);
       write((const uint8_t *)&crc, sizeof(uint32_t));
       total += sizeof(uint32_t);
       // params
       // well, this is bad and should be fixed somehow at some point
-      // we are creating a block just to compare to figure default values
+      // we are creating a shard just to compare to figure default values
       auto model =
-          defaultBlocks.emplace(name, std::shared_ptr<CBlock>(createBlock(name), [](CBlock *block) { block->destroy(block); }))
+          defaultShards.emplace(name, std::shared_ptr<Shard>(createShard(name), [](Shard *shard) { shard->destroy(shard); }))
               .first->second.get();
       if (!model) {
-        CBLOG_FATAL("Could not create block: {}.", name);
+        SHLOG_FATAL("Could not create shard: {}.", name);
       }
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
@@ -1399,58 +1399,58 @@ struct Serialization {
       }
       break;
     }
-    case CBType::Chain: {
-      auto sc = CBChain::sharedFromRef(input.payload.chainValue);
-      auto chain = sc.get();
+    case SHType::Wire: {
+      auto sc = SHWire::sharedFromRef(input.payload.wireValue);
+      auto wire = sc.get();
 
       { // Name
-        uint32_t len = uint32_t(chain->name.size());
+        uint32_t len = uint32_t(wire->name.size());
         write((const uint8_t *)&len, sizeof(uint32_t));
         total += sizeof(uint32_t);
-        write((const uint8_t *)chain->name.c_str(), len);
+        write((const uint8_t *)wire->name.c_str(), len);
         total += len;
       }
 
       // stop here if we had it already
-      if (chains.count(chain->name) > 0) {
-        CBLOG_TRACE("Skipping serializing chain: {}", chain->name);
+      if (wires.count(wire->name) > 0) {
+        SHLOG_TRACE("Skipping serializing wire: {}", wire->name);
         break;
       }
 
-      CBLOG_TRACE("Serializing chain: {}", chain->name);
-      chains.emplace(chain->name, CBChain::addRef(input.payload.chainValue));
+      SHLOG_TRACE("Serializing wire: {}", wire->name);
+      wires.emplace(wire->name, SHWire::addRef(input.payload.wireValue));
 
       { // Looped & Unsafe
-        write((const uint8_t *)&chain->looped, 1);
+        write((const uint8_t *)&wire->looped, 1);
         total += 1;
-        write((const uint8_t *)&chain->unsafe, 1);
+        write((const uint8_t *)&wire->unsafe, 1);
         total += 1;
       }
-      { // Blocks len
-        uint32_t len = uint32_t(chain->blocks.size());
+      { // Shards len
+        uint32_t len = uint32_t(wire->shards.size());
         write((const uint8_t *)&len, sizeof(uint32_t));
         total += sizeof(uint32_t);
       }
-      // Blocks
-      for (auto block : chain->blocks) {
-        CBVar blockVar{};
-        blockVar.valueType = CBType::Block;
-        blockVar.payload.blockValue = block;
-        total += serialize(blockVar, write);
+      // Shards
+      for (auto shard : wire->shards) {
+        SHVar shardVar{};
+        shardVar.valueType = SHType::ShardRef;
+        shardVar.payload.shardValue = shard;
+        total += serialize(shardVar, write);
       }
       break;
     }
-    case CBType::Object: {
+    case SHType::Object: {
       int64_t id = (int64_t)input.payload.objectVendorId << 32 | input.payload.objectTypeId;
       write((const uint8_t *)&id, sizeof(int64_t));
       total += sizeof(int64_t);
-      if ((input.flags & CBVAR_FLAGS_USES_OBJINFO) == CBVAR_FLAGS_USES_OBJINFO && input.objectInfo &&
+      if ((input.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && input.objectInfo &&
           input.objectInfo->serialize) {
         size_t len = 0;
         uint8_t *data = nullptr;
-        CBPointer handle = nullptr;
+        SHPointer handle = nullptr;
         if (!input.objectInfo->serialize(input.payload.objectValue, &data, &len, &handle)) {
-          throw chainblocks::CBException("Failed to serialize custom object variable!");
+          throw shards::SHException("Failed to serialize custom object variable!");
         }
         uint64_t ulen = uint64_t(len);
         write((const uint8_t *)&ulen, sizeof(uint64_t));
@@ -1470,21 +1470,21 @@ struct Serialization {
   }
 };
 
-template <typename T> struct ChainDoppelgangerPool {
-  ChainDoppelgangerPool(CBChainRef master) {
-    auto vchain = chainblocks::Var(master);
+template <typename T> struct WireDoppelgangerPool {
+  WireDoppelgangerPool(SHWireRef master) {
+    auto vwire = shards::Var(master);
     std::stringstream stream;
     Writer w(stream);
     Serialization serializer;
-    serializer.serialize(vchain, w);
-    _chainStr = stream.str();
+    serializer.serialize(vwire, w);
+    _wireStr = stream.str();
   }
 
-  // notice users should stop chains themselves, we might want chains to persist
+  // notice users should stop wires themselves, we might want wires to persist
   // after this object lifetime
   void stopAll() {
     for (auto &item : _pool) {
-      stop(item->chain.get());
+      stop(item->wire.get());
       _avail.emplace(item);
     }
   }
@@ -1492,15 +1492,15 @@ template <typename T> struct ChainDoppelgangerPool {
   template <class Composer> std::shared_ptr<T> acquire(Composer &composer) {
     if (_avail.size() == 0) {
       Serialization serializer;
-      std::stringstream stream(_chainStr);
+      std::stringstream stream(_wireStr);
       Reader r(stream);
-      CBVar vchain{};
-      serializer.deserialize(r, vchain);
-      auto chain = CBChain::sharedFromRef(vchain.payload.chainValue);
+      SHVar vwire{};
+      serializer.deserialize(r, vwire);
+      auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       auto fresh = _pool.emplace_back(std::make_shared<T>());
-      fresh->chain = chain;
-      composer.compose(chain.get());
-      fresh->chain->name = fresh->chain->name + "-" + std::to_string(_pool.size());
+      fresh->wire = wire;
+      composer.compose(wire.get());
+      fresh->wire->name = fresh->wire->name + "-" + std::to_string(_pool.size());
       return fresh;
     } else {
       auto res = _avail.extract(_avail.begin());
@@ -1508,7 +1508,7 @@ template <typename T> struct ChainDoppelgangerPool {
     }
   }
 
-  void release(std::shared_ptr<T> chain) { _avail.emplace(chain); }
+  void release(std::shared_ptr<T> wire) { _avail.emplace(wire); }
 
 private:
   struct Writer {
@@ -1528,12 +1528,12 @@ private:
   // just release when possible
   std::deque<std::shared_ptr<T>> _pool;
   std::unordered_set<std::shared_ptr<T>> _avail;
-  std::string _chainStr;
+  std::string _wireStr;
 };
 
 #ifdef __EMSCRIPTEN__
-template <typename T> inline T emscripten_wait(CBContext *context, emscripten::val promise) {
-  const static emscripten::val futs = emscripten::val::global("ChainblocksBonder");
+template <typename T> inline T emscripten_wait(SHContext *context, emscripten::val promise) {
+  const static emscripten::val futs = emscripten::val::global("ShardsBonder");
   emscripten::val fut = futs.new_(promise);
   fut.call<void>("run");
 
@@ -1558,15 +1558,15 @@ extern Shared<boost::asio::thread_pool> SharedThreadPool;
 #endif
 
 template <typename FUNC, typename CANCELLATION>
-inline CBVar awaitne(CBContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
+inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
   std::exception_ptr exp = nullptr;
-  CBVar res{};
+  SHVar res{};
   std::atomic_bool complete = false;
 
-  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
+  boost::asio::dispatch(shards::SharedThreadPool(), [&]() {
     try {
       res = func();
     } catch (...) {
@@ -1576,7 +1576,7 @@ inline CBVar awaitne(CBContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   });
 
   while (!complete && context->shouldContinue()) {
-    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+    if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
   }
 
@@ -1601,14 +1601,14 @@ inline CBVar awaitne(CBContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 #endif
 }
 
-template <typename FUNC, typename CANCELLATION> inline void await(CBContext *context, FUNC &&func, CANCELLATION &&cancel) {
+template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
   std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
-  boost::asio::dispatch(chainblocks::SharedThreadPool(), [&]() {
+  boost::asio::dispatch(shards::SharedThreadPool(), [&]() {
     try {
       func();
     } catch (...) {
@@ -1618,7 +1618,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(CBContext *con
   });
 
   while (!complete && context->shouldContinue()) {
-    if (chainblocks::suspend(context, 0) != CBChainState::Continue)
+    if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
   }
 
@@ -1634,6 +1634,6 @@ template <typename FUNC, typename CANCELLATION> inline void await(CBContext *con
   }
 #endif
 }
-} // namespace chainblocks
+} // namespace shards
 
-#endif // CB_CORE_RUNTIME
+#endif // SH_CORE_RUNTIME

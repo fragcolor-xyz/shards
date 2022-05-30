@@ -1,25 +1,25 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_OPS_HPP
-#define CB_OPS_HPP
+#ifndef SH_OPS_HPP
+#define SH_OPS_HPP
 
 #include <cassert>
 #include <cfloat>
-#include <chainblocks.hpp>
+#include <shards.hpp>
 #include <string>
 #include <string_view>
 
-inline std::string type2Name(CBType type) {
+inline std::string type2Name(SHType type) {
   std::string name = "";
   switch (type) {
   case EndOfBlittableTypes:
     // this should never happen
-    throw chainblocks::CBException("EndOfBlittableTypes is an invalid type");
+    throw shards::SHException("EndOfBlittableTypes is an invalid type");
   case None:
     name = "None";
     break;
-  case CBType::Any:
+  case SHType::Any:
     name = "Any";
     break;
   case Object:
@@ -67,19 +67,19 @@ inline std::string type2Name(CBType type) {
   case Color:
     name = "Color";
     break;
-  case Chain:
-    name = "Chain";
+  case Wire:
+    name = "Wire";
     break;
-  case Block:
-    name = "Block";
+  case ShardRef:
+    name = "Shard";
     break;
-  case CBType::String:
+  case SHType::String:
     name = "String";
     break;
   case ContextVar:
     name = "ContextVar";
     break;
-  case CBType::Path:
+  case SHType::Path:
     name = "Path";
     break;
   case Image:
@@ -94,7 +94,7 @@ inline std::string type2Name(CBType type) {
   case Table:
     name = "Table";
     break;
-  case CBType::Set:
+  case SHType::Set:
     name = "Set";
     break;
   case Array:
@@ -104,16 +104,16 @@ inline std::string type2Name(CBType type) {
   return name;
 }
 
-ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b);
-ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b);
+ALWAYS_INLINE inline bool operator!=(const SHVar &a, const SHVar &b);
+ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b);
+ALWAYS_INLINE inline bool operator>(const SHVar &a, const SHVar &b);
+ALWAYS_INLINE inline bool operator>=(const SHVar &a, const SHVar &b);
+ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b);
 
-bool operator==(const CBTypeInfo &a, const CBTypeInfo &b);
-inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b);
+bool operator==(const SHTypeInfo &a, const SHTypeInfo &b);
+inline bool operator!=(const SHTypeInfo &a, const SHTypeInfo &b);
 
-inline int cmp(const CBVar &a, const CBVar &b) {
+inline int cmp(const SHVar &a, const SHVar &b) {
   if (a == b)
     return 0;
   else if (a < b)
@@ -122,19 +122,19 @@ inline int cmp(const CBVar &a, const CBVar &b) {
     return 1;
 }
 
-bool _seqEq(const CBVar &a, const CBVar &b);
+bool _seqEq(const SHVar &a, const SHVar &b);
 
-bool _setEq(const CBVar &a, const CBVar &b);
+bool _setEq(const SHVar &a, const SHVar &b);
 
-bool _tableEq(const CBVar &a, const CBVar &b);
+bool _tableEq(const SHVar &a, const SHVar &b);
 
-ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
     return false;
 
   switch (a.valueType) {
   case None:
-  case CBType::Any:
+  case SHType::Any:
   case EndOfBlittableTypes:
     return true;
   case Object:
@@ -150,71 +150,71 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case Float:
     return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= FLT_EPSILON;
   case Int2: {
-    CBInt2 vec = a.payload.int2Value == b.payload.int2Value;
+    SHInt2 vec = a.payload.int2Value == b.payload.int2Value;
     for (auto i = 0; i < 2; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Int3: {
-    CBInt3 vec = a.payload.int3Value == b.payload.int3Value;
+    SHInt3 vec = a.payload.int3Value == b.payload.int3Value;
     for (auto i = 0; i < 3; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Int4: {
-    CBInt4 vec = a.payload.int4Value == b.payload.int4Value;
+    SHInt4 vec = a.payload.int4Value == b.payload.int4Value;
     for (auto i = 0; i < 4; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Int8: {
-    CBInt8 vec = a.payload.int8Value == b.payload.int8Value;
+    SHInt8 vec = a.payload.int8Value == b.payload.int8Value;
     for (auto i = 0; i < 8; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Int16: {
-    CBInt16 vec = a.payload.int16Value == b.payload.int16Value;
+    SHInt16 vec = a.payload.int16Value == b.payload.int16Value;
     for (auto i = 0; i < 16; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Float2: {
-    const CBFloat2 vepsi = {FLT_EPSILON, FLT_EPSILON};
-    CBFloat2 diff = a.payload.float2Value - b.payload.float2Value;
+    const SHFloat2 vepsi = {FLT_EPSILON, FLT_EPSILON};
+    SHFloat2 diff = a.payload.float2Value - b.payload.float2Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
-    CBInt2 vec = diff <= vepsi;
+    SHInt2 vec = diff <= vepsi;
     for (auto i = 0; i < 2; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Float3: {
-    const CBFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
-    CBFloat3 diff = a.payload.float3Value - b.payload.float3Value;
+    const SHFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
+    SHFloat3 diff = a.payload.float3Value - b.payload.float3Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
     diff[2] = __builtin_fabs(diff[2]);
-    CBInt3 vec = diff <= vepsi;
+    SHInt3 vec = diff <= vepsi;
     for (auto i = 0; i < 3; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
   case Float4: {
-    const CBFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
-    CBFloat4 diff = a.payload.float4Value - b.payload.float4Value;
+    const SHFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
+    SHFloat4 diff = a.payload.float4Value - b.payload.float4Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
     diff[2] = __builtin_fabs(diff[2]);
     diff[3] = __builtin_fabs(diff[3]);
-    CBInt4 vec = diff <= vepsi;
+    SHInt4 vec = diff <= vepsi;
     for (auto i = 0; i < 4; i++)
       if (vec[i] == 0)
         return false;
@@ -223,13 +223,13 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case Color:
     return a.payload.colorValue.r == b.payload.colorValue.r && a.payload.colorValue.g == b.payload.colorValue.g &&
            a.payload.colorValue.b == b.payload.colorValue.b && a.payload.colorValue.a == b.payload.colorValue.a;
-  case Chain:
-    return a.payload.chainValue == b.payload.chainValue;
-  case Block:
-    return a.payload.blockValue == b.payload.blockValue;
-  case CBType::Path:
+  case Wire:
+    return a.payload.wireValue == b.payload.wireValue;
+  case ShardRef:
+    return a.payload.shardValue == b.payload.shardValue;
+  case SHType::Path:
   case ContextVar:
-  case CBType::String: {
+  case SHType::String: {
     if (a.payload.stringValue == b.payload.stringValue)
       return true;
 
@@ -244,13 +244,13 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
   case Image: {
     auto apixsize = 1;
     auto bpixsize = 1;
-    if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
+    if ((a.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       apixsize = 2;
-    else if ((a.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((a.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       apixsize = 4;
-    if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_16BITS_INT) == CBIMAGE_FLAGS_16BITS_INT)
+    if ((b.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
       bpixsize = 2;
-    else if ((b.payload.imageValue.flags & CBIMAGE_FLAGS_32BITS_FLOAT) == CBIMAGE_FLAGS_32BITS_FLOAT)
+    else if ((b.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
       bpixsize = 4;
     return apixsize == bpixsize && a.payload.imageValue.channels == b.payload.imageValue.channels &&
            a.payload.imageValue.width == b.payload.imageValue.width &&
@@ -271,29 +271,29 @@ ALWAYS_INLINE inline bool operator==(const CBVar &a, const CBVar &b) {
     return _seqEq(a, b);
   case Table:
     return _tableEq(a, b);
-  case CBType::Set:
+  case SHType::Set:
     return _setEq(a, b);
-  case CBType::Bytes:
+  case SHType::Bytes:
     return a.payload.bytesSize == b.payload.bytesSize &&
            (a.payload.bytesValue == b.payload.bytesValue ||
             memcmp(a.payload.bytesValue, b.payload.bytesValue, a.payload.bytesSize) == 0);
-  case CBType::Array:
+  case SHType::Array:
     return a.payload.arrayValue.len == b.payload.arrayValue.len && a.innerType == b.innerType &&
            (a.payload.arrayValue.elements == b.payload.arrayValue.elements ||
             memcmp(a.payload.arrayValue.elements, b.payload.arrayValue.elements,
-                   a.payload.arrayValue.len * sizeof(CBVarPayload)) == 0);
+                   a.payload.arrayValue.len * sizeof(SHVarPayload)) == 0);
   }
 
   return false;
 }
 
-bool _seqLess(const CBVar &a, const CBVar &b);
+bool _seqLess(const SHVar &a, const SHVar &b);
 
-bool _tableLess(const CBVar &a, const CBVar &b);
+bool _tableLess(const SHVar &a, const SHVar &b);
 
 // avoid trying to be smart with SIMDs here
 // compiler will outsmart us likely anyway.
-#define CBVECTOR_CMP(_a_, _b_, _s_, _final_) \
+#define SHVECTOR_CMP(_a_, _b_, _s_, _final_) \
   for (auto i = 0; i < _s_; i++) {           \
     if (_a_[i] < _b_[i])                     \
       return true;                           \
@@ -302,14 +302,14 @@ bool _tableLess(const CBVar &a, const CBVar &b);
   }                                          \
   return _final_
 
-ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
-    throw chainblocks::InvalidVarTypeError("Comparison < between two different value types");
+    throw shards::InvalidVarTypeError("Comparison < between two different value types");
 
   switch (a.valueType) {
   case Enum: {
     if (a.payload.enumVendorId != b.payload.enumVendorId || a.payload.enumTypeId != b.payload.enumTypeId)
-      throw chainblocks::InvalidVarTypeError("Comparison < between two different kind of enums (vendor/type)");
+      throw shards::InvalidVarTypeError("Comparison < between two different kind of enums (vendor/type)");
     return a.payload.enumValue < b.payload.enumValue;
   }
   case Bool:
@@ -319,35 +319,35 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Float:
     return a.payload.floatValue < b.payload.floatValue;
   case Int2: {
-    CBVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, false);
+    SHVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, false);
   }
   case Int3: {
-    CBVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, false);
+    SHVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, false);
   }
   case Int4: {
-    CBVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, false);
+    SHVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, false);
   }
   case Int8: {
-    CBVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, false);
+    SHVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, false);
   }
   case Int16: {
-    CBVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, false);
+    SHVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, false);
   }
   case Float2: {
-    CBVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, false);
+    SHVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, false);
   }
   case Float3: {
-    CBVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, false);
+    SHVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, false);
   }
   case Float4: {
-    CBVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, false);
+    SHVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, false);
   }
   case Color:
     return a.payload.colorValue.r < b.payload.colorValue.r || a.payload.colorValue.g < b.payload.colorValue.g ||
            a.payload.colorValue.b < b.payload.colorValue.b || a.payload.colorValue.a < b.payload.colorValue.a;
-  case CBType::Path:
+  case SHType::Path:
   case ContextVar:
-  case CBType::String: {
+  case SHType::String: {
     if (a.payload.stringValue == b.payload.stringValue)
       return false;
 
@@ -373,27 +373,27 @@ ALWAYS_INLINE inline bool operator<(const CBVar &a, const CBVar &b) {
   case Array: {
     if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
       return false;
-    std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(CBVarPayload));
-    std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(CBVarPayload));
+    std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(SHVarPayload));
+    std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(SHVarPayload));
     return abuf < bbuf;
   }
   default:
-    throw chainblocks::InvalidVarTypeError("Comparison operator < not supported for the given type: " + type2Name(a.valueType));
+    throw shards::InvalidVarTypeError("Comparison operator < not supported for the given type: " + type2Name(a.valueType));
   }
 }
 
-bool _seqLessEq(const CBVar &a, const CBVar &b);
+bool _seqLessEq(const SHVar &a, const SHVar &b);
 
-bool _tableLessEq(const CBVar &a, const CBVar &b);
+bool _tableLessEq(const SHVar &a, const SHVar &b);
 
-ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
+ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
-    throw chainblocks::InvalidVarTypeError("Comparison <= between two different value types");
+    throw shards::InvalidVarTypeError("Comparison <= between two different value types");
 
   switch (a.valueType) {
   case Enum: {
     if (a.payload.enumVendorId != b.payload.enumVendorId || a.payload.enumTypeId != b.payload.enumTypeId)
-      throw chainblocks::InvalidVarTypeError("Comparison <= between two different kind of enums (vendor/type)");
+      throw shards::InvalidVarTypeError("Comparison <= between two different kind of enums (vendor/type)");
     return a.payload.enumValue <= b.payload.enumValue;
   }
   case Bool:
@@ -403,35 +403,35 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Float:
     return a.payload.floatValue <= b.payload.floatValue;
   case Int2: {
-    CBVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, true);
+    SHVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, true);
   }
   case Int3: {
-    CBVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, true);
+    SHVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, true);
   }
   case Int4: {
-    CBVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, true);
+    SHVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, true);
   }
   case Int8: {
-    CBVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, true);
+    SHVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, true);
   }
   case Int16: {
-    CBVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, true);
+    SHVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, true);
   }
   case Float2: {
-    CBVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, true);
+    SHVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, true);
   }
   case Float3: {
-    CBVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, true);
+    SHVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, true);
   }
   case Float4: {
-    CBVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, true);
+    SHVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, true);
   }
   case Color:
     return a.payload.colorValue.r <= b.payload.colorValue.r && a.payload.colorValue.g <= b.payload.colorValue.g &&
            a.payload.colorValue.b <= b.payload.colorValue.b && a.payload.colorValue.a <= b.payload.colorValue.a;
-  case CBType::Path:
+  case SHType::Path:
   case ContextVar:
-  case CBType::String: {
+  case SHType::String: {
     if (a.payload.stringValue == b.payload.stringValue)
       return true;
 
@@ -457,50 +457,50 @@ ALWAYS_INLINE inline bool operator<=(const CBVar &a, const CBVar &b) {
   case Array: {
     if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
       return true;
-    std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(CBVarPayload));
-    std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(CBVarPayload));
+    std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(SHVarPayload));
+    std::string_view bbuf((const char *)b.payload.arrayValue.elements, b.payload.arrayValue.len * sizeof(SHVarPayload));
     return abuf <= bbuf;
   }
   default:
-    throw chainblocks::InvalidVarTypeError("Comparison operator <= not supported for the given type: " + type2Name(a.valueType));
+    throw shards::InvalidVarTypeError("Comparison operator <= not supported for the given type: " + type2Name(a.valueType));
   }
 }
 
-#undef CBVECTOR_CMP
+#undef SHVECTOR_CMP
 
-ALWAYS_INLINE inline bool operator!=(const CBVar &a, const CBVar &b) { return !(a == b); }
+ALWAYS_INLINE inline bool operator!=(const SHVar &a, const SHVar &b) { return !(a == b); }
 
-ALWAYS_INLINE inline bool operator>(const CBVar &a, const CBVar &b) { return b < a; }
+ALWAYS_INLINE inline bool operator>(const SHVar &a, const SHVar &b) { return b < a; }
 
-ALWAYS_INLINE inline bool operator>=(const CBVar &a, const CBVar &b) { return b <= a; }
+ALWAYS_INLINE inline bool operator>=(const SHVar &a, const SHVar &b) { return b <= a; }
 
-inline bool operator!=(const CBTypeInfo &a, const CBTypeInfo &b) { return !(a == b); }
+inline bool operator!=(const SHTypeInfo &a, const SHTypeInfo &b) { return !(a == b); }
 
-inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b);
+inline bool operator!=(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b);
 
-inline bool operator==(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) {
+inline bool operator==(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b) {
   if (strcmp(a.name, b.name) != 0 || a.exposedType != b.exposedType || a.isMutable != b.isMutable ||
       a.isProtected != b.isProtected || a.global != b.global)
     return false;
   return true;
 }
 
-inline bool operator!=(const CBExposedTypeInfo &a, const CBExposedTypeInfo &b) { return !(a == b); }
+inline bool operator!=(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b) { return !(a == b); }
 
-namespace chainblocks {
-CBVar hash(const CBVar &var);
-} // namespace chainblocks
+namespace shards {
+SHVar hash(const SHVar &var);
+} // namespace shards
 
 namespace std {
-template <> struct hash<CBVar> {
-  std::size_t operator()(const CBVar &var) const {
+template <> struct hash<SHVar> {
+  std::size_t operator()(const SHVar &var) const {
     // not ideal on 32 bits as our hash is 64.. but it should be ok
-    return std::size_t(chainblocks::hash(var).payload.int2Value[0]);
+    return std::size_t(shards::hash(var).payload.int2Value[0]);
   }
 };
 
-template <> struct hash<CBTypeInfo> {
-  std::size_t operator()(const CBTypeInfo &typeInfo) const {
+template <> struct hash<SHTypeInfo> {
+  std::size_t operator()(const SHTypeInfo &typeInfo) const {
     using std::hash;
     using std::size_t;
     using std::string;
@@ -514,7 +514,7 @@ template <> struct hash<CBTypeInfo> {
       }
       if (typeInfo.table.types.elements) {
         for (uint32_t i = 0; i < typeInfo.table.types.len; i++) {
-          res = res ^ hash<CBTypeInfo>()(typeInfo.table.types.elements[i]);
+          res = res ^ hash<SHTypeInfo>()(typeInfo.table.types.elements[i]);
         }
       }
     } else if (typeInfo.basicType == Seq) {
@@ -522,15 +522,15 @@ template <> struct hash<CBTypeInfo> {
         if (typeInfo.seqTypes.elements[i].recursiveSelf) {
           res = res ^ hash<int>()(INT32_MAX);
         } else {
-          res = res ^ hash<CBTypeInfo>()(typeInfo.seqTypes.elements[i]);
+          res = res ^ hash<SHTypeInfo>()(typeInfo.seqTypes.elements[i]);
         }
       }
-    } else if (typeInfo.basicType == CBType::Set) {
+    } else if (typeInfo.basicType == SHType::Set) {
       for (uint32_t i = 0; i < typeInfo.setTypes.len; i++) {
         if (typeInfo.setTypes.elements[i].recursiveSelf) {
           res = res ^ hash<int>()(INT32_MAX);
         } else {
-          res = res ^ hash<CBTypeInfo>()(typeInfo.setTypes.elements[i]);
+          res = res ^ hash<SHTypeInfo>()(typeInfo.setTypes.elements[i]);
         }
       }
     } else if (typeInfo.basicType == Object) {
@@ -544,13 +544,13 @@ template <> struct hash<CBTypeInfo> {
   }
 };
 
-template <> struct hash<CBExposedTypeInfo> {
-  std::size_t operator()(const CBExposedTypeInfo &typeInfo) const {
+template <> struct hash<SHExposedTypeInfo> {
+  std::size_t operator()(const SHExposedTypeInfo &typeInfo) const {
     using std::hash;
     using std::size_t;
     using std::string;
     auto res = hash<string>()(typeInfo.name);
-    res = res ^ hash<CBTypeInfo>()(typeInfo.exposedType);
+    res = res ^ hash<SHTypeInfo>()(typeInfo.exposedType);
     res = res ^ hash<int>()(typeInfo.isMutable);
     res = res ^ hash<int>()(typeInfo.isProtected);
     res = res ^ hash<int>()(typeInfo.isTableEntry);

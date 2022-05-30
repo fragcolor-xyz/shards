@@ -1,10 +1,10 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defblocks todo! []
+(defshards todo! []
   "todo!" (GUI.Text :Color (color 128 128 128 255)))
 
-(defblocks helloWorld-window []
+(defshards helloWorld-window []
   (GUI.Window
    :Title "Hello, World!"
    :Contents
@@ -24,7 +24,7 @@
   (If (Get .showDemo) :Then (demo-window))
   (If (Get .showAnother) :Then (another-window)))
 
-(defblocks another-window []
+(defshards another-window []
   (GUI.Window
    :Title "Another Window"
    :Flags [GuiWindowFlags.NoResize, GuiWindowFlags.NoCollapse]
@@ -33,7 +33,7 @@
    (-> "Hello from another window!" (GUI.Text)
        (GUI.Button "Close Me" (-> false (Update .showAnother))))))
 
-(defblocks demo-window []
+(defshards demo-window []
   (GUI.Window
    :Title "UI Demo" :Pos (int2 650 20) :Width 550 :Height 680
    :Flags [GuiWindowFlags.MenuBar]
@@ -53,7 +53,7 @@
                  "and Metrics/Debugger (general purpose UI debugging tool).") (GUI.Text :Bullet true)
             (GUI.Separator)
             "PROGRAMMER GUIDE:" (GUI.Text)
-            "See the demo-window block in imgui_demo.edn. <- you are here!" (GUI.Text :Bullet true)
+            "See the demo-window shard in imgui_demo.edn. <- you are here!" (GUI.Text :Bullet true)
             (GUI.Separator)
             "USER GUIDE:" (GUI.Text)
             "Double-click on title bar to collapse window." (GUI.Text :Bullet true)
@@ -131,42 +131,42 @@
                   "Trees"
                   (-> (GUI.TreeNode
                        "Basic trees"
-                       (-> (defn my_nodes [i]
+                       (-> (defn my_meshs [i]
                              (if (< i 0)
                                nil
-                               (-> (my_nodes (- i 1))
+                               (-> (my_meshs (- i 1))
                                    (GUI.TreeNode
                                     :Label (str "Child " i) :StartOpen (= i 0) :Contents
                                     (-> "blah blah" (GUI.Text) (GUI.SameLine) (GUI.Button "button" :Type GuiButton.Small))))))
-                           (my_nodes 5)))
+                           (my_meshs 5)))
                       (GUI.TreeNode
-                       "Advanced, with Selectable nodes"
-                       (-> (Setup GuiTreeNodeFlags.SpanAvailWidth >= .treeNodeFlags)
-                           (GUI.HelpMarker (str "This is a more typical looking tree with selectable nodes.\n"
+                       "Advanced, with Selectable meshs"
+                       (-> (Setup GuiTreeNodeFlags.SpanAvailWidth >= .treeMeshFlags)
+                           (GUI.HelpMarker (str "This is a more typical looking tree with selectable meshs.\n"
                                                 "Click to select, CTRL+Click to toggle, click on arrows or double-click to open.")
                                            :Inline false)
-                           (GUI.CheckboxFlags "OpenOnArrow" .treeNodeFlags GuiTreeNodeFlags.OpenOnArrow)
-                           (GUI.CheckboxFlags "OpenOnDoubleClick" .treeNodeFlags GuiTreeNodeFlags.OpenOnDoubleClick)
-                           (GUI.CheckboxFlags "SpanAvailWidth" .treeNodeFlags GuiTreeNodeFlags.SpanAvailWidth)
-                           (GUI.HelpMarker "Extend hit area to all available width instead of allowing more items to be laid out after the node.")
-                           (GUI.CheckboxFlags "SpanFullWidth" .treeNodeFlags GuiTreeNodeFlags.SpanFullWidth)
+                           (GUI.CheckboxFlags "OpenOnArrow" .treeMeshFlags GuiTreeNodeFlags.OpenOnArrow)
+                           (GUI.CheckboxFlags "OpenOnDoubleClick" .treeMeshFlags GuiTreeNodeFlags.OpenOnDoubleClick)
+                           (GUI.CheckboxFlags "SpanAvailWidth" .treeMeshFlags GuiTreeNodeFlags.SpanAvailWidth)
+                           (GUI.HelpMarker "Extend hit area to all available width instead of allowing more items to be laid out after the mesh.")
+                           (GUI.CheckboxFlags "SpanFullWidth" .treeMeshFlags GuiTreeNodeFlags.SpanFullWidth)
                            (GUI.Checkbox "Align label with current X position" .alignX)
                            "Hello!" (GUI.Text)
                            (If (Get .alignX) (GUI.Unindent))
-                           (defn my_nodes_2 [i]
+                           (defn my_meshs_2 [i]
                              (if (< i 0) nil
-                                 (-> (my_nodes_2 (- i 1))
+                                 (-> (my_meshs_2 (- i 1))
                                      (GUI.TreeNode
-                                      :Label (str "Node " i) :Flags .treeNodeFlags :Contents
+                                      :Label (str "Mesh " i) :Flags .treeMeshFlags :Contents
                                       (-> "Blah blah\nBlah Blah" (GUI.Text :Bullet true))))))
-                           (my_nodes_2 6)
+                           (my_meshs_2 6)
                            (If (Get .alignX) (GUI.Indent))))))
                  (GUI.TreeNode "Collapsing Headers" (todo!))
                  (GUI.TreeNode
                   "Bullets"
                   (-> "Bullet point 1" (GUI.Text :Bullet true)
                       "Bullet point 2\nOn multiple lines" (GUI.Text :Bullet true)
-                      (GUI.TreeNode "Tree node" (-> "Another bullet point" (GUI.Text :Bullet true)))
+                      (GUI.TreeNode "Tree mesh" (-> "Another bullet point" (GUI.Text :Bullet true)))
                       (GUI.Bullet) "Bullet point 3 (two calls)" (GUI.Text)
                       (GUI.Bullet) (GUI.Button "Button" :Type GuiButton.Small)))
                  (GUI.TreeNode
@@ -212,7 +212,7 @@
                  (GUI.TreeNode "Querying Item Status (Edited/Active/Hovered etc.)" (todo!))
                  (GUI.TreeNode "Querying Window Status (Focused/Hovered etc.)" (todo!))))
             (GUI.TreeNode
-             "Disable block"
+             "Disable shard"
              (-> (GUI.Checkbox "Disable entire section above" .disableAll)
                  (GUI.SameLine)
                  (GUI.HelpMarker "Demonstrate using (Disable) across this section.")))))
@@ -285,7 +285,7 @@
        (GUI.CollapsingHeader "Filtering" (todo!))
        (GUI.CollapsingHeader "Inputs, Navigation & Focus" (todo!)))))
 
-(defblocks demo-menu-items []
+(defshards demo-menu-items []
   (GUI.MenuItem "(demo menu)" :IsEnabled false)
   (GUI.MenuItem "New")
   (GUI.MenuItem "Open" :Shortcut "Ctrl+O")
@@ -325,7 +325,7 @@
   (GUI.MenuItem "Checked" true)
   (GUI.MenuItem "Quit" :Shortcut "Alt+F4" :Action (Stop)))
 
-(defblocks examples-menu []
+(defshards examples-menu []
   (Setup
    false >= .mainMenuBar-example
    false >= .console-example
@@ -359,7 +359,7 @@
   (If (Get .mainMenuBar-example) :Then (mainMenuBar-example))
   (If (Get .layout-example) :Then (layout-example)))
 
-(defblocks mainMenuBar-example []
+(defshards mainMenuBar-example []
   (GUI.MainMenuBar
    :Contents
    (-> (GUI.Menu "File" :Contents (demo-menu-items))
@@ -373,7 +373,7 @@
             (GUI.MenuItem "Copy" :Shortcut "Ctrl+C")
             (GUI.MenuItem "Paste" :Shortcut "Ctrl+V"))))))
 
-(defblocks layout-example []
+(defshards layout-example []
   (GUI.Window
    :Title "Example: Simple layout" :OnClose .layout-example :Height 440 :Width 500
    :Flags [GuiWindowFlags.MenuBar]
@@ -415,7 +415,7 @@
                         (GUI.Text :Wrap true)))
                    (GUI.TabItem "Details" :Contents (-> "ID: 0123456789" (GUI.Text))))))))))))
 
-(defblocks tools-menu []
+(defshards tools-menu []
   (Setup
    false >= .about)
   (GUI.Menu
@@ -430,15 +430,15 @@
       (GUI.Window
        :Title "About UI" :OnClose .about
        :Contents
-       (-> "UI Chainblocks" (GUI.Text)
+       (-> "UI Shards" (GUI.Text)
            (GUI.Separator)
            "Based on 'Dear ImGUI' by Omar Cornut and contributors." (GUI.Text)
            "'Dear ImGui' is licensed under the MIT License." (GUI.Text)))))
 
-(defnode main)
-(defloop ui-chain
+(defmesh main)
+(defloop ui-wire
   (GFX.MainWindow
-   :Title "UI Chainblocks Example" :Width 1280 :Height 768 :Debug false
+   :Title "UI Shards Example" :Width 1280 :Height 768 :Debug false
    :Contents
    (-> (Setup
         true >= .showDemo
@@ -446,8 +446,8 @@
         (color 15 15 15 240) >= .color)
        .color (GUI.Style GuiStyle.WindowBgColor)
        (helloWorld-window))))
-(schedule main ui-chain)
+(schedule main ui-wire)
 (run main 0.02 100)
 
-(schedule main ui-chain)
+(schedule main ui-wire)
 (run main 0.02 100)

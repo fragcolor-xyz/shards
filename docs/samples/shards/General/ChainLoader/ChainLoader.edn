@@ -1,0 +1,12 @@
+;; loadme.edn
+;; (Msg "Hello World from loadme.edn!")
+;; (Stop)
+
+(defloop loader
+  (WireLoader
+   ;:Provider
+   (Wire* "data/loadme.edn")
+   ;:Mode
+   RunWireMode.Inline))
+
+(Start loader)

@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (schedule
  Root
- (Chain
+ (Wire
   "brotli-test"
   "Compressing this string is the test, Compressing this string is the test"
   (Set "string")

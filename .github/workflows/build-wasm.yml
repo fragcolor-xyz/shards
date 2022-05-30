@@ -29,7 +29,7 @@ on:
 
 jobs:
   #
-  # Build chainblocks for emscripten
+  # Build shards for emscripten
   #
   wasm32-emscripten:
     name: Build (${{ github.event.inputs.threading || inputs.threading }})
@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "::set-output name=threading::${{ github.event.inputs.threading || inputs.threading }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
@@ -77,7 +77,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ steps.setup.outputs.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-          ninja cbl && ninja test_runtime
+          ninja shards && ninja test_runtime
       # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
       - uses: actions/setup-node@v3
         with:
@@ -87,33 +87,33 @@ jobs:
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'st' }}
         run: |
           cd build
-          node ../src/tests/test_cbl.js cbl-st.js || [[ $? == 143 ]] || exit
+          node ../src/tests/test_shards.js shards-st.js || [[ $? == 143 ]] || exit
           node ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
-          mkdir cbl
-          cp cbl-st.wasm cbl/
-          cp cbl-st.js cbl/
+          mkdir shards
+          cp shards-st.wasm shards/
+          cp shards-st.js shards/
       - name: Test (mt)
         if: ${{ steps.setup.outputs.threading == 'mt' }}
         run: |
           cd build
-          node --experimental-wasm-threads ../src/tests/test_cbl.js cbl-mt.js || [[ $? == 143 ]] || exit
+          node --experimental-wasm-threads ../src/tests/test_shards.js shards-mt.js || [[ $? == 143 ]] || exit
           node --experimental-wasm-threads ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
-          mkdir cbl
-          cp cbl-mt.wasm cbl/
-          cp cbl-mt.js cbl/
-          cp cbl-mt.worker.js cbl/
+          mkdir shards
+          cp shards-mt.wasm shards/
+          cp shards-mt.js shards/
+          cp shards-mt.worker.js shards/
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: cbl-wasm ${{ steps.setup.outputs.threading }}
+          name: shards-wasm ${{ steps.setup.outputs.threading }}
           path: |
-            build/cbl/
+            build/shards/
           if-no-files-found: error
-      # - name: Upload cbl to IPFS
+      # - name: Upload shards to IPFS
       #   uses: chainblocks/ipfs-action@master
       #   if: ${{ github.event_name == 'push' }}
       #   with:
-      #     path: build/cbl/
+      #     path: build/shards/
       #     service: infura
       #     port: 5001
       #     protocol: https

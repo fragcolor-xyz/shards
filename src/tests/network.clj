@@ -4,7 +4,7 @@
 (def remote "Network.RemoteEndpoint")
 
 (def network-test-server
-  (Chain "server" :Looped
+  (Wire "server" :Looped
          (Network.Server
           "127.0.0.1" 9191
           (-> ; this acts like a callback                                        
@@ -28,7 +28,7 @@
            ))))
 
 (def client-init
-  (Chain "init"
+  (Wire "init"
          "Hey server"
          (Network.Send)
          2019
@@ -42,7 +42,7 @@
          ))
 
 (def network-test-client
-  (Chain "client" :Looped
+  (Wire "client" :Looped
          (Network.Client
           "127.0.0.1" 9191
           (-> ; acting as callback when there is a new pkt
@@ -69,7 +69,7 @@
 (sleep 3)
 (stop network-test-server)
 (stop network-test-client)
-; destroy chains - issues with CI, to investigate better.. valgrind, gdb, drmingw said no problem tho...
+; destroy wires - issues with CI, to investigate better.. valgrind, gdb, drmingw said no problem tho...
 (def network-test-server nil)
 (def network-test-client nil)
 ;(def client-init nil)

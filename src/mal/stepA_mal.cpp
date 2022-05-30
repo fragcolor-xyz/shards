@@ -39,7 +39,7 @@ void malinit(malEnvPtr env, const char *exePath, const char *scriptPath) {
   currentEnv = env;
   installCore(env);
   installFunctions(env);
-  installCBCore(env, exePath, scriptPath);
+  installSHCore(env, exePath, scriptPath);
 }
 
 malValuePtr maleval(const char *str, malEnvPtr env) {
@@ -55,10 +55,10 @@ int malmain(int argc, const char *argv[]) {
 
   // do the following before malinit
 
-  auto cblAbsPath = fs::weakly_canonical(argv[0]);
-  replEnv->set("*cbl*", mal::string(cblAbsPath.string()));
+  auto shlAbsPath = fs::weakly_canonical(argv[0]);
+  replEnv->set("*shards*", mal::string(shlAbsPath.string()));
 
-  auto exeDirPath = cblAbsPath.parent_path();
+  auto exeDirPath = shlAbsPath.parent_path();
   auto scriptDirPath = exeDirPath;
   if (argc > 1) {
     fs::path scriptPath = fs::weakly_canonical(fs::path(argv[1]));
@@ -84,7 +84,7 @@ int malmain(int argc, const char *argv[]) {
     }
   } else {
 #ifndef NO_MAL_MAIN
-    s_readLine = new ReadLine("./chainblocks-history.txt");
+    s_readLine = new ReadLine("./shards-history.txt");
     String prompt = "user> ";
     String input;
     rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
@@ -264,15 +264,15 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
           continue; // TCO
         }
         checkArgsIs("try*", 2, argCount, list->item(0));
-        const malList *catchBlock = VALUE_CAST(malList, list->item(2));
+        const malList *catchShard = VALUE_CAST(malList, list->item(2));
 
-        checkArgsIs("catch*", 2, catchBlock->count() - 1, list->item(2));
-        MAL_CHECK(VALUE_CAST(malSymbol, catchBlock->item(0))->value() == "catch*", "catch block must begin with catch*");
+        checkArgsIs("catch*", 2, catchShard->count() - 1, list->item(2));
+        MAL_CHECK(VALUE_CAST(malSymbol, catchShard->item(0))->value() == "catch*", "catch shard must begin with catch*");
 
         // We don't need excSym at this scope, but we want to check
-        // that the catch block is valid always, not just in case of
+        // that the catch shard is valid always, not just in case of
         // an exception.
-        const malSymbol *excSym = VALUE_CAST(malSymbol, catchBlock->item(1));
+        const malSymbol *excSym = VALUE_CAST(malSymbol, catchShard->item(1));
 
         malValuePtr excVal;
 
@@ -291,7 +291,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
           // we got some exception
           env = malEnvPtr(new malEnv(env));
           env->set(excSym->value(), excVal);
-          ast = catchBlock->item(2);
+          ast = catchShard->item(2);
         }
         continue; // TCO
       }

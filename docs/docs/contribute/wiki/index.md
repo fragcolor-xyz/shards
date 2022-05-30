@@ -7,9 +7,9 @@ license: CC-BY-SA-4.0
 
 A wiki houses community-contributed knowledge, such as code recipes, etc.
 
-You can access a project's wiki by suffixing '/wiki' to the URL of that project's code repository.  
+You can access a project's wiki by suffixing '/wiki' to the URL of that project's code repository.
 
-For example, the Chainblocks wiki is at `https://github.com/fragcolor-xyz/chainblocks/wiki`.
+For example, the Shards wiki is at `https://github.com/fragcolor-xyz/shards/wiki`.
 
 ## Request collaborator access
 

@@ -3,61 +3,61 @@
 
 #include "runtime.hpp"
 
-#if CHAINBLOCKS_WITH_RUST_BLOCKS
-extern "C" void registerRustBlocks(CBCore *core);
+#if SHARDS_WITH_RUST_SHARDS
+extern "C" void registerRustShards(SHCore *core);
 #endif
 
 namespace gfx {
-extern void registerBlocks();
+extern void registerShards();
 }
 
 #ifdef _WIN32
 namespace Desktop {
-extern void registerDesktopBlocks();
+extern void registerDesktopShards();
 }
 #endif
 
-namespace chainblocks {
+namespace shards {
 namespace Inputs {
-extern void registerBlocks();
+extern void registerShards();
 }
 
 namespace ImGui {
-extern void registerBlocks();
+extern void registerShards();
 }
 
 namespace Snappy {
-extern void registerBlocks();
+extern void registerShards();
 }
 
 namespace Brotli {
-extern void registerBlocks();
+extern void registerShards();
 }
 
 namespace Audio {
-extern void registerBlocks();
+extern void registerShards();
 }
 
 namespace DSP {
-extern void registerBlocks();
+extern void registerShards();
 }
 
-void cbInitExtras() {
-#if CHAINBLOCKS_WITH_RUST_BLOCKS
-  registerRustBlocks(chainblocksInterface(CHAINBLOCKS_CURRENT_ABI));
+void shInitExtras() {
+#if SHARDS_WITH_RUST_SHARDS
+  registerRustShards(shardsInterface(SHARDS_CURRENT_ABI));
 #endif
 
-  Snappy::registerBlocks();
-  Brotli::registerBlocks();
+  Snappy::registerShards();
+  Brotli::registerShards();
 
-  gfx::registerBlocks();
-  chainblocks::ImGui::registerBlocks();
-  Inputs::registerBlocks();
-  Audio::registerBlocks();
-  DSP::registerBlocks();
+  gfx::registerShards();
+  shards::ImGui::registerShards();
+  Inputs::registerShards();
+  Audio::registerShards();
+  DSP::registerShards();
 
 #ifdef _WIN32
-  Desktop::registerDesktopBlocks();
+  Desktop::registerDesktopShards();
 #endif
 }
-}; // namespace chainblocks
+}; // namespace shards

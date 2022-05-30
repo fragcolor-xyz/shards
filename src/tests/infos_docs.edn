@@ -1,15 +1,15 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode root)
+(defmesh root)
 
 ;; path definitions
 (def basePath "../../docs/")
-(def blocksPath "docs/blocks/")
-(def detailsPath "details/blocks/")
-(def samplePath "samples/blocks/")
+(def shardsPath "docs/shards/")
+(def detailsPath "details/shards/")
+(def samplePath "samples/shards/")
 
-;; computes the filename from the block name
+;; computes the filename from the shard name
 (defn getFilename [path extension]
   (Maybe
    (->
@@ -31,7 +31,7 @@
 
 ;; dumps the generated content to the final file
 (defn dump [name]
-  (Chain
+  (Wire
    (str "dump-" name)
    (Setup
     (info name) = .record
@@ -42,7 +42,7 @@
     (Get .record "outputHelp") = .outputHelp
     (Get .record "properties" :Default {}) = .properties
     (Get .record "parameters") = .parameters
-    name (getFilename (str basePath blocksPath) ".md") = .filename
+    name (getFilename (str basePath shardsPath) ".md") = .filename
     [""] >= .o)
 
    ; metadata (front matter)
@@ -156,6 +156,6 @@
 (decompress-strings)
 (map
  (fn* [name] (schedule root (dump name)))
- (blocks))
+ (shards))
 ;; (schedule root (dump "Assoc"))
 (run root)

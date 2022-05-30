@@ -1,17 +1,17 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2019 Fragcolor Pte. Ltd.
 
-(def chain (Chain "test" true))
-(def block1 (Do chain))
-(prn "Expect test chain deleted under")
-(def block1 nil)
-(def chain nil)
+(def wire (Wire "test" true))
+(def shard1 (Do wire))
+(prn "Expect test wire deleted under")
+(def shard1 nil)
+(def wire nil)
 
-(def block2 (Do (Chain "inline-chain" true)))
-(prn "Expect inline-chain chain deleted under")
-(def block2 nil)
+(def shard2 (Do (Wire "inline-wire" true)))
+(prn "Expect inline-wire wire deleted under")
+(def shard2 nil)
 
-(Chain "lost-chain" true)
-(prn "Expect lost-chain chain deleted above")
-(do (Chain "do-chain" true))
-(prn "Expect do-chain chain deleted above")
+(Wire "lost-wire" true)
+(prn "Expect lost-wire wire deleted above")
+(do (Wire "do-wire" true))
+(prn "Expect do-wire wire deleted above")

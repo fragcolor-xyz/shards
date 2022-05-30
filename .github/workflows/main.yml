@@ -17,7 +17,7 @@ jobs:
   #         access_token: ${{ secrets.TOKEN }}
 
   #
-  # Build chainblocks for emscripten
+  # Build shards for emscripten
   #
   wasm32-emscripten-st:
     uses: ./.github/workflows/build-wasm.yml
@@ -33,7 +33,7 @@ jobs:
       run-tests: true
 
   #
-  # Build chainblocks for linux
+  # Build shards for linux
   #
   Linux-Debug:
     uses: ./.github/workflows/build-linux.yml
@@ -50,7 +50,7 @@ jobs:
       run-tests: true
 
   #
-  # Build chainblocks and publish docker image
+  # Build shards and publish docker image
   #
   Linux-docker:
     uses: ./.github/workflows/build-linux-docker.yml
@@ -67,35 +67,35 @@ jobs:
   #   - uses: chainblocks/Publish-Docker-Github-Action@master
   #     name: Build and upload to hub devel image
   #     with:
-  #       name: chainblocks/devenv
+  #       name: shards/devenv
   #       username: ${{ secrets.DOCKER_USERNAME }}
   #       password: ${{ secrets.DOCKER_PASSWORD }}
   #       dockerfile: docker/linux/Dockerfile
   #       tags: "latest"
   #   - name: Build and Test
   #     run: |
-  #       docker run --name chainblocks -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_USE_VULKAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja cbl && ./cbl ../src/tests/general.edn && ./cbl ../src/tests/variables.clj && ./cbl ../src/tests/linalg.clj && ./cbl ../src/tests/channels.clj"
+  #       docker run --name shards -t --cap-add=SYS_PTRACE shards/devenv:latest bash -c "mkdir build && cd build && cmake -G Ninja -DFORCE_USE_VULKAN=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja shards && ./shards ../src/tests/general.edn && ./shards ../src/tests/variables.clj && ./shards ../src/tests/linalg.clj && ./shards ../src/tests/channels.clj"
   #       mkdir build
-  #       docker cp chainblocks:/home/chainblocks/repo/build/cbl ./build/cbl
+  #       docker cp shards:/home/shards/repo/build/shards ./build/shards
   #   - uses: chainblocks/Publish-Docker-Github-Action@master
   #     if: ${{ github.ref == 'refs/heads/devel' && github.event_name != 'pull_request' }}
   #     name: Build and upload to hub runtime image
   #     with:
-  #       name: chainblocks/cbl
+  #       name: shards/shards
   #       username: ${{ secrets.DOCKER_USERNAME }}
   #       password: ${{ secrets.DOCKER_PASSWORD }}
   #       dockerfile: docker/linux/Dockerfile-runtime
   #       tags: "latest-vulkan"
 
   #
-  # Build chainblocks and run valgrind on Linux
+  # Build shards and run valgrind on Linux
   #
   Linux-valgrind:
     uses: ./.github/workflows/build-linux-valgrind.yml
     secrets: inherit
 
   #
-  # Build chainblocks for Windows
+  # Build shards for Windows
   #
   Windows-64bits-Debug:
     uses: ./.github/workflows/build-windows.yml
@@ -139,7 +139,7 @@ jobs:
       publish: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
 
   #
-  # Build chainblocks for macOS
+  # Build shards for macOS
   #
   macOS-Debug:
     uses: ./.github/workflows/build-macos.yml
@@ -157,7 +157,7 @@ jobs:
       run-tests: true
 
   #
-  # Build chainblocks for iOS
+  # Build shards for iOS
   #
   iOS:
     uses: ./.github/workflows/build-ios.yml

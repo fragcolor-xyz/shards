@@ -1,28 +1,28 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(def! Root (Node))
+(def! Root (Mesh))
 
-(def! inner1 (Chain "inner"
+(def! inner1 (Wire "inner"
                     (Assert.Is "My input" true)
                     "My input 2"))
 
-(def adder (Chain "adder"
+(def adder (Wire "adder"
                   >= .adder-x
                   (Pop) >= .adder-y
                   .adder-x
                   (Math.Add .adder-y)))
 
-(def adderSeq (Chain "adderSeq"
+(def adderSeq (Wire "adderSeq"
                      >= .args (Take 1) >= .adder-y
                      .args (Take 0)
                      (Math.Add .adder-y)))
 
-(def! testChain
-  (Chain
-   "namedChain"
+(def! testWire
+  (Wire
+   "namedWire"
    (Msg "Running tests!")
-   (OnCleanup (-> (Comment "ensure multiple blocks can run")
+   (OnCleanup (-> (Comment "ensure multiple shards can run")
                   (Msg "Finished running tests!")))
 
    .var-with-default ?? 10 ; will either be var-with-default value if existed or 10
@@ -300,7 +300,7 @@
    5 (ToFloat) (Math.Divide (Float 10))
    (Assert.Is 0.5 true)
 
-   {"key1" 10 "key2" 20} >= ; tests blockify
+   {"key1" 10 "key2" 20} >= ; tests shardify
    .htable1 (Take "key1") (Assert.Is 10 true)
    .htable1 (Take "key2") (Assert.Is 20 true)
 
@@ -712,7 +712,7 @@
    (Assert.Is true true)
 
    (Get "s1")
-   (DBlock "Is" [.s2])
+   (DShard "Is" [.s2])
    (Assert.Is true true)
 
    4 (Push "s1")
@@ -1055,90 +1055,90 @@
 (prn "Doing SaveBinary")
 
 (def saveBinary
-  (Chain
+  (Wire
    "SaveBinary"
-   (Const testChain)
-   (WriteFile "testChain.bin")
+   (Const testWire)
+   (WriteFile "testWire.bin")
    (Hash)
-   (Log "input chain hash")))
+   (Log "input wire hash")))
 (schedule Root saveBinary)
 (if (run Root 0.1) nil (throw "Root tick failed"))
-;; For now Node holds ref...
-(def Root (Node))
+;; For now Mesh holds ref...
+(def Root (Mesh))
 (def saveBinary nil)
 
 (prn "Doing LoadBinary")
 
 (def loadBinary
-  (Chain
+  (Wire
    "LoadBinary"
-   (ReadFile "testChain.bin")
-   (ExpectChain) >= .loadedChain
-   (| (Reflect.Blocks) = .blocks
-      (Count .blocks) (Log "blocks-count")
+   (ReadFile "testWire.bin")
+   (ExpectWire) >= .loadedWire
+   (| (Reflect.Shards) = .shards
+      (Count .shards) (Log "shards-count")
       0 >= .loggers
-      .blocks (ForEach
+      .shards (ForEach
                (->
                 (Reflect.Name)
                 (When (Is "Log")
                       (-> (Math.Inc .loggers)))))
-      .loggers (Log "Log blocks"))
-   (Log) (Hash) (Log "output chain hash")
-   (ChainRunner .loadedChain :Mode RunChainMode.Detached)
-   (Wait .loadedChain)
+      .loggers (Log "Log shards"))
+   (Log) (Hash) (Log "output wire hash")
+   (WireRunner .loadedWire :Mode RunWireMode.Detached)
+   (Wait .loadedWire)
    (Assert.Is "global1" true)
    (Get .global1 :Global true :Default "nope")
    (Assert.Is "global1" true)
    (Log)
    (Process.StackTrace)
    (Log)
-   (ChainRunner .loadedChain :Mode RunChainMode.Detached)
-   (Wait .loadedChain)))
+   (WireRunner .loadedWire :Mode RunWireMode.Detached)
+   (Wait .loadedWire)))
 (schedule Root loadBinary)
 (if (run Root 0.1) nil (throw "Root tick failed"))
-;; For now Node holds ref...
-(def Root (Node))
+;; For now Mesh holds ref...
+(def Root (Mesh))
 (def loadBinary nil)
 
 (prn "Doing normal run")
 
-(schedule Root testChain)
+(schedule Root testWire)
 (if (run Root 0.1) nil (throw "Root tick failed"))
-;; For now Node holds ref...
-(def Root (Node))
-(def testChain nil)
+;; For now Mesh holds ref...
+(def Root (Mesh))
+(def testWire nil)
 (def inner1 nil)
 
-(prn "Doing LoopedChain")
+(prn "Doing LoopedWire")
 
-(def loopedChain (Chain "LoopedChain" :Looped
+(def loopedWire (Wire "LoopedWire" :Looped
                         10 (Push "loopVar1")
                         11 (Push "loopVar1")
                         12 (Push "loopVar1")
                         (Count "loopVar1")
                         (Assert.Is 3 true)))
 
-(def loopedChain2 (Chain "LoopedChain" :Looped
+(def loopedWire2 (Wire "LoopedWire" :Looped
                          10 (Push "loopVar2" :Clear false)
                          11 (Push "loopVar2")
                          12 (Push "loopVar2")
                          (Count "loopVar2")))
 
-(prepare loopedChain)
-(start loopedChain)
-(tick loopedChain)
-(tick loopedChain)
-(tick loopedChain)
+(prepare loopedWire)
+(start loopedWire)
+(tick loopedWire)
+(tick loopedWire)
+(tick loopedWire)
 
-(prepare loopedChain2)
-(start loopedChain2)
-(tick loopedChain2)
-(tick loopedChain2)
-(tick loopedChain2)
+(prepare loopedWire2)
+(start loopedWire2)
+(tick loopedWire2)
+(tick loopedWire2)
+(tick loopedWire2)
 
-(if (not (= (stop loopedChain2) (Int 9))) (throw "Seq :Clear test failed"))
+(if (not (= (stop loopedWire2) (Int 9))) (throw "Seq :Clear test failed"))
 
-(def fileReader (Chain "readFile"
+(def fileReader (Wire "readFile"
                        (Repeat (->
                                 (ReadFile "test.bin")
                                 (ExpectString)

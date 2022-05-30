@@ -14,8 +14,8 @@
 #include <catch2/catch_all.hpp>
 
 int main(int argc, char *argv[]) {
-  chainblocks::GetGlobals().RootPath = "./";
-  chainblocks::registerCoreBlocks();
+  shards::GetGlobals().RootPath = "./";
+  shards::registerCoreShards();
   int result = Catch::Session().run(argc, argv);
 #ifdef __EMSCRIPTEN_PTHREADS__
   // in this case we need to call exit our self

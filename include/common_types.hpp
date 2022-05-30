@@ -2,17 +2,17 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 /*
-Utility to auto load auto discover blocks from DLLs
-All that is needed is to declare a chainblocks::registerBlocks
+Utility to auto load auto discover shards from DLLs
+All that is needed is to declare a shards::registerShards
 At runtime just dlopen the dll, that's it!
 */
 
-#ifndef CB_COMMON_TYPES_HPP
-#define CB_COMMON_TYPES_HPP
+#ifndef SH_COMMON_TYPES_HPP
+#define SH_COMMON_TYPES_HPP
 
-#include "chainblocks.hpp"
+#include "shards.hpp"
 
-namespace chainblocks {
+namespace shards {
 
 enum class BasicTypes {
   None,
@@ -29,8 +29,8 @@ enum class BasicTypes {
   Float3,
   Float4,
   Color,
-  Chain,
-  Block,
+  Wire,
+  Shard,
   Bytes,
   String,
   Image,
@@ -38,48 +38,48 @@ enum class BasicTypes {
 };
 
 struct CoreInfo {
-  static inline Type NoneType{{CBType::None}};
+  static inline Type NoneType{{SHType::None}};
 
-#define CB_CORE_TYPE_DEF(_cbtype_)                                                                       \
-  static inline Type _cbtype_##Type{{CBType::_cbtype_}};                                                 \
-  static inline Type _cbtype_##SeqType{{CBType::Seq, {.seqTypes = _cbtype_##Type}}};                     \
-  static inline Type _cbtype_##TableType{{CBType::Table, {.table = {.types = _cbtype_##Type}}}};         \
-  static inline Type _cbtype_##VarType{{CBType::ContextVar, {.contextVarTypes = _cbtype_##Type}}};       \
-  static inline Type _cbtype_##VarSeqType{{CBType::ContextVar, {.contextVarTypes = _cbtype_##SeqType}}}; \
-  static inline Type _cbtype_##VarTableType {                                                            \
+#define SH_CORE_TYPE_DEF(_shtype_)                                                                       \
+  static inline Type _shtype_##Type{{SHType::_shtype_}};                                                 \
+  static inline Type _shtype_##SeqType{{SHType::Seq, {.seqTypes = _shtype_##Type}}};                     \
+  static inline Type _shtype_##TableType{{SHType::Table, {.table = {.types = _shtype_##Type}}}};         \
+  static inline Type _shtype_##VarType{{SHType::ContextVar, {.contextVarTypes = _shtype_##Type}}};       \
+  static inline Type _shtype_##VarSeqType{{SHType::ContextVar, {.contextVarTypes = _shtype_##SeqType}}}; \
+  static inline Type _shtype_##VarTableType {                                                            \
     {                                                                                                    \
-      CBType::ContextVar, { .contextVarTypes = _cbtype_##TableType }                                     \
+      SHType::ContextVar, { .contextVarTypes = _shtype_##TableType }                                     \
     }                                                                                                    \
   }
 
-  CB_CORE_TYPE_DEF(Any);
-  CB_CORE_TYPE_DEF(Bool);
-  CB_CORE_TYPE_DEF(Int);
-  CB_CORE_TYPE_DEF(Int2);
-  CB_CORE_TYPE_DEF(Int3);
-  CB_CORE_TYPE_DEF(Int4);
-  CB_CORE_TYPE_DEF(Int8);
-  CB_CORE_TYPE_DEF(Int16);
-  CB_CORE_TYPE_DEF(Float);
-  CB_CORE_TYPE_DEF(Float2);
-  CB_CORE_TYPE_DEF(Float3);
-  CB_CORE_TYPE_DEF(Float4);
-  CB_CORE_TYPE_DEF(Color);
-  CB_CORE_TYPE_DEF(Chain);
-  CB_CORE_TYPE_DEF(Block);
-  CB_CORE_TYPE_DEF(Bytes);
-  CB_CORE_TYPE_DEF(String);
-  CB_CORE_TYPE_DEF(Path);
-  CB_CORE_TYPE_DEF(Image);
-  CB_CORE_TYPE_DEF(Set);
-  CB_CORE_TYPE_DEF(Audio);
+  SH_CORE_TYPE_DEF(Any);
+  SH_CORE_TYPE_DEF(Bool);
+  SH_CORE_TYPE_DEF(Int);
+  SH_CORE_TYPE_DEF(Int2);
+  SH_CORE_TYPE_DEF(Int3);
+  SH_CORE_TYPE_DEF(Int4);
+  SH_CORE_TYPE_DEF(Int8);
+  SH_CORE_TYPE_DEF(Int16);
+  SH_CORE_TYPE_DEF(Float);
+  SH_CORE_TYPE_DEF(Float2);
+  SH_CORE_TYPE_DEF(Float3);
+  SH_CORE_TYPE_DEF(Float4);
+  SH_CORE_TYPE_DEF(Color);
+  SH_CORE_TYPE_DEF(Wire);
+  SH_CORE_TYPE_DEF(ShardRef);
+  SH_CORE_TYPE_DEF(Bytes);
+  SH_CORE_TYPE_DEF(String);
+  SH_CORE_TYPE_DEF(Path);
+  SH_CORE_TYPE_DEF(Image);
+  SH_CORE_TYPE_DEF(Set);
+  SH_CORE_TYPE_DEF(Audio);
 
   static inline Type AnyEnumType = Type::Enum(0, 0);
 
-  static inline Type Float4x4Type{{CBType::Seq, {.seqTypes = Float4Type}, 4}};
+  static inline Type Float4x4Type{{SHType::Seq, {.seqTypes = Float4Type}, 4}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);
   static inline Types Float4x4Types{{Float4x4Type, Float4x4SeqType}};
-  static inline Type Float3x3Type{{CBType::Seq, {.seqTypes = Float3Type}, 3}};
+  static inline Type Float3x3Type{{SHType::Seq, {.seqTypes = Float3Type}, 3}};
   static inline Type Float3x3SeqType = Type::SeqOf(Float3x3Type);
   static inline Types Float3x3Types{{Float3x3Type, Float3x3SeqType}};
 
@@ -115,15 +115,15 @@ struct CoreInfo {
 
   static inline Types IntIntSeqOrNone{{IntType, IntSeqType, NoneType}};
 
-  static inline Types BlockSeqOrNone{{BlockSeqType, NoneType}};
+  static inline Types ShardSeqOrNone{{ShardRefSeqType, NoneType}};
 
-  static inline Types Blocks{{BlockType, BlockSeqType}};
+  static inline Types Shards{{ShardRefType, ShardRefSeqType}};
 
-  static inline Types BlocksOrNone{Blocks, {NoneType}};
+  static inline Types ShardsOrNone{Shards, {NoneType}};
 
-  static inline Types ChainOrNone{{ChainType, NoneType}};
+  static inline Types WireOrNone{{WireType, NoneType}};
 
-  static inline Type BlocksOrNoneSeq{{CBType::Seq, {.seqTypes = BlocksOrNone}}};
+  static inline Type ShardsOrNoneSeq{{SHType::Seq, {.seqTypes = ShardsOrNone}}};
 
   static inline Types StringOrBytes{{StringType, BytesType}};
 
@@ -146,6 +146,6 @@ struct CoreInfo {
 
   static inline Types IntOrIntVar{{IntType, IntVarType}};
 };
-} // namespace chainblocks
+} // namespace shards
 
 #endif

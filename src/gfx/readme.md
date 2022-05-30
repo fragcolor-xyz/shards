@@ -12,7 +12,7 @@
 ## Materials
 
 Materials are the core of the graphics framework, they abstract away the shader permutations\
-`material.hpp/cpp` Contains the structure that maps to the `Material` block containing parameters, flags and shader code\
+`material.hpp/cpp` Contains the structure that maps to the `Material` shard containing parameters, flags and shader code\
 the basic structure looks like:
 
 ```cpp
@@ -30,7 +30,7 @@ struct Material {
 
 Whenever a material is used for a draw command a `MaterialUsageContext` is used to collect compile-time and runtime shader parameters based on the current usage of the material.
 
-Storage is linked to the unique material/mesh combination (per `Draw` block)
+Storage is linked to the unique material/mesh combination (per `Draw` shard)
 
 Examples of parameters collected:
 

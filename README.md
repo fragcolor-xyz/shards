@@ -8,9 +8,9 @@
 - Warning: Work in progress
 ```
 
-[![license](https://img.shields.io/github/license/fragcolor-xyz/chainblocks)](./LICENSE)
-![CI](https://github.com/fragcolor-xyz/chainblocks/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/fragcolor-xyz/chainblocks/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/chainblocks)
+[![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)
+![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/fragcolor-xyz/shards/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/shards)
 [![docs](https://img.shields.io/badge/docs-API-blueviolet)](https://docs.fragcolor.xyz/)
 [![examples](https://img.shields.io/badge/learn-examples-blue)](https://learn.fragcolor.xyz/)
 
@@ -24,12 +24,12 @@ We introduce a low code way of producing high performance and multi-platform app
 * Automation scripting for everyone
 * A universal interface to your code
 * Visual scripting without spaghetti (similar to Apple Shortcuts)
-* Blocks modularity allows to reuse low level code with minimal efforts between projects
+* Shards modularity allows to reuse low level code with minimal efforts between projects
 * Machine learning scripting; it's all about building graphs
 * Video game engine scripting; even for non-technical artists
 * Extremely quick prototyping, creativity unchained
   * From pseudo code to real app
-  * Replace pseudo blocks with real native blocks as you go
+  * Replace pseudo shards with real native shards as you go
 * One click release of a fully bundled executable app or library
 * Textual representation to allow experienced programmers to use it as well
 
@@ -54,14 +54,14 @@ We introduce a low code way of producing high performance and multi-platform app
 
 #### Textual version - using a clojure like language (more in the pipeline)
 
-[Read more about the textual language](https://github.com/fragcolor-xyz/chainblocks/wiki/Chain-definition-language)
+[Read more about the textual language](https://github.com/fragcolor-xyz/shards/wiki/Wire-definition-language)
 
 ```clojure
-(defchain action
+(defwire action
   (Pause 2.0)
   (Msg "This happened 2 seconds later"))
 
-(defnode main)
+(defmesh main)
 
 (defloop main-loop
   (GFX.MainWindow
@@ -107,9 +107,9 @@ Complete of a BGFX context, rendering a ImGui window on a DX11 (windows) and/or 
 ## Motivation
 In all those years of software engineering I've been touching many fields including, audio, VR, physics, game engines in general but also machine learning, NNs etc... everything interesting and all but all the software I wrote didn't exactly connect to each other and connecting it would have been a big effort. I always wanted to mix things and recombine, experiment, after all I started as a musician using max/msp on my black powerbook pismo...
 
-Chainblocks is my answer to this call, a tool that let's me write specific native code and connect it to any other code I wrote.
+Shards is my answer to this call, a tool that let's me write specific native code and connect it to any other code I wrote.
 
-Where **Chain** would be your procedure and **Blocks** the building blocks of your procedure.
+Where **Wire** would be your procedure and **Shards** the building shards of your procedure.
 
 With a strong emphasis on automation and repeated tasks. Making each frame of execution of your script first class.
 

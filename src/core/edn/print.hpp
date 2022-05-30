@@ -3,8 +3,8 @@
 
 // Derived from https://github.com/oakes/ZachLisp
 
-#ifndef CB_LSP_PRINT_HPP
-#define CB_LSP_PRINT_HPP
+#ifndef SH_LSP_PRINT_HPP
+#define SH_LSP_PRINT_HPP
 
 #include "read.hpp"
 #include <iomanip>
@@ -13,7 +13,7 @@
 #include <sstream>
 #include <string>
 
-namespace chainblocks {
+namespace shards {
 namespace edn {
 
 inline std::string to_string(double d) {
@@ -115,6 +115,6 @@ inline std::string print(const std::list<form::Form> &forms, char separator = ' 
 }
 
 } // namespace edn
-} // namespace chainblocks
+} // namespace shards
 
 #endif

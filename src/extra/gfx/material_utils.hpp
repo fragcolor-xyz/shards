@@ -1,8 +1,8 @@
-#ifndef CB_EXTRA_GFX_MATERIAL_UTILS
-#define CB_EXTRA_GFX_MATERIAL_UTILS
+#ifndef SH_EXTRA_GFX_MATERIAL_UTILS
+#define SH_EXTRA_GFX_MATERIAL_UTILS
 
-#include "chainblocks_types.hpp"
-#include <chainblocks.hpp>
+#include "shards_types.hpp"
+#include <shards.hpp>
 #include <foundation.hpp>
 #include <gfx/material.hpp>
 #include <gfx/params.hpp>
@@ -10,33 +10,33 @@
 #include <spdlog/spdlog.h>
 
 namespace gfx {
-inline bool varToParam(const CBVar &var, ParamVariant &outVariant) {
+inline bool varToParam(const SHVar &var, ParamVariant &outVariant) {
   switch (var.valueType) {
-  case CBType::Float: {
+  case SHType::Float: {
     float vec;
     memcpy(&vec, &var.payload.floatValue, sizeof(float));
     outVariant = vec;
   } break;
-  case CBType::Float2: {
+  case SHType::Float2: {
     float2 vec;
     memcpy(&vec.x, &var.payload.float2Value, sizeof(float) * 2);
     outVariant = vec;
   } break;
-  case CBType::Float3: {
+  case SHType::Float3: {
     float3 vec;
     memcpy(&vec.x, &var.payload.float3Value, sizeof(float) * 3);
     outVariant = vec;
   } break;
-  case CBType::Float4: {
+  case SHType::Float4: {
     float4 vec;
     memcpy(&vec.x, &var.payload.float4Value, sizeof(float) * 4);
     outVariant = vec;
 
   } break;
-  case CBType::Seq:
-    if (var.innerType == CBType::Float4) {
+  case SHType::Seq:
+    if (var.innerType == SHType::Float4) {
       float4x4 matrix;
-      const CBSeq &seq = var.payload.seqValue;
+      const SHSeq &seq = var.payload.seqValue;
       for (size_t i = 0; i < std::min<size_t>(4, seq.len); i++) {
         float4 row;
         memcpy(&row.x, &seq.elements[i].payload.float4Value, sizeof(float) * 4);
@@ -55,10 +55,10 @@ inline bool varToParam(const CBVar &var, ParamVariant &outVariant) {
   return true;
 }
 
-inline void initConstantShaderParams(MaterialParameters &out, CBTable &paramsTable) {
-  CBTableIterator it{};
-  CBString key{};
-  CBVar value{};
+inline void initConstantShaderParams(MaterialParameters &out, SHTable &paramsTable) {
+  SHTableIterator it{};
+  SHString key{};
+  SHVar value{};
   paramsTable.api->tableGetIterator(paramsTable, &it);
   while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
     ParamVariant variant;
@@ -68,22 +68,22 @@ inline void initConstantShaderParams(MaterialParameters &out, CBTable &paramsTab
   }
 }
 
-inline void initReferencedShaderParams(CBContext *cbContext, CBShaderParameters &cbShaderParameters, CBTable &paramsTable) {
-  CBTableIterator it{};
-  CBString key{};
-  CBVar value{};
+inline void initReferencedShaderParams(SHContext *shContext, SHShaderParameters &shShaderParameters, SHTable &paramsTable) {
+  SHTableIterator it{};
+  SHString key{};
+  SHVar value{};
   paramsTable.api->tableGetIterator(paramsTable, &it);
   while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
-    chainblocks::ParamVar paramVar(value);
-    paramVar.warmup(cbContext);
-    cbShaderParameters.basic.emplace_back(key, std::move(paramVar));
+    shards::ParamVar paramVar(value);
+    paramVar.warmup(shContext);
+    shShaderParameters.basic.emplace_back(key, std::move(paramVar));
   }
 }
 
-inline void validateShaderParamsType(CBTypeInfo &type) {
-  using chainblocks::ComposeError;
+inline void validateShaderParamsType(SHTypeInfo &type) {
+  using shards::ComposeError;
 
-  if (type.basicType != CBType::Table) {
+  if (type.basicType != SHType::Table) {
     throw ComposeError(fmt::format("Wrong type for Params: {}, should be a table", magic_enum::enum_name(type.basicType)));
   }
 
@@ -107,4 +107,4 @@ inline void validateShaderParamsType(CBTypeInfo &type) {
 }
 } // namespace gfx
 
-#endif // CB_EXTRA_GFX_MATERIAL_UTILS
+#endif // SH_EXTRA_GFX_MATERIAL_UTILS

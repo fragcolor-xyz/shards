@@ -1,0 +1,14 @@
+(Const ["A" "B" "C"])
+(TryMany
+ ;:Wire
+ (Wire
+  "print"
+  (Log)
+  "Ok")
+ ;:Policy
+ WaitUntil.AllSuccess
+ ;:Threads
+ 12
+ ;:Coroutine
+ 1)
+(Assert.Is ["Ok" "Ok" "Ok"] true)

@@ -2,15 +2,15 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 #include "./bgfx.hpp"
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include <linalg_shim.hpp>
 
-namespace chainblocks {
+namespace shards {
 namespace XR {
 constexpr uint32_t XRContextCC = 'xr  ';
 struct RenderXR;
 struct Context {
-  static inline Type ObjType{{CBType::Object, {.object = {.vendorId = CoreCC, .typeId = XRContextCC}}}};
+  static inline Type ObjType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = XRContextCC}}}};
   static inline Type VarType = Type::VariableOf(ObjType);
 
   RenderXR *xr{nullptr};
@@ -19,7 +19,7 @@ struct Context {
 enum class XRHand { Left, Right };
 
 struct GamePadTable : public TableVar {
-  static constexpr std::array<CBString, 4> _keys{
+  static constexpr std::array<SHString, 4> _keys{
       "buttons",
       "sticks",
       "id",
@@ -44,16 +44,16 @@ struct GamePadTable : public TableVar {
 
   SeqVar &buttons;
   SeqVar &sticks;
-  CBVar &id;
-  CBVar &connected;
+  SHVar &id;
+  SHVar &connected;
 };
 
 struct ControllerTable : public GamePadTable {
   static constexpr uint32_t HandednessCC = 'xrha';
-  static inline Type HandEnumType{{CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
+  static inline Type HandEnumType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
   static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
 
-  static constexpr std::array<CBString, 7> _keys{
+  static constexpr std::array<SHString, 7> _keys{
       "handedness", "transform", "inverseTransform", "buttons", "sticks", "id", "connected",
   };
   static inline Types _types{{
@@ -75,21 +75,21 @@ struct ControllerTable : public GamePadTable {
     handedness = Var::Enum(XRHand::Left, CoreCC, HandednessCC);
   }
 
-  CBVar &handedness;
+  SHVar &handedness;
   SeqVar &transform;
   SeqVar &inverseTransform;
 };
 
 struct Consumer {
   static inline ExposedInfo requiredInfo =
-      ExposedInfo(ExposedInfo::Variable("XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
+      ExposedInfo(ExposedInfo::Variable("XR.Context", SHCCSTR("The XR Context."), Context::ObjType));
 
-  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(requiredInfo); }
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(requiredInfo); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     if (data.onWorkerThread) {
-      throw ComposeError("XR Blocks cannot be used on a worker thread (e.g. "
-                         "within an Await block)");
+      throw ComposeError("XR Shards cannot be used on a worker thread (e.g. "
+                         "within an Await shard)");
     }
     return data.inputType;
   }
@@ -98,7 +98,7 @@ struct Consumer {
 struct RenderXR : public BGFX::BaseConsumer {
   /*
   VR/AR/XR renderer, in the case of Web/Javascript it is required to have a
-  function window.ChainblocksWebXROpenDialog = async function(near, far) { ... }
+  function window.ShardsWebXROpenDialog = async function(near, far) { ... }
   that shows a dialog the user has to accept and start a session like:
 
   let glCanvas = document.getElementById('canvas'); // this is SDL canvas
@@ -113,20 +113,20 @@ struct RenderXR : public BGFX::BaseConsumer {
   });
   resolve with the new session if this is done, null otherwise.
   Also populate:
-  session.chainblocks.warmup and session.chainblocks.cleanup
+  session.shards.warmup and session.shards.cleanup
   check cleanup and warmup for more details under
   */
 
   static inline Parameters params{
-      {"Contents", CBCCSTR("The blocks expressing the contents to render."), {CoreInfo::BlocksOrNone}},
-      {"Near", CBCCSTR("The distance from the near clipping plane."), {CoreInfo::FloatType}},
-      {"Far", CBCCSTR("The distance from the far clipping plane."), {CoreInfo::FloatType}}};
-  static CBParametersInfo parameters() { return params; }
+      {"Contents", SHCCSTR("The shards expressing the contents to render."), {CoreInfo::ShardsOrNone}},
+      {"Near", SHCCSTR("The distance from the near clipping plane."), {CoreInfo::FloatType}},
+      {"Far", SHCCSTR("The distance from the far clipping plane."), {CoreInfo::FloatType}}};
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _blocks = value;
+      _shards = value;
       break;
     case 1:
       _near = value.payload.floatValue;
@@ -139,10 +139,10 @@ struct RenderXR : public BGFX::BaseConsumer {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _blocks;
+      return _shards;
     case 1:
       return Var(_near);
     case 2:
@@ -152,39 +152,39 @@ struct RenderXR : public BGFX::BaseConsumer {
     }
   }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  CBTypeInfo compose(CBInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.onWorkerThread) {
-      throw ComposeError("XR Blocks cannot be used on a worker thread (e.g. "
-                         "within an Await block)");
+      throw ComposeError("XR Shards cannot be used on a worker thread (e.g. "
+                         "within an Await shard)");
     }
 
     // Make sure MainWindow is UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
       if (strcmp(data.shared.elements[i].name, "XR.Context") == 0) {
-        throw CBException("XR.Context must be unique, found another use!");
+        throw SHException("XR.Context must be unique, found another use!");
       }
     }
 
     // twice to actually own the data and release...
     IterableExposedInfo rshared(data.shared);
     IterableExposedInfo shared(rshared);
-    shared.push_back(ExposedInfo::ProtectedVariable("XR.Context", CBCCSTR("The XR Context."), Context::ObjType));
+    shared.push_back(ExposedInfo::ProtectedVariable("XR.Context", SHCCSTR("The XR Context."), Context::ObjType));
     data.shared = shared;
-    _blocks.compose(data);
+    _shards.compose(data);
 
     return data.inputType;
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     BGFX::BaseConsumer::_warmup(context);
 
-    _blocks.warmup(context);
+    _shards.warmup(context);
 
     _xrContextPVar = referenceVariable(context, "XR.Context");
-    _xrContextPVar->valueType = CBType::Object;
+    _xrContextPVar->valueType = SHType::Object;
     _xrContextPVar->payload.objectVendorId = CoreCC;
     _xrContextPVar->payload.objectTypeId = XRContextCC;
     _xrContextPVar->payload.objectValue = &_xrContext;
@@ -193,7 +193,7 @@ struct RenderXR : public BGFX::BaseConsumer {
     if (!bool(_xrSession)) {
       // session is lazy loaded and unique
       // check globals first
-      auto session = emscripten::val::global("ChainblocksWebXRSession");
+      auto session = emscripten::val::global("ShardsWebXRSession");
       if (session.as<bool>()) {
         _xrSession = session;
       } else {
@@ -206,24 +206,24 @@ struct RenderXR : public BGFX::BaseConsumer {
             const auto supported = emscripten_wait<emscripten::val>(
                 context, xr.call<emscripten::val>("isSessionSupported", emscripten::val("immersive-vr")));
             xrSupported = supported.as<bool>();
-            CBLOG_INFO("WebXR session supported: {}", xrSupported);
+            SHLOG_INFO("WebXR session supported: {}", xrSupported);
           } else {
-            CBLOG_INFO("WebXR navigator.xr not available");
+            SHLOG_INFO("WebXR navigator.xr not available");
           }
         } else {
-          CBLOG_INFO("WebXR navigator not available");
+          SHLOG_INFO("WebXR navigator not available");
         }
         if (xrSupported) {
-          const auto dialog = emscripten::val::global("ChainblocksWebXROpenDialog");
+          const auto dialog = emscripten::val::global("ShardsWebXROpenDialog");
           if (!dialog.as<bool>()) {
             throw ActivationError("Failed to find webxr permissions call "
-                                  "(window.ChainblocksWebXROpenDialog).");
+                                  "(window.ShardsWebXROpenDialog).");
           }
           // if we are the first users of session this will be true
           // and we need to fetch session
           auto session = emscripten_wait<emscripten::val>(context, dialog(_near, _far));
           if (session.as<bool>()) {
-            emscripten::val::global("ChainblocksWebXRSession") = session;
+            emscripten::val::global("ShardsWebXRSession") = session;
             _xrSession = session;
           }
         }
@@ -233,30 +233,30 @@ struct RenderXR : public BGFX::BaseConsumer {
     if (bool(_xrSession)) {
       auto ctx = reinterpret_cast<BGFX::Context *>(_bgfxCtx->payload.objectValue);
 
-      _cb = (*_xrSession)["chainblocks"];
-      if (!_cb->as<bool>()) {
-        throw ActivationError("Failed to get internal session.chainblocks object.");
+      _sh = (*_xrSession)["shards"];
+      if (!_sh->as<bool>()) {
+        throw ActivationError("Failed to get internal session.shards object.");
       }
 
-      // first time per block initialization
+      // first time per shard initialization
       const auto refspacePromise = _xrSession->call<emscripten::val>("requestReferenceSpace", emscripten::val("local"));
       _refSpace = emscripten_wait<emscripten::val>(context, refspacePromise);
       if (!_refSpace->as<bool>()) {
         throw ActivationError("Failed to request reference space.");
       }
 
-      CBLOG_INFO("Entering immersive VR mode");
+      SHLOG_INFO("Entering immersive VR mode");
 
       // this call should stop the regular run loop
       // and start requesting XR frames via requestAnimationFrame
-      _cb->call<void>("warmup");
+      _sh->call<void>("warmup");
 
       // ok this is a bit tricky, we are going to swap run loop
-      // the next node tick will be inside the VR callback
+      // the next mesh tick will be inside the VR callback
       // to do so we simply yield here once
       suspend(context, 0);
 
-      CBLOG_INFO("Entered immersive VR mode");
+      SHLOG_INFO("Entered immersive VR mode");
 
       // we should be resuming inside the VR loop
       _glLayer = (*_xrSession)["renderState"]["baseLayer"].as<emscripten::val>();
@@ -306,24 +306,24 @@ struct RenderXR : public BGFX::BaseConsumer {
       bgfx::setViewClear(_views[0], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, 0xC0FFEEFF, 1.0f, 0);
       bgfx::setViewClear(_views[1], BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, 0xC0FFEEFF, 1.0f, 0);
 
-      CBLOG_INFO("Started immersive VR rendering");
+      SHLOG_INFO("Started immersive VR rendering");
     }
 #endif
   }
 
   void cleanup() {
-    _blocks.cleanup();
+    _shards.cleanup();
 
 #ifdef __EMSCRIPTEN__
-    if (_cb) {
+    if (_sh) {
       // on the JS side this should also do:
       // 1. call cancelAnimationFrame
       // 2. make sure we don't queue another VR frame
       // 3. do not close the session
-      _cb->call<void>("cleanup");
+      _sh->call<void>("cleanup");
     }
 
-    _cb.reset();
+    _sh.reset();
     _glLayer.reset();
     _refSpace.reset();
 #endif
@@ -341,7 +341,7 @@ struct RenderXR : public BGFX::BaseConsumer {
     const auto populateGamePadData = [](const emscripten::val &source, GamePadTable &data) {
       const auto gamepad = source["gamepad"];
       if (gamepad.as<bool>()) {
-        if (data.id.valueType == CBType::None) {
+        if (data.id.valueType == SHType::None) {
           cloneVar(data.id, Var(gamepad["id"].as<std::string>()));
         }
 
@@ -403,11 +403,11 @@ struct RenderXR : public BGFX::BaseConsumer {
 #endif
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
 #ifdef __EMSCRIPTEN__
     gfx::FrameRenderer &frameRenderer = getFrameRenderer();
-    if (likely(bool(_cb))) {
-      _frame = (*_cb)["frame"];
+    if (likely(bool(_sh))) {
+      _frame = (*_sh)["frame"];
       DEFER(_frame.reset()); // let's not hold this reference
       if (unlikely(!_frame->as<bool>())) {
         throw ActivationError("WebXR frame data not found.");
@@ -473,9 +473,9 @@ struct RenderXR : public BGFX::BaseConsumer {
 
           populateInputsData();
 
-          // activate the blocks and render
-          CBVar output{};
-          _blocks.activate(context, input, output);
+          // activate the shards and render
+          SHVar output{};
+          _shards.activate(context, input, output);
         }
       } else {
         // LOG_EVERY_N(200, INFO) << "XR pose not available.";
@@ -496,7 +496,7 @@ private:
 
   std::optional<emscripten::val> _glLayer;
   std::optional<emscripten::val> _refSpace;
-  std::optional<emscripten::val> _cb;
+  std::optional<emscripten::val> _sh;
   std::optional<emscripten::val> _frame;
 #endif
 
@@ -504,26 +504,26 @@ private:
   bgfx::ViewId _views[2];
   float _near{0.1};
   float _far{1000.0};
-  BlocksVar _blocks;
+  ShardsVar _shards;
   Context _xrContext{this};
-  CBVar *_xrContextPVar{nullptr};
+  SHVar *_xrContextPVar{nullptr};
   std::array<ControllerTable, 2> _hands;
 };
 
 struct Controller : public Consumer {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return ControllerTable::ValueType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return ControllerTable::ValueType; }
 
   static inline Parameters params{
-      {"Hand", CBCCSTR("Which hand we want to track."), {ControllerTable::HandEnumType}},
-      {"Inverse", CBCCSTR("If the output should be the inverse transformation matrix."), {CoreInfo::BoolType}}};
-  static CBParametersInfo parameters() { return params; }
+      {"Hand", SHCCSTR("Which hand we want to track."), {ControllerTable::HandEnumType}},
+      {"Inverse", SHCCSTR("If the output should be the inverse transformation matrix."), {CoreInfo::BoolType}}};
+  static SHParametersInfo parameters() { return params; }
 
-  CBVar *_xrContext{nullptr};
+  SHVar *_xrContext{nullptr};
   XRHand _hand{XRHand::Left};
   bool _inverse{false};
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _hand = XRHand(value.payload.enumValue);
@@ -534,7 +534,7 @@ struct Controller : public Consumer {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var::Enum(_hand, CoreCC, 'xrha');
@@ -545,14 +545,14 @@ struct Controller : public Consumer {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     Consumer::compose(data);
     return ControllerTable::ValueType;
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _xrContext = referenceVariable(context, "XR.Context");
-    assert(_xrContext->valueType == CBType::Object);
+    assert(_xrContext->valueType == SHType::Object);
   }
 
   void cleanup() {
@@ -562,16 +562,16 @@ struct Controller : public Consumer {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     const auto xrCtx = reinterpret_cast<Context *>(_xrContext->payload.objectValue);
     auto &handData = xrCtx->xr->getHandData(_hand);
     return handData;
   }
 };
 
-void registerBlocks() {
-  REGISTER_CBLOCK("XR.Render", RenderXR);
-  REGISTER_CBLOCK("XR.Controller", Controller);
+void registerShards() {
+  REGISTER_SHARD("XR.Render", RenderXR);
+  REGISTER_SHARD("XR.Controller", Controller);
 }
 } // namespace XR
-} // namespace chainblocks
+} // namespace shards

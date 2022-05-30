@@ -76,29 +76,29 @@ license: CC-BY-SA-4.0
 
 ## run
 
-Executes all the chains that have been scheduled on a given `node`.
+Executes all the wires that have been scheduled on a given `mesh`.
 
-`(run <params>)` takes two arguments: name of the node, and node iteration interval (no. of seconds between two node iterations).
+`(run <params>)` takes two arguments: name of the mesh, and mesh iteration interval (no. of seconds between two mesh iterations).
 
-*An optional 3rd argument defines the maximum node iterations to run. This argument is a debug parameter - do not use for production.*
+*An optional 3rd argument defines the maximum mesh iterations to run. This argument is a debug parameter - do not use for production.*
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; define a node (main)
-    (defnode main)
-    ;; define a looped chain
-    (defloop chain-hi
+    ;; define a mesh (main)
+    (defmesh main)
+    ;; define a looped wire
+    (defloop wire-hi
         (Msg "Hello World!"))
-    ;; define a non-looped chain
-    (defchain chain-bye
+    ;; define a non-looped wire
+    (defwire wire-bye
         (Msg "Goodbye World"))
-    ;; schedule both the chains on this node
-    (schedule main chain-hi)
-    (schedule main chain-bye)
-    ;; run the node to execute scheduled chains
-    ;; time between node iterations - 0.02 secs
-    ;; max node iterations allowed - 5
+    ;; schedule both the wires on this mesh
+    (schedule main wire-hi)
+    (schedule main wire-bye)
+    ;; run the mesh to execute scheduled wires
+    ;; time between mesh iterations - 0.02 secs
+    ;; max mesh iterations allowed - 5
     (run main 0.02 5)
     ;; The last two args  may also be passed as mathematical expressions
     ;; (run main (/ 1 50) (+ 2 3))
@@ -107,47 +107,47 @@ Executes all the chains that have been scheduled on a given `node`.
 === "Result"
 
     ```
-    [info] [2022-03-07 21:42:12.324] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.325] [T-18096] [logging.cpp::94] [chain-bye] Goodbye World
-    [info] [2022-03-07 21:42:12.351] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.367] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.397] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.413] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 21:42:12.324] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.325] [T-18096] [logging.cpp::94] [wire-bye] Goodbye World
+    [info] [2022-03-07 21:42:12.351] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.367] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.397] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.413] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
     ```
 
 ## schedule
 
-Queues a chain for execution on a given node.
+Queues a wire for execution on a given mesh.
 
-Multiple chains can be scheduled on the same `node`. When a node is run, all the chains on it are executed.
+Multiple wires can be scheduled on the same `mesh`. When a mesh is run, all the wires on it are executed.
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; define a node (main)
-    (defnode main)
-    ;; define a looped chain
-    (defloop chain-hi
+    ;; define a mesh (main)
+    (defmesh main)
+    ;; define a looped wire
+    (defloop wire-hi
         (Msg "Hello World!"))
-    ;; define a non-looped chain
-    (defchain chain-bye
+    ;; define a non-looped wire
+    (defwire wire-bye
         (Msg "Goodbye World"))
-    ;; schedule both the chains on this node
-    (schedule main chain-hi)
-    (schedule main chain-bye)
-    ;; run all the scheduled chains on this node (main)
+    ;; schedule both the wires on this mesh
+    (schedule main wire-hi)
+    (schedule main wire-bye)
+    ;; run all the scheduled wires on this mesh (main)
     (run main)
     ```
 
 === "Result"
 
     ```
-    [info] [2022-03-07 21:42:12.324] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.325] [T-18096] [logging.cpp::94] [chain-bye] Goodbye World
-    [info] [2022-03-07 21:42:12.351] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.367] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.397] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
-    [info] [2022-03-07 21:42:12.413] [T-18096] [logging.cpp::94] [chain-hi] Hello World!
+    [info] [2022-03-07 21:42:12.324] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.325] [T-18096] [logging.cpp::94] [wire-bye] Goodbye World
+    [info] [2022-03-07 21:42:12.351] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.367] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.397] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
+    [info] [2022-03-07 21:42:12.413] [T-18096] [logging.cpp::94] [wire-hi] Hello World!
     ```
 
 ## swap!

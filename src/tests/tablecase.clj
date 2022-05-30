@@ -4,9 +4,9 @@
 ;; TODO FIXME this is failing but I think that should be OK
 ;; We store tab1 as just table var but we know nothing of the keys probably
 
-(def! Root (Node))
+(def! Root (Mesh))
 
-(def! testChain (Chain "namedChain"  
+(def! testWire (Wire "namedWire"  
   "Value1" (Set "tab1" "v1")
   "Value2" (Set "tab1" "v2")
   (Get "tab1" "v1")
@@ -21,6 +21,6 @@
   (Get "tab1-set-copy" "v1")
   (Assert.Is "Value1" true)))
 
-(schedule Root testChain)
+(schedule Root testWire)
 
 (tick Root)

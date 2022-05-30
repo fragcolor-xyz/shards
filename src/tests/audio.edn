@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode main)
+(defmesh main)
 
 (defloop play-files
   (Audio.ReadFile "../../external/Ode_to_Joy.ogg" :From 1.0 :To 1.023219954648526)
@@ -37,14 +37,14 @@
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> (Input))))
+  (Audio.Channel :Shards (-> (Input))))
 
 (schedule main device-test)
 (run main 0.1 25)
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> (Audio.ReadFile "../../external/Ode_to_Joy.ogg"
+  (Audio.Channel :Shards (-> (Audio.ReadFile "../../external/Ode_to_Joy.ogg"
                                              :Channels 2
                                              :From 4.0 :To 6.0))))
 
@@ -53,28 +53,28 @@
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator))))
+  (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator))))
 
 (schedule main device-test)
 (run main 0.1 25)
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator Waveform.Triangle))))
+  (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator Waveform.Triangle))))
 
 (schedule main device-test)
 (run main 0.1 25)
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator Waveform.Square))))
+  (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator Waveform.Square))))
 
 (schedule main device-test)
 (run main 0.1 25)
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Blocks (-> 440.0 (Audio.Oscillator Waveform.Sawtooth))))
+  (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator Waveform.Sawtooth))))
 
 (schedule main device-test)
 (run main 0.1 25)

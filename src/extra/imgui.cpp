@@ -2,24 +2,24 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "imgui.hpp"
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "gfx.hpp"
-#include "gfx/chainblocks_types.hpp"
+#include "gfx/shards_types.hpp"
 #include "runtime.hpp"
 #include <implot.h>
 
-namespace chainblocks {
+namespace shards {
 namespace ImGui {
-using namespace chainblocks;
+using namespace shards;
 
 struct Base {
-  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(gfx::Base::requiredInfo); }
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(gfx::Base::requiredInfo); }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is not used and will pass through."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is not used and will pass through."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The output of this block will be its input."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 };
 
 struct IDContext {
@@ -116,11 +116,11 @@ struct Style : public Base {
 
   GuiStyle _key{};
 
-  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param("Style", CBCCSTR("A style key to set."), GuiStyleType));
+  static inline ParamsInfo paramsInfo = ParamsInfo(ParamsInfo::Param("Style", SHCCSTR("A style key to set."), GuiStyleType));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _key = GuiStyle(value.payload.enumValue);
@@ -130,7 +130,7 @@ struct Style : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var::Enum(_key, CoreCC, 'guiS');
@@ -139,7 +139,7 @@ struct Style : public Base {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     switch (_key) {
     case WindowRounding:
     case WindowBorderSize:
@@ -165,7 +165,7 @@ struct Style : public Base {
     case CurveTessellationTol:
     case Alpha:
       if (data.inputType.basicType != Float) {
-        throw CBException("this GUI Style block expected a Float variable as input!");
+        throw SHException("this GUI Style shard expected a Float variable as input!");
       }
       break;
     case WindowPadding:
@@ -180,7 +180,7 @@ struct Style : public Base {
     case DisplayWindowPadding:
     case DisplaySafeAreaPadding:
       if (data.inputType.basicType != Float2) {
-        throw CBException("this GUI Style block expected a Float2 variable as input!");
+        throw SHException("this GUI Style shard expected a Float2 variable as input!");
       }
       break;
     case TextColor:
@@ -232,21 +232,21 @@ struct Style : public Base {
     case NavWindowingDimBgColor:
     case ModalWindowDimBgColor:
       if (data.inputType.basicType != Color) {
-        throw CBException("this GUI Style block expected a Color variable as input!");
+        throw SHException("this GUI Style shard expected a Color variable as input!");
       }
       break;
     }
     return data.inputType;
   }
 
-  static ImVec2 var2Vec2(const CBVar &input) {
+  static ImVec2 var2Vec2(const SHVar &input) {
     ImVec2 res;
     res.x = input.payload.float2Value[0];
     res.y = input.payload.float2Value[1];
     return res;
   }
 
-  static ImVec4 color2Vec4(const CBColor &color) {
+  static ImVec4 color2Vec4(const SHColor &color) {
     ImVec4 res;
     res.x = color.r / 255.0f;
     res.y = color.g / 255.0f;
@@ -255,10 +255,10 @@ struct Style : public Base {
     return res;
   }
 
-  static ImVec4 color2Vec4(const CBVar &input) { return color2Vec4(input.payload.colorValue); }
+  static ImVec4 color2Vec4(const SHVar &input) { return color2Vec4(input.payload.colorValue); }
 
-  static CBColor vec42Color(const ImVec4 &color) {
-    CBColor res;
+  static SHColor vec42Color(const ImVec4 &color) {
+    SHColor res;
     res.r = roundf(color.x * 255.0f);
     res.g = roundf(color.y * 255.0f);
     res.b = roundf(color.z * 255.0f);
@@ -266,7 +266,7 @@ struct Style : public Base {
     return res;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto &style = ::ImGui::GetStyle();
 
     switch (_key) {
@@ -523,7 +523,7 @@ struct Style : public Base {
 };
 
 struct Window : public Base {
-  chainblocks::BlocksVar _blks{};
+  shards::ShardsVar _blks{};
   std::string _title;
   bool firstActivation{true};
   Var _pos{}, _width{}, _height{};
@@ -531,46 +531,46 @@ struct Window : public Base {
       (int(Enums::GuiWindowFlags::NoResize) | int(Enums::GuiWindowFlags::NoMove) | int(Enums::GuiWindowFlags::NoCollapse)),
       CoreCC, Enums::GuiWindowFlagsCC)};
   ParamVar _notClosed{Var::True};
-  std::array<CBExposedTypeInfo, 2> _required;
+  std::array<SHExposedTypeInfo, 2> _required;
 
-  static CBOptionalString help() { return CBCCSTR("Renders a GUI window within the main container window `GFX.MainWindow`."); }
-  static CBOptionalString inputHelp() {
-    return CBCCSTR("The value that will be passed to the Contents blocks of the rendered window.");
+  static SHOptionalString help() { return SHCCSTR("Renders a GUI window within the main container window `GFX.MainWindow`."); }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The value that will be passed to the Contents shards of the rendered window.");
   }
 
   static inline Parameters _params{
-      {"Title", CBCCSTR("The title to be displayed on the title-bar of the rendered window."), {CoreInfo::StringType}},
+      {"Title", SHCCSTR("The title to be displayed on the title-bar of the rendered window."), {CoreInfo::StringType}},
       {"Pos",
-       CBCCSTR("The (x,y) position of the rendered window as pixels (type Int2) or as a fraction of container's position (type "
+       SHCCSTR("The (x,y) position of the rendered window as pixels (type Int2) or as a fraction of container's position (type "
                "Float2)."),
        {CoreInfo::Int2Type, CoreInfo::Float2Type, CoreInfo::NoneType}},
       {"Width",
-       CBCCSTR("The width of the rendered window as pixels (type Int) or as a fraction of container's width (type Float)."),
+       SHCCSTR("The width of the rendered window as pixels (type Int) or as a fraction of container's width (type Float)."),
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
       {"Height",
-       CBCCSTR("The height of the rendered window as pixels (type Int) or as a fraction of container's height (type Float)."),
+       SHCCSTR("The height of the rendered window as pixels (type Int) or as a fraction of container's height (type Float)."),
        {CoreInfo::IntType, CoreInfo::FloatType, CoreInfo::NoneType}},
-      {"Contents", CBCCSTR("Code to generate and control the UI elements that will be displayed in the rendered window."),
-       CoreInfo::BlocksOrNone},
+      {"Contents", SHCCSTR("Code to generate and control the UI elements that will be displayed in the rendered window."),
+       CoreInfo::ShardsOrNone},
       {"Flags",
-       CBCCSTR("Flags to control the rendered window attributes like menu-bar, title-bar, resize, move, collapse etc. Defaults "
+       SHCCSTR("Flags to control the rendered window attributes like menu-bar, title-bar, resize, move, collapse etc. Defaults "
                "are show and allow."),
        {Enums::GuiWindowFlagsType, Enums::GuiWindowFlagsVarType, Enums::GuiWindowFlagsSeqType, Enums::GuiWindowFlagsVarSeqType,
         CoreInfo::NoneType}},
       {"OnClose",
-       CBCCSTR("Flag that shows a close [x] button on the rendered window based on an input boolean variable (show if boolean "
+       SHCCSTR("Flag that shows a close [x] button on the rendered window based on an input boolean variable (show if boolean "
                "`true`). Rendered window is hidden and boolean set to `false` if the close button is clicked."),
        {CoreInfo::BoolVarType}},
   };
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     _blks.compose(data);
     return data.inputType;
   }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
@@ -598,7 +598,7 @@ struct Window : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_title);
@@ -625,21 +625,21 @@ struct Window : public Base {
     _notClosed.cleanup();
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _blks.warmup(context);
     _flags.warmup(context);
     _notClosed.warmup(context);
     firstActivation = true;
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     int idx = 0;
     _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_notClosed.isVariable()) {
       _required[idx].name = _notClosed.variableName();
-      _required[idx].help = CBCCSTR("The required OnClose.");
+      _required[idx].help = SHCCSTR("The required OnClose.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
@@ -647,13 +647,13 @@ struct Window : public Base {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     if (!_blks)
       return input;
 
-    auto flags = ::ImGuiWindowFlags_NoSavedSettings | ::ImGuiWindowFlags(chainblocks::getFlags<Enums::GuiWindowFlags>(_flags));
+    auto flags = ::ImGuiWindowFlags_NoSavedSettings | ::ImGuiWindowFlags(shards::getFlags<Enums::GuiWindowFlags>(_flags));
 
     if (firstActivation) {
       const ImGuiIO &io = ::ImGui::GetIO();
@@ -691,7 +691,7 @@ struct Window : public Base {
     auto active = ::ImGui::Begin(_title.c_str(), _notClosed.isVariable() ? &_notClosed.get().payload.boolValue : nullptr, flags);
     DEFER(::ImGui::End());
     if (active) {
-      CBVar output{};
+      SHVar output{};
       _blks.activate(context, input, output);
     }
     return input;
@@ -699,28 +699,28 @@ struct Window : public Base {
 };
 
 struct ChildWindow : public Base {
-  chainblocks::BlocksVar _blks{};
-  CBVar _width{}, _height{};
+  shards::ShardsVar _blks{};
+  SHVar _width{}, _height{};
   bool _border = false;
   static inline ImGuiID windowIds{0};
   ImGuiID _wndId = ++windowIds;
 
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Width", CBCCSTR("The width of the child window to create"), CoreInfo::IntOrNone),
-      ParamsInfo::Param("Height", CBCCSTR("The height of the child window to create."), CoreInfo::IntOrNone),
-      ParamsInfo::Param("Border", CBCCSTR("If we want to draw a border frame around the child window."), CoreInfo::BoolType),
-      ParamsInfo::Param("Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone));
+      ParamsInfo::Param("Width", SHCCSTR("The width of the child window to create"), CoreInfo::IntOrNone),
+      ParamsInfo::Param("Height", SHCCSTR("The height of the child window to create."), CoreInfo::IntOrNone),
+      ParamsInfo::Param("Border", SHCCSTR("If we want to draw a border frame around the child window."), CoreInfo::BoolType),
+      ParamsInfo::Param("Contents", SHCCSTR("The inner contents shards."), CoreInfo::ShardsOrNone));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     _blks.compose(data);
     return data.inputType;
   }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _width = value;
@@ -739,7 +739,7 @@ struct ChildWindow : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _width;
@@ -756,9 +756,9 @@ struct ChildWindow : public Base {
 
   void cleanup() { _blks.cleanup(); }
 
-  void warmup(CBContext *context) { _blks.warmup(context); }
+  void warmup(SHContext *context) { _blks.warmup(context); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     if (!_blks)
@@ -776,7 +776,7 @@ struct ChildWindow : public Base {
     auto visible = ::ImGui::BeginChild(_wndId, size, _border);
     DEFER(::ImGui::EndChild());
     if (visible) {
-      CBVar output{};
+      SHVar output{};
       _blks.activate(context, input, output);
     }
     return input;
@@ -785,13 +785,13 @@ struct ChildWindow : public Base {
 
 Parameters &VariableParamsInfo() {
   static Parameters params{
-      {"Label", CBCCSTR("The label for this widget."), CoreInfo::StringOrNone},
-      {"Variable", CBCCSTR("The variable that holds the input value."), {CoreInfo::AnyVarType, CoreInfo::NoneType}},
+      {"Label", SHCCSTR("The label for this widget."), CoreInfo::StringOrNone},
+      {"Variable", SHCCSTR("The variable that holds the input value."), {CoreInfo::AnyVarType, CoreInfo::NoneType}},
   };
   return params;
 }
 
-template <CBType CT> struct Variable : public Base {
+template <SHType CT> struct Variable : public Base {
   static inline Type varType{{CT}};
 
   std::string _label;
@@ -801,9 +801,9 @@ template <CBType CT> struct Variable : public Base {
 
   void cleanup() { _variable.cleanup(); }
 
-  void warmup(CBContext *context) { _variable.warmup(context); }
+  void warmup(SHContext *context) { _variable.warmup(context); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     if (_variable.isVariable()) {
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
@@ -812,13 +812,13 @@ template <CBType CT> struct Variable : public Base {
           // we found a variable, make sure it's the right type and mark
           // exposing off
           _exposing = false;
-          if (CT != CBType::Any && var.exposedType.basicType != CT) {
-            throw CBException("GUI - Variable: Existing variable type not "
+          if (CT != SHType::Any && var.exposedType.basicType != CT) {
+            throw SHException("GUI - Variable: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw CBException("GUI - Variable: Existing variable is not mutable.");
+            throw SHException("GUI - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -827,34 +827,34 @@ template <CBType CT> struct Variable : public Base {
     return varType;
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(
           gfx::Base::mainWindowGlobalsInfo,
-          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType)));
-      return CBExposedTypesInfo(_expInfo);
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required input variable."), SHTypeInfo(varType)));
+      return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
     }
   }
 
-  CBExposedTypesInfo exposedVariables() {
+  SHExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
       _expInfo = ExposedInfo(
           gfx::Base::mainWindowGlobalsInfo,
-          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType), true));
-      return CBExposedTypesInfo(_expInfo);
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The exposed input variable."), SHTypeInfo(varType), true));
+      return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
     }
   }
 
-  static CBParametersInfo parameters() {
-    static CBParametersInfo info = VariableParamsInfo();
+  static SHParametersInfo parameters() {
+    static SHParametersInfo info = VariableParamsInfo();
     return info;
   }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -871,7 +871,7 @@ template <CBType CT> struct Variable : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _label.size() == 0 ? Var::Empty : Var(_label);
@@ -883,7 +883,7 @@ template <CBType CT> struct Variable : public Base {
   }
 };
 
-template <CBType CT1, CBType CT2> struct Variable2 : public Base {
+template <SHType CT1, SHType CT2> struct Variable2 : public Base {
   static inline Type varType1{{CT1}};
   static inline Type varType2{{CT2}};
 
@@ -894,9 +894,9 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
 
   void cleanup() { _variable.cleanup(); }
 
-  void warmup(CBContext *context) { _variable.warmup(context); }
+  void warmup(SHContext *context) { _variable.warmup(context); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     if (_variable.isVariable()) {
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
@@ -906,12 +906,12 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
           // exposing off
           _exposing = false;
           if (var.exposedType.basicType != CT1 && var.exposedType.basicType != CT2) {
-            throw CBException("GUI - Variable: Existing variable type not "
+            throw SHException("GUI - Variable: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw CBException("GUI - Variable: Existing variable is not mutable.");
+            throw SHException("GUI - Variable: Existing variable is not mutable.");
           }
           break;
         }
@@ -920,36 +920,36 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
     return CoreInfo::AnyType;
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(
           gfx::Base::mainWindowGlobalsInfo,
-          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType1)),
-          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."), CBTypeInfo(varType2)));
-      return CBExposedTypesInfo(_expInfo);
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required input variable."), SHTypeInfo(varType1)),
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required input variable."), SHTypeInfo(varType2)));
+      return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
     }
   }
 
-  CBExposedTypesInfo exposedVariables() {
+  SHExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() && _exposing) {
       _expInfo = ExposedInfo(
           gfx::Base::mainWindowGlobalsInfo,
-          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType1), true),
-          ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."), CBTypeInfo(varType2), true));
-      return CBExposedTypesInfo(_expInfo);
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The exposed input variable."), SHTypeInfo(varType1), true),
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The exposed input variable."), SHTypeInfo(varType2), true));
+      return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
     }
   }
 
-  static CBParametersInfo parameters() {
-    static CBParametersInfo info = VariableParamsInfo();
+  static SHParametersInfo parameters() {
+    static SHParametersInfo info = VariableParamsInfo();
     return info;
   }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -966,7 +966,7 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _label.size() == 0 ? Var::Empty : Var(_label);
@@ -978,22 +978,22 @@ template <CBType CT1, CBType CT2> struct Variable2 : public Base {
   }
 };
 
-struct Checkbox : public Variable<CBType::Bool> {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+struct Checkbox : public Variable<SHType::Bool> {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the checkbox changed state "
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A boolean indicating whether the checkbox changed state "
                    "during that frame.");
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     auto result = Var::False;
     if (_variable.isVariable()) {
-      _variable.get().valueType = CBType::Bool;
+      _variable.get().valueType = SHType::Bool;
       if (::ImGui::Checkbox(_label.c_str(), &_variable.get().payload.boolValue)) {
         result = Var::True;
       }
@@ -1008,34 +1008,34 @@ struct Checkbox : public Variable<CBType::Bool> {
   }
 };
 
-struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+struct CheckboxFlags : public Variable2<SHType::Int, SHType::Enum> {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the checkbox changed state "
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A boolean indicating whether the checkbox changed state "
                    "during that frame.");
   }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     if (index < 2)
-      Variable2<CBType::Int, CBType::Enum>::setParam(index, value);
+      Variable2<SHType::Int, SHType::Enum>::setParam(index, value);
     else
       _value = value;
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     if (index < 2)
-      return Variable2<CBType::Int, CBType::Enum>::getParam(index);
+      return Variable2<SHType::Int, SHType::Enum>::getParam(index);
     else
       return _value;
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    Variable2<CBType::Int, CBType::Enum>::compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    Variable2<SHType::Int, SHType::Enum>::compose(data);
 
     // ideally here we should check that the type of _value is the same as
     // _variable.
@@ -1043,15 +1043,15 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
     return CoreInfo::BoolType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     auto result = Var::False;
     switch (_value.valueType) {
-    case CBType::Int: {
+    case SHType::Int: {
       int *flags;
       if (_variable.isVariable()) {
-        _variable.get().valueType = CBType::Int;
+        _variable.get().valueType = SHType::Int;
         flags = reinterpret_cast<int *>(&_variable.get().payload.intValue);
       } else {
         flags = reinterpret_cast<int *>(&_tmp.payload.intValue);
@@ -1060,10 +1060,10 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
         result = Var::True;
       }
     } break;
-    case CBType::Enum: {
+    case SHType::Enum: {
       int *flags;
       if (_variable.isVariable()) {
-        _variable.get().valueType = CBType::Enum;
+        _variable.get().valueType = SHType::Enum;
         flags = reinterpret_cast<int *>(&_variable.get().payload.enumValue);
       } else {
         flags = reinterpret_cast<int *>(&_tmp.payload.enumValue);
@@ -1081,68 +1081,68 @@ struct CheckboxFlags : public Variable2<CBType::Int, CBType::Enum> {
 
 private:
   static inline Parameters _params{
-      VariableParamsInfo(), {{"Value", CBCCSTR("The flag value to set or unset."), {CoreInfo::IntType, CoreInfo::AnyEnumType}}}};
+      VariableParamsInfo(), {{"Value", SHCCSTR("The flag value to set or unset."), {CoreInfo::IntType, CoreInfo::AnyEnumType}}}};
 
-  CBVar _value{};
-  CBVar _tmp{};
+  SHVar _value{};
+  SHVar _tmp{};
 };
 
-struct RadioButton : public Variable<CBType::Any> {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+struct RadioButton : public Variable<SHType::Any> {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the radio button changed "
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A boolean indicating whether the radio button changed "
                    "state during that frame.");
   }
 
-  static CBParametersInfo parameters() { return paramsInfo; }
+  static SHParametersInfo parameters() { return paramsInfo; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     if (index < 2)
-      Variable<CBType::Any>::setParam(index, value);
+      Variable<SHType::Any>::setParam(index, value);
     else
       _value = value;
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     if (index < 2)
-      return Variable<CBType::Any>::getParam(index);
+      return Variable<SHType::Any>::getParam(index);
     else
       return _value;
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
       _expInfo = ExposedInfo(gfx::Base::mainWindowGlobalsInfo,
-                             ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The required input variable."),
-                                                   CBTypeInfo({_value.valueType})));
-      return CBExposedTypesInfo(_expInfo);
+                             ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required input variable."),
+                                                   SHTypeInfo({_value.valueType})));
+      return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
     }
   }
 
-  CBExposedTypesInfo exposedVariables() {
+  SHExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
       _expInfo = ExposedInfo(gfx::Base::mainWindowGlobalsInfo,
-                             ExposedInfo::Variable(_variable.variableName(), CBCCSTR("The exposed input variable."),
-                                                   CBTypeInfo({_value.valueType}), true));
-      return CBExposedTypesInfo(_expInfo);
+                             ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The exposed input variable."),
+                                                   SHTypeInfo({_value.valueType}), true));
+      return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     auto result = Var::False;
     if (_variable.isVariable()) {
       auto &var = _variable.get();
       if (::ImGui::RadioButton(_label.c_str(), var == _value)) {
-        chainblocks::cloneVar(var, _value);
+        shards::cloneVar(var, _value);
         result = Var::True;
       }
     } else {
@@ -1158,18 +1158,18 @@ struct RadioButton : public Variable<CBType::Any> {
 
 private:
   static inline Parameters paramsInfo{VariableParamsInfo(),
-                                      {{"Value", CBCCSTR("The value to compare with."), {CoreInfo::AnyType}}}};
+                                      {{"Value", SHCCSTR("The value to compare with."), {CoreInfo::AnyType}}}};
 
-  CBVar _value{};
+  SHVar _value{};
 };
 
 struct Text : public Base {
-  static CBOptionalString help() { return CBCCSTR("Displays the input string as GUI text."); }
-  static CBOptionalString inputHelp() { return CBCCSTR("The text/ string to display."); }
+  static SHOptionalString help() { return SHCCSTR("Displays the input string as GUI text."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The text/ string to display."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -1199,7 +1199,7 @@ struct Text : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _label.size() == 0 ? Var::Empty : Var(_label);
@@ -1217,7 +1217,7 @@ struct Text : public Base {
   }
 
   VarStringStream _text;
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     _text.write(input);
@@ -1260,54 +1260,54 @@ struct Text : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("Optional label for the displayed string. Prints to the screen."), {CoreInfo::StringOrNone}},
-      {"Color", CBCCSTR("Optional color of the displayed text. Default is white."), {CoreInfo::ColorOrNone}},
+      {"Label", SHCCSTR("Optional label for the displayed string. Prints to the screen."), {CoreInfo::StringOrNone}},
+      {"Color", SHCCSTR("Optional color of the displayed text. Default is white."), {CoreInfo::ColorOrNone}},
       {"Format",
-       CBCCSTR("Optional string containing a placeholder `{}` for the input string text. The output is a composite string to "
+       SHCCSTR("Optional string containing a placeholder `{}` for the input string text. The output is a composite string to "
                "display."),
        {CoreInfo::StringOrNone}},
       {"Wrap",
-       CBCCSTR("Either wraps the text into the next line (if set to `true`) or truncates it (if set to `false`) when the text "
+       SHCCSTR("Either wraps the text into the next line (if set to `true`) or truncates it (if set to `false`) when the text "
                "doesn't fit horizontally."),
        {CoreInfo::BoolType}},
       {"Bullet",
-       CBCCSTR("Prints the text as a bullet-point (i.e. displays a small circle before the text), if set to `true`."),
+       SHCCSTR("Prints the text as a bullet-point (i.e. displays a small circle before the text), if set to `true`."),
        {CoreInfo::BoolType}},
   };
 
   std::string _label;
-  CBVar _color{};
+  SHVar _color{};
   std::string _format;
   bool _wrap{false};
   bool _bullet{false};
 };
 
 struct Bullet : public Base {
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::Bullet();
     return input;
   }
 };
 
 struct Button : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() {
-    return CBCCSTR("A boolean indicating whether the button was clicked during "
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A boolean indicating whether the button was clicked during "
                    "that frame.");
   }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
       break;
     case 1:
-      _blocks = value;
+      _shards = value;
       break;
     case 2:
       _type = Enums::GuiButton(value.payload.enumValue);
@@ -1324,12 +1324,12 @@ struct Button : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
     case 1:
-      return _blocks;
+      return _shards;
     case 2:
       return Var::Enum(_type, CoreCC, Enums::GuiButtonCC);
     case 3:
@@ -1341,22 +1341,22 @@ struct Button : public Base {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return CoreInfo::BoolType;
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() { _shards.cleanup(); }
 
-  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+  void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
 #define IMBTN_RUN_ACTION                      \
   {                                           \
-    CBVar output = Var::Empty;                \
-    _blocks.activate(context, input, output); \
+    SHVar output = Var::Empty;                \
+    _shards.activate(context, input, output); \
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     ::ImGui::PushButtonRepeat(_repeat);
@@ -1413,15 +1413,15 @@ struct Button : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("The text label of this button."), {CoreInfo::StringType}},
-      {"Action", CBCCSTR("The blocks to execute when the button is pressed."), CoreInfo::BlocksOrNone},
-      {"Type", CBCCSTR("The button type."), {Enums::GuiButtonType}},
-      {"Size", CBCCSTR("The optional size override."), {CoreInfo::Float2Type}},
-      {"Repeat", CBCCSTR("Whether to repeat the action while the button is pressed."), {CoreInfo::BoolType}},
+      {"Label", SHCCSTR("The text label of this button."), {CoreInfo::StringType}},
+      {"Action", SHCCSTR("The shards to execute when the button is pressed."), CoreInfo::ShardsOrNone},
+      {"Type", SHCCSTR("The button type."), {Enums::GuiButtonType}},
+      {"Size", SHCCSTR("The optional size override."), {CoreInfo::Float2Type}},
+      {"Repeat", SHCCSTR("Whether to repeat the action while the button is pressed."), {CoreInfo::BoolType}},
   };
 
   std::string _label;
-  BlocksVar _blocks{};
+  ShardsVar _shards{};
   Enums::GuiButton _type{};
   ImVec2 _size = {0, 0};
   bool _repeat{false};
@@ -1430,16 +1430,16 @@ private:
 struct HexViewer : public Base {
   // TODO use a variable so edits are possible and easy
 
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The value to display in the viewer."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to display in the viewer."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   ImGuiExtra::MemoryEditor _editor{};
 
   // HexViewer() { _editor.ReadOnly = true; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
     _editor.DrawContents(input.payload.bytesValue, input.payload.bytesSize);
     return input;
@@ -1447,9 +1447,9 @@ struct HexViewer : public Base {
 };
 
 struct Dummy : public Base {
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _width = value;
@@ -1462,7 +1462,7 @@ struct Dummy : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _width;
@@ -1478,12 +1478,12 @@ struct Dummy : public Base {
     _height.cleanup();
   }
 
-  void warmup(CBContext *ctx) {
+  void warmup(SHContext *ctx) {
     _width.warmup(ctx);
     _height.warmup(ctx);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto width = float(_width.get().payload.intValue);
     auto height = float(_height.get().payload.intValue);
     ::ImGui::Dummy({width, height});
@@ -1492,8 +1492,8 @@ struct Dummy : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Width", CBCCSTR("The width of the item."), CoreInfo::IntOrIntVar},
-      {"Height", CBCCSTR("The height of the item."), CoreInfo::IntOrIntVar},
+      {"Width", SHCCSTR("The width of the item."), CoreInfo::IntOrIntVar},
+      {"Height", SHCCSTR("The height of the item."), CoreInfo::IntOrIntVar},
   };
 
   ParamVar _width{Var(0)};
@@ -1501,7 +1501,7 @@ private:
 };
 
 struct NewLine : public Base {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::NewLine();
     return input;
   }
@@ -1509,48 +1509,48 @@ struct NewLine : public Base {
 
 struct SameLine : public Base {
   // TODO add offsets and spacing
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::SameLine();
     return input;
   }
 };
 
 struct Separator : public Base {
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::Separator();
     return input;
   }
 };
 
 struct Spacing : public Base {
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::Spacing();
     return input;
   }
 };
 
 struct Indent : public Base {
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::Indent();
     return input;
   }
 };
 
 struct Unindent : public Base {
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::Unindent();
     return input;
   }
 };
 
 struct GetClipboard : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The content of the clipboard."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The content of the clipboard."); }
 
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     auto contents = ::ImGui::GetClipboardText();
     if (contents)
       return Var(contents);
@@ -1560,47 +1560,47 @@ struct GetClipboard : public Base {
 };
 
 struct SetClipboard : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The value to set in the clipboard."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to set in the clipboard."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static CBVar activate(CBContext *context, const CBVar &input) {
+  static SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::SetClipboardText(input.payload.stringValue);
     return input;
   }
 };
 
 struct TreeNode : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the tree node is open."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the tree node is open."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return CoreInfo::BoolType;
   }
 
   void cleanup() {
-    _blocks.cleanup();
+    _shards.cleanup();
     _flags.cleanup();
   }
 
-  void warmup(CBContext *context) {
-    _blocks.warmup(context);
+  void warmup(SHContext *context) {
+    _shards.warmup(context);
     _flags.warmup(context);
   }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
       break;
     case 1:
-      _blocks = value;
+      _shards = value;
       break;
     case 2:
       _defaultOpen = value.payload.boolValue;
@@ -1613,25 +1613,25 @@ struct TreeNode : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
     case 1:
-      return _blocks;
+      return _shards;
     case 2:
       return Var(_defaultOpen);
     case 3:
       return _flags;
     default:
-      return CBVar();
+      return SHVar();
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
-    auto flags = ::ImGuiTreeNodeFlags(chainblocks::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
+    auto flags = ::ImGuiTreeNodeFlags(shards::getFlags<Enums::GuiTreeNodeFlags>(_flags.get()));
 
     if (_defaultOpen) {
       flags |= ::ImGuiTreeNodeFlags_DefaultOpen;
@@ -1639,9 +1639,9 @@ struct TreeNode : public Base {
 
     auto visible = ::ImGui::TreeNodeEx(_label.c_str(), flags);
     if (visible) {
-      CBVar output{};
-      // run inner blocks
-      _blocks.activate(context, input, output);
+      SHVar output{};
+      // run inner shards
+      _shards.activate(context, input, output);
       // pop the node if was visible
       ::ImGui::TreePop();
     }
@@ -1651,36 +1651,36 @@ struct TreeNode : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("The label of this node."), {CoreInfo::StringType}},
-      {"Contents", CBCCSTR("The contents of this node."), CoreInfo::BlocksOrNone},
-      {"StartOpen", CBCCSTR("If this node should start in the open state."), {CoreInfo::BoolType}},
+      {"Label", SHCCSTR("The label of this node."), {CoreInfo::StringType}},
+      {"Contents", SHCCSTR("The contents of this node."), CoreInfo::ShardsOrNone},
+      {"StartOpen", SHCCSTR("If this node should start in the open state."), {CoreInfo::BoolType}},
       {"Flags",
-       CBCCSTR("Flags to enable tree node options."),
+       SHCCSTR("Flags to enable tree node options."),
        {Enums::GuiTreeNodeFlagsType, Enums::GuiTreeNodeFlagsVarType, Enums::GuiTreeNodeFlagsSeqType,
         Enums::GuiTreeNodeFlagsVarSeqType, CoreInfo::NoneType}},
   };
 
   std::string _label;
   bool _defaultOpen = false;
-  BlocksVar _blocks;
+  ShardsVar _shards;
   ParamVar _flags{};
 };
 
 struct CollapsingHeader : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the header is open."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the header is open."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
       break;
     case 1:
-      _blocks = value;
+      _shards = value;
       break;
     case 2:
       _defaultOpen = value.payload.boolValue;
@@ -1690,12 +1690,12 @@ struct CollapsingHeader : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
     case 1:
-      return _blocks;
+      return _shards;
     case 2:
       return Var(_defaultOpen);
     default:
@@ -1703,16 +1703,16 @@ struct CollapsingHeader : public Base {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return CoreInfo::BoolType;
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() { _shards.cleanup(); }
 
-  void warmup(CBContext *ctx) { _blocks.warmup(ctx); }
+  void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (_defaultOpen) {
       ::ImGui::SetNextItemOpen(true);
       _defaultOpen = false;
@@ -1720,65 +1720,65 @@ struct CollapsingHeader : public Base {
 
     auto active = ::ImGui::CollapsingHeader(_label.c_str());
     if (active) {
-      CBVar output{};
-      _blocks.activate(context, input, output);
+      SHVar output{};
+      _shards.activate(context, input, output);
     }
     return Var(active);
   }
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("The label of this node."), {CoreInfo::StringType}},
-      {"Contents", CBCCSTR("The contents under this header."), {CoreInfo::BlocksOrNone}},
-      {"StartOpen", CBCCSTR("If this header should start in the open state."), {CoreInfo::BoolType}},
+      {"Label", SHCCSTR("The label of this node."), {CoreInfo::StringType}},
+      {"Contents", SHCCSTR("The contents under this header."), {CoreInfo::ShardsOrNone}},
+      {"StartOpen", SHCCSTR("If this header should start in the open state."), {CoreInfo::BoolType}},
   };
 
   std::string _label;
-  BlocksVar _blocks{};
+  ShardsVar _shards{};
   bool _defaultOpen = false;
 };
 
-template <CBType CBT> struct DragBase : public Variable<CBT> {
+template <SHType SHT> struct DragBase : public Variable<SHT> {
   float _speed{1.0};
 
   static inline Parameters paramsInfo{VariableParamsInfo(),
-                                      {{"Speed", CBCCSTR("The speed multiplier for this drag widget."), CoreInfo::StringOrNone}}};
+                                      {{"Speed", SHCCSTR("The speed multiplier for this drag widget."), CoreInfo::StringOrNone}}};
 
-  static CBParametersInfo parameters() { return paramsInfo; }
+  static SHParametersInfo parameters() { return paramsInfo; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     if (index < 2)
-      Variable<CBT>::setParam(index, value);
+      Variable<SHT>::setParam(index, value);
     else
       _speed = value.payload.floatValue;
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     if (index < 2)
-      return Variable<CBT>::getParam(index);
+      return Variable<SHT>::getParam(index);
     else
       return Var(_speed);
   }
 };
 
-#define IMGUIDRAG(_CBT_, _T_, _INFO_, _IMT_, _VAL_)                                               \
-  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                                           \
+#define IMGUIDRAG(_SHT_, _T_, _INFO_, _IMT_, _VAL_)                                               \
+  struct _SHT_##Drag : public DragBase<SHType::_SHT_> {                                           \
     _T_ _tmp;                                                                                     \
                                                                                                   \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                \
-    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }        \
+    static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }                                \
+    static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }        \
                                                                                                   \
-    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }                                 \
-    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); } \
+    static SHTypesInfo outputTypes() { return CoreInfo::_INFO_; }                                 \
+    static SHOptionalString outputHelp() { return SHCCSTR("The value produced by this shard."); } \
                                                                                                   \
-    CBVar activate(CBContext *context, const CBVar &input) {                                      \
+    SHVar activate(SHContext *context, const SHVar &input) {                                      \
       IDContext idCtx(this);                                                                      \
                                                                                                   \
       if (_variable.isVariable()) {                                                               \
         auto &var = _variable.get();                                                              \
         ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_, _speed);           \
                                                                                                   \
-        var.valueType = CBType::_CBT_;                                                            \
+        var.valueType = SHType::_SHT_;                                                            \
         return var;                                                                               \
       } else {                                                                                    \
         ::ImGui::DragScalar(_label.c_str(), _IMT_, (void *)&_tmp, _speed);                        \
@@ -1790,27 +1790,27 @@ template <CBType CBT> struct DragBase : public Variable<CBT> {
 IMGUIDRAG(Int, int64_t, IntType, ImGuiDataType_S64, intValue);
 IMGUIDRAG(Float, double, FloatType, ImGuiDataType_Double, floatValue);
 
-#define IMGUIDRAG2(_CBT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                                       \
-  struct _CBT_##Drag : public DragBase<CBType::_CBT_> {                                           \
-    CBVar _tmp;                                                                                   \
+#define IMGUIDRAG2(_SHT_, _T_, _INFO_, _IMT_, _VAL_, _CMP_)                                       \
+  struct _SHT_##Drag : public DragBase<SHType::_SHT_> {                                           \
+    SHVar _tmp;                                                                                   \
                                                                                                   \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                \
-    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }        \
+    static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }                                \
+    static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }        \
                                                                                                   \
-    static CBTypesInfo outputTypes() { return CoreInfo::_INFO_; }                                 \
-    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); } \
+    static SHTypesInfo outputTypes() { return CoreInfo::_INFO_; }                                 \
+    static SHOptionalString outputHelp() { return SHCCSTR("The value produced by this shard."); } \
                                                                                                   \
-    CBVar activate(CBContext *context, const CBVar &input) {                                      \
+    SHVar activate(SHContext *context, const SHVar &input) {                                      \
       IDContext idCtx(this);                                                                      \
                                                                                                   \
       if (_variable.isVariable()) {                                                               \
         auto &var = _variable.get();                                                              \
         ::ImGui::DragScalarN(_label.c_str(), _IMT_, (void *)&var.payload._VAL_, _CMP_, _speed);   \
                                                                                                   \
-        var.valueType = CBType::_CBT_;                                                            \
+        var.valueType = SHType::_SHT_;                                                            \
         return var;                                                                               \
       } else {                                                                                    \
-        _tmp.valueType = CBType::_CBT_;                                                           \
+        _tmp.valueType = SHType::_SHT_;                                                           \
         ::ImGui::DragScalarN(_label.c_str(), _IMT_, (void *)&_tmp.payload._VAL_, _CMP_, _speed);  \
         return _tmp;                                                                              \
       }                                                                                           \
@@ -1824,35 +1824,35 @@ IMGUIDRAG2(Float2, double, Float2Type, ImGuiDataType_Double, float2Value, 2);
 IMGUIDRAG2(Float3, float, Float3Type, ImGuiDataType_Float, float3Value, 3);
 IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
 
-#define IMGUIINPUT(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                                                                \
-  struct _CBT_##Input : public Variable<CBType::_CBT_> {                                                           \
+#define IMGUIINPUT(_SHT_, _T_, _IMT_, _VAL_, _FMT_)                                                                \
+  struct _SHT_##Input : public Variable<SHType::_SHT_> {                                                           \
     _T_ _tmp;                                                                                                      \
                                                                                                                    \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                 \
-    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                         \
+    static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                 \
+    static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }                         \
                                                                                                                    \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }                                             \
-    static CBOptionalString outputHelp() { return CBCCSTR("The value that was input."); }                          \
+    static SHTypesInfo outputTypes() { return CoreInfo::_SHT_##Type; }                                             \
+    static SHOptionalString outputHelp() { return SHCCSTR("The value that was input."); }                          \
                                                                                                                    \
-    static CBParametersInfo parameters() { return paramsInfo; }                                                    \
+    static SHParametersInfo parameters() { return paramsInfo; }                                                    \
                                                                                                                    \
     void cleanup() {                                                                                               \
       _step.cleanup();                                                                                             \
       _stepFast.cleanup();                                                                                         \
-      Variable<CBType::_CBT_>::cleanup();                                                                          \
+      Variable<SHType::_SHT_>::cleanup();                                                                          \
     }                                                                                                              \
                                                                                                                    \
-    void warmup(CBContext *context) {                                                                              \
-      Variable<CBType::_CBT_>::warmup(context);                                                                    \
+    void warmup(SHContext *context) {                                                                              \
+      Variable<SHType::_SHT_>::warmup(context);                                                                    \
       _step.warmup(context);                                                                                       \
       _stepFast.warmup(context);                                                                                   \
     }                                                                                                              \
                                                                                                                    \
-    void setParam(int index, const CBVar &value) {                                                                 \
+    void setParam(int index, const SHVar &value) {                                                                 \
       switch (index) {                                                                                             \
       case 0:                                                                                                      \
       case 1:                                                                                                      \
-        Variable<CBType::_CBT_>::setParam(index, value);                                                           \
+        Variable<SHType::_SHT_>::setParam(index, value);                                                           \
         break;                                                                                                     \
       case 2:                                                                                                      \
         _step = value;                                                                                             \
@@ -1865,11 +1865,11 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
       }                                                                                                            \
     }                                                                                                              \
                                                                                                                    \
-    CBVar getParam(int index) {                                                                                    \
+    SHVar getParam(int index) {                                                                                    \
       switch (index) {                                                                                             \
       case 0:                                                                                                      \
       case 1:                                                                                                      \
-        return Variable<CBType::_CBT_>::getParam(index);                                                           \
+        return Variable<SHType::_SHT_>::getParam(index);                                                           \
       case 2:                                                                                                      \
         return _step;                                                                                              \
       case 3:                                                                                                      \
@@ -1879,7 +1879,7 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
       }                                                                                                            \
     }                                                                                                              \
                                                                                                                    \
-    CBVar activate(CBContext *context, const CBVar &input) {                                                       \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                       \
       IDContext idCtx(this);                                                                                       \
                                                                                                                    \
       _T_ step = _step.get().payload._VAL_##Value;                                                                 \
@@ -1889,7 +1889,7 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
         ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##Value, step > 0 ? &step : nullptr, \
                              step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);                                      \
                                                                                                                    \
-        var.valueType = CBType::_CBT_;                                                                             \
+        var.valueType = SHType::_SHT_;                                                                             \
         return var;                                                                                                \
       } else {                                                                                                     \
         ::ImGui::InputScalar(_label.c_str(), _IMT_, (void *)&_tmp, step > 0 ? &step : nullptr,                     \
@@ -1901,10 +1901,10 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
   private:                                                                                                         \
     static inline Parameters paramsInfo{                                                                           \
         VariableParamsInfo(),                                                                                      \
-        {{"Step", CBCCSTR("The value of a single increment."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}, \
+        {{"Step", SHCCSTR("The value of a single increment."), {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}}, \
          {"StepFast",                                                                                              \
-          CBCCSTR("The value of a single increment, when holding Ctrl"),                                           \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                                                     \
+          SHCCSTR("The value of a single increment, when holding Ctrl"),                                           \
+          {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}}},                                                     \
     };                                                                                                             \
                                                                                                                    \
     ParamVar _step{Var((_T_)0)};                                                                                   \
@@ -1914,35 +1914,35 @@ IMGUIDRAG2(Float4, float, Float4Type, ImGuiDataType_Float, float4Value, 4);
 IMGUIINPUT(Int, int64_t, ImGuiDataType_S64, int, "%lld");
 IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
 
-#define IMGUIINPUT2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                                                        \
-  struct _CBT_##_CMP_##Input : public Variable<CBType::_CBT_##_CMP_> {                                             \
-    CBVar _tmp;                                                                                                    \
+#define IMGUIINPUT2(_SHT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                                                        \
+  struct _SHT_##_CMP_##Input : public Variable<SHType::_SHT_##_CMP_> {                                             \
+    SHVar _tmp;                                                                                                    \
                                                                                                                    \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                 \
-    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                         \
+    static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                 \
+    static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }                         \
                                                                                                                    \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }                                      \
-    static CBOptionalString outputHelp() { return CBCCSTR("The value that was input."); }                          \
+    static SHTypesInfo outputTypes() { return CoreInfo::_SHT_##_CMP_##Type; }                                      \
+    static SHOptionalString outputHelp() { return SHCCSTR("The value that was input."); }                          \
                                                                                                                    \
-    static CBParametersInfo parameters() { return paramsInfo; }                                                    \
+    static SHParametersInfo parameters() { return paramsInfo; }                                                    \
                                                                                                                    \
     void cleanup() {                                                                                               \
       _step.cleanup();                                                                                             \
       _stepFast.cleanup();                                                                                         \
-      Variable<CBType::_CBT_##_CMP_>::cleanup();                                                                   \
+      Variable<SHType::_SHT_##_CMP_>::cleanup();                                                                   \
     }                                                                                                              \
                                                                                                                    \
-    void warmup(CBContext *context) {                                                                              \
-      Variable<CBType::_CBT_##_CMP_>::warmup(context);                                                             \
+    void warmup(SHContext *context) {                                                                              \
+      Variable<SHType::_SHT_##_CMP_>::warmup(context);                                                             \
       _step.warmup(context);                                                                                       \
       _stepFast.warmup(context);                                                                                   \
     }                                                                                                              \
                                                                                                                    \
-    void setParam(int index, const CBVar &value) {                                                                 \
+    void setParam(int index, const SHVar &value) {                                                                 \
       switch (index) {                                                                                             \
       case 0:                                                                                                      \
       case 1:                                                                                                      \
-        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                                                    \
+        Variable<SHType::_SHT_##_CMP_>::setParam(index, value);                                                    \
         break;                                                                                                     \
       case 2:                                                                                                      \
         _step = value;                                                                                             \
@@ -1955,11 +1955,11 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
       }                                                                                                            \
     }                                                                                                              \
                                                                                                                    \
-    CBVar getParam(int index) {                                                                                    \
+    SHVar getParam(int index) {                                                                                    \
       switch (index) {                                                                                             \
       case 0:                                                                                                      \
       case 1:                                                                                                      \
-        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                                                    \
+        return Variable<SHType::_SHT_##_CMP_>::getParam(index);                                                    \
       case 2:                                                                                                      \
         return _step;                                                                                              \
       case 3:                                                                                                      \
@@ -1969,7 +1969,7 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
       }                                                                                                            \
     }                                                                                                              \
                                                                                                                    \
-    CBVar activate(CBContext *context, const CBVar &input) {                                                       \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                       \
       IDContext idCtx(this);                                                                                       \
                                                                                                                    \
       _T_ step = _step.get().payload._VAL_##Value;                                                                 \
@@ -1979,10 +1979,10 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
         ::ImGui::InputScalarN(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##_CMP_##Value, _CMP_,              \
                               step > 0 ? &step : nullptr, step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);         \
                                                                                                                    \
-        var.valueType = CBType::_CBT_;                                                                             \
+        var.valueType = SHType::_SHT_;                                                                             \
         return var;                                                                                                \
       } else {                                                                                                     \
-        _tmp.valueType = CBType::_CBT_;                                                                            \
+        _tmp.valueType = SHType::_SHT_;                                                                            \
         ::ImGui::InputScalarN(_label.c_str(), _IMT_, (void *)&_tmp.payload._VAL_##_CMP_##Value, _CMP_,             \
                               step > 0 ? &step : nullptr, step_fast > 0 ? &step_fast : nullptr, _FMT_, 0);         \
         return _tmp;                                                                                               \
@@ -1992,10 +1992,10 @@ IMGUIINPUT(Float, double, ImGuiDataType_Double, float, "%.3f");
   private:                                                                                                         \
     static inline Parameters paramsInfo{                                                                           \
         VariableParamsInfo(),                                                                                      \
-        {{"Step", CBCCSTR("The value of a single increment."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}, \
+        {{"Step", SHCCSTR("The value of a single increment."), {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}}, \
          {"StepFast",                                                                                              \
-          CBCCSTR("The value of a single increment, when holding Ctrl"),                                           \
-          {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                                                     \
+          SHCCSTR("The value of a single increment, when holding Ctrl"),                                           \
+          {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}}},                                                     \
     };                                                                                                             \
                                                                                                                    \
     ParamVar _step{Var((_T_)0)};                                                                                   \
@@ -2010,34 +2010,34 @@ IMGUIINPUT2(Float, 2, double, ImGuiDataType_Double, float, "%.3f");
 IMGUIINPUT2(Float, 3, float, ImGuiDataType_Float, float, "%.3f");
 IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 
-#define IMGUISLIDER(_CBT_, _T_, _IMT_, _VAL_, _FMT_)                                                           \
-  struct _CBT_##Slider : public Variable<CBType::_CBT_> {                                                      \
+#define IMGUISLIDER(_SHT_, _T_, _IMT_, _VAL_, _FMT_)                                                           \
+  struct _SHT_##Slider : public Variable<SHType::_SHT_> {                                                      \
                                                                                                                \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                             \
-    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                     \
+    static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }                                             \
+    static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }                     \
                                                                                                                \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##Type; }                                         \
-    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); }              \
+    static SHTypesInfo outputTypes() { return CoreInfo::_SHT_##Type; }                                         \
+    static SHOptionalString outputHelp() { return SHCCSTR("The value produced by this shard."); }              \
                                                                                                                \
-    static CBParametersInfo parameters() { return paramsInfo; }                                                \
+    static SHParametersInfo parameters() { return paramsInfo; }                                                \
                                                                                                                \
     void cleanup() {                                                                                           \
       _min.cleanup();                                                                                          \
       _max.cleanup();                                                                                          \
-      Variable<CBType::_CBT_>::cleanup();                                                                      \
+      Variable<SHType::_SHT_>::cleanup();                                                                      \
     }                                                                                                          \
                                                                                                                \
-    void warmup(CBContext *context) {                                                                          \
-      Variable<CBType::_CBT_>::warmup(context);                                                                \
+    void warmup(SHContext *context) {                                                                          \
+      Variable<SHType::_SHT_>::warmup(context);                                                                \
       _min.warmup(context);                                                                                    \
       _max.warmup(context);                                                                                    \
     }                                                                                                          \
                                                                                                                \
-    void setParam(int index, const CBVar &value) {                                                             \
+    void setParam(int index, const SHVar &value) {                                                             \
       switch (index) {                                                                                         \
       case 0:                                                                                                  \
       case 1:                                                                                                  \
-        Variable<CBType::_CBT_>::setParam(index, value);                                                       \
+        Variable<SHType::_SHT_>::setParam(index, value);                                                       \
         break;                                                                                                 \
       case 2:                                                                                                  \
         _min = value;                                                                                          \
@@ -2050,11 +2050,11 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
       }                                                                                                        \
     }                                                                                                          \
                                                                                                                \
-    CBVar getParam(int index) {                                                                                \
+    SHVar getParam(int index) {                                                                                \
       switch (index) {                                                                                         \
       case 0:                                                                                                  \
       case 1:                                                                                                  \
-        return Variable<CBType::_CBT_>::getParam(index);                                                       \
+        return Variable<SHType::_SHT_>::getParam(index);                                                       \
       case 2:                                                                                                  \
         return _min;                                                                                           \
       case 3:                                                                                                  \
@@ -2064,7 +2064,7 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
       }                                                                                                        \
     }                                                                                                          \
                                                                                                                \
-    CBVar activate(CBContext *context, const CBVar &input) {                                                   \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                   \
       IDContext idCtx(this);                                                                                   \
                                                                                                                \
       _T_ min = _min.get().payload._VAL_##Value;                                                               \
@@ -2073,7 +2073,7 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
         auto &var = _variable.get();                                                                           \
         ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##Value, &min, &max, _FMT_, 0); \
                                                                                                                \
-        var.valueType = CBType::_CBT_;                                                                         \
+        var.valueType = SHType::_SHT_;                                                                         \
         return var;                                                                                            \
       } else {                                                                                                 \
         ::ImGui::SliderScalar(_label.c_str(), _IMT_, (void *)&_tmp, &min, &max, _FMT_, 0);                     \
@@ -2084,8 +2084,8 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
   private:                                                                                                     \
     static inline Parameters paramsInfo{                                                                       \
         VariableParamsInfo(),                                                                                  \
-        {{"Min", CBCCSTR("The minimum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},            \
-         {"Max", CBCCSTR("The maximum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},           \
+        {{"Min", SHCCSTR("The minimum value."), {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}},            \
+         {"Max", SHCCSTR("The maximum value."), {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}}},           \
     };                                                                                                         \
                                                                                                                \
     ParamVar _min{Var((_T_)0)};                                                                                \
@@ -2096,34 +2096,34 @@ IMGUIINPUT2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 IMGUISLIDER(Int, int64_t, ImGuiDataType_S64, int, "%lld");
 IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
 
-#define IMGUISLIDER2(_CBT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                                                                  \
-  struct _CBT_##_CMP_##Slider : public Variable<CBType::_CBT_##_CMP_> {                                                       \
+#define IMGUISLIDER2(_SHT_, _CMP_, _T_, _IMT_, _VAL_, _FMT_)                                                                  \
+  struct _SHT_##_CMP_##Slider : public Variable<SHType::_SHT_##_CMP_> {                                                       \
                                                                                                                               \
-    static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                            \
-    static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }                                    \
+    static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }                                                            \
+    static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }                                    \
                                                                                                                               \
-    static CBTypesInfo outputTypes() { return CoreInfo::_CBT_##_CMP_##Type; }                                                 \
-    static CBOptionalString outputHelp() { return CBCCSTR("The value produced by this block."); }                             \
+    static SHTypesInfo outputTypes() { return CoreInfo::_SHT_##_CMP_##Type; }                                                 \
+    static SHOptionalString outputHelp() { return SHCCSTR("The value produced by this shard."); }                             \
                                                                                                                               \
-    static CBParametersInfo parameters() { return paramsInfo; }                                                               \
+    static SHParametersInfo parameters() { return paramsInfo; }                                                               \
                                                                                                                               \
     void cleanup() {                                                                                                          \
       _min.cleanup();                                                                                                         \
       _max.cleanup();                                                                                                         \
-      Variable<CBType::_CBT_##_CMP_>::cleanup();                                                                              \
+      Variable<SHType::_SHT_##_CMP_>::cleanup();                                                                              \
     }                                                                                                                         \
                                                                                                                               \
-    void warmup(CBContext *context) {                                                                                         \
-      Variable<CBType::_CBT_##_CMP_>::warmup(context);                                                                        \
+    void warmup(SHContext *context) {                                                                                         \
+      Variable<SHType::_SHT_##_CMP_>::warmup(context);                                                                        \
       _min.warmup(context);                                                                                                   \
       _max.warmup(context);                                                                                                   \
     }                                                                                                                         \
                                                                                                                               \
-    void setParam(int index, const CBVar &value) {                                                                            \
+    void setParam(int index, const SHVar &value) {                                                                            \
       switch (index) {                                                                                                        \
       case 0:                                                                                                                 \
       case 1:                                                                                                                 \
-        Variable<CBType::_CBT_##_CMP_>::setParam(index, value);                                                               \
+        Variable<SHType::_SHT_##_CMP_>::setParam(index, value);                                                               \
         break;                                                                                                                \
       case 2:                                                                                                                 \
         _min = value;                                                                                                         \
@@ -2136,11 +2136,11 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
       }                                                                                                                       \
     }                                                                                                                         \
                                                                                                                               \
-    CBVar getParam(int index) {                                                                                               \
+    SHVar getParam(int index) {                                                                                               \
       switch (index) {                                                                                                        \
       case 0:                                                                                                                 \
       case 1:                                                                                                                 \
-        return Variable<CBType::_CBT_##_CMP_>::getParam(index);                                                               \
+        return Variable<SHType::_SHT_##_CMP_>::getParam(index);                                                               \
       case 2:                                                                                                                 \
         return _min;                                                                                                          \
       case 3:                                                                                                                 \
@@ -2150,7 +2150,7 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
       }                                                                                                                       \
     }                                                                                                                         \
                                                                                                                               \
-    CBVar activate(CBContext *context, const CBVar &input) {                                                                  \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                                  \
       IDContext idCtx(this);                                                                                                  \
                                                                                                                               \
       _T_ min = _min.get().payload._VAL_##Value;                                                                              \
@@ -2159,7 +2159,7 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
         auto &var = _variable.get();                                                                                          \
         ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&var.payload._VAL_##_CMP_##Value, _CMP_, &min, &max, _FMT_, 0); \
                                                                                                                               \
-        var.valueType = CBType::_CBT_;                                                                                        \
+        var.valueType = SHType::_SHT_;                                                                                        \
         return var;                                                                                                           \
       } else {                                                                                                                \
         ::ImGui::SliderScalarN(_label.c_str(), _IMT_, (void *)&_tmp, _CMP_, &min, &max, _FMT_, 0);                            \
@@ -2170,8 +2170,8 @@ IMGUISLIDER(Float, double, ImGuiDataType_Double, float, "%.3f");
   private:                                                                                                                    \
     static inline Parameters paramsInfo{                                                                                      \
         VariableParamsInfo(),                                                                                                 \
-        {{"Min", CBCCSTR("The minimum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}},                           \
-         {"Max", CBCCSTR("The maximum value."), {CoreInfo::_CBT_##Type, CoreInfo::_CBT_##VarType}}},                          \
+        {{"Min", SHCCSTR("The minimum value."), {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}},                           \
+         {"Max", SHCCSTR("The maximum value."), {CoreInfo::_SHT_##Type, CoreInfo::_SHT_##VarType}}},                          \
     };                                                                                                                        \
                                                                                                                               \
     ParamVar _min{Var((_T_)0)};                                                                                               \
@@ -2187,21 +2187,21 @@ IMGUISLIDER2(Float, 2, double, ImGuiDataType_Double, float, "%.3f");
 IMGUISLIDER2(Float, 3, float, ImGuiDataType_Float, float, "%.3f");
 IMGUISLIDER2(Float, 4, float, ImGuiDataType_Float, float, "%.3f");
 
-struct TextInput : public Variable<CBType::String> {
+struct TextInput : public Variable<SHType::String> {
 
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The string that was input."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The string that was input."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
     case 1:
-      Variable<CBType::String>::setParam(index, value);
+      Variable<SHType::String>::setParam(index, value);
       break;
     case 2: {
       if (value.valueType == None) {
@@ -2215,11 +2215,11 @@ struct TextInput : public Variable<CBType::String> {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
     case 1:
-      return Variable<CBType::String>::getParam(index);
+      return Variable<SHType::String>::getParam(index);
     case 2:
       return Var(_hint);
     default:
@@ -2245,14 +2245,14 @@ struct TextInput : public Variable<CBType::String> {
     return 0;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     if (_exposing && _init) {
       _init = false;
       auto &var = _variable.get();
       // we own the variable so let's run some init
-      var.valueType = CBType::String;
+      var.valueType = SHType::String;
       var.payload.stringValue = new char[32];
       var.payload.stringCapacity = 32;
       memset((void *)var.payload.stringValue, 0x0, 32);
@@ -2274,7 +2274,7 @@ struct TextInput : public Variable<CBType::String> {
 private:
   static inline Parameters _params{
       VariableParamsInfo(),
-      {{"Hint", CBCCSTR("A hint text displayed when the control is empty."), {CoreInfo::StringType}}},
+      {{"Hint", SHCCSTR("A hint text displayed when the control is empty."), {CoreInfo::StringType}}},
   };
 
   // fallback, used only when no variable name is set
@@ -2283,23 +2283,23 @@ private:
   bool _init{true};
 };
 
-struct ColorInput : public Variable<CBType::Color> {
+struct ColorInput : public Variable<SHType::Color> {
   ImVec4 _lcolor{0.0, 0.0, 0.0, 1.0};
 
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The color that was input."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::ColorType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The color that was input."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     if (_exposing && _init) {
       _init = false;
       auto &var = _variable.get();
       // we own the variable so let's run some init
-      var.valueType = CBType::Color;
+      var.valueType = SHType::Color;
       var.payload.colorValue.r = 0;
       var.payload.colorValue.g = 0;
       var.payload.colorValue.b = 0;
@@ -2327,21 +2327,21 @@ struct Image : public Base {
   ImVec2 _size{1.0, 1.0};
   bool _trueSize = false;
 
-  static CBTypesInfo inputTypes() { return BGFX::Texture::ObjType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("A texture object."); }
+  static SHTypesInfo inputTypes() { return BGFX::Texture::ObjType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A texture object."); }
 
-  static CBTypesInfo outputTypes() { return BGFX::Texture::ObjType; }
+  static SHTypesInfo outputTypes() { return BGFX::Texture::ObjType; }
 
   static inline ParamsInfo paramsInfo = ParamsInfo(
-      ParamsInfo::Param("Size", CBCCSTR("The drawing size of the image."),
+      ParamsInfo::Param("Size", SHCCSTR("The drawing size of the image."),
                         CoreInfo::Float2Type),
       ParamsInfo::Param("TrueSize",
-                        CBCCSTR("If the given size is in true image pixels."),
+                        SHCCSTR("If the given size is in true image pixels."),
                         CoreInfo::BoolType));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(paramsInfo); }
+  static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _size.x = value.payload.float2Value[0];
@@ -2355,7 +2355,7 @@ struct Image : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_size.x, _size.y);
@@ -2366,7 +2366,7 @@ struct Image : public Base {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     auto texture = reinterpret_cast<BGFX::Texture *>(input.payload.objectValue);
@@ -2404,40 +2404,40 @@ struct Plot : public Base {
 
   static inline Types Plottable{{CoreInfo::FloatSeqType, CoreInfo::Float2SeqType}};
 
-  BlocksVar _blocks;
-  CBVar _width{}, _height{};
+  ShardsVar _shards;
+  SHVar _width{}, _height{};
   std::string _title;
   std::string _fullTitle{"##" + std::to_string(reinterpret_cast<uintptr_t>(this))};
   std::string _xlabel;
   std::string _ylabel;
   ParamVar _xlimits{}, _ylimits{};
   ParamVar _lockx{Var::False}, _locky{Var::False};
-  std::array<CBExposedTypeInfo, 5> _required;
+  std::array<SHExposedTypeInfo, 5> _required;
 
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
   static inline Parameters params{
-      {"Title", CBCCSTR("The title of the plot to create."), {CoreInfo::StringType}},
-      {"Contents", CBCCSTR("The blocks describing this plot."), {CoreInfo::BlocksOrNone}},
-      {"Width", CBCCSTR("The width of the plot area to create."), {CoreInfo::IntOrNone}},
-      {"Height", CBCCSTR("The height of the plot area to create."), {CoreInfo::IntOrNone}},
-      {"X_Label", CBCCSTR("The X axis label."), {CoreInfo::StringType}},
-      {"Y_Label", CBCCSTR("The Y axis label."), {CoreInfo::StringType}},
-      {"X_Limits", CBCCSTR("The X axis limits."), {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
-      {"Y_Limits", CBCCSTR("The Y axis limits."), {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
-      {"Lock_X", CBCCSTR("If the X axis should be locked into its limits."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
-      {"Lock_Y", CBCCSTR("If the Y axis should be locked into its limits."), {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
+      {"Title", SHCCSTR("The title of the plot to create."), {CoreInfo::StringType}},
+      {"Contents", SHCCSTR("The shards describing this plot."), {CoreInfo::ShardsOrNone}},
+      {"Width", SHCCSTR("The width of the plot area to create."), {CoreInfo::IntOrNone}},
+      {"Height", SHCCSTR("The height of the plot area to create."), {CoreInfo::IntOrNone}},
+      {"X_Label", SHCCSTR("The X axis label."), {CoreInfo::StringType}},
+      {"Y_Label", SHCCSTR("The Y axis label."), {CoreInfo::StringType}},
+      {"X_Limits", SHCCSTR("The X axis limits."), {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
+      {"Y_Limits", SHCCSTR("The Y axis limits."), {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}},
+      {"Lock_X", SHCCSTR("If the X axis should be locked into its limits."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Lock_Y", SHCCSTR("If the Y axis should be locked into its limits."), {CoreInfo::BoolType, CoreInfo::BoolVarType}}};
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
       _fullTitle = _title + "##" + std::to_string(reinterpret_cast<uintptr_t>(this));
       break;
     case 1:
-      _blocks = value;
+      _shards = value;
       break;
     case 2:
       _width = value;
@@ -2468,12 +2468,12 @@ struct Plot : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_title);
     case 1:
-      return _blocks;
+      return _shards;
     case 2:
       return _width;
     case 3:
@@ -2495,57 +2495,57 @@ struct Plot : public Base {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return data.inputType;
   }
 
   void cleanup() {
-    _blocks.cleanup();
+    _shards.cleanup();
     _xlimits.cleanup();
     _ylimits.cleanup();
     _lockx.cleanup();
     _locky.cleanup();
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _context();
-    _blocks.warmup(context);
+    _shards.warmup(context);
     _xlimits.warmup(context);
     _ylimits.warmup(context);
     _lockx.warmup(context);
     _locky.warmup(context);
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     int idx = 0;
     _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_xlimits.isVariable()) {
       _required[idx].name = _xlimits.variableName();
-      _required[idx].help = CBCCSTR("The required X axis limits.");
+      _required[idx].help = SHCCSTR("The required X axis limits.");
       _required[idx].exposedType = CoreInfo::Float2Type;
       idx++;
     }
 
     if (_ylimits.isVariable()) {
       _required[idx].name = _ylimits.variableName();
-      _required[idx].help = CBCCSTR("The required Y axis limits.");
+      _required[idx].help = SHCCSTR("The required Y axis limits.");
       _required[idx].exposedType = CoreInfo::Float2Type;
       idx++;
     }
 
     if (_lockx.isVariable()) {
       _required[idx].name = _lockx.variableName();
-      _required[idx].help = CBCCSTR("The required X axis locking.");
+      _required[idx].help = SHCCSTR("The required X axis locking.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
 
     if (_locky.isVariable()) {
       _required[idx].name = _locky.variableName();
-      _required[idx].help = CBCCSTR("The required Y axis locking.");
+      _required[idx].help = SHCCSTR("The required Y axis locking.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
@@ -2553,7 +2553,7 @@ struct Plot : public Base {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (_xlimits.get().valueType == Float2) {
       auto limitx = _xlimits.get().payload.float2Value[0];
       auto limity = _xlimits.get().payload.float2Value[1];
@@ -2580,8 +2580,8 @@ struct Plot : public Base {
                           _ylabel.size() > 0 ? _ylabel.c_str() : nullptr, size)) {
       DEFER(ImPlot::EndPlot());
 
-      CBVar output{};
-      _blocks.activate(context, input, output);
+      SHVar output{};
+      _shards.activate(context, input, output);
     }
 
     return input;
@@ -2593,19 +2593,19 @@ struct PlottableBase : public Base {
   std::string _fullLabel{"##" + std::to_string(reinterpret_cast<uintptr_t>(this))};
   enum class Kind { unknown, xAndIndex, xAndY };
   Kind _kind{};
-  CBVar _color{};
+  SHVar _color{};
 
-  static CBTypesInfo inputTypes() { return Plot::Plottable; }
-  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of values."); }
+  static SHTypesInfo inputTypes() { return Plot::Plottable; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of values."); }
 
-  static CBTypesInfo outputTypes() { return Plot::Plottable; }
+  static SHTypesInfo outputTypes() { return Plot::Plottable; }
 
   static constexpr int nparams = 2;
-  static inline Parameters params{{"Label", CBCCSTR("The plot's label."), {CoreInfo::StringType}},
-                                  {"Color", CBCCSTR("The plot's color."), {CoreInfo::NoneType, CoreInfo::ColorType}}};
-  static CBParametersInfo parameters() { return params; }
+  static inline Parameters params{{"Label", SHCCSTR("The plot's label."), {CoreInfo::StringType}},
+                                  {"Color", SHCCSTR("The plot's color."), {CoreInfo::NoneType, CoreInfo::ColorType}}};
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _label = value.payload.stringValue;
@@ -2619,7 +2619,7 @@ struct PlottableBase : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
@@ -2630,7 +2630,7 @@ struct PlottableBase : public Base {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     assert(data.inputType.basicType == Seq);
     if (data.inputType.seqTypes.len != 1 ||
         (data.inputType.seqTypes.elements[0].basicType != Float && data.inputType.seqTypes.elements[0].basicType != Float2)) {
@@ -2646,26 +2646,26 @@ struct PlottableBase : public Base {
   }
 
   void applyModifiers() {
-    if (_color.valueType == CBType::Color) {
+    if (_color.valueType == SHType::Color) {
       ImPlot::PushStyleColor(ImPlotCol_Line, Style::color2Vec4(_color.payload.colorValue));
       ImPlot::PushStyleColor(ImPlotCol_Fill, Style::color2Vec4(_color.payload.colorValue));
     }
   }
 
   void popModifiers() {
-    if (_color.valueType == CBType::Color) {
+    if (_color.valueType == SHType::Color) {
       ImPlot::PopStyleColor(2);
     }
   }
 
-  static bool isInputValid(const CBVar &input) {
+  static bool isInputValid(const SHVar &input) {
     // prevent division by zero
     return !(input.valueType == Seq && input.payload.seqValue.len == 0);
   }
 };
 
 struct PlotLine : public PlottableBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!isInputValid(input))
       return input;
 
@@ -2675,7 +2675,7 @@ struct PlotLine : public PlottableBase {
       ImPlot::PlotLineG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
@@ -2684,7 +2684,7 @@ struct PlotLine : public PlottableBase {
       ImPlot::PlotLineG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
@@ -2695,7 +2695,7 @@ struct PlotLine : public PlottableBase {
 };
 
 struct PlotDigital : public PlottableBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!isInputValid(input))
       return input;
 
@@ -2705,7 +2705,7 @@ struct PlotDigital : public PlottableBase {
       ImPlot::PlotDigitalG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
@@ -2714,7 +2714,7 @@ struct PlotDigital : public PlottableBase {
       ImPlot::PlotDigitalG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
@@ -2725,7 +2725,7 @@ struct PlotDigital : public PlottableBase {
 };
 
 struct PlotScatter : public PlottableBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!isInputValid(input))
       return input;
 
@@ -2735,7 +2735,7 @@ struct PlotScatter : public PlottableBase {
       ImPlot::PlotScatterG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
@@ -2744,7 +2744,7 @@ struct PlotScatter : public PlottableBase {
       ImPlot::PlotScatterG(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
@@ -2763,13 +2763,13 @@ struct PlotBars : public PlottableBase {
 
   static inline Parameters params{
       PlottableBase::params,
-      {{"Width", CBCCSTR("The width of each bar"), {CoreInfo::FloatType}},
-       {"Horizontal", CBCCSTR("If the bar should be horiziontal rather than vertical"), {CoreInfo::BoolType}}},
+      {{"Width", SHCCSTR("The width of each bar"), {CoreInfo::FloatType}},
+       {"Horizontal", SHCCSTR("If the bar should be horiziontal rather than vertical"), {CoreInfo::BoolType}}},
   };
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case PlottableBase::nparams + 1:
       _width = value.payload.floatValue;
@@ -2787,7 +2787,7 @@ struct PlotBars : public PlottableBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case PlottableBase::nparams + 1:
       return Var(_width);
@@ -2799,7 +2799,7 @@ struct PlotBars : public PlottableBase {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!isInputValid(input))
       return input;
 
@@ -2809,7 +2809,7 @@ struct PlotBars : public PlottableBase {
       _plot(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(seq.elements[idx].payload.float2Value[0], seq.elements[idx].payload.float2Value[1]);
           },
@@ -2818,7 +2818,7 @@ struct PlotBars : public PlottableBase {
       _plot(
           _fullLabel.c_str(),
           [](void *data, int idx) {
-            auto input = reinterpret_cast<CBVar *>(data);
+            auto input = reinterpret_cast<SHVar *>(data);
             auto seq = input->payload.seqValue;
             return ImPlotPoint(double(idx), seq.elements[idx].payload.floatValue);
           },
@@ -2829,86 +2829,86 @@ struct PlotBars : public PlottableBase {
 };
 
 struct HasPointer : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean."); }
 
-  static CBVar activate(CBContext *context, const CBVar &input) { return Var(::ImGui::IsAnyItemHovered()); }
+  static SHVar activate(SHContext *context, const SHVar &input) { return Var(::ImGui::IsAnyItemHovered()); }
 };
 
 struct FPS : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The current framerate."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The current framerate."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ImGuiIO &io = ::ImGui::GetIO();
     return Var(io.Framerate);
   }
 };
 
 struct Tooltip : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _blocks = value;
+      _shards = value;
       break;
     default:
       break;
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _blocks;
+      return _shards;
     default:
       break;
     }
     return Var::Empty;
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() { _shards.cleanup(); }
 
-  void warmup(CBContext *context) { _blocks.warmup(context); }
+  void warmup(SHContext *context) { _shards.warmup(context); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return data.inputType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (::ImGui::IsItemHovered()) {
       ::ImGui::BeginTooltip();
       DEFER(::ImGui::EndTooltip());
 
-      CBVar output{};
-      _blocks.activate(context, input, output);
+      SHVar output{};
+      _shards.activate(context, input, output);
     }
     return input;
   }
 
 private:
   static inline Parameters _params = {
-      {"Contents", CBCCSTR("The inner contents blocks."), {CoreInfo::BlocksOrNone}},
+      {"Contents", SHCCSTR("The inner contents shards."), {CoreInfo::ShardsOrNone}},
   };
 
-  BlocksVar _blocks{};
+  ShardsVar _shards{};
 };
 
 struct HelpMarker : public Base {
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -2925,7 +2925,7 @@ struct HelpMarker : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _desc.size() == 0 ? Var::Empty : Var(_desc);
@@ -2936,7 +2936,7 @@ struct HelpMarker : public Base {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (_isInline)
       ::ImGui::SameLine();
     ::ImGui::TextDisabled("(?)");
@@ -2953,8 +2953,8 @@ struct HelpMarker : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Description", CBCCSTR("The text displayed in a popup."), {CoreInfo::StringType}},
-      {"Inline", CBCCSTR("Display on the same line."), {CoreInfo::BoolType}},
+      {"Description", SHCCSTR("The text displayed in a popup."), {CoreInfo::StringType}},
+      {"Inline", SHCCSTR("Display on the same line."), {CoreInfo::BoolType}},
   };
 
   std::string _desc;
@@ -2962,14 +2962,14 @@ private:
 };
 
 struct ProgressBar : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The value to display."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to display."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -2983,7 +2983,7 @@ struct ProgressBar : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _overlay.size() == 0 ? Var::Empty : Var(_overlay);
@@ -2992,7 +2992,7 @@ struct ProgressBar : public Base {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto buf = _overlay.size() > 0 ? _overlay.c_str() : nullptr;
     ::ImGui::ProgressBar(input.payload.floatValue, ImVec2(0.f, 0.f), buf);
     return input;
@@ -3000,85 +3000,85 @@ struct ProgressBar : public Base {
 
 private:
   static inline Parameters _params = {
-      {"Overlay", CBCCSTR("The text displayed inside the progress bar."), {CoreInfo::StringType}},
+      {"Overlay", SHCCSTR("The text displayed inside the progress bar."), {CoreInfo::StringType}},
   };
 
   std::string _overlay;
 };
 
 struct MenuBase : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the menu is visible."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the menu is visible."); }
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      blocks = value;
+      shards = value;
       break;
     default:
       break;
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return blocks;
+      return shards;
     default:
       break;
     }
     return Var::Empty;
   }
 
-  void cleanup() { blocks.cleanup(); }
+  void cleanup() { shards.cleanup(); }
 
-  void warmup(CBContext *context) { blocks.warmup(context); }
+  void warmup(SHContext *context) { shards.warmup(context); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    shards.compose(data);
     return CoreInfo::BoolType;
   }
 
 protected:
   static inline Parameters params = {
-      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
+      {"Contents", SHCCSTR("The inner contents shards."), CoreInfo::ShardsOrNone},
   };
 
-  BlocksVar blocks{};
+  ShardsVar shards{};
 };
 
 struct MainMenuBar : public MenuBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto active = ::ImGui::BeginMainMenuBar();
     if (active) {
       DEFER(::ImGui::EndMainMenuBar());
-      CBVar output{};
-      blocks.activate(context, input, output);
+      SHVar output{};
+      shards.activate(context, input, output);
     }
     return Var(active);
   }
 };
 
 struct MenuBar : public MenuBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto active = ::ImGui::BeginMenuBar();
     if (active) {
       DEFER(::ImGui::EndMenuBar());
-      CBVar output{};
-      blocks.activate(context, input, output);
+      SHVar output{};
+      shards.activate(context, input, output);
     }
     return Var(active);
   }
 };
 
 struct Menu : public MenuBase {
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -3096,7 +3096,7 @@ struct Menu : public MenuBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
@@ -3113,20 +3113,20 @@ struct Menu : public MenuBase {
     MenuBase::cleanup();
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     MenuBase::warmup(context);
 
     _isEnabled.warmup(context);
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     int idx = 0;
     _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_isEnabled.isVariable()) {
       _required[idx].name = _isEnabled.variableName();
-      _required[idx].help = CBCCSTR("The required IsEnabled.");
+      _required[idx].help = SHCCSTR("The required IsEnabled.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
@@ -3134,35 +3134,35 @@ struct Menu : public MenuBase {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto active = ::ImGui::BeginMenu(_label.c_str(), _isEnabled.get().payload.boolValue);
     if (active) {
       DEFER(::ImGui::EndMenu());
-      CBVar output{};
-      blocks.activate(context, input, output);
+      SHVar output{};
+      shards.activate(context, input, output);
     }
     return Var(active);
   }
 
 private:
-  static inline Parameters _params{{{"Label", CBCCSTR("The label of the menu"), {CoreInfo::StringType}},
+  static inline Parameters _params{{{"Label", SHCCSTR("The label of the menu"), {CoreInfo::StringType}},
                                     {"IsEnabled",
-                                     CBCCSTR("Sets whether this menu is enabled. A disabled item cannot be "
+                                     SHCCSTR("Sets whether this menu is enabled. A disabled item cannot be "
                                              "selected or clicked."),
                                      {CoreInfo::BoolType, CoreInfo::BoolVarType}}},
                                    MenuBase::params};
 
   std::string _label;
   ParamVar _isEnabled{Var::True};
-  std::array<CBExposedTypeInfo, 2> _required;
+  std::array<SHExposedTypeInfo, 2> _required;
 };
 
 struct MenuItem : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Action blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Action shards."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -3192,7 +3192,7 @@ struct MenuItem : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _label.size() == 0 ? Var::Empty : Var(_label);
@@ -3215,27 +3215,27 @@ struct MenuItem : public Base {
     _isChecked.cleanup();
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _action.warmup(context);
     _isEnabled.warmup(context);
     _isChecked.warmup(context);
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     int idx = 0;
     _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_isChecked.isVariable()) {
       _required[idx].name = _isChecked.variableName();
-      _required[idx].help = CBCCSTR("The required IsChecked.");
+      _required[idx].help = SHCCSTR("The required IsChecked.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
 
     if (_isEnabled.isVariable()) {
       _required[idx].name = _isEnabled.variableName();
-      _required[idx].help = CBCCSTR("The required IsEnabled.");
+      _required[idx].help = SHCCSTR("The required IsEnabled.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
@@ -3243,7 +3243,7 @@ struct MenuItem : public Base {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     _action.compose(data);
 
     if (_isChecked.isVariable()) {
@@ -3252,13 +3252,13 @@ struct MenuItem : public Base {
       for (auto &var : data.shared) {
         if (strcmp(var.name, _isChecked.variableName()) == 0) {
           // we found a variable, make sure it's the right type and mark
-          if (var.exposedType.basicType != CBType::Bool) {
-            throw CBException("GUI - MenuItem: Existing variable type not "
+          if (var.exposedType.basicType != SHType::Bool) {
+            throw SHException("GUI - MenuItem: Existing variable type not "
                               "matching the input.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw CBException("GUI - MenuItem: Existing variable is not mutable.");
+            throw SHException("GUI - MenuItem: Existing variable is not mutable.");
           }
           found = true;
           break;
@@ -3266,13 +3266,13 @@ struct MenuItem : public Base {
       }
       if (!found)
         // we didn't find a variable
-        throw CBException("GUI - MenuItem: Missing mutable variable.");
+        throw SHException("GUI - MenuItem: Missing mutable variable.");
     }
 
     return CoreInfo::BoolType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     bool active;
     if (_isChecked.isVariable()) {
       active = ::ImGui::MenuItem(_label.c_str(), _shortcut.c_str(), &_isChecked.get().payload.boolValue,
@@ -3282,7 +3282,7 @@ struct MenuItem : public Base {
                                  _isEnabled.get().payload.boolValue);
     }
     if (active) {
-      CBVar output{};
+      SHVar output{};
       _action.activate(context, input, output);
     }
     return Var(active);
@@ -3290,35 +3290,35 @@ struct MenuItem : public Base {
 
 private:
   static inline Parameters _params{
-      {"Label", CBCCSTR("The label of the menu item"), {CoreInfo::StringType}},
+      {"Label", SHCCSTR("The label of the menu item"), {CoreInfo::StringType}},
       {"IsChecked",
-       CBCCSTR("Sets whether this menu item is checked. A checked item "
+       SHCCSTR("Sets whether this menu item is checked. A checked item "
                "displays a check mark on the side."),
        {CoreInfo::BoolType, CoreInfo::BoolVarType}},
-      {"Action", CBCCSTR(""), {CoreInfo::BlocksOrNone}},
-      {"Shortcut", CBCCSTR("A keyboard shortcut to activate that item"), {CoreInfo::StringType}},
+      {"Action", SHCCSTR(""), {CoreInfo::ShardsOrNone}},
+      {"Shortcut", SHCCSTR("A keyboard shortcut to activate that item"), {CoreInfo::StringType}},
       {"IsEnabled",
-       CBCCSTR("Sets whether this menu item is enabled. A disabled item cannot "
+       SHCCSTR("Sets whether this menu item is enabled. A disabled item cannot "
                "be selected or clicked."),
        {CoreInfo::BoolType, CoreInfo::BoolVarType}},
   };
 
   std::string _label;
   ParamVar _isChecked{Var::False};
-  BlocksVar _action{};
+  ShardsVar _action{};
   std::string _shortcut;
   ParamVar _isEnabled{Var::True};
-  std::array<CBExposedTypeInfo, 3> _required;
+  std::array<SHExposedTypeInfo, 3> _required;
 };
 
-struct Combo : public Variable<CBType::Int> {
-  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of values."); }
+struct Combo : public Variable<SHType::Int> {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of values."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The selected value."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The selected value."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto count = input.payload.seqValue.len;
     if (count == 0) {
       if (_variable.isVariable())
@@ -3345,8 +3345,8 @@ struct Combo : public Variable<CBType::Int> {
       ::ImGui::Combo(_label.c_str(), &_n, items, count);
     }
 
-    CBVar output{};
-    ::chainblocks::cloneVar(output, input.payload.seqValue.elements[_n]);
+    SHVar output{};
+    ::shards::cloneVar(output, input.payload.seqValue.elements[_n]);
     return output;
   }
 
@@ -3354,14 +3354,14 @@ private:
   int _n{0};
 };
 
-struct ListBox : public Variable<CBType::Int> {
-  static CBParametersInfo parameters() { return _params; }
+struct ListBox : public Variable<SHType::Int> {
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
     case 1:
-      Variable<CBType::Int>::setParam(index, value);
+      Variable<SHType::Int>::setParam(index, value);
       break;
     case 2:
       _height = value.payload.intValue;
@@ -3371,11 +3371,11 @@ struct ListBox : public Variable<CBType::Int> {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
     case 1:
-      return Variable<CBType::Int>::getParam(index);
+      return Variable<SHType::Int>::getParam(index);
     case 2:
       return Var(_height);
     default:
@@ -3384,13 +3384,13 @@ struct ListBox : public Variable<CBType::Int> {
     return Var::Empty;
   }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("A sequence of values."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of values."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("The currently selected value."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The currently selected value."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto count = input.payload.seqValue.len;
     if (count == 0) {
       if (_variable.isVariable())
@@ -3417,35 +3417,35 @@ struct ListBox : public Variable<CBType::Int> {
       ::ImGui::ListBox(_label.c_str(), &_n, items, count, _height);
     }
 
-    CBVar output{};
-    ::chainblocks::cloneVar(output, input.payload.seqValue.elements[_n]);
+    SHVar output{};
+    ::shards::cloneVar(output, input.payload.seqValue.elements[_n]);
     return output;
   }
 
 private:
   static inline Parameters _params = {
       VariableParamsInfo(),
-      {{"ItemsHeight", CBCCSTR("Height of the list in number of items"), {CoreInfo::IntType}}},
+      {{"ItemsHeight", SHCCSTR("Height of the list in number of items"), {CoreInfo::IntType}}},
   };
 
   int _n{0};
   int _height{-1};
 };
 
-struct Selectable : public Variable<CBType::Bool> {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+struct Selectable : public Variable<SHType::Bool> {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether this item is currently selected."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether this item is currently selected."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     IDContext idCtx(this);
 
     auto result = Var::False;
     if (_variable.isVariable()) {
       if (::ImGui::Selectable(_label.c_str(), &_variable.get().payload.boolValue)) {
-        _variable.get().valueType = CBType::Bool;
+        _variable.get().valueType = SHType::Bool;
         result = Var::True;
       }
     } else {
@@ -3460,54 +3460,54 @@ struct Selectable : public Variable<CBType::Bool> {
 };
 
 struct TabBase : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the tab is visible."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the tab is visible."); }
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      blocks = value;
+      shards = value;
       break;
     default:
       break;
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return blocks;
+      return shards;
     default:
       break;
     }
     return Var::Empty;
   }
 
-  void cleanup() { blocks.cleanup(); }
+  void cleanup() { shards.cleanup(); }
 
-  void warmup(CBContext *context) { blocks.warmup(context); }
+  void warmup(SHContext *context) { shards.warmup(context); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    shards.compose(data);
     return CoreInfo::BoolType;
   }
 
 protected:
   static inline Parameters params = {
-      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
+      {"Contents", SHCCSTR("The inner contents shards."), CoreInfo::ShardsOrNone},
   };
 
-  BlocksVar blocks{};
+  ShardsVar shards{};
 };
 
 struct TabBar : public TabBase {
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -3524,7 +3524,7 @@ struct TabBar : public TabBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_name);
@@ -3536,20 +3536,20 @@ struct TabBar : public TabBase {
     return Var::Empty;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTabBar";
     auto active = ::ImGui::BeginTabBar(str_id);
     if (active) {
       DEFER(::ImGui::EndTabBar());
-      CBVar output{};
-      blocks.activate(context, input, output);
+      SHVar output{};
+      shards.activate(context, input, output);
     }
     return Var(active);
   }
 
 private:
   static inline Parameters _params = {
-      {{"Name", CBCCSTR("A unique name for this tab bar."), {CoreInfo::StringType}}},
+      {{"Name", SHCCSTR("A unique name for this tab bar."), {CoreInfo::StringType}}},
       TabBase::params,
   };
 
@@ -3557,9 +3557,9 @@ private:
 };
 
 struct TabItem : public TabBase {
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -3576,7 +3576,7 @@ struct TabItem : public TabBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
@@ -3588,19 +3588,19 @@ struct TabItem : public TabBase {
     return Var::Empty;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto active = ::ImGui::BeginTabItem(_label.c_str());
     if (active) {
       DEFER(::ImGui::EndTabItem());
-      CBVar output{};
-      blocks.activate(context, input, output);
+      SHVar output{};
+      shards.activate(context, input, output);
     }
     return Var(active);
   }
 
 private:
   static inline Parameters _params = {
-      {{"Label", CBCCSTR("The label of the tab"), {CoreInfo::StringType}}},
+      {{"Label", SHCCSTR("The label of the tab"), {CoreInfo::StringType}}},
       TabBase::params,
   };
 
@@ -3608,64 +3608,64 @@ private:
 };
 
 struct Group : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _blocks = value;
+      _shards = value;
       break;
     default:
       break;
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _blocks;
+      return _shards;
     default:
       break;
     }
     return Var::Empty;
   }
 
-  void cleanup() { _blocks.cleanup(); }
+  void cleanup() { _shards.cleanup(); }
 
-  void warmup(CBContext *context) { _blocks.warmup(context); }
+  void warmup(SHContext *context) { _shards.warmup(context); }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return CoreInfo::BoolType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::BeginGroup();
     DEFER(::ImGui::EndGroup());
-    CBVar output{};
-    _blocks.activate(context, input, output);
+    SHVar output{};
+    _shards.activate(context, input, output);
     return input;
   }
 
 private:
   static inline Parameters _params = {
-      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
+      {"Contents", SHCCSTR("The inner contents shards."), CoreInfo::ShardsOrNone},
   };
 
-  BlocksVar _blocks{};
+  ShardsVar _shards{};
 };
 
 struct Disable : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _blocks = value;
+      _shards = value;
       break;
     case 1:
       _disable = value;
@@ -3675,10 +3675,10 @@ struct Disable : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _blocks;
+      return _shards;
     case 1:
       return _disable;
     default:
@@ -3689,22 +3689,22 @@ struct Disable : public Base {
 
   void cleanup() {
     _disable.cleanup();
-    _blocks.cleanup();
+    _shards.cleanup();
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _disable.warmup(context);
-    _blocks.warmup(context);
+    _shards.warmup(context);
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     int idx = 0;
     _required[idx] = gfx::Base::mainWindowGlobalsInfo;
     idx++;
 
     if (_disable.isVariable()) {
       _required[idx].name = _disable.variableName();
-      _required[idx].help = CBCCSTR("The required Disable.");
+      _required[idx].help = SHCCSTR("The required Disable.");
       _required[idx].exposedType = CoreInfo::BoolType;
       idx++;
     }
@@ -3712,39 +3712,39 @@ struct Disable : public Base {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return data.inputType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::BeginDisabled(_disable.get().payload.boolValue);
     DEFER(::ImGui::EndDisabled());
-    CBVar output{};
-    _blocks.activate(context, input, output);
+    SHVar output{};
+    _shards.activate(context, input, output);
     return input;
   }
 
 private:
   static inline Parameters _params = {
-      {"Contents", CBCCSTR("The inner contents blocks."), {CoreInfo::BlocksOrNone}},
-      {"Disable", CBCCSTR("Sets whether the contents should be disabled."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"Contents", SHCCSTR("The inner contents shards."), {CoreInfo::ShardsOrNone}},
+      {"Disable", SHCCSTR("Sets whether the contents should be disabled."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
   };
 
   ParamVar _disable{Var::True};
-  BlocksVar _blocks{};
-  std::array<CBExposedTypeInfo, 2> _required;
+  ShardsVar _shards{};
+  std::array<SHExposedTypeInfo, 2> _required;
 };
 
 struct Table : public Base {
-  static CBOptionalString inputHelp() { return CBCCSTR("The value will be passed to the Contents blocks."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value will be passed to the Contents shards."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the table is visible."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the table is visible."); }
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -3757,7 +3757,7 @@ struct Table : public Base {
       _columns = value.payload.intValue;
       break;
     case 2:
-      _blocks = value;
+      _shards = value;
       break;
     case 3:
       _flags = value;
@@ -3767,14 +3767,14 @@ struct Table : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_name);
     case 1:
       return Var(_columns);
     case 2:
-      return _blocks;
+      return _shards;
     case 3:
       return _flags;
     default:
@@ -3784,84 +3784,84 @@ struct Table : public Base {
   }
 
   void cleanup() {
-    _blocks.cleanup();
+    _shards.cleanup();
     _flags.cleanup();
   }
 
-  void warmup(CBContext *context) {
-    _blocks.warmup(context);
+  void warmup(SHContext *context) {
+    _shards.warmup(context);
     _flags.warmup(context);
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    _blocks.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _shards.compose(data);
     return CoreInfo::BoolType;
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags = ::ImGuiTableFlags(chainblocks::getFlags<Enums::GuiTableFlags>(_flags.get()));
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto flags = ::ImGuiTableFlags(shards::getFlags<Enums::GuiTableFlags>(_flags.get()));
     auto str_id = _name.size() > 0 ? _name.c_str() : "DefaultTable";
     auto active = ::ImGui::BeginTable(str_id, _columns, flags);
     if (active) {
       DEFER(::ImGui::EndTable());
-      CBVar output{};
-      _blocks.activate(context, input, output);
+      SHVar output{};
+      _shards.activate(context, input, output);
     }
     return Var(active);
   }
 
 private:
   static inline Parameters _params = {
-      {"Name", CBCCSTR("A unique name for this table."), {CoreInfo::StringType}},
-      {"Columns", CBCCSTR("The number of columns."), {CoreInfo::IntType}},
-      {"Contents", CBCCSTR("The inner contents blocks."), CoreInfo::BlocksOrNone},
+      {"Name", SHCCSTR("A unique name for this table."), {CoreInfo::StringType}},
+      {"Columns", SHCCSTR("The number of columns."), {CoreInfo::IntType}},
+      {"Contents", SHCCSTR("The inner contents shards."), CoreInfo::ShardsOrNone},
       {"Flags",
-       CBCCSTR("Flags to enable table options."),
+       SHCCSTR("Flags to enable table options."),
        {Enums::GuiTableFlagsType, Enums::GuiTableFlagsVarType, Enums::GuiTableFlagsSeqType, Enums::GuiTableFlagsVarSeqType,
         CoreInfo::NoneType}},
   };
 
   std::string _name;
   int _columns;
-  BlocksVar _blocks{};
+  ShardsVar _shards{};
   ParamVar _flags{};
 };
 
 struct TableHeadersRow : public Base {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::TableHeadersRow();
     return input;
   }
 };
 
 struct TableNextColumn : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The input value is ignored."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input value is ignored."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the table column is visible."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the table column is visible."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto active = ::ImGui::TableNextColumn();
     return Var(active);
   }
 };
 
 struct TableNextRow : public Base {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     ::ImGui::TableNextRow();
     return input;
   }
 };
 
 struct TableSetColumnIndex : public Base {
-  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
-  static CBOptionalString inputHelp() { return CBCCSTR("The table index."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The table index."); }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static CBOptionalString outputHelp() { return CBCCSTR("A boolean indicating whether the table column is visible."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A boolean indicating whether the table column is visible."); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto &index = input.payload.intValue;
     auto active = ::ImGui::TableSetColumnIndex(index);
     return Var(active);
@@ -3870,9 +3870,9 @@ struct TableSetColumnIndex : public Base {
 
 struct TableSetupColumn : public Base {
 
-  static CBParametersInfo parameters() { return _params; }
+  static SHParametersInfo parameters() { return _params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
       if (value.valueType == None) {
@@ -3889,7 +3889,7 @@ struct TableSetupColumn : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_label);
@@ -3903,19 +3903,19 @@ struct TableSetupColumn : public Base {
 
   void cleanup() { _flags.cleanup(); }
 
-  void warmup(CBContext *context) { _flags.warmup(context); }
+  void warmup(SHContext *context) { _flags.warmup(context); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    auto flags = ::ImGuiTableColumnFlags(chainblocks::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto flags = ::ImGuiTableColumnFlags(shards::getFlags<Enums::GuiTableColumnFlags>(_flags.get()));
     ::ImGui::TableSetupColumn(_label.c_str(), flags);
     return input;
   }
 
 private:
   static inline Parameters _params = {
-      {"Label", CBCCSTR("Column header"), {CoreInfo::StringType}},
+      {"Label", SHCCSTR("Column header"), {CoreInfo::StringType}},
       {"Flags",
-       CBCCSTR("Flags to enable column options."),
+       SHCCSTR("Flags to enable column options."),
        {Enums::GuiTableColumnFlagsType, Enums::GuiTableColumnFlagsVarType, Enums::GuiTableColumnFlagsSeqType,
         Enums::GuiTableColumnFlagsVarSeqType, CoreInfo::NoneType}},
   };
@@ -3924,84 +3924,84 @@ private:
   ParamVar _flags{};
 };
 
-void registerBlocks() {
-  REGISTER_CBLOCK("GUI.Style", Style);
-  REGISTER_CBLOCK("GUI.Window", Window);
-  REGISTER_CBLOCK("GUI.ChildWindow", ChildWindow);
-  REGISTER_CBLOCK("GUI.Checkbox", Checkbox);
-  REGISTER_CBLOCK("GUI.CheckboxFlags", CheckboxFlags);
-  REGISTER_CBLOCK("GUI.RadioButton", RadioButton);
-  REGISTER_CBLOCK("GUI.Text", Text);
-  REGISTER_CBLOCK("GUI.Bullet", Bullet);
-  REGISTER_CBLOCK("GUI.Button", Button);
-  REGISTER_CBLOCK("GUI.HexViewer", HexViewer);
-  REGISTER_CBLOCK("GUI.Dummy", Dummy);
-  REGISTER_CBLOCK("GUI.NewLine", NewLine);
-  REGISTER_CBLOCK("GUI.SameLine", SameLine);
-  REGISTER_CBLOCK("GUI.Separator", Separator);
-  REGISTER_CBLOCK("GUI.Spacing", Spacing);
-  REGISTER_CBLOCK("GUI.Indent", Indent);
-  REGISTER_CBLOCK("GUI.Unindent", Unindent);
-  REGISTER_CBLOCK("GUI.TreeNode", TreeNode);
-  REGISTER_CBLOCK("GUI.CollapsingHeader", CollapsingHeader);
-  REGISTER_CBLOCK("GUI.IntInput", IntInput);
-  REGISTER_CBLOCK("GUI.FloatInput", FloatInput);
-  REGISTER_CBLOCK("GUI.Int2Input", Int2Input);
-  REGISTER_CBLOCK("GUI.Int3Input", Int3Input);
-  REGISTER_CBLOCK("GUI.Int4Input", Int4Input);
-  REGISTER_CBLOCK("GUI.Float2Input", Float2Input);
-  REGISTER_CBLOCK("GUI.Float3Input", Float3Input);
-  REGISTER_CBLOCK("GUI.Float4Input", Float4Input);
-  REGISTER_CBLOCK("GUI.IntDrag", IntDrag);
-  REGISTER_CBLOCK("GUI.FloatDrag", FloatDrag);
-  REGISTER_CBLOCK("GUI.Int2Drag", Int2Drag);
-  REGISTER_CBLOCK("GUI.Int3Drag", Int3Drag);
-  REGISTER_CBLOCK("GUI.Int4Drag", Int4Drag);
-  REGISTER_CBLOCK("GUI.Float2Drag", Float2Drag);
-  REGISTER_CBLOCK("GUI.Float3Drag", Float3Drag);
-  REGISTER_CBLOCK("GUI.Float4Drag", Float4Drag);
-  REGISTER_CBLOCK("GUI.IntSlider", IntSlider);
-  REGISTER_CBLOCK("GUI.FloatSlider", FloatSlider);
-  REGISTER_CBLOCK("GUI.Int2Slider", Int2Slider);
-  REGISTER_CBLOCK("GUI.Int3Slider", Int3Slider);
-  REGISTER_CBLOCK("GUI.Int4Slider", Int4Slider);
-  REGISTER_CBLOCK("GUI.Float2Slider", Float2Slider);
-  REGISTER_CBLOCK("GUI.Float3Slider", Float3Slider);
-  REGISTER_CBLOCK("GUI.Float4Slider", Float4Slider);
-  REGISTER_CBLOCK("GUI.TextInput", TextInput);
+void registerShards() {
+  REGISTER_SHARD("GUI.Style", Style);
+  REGISTER_SHARD("GUI.Window", Window);
+  REGISTER_SHARD("GUI.ChildWindow", ChildWindow);
+  REGISTER_SHARD("GUI.Checkbox", Checkbox);
+  REGISTER_SHARD("GUI.CheckboxFlags", CheckboxFlags);
+  REGISTER_SHARD("GUI.RadioButton", RadioButton);
+  REGISTER_SHARD("GUI.Text", Text);
+  REGISTER_SHARD("GUI.Bullet", Bullet);
+  REGISTER_SHARD("GUI.Button", Button);
+  REGISTER_SHARD("GUI.HexViewer", HexViewer);
+  REGISTER_SHARD("GUI.Dummy", Dummy);
+  REGISTER_SHARD("GUI.NewLine", NewLine);
+  REGISTER_SHARD("GUI.SameLine", SameLine);
+  REGISTER_SHARD("GUI.Separator", Separator);
+  REGISTER_SHARD("GUI.Spacing", Spacing);
+  REGISTER_SHARD("GUI.Indent", Indent);
+  REGISTER_SHARD("GUI.Unindent", Unindent);
+  REGISTER_SHARD("GUI.TreeNode", TreeNode);
+  REGISTER_SHARD("GUI.CollapsingHeader", CollapsingHeader);
+  REGISTER_SHARD("GUI.IntInput", IntInput);
+  REGISTER_SHARD("GUI.FloatInput", FloatInput);
+  REGISTER_SHARD("GUI.Int2Input", Int2Input);
+  REGISTER_SHARD("GUI.Int3Input", Int3Input);
+  REGISTER_SHARD("GUI.Int4Input", Int4Input);
+  REGISTER_SHARD("GUI.Float2Input", Float2Input);
+  REGISTER_SHARD("GUI.Float3Input", Float3Input);
+  REGISTER_SHARD("GUI.Float4Input", Float4Input);
+  REGISTER_SHARD("GUI.IntDrag", IntDrag);
+  REGISTER_SHARD("GUI.FloatDrag", FloatDrag);
+  REGISTER_SHARD("GUI.Int2Drag", Int2Drag);
+  REGISTER_SHARD("GUI.Int3Drag", Int3Drag);
+  REGISTER_SHARD("GUI.Int4Drag", Int4Drag);
+  REGISTER_SHARD("GUI.Float2Drag", Float2Drag);
+  REGISTER_SHARD("GUI.Float3Drag", Float3Drag);
+  REGISTER_SHARD("GUI.Float4Drag", Float4Drag);
+  REGISTER_SHARD("GUI.IntSlider", IntSlider);
+  REGISTER_SHARD("GUI.FloatSlider", FloatSlider);
+  REGISTER_SHARD("GUI.Int2Slider", Int2Slider);
+  REGISTER_SHARD("GUI.Int3Slider", Int3Slider);
+  REGISTER_SHARD("GUI.Int4Slider", Int4Slider);
+  REGISTER_SHARD("GUI.Float2Slider", Float2Slider);
+  REGISTER_SHARD("GUI.Float3Slider", Float3Slider);
+  REGISTER_SHARD("GUI.Float4Slider", Float4Slider);
+  REGISTER_SHARD("GUI.TextInput", TextInput);
 #if 0
-  REGISTER_CBLOCK("GUI.Image", Image);
+  REGISTER_SHARD("GUI.Image", Image);
 #endif
-  REGISTER_CBLOCK("GUI.Plot", Plot);
-  REGISTER_CBLOCK("GUI.PlotLine", PlotLine);
-  REGISTER_CBLOCK("GUI.PlotDigital", PlotDigital);
-  REGISTER_CBLOCK("GUI.PlotScatter", PlotScatter);
-  REGISTER_CBLOCK("GUI.PlotBars", PlotBars);
-  REGISTER_CBLOCK("GUI.GetClipboard", GetClipboard);
-  REGISTER_CBLOCK("GUI.SetClipboard", SetClipboard);
-  REGISTER_CBLOCK("GUI.ColorInput", ColorInput);
-  REGISTER_CBLOCK("GUI.HasPointer", HasPointer);
-  REGISTER_CBLOCK("GUI.FPS", FPS);
-  REGISTER_CBLOCK("GUI.Tooltip", Tooltip);
-  REGISTER_CBLOCK("GUI.HelpMarker", HelpMarker);
-  REGISTER_CBLOCK("GUI.ProgressBar", ProgressBar);
-  REGISTER_CBLOCK("GUI.MainMenuBar", MainMenuBar);
-  REGISTER_CBLOCK("GUI.MenuBar", MenuBar);
-  REGISTER_CBLOCK("GUI.Menu", Menu);
-  REGISTER_CBLOCK("GUI.MenuItem", MenuItem);
-  REGISTER_CBLOCK("GUI.Combo", Combo);
-  REGISTER_CBLOCK("GUI.ListBox", ListBox);
-  REGISTER_CBLOCK("GUI.Selectable", Selectable);
-  REGISTER_CBLOCK("GUI.TabBar", TabBar);
-  REGISTER_CBLOCK("GUI.TabItem", TabItem);
-  REGISTER_CBLOCK("GUI.Group", Group);
-  REGISTER_CBLOCK("GUI.Disable", Disable);
-  REGISTER_CBLOCK("GUI.Table", Table);
-  REGISTER_CBLOCK("GUI.HeadersRow", TableHeadersRow);
-  REGISTER_CBLOCK("GUI.NextColumn", TableNextColumn);
-  REGISTER_CBLOCK("GUI.NextRow", TableNextRow);
-  REGISTER_CBLOCK("GUI.SetColumnIndex", TableSetColumnIndex);
-  REGISTER_CBLOCK("GUI.SetupColumn", TableSetupColumn);
+  REGISTER_SHARD("GUI.Plot", Plot);
+  REGISTER_SHARD("GUI.PlotLine", PlotLine);
+  REGISTER_SHARD("GUI.PlotDigital", PlotDigital);
+  REGISTER_SHARD("GUI.PlotScatter", PlotScatter);
+  REGISTER_SHARD("GUI.PlotBars", PlotBars);
+  REGISTER_SHARD("GUI.GetClipboard", GetClipboard);
+  REGISTER_SHARD("GUI.SetClipboard", SetClipboard);
+  REGISTER_SHARD("GUI.ColorInput", ColorInput);
+  REGISTER_SHARD("GUI.HasPointer", HasPointer);
+  REGISTER_SHARD("GUI.FPS", FPS);
+  REGISTER_SHARD("GUI.Tooltip", Tooltip);
+  REGISTER_SHARD("GUI.HelpMarker", HelpMarker);
+  REGISTER_SHARD("GUI.ProgressBar", ProgressBar);
+  REGISTER_SHARD("GUI.MainMenuBar", MainMenuBar);
+  REGISTER_SHARD("GUI.MenuBar", MenuBar);
+  REGISTER_SHARD("GUI.Menu", Menu);
+  REGISTER_SHARD("GUI.MenuItem", MenuItem);
+  REGISTER_SHARD("GUI.Combo", Combo);
+  REGISTER_SHARD("GUI.ListBox", ListBox);
+  REGISTER_SHARD("GUI.Selectable", Selectable);
+  REGISTER_SHARD("GUI.TabBar", TabBar);
+  REGISTER_SHARD("GUI.TabItem", TabItem);
+  REGISTER_SHARD("GUI.Group", Group);
+  REGISTER_SHARD("GUI.Disable", Disable);
+  REGISTER_SHARD("GUI.Table", Table);
+  REGISTER_SHARD("GUI.HeadersRow", TableHeadersRow);
+  REGISTER_SHARD("GUI.NextColumn", TableNextColumn);
+  REGISTER_SHARD("GUI.NextRow", TableNextRow);
+  REGISTER_SHARD("GUI.SetColumnIndex", TableSetColumnIndex);
+  REGISTER_SHARD("GUI.SetupColumn", TableSetupColumn);
 }
 }; // namespace ImGui
-}; // namespace chainblocks
+}; // namespace shards

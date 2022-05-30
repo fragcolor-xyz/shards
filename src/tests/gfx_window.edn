@@ -1,9 +1,9 @@
 (def timestep (/ 1.0 120.0))
-(defnode Root)
-(defloop test-chain
+(defmesh Root)
+(defloop test-wire
    :Looped
    (GFX.MainWindow
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false))
 
-(schedule Root test-chain)
+(schedule Root test-wire)
 (run Root timestep 100)

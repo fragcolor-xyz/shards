@@ -1,0 +1,4 @@
+(defwire hello
+   (Msg "Hello"))
+
+(Start hello)

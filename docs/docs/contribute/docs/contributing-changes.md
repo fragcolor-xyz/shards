@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 # Contributing changes
 
-Fragcolor documentation exists under the [/docs](https://github.com/fragcolor-xyz/chainblocks/tree/devel/docs) folder of the Chainblocks repository.
+Fragcolor documentation exists under the [/docs](https://github.com/fragcolor-xyz/shards/tree/devel/docs) folder of the Shards repository.
 
 This guide will get you started with contributing documentation changes to Fragcolor projects. We'll use the GitHub Desktop (GD) to deal with git as GD is easier to use than the git command line.
 
@@ -43,7 +43,7 @@ You will need to create a new branch from the main/ default branch to hold your 
 
 You can create a new branch using GD. Click the 'Current Branch' dropdown to show the available branches for this repository. Now click on 'New Branch' button on the right-hand side.
 
-![Show new branch options](assets/contrib_branch-start.png) 
+![Show new branch options](assets/contrib_branch-start.png)
 
 A modal will pop up asking for the new branch's name. This modal also explains on what branch is this new branch based. Ensure that the source branch is the default branch of the repository. In this case, it's 'develop'.
 
@@ -72,9 +72,9 @@ On GD, you will now be able to see uncommitted changes (if any) in your local br
 
 ![See uncommitted changes](assets/contrib_commit-ready.png)
 
-## Make & test changes 
+## Make & test changes
 
-*Run all terminal commands from the project folder that contains `MkDocs.yml`. For the Chainblocks repository, this folder is `...chainblocks/docs`).*
+*Run all terminal commands from the project folder that contains `MkDocs.yml`. For the Shards repository, this folder is `...shards/docs`).*
 
 MkDocs can build and serve the documentation website locally while you're making changes. The served pages reflect your documentation changes in real-time (also called hot reloading).
 

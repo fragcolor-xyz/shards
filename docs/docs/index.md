@@ -9,9 +9,9 @@ Welcome to Fragcolor documentation!
 
 These documents will help you understand, use, and contribute to Fragcolor technologies.
 
-You can start from a high-level topic below or use the navigation links at the top. 
+You can start from a high-level topic below or use the navigation links at the top.
 
-- [Chainblocks](./blocks/)
+- [Shards](./shards/)
 - [Built-in functions](./functions/)
 - [Contributions guides](./contribute/)
 
@@ -20,4 +20,4 @@ You can start from a high-level topic below or use the navigation links at the t
 
 --8<-- "includes/license.md"
 
-Built on {{ (git.date or now()).strftime("%b %d, %Y at %H:%M:%S") }}{% if git.status %} from commit [{{ git.short_commit }}](https://github.com/fragcolor-xyz/chainblocks/commit/{{ git.commit }}){% endif %}.
+Built on {{ (git.date or now()).strftime("%b %d, %Y at %H:%M:%S") }}{% if git.status %} from commit [{{ git.short_commit }}](https://github.com/fragcolor-xyz/shards/commit/{{ git.commit }}){% endif %}.

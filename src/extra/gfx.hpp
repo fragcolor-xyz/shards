@@ -1,9 +1,9 @@
-#ifndef CB_EXTRA_GFX
-#define CB_EXTRA_GFX
+#ifndef SH_EXTRA_GFX
+#define SH_EXTRA_GFX
 
-#include "gfx/chainblocks_types.hpp"
+#include "gfx/shards_types.hpp"
 #include <SDL_events.h>
-#include <chainblocks.hpp>
+#include <shards.hpp>
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/drawable.hpp>
@@ -16,7 +16,7 @@ struct Renderer;
 
 struct MainWindowGlobals {
   static constexpr uint32_t TypeId = 'mwnd';
-  static inline chainblocks::Type Type{{CBType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}}};
+  static inline shards::Type Type{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}}};
 
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
@@ -28,11 +28,11 @@ struct MainWindowGlobals {
 
 struct Base {
   static inline const char *mainWindowGlobalsVarName = "GFX.MainWindow";
-  static inline CBExposedTypeInfo mainWindowGlobalsInfo =
-      chainblocks::ExposedInfo::Variable(mainWindowGlobalsVarName, CBCCSTR("The main window context."), MainWindowGlobals::Type);
-  static inline chainblocks::ExposedInfo requiredInfo = chainblocks::ExposedInfo(mainWindowGlobalsInfo);
+  static inline SHExposedTypeInfo mainWindowGlobalsInfo =
+      shards::ExposedInfo::Variable(mainWindowGlobalsVarName, SHCCSTR("The main window context."), MainWindowGlobals::Type);
+  static inline shards::ExposedInfo requiredInfo = shards::ExposedInfo(mainWindowGlobalsInfo);
 
-  CBVar *_mainWindowGlobalsVar{nullptr};
+  SHVar *_mainWindowGlobalsVar{nullptr};
 
   MainWindowGlobals &getMainWindowGlobals();
   ::gfx::Context &getContext();
@@ -41,36 +41,36 @@ struct Base {
 };
 
 struct BaseConsumer : public Base {
-  CBExposedTypesInfo requiredVariables() { return CBExposedTypesInfo(Base::requiredInfo); }
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(Base::requiredInfo); }
 
   // Required before _bgfxCtx can be used
-  void baseConsumerWarmup(CBContext *context) {
-    _mainWindowGlobalsVar = chainblocks::referenceVariable(context, Base::mainWindowGlobalsVarName);
-    assert(_mainWindowGlobalsVar->valueType == CBType::Object);
+  void baseConsumerWarmup(SHContext *context) {
+    _mainWindowGlobalsVar = shards::referenceVariable(context, Base::mainWindowGlobalsVarName);
+    assert(_mainWindowGlobalsVar->valueType == SHType::Object);
   }
 
   // Required during cleanup if _warmup() was called
   void baseConsumerCleanup() {
     if (_mainWindowGlobalsVar) {
-      chainblocks::releaseVariable(_mainWindowGlobalsVar);
+      shards::releaseVariable(_mainWindowGlobalsVar);
       _mainWindowGlobalsVar = nullptr;
     }
   }
 
-  CBTypeInfo composeCheckMainThread(const CBInstanceData &data) {
+  SHTypeInfo composeCheckMainThread(const SHInstanceData &data) {
     if (data.onWorkerThread) {
-      throw chainblocks::ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
-                                      "within an Await block)");
+      throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
+                                      "within an Await shard)");
     }
 
     // Return None to trigger assertion during validation
-    return chainblocks::CoreInfo::NoneType;
+    return shards::CoreInfo::NoneType;
   }
 
-  void warmup(CBContext *context) { baseConsumerWarmup(context); }
-  void cleanup(CBContext *context) { baseConsumerCleanup(); }
-  CBTypeInfo compose(const CBInstanceData &data) { return composeCheckMainThread(data); }
+  void warmup(SHContext *context) { baseConsumerWarmup(context); }
+  void cleanup(SHContext *context) { baseConsumerCleanup(); }
+  SHTypeInfo compose(const SHInstanceData &data) { return composeCheckMainThread(data); }
 };
 } // namespace gfx
 
-#endif // CB_EXTRA_GFX
+#endif // SH_EXTRA_GFX

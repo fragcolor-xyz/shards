@@ -5,13 +5,13 @@
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
 
-using namespace chainblocks;
+using namespace shards;
 namespace gfx {
 
 MainWindowGlobals &Base::getMainWindowGlobals() {
   MainWindowGlobals *globalsPtr = reinterpret_cast<MainWindowGlobals *>(_mainWindowGlobalsVar->payload.objectValue);
   if (!globalsPtr) {
-    throw chainblocks::ActivationError("Graphics context not set");
+    throw shards::ActivationError("Graphics context not set");
   }
   return *globalsPtr;
 }
@@ -21,31 +21,31 @@ SDL_Window *Base::getSdlWindow() { return getWindow().window; }
 
 struct MainWindow : public Base {
   static inline Parameters params{
-      {"Title", CBCCSTR("The title of the window to create."), {CoreInfo::StringType}},
-      {"Width", CBCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
-      {"Height", CBCCSTR("The height of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
-      {"Contents", CBCCSTR("The contents of this window."), {CoreInfo::BlocksOrNone}},
+      {"Title", SHCCSTR("The title of the window to create."), {CoreInfo::StringType}},
+      {"Width", SHCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
+      {"Height", SHCCSTR("The height of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
+      {"Contents", SHCCSTR("The contents of this window."), {CoreInfo::ShardsOrNone}},
       {"Debug",
-       CBCCSTR("If the device backing the window should be created with "
+       SHCCSTR("If the device backing the window should be created with "
                "debug layers on."),
        {CoreInfo::BoolType}},
   };
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBParametersInfo parameters() { return params; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHParametersInfo parameters() { return params; }
 
   std::string _title;
   int _pwidth = 1280;
   int _pheight = 720;
   bool _debug = false;
   Window _window;
-  BlocksVar _blocks;
+  ShardsVar _shards;
 
   std::shared_ptr<MainWindowGlobals> globals;
   ::gfx::Loop loop;
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _title = value.payload.stringValue;
@@ -57,7 +57,7 @@ struct MainWindow : public Base {
       _pheight = int(value.payload.intValue);
       break;
     case 3:
-      _blocks = value;
+      _shards = value;
       break;
     case 4:
       _debug = value.payload.boolValue;
@@ -67,7 +67,7 @@ struct MainWindow : public Base {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_title);
@@ -76,7 +76,7 @@ struct MainWindow : public Base {
     case 2:
       return Var(_pheight);
     case 3:
-      return _blocks;
+      return _shards;
     case 4:
       return Var(_debug);
     default:
@@ -84,23 +84,23 @@ struct MainWindow : public Base {
     }
   }
 
-  CBTypeInfo compose(CBInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.onWorkerThread) {
-      throw ComposeError("GFX Blocks cannot be used on a worker thread (e.g. "
-                         "within an Await block)");
+      throw ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
+                         "within an Await shard)");
     }
 
     // Make sure MainWindow is UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
       if (strcmp(data.shared.elements[i].name, "GFX.Context") == 0) {
-        throw CBException("GFX.MainWindow must be unique, found another use!");
+        throw SHException("GFX.MainWindow must be unique, found another use!");
       }
     }
 
     // Make sure MainWindow is UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
       if (strcmp(data.shared.elements[i].name, "GFX.Context") == 0) {
-        throw CBException("GFX.MainWindow must be unique, found another use!");
+        throw SHException("GFX.MainWindow must be unique, found another use!");
       }
     }
 
@@ -110,15 +110,15 @@ struct MainWindow : public Base {
     IterableExposedInfo rshared(data.shared);
     IterableExposedInfo shared(rshared);
     shared.push_back(
-        ExposedInfo::ProtectedVariable(Base::mainWindowGlobalsVarName, CBCCSTR("The graphics context"), MainWindowGlobals::Type));
+        ExposedInfo::ProtectedVariable(Base::mainWindowGlobalsVarName, SHCCSTR("The graphics context"), MainWindowGlobals::Type));
     data.shared = shared;
 
-    _blocks.compose(data);
+    _shards.compose(data);
 
     return CoreInfo::NoneType;
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     globals = std::make_shared<MainWindowGlobals>();
 
     WindowCreationOptions windowOptions = {};
@@ -139,29 +139,29 @@ struct MainWindow : public Base {
     _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
     _mainWindowGlobalsVar->payload.objectTypeId = MainWindowGlobals::TypeId;
     _mainWindowGlobalsVar->payload.objectValue = globals.get();
-    _mainWindowGlobalsVar->valueType = CBType::Object;
+    _mainWindowGlobalsVar->valueType = SHType::Object;
 
-    _blocks.warmup(context);
+    _shards.warmup(context);
   }
 
   void cleanup() {
     globals.reset();
-    _blocks.cleanup();
+    _shards.cleanup();
 
     if (_mainWindowGlobalsVar) {
       if (_mainWindowGlobalsVar->refcount > 1) {
 #ifdef NDEBUG
-        CBLOG_ERROR("MainWindow: Found a dangling reference to GFX.Context");
+        SHLOG_ERROR("MainWindow: Found a dangling reference to GFX.Context");
 #else
-        CBLOG_ERROR("MainWindow: Found {} dangling reference(s) to GFX.Context", _mainWindowGlobalsVar->refcount - 1);
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to GFX.Context", _mainWindowGlobalsVar->refcount - 1);
 #endif
       }
-      memset(_mainWindowGlobalsVar, 0x0, sizeof(CBVar));
+      memset(_mainWindowGlobalsVar, 0x0, sizeof(SHVar));
       _mainWindowGlobalsVar = nullptr;
     }
   }
 
-  CBVar activate(CBContext *cbContext, const CBVar &input) {
+  SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderer = globals->renderer;
     auto &context = globals->context;
     auto &window = globals->window;
@@ -171,10 +171,10 @@ struct MainWindow : public Base {
     window->pollEvents(events);
     for (auto &event : events) {
       if (event.type == SDL_QUIT) {
-        throw ActivationError("Window closed, aborting chain.");
+        throw ActivationError("Window closed, aborting wire.");
       } else if (event.type == SDL_WINDOWEVENT) {
         if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-          throw ActivationError("Window closed, aborting chain.");
+          throw ActivationError("Window closed, aborting wire.");
         } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           gfx::int2 newSize = window->getDrawableSize();
           context->resizeMainOutputConditional(newSize);
@@ -195,8 +195,8 @@ struct MainWindow : public Base {
 
         drawQueue.clear();
 
-        CBVar _blocksOutput{};
-        _blocks.activate(cbContext, input, _blocksOutput);
+        SHVar _shardsOutput{};
+        _shards.activate(shContext, input, _shardsOutput);
 
         renderer->endFrame();
         imgui->endFrame();
@@ -205,10 +205,10 @@ struct MainWindow : public Base {
       }
     }
 
-    return CBVar{};
+    return SHVar{};
   }
 };
 
-void registerMainWindowBlocks() { REGISTER_CBLOCK("GFX.MainWindow", MainWindow); }
+void registerMainWindowShards() { REGISTER_SHARD("GFX.MainWindow", MainWindow); }
 
 } // namespace gfx

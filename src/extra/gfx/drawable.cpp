@@ -7,22 +7,22 @@
 #include <linalg_shim.hpp>
 #include <magic_enum.hpp>
 
-using namespace chainblocks;
+using namespace shards;
 namespace gfx {
 
-void CBDrawable::updateVariables() {
+void SHDrawable::updateVariables() {
   if (transformVar.isVariable()) {
-    drawable->transform = chainblocks::Mat4(transformVar.get());
+    drawable->transform = shards::Mat4(transformVar.get());
   }
   shaderParameters.updateVariables(drawable->parameters);
 
-  if (materialVar->valueType != CBType::None) {
-    CBMaterial *cbMaterial = (CBMaterial *)materialVar.get().payload.objectValue;
-    cbMaterial->updateVariables();
+  if (materialVar->valueType != SHType::None) {
+    SHMaterial *shMaterial = (SHMaterial *)materialVar.get().payload.objectValue;
+    shMaterial->updateVariables();
   }
 }
 
-struct DrawableBlock {
+struct DrawableShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
@@ -34,20 +34,20 @@ struct DrawableBlock {
   };
 
   static inline Parameters params{
-      {"Transform", CBCCSTR("The transform variable to use"), {TransformVarType}},
+      {"Transform", SHCCSTR("The transform variable to use"), {TransformVarType}},
       {"Params",
-       CBCCSTR("The params variable to use"),
+       SHCCSTR("The params variable to use"),
        {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static CBTypesInfo outputTypes() { return Types::Drawable; }
-  static CBParametersInfo parameters() { return params; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return Types::Drawable; }
+  static SHParametersInfo parameters() { return params; }
 
   ParamVar _transformVar{};
   ParamVar _paramsVar{};
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _transformVar = value;
@@ -60,7 +60,7 @@ struct DrawableBlock {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _transformVar;
@@ -71,7 +71,7 @@ struct DrawableBlock {
     }
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _transformVar.warmup(context);
     _paramsVar.warmup(context);
   }
@@ -81,12 +81,12 @@ struct DrawableBlock {
     _paramsVar.cleanup();
   }
 
-  void validateInputTableType(CBTypeInfo &type) {
+  void validateInputTableType(SHTypeInfo &type) {
     auto &inputTable = type.table;
     size_t inputTableLen = inputTable.keys.len;
     for (size_t i = 0; i < inputTableLen; i++) {
       const char *key = inputTable.keys.elements[i];
-      CBTypeInfo &type = inputTable.types.elements[i];
+      SHTypeInfo &type = inputTable.types.elements[i];
 
       if (strcmp(key, "Params") == 0) {
         validateShaderParamsType(type);
@@ -103,16 +103,16 @@ struct DrawableBlock {
     }
   }
 
-  CBTypeInfo compose(CBInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     validateInputTableType(data.inputType);
     return Types::Drawable;
   }
 
-  bool getFromTable(CBContext *cbContext, const CBTable &table, const char *key, CBVar &outVar) {
+  bool getFromTable(SHContext *shContext, const SHTable &table, const char *key, SHVar &outVar) {
     if (table.api->tableContains(table, key)) {
-      const CBVar *var = table.api->tableAt(table, key);
-      if (var->valueType == CBType::ContextVar) {
-        CBVar *refencedVariable = referenceVariable(cbContext, var->payload.stringValue);
+      const SHVar *var = table.api->tableAt(table, key);
+      if (var->valueType == SHType::ContextVar) {
+        SHVar *refencedVariable = referenceVariable(shContext, var->payload.stringValue);
         outVar = *var;
         releaseVariable(refencedVariable);
       }
@@ -122,68 +122,68 @@ struct DrawableBlock {
     return false;
   }
 
-  CBVar activate(CBContext *cbContext, const CBVar &input) {
-    const CBTable &inputTable = input.payload.tableValue;
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    const SHTable &inputTable = input.payload.tableValue;
 
-    CBVar meshVar{};
+    SHVar meshVar{};
     MeshPtr *meshPtr{};
-    if (getFromTable(cbContext, inputTable, "Mesh", meshVar)) {
+    if (getFromTable(shContext, inputTable, "Mesh", meshVar)) {
       meshPtr = (MeshPtr *)meshVar.payload.objectValue;
     } else {
       throw formatException("Mesh must be set");
     }
 
     float4x4 transform = linalg::identity;
-    CBVar transformVar{};
-    if (getFromTable(cbContext, inputTable, "Transform", transformVar)) {
-      transform = chainblocks::Mat4(transformVar);
+    SHVar transformVar{};
+    if (getFromTable(shContext, inputTable, "Transform", transformVar)) {
+      transform = shards::Mat4(transformVar);
     }
 
-    CBVar materialVar{};
-    CBMaterial *cbMaterial{};
-    if (getFromTable(cbContext, inputTable, "Material", materialVar)) {
-      cbMaterial = (CBMaterial *)materialVar.payload.objectValue;
+    SHVar materialVar{};
+    SHMaterial *shMaterial{};
+    if (getFromTable(shContext, inputTable, "Material", materialVar)) {
+      shMaterial = (SHMaterial *)materialVar.payload.objectValue;
     }
 
-    CBDrawable *cbDrawable = Types::DrawableObjectVar.New();
-    cbDrawable->drawable = std::make_shared<Drawable>(*meshPtr, transform);
+    SHDrawable *shDrawable = Types::DrawableObjectVar.New();
+    shDrawable->drawable = std::make_shared<Drawable>(*meshPtr, transform);
 
-    if (cbMaterial) {
-      cbDrawable->materialVar = Types::MaterialObjectVar.Get(cbMaterial);
-      cbDrawable->materialVar.warmup(cbContext);
-      cbDrawable->drawable->material = cbMaterial->material;
+    if (shMaterial) {
+      shDrawable->materialVar = Types::MaterialObjectVar.Get(shMaterial);
+      shDrawable->materialVar.warmup(shContext);
+      shDrawable->drawable->material = shMaterial->material;
     }
 
-    CBVar paramsVar{};
-    if (getFromTable(cbContext, inputTable, "Params", paramsVar)) {
-      initConstantShaderParams(cbDrawable->drawable->parameters, paramsVar.payload.tableValue);
+    SHVar paramsVar{};
+    if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
+      initConstantShaderParams(shDrawable->drawable->parameters, paramsVar.payload.tableValue);
     }
 
-    if (_paramsVar->valueType != CBType::None) {
-      initReferencedShaderParams(cbContext, cbDrawable->shaderParameters, _paramsVar.get().payload.tableValue);
+    if (_paramsVar->valueType != SHType::None) {
+      initReferencedShaderParams(shContext, shDrawable->shaderParameters, _paramsVar.get().payload.tableValue);
     }
 
     if (_transformVar.isVariable()) {
-      cbDrawable->transformVar = (CBVar &)_transformVar;
-      cbDrawable->transformVar.warmup(cbContext);
+      shDrawable->transformVar = (SHVar &)_transformVar;
+      shDrawable->transformVar.warmup(shContext);
     }
 
-    return Types::DrawableObjectVar.Get(cbDrawable);
+    return Types::DrawableObjectVar.Get(shDrawable);
   }
 };
 
-struct DrawBlock : public BaseConsumer {
+struct DrawShard : public BaseConsumer {
   static inline Type DrawableSeqType = Type::SeqOf(Types::Drawable);
-  static inline chainblocks::Types DrawableTypes{Types::Drawable, DrawableSeqType};
+  static inline shards::Types DrawableTypes{Types::Drawable, DrawableSeqType};
 
-  static CBTypesInfo inputTypes() { return DrawableTypes; }
-  static CBTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static CBParametersInfo parameters() { return CBParametersInfo(); }
+  static SHTypesInfo inputTypes() { return DrawableTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHParametersInfo parameters() { return SHParametersInfo(); }
 
-  void warmup(CBContext *cbContext) { baseConsumerWarmup(cbContext); }
+  void warmup(SHContext *shContext) { baseConsumerWarmup(shContext); }
   void cleanup() { baseConsumerCleanup(); }
-  CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.inputType.basicType == CBType::Seq) {
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
     } else {
       OVERRIDE_ACTIVATE(data, activateSingle);
@@ -196,38 +196,38 @@ struct DrawBlock : public BaseConsumer {
     dq.add(drawable);
   }
 
-  void updateCBDrawable(CBDrawable *cbDrawable) {
+  void updateSHDrawable(SHDrawable *shDrawable) {
     // Update transform if it's referencing a context variable
-    if (cbDrawable->transformVar.isVariable()) {
-      cbDrawable->drawable->transform = chainblocks::Mat4(cbDrawable->transformVar.get());
+    if (shDrawable->transformVar.isVariable()) {
+      shDrawable->drawable->transform = shards::Mat4(shDrawable->transformVar.get());
     }
   }
 
-  CBVar activateSeq(CBContext *cbContext, const CBVar &input) {
+  SHVar activateSeq(SHContext *shContext, const SHVar &input) {
     auto &seq = input.payload.seqValue;
     for (size_t i = 0; i < seq.len; i++) {
-      CBDrawable *cbDrawable = (CBDrawable *)seq.elements[i].payload.objectValue;
-      assert(cbDrawable);
-      cbDrawable->updateVariables();
-      addDrawableToQueue(cbDrawable->drawable);
+      SHDrawable *shDrawable = (SHDrawable *)seq.elements[i].payload.objectValue;
+      assert(shDrawable);
+      shDrawable->updateVariables();
+      addDrawableToQueue(shDrawable->drawable);
     }
 
-    return CBVar{};
+    return SHVar{};
   }
 
-  CBVar activateSingle(CBContext *cbContext, const CBVar &input) {
-    CBDrawable *cbDrawable = (CBDrawable *)input.payload.objectValue;
-    updateCBDrawable(cbDrawable);
-    addDrawableToQueue(cbDrawable->drawable);
+  SHVar activateSingle(SHContext *shContext, const SHVar &input) {
+    SHDrawable *shDrawable = (SHDrawable *)input.payload.objectValue;
+    updateSHDrawable(shDrawable);
+    addDrawableToQueue(shDrawable->drawable);
 
-    return CBVar{};
+    return SHVar{};
   }
 
-  CBVar activate(CBContext *cbContext, const CBVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
+  SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
 };
 
-void registerDrawableBlocks() {
-  REGISTER_CBLOCK("GFX.Drawable", DrawableBlock);
-  REGISTER_CBLOCK("GFX.Draw", DrawBlock);
+void registerDrawableShards() {
+  REGISTER_SHARD("GFX.Drawable", DrawableShard);
+  REGISTER_SHARD("GFX.Draw", DrawShard);
 }
 } // namespace gfx

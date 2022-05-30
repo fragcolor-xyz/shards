@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 ; fail during await, uses awaitne(...)
 (def a
-  (Chain
+  (Wire
    "test-1"
    (Await (-> false (Assert.Is true)))))
 
@@ -14,7 +14,7 @@
 
 ; fail during http resolver, uses await(...)
 (def c
-  (Chain
+  (Wire
    "test-2"
    (Http.Get "abc.abcdefg")))
 
@@ -23,7 +23,7 @@
 
 ; fail during cleanup, we cannot use pauses
 (def c
-  (Chain
+  (Wire
    "test-3"
    (OnCleanup (-> (Pause 10.0)))))
 
@@ -32,7 +32,7 @@
 
 ; out of range
 (def c
-  (Chain
+  (Wire
    "test-3"
    [10 20 1000 40 50]
    (IntsToBytes)
@@ -43,7 +43,7 @@
 
 ; wrong type
 (def c
-  (Chain
+  (Wire
    "test-3"
    [10 20 2.0 40 50]
    (ExpectIntSeq)
@@ -55,7 +55,7 @@
 
 ; wrong type
 (def c
-  (Chain
+  (Wire
    "test-3"
    [10 20 20 40 50]
    (ExpectIntSeq)
@@ -66,9 +66,9 @@
 (schedule Root c)
 (run Root 0.1)
 
-; fail the root chain propagated from Wait
+; fail the root wire propagated from Wait
 (def d
-  (Chain
+  (Wire
    "test-4"
    (Detach a)
    (Wait a)
@@ -78,9 +78,9 @@
 (run Root 0.1)
 
 
-; fail the root chain propagated from Wait
+; fail the root wire propagated from Wait
 (def d
-  (Chain
+  (Wire
    "test-4"
    "4qjwieouqjweiouqweoi\") exit" (ParseFloat) (Log)))
 

@@ -1,0 +1,10 @@
+;; No match + no nil case + passthrough
+false
+(Match
+ :Cases
+ [true (-> (Msg "Not a match")) ;; no match
+  true (-> (Msg "Not a match either"))] ;; no match
+            ;; reached end of cases with no match found => no shards activated
+ :Passthrough
+ true) ;; input allowed to passthrough to Match shard's output
+(Log) ;; print Match shard's output => "false"

@@ -7,7 +7,7 @@
 
 (def k 2) ;; 2 dims
 (def build-tree
-  (Chain
+  (Wire
    "build-tree"
                                         ; organize args from stack
    (Pop) (ExpectInt) = .depth
@@ -57,10 +57,10 @@
      (Clear .result)])
    .result ?? []))
 
-(def Root (Node))
+(def Root (Mesh))
 (schedule
  Root
- (Chain
+ (Wire
   "kdtree"
                                         ; points
   [[7 2] [5 4] [9 6] [4 7] [8 1] [2 3]]

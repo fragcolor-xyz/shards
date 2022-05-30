@@ -1,13 +1,13 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode main)
+(defmesh main)
 
-(defchain table-test-1
+(defwire table-test-1
   {} >= .edit-me
   {} > .edit-me)
 
-(defchain table-test-2
+(defwire table-test-2
   {} >= .edit-me
   {"x" 10} > .edit-me)
 

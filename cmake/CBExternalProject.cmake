@@ -46,7 +46,7 @@ endif()
 # Utility function for adding external projects that generate static libraries
 #
 # Usage looks like:
-#   cb_add_external_project(
+#   sh_add_external_project(
 #     NAME <name>
 #     TARGETS <targetName>
 #     REPO_ARGS <URL/GIT/etc.>
@@ -54,7 +54,7 @@ endif()
 #
 # This add a target named <targetName> that can be linked against
 # For additional parameters check the ARGS/MULTI_ARGS below
-function(cb_add_external_project)
+function(sh_add_external_project)
   set(OPTS
     INSTALL             # (Optional) When enabled, will build the external project using cmake install and reference the generated libraries through the generated instalation
   )
@@ -74,7 +74,7 @@ function(cb_add_external_project)
   )
   cmake_parse_arguments(PROJ "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
-  message(STATUS "cb_add_external_project(${PROJ_NAME})")
+  message(STATUS "sh_add_external_project(${PROJ_NAME})")
   message(STATUS "  TARGETS: ${PROJ_TARGETS}")
   message(STATUS "  INSTALL: ${PROJ_INSTALL}")
   message(STATUS "  LIB_SUFFIX: ${PROJ_LIB_SUFFIX}")

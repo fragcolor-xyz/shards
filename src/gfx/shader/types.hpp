@@ -9,7 +9,7 @@
 namespace gfx {
 namespace shader {
 
-enum struct UniformBlock {
+enum struct UniformShard {
   View,
   Object,
 };

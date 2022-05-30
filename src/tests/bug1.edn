@@ -1,4 +1,4 @@
-(defchain count-chain
+(defwire count-wire
   (If (Is 1)
       :Then (Pass)
       :Else
@@ -6,10 +6,10 @@
           :Then (-> (Log "n") (Math.Divide 2) (Recur) (Math.Add 1))
           :Else (-> (Log "n") (Math.Multiply 3) (Math.Add 1) (Recur) (Math.Add 1)))))
 
-(def main-chain (Chain "main-chain" :LStack
-  837799 (Do count-chain)
+(def main-wire (Wire "main-wire" :LStack
+  837799 (Do count-wire)
   (Log "Answer")))
 
-(defnode root)
-(schedule root main-chain)
+(defmesh root)
+(schedule root main-wire)
 (run root)
