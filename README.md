@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="450" src="assets/banner.png">
+  <img width="450" src="assets/ShardsLogoTemp.png">
 </p>
 
 ## A scripting tool to build tools.
