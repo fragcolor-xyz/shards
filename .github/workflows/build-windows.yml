@@ -19,6 +19,14 @@ on:
         options:
           - Debug
           - Release
+      binary-type:
+        description: Executable or dynamic library?
+        required: false
+        default: Exe
+        type: choice
+        options:
+          - Exe
+          - Library
       runtime-tests:
         description: Run the runtime tests (Debug only)?
         required: false
@@ -39,6 +47,10 @@ on:
         required: true
         default: Debug
         type: string
+      binary-type:
+        required: false
+        default: Exe
+        type: string
       runtime-tests:
         required: false
         default: false
@@ -53,9 +65,10 @@ jobs:
   # Build shards for Windows
   #
   Windows:
-    name: Build (${{ github.event.inputs.build-type || inputs.build-type }}, ${{ github.event.inputs.bitness || inputs.bitness }})
+    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, ${{ github.event.inputs.bitness || inputs.bitness }})
     runs-on: windows-2019
     outputs:
+      binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
     steps:
       - name: Setup
@@ -64,18 +77,38 @@ jobs:
         run: |
           echo "::set-output name=bitness::${{ github.event.inputs.bitness || inputs.bitness }}"
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "::set-output name=binary-type::${{ github.event.inputs.binary-type || inputs.binary-type }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
           echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
+
+          if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
+          then
+            echo "::set-output name=build-target::shards"
+            echo "::set-output name=artifact-path::build/shards.exe"
+          else
+            echo "::set-output name=build-target::shards-dll"
+            echo "::set-output name=artifact-path::build/libshards.dll"
+          fi
 
           if [ "${{ github.event.inputs.bitness || inputs.bitness }}" == "64bits" ]
           then
             echo "::set-output name=msystem::MINGW64"
             echo "::set-output name=arch::x86_64"
-            echo "::set-output name=artifact::shards-win64"
+            if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
+            then
+              echo "::set-output name=artifact::shards-win64"
+            else
+              echo "::set-output name=artifact::libshards-win64"
+            fi
           else
             echo "::set-output name=msystem::MINGW32"
             echo "::set-output name=arch::i686"
-            echo "::set-output name=artifact::shards-win32"
+            if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
+            then
+              echo "::set-output name=artifact::shards-win32"
+            else
+              echo "::set-output name=artifact::libshards-win32"
+            fi
           fi
       - name: Checkout shards
         uses: actions/checkout@v2
@@ -134,7 +167,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DUSE_LIBBACKTRACE=${{ steps.setup.outputs.bitness == '64bits' }} ..
-          ninja shards
+          ninja ${{ steps.setup.outputs.build-target }}
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
@@ -158,7 +191,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
-          path: build/shards.exe
+          path: ${{ steps.setup.outputs.artifact-path }}
           if-no-files-found: error
       - uses: actions/upload-artifact@v3
         if: failure()
@@ -171,7 +204,7 @@ jobs:
   # Test shards for Windows
   #
   Windows-test:
-    if: ${{ needs.Windows.outputs.run-tests == 'true' }}
+    if: ${{ needs.Windows.outputs.run-tests == 'true' && needs.Windows.outputs.binary-type == 'Exe' }}
     needs: Windows
     name: Test
     runs-on: windows-2019
