@@ -1,3 +1,5 @@
+# Shards
+
 <p align="center">
   <img width="450" src="assets/ShardsLogoTemp.png">
 </p>
