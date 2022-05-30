@@ -11,7 +11,7 @@ on:
 
 jobs:
   #
-  # Build chainblocks for Windows
+  # Build shards for Windows
   #
   Windows-64bits-Debug:
     uses: ./.github/workflows/build-windows.yml

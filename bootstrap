@@ -1,9 +1,9 @@
 #!/bin/bash
 
-CHAINBLOCKS_ROOT=$( cd "$(dirname "$0")" ; pwd -P )
-echo "Using CHAINBLOCKS_ROOT=${CHAINBLOCKS_ROOT}"
+SHARDS_ROOT=$( cd "$(dirname "$0")" ; pwd -P )
+echo "Using SHARDS_ROOT=${SHARDS_ROOT}"
 
-pushd $CHAINBLOCKS_ROOT/deps
+pushd $SHARDS_ROOT/deps
 echo "Setting up dependencies"
 ./bootstrap; Res=$?
 if [ ! $Res -eq 0 ]; then
@@ -13,7 +13,7 @@ fi
 popd
 
 echo "Setting up tools"
-pushd $CHAINBLOCKS_ROOT/src/tools
+pushd $SHARDS_ROOT/src/tools
 ./bootstrap; Res=$?
 if [ ! $Res -eq 0 ]; then
   echo "Failed to set-up tools ($Res)"

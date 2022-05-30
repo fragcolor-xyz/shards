@@ -1,35 +1,35 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "runtime.hpp"
 #include <brotli/decode.h>
 #include <brotli/encode.h>
 
-namespace chainblocks {
+namespace shards {
 namespace Brotli {
 struct Compress {
   std::vector<uint8_t> _buffer;
   int _quality{BROTLI_DEFAULT_QUALITY};
 
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   static inline Parameters params{{"Quality",
-                                   CBCCSTR("Compression quality, higher is better but slower, valid values "
+                                   SHCCSTR("Compression quality, higher is better but slower, valid values "
                                            "from 1 to 11."),
                                    {CoreInfo::IntType}}};
 
-  CBParametersInfo parameters() { return params; }
+  SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     _quality = int(value.payload.intValue);
     _quality = std::clamp(_quality, 1, 11);
   }
 
-  CBVar getParam(int index) { return Var(_quality); }
+  SHVar getParam(int index) { return Var(_quality); }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto maxLen = BrotliEncoderMaxCompressedSize(input.payload.bytesSize);
     _buffer.resize(maxLen + sizeof(uint32_t));
     size_t outputLen = maxLen;
@@ -47,10 +47,10 @@ struct Compress {
 struct Decompress {
   std::vector<uint8_t> _buffer;
 
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto len = reinterpret_cast<uint32_t *>(input.payload.bytesValue);
     auto buffer = &input.payload.bytesValue[sizeof(uint32_t)];
     auto bufferSize = input.payload.bytesSize - sizeof(uint32_t);
@@ -65,9 +65,9 @@ struct Decompress {
   }
 };
 
-void registerBlocks() {
-  REGISTER_CBLOCK("Brotli.Compress", Compress);
-  REGISTER_CBLOCK("Brotli.Decompress", Decompress);
+void registerShards() {
+  REGISTER_SHARD("Brotli.Compress", Compress);
+  REGISTER_SHARD("Brotli.Decompress", Decompress);
 }
 } // namespace Brotli
-} // namespace chainblocks
+} // namespace shards

@@ -24,8 +24,8 @@
     6 3 7]})
 
 (def timestep (/ 1.0 120.0))
-(defnode Root)
-(defloop test-chain
+(defmesh Root)
+(defloop test-wire
    (Setup
     0.0 >= .time
     cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
@@ -52,5 +52,5 @@
      .drawable (GFX.Draw)
      (GFX.Render :Steps .render-steps :View .view))))
 
-(schedule Root test-chain)
+(schedule Root test-wire)
 (run Root timestep 100)

@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def! n (Node))
+(def! n (Mesh))
 
 (schedule
  n
- (Chain
+ (Wire
   "n"
   "" (Process.Run "echo" ["Hello world"]) (Log)
   (Assert.Is "Hello world\n" true)

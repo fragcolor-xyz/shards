@@ -1,6 +1,6 @@
 unset(Rust_FEATURES)
 
-ADD_RUST_FEATURE(Rust_FEATURES blocks)
+ADD_RUST_FEATURE(Rust_FEATURES shards)
 
 if(NOT SKIP_RUST_BINDGEN)
   # So we got issues when building win32 and libclang...
@@ -8,21 +8,21 @@ if(NOT SKIP_RUST_BINDGEN)
   ADD_RUST_FEATURE(Rust_FEATURES run_bindgen)
 endif()
 
-if(RUST_CBLISP)
-  ADD_RUST_FEATURE(Rust_FEATURES cblisp)
+if(RUST_SHLISP)
+  ADD_RUST_FEATURE(Rust_FEATURES scripting)
 endif()
 
 if(Rust_CARGO_TARGET)
   set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
 endif()
 
-set(GENERATED_LIB_PATH ${CHAINBLOCKS_DIR}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}chainblocks${Rust_LIB_SUFFIX})
+set(GENERATED_LIB_PATH ${SHARDS_DIR}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}shards${Rust_LIB_SUFFIX})
 
 file(GLOB_RECURSE SOURCES src/*.rs *.toml)
 
 # Bindgen dependency
 if(NOT SKIP_RUST_BINDGEN)
-  list(APPEND SOURCES ${CHAINBLOCKS_DIR}/include/chainblocks.h)
+  list(APPEND SOURCES ${SHARDS_DIR}/include/shards.h)
 endif()
 
 if(Rust_FEATURES)
@@ -45,37 +45,37 @@ if(NEED_OPENSSL_SYS)
 endif()
 
 if(IOS)
-  set(BUILD_SCRIPT "${CHAINBLOCKS_DIR}/cmake/osx_rust_build.sh")
+  set(BUILD_SCRIPT "${SHARDS_DIR}/cmake/osx_rust_build.sh")
 endif()
 
 add_custom_command(
   OUTPUT ${GENERATED_LIB_PATH}
   COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS}" ${SSL_ENV} ${BUILD_SCRIPT} ${CARGO_EXE} ${Rust_CARGO_TOOLCHAIN} rustc ${Rust_CARGO_UNSTABLE_FLAGS} ${FEATURES_ARG} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
-  WORKING_DIRECTORY ${CHAINBLOCKS_DIR}/rust
+  WORKING_DIRECTORY ${SHARDS_DIR}/rust
   DEPENDS ${SOURCES}
   USES_TERMINAL
 )
 add_custom_target(
-  cargo-chainblocks-rust
+  cargo-shards-rust
   DEPENDS ${GENERATED_LIB_PATH}
 )
 
 if(NEED_OPENSSL_SYS)
-  add_dependencies(cargo-chainblocks-rust ssl)
+  add_dependencies(cargo-shards-rust ssl)
 endif()
 
-add_library(chainblocks-rust STATIC IMPORTED GLOBAL)
-add_dependencies(chainblocks-rust cargo-chainblocks-rust)
-set_target_properties(chainblocks-rust PROPERTIES
+add_library(shards-rust STATIC IMPORTED GLOBAL)
+add_dependencies(shards-rust cargo-shards-rust)
+set_target_properties(shards-rust PROPERTIES
   IMPORTED_LOCATION ${GENERATED_LIB_PATH}
 )
 
 if(WIN32)
-  target_link_libraries(chainblocks-rust INTERFACE Userenv)
-  target_link_libraries(chainblocks-rust INTERFACE ws2_32 Bcrypt Crypt32 Secur32 NtDll Ncrypt)
+  target_link_libraries(shards-rust INTERFACE Userenv)
+  target_link_libraries(shards-rust INTERFACE ws2_32 Bcrypt Crypt32 Secur32 NtDll Ncrypt)
 endif()
 
 if(NOT (APPLE OR EMSCRIPTEN OR WIN32))
   # Required by openssl-sys
-  target_link_libraries(chainblocks-rust INTERFACE OpenSSL)
+  target_link_libraries(shards-rust INTERFACE OpenSSL)
 endif()

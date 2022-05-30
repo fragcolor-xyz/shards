@@ -6,48 +6,48 @@
 #include "runtime.hpp"
 #include <unordered_set>
 
-std::ostream &operator<<(std::ostream &os, const CBVar &var) {
+std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   switch (var.valueType) {
-  case CBType::EndOfBlittableTypes:
+  case SHType::EndOfBlittableTypes:
     break;
-  case CBType::None:
+  case SHType::None:
     os << "None";
     break;
-  case CBType::Any:
+  case SHType::Any:
     os << "Any";
     break;
-  case CBType::Object:
+  case SHType::Object:
     os << "Object: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
        << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId << std::dec;
     break;
-  case CBType::Chain: {
-    if (var.payload.chainValue) {
-      auto chain = CBChain::sharedFromRef(var.payload.chainValue);
-      os << "Chain: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.chainValue) << std::dec;
-      os << " name: " << chain->name;
+  case SHType::Wire: {
+    if (var.payload.wireValue) {
+      auto wire = SHWire::sharedFromRef(var.payload.wireValue);
+      os << "Wire: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.wireValue) << std::dec;
+      os << " name: " << wire->name;
     } else {
-      os << "Chain: 0x0";
+      os << "Wire: 0x0";
     }
   } break;
-  case CBType::Bytes:
+  case SHType::Bytes:
     os << "Bytes: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.bytesValue) << " size: " << std::dec
        << var.payload.bytesSize;
     break;
-  case CBType::Array:
+  case SHType::Array:
     os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
        << var.payload.arrayValue.len << " of: " << type2Name(var.innerType);
     break;
-  case CBType::Enum:
+  case SHType::Enum:
     os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
        << var.payload.enumTypeId << std::dec;
     break;
-  case CBType::Bool:
+  case SHType::Bool:
     os << (var.payload.boolValue ? "true" : "false");
     break;
-  case CBType::Int:
+  case SHType::Int:
     os << var.payload.intValue;
     break;
-  case CBType::Int2:
+  case SHType::Int2:
     os << "(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
@@ -57,7 +57,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Int3:
+  case SHType::Int3:
     os << "(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
@@ -67,7 +67,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Int4:
+  case SHType::Int4:
     os << "(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
@@ -77,7 +77,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Int8:
+  case SHType::Int8:
     os << "(";
     for (auto i = 0; i < 8; i++) {
       if (i == 0)
@@ -87,7 +87,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Int16:
+  case SHType::Int16:
     os << "(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
@@ -97,10 +97,10 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Float:
+  case SHType::Float:
     os << var.payload.floatValue;
     break;
-  case CBType::Float2:
+  case SHType::Float2:
     os << "(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
@@ -110,7 +110,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Float3:
+  case SHType::Float3:
     os << "(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
@@ -120,7 +120,7 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Float4:
+  case SHType::Float4:
     os << "(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
@@ -130,38 +130,38 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << ")";
     break;
-  case CBType::Color:
+  case SHType::Color:
     os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g) << ", " << int(var.payload.colorValue.b) << ", "
        << int(var.payload.colorValue.a);
     break;
-  case CBType::Block:
-    os << "Block: " << var.payload.blockValue->name(var.payload.blockValue);
+  case SHType::ShardRef:
+    os << "Shard: " << var.payload.shardValue->name(var.payload.shardValue);
     break;
-  case CBType::String:
+  case SHType::String:
     if (var.payload.stringValue == nullptr)
       os << "NULL";
     else
       os << var.payload.stringValue;
     break;
-  case CBType::ContextVar:
+  case SHType::ContextVar:
     os << "ContextVariable: " << var.payload.stringValue;
     break;
-  case CBType::Path:
+  case SHType::Path:
     os << "Path: " << var.payload.stringValue;
     break;
-  case CBType::Image:
+  case SHType::Image:
     os << "Image";
     os << " Width: " << var.payload.imageValue.width;
     os << " Height: " << var.payload.imageValue.height;
     os << " Channels: " << (int)var.payload.imageValue.channels;
     break;
-  case CBType::Audio:
+  case SHType::Audio:
     os << "Audio";
     os << " SampleRate: " << var.payload.audioValue.sampleRate;
     os << " Samples: " << var.payload.audioValue.nsamples;
     os << " Channels: " << var.payload.audioValue.channels;
     break;
-  case CBType::Seq:
+  case SHType::Seq:
     os << "[";
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       const auto &v = var.payload.seqValue.elements[i];
@@ -176,10 +176,10 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     os << "{";
     auto &t = var.payload.tableValue;
     bool first = true;
-    CBTableIterator tit;
+    SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
-    CBString k;
-    CBVar v;
+    SHString k;
+    SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       if (first) {
         os << k << ": " << v;
@@ -190,13 +190,13 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
     }
     os << "}";
   } break;
-  case CBType::Set: {
+  case SHType::Set: {
     os << "{";
     auto &s = var.payload.setValue;
     bool first = true;
-    CBSetIterator sit;
+    SHSetIterator sit;
     s.api->setGetIterator(s, &sit);
-    CBVar v;
+    SHVar v;
     while (s.api->setNext(s, &sit, &v)) {
       if (first) {
         os << v;
@@ -211,9 +211,9 @@ std::ostream &operator<<(std::ostream &os, const CBVar &var) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
+std::ostream &operator<<(std::ostream &os, const SHTypeInfo &t) {
   os << type2Name(t.basicType);
-  if (t.basicType == CBType::Seq) {
+  if (t.basicType == SHType::Seq) {
     os << " [";
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       // avoid recursive types
@@ -227,7 +227,7 @@ std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
       }
     }
     os << "]";
-  } else if (t.basicType == CBType::Set) {
+  } else if (t.basicType == SHType::Set) {
     os << " [";
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
       // avoid recursive types
@@ -241,7 +241,7 @@ std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
       }
     }
     os << "]";
-  } else if (t.basicType == CBType::Table) {
+  } else if (t.basicType == SHType::Table) {
     if (t.table.types.len == t.table.keys.len) {
       os << " {";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
@@ -266,7 +266,7 @@ std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
       }
       os << "]";
     }
-  } else if (t.basicType == CBType::ContextVar) {
+  } else if (t.basicType == SHType::ContextVar) {
     os << " [";
     for (uint32_t i = 0; i < t.contextVarTypes.len; i++) {
       // avoid recursive types
@@ -284,7 +284,7 @@ std::ostream &operator<<(std::ostream &os, const CBTypeInfo &t) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const CBTypesInfo &ts) {
+std::ostream &operator<<(std::ostream &os, const SHTypesInfo &ts) {
   os << "[";
   for (uint32_t i = 0; i < ts.len; i++) {
     os << "(" << ts.elements[i] << ")";
@@ -296,7 +296,7 @@ std::ostream &operator<<(std::ostream &os, const CBTypesInfo &ts) {
   return os;
 }
 
-bool _seqEq(const CBVar &a, const CBVar &b) {
+bool _seqEq(const SHVar &a, const SHVar &b) {
   if (a.payload.seqValue.elements == b.payload.seqValue.elements)
     return true;
 
@@ -313,7 +313,7 @@ bool _seqEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-bool _setEq(const CBVar &a, const CBVar &b) {
+bool _setEq(const SHVar &a, const SHVar &b) {
   auto &ta = a.payload.setValue;
   auto &tb = b.payload.setValue;
   if (ta.opaque == tb.opaque)
@@ -322,9 +322,9 @@ bool _setEq(const CBVar &a, const CBVar &b) {
   if (ta.api->setSize(ta) != ta.api->setSize(tb))
     return false;
 
-  CBSetIterator it;
+  SHSetIterator it;
   ta.api->setGetIterator(ta, &it);
-  CBVar v;
+  SHVar v;
   while (ta.api->setNext(ta, &it, &v)) {
     if (!tb.api->setContains(tb, v)) {
       return false;
@@ -334,7 +334,7 @@ bool _setEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-bool _tableEq(const CBVar &a, const CBVar &b) {
+bool _tableEq(const SHVar &a, const SHVar &b) {
   auto &ta = a.payload.tableValue;
   auto &tb = b.payload.tableValue;
   if (ta.opaque == tb.opaque)
@@ -343,10 +343,10 @@ bool _tableEq(const CBVar &a, const CBVar &b) {
   if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
-  CBTableIterator it;
+  SHTableIterator it;
   ta.api->tableGetIterator(ta, &it);
-  CBString k;
-  CBVar v;
+  SHString k;
+  SHVar v;
   while (ta.api->tableNext(ta, &it, &k, &v)) {
     if (!tb.api->tableContains(tb, k)) {
       return false;
@@ -360,7 +360,7 @@ bool _tableEq(const CBVar &a, const CBVar &b) {
   return true;
 }
 
-bool _seqLess(const CBVar &a, const CBVar &b) {
+bool _seqLess(const SHVar &a, const SHVar &b) {
   auto alen = a.payload.seqValue.len;
   auto blen = b.payload.seqValue.len;
   auto len = std::min(alen, blen);
@@ -379,7 +379,7 @@ bool _seqLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-bool _tableLess(const CBVar &a, const CBVar &b) {
+bool _tableLess(const SHVar &a, const SHVar &b) {
   auto &ta = a.payload.tableValue;
   auto &tb = b.payload.tableValue;
   if (ta.opaque == tb.opaque)
@@ -388,10 +388,10 @@ bool _tableLess(const CBVar &a, const CBVar &b) {
   if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
-  CBTableIterator it;
+  SHTableIterator it;
   ta.api->tableGetIterator(ta, &it);
-  CBString k;
-  CBVar v;
+  SHString k;
+  SHVar v;
   size_t len = 0;
   while (ta.api->tableNext(ta, &it, &k, &v)) {
     if (!tb.api->tableContains(tb, k)) {
@@ -413,7 +413,7 @@ bool _tableLess(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-bool _seqLessEq(const CBVar &a, const CBVar &b) {
+bool _seqLessEq(const SHVar &a, const SHVar &b) {
   auto alen = a.payload.seqValue.len;
   auto blen = b.payload.seqValue.len;
   auto len = std::min(alen, blen);
@@ -432,7 +432,7 @@ bool _seqLessEq(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-bool _tableLessEq(const CBVar &a, const CBVar &b) {
+bool _tableLessEq(const SHVar &a, const SHVar &b) {
   auto &ta = a.payload.tableValue;
   auto &tb = b.payload.tableValue;
   if (ta.opaque == tb.opaque)
@@ -441,10 +441,10 @@ bool _tableLessEq(const CBVar &a, const CBVar &b) {
   if (ta.api->tableSize(ta) != ta.api->tableSize(tb))
     return false;
 
-  CBTableIterator it;
+  SHTableIterator it;
   ta.api->tableGetIterator(ta, &it);
-  CBString k;
-  CBVar v;
+  SHString k;
+  SHVar v;
   size_t len = 0;
   while (ta.api->tableNext(ta, &it, &k, &v)) {
     if (!tb.api->tableContains(tb, k)) {
@@ -466,19 +466,19 @@ bool _tableLessEq(const CBVar &a, const CBVar &b) {
     return false;
 }
 
-bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
+bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
   if (a.basicType != b.basicType)
     return false;
   switch (a.basicType) {
-  case CBType::Object:
+  case SHType::Object:
     if (a.object.vendorId != b.object.vendorId)
       return false;
     return a.object.typeId == b.object.typeId;
-  case CBType::Enum:
+  case SHType::Enum:
     if (a.enumeration.vendorId != b.enumeration.vendorId)
       return false;
     return a.enumeration.typeId == b.enumeration.typeId;
-  case CBType::Seq: {
+  case SHType::Seq: {
     if (a.seqTypes.elements == nullptr && b.seqTypes.elements == nullptr)
       return true;
 
@@ -504,7 +504,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
 
     return true;
   }
-  case CBType::Set: {
+  case SHType::Set: {
     if (a.setTypes.elements == nullptr && b.setTypes.elements == nullptr)
       return true;
 
@@ -530,7 +530,7 @@ bool operator==(const CBTypeInfo &a, const CBTypeInfo &b) {
 
     return true;
   }
-  case CBType::Table: {
+  case SHType::Table: {
     auto atypes = a.table.types.len;
     auto btypes = b.table.types.len;
     if (atypes != btypes)

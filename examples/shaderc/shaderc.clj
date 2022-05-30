@@ -35,7 +35,7 @@
 
 (defn Shader [varying vs-code fs-code]
   (let [loader
-        (Chain
+        (Wire
          "shader-compiler"
          "varying.def.sc"
          (FS.Write varying :Overwrite true)
@@ -50,10 +50,10 @@
          "fs-bytecode-tmp.bin"
          (FS.Read :Bytes true) >> .bytecodes
          .bytecodes)
-        node (Node)]
-    (schedule node loader)
-    (run node 0.1)
-    ; read results and cleanup the chain
+        mesh (Mesh)]
+    (schedule mesh loader)
+    (run mesh 0.1)
+    ; read results and cleanup the wire
     (stop loader)))
 
 (prn (Shader

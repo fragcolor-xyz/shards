@@ -3,9 +3,9 @@
 #include <cstdlib>
 #include <type_traits>
 
-namespace chainblocks {
+namespace shards {
 
-std::map<CBType, NumberType> getCBTypeToNumberTypeMap() {
+std::map<SHType, NumberType> getSHTypeToNumberTypeMap() {
   // clang-format off
   return {
     {Color, NumberType::UInt8},
@@ -28,10 +28,10 @@ template <typename TIn, typename TOut> struct TNumberConversion : NumberConversi
     inStride = sizeof(TIn);
     outStride = sizeof(TOut);
     convertOne = [](const void *src, void *dst) { ((TOut *)dst)[0] = (TOut)((TIn *)src)[0]; };
-    convertMultipleSeq = [](const void *src, void *dst, size_t srcLen, const CBSeq &sequence) {
+    convertMultipleSeq = [](const void *src, void *dst, size_t srcLen, const SHSeq &sequence) {
       for (size_t dstIndex = 0; dstIndex < sequence.len; dstIndex++) {
-        CBInt srcIndex = sequence.elements[dstIndex].payload.intValue;
-        if (srcIndex >= (CBInt)srcLen || srcIndex < 0) {
+        SHInt srcIndex = sequence.elements[dstIndex].payload.intValue;
+        if (srcIndex >= (SHInt)srcLen || srcIndex < 0) {
           throw NumberConversionOutOfRangeEx(srcIndex);
         }
 
@@ -112,20 +112,20 @@ NUMBER_TYPE_TRAITS(NumberType::Float64, double);
 
 #undef NUMBER_TYPE_TRAITS
 
-template <CBType Type> struct TVectorTypeTraits {};
+template <SHType Type> struct TVectorTypeTraits {};
 
 #define EXPAND(_x) _x
 #define STRINGIFY(_x) EXPAND(#_x)
-#define VECTOR_TYPE_TRAITS(_CBType, _Dimension, _NumberType)                \
-  template <> struct TVectorTypeTraits<_CBType> : public VectorTypeTraits { \
+#define VECTOR_TYPE_TRAITS(_SHType, _Dimension, _NumberType)                \
+  template <> struct TVectorTypeTraits<_SHType> : public VectorTypeTraits { \
     typedef TNumberTypeTraits<_NumberType>::TInner TInner;                  \
     TVectorTypeTraits() {                                                   \
       dimension = _Dimension;                                               \
       isInteger = std::is_integral<TInner>::value;                          \
-      cbType = _CBType;                                                     \
-      type = chainblocks::CoreInfo::_CBType##Type;                          \
+      shType = _SHType;                                                     \
+      type = shards::CoreInfo::_SHType##Type;                          \
       numberType = _NumberType;                                             \
-      name = STRINGIFY(_CBType);                                            \
+      name = STRINGIFY(_SHType);                                            \
     }                                                                       \
   };
 
@@ -161,7 +161,7 @@ VectorTypeLookup::VectorTypeLookup() {
         TVectorTypeTraits<Float4>(),
     };
   // clang-format on
-  buildCBTypeLookup();
+  buildSHTypeLookup();
   buildDimensionLookup();
 }
 
@@ -182,19 +182,19 @@ void NumberTypeLookup::set(const NumberTypeTraits &traits) {
 }
 
 void NumberTypeLookup::buildConversionInfo() {
-  auto cbTypeToNumberTypeMap = getCBTypeToNumberTypeMap();
+  auto shTypeToNumberTypeMap = getSHTypeToNumberTypeMap();
 
-  for (const auto &it : cbTypeToNumberTypeMap) {
-    size_t cbTypeIndex = (size_t)it.first;
-    cbTypeLookup.resize(std::max(cbTypeLookup.size(), cbTypeIndex + 1));
-    cbTypeLookup[cbTypeIndex] = get(it.second);
+  for (const auto &it : shTypeToNumberTypeMap) {
+    size_t shTypeIndex = (size_t)it.first;
+    shTypeLookup.resize(std::max(shTypeLookup.size(), shTypeIndex + 1));
+    shTypeLookup[shTypeIndex] = get(it.second);
   }
 }
 
-void VectorTypeLookup::buildCBTypeLookup() {
+void VectorTypeLookup::buildSHTypeLookup() {
   for (const VectorTypeTraits &vectorType : vectorTypes) {
-    cbTypeLookup.resize(std::max(cbTypeLookup.size(), size_t(vectorType.cbType) + 1));
-    cbTypeLookup[size_t(vectorType.cbType)] = &vectorType;
+    shTypeLookup.resize(std::max(shTypeLookup.size(), size_t(vectorType.shType) + 1));
+    shTypeLookup[size_t(vectorType.shType)] = &vectorType;
   }
 }
 
@@ -219,11 +219,11 @@ void VectorTypeLookup::buildDimensionLookup() {
   }
 }
 
-const VectorTypeTraits *VectorTypeLookup::get(CBType type) {
-  if (size_t(type) >= cbTypeLookup.size())
+const VectorTypeTraits *VectorTypeLookup::get(SHType type) {
+  if (size_t(type) >= shTypeLookup.size())
     return nullptr;
 
-  return cbTypeLookup[size_t(type)];
+  return shTypeLookup[size_t(type)];
 }
 
 const VectorTypeTraits *VectorTypeLookup::findCompatibleType(bool isInteger, size_t dimension) {
@@ -239,18 +239,18 @@ const VectorTypeTraits *VectorTypeLookup::findCompatibleType(bool isInteger, siz
   return nullptr;
 }
 
-const std::vector<NumberType> &getCBTypeToNumberTypeArrayMap() {
+const std::vector<NumberType> &getSHTypeToNumberTypeArrayMap() {
   static std::vector<NumberType> result = []() {
     std::vector<NumberType> result;
-    auto map = getCBTypeToNumberTypeMap();
+    auto map = getSHTypeToNumberTypeMap();
     for (auto &it : map) {
-      size_t cbTypeIndex = size_t(it.first);
-      result.resize(std::max(result.size(), cbTypeIndex + 1));
-      result[cbTypeIndex] = it.second;
+      size_t shTypeIndex = size_t(it.first);
+      result.resize(std::max(result.size(), shTypeIndex + 1));
+      result[shTypeIndex] = it.second;
     }
     return result;
   }();
   return result;
 }
 
-}; // namespace chainblocks
+}; // namespace shards

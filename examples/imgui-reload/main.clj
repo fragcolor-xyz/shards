@@ -3,11 +3,11 @@
 
 (load-file "imgui-style.clj")
 
-(def Root (Node))
+(def Root (Mesh))
 
 (schedule
  Root
- (Chain
+ (Wire
   "main" :Looped
   (GFX.MainWindow
    :Title "SDL Window" :Width 400 :Height 720
@@ -20,6 +20,6 @@
      :Title "Hot-reloaded window"
      :Width 400 :Height 720 :Pos (int2 0, 0)
      :Contents
-     (-> (ChainLoader (Chain* "imgui-sandbox.clj"))))))))
+     (-> (WireLoader (Wire* "imgui-sandbox.clj"))))))))
 
 (run Root 0.0167)

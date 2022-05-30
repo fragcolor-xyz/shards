@@ -7,8 +7,8 @@
 "Next text"
 (GUI.Text)
 
-(Setup false >= .cbox1)
-(GUI.Checkbox "Yes/No" .cbox1)
+(Setup false >= .shox1)
+(GUI.Checkbox "Yes/No" .shox1)
 (GUI.Text)
 
 (GUI.Separator)

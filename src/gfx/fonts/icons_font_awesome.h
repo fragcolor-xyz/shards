@@ -540,7 +540,7 @@
 #define ICON_FA_OBJECT_UNGROUP "\xEF\x89\x88"
 #define ICON_FA_STICKY_NOTE "\xEF\x89\x89"
 #define ICON_FA_STICKY_NOTE_O "\xEF\x89\x8A"
-#define ICON_FA_CC_JCB "\xEF\x89\x8B"
+#define ICON_FA_CC_JSH "\xEF\x89\x8B"
 #define ICON_FA_CC_DINERS_CLUB "\xEF\x89\x8C"
 #define ICON_FA_CLONE "\xEF\x89\x8D"
 #define ICON_FA_BALANCE_SCALE "\xEF\x89\x8E"

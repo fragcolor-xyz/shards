@@ -28,7 +28,7 @@ extern String rep(const String &input, malEnvPtr env);
 
 // Core.cpp
 extern void installCore(malEnvPtr env);
-extern void installCBCore(const malEnvPtr &env, const char *exePath, const char *scriptPath);
+extern void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath);
 
 // Reader.cpp
 extern malValuePtr readStr(const String &input);

@@ -1,5 +1,5 @@
-set(CHAINBLOCKS_TOOLS_PATH ${CHAINBLOCKS_DIR}/src/tools/build/bin)
-find_program(BIN2C_EXE NAMES "bin2c" PATHS ${CHAINBLOCKS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
+set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/src/tools/build/bin)
+find_program(BIN2C_EXE NAMES "bin2c" PATHS ${SHARDS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
 
 # Used to add files
 # This functions strips all the folder names and genrates include paths as follows:

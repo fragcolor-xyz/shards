@@ -1,9 +1,0 @@
-;; Multiple matches + nil case at end + passthrough
-true
-(Match :Cases
-       [true (-> (Msg "Match found")) ;; match found so rest of the cases ignored
-        true (-> (Msg "Another match found")) ;; unreachable case statement
-        nil (-> (Msg "Any Match is OK"))] ;; unreachable case statement
-       :Passthrough
-       true)
-(Log) ;; print Match block's output => "true"

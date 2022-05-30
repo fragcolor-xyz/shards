@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2019 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (schedule
  Root
- (Chain
+ (Wire
   "test"
 
   "frag"

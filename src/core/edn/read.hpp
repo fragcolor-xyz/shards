@@ -1,7 +1,7 @@
 // Derived from https://github.com/oakes/ZachLisp
 
-#ifndef CB_LSP_READ_HPP
-#define CB_LSP_READ_HPP
+#ifndef SH_LSP_READ_HPP
+#define SH_LSP_READ_HPP
 
 #include <boost/container/map.hpp>
 #include <boost/container/set.hpp>
@@ -17,7 +17,7 @@
 #include <variant>
 #include <vector>
 
-namespace chainblocks {
+namespace shards {
 namespace edn {
 
 namespace token {
@@ -104,27 +104,27 @@ template <typename T, typename... Rest> inline void hash_combine(std::size_t &se
 }
 
 } // namespace edn
-} // namespace chainblocks
+} // namespace shards
 
 namespace std {
 
-template <> struct hash<chainblocks::edn::token::Token> {
-  size_t operator()(const chainblocks::edn::token::Token &x) const {
-    return std::hash<chainblocks::edn::token::value::Value>()(x.value);
+template <> struct hash<shards::edn::token::Token> {
+  size_t operator()(const shards::edn::token::Token &x) const {
+    return std::hash<shards::edn::token::value::Value>()(x.value);
   }
 };
 
-template <> struct hash<chainblocks::edn::form::Special> {
-  size_t operator()(const chainblocks::edn::form::Special &x) const { return std::hash<std::string>()(x.message); }
+template <> struct hash<shards::edn::form::Special> {
+  size_t operator()(const shards::edn::form::Special &x) const { return std::hash<std::string>()(x.message); }
 };
 
-template <> struct hash<chainblocks::edn::form::FormWrapper> {
-  size_t operator()(const chainblocks::edn::form::FormWrapper &x) const { return chainblocks::edn::form::hash(x); }
+template <> struct hash<shards::edn::form::FormWrapper> {
+  size_t operator()(const shards::edn::form::FormWrapper &x) const { return shards::edn::form::hash(x); }
 };
 
 } // namespace std
 
-namespace chainblocks {
+namespace shards {
 namespace edn {
 
 namespace token {
@@ -575,6 +575,6 @@ inline std::list<form::Form> read(const std::string input) {
 }
 
 } // namespace edn
-} // namespace chainblocks
+} // namespace shards
 
 #endif

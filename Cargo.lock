@@ -378,41 +378,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chainblocks"
-version = "0.1.0"
-dependencies = [
- "approx",
- "bindgen",
- "bs58",
- "chacha20poly1305",
- "compile-time-crc32",
- "crossbeam",
- "csv",
- "ctor",
- "dlopen",
- "ethabi",
- "ethereum-types",
- "hex",
- "instant",
- "lazy_static",
- "libsecp256k1",
- "parity-scale-codec",
- "rapier3d",
- "reqwest",
- "resvg",
- "serde",
- "serde_json",
- "sha2 0.10.2",
- "sp-core",
- "sp-runtime",
- "tiny-keccak",
- "tiny-skia",
- "usvg",
- "wasabi_leb128",
- "webbrowser",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "git+https://github.com/chronotope/chrono?branch=main#7097f933eb16d4fa5bb94b2a44e7d69c62af755d"
@@ -2665,6 +2630,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "shards"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "bindgen",
+ "bs58",
+ "chacha20poly1305",
+ "compile-time-crc32",
+ "crossbeam",
+ "csv",
+ "ctor",
+ "dlopen",
+ "ethabi",
+ "ethereum-types",
+ "hex",
+ "instant",
+ "lazy_static",
+ "libsecp256k1",
+ "parity-scale-codec",
+ "rapier3d",
+ "reqwest",
+ "resvg",
+ "serde",
+ "serde_json",
+ "sha2 0.10.2",
+ "sp-core",
+ "sp-runtime",
+ "tiny-keccak",
+ "tiny-skia",
+ "usvg",
+ "wasabi_leb128",
+ "webbrowser",
 ]
 
 [[package]]

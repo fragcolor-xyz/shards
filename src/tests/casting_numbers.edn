@@ -1,8 +1,8 @@
-(def Root (Node))
+(def Root (Mesh))
 
 (schedule
  Root
- (Chain "test"
+ (Wire "test"
         (Float3 1 2 3) >= .vec3
         (Float 2.0) >= .flt
 

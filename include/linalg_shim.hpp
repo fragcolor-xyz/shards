@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#ifndef CB_LINALG_SHIM_HPP
-#define CB_LINALG_SHIM_HPP
+#ifndef SH_LINALG_SHIM_HPP
+#define SH_LINALG_SHIM_HPP
 
 #include <linalg.h>
 #include <vector>
-namespace chainblocks {
+namespace shards {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   using linalg::aliases::float4x4::mat;
-  Mat4(const CBVar &var) { *this = var; }
+  Mat4(const SHVar &var) { *this = var; }
   Mat4(const linalg::aliases::float4x4 &other) : linalg::aliases::float4x4(other) {}
 
   template <typename NUMBER> static Mat4 FromVector(const std::vector<NUMBER> &mat) {
@@ -80,9 +80,9 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return *this;
   }
 
-  Mat4 &operator=(const CBVar &var) {
-    if (var.valueType != CBType::Seq || var.payload.seqValue.len != 4)
-      throw CBException("Invalid Mat4 variable given as input");
+  Mat4 &operator=(const SHVar &var) {
+    if (var.valueType != SHType::Seq || var.payload.seqValue.len != 4)
+      throw SHException("Invalid Mat4 variable given as input");
     auto vm = reinterpret_cast<const Mat4 *>(var.payload.seqValue.elements);
     (*this)[0] = (*vm)[0];
     (*this)[1] = (*vm)[1];
@@ -91,14 +91,14 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
     return *this;
   }
 
-  operator CBVar() const {
-    CBVar res{};
-    res.valueType = CBType::Seq;
-    res.payload.seqValue.elements = reinterpret_cast<CBVar *>(const_cast<chainblocks::Mat4 *>(this));
+  operator SHVar() const {
+    SHVar res{};
+    res.valueType = SHType::Seq;
+    res.payload.seqValue.elements = reinterpret_cast<SHVar *>(const_cast<shards::Mat4 *>(this));
     res.payload.seqValue.len = 4;
     res.payload.seqValue.cap = 0;
     for (auto i = 0; i < 4; i++) {
-      res.payload.seqValue.elements[i].valueType = CBType::Float4;
+      res.payload.seqValue.elements[i].valueType = SHType::Float4;
     }
     return res;
   }
@@ -134,9 +134,9 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
     return *this;
   }
 
-  operator CBVar() const {
-    auto v = reinterpret_cast<CBVar *>(const_cast<chainblocks::Vec4 *>(this));
-    v->valueType = CBType::Float4;
+  operator SHVar() const {
+    auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec4 *>(this));
+    v->valueType = SHType::Float4;
     return *v;
   }
 };
@@ -183,9 +183,9 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
     return *this;
   }
 
-  operator CBVar() const {
-    auto v = reinterpret_cast<CBVar *>(const_cast<chainblocks::Vec3 *>(this));
-    v->valueType = CBType::Float3;
+  operator SHVar() const {
+    auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec3 *>(this));
+    v->valueType = SHType::Float3;
     return *v;
   }
 };
@@ -194,6 +194,6 @@ constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
 constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};
 constexpr linalg::aliases::float3 AxisZ{0.0, 0.0, 1.0};
 
-}; // namespace chainblocks
+}; // namespace shards
 
 #endif

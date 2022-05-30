@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_EXTRA_IMGUI
-#define CB_EXTRA_IMGUI
+#ifndef SH_EXTRA_IMGUI
+#define SH_EXTRA_IMGUI
 
 #include "foundation.hpp"
 #include <gfx/imgui/imgui.hpp>
@@ -13,7 +13,7 @@ namespace ImGuiExtra {
 #include "imgui_memory_editor.h"
 };
 
-namespace chainblocks {
+namespace shards {
 namespace ImGui {
 
 struct Enums {
@@ -81,6 +81,6 @@ struct Enums {
   REGISTER_FLAGS_EX(GuiWindowFlags, 'guiW'); // FourCC = 0x67756957
 };
 }; // namespace ImGui
-}; // namespace chainblocks
+}; // namespace shards
 
-#endif // CB_EXTRA_IMGUI
+#endif // SH_EXTRA_IMGUI

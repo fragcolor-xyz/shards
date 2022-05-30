@@ -1,8 +1,0 @@
-(defchain
-  hello
-  (Msg "Hello"))
-
-(Detach hello)
-(Step
-;:Chain
- hello)

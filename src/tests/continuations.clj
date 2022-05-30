@@ -1,10 +1,10 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
-(def depth1Chain
-  (Chain
+(def depth1Wire
+  (Wire
    "d1" :Looped
    (Msg "D1 started")
    (Resume "d2")
@@ -12,8 +12,8 @@
    (Resume "main")
    ))
 
-(def depth2Chain
-  (Chain
+(def depth2Wire
+  (Wire
    "d2" :Looped
    (Msg "D2 started")
                                         ; go back
@@ -21,8 +21,8 @@
    (Msg "D2 returned")
    ))
 
-(def mainChain
-  (Chain
+(def mainWire
+  (Wire
    "main" :Looped
    (Msg "Main started")
    (Resume "d1")
@@ -31,7 +31,7 @@
 
 (schedule
  Root
- (Chain
+ (Wire
   "root" :Looped
   (Msg "Root started")
   (Step "main")
@@ -41,8 +41,8 @@
 
 ;; Root started
 ;;  Main started ; started by step
-;;  D1 started ; started by continuechain!
-;;  D2 started ; started by continuechain!
+;;  D1 started ; started by continuewire!
+;;  D2 started ; started by continuewire!
 ;;  D2 sleep
 ;; Root returned
 ;; Root started

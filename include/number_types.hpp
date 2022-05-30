@@ -1,12 +1,16 @@
-#pragma once
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include "chainblocks.h"
+#ifndef SH_NUMBER_TYPES_HPP
+#define SH_NUMBER_TYPES_HPP
+
+#include "shards.h"
 #include "common_types.hpp"
 #include <cassert>
 #include <map>
 #include <vector>
 
-namespace chainblocks {
+namespace shards {
 
 enum class NumberType {
   Invalid = 0,
@@ -19,12 +23,12 @@ enum class NumberType {
   Float64,
 };
 
-std::map<CBType, NumberType> getCBTypeToNumberTypeMap();
-const std::vector<NumberType> &getCBTypeToNumberTypeArrayMap();
+std::map<SHType, NumberType> getSHTypeToNumberTypeMap();
+const std::vector<NumberType> &getSHTypeToNumberTypeArrayMap();
 
-inline NumberType cbTypeToNumberType(CBType type) {
-  auto &mapping = getCBTypeToNumberTypeArrayMap();
-  cbassert((size_t)type < mapping.size());
+inline NumberType shTypeToNumberType(SHType type) {
+  auto &mapping = getSHTypeToNumberTypeArrayMap();
+  shassert((size_t)type < mapping.size());
   return mapping[(size_t)type];
 }
 
@@ -38,7 +42,7 @@ typedef void (*NumberConvertOneFunction)(const void *src, void *dst);
 
 // Applies combined conversion and swizzle operation
 // Throws NumberConversionOutOfRangeEx false on out of range index
-typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst, size_t srcLen, const CBSeq &sequence);
+typedef void (*NumberConvertMultipleSeqFunction)(const void *src, void *dst, size_t srcLen, const SHSeq &sequence);
 
 typedef void (*NumberConvertParse)(void *dst, const char *input, char **inputEnd);
 
@@ -53,7 +57,7 @@ struct NumberConversionTable {
   std::vector<NumberConversion> conversions;
 
   const NumberConversion *get(NumberType toType) const {
-    cbassert((size_t)toType < conversions.size());
+    shassert((size_t)toType < conversions.size());
     return &conversions[(size_t)toType];
   }
 };
@@ -69,16 +73,16 @@ struct NumberTypeTraits {
 struct NumberTypeLookup {
 private:
   std::vector<NumberTypeTraits> numberTypes;
-  std::vector<const NumberTypeTraits *> cbTypeLookup;
+  std::vector<const NumberTypeTraits *> shTypeLookup;
 
 public:
   NumberTypeLookup();
 
-  const NumberTypeTraits *get(CBType type) {
-    if (size_t(type) >= cbTypeLookup.size())
+  const NumberTypeTraits *get(SHType type) {
+    if (size_t(type) >= shTypeLookup.size())
       return nullptr;
 
-    return cbTypeLookup[size_t(type)];
+    return shTypeLookup[size_t(type)];
   }
 
   const NumberTypeTraits *get(NumberType type) {
@@ -113,8 +117,8 @@ private:
 struct VectorTypeTraits {
   size_t dimension = 0;
   bool isInteger;
-  CBType cbType;
-  chainblocks::Type type;
+  SHType shType;
+  shards::Type type;
   NumberType numberType;
   const char *name;
 };
@@ -122,12 +126,12 @@ struct VectorTypeTraits {
 struct VectorTypeLookup {
 private:
   std::vector<const VectorTypeTraits *> dimensionLookupTables[2];
-  std::vector<const VectorTypeTraits *> cbTypeLookup;
+  std::vector<const VectorTypeTraits *> shTypeLookup;
   std::vector<VectorTypeTraits> vectorTypes;
 
 public:
   VectorTypeLookup();
-  const VectorTypeTraits *get(CBType type);
+  const VectorTypeTraits *get(SHType type);
   const VectorTypeTraits *findCompatibleType(bool isInteger, size_t dimension);
   static inline VectorTypeLookup &getInstance() {
     static VectorTypeLookup instance;
@@ -135,8 +139,10 @@ public:
   }
 
 private:
-  void buildCBTypeLookup();
+  void buildSHTypeLookup();
   void buildDimensionLookup();
 };
 
-}; // namespace chainblocks
+}; // namespace shards
+
+#endif // SH_NUMBER_TYPES_HPP

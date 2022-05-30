@@ -10,21 +10,21 @@ on:
 
 jobs:
   #
-  # Run blocks documentation samples
+  # Run shards documentation samples
   #
   docs-samples:
     # needs: Windows-64bits-Release
     name: Run Samples
     runs-on: windows-latest
     steps:
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - name: Download cbl
+      - name: Download shards
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Release
+          name: shards-win64 Release
           path: docs/samples
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
@@ -36,10 +36,10 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find blocks -name '*.edn');
+          for i in $(find shards -name '*.edn');
           do
             echo "Running sample $i";
-            ./cbl.exe run_sample.edn --file "$i" > >(tee "$i.log");
+            ./shards.exe run_sample.edn --file "$i" > >(tee "$i.log");
           done
       - name: Upload samples logs
         uses: actions/upload-artifact@v2
@@ -49,21 +49,21 @@ jobs:
           if-no-files-found: error
 
   #
-  # Generate blocks documentation (markdown)
+  # Generate shards documentation (markdown)
   #
   docs-markdown:
     # needs: Windows-64bits-Debug
     name: Generate Markdown
     runs-on: windows-2019
     steps:
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - name: Download cbl
+      - name: Download shards
         uses: actions/download-artifact@v2
         with:
-          name: cbl-win64 Debug
+          name: shards-win64 Debug
           path: src/tests
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
@@ -75,14 +75,14 @@ jobs:
         shell: msys2 {0}
         run: |
           cd src/tests
-          ./cbl.exe infos_docs.edn
+          ./shards.exe infos_docs.edn
       - name: Upload markdown
         uses: actions/upload-artifact@v2
         with:
           name: docs-markdown
           path: |
-            docs/docs/blocks/**/*.md
-            !docs/docs/blocks/index.md
+            docs/docs/shards/**/*.md
+            !docs/docs/shards/index.md
           if-no-files-found: error
 
   #
@@ -93,7 +93,7 @@ jobs:
     name: Build Website
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
@@ -110,7 +110,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: docs-markdown
-          path: docs/docs/blocks
+          path: docs/docs/shards
       - name: Download samples logs
         uses: actions/download-artifact@v2
         with:
@@ -156,9 +156,9 @@ jobs:
           timeout_minutes: 5
           max_attempts: 3
           command: |
-            ./node_modules/.bin/ipfs-car --pack docs/site --output chainblocks-docs.car
+            ./node_modules/.bin/ipfs-car --pack docs/site --output shards-docs.car
             curl -X POST https://api.nft.storage/upload \
-                --data-binary @chainblocks-docs.car \
+                --data-binary @shards-docs.car \
                 -H "Authorization: Bearer ${{ secrets.NFT_STORAGE_KEY }}" \
                 -H "Content-Type: application/car" \
                 > response.json

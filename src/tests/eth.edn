@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode Main)
+(defmesh Main)
 
 (def abi "
 [{
@@ -64,7 +64,7 @@
 \"type\": \"function\"
 }]")
 
-(defchain test
+(defwire test
   10 (BigInt) = .b0 (| (BigInt.ToInt) (Log)) (BigInt.ToBytes) = .0 (Log)
   20 (BigInt) = .b1 (BigInt.ToBytes) = .1 (Log)
   30 (BigInt) = .b2 (BigInt.ToBytes) = .2 (Log)

@@ -1,6 +1,6 @@
-(defnode root-node)
+(defmesh root-mesh)
 (defloop main
   (Msg "Tick")
   (Pause 1.0))
-(schedule root-node main)
-(run root-node (/ 1.0 120))
+(schedule root-mesh main)
+(run root-mesh (/ 1.0 120))

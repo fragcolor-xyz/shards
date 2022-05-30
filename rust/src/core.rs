@@ -3,25 +3,25 @@
 
 #![macro_use]
 
-use crate::block::cblock_construct;
-use crate::block::Block;
-use crate::chainblocksc::CBBool;
-use crate::chainblocksc::CBChainState;
-use crate::chainblocksc::CBContext;
-use crate::chainblocksc::CBCore;
-use crate::chainblocksc::CBOptionalString;
-use crate::chainblocksc::CBString;
-use crate::chainblocksc::CBStrings;
-use crate::chainblocksc::CBVar;
-use crate::chainblocksc::CBlockPtr;
-use crate::types::ChainRef;
-use crate::types::ChainState;
+use crate::shard::shard_construct;
+use crate::shard::Shard;
+use crate::shardsc::SHBool;
+use crate::shardsc::SHWireState;
+use crate::shardsc::SHContext;
+use crate::shardsc::SHCore;
+use crate::shardsc::SHOptionalString;
+use crate::shardsc::SHString;
+use crate::shardsc::SHStrings;
+use crate::shardsc::SHVar;
+use crate::shardsc::ShardPtr;
+use crate::types::WireRef;
+use crate::types::WireState;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
 use crate::types::ExternalVar;
 use crate::types::InstanceData;
-use crate::types::Node;
+use crate::types::Mesh;
 use crate::types::ParameterInfo;
 use crate::types::Parameters;
 use crate::types::Var;
@@ -34,7 +34,7 @@ use std::os::raw::c_char;
 
 const ABI_VERSION: u32 = 0x20200101;
 
-pub static mut Core: *mut CBCore = core::ptr::null_mut();
+pub static mut Core: *mut SHCore = core::ptr::null_mut();
 pub static mut ScriptEnvCreate: Option<
   unsafe extern "C" fn(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void,
 > = None;
@@ -46,38 +46,38 @@ pub static mut ScriptEval: Option<
   unsafe extern "C" fn(
     env: *mut ::core::ffi::c_void,
     script: *const ::std::os::raw::c_char,
-    output: *mut CBVar,
+    output: *mut SHVar,
   ) -> bool,
 > = None;
 static mut init_done: bool = false;
 
-#[cfg(feature = "dllblock")]
+#[cfg(feature = "dllshard")]
 mod internal_core_init {
   extern crate dlopen;
   use super::*;
-  use crate::chainblocksc::chainblocksInterface;
-  use crate::core::CBCore;
+  use crate::shardsc::shardsInterface;
+  use crate::core::SHCore;
   use crate::core::ABI_VERSION;
   use dlopen::symbor::Library;
 
   fn try_load_dlls() -> Option<Library> {
-    if let Ok(lib) = Library::open("libcbl.dylib") {
+    if let Ok(lib) = Library::open("libshards.dylib") {
       Some(lib)
-    } else if let Ok(lib) = Library::open("libcbl.so") {
+    } else if let Ok(lib) = Library::open("libshards.so") {
       Some(lib)
-    } else if let Ok(lib) = Library::open("libcbl.dll") {
+    } else if let Ok(lib) = Library::open("libshards.dll") {
       Some(lib)
     } else {
       None
     }
   }
 
-  pub static mut CBDLL: Option<Library> = None;
+  pub static mut SHDLL: Option<Library> = None;
 
   pub unsafe fn initScripting(lib: &Library) {
     let fun = lib.symbol::<unsafe extern "C" fn(
       path: *const ::std::os::raw::c_char,
-    ) -> *mut ::core::ffi::c_void>("cbLispCreate");
+    ) -> *mut ::core::ffi::c_void>("shLispCreate");
     if let Ok(fun) = fun {
       ScriptEnvCreate = Some(*fun);
     } else {
@@ -85,20 +85,20 @@ mod internal_core_init {
       return;
     }
 
-    let fun = lib.symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)>("cbLispDestroy");
+    let fun = lib.symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)>("shLispDestroy");
     ScriptEnvDestroy = Some(*fun.unwrap());
 
     let fun = lib
       .symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void) -> *mut ::core::ffi::c_void>(
-        "cbLispCreateSub",
+        "shLispCreateSub",
       );
     ScriptEnvCreateSub = Some(*fun.unwrap());
 
     let fun = lib.symbol::<unsafe extern "C" fn(
       env: *mut ::core::ffi::c_void,
       script: *const ::std::os::raw::c_char,
-      output: *mut CBVar,
-    ) -> bool>("cbLispEval");
+      output: *mut SHVar,
+    ) -> bool>("shLispEval");
     ScriptEval = Some(*fun.unwrap());
 
     // trigger initializations... fix me in the future to something more elegant
@@ -113,32 +113,32 @@ mod internal_core_init {
     let exe = Library::open_self().ok().unwrap();
 
     let exefun = exe
-      .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
+      .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut SHCore>("shardsInterface")
       .ok();
     if let Some(fun) = exefun {
       // init scripting first if possible!
       initScripting(&exe);
       Core = fun(ABI_VERSION);
       if Core.is_null() {
-        panic!("Failed to aquire chainblocks interface, version not compatible.");
+        panic!("Failed to aquire shards interface, version not compatible.");
       }
     } else {
       let lib = try_load_dlls().unwrap();
       let fun = lib
-        .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut CBCore>("chainblocksInterface")
+        .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut SHCore>("shardsInterface")
         .unwrap();
       // init scripting first if possible!
       initScripting(&lib);
       Core = fun(ABI_VERSION);
       if Core.is_null() {
-        panic!("Failed to aquire chainblocks interface, version not compatible.");
+        panic!("Failed to aquire shards interface, version not compatible.");
       }
-      CBDLL = Some(lib);
+      SHDLL = Some(lib);
     }
   }
 }
 
-#[cfg(not(feature = "dllblock"))]
+#[cfg(not(feature = "dllshard"))]
 mod internal_core_init {
   pub unsafe fn initInternal() {}
 }
@@ -169,7 +169,7 @@ pub fn logLevel(level: i32, s: &str) {
 
 #[macro_export]
 #[cfg(debug_assertions)]
-macro_rules! cblog_debug {
+macro_rules! shlog_debug {
   ($text:expr, $($arg:expr),*) => {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
@@ -184,14 +184,14 @@ macro_rules! cblog_debug {
 
 #[macro_export]
 #[cfg(not(debug_assertions))]
-macro_rules! cblog_debug {
+macro_rules! shlog_debug {
   ($text:expr, $($arg:expr),*) => {};
 
   ($text:expr) => {};
 }
 
 #[macro_export]
-macro_rules! cblog {
+macro_rules! shlog {
     ($text:expr, $($arg:expr),*) => {
         use std::io::Write as __stdWrite;
         let mut buf = vec![];
@@ -212,50 +212,50 @@ pub fn sleep(seconds: f64) {
 }
 
 #[inline(always)]
-pub fn suspend(context: &CBContext, seconds: f64) -> ChainState {
+pub fn suspend(context: &SHContext, seconds: f64) -> WireState {
   unsafe {
-    let ctx = context as *const CBContext as *mut CBContext;
+    let ctx = context as *const SHContext as *mut SHContext;
     (*Core).suspend.unwrap()(ctx, seconds).into()
   }
 }
 
 #[inline(always)]
-pub fn getState(context: &CBContext) -> ChainState {
+pub fn getState(context: &SHContext) -> WireState {
   unsafe {
-    let ctx = context as *const CBContext as *mut CBContext;
+    let ctx = context as *const SHContext as *mut SHContext;
     (*Core).getState.unwrap()(ctx).into()
   }
 }
 
 #[inline(always)]
-pub fn abortChain(context: &CBContext, message: &str) {
+pub fn abortWire(context: &SHContext, message: &str) {
   let cmsg = CString::new(message).unwrap();
   unsafe {
-    let ctx = context as *const CBContext as *mut CBContext;
-    (*Core).abortChain.unwrap()(ctx, cmsg.as_ptr());
+    let ctx = context as *const SHContext as *mut SHContext;
+    (*Core).abortWire.unwrap()(ctx, cmsg.as_ptr());
   }
 }
 
 #[inline(always)]
-pub fn registerBlock<T: Default + Block>() {
+pub fn registerShard<T: Default + Shard>() {
   unsafe {
-    (*Core).registerBlock.unwrap()(
+    (*Core).registerShard.unwrap()(
       T::registerName().as_ptr() as *const c_char,
-      Some(cblock_construct::<T>),
+      Some(shard_construct::<T>),
     );
   }
 }
 
-pub fn getBlocks() -> Vec<&'static CStr> {
+pub fn getShards() -> Vec<&'static CStr> {
   unsafe {
-    let block_names = (*Core).getBlocks.unwrap()();
+    let shard_names = (*Core).getShards.unwrap()();
     let mut res = Vec::new();
-    let len = block_names.len;
-    let slice = slice::from_raw_parts(block_names.elements, len.try_into().unwrap());
+    let len = shard_names.len;
+    let slice = slice::from_raw_parts(shard_names.elements, len.try_into().unwrap());
     for name in slice.iter() {
       res.push(CStr::from_ptr(*name));
     }
-    (*Core).stringsFree.unwrap()(&block_names as *const CBStrings as *mut CBStrings);
+    (*Core).stringsFree.unwrap()(&shard_names as *const SHStrings as *mut SHStrings);
     res
   }
 }
@@ -270,17 +270,17 @@ pub fn getRootPath() -> &'static str {
 }
 
 #[inline(always)]
-pub fn createBlockPtr(name: &str) -> CBlockPtr {
+pub fn createShardPtr(name: &str) -> ShardPtr {
   let cname = CString::new(name).unwrap();
-  unsafe { (*Core).createBlock.unwrap()(cname.as_ptr()) }
+  unsafe { (*Core).createShard.unwrap()(cname.as_ptr()) }
 }
 
 #[inline(always)]
-pub fn createBlock(name: &str) -> BlockInstance {
+pub fn createShard(name: &str) -> ShardInstance {
   let cname = CString::new(name).unwrap();
   unsafe {
-    BlockInstance {
-      ptr: (*Core).createBlock.unwrap()(cname.as_ptr()),
+    ShardInstance {
+      ptr: (*Core).createShard.unwrap()(cname.as_ptr()),
     }
   }
 }
@@ -313,11 +313,11 @@ pub fn writeCachedString(id: u32, string: &'static str) -> &'static str {
   }
 }
 
-pub fn readCachedString1(id: u32) -> CBOptionalString {
+pub fn readCachedString1(id: u32) -> SHOptionalString {
   unsafe { (*Core).readCachedString.unwrap()(id) }
 }
 
-pub fn writeCachedString1(id: u32, string: &'static str) -> CBOptionalString {
+pub fn writeCachedString1(id: u32, string: &'static str) -> SHOptionalString {
   unsafe { (*Core).writeCachedString.unwrap()(id, string.as_ptr() as *const std::os::raw::c_char) }
 }
 
@@ -326,7 +326,7 @@ pub fn deriveType(var: &Var, data: &InstanceData) -> DerivedType {
   DerivedType(t)
 }
 
-macro_rules! cbccstr {
+macro_rules! shccstr {
   ($string:literal) => {
     if cfg!(debug_assertions) {
       crate::core::writeCachedString1(compile_time_crc32::crc32!($string), cstr!($string))
@@ -336,37 +336,37 @@ macro_rules! cbccstr {
   };
 }
 
-pub fn referenceMutVariable(context: &CBContext, name: CBString) -> &mut CBVar {
+pub fn referenceMutVariable(context: &SHContext, name: SHString) -> &mut SHVar {
   unsafe {
-    let ctx = context as *const CBContext as *mut CBContext;
-    let cbptr = (*Core).referenceVariable.unwrap()(ctx, name);
-    cbptr.as_mut().unwrap()
+    let ctx = context as *const SHContext as *mut SHContext;
+    let shptr = (*Core).referenceVariable.unwrap()(ctx, name);
+    shptr.as_mut().unwrap()
   }
 }
 
-pub fn referenceVariable(context: &CBContext, name: CBString) -> &CBVar {
+pub fn referenceVariable(context: &SHContext, name: SHString) -> &SHVar {
   unsafe {
-    let ctx = context as *const CBContext as *mut CBContext;
-    let cbptr = (*Core).referenceVariable.unwrap()(ctx, name);
-    cbptr.as_mut().unwrap()
+    let ctx = context as *const SHContext as *mut SHContext;
+    let shptr = (*Core).referenceVariable.unwrap()(ctx, name);
+    shptr.as_mut().unwrap()
   }
 }
 
-pub fn releaseMutVariable(var: &mut CBVar) {
+pub fn releaseMutVariable(var: &mut SHVar) {
   unsafe {
-    let v = var as *mut CBVar;
+    let v = var as *mut SHVar;
     (*Core).releaseVariable.unwrap()(v);
   }
 }
 
-pub fn releaseVariable(var: &CBVar) {
+pub fn releaseVariable(var: &SHVar) {
   unsafe {
-    let v = var as *const CBVar as *mut CBVar;
+    let v = var as *const SHVar as *mut SHVar;
     (*Core).releaseVariable.unwrap()(v);
   }
 }
 
-impl ChainRef {
+impl WireRef {
   pub fn set_external(&self, name: &str, var: &mut ExternalVar) {
     let cname = CString::new(name).unwrap();
     unsafe {
@@ -386,7 +386,7 @@ impl ChainRef {
   }
 
   pub fn get_result(&self) -> Result<Option<ClonedVar>, &str> {
-    let info = unsafe { (*Core).getChainInfo.unwrap()(self.0) };
+    let info = unsafe { (*Core).getWireInfo.unwrap()(self.0) };
 
     if !info.isRunning {
       if info.failed {
@@ -403,27 +403,27 @@ impl ChainRef {
 
 //--------------------------------------------------------------------------------------------------
 
-unsafe extern "C" fn do_blocking_c_call(context: *mut CBContext, arg2: *mut c_void) -> CBVar {
-  let trait_obj_ref: &mut &mut dyn FnMut() -> Result<CBVar, &'static str> =
+unsafe extern "C" fn do_blocking_c_call(context: *mut SHContext, arg2: *mut c_void) -> SHVar {
+  let trait_obj_ref: &mut &mut dyn FnMut() -> Result<SHVar, &'static str> =
     { &mut *(arg2 as *mut _) };
   match trait_obj_ref() {
     Ok(value) => value,
     Err(error) => {
-      cblog_debug!("do_blocking failure detected"); // in case error leads to crash
-      cblog_debug!("do_blocking failure: {}", error);
-      abortChain(&(*context), error);
+      shlog_debug!("do_blocking failure detected"); // in case error leads to crash
+      shlog_debug!("do_blocking failure: {}", error);
+      abortWire(&(*context), error);
       Var::default()
     }
   }
 }
 
-pub fn do_blocking<F>(context: &CBContext, f: F) -> CBVar
+pub fn do_blocking<F>(context: &SHContext, f: F) -> SHVar
 where
-  F: FnMut() -> Result<CBVar, &'static str>,
+  F: FnMut() -> Result<SHVar, &'static str>,
 {
   unsafe {
-    let ctx = context as *const CBContext as *mut CBContext;
-    let mut trait_obj: &dyn FnMut() -> Result<CBVar, &'static str> = &f;
+    let ctx = context as *const SHContext as *mut SHContext;
+    let mut trait_obj: &dyn FnMut() -> Result<SHVar, &'static str> = &f;
     let trait_obj_ref = &mut trait_obj;
     let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
     (*Core).asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call), None)
@@ -432,35 +432,35 @@ where
 
 //--------------------------------------------------------------------------------------------------
 
-pub trait BlockingBlock {
+pub trait BlockingShard {
   fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
   fn cancel_activation(&mut self, _context: &Context) {}
 }
 
-struct AsyncCallData<T: BlockingBlock> {
+struct AsyncCallData<T: BlockingShard> {
   caller: *mut T,
-  input: *const CBVar,
+  input: *const SHVar,
 }
 
-unsafe extern "C" fn activate_blocking_c_call<T: BlockingBlock>(
-  context: *mut CBContext,
+unsafe extern "C" fn activate_blocking_c_call<T: BlockingShard>(
+  context: *mut SHContext,
   arg2: *mut c_void,
-) -> CBVar {
+) -> SHVar {
   let data = arg2 as *mut AsyncCallData<T>;
   let res = (*(*data).caller).activate_blocking(&*context, &*(*data).input);
   match res {
     Ok(value) => value,
     Err(error) => {
-      cblog_debug!("activate_blocking failure detected"); // in case error leads to crash
-      cblog_debug!("activate_blocking failure: {}", error);
-      abortChain(&(*context), error);
+      shlog_debug!("activate_blocking failure detected"); // in case error leads to crash
+      shlog_debug!("activate_blocking failure: {}", error);
+      abortWire(&(*context), error);
       Var::default()
     }
   }
 }
 
-unsafe extern "C" fn cancel_blocking_c_call<T: BlockingBlock>(
-  context: *mut CBContext,
+unsafe extern "C" fn cancel_blocking_c_call<T: BlockingShard>(
+  context: *mut SHContext,
   arg2: *mut c_void,
 ) {
   let data = arg2 as *mut AsyncCallData<T>;
@@ -469,18 +469,18 @@ unsafe extern "C" fn cancel_blocking_c_call<T: BlockingBlock>(
 
 pub fn activate_blocking<'a, T>(
   caller: &'a mut T,
-  context: &'a CBContext,
-  input: &'a CBVar,
-) -> CBVar
+  context: &'a SHContext,
+  input: &'a SHVar,
+) -> SHVar
 where
-  T: BlockingBlock,
+  T: BlockingShard,
 {
   unsafe {
     let data = AsyncCallData {
       caller: caller as *mut T,
-      input: input as *const CBVar,
+      input: input as *const SHVar,
     };
-    let ctx = context as *const CBContext as *mut CBContext;
+    let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &data as *const AsyncCallData<T> as *mut AsyncCallData<T> as *mut c_void;
     (*Core).asyncActivate.unwrap()(
       ctx,
@@ -493,11 +493,11 @@ where
 
 //--------------------------------------------------------------------------------------------------
 
-pub struct BlockInstance {
-  ptr: CBlockPtr,
+pub struct ShardInstance {
+  ptr: ShardPtr,
 }
 
-impl Drop for BlockInstance {
+impl Drop for ShardInstance {
   fn drop(&mut self) {
     unsafe {
       if !(*self.ptr).owned {

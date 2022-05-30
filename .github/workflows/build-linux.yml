@@ -38,7 +38,7 @@ on:
 
 jobs:
   #
-  # Build chainblocks for linux
+  # Build shards for linux
   #
   Linux:
     name: Build (${{ github.event.inputs.build-type || inputs.build-type }})
@@ -53,7 +53,7 @@ jobs:
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
           echo "::set-output name=run-extra-tests::${{ github.event.inputs.run-extra-tests || inputs.run-extra-tests }}"
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
@@ -74,12 +74,12 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
-          ninja cbl
+          ninja shards
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: cbl-linux ${{ steps.setup.outputs.build-type }}
-          path: build/cbl
+          name: shards-linux ${{ steps.setup.outputs.build-type }}
+          path: build/shards
           if-no-files-found: error
 
   #
@@ -102,7 +102,7 @@ jobs:
           else
             echo "::set-output name=submodules::false"
           fi
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
@@ -125,54 +125,54 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
-          ninja cbl
+          ninja shards
       - name: Download artifact (Release)
         if: ${{ steps.setup.outputs.build-type == 'Release' }}
         uses: actions/download-artifact@v2
         with:
-          name: cbl-linux ${{ steps.setup.outputs.build-type }}
+          name: shards-linux ${{ steps.setup.outputs.build-type }}
           path: build
       - name: Get sample files
         run: |
           mkdir external && cd external
-          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.nftstorage.link -O Ode_to_Joy.ogg
+          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.dweb.link -O Ode_to_Joy.ogg
       - name: Test
         env:
           RUST_BACKTRACE: 1
         run: |
           cd build
-          chmod +x cbl
-          ./cbl ../src/tests/general.edn
-          ./cbl ../src/tests/variables.clj
-          ./cbl ../src/tests/subchains.clj
-          ./cbl ../src/tests/linalg.clj
-          ./cbl ../src/tests/loader.clj
-          ./cbl ../src/tests/network.clj
-          ./cbl ../src/tests/struct.clj
-          ./cbl ../src/tests/flows.clj
-          ./cbl ../src/tests/kdtree.clj
-          ./cbl ../src/tests/channels.clj
-          ./cbl ../src/tests/genetic.clj
-          ./cbl ../src/tests/imaging.clj
-          ./cbl ../src/tests/http.clj
-          ./cbl ../src/tests/ws.clj
-          ./cbl ../src/tests/bigint.clj
-          ./cbl ../src/tests/brotli.clj
-          ./cbl ../src/tests/snappy.clj
-          ./cbl ../src/tests/failures.clj
-          ./cbl ../src/tests/wasm.clj
-          ./cbl ../src/tests/shell.clj
-          ./cbl ../src/tests/rust.clj
-          ./cbl ../src/tests/crypto.edn
-          ./cbl ../src/tests/chain-macro.edn
-          ./cbl ../src/tests/edn.edn
-          ./cbl ../src/tests/const-vars.edn
-          ./cbl ../src/tests/branch.edn
-          ./cbl ../src/tests/audio.edn
-          ./cbl ../src/tests/time.edn
-          ./cbl ../src/tests/eth.edn
-          ./cbl ../src/tests/take.edn
-          ./cbl ../src/tests/casting_numbers.edn
+          chmod +x shards
+          ./shards ../src/tests/general.edn
+          ./shards ../src/tests/variables.clj
+          ./shards ../src/tests/subwires.clj
+          ./shards ../src/tests/linalg.clj
+          ./shards ../src/tests/loader.clj
+          ./shards ../src/tests/network.clj
+          ./shards ../src/tests/struct.clj
+          ./shards ../src/tests/flows.clj
+          ./shards ../src/tests/kdtree.clj
+          ./shards ../src/tests/channels.clj
+          ./shards ../src/tests/genetic.clj
+          ./shards ../src/tests/imaging.clj
+          ./shards ../src/tests/http.clj
+          ./shards ../src/tests/ws.clj
+          ./shards ../src/tests/bigint.clj
+          ./shards ../src/tests/brotli.clj
+          ./shards ../src/tests/snappy.clj
+          ./shards ../src/tests/failures.clj
+          ./shards ../src/tests/wasm.clj
+          ./shards ../src/tests/shell.clj
+          ./shards ../src/tests/rust.clj
+          ./shards ../src/tests/crypto.edn
+          ./shards ../src/tests/wire-macro.edn
+          ./shards ../src/tests/edn.edn
+          ./shards ../src/tests/const-vars.edn
+          ./shards ../src/tests/branch.edn
+          ./shards ../src/tests/audio.edn
+          ./shards ../src/tests/time.edn
+          ./shards ../src/tests/eth.edn
+          ./shards ../src/tests/take.edn
+          ./shards ../src/tests/casting_numbers.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -180,47 +180,47 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
-          ./cbl ../src/tests/blocks.clj
+          ./shards ../src/tests/shards.clj
       - name: Test samples (doc)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
         run: |
           cd docs/samples
-          for i in $(find blocks -name '*.edn');
+          for i in $(find shards -name '*.edn');
           do
             echo "Running sample $i";
-            ../../build/cbl run_sample.edn --file "$i";
+            ../../build/shards run_sample.edn --file "$i";
           done
       - name: Test Headless (gfx_window)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./cbl ../src/tests/gfx_window.edn
+          run: ./shards ../src/tests/gfx_window.edn
       - name: Test Headless (gfx_cube)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./cbl ../src/tests/gfx_cube.edn
+          run: ./shards ../src/tests/gfx_cube.edn
       - name: Test Headless (gfx_materials)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./cbl ../src/tests/gfx_materials.edn
+          run: ./shards ../src/tests/gfx_materials.edn
       - name: Test Headless (imgui_demo)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./cbl ../src/tests/imgui_demo.edn
+          run: ./shards ../src/tests/imgui_demo.edn
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
           mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/mal/CMakeFiles/cbl.dir --directory build/src/extra/CMakeFiles --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/shards-core-static.dir --directory build/src/mal/CMakeFiles/shards.dir --directory build/src/extra/CMakeFiles --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
@@ -228,7 +228,7 @@ jobs:
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v2
         with:
-          name: cbl-linux-coverage
+          name: shards-linux-coverage
           path: coverage
           if-no-files-found: error
 
@@ -241,7 +241,7 @@ jobs:
     name: Extra Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
@@ -265,7 +265,7 @@ jobs:
           sharedKey: Linux-Debug
       - name: Build
         run: |
-          cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DCHAINBLOCKS_BUILD_TESTS=1
+          cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1
           cd build
           ninja test_runtime && ninja test_gfx
       - name: Test runtime
@@ -284,13 +284,13 @@ jobs:
       - name: CodeCov
         run: |
           mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/chainblocks-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/shards-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
       - name: Upload coverage
         uses: actions/upload-artifact@v2
         with:
-          name: cbl-linux-coverage-extra
+          name: shards-linux-coverage-extra
           path: coverage
           if-no-files-found: error

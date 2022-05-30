@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "runtime.hpp"
 #include <snappy.h>
 
-namespace chainblocks {
+namespace shards {
 namespace Snappy {
 struct Compress {
   std::vector<char> _buffer;
 
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     _buffer.resize(snappy::MaxCompressedLength(input.payload.bytesSize));
     size_t outputLen;
     snappy::RawCompress((char *)input.payload.bytesValue, input.payload.bytesSize, &_buffer[0], &outputLen);
@@ -24,13 +24,13 @@ struct Compress {
 struct Decompress {
   std::vector<char> _buffer;
 
-  static CBTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     size_t len;
     if (!snappy::GetUncompressedLength((char *)input.payload.bytesValue, size_t(input.payload.bytesSize), &len)) {
-      throw CBException("Snappy failed to find uncompressed length, probably invalid data!");
+      throw SHException("Snappy failed to find uncompressed length, probably invalid data!");
     }
     _buffer.resize(len + 1);
     snappy::RawUncompress((char *)input.payload.bytesValue, input.payload.bytesSize, &_buffer[0]);
@@ -40,9 +40,9 @@ struct Decompress {
   }
 };
 
-void registerBlocks() {
-  REGISTER_CBLOCK("Snappy.Compress", Compress);
-  REGISTER_CBLOCK("Snappy.Decompress", Decompress);
+void registerShards() {
+  REGISTER_SHARD("Snappy.Compress", Compress);
+  REGISTER_SHARD("Snappy.Decompress", Decompress);
 }
 } // namespace Snappy
-} // namespace chainblocks
+} // namespace shards

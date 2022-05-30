@@ -1,10 +1,10 @@
 (def _args (eval `(assoc {} ~@*command-line-args*)))
 (def test-rpcs (if (contains? _args "--rpcs") (read-string (get _args "--rpcs")) false))
 (def rpc-server "http://127.0.0.1:9933")
-; node: cargo run -- --dev --tmp --rpc-external --rpc-port 9933 --rpc-cors all --ws-external --enable-offchain-indexing 1 --rpc-methods=Unsafe
+; mesh: cargo run -- --dev --tmp --rpc-external --rpc-port 9933 --rpc-cors all --ws-external --enable-offchain-indexing 1 --rpc-methods=Unsafe
 
-(defnode root)
-(defchain main
+(defmesh root)
+(defwire main
   ; test from hex string
   "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
   (| (Sr25519.PublicKey) (ToHex)
@@ -72,7 +72,7 @@
                     (FromJson) (ExpectTable) (Take "result") (ExpectTable) (Log) = .runtime-version))
 
   (if test-rpcs
-    (-> {"id" 1 "jsonrpc" "2.0" "method" "chain_getBlockHash" "params" [0]} (ToJson) (Http.Post rpc-server)
+    (-> {"id" 1 "jsonrpc" "2.0" "method" "chain_getShardHash" "params" [0]} (ToJson) (Http.Post rpc-server)
         (FromJson) (ExpectTable) (Take "result") (ExpectString) (Log) (HexToBytes) (Log) = .genesis-hash)
     (-> (Bytes "0x0") = .genesis-hash))
 

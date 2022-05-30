@@ -78,12 +78,12 @@ struct Uniforms {
 // SHADERS
 //-----------------------------------------------------------------------------
 static const char *__wgsl_shader = R"(
-struct Block0 {
+struct Shard0 {
     mvp: mat4x4<f32>,
 };
 
 @group(0) @binding(0)
-var<uniform> block0: Block0;
+var<uniform> shard0: Shard0;
 
 @group(0) @binding(1)
 var s_color: sampler;
@@ -110,7 +110,7 @@ fn vs_main(
     var Out: VSOut;
     Out.Color = aColor;
     Out.UV = aUV;
-    Out.Position = block0.mvp * vec4<f32>(aPos, 0.0, 1.0);
+    Out.Position = shard0.mvp * vec4<f32>(aPos, 0.0, 1.0);
     return Out;
 }
 
@@ -449,7 +449,7 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
     ImGui_ImplWGPU_InvalidateDeviceObjects();
 
   WGPUBindGroupLayoutEntry layout_entries[3] = {};
-  // block 0
+  // shard 0
   layout_entries[0].binding = 0; // transform
   layout_entries[0].visibility = WGPUShaderStage_Vertex;
   layout_entries[0].buffer.type = WGPUBufferBindingType_Uniform;
@@ -457,22 +457,22 @@ bool ImGui_ImplWGPU_CreateDeviceObjects() {
   layout_entries[1].binding = 1; // sampler
   layout_entries[1].visibility = WGPUShaderStage_Fragment;
   layout_entries[1].sampler.type = WGPUSamplerBindingType_Filtering;
-  // block 1
+  // shard 1
   layout_entries[2].binding = 0; // texture
   layout_entries[2].visibility = WGPUShaderStage_Fragment;
   layout_entries[2].texture.sampleType = WGPUTextureSampleType_Float;
   layout_entries[2].texture.viewDimension = WGPUTextureViewDimension_2D;
 
-  WGPUBindGroupLayoutDescriptor block0_layout_desc{};
-  block0_layout_desc.entries = layout_entries;
-  block0_layout_desc.entryCount = 2;
+  WGPUBindGroupLayoutDescriptor shard0_layout_desc{};
+  shard0_layout_desc.entries = layout_entries;
+  shard0_layout_desc.entryCount = 2;
 
-  WGPUBindGroupLayoutDescriptor block1_layout_desc{};
-  block1_layout_desc.entries = &layout_entries[2];
-  block1_layout_desc.entryCount = 1;
+  WGPUBindGroupLayoutDescriptor shard1_layout_desc{};
+  shard1_layout_desc.entries = &layout_entries[2];
+  shard1_layout_desc.entryCount = 1;
 
-  g_resources.CommonBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block0_layout_desc);
-  g_resources.ImageBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &block1_layout_desc);
+  g_resources.CommonBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &shard0_layout_desc);
+  g_resources.ImageBindGroupLayout = wgpuDeviceCreateBindGroupLayout(g_wgpuDevice, &shard1_layout_desc);
 
   WGPUBindGroupLayout bind_group_layouts[2] = {
       g_resources.CommonBindGroupLayout,

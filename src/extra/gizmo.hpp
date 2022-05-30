@@ -1,14 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#ifndef CB_EXTRA_GIZMO
-#define CB_EXTRA_GIZMO
+#ifndef SH_EXTRA_GIZMO
+#define SH_EXTRA_GIZMO
 
 #include "./bgfx.hpp"
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "imgui.hpp"
 
-namespace chainblocks {
+namespace shards {
 namespace Gizmo {
 
 struct Enums {
@@ -27,7 +27,7 @@ struct Enums {
   static inline EnumInfo<Operation> OperationEnumInfo{"GizmoOperation", CoreCC, OperationCC};
   static inline Type OperationType = Type::Enum(CoreCC, OperationCC);
 
-  static constexpr ImGuizmo::MODE ModeToGuizmo(CBEnum eval) {
+  static constexpr ImGuizmo::MODE ModeToGuizmo(SHEnum eval) {
     switch (Mode(eval)) {
     case Mode::Local:
       return ImGuizmo::MODE::LOCAL;
@@ -37,7 +37,7 @@ struct Enums {
     return ImGuizmo::MODE(0);
   }
 
-  static constexpr ImGuizmo::OPERATION OperationToGuizmo(CBEnum eval) {
+  static constexpr ImGuizmo::OPERATION OperationToGuizmo(SHEnum eval) {
     switch (Operation(eval)) {
     case Operation::Translate:
       return ImGuizmo::OPERATION::TRANSLATE;
@@ -53,6 +53,6 @@ struct Enums {
 };
 
 } // namespace Gizmo
-} // namespace chainblocks
+} // namespace shards
 
-#endif // CB_EXTRA_GIZMO
+#endif // SH_EXTRA_GIZMO

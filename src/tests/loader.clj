@@ -1,17 +1,17 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2019 Fragcolor Pte. Ltd.
 
-(def myChain
-  (Chain
-   "myChain"
-   (Msg "My chain here!")))
+(def myWire
+  (Wire
+   "myWire"
+   (Msg "My wire here!")))
 
-(def! n (Node))
+(def! n (Mesh))
 (schedule n
-          (Chain
+          (Wire
            "n" :Looped
            10 (Set "var")
-           (ChainLoader (Chain* "loadme.clj"
+           (WireLoader (Wire* "loadme.clj"
                                 ; bootstrap code into the loader environment
                                 '(def defined-text2 "Hello world 2!")
                                 ))))

@@ -41,7 +41,7 @@
 #define TRACE_ENV NOTRACE
 #endif
 
-#define _CB_ASSERT(file, line, condition, ...)          \
+#define _SH_ASSERT(file, line, condition, ...)          \
   if (!(condition)) {                                   \
     printf("Assertion failed at %s(%d): ", file, line); \
     printf(__VA_ARGS__);                                \
@@ -49,6 +49,6 @@
   } else {                                              \
   }
 
-#define ASSERT(condition, ...) _CB_ASSERT(__FILE__, __LINE__, condition, __VA_ARGS__)
+#define ASSERT(condition, ...) _SH_ASSERT(__FILE__, __LINE__, condition, __VA_ARGS__)
 
 #endif // INCLUDE_DEBUG_H

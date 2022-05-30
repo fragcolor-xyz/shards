@@ -1,78 +1,78 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::chainblocksc::CBBool;
-use crate::chainblocksc::CBChain;
-use crate::chainblocksc::CBChainRef;
-use crate::chainblocksc::CBChainState;
-use crate::chainblocksc::CBChainState_Continue;
-use crate::chainblocksc::CBChainState_Rebase;
-use crate::chainblocksc::CBChainState_Restart;
-use crate::chainblocksc::CBChainState_Return;
-use crate::chainblocksc::CBChainState_Stop;
-use crate::chainblocksc::CBComposeResult;
-use crate::chainblocksc::CBContext;
-use crate::chainblocksc::CBExposedTypeInfo;
-use crate::chainblocksc::CBExposedTypesInfo;
-use crate::chainblocksc::CBInstanceData;
-use crate::chainblocksc::CBNodeRef;
-use crate::chainblocksc::CBOptionalString;
-use crate::chainblocksc::CBParameterInfo;
-use crate::chainblocksc::CBParametersInfo;
-use crate::chainblocksc::CBPointer;
-use crate::chainblocksc::CBSeq;
-use crate::chainblocksc::CBString;
-use crate::chainblocksc::CBStrings;
-use crate::chainblocksc::CBTable;
-use crate::chainblocksc::CBTableIterator;
-use crate::chainblocksc::CBTypeInfo;
-use crate::chainblocksc::CBTypeInfo_Details;
-use crate::chainblocksc::CBTypeInfo_Details_Enum;
-use crate::chainblocksc::CBTypeInfo_Details_Object;
-use crate::chainblocksc::CBTypeInfo_Details_Table;
-use crate::chainblocksc::CBType_Any;
-use crate::chainblocksc::CBType_Array;
-use crate::chainblocksc::CBType_Block;
-use crate::chainblocksc::CBType_Bool;
-use crate::chainblocksc::CBType_Bytes;
-use crate::chainblocksc::CBType_Chain;
-use crate::chainblocksc::CBType_Color;
-use crate::chainblocksc::CBType_ContextVar;
-use crate::chainblocksc::CBType_Enum;
-use crate::chainblocksc::CBType_Float;
-use crate::chainblocksc::CBType_Float2;
-use crate::chainblocksc::CBType_Float3;
-use crate::chainblocksc::CBType_Float4;
-use crate::chainblocksc::CBType_Image;
-use crate::chainblocksc::CBType_Int;
-use crate::chainblocksc::CBType_Int16;
-use crate::chainblocksc::CBType_Int2;
-use crate::chainblocksc::CBType_Int3;
-use crate::chainblocksc::CBType_Int4;
-use crate::chainblocksc::CBType_Int8;
-use crate::chainblocksc::CBType_None;
-use crate::chainblocksc::CBType_Object;
-use crate::chainblocksc::CBType_Path;
-use crate::chainblocksc::CBType_Seq;
-use crate::chainblocksc::CBType_Set;
-use crate::chainblocksc::CBType_String;
-use crate::chainblocksc::CBType_Table;
-use crate::chainblocksc::CBTypesInfo;
-use crate::chainblocksc::CBVar;
-use crate::chainblocksc::CBVarPayload;
-use crate::chainblocksc::CBVarPayload__bindgen_ty_1;
-use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_1;
-use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_2;
-use crate::chainblocksc::CBVarPayload__bindgen_ty_1__bindgen_ty_4;
-use crate::chainblocksc::CBlock;
-use crate::chainblocksc::CBlockPtr;
-use crate::chainblocksc::CBlocks;
-use crate::chainblocksc::CBIMAGE_FLAGS_16BITS_INT;
-use crate::chainblocksc::CBIMAGE_FLAGS_32BITS_FLOAT;
-use crate::chainblocksc::CBVAR_FLAGS_REF_COUNTED;
+use crate::shardsc::SHBool;
+use crate::shardsc::SHWire;
+use crate::shardsc::SHWireRef;
+use crate::shardsc::SHWireState;
+use crate::shardsc::SHWireState_Continue;
+use crate::shardsc::SHWireState_Rebase;
+use crate::shardsc::SHWireState_Restart;
+use crate::shardsc::SHWireState_Return;
+use crate::shardsc::SHWireState_Stop;
+use crate::shardsc::SHComposeResult;
+use crate::shardsc::SHContext;
+use crate::shardsc::SHExposedTypeInfo;
+use crate::shardsc::SHExposedTypesInfo;
+use crate::shardsc::SHInstanceData;
+use crate::shardsc::SHMeshRef;
+use crate::shardsc::SHOptionalString;
+use crate::shardsc::SHParameterInfo;
+use crate::shardsc::SHParametersInfo;
+use crate::shardsc::SHPointer;
+use crate::shardsc::SHSeq;
+use crate::shardsc::SHString;
+use crate::shardsc::SHStrings;
+use crate::shardsc::SHTable;
+use crate::shardsc::SHTableIterator;
+use crate::shardsc::SHTypeInfo;
+use crate::shardsc::SHTypeInfo_Details;
+use crate::shardsc::SHTypeInfo_Details_Enum;
+use crate::shardsc::SHTypeInfo_Details_Object;
+use crate::shardsc::SHTypeInfo_Details_Table;
+use crate::shardsc::SHType_Any;
+use crate::shardsc::SHType_Array;
+use crate::shardsc::SHType_ShardRef;
+use crate::shardsc::SHType_Bool;
+use crate::shardsc::SHType_Bytes;
+use crate::shardsc::SHType_Wire;
+use crate::shardsc::SHType_Color;
+use crate::shardsc::SHType_ContextVar;
+use crate::shardsc::SHType_Enum;
+use crate::shardsc::SHType_Float;
+use crate::shardsc::SHType_Float2;
+use crate::shardsc::SHType_Float3;
+use crate::shardsc::SHType_Float4;
+use crate::shardsc::SHType_Image;
+use crate::shardsc::SHType_Int;
+use crate::shardsc::SHType_Int16;
+use crate::shardsc::SHType_Int2;
+use crate::shardsc::SHType_Int3;
+use crate::shardsc::SHType_Int4;
+use crate::shardsc::SHType_Int8;
+use crate::shardsc::SHType_None;
+use crate::shardsc::SHType_Object;
+use crate::shardsc::SHType_Path;
+use crate::shardsc::SHType_Seq;
+use crate::shardsc::SHType_Set;
+use crate::shardsc::SHType_String;
+use crate::shardsc::SHType_Table;
+use crate::shardsc::SHTypesInfo;
+use crate::shardsc::SHVar;
+use crate::shardsc::SHVarPayload;
+use crate::shardsc::SHVarPayload__bindgen_ty_1;
+use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_1;
+use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_2;
+use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_4;
+use crate::shardsc::Shard;
+use crate::shardsc::ShardPtr;
+use crate::shardsc::Shards;
+use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
+use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
+use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
 use crate::core::cloneVar;
 use crate::core::Core;
-use crate::CBVAR_FLAGS_EXTERNAL;
+use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
 use core::convert::TryInto;
 use core::mem::transmute;
@@ -92,14 +92,14 @@ macro_rules! cstr {
   };
 }
 
-pub type Context = CBContext;
-pub type Var = CBVar;
-pub type Type = CBTypeInfo;
-pub type InstanceData = CBInstanceData;
-pub type ComposeResult = CBComposeResult;
-pub type ExposedInfo = CBExposedTypeInfo;
-pub type ParameterInfo = CBParameterInfo;
-pub type RawString = CBString;
+pub type Context = SHContext;
+pub type Var = SHVar;
+pub type Type = SHTypeInfo;
+pub type InstanceData = SHInstanceData;
+pub type ComposeResult = SHComposeResult;
+pub type ExposedInfo = SHExposedTypeInfo;
+pub type ParameterInfo = SHParameterInfo;
+pub type RawString = SHString;
 
 #[repr(transparent)] // force it same size of original
 #[derive(Default)]
@@ -113,29 +113,29 @@ pub struct ExternalVar(pub Var);
 pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
 #[derive(Clone)]
-pub struct Node(pub CBNodeRef);
+pub struct Mesh(pub SHMeshRef);
 
 #[derive(Copy, Clone)]
-pub struct ChainRef(pub CBChainRef);
+pub struct WireRef(pub SHWireRef);
 
 #[derive(Copy, Clone)]
-pub struct BlockRef(pub CBlockPtr);
+pub struct ShardRef(pub ShardPtr);
 
-impl Default for Node {
+impl Default for Mesh {
   fn default() -> Self {
-    Node(unsafe { (*Core).createNode.unwrap()() })
+    Mesh(unsafe { (*Core).createMesh.unwrap()() })
   }
 }
 
-impl Drop for Node {
+impl Drop for Mesh {
   fn drop(&mut self) {
-    unsafe { (*Core).destroyNode.unwrap()(self.0) }
+    unsafe { (*Core).destroyMesh.unwrap()(self.0) }
   }
 }
 
-impl Node {
-  pub fn schedule(&self, chain: ChainRef) {
-    unsafe { (*Core).schedule.unwrap()(self.0, chain.0) }
+impl Mesh {
+  pub fn schedule(&self, wire: WireRef) {
+    unsafe { (*Core).schedule.unwrap()(self.0, wire.0) }
   }
 
   pub fn tick(&self) -> bool {
@@ -143,39 +143,39 @@ impl Node {
   }
 }
 
-pub struct Chain(pub ChainRef);
+pub struct Wire(pub WireRef);
 
-impl Default for Chain {
+impl Default for Wire {
   fn default() -> Self {
-    Chain(ChainRef(unsafe { (*Core).createChain.unwrap()() }))
+    Wire(WireRef(unsafe { (*Core).createWire.unwrap()() }))
   }
 }
 
-impl Drop for Chain {
+impl Drop for Wire {
   fn drop(&mut self) {
-    unsafe { (*Core).destroyChain.unwrap()(self.0 .0) }
+    unsafe { (*Core).destroyWire.unwrap()(self.0 .0) }
   }
 }
 
-impl Chain {
-  pub fn add_block(&self, block: BlockRef) {
-    unsafe { (*Core).addBlock.unwrap()(self.0 .0, block.0) }
+impl Wire {
+  pub fn add_shard(&self, shard: ShardRef) {
+    unsafe { (*Core).addShard.unwrap()(self.0 .0, shard.0) }
   }
 
   pub fn set_looped(&self, looped: bool) {
-    unsafe { (*Core).setChainLooped.unwrap()(self.0 .0, looped) }
+    unsafe { (*Core).setWireLooped.unwrap()(self.0 .0, looped) }
   }
 
   pub fn set_name(&self, name: &str) {
     let c_name = CString::new(name).unwrap();
-    unsafe { (*Core).setChainName.unwrap()(self.0 .0, c_name.as_ptr()) }
+    unsafe { (*Core).setWireName.unwrap()(self.0 .0, c_name.as_ptr()) }
   }
 }
 
-impl BlockRef {
+impl ShardRef {
   pub fn create(name: &str) -> Self {
     let c_name = CString::new(name).unwrap();
-    BlockRef(unsafe { (*Core).createBlock.unwrap()(c_name.as_ptr()) })
+    ShardRef(unsafe { (*Core).createShard.unwrap()(c_name.as_ptr()) })
   }
 
   pub fn set_parameter(&self, index: i32, value: Var) {
@@ -186,16 +186,16 @@ impl BlockRef {
 }
 
 #[derive(PartialEq)]
-pub struct String(pub CBString);
+pub struct String(pub SHString);
 #[derive(Default, Clone, Copy)]
-pub struct OptionalString(pub CBOptionalString);
+pub struct OptionalString(pub SHOptionalString);
 pub struct DerivedType(pub Type);
 
 #[macro_export]
-macro_rules! cbstr {
+macro_rules! shstr {
   ($text:expr) => {{
-    const cbstr: RawString = concat!($text, "\0").as_ptr() as *const std::os::raw::c_char;
-    cbstr
+    const shstr: RawString = concat!($text, "\0").as_ptr() as *const std::os::raw::c_char;
+    shstr
   }};
 }
 
@@ -209,7 +209,7 @@ impl Drop for DerivedType {
 }
 
 #[derive(PartialEq)]
-pub enum ChainState {
+pub enum WireState {
   Continue,
   Return,
   Rebase,
@@ -217,14 +217,14 @@ pub enum ChainState {
   Stop,
 }
 
-impl From<CBChainState> for ChainState {
-  fn from(state: CBChainState) -> Self {
+impl From<SHWireState> for WireState {
+  fn from(state: SHWireState) -> Self {
     match state {
-      CBChainState_Continue => ChainState::Continue,
-      CBChainState_Return => ChainState::Return,
-      CBChainState_Rebase => ChainState::Rebase,
-      CBChainState_Restart => ChainState::Restart,
-      CBChainState_Stop => ChainState::Stop,
+      SHWireState_Continue => WireState::Continue,
+      SHWireState_Return => WireState::Return,
+      SHWireState_Rebase => WireState::Rebase,
+      SHWireState_Restart => WireState::Restart,
+      SHWireState_Stop => WireState::Stop,
       _ => unreachable!(),
     }
   }
@@ -232,74 +232,74 @@ impl From<CBChainState> for ChainState {
 
 unsafe impl Send for Var {}
 unsafe impl Send for Context {}
-unsafe impl Send for CBlock {}
+unsafe impl Send for Shard {}
 unsafe impl Send for Table {}
 unsafe impl Sync for Table {}
 unsafe impl Sync for OptionalString {}
-unsafe impl Sync for ChainRef {}
-unsafe impl Sync for Node {}
+unsafe impl Sync for WireRef {}
+unsafe impl Sync for Mesh {}
 unsafe impl Sync for ClonedVar {}
 unsafe impl Sync for ExternalVar {}
 
 /*
-CBTypeInfo & co
+SHTypeInfo & co
 */
-unsafe impl std::marker::Sync for CBTypeInfo {}
-unsafe impl std::marker::Sync for CBExposedTypeInfo {}
-unsafe impl std::marker::Sync for CBParameterInfo {}
-unsafe impl std::marker::Sync for CBStrings {}
+unsafe impl std::marker::Sync for SHTypeInfo {}
+unsafe impl std::marker::Sync for SHExposedTypeInfo {}
+unsafe impl std::marker::Sync for SHParameterInfo {}
+unsafe impl std::marker::Sync for SHStrings {}
 
-// Todo CBTypeInfo proper wrapper Type with helpers
+// Todo SHTypeInfo proper wrapper Type with helpers
 
 pub type Types = Vec<Type>;
 
-impl From<&Types> for CBTypesInfo {
+impl From<&Types> for SHTypesInfo {
   fn from(types: &Types) -> Self {
-    CBTypesInfo {
-      elements: types.as_ptr() as *mut CBTypeInfo,
+    SHTypesInfo {
+      elements: types.as_ptr() as *mut SHTypeInfo,
       len: types.len() as u32,
       cap: 0,
     }
   }
 }
 
-impl From<&[Type]> for CBTypesInfo {
+impl From<&[Type]> for SHTypesInfo {
   fn from(types: &[Type]) -> Self {
-    CBTypesInfo {
-      elements: types.as_ptr() as *mut CBTypeInfo,
+    SHTypesInfo {
+      elements: types.as_ptr() as *mut SHTypeInfo,
       len: types.len() as u32,
       cap: 0,
     }
   }
 }
 
-fn internal_from_types(types: Types) -> CBTypesInfo {
+fn internal_from_types(types: Types) -> SHTypesInfo {
   let len = types.len();
   let boxed = types.into_boxed_slice();
-  CBTypesInfo {
-    elements: Box::into_raw(boxed) as *mut CBTypeInfo,
+  SHTypesInfo {
+    elements: Box::into_raw(boxed) as *mut SHTypeInfo,
     len: len as u32,
     cap: 0,
   }
 }
 
-unsafe fn internal_drop_types(types: CBTypesInfo) {
+unsafe fn internal_drop_types(types: SHTypesInfo) {
   // use with care
   let elems = Box::from_raw(types.elements);
   drop(elems);
 }
 
 /*
-CBExposedTypeInfo & co
+SHExposedTypeInfo & co
 */
 
 impl ExposedInfo {
-  pub fn new(name: &CString, ctype: CBTypeInfo) -> Self {
+  pub fn new(name: &CString, ctype: SHTypeInfo) -> Self {
     let chelp = core::ptr::null();
-    CBExposedTypeInfo {
+    SHExposedTypeInfo {
       exposedType: ctype,
       name: name.as_ptr(),
-      help: CBOptionalString {
+      help: SHOptionalString {
         string: chelp,
         crc: 0,
       },
@@ -311,11 +311,11 @@ impl ExposedInfo {
     }
   }
 
-  pub fn new_with_help(name: &CString, help: &CString, ctype: CBTypeInfo) -> Self {
-    CBExposedTypeInfo {
+  pub fn new_with_help(name: &CString, help: &CString, ctype: SHTypeInfo) -> Self {
+    SHExposedTypeInfo {
       exposedType: ctype,
       name: name.as_ptr(),
-      help: CBOptionalString {
+      help: SHOptionalString {
         string: help.as_ptr(),
         crc: 0,
       },
@@ -327,8 +327,8 @@ impl ExposedInfo {
     }
   }
 
-  pub fn new_with_help_from_ptr(name: CBString, help: CBOptionalString, ctype: CBTypeInfo) -> Self {
-    CBExposedTypeInfo {
+  pub fn new_with_help_from_ptr(name: SHString, help: SHOptionalString, ctype: SHTypeInfo) -> Self {
+    SHExposedTypeInfo {
       exposedType: ctype,
       name,
       help,
@@ -340,13 +340,13 @@ impl ExposedInfo {
     }
   }
 
-  pub const fn new_static(name: &'static str, ctype: CBTypeInfo) -> Self {
+  pub const fn new_static(name: &'static str, ctype: SHTypeInfo) -> Self {
     let cname = name.as_ptr() as *const std::os::raw::c_char;
     let chelp = core::ptr::null();
-    CBExposedTypeInfo {
+    SHExposedTypeInfo {
       exposedType: ctype,
       name: cname,
-      help: CBOptionalString {
+      help: SHOptionalString {
         string: chelp,
         crc: 0,
       },
@@ -360,11 +360,11 @@ impl ExposedInfo {
 
   pub const fn new_static_with_help(
     name: &'static str,
-    help: CBOptionalString,
-    ctype: CBTypeInfo,
+    help: SHOptionalString,
+    ctype: SHTypeInfo,
   ) -> Self {
     let cname = name.as_ptr() as *const std::os::raw::c_char;
-    CBExposedTypeInfo {
+    SHExposedTypeInfo {
       exposedType: ctype,
       name: cname,
       help,
@@ -379,10 +379,10 @@ impl ExposedInfo {
 
 pub type ExposedTypes = Vec<ExposedInfo>;
 
-impl From<&ExposedTypes> for CBExposedTypesInfo {
+impl From<&ExposedTypes> for SHExposedTypesInfo {
   fn from(vec: &ExposedTypes) -> Self {
-    CBExposedTypesInfo {
-      elements: vec.as_ptr() as *mut CBExposedTypeInfo,
+    SHExposedTypesInfo {
+      elements: vec.as_ptr() as *mut SHExposedTypeInfo,
       len: vec.len() as u32,
       cap: 0,
     }
@@ -390,13 +390,13 @@ impl From<&ExposedTypes> for CBExposedTypesInfo {
 }
 
 /*
-CBParameterInfo & co
+SHParameterInfo & co
 */
 impl ParameterInfo {
   fn new(name: &'static str, types: Types) -> Self {
-    CBParameterInfo {
+    SHParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
-      help: CBOptionalString {
+      help: SHOptionalString {
         string: core::ptr::null(),
         crc: 0,
       },
@@ -405,9 +405,9 @@ impl ParameterInfo {
   }
 
   fn new1(name: &'static str, help: &'static str, types: Types) -> Self {
-    CBParameterInfo {
+    SHParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
-      help: CBOptionalString {
+      help: SHOptionalString {
         string: help.as_ptr() as *mut std::os::raw::c_char,
         crc: 0,
       },
@@ -415,8 +415,8 @@ impl ParameterInfo {
     }
   }
 
-  fn new2(name: &'static str, help: CBOptionalString, types: Types) -> Self {
-    CBParameterInfo {
+  fn new2(name: &'static str, help: SHOptionalString, types: Types) -> Self {
+    SHParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
       help,
       valueTypes: internal_from_types(types),
@@ -426,7 +426,7 @@ impl ParameterInfo {
 
 impl From<&str> for OptionalString {
   fn from(s: &str) -> OptionalString {
-    let cos = CBOptionalString {
+    let cos = SHOptionalString {
       string: s.as_ptr() as *const std::os::raw::c_char,
       crc: 0, // TODO
     };
@@ -434,9 +434,9 @@ impl From<&str> for OptionalString {
   }
 }
 
-impl From<&str> for CBOptionalString {
-  fn from(s: &str) -> CBOptionalString {
-    CBOptionalString {
+impl From<&str> for SHOptionalString {
+  fn from(s: &str) -> SHOptionalString {
+    SHOptionalString {
       string: s.as_ptr() as *const std::os::raw::c_char,
       crc: 0, // TODO
     }
@@ -455,26 +455,26 @@ impl From<(&'static str, &'static str, Types)> for ParameterInfo {
   }
 }
 
-impl From<(&'static str, CBOptionalString, Types)> for ParameterInfo {
-  fn from(v: (&'static str, CBOptionalString, Types)) -> ParameterInfo {
+impl From<(&'static str, SHOptionalString, Types)> for ParameterInfo {
+  fn from(v: (&'static str, SHOptionalString, Types)) -> ParameterInfo {
     ParameterInfo::new2(v.0, v.1, v.2)
   }
 }
 
 pub type Parameters = Vec<ParameterInfo>;
 
-impl From<&Parameters> for CBParametersInfo {
+impl From<&Parameters> for SHParametersInfo {
   fn from(vec: &Parameters) -> Self {
-    CBParametersInfo {
-      elements: vec.as_ptr() as *mut CBParameterInfo,
+    SHParametersInfo {
+      elements: vec.as_ptr() as *mut SHParameterInfo,
       len: vec.len() as u32,
       cap: 0,
     }
   }
 }
 
-impl From<CBParametersInfo> for &[CBParameterInfo] {
-  fn from(_: CBParametersInfo) -> Self {
+impl From<SHParametersInfo> for &[SHParameterInfo] {
+  fn from(_: SHParametersInfo) -> Self {
     unimplemented!()
   }
 }
@@ -483,142 +483,142 @@ impl From<CBParametersInfo> for &[CBParameterInfo] {
 Static common type infos utility
 */
 pub mod common_type {
-  use crate::chainblocksc::CBStrings;
-  use crate::chainblocksc::CBTypeInfo;
-  use crate::chainblocksc::CBTypeInfo_Details;
-  use crate::chainblocksc::CBTypeInfo_Details_Table;
-  use crate::chainblocksc::CBType_Any;
-  use crate::chainblocksc::CBType_Block;
-  use crate::chainblocksc::CBType_Bool;
-  use crate::chainblocksc::CBType_Bytes;
-  use crate::chainblocksc::CBType_Chain;
-  use crate::chainblocksc::CBType_ContextVar;
-  use crate::chainblocksc::CBType_Enum;
-  use crate::chainblocksc::CBType_Float;
-  use crate::chainblocksc::CBType_Int;
-  use crate::chainblocksc::CBType_None;
-  use crate::chainblocksc::CBType_Path;
-  use crate::chainblocksc::CBType_Seq;
-  use crate::chainblocksc::CBType_String;
-  use crate::chainblocksc::CBType_Table;
-  use crate::chainblocksc::CBTypesInfo;
-  use crate::types::CBType_Float2;
-  use crate::types::CBType_Float3;
-  use crate::types::CBType_Float4;
-  use crate::types::CBType_Image;
-  use crate::types::CBType_Int2;
-  use crate::types::CBType_Object;
+  use crate::shardsc::SHStrings;
+  use crate::shardsc::SHTypeInfo;
+  use crate::shardsc::SHTypeInfo_Details;
+  use crate::shardsc::SHTypeInfo_Details_Table;
+  use crate::shardsc::SHType_Any;
+  use crate::shardsc::SHType_ShardRef;
+  use crate::shardsc::SHType_Bool;
+  use crate::shardsc::SHType_Bytes;
+  use crate::shardsc::SHType_Wire;
+  use crate::shardsc::SHType_ContextVar;
+  use crate::shardsc::SHType_Enum;
+  use crate::shardsc::SHType_Float;
+  use crate::shardsc::SHType_Int;
+  use crate::shardsc::SHType_None;
+  use crate::shardsc::SHType_Path;
+  use crate::shardsc::SHType_Seq;
+  use crate::shardsc::SHType_String;
+  use crate::shardsc::SHType_Table;
+  use crate::shardsc::SHTypesInfo;
+  use crate::types::SHType_Float2;
+  use crate::types::SHType_Float3;
+  use crate::types::SHType_Float4;
+  use crate::types::SHType_Image;
+  use crate::types::SHType_Int2;
+  use crate::types::SHType_Object;
 
-  const fn base_info() -> CBTypeInfo {
-    CBTypeInfo {
-      basicType: CBType_None,
-      details: CBTypeInfo_Details {
-        seqTypes: CBTypesInfo {
+  const fn base_info() -> SHTypeInfo {
+    SHTypeInfo {
+      basicType: SHType_None,
+      details: SHTypeInfo_Details {
+        seqTypes: SHTypesInfo {
           elements: core::ptr::null_mut(),
           len: 0,
           cap: 0,
         },
       },
       fixedSize: 0,
-      innerType: CBType_None,
+      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
 
-  pub static none: CBTypeInfo = base_info();
+  pub static none: SHTypeInfo = base_info();
 
-  macro_rules! cbtype {
+  macro_rules! shtype {
     ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $names_var:ident, $name_table:ident, $name_table_var:ident) => {
-      const fn $fname() -> CBTypeInfo {
+      const fn $fname() -> SHTypeInfo {
         let mut res = base_info();
         res.basicType = $type;
         res
       }
 
-      pub static $name: CBTypeInfo = $fname();
+      pub static $name: SHTypeInfo = $fname();
 
-      pub static $names: CBTypeInfo = CBTypeInfo {
-        basicType: CBType_Seq,
-        details: CBTypeInfo_Details {
-          seqTypes: CBTypesInfo {
-            elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+      pub static $names: SHTypeInfo = SHTypeInfo {
+        basicType: SHType_Seq,
+        details: SHTypeInfo_Details {
+          seqTypes: SHTypesInfo {
+            elements: &$name as *const SHTypeInfo as *mut SHTypeInfo,
             len: 1,
             cap: 0,
           },
         },
         fixedSize: 0,
-        innerType: CBType_None,
+        innerType: SHType_None,
         recursiveSelf: false,
       };
 
-      pub static $name_table: CBTypeInfo = CBTypeInfo {
-        basicType: CBType_Table,
-        details: CBTypeInfo_Details {
-          table: CBTypeInfo_Details_Table {
-            keys: CBStrings {
+      pub static $name_table: SHTypeInfo = SHTypeInfo {
+        basicType: SHType_Table,
+        details: SHTypeInfo_Details {
+          table: SHTypeInfo_Details_Table {
+            keys: SHStrings {
               elements: core::ptr::null_mut(),
               len: 0,
               cap: 0,
             },
-            types: CBTypesInfo {
-              elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+            types: SHTypesInfo {
+              elements: &$name as *const SHTypeInfo as *mut SHTypeInfo,
               len: 1,
               cap: 0,
             },
           },
         },
         fixedSize: 0,
-        innerType: CBType_None,
+        innerType: SHType_None,
         recursiveSelf: false,
       };
 
-      pub static $name_var: CBTypeInfo = CBTypeInfo {
-        basicType: CBType_ContextVar,
-        details: CBTypeInfo_Details {
-          contextVarTypes: CBTypesInfo {
-            elements: &$name as *const CBTypeInfo as *mut CBTypeInfo,
+      pub static $name_var: SHTypeInfo = SHTypeInfo {
+        basicType: SHType_ContextVar,
+        details: SHTypeInfo_Details {
+          contextVarTypes: SHTypesInfo {
+            elements: &$name as *const SHTypeInfo as *mut SHTypeInfo,
             len: 1,
             cap: 0,
           },
         },
         fixedSize: 0,
-        innerType: CBType_None,
+        innerType: SHType_None,
         recursiveSelf: false,
       };
 
-      pub static $names_var: CBTypeInfo = CBTypeInfo {
-        basicType: CBType_ContextVar,
-        details: CBTypeInfo_Details {
-          contextVarTypes: CBTypesInfo {
-            elements: &$names as *const CBTypeInfo as *mut CBTypeInfo,
+      pub static $names_var: SHTypeInfo = SHTypeInfo {
+        basicType: SHType_ContextVar,
+        details: SHTypeInfo_Details {
+          contextVarTypes: SHTypesInfo {
+            elements: &$names as *const SHTypeInfo as *mut SHTypeInfo,
             len: 1,
             cap: 0,
           },
         },
         fixedSize: 0,
-        innerType: CBType_None,
+        innerType: SHType_None,
         recursiveSelf: false,
       };
 
-      pub static $name_table_var: CBTypeInfo = CBTypeInfo {
-        basicType: CBType_ContextVar,
-        details: CBTypeInfo_Details {
-          contextVarTypes: CBTypesInfo {
-            elements: &$name_table as *const CBTypeInfo as *mut CBTypeInfo,
+      pub static $name_table_var: SHTypeInfo = SHTypeInfo {
+        basicType: SHType_ContextVar,
+        details: SHTypeInfo_Details {
+          contextVarTypes: SHTypesInfo {
+            elements: &$name_table as *const SHTypeInfo as *mut SHTypeInfo,
             len: 1,
             cap: 0,
           },
         },
         fixedSize: 0,
-        innerType: CBType_None,
+        innerType: SHType_None,
         recursiveSelf: false,
       };
     };
   }
 
-  cbtype!(
+  shtype!(
     make_any,
-    CBType_Any,
+    SHType_Any,
     any,
     anys,
     any_var,
@@ -626,9 +626,9 @@ pub mod common_type {
     any_table,
     any_table_var
   );
-  cbtype!(
+  shtype!(
     make_object,
-    CBType_Object,
+    SHType_Object,
     object,
     objects,
     object_var,
@@ -636,9 +636,9 @@ pub mod common_type {
     object_table,
     object_table_var
   );
-  cbtype!(
+  shtype!(
     make_enum,
-    CBType_Enum,
+    SHType_Enum,
     enumeration,
     enums,
     enum_var,
@@ -646,9 +646,9 @@ pub mod common_type {
     enum_table,
     enum_table_var
   );
-  cbtype!(
+  shtype!(
     make_string,
-    CBType_String,
+    SHType_String,
     string,
     strings,
     string_var,
@@ -656,9 +656,9 @@ pub mod common_type {
     string_table,
     string_table_var
   );
-  cbtype!(
+  shtype!(
     make_bytes,
-    CBType_Bytes,
+    SHType_Bytes,
     bytes,
     bytezs,
     bytes_var,
@@ -666,9 +666,9 @@ pub mod common_type {
     bytes_table,
     bytes_table_var
   );
-  cbtype!(
+  shtype!(
     make_image,
-    CBType_Image,
+    SHType_Image,
     image,
     images,
     image_var,
@@ -676,9 +676,9 @@ pub mod common_type {
     image_table,
     images_table_var
   );
-  cbtype!(
+  shtype!(
     make_int,
-    CBType_Int,
+    SHType_Int,
     int,
     ints,
     int_var,
@@ -686,9 +686,9 @@ pub mod common_type {
     int_table,
     int_table_var
   );
-  cbtype!(
+  shtype!(
     make_int2,
-    CBType_Int2,
+    SHType_Int2,
     int2,
     int2s,
     int2_var,
@@ -696,9 +696,9 @@ pub mod common_type {
     int2_table,
     int2_table_var
   );
-  cbtype!(
+  shtype!(
     make_float,
-    CBType_Float,
+    SHType_Float,
     float,
     floats,
     float_var,
@@ -706,9 +706,9 @@ pub mod common_type {
     float_table,
     float_table_var
   );
-  cbtype!(
+  shtype!(
     make_float2,
-    CBType_Float2,
+    SHType_Float2,
     float2,
     float2s,
     float2_var,
@@ -716,9 +716,9 @@ pub mod common_type {
     float2_table,
     float2_table_var
   );
-  cbtype!(
+  shtype!(
     make_float3,
-    CBType_Float3,
+    SHType_Float3,
     float3,
     float3s,
     float3_var,
@@ -726,9 +726,9 @@ pub mod common_type {
     float3_table,
     float3_table_var
   );
-  cbtype!(
+  shtype!(
     make_float4,
-    CBType_Float4,
+    SHType_Float4,
     float4,
     float4s,
     float4_var,
@@ -736,9 +736,9 @@ pub mod common_type {
     float4_table,
     float4_table_var
   );
-  cbtype!(
+  shtype!(
     make_bool,
-    CBType_Bool,
+    SHType_Bool,
     bool,
     bools,
     bool_var,
@@ -746,29 +746,29 @@ pub mod common_type {
     bool_table,
     bool_table_var
   );
-  cbtype!(
-    make_block,
-    CBType_Block,
-    block,
-    blocks,
-    block_var,
-    blocks_var,
-    block_table,
-    block_table_var
+  shtype!(
+    make_shard,
+    SHType_ShardRef,
+    shard,
+    shards,
+    shard_var,
+    shards_var,
+    shard_table,
+    shard_table_var
   );
-  cbtype!(
-    make_chain,
-    CBType_Chain,
-    chain,
-    chains,
-    chain_var,
-    chains_var,
-    chain_table,
-    chain_table_var
+  shtype!(
+    make_wire,
+    SHType_Wire,
+    wire,
+    wires,
+    wire_var,
+    wires_var,
+    wire_table,
+    wire_table_var
   );
-  cbtype!(
+  shtype!(
     make_path,
-    CBType_Path,
+    SHType_Path,
     path,
     paths,
     path_var,
@@ -781,74 +781,74 @@ pub mod common_type {
 impl Type {
   pub const fn context_variable(types: &[Type]) -> Type {
     Type {
-      basicType: CBType_ContextVar,
-      details: CBTypeInfo_Details {
-        contextVarTypes: CBTypesInfo {
-          elements: types.as_ptr() as *mut CBTypeInfo,
+      basicType: SHType_ContextVar,
+      details: SHTypeInfo_Details {
+        contextVarTypes: SHTypesInfo {
+          elements: types.as_ptr() as *mut SHTypeInfo,
           len: types.len() as u32,
           cap: 0,
         },
       },
       fixedSize: 0,
-      innerType: CBType_None,
+      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
 
   pub const fn object(vendorId: i32, typeId: i32) -> Type {
     Type {
-      basicType: CBType_Object,
-      details: CBTypeInfo_Details {
-        object: CBTypeInfo_Details_Object { vendorId, typeId },
+      basicType: SHType_Object,
+      details: SHTypeInfo_Details {
+        object: SHTypeInfo_Details_Object { vendorId, typeId },
       },
       fixedSize: 0,
-      innerType: CBType_None,
+      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
 
-  pub const fn table(keys: &[CBString], types: &[Type]) -> Type {
+  pub const fn table(keys: &[SHString], types: &[Type]) -> Type {
     Type {
-      basicType: CBType_Table,
-      details: CBTypeInfo_Details {
-        table: CBTypeInfo_Details_Table {
-          keys: CBStrings {
+      basicType: SHType_Table,
+      details: SHTypeInfo_Details {
+        table: SHTypeInfo_Details_Table {
+          keys: SHStrings {
             elements: keys.as_ptr() as *mut _,
             len: keys.len() as u32,
             cap: 0,
           },
-          types: CBTypesInfo {
-            elements: types.as_ptr() as *mut CBTypeInfo,
+          types: SHTypesInfo {
+            elements: types.as_ptr() as *mut SHTypeInfo,
             len: types.len() as u32,
             cap: 0,
           },
         },
       },
       fixedSize: 0,
-      innerType: CBType_None,
+      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
 
   pub const fn seq(types: &[Type]) -> Type {
     Type {
-      basicType: CBType_Seq,
-      details: CBTypeInfo_Details {
-        seqTypes: CBTypesInfo {
-          elements: types.as_ptr() as *mut CBTypeInfo,
+      basicType: SHType_Seq,
+      details: SHTypeInfo_Details {
+        seqTypes: SHTypesInfo {
+          elements: types.as_ptr() as *mut SHTypeInfo,
           len: types.len() as u32,
           cap: 0,
         },
       },
       fixedSize: 0,
-      innerType: CBType_None,
+      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
 }
 
 /*
-CBVar utility
+SHVar utility
  */
 
 impl Serialize for Var {
@@ -860,19 +860,19 @@ impl Serialize for Var {
     S: serde::Serializer,
   {
     match self.valueType {
-      CBType_Int => {
+      SHType_Int => {
         let value: i64 = unsafe { self.payload.__bindgen_anon_1.intValue };
         se.serialize_i64(value)
       }
-      CBType_Float => {
+      SHType_Float => {
         let value: f64 = unsafe { self.payload.__bindgen_anon_1.floatValue };
         se.serialize_f64(value)
       }
-      CBType_Bool => {
+      SHType_Bool => {
         let value: bool = unsafe { self.payload.__bindgen_anon_1.boolValue };
         se.serialize_bool(value)
       }
-      CBType_Table => {
+      SHType_Table => {
         let table: Table = self.try_into().unwrap();
         let mut t = se.serialize_map(None)?;
         for (key, value) in table.iter() {
@@ -883,11 +883,11 @@ impl Serialize for Var {
         }
         t.end()
       }
-      CBType_String => {
+      SHType_String => {
         let value: &str = self.try_into().unwrap();
         se.serialize_str(value)
       }
-      CBType_Seq => {
+      SHType_Seq => {
         let seq: Seq = self.try_into().unwrap();
         let mut s = se.serialize_seq(Some(seq.len()))?;
         for value in seq {
@@ -908,8 +908,8 @@ where
     let vt: Var = v.into();
     let res = ClonedVar(Var::default());
     unsafe {
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = &vt as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = &vt as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -924,12 +924,12 @@ where
     let vt: Var = v.into();
     let mut res = ExternalVar(Var::default());
     unsafe {
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = &vt as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = &vt as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     // ensure this flag is set
-    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
+    res.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
     res
   }
 }
@@ -938,8 +938,8 @@ impl From<&Var> for ClonedVar {
   fn from(v: &Var) -> Self {
     let res = ClonedVar(Var::default());
     unsafe {
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = v as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = v as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -950,12 +950,12 @@ impl From<&Var> for ExternalVar {
   fn from(v: &Var) -> Self {
     let mut res = ExternalVar(Var::default());
     unsafe {
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = v as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = v as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     // ensure this flag is set
-    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
+    res.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
     res
   }
 }
@@ -965,8 +965,8 @@ impl From<Vec<Var>> for ClonedVar {
     let tmp = Var::from(&v);
     let res = ClonedVar(Var::default());
     unsafe {
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = &tmp as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = &tmp as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -979,8 +979,8 @@ impl From<std::string::String> for ClonedVar {
     let tmp = Var::from(&cstr);
     let res = ClonedVar(Var::default());
     unsafe {
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = &tmp as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = &tmp as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -991,10 +991,10 @@ impl From<&[ClonedVar]> for ClonedVar {
   fn from(vec: &[ClonedVar]) -> Self {
     let res = ClonedVar(Var::default());
     unsafe {
-      let src: &[Var] = &*(vec as *const [ClonedVar] as *const [CBVar]);
+      let src: &[Var] = &*(vec as *const [ClonedVar] as *const [SHVar]);
       let vsrc: Var = src.into();
-      let rv = &res.0 as *const CBVar as *mut CBVar;
-      let sv = &vsrc as *const CBVar;
+      let rv = &res.0 as *const SHVar as *mut SHVar;
+      let sv = &vsrc as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -1005,7 +1005,7 @@ impl Drop for ClonedVar {
   #[inline(always)]
   fn drop(&mut self) {
     unsafe {
-      let rv = &self.0 as *const CBVar as *mut CBVar;
+      let rv = &self.0 as *const SHVar as *mut SHVar;
       (*Core).destroyVar.unwrap()(rv);
     }
   }
@@ -1015,7 +1015,7 @@ impl Default for ExternalVar {
   #[inline(always)]
   fn default() -> Self {
     let mut res = ExternalVar(Var::default());
-    res.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
+    res.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
     res
   }
 }
@@ -1028,12 +1028,12 @@ impl ExternalVar {
   {
     let vt: Var = value.into();
     unsafe {
-      let rv = &self.0 as *const CBVar as *mut CBVar;
-      let sv = &vt as *const CBVar;
+      let rv = &self.0 as *const SHVar as *mut SHVar;
+      let sv = &vt as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     // ensure this flag is set
-    self.0.flags |= CBVAR_FLAGS_EXTERNAL as u16;
+    self.0.flags |= SHVAR_FLAGS_EXTERNAL as u16;
   }
 }
 
@@ -1041,21 +1041,21 @@ impl Drop for ExternalVar {
   #[inline(always)]
   fn drop(&mut self) {
     unsafe {
-      let rv = &self.0 as *const CBVar as *mut CBVar;
+      let rv = &self.0 as *const SHVar as *mut SHVar;
       (*Core).destroyVar.unwrap()(rv);
     }
   }
 }
 
 macro_rules! var_from {
-  ($type:ident, $varfield:ident, $cbtype:expr) => {
+  ($type:ident, $varfield:ident, $shtype:expr) => {
     impl From<$type> for Var {
       #[inline(always)]
       fn from(v: $type) -> Self {
-        CBVar {
-          valueType: $cbtype,
-          payload: CBVarPayload {
-            __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { $varfield: v },
+        SHVar {
+          valueType: $shtype,
+          payload: SHVarPayload {
+            __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { $varfield: v },
           },
           ..Default::default()
         }
@@ -1065,14 +1065,14 @@ macro_rules! var_from {
 }
 
 macro_rules! var_from_into {
-  ($type:ident, $varfield:ident, $cbtype:expr) => {
+  ($type:ident, $varfield:ident, $shtype:expr) => {
     impl From<$type> for Var {
       #[inline(always)]
       fn from(v: $type) -> Self {
-        CBVar {
-          valueType: $cbtype,
-          payload: CBVarPayload {
-            __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+        SHVar {
+          valueType: $shtype,
+          payload: SHVarPayload {
+            __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
               $varfield: v.into(),
             },
           },
@@ -1084,16 +1084,16 @@ macro_rules! var_from_into {
 }
 
 macro_rules! var_try_from {
-  ($type:ident, $varfield:ident, $cbtype:expr) => {
+  ($type:ident, $varfield:ident, $shtype:expr) => {
     impl TryFrom<$type> for Var {
       type Error = &'static str;
 
       #[inline(always)]
       fn try_from(v: $type) -> Result<Self, Self::Error> {
-        Ok(CBVar {
-          valueType: $cbtype,
-          payload: CBVarPayload {
-            __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
+        Ok(SHVar {
+          valueType: $shtype,
+          payload: SHVarPayload {
+            __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
               $varfield: v
                 .try_into()
                 .map_err(|_| "Conversion failed, value out of range")?,
@@ -1106,40 +1106,40 @@ macro_rules! var_try_from {
   };
 }
 
-var_from!(bool, boolValue, CBType_Bool);
-var_from!(i64, intValue, CBType_Int);
-var_try_from!(u8, intValue, CBType_Int);
-var_try_from!(u16, intValue, CBType_Int);
-var_try_from!(u32, intValue, CBType_Int);
-var_try_from!(u128, intValue, CBType_Int);
-var_try_from!(i128, intValue, CBType_Int);
-var_from_into!(i32, intValue, CBType_Int);
-var_try_from!(usize, intValue, CBType_Int);
-var_try_from!(u64, intValue, CBType_Int);
-var_from!(f64, floatValue, CBType_Float);
-var_from_into!(f32, floatValue, CBType_Float);
+var_from!(bool, boolValue, SHType_Bool);
+var_from!(i64, intValue, SHType_Int);
+var_try_from!(u8, intValue, SHType_Int);
+var_try_from!(u16, intValue, SHType_Int);
+var_try_from!(u32, intValue, SHType_Int);
+var_try_from!(u128, intValue, SHType_Int);
+var_try_from!(i128, intValue, SHType_Int);
+var_from_into!(i32, intValue, SHType_Int);
+var_try_from!(usize, intValue, SHType_Int);
+var_try_from!(u64, intValue, SHType_Int);
+var_from!(f64, floatValue, SHType_Float);
+var_from_into!(f32, floatValue, SHType_Float);
 
-impl From<CBlockPtr> for Var {
+impl From<ShardPtr> for Var {
   #[inline(always)]
-  fn from(v: CBlockPtr) -> Self {
-    CBVar {
-      valueType: CBType_String,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { blockValue: v },
+  fn from(v: ShardPtr) -> Self {
+    SHVar {
+      valueType: SHType_String,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { shardValue: v },
       },
       ..Default::default()
     }
   }
 }
 
-impl From<CBString> for Var {
+impl From<SHString> for Var {
   #[inline(always)]
-  fn from(v: CBString) -> Self {
-    CBVar {
-      valueType: CBType_String,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+  fn from(v: SHString) -> Self {
+    SHVar {
+      valueType: SHType_String,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
             stringValue: v,
             stringLen: 0,
             stringCapacity: 0,
@@ -1170,11 +1170,11 @@ impl<'a> From<&'a str> for Var {
     } else {
       core::ptr::null()
     };
-    CBVar {
-      valueType: CBType_String,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+    SHVar {
+      valueType: SHType_String,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
             stringValue: p as *const std::os::raw::c_char,
             stringLen: len as u32,
             stringCapacity: 0,
@@ -1189,11 +1189,11 @@ impl<'a> From<&'a str> for Var {
 impl From<&CStr> for Var {
   #[inline(always)]
   fn from(v: &CStr) -> Self {
-    CBVar {
-      valueType: CBType_String,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+    SHVar {
+      valueType: SHType_String,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
             stringValue: v.as_ptr(),
             stringLen: 0,
             stringCapacity: 0,
@@ -1208,8 +1208,8 @@ impl From<&CStr> for Var {
 impl From<(i64, i64)> for Var {
   #[inline(always)]
   fn from(v: (i64, i64)) -> Self {
-    let mut res = CBVar {
-      valueType: CBType_Int2,
+    let mut res = SHVar {
+      valueType: SHType_Int2,
       ..Default::default()
     };
     unsafe {
@@ -1223,8 +1223,8 @@ impl From<(i64, i64)> for Var {
 impl From<(f64, f64)> for Var {
   #[inline(always)]
   fn from(v: (f64, f64)) -> Self {
-    let mut res = CBVar {
-      valueType: CBType_Float2,
+    let mut res = SHVar {
+      valueType: SHType_Float2,
       ..Default::default()
     };
     unsafe {
@@ -1238,8 +1238,8 @@ impl From<(f64, f64)> for Var {
 impl From<(f32, f32, f32)> for Var {
   #[inline(always)]
   fn from(v: (f32, f32, f32)) -> Self {
-    let mut res = CBVar {
-      valueType: CBType_Float3,
+    let mut res = SHVar {
+      valueType: SHType_Float3,
       ..Default::default()
     };
     unsafe {
@@ -1254,8 +1254,8 @@ impl From<(f32, f32, f32)> for Var {
 impl From<(f32, f32, f32, f32)> for Var {
   #[inline(always)]
   fn from(v: (f32, f32, f32, f32)) -> Self {
-    let mut res = CBVar {
-      valueType: CBType_Float4,
+    let mut res = SHVar {
+      valueType: SHType_Float4,
       ..Default::default()
     };
     unsafe {
@@ -1271,11 +1271,11 @@ impl From<(f32, f32, f32, f32)> for Var {
 impl From<&CString> for Var {
   #[inline(always)]
   fn from(v: &CString) -> Self {
-    CBVar {
-      valueType: CBType_String,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_2: CBVarPayload__bindgen_ty_1__bindgen_ty_2 {
+    SHVar {
+      valueType: SHType_String,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
             stringValue: v.as_ptr(),
             stringLen: v.as_bytes().len() as u32,
             stringCapacity: 0,
@@ -1301,8 +1301,8 @@ impl From<Option<&CString>> for Var {
 impl From<()> for Var {
   #[inline(always)]
   fn from(_: ()) -> Self {
-    CBVar {
-      valueType: CBType_None,
+    SHVar {
+      valueType: SHType_None,
       ..Default::default()
     }
   }
@@ -1311,12 +1311,12 @@ impl From<()> for Var {
 impl From<&Vec<Var>> for Var {
   #[inline(always)]
   fn from(vec: &Vec<Var>) -> Self {
-    CBVar {
-      valueType: CBType_Seq,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          seqValue: CBSeq {
-            elements: vec.as_ptr() as *mut CBVar,
+    SHVar {
+      valueType: SHType_Seq,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          seqValue: SHSeq {
+            elements: vec.as_ptr() as *mut SHVar,
             len: vec.len() as u32,
             cap: 0,
           },
@@ -1330,12 +1330,12 @@ impl From<&Vec<Var>> for Var {
 impl From<&Vec<ClonedVar>> for Var {
   #[inline(always)]
   fn from(vec: &Vec<ClonedVar>) -> Self {
-    CBVar {
-      valueType: CBType_Seq,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          seqValue: CBSeq {
-            elements: vec.as_ptr() as *mut CBVar,
+    SHVar {
+      valueType: SHType_Seq,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          seqValue: SHSeq {
+            elements: vec.as_ptr() as *mut SHVar,
             len: vec.len() as u32,
             cap: 0,
           },
@@ -1349,12 +1349,12 @@ impl From<&Vec<ClonedVar>> for Var {
 impl From<&[Var]> for Var {
   #[inline(always)]
   fn from(vec: &[Var]) -> Self {
-    CBVar {
-      valueType: CBType_Seq,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          seqValue: CBSeq {
-            elements: vec.as_ptr() as *mut CBVar,
+    SHVar {
+      valueType: SHType_Seq,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          seqValue: SHSeq {
+            elements: vec.as_ptr() as *mut SHVar,
             len: vec.len() as u32,
             cap: 0,
           },
@@ -1368,11 +1368,11 @@ impl From<&[Var]> for Var {
 impl From<&[u8]> for Var {
   #[inline(always)]
   fn from(vec: &[u8]) -> Self {
-    CBVar {
-      valueType: CBType_Bytes,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_4: CBVarPayload__bindgen_ty_1__bindgen_ty_4 {
+    SHVar {
+      valueType: SHType_Bytes,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_4: SHVarPayload__bindgen_ty_1__bindgen_ty_4 {
             bytesValue: vec.as_ptr() as *mut u8,
             bytesSize: vec.len() as u32,
             bytesCapacity: 0,
@@ -1387,18 +1387,18 @@ impl From<&[u8]> for Var {
 impl Var {
   pub fn context_variable(name: &'static str) -> Var {
     let mut v: Var = name.into();
-    v.valueType = CBType_ContextVar;
+    v.valueType = SHType_ContextVar;
     v
   }
 
   pub fn new_object<T>(obj: &Rc<T>, info: &Type) -> Var {
     unsafe {
       Var {
-        valueType: CBType_Object,
-        payload: CBVarPayload {
-          __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-            __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
-              objectValue: obj as *const Rc<T> as *mut Rc<T> as CBPointer,
+        valueType: SHType_Object,
+        payload: SHVarPayload {
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+            __bindgen_anon_1: SHVarPayload__bindgen_ty_1__bindgen_ty_1 {
+              objectValue: obj as *const Rc<T> as *mut Rc<T> as SHPointer,
               objectVendorId: info.details.object.vendorId,
               objectTypeId: info.details.object.typeId,
             },
@@ -1411,11 +1411,11 @@ impl Var {
 
   pub unsafe fn new_object_from_ptr<T>(obj: *const T, info: &Type) -> Var {
     Var {
-      valueType: CBType_Object,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
-            objectValue: obj as *mut T as CBPointer,
+      valueType: SHType_Object,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1__bindgen_ty_1 {
+            objectValue: obj as *mut T as SHPointer,
             objectVendorId: info.details.object.vendorId,
             objectTypeId: info.details.object.typeId,
           },
@@ -1425,12 +1425,12 @@ impl Var {
     }
   }
 
-  pub unsafe fn new_object_from_raw_ptr(obj: CBPointer, info: &Type) -> Var {
+  pub unsafe fn new_object_from_raw_ptr(obj: SHPointer, info: &Type) -> Var {
     Var {
-      valueType: CBType_Object,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          __bindgen_anon_1: CBVarPayload__bindgen_ty_1__bindgen_ty_1 {
+      valueType: SHType_Object,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1__bindgen_ty_1 {
             objectValue: obj,
             objectVendorId: info.details.object.vendorId,
             objectTypeId: info.details.object.typeId,
@@ -1445,7 +1445,7 @@ impl Var {
     // use this to store the smart pointer in order to keep it alive
     // this will not allow mutable references btw
     unsafe {
-      if var.valueType != CBType_Object
+      if var.valueType != SHType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
           != info.details.object.vendorId
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
@@ -1459,7 +1459,7 @@ impl Var {
     }
   }
 
-  // This pattern is often used in blocks storing Rcs of Vars
+  // This pattern is often used in shards storing Rcs of Vars
   pub fn get_mut_from_clone<'a, T>(c: &Option<Rc<Option<T>>>) -> Result<&'a mut T, &'a str> {
     let c = c.as_ref().ok_or("No Var reference found")?;
     let c = Rc::as_ptr(c) as *mut Option<T>;
@@ -1470,7 +1470,7 @@ impl Var {
   pub fn from_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
     // used to use the object once, when it comes from a simple pointer
     unsafe {
-      if var.valueType != CBType_Object
+      if var.valueType != SHType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
           != info.details.object.vendorId
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
@@ -1488,7 +1488,7 @@ impl Var {
   pub fn from_object_ptr_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
     // used to use the object once, when it comes from a Rc
     unsafe {
-      if var.valueType != CBType_Object
+      if var.valueType != SHType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
           != info.details.object.vendorId
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
@@ -1504,7 +1504,7 @@ impl Var {
   pub fn from_object_ptr_ref<T>(var: Var, info: &Type) -> Result<&T, &str> {
     // used to use the object once, when it comes from a Rc
     unsafe {
-      if var.valueType != CBType_Object
+      if var.valueType != SHType_Object
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
           != info.details.object.vendorId
         || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
@@ -1526,19 +1526,19 @@ impl Var {
   }
 
   pub fn is_seq(&self) -> bool {
-    self.valueType == CBType_Seq
+    self.valueType == SHType_Seq
   }
 
   pub fn is_none(&self) -> bool {
-    self.valueType == CBType_None
+    self.valueType == SHType_None
   }
 
   pub fn is_string(&self) -> bool {
-    self.valueType == CBType_String
+    self.valueType == SHType_String
   }
 
   pub fn is_path(&self) -> bool {
-    self.valueType == CBType_Path
+    self.valueType == SHType_Path
   }
 
   pub fn as_ref(&self) -> &Self {
@@ -1546,11 +1546,11 @@ impl Var {
   }
 
   pub fn is_context_var(&self) -> bool {
-    self.valueType == CBType_ContextVar
+    self.valueType == SHType_ContextVar
   }
 
   pub fn enum_value(&self) -> Result<i32, &'static str> {
-    if self.valueType != CBType_Enum {
+    if self.valueType != SHType_Enum {
       Err("Variable is not an enum")
     } else {
       unsafe { Ok(self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue) }
@@ -1558,14 +1558,14 @@ impl Var {
   }
 }
 
-impl TryFrom<&Var> for CBString {
+impl TryFrom<&Var> for SHString {
   type Error = &'static str;
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String
-      && var.valueType != CBType_Path
-      && var.valueType != CBType_ContextVar
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
     {
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
@@ -1579,9 +1579,9 @@ impl TryFrom<&Var> for std::string::String {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String
-      && var.valueType != CBType_Path
-      && var.valueType != CBType_ContextVar
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
     {
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
@@ -1598,9 +1598,9 @@ impl TryFrom<&Var> for CString {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String
-      && var.valueType != CBType_Path
-      && var.valueType != CBType_ContextVar
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
     {
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
@@ -1618,9 +1618,9 @@ impl TryFrom<&Var> for &CStr {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String
-      && var.valueType != CBType_Path
-      && var.valueType != CBType_ContextVar
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
     {
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
@@ -1638,10 +1638,10 @@ impl TryFrom<&Var> for Option<CString> {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String
-      && var.valueType != CBType_Path
-      && var.valueType != CBType_ContextVar
-      && var.valueType != CBType_None
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
+      && var.valueType != SHType_None
     {
       Err("Expected None, String, Path or ContextVar variable, but casting failed.")
     } else if var.is_none() {
@@ -1659,7 +1659,7 @@ impl TryFrom<&Var> for &[u8] {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Bytes {
+    if var.valueType != SHType_Bytes {
       Err("Expected Bytes, but casting failed.")
     } else {
       unsafe {
@@ -1677,9 +1677,9 @@ impl TryFrom<&Var> for &str {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_String
-      && var.valueType != CBType_Path
-      && var.valueType != CBType_ContextVar
+    if var.valueType != SHType_String
+      && var.valueType != SHType_Path
+      && var.valueType != SHType_ContextVar
     {
       Err("Expected None, String, Path or ContextVar variable, but casting failed.")
     } else {
@@ -1698,7 +1698,7 @@ impl TryFrom<&Var> for i64 {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Int {
+    if var.valueType != SHType_Int {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
@@ -1711,7 +1711,7 @@ impl TryFrom<&Var> for u64 {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Int {
+    if var.valueType != SHType_Int {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
@@ -1732,7 +1732,7 @@ impl TryFrom<&Var> for (i64, i64) {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Int2 {
+    if var.valueType != SHType_Int2 {
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -1750,7 +1750,7 @@ impl TryFrom<&Var> for usize {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Int {
+    if var.valueType != SHType_Int {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
@@ -1770,7 +1770,7 @@ impl TryFrom<&Var> for f64 {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Float {
+    if var.valueType != SHType_Float {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.floatValue) }
@@ -1783,7 +1783,7 @@ impl TryFrom<&Var> for f32 {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Float {
+    if var.valueType != SHType_Float {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.floatValue as f32) }
@@ -1796,7 +1796,7 @@ impl TryFrom<&Var> for (f32, f32, f32) {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Float3 {
+    if var.valueType != SHType_Float3 {
       Err("Expected Float3 variable, but casting failed.")
     } else {
       unsafe {
@@ -1815,7 +1815,7 @@ impl TryFrom<&Var> for (f32, f32, f32, f32) {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Float4 {
+    if var.valueType != SHType_Float4 {
       Err("Expected Float4 variable, but casting failed.")
     } else {
       unsafe {
@@ -1835,7 +1835,7 @@ impl TryFrom<&Var> for bool {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Bool {
+    if var.valueType != SHType_Bool {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
@@ -1848,7 +1848,7 @@ impl TryFrom<&Var> for &[Var] {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Seq {
+    if var.valueType != SHType_Seq {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe {
@@ -1866,7 +1866,7 @@ impl TryFrom<Var> for &[Var] {
 
   #[inline(always)]
   fn try_from(var: Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Seq {
+    if var.valueType != SHType_Seq {
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe {
@@ -1879,27 +1879,27 @@ impl TryFrom<Var> for &[Var] {
   }
 }
 
-impl TryFrom<Var> for ChainRef {
+impl TryFrom<Var> for WireRef {
   type Error = &'static str;
 
   #[inline(always)]
   fn try_from(var: Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Chain {
-      Err("Expected Chain variable, but casting failed.")
+    if var.valueType != SHType_Wire {
+      Err("Expected Wire variable, but casting failed.")
     } else {
-      unsafe { Ok(ChainRef(var.payload.__bindgen_anon_1.chainValue)) }
+      unsafe { Ok(WireRef(var.payload.__bindgen_anon_1.wireValue)) }
     }
   }
 }
 
-impl From<ChainRef> for Var {
+impl From<WireRef> for Var {
   #[inline(always)]
-  fn from(chain: ChainRef) -> Self {
+  fn from(wire: WireRef) -> Self {
     Var {
-      valueType: CBType_Chain,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 {
-          chainValue: chain.0,
+      valueType: SHType_Wire,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          wireValue: wire.0,
         },
       },
       ..Default::default()
@@ -1907,28 +1907,28 @@ impl From<ChainRef> for Var {
   }
 }
 
-impl TryFrom<Var> for BlockRef {
+impl TryFrom<Var> for ShardRef {
   type Error = &'static str;
 
   #[inline(always)]
   fn try_from(var: Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Block {
-      Err("Expected Block variable, but casting failed.")
+    if var.valueType != SHType_ShardRef {
+      Err("Expected Shard variable, but casting failed.")
     } else {
-      unsafe { Ok(BlockRef(var.payload.__bindgen_anon_1.blockValue)) }
+      unsafe { Ok(ShardRef(var.payload.__bindgen_anon_1.shardValue)) }
     }
   }
 }
 
-impl TryFrom<&Var> for BlockRef {
+impl TryFrom<&Var> for ShardRef {
   type Error = &'static str;
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Block {
-      Err("Expected Block variable, but casting failed.")
+    if var.valueType != SHType_ShardRef {
+      Err("Expected Shard variable, but casting failed.")
     } else {
-      unsafe { Ok(BlockRef(var.payload.__bindgen_anon_1.blockValue)) }
+      unsafe { Ok(ShardRef(var.payload.__bindgen_anon_1.shardValue)) }
     }
   }
 }
@@ -1955,7 +1955,7 @@ impl ParamVar {
 
   pub fn cleanup(&mut self) {
     unsafe {
-      if self.parameter.0.valueType == CBType_ContextVar {
+      if self.parameter.0.valueType == SHType_ContextVar {
         (*Core).releaseVariable.unwrap()(self.pointee);
       }
       self.pointee = std::ptr::null_mut();
@@ -1963,10 +1963,10 @@ impl ParamVar {
   }
 
   pub fn warmup(&mut self, context: &Context) {
-    if self.parameter.0.valueType == CBType_ContextVar {
+    if self.parameter.0.valueType == SHType_ContextVar {
       assert_eq!(self.pointee, std::ptr::null_mut());
       unsafe {
-        let ctx = context as *const CBContext as *mut CBContext;
+        let ctx = context as *const SHContext as *mut SHContext;
         self.pointee = (*Core).referenceVariable.unwrap()(
           ctx,
           self
@@ -1990,7 +1990,7 @@ impl ParamVar {
     unsafe {
       let rc = (*self.pointee).refcount;
       (*self.pointee) = value;
-      (*self.pointee).flags = value.flags | (CBVAR_FLAGS_REF_COUNTED as u16);
+      (*self.pointee).flags = value.flags | (SHVAR_FLAGS_REF_COUNTED as u16);
       (*self.pointee).refcount = rc;
     }
   }
@@ -2018,12 +2018,12 @@ impl ParamVar {
   }
 
   pub fn is_variable(&self) -> bool {
-    self.parameter.0.valueType == CBType_ContextVar
+    self.parameter.0.valueType == SHType_ContextVar
   }
 
   pub fn set_name(&mut self, name: &str) {
     self.parameter = name.into();
-    self.parameter.0.valueType = CBType_ContextVar;
+    self.parameter.0.valueType = SHType_ContextVar;
   }
 
   pub fn get_name(&self) -> *const std::os::raw::c_char {
@@ -2043,11 +2043,11 @@ impl Drop for ParamVar {
   }
 }
 
-// Seq / CBSeq
+// Seq / SHSeq
 
 #[derive(Clone)]
 pub struct Seq {
-  s: CBSeq,
+  s: SHSeq,
   owned: bool,
 }
 
@@ -2055,7 +2055,7 @@ impl Drop for Seq {
   fn drop(&mut self) {
     if self.owned {
       unsafe {
-        (*Core).seqFree.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
+        (*Core).seqFree.unwrap()(&self.s as *const SHSeq as *mut SHSeq);
       }
     }
   }
@@ -2087,7 +2087,7 @@ impl IntoIterator for Seq {
   type IntoIter = SeqIterator;
 }
 
-impl Index<usize> for CBSeq {
+impl Index<usize> for SHSeq {
   #[inline(always)]
   fn index(&self, idx: usize) -> &Self::Output {
     let idx_u32: u32 = idx.try_into().unwrap();
@@ -2108,7 +2108,7 @@ impl Index<usize> for Seq {
   type Output = Var;
 }
 
-impl IndexMut<usize> for CBSeq {
+impl IndexMut<usize> for SHSeq {
   #[inline(always)]
   fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
     let idx_u32: u32 = idx.try_into().unwrap();
@@ -2130,7 +2130,7 @@ impl IndexMut<usize> for Seq {
 impl Seq {
   pub const fn new() -> Seq {
     Seq {
-      s: CBSeq {
+      s: SHSeq {
         elements: core::ptr::null_mut(),
         len: 0,
         cap: 0,
@@ -2142,28 +2142,28 @@ impl Seq {
   pub fn set_len(&mut self, len: usize) {
     unsafe {
       (*Core).seqResize.unwrap()(
-        &self.s as *const CBSeq as *mut CBSeq,
+        &self.s as *const SHSeq as *mut SHSeq,
         len.try_into().unwrap(),
       );
     }
   }
 
   pub fn push(&mut self, value: Var) {
-    // we need to clone to own the memory chainblocks side
-    let mut tmp = CBVar::default();
+    // we need to clone to own the memory shards side
+    let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
     unsafe {
-      (*Core).seqPush.unwrap()(&self.s as *const CBSeq as *mut CBSeq, &tmp);
+      (*Core).seqPush.unwrap()(&self.s as *const SHSeq as *mut SHSeq, &tmp);
     }
   }
 
   pub fn insert(&mut self, index: usize, value: Var) {
-    // we need to clone to own the memory chainblocks side
-    let mut tmp = CBVar::default();
+    // we need to clone to own the memory shards side
+    let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
     unsafe {
       (*Core).seqInsert.unwrap()(
-        &self.s as *const CBSeq as *mut CBSeq,
+        &self.s as *const SHSeq as *mut SHSeq,
         index.try_into().unwrap(),
         &tmp,
       );
@@ -2181,7 +2181,7 @@ impl Seq {
   pub fn pop(&mut self) -> Option<ClonedVar> {
     unsafe {
       if !self.is_empty() {
-        let v = (*Core).seqPop.unwrap()(&self.s as *const CBSeq as *mut CBSeq);
+        let v = (*Core).seqPop.unwrap()(&self.s as *const SHSeq as *mut SHSeq);
         Some(transmute(v))
       } else {
         None
@@ -2191,7 +2191,7 @@ impl Seq {
 
   pub fn clear(&mut self) {
     unsafe {
-      (*Core).seqResize.unwrap()(&self.s as *const CBSeq as *mut CBSeq, 0);
+      (*Core).seqResize.unwrap()(&self.s as *const SHSeq as *mut SHSeq, 0);
     }
   }
 
@@ -2219,10 +2219,10 @@ impl AsRef<Seq> for Seq {
 impl From<&Seq> for Var {
   #[inline(always)]
   fn from(s: &Seq) -> Self {
-    CBVar {
-      valueType: CBType_Seq,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { seqValue: s.s },
+    SHVar {
+      valueType: SHType_Seq,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { seqValue: s.s },
       },
       ..Default::default()
     }
@@ -2235,11 +2235,11 @@ impl TryFrom<&mut Var> for Seq {
   #[inline(always)]
   fn try_from(v: &mut Var) -> Result<Self, Self::Error> {
     // in this case allow None type, we might be a new variable from a Table or Seq
-    if v.valueType == CBType_None {
-      v.valueType = CBType_Seq;
+    if v.valueType == SHType_None {
+      v.valueType = SHType_Seq;
     }
 
-    if v.valueType != CBType_Seq {
+    if v.valueType != SHType_Seq {
       Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
@@ -2257,7 +2257,7 @@ impl TryFrom<&Var> for Seq {
 
   #[inline(always)]
   fn try_from(v: &Var) -> Result<Self, Self::Error> {
-    if v.valueType != CBType_Seq {
+    if v.valueType != SHType_Seq {
       Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
@@ -2275,7 +2275,7 @@ impl TryFrom<Var> for Seq {
 
   #[inline(always)]
   fn try_from(v: Var) -> Result<Self, Self::Error> {
-    if v.valueType != CBType_Seq {
+    if v.valueType != SHType_Seq {
       Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
@@ -2288,11 +2288,11 @@ impl TryFrom<Var> for Seq {
   }
 }
 
-// Table / CBTable
+// Table / SHTable
 
 #[derive(Clone)]
 pub struct Table {
-  pub t: CBTable,
+  pub t: SHTable,
   owned: bool,
 }
 
@@ -2308,9 +2308,9 @@ impl Drop for Table {
 
 unsafe extern "C" fn table_foreach_callback(
   key: *const ::std::os::raw::c_char,
-  value: *mut CBVar,
+  value: *mut SHVar,
   userData: *mut ::std::os::raw::c_void,
-) -> CBBool {
+) -> SHBool {
   let ptrs = userData as *mut (&mut Vec<&str>, &mut Vec<Var>);
   let cstr = CStr::from_ptr(key);
   (*ptrs).0.push(cstr.to_str().unwrap());
@@ -2430,16 +2430,16 @@ impl Table {
 }
 
 pub struct TableIterator {
-  table: CBTable,
-  citer: CBTableIterator,
+  table: SHTable,
+  citer: SHTableIterator,
 }
 
 impl Iterator for TableIterator {
   type Item = (String, Var);
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
-      let k: CBString = core::ptr::null();
-      let v: CBVar = CBVar::default();
+      let k: SHString = core::ptr::null();
+      let v: SHVar = SHVar::default();
       let hasValue = (*(self.table.api)).tableNext.unwrap()(
         self.table,
         &self.citer as *const _ as *mut _,
@@ -2455,8 +2455,8 @@ impl Iterator for TableIterator {
   }
 }
 
-impl From<CBTable> for Table {
-  fn from(t: CBTable) -> Self {
+impl From<SHTable> for Table {
+  fn from(t: SHTable) -> Self {
     Table { t, owned: false }
   }
 }
@@ -2466,7 +2466,7 @@ impl TryFrom<&Var> for Table {
 
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != CBType_Table {
+    if var.valueType != SHType_Table {
       Err("Expected Table, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.tableValue.into()) }
@@ -2476,10 +2476,10 @@ impl TryFrom<&Var> for Table {
 
 impl From<&Table> for Var {
   fn from(t: &Table) -> Self {
-    CBVar {
-      valueType: CBType_Table,
-      payload: CBVarPayload {
-        __bindgen_anon_1: CBVarPayload__bindgen_ty_1 { tableValue: t.t },
+    SHVar {
+      valueType: SHType_Table,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { tableValue: t.t },
       },
       ..Default::default()
     }
@@ -2545,7 +2545,7 @@ lazy_static! {
   pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&FLOAT4X2_TYPES);
   pub static ref ENUM_TYPE: Type = {
     let mut t = common_type::enumeration;
-    t.details.enumeration = CBTypeInfo_Details_Enum {
+    t.details.enumeration = SHTypeInfo_Details_Enum {
       vendorId: FRAG_CC, // 'frag'
       typeId: 0x74797065, // 'type'
     };

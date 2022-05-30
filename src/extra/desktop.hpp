@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_EXTRA_DESKTOP
-#define CB_EXTRA_DESKTOP
+#ifndef SH_EXTRA_DESKTOP
+#define SH_EXTRA_DESKTOP
 
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "runtime.hpp"
 #include <cstdlib>
 
@@ -12,8 +12,8 @@ namespace Desktop {
 constexpr uint32_t windowCC = 'hwnd';
 
 struct Globals {
-  static inline chainblocks::Type windowType{{CBType::Object, {.object = {.vendorId = chainblocks::CoreCC, .typeId = windowCC}}}};
-  static inline chainblocks::Types windowVarOrNone{{windowType, chainblocks::CoreInfo::NoneType}};
+  static inline shards::Type windowType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = windowCC}}}};
+  static inline shards::Types windowVarOrNone{{windowType, shards::CoreInfo::NoneType}};
 };
 
 template <typename T> class WindowBase {
@@ -24,11 +24,11 @@ public:
     _window = WindowDefault();
   }
 
-  static CBTypesInfo inputTypes() { return chainblocks::CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
 
-  static CBParametersInfo parameters() { return CBParametersInfo(windowParams); }
+  static SHParametersInfo parameters() { return SHParametersInfo(windowParams); }
 
-  virtual void setParam(int index, const CBVar &value) {
+  virtual void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _winName = value.payload.stringValue;
@@ -41,13 +41,13 @@ public:
     }
   }
 
-  CBVar getParam(int index) {
-    auto res = CBVar();
+  SHVar getParam(int index) {
+    auto res = SHVar();
     switch (index) {
     case 0:
-      return chainblocks::Var(_winName);
+      return shards::Var(_winName);
     case 1:
-      return chainblocks::Var(_winClass);
+      return shards::Var(_winClass);
     default:
       break;
     }
@@ -55,10 +55,10 @@ public:
   }
 
 protected:
-  static inline chainblocks::ParamsInfo windowParams = chainblocks::ParamsInfo(
-      chainblocks::ParamsInfo::Param("Title", CBCCSTR("The title of the window to look for."), chainblocks::CoreInfo::StringType),
-      chainblocks::ParamsInfo::Param("Class", CBCCSTR("An optional and platform dependent window class."),
-                                     chainblocks::CoreInfo::StringType));
+  static inline shards::ParamsInfo windowParams = shards::ParamsInfo(
+      shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType),
+      shards::ParamsInfo::Param("Class", SHCCSTR("An optional and platform dependent window class."),
+                                     shards::CoreInfo::StringType));
 
   static T WindowDefault();
   std::string _winName;
@@ -67,36 +67,36 @@ protected:
 };
 
 struct ActiveBase {
-  static CBTypesInfo inputTypes() { return Globals::windowType; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::BoolType; }
+  static SHTypesInfo inputTypes() { return Globals::windowType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::BoolType; }
 };
 
 struct PIDBase {
-  static CBTypesInfo inputTypes() { return Globals::windowType; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::IntType; }
+  static SHTypesInfo inputTypes() { return Globals::windowType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::IntType; }
 };
 
 struct WinOpBase {
-  static CBTypesInfo inputTypes() { return Globals::windowType; }
-  static CBTypesInfo outputTypes() { return Globals::windowType; }
+  static SHTypesInfo inputTypes() { return Globals::windowType; }
+  static SHTypesInfo outputTypes() { return Globals::windowType; }
 };
 
 struct SizeBase {
-  static CBTypesInfo inputTypes() { return Globals::windowType; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return Globals::windowType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Int2Type; }
 };
 
 struct ResizeWindowBase : public WinOpBase {
-  static inline chainblocks::ParamsInfo sizeParams = chainblocks::ParamsInfo(
-      chainblocks::ParamsInfo::Param("Width", CBCCSTR("The desired width."), chainblocks::CoreInfo::IntType),
-      chainblocks::ParamsInfo::Param("Height", CBCCSTR("The desired height."), chainblocks::CoreInfo::IntType));
+  static inline shards::ParamsInfo sizeParams = shards::ParamsInfo(
+      shards::ParamsInfo::Param("Width", SHCCSTR("The desired width."), shards::CoreInfo::IntType),
+      shards::ParamsInfo::Param("Height", SHCCSTR("The desired height."), shards::CoreInfo::IntType));
 
   int _width;
   int _height;
 
-  static CBParametersInfo parameters() { return CBParametersInfo(sizeParams); }
+  static SHParametersInfo parameters() { return SHParametersInfo(sizeParams); }
 
-  virtual void setParam(int index, const CBVar &value) {
+  virtual void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _width = value.payload.intValue;
@@ -109,13 +109,13 @@ struct ResizeWindowBase : public WinOpBase {
     }
   }
 
-  CBVar getParam(int index) {
-    auto res = CBVar();
+  SHVar getParam(int index) {
+    auto res = SHVar();
     switch (index) {
     case 0:
-      return chainblocks::Var(_width);
+      return shards::Var(_width);
     case 1:
-      return chainblocks::Var(_height);
+      return shards::Var(_height);
     default:
       break;
     }
@@ -124,16 +124,16 @@ struct ResizeWindowBase : public WinOpBase {
 };
 
 struct MoveWindowBase : public WinOpBase {
-  static inline chainblocks::ParamsInfo posParams = chainblocks::ParamsInfo(
-      chainblocks::ParamsInfo::Param("X", CBCCSTR("The desired horizontal coordinates."), chainblocks::CoreInfo::IntType),
-      chainblocks::ParamsInfo::Param("Y", CBCCSTR("The desired vertical coordinates."), chainblocks::CoreInfo::IntType));
+  static inline shards::ParamsInfo posParams = shards::ParamsInfo(
+      shards::ParamsInfo::Param("X", SHCCSTR("The desired horizontal coordinates."), shards::CoreInfo::IntType),
+      shards::ParamsInfo::Param("Y", SHCCSTR("The desired vertical coordinates."), shards::CoreInfo::IntType));
 
   int _x;
   int _y;
 
-  static CBParametersInfo parameters() { return CBParametersInfo(posParams); }
+  static SHParametersInfo parameters() { return SHParametersInfo(posParams); }
 
-  virtual void setParam(int index, const CBVar &value) {
+  virtual void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _x = value.payload.intValue;
@@ -146,13 +146,13 @@ struct MoveWindowBase : public WinOpBase {
     }
   }
 
-  CBVar getParam(int index) {
-    auto res = CBVar();
+  SHVar getParam(int index) {
+    auto res = SHVar();
     switch (index) {
     case 0:
-      return chainblocks::Var(_x);
+      return shards::Var(_x);
     case 1:
-      return chainblocks::Var(_y);
+      return shards::Var(_y);
     default:
       break;
     }
@@ -161,114 +161,114 @@ struct MoveWindowBase : public WinOpBase {
 };
 
 struct SetTitleBase : public WinOpBase {
-  static inline chainblocks::ParamsInfo windowParams = chainblocks::ParamsInfo(chainblocks::ParamsInfo::Param(
-      "Title", CBCCSTR("The title of the window to look for."), chainblocks::CoreInfo::StringType));
+  static inline shards::ParamsInfo windowParams = shards::ParamsInfo(shards::ParamsInfo::Param(
+      "Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType));
 
   std::string _title;
 
-  static CBParametersInfo parameters() { return CBParametersInfo(windowParams); }
+  static SHParametersInfo parameters() { return SHParametersInfo(windowParams); }
 
-  CBVar getParam(int index) { return chainblocks::Var(_title); }
+  SHVar getParam(int index) { return shards::Var(_title); }
 
-  virtual void setParam(int index, const CBVar &value) { _title = value.payload.stringValue; }
+  virtual void setParam(int index, const SHVar &value) { _title = value.payload.stringValue; }
 };
 
 struct WaitKeyEventBase {
-  static CBTypesInfo inputTypes() { return chainblocks::CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Int2Type; }
 
-  static CBOptionalString help() {
-    return CBCCSTR("### Pauses the chain and waits for keyboard events.\n#### The output "
-                   "of this block will be a Int2.\n * The first integer will be 0 for Key "
+  static SHOptionalString help() {
+    return SHCCSTR("### Pauses the wire and waits for keyboard events.\n#### The output "
+                   "of this shard will be a Int2.\n * The first integer will be 0 for Key "
                    "down/push events and 1 for Key up/release events.\n * The second "
                    "integer will the scancode of the key.\n");
   }
 };
 
 struct SendKeyEventBase {
-  static inline chainblocks::ParamsInfo params =
-      chainblocks::ParamsInfo(chainblocks::ParamsInfo::Param("Window",
-                                                             CBCCSTR("None or a window variable if we wish to send "
+  static inline shards::ParamsInfo params =
+      shards::ParamsInfo(shards::ParamsInfo::Param("Window",
+                                                             SHCCSTR("None or a window variable if we wish to send "
                                                                      "the event only to a specific target window."),
                                                              Globals::windowVarOrNone));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return chainblocks::CoreInfo::Int2Type; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::Int2Type; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Int2Type; }
 
-  static CBOptionalString help() {
-    return CBCCSTR("### Sends the input key event.\n#### The input of this "
-                   "block will be a Int2.\n * The first integer will be 0 for "
+  static SHOptionalString help() {
+    return SHCCSTR("### Sends the input key event.\n#### The input of this "
+                   "shard will be a Int2.\n * The first integer will be 0 for "
                    "Key down/push events and 1 for Key up/release events.\n * "
                    "The second integer will the scancode of the key.\n");
   }
 
   std::string _windowVarName;
-  chainblocks::ExposedInfo _exposedInfo;
+  shards::ExposedInfo _exposedInfo;
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     if (_windowVarName.size() == 0) {
       return {};
     } else {
-      return CBExposedTypesInfo(_exposedInfo);
+      return SHExposedTypesInfo(_exposedInfo);
     }
   }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     if (value.valueType == None) {
       _windowVarName.clear();
     } else {
       _windowVarName = value.payload.stringValue;
-      _exposedInfo = chainblocks::ExposedInfo(chainblocks::ExposedInfo::Variable(
-          _windowVarName.c_str(), CBCCSTR("The window to send events to."), Globals::windowType));
+      _exposedInfo = shards::ExposedInfo(shards::ExposedInfo::Variable(
+          _windowVarName.c_str(), SHCCSTR("The window to send events to."), Globals::windowType));
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     if (_windowVarName.size() == 0) {
-      return chainblocks::Var::Empty;
+      return shards::Var::Empty;
     } else {
-      return chainblocks::Var(_windowVarName);
+      return shards::Var(_windowVarName);
     }
   }
 };
 
 struct MousePosBase {
-  chainblocks::ParamVar _window{};
-  chainblocks::ExposedInfo _consuming{};
+  shards::ParamVar _window{};
+  shards::ExposedInfo _consuming{};
 
-  static inline chainblocks::ParamsInfo params = chainblocks::ParamsInfo(chainblocks::ParamsInfo::Param(
-      "Window", CBCCSTR("None or a window variable we wish to use as relative origin."), Globals::windowVarOrNone));
+  static inline shards::ParamsInfo params = shards::ParamsInfo(shards::ParamsInfo::Param(
+      "Window", SHCCSTR("None or a window variable we wish to use as relative origin."), Globals::windowVarOrNone));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return chainblocks::CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::Int2Type; }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     if (_window.isVariable()) {
-      _consuming = chainblocks::ExposedInfo(
-          chainblocks::ExposedInfo::Variable(_window.variableName(), CBCCSTR("The window."), Globals::windowType));
-      return CBExposedTypesInfo(_consuming);
+      _consuming = shards::ExposedInfo(
+          shards::ExposedInfo::Variable(_window.variableName(), SHCCSTR("The window."), Globals::windowType));
+      return SHExposedTypesInfo(_consuming);
     } else {
       return {};
     }
   }
 
-  void setParam(int index, const CBVar &value) { _window = value; }
+  void setParam(int index, const SHVar &value) { _window = value; }
 
-  CBVar getParam(int index) { return _window; }
+  SHVar getParam(int index) { return _window; }
 
   void cleanup() { _window.cleanup(); }
-  void warmup(CBContext *context) { _window.warmup(context); }
+  void warmup(SHContext *context) { _window.warmup(context); }
 };
 
 struct LastInputBase {
   // outputs the seconds since the last input happened
-  static CBTypesInfo inputTypes() { return chainblocks::CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return chainblocks::CoreInfo::FloatType; }
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::FloatType; }
 };
 }; // namespace Desktop
 
-#endif // CB_EXTRA_DESKTOP
+#endif // SH_EXTRA_DESKTOP

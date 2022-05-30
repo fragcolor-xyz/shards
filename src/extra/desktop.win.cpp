@@ -9,7 +9,7 @@
 #include "desktop.capture.win.hpp"
 #include "desktop.hpp"
 
-using namespace chainblocks;
+using namespace shards;
 
 #ifndef NDEBUG
 #define DBG_CHECK_OFF 1
@@ -33,7 +33,7 @@ protected:
   std::vector<wchar_t> _wClass;
 
 public:
-  void setParam(int index, const CBVar &value) override {
+  void setParam(int index, const SHVar &value) override {
     WindowBase<HWND>::setParam(index, value);
 
     switch (index) {
@@ -53,9 +53,9 @@ public:
 
 class HasWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!_window || !IsWindow(_window)) {
       if (_winClass.size() > 0) {
         _window = FindWindowW(&_wClass[0], &_wTitle[0]);
@@ -70,9 +70,9 @@ public:
 
 class WaitWindow : public WindowWindows {
 public:
-  static CBTypesInfo outputTypes() { return Globals::windowType; }
+  static SHTypesInfo outputTypes() { return Globals::windowType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     while (!_window || !IsWindow(_window)) {
       if (_winClass.size() > 0) {
         _window = FindWindowW(&_wClass[0], &_wTitle[0]);
@@ -81,7 +81,7 @@ public:
       }
 
       if (!_window) {
-        CB_SUSPEND(context, 0.1);
+        SH_SUSPEND(context, 0.1);
       }
     }
 
@@ -89,7 +89,7 @@ public:
   }
 };
 
-static HWND AsHWND(const CBVar &var) {
+static HWND AsHWND(const SHVar &var) {
   if (var.valueType == Object && var.payload.objectVendorId == CoreCC && var.payload.objectTypeId == windowCC) {
     return reinterpret_cast<HWND>(var.payload.objectValue);
   }
@@ -97,7 +97,7 @@ static HWND AsHWND(const CBVar &var) {
 }
 
 struct PID : public PIDBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       DWORD pid;
@@ -110,7 +110,7 @@ struct PID : public PIDBase {
 };
 
 struct IsForeground : public ActiveBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       auto currentForeground = GetForegroundWindow();
@@ -122,7 +122,7 @@ struct IsForeground : public ActiveBase {
 };
 
 struct SetForeground : public WinOpBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       auto foreground = GetForegroundWindow();
@@ -147,7 +147,7 @@ struct SetForeground : public WinOpBase {
 };
 
 struct NotForeground : public ActiveBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       auto currentForeground = GetForegroundWindow();
@@ -159,7 +159,7 @@ struct NotForeground : public ActiveBase {
 };
 
 struct Resize : public ResizeWindowBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       RECT rect;
@@ -174,7 +174,7 @@ struct Resize : public ResizeWindowBase {
 };
 
 struct Move : public MoveWindowBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       RECT rect;
@@ -192,7 +192,7 @@ struct Move : public MoveWindowBase {
 
 struct Bounds : public SizeBase {
   // gets client size, work area
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       RECT r;
@@ -208,7 +208,7 @@ struct Bounds : public SizeBase {
 
 struct Size : public SizeBase {
   // gets window size, including OS bar
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       RECT r;
@@ -223,7 +223,7 @@ struct Size : public SizeBase {
 };
 
 struct SetBorderless : public WinOpBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       LONG lStyle = GetWindowLong(hwnd, GWL_STYLE);
@@ -241,7 +241,7 @@ struct SetBorderless : public WinOpBase {
 // TODO add Unset
 
 struct SetClickthrough : public WinOpBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       LONG lStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
@@ -260,7 +260,7 @@ struct SetClickthrough : public WinOpBase {
 };
 
 struct UnsetClickthrough : public WinOpBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       LONG lStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
@@ -276,7 +276,7 @@ struct UnsetClickthrough : public WinOpBase {
 };
 
 struct SetTopmost : public WinOpBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
@@ -288,7 +288,7 @@ struct SetTopmost : public WinOpBase {
 };
 
 struct UnsetTopmost : public WinOpBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
@@ -302,14 +302,14 @@ struct UnsetTopmost : public WinOpBase {
 struct SetTitle : public SetTitleBase {
   std::vector<wchar_t> _wTitle;
 
-  void setParam(int index, const CBVar &value) override {
+  void setParam(int index, const SHVar &value) override {
     SetTitleBase::setParam(index, value);
 
     _wTitle.resize(MultiByteToWideChar(CP_UTF8, 0, _title.c_str(), -1, 0, 0));
     MultiByteToWideChar(CP_UTF8, 0, _title.c_str(), -1, &_wTitle[0], _wTitle.size());
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto hwnd = AsHWND(input);
     if (hwnd) {
       SetWindowTextW(hwnd, &_wTitle[0]);
@@ -325,12 +325,12 @@ struct PixelBase {
   std::string variableName;
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Window", CBCCSTR("The window variable name to use as coordinate origin."), Globals::windowVarOrNone));
+      ParamsInfo::Param("Window", SHCCSTR("The window variable name to use as coordinate origin."), Globals::windowVarOrNone));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   ExposedInfo exposedInfo;
-  CBVar *windowVar = nullptr;
+  SHVar *windowVar = nullptr;
 
   void cleanup() {
     if (windowVar) {
@@ -339,21 +339,21 @@ struct PixelBase {
     }
   }
 
-  CBExposedTypesInfo requiredVariables() {
+  SHExposedTypesInfo requiredVariables() {
     if (variableName.size() == 0) {
       return {};
     } else {
-      return CBExposedTypesInfo(exposedInfo);
+      return SHExposedTypesInfo(exposedInfo);
     }
   }
 
-  virtual void setParam(int index, const CBVar &value) {
+  virtual void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       if (value.valueType == ContextVar) {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(
-            ExposedInfo::Variable(variableName.c_str(), CBCCSTR("The window to use as origin."), Globals::windowType));
+            ExposedInfo::Variable(variableName.c_str(), SHCCSTR("The window to use as origin."), Globals::windowType));
       } else {
         variableName.clear();
       }
@@ -364,15 +364,15 @@ struct PixelBase {
     }
   }
 
-  CBVar getParam(int index) {
-    auto res = CBVar();
+  SHVar getParam(int index) {
+    auto res = SHVar();
     switch (index) {
     case 0:
       if (variableName.size() == 0) {
         return Var::Empty;
       } else {
-        CBVar v{};
-        v.valueType = CBType::ContextVar;
+        SHVar v{};
+        v.valueType = SHType::ContextVar;
         v.payload.stringValue = variableName.c_str();
         return v;
       }
@@ -400,7 +400,7 @@ struct PixelBase {
 
       // should we also start the global loop?
       if (Grabbers.size() == 1) {
-        chainblocks::registerRunLoopCallback("fragcolor.desktop.grabber", [] {
+        shards::registerRunLoopCallback("fragcolor.desktop.grabber", [] {
           int len = Grabbers.size();
           for (int i = len - 1; i >= 0; i--) {
             auto &grabber = Grabbers[i];
@@ -413,7 +413,7 @@ struct PixelBase {
           }
         });
 
-        chainblocks::registerExitCallback("fragcolor.desktop.grabber", [] { Grabbers.clear(); });
+        shards::registerExitCallback("fragcolor.desktop.grabber", [] { Grabbers.clear(); });
       }
 
       return grabber;
@@ -422,7 +422,7 @@ struct PixelBase {
     return nullptr;
   }
 
-  DXGIDesktopCapture *preActivate(CBContext *context, int &x, int &y) {
+  DXGIDesktopCapture *preActivate(SHContext *context, int &x, int &y) {
     if (windowVar == nullptr && variableName.size() != 0) {
       windowVar = referenceVariable(context, variableName.c_str());
     }
@@ -446,10 +446,10 @@ struct PixelBase {
 };
 
 struct Pixel : public PixelBase {
-  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
-  static CBTypesInfo outputTypes() { return CoreInfo::ColorType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ColorType; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     int x = input.payload.int2Value[0];
     int y = input.payload.int2Value[1];
     auto grabber = preActivate(context, x, y);
@@ -462,23 +462,23 @@ struct Pixel : public PixelBase {
       y = std::min(grabber->height() - 1, y);
       // grab from the bgra image
       auto pindex = ((grabber->width() * y) + x) * 4;
-      CBColor pixel = {img[pindex + 2], img[pindex + 1], img[pindex], 255};
+      SHColor pixel = {img[pindex + 2], img[pindex + 1], img[pindex], 255};
       return Var(pixel);
     } else {
-      CBColor pixel = {0, 0, 0, 255};
+      SHColor pixel = {0, 0, 0, 255};
       return Var(pixel);
     }
   }
 };
 
 struct Pixels : public PixelBase {
-  static CBTypesInfo inputTypes() { return CoreInfo::Int4Type; }
-  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int4Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  CBVar _output;
+  SHVar _output;
 
   Pixels() {
-    _output = CBVar(); // zero it
+    _output = SHVar(); // zero it
     _output.valueType = Image;
     _output.payload.imageValue.channels = 4;
     _output.payload.imageValue.flags = 0;
@@ -490,7 +490,7 @@ struct Pixels : public PixelBase {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     int left = input.payload.int4Value[0];
     int top = input.payload.int4Value[1];
     const int right = input.payload.int4Value[2];
@@ -556,7 +556,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
   static inline thread_local KeyboardHookState *hookState = nullptr;
 
   bool attached = false;
-  std::deque<CBVar> events;
+  std::deque<SHVar> events;
 
   void keyboardEvent(int state, int vkCode) { events.push_back(Var(state, vkCode)); }
 
@@ -588,7 +588,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
     return CallNextHookEx(hookState->hook, nCode, wParam, lParam);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!attached) {
       if (!hookState) {
         hookState = new KeyboardHookState();
@@ -610,7 +610,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 
     while (events.empty()) {
       // Wait for events
-      CB_SUSPEND(context, 0);
+      SH_SUSPEND(context, 0);
     }
 
     auto event = events.front();
@@ -620,7 +620,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 };
 
 struct SendKeyEvent : public SendKeyEventBase {
-  CBVar *_window = nullptr;
+  SHVar *_window = nullptr;
 
   void cleanup() {
     if (_window) {
@@ -629,7 +629,7 @@ struct SendKeyEvent : public SendKeyEventBase {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto state = input.payload.int2Value[0];
     UINT vkCode = input.payload.int2Value[1];
 
@@ -663,7 +663,7 @@ struct SendKeyEvent : public SendKeyEventBase {
 };
 
 struct GetMousePos : public MousePosBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     POINT p;
 
     if (!GetPhysicalCursorPos(&p)) {
@@ -683,9 +683,9 @@ struct GetMousePos : public MousePosBase {
 };
 
 struct SetMousePos : public MousePosBase {
-  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     POINT p;
     p.x = input.payload.int2Value[0];
     p.y = input.payload.int2Value[1];
@@ -740,16 +740,16 @@ struct Tap : public MousePosBase {
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
       ParamsInfo::Param("Long",
-                        CBCCSTR("A big delay will be injected after tap down "
+                        SHCCSTR("A big delay will be injected after tap down "
                                 "to simulate a long tap."),
                         CoreInfo::BoolType),
-      ParamsInfo::Param("Natural", CBCCSTR("Small pauses will be injected after tap events down & up."), CoreInfo::BoolType));
+      ParamsInfo::Param("Natural", SHCCSTR("Small pauses will be injected after tap events down & up."), CoreInfo::BoolType));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
     else {
@@ -760,7 +760,7 @@ struct Tap : public MousePosBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     if (index == 0)
       return MousePosBase::getParam(index);
     else {
@@ -771,7 +771,7 @@ struct Tap : public MousePosBase {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     if (!GlobalInjector::InjectTouch)
       return input;
 
@@ -806,12 +806,12 @@ struct Tap : public MousePosBase {
     // down
     pinfo.pointerInfo.pointerFlags = POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
-      CBLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
+      SHLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
       throw ActivationError("InjectTouchInput failed.");
     }
 
     if (_delays) {
-      CB_SUSPEND(context, 0.05);
+      SH_SUSPEND(context, 0.05);
     }
 
     if (_longTap) {
@@ -819,22 +819,22 @@ struct Tap : public MousePosBase {
       for (auto i = 0; i < 10; i++) {
         pinfo.pointerInfo.pointerFlags = POINTER_FLAG_UPDATE | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
         if (!GlobalInjector::InjectTouch(1, &pinfo)) {
-          CBLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
+          SHLOG_ERROR("InjectTouchInput (down) error: {0:x}", GetLastError());
           throw ActivationError("InjectTouchInput failed.");
         }
-        CB_SUSPEND(context, 0.1);
+        SH_SUSPEND(context, 0.1);
       }
     }
 
     // up
     pinfo.pointerInfo.pointerFlags = POINTER_FLAG_UP;
     if (!GlobalInjector::InjectTouch(1, &pinfo)) {
-      CBLOG_ERROR("InjectTouchInput (up) error: {0:x}", GetLastError());
+      SHLOG_ERROR("InjectTouchInput (up) error: {0:x}", GetLastError());
       throw ActivationError("InjectTouchInput failed.");
     }
 
     if (_delays) {
-      CB_SUSPEND(context, 0.05);
+      SH_SUSPEND(context, 0.05);
     }
 
     return input;
@@ -846,13 +846,13 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
 
   static inline ParamsInfo params = ParamsInfo(
       MousePosBase::params,
-      ParamsInfo::Param("Natural", CBCCSTR("Small pauses will be injected after click events down & up."), CoreInfo::BoolType));
+      ParamsInfo::Param("Natural", SHCCSTR("Small pauses will be injected after click events down & up."), CoreInfo::BoolType));
 
-  static CBParametersInfo parameters() { return CBParametersInfo(params); }
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     if (index == 0)
       MousePosBase::setParam(index, value);
     else {
@@ -860,7 +860,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     if (index == 0)
       return MousePosBase::getParam(index);
     else {
@@ -868,7 +868,7 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     }
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     INPUT event;
     event.type = INPUT_MOUSE;
     event.mi.mouseData = 0;
@@ -896,23 +896,23 @@ template <DWORD MBD, DWORD MBU> struct Click : public MousePosBase {
     // down
     event.mi.dwFlags = event.mi.dwFlags | MBD;
     if (!SendInput(1, &event, sizeof(INPUT))) {
-      CBLOG_ERROR("SendInput (down) error: {0:x}", GetLastError());
+      SHLOG_ERROR("SendInput (down) error: {0:x}", GetLastError());
       throw ActivationError("LeftClick failed.");
     }
 
     if (_delays) {
-      CB_SUSPEND(context, 0.05);
+      SH_SUSPEND(context, 0.05);
     }
 
     // up
     event.mi.dwFlags = event.mi.dwFlags | MBU;
     if (!SendInput(1, &event, sizeof(INPUT))) {
-      CBLOG_ERROR("SendInput (up) error: {0:x}", GetLastError());
+      SHLOG_ERROR("SendInput (up) error: {0:x}", GetLastError());
       throw ActivationError("LeftClick failed.");
     }
 
     if (_delays) {
-      CB_SUSPEND(context, 0.05);
+      SH_SUSPEND(context, 0.05);
     }
 
     return input;
@@ -924,12 +924,12 @@ typedef Click<MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP> RightClick;
 typedef Click<MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP> MiddleClick;
 
 struct CursorBitmap {
-  static CBTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   HDC _hdcMem;
   HBITMAP _bitmap;
-  CBImage _img;
+  SHImage _img;
 
   CursorBitmap() {
     auto iconw = GetSystemMetrics(SM_CXICON);
@@ -957,7 +957,7 @@ struct CursorBitmap {
     DeleteDC(_hdcMem);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto oldObj = SelectObject(_hdcMem, _bitmap);
     CURSORINFO ci;
     ci.cbSize = sizeof(ci);
@@ -974,15 +974,15 @@ struct CursorBitmap {
 extern "C" NTSYSAPI NTSTATUS NTAPI NtSetTimerResolution(ULONG DesiredResolution, BOOLEAN SetResolution, PULONG CurrentResolution);
 
 struct SetTimerResolution {
-  static CBTypesInfo inputTypes() { return CoreInfo::IntType; }
-  static CBTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   void cleanup() {
     ULONG tmp;
     NtSetTimerResolution(0, FALSE, &tmp);
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     // in 100 ns, 5000 = 0.5 milliseconds
     // max 156250 , default OS seems
     ULONG res = (ULONG)input.payload.intValue;
@@ -997,7 +997,7 @@ struct SetTimerResolution {
 };
 
 struct LastInput : public LastInputBase {
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     LASTINPUTINFO info;
     info.cbSize = sizeof(info);
     info.dwTime = 0;
@@ -1013,275 +1013,275 @@ struct LastInput : public LastInputBase {
 };
 // TODO REFACTOR
 
-RUNTIME_BLOCK(Desktop, HasWindow);
-RUNTIME_BLOCK_cleanup(HasWindow);
-RUNTIME_BLOCK_inputTypes(HasWindow);
-RUNTIME_BLOCK_outputTypes(HasWindow);
-RUNTIME_BLOCK_parameters(HasWindow);
-RUNTIME_BLOCK_setParam(HasWindow);
-RUNTIME_BLOCK_getParam(HasWindow);
-RUNTIME_BLOCK_activate(HasWindow);
-RUNTIME_BLOCK_END(HasWindow);
+RUNTIME_SHARD(Desktop, HasWindow);
+RUNTIME_SHARD_cleanup(HasWindow);
+RUNTIME_SHARD_inputTypes(HasWindow);
+RUNTIME_SHARD_outputTypes(HasWindow);
+RUNTIME_SHARD_parameters(HasWindow);
+RUNTIME_SHARD_setParam(HasWindow);
+RUNTIME_SHARD_getParam(HasWindow);
+RUNTIME_SHARD_activate(HasWindow);
+RUNTIME_SHARD_END(HasWindow);
 
-RUNTIME_BLOCK(Desktop, WaitWindow);
-RUNTIME_BLOCK_cleanup(WaitWindow);
-RUNTIME_BLOCK_inputTypes(WaitWindow);
-RUNTIME_BLOCK_outputTypes(WaitWindow);
-RUNTIME_BLOCK_parameters(WaitWindow);
-RUNTIME_BLOCK_setParam(WaitWindow);
-RUNTIME_BLOCK_getParam(WaitWindow);
-RUNTIME_BLOCK_activate(WaitWindow);
-RUNTIME_BLOCK_END(WaitWindow);
+RUNTIME_SHARD(Desktop, WaitWindow);
+RUNTIME_SHARD_cleanup(WaitWindow);
+RUNTIME_SHARD_inputTypes(WaitWindow);
+RUNTIME_SHARD_outputTypes(WaitWindow);
+RUNTIME_SHARD_parameters(WaitWindow);
+RUNTIME_SHARD_setParam(WaitWindow);
+RUNTIME_SHARD_getParam(WaitWindow);
+RUNTIME_SHARD_activate(WaitWindow);
+RUNTIME_SHARD_END(WaitWindow);
 
-RUNTIME_BLOCK(Desktop, PID);
-RUNTIME_BLOCK_inputTypes(PID);
-RUNTIME_BLOCK_outputTypes(PID);
-RUNTIME_BLOCK_activate(PID);
-RUNTIME_BLOCK_END(PID);
+RUNTIME_SHARD(Desktop, PID);
+RUNTIME_SHARD_inputTypes(PID);
+RUNTIME_SHARD_outputTypes(PID);
+RUNTIME_SHARD_activate(PID);
+RUNTIME_SHARD_END(PID);
 
-RUNTIME_BLOCK(Desktop, IsForeground);
-RUNTIME_BLOCK_inputTypes(IsForeground);
-RUNTIME_BLOCK_outputTypes(IsForeground);
-RUNTIME_BLOCK_activate(IsForeground);
-RUNTIME_BLOCK_END(IsForeground);
+RUNTIME_SHARD(Desktop, IsForeground);
+RUNTIME_SHARD_inputTypes(IsForeground);
+RUNTIME_SHARD_outputTypes(IsForeground);
+RUNTIME_SHARD_activate(IsForeground);
+RUNTIME_SHARD_END(IsForeground);
 
-RUNTIME_BLOCK(Desktop, SetForeground);
-RUNTIME_BLOCK_inputTypes(SetForeground);
-RUNTIME_BLOCK_outputTypes(SetForeground);
-RUNTIME_BLOCK_activate(SetForeground);
-RUNTIME_BLOCK_END(SetForeground);
+RUNTIME_SHARD(Desktop, SetForeground);
+RUNTIME_SHARD_inputTypes(SetForeground);
+RUNTIME_SHARD_outputTypes(SetForeground);
+RUNTIME_SHARD_activate(SetForeground);
+RUNTIME_SHARD_END(SetForeground);
 
-RUNTIME_BLOCK(Desktop, NotForeground);
-RUNTIME_BLOCK_inputTypes(NotForeground);
-RUNTIME_BLOCK_outputTypes(NotForeground);
-RUNTIME_BLOCK_activate(NotForeground);
-RUNTIME_BLOCK_END(NotForeground);
+RUNTIME_SHARD(Desktop, NotForeground);
+RUNTIME_SHARD_inputTypes(NotForeground);
+RUNTIME_SHARD_outputTypes(NotForeground);
+RUNTIME_SHARD_activate(NotForeground);
+RUNTIME_SHARD_END(NotForeground);
 
-RUNTIME_BLOCK(Desktop, Resize);
-RUNTIME_BLOCK_inputTypes(Resize);
-RUNTIME_BLOCK_outputTypes(Resize);
-RUNTIME_BLOCK_parameters(Resize);
-RUNTIME_BLOCK_setParam(Resize);
-RUNTIME_BLOCK_getParam(Resize);
-RUNTIME_BLOCK_activate(Resize);
-RUNTIME_BLOCK_END(Resize);
+RUNTIME_SHARD(Desktop, Resize);
+RUNTIME_SHARD_inputTypes(Resize);
+RUNTIME_SHARD_outputTypes(Resize);
+RUNTIME_SHARD_parameters(Resize);
+RUNTIME_SHARD_setParam(Resize);
+RUNTIME_SHARD_getParam(Resize);
+RUNTIME_SHARD_activate(Resize);
+RUNTIME_SHARD_END(Resize);
 
-RUNTIME_BLOCK(Desktop, Move);
-RUNTIME_BLOCK_inputTypes(Move);
-RUNTIME_BLOCK_outputTypes(Move);
-RUNTIME_BLOCK_parameters(Move);
-RUNTIME_BLOCK_setParam(Move);
-RUNTIME_BLOCK_getParam(Move);
-RUNTIME_BLOCK_activate(Move);
-RUNTIME_BLOCK_END(Move);
+RUNTIME_SHARD(Desktop, Move);
+RUNTIME_SHARD_inputTypes(Move);
+RUNTIME_SHARD_outputTypes(Move);
+RUNTIME_SHARD_parameters(Move);
+RUNTIME_SHARD_setParam(Move);
+RUNTIME_SHARD_getParam(Move);
+RUNTIME_SHARD_activate(Move);
+RUNTIME_SHARD_END(Move);
 
-RUNTIME_BLOCK(Desktop, Size);
-RUNTIME_BLOCK_inputTypes(Size);
-RUNTIME_BLOCK_outputTypes(Size);
-RUNTIME_BLOCK_activate(Size);
-RUNTIME_BLOCK_END(Size);
+RUNTIME_SHARD(Desktop, Size);
+RUNTIME_SHARD_inputTypes(Size);
+RUNTIME_SHARD_outputTypes(Size);
+RUNTIME_SHARD_activate(Size);
+RUNTIME_SHARD_END(Size);
 
-RUNTIME_BLOCK(Desktop, Bounds);
-RUNTIME_BLOCK_inputTypes(Bounds);
-RUNTIME_BLOCK_outputTypes(Bounds);
-RUNTIME_BLOCK_activate(Bounds);
-RUNTIME_BLOCK_END(Bounds);
+RUNTIME_SHARD(Desktop, Bounds);
+RUNTIME_SHARD_inputTypes(Bounds);
+RUNTIME_SHARD_outputTypes(Bounds);
+RUNTIME_SHARD_activate(Bounds);
+RUNTIME_SHARD_END(Bounds);
 
-RUNTIME_BLOCK(Desktop, SetBorderless);
-RUNTIME_BLOCK_inputTypes(SetBorderless);
-RUNTIME_BLOCK_outputTypes(SetBorderless);
-RUNTIME_BLOCK_activate(SetBorderless);
-RUNTIME_BLOCK_END(SetBorderless);
+RUNTIME_SHARD(Desktop, SetBorderless);
+RUNTIME_SHARD_inputTypes(SetBorderless);
+RUNTIME_SHARD_outputTypes(SetBorderless);
+RUNTIME_SHARD_activate(SetBorderless);
+RUNTIME_SHARD_END(SetBorderless);
 
-RUNTIME_BLOCK(Desktop, SetClickthrough);
-RUNTIME_BLOCK_inputTypes(SetClickthrough);
-RUNTIME_BLOCK_outputTypes(SetClickthrough);
-RUNTIME_BLOCK_activate(SetClickthrough);
-RUNTIME_BLOCK_END(SetClickthrough);
+RUNTIME_SHARD(Desktop, SetClickthrough);
+RUNTIME_SHARD_inputTypes(SetClickthrough);
+RUNTIME_SHARD_outputTypes(SetClickthrough);
+RUNTIME_SHARD_activate(SetClickthrough);
+RUNTIME_SHARD_END(SetClickthrough);
 
-RUNTIME_BLOCK(Desktop, UnsetClickthrough);
-RUNTIME_BLOCK_inputTypes(UnsetClickthrough);
-RUNTIME_BLOCK_outputTypes(UnsetClickthrough);
-RUNTIME_BLOCK_activate(UnsetClickthrough);
-RUNTIME_BLOCK_END(UnsetClickthrough);
+RUNTIME_SHARD(Desktop, UnsetClickthrough);
+RUNTIME_SHARD_inputTypes(UnsetClickthrough);
+RUNTIME_SHARD_outputTypes(UnsetClickthrough);
+RUNTIME_SHARD_activate(UnsetClickthrough);
+RUNTIME_SHARD_END(UnsetClickthrough);
 
-RUNTIME_BLOCK(Desktop, SetTopmost);
-RUNTIME_BLOCK_inputTypes(SetTopmost);
-RUNTIME_BLOCK_outputTypes(SetTopmost);
-RUNTIME_BLOCK_activate(SetTopmost);
-RUNTIME_BLOCK_END(SetTopmost);
+RUNTIME_SHARD(Desktop, SetTopmost);
+RUNTIME_SHARD_inputTypes(SetTopmost);
+RUNTIME_SHARD_outputTypes(SetTopmost);
+RUNTIME_SHARD_activate(SetTopmost);
+RUNTIME_SHARD_END(SetTopmost);
 
-RUNTIME_BLOCK(Desktop, UnsetTopmost);
-RUNTIME_BLOCK_inputTypes(UnsetTopmost);
-RUNTIME_BLOCK_outputTypes(UnsetTopmost);
-RUNTIME_BLOCK_activate(UnsetTopmost);
-RUNTIME_BLOCK_END(UnsetTopmost);
+RUNTIME_SHARD(Desktop, UnsetTopmost);
+RUNTIME_SHARD_inputTypes(UnsetTopmost);
+RUNTIME_SHARD_outputTypes(UnsetTopmost);
+RUNTIME_SHARD_activate(UnsetTopmost);
+RUNTIME_SHARD_END(UnsetTopmost);
 
-RUNTIME_BLOCK(Desktop, SetTitle);
-RUNTIME_BLOCK_inputTypes(SetTitle);
-RUNTIME_BLOCK_outputTypes(SetTitle);
-RUNTIME_BLOCK_parameters(SetTitle);
-RUNTIME_BLOCK_setParam(SetTitle);
-RUNTIME_BLOCK_getParam(SetTitle);
-RUNTIME_BLOCK_activate(SetTitle);
-RUNTIME_BLOCK_END(SetTitle);
+RUNTIME_SHARD(Desktop, SetTitle);
+RUNTIME_SHARD_inputTypes(SetTitle);
+RUNTIME_SHARD_outputTypes(SetTitle);
+RUNTIME_SHARD_parameters(SetTitle);
+RUNTIME_SHARD_setParam(SetTitle);
+RUNTIME_SHARD_getParam(SetTitle);
+RUNTIME_SHARD_activate(SetTitle);
+RUNTIME_SHARD_END(SetTitle);
 
-RUNTIME_BLOCK(Desktop, Pixel);
-RUNTIME_BLOCK_inputTypes(Pixel);
-RUNTIME_BLOCK_outputTypes(Pixel);
-RUNTIME_BLOCK_activate(Pixel);
-RUNTIME_BLOCK_cleanup(Pixel);
-RUNTIME_BLOCK_parameters(Pixel);
-RUNTIME_BLOCK_setParam(Pixel);
-RUNTIME_BLOCK_getParam(Pixel);
-RUNTIME_BLOCK_requiredVariables(Pixel);
-RUNTIME_BLOCK_END(Pixel);
+RUNTIME_SHARD(Desktop, Pixel);
+RUNTIME_SHARD_inputTypes(Pixel);
+RUNTIME_SHARD_outputTypes(Pixel);
+RUNTIME_SHARD_activate(Pixel);
+RUNTIME_SHARD_cleanup(Pixel);
+RUNTIME_SHARD_parameters(Pixel);
+RUNTIME_SHARD_setParam(Pixel);
+RUNTIME_SHARD_getParam(Pixel);
+RUNTIME_SHARD_requiredVariables(Pixel);
+RUNTIME_SHARD_END(Pixel);
 
-RUNTIME_BLOCK(Desktop, Pixels);
-RUNTIME_BLOCK_inputTypes(Pixels);
-RUNTIME_BLOCK_outputTypes(Pixels);
-RUNTIME_BLOCK_activate(Pixels);
-RUNTIME_BLOCK_cleanup(Pixels);
-RUNTIME_BLOCK_parameters(Pixels);
-RUNTIME_BLOCK_setParam(Pixels);
-RUNTIME_BLOCK_getParam(Pixels);
-RUNTIME_BLOCK_requiredVariables(Pixels);
-RUNTIME_BLOCK_END(Pixels);
+RUNTIME_SHARD(Desktop, Pixels);
+RUNTIME_SHARD_inputTypes(Pixels);
+RUNTIME_SHARD_outputTypes(Pixels);
+RUNTIME_SHARD_activate(Pixels);
+RUNTIME_SHARD_cleanup(Pixels);
+RUNTIME_SHARD_parameters(Pixels);
+RUNTIME_SHARD_setParam(Pixels);
+RUNTIME_SHARD_getParam(Pixels);
+RUNTIME_SHARD_requiredVariables(Pixels);
+RUNTIME_SHARD_END(Pixels);
 
-RUNTIME_BLOCK(Desktop, WaitKeyEvent);
-RUNTIME_BLOCK_inputTypes(WaitKeyEvent);
-RUNTIME_BLOCK_outputTypes(WaitKeyEvent);
-RUNTIME_BLOCK_activate(WaitKeyEvent);
-RUNTIME_BLOCK_cleanup(WaitKeyEvent);
-RUNTIME_BLOCK_help(WaitKeyEvent);
-RUNTIME_BLOCK_END(WaitKeyEvent);
+RUNTIME_SHARD(Desktop, WaitKeyEvent);
+RUNTIME_SHARD_inputTypes(WaitKeyEvent);
+RUNTIME_SHARD_outputTypes(WaitKeyEvent);
+RUNTIME_SHARD_activate(WaitKeyEvent);
+RUNTIME_SHARD_cleanup(WaitKeyEvent);
+RUNTIME_SHARD_help(WaitKeyEvent);
+RUNTIME_SHARD_END(WaitKeyEvent);
 
-RUNTIME_BLOCK(Desktop, SendKeyEvent);
-RUNTIME_BLOCK_inputTypes(SendKeyEvent);
-RUNTIME_BLOCK_outputTypes(SendKeyEvent);
-RUNTIME_BLOCK_parameters(SendKeyEvent);
-RUNTIME_BLOCK_setParam(SendKeyEvent);
-RUNTIME_BLOCK_getParam(SendKeyEvent);
-RUNTIME_BLOCK_activate(SendKeyEvent);
-RUNTIME_BLOCK_cleanup(SendKeyEvent);
-RUNTIME_BLOCK_help(SendKeyEvent);
-RUNTIME_BLOCK_requiredVariables(SendKeyEvent);
-RUNTIME_BLOCK_END(SendKeyEvent);
+RUNTIME_SHARD(Desktop, SendKeyEvent);
+RUNTIME_SHARD_inputTypes(SendKeyEvent);
+RUNTIME_SHARD_outputTypes(SendKeyEvent);
+RUNTIME_SHARD_parameters(SendKeyEvent);
+RUNTIME_SHARD_setParam(SendKeyEvent);
+RUNTIME_SHARD_getParam(SendKeyEvent);
+RUNTIME_SHARD_activate(SendKeyEvent);
+RUNTIME_SHARD_cleanup(SendKeyEvent);
+RUNTIME_SHARD_help(SendKeyEvent);
+RUNTIME_SHARD_requiredVariables(SendKeyEvent);
+RUNTIME_SHARD_END(SendKeyEvent);
 
-RUNTIME_BLOCK(Desktop, GetMousePos);
-RUNTIME_BLOCK_cleanup(GetMousePos);
-RUNTIME_BLOCK_warmup(GetMousePos);
-RUNTIME_BLOCK_inputTypes(GetMousePos);
-RUNTIME_BLOCK_outputTypes(GetMousePos);
-RUNTIME_BLOCK_parameters(GetMousePos);
-RUNTIME_BLOCK_setParam(GetMousePos);
-RUNTIME_BLOCK_getParam(GetMousePos);
-RUNTIME_BLOCK_activate(GetMousePos);
-RUNTIME_BLOCK_requiredVariables(GetMousePos);
-RUNTIME_BLOCK_END(GetMousePos);
+RUNTIME_SHARD(Desktop, GetMousePos);
+RUNTIME_SHARD_cleanup(GetMousePos);
+RUNTIME_SHARD_warmup(GetMousePos);
+RUNTIME_SHARD_inputTypes(GetMousePos);
+RUNTIME_SHARD_outputTypes(GetMousePos);
+RUNTIME_SHARD_parameters(GetMousePos);
+RUNTIME_SHARD_setParam(GetMousePos);
+RUNTIME_SHARD_getParam(GetMousePos);
+RUNTIME_SHARD_activate(GetMousePos);
+RUNTIME_SHARD_requiredVariables(GetMousePos);
+RUNTIME_SHARD_END(GetMousePos);
 
-RUNTIME_BLOCK(Desktop, SetMousePos);
-RUNTIME_BLOCK_cleanup(SetMousePos);
-RUNTIME_BLOCK_warmup(SetMousePos);
-RUNTIME_BLOCK_inputTypes(SetMousePos);
-RUNTIME_BLOCK_outputTypes(SetMousePos);
-RUNTIME_BLOCK_parameters(SetMousePos);
-RUNTIME_BLOCK_setParam(SetMousePos);
-RUNTIME_BLOCK_getParam(SetMousePos);
-RUNTIME_BLOCK_activate(SetMousePos);
-RUNTIME_BLOCK_requiredVariables(SetMousePos);
-RUNTIME_BLOCK_END(SetMousePos);
+RUNTIME_SHARD(Desktop, SetMousePos);
+RUNTIME_SHARD_cleanup(SetMousePos);
+RUNTIME_SHARD_warmup(SetMousePos);
+RUNTIME_SHARD_inputTypes(SetMousePos);
+RUNTIME_SHARD_outputTypes(SetMousePos);
+RUNTIME_SHARD_parameters(SetMousePos);
+RUNTIME_SHARD_setParam(SetMousePos);
+RUNTIME_SHARD_getParam(SetMousePos);
+RUNTIME_SHARD_activate(SetMousePos);
+RUNTIME_SHARD_requiredVariables(SetMousePos);
+RUNTIME_SHARD_END(SetMousePos);
 
-RUNTIME_BLOCK(Desktop, Tap);
-RUNTIME_BLOCK_setup(Tap);
-RUNTIME_BLOCK_cleanup(Tap);
-RUNTIME_BLOCK_warmup(Tap);
-RUNTIME_BLOCK_inputTypes(Tap);
-RUNTIME_BLOCK_outputTypes(Tap);
-RUNTIME_BLOCK_parameters(Tap);
-RUNTIME_BLOCK_setParam(Tap);
-RUNTIME_BLOCK_getParam(Tap);
-RUNTIME_BLOCK_activate(Tap);
-RUNTIME_BLOCK_requiredVariables(Tap);
-RUNTIME_BLOCK_END(Tap);
+RUNTIME_SHARD(Desktop, Tap);
+RUNTIME_SHARD_setup(Tap);
+RUNTIME_SHARD_cleanup(Tap);
+RUNTIME_SHARD_warmup(Tap);
+RUNTIME_SHARD_inputTypes(Tap);
+RUNTIME_SHARD_outputTypes(Tap);
+RUNTIME_SHARD_parameters(Tap);
+RUNTIME_SHARD_setParam(Tap);
+RUNTIME_SHARD_getParam(Tap);
+RUNTIME_SHARD_activate(Tap);
+RUNTIME_SHARD_requiredVariables(Tap);
+RUNTIME_SHARD_END(Tap);
 
-RUNTIME_BLOCK(Desktop, LeftClick);
-RUNTIME_BLOCK_cleanup(LeftClick);
-RUNTIME_BLOCK_warmup(LeftClick);
-RUNTIME_BLOCK_inputTypes(LeftClick);
-RUNTIME_BLOCK_outputTypes(LeftClick);
-RUNTIME_BLOCK_parameters(LeftClick);
-RUNTIME_BLOCK_setParam(LeftClick);
-RUNTIME_BLOCK_getParam(LeftClick);
-RUNTIME_BLOCK_activate(LeftClick);
-RUNTIME_BLOCK_requiredVariables(LeftClick);
-RUNTIME_BLOCK_END(LeftClick);
+RUNTIME_SHARD(Desktop, LeftClick);
+RUNTIME_SHARD_cleanup(LeftClick);
+RUNTIME_SHARD_warmup(LeftClick);
+RUNTIME_SHARD_inputTypes(LeftClick);
+RUNTIME_SHARD_outputTypes(LeftClick);
+RUNTIME_SHARD_parameters(LeftClick);
+RUNTIME_SHARD_setParam(LeftClick);
+RUNTIME_SHARD_getParam(LeftClick);
+RUNTIME_SHARD_activate(LeftClick);
+RUNTIME_SHARD_requiredVariables(LeftClick);
+RUNTIME_SHARD_END(LeftClick);
 
-RUNTIME_BLOCK(Desktop, RightClick);
-RUNTIME_BLOCK_cleanup(RightClick);
-RUNTIME_BLOCK_warmup(RightClick);
-RUNTIME_BLOCK_inputTypes(RightClick);
-RUNTIME_BLOCK_outputTypes(RightClick);
-RUNTIME_BLOCK_parameters(RightClick);
-RUNTIME_BLOCK_setParam(RightClick);
-RUNTIME_BLOCK_getParam(RightClick);
-RUNTIME_BLOCK_activate(RightClick);
-RUNTIME_BLOCK_requiredVariables(RightClick);
-RUNTIME_BLOCK_END(RightClick);
+RUNTIME_SHARD(Desktop, RightClick);
+RUNTIME_SHARD_cleanup(RightClick);
+RUNTIME_SHARD_warmup(RightClick);
+RUNTIME_SHARD_inputTypes(RightClick);
+RUNTIME_SHARD_outputTypes(RightClick);
+RUNTIME_SHARD_parameters(RightClick);
+RUNTIME_SHARD_setParam(RightClick);
+RUNTIME_SHARD_getParam(RightClick);
+RUNTIME_SHARD_activate(RightClick);
+RUNTIME_SHARD_requiredVariables(RightClick);
+RUNTIME_SHARD_END(RightClick);
 
-RUNTIME_BLOCK(Desktop, MiddleClick);
-RUNTIME_BLOCK_cleanup(MiddleClick);
-RUNTIME_BLOCK_warmup(MiddleClick);
-RUNTIME_BLOCK_inputTypes(MiddleClick);
-RUNTIME_BLOCK_outputTypes(MiddleClick);
-RUNTIME_BLOCK_parameters(MiddleClick);
-RUNTIME_BLOCK_setParam(MiddleClick);
-RUNTIME_BLOCK_getParam(MiddleClick);
-RUNTIME_BLOCK_activate(MiddleClick);
-RUNTIME_BLOCK_requiredVariables(MiddleClick);
-RUNTIME_BLOCK_END(MiddleClick);
+RUNTIME_SHARD(Desktop, MiddleClick);
+RUNTIME_SHARD_cleanup(MiddleClick);
+RUNTIME_SHARD_warmup(MiddleClick);
+RUNTIME_SHARD_inputTypes(MiddleClick);
+RUNTIME_SHARD_outputTypes(MiddleClick);
+RUNTIME_SHARD_parameters(MiddleClick);
+RUNTIME_SHARD_setParam(MiddleClick);
+RUNTIME_SHARD_getParam(MiddleClick);
+RUNTIME_SHARD_activate(MiddleClick);
+RUNTIME_SHARD_requiredVariables(MiddleClick);
+RUNTIME_SHARD_END(MiddleClick);
 
-RUNTIME_BLOCK(Desktop, CursorBitmap);
-RUNTIME_BLOCK_inputTypes(CursorBitmap);
-RUNTIME_BLOCK_outputTypes(CursorBitmap);
-RUNTIME_BLOCK_activate(CursorBitmap);
-RUNTIME_BLOCK_END(CursorBitmap);
+RUNTIME_SHARD(Desktop, CursorBitmap);
+RUNTIME_SHARD_inputTypes(CursorBitmap);
+RUNTIME_SHARD_outputTypes(CursorBitmap);
+RUNTIME_SHARD_activate(CursorBitmap);
+RUNTIME_SHARD_END(CursorBitmap);
 
-RUNTIME_BLOCK(Desktop, SetTimerResolution);
-RUNTIME_BLOCK_inputTypes(SetTimerResolution);
-RUNTIME_BLOCK_outputTypes(SetTimerResolution);
-RUNTIME_BLOCK_activate(SetTimerResolution);
-RUNTIME_BLOCK_cleanup(SetTimerResolution);
-RUNTIME_BLOCK_END(SetTimerResolution);
+RUNTIME_SHARD(Desktop, SetTimerResolution);
+RUNTIME_SHARD_inputTypes(SetTimerResolution);
+RUNTIME_SHARD_outputTypes(SetTimerResolution);
+RUNTIME_SHARD_activate(SetTimerResolution);
+RUNTIME_SHARD_cleanup(SetTimerResolution);
+RUNTIME_SHARD_END(SetTimerResolution);
 
-void registerDesktopBlocks() {
-  REGISTER_BLOCK(Desktop, HasWindow);
-  REGISTER_BLOCK(Desktop, WaitWindow);
-  REGISTER_BLOCK(Desktop, PID);
-  REGISTER_BLOCK(Desktop, IsForeground);
-  REGISTER_BLOCK(Desktop, SetForeground);
-  REGISTER_BLOCK(Desktop, NotForeground);
-  REGISTER_BLOCK(Desktop, Resize);
-  REGISTER_BLOCK(Desktop, Move);
-  REGISTER_BLOCK(Desktop, Size);
-  REGISTER_BLOCK(Desktop, Bounds);
-  REGISTER_BLOCK(Desktop, SetBorderless);
-  REGISTER_BLOCK(Desktop, SetClickthrough);
-  REGISTER_BLOCK(Desktop, UnsetClickthrough);
-  REGISTER_BLOCK(Desktop, SetTopmost);
-  REGISTER_BLOCK(Desktop, UnsetTopmost);
-  REGISTER_BLOCK(Desktop, SetTitle);
-  REGISTER_BLOCK(Desktop, Pixel);
-  REGISTER_BLOCK(Desktop, WaitKeyEvent);
-  REGISTER_BLOCK(Desktop, SendKeyEvent);
-  REGISTER_BLOCK(Desktop, GetMousePos);
-  REGISTER_BLOCK(Desktop, SetMousePos);
-  REGISTER_BLOCK(Desktop, Tap);
-  REGISTER_BLOCK(Desktop, LeftClick);
-  REGISTER_BLOCK(Desktop, RightClick);
-  REGISTER_BLOCK(Desktop, MiddleClick);
-  REGISTER_BLOCK(Desktop, CursorBitmap);
-  REGISTER_BLOCK(Desktop, SetTimerResolution);
-  REGISTER_CBLOCK("Desktop.LastInput", LastInput);
+void registerDesktopShards() {
+  REGISTER_SHARD2(Desktop, HasWindow);
+  REGISTER_SHARD2(Desktop, WaitWindow);
+  REGISTER_SHARD2(Desktop, PID);
+  REGISTER_SHARD2(Desktop, IsForeground);
+  REGISTER_SHARD2(Desktop, SetForeground);
+  REGISTER_SHARD2(Desktop, NotForeground);
+  REGISTER_SHARD2(Desktop, Resize);
+  REGISTER_SHARD2(Desktop, Move);
+  REGISTER_SHARD2(Desktop, Size);
+  REGISTER_SHARD2(Desktop, Bounds);
+  REGISTER_SHARD2(Desktop, SetBorderless);
+  REGISTER_SHARD2(Desktop, SetClickthrough);
+  REGISTER_SHARD2(Desktop, UnsetClickthrough);
+  REGISTER_SHARD2(Desktop, SetTopmost);
+  REGISTER_SHARD2(Desktop, UnsetTopmost);
+  REGISTER_SHARD2(Desktop, SetTitle);
+  REGISTER_SHARD2(Desktop, Pixel);
+  REGISTER_SHARD2(Desktop, WaitKeyEvent);
+  REGISTER_SHARD2(Desktop, SendKeyEvent);
+  REGISTER_SHARD2(Desktop, GetMousePos);
+  REGISTER_SHARD2(Desktop, SetMousePos);
+  REGISTER_SHARD2(Desktop, Tap);
+  REGISTER_SHARD2(Desktop, LeftClick);
+  REGISTER_SHARD2(Desktop, RightClick);
+  REGISTER_SHARD2(Desktop, MiddleClick);
+  REGISTER_SHARD2(Desktop, CursorBitmap);
+  REGISTER_SHARD2(Desktop, SetTimerResolution);
+  REGISTER_SHARD("Desktop.LastInput", LastInput);
 }
 }; // namespace Desktop

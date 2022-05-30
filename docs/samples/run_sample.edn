@@ -2,9 +2,9 @@
 (def _parameters {:samplefile (if (contains? _args "--file") (get _args "--file") "")})
 (def sampleFile (get _parameters :samplefile))
 
-(defnode main)
+(defmesh main)
 (defn runSample [name]
-  (Chain
+  (Wire
    (str name)
    (eval (read-string (str "(-> " (slurp name) ")")))))
 

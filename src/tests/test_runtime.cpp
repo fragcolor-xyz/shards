@@ -15,13 +15,13 @@
 #include <catch2/catch_all.hpp>
 
 int main(int argc, char *argv[]) {
-  chainblocks::GetGlobals().RootPath = "./";
-  chainblocks::registerCoreBlocks();
+  shards::GetGlobals().RootPath = "./";
+  shards::registerCoreShards();
   int result = Catch::Session().run(argc, argv);
   return result;
 }
 
-using namespace chainblocks;
+using namespace shards;
 
 struct Writer {
   std::vector<uint8_t> &_buffer;
@@ -30,9 +30,9 @@ struct Writer {
 };
 
 struct Reader {
-  const CBVar &_bytesVar;
+  const SHVar &_bytesVar;
   size_t _offset;
-  Reader(const CBVar &var) : _bytesVar(var), _offset(0) {}
+  Reader(const SHVar &var) : _bytesVar(var), _offset(0) {}
   void operator()(uint8_t *buf, size_t size) {
     if (_bytesVar.payload.bytesSize < _offset + size) {
       throw ActivationError("FromBytes buffer underrun");
@@ -49,7 +49,7 @@ struct Reader {
   Writer w{buffer};                             \
   ws.serialize(_source_, w);                    \
   Var serialized(buffer.data(), buffer.size()); \
-  CBVar output{};                               \
+  SHVar output{};                               \
   Serialization rs;                             \
   Reader r(serialized);                         \
   rs.reset();                                   \
@@ -57,38 +57,38 @@ struct Reader {
   REQUIRE(_source_ == output);                  \
   rs.varFree(output)
 
-TEST_CASE("CBType-type2Name", "[ops]") {
-  REQUIRE_THROWS(type2Name(CBType::EndOfBlittableTypes));
-  REQUIRE(type2Name(CBType::None) == "None");
-  REQUIRE(type2Name(CBType::Any) == "Any");
-  REQUIRE(type2Name(CBType::Object) == "Object");
-  REQUIRE(type2Name(CBType::Enum) == "Enum");
-  REQUIRE(type2Name(CBType::Bool) == "Bool");
-  REQUIRE(type2Name(CBType::Bytes) == "Bytes");
-  REQUIRE(type2Name(CBType::Color) == "Color");
-  REQUIRE(type2Name(CBType::Int) == "Int");
-  REQUIRE(type2Name(CBType::Int2) == "Int2");
-  REQUIRE(type2Name(CBType::Int3) == "Int3");
-  REQUIRE(type2Name(CBType::Int4) == "Int4");
-  REQUIRE(type2Name(CBType::Int8) == "Int8");
-  REQUIRE(type2Name(CBType::Int16) == "Int16");
-  REQUIRE(type2Name(CBType::Float) == "Float");
-  REQUIRE(type2Name(CBType::Float2) == "Float2");
-  REQUIRE(type2Name(CBType::Float3) == "Float3");
-  REQUIRE(type2Name(CBType::Float4) == "Float4");
-  REQUIRE(type2Name(CBType::Block) == "Block");
-  REQUIRE(type2Name(CBType::String) == "String");
-  REQUIRE(type2Name(CBType::ContextVar) == "ContextVar");
-  REQUIRE(type2Name(CBType::Path) == "Path");
-  REQUIRE(type2Name(CBType::Image) == "Image");
-  REQUIRE(type2Name(CBType::Seq) == "Seq");
-  REQUIRE(type2Name(CBType::Table) == "Table");
-  REQUIRE(type2Name(CBType::Set) == "Set");
-  REQUIRE(type2Name(CBType::Array) == "Array");
-  REQUIRE(type2Name(CBType::Audio) == "Audio");
+TEST_CASE("SHType-type2Name", "[ops]") {
+  REQUIRE_THROWS(type2Name(SHType::EndOfBlittableTypes));
+  REQUIRE(type2Name(SHType::None) == "None");
+  REQUIRE(type2Name(SHType::Any) == "Any");
+  REQUIRE(type2Name(SHType::Object) == "Object");
+  REQUIRE(type2Name(SHType::Enum) == "Enum");
+  REQUIRE(type2Name(SHType::Bool) == "Bool");
+  REQUIRE(type2Name(SHType::Bytes) == "Bytes");
+  REQUIRE(type2Name(SHType::Color) == "Color");
+  REQUIRE(type2Name(SHType::Int) == "Int");
+  REQUIRE(type2Name(SHType::Int2) == "Int2");
+  REQUIRE(type2Name(SHType::Int3) == "Int3");
+  REQUIRE(type2Name(SHType::Int4) == "Int4");
+  REQUIRE(type2Name(SHType::Int8) == "Int8");
+  REQUIRE(type2Name(SHType::Int16) == "Int16");
+  REQUIRE(type2Name(SHType::Float) == "Float");
+  REQUIRE(type2Name(SHType::Float2) == "Float2");
+  REQUIRE(type2Name(SHType::Float3) == "Float3");
+  REQUIRE(type2Name(SHType::Float4) == "Float4");
+  REQUIRE(type2Name(SHType::ShardRef) == "Shard");
+  REQUIRE(type2Name(SHType::String) == "String");
+  REQUIRE(type2Name(SHType::ContextVar) == "ContextVar");
+  REQUIRE(type2Name(SHType::Path) == "Path");
+  REQUIRE(type2Name(SHType::Image) == "Image");
+  REQUIRE(type2Name(SHType::Seq) == "Seq");
+  REQUIRE(type2Name(SHType::Table) == "Table");
+  REQUIRE(type2Name(SHType::Set) == "Set");
+  REQUIRE(type2Name(SHType::Array) == "Array");
+  REQUIRE(type2Name(SHType::Audio) == "Audio");
 }
 
-TEST_CASE("CBVar-comparison", "[ops]") {
+TEST_CASE("SHVar-comparison", "[ops]") {
   SECTION("None, Any, EndOfBlittableTypes") {
     auto n1 = Var::Empty;
     auto n2 = Var::Empty;
@@ -98,7 +98,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash1 = hash(n1);
     auto hash2 = hash(n2);
     REQUIRE(hash1 == hash2);
-    CBLOG_INFO(n1); // logging coverage
+    SHLOG_INFO(n1); // logging coverage
     TEST_SERIALIZATION(n1);
   }
 
@@ -119,7 +119,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash1 = hash(t);
     auto hash2 = hash(t1);
     REQUIRE(hash1 == hash2);
-    CBLOG_INFO(t); // logging coverage
+    SHLOG_INFO(t); // logging coverage
     TEST_SERIALIZATION(t);
   }
 
@@ -142,16 +142,16 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(o3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(o1); // logging coverage
+    SHLOG_INFO(o1); // logging coverage
   }
 
   SECTION("Audio") {
     std::vector<float> b1(1024);
     std::vector<float> b2(1024);
     std::vector<float> b3(1024);
-    CBVar x{.payload = {.audioValue = CBAudio{44100, 512, 2, b1.data()}}, .valueType = CBType::Audio};
-    CBVar y{.payload = {.audioValue = CBAudio{44100, 512, 2, b2.data()}}, .valueType = CBType::Audio};
-    CBVar z{.payload = {.audioValue = CBAudio{44100, 1024, 1, b3.data()}}, .valueType = CBType::Audio};
+    SHVar x{.payload = {.audioValue = SHAudio{44100, 512, 2, b1.data()}}, .valueType = SHType::Audio};
+    SHVar y{.payload = {.audioValue = SHAudio{44100, 512, 2, b2.data()}}, .valueType = SHType::Audio};
+    SHVar z{.payload = {.audioValue = SHAudio{44100, 1024, 1, b3.data()}}, .valueType = SHType::Audio};
     auto empty = Var::Empty;
     REQUIRE(x == y);
     REQUIRE(x != z);
@@ -164,8 +164,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(z);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(x); // logging coverage
-    CBVar xx{};
+    SHLOG_INFO(x); // logging coverage
+    SHVar xx{};
     cloneVar(xx, x);
     TEST_SERIALIZATION(xx);
     destroyVar(xx);
@@ -196,13 +196,13 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(o3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(o1); // logging coverage
+    SHLOG_INFO(o1); // logging coverage
     TEST_SERIALIZATION(o1);
   }
 
   SECTION("Float") {
     auto f1 = Var(10.0);
-    REQUIRE(f1.valueType == CBType::Float);
+    REQUIRE(f1.valueType == SHType::Float);
     float ff = float(f1);
     REQUIRE(ff == 10);
     REQUIRE_THROWS(int(f1));
@@ -224,11 +224,11 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(f1); // logging coverage
+    SHLOG_INFO(f1); // logging coverage
     TEST_SERIALIZATION(f1);
   }
 
-#define CBVECTOR_TESTS              \
+#define SHVECTOR_TESTS              \
   REQUIRE(f1 == f2);                \
   REQUIRE(v1 == v2);                \
   REQUIRE(f1 != f3);                \
@@ -257,7 +257,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
   auto hash3 = hash(f3);            \
   REQUIRE(hash1 == hash2);          \
   REQUIRE_FALSE(hash1 == hash3);    \
-  CBLOG_INFO(f1);                   \
+  SHLOG_INFO(f1);                   \
   TEST_SERIALIZATION(f1)
 
   SECTION("Float2") {
@@ -270,8 +270,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22.0, 2.0);
     std::vector<double> v4{22.0, 2.0};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Float2);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Float2);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Float3") {
@@ -284,8 +284,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22.0, 2.0, 4.0);
     std::vector<float> v4{22.0, 2.0, 4.0};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Float3);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Float3);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Float4") {
@@ -298,13 +298,13 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22.0, 2.0, 4.0, 3.0);
     std::vector<float> v4{22.0, 2.0, 4.0, 3.0};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Float4);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Float4);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Int") {
     auto f1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Int);
+    REQUIRE(f1.valueType == SHType::Int);
     int ff = int(f1);
     REQUIRE(ff == 10);
     REQUIRE_NOTHROW(float(f1)); // will convert to float automatically
@@ -326,7 +326,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(f3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(f1); // logging coverage
+    SHLOG_INFO(f1); // logging coverage
   }
 
   SECTION("Int2") {
@@ -339,8 +339,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22, 2);
     std::vector<int64_t> v4{22, 2};
     auto i1 = Var(10.0);
-    REQUIRE(f1.valueType == CBType::Int2);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Int2);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Int3") {
@@ -353,8 +353,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22, 2, 4);
     std::vector<int32_t> v4{22, 2, 4};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Int3);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Int3);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Int4") {
@@ -367,8 +367,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22, 2, 4, 0);
     std::vector<int32_t> v4{22, 2, 4, 0};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Int4);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Int4);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Int8") {
@@ -381,8 +381,8 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22, 2, 4, 0, 1, 2, 3, 4);
     std::vector<int16_t> v4{22, 2, 4, 0, 1, 2, 3, 4};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Int8);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Int8);
+    SHVECTOR_TESTS;
   }
 
   SECTION("Int16") {
@@ -395,16 +395,16 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto f4 = Var(22, 2, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2);
     std::vector<int8_t> v4{22, 2, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2};
     auto i1 = Var(10);
-    REQUIRE(f1.valueType == CBType::Int16);
-    CBVECTOR_TESTS;
+    REQUIRE(f1.valueType == SHType::Int16);
+    SHVECTOR_TESTS;
   }
 
-#undef CBVECTOR_TESTS
+#undef SHVECTOR_TESTS
 
   SECTION("Color") {
-    auto c1 = Var(CBColor{20, 20, 20, 255});
-    auto c2 = Var(CBColor{20, 20, 20, 255});
-    auto c3 = Var(CBColor{20, 20, 20, 0});
+    auto c1 = Var(SHColor{20, 20, 20, 255});
+    auto c2 = Var(SHColor{20, 20, 20, 255});
+    auto c3 = Var(SHColor{20, 20, 20, 0});
     REQUIRE(c1 == c2);
     REQUIRE(c2 >= c1);
     REQUIRE(c1 != c3);
@@ -417,16 +417,16 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(c3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(c1);
+    SHLOG_INFO(c1);
   }
 
   SECTION("String") {
     auto s1 = Var("Hello world");
-    REQUIRE(s1.valueType == CBType::String);
+    REQUIRE(s1.valueType == SHType::String);
     auto s2 = Var("Hello world");
     auto s3 = Var("Hello world 2");
-    auto s5 = CBVar();
-    s5.valueType = CBType::String;
+    auto s5 = SHVar();
+    s5.valueType = SHType::String;
     s5.payload.stringValue = "Hello world";
     std::string q("qwerty");
     auto s4 = Var(q);
@@ -447,28 +447,28 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     auto hash3 = hash(s3);
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
-    CBLOG_INFO(s1); // logging coverage
+    SHLOG_INFO(s1); // logging coverage
   }
 
   SECTION("std::vector-Var") {
     std::vector<Var> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
-    REQUIRE(v1.valueType == CBType::Seq);
+    REQUIRE(v1.valueType == SHType::Seq);
     std::vector<Var> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
-    REQUIRE(v2.valueType == CBType::Seq);
+    REQUIRE(v2.valueType == SHType::Seq);
     std::vector<Var> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
-    REQUIRE(v3.valueType == CBType::Seq);
+    REQUIRE(v3.valueType == SHType::Seq);
     std::vector<Var> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
-    REQUIRE(v4.valueType == CBType::Seq);
+    REQUIRE(v4.valueType == SHType::Seq);
     std::vector<Var> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
-    REQUIRE(v5.valueType == CBType::Seq);
+    REQUIRE(v5.valueType == SHType::Seq);
     std::vector<Var> s6{Var(10), Var(20), Var(30), Var(45), Var(55)};
     Var v6(s6);
-    REQUIRE(v6.valueType == CBType::Seq);
+    REQUIRE(v6.valueType == SHType::Seq);
     std::vector<Var> s7{Var(10), Var(20), Var(30), Var(25), Var(35)};
     Var v7(s7);
     std::vector<Var> s77 = std::vector<Var>(v7);
@@ -484,13 +484,13 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     }()));
     REQUIRE(i77[2] == 30);
     REQUIRE(s7 == s77);
-    REQUIRE(v7.valueType == CBType::Seq);
+    REQUIRE(v7.valueType == SHType::Seq);
     std::vector<Var> s8{Var(10)};
     Var v8(s8);
-    REQUIRE(v8.valueType == CBType::Seq);
+    REQUIRE(v8.valueType == SHType::Seq);
     std::vector<Var> s9{Var(1)};
     Var v9(s9);
-    REQUIRE(v9.valueType == CBType::Seq);
+    REQUIRE(v9.valueType == SHType::Seq);
 
     REQUIRE_FALSE(v8 < v9);
     REQUIRE_FALSE(v8 <= v9);
@@ -567,25 +567,25 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
 
-    CBLOG_INFO(v1);
+    SHLOG_INFO(v1);
   }
 
-  SECTION("std::vector-CBVar") {
-    std::vector<CBVar> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
+  SECTION("std::vector-SHVar") {
+    std::vector<SHVar> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
-    REQUIRE(v1.valueType == CBType::Seq);
-    std::vector<CBVar> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    REQUIRE(v1.valueType == SHType::Seq);
+    std::vector<SHVar> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
-    REQUIRE(v2.valueType == CBType::Seq);
-    std::vector<CBVar> s3{Var(100), Var(200), Var(300)};
+    REQUIRE(v2.valueType == SHType::Seq);
+    std::vector<SHVar> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
-    REQUIRE(v3.valueType == CBType::Seq);
-    std::vector<CBVar> s4{Var(10), Var(20), Var(30)};
+    REQUIRE(v3.valueType == SHType::Seq);
+    std::vector<SHVar> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
-    REQUIRE(v4.valueType == CBType::Seq);
-    std::vector<CBVar> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
+    REQUIRE(v4.valueType == SHType::Seq);
+    std::vector<SHVar> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
-    REQUIRE(v5.valueType == CBType::Seq);
+    REQUIRE(v5.valueType == SHType::Seq);
 
     REQUIRE(s1 == s2);
     REQUIRE(v1 == v2);
@@ -610,25 +610,25 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(s2 >= s5);
     REQUIRE(v2 >= v5);
 
-    CBLOG_INFO(v1);
+    SHLOG_INFO(v1);
   }
 
   SECTION("std::array-Var") {
     std::array<Var, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
-    REQUIRE(v1.valueType == CBType::Seq);
+    REQUIRE(v1.valueType == SHType::Seq);
     std::array<Var, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
-    REQUIRE(v2.valueType == CBType::Seq);
+    REQUIRE(v2.valueType == SHType::Seq);
     std::array<Var, 3> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
-    REQUIRE(v3.valueType == CBType::Seq);
+    REQUIRE(v3.valueType == SHType::Seq);
     std::array<Var, 3> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
-    REQUIRE(v4.valueType == CBType::Seq);
+    REQUIRE(v4.valueType == SHType::Seq);
     std::array<Var, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
-    REQUIRE(v5.valueType == CBType::Seq);
+    REQUIRE(v5.valueType == SHType::Seq);
 
     REQUIRE(v1 == v2);
     REQUIRE(v1 != v3);
@@ -642,25 +642,25 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v2 >= v4);
     REQUIRE(v2 >= v5);
 
-    CBLOG_INFO(v1);
+    SHLOG_INFO(v1);
   }
 
-  SECTION("std::array-CBVar") {
-    std::array<CBVar, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
+  SECTION("std::array-SHVar") {
+    std::array<SHVar, 5> s1{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v1(s1);
-    REQUIRE(v1.valueType == CBType::Seq);
-    std::array<CBVar, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
+    REQUIRE(v1.valueType == SHType::Seq);
+    std::array<SHVar, 5> s2{Var(10), Var(20), Var(30), Var(40), Var(50)};
     Var v2(s2);
-    REQUIRE(v2.valueType == CBType::Seq);
-    std::array<CBVar, 3> s3{Var(100), Var(200), Var(300)};
+    REQUIRE(v2.valueType == SHType::Seq);
+    std::array<SHVar, 3> s3{Var(100), Var(200), Var(300)};
     Var v3(s3);
-    REQUIRE(v3.valueType == CBType::Seq);
-    std::array<CBVar, 3> s4{Var(10), Var(20), Var(30)};
+    REQUIRE(v3.valueType == SHType::Seq);
+    std::array<SHVar, 3> s4{Var(10), Var(20), Var(30)};
     Var v4(s4);
-    REQUIRE(v4.valueType == CBType::Seq);
-    std::array<CBVar, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
+    REQUIRE(v4.valueType == SHType::Seq);
+    std::array<SHVar, 6> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
-    REQUIRE(v5.valueType == CBType::Seq);
+    REQUIRE(v5.valueType == SHType::Seq);
 
     REQUIRE(v1 == v2);
     REQUIRE(v1 != v3);
@@ -674,7 +674,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(v2 >= v4);
     REQUIRE(v2 >= v5);
 
-    CBLOG_INFO(v1);
+    SHLOG_INFO(v1);
   }
 
   SECTION("Bytes") {
@@ -711,7 +711,7 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE((&data1[0]) != (&data2[0]));
     REQUIRE(data1.size() == 1024);
 
-    REQUIRE(v1.valueType == CBType::Bytes);
+    REQUIRE(v1.valueType == SHType::Bytes);
 
     REQUIRE(data1 == data2);
     REQUIRE(v1 == v2);
@@ -741,18 +741,18 @@ TEST_CASE("CBVar-comparison", "[ops]") {
     REQUIRE(hash1 == hash2);
     REQUIRE_FALSE(hash1 == hash3);
 
-    CBLOG_INFO(v1);
+    SHLOG_INFO(v1);
   }
 
-  SECTION("Block") {
-    CBlock foo;
-    CBlock bar;
-    auto b1 = CBVar();
-    b1.valueType = CBType::Block;
-    b1.payload.blockValue = &foo;
-    auto b2 = CBVar();
-    b2.valueType = CBType::Block;
-    b2.payload.blockValue = &bar;
+  SECTION("Shard") {
+    Shard foo;
+    Shard bar;
+    auto b1 = SHVar();
+    b1.valueType = SHType::ShardRef;
+    b1.payload.shardValue = &foo;
+    auto b2 = SHVar();
+    b2.valueType = SHType::ShardRef;
+    b2.payload.shardValue = &bar;
     REQUIRE_FALSE(b1 == b2);
     REQUIRE(b1 != b2);
   }
@@ -791,7 +791,7 @@ TEST_CASE("VarPayload") {
 }
 
 #define SET_TABLE_COMMON_TESTS                                 \
-  CBInstanceData data{};                                       \
+  SHInstanceData data{};                                       \
   auto hash1 = hash(vxx);                                      \
   auto hash2 = hash(vx);                                       \
   auto hash3 = hash(vyy);                                      \
@@ -802,7 +802,7 @@ TEST_CASE("VarPayload") {
   auto typeInfo2 = deriveTypeInfo(vx, data);                   \
   auto typeInfo3 = deriveTypeInfo(Var::Empty, data);           \
   REQUIRE(deriveTypeHash(typeInfo1) == typeHash1);             \
-  auto stypeHash = std::hash<CBTypeInfo>()(typeInfo1);         \
+  auto stypeHash = std::hash<SHTypeInfo>()(typeInfo1);         \
   REQUIRE(stypeHash != 0);                                     \
   REQUIRE(typeInfo1 == typeInfo2);                             \
   REQUIRE(typeInfo1 != typeInfo3);                             \
@@ -811,7 +811,7 @@ TEST_CASE("VarPayload") {
   freeDerivedInfo(typeInfo3);                                  \
   auto typeHash2 = deriveTypeHash(vx);                         \
   auto typeHash3 = deriveTypeHash(vyy);                        \
-  CBLOG_INFO("{} - {} - {}", typeHash1, typeHash2, typeHash3); \
+  SHLOG_INFO("{} - {} - {}", typeHash1, typeHash2, typeHash3); \
   REQUIRE(typeHash1 == typeHash2);                             \
   REQUIRE(typeHash1 == typeHash3);                             \
   vyy = vz;                                                    \
@@ -821,30 +821,30 @@ TEST_CASE("VarPayload") {
   auto typeHash5 = deriveTypeHash(vz);                         \
   REQUIRE(typeHash4 == typeHash5)
 
-TEST_CASE("CBMap") {
-  CBMap x;
+TEST_CASE("SHMap") {
+  SHMap x;
   x.emplace("x", Var(10));
   x.emplace("y", Var("Hello Set"));
-  CBVar vx{};
-  vx.valueType = CBType::Table;
+  SHVar vx{};
+  vx.valueType = SHType::Table;
   vx.payload.tableValue.opaque = &x;
   vx.payload.tableValue.api = &GetGlobals().TableInterface;
 
-  CBMap y;
+  SHMap y;
   y.emplace("y", Var("Hello Set"));
   y.emplace("x", Var(10));
 
-  CBVar vy{};
-  vy.valueType = CBType::Table;
+  SHVar vy{};
+  vy.valueType = SHType::Table;
   vy.payload.tableValue.opaque = &y;
   vy.payload.tableValue.api = &GetGlobals().TableInterface;
 
-  CBMap z;
+  SHMap z;
   z.emplace("y", Var("Hello Set"));
   z.emplace("x", Var(11));
 
-  CBVar vz{};
-  vz.valueType = CBType::Table;
+  SHVar vz{};
+  vz.valueType = SHType::Table;
   vz.payload.tableValue.opaque = &z;
   vz.payload.tableValue.api = &GetGlobals().TableInterface;
 
@@ -874,30 +874,30 @@ TEST_CASE("CBMap") {
   REQUIRE(vx != vy);
 }
 
-TEST_CASE("CBHashSet") {
-  CBHashSet x;
+TEST_CASE("SHHashSet") {
+  SHHashSet x;
   x.insert(Var(10));
   x.emplace(Var("Hello Set"));
-  CBVar vx{};
-  vx.valueType = CBType::Set;
+  SHVar vx{};
+  vx.valueType = SHType::Set;
   vx.payload.setValue.opaque = &x;
   vx.payload.setValue.api = &GetGlobals().SetInterface;
 
-  CBHashSet y;
+  SHHashSet y;
   y.emplace(Var("Hello Set"));
   y.insert(Var(10));
 
-  CBVar vy{};
-  vy.valueType = CBType::Set;
+  SHVar vy{};
+  vy.valueType = SHType::Set;
   vy.payload.setValue.opaque = &y;
   vy.payload.setValue.api = &GetGlobals().SetInterface;
 
-  CBHashSet z;
+  SHHashSet z;
   z.emplace(Var("Hello Set"));
   z.insert(Var(11));
 
-  CBVar vz{};
-  vz.valueType = CBType::Set;
+  SHVar vz{};
+  vz.valueType = SHType::Set;
   vz.payload.setValue.opaque = &z;
   vz.payload.setValue.api = &GetGlobals().SetInterface;
 
@@ -928,14 +928,14 @@ TEST_CASE("CBHashSet") {
   REQUIRE(vx != vy);
 }
 
-TEST_CASE("CXX-Chain-DSL") {
+TEST_CASE("CXX-Wire-DSL") {
   // TODO, improve this
-  auto chain = chainblocks::Chain("test-chain").looped(true).let(1).block("Log").block("Math.Add", 2).block("Assert.Is", 3, true);
-  assert(chain->blocks.size() == 4);
+  auto wire = shards::Wire("test-wire").looped(true).let(1).shard("Log").shard("Math.Add", 2).shard("Assert.Is", 3, true);
+  assert(wire->shards.size() == 4);
 }
 
 TEST_CASE("DynamicArray") {
-  CBSeq ts{};
+  SHSeq ts{};
   Var a{0}, b{1}, c{2}, d{3}, e{4}, f{5};
   arrayPush(ts, a);
   assert(ts.len == 1);
@@ -995,29 +995,29 @@ TEST_CASE("Type") {
     }};
     Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
     Types InputTableTypes{{VerticesSeq, IndicesSeq}};
-    std::array<CBString, 2> InputTableKeys{"Vertices", "Indices"};
+    std::array<SHString, 2> InputTableKeys{"Vertices", "Indices"};
     Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
-    CBTypeInfo t1 = InputTable;
-    REQUIRE(t1.basicType == CBType::Table);
+    SHTypeInfo t1 = InputTable;
+    REQUIRE(t1.basicType == SHType::Table);
     REQUIRE(t1.table.types.len == 2);
     REQUIRE(t1.table.keys.len == 2);
     REQUIRE(std::string(t1.table.keys.elements[0]) == "Vertices");
     REQUIRE(std::string(t1.table.keys.elements[1]) == "Indices");
-    CBTypeInfo verticesSeq = VerticesSeq;
-    CBTypeInfo indicesSeq = IndicesSeq;
+    SHTypeInfo verticesSeq = VerticesSeq;
+    SHTypeInfo indicesSeq = IndicesSeq;
     REQUIRE(t1.table.types.elements[0] == verticesSeq);
     REQUIRE(t1.table.types.elements[1] == indicesSeq);
   }
 }
 
 TEST_CASE("ObjectVar") {
-  SECTION("ChainUse") {
+  SECTION("WireUse") {
     ObjectVar<int> myobject{"ObjectVarTestObject1", 100, 1};
     int *o1 = myobject.New();
     *o1 = 1000;
-    CBVar v1 = myobject.Get(o1);
-    REQUIRE(v1.valueType == CBType::Object);
+    SHVar v1 = myobject.Get(o1);
+    REQUIRE(v1.valueType == SHType::Object);
     int *vo1 = reinterpret_cast<int *>(v1.payload.objectValue);
     REQUIRE(*vo1 == 1000);
     REQUIRE(vo1 == o1);
@@ -1031,18 +1031,18 @@ TEST_CASE("ObjectVar") {
     auto or1 = reinterpret_cast<ObjectRef *>(o1);
     REQUIRE(or1->refcount == 1);
 
-    auto chain = chainblocks::Chain("test-chain-ObjectVar")
+    auto wire = shards::Wire("test-wire-ObjectVar")
                      .let(v1)
-                     .block("Set", "v1")
-                     .block("Set", "v2")
-                     .block("Get", "v1")
-                     .block("Is", Var::ContextVar("v2"))
-                     .block("Assert.Is", true);
+                     .shard("Set", "v1")
+                     .shard("Set", "v2")
+                     .shard("Get", "v1")
+                     .shard("Is", Var::ContextVar("v2"))
+                     .shard("Assert.Is", true);
     myobject.Release(o1);
-    auto node = CBNode::make();
-    node->schedule(chain);
-    REQUIRE(node->tick());       // false is chain errors happened
-    REQUIRE(or1->refcount == 1); // will be 0 when chain goes out of scope
+    auto mesh = SHMesh::make();
+    mesh->schedule(wire);
+    REQUIRE(mesh->tick());       // false is wire errors happened
+    REQUIRE(or1->refcount == 1); // will be 0 when wire goes out of scope
   }
 }
 
@@ -1088,13 +1088,13 @@ struct GamePadTable : public TableVar {
 
   SeqVar &buttons;
   SeqVar &sticks;
-  CBVar &id;
-  CBVar &connected;
+  SHVar &id;
+  SHVar &connected;
 };
 
 struct HandTable : public GamePadTable {
   static constexpr uint32_t HandednessCC = 'xrha';
-  static inline Type HandEnumType{{CBType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
+  static inline Type HandEnumType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
   static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
 
   HandTable()
@@ -1105,7 +1105,7 @@ struct HandTable : public GamePadTable {
     handedness = Var::Enum(XRHand::Left, CoreCC, HandednessCC);
   }
 
-  CBVar &handedness;
+  SHVar &handedness;
   SeqVar &transform;
   SeqVar &inverseTransform;
 };
@@ -1113,43 +1113,43 @@ struct HandTable : public GamePadTable {
 TEST_CASE("TableVar") {
   HandTable hand;
   hand.buttons.push_back(Var(0.6, 1.0, 1.0));
-  CBLOG_INFO(hand);
+  SHLOG_INFO(hand);
 }
 
 TEST_CASE("HashedActivations") {
   // we need to hack this in as we run out of context
-  CBCoro foo{};
-  CBFlow flow{};
+  SHCoro foo{};
+  SHFlow flow{};
 #ifndef __EMSCRIPTEN__
-  CBContext ctx(std::move(foo), nullptr, &flow);
+  SHContext ctx(std::move(foo), nullptr, &flow);
 #else
-  CBContext ctx(&foo, nullptr, &flow);
+  SHContext ctx(&foo, nullptr, &flow);
 #endif
   auto input = Var(11);
-  CBVar hash{};
-  CBlocks blocks{};
-  CBVar output;
-  auto b1 = createBlock("Assert.Is");
+  SHVar hash{};
+  Shards shards{};
+  SHVar output;
+  auto b1 = createShard("Assert.Is");
   DEFER(b1->destroy(b1));
 
   b1->setParam(b1, 0, &input);
-  blocks.len = 1;
-  blocks.elements = &b1;
-  activateBlocks2(blocks, &ctx, input, output, hash);
-  CBLOG_INFO("hash: {} - output: {}", hash, output);
+  shards.len = 1;
+  shards.elements = &b1;
+  activateShards2(shards, &ctx, input, output, hash);
+  SHLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash.payload.int2Value[0] == 994886936879121204ll);
   REQUIRE(hash.payload.int2Value[1] == -5204327824692322669ll);
   REQUIRE(output == input);
 
   auto wrongValue = Var(12);
   b1->setParam(b1, 0, &wrongValue);
-  blocks.len = 1;
-  blocks.elements = &b1;
+  shards.len = 1;
+  shards.elements = &b1;
   try {
-    activateBlocks2(blocks, &ctx, input, output, hash);
+    activateShards2(shards, &ctx, input, output, hash);
   } catch (...) {
   }
-  CBLOG_INFO("hash: {} - output: {}", hash, output);
+  SHLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash.payload.int2Value[0] == 6312058842062295303ll);
   REQUIRE(hash.payload.int2Value[1] == -1718237385683811710ll);
   REQUIRE(output == input);
@@ -1178,17 +1178,17 @@ TEST_CASE("Number Types") {
   CHECK(!typeLookup.get(NumberType::Float32)->isInteger);
   CHECK(!typeLookup.get(NumberType::Float64)->isInteger);
 
-  CHECK(typeLookup.get(CBType::Int) == typeLookup.get(NumberType::Int64));
-  CHECK(typeLookup.get(CBType::Int2) == typeLookup.get(NumberType::Int64));
-  CHECK(typeLookup.get(CBType::Int3) == typeLookup.get(NumberType::Int32));
-  CHECK(typeLookup.get(CBType::Int4) == typeLookup.get(NumberType::Int32));
-  CHECK(typeLookup.get(CBType::Int8) == typeLookup.get(NumberType::Int16));
-  CHECK(typeLookup.get(CBType::Int16) == typeLookup.get(NumberType::Int8));
-  CHECK(typeLookup.get(CBType::Color) == typeLookup.get(NumberType::UInt8));
-  CHECK(typeLookup.get(CBType::Float) == typeLookup.get(NumberType::Float64));
-  CHECK(typeLookup.get(CBType::Float2) == typeLookup.get(NumberType::Float64));
-  CHECK(typeLookup.get(CBType::Float3) == typeLookup.get(NumberType::Float32));
-  CHECK(typeLookup.get(CBType::Float4) == typeLookup.get(NumberType::Float32));
+  CHECK(typeLookup.get(SHType::Int) == typeLookup.get(NumberType::Int64));
+  CHECK(typeLookup.get(SHType::Int2) == typeLookup.get(NumberType::Int64));
+  CHECK(typeLookup.get(SHType::Int3) == typeLookup.get(NumberType::Int32));
+  CHECK(typeLookup.get(SHType::Int4) == typeLookup.get(NumberType::Int32));
+  CHECK(typeLookup.get(SHType::Int8) == typeLookup.get(NumberType::Int16));
+  CHECK(typeLookup.get(SHType::Int16) == typeLookup.get(NumberType::Int8));
+  CHECK(typeLookup.get(SHType::Color) == typeLookup.get(NumberType::UInt8));
+  CHECK(typeLookup.get(SHType::Float) == typeLookup.get(NumberType::Float64));
+  CHECK(typeLookup.get(SHType::Float2) == typeLookup.get(NumberType::Float64));
+  CHECK(typeLookup.get(SHType::Float3) == typeLookup.get(NumberType::Float32));
+  CHECK(typeLookup.get(SHType::Float4) == typeLookup.get(NumberType::Float32));
 
   double d = 3.14;
   float f = 0.f;
@@ -1244,11 +1244,11 @@ TEST_CASE("Number Types") {
 TEST_CASE("Vector types") {
   VectorTypeLookup Typelookup;
 
-  CBType typesToCheck[] = {
+  SHType typesToCheck[] = {
       Int, Int2, Int3, Int4, Int8, Int16, Float, Float2, Float3, Float4, Color,
   };
 
-  for (const CBType &typeToCheck : typesToCheck) {
+  for (const SHType &typeToCheck : typesToCheck) {
     const VectorTypeTraits *typeTraits = Typelookup.get(typeToCheck);
     CHECK(typeTraits);
     CHECK(typeTraits->dimension > 0);
@@ -1269,13 +1269,13 @@ TEST_CASE("Vector types") {
   }
 }
 
-TEST_CASE("UnsafeActivate-block") {
-  typedef CBVar (*Func)(CBContext *, const CBVar *);
-  Func f = [](CBContext *ctx, const CBVar *input) -> CBVar { return Var(77); };
+TEST_CASE("UnsafeActivate-shard") {
+  typedef SHVar (*Func)(SHContext *, const SHVar *);
+  Func f = [](SHContext *ctx, const SHVar *input) -> SHVar { return Var(77); };
   auto fVar = Var(reinterpret_cast<uint64_t>(f));
-  auto b1 = createBlock("UnsafeActivate!");
+  auto b1 = createShard("UnsafeActivate!");
   DEFER(b1->destroy(b1));
   b1->setParam(b1, 0, &fVar);
-  CBVar input{};
+  SHVar input{};
   CHECK(b1->activate(b1, nullptr, &input).payload.intValue == 77);
 }

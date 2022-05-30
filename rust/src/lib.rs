@@ -23,20 +23,17 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
-extern crate serde;
-extern crate serde_json;
-
-pub mod block;
-mod chainblocksc;
+pub mod shard;
+mod shardsc;
 pub mod core;
 #[macro_use]
 pub mod types;
 // order matters
-#[cfg(feature = "blocks")]
-pub mod blocks;
+#[cfg(feature = "shards")]
+pub mod shards;
 
-use crate::block::Block;
-pub use crate::chainblocksc::*;
+use crate::shard::Shard;
+pub use crate::shardsc::*;
 use crate::core::log;
 use crate::core::Core;
 use crate::types::Types;
@@ -49,7 +46,7 @@ use std::ffi::CString;
 
 macro_rules! var {
     ((-> $($param:tt) *)) => {{
-        let blks = blocks!($($param) *);
+        let blks = shards!($($param) *);
         let mut vblks = Vec::<$crate::types::Var>::new();
         for blk in blks {
             vblks.push($crate::types::Var::from(blk));
@@ -62,33 +59,33 @@ macro_rules! var {
     ($vexp:expr) => { $crate::types::WrappedVar($crate::types::Var::from($vexp)) }
 }
 
-macro_rules! blocks {
-    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))) };
-    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))) };
-    (@block Set :Name .$var:ident) => { blocks!(@block Set (stringify!($var))) };
-    (@block Set .$var:ident) => { blocks!(@block Set (stringify!($var))) };
+macro_rules! shards {
+    (@shard Set :Name .$var:ident) => { shards!(@shard Set (stringify!($var))) };
+    (@shard Set .$var:ident) => { shards!(@shard Set (stringify!($var))) };
+    (@shard Set :Name .$var:ident) => { shards!(@shard Set (stringify!($var))) };
+    (@shard Set .$var:ident) => { shards!(@shard Set (stringify!($var))) };
 
-    // (BlockName)
-    (@block $block:ident) => {{
-        let blk = $crate::core::createBlockPtr(stringify!($block));
+    // (ShardName)
+    (@shard $shard:ident) => {{
+        let blk = $crate::core::createShardPtr(stringify!($shard));
         unsafe {
             (*blk).setup.unwrap()(blk);
         }
             blk
     }};
 
-    // (BlockName.BlockName :ParamName ParamVar ...)
-    (@block $block0:ident.$block1:ident $(:$pname:tt $param:tt) *) => {{
-      let blkname = concat!(stringify!($block0), ".", stringify!($block1));
-      let blk = $crate::core::createBlockPtr(blkname);
+    // (ShardName.ShardName :ParamName ParamVar ...)
+    (@shard $shard0:ident.$shard1:ident $(:$pname:tt $param:tt) *) => {{
+      let blkname = concat!(stringify!($shard0), ".", stringify!($shard1));
+      let blk = $crate::core::createShardPtr(blkname);
       unsafe {
           (*blk).setup.unwrap()(blk);
       }
-      let cparams: $crate::chainblocksc::CBParametersInfo;
+      let cparams: $crate::shardsc::SHParametersInfo;
       unsafe {
           cparams = (*blk).parameters.unwrap()(blk);
       }
-      let params: &[$crate::chainblocksc::CBParameterInfo] = cparams.into();
+      let params: &[$crate::shardsc::SHParameterInfo] = cparams.into();
       $(
           {
               let param = stringify!($pname);
@@ -107,25 +104,25 @@ macro_rules! blocks {
                       (*blk).setParam.unwrap()(blk, pidx as i32, &pvar.0 as * const _);
                   }
               } else {
-                  panic!("Parameter not found: {} for block: {}!", param, blkname);
+                  panic!("Parameter not found: {} for shard: {}!", param, blkname);
               }
           }
       ) *
           blk
    }};
 
-    // (BlockName :ParamName ParamVar ...)
-    (@block $block:ident $(:$pname:tt $param:tt) *) => {{
-        let blkname = stringify!($block);
-        let blk = $crate::core::createBlockPtr(blkname);
+    // (ShardName :ParamName ParamVar ...)
+    (@shard $shard:ident $(:$pname:tt $param:tt) *) => {{
+        let blkname = stringify!($shard);
+        let blk = $crate::core::createShardPtr(blkname);
         unsafe {
             (*blk).setup.unwrap()(blk);
         }
-        let cparams: $crate::chainblocksc::CBParametersInfo;
+        let cparams: $crate::shardsc::SHParametersInfo;
         unsafe {
             cparams = (*blk).parameters.unwrap()(blk);
         }
-        let params: &[$crate::chainblocksc::CBParameterInfo] = cparams.into();
+        let params: &[$crate::shardsc::SHParameterInfo] = cparams.into();
         $(
             {
                 let param = stringify!($pname);
@@ -144,16 +141,16 @@ macro_rules! blocks {
                         (*blk).setParam.unwrap()(blk, pidx as i32, &pvar.0 as * const _);
                     }
                 } else {
-                    panic!("Parameter not found: {} for block: {}!", param, blkname);
+                    panic!("Parameter not found: {} for shard: {}!", param, blkname);
                 }
             }
         ) *
             blk
      }};
 
-     // (BlockName.BlockName ParamVar ...)
-    (@block $block0:ident.$block1:ident $($param:tt) *) => {{
-      let blk = $crate::core::createBlockPtr(concat!(stringify!($block0), ".", stringify!($block1)));
+     // (ShardName.ShardName ParamVar ...)
+    (@shard $shard0:ident.$shard1:ident $($param:tt) *) => {{
+      let blk = $crate::core::createShardPtr(concat!(stringify!($shard0), ".", stringify!($shard1)));
       unsafe {
           (*blk).setup.unwrap()(blk);
       }
@@ -170,9 +167,9 @@ macro_rules! blocks {
           blk
     }};
 
-    // (BlockName ParamVar ...)
-    (@block $block:ident $($param:tt) *) => {{
-        let blk = $crate::core::createBlockPtr(stringify!($block));
+    // (ShardName ParamVar ...)
+    (@shard $shard:ident $($param:tt) *) => {{
+        let blk = $crate::core::createShardPtr(stringify!($shard));
         unsafe {
             (*blk).setup.unwrap()(blk);
         }
@@ -195,42 +192,42 @@ macro_rules! blocks {
       but in this macro (. 10) (Log) has to be used.
       I will implement a (.) builtin maybe in mal to allow copy pasting of such scripts.. but not sure we are going to use either.. again WIP but don't wanna loose it in history.
     */
-    (@block . $a:expr) => { blocks!(@block Const $a) };
+    (@shard . $a:expr) => { shards!(@shard Const $a) };
 
-    // this is the CORE evaluator takes a list of blocks expressions
+    // this is the CORE evaluator takes a list of shards expressions
     // the current limit is that everything has to be between parenthesis (...)
-    ($(($block:tt $($param:tt) *)) *) => {{
-        let mut blks = Vec::<$crate::chainblocksc::CBlockPtr>::new();
+    ($(($shard:tt $($param:tt) *)) *) => {{
+        let mut blks = Vec::<$crate::shardsc::ShardPtr>::new();
         $(
-            blks.push(blocks!(@block $block $($param) *));
+            blks.push(shards!(@shard $shard $($param) *));
         ) *
             blks
     }};
 }
 
 // --features "dummy"
-#[cfg(any(all(test, not(feature = "cb_static")), target_arch = "wasm32"))]
+#[cfg(any(all(test, not(feature = "sh_static")), target_arch = "wasm32"))]
 #[macro_use]
-mod dummy_block {
+mod dummy_shard {
   // run with: RUST_BACKTRACE=1 cargo test -- --nocapture
 
-  use super::block::create;
+  use super::shard::create;
   use super::Types;
-  use crate::block::cblock_construct;
-  use crate::block::Block;
-  use crate::block::BlockWrapper;
-  use crate::cblog;
-  use crate::chainblocksc::CBContext;
-  use crate::chainblocksc::CBTypeInfo;
-  use crate::chainblocksc::CBType_Int;
-  use crate::chainblocksc::CBTypesInfo;
-  use crate::chainblocksc::CBVar;
-  use crate::chainblocksc::CBlock;
+  use crate::shard::shard_construct;
+  use crate::shard::Shard;
+  use crate::shard::ShardWrapper;
+  use crate::shlog;
+  use crate::shardsc::SHContext;
+  use crate::shardsc::SHTypeInfo;
+  use crate::shardsc::SHType_Int;
+  use crate::shardsc::SHTypesInfo;
+  use crate::shardsc::SHVar;
+  use crate::shardsc::{Shard as CShard};
   use crate::core::cloneVar;
-  use crate::core::createBlock;
+  use crate::core::createShard;
   use crate::core::init;
   use crate::core::log;
-  use crate::core::registerBlock;
+  use crate::core::registerShard;
   use crate::core::sleep;
   use crate::core::suspend;
   use crate::core::Core;
@@ -250,21 +247,21 @@ mod dummy_block {
     };
   }
 
-  pub struct DummyBlock {
+  pub struct DummyShard {
     inputTypes: Types,
     outputTypes: Types,
   }
 
-  impl Default for DummyBlock {
+  impl Default for DummyShard {
     fn default() -> Self {
-      DummyBlock {
+      DummyShard {
         inputTypes: vec![common_type::none],
         outputTypes: vec![common_type::any],
       }
     }
   }
 
-  impl Block for DummyBlock {
+  impl Shard for DummyShard {
     fn name(&mut self) -> &str {
       "Dummy"
     }
@@ -281,7 +278,7 @@ mod dummy_block {
       Some(&PROPERTIES)
     }
 
-    fn activate(&mut self, context: &CBContext, _input: &Var) -> Result<Var, &str> {
+    fn activate(&mut self, context: &SHContext, _input: &Var) -> Result<Var, &str> {
       log("Dummy - activate: Ok!\0");
       let mut x: String = "Before...\0".to_string();
       log(&x);
@@ -305,13 +302,13 @@ mod dummy_block {
   #[ctor]
   fn registerDummy() {
     init();
-    registerBlock::<DummyBlock>();
+    registerShard::<DummyShard>();
   }
 
   fn macroTest() {
     let rust_variable = "Hello World!";
     let rust_variable2 = 2;
-    blocks!(
+    shards!(
       (. 10)
       (Math.Multiply rust_variable2)
       (Math.Subtract :Operand 1)
@@ -326,7 +323,7 @@ mod dummy_block {
         (. rust_variable) (Log)))
       (Msg :Message "Done"));
 
-    blocks!(
+    shards!(
       (. "Hello")
       (Msg)
     );
@@ -336,14 +333,14 @@ mod dummy_block {
   fn instanciate() {
     init();
 
-    let mut blk = create::<DummyBlock>();
-    assert_eq!("Dummy".to_string(), blk.block.name());
+    let mut blk = create::<DummyShard>();
+    assert_eq!("Dummy".to_string(), blk.shard.name());
 
     let blkname = CString::new("Dummy").expect("CString failed...");
     unsafe {
-      let cblk = (*Core).createBlock.unwrap()(blkname.as_ptr());
-      (*cblk).setup.unwrap()(cblk);
-      (*cblk).destroy.unwrap()(cblk);
+      let shlk = (*Core).createShard.unwrap()(blkname.as_ptr());
+      (*shlk).setup.unwrap()(shlk);
+      (*shlk).destroy.unwrap()(shlk);
     }
 
     let svar1: Var = "Hello\0".into();
@@ -358,8 +355,8 @@ mod dummy_block {
     let mut b = Var::from(true);
     cloneVar(&mut b, &a);
     unsafe {
-      assert_eq!(a.valueType, CBType_Int);
-      assert_eq!(b.valueType, CBType_Int);
+      assert_eq!(a.valueType, SHType_Int);
+      assert_eq!(b.valueType, SHType_Int);
       assert_eq!(a.payload.__bindgen_anon_1.intValue, 10);
       assert_eq!(
         a.payload.__bindgen_anon_1.intValue,
@@ -369,12 +366,12 @@ mod dummy_block {
 
     let _v: ClonedVar = a.into();
 
-    cblog!("Hello chainblocks-rs");
+    shlog!("Hello shards-rs");
   }
 }
 
-#[cfg(feature = "cblisp")]
-pub mod cblisp {
+#[cfg(feature = "scripting")]
+pub mod scripting {
   use crate::types::ClonedVar;
   use std::convert::TryInto;
 
@@ -406,12 +403,12 @@ pub mod cblisp {
   }
 
   #[macro_export]
-  macro_rules! cbl_no_env {
+  macro_rules! shards_no_env {
     ($code:expr) => {
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
         let mut output = ClonedVar::default();
-        let ok = $crate::core::cbLispEval(::core::ptr::null_mut(), code.as_ptr(), &mut output.0);
+        let ok = $crate::core::shLispEval(::core::ptr::null_mut(), code.as_ptr(), &mut output.0);
         if ok {
           Some(output)
         } else {
@@ -422,14 +419,14 @@ pub mod cblisp {
   }
 
   #[macro_export]
-  macro_rules! cbl {
+  macro_rules! shards {
     ($code:expr) => {{
       thread_local! {
-        static ENV: $crate::cblisp::ScriptEnv = {
+        static ENV: $crate::scripting::ScriptEnv = {
           let current_dir = std::env::current_dir().unwrap();
           let current_dir = current_dir.to_str().unwrap();
           let current_dir = std::ffi::CString::new(current_dir).unwrap();
-          unsafe { $crate::cblisp::ScriptEnv($crate::core::ScriptEnvCreate.unwrap()(current_dir.as_ptr())) }
+          unsafe { $crate::scripting::ScriptEnv($crate::core::ScriptEnvCreate.unwrap()(current_dir.as_ptr())) }
         }
       }
       unsafe {
@@ -446,7 +443,7 @@ pub mod cblisp {
   }
 
   #[macro_export]
-  macro_rules! cbl_env {
+  macro_rules! shards_env {
     ($env:expr, $code:expr) => {{
       unsafe {
         let code = std::ffi::CString::new($code).expect("CString failed...");
@@ -462,45 +459,45 @@ pub mod cblisp {
     }};
   }
 
-  pub fn test_cbl() {
+  pub fn test_shl() {
     // the string is stored at compile time, ideally we should compress them all!
-    let res = cbl!(include_str!("test.edn")).unwrap();
+    let res = shards!(include_str!("test.edn")).unwrap();
     let res: &str = res.0.as_ref().try_into().unwrap();
     assert_eq!(res, "Hello");
   }
 }
 
-#[cfg(feature = "blocks")]
+#[cfg(feature = "shards")]
 #[no_mangle]
-pub extern "C" fn registerRustBlocks(core: *mut CBCore) {
+pub extern "C" fn registerRustShards(core: *mut SHCore) {
   unsafe {
     Core = core;
   }
 
   #[cfg(not(target_arch = "wasm32"))]
-  blocks::http::registerBlocks();
+  shards::http::registerShards();
 
-  blocks::casting::registerBlocks();
-  blocks::hash::registerBlocks();
-  blocks::ecdsa::registerBlocks();
-  blocks::physics::simulation::registerBlocks();
-  blocks::physics::shapes::registerBlocks();
-  blocks::physics::rigidbody::registerBlocks();
-  blocks::physics::queries::registerBlocks();
-  blocks::physics::forces::registerBlocks();
-  blocks::svg::registerBlocks();
-  blocks::eth::registerBlocks();
-  blocks::cb_csv::registerBlocks();
-  blocks::curve25519::registerBlocks();
-  blocks::substrate::registerBlocks();
-  blocks::chachapoly::registerBlocks();
+  shards::casting::registerShards();
+  shards::hash::registerShards();
+  shards::ecdsa::registerShards();
+  shards::physics::simulation::registerShards();
+  shards::physics::shapes::registerShards();
+  shards::physics::rigidbody::registerShards();
+  shards::physics::queries::registerShards();
+  shards::physics::forces::registerShards();
+  shards::svg::registerShards();
+  shards::eth::registerShards();
+  shards::csv::registerShards();
+  shards::curve25519::registerShards();
+  shards::substrate::registerShards();
+  shards::chachapoly::registerShards();
 
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
-  blocks::browse::registerBlocks();
+  shards::browse::registerShards();
 }
 
 #[no_mangle]
 pub extern "C" fn runRuntimeTests() {
-  #[cfg(feature = "cblisp")]
-  cblisp::test_cbl();
+  #[cfg(feature = "scripting")]
+  scripting::test_shl();
 }

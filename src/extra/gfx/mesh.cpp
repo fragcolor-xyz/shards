@@ -2,36 +2,36 @@
 #include "buffer_vars.hpp"
 #include <gfx/mesh.hpp>
 
-using namespace chainblocks;
+using namespace shards;
 namespace gfx {
 
-struct MeshBlock {
+struct MeshShard {
   static inline Type VertexAttributeSeqType = Type::SeqOf(CoreInfo::StringType);
-  static inline chainblocks::Types VerticesSeqTypes{
+  static inline shards::Types VerticesSeqTypes{
       {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType, CoreInfo::Int4Type}};
   static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
-  static inline chainblocks::Types IndicesSeqTypes{{CoreInfo::IntType}};
+  static inline shards::Types IndicesSeqTypes{{CoreInfo::IntType}};
   static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
-  static inline chainblocks::Types InputTableTypes{{VerticesSeq, IndicesSeq}};
+  static inline shards::Types InputTableTypes{{VerticesSeq, IndicesSeq}};
   static inline const char *InputVerticesTableKey = "Vertices";
   static inline const char *InputIndicesTableKey = "Indices";
-  static inline std::array<CBString, 2> InputTableKeys{InputVerticesTableKey, InputIndicesTableKey};
+  static inline std::array<SHString, 2> InputTableKeys{InputVerticesTableKey, InputIndicesTableKey};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
-  static CBTypesInfo inputTypes() { return InputTable; }
-  static CBTypesInfo outputTypes() { return Types::Mesh; }
+  static SHTypesInfo inputTypes() { return InputTable; }
+  static SHTypesInfo outputTypes() { return Types::Mesh; }
 
-  static inline Parameters params{{"Layout", CBCCSTR("The names for each vertex attribute."), {VertexAttributeSeqType}},
-                                  {"WindingOrder", CBCCSTR("Front facing winding order for this mesh."), {Types::WindingOrder}}};
+  static inline Parameters params{{"Layout", SHCCSTR("The names for each vertex attribute."), {VertexAttributeSeqType}},
+                                  {"WindingOrder", SHCCSTR("Front facing winding order for this mesh."), {Types::WindingOrder}}};
 
-  static CBParametersInfo parameters() { return params; }
+  static SHParametersInfo parameters() { return params; }
 
   std::vector<Var> _layout;
   WindingOrder _windingOrder{WindingOrder::CCW};
 
   MeshPtr *_mesh = {};
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _layout = std::vector<Var>(Var(value));
@@ -42,7 +42,7 @@ struct MeshBlock {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_layout);
@@ -60,19 +60,19 @@ struct MeshBlock {
     }
   }
 
-  void warmup(CBContext *context) {
+  void warmup(SHContext *context) {
     _mesh = Types::MeshObjectVar.New();
     MeshPtr mesh = (*_mesh) = std::make_shared<Mesh>();
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     MeshFormat meshFormat;
     meshFormat.primitiveType = PrimitiveType::TriangleList;
     meshFormat.windingOrder = _windingOrder;
 
-    const CBTable &inputTable = input.payload.tableValue;
-    CBVar *verticesVar = inputTable.api->tableAt(inputTable, InputVerticesTableKey);
-    CBVar *indicesVar = inputTable.api->tableAt(inputTable, InputIndicesTableKey);
+    const SHTable &inputTable = input.payload.tableValue;
+    SHVar *verticesVar = inputTable.api->tableAt(inputTable, InputVerticesTableKey);
+    SHVar *indicesVar = inputTable.api->tableAt(inputTable, InputIndicesTableKey);
 
     if (_layout.size() == 0) {
       throw formatException("Layout must be set");
@@ -115,5 +115,5 @@ struct MeshBlock {
   }
 };
 
-void registerMeshBlocks() { REGISTER_CBLOCK("GFX.Mesh", MeshBlock); }
+void registerMeshShards() { REGISTER_SHARD("GFX.Mesh", MeshShard); }
 } // namespace gfx

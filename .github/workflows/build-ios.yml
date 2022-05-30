@@ -6,12 +6,12 @@ on:
 
 jobs:
   #
-  # Build chainblocks for iOS
+  # Build shards for iOS
   #
   iOS:
     runs-on: macos-latest
     steps:
-      - name: Checkout chainblocks
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
@@ -30,8 +30,8 @@ jobs:
       - name: Build device
         run: |
           cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
-          cmake --build build_arm64 --target chainblocks-core-static -- -arch arm64 -sdk iphoneos
+          cmake --build build_arm64 --target shards-core-static -- -arch arm64 -sdk iphoneos
       - name: Build simulator x86
         run: |
           cmake -Bbuild_sim_x86 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=x86_64 -DXCODE_SDK=iphonesimulator
-          cmake --build build_sim_x86 --target chainblocks-core-static -- -arch x86_64 -sdk iphonesimulator
+          cmake --build build_sim_x86 --target shards-core-static -- -arch x86_64 -sdk iphonesimulator

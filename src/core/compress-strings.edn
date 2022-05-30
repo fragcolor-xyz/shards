@@ -1,7 +1,7 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-; we compress a cbl script that will populate the strings at runtime
+; we compress a shards script that will populate the strings at runtime
 
 (def strings (export-strings))
 
@@ -11,10 +11,10 @@
 
 (prn payload)
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def compress
-  (Chain
+  (Wire
    "compress"
    payload
    (ToBytes) >= .source
@@ -22,14 +22,14 @@
    .source (Brotli.Compress) >= .res
    "constexpr std::array<uint8_t, " >= .code
    (Count .res) (Log "compressed size") (ToString) (AppendTo .code)
-   "> __chainblocks_compressed_strings = {\n" (AppendTo .code)
+   "> __shards_compressed_strings = {\n" (AppendTo .code)
    .res (BytesToInts)
    (ForEach (-> >= .b
                 "  " (AppendTo .code)
                 .b (ToHex) (AppendTo .code)
                 ",\n" (AppendTo .code)))
    "};\n" (AppendTo .code)
-   "cbccstrings.hpp"
+   "shccstrings.hpp"
    (FS.Write .code :Overwrite true)))
 
 (prepare compress)

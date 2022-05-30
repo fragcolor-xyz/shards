@@ -1,18 +1,18 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-;; Not the best subject for chainblocks at all
+;; Not the best subject for shards at all
 ;; but still if competitive in this would be nice
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def - Math.Subtract)
 (def + Math.Add)
 (def < IsLess)
 
 (def fib1
-  (Chain
-                                        ; chain header
+  (Wire
+                                        ; wire header
    "fib1"
                                         ; actual algo
    ;; (Log "enter")
@@ -26,8 +26,8 @@
    ))
 
 (def fib2
-  (Chain
-                                        ; chain header
+  (Wire
+                                        ; wire header
    "fib2"
                                         ; actual algo
    ;; (Log "enter")
@@ -40,8 +40,8 @@
    ))
 
 (def fib3
-  (Chain
-                                        ; chain header
+  (Wire
+                                        ; wire header
    "fib3"
                                         ; actual algo
    ;; (Log "enter")
@@ -54,7 +54,7 @@
    ))
 
 (def fib4
-  (Chain
+  (Wire
    "fib4"
    (Math.Subtract 3) = .n
    1 >= .a
@@ -66,7 +66,7 @@
     :Times .n)
    .b))
 
-(schedule Root (Chain "run" (Profile (-> 34 (Do fib4))) (Log "result")))
+(schedule Root (Wire "run" (Profile (-> 34 (Do fib4))) (Log "result")))
 (run Root)
 
 (def fib1 nil)

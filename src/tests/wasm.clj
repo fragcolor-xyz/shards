@@ -1,10 +1,10 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def test
-  (Chain
+  (Wire
    "test"
    :Looped
    "" (Wasm.Run "../../deps/wasm3/test/wasi/simple/test.wasm") (Log "r1")

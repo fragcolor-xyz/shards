@@ -3,7 +3,7 @@
 
 #include "eval.hpp"
 
-using namespace chainblocks::edn::eval;
+using namespace shards::edn::eval;
 
 Value Program::eval(form::Form ast, std::shared_ptr<Environment> env, int *line) {
   while (1) {
@@ -97,8 +97,8 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env, int *line)
               auto res = eval(pred, env, line);
               list.pop_front();
               if (res.index() == value::types::Var) {
-                // is cbvarvalue
-                auto &var = std::get<CBVarValue>(res);
+                // is shvarvalue
+                auto &var = std::get<SHVarValue>(res);
                 if (var.value().valueType == Bool && var.value().payload.boolValue) {
                   // is true
                   ast = list.front().form;
@@ -162,8 +162,8 @@ Value Program::eval(form::Form ast, std::shared_ptr<Environment> env, int *line)
                 throw EvalException("quasiquote expected 1 argument", token.line);
               }
               throw EvalException("quasiquote not implemented yet!", token.line);
-            } else if (value == "Node") {
-              return Node(token, env);
+            } else if (value == "Mesh") {
+              return Mesh(token, env);
             } else {
               // seek the env
               auto sym = env->find(value);

@@ -96,7 +96,7 @@
       (FColor 0.25 1.00 0.00 1.00) (GUI.Style GuiStyle.PlotHistogramHoveredColor)
       (FColor 0.25 1.00 0.00 0.43) (GUI.Style GuiStyle.TextSelectedBgColor)))
 
-(defloop test-chain
+(defloop test-wire
   (GFX.MainWindow
    :Title "Gizmo test" :Width 1024 :Height 768 :Debug true :Fullscreen false
    :Contents
@@ -188,9 +188,9 @@
        (Gizmo.CubeView .myView)
        (Gizmo.Transform :Matrix .cube_t :Mode .mode :Operation .operation :Snap .snap))))
 
-(defnode main)
-(schedule main test-chain)
+(defmesh main)
+(schedule main test-wire)
 (run main 0.02 100)
 
-(schedule main test-chain)
+(schedule main test-wire)
 (run main 0.02 100)

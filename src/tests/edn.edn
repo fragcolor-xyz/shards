@@ -1,9 +1,9 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode main)
+(defmesh main)
 
-(defchain uglify
+(defwire uglify
   "general.edn"
   (FS.Read)
   (EDN.Uglify ["WriteFile" 

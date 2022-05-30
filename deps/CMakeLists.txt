@@ -42,7 +42,7 @@ if(NOT EMSCRIPTEN)
     set(SDL_LIB_SUFFIX "d")
   endif()
 
-  cb_add_external_project(
+  sh_add_external_project(
     NAME sdl_a
     TARGETS   SDL2-static SDL2main
     LIB_NAMES SDL2        SDL2main
@@ -92,7 +92,7 @@ if(NOT EMSCRIPTEN)
   endif()
 endif()
 
-cb_add_external_project(
+sh_add_external_project(
   NAME wasm3_a
   TARGETS m3
   LIB_RELATIVE_DIRS source/
@@ -100,7 +100,7 @@ cb_add_external_project(
   RELATIVE_INCLUDE_PATHS source
   REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/wasm3)
 
-cb_add_external_project(
+sh_add_external_project(
   NAME snappy_a
   TARGETS snappy
   CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0
@@ -109,7 +109,7 @@ cb_add_external_project(
   REPO_ARGS GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
             GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e)
 
-cb_add_external_project(
+sh_add_external_project(
   NAME brotli_a
   TARGETS brotlidec-static brotlienc-static brotlicommon-static
   CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1
@@ -121,20 +121,20 @@ cb_add_external_project(
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   set(CATCH2_LIB_SUFFIX "d")
 endif()
-cb_add_external_project(
+sh_add_external_project(
   NAME catch2_a
   INSTALL
   TARGETS Catch2 Catch2Main
   LIB_SUFFIX ${CATCH2_LIB_SUFFIX}
-  REPO_ARGS URL ${CHAINBLOCKS_DIR}/deps/Catch2)
+  REPO_ARGS URL ${SHARDS_DIR}/deps/Catch2)
 
-cb_add_external_project(
+sh_add_external_project(
   NAME kissfft_a
   TARGETS kissfft
   LIB_SUFFIX -float
   CMAKE_ARGS -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
   RELATIVE_INCLUDE_PATHS .
-  REPO_ARGS URL ${CHAINBLOCKS_DIR}/deps/kissfft)
+  REPO_ARGS URL ${SHARDS_DIR}/deps/kissfft)
 
 add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

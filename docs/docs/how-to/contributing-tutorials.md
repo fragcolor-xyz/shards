@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 # Contributing tutorials
 
-How-to contribute Chainblocks example game codes and tutorials.
+How-to contribute Shards example game codes and tutorials.
 
 // TODO //
 

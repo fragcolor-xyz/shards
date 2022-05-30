@@ -1,8 +1,8 @@
-(defchain main-chain
+(defwire main-wire
   ["Hello" "world!" "How" "are" "we" "today?"]
   (String.Join :Separator " ") (Log)
   (Assert.Is "Hello world! How are we today?" true))
 
-(defnode root)
-(schedule root main-chain)
-(run main-chain)
+(defmesh root)
+(schedule root main-wire)
+(run main-wire)

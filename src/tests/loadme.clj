@@ -8,5 +8,5 @@
 (Msg "Hello")
 (Time.Delta)
 (Log "DT")
-(Detach "myChain")
+(Detach "myWire")
 (eval (read-string (str "(-> " (slurp "loadme-extra.clj") ")")))

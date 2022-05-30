@@ -1,14 +1,14 @@
 #include "../gfx.hpp"
-#include "chainblocks_types.hpp"
-#include "chainblocks_utils.hpp"
+#include "shards_types.hpp"
+#include "shards_utils.hpp"
 #include "linalg_shim.hpp"
 #include "material_utils.hpp"
 #include <gfx/material.hpp>
 
-using namespace chainblocks;
+using namespace shards;
 namespace gfx {
-void CBShaderParameters::updateVariables(MaterialParameters &output) {
-  for (CBBasicShaderParameter &param : basic) {
+void SHShaderParameters::updateVariables(MaterialParameters &output) {
+  for (SHBasicShaderParameter &param : basic) {
     ParamVariant variant;
     if (varToParam(param.var.get(), variant)) {
       output.set(param.key, variant);
@@ -16,9 +16,9 @@ void CBShaderParameters::updateVariables(MaterialParameters &output) {
   }
 }
 
-void CBMaterial::updateVariables() { shaderParameters.updateVariables(material->parameters); }
+void SHMaterial::updateVariables() { shaderParameters.updateVariables(material->parameters); }
 
-struct MaterialBlock {
+struct MaterialShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
@@ -26,17 +26,17 @@ struct MaterialBlock {
 
   static inline Parameters params{
       {"Params",
-       CBCCSTR("The params variable to use"),
+       SHCCSTR("The params variable to use"),
        {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
-  static CBTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static CBTypesInfo outputTypes() { return Types::Material; }
-  static CBParametersInfo parameters() { return params; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return Types::Material; }
+  static SHParametersInfo parameters() { return params; }
 
   ParamVar _paramsVar{};
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _paramsVar = value;
@@ -46,7 +46,7 @@ struct MaterialBlock {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return _paramsVar;
@@ -55,16 +55,16 @@ struct MaterialBlock {
     }
   }
 
-  void warmup(CBContext *context) { _paramsVar.warmup(context); }
+  void warmup(SHContext *context) { _paramsVar.warmup(context); }
 
   void cleanup() { _paramsVar.cleanup(); }
 
-  void validateInputTableType(CBTypeInfo &type) {
+  void validateInputTableType(SHTypeInfo &type) {
     auto &inputTable = type.table;
     size_t inputTableLen = inputTable.keys.len;
     for (size_t i = 0; i < inputTableLen; i++) {
       const char *key = inputTable.keys.elements[i];
-      CBTypeInfo &type = inputTable.types.elements[i];
+      SHTypeInfo &type = inputTable.types.elements[i];
 
       if (strcmp(key, "Params") == 0) {
         validateShaderParamsType(type);
@@ -72,30 +72,30 @@ struct MaterialBlock {
     }
   }
 
-  CBTypeInfo compose(CBInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     validateInputTableType(data.inputType);
     return Types::Material;
   }
 
-  CBVar activate(CBContext *cbContext, const CBVar &input) {
-    const CBTable &inputTable = input.payload.tableValue;
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    const SHTable &inputTable = input.payload.tableValue;
 
-    CBMaterial *cbMaterial = Types::MaterialObjectVar.New();
-    cbMaterial->material = std::make_shared<Material>();
+    SHMaterial *shMaterial = Types::MaterialObjectVar.New();
+    shMaterial->material = std::make_shared<Material>();
 
-    CBVar paramsVar{};
-    if (getFromTable(cbContext, inputTable, "Params", paramsVar)) {
-      initConstantShaderParams(cbMaterial->material->parameters, paramsVar.payload.tableValue);
+    SHVar paramsVar{};
+    if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
+      initConstantShaderParams(shMaterial->material->parameters, paramsVar.payload.tableValue);
     }
 
-    if (_paramsVar->valueType != CBType::None) {
-      initReferencedShaderParams(cbContext, cbMaterial->shaderParameters, _paramsVar.get().payload.tableValue);
+    if (_paramsVar->valueType != SHType::None) {
+      initReferencedShaderParams(shContext, shMaterial->shaderParameters, _paramsVar.get().payload.tableValue);
     }
 
-    return Types::MaterialObjectVar.Get(cbMaterial);
+    return Types::MaterialObjectVar.Get(shMaterial);
   }
 };
 
-void registerMaterialBlocks() { REGISTER_CBLOCK("GFX.Material", MaterialBlock); }
+void registerMaterialShards() { REGISTER_SHARD("GFX.Material", MaterialShard); }
 
 } // namespace gfx

@@ -1,4 +1,4 @@
-set(BGFX_DIR ${CHAINBLOCKS_DIR}/deps/bgfx)
+set(BGFX_DIR ${SHARDS_DIR}/deps/bgfx)
 
 option(GFX_DEBUG "Enable context debug mode by default" OFF)
 
@@ -20,7 +20,7 @@ add_library(gfx
   feature.cpp
   texture.cpp
   shader/generator.cpp
-  shader/blocks.cpp
+  shader/shards.cpp
   # cache_data.cpp
 )
 
@@ -56,7 +56,7 @@ if(NOT EMSCRIPTEN AND (CMAKE_BUILD_TYPE MATCHES Debug))
 	set(GFX_CAN_USE_DATA_PATH ON)
 endif()
 if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
-  target_compile_definitions(gfx PUBLIC GFX_DATA_PATH=\"${CHAINBLOCKS_DIR}\")
+  target_compile_definitions(gfx PUBLIC GFX_DATA_PATH=\"${SHARDS_DIR}\")
 endif()
 
 if(GFX_DEBUG)
@@ -106,7 +106,7 @@ if(NOT EMSCRIPTEN)
   list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
 
   if(IOS)
-    set(BUILD_SCRIPT "${CHAINBLOCKS_DIR}/cmake/osx_rust_build.sh")
+    set(BUILD_SCRIPT "${SHARDS_DIR}/cmake/osx_rust_build.sh")
   endif()
 
   add_custom_command(

@@ -1,10 +1,10 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2020 Fragcolor Pte. Ltd.
 
-(def Root (Node))
+(def Root (Mesh))
 
 (def producer
-  (Chain
+  (Wire
    "Producer"
    ;; :Looped
    (Repeat
@@ -15,14 +15,14 @@
    (Complete "a")))
 
 (def consumer1
-  (Chain
+  (Wire
    "Consumer1"
    :Looped
    (Consume "a") ; consumes 1
    (Log "Consumed 1: ")))
 
 (def consumer2
-  (Chain
+  (Wire
    "Consumer2"
    :Looped
    (Consume "a" 5)
@@ -34,7 +34,7 @@
 (run Root 0.1)
 
 (def producer
-  (Chain
+  (Wire
    "Producer"
    ;; :Looped
    (Repeat
@@ -46,14 +46,14 @@
    (Complete "b")))
 
 (defn consumers [x]
-  (Chain
+  (Wire
    (str "Consumer" x)
    :Looped
    (Listen "b")
    (Log (str x ": "))))
 
 (def consumer33
-  (Chain
+  (Wire
    "Consumer33"
    :Looped
    (Listen "b" 3)

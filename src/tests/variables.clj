@@ -1,11 +1,11 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2019 Fragcolor Pte. Ltd.
 
-(def! node (Node))
+(def! mesh (Mesh))
 
 (schedule
- node
- (Chain
+ mesh
+ (Wire
   "variables" :Looped
   10
   (Set "x")
@@ -201,13 +201,13 @@
   10 >> .smany
   .smany (Assert.Is [true, [[0.1], [0.1, 0.1], [0.1, 0.1, 0.1]], 10] true) (Log)
 
-  ; without Table block the rest would not work cos Table won't be exposed by When
+  ; without Table shard the rest would not work cos Table won't be exposed by When
   (Table .table-decl-1 :Types Type.Float)
   true (When (Is true) (-> 11.0 (Set .table-decl-1 "A")))
   (Get .table-decl-1 "A") (Math.Add 2.0) (Assert.Is 13.0 true)
   (Get .table-decl-1 "B" :Default 10.0) (Assert.Is 10.0 true)
 
-  ; without Table block the rest would not work cos Table won't be exposed by When
+  ; without Table shard the rest would not work cos Table won't be exposed by When
   (Table .table-decl-2)
   true (When (Is true) (-> 11.0 (Set .table-decl-2 "A")))
   (Get .table-decl-2 "A") (ExpectFloat) (Math.Add 2.0) (Assert.Is 13.0 true)
@@ -223,19 +223,19 @@
 
   (Msg "Done!")))
 
-(if (tick node) nil (throw "failure"))
-(if (tick node) nil (throw "failure"))
-(if (tick node) nil (throw "failure"))
-(if (tick node) nil (throw "failure"))
-(def node nil)
+(if (tick mesh) nil (throw "failure"))
+(if (tick mesh) nil (throw "failure"))
+(if (tick mesh) nil (throw "failure"))
+(if (tick mesh) nil (throw "failure"))
+(def mesh nil)
 
-(defnode main)
-(defchain external-var-test
+(defmesh main)
+(defwire external-var-test
   .external-variable-1 (Assert.Is "Hello" true) (Log "EXTVAR") (PrependTo .external-variable-2)
   .external-variable-2 (Assert.Is "Hello World" true) (Log))
 
 (do
-  ; do this inside a do to test chain ownership of the variable
+  ; do this inside a do to test wire ownership of the variable
   (set-var external-var-test "external-variable-1" "Hello"))
 
 (def mutating-ext-var (set-var external-var-test "external-variable-2" " World"))

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#ifndef CB_LSP_EVAL_HPP
-#define CB_LSP_EVAL_HPP
+#ifndef SH_LSP_EVAL_HPP
+#define SH_LSP_EVAL_HPP
 
 /*
  * This is an experiment
@@ -15,7 +15,7 @@
 #include "print.hpp"
 #include "read.hpp"
 
-namespace chainblocks {
+namespace shards {
 namespace edn {
 namespace eval {
 class EvalException : public std::exception {
@@ -31,62 +31,62 @@ private:
 };
 
 namespace value {
-enum types { Var, Lambda, Node, Form, BuiltIn };
+enum types { Var, Lambda, Mesh, Form, BuiltIn };
 }
 
 class Environment;
-class CBVarValue;
+class SHVarValue;
 class Lambda;
-class Node;
+class Mesh;
 class BuiltIn;
-using Value = std::variant<CBVarValue, Lambda, Node, form::Form, std::shared_ptr<BuiltIn>>;
+using Value = std::variant<SHVarValue, Lambda, Mesh, form::Form, std::shared_ptr<BuiltIn>>;
 
 class ValueBase {
 public:
   ValueBase(const token::Token &token, const std::shared_ptr<Environment> &env) : _token(token), _owner(env) {}
 
-  virtual std::string pr_str(document &doc) { return ::chainblocks::edn::pr_str(doc, _token); }
+  virtual std::string pr_str(document &doc) { return ::shards::edn::pr_str(doc, _token); }
 
 protected:
   token::Token _token;
   std::weak_ptr<Environment> _owner;
 };
 
-class CBVarValue : public ValueBase {
+class SHVarValue : public ValueBase {
 public:
-  CBVarValue(const token::Token &token, const std::shared_ptr<Environment> &env) : ValueBase(token, env), _var({}) {}
+  SHVarValue(const token::Token &token, const std::shared_ptr<Environment> &env) : ValueBase(token, env), _var({}) {}
 
-  const CBVar &value() const { return _var; }
+  const SHVar &value() const { return _var; }
 
 protected:
-  CBVar _var;
+  SHVar _var;
 };
 
-class NilValue : public CBVarValue {
+class NilValue : public SHVarValue {
 public:
-  NilValue(const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {}
+  NilValue(const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {}
 };
 
-class IntValue : public CBVarValue {
+class IntValue : public SHVarValue {
 public:
-  IntValue(int64_t value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
+  IntValue(int64_t value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
     _var.valueType = Int;
     _var.payload.intValue = value;
   }
 };
 
-class FloatValue : public CBVarValue {
+class FloatValue : public SHVarValue {
 public:
-  FloatValue(double value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
+  FloatValue(double value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
     _var.valueType = Float;
     _var.payload.floatValue = value;
   }
 };
 
-class StringValue : public CBVarValue {
+class StringValue : public SHVarValue {
 public:
   StringValue(std::string value, const token::Token &token, const std::shared_ptr<Environment> &env)
-      : CBVarValue(token, env), _storage(value) {
+      : SHVarValue(token, env), _storage(value) {
     _var.valueType = String;
     _var.payload.stringValue = _storage.c_str();
   }
@@ -95,35 +95,35 @@ private:
   std::string _storage;
 };
 
-class BoolValue : public CBVarValue {
+class BoolValue : public SHVarValue {
 public:
-  BoolValue(bool value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
+  BoolValue(bool value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
     _var.valueType = Bool;
     _var.payload.boolValue = value;
   }
 };
 
-class BlockValue : public CBVarValue {
+class ShardValue : public SHVarValue {
 public:
-  BlockValue(CBlockPtr value, const token::Token &token, const std::shared_ptr<Environment> &env) : CBVarValue(token, env) {
-    _var.valueType = Block;
-    _var.payload.blockValue = value;
-    _block = std::shared_ptr<CBlock>(value, [this](CBlock *blk) {
-      // Make sure we are not consumed (inside a chain or another block)
-      if (_var.valueType == Block)
+  ShardValue(ShardPtr value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
+    _var.valueType = ShardRef;
+    _var.payload.shardValue = value;
+    _shard = std::shared_ptr<Shard>(value, [this](Shard *blk) {
+      // Make sure we are not consumed (inside a wire or another shard)
+      if (_var.valueType == ShardRef)
         blk->destroy(blk);
     });
   }
 
   void consume() {
-    if (_var.valueType != Block) {
-      throw EvalException("Attempt to use an already consumed block", _token.line);
+    if (_var.valueType != ShardRef) {
+      throw EvalException("Attempt to use an already consumed shard", _token.line);
     }
     _var = {};
   }
 
 private:
-  std::shared_ptr<CBlock> _block;
+  std::shared_ptr<Shard> _shard;
 };
 
 class Lambda : public ValueBase {
@@ -140,12 +140,12 @@ private:
   form::FormWrapper _body;
 };
 
-class Node : public ValueBase {
+class Mesh : public ValueBase {
 public:
-  Node(const token::Token &token, const std::shared_ptr<Environment> &env) : ValueBase(token, env) { _node = CBNode::make(); }
+  Mesh(const token::Token &token, const std::shared_ptr<Environment> &env) : ValueBase(token, env) { _mesh = SHMesh::make(); }
 
 private:
-  std::shared_ptr<CBNode> _node;
+  std::shared_ptr<SHMesh> _mesh;
 };
 
 class Environment;
@@ -173,7 +173,7 @@ private:
 class BuiltIn {
 public:
   virtual Value apply(const std::shared_ptr<Environment> &env, std::vector<Value> &args, int line) {
-    CBLOG_FATAL("invalid state");
+    SHLOG_FATAL("invalid state");
     return args[0]; // fake value should not happen
   }
 };
@@ -233,6 +233,6 @@ private:
 };
 } // namespace eval
 } // namespace edn
-} // namespace chainblocks
+} // namespace shards
 
 #endif

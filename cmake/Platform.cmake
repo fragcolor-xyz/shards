@@ -72,7 +72,7 @@ if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
   add_compile_definitions(NOMINMAX=1)
 
   # We can not keep iterators in memory without freeing with iterator debugging
-  # See CBTable/Set iterator internals
+  # See SHTable/Set iterator internals
   if(CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_definitions(_ITERATOR_DEBUG_LEVEL=1)
     list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS="-D_ITERATOR_DEBUG_LEVEL=1")
@@ -124,7 +124,7 @@ endif()
 if(LINUX)
   add_link_options(-export-dynamic)
   if(USE_VALGRIND)
-    add_compile_definitions(BOOST_USE_VALGRIND CHAINBLOCKS_NO_BIGINT_BLOCKS)
+    add_compile_definitions(BOOST_USE_VALGRIND SHARDS_NO_BIGINT_SHARDS)
   endif()
 endif()
 
@@ -145,7 +145,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(${UBSAN_SUPPORTED} AND USE_UBSAN)
     add_compile_options(-fsanitize=undefined)
     add_link_options(-fsanitize=undefined)
-    add_compile_definitions(CB_USE_UBSAN)
+    add_compile_definitions(SH_USE_UBSAN)
   endif()
 endif()
 

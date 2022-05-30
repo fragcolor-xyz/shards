@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include "blocks/shared.hpp"
+#include "shards/shared.hpp"
 #include "runtime.hpp"
 
 #include "kiss_fft.h"
 #include "kiss_fftr.h"
 
 // TODO optimize.
-// Best would be to introduce our CBVar packing in kissfft fork
+// Best would be to introduce our SHVar packing in kissfft fork
 // Just like linalg, so to use our types directly
 
-namespace chainblocks {
+namespace shards {
 namespace DSP {
 static TableVar experimental{{"experimental", Var(true)}};
 
@@ -22,7 +22,7 @@ struct FFTBase {
   std::vector<kiss_fft_cpx> _cscratch;
   std::vector<kiss_fft_cpx> _cscratch2;
   std::vector<float> _fscratch;
-  std::vector<CBVar> _vscratch;
+  std::vector<SHVar> _vscratch;
 
   static inline Types FloatTypes{{CoreInfo::FloatSeqType, CoreInfo::Float2SeqType, CoreInfo::AudioType}};
 
@@ -40,18 +40,18 @@ struct FFTBase {
 };
 
 struct FFT : public FFTBase {
-  static CBTypesInfo inputTypes() { return FloatTypes; }
+  static SHTypesInfo inputTypes() { return FloatTypes; }
 
-  static CBTypesInfo outputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
+  static SHTypesInfo outputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
 
-  static const CBTable *properties() { return &experimental.payload.tableValue; }
+  static const SHTable *properties() { return &experimental.payload.tableValue; }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
-    if (data.inputType.basicType == CBType::Audio) {
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == SHType::Audio) {
       OVERRIDE_ACTIVATE(data, activateAudio);
     } else {
       // assume seq
-      if (data.inputType.seqTypes.elements[0].basicType == CBType::Float) {
+      if (data.inputType.seqTypes.elements[0].basicType == SHType::Float) {
         OVERRIDE_ACTIVATE(data, activateFloat);
       } else {
         OVERRIDE_ACTIVATE(data, activate);
@@ -60,9 +60,9 @@ struct FFT : public FFTBase {
     return CoreInfo::Float2SeqType;
   }
 
-  template <CBType ITYPE> CBVar tactivate(CBContext *context, const CBVar &input) {
+  template <SHType ITYPE> SHVar tactivate(SHContext *context, const SHVar &input) {
     int len = 0;
-    if constexpr (ITYPE == CBType::Float || ITYPE == CBType::Float2) {
+    if constexpr (ITYPE == SHType::Float || ITYPE == SHType::Float2) {
       len = int(input.payload.seqValue.len);
     } else {
       // Audio
@@ -77,7 +77,7 @@ struct FFT : public FFTBase {
     }
 
     int flen = 0;
-    if constexpr (ITYPE == CBType::Audio || ITYPE == CBType::Float) {
+    if constexpr (ITYPE == SHType::Audio || ITYPE == SHType::Float) {
       flen = (len / 2) + 1;
     } else {
       flen = len;
@@ -86,10 +86,10 @@ struct FFT : public FFTBase {
     if (unlikely(_currentWindow != len)) {
       cleanup();
 
-      if constexpr (ITYPE == CBType::Float2) {
+      if constexpr (ITYPE == SHType::Float2) {
         _state = kiss_fft_alloc(len, 0, 0, 0);
         _cscratch2.resize(len);
-      } else if constexpr (ITYPE == CBType::Float) {
+      } else if constexpr (ITYPE == SHType::Float) {
         _rstate = kiss_fftr_alloc(len, 0, 0, 0);
         _fscratch.resize(len);
       } else {
@@ -97,16 +97,16 @@ struct FFT : public FFTBase {
       }
       _currentWindow = len;
       _cscratch.resize(flen);
-      _vscratch.resize(flen, CBVar{.valueType = CBType::Float2});
+      _vscratch.resize(flen, SHVar{.valueType = SHType::Float2});
     }
 
-    if constexpr (ITYPE == CBType::Float2) {
+    if constexpr (ITYPE == SHType::Float2) {
       int idx = 0;
       for (const auto &fvar : input) {
         _cscratch2[idx++] = {float(fvar.payload.float2Value[0]), float(fvar.payload.float2Value[1])};
       }
       kiss_fft(_state, _cscratch2.data(), _cscratch.data());
-    } else if constexpr (ITYPE == CBType::Float) {
+    } else if constexpr (ITYPE == SHType::Float) {
       int idx = 0;
       for (const auto &fvar : input) {
         _fscratch[idx++] = float(fvar.payload.floatValue);
@@ -124,30 +124,30 @@ struct FFT : public FFTBase {
     return Var(_vscratch);
   }
 
-  CBVar activateAudio(CBContext *context, const CBVar &input) { return tactivate<CBType::Audio>(context, input); }
+  SHVar activateAudio(SHContext *context, const SHVar &input) { return tactivate<SHType::Audio>(context, input); }
 
-  CBVar activateFloat(CBContext *context, const CBVar &input) { return tactivate<CBType::Float>(context, input); }
+  SHVar activateFloat(SHContext *context, const SHVar &input) { return tactivate<SHType::Float>(context, input); }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return tactivate<CBType::Float2>(context, input); }
+  SHVar activate(SHContext *context, const SHVar &input) { return tactivate<SHType::Float2>(context, input); }
 };
 
 struct IFFT : public FFTBase {
   bool _asAudio{false};
   bool _complex{false};
 
-  static CBTypesInfo inputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
+  static SHTypesInfo inputTypes() { return CoreInfo::Float2SeqType; } // complex numbers
 
-  static CBTypesInfo outputTypes() { return FloatTypes; }
+  static SHTypesInfo outputTypes() { return FloatTypes; }
 
-  static const CBTable *properties() { return &experimental.payload.tableValue; }
+  static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters Params{
-      {"Audio", CBCCSTR("If the output should be an Audio chunk."), {CoreInfo::BoolType}},
-      {"Complex", CBCCSTR("If the output should be complex numbers (only if not Audio)."), {CoreInfo::BoolType}}};
+      {"Audio", SHCCSTR("If the output should be an Audio chunk."), {CoreInfo::BoolType}},
+      {"Complex", SHCCSTR("If the output should be complex numbers (only if not Audio)."), {CoreInfo::BoolType}}};
 
-  CBParametersInfo parameters() { return Params; }
+  SHParametersInfo parameters() { return Params; }
 
-  void setParam(int index, const CBVar &value) {
+  void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _asAudio = value.payload.boolValue;
@@ -160,7 +160,7 @@ struct IFFT : public FFTBase {
     }
   }
 
-  CBVar getParam(int index) {
+  SHVar getParam(int index) {
     switch (index) {
     case 0:
       return Var(_asAudio);
@@ -171,7 +171,7 @@ struct IFFT : public FFTBase {
     }
   }
 
-  CBTypeInfo compose(const CBInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     if (_asAudio) {
       OVERRIDE_ACTIVATE(data, activateAudio);
       return CoreInfo::AudioType;
@@ -184,7 +184,7 @@ struct IFFT : public FFTBase {
     }
   }
 
-  template <CBType OTYPE> CBVar tactivate(CBContext *context, const CBVar &input) {
+  template <SHType OTYPE> SHVar tactivate(SHContext *context, const SHVar &input) {
     const int len = int(input.payload.seqValue.len);
     if (len <= 0) {
       throw ActivationError("Expected a positive input length");
@@ -197,20 +197,20 @@ struct IFFT : public FFTBase {
 
       _currentWindow = len;
       _cscratch.resize(len);
-      if constexpr (OTYPE == CBType::Float) {
-        _vscratch.resize(olen, CBVar{.valueType = OTYPE});
+      if constexpr (OTYPE == SHType::Float) {
+        _vscratch.resize(olen, SHVar{.valueType = OTYPE});
       }
-      if constexpr (OTYPE == CBType::Float2) {
+      if constexpr (OTYPE == SHType::Float2) {
         _cscratch2.resize(len);
-        _vscratch.resize(len, CBVar{.valueType = OTYPE});
+        _vscratch.resize(len, SHVar{.valueType = OTYPE});
       }
-      if constexpr (OTYPE == CBType::Audio || OTYPE == CBType::Float) {
+      if constexpr (OTYPE == SHType::Audio || OTYPE == SHType::Float) {
         _fscratch.resize(olen);
         _rstate = kiss_fftr_alloc(olen, 1, 0, 0);
-        CBLOG_TRACE("IFFT alloc window {}", olen);
+        SHLOG_TRACE("IFFT alloc window {}", olen);
       } else {
         _state = kiss_fft_alloc(len, 1, 0, 0);
-        CBLOG_TRACE("IFFT alloc window {}", len);
+        SHLOG_TRACE("IFFT alloc window {}", len);
       }
     }
 
@@ -219,11 +219,11 @@ struct IFFT : public FFTBase {
       _cscratch[idx++] = {float(vf.payload.float2Value[0]), float(vf.payload.float2Value[1])};
     }
 
-    if constexpr (OTYPE == CBType::Audio) {
+    if constexpr (OTYPE == SHType::Audio) {
       kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 
-      return Var(CBAudio{0, uint16_t(olen), uint16_t(1), _fscratch.data()});
-    } else if constexpr (OTYPE == CBType::Float) {
+      return Var(SHAudio{0, uint16_t(olen), uint16_t(1), _fscratch.data()});
+    } else if constexpr (OTYPE == SHType::Float) {
       kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 
       for (int i = 0; i < olen; i++) {
@@ -243,11 +243,11 @@ struct IFFT : public FFTBase {
     }
   }
 
-  CBVar activateFloat(CBContext *context, const CBVar &input) { return tactivate<CBType::Float>(context, input); }
+  SHVar activateFloat(SHContext *context, const SHVar &input) { return tactivate<SHType::Float>(context, input); }
 
-  CBVar activateAudio(CBContext *context, const CBVar &input) { return tactivate<CBType::Audio>(context, input); }
+  SHVar activateAudio(SHContext *context, const SHVar &input) { return tactivate<SHType::Audio>(context, input); }
 
-  CBVar activate(CBContext *context, const CBVar &input) { return tactivate<CBType::Float2>(context, input); }
+  SHVar activate(SHContext *context, const SHVar &input) { return tactivate<SHType::Float2>(context, input); }
 };
 
 #if 0
@@ -389,15 +389,15 @@ struct WTBase {
     x[n - 1].f += FVARPAYLOAD(2.0) * a.f * x[n - 2].f;
   }
 
-  static CBTypesInfo inputTypes() { return CoreInfo::FloatSeqsOrAudio; }
-  static CBTypesInfo outputTypes() { return CoreInfo::FloatSeqsOrAudio; }
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatSeqsOrAudio; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatSeqsOrAudio; }
 
-  CBTypeInfo compose(const CBInstanceData &data) { return data.inputType; }
+  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
 };
 
 struct WT : public WTBase {
-  static CBOptionalString help() {
-    return CBCCSTR(
+  static SHOptionalString help() {
+    return SHCCSTR(
         "Computes in-place (so replacing the input values, keep a copy if "
         "needed) the biorthogonal 9/7 wavelet transform of the input sequence. "
         "Outputs the same sequence where the first half part of the output "
@@ -405,8 +405,8 @@ struct WT : public WTBase {
         "contains the detail coefficients (aka. the wavelets coefficients).");
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (input.valueType == CBType::Audio) {
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType == SHType::Audio) {
       fwt97(reinterpret_cast<BigFatFloat<float, float> *>(
                 &input.payload.audioValue.samples[0]),
             input.payload.audioValue.nsamples);
@@ -420,23 +420,23 @@ struct WT : public WTBase {
       }
 
       switch (input.payload.seqValue.elements[0].valueType) {
-      case CBType::Float:
-        fwt97(reinterpret_cast<BigFatFloat<CBVar, FloatVarPayload> *>(
+      case SHType::Float:
+        fwt97(reinterpret_cast<BigFatFloat<SHVar, FloatVarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
-      case CBType::Float2:
-        fwt97(reinterpret_cast<BigFatFloat<CBVar, Float2VarPayload> *>(
+      case SHType::Float2:
+        fwt97(reinterpret_cast<BigFatFloat<SHVar, Float2VarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
-      case CBType::Float3:
-        fwt97(reinterpret_cast<BigFatFloat<CBVar, Float3VarPayload> *>(
+      case SHType::Float3:
+        fwt97(reinterpret_cast<BigFatFloat<SHVar, Float3VarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
-      case CBType::Float4:
-        fwt97(reinterpret_cast<BigFatFloat<CBVar, Float4VarPayload> *>(
+      case SHType::Float4:
+        fwt97(reinterpret_cast<BigFatFloat<SHVar, Float4VarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
@@ -448,8 +448,8 @@ struct WT : public WTBase {
 };
 
 struct IWT : public WTBase {
-  static CBOptionalString help() {
-    return CBCCSTR(
+  static SHOptionalString help() {
+    return SHCCSTR(
         "Computes in-place (so replacing the input values, keep a copy if "
         "needed) the inverse biorthogonal 9/7 wavelet transform of the "
         "input sequence. Outputs the same sequence where the first half "
@@ -458,8 +458,8 @@ struct IWT : public WTBase {
         "coefficients (aka. the wavelets coefficients).");
   }
 
-  CBVar activate(CBContext *context, const CBVar &input) {
-    if (input.valueType == CBType::Audio) {
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType == SHType::Audio) {
       iwt97(reinterpret_cast<BigFatFloat<float, float> *>(
                 &input.payload.audioValue.samples[0]),
             input.payload.audioValue.nsamples);
@@ -473,23 +473,23 @@ struct IWT : public WTBase {
       }
 
       switch (input.payload.seqValue.elements[0].valueType) {
-      case CBType::Float:
-        iwt97(reinterpret_cast<BigFatFloat<CBVar, FloatVarPayload> *>(
+      case SHType::Float:
+        iwt97(reinterpret_cast<BigFatFloat<SHVar, FloatVarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
-      case CBType::Float2:
-        iwt97(reinterpret_cast<BigFatFloat<CBVar, Float2VarPayload> *>(
+      case SHType::Float2:
+        iwt97(reinterpret_cast<BigFatFloat<SHVar, Float2VarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
-      case CBType::Float3:
-        iwt97(reinterpret_cast<BigFatFloat<CBVar, Float3VarPayload> *>(
+      case SHType::Float3:
+        iwt97(reinterpret_cast<BigFatFloat<SHVar, Float3VarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
-      case CBType::Float4:
-        iwt97(reinterpret_cast<BigFatFloat<CBVar, Float4VarPayload> *>(
+      case SHType::Float4:
+        iwt97(reinterpret_cast<BigFatFloat<SHVar, Float4VarPayload> *>(
                   &input.payload.seqValue.elements[0]),
               input.payload.seqValue.len);
         return input;
@@ -501,13 +501,13 @@ struct IWT : public WTBase {
 };
 #endif
 
-void registerBlocks() {
-  REGISTER_CBLOCK("DSP.FFT", FFT);
-  REGISTER_CBLOCK("DSP.IFFT", IFFT);
+void registerShards() {
+  REGISTER_SHARD("DSP.FFT", FFT);
+  REGISTER_SHARD("DSP.IFFT", IFFT);
 #if 0
-  REGISTER_CBLOCK("DSP.Wavelet", WT);
-  REGISTER_CBLOCK("DSP.InverseWavelet", IWT);
+  REGISTER_SHARD("DSP.Wavelet", WT);
+  REGISTER_SHARD("DSP.InverseWavelet", IWT);
 #endif
 }
 } // namespace DSP
-} // namespace chainblocks
+} // namespace shards

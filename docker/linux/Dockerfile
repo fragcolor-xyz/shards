@@ -27,14 +27,14 @@ RUN rustup toolchain install nightly
 
 ARG USER_ID=1000
 
-RUN useradd -ms /bin/bash -u ${USER_ID} chainblocks
+RUN useradd -ms /bin/bash -u ${USER_ID} shards
 
-USER chainblocks
+USER shards
 
-WORKDIR /home/chainblocks
+WORKDIR /home/shards
 
-COPY --chown=chainblocks ./ /home/chainblocks/repo
+COPY --chown=shards ./ /home/shards/repo
 
-WORKDIR /home/chainblocks/repo
+WORKDIR /home/shards/repo
 
-ENV HOME=/home/chainblocks
+ENV HOME=/home/shards

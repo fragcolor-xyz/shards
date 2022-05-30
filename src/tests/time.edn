@@ -1,8 +1,8 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
-(defnode main)
-(defchain producer
+(defmesh main)
+(defwire producer
   (Sequence .sink :Types [Type.Any Type.Int] :Global true)
   "Hi!" = .v
   (Time.EpochMs) (Math.Add 2000) = .t
