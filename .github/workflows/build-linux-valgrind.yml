@@ -15,6 +15,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
       # TODO: use docker actions to build and run

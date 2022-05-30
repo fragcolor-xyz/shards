@@ -56,6 +56,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
       - name: Set up dependencies
@@ -105,6 +106,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 2
           submodules: ${{ steps.setup.outputs.submodules }}
       - name: Set up dependencies (Debug)
@@ -244,6 +246,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 2
           submodules: recursive
       - name: Checkout glTF-Sample-Models

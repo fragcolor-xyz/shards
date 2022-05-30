@@ -113,6 +113,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
       - name: Set up rust
@@ -230,9 +231,10 @@ jobs:
         run: |
           git config --system core.autocrlf false
           git config --system core.eol lf
-      - name: Checkout
+      - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: false
       - name: Download artifact

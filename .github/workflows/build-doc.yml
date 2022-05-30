@@ -20,6 +20,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
       - name: Download shards
         uses: actions/download-artifact@v2
@@ -59,6 +60,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
       - name: Download shards
         uses: actions/download-artifact@v2
@@ -96,6 +98,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
       - name: Set up python
         uses: actions/setup-python@v2

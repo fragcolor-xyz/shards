@@ -44,6 +44,7 @@ jobs:
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
+          repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
       - name: Checkout emsdk
