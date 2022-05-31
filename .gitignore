@@ -16,6 +16,7 @@ src/nim/tshvar.xml
 *.log
 build*/
 .vs/
+.notes/
 src/core/.DS_Store
 .DS_Store
 src/.DS_Store
@@ -58,3 +59,8 @@ src/tests/example-fft.wav
 src/tests/example-dwt.wav
 src/tests/example.wav.png
 src/tests/svgtest.png
+src/tests/test.png
+src/tests/test2.png
+src/tests/test2Resized.png
+src/tests/testResized.png
+src/tests/testbase.png
