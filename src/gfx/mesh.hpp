@@ -78,11 +78,14 @@ public:
 
   size_t getNumVertices() const { return numVertices; }
   size_t getNumIndices() const { return numIndices; }
+  const std::vector<uint8_t> &getVertexData() const { return vertexData; }
+  const std::vector<uint8_t> &getIndexData() const { return indexData; }
 
   // Updates mesh data with length in bytes
   void update(const MeshFormat &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData,
               size_t indexDataLength);
-  void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData);
+  void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData,
+              std::vector<uint8_t> &&indexData = std::vector<uint8_t>());
 
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);
