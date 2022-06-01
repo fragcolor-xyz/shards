@@ -94,7 +94,13 @@ jobs:
     needs: [docs-markdown, docs-samples]
     name: Build Website
     runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.setup.outputs.publish }}
     steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=publish::${{ github.event.inputs.publish || inputs.publish }}"
       - name: Checkout shards
         uses: actions/checkout@v2
         with:
@@ -135,7 +141,7 @@ jobs:
   # Publish documentation website to IPFS
   #
   docs-website-publish:
-    if: ${{ github.event.inputs.publish == 'true' || inputs.publish == 'true' }}
+    if: ${{ needs.docs-website-build.outputs.publish == 'true' }}
     needs: docs-website-build
     name: Publish Website
     runs-on: ubuntu-latest
