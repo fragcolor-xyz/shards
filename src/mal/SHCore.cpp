@@ -1675,7 +1675,7 @@ BUILTIN("run") {
           // TODO warn sometimes and skip sleeping, skipping callbacks too
           next = now + dsleep;
         } else {
-          next = now + realSleepTime;
+          next = next + dsleep;
           shards::sleep(realSleepTime.count());
         }
       }
