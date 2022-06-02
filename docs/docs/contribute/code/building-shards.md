@@ -212,11 +212,8 @@ ninja format; ninja shards
 
 The build ends with a successful linking of the Shards executable (shards.exe).
 
- ![Linking Shards shards.exe](assets/build-sh_use-build-link.png)
-
-
 ??? note "Fix build errors"
-    If your build fails with git/target file errors run `ninja clean` and/or delete the `target` folder and try building again. The build can also fail if your software packages or repository submodules (`/shards/deps/`) are out-of-date. To resolve this update the specific software package as given [here](#update-system-packages) and pull the submodules again via `git submodule update --init --recursive`.
+    If your build fails due to target/file errors navigate out of the build folder, run `cargo clean`, then `cd build`, followed by `ninja clean`, and/or delete the `target` folder and then rebuild. The build can also fail if your software packages or repository submodules (`/shards/deps/`) are out-of-date. To resolve this update the specific software package as given [here](#update-system-packages) and pull the submodules again via `git submodule update --init --recursive`.
 
 ??? note
     When generating the Rust bindings during compilation, the file `rust/src/shardsc.rs` might be updated automatically. These changes should not be pushed upstream unless you're modifying certain core files for build-target architecture changes (which is very rare). Hence, use the git command `git update-index --skip-worktree rust/src/shardsc.rs` to let git ignore changes to this file.
