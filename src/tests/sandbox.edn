@@ -1,0 +1,49 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
+; defmesh
+(defmesh first)
+(defmesh 二番)
+(defmesh трета)
+(defmesh 4️⃣)
+
+(defwire sand "Sand" ; Pour some sand in the sandbox
+  (Sandbox.Sand)
+  (Msg "Done"))
+
+(defwire 砂 "砂" ; 砂場に砂を入れる
+  (Sandbox.Sand)
+  (Msg "終り"))
+
+(defwire пясък "Пясък" ; Налива малко пясък в пясъчника
+  (Sandbox.Sand)
+  (Msg "край"))
+
+(defwire ⌛ "⌛" ; ⌛🔜📥
+  (Sandbox.Sand)
+  (Msg "🏝️"))
+
+; This is valid
+(schedule first sand)
+(schedule 二番 砂)
+(schedule трета пясък)
+(schedule 4️⃣ ⌛)
+(run first)
+(run 二番)
+(run трета)
+(run 4️⃣)
+
+; This is valid
+;(schedule first sand)
+;(schedule first 砂)
+;(schedule first пясък)
+;(run first)
+
+; This is not - Attempted to schedule a wire multiple times
+;(schedule first sand)
+;(schedule 二番 sand)
+;(schedule трета sand)
+;(run first)
+;(run 二番)
+;(run трета)
+
