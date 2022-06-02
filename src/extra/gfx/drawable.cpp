@@ -23,6 +23,12 @@ void SHDrawable::updateVariables() {
   }
 }
 
+void SHDrawableHierarchy::updateVariables() {
+  if (transformVar.isVariable()) {
+    drawableHierarchy->transform = shards::Mat4(transformVar.get());
+  }
+}
+
 struct DrawableShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);

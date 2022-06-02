@@ -37,8 +37,9 @@ struct SHDrawable {
 
 struct SHDrawableHierarchy {
   DrawableHierarchyPtr drawableHierarchy;
+  shards::ParamVar transformVar;
 
-  void updateVariables() {}
+  void updateVariables();
 };
 
 struct SHView {
