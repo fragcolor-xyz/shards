@@ -11,6 +11,8 @@
 
 using namespace gfx;
 
+static constexpr float comparisonTolerance = 0.05f;
+
 struct TestModelDesc {
   const char *name;
   float scale;
@@ -58,7 +60,7 @@ TEST_CASE("glTF sample models", "[glTF]") {
       TEST_RENDER_LOOP(testRenderer) { testRenderer->renderer->render(queue, view, pipeline); };
 
       std::string frameName = fmt::format("glTF.{}", testModel.name);
-      CHECK(testRenderer->checkFrame(frameName.c_str()));
+      CHECK(testRenderer->checkFrame(frameName.c_str(), comparisonTolerance));
     }
   }
 }

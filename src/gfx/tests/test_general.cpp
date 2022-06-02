@@ -10,10 +10,39 @@
 #include <gfx/texture_file/texture_file.hpp>
 #include <spdlog/fmt/fmt.h>
 
-
 using namespace gfx;
 
 static constexpr float comparisonTolerance = 0.05f;
+
+TEST_CASE("Power of 2", "[Math]") {
+  CHECK(isPOT(1) == true);
+  CHECK(isPOT(2) == true);
+  CHECK(isPOT(3) == false);
+  CHECK(isPOT(4) == true);
+  CHECK(isPOT(5) == false);
+  CHECK(isPOT(8) == true);
+
+  CHECK(alignTo<2>(0) == 0);
+  CHECK(alignTo<2>(1) == 2);
+  CHECK(alignTo<2>(3) == 4);
+  CHECK(alignTo<2>(4) == 4);
+  CHECK(alignTo<4>(0) == 0);
+  CHECK(alignTo<4>(1) == 4);
+  CHECK(alignTo<4>(3) == 4);
+  CHECK(alignTo<4>(4) == 4);
+  CHECK(alignTo<4>(5) == 8);
+  CHECK(alignTo<4>(8) == 8);
+  CHECK(alignTo<4>(8) == 8);
+  CHECK(alignTo<6>(5) == 6);
+  CHECK(alignTo<6>(12) == 12);
+
+  CHECK(alignTo<4>(0) == alignTo(0, 4));
+  CHECK(alignTo<2>(3) == alignTo(3, 2));
+  CHECK(alignTo<2>(30) == alignTo(30, 2));
+  CHECK(alignTo<16>(3) == alignTo(3, 16));
+  CHECK(alignTo<16>(30) == alignTo(30, 16));
+  CHECK(alignTo<4>(4) == alignTo(4, 4));
+}
 
 TEST_CASE("Renderer capture", "[General]") {
   auto testRenderer = createTestRenderer();

@@ -37,7 +37,7 @@ struct MeshFormat {
   IndexFormat indexFormat = IndexFormat::UInt16;
   std::vector<MeshVertexAttribute> vertexAttributes;
 
-  size_t computeVertexSize() const;
+  size_t getVertexSize() const;
 
   template <typename T> void hashStatic(T &hasher) const {
     hasher(primitiveType);

@@ -4,7 +4,9 @@
 
 namespace gfx {
 
-#define TRACK_VISITED 1
+#ifndef NDEBUG
+#define GFX_TRANSFORM_UPDATER_TRACK_VISITED 1
+#endif
 
 // Updates a transform hierarchy while collecting drawables
 struct TransformUpdaterCollector {
@@ -14,7 +16,7 @@ struct TransformUpdaterCollector {
   };
   std::vector<Node> queue;
 
-#if TRACK_VISITED
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
   std::set<DrawableHierarchy *> visited;
 #endif
 
@@ -27,7 +29,7 @@ struct TransformUpdaterCollector {
       Node node = queue.back();
       queue.pop_back();
 
-#if TRACK_VISITED
+#if GFX_TRANSFORM_UPDATER_TRACK_VISITED
       assert(!visited.contains(node.node));
       visited.insert(node.node);
 #endif
