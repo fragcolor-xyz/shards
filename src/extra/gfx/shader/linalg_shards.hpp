@@ -2,7 +2,7 @@
 #define SH_EXTRA_GFX_SHADER_LINALG_BLOCKS
 
 #include "shards/linalg.hpp"
-#include "math_blocks.hpp"
+#include "math_shards.hpp"
 #include <spdlog/fmt/fmt.h>
 
 namespace gfx {

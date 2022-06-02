@@ -1,5 +1,5 @@
-#ifndef CB_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
-#define CB_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
+#ifndef SH_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
+#define SH_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
 
 #include "shards/shared.hpp"
 #include "translator.hpp"
@@ -82,4 +82,4 @@ static inline std::unique_ptr<IWGSLGenerated> referenceGlobal(const char *inVarN
 } // namespace shader
 } // namespace gfx
 
-#endif // CB_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
+#endif // SH_EXTRA_GFX_SHADER_TRANSLATOR_UTILS

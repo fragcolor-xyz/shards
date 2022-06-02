@@ -1,7 +1,7 @@
 #include "translator.hpp"
-#include "core_blocks.hpp"
-#include "linalg_blocks.hpp"
-#include "math_blocks.hpp"
+#include "core_shards.hpp"
+#include "linalg_shards.hpp"
+#include "math_shards.hpp"
 #include "spdlog/spdlog.h"
 #include <common_types.hpp>
 #include <foundation.hpp>

@@ -1,5 +1,5 @@
-#ifndef CB_EXTRA_GFX_SHADER_MATH_BLOCKS
-#define CB_EXTRA_GFX_SHADER_MATH_BLOCKS
+#ifndef SH_EXTRA_GFX_SHADER_MATH_BLOCKS
+#define SH_EXTRA_GFX_SHADER_MATH_BLOCKS
 
 // Required before shard headers
 #include "../shards_types.hpp"
@@ -174,4 +174,4 @@ struct OperatorRound {
 } // namespace shader
 } // namespace gfx
 
-#endif // CB_EXTRA_GFX_SHADER_MATH_BLOCKS
+#endif // SH_EXTRA_GFX_SHADER_MATH_BLOCKS
