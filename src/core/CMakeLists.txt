@@ -24,6 +24,7 @@ set(core_SOURCES
   shards/imaging.cpp
   shards/wasm.cpp
   shards/http.cpp
+  shards/sandbox.cpp
 )
 
 set(os_SOURCES
