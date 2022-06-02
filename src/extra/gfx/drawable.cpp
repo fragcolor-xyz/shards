@@ -160,8 +160,9 @@ struct DrawableShard {
 };
 
 struct DrawShard : public BaseConsumer {
-  static inline Type DrawableSeqType = Type::SeqOf(Types::Drawable);
-  static inline shards::Types DrawableTypes{Types::Drawable, DrawableSeqType};
+  static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable, Types::DrawableHierarchy};
+  static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
+  static inline shards::Types DrawableTypes{Types::Drawable, Types::DrawableHierarchy, DrawableSeqType};
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -178,34 +179,35 @@ struct DrawShard : public BaseConsumer {
     return CoreInfo::NoneType;
   }
 
-  void addDrawableToQueue(DrawablePtr drawable) {
+  template <typename T> void addDrawableToQueue(T drawable) {
     auto &dq = getMainWindowGlobals().drawQueue;
     dq.add(drawable);
   }
 
-  void updateSHDrawable(SHDrawable *shDrawable) {
-    // Update transform if it's referencing a context variable
-    if (shDrawable->transformVar.isVariable()) {
-      shDrawable->drawable->transform = shards::Mat4(shDrawable->transformVar.get());
-    }
-  }
-
-  SHVar activateSeq(SHContext *shContext, const SHVar &input) {
-    auto &seq = input.payload.seqValue;
-    for (size_t i = 0; i < seq.len; i++) {
-      SHDrawable *shDrawable = (SHDrawable *)seq.elements[i].payload.objectValue;
+  SHVar activateSingle(SHContext *shContext, const SHVar &input) {
+    assert(input.valueType == SHType::Object);
+    if (input.payload.objectTypeId == Types::DrawableTypeId) {
+      SHDrawable *shDrawable = (SHDrawable *)input.payload.objectValue;
       assert(shDrawable);
       shDrawable->updateVariables();
       addDrawableToQueue(shDrawable->drawable);
+    } else if (input.payload.objectTypeId == Types::DrawableHierarchyTypeId) {
+      SHDrawableHierarchy *shDrawableHierarchy = (SHDrawableHierarchy *)input.payload.objectValue;
+      assert(shDrawableHierarchy);
+      shDrawableHierarchy->updateVariables();
+      addDrawableToQueue(shDrawableHierarchy->drawableHierarchy);
+    } else {
+      throw ActivationError("Unknown drawable object type");
     }
 
     return SHVar{};
   }
 
-  SHVar activateSingle(SHContext *shContext, const SHVar &input) {
-    SHDrawable *shDrawable = (SHDrawable *)input.payload.objectValue;
-    updateSHDrawable(shDrawable);
-    addDrawableToQueue(shDrawable->drawable);
+  SHVar activateSeq(SHContext *shContext, const SHVar &input) {
+    auto &seq = input.payload.seqValue;
+    for (size_t i = 0; i < seq.len; i++) {
+      (void)activateSingle(shContext, seq.elements[i]);
+    }
 
     return SHVar{};
   }

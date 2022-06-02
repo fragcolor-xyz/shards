@@ -36,8 +36,6 @@ struct DrawableHierarchy {
   PtrType clone() const;
 };
 
-typedef DrawableHierarchy::PtrType DrawableHierarchyPtr;
-
 struct DrawQueue {
 private:
   std::vector<DrawablePtr> drawables;

@@ -10,6 +10,9 @@ struct DrawQueue;
 struct Drawable;
 typedef std::shared_ptr<Drawable> DrawablePtr;
 
+struct DrawableHierarchy;
+typedef std::shared_ptr<DrawableHierarchy> DrawableHierarchyPtr;
+
 struct Mesh;
 typedef std::shared_ptr<Mesh> MeshPtr;
 

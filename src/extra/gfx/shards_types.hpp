@@ -35,6 +35,12 @@ struct SHDrawable {
   void updateVariables();
 };
 
+struct SHDrawableHierarchy {
+  DrawableHierarchyPtr drawableHierarchy;
+
+  void updateVariables() {}
+};
+
 struct SHView {
   ViewPtr view;
   shards::ParamVar viewTransformVar;
@@ -77,11 +83,12 @@ struct Container {
   static inline Type _definedAs = Type::Enum(VendorId, SH_CONCAT(_definedAs, TypeId)); \
   static inline EnumInfo<_type> SH_CONCAT(_definedAs, EnumInfo){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
-#define OBJECT(_id, _displayName, _definedAs, _type)                                                                             \
+#define OBJECT(_id, _displayName, _definedAs, _type)                                                                            \
   static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                                      \
   static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
   static inline ObjectVar<_type> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
+  OBJECT('drah', "GFX.DrawableHierarchy", DrawableHierarchy, SHDrawableHierarchy)
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
 
