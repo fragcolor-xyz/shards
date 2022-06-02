@@ -178,6 +178,14 @@ jobs:
           cd build
           ninja test_runtime
           ./test_runtime
+      - name: Checkout glTF-Sample-Models
+        # Match with test step below
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
+        uses: actions/checkout@v2
+        with:
+          repository: KhronosGroup/glTF-Sample-Models
+          path: external/glTF-Sample-Models
+          fetch-depth: 1
       - name: Test graphics (Debug)
         # NOTE: Graphics backend doesn't run on 32bits
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}

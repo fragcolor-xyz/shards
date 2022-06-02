@@ -6,29 +6,53 @@
    (Float4 0 0.2 0.2 1.0) >= .arm-pos
    time (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
    {:Position .arm-pos-3 :Target (Float3 0 0.025 0)} (Math.LookAt)))
-(defloop test-wire
+
+(defn default-setup [] (->
+                        0.0 >= .time
+
+                    ;; Render steps
+                        (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+                        (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+                        (GFX.DrawablePass :Features .features) >> .render-steps
+
+                    ;; Create view
+                        {:Position (Float3 0 15 10) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+                        (GFX.View :View .view-transform) >= .view))
+
+(defn default-window [] (->
+                         (GFX.MainWindow
+                          :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+                          :Contents
+                          (->
+                        ;; Rotate camera
+                           .time (Math.Add timestep) > .time
+                           (get-view-transform .time) > .view-transform
+
+                           .drawables (GFX.Draw)
+                           (GFX.Render :Steps .render-steps :View .view)))))
+
+(defloop test-static
   (Setup
-   0.0 >= .time
+   (default-setup)
+   (GFX.glTF "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
+  (default-window))
+(schedule root test-static)
+(run root timestep 100)
 
-   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
-   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   (GFX.DrawablePass :Features .features) >> .render-steps
+(defloop test-file
+  (Setup
+   (default-setup)
+   "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= .path
+   .path (GFX.glTF) >> .drawables)
+  (default-window))
+(schedule root test-file)
+(run root timestep 100)
 
-   (GFX.glTF "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
-
-    ;; Create view
-   {:Position (Float3 0 15 10) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
-   (GFX.View :View .view-transform) >= .view)
-  (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
-   :Contents
-   (->
-     ;; Rotate camera
-    .time (Math.Add timestep) > .time
-    (get-view-transform .time) > .view-transform
-
-    .drawables (GFX.Draw)
-    (GFX.Render :Steps .render-steps :View .view))))
-
-(schedule root test-wire)
+(defloop test-binary
+  (Setup
+   (default-setup)
+   "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= .path
+   .path (FS.Read :Bytes true) (GFX.glTF) >> .drawables)
+  (default-window))
+(schedule root test-binary)
 (run root timestep 100)

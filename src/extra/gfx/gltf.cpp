@@ -11,6 +11,8 @@ using namespace shards;
 namespace gfx {
 
 struct GLTFShard {
+  static inline Type PathInputType = CoreInfo::StringType;
+  static inline Type ByteInputType = CoreInfo::BytesType;
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::DrawableHierarchy; }
 
@@ -21,6 +23,14 @@ struct GLTFShard {
     return params;
   }
 
+  enum LoadMode {
+    Invalid,
+    LoadStaticFile,
+    LoadFile,
+    LoadMemory,
+  };
+
+  LoadMode _loadMode{};
   std::string _staticModelPath;
   DrawableHierarchyPtr _staticModel;
 
@@ -44,12 +54,18 @@ struct GLTFShard {
   SHTypeInfo compose(SHInstanceData &data) {
     if (!_staticModelPath.empty()) {
       // Load statically
+      _loadMode = LoadStaticFile;
+      OVERRIDE_ACTIVATE(data, activateStatic);
     } else {
-      SHType inputBasicType = data.inputType.basicType;
-      if (inputBasicType != SHType::Bytes && inputBasicType != SHType::String) {
+      if (data.inputType == PathInputType) {
+        _loadMode = LoadFile;
+        OVERRIDE_ACTIVATE(data, activatePath);
+      } else if (data.inputType == ByteInputType) {
+        _loadMode = LoadMemory;
+        OVERRIDE_ACTIVATE(data, activateBytes);
+      } else {
         throw ComposeError("glTF Binary or file path required when not loading a static model");
       }
-      // Dynamic
     }
     return Types::DrawableHierarchy;
   }
@@ -60,13 +76,15 @@ struct GLTFShard {
       std::string resolvedPath = gfx::resolveDataPath(_staticModelPath).string();
 
       SPDLOG_DEBUG("Loading static glTF model from {}", resolvedPath);
-      _staticModel = loadGlTF(resolvedPath.c_str());
+      _staticModel = loadGltfFromFile(resolvedPath.c_str());
     }
   }
 
   void cleanup() { _staticModel.reset(); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  SHVar activateStatic(SHContext *context, const SHVar &input) {
+    assert(_loadMode == LoadStaticFile);
+
     SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
     try {
       if (_staticModel) {
@@ -81,6 +99,26 @@ struct GLTFShard {
     }
 
     return Types::DrawableHierarchyObjectVar.Get(result);
+  }
+
+  SHVar activatePath(SHContext *context, const SHVar &input) {
+    assert(_loadMode == LoadFile);
+
+    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
+    result->drawableHierarchy = loadGltfFromFile(input.payload.stringValue);
+    return Types::DrawableHierarchyObjectVar.Get(result);
+  }
+
+  SHVar activateBytes(SHContext *context, const SHVar &input) {
+    assert(_loadMode == LoadMemory);
+
+    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
+    result->drawableHierarchy = loadGltfFromMemory(input.payload.bytesValue, input.payload.bytesSize);
+    return Types::DrawableHierarchyObjectVar.Get(result);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    throw std::logic_error("invalid activation");
   }
 };
 

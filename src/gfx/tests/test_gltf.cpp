@@ -47,7 +47,7 @@ TEST_CASE("glTF sample models", "[glTF]") {
   for (auto &testModel : testModels) {
     DYNAMIC_SECTION("Test " << testModel.name) {
       auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", testModel.name));
-      auto gltfScene = loadGlTF(glbPath.string().c_str());
+      auto gltfScene = loadGltfFromFile(glbPath.string().c_str());
       assert(gltfScene);
 
       gltfScene->transform =

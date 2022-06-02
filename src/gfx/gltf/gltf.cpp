@@ -423,37 +423,61 @@ struct Loader {
   }
 };
 
-DrawableHierarchyPtr loadGlTF(const char *inFilepath) {
-  fs::path filepath(inFilepath);
-  const auto &ext = filepath.extension();
-
-  if (!fs::exists(filepath)) {
-    throw formatException("glTF model file \"{}\" does not exist", filepath.string());
-  }
-
-  tinygltf::TinyGLTF loader;
+template <typename T> DrawableHierarchyPtr load(T loader) {
   tinygltf::Model model;
-  std::string err;
-  std::string warn;
-  bool success{};
-  if (ext == ".glb") {
-    success = loader.LoadBinaryFromFile(&model, &err, &warn, filepath.string());
-  } else {
-    success = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
-  }
-
-  if (!success) {
-    throw formatException("Failed to load glTF model \"{}\"\nErrors: {}\nWarnings: {}", filepath.string(), err, warn);
-  }
+  loader(model);
 
   if (model.defaultScene == -1) {
-    throw formatException("glTF model \"{}\" has no default scene", filepath.string());
+    throw formatException("glTF model has no default scene");
   }
 
   Loader gfxLoader(model);
   gfxLoader.load();
 
   return gfxLoader.sceneMap[model.defaultScene];
+}
+
+DrawableHierarchyPtr loadGltfFromFile(const char *inFilepath) {
+  tinygltf::TinyGLTF context;
+  auto loader = [&](tinygltf::Model &model) {
+    fs::path filepath(inFilepath);
+    const auto &ext = filepath.extension();
+
+    if (!fs::exists(filepath)) {
+      throw formatException("glTF model file \"{}\" does not exist", filepath.string());
+    }
+
+    std::string err;
+    std::string warn;
+    bool success{};
+    if (ext == ".glb") {
+      success = context.LoadBinaryFromFile(&model, &err, &warn, filepath.string());
+    } else {
+      success = context.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
+    }
+
+    if (!success) {
+      throw formatException("Failed to load glTF model \"{}\"\nErrors: {}\nWarnings: {}", filepath.string(), err, warn);
+    }
+  };
+
+  return load(loader);
+}
+
+DrawableHierarchyPtr loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
+  tinygltf::TinyGLTF context;
+  auto loader = [&](tinygltf::Model &model) {
+    std::string err;
+    std::string warn;
+    bool success{};
+    success = context.LoadBinaryFromMemory(&model, &err, &warn, data, dataLength);
+
+    if (!success) {
+      throw formatException("Failed to load glTF model \nErrors: {}\nWarnings: {}", err, warn);
+    }
+  };
+
+  return load(loader);
 }
 
 } // namespace gfx
