@@ -199,7 +199,7 @@ jobs:
         with:
           name: ${{ steps.setup.outputs.artifact }} rejected test data
           path: src/gfx/tests/data/github-windows/rejected
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   #
   # Test shards for Windows

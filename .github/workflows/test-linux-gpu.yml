@@ -1,0 +1,101 @@
+name: Test (Linux/GPU)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: Build in Release or Debug?
+        required: true
+        default: Debug
+        type: choice
+        options:
+          - Debug
+          - Release
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        default: Debug
+        type: string
+
+jobs:
+  #
+  # Build shards for linux
+  #
+  Linux:
+    name: Build (${{ github.event.inputs.build-type || inputs.build-type }})
+    runs-on: self-hosted
+    outputs:
+      run-tests: ${{ steps.setup.outputs.run-tests }}
+      run-extra-tests: ${{ steps.setup.outputs.run-extra-tests }}
+    steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up dependencies
+        run: |
+          ./bootstrap
+      - name: Build
+        run: |
+          cmake -Bbuild -G Ninja -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
+          cmake --build build --target shards test_gfx
+      - name: Get sample files
+        run: |
+          mkdir external && cd external
+          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.dweb.link -O Ode_to_Joy.ogg
+      - name: Checkout glTF-Sample-Models
+        uses: actions/checkout@v3
+        with:
+          repository: KhronosGroup/glTF-Sample-Models
+          path: external/glTF-Sample-Models
+          fetch-depth: 1
+      - name: Test (GPU)
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          set -e
+          export DISPLAY=:1
+          Xvfb "$DISPLAY" &
+
+          echo "Running graphics library tests"
+          build/test_gfx -r JUnit --out test_gfx.xml
+
+          echo "\n"
+          echo "Running graphics test scripts"
+          for i in $(find src/tests -name 'gfx*.edn');
+          do
+            echo "Running $i"
+            build/shards "$i"
+          done
+
+          build/shards src/tests/imgui_demo.edn
+      - name: Coverage (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        run: |
+          mkdir coverage
+          lcov --capture --directory build/src/core/CMakeFiles/shards-core-static.dir --directory build/src/mal/CMakeFiles/shards.dir --directory build/src/extra/CMakeFiles --output-file coverage/coverage.info
+          lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
+          genhtml coverage/coverage.f.info --output-directory coverage/output
+          bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+      - name: Upload coverage (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: shards-linux-gpu-coverage
+          path: |
+            coverage
+            test_gfx.xml
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: shards-linux-gpu rejected test data
+          path: src/gfx/tests/data/default/rejected
+          if-no-files-found: ignore

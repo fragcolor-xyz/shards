@@ -48,6 +48,11 @@ jobs:
     with:
       build-type: Release
       run-tests: true
+  Linux-GPU:
+    uses: ./.github/workflows/test-linux-gpu.yml
+    secrets: inherit
+    with:
+      build-type: Debug
 
   #
   # Build shards and publish docker image
