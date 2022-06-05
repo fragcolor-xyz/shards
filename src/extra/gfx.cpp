@@ -234,6 +234,9 @@ struct RenderShard : public BaseConsumer {
     if (_view->valueType != SHType::None) {
       const SHVar &var = _view.get();
       SHView *shView = (SHView *)var.payload.objectValue;
+      if (!shView)
+        throw formatException("GFX.Render View is not defined");
+
       shView->updateVariables();
       _collectedViews.push_back(shView->view);
     } else if (_views->valueType != SHType::None) {
@@ -241,6 +244,9 @@ struct RenderShard : public BaseConsumer {
       for (size_t i = 0; i < seq.size(); i++) {
         const SHVar &viewVar = seq[i];
         SHView *shView = (SHView *)viewVar.payload.objectValue;
+        if (!shView)
+          throw formatException("GFX.Render View[{}] is not defined", i);
+
         shView->updateVariables();
         _collectedViews.push_back(shView->view);
       }
@@ -256,8 +262,14 @@ struct RenderShard : public BaseConsumer {
     Var stepsSHVar(_steps.get());
     stepsSHVar.intoVector(_collectedPipelineStepVars);
 
+    size_t index = 0;
     for (const auto &stepVar : _collectedPipelineStepVars) {
-      _collectedPipelineSteps.push_back(*(PipelineStepPtr *)stepVar.payload.objectValue);
+      PipelineStepPtr *ptr = (PipelineStepPtr *)stepVar.payload.objectValue;
+      if (!ptr)
+        throw formatException("GFX.Render PipelineStep[{}] is not defined", index);
+
+      _collectedPipelineSteps.push_back(*ptr);
+      index++;
     }
 
     return _collectedPipelineSteps;
