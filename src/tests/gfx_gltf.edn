@@ -48,7 +48,7 @@
    (default-setup)
    {:Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb"} >= .path
    .path (GFX.glTF) >> .drawables)
-  
+
   (default-window))
 (schedule root test-file)
 (run root timestep 100)
@@ -58,7 +58,7 @@
    (default-setup)
    "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" (FS.Read :Bytes true) >= .bytes
    {:Bytes .bytes} (GFX.glTF) >> .drawables)
-  
+
   (default-window))
 (schedule root test-binary)
 (run root timestep 100)
@@ -72,7 +72,7 @@
    {:Transform .t1} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
    {} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" :Transform .t2) >> .drawables
    {:Transform .t3} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
-  
+
   (GFX.MainWindow
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
    :Contents
@@ -85,4 +85,17 @@
     .drawables (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 (schedule root test-transforms)
+(run root timestep 100)
+
+(defloop test-copy
+  (Setup
+   (default-setup)
+   (Float3 -0.05 0 0) (Math.Translation) >= .t1
+   (Float3 0.05 0 0) (Math.Translation) >= .t2
+   {:Transform .t1} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >= .avocado-a
+   .avocado-a >> .drawables
+   {:Transform .t2 :Copy .avocado-a} (GFX.glTF) >> .drawables)
+
+  (default-window))
+(schedule root test-copy)
 (run root timestep 100)

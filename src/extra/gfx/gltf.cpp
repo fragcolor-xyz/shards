@@ -32,6 +32,7 @@ struct GLTFShard {
     LoadStaticFile,
     LoadFile,
     LoadMemory,
+    LoadCopy,
   };
 
   LoadMode _loadMode{};
@@ -90,6 +91,12 @@ struct GLTFShard {
     const SHTypeInfo *bytesType = findInputTableType("Bytes");
     if (pathType && bytesType) {
       throw ComposeError("glTF can not have a Path and Bytes source");
+    const SHTypeInfo *pathType = findInputTableType("Path");
+    const SHTypeInfo *bytesType = findInputTableType("Bytes");
+    const SHTypeInfo *copyType = findInputTableType("Copy");
+    size_t numSources = (pathType ? 1 : 0) + (bytesType ? 1 : 0) + (copyType ? 1 : 0);
+    if (numSources > 1) {
+      throw ComposeError("glTF can only have one source");
     } else if (pathType) {
       if (*pathType != PathInputType)
         throw ComposeError("Path should be a string");
@@ -100,6 +107,11 @@ struct GLTFShard {
         throw ComposeError("Path should be a string");
       _loadMode = LoadMemory;
       OVERRIDE_ACTIVATE(data, activateBytes);
+    } else if (copyType) {
+      if (*copyType != Types::DrawableHierarchy)
+        throw ComposeError("Copy should be an already loaded glTF model");
+      _loadMode = LoadCopy;
+      OVERRIDE_ACTIVATE(data, activateCopy);
     } else if (!_staticModelPath.empty()) {
       _loadMode = LoadStaticFile;
       OVERRIDE_ACTIVATE(data, activateStatic);
@@ -197,6 +209,23 @@ struct GLTFShard {
 
     initModel(context, *_returnVar, input);
     return Types::DrawableHierarchyObjectVar.Get(_returnVar);
+  }
+
+  SHVar activateCopy(SHContext *context, const SHVar &input) {
+    assert(_loadMode == LoadCopy);
+
+    SHVar sourceVar{};
+    getFromTable(context, input.payload.tableValue, "Copy", sourceVar);
+
+    SHDrawableHierarchy *source = (SHDrawableHierarchy *)sourceVar.payload.objectValue;
+    if (!source)
+      throw ActivationError("Undefined glTF model passed to Copy");
+
+    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
+    result->drawableHierarchy = source->drawableHierarchy->clone();
+
+    initModel(context, *result, input);
+    return Types::DrawableHierarchyObjectVar.Get(result);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { throw std::logic_error("invalid activation"); }
