@@ -18,7 +18,7 @@ void DefaultInterpolation::apply(GeneratorContext &context) const {
     if (!context.hasOutput(name.c_str())) {
       for (auto &prefix : matchPrefixes) {
         if (boost::algorithm::starts_with(name, prefix)) {
-          context.writeOutput(name.c_str(), input.second->type);
+          context.writeOutput(name.c_str(), input.second);
           context.write(" = ");
           context.readInput(name.c_str());
           context.write(";\n");

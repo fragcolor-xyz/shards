@@ -89,10 +89,6 @@ struct GLTFShard {
 
     const SHTypeInfo *pathType = findInputTableType("Path");
     const SHTypeInfo *bytesType = findInputTableType("Bytes");
-    if (pathType && bytesType) {
-      throw ComposeError("glTF can not have a Path and Bytes source");
-    const SHTypeInfo *pathType = findInputTableType("Path");
-    const SHTypeInfo *bytesType = findInputTableType("Bytes");
     const SHTypeInfo *copyType = findInputTableType("Copy");
     size_t numSources = (pathType ? 1 : 0) + (bytesType ? 1 : 0) + (copyType ? 1 : 0);
     if (numSources > 1) {

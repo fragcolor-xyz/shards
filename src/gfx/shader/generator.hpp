@@ -21,6 +21,15 @@ struct GeneratorError {
   std::string error;
 };
 
+struct IGeneratorDynamicHandler {
+  // Entry point for generating stage inputs on-demand
+  // return true to indicate that the input now exists and the out field is filled in
+  virtual bool createDynamicInput(const char *name, FieldType &out) { return false; }
+  // Entry point for generating stage outputs on-demand
+  // return true to indicate that the output now exists
+  virtual bool createDynamicOutput(const char *name, FieldType requestedType) { return false; }
+};
+
 struct GeneratorContext {
   String result;
   String inputVariableName;
@@ -28,12 +37,14 @@ struct GeneratorContext {
   String globalsVariableName;
   std::map<String, BufferDefinition> buffers;
   std::map<String, TextureDefinition> textures;
-  std::map<String, const NamedField *> inputs;
+  std::map<String, FieldType> inputs;
   std::map<String, FieldType> globals;
   std::map<String, FieldType> outputs;
   std::map<String, size_t> sampleTextures;
   bool canAddOutputs = false;
   std::vector<GeneratorError> errors;
+
+  std::vector<IGeneratorDynamicHandler *> dynamicHandlers;
 
   void write(const StringView &str);
 
@@ -42,9 +53,11 @@ struct GeneratorContext {
 
   bool hasInput(const char *name);
   void readInput(const char *name);
+  const FieldType *getOrCreateDynamicInput(const char *name);
 
   bool hasOutput(const char *name);
   void writeOutput(const char *name, const FieldType &type);
+  const FieldType *getOrCreateDynamicOutput(const char *name, FieldType requestedType);
 
   bool hasTexture(const char *name);
   const TextureDefinition *getTexture(const char *name);

@@ -37,6 +37,7 @@ void GeneratorContext::writeGlobal(const char *name, const FieldType &type) {
       pushError(formatError("Global type doesn't match previously expected type"));
     }
   }
+
   result += fmt::format("{}.{}", globalsVariableName, name);
 }
 
@@ -44,29 +45,68 @@ bool GeneratorContext::hasInput(const char *name) { return inputs.find(name) != 
 
 void GeneratorContext::readInput(const char *name) {
   auto it = inputs.find(name);
-  if (it == inputs.end()) {
-    pushError(formatError("Input {} does not exist", name));
+  const FieldType *fieldType{};
+  if (it != inputs.end()) {
+    fieldType = &it->second;
   } else {
-    result += fmt::format("{}.{}", inputVariableName, name);
+    fieldType = getOrCreateDynamicInput(name);
   }
+
+  if (!fieldType) {
+    pushError(formatError("Input {} does not exist", name));
+    return;
+  }
+
+  result += fmt::format("{}.{}", inputVariableName, name);
+}
+
+const FieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
+  assert(inputs.find(name) == inputs.end());
+
+  FieldType newField;
+  for (auto &h : dynamicHandlers) {
+    if (h->createDynamicInput(name, newField)) {
+      return &inputs.insert_or_assign(name, newField).first->second;
+    }
+  }
+
+  return nullptr;
 }
 
 bool GeneratorContext::hasOutput(const char *name) { return outputs.find(name) != outputs.end(); }
 
 void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
   auto it = outputs.find(name);
-  if (it == outputs.end()) {
-    if (canAddOutputs) {
-      outputs.insert_or_assign(name, type);
-    } else {
-      pushError(formatError("Output {} does not exist", name));
-    }
+  const FieldType *outputFieldType{};
+  if (it != outputs.end()) {
+    outputFieldType = &it->second;
   } else {
-    if (it->second != type) {
-      pushError(formatError("Output type doesn't match previously expected type"));
+    outputFieldType = getOrCreateDynamicOutput(name, type);
+  }
+
+  if (!outputFieldType) {
+    pushError(formatError("Output {} does not exist", name));
+    return;
+  }
+
+  if (*outputFieldType != type) {
+    pushError(formatError("Output type doesn't match previously expected type"));
+    return;
+  }
+
+  result += fmt::format("{}.{}", outputVariableName, name);
+}
+
+const FieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, FieldType requestedType) {
+  assert(outputs.find(name) == outputs.end());
+
+  for (auto &h : dynamicHandlers) {
+    if (h->createDynamicOutput(name, requestedType)) {
+      return &outputs.insert_or_assign(name, requestedType).first->second;
     }
   }
-  result += fmt::format("{}.{}", outputVariableName, name);
+
+  return nullptr;
 }
 
 bool GeneratorContext::hasTexture(const char *name) { return getTexture(name) != nullptr; }
@@ -317,17 +357,17 @@ struct Stage {
   StageOutput process(const std::vector<NamedField> &inputs, const std::vector<NamedField> &outputs,
                       const std::map<String, BufferDefinition> &buffers,
                       const std::map<String, TextureDefinition> &textureDefinitions,
-                      std::vector<StructField> *dynamicOutputStructure) {
+                      const std::vector<IGeneratorDynamicHandler *> &dynamicHandlers) {
     GeneratorContext context;
     context.buffers = buffers;
     context.inputVariableName = inputVariableName;
     context.outputVariableName = outputVariableName;
     context.globalsVariableName = globalsVariableName;
-    context.canAddOutputs = dynamicOutputStructure != nullptr;
     context.textures = textureDefinitions;
+    context.dynamicHandlers = dynamicHandlers;
 
     for (auto &input : inputs) {
-      context.inputs.insert_or_assign(input.name, &input);
+      context.inputs.insert_or_assign(input.name, input.type);
     }
 
     for (auto &outputField : outputs) {
@@ -386,27 +426,10 @@ struct Stage {
       globalsHeader += fmt::format("var<private> {}: {};\n", globalsVariableName, globalsStructName);
     }
 
-    if (dynamicOutputStructure) {
-      for (auto &field : context.outputs) {
-        dynamicOutputStructure->emplace_back(generateDynamicStructOutput(field.first, field.second, *dynamicOutputStructure));
-      }
-    }
-
     return StageOutput{
         globalsHeader + std::move(context.result),
         std::move(context.errors),
     };
-  }
-
-  StructField generateDynamicStructOutput(const String &name, const FieldType &type,
-                                          const std::vector<StructField> &outputStructure) {
-    // Handle builtin outputs here
-    if (name == "position") {
-      return StructField(NamedField(name, type), "position");
-    } else {
-      size_t location = getNextStructLocation(outputStructure);
-      return StructField(NamedField(name, type), location);
-    }
   }
 };
 
@@ -416,6 +439,52 @@ GeneratorOutput Generator::build(const std::vector<EntryPoint> &_entryPoints) {
                  [](const EntryPoint &entryPoint) { return &entryPoint; });
   return build(entryPoints);
 }
+
+struct DynamicVertexInput : public IGeneratorDynamicHandler {
+  std::vector<StructField> &inputStruct;
+
+  DynamicVertexInput(std::vector<StructField> &inputStruct) : inputStruct(inputStruct) {}
+
+  bool createDynamicInput(const char *name, FieldType &out) {
+    if (strcmp(name, "vertex_index") == 0) {
+      out = FieldType(ShaderFieldBaseType::Int32);
+      StructField newField = generateDynamicStructInput(name, out);
+      inputStruct.push_back(newField);
+      return true;
+    }
+    return false;
+  }
+
+  StructField generateDynamicStructInput(const String &name, const FieldType &type) {
+    if (name == "vertex_index") {
+      return StructField(NamedField(name, type), "vertex_index");
+    } else {
+      throw std::logic_error("Unknown dynamic vertex input");
+    }
+  }
+};
+
+struct DynamicVertexOutput : public IGeneratorDynamicHandler {
+  std::vector<StructField> &outputStruct;
+
+  DynamicVertexOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
+
+  bool createDynamicOutput(const char *name, FieldType requestedType) {
+    StructField newField = generateDynamicStructOutput(name, requestedType);
+    outputStruct.push_back(newField);
+    return true;
+  }
+
+  StructField generateDynamicStructOutput(const String &name, const FieldType &type) {
+    // Handle builtin outputs here
+    if (name == "position") {
+      return StructField(NamedField(name, type), "position");
+    } else {
+      size_t location = getNextStructLocation(outputStruct);
+      return StructField(NamedField(name, type), location);
+    }
+  }
+};
 
 GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoints) {
   String vertexInputStructName = "Input";
@@ -496,6 +565,9 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     textureDefinitions.insert_or_assign(texture.name, def);
   }
 
+  DynamicVertexInput dynamicVertexInputHandler(vertexInputStructFields);
+  DynamicVertexOutput dynamicVertexOutputHandler(vertexOutputStructFields);
+
   String stagesCode;
   stagesCode.reserve(2 << 12);
   for (size_t i = 0; i < numStages; i++) {
@@ -507,12 +579,13 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     static std::vector<NamedField> emptyStruct;
     std::vector<NamedField> *inputs{};
     std::vector<NamedField> *outputs{};
-    std::vector<StructField> *generatedStructFields{};
+    std::vector<IGeneratorDynamicHandler *> dynamics;
     switch (stage.stage) {
     case gfx::ProgrammableGraphicsStage::Vertex:
       inputs = &vertexInputFields;
       outputs = &emptyStruct;
-      generatedStructFields = &vertexOutputStructFields;
+      dynamics.push_back(&dynamicVertexInputHandler);
+      dynamics.push_back(&dynamicVertexOutputHandler);
       break;
     case gfx::ProgrammableGraphicsStage::Fragment:
       inputs = &fragmentInputFields;
@@ -520,14 +593,15 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
       break;
     }
 
-    StageOutput stageOutput = stage.process(*inputs, *outputs, buffers, textureDefinitions, generatedStructFields);
+    StageOutput stageOutput = stage.process(*inputs, *outputs, buffers, textureDefinitions, dynamics);
     for (auto &error : stageOutput.errors)
       output.errors.emplace_back(error);
 
     stagesCode += stageOutput.code;
 
+    // Copy interpolated fields from vertex to fragment
     if (&stage == &vertexStage) {
-      for (auto &outputField : *generatedStructFields)
+      for (auto &outputField : vertexOutputStructFields)
         fragmentInputFields.emplace_back(outputField.base);
     }
   }

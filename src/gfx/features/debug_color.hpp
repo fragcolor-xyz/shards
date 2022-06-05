@@ -24,7 +24,7 @@ struct DebugColor {
       context.write("vec4<f32>(");
       auto &input = context.inputs[fieldName];
       context.readInput(fieldName.c_str());
-      switch (input->type.numComponents) {
+      switch (input.numComponents) {
       case 1:
         context.write(", 0.0, 0.0, 1.0");
         break;
