@@ -1,37 +1,41 @@
 ; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
+; Copyright © 2022 Fragcolor Pte. Ltd.
 
 ; defmesh
 (defmesh first)
 (defmesh 二番)
-(defmesh трета)
+(defmesh трети)
 (defmesh 4️⃣)
 
-(defwire sand "Sand" ; Pour some sand in the sandbox
-  (Sandbox.Sand)
+(defwire sand ; Pour some sand in the sandbox
+  (Sandbox.Sand :grains 100) >= .myGrains ; 100 grains of sand
+  .myGrains
+  (Log "grains of sand")
   (Msg "Done"))
 
-(defwire 砂 "砂" ; 砂場に砂を入れる
-  (Sandbox.Sand)
-  (Msg "終り"))
+; Different ways to define a wire
+(def 砂 (Wire "砂" (Sandbox.Sand) (Msg "終り")))
+;(defwire 砂 ; 砂場に砂を入れる
+;  (Sandbox.Sand)
+;  (Msg "終り"))
 
-(defwire пясък "Пясък" ; Налива малко пясък в пясъчника
+(defwire пясък ; Налива малко пясък в пясъчника
   (Sandbox.Sand)
   (Msg "край"))
 
-(defwire ⌛ "⌛" ; ⌛🔜📥
+(defwire ⌛ ; ⌛🔜📥
   (Sandbox.Sand)
   (Msg "🏝️"))
 
 ; This is valid
 (schedule first sand)
-(schedule 二番 砂)
-(schedule трета пясък)
-(schedule 4️⃣ ⌛)
+;(schedule 二番 砂)
+;(schedule трети пясък)
+;(schedule 4️⃣ ⌛)
 (run first)
-(run 二番)
-(run трета)
-(run 4️⃣)
+;(run 二番)
+;(run трети)
+;(run 4️⃣)
 
 ; This is valid
 ;(schedule first sand)
@@ -40,10 +44,115 @@
 ;(run first)
 
 ; This is not - Attempted to schedule a wire multiple times
+; QUESTION - how to schedule/run a single wire multiple times? Clone it?
 ;(schedule first sand)
 ;(schedule 二番 sand)
-;(schedule трета sand)
+;(schedule трети sand)
 ;(run first)
 ;(run 二番)
-;(run трета)
+;(run трети)
 
+; Wire-s can be
+; (def <name> (Wire "name" [<body>])) ; wire syntax
+; (defwire <name> [<body>]) ; short syntax
+; :Looped ; defined as an attribute in the (Wire ...)
+; (defloop <name> [<body>]) ; short syntax for a looped wire
+; :Unsafe
+; :LStack ; large stack, 4mb
+; :SStack ; small stack, 32kb
+
+; Define a function. Inspects a variable from the stack
+; (defwire is-it-10 (If (Is 10) (Log "It's a 10")))
+(defwire is-it-10 
+  (If (Is 10)                  ; (If <cond> :Then <shard> :Else <shard>)
+      :Then                    ; Expects a single shard
+      (-> (Log "It's a 10!")   ; use -> to define a
+          (Log "It's a 10!"))  ; sequence instead
+      :Else
+      (Log "It's not a 10!"))  ; A single shard
+  )
+
+; Define a callable function with parameters
+; Multi-arity functions not supported
+(defn is-it-10-fn [param, msg]
+  (->
+  (Log "Function called!") ; Will print the top of stack
+  msg
+  (Log "Msg")
+  param
+  (If (Is 10)                  ; (If <cond> :Then <shard> :Else <shard>)
+    :Then                    ; Expects a single shard
+    (-> (Log "It's a 10!")   ; use -> to define a
+        (Log "It's a 10!"))  ; sequence instead
+    :Else
+    (Log "It's not a 10!"))  ; A single shard
+  ))
+
+; Check if a predicate is true
+(defn is-it-true [pred]
+  (->
+   (If (pred)
+       :Then
+       (Log "True"))
+       :Else
+       (Log "False"))
+   ))
+
+(def va 1)        ; Define some var
+(def vb [1 2 3])  ; Define some list
+
+(defwire decl-wire ; Declare a simple wire
+  (Log "Nothing on the stack") ; Log what's on the stack - nothing yet
+  ; Put a previously defined var on the stack and log it
+  va (Log "va is")
+  ; Put a previously defined list on the stack and log it
+  vb (Log "vb is")
+
+  4 = .a
+  (Log "Define a") ; Define a with a value of 2 and log it
+  (is-it-10-fn :param .a) ; No need to specify all params if given by name
+  6 = .b
+  (Log "Define b") ; Define b with a value of 3 and log it
+  (is-it-10-fn .b "Log some messages.") ; Specify all params
+  .a (Math.Add .b) = .c ; a + b
+  (Log "Add a + b, save to c")
+  (Dispatch is-it-10)
+  .a ; Put a on the stack
+  (Log "Top of stack is a")
+  (Dispatch is-it-10)
+  .b ; Put b on the stack
+  (Log "Top of stack is b")
+  (Dispatch is-it-10)
+  .c ; Put c on the stack
+  (Log "Top of stack is c")
+  (Log "Top of stack is still c") ; We haven't popped the stack
+  (Log "Top of stack is still c") ; We still haven't popped the stack
+  (Dispatch is-it-10)
+  )
+
+(defwire main-wire
+  1000 = .s
+  0 >= .a >= .b >= .c
+
+  .s (Math.Subtract 3) (Math.Divide 3) = .max_a
+  (ForRange
+   3 .max_a
+   (-> > .a
+       .a (Math.Add 1) >= .min_b
+       .s (Math.Subtract 1) (Math.Subtract .a) (Math.Divide 2) >= .max_b
+       (ForRange
+        .min_b .max_b
+        (-> > .b
+            .s (Math.Subtract .a) (Math.Subtract .b) > .c
+            .a (Math.Multiply .a) >= .sqr_a
+            .b (Math.Multiply .b) >= .sqr_b
+            .c (Math.Multiply .c) >= .sqr_c
+            (When (-> .sqr_a (Math.Add .sqr_b) (Is .sqr_c))
+                  (-> .a (Math.Multiply .b) (Math.Multiply .c)
+
+                      (Assert.Is 31875000)
+                      (Log "Answer"))))))))
+
+(schedule first decl-wire)
+;(schedule first main-wire)
+(run first)
