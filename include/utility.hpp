@@ -475,12 +475,12 @@ public:
   }
 
   SHVar &operator=(const SHVar &value) {
-    shassert(value.valueType == None || value.valueType == ShardRef || value.valueType == Seq);
+    shassert(value.valueType == SHType::None || value.valueType == SHType::ShardRef || value.valueType == SHType::Seq);
+    destroy();
 
     SH_CORE::cloneVar(_shardsParam, value);
 
-    destroy();
-    if (_shardsParam.valueType == ShardRef) {
+    if (_shardsParam.valueType == SHType::ShardRef) {
       assert(!_shardsParam.payload.shardValue->owned);
       _shardsParam.payload.shardValue->owned = true;
       _shardsArray.push_back(_shardsParam.payload.shardValue);
