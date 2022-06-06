@@ -7,7 +7,9 @@ namespace gfx {
 
 struct Context;
 struct Pipeline;
+
 struct DrawQueue;
+typedef std::shared_ptr<DrawQueue> DrawQueuePtr;
 
 struct Drawable;
 typedef std::shared_ptr<Drawable> DrawablePtr;

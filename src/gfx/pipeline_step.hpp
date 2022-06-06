@@ -15,6 +15,7 @@ enum class SortMode {
 };
 
 struct RenderDrawablesStep {
+  DrawQueuePtr drawQueue;
   std::vector<FeaturePtr> features;
   SortMode sortMode = SortMode::Batch;
 };

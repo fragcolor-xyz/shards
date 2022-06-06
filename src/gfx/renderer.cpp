@@ -263,13 +263,13 @@ struct RendererImpl final : public ContextData {
     mainOutput.size = context.getMainOutputSize();
   }
 
-  void renderViews(const DrawQueue &drawQueue, const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
+  void renderViews(const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
     for (auto &view : views) {
-      renderView(drawQueue, view, pipelineSteps);
+      renderView(view, pipelineSteps);
     }
   }
 
-  void renderView(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
+  void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     View *viewPtr = view.get();
 
     Rect viewport;
@@ -309,7 +309,7 @@ struct RendererImpl final : public ContextData {
           [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
-              renderDrawables(drawQueue, arg, view, viewport, viewBuffer);
+              renderDrawables(arg, view, viewport, viewBuffer);
             }
           },
           *step.get());
@@ -612,8 +612,12 @@ struct RendererImpl final : public ContextData {
     return wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
   }
 
-  void renderDrawables(const DrawQueue &drawQueue, RenderDrawablesStep &step, ViewPtr view, Rect viewport,
-                       WGPUBuffer viewBuffer) {
+  void renderDrawables(RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
+    if (!step.drawQueue)
+      throw std::runtime_error("No draw queue assigned to drawable step");
+
+    const DrawQueue &drawQueue = *step.drawQueue.get();
+
     WGPUDevice device = context.wgpuDevice;
     WGPUCommandEncoderDescriptor desc = {};
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
@@ -1017,12 +1021,8 @@ Renderer::Renderer(Context &context) {
   impl->initializeContextData();
 }
 
-void Renderer::render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) {
-  impl->renderViews(drawQueue, views, pipelineSteps);
-}
-void Renderer::render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
-  impl->renderView(drawQueue, view, pipelineSteps);
-}
+void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { impl->renderViews(views, pipelineSteps); }
+void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;

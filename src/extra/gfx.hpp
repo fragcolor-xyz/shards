@@ -3,11 +3,11 @@
 
 #include "gfx/shards_types.hpp"
 #include <SDL_events.h>
-#include <shards.hpp>
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/fwd.hpp>
+#include <shards.hpp>
 
 namespace gfx {
 struct ImGuiRenderer;
@@ -23,7 +23,16 @@ struct MainWindowGlobals {
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
   std::vector<SDL_Event> events;
-  ::gfx::DrawQueue drawQueue;
+
+  // Draw queue used when it's not manually specified
+  ::gfx::DrawQueuePtr drawQueue;
+
+  // Callback for start-of-frame
+  struct FrameCallback {
+    void *context;
+    std::function<void()> callback;
+  };
+  std::vector<FrameCallback> onBeginFrame;
 };
 
 struct ContextUserData {

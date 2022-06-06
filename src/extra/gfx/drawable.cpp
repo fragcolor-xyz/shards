@@ -1,6 +1,6 @@
 #include "../gfx.hpp"
-#include "shards_utils.hpp"
 #include "material_utils.hpp"
+#include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/material.hpp>
@@ -185,10 +185,44 @@ struct DrawShard : public BaseConsumer {
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHParametersInfo parameters() { return SHParametersInfo(); }
+  static SHParametersInfo parameters() {
+    static Parameters params{
+        {"Queue", SHCCSTR("The queue to add the draw command to"), {Types::DrawQueue}},
+    };
+    return params;
+  }
 
-  void warmup(SHContext *shContext) { baseConsumerWarmup(shContext); }
-  void cleanup() { baseConsumerCleanup(); }
+  ParamVar _queueVar{};
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _queueVar = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _queueVar;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void warmup(SHContext *shContext) {
+    baseConsumerWarmup(shContext);
+    _queueVar.warmup(shContext);
+  }
+
+  void cleanup() {
+    baseConsumerCleanup();
+    _queueVar.cleanup();
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -198,10 +232,16 @@ struct DrawShard : public BaseConsumer {
     return CoreInfo::NoneType;
   }
 
-  template <typename T> void addDrawableToQueue(T drawable) {
-    auto &dq = getMainWindowGlobals().drawQueue;
-    dq.add(drawable);
+  DrawQueue &getDrawQueue() {
+    SHVar queueVar = _queueVar.get();
+    if (queueVar.payload.objectValue) {
+      return *((SHDrawQueue *)queueVar.payload.objectValue)->queue.get();
+    } else {
+      return *getMainWindowGlobals().drawQueue.get();
+    }
   }
+
+  template <typename T> void addDrawableToQueue(T drawable) { getDrawQueue().add(drawable); }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
@@ -234,8 +274,69 @@ struct DrawShard : public BaseConsumer {
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
 };
 
+struct DrawQueueShard : public BaseConsumer {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::DrawQueue; }
+  static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
+
+  static SHParametersInfo parameters() {
+    static Parameters parameters = {};
+    return parameters;
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void warmup(SHContext *context) {}
+
+  void cleanup() {}
+
+  SHTypeInfo compose(SHInstanceData &data) { return Types::DrawQueue; }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHDrawQueue *shQueue = Types::DrawQueueObjectVar.New();
+    return Types::DrawQueueObjectVar.Get(shQueue);
+  }
+};
+
+struct ClearQueueShard {
+  static SHTypesInfo inputTypes() { return Types::DrawQueue; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Clears a draw queue"); }
+
+  static SHParametersInfo parameters() {
+    static Parameters parameters = {};
+    return parameters;
+  }
+
+  void setParam(int index, const SHVar &value) {}
+  SHVar getParam(int index) { return Var::Empty; }
+
+  void warmup(SHContext *context) {}
+  void cleanup() {}
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHDrawQueue *shQueue = (SHDrawQueue *)input.payload.objectValue;
+    shQueue->queue->clear();
+    return SHVar{};
+  }
+};
+
 void registerDrawableShards() {
   REGISTER_SHARD("GFX.Drawable", DrawableShard);
   REGISTER_SHARD("GFX.Draw", DrawShard);
+  REGISTER_SHARD("GFX.DrawQueue", DrawQueueShard);
+  REGISTER_SHARD("GFX.ClearQueue", ClearQueueShard);
 }
 } // namespace gfx

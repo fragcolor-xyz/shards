@@ -1,0 +1,50 @@
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+(def BlendAlphaPremul {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.OneMinusSrcAlpha})
+(def BlendOne {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
+
+(defn spin-transform [t location]
+  (->
+   t >= .tmp-0
+   .tmp-0 (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+   .tmp-0 (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+   .tmp-0 (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+   location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ)))
+
+(defloop test-wire
+  (Setup
+   0.0 >= .time
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+   (Float3 0 0 0) (Math.Translation) >= .transform-0
+   (Float3 0 0 0) (Math.Translation) >= .transform-1
+   {:Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}} (GFX.Drawable :Transform .transform-0) >> .drawable-0
+   {:Mesh .mesh :Params {:baseColor (Float4 0 1 1 0.5)}} (GFX.Drawable :Transform .transform-1) >> .drawable-1
+
+   (GFX.DrawQueue) >= .queue-0
+   (GFX.DrawQueue) >= .queue-1
+
+    ; Create render steps
+   (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+   {:State {:DepthCompare CompareFunction.Less
+            :Blend {:Color BlendAlphaPremul :Alpha BlendOne}}}
+   (GFX.Feature) >> .features
+   (GFX.DrawablePass :Features .features :DrawQueue .queue-0) >> .render-steps
+   (GFX.DrawablePass :Features .features :DrawQueue .queue-1) >> .render-steps
+
+    ;; Create view
+   {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    .time (Math.Add timestep) > .time
+    (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
+    (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
+
+    .drawables (GFX.Draw)
+
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule root test-wire)
+(run root timestep)
