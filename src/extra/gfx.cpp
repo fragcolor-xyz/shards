@@ -21,7 +21,7 @@ struct DrawablePassShard {
 
   static inline Parameters params{
       {"Features", SHCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"Queue", SHCCSTR("The queue to draw from (optional). Uses the default queue if not specified"), {Types::DrawQueue}},
+      {"Queue", SHCCSTR("The queue to draw from (optional). Uses the default queue if not specified"), {Types::DrawQueue, Type::VariableOf(Types::DrawQueue)}},
   };
   static SHParametersInfo parameters() { return params; }
 

@@ -25,11 +25,14 @@
 
     ; Create render steps
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
-   {:State {:DepthCompare CompareFunction.Less
+   (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
+   {:State {:DepthWrite false
             :Blend {:Color BlendAlphaPremul :Alpha BlendOne}}}
    (GFX.Feature) >> .features
-   (GFX.DrawablePass :Features .features :DrawQueue .queue-0) >> .render-steps
-   (GFX.DrawablePass :Features .features :DrawQueue .queue-1) >> .render-steps
+
+   ;; Red cube should be draw on top of cyan cube
+   (GFX.DrawablePass :Features .features :Queue .queue-1) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue-0) >> .render-steps
 
     ;; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
@@ -39,10 +42,13 @@
    :Contents
    (->
     .time (Math.Add timestep) > .time
-    (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
-    (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
+    (spin-transform .time (Float3 -0.4 0 0)) > .transform-0
+    (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.4 0 0)) > .transform-1
 
-    .drawables (GFX.Draw)
+    .queue-0 (GFX.ClearQueue)
+    .queue-1 (GFX.ClearQueue)
+    .drawable-0 (GFX.Draw :Queue .queue-0)
+    .drawable-1 (GFX.Draw :Queue .queue-1)
 
     (GFX.Render :Steps .render-steps :View .view))))
 

@@ -178,6 +178,7 @@ struct DrawableShard {
   }
 };
 
+// MainWindow is only required if Queue is not specified
 struct DrawShard : public BaseConsumer {
   static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable, Types::DrawableHierarchy};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
@@ -187,12 +188,14 @@ struct DrawShard : public BaseConsumer {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"Queue", SHCCSTR("The queue to add the draw command to"), {Types::DrawQueue}},
+        {"Queue", SHCCSTR("The queue to add the draw command to"), {Types::DrawQueue, Type::VariableOf(Types::DrawQueue)}},
     };
     return params;
   }
 
   ParamVar _queueVar{};
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo{}; }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -214,7 +217,7 @@ struct DrawShard : public BaseConsumer {
   }
 
   void warmup(SHContext *shContext) {
-    baseConsumerWarmup(shContext);
+    baseConsumerWarmup(shContext, false);
     _queueVar.warmup(shContext);
   }
 
@@ -224,6 +227,14 @@ struct DrawShard : public BaseConsumer {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_queueVar->valueType != SHType::None) {
+      // Use the specified queue
+    } else {
+      // Use default global queue (check main thread)
+      composeCheckMainThread(data);
+      composeCheckMainWindowGlobals(data);
+    }
+
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
     } else {
@@ -274,7 +285,7 @@ struct DrawShard : public BaseConsumer {
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
 };
 
-struct DrawQueueShard : public BaseConsumer {
+struct DrawQueueShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::DrawQueue; }
   static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
@@ -306,6 +317,7 @@ struct DrawQueueShard : public BaseConsumer {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHDrawQueue *shQueue = Types::DrawQueueObjectVar.New();
+    shQueue->queue = std::make_shared<DrawQueue>();
     return Types::DrawQueueObjectVar.Get(shQueue);
   }
 };
