@@ -122,10 +122,10 @@ To start developing with Shards, you'll need to [set up your environment](https:
 
 ## Usage
 
-Shards files end with extension `.edn`. These scripts can be directly run from the console using the following script (from the `/build` folder):
+Shards files end with extension `.edn` and can be directly run from the console using the following script (from the `/build` folder):
 
 ```
-./cbl <filename.edn>
+./shards <filename.edn>
 ```
 
 Shards language API and features are documented [here](https://docs.fragcolor.xyz/) while example codes and tutorials can be found [here](https://learn.fragcolor.xyz/).
