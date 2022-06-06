@@ -36,8 +36,10 @@ TEST_CASE("glTF sample models", "[glTF]") {
   view->proj = ViewPerspectiveProjection{};
   view->view = linalg::lookat_matrix(float3(2.f, 2.0f, 2.0f), float3(0, 0, 0.0f), float3(0, 1, 0));
 
+  DrawQueuePtr queue = std::make_shared<DrawQueue>();
   auto pipeline = PipelineSteps{
       makeDrawablePipelineStep(RenderDrawablesStep{
+          .drawQueue = queue,
           .features =
               {
                   features::Transform::create(),
@@ -56,9 +58,9 @@ TEST_CASE("glTF sample models", "[glTF]") {
       gltfScene->transform = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),
                                                                     linalg::scaling_matrix(float3(testModel.scale))));
 
-      DrawQueue queue;
-      queue.add(gltfScene);
-      TEST_RENDER_LOOP(testRenderer) { testRenderer->renderer->render(queue, view, pipeline); };
+      queue->clear();
+      queue->add(gltfScene);
+      TEST_RENDER_LOOP(testRenderer) { testRenderer->renderer->render(view, pipeline); };
 
       std::string frameName = fmt::format("glTF.{}", testModel.name);
       CHECK(testRenderer->checkFrame(frameName.c_str(), comparisonTolerance));
