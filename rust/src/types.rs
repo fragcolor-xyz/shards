@@ -1706,6 +1706,19 @@ impl TryFrom<&Var> for i64 {
   }
 }
 
+impl TryFrom<&Var> for i32 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i32) }
+    }
+  }
+}
+
 impl TryFrom<&Var> for u64 {
   type Error = &'static str;
 
