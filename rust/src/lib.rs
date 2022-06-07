@@ -486,6 +486,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::physics::queries::registerShards();
   shards::physics::forces::registerShards();
   shards::svg::registerShards();
+  shards::salt::registerShards();
   shards::eth::registerShards();
   shards::csv::registerShards();
   shards::curve25519::registerShards();

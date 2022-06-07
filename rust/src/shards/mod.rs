@@ -18,6 +18,8 @@ pub mod casting;
 
 pub mod svg;
 
+pub mod salt;
+
 pub mod eth;
 
 pub mod csv;
