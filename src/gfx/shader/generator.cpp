@@ -109,7 +109,14 @@ const FieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, Fi
   return nullptr;
 }
 
-bool GeneratorContext::hasTexture(const char *name) { return getTexture(name) != nullptr; }
+bool GeneratorContext::hasTexture(const char *name, bool defaultTexcoordRequired) {
+  auto texture = getTexture(name);
+  if (!texture)
+    return false;
+  if (defaultTexcoordRequired && !hasInput(texture->defaultTexcoordVariableName.c_str()))
+    return false;
+  return true;
+}
 
 const TextureDefinition *GeneratorContext::getTexture(const char *name) {
   auto it = textures.find(name);
@@ -245,7 +252,8 @@ struct StructField {
   bool hasBuiltinTag() const { return !builtinTag.empty(); }
 };
 
-template <typename T> static void generateStruct(T &output, const String &typeName, const std::vector<StructField> &fields) {
+template <typename T>
+static void generateStruct(T &output, const String &typeName, const std::vector<StructField> &fields, bool interpolated = true) {
   output += fmt::format("struct {} {{\n", typeName);
   for (auto &field : fields) {
     std::string typeName = getFieldWGSLTypeName(field.base.type);

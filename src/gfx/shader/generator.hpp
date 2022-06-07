@@ -59,7 +59,7 @@ struct GeneratorContext {
   void writeOutput(const char *name, const FieldType &type);
   const FieldType *getOrCreateDynamicOutput(const char *name, FieldType requestedType);
 
-  bool hasTexture(const char *name);
+  bool hasTexture(const char *name, bool defaultTexcoordRequired = true);
   const TextureDefinition *getTexture(const char *name);
   void texture(const char *name);
   void textureDefaultTextureCoordinate(const char *name);

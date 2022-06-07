@@ -65,13 +65,15 @@ struct WithTexture : public Block {
   String name;
   BlockPtr inner;
   BlockPtr innerElse;
+  bool defaultTexcoordRequired = true;
 
   template <typename T>
-  WithTexture(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  WithTexture(const String &name, bool defaultTexcoordRequired, T &&inner)
+      : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))), defaultTexcoordRequired(defaultTexcoordRequired) {}
   template <typename T1, typename T2>
-  WithTexture(const String &name, T1 &&inner, T2 &&innerElse)
+  WithTexture(const String &name, bool defaultTexcoordRequired, T1 &&inner, T2 &&innerElse)
       : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
-        innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
+        innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))), defaultTexcoordRequired(defaultTexcoordRequired) {}
   WithTexture(WithTexture &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -84,9 +86,9 @@ struct WithTexture : public Block {
 
   BlockPtr clone() {
     if (innerElse)
-      return std::make_unique<WithTexture>(name, inner->clone(), innerElse->clone());
+      return std::make_unique<WithTexture>(name, defaultTexcoordRequired, inner->clone(), innerElse->clone());
     else
-      return std::make_unique<WithTexture>(name, inner->clone());
+      return std::make_unique<WithTexture>(name, defaultTexcoordRequired, inner->clone());
   }
 };
 
