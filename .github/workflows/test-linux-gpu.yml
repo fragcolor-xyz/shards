@@ -34,7 +34,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
-          fetch-depth: 1
+          fetch-depth: 2
           submodules: recursive
       - name: Set up dependencies
         run: |
