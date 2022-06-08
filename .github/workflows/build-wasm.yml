@@ -42,13 +42,13 @@ jobs:
           echo "::set-output name=threading::${{ github.event.inputs.threading || inputs.threading }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
       - name: Checkout emsdk
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: emscripten-core/emsdk
           path: emsdk

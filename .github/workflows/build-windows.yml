@@ -111,7 +111,7 @@ jobs:
             fi
           fi
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
@@ -232,7 +232,7 @@ jobs:
           git config --system core.autocrlf false
           git config --system core.eol lf
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
