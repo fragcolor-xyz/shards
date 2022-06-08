@@ -1,7 +1,7 @@
 # Shards
 
 <p align="center">
-  <img width="450" src="assets/ShardsLogoTemp.png">
+  <img width="450" src="assets/ShardsLogo.png">
 </p>
 
 ## A scripting tool to build tools.
