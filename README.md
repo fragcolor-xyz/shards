@@ -1,14 +1,10 @@
 # Shards
 
 <p align="center">
-  <img width="450" src="assets/ShardsLogoTemp.png">
+  <img width="450" src="assets/ShardsLogo.png">
 </p>
 
 ## A scripting tool to build tools.
-
-```diff
-- Warning: Work in progress
-```
 
 [![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)
 ![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)
@@ -17,46 +13,67 @@
 [![examples](https://img.shields.io/badge/learn-examples-blue)](https://learn.fragcolor.xyz/)
 
 ## Vision
-Building a programming tool for the future.
-A future where the current *Screen* or *Desktop*, *Mouse* and *Keyboard* are replaced by virtual interfaces within a *VR/MR/AR* environment.
 
-We introduce a low code way of producing high performance and multi-platform apps in the form of a scripting tool that can be both visual and textual at the same time and that represents the flow of data and logic as it is.
+Fragcolor is building a programming tool for the future.
+
+A future where current interfaces like *screen*, *desktop*, *mouse*, *keyboard*, etc. are replaced by more flexible and intuitive virtual interfaces within a *VR/MR/AR* environment.
+
+A future where it's the creator's imagination that limits what they can build; not the technology or the tools. 
+
+And, a future where artists, creators, and developers all over the world can freely leverage each other's work to build something even bigger and better, while still getting justly rewarded for their efforts.
+
+To that end, Fragcolor's vision is to build a low-code way of producing high performance and multi-platform apps in the form of a scripting tool that can be both visual and textual at the same time, and one that represents the flow of data and logic as it is (what you see is how it works).
 
 ## Goals
+
+The two main goals of this project are:  
+
+### To unleash creativity
+* Prototype quickly; unchain your imagination
+* Go from pseudo code to real app, real fast
+* Replace pseudo blocks with native blocks in real time without pausing program execution
+* An easy-to-use universal interface to your mixed/native code
+* Maximum modularity and inter-project reuse of code
+* Release a fully bundled executable app or library with just one click
+
+### To be accessible  
 * Automation scripting for everyone
-* A universal interface to your code
-* Visual scripting without spaghetti (similar to Apple Shortcuts)
-* Shards modularity allows to reuse low level code with minimal efforts between projects
-* Machine learning scripting; it's all about building graphs
 * Video game engine scripting; even for non-technical artists
-* Extremely quick prototyping, creativity unchained
-  * From pseudo code to real app
-  * Replace pseudo shards with real native shards as you go
-* One click release of a fully bundled executable app or library
-* Textual representation to allow experienced programmers to use it as well
+* Simplified Machine Learning scripting - just build graphs
+* Powerful textual representation (scripting language) for experienced programmers
 
 ## Features
+
+Shards has a number of features that make it highly suitable for live on-the-fly game development, using both visual scripting as well as traditional game scripting.
+
+### Intuitive
+* Supports **visual editing** without the associated spaghetti and spider webs
+* Versatile textual representation (for now backed by a derived **Clojure/Lisp**). Read more about it [here](https://docs.fragcolor.xyz/blocks/).
+  
+### Developer friendly
 * Clear data flow
-* Performance driven and easy to profile
-* Automatically inferred strong types
-* **SIMD** vectors as first class types
-* Strong validation, composition and optimization ahead of run-time
 * Extremely easy to debug and dissect
+* Automatically inferred strong types
+* **SIMD** vectors as first-class types
+* Hot code reloading, without any serialization due to completely decoupled data
+  
+### Performant
+* Performance-driven and easy to profile
 * Deterministic execution and performance
-* Built on top of **co-routines**, extremely easy to unleash parallelism and low syscall count
-* Support **visual editing** without spaghetti and spider webs involvement
-* Versatile textual representation (for now backed by a derived **clojure/lisp**)
+* Strong validation, composition, and optimization ahead of run-time
+* Built on top of **co-routines**; extremely easy to unleash parallelism and low syscall count
 * Fast execution inspired by threaded code interpreters
-* Hot code reloading, without any serialization due to complete decoupled data
-* WASM support
+* Support for WASM
+
+### Built for game development
+* Batteries included: 600+ shards & functions allowing a high level of abstraction
+* Game loops: Trivially easy implementation and control of game loop code
+* Graphics rendering: A `wgpu` based composable/swappable graphics rendering pipeline implementation
+
 
 ## TL;DR
 
-### This
-
-#### Textual version - using a clojure like language (more in the pipeline)
-
-[Read more about the textual language](https://github.com/fragcolor-xyz/shards/wiki/Wire-definition-language)
+<details><summary>This code</summary>
 
 ```clojure
 (defwire action
@@ -91,33 +108,28 @@ We introduce a low code way of producing high performance and multi-platform app
 (schedule main main-loop)
 (run main 0.02)
 ```
+</details>
 
-#### Visual version - using a SwiftUI iOS app
+<details><summary>Becomes this app (cross-platform)</summary>
 
-*Work in progress, app source outside of this repository's scope*
+  ![](assets/simple1.PNG)
 
-<img src="assets/ios-editor.GIF" height="500px">
+</details>
 
-### Becomes
+## Installation
 
-![](assets/simple1.PNG)
+To start developing with Shards, you'll need to [set up your environment](https://docs.fragcolor.xyz/contribute/code/getting-started/) and then [build Shards](https://docs.fragcolor.xyz/contribute/code/building-shards/).
 
-<img src="assets/ios-imgui.PNG" height="500px">
+## Usage
 
-Complete of a BGFX context, rendering a ImGui window on a DX11 (windows) and/or Metal (iOS) surface.
+Shards files end with extension `.edn` and can be directly run from the console using the following script (from the `/build` folder):
 
-## Motivation
-In all those years of software engineering I've been touching many fields including, audio, VR, physics, game engines in general but also machine learning, NNs etc... everything interesting and all but all the software I wrote didn't exactly connect to each other and connecting it would have been a big effort. I always wanted to mix things and recombine, experiment, after all I started as a musician using max/msp on my black powerbook pismo...
+```
+./shards <filename.edn>
+```
 
-Shards is my answer to this call, a tool that let's me write specific native code and connect it to any other code I wrote.
+Shards language API and features are documented [here](https://docs.fragcolor.xyz/) while example codes and tutorials can be found [here](https://learn.fragcolor.xyz/).
 
-Where **Wire** would be your procedure and **Shards** the building shards of your procedure.
+## License
 
-With a strong emphasis on automation and repeated tasks. Making each frame of execution of your script first class.
-
-## Current state
-Very much work in progress, this project started as a *nim* project, checking the history will show that, but slowly for different many reasons *nim* was fully replaced with *C++*.
-
-The reason behind this switch requires a whole article on its own, but in a nutshell *nim* is cool but it does not interact very well with *C++* and it's very unstable.
-
-Exactly because of this switch some horrors might still exist, please point them out if you are interested, I'm oriented to move to a more *C++17* rich code-base while keeping a *C* interface. (With some exceptions, like avoiding vtables if possible, etc)
+Shards source code is licensed under the [BSD 3-Clause license](./LICENSE).
