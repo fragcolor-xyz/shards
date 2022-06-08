@@ -23,11 +23,8 @@ jobs:
   # Build shards for linux
   #
   Linux:
-    name: Build (${{ github.event.inputs.build-type || inputs.build-type }})
+    name: Test (${{ github.event.inputs.build-type || inputs.build-type }})
     runs-on: self-hosted
-    outputs:
-      run-tests: ${{ steps.setup.outputs.run-tests }}
-      run-extra-tests: ${{ steps.setup.outputs.run-extra-tests }}
     steps:
       - name: Setup
         id: setup
