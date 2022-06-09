@@ -296,6 +296,8 @@ struct RendererImpl final : public ContextData {
     float4x4 projMatrix = viewData.projectionMatrix = viewPtr->getProjectionMatrix(viewSize);
     viewDrawData.setParam("proj", projMatrix);
     viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
+    viewDrawData.setParam("viewport",
+                          float4(float(viewport.x), float(viewport.y), float(viewport.width), float(viewport.height)));
 
     DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
     viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,

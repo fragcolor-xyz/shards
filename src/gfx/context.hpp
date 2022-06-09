@@ -16,7 +16,7 @@
 
 namespace gfx {
 struct ContextCreationOptions {
-  bool debug = true;
+  bool debug = false;
   void *overrideNativeWindowHandle = nullptr;
 };
 
