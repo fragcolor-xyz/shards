@@ -320,8 +320,8 @@ template <SHType ET> struct ExpectX {
   }
 };
 
-#define EXPECT_SHARD(_name_, _cbtype_)                 \
-  struct Expect##_name_ : public ExpectX<_cbtype_> {}; \
+#define EXPECT_SHARD(_name_, _shtype_)                 \
+  struct Expect##_name_ : public ExpectX<_shtype_> {}; \
   RUNTIME_CORE_SHARD(Expect##_name_);                  \
   RUNTIME_SHARD_inputTypes(Expect##_name_);            \
   RUNTIME_SHARD_outputTypes(Expect##_name_);           \
