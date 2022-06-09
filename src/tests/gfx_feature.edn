@@ -4,64 +4,63 @@
 (def BlendAlpha {:Operation BlendOperation.Add :Src BlendFactor.SrcAlpha :Dst BlendFactor.OneMinusSrcAlpha})
 (def BlendOne {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
 
-(defn spin-transform [t location]
-  (->
-   t >= .tmp-0
-   .tmp-0 (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
-   .tmp-0 (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
-   .tmp-0 (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
-   location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ)))
+(defshards spin-transform [t location]
+  t
+  (| (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX)
+  (| (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY)
+  (| (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ)
+  location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ))
 
 (defloop test-wire
-   (Setup
-    0.0 >= .time
-    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
-    (Float3 -1 0 0) (Math.Translation) >= .transform-0
-    (Float3 1 0 0) (Math.Translation) >= .transform-1
-    {:Mesh .mesh} (GFX.Drawable :Transform .transform-0) >> .drawables
-    {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
-    (Float3 0 0 -1) (Math.Normalize) >= .light-direction
+  (Setup
+   0.0 >= .time
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+   (Float3 -1 0 0) (Math.Translation) >= .transform-0
+   (Float3 1 0 0) (Math.Translation) >= .transform-1
+   {:Mesh .mesh} (GFX.Drawable :Transform .transform-0) >> .drawables
+   {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
+   (Float3 0 0 -1) (Math.Normalize) >= .light-direction
 
     ; Create render steps
-    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
-    {:Shaders [{:Name "lighting"
-                :Stage ProgrammableGraphicsStage.Fragment
-                :EntryPoint (->
-                             (Shader.ReadInput :Dimension 3 :Name "worldNormal") >= .normal
-                             (Shader.ReadBuffer :Dimension 3 :Name "lightDirection") >= .light-dir
-                             (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
-                             .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
-                             (Shader.ReadBuffer :Dimension 3 :Name "lightColor") (Math.Multiply .n-dot-l)
-                             (Shader.WriteGlobal "lighting"))}
-               {:Name "mainColor"
-                :Stage ProgrammableGraphicsStage.Fragment
-                :EntryPoint (->
-                             (Shader.ReadBuffer :Name "time") >= .time
-                             .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
-                             (Shader.ReadGlobal :Dimension 3 :Name "lighting") (ToFloat4) >= .lighting-4
-                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
-                             (Shader.WriteOutput "color"))}]
-     :Params [{:Name "lightDirection" :Default .light-direction}
-              {:Name "lightColor" :Default (Float3 1 1 1)}
-              {:Name "time"}]
-     :DrawData (-> {:time .time})
-     :State {:DepthCompare CompareFunction.Less
-             :Blend {:Color BlendAlpha :Alpha BlendOne}}}
-    (GFX.Feature) >> .features
-    (GFX.DrawablePass :Features .features) >> .render-steps
+   (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+   {:Shaders [{:Name "lighting"
+               :Stage ProgrammableGraphicsStage.Fragment
+               :EntryPoint (->
+                            (Shader.ReadInput :Dimension 3 :Name "worldNormal") >= .normal
+                            (Shader.ReadBuffer :Dimension 3 :Name "lightDirection") >= .light-dir
+                            (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
+                            .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
+                            (Shader.ReadBuffer :Dimension 3 :Name "lightColor") (Math.Multiply .n-dot-l)
+                            (Shader.WriteGlobal "lighting"))}
+              {:Name "mainColor"
+               :Stage ProgrammableGraphicsStage.Fragment
+               :EntryPoint (->
+                            (Shader.ReadBuffer :Name "time") >= .time
+                            .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
+                            (Shader.ReadGlobal :Dimension 3 :Name "lighting") (ToFloat4) >= .lighting-4
+                            .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
+                            (Shader.WriteOutput "color"))}]
+    :Params [{:Name "lightDirection" :Default .light-direction}
+             {:Name "lightColor" :Default (Float3 1 1 1)}
+             {:Name "time"}]
+    :DrawData (-> {:time .time})
+    :State {:DepthCompare CompareFunction.Less
+            :Blend {:Color BlendAlpha :Alpha BlendOne}}}
+   (GFX.Feature) >> .features
+   (GFX.DrawablePass :Features .features) >> .render-steps
 
     ;; Create view
-    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
-    (GFX.View :View .view-transform) >= .view)
-   (GFX.MainWindow
-    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
-    :Contents
-    (->
-     .time (Math.Add timestep) > .time
-     (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
-     (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
-     .drawables (GFX.Draw)
-     (GFX.Render :Steps .render-steps :View .view))))
+   {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    .time (Math.Add timestep) > .time
+    (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
+    (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
+    .drawables (GFX.Draw)
+    (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule root test-wire)
 (run root timestep)
