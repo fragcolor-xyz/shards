@@ -132,6 +132,8 @@ jobs:
         if: ${{ steps.setup.outputs.publish == 'true' }}
         run: |
           cd docs
+          git config --global user.name "Fragcolor bot"
+          git config --global user.email "bot@fragcolor.xyz"
           mkdocs gh-deploy --force --message "Publish documentation from {sha}
           
           Using MkDocs {version}."
