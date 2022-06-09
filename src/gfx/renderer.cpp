@@ -220,7 +220,9 @@ struct RendererImpl final : public ContextData {
   size_t frameIndex = 0;
   const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
+  // TODO: Replace with render graph https://github.com/fragcolor-xyz/shards/issues/172
   bool mainOutputWrittenTo = false;
+  bool depthStencilWrittenTo = false;
 
   std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth24Plus, "Depth Buffer");
   std::shared_ptr<PlaceholderTexture> placeholderTexture;
@@ -338,6 +340,7 @@ struct RendererImpl final : public ContextData {
       initializeContextData();
 
     mainOutputWrittenTo = false;
+    depthStencilWrittenTo = false;
 
     if (shouldUpdateMainOutputFromContext) {
       updateMainOutputFromContext();
@@ -640,10 +643,18 @@ struct RendererImpl final : public ContextData {
 
     WGPURenderPassDepthStencilAttachment depthAttach = {};
     depthAttach.depthClearValue = 1.0f;
-    depthAttach.depthLoadOp = WGPULoadOp_Clear;
-    depthAttach.depthStoreOp = WGPUStoreOp_Store;
-    depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
-    depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
+    if (!depthStencilWrittenTo) {
+      depthAttach.depthLoadOp = WGPULoadOp_Clear;
+      depthAttach.depthStoreOp = WGPUStoreOp_Store;
+      depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
+      depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
+      depthStencilWrittenTo = true;
+    } else {
+      depthAttach.depthLoadOp = WGPULoadOp_Load;
+      depthAttach.depthStoreOp = WGPUStoreOp_Store;
+      depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
+      depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
+    }
     depthAttach.view = depthTexture->update(context, viewport.getSize());
 
     passDesc.colorAttachments = &mainAttach;
