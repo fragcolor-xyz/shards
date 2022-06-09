@@ -111,7 +111,7 @@ jobs:
             fi
           fi
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
@@ -199,7 +199,7 @@ jobs:
         with:
           name: ${{ steps.setup.outputs.artifact }} rejected test data
           path: src/gfx/tests/data/github-windows/rejected
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   #
   # Test shards for Windows
@@ -232,7 +232,7 @@ jobs:
           git config --system core.autocrlf false
           git config --system core.eol lf
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1

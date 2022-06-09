@@ -54,7 +54,7 @@ jobs:
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
           echo "::set-output name=run-extra-tests::${{ github.event.inputs.run-extra-tests || inputs.run-extra-tests }}"
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
@@ -104,7 +104,7 @@ jobs:
             echo "::set-output name=submodules::false"
           fi
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 2
@@ -244,13 +244,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 2
           submodules: recursive
       - name: Checkout glTF-Sample-Models
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models

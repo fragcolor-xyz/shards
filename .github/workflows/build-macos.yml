@@ -54,7 +54,7 @@ jobs:
           echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
@@ -105,7 +105,7 @@ jobs:
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
       - name: Checkout shards
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
