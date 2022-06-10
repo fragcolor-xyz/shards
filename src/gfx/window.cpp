@@ -19,6 +19,9 @@
 
 namespace gfx {
 void Window::init(const WindowCreationOptions &options) {
+  if (window)
+    throw std::logic_error("Already initialized");
+
 #ifdef _WIN32
   SetProcessDPIAware();
 #endif

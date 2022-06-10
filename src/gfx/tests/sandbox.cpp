@@ -1,23 +1,3 @@
-#include "gfx/context.hpp"
-#include "gfx/drawable.hpp"
-#include "gfx/enums.hpp"
-#include "gfx/features/base_color.hpp"
-#include "gfx/features/debug_color.hpp"
-#include "gfx/features/transform.hpp"
-#include "gfx/geom.hpp"
-#include "gfx/imgui/imgui.hpp"
-#include "gfx/linalg.hpp"
-#include "gfx/loop.hpp"
-#include "gfx/mesh.hpp"
-#include "gfx/moving_average.hpp"
-#include "gfx/paths.hpp"
-#include "gfx/renderer.hpp"
-#include "gfx/texture.hpp"
-#include "gfx/texture_file/texture_file.hpp"
-#include "gfx/types.hpp"
-#include "gfx/utils.hpp"
-#include "gfx/view.hpp"
-#include "gfx/window.hpp"
 #include "linalg/linalg.h"
 #include "spdlog/spdlog.h"
 #include <SDL_events.h>
@@ -25,6 +5,27 @@
 #include <cassert>
 #include <cstring>
 #include <exception>
+#include <gfx/context.hpp>
+#include <gfx/drawable.hpp>
+#include <gfx/enums.hpp>
+#include <gfx/features/base_color.hpp>
+#include <gfx/features/debug_color.hpp>
+#include <gfx/features/transform.hpp>
+#include <gfx/geom.hpp>
+#include <gfx/gltf/gltf.hpp>
+#include <gfx/imgui/imgui.hpp>
+#include <gfx/linalg.hpp>
+#include <gfx/loop.hpp>
+#include <gfx/mesh.hpp>
+#include <gfx/moving_average.hpp>
+#include <gfx/paths.hpp>
+#include <gfx/renderer.hpp>
+#include <gfx/texture.hpp>
+#include <gfx/texture_file/texture_file.hpp>
+#include <gfx/types.hpp>
+#include <gfx/utils.hpp>
+#include <gfx/view.hpp>
+#include <gfx/window.hpp>
 #include <memory>
 #include <random>
 #include <string>
@@ -81,8 +82,8 @@ template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std:
   return mesh;
 }
 
-MeshPtr createPlaneMesh() {
-  geom::PlaneGenerator gen;
+MeshPtr createSphereMesh() {
+  geom::SphereGenerator gen;
   gen.generate();
   return createMesh(gen.vertices, gen.indices);
 }
@@ -92,16 +93,30 @@ struct App {
   Loop loop;
   Context context;
 
+  DrawableHierarchyPtr gltfScene;
+  MeshPtr sphereMesh;
+
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
   DrawQueue drawQueue;
+
+  std::vector<DrawableHierarchyPtr> drawables;
 
   std::vector<TexturePtr> textures;
 
   PipelineSteps pipelineSteps;
 
   App() {}
+
+  DrawablePtr createColoredSphere(float4 color) {
+    if (!sphereMesh)
+      sphereMesh = createSphereMesh();
+
+    DrawablePtr result = std::make_shared<Drawable>(sphereMesh);
+    result->parameters.set("baseColor", color);
+    return result;
+  }
 
   void init(const char *hostElement) {
     spdlog::debug("sandbox Init");
@@ -115,59 +130,68 @@ struct App {
     renderer = std::make_shared<Renderer>(context);
     imgui = std::make_shared<ImGuiRenderer>(context);
 
+    struct GlTFDesc {
+      const char *name;
+      float scale;
+    };
+
+    // clang-format off
+		GlTFDesc gltfDescs[] = {
+			{"Fox", 1.0f / 100.0f},
+			{"Duck", 1.0f/4.0f},
+			{"BarramundiFish", 1.7f},
+            {"Avocado", 6.2f},
+			{"Lantern", 1.0f/20.0f},
+			// {"Buggy", 1.0f / 100.0f},
+		};
+    // clang-format on
+
+    int sceneIndex = 0;
+    for (auto &desc : gltfDescs) {
+      auto glbPath = gfx::resolveDataPath(fmt::format("glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", desc.name));
+      auto gltfScene = loadGlTF(glbPath.string().c_str());
+      assert(gltfScene);
+
+      float fx = (sceneIndex++ - 2) * 1.0f;
+      float3 pos = float3(fx, 0, 0);
+
+      DrawableHierarchyPtr obj = gltfScene->clone();
+      float4x4 t = linalg::translation_matrix(pos);
+      float4x4 s = linalg::scaling_matrix(float3(desc.scale));
+      obj->transform = linalg::mul(t, s);
+      drawables.push_back(obj);
+
+      DrawableHierarchyPtr indicator = std::make_shared<DrawableHierarchy>();
+      indicator->drawables.push_back(createColoredSphere(float4(1, 0, 1, 1)));
+      indicator->transform = linalg::mul(linalg::translation_matrix(pos), linalg::scaling_matrix(float3(0.25f)));
+      // drawables.push_back(indicator);
+    }
+
+    view = std::make_shared<View>();
+    view->proj = ViewPerspectiveProjection{};
+    // view->view = linalg::lookat_matrix(float3(-70, 110, 240), float3(0, 40, 0.0f), float3(0, 1, 0));
+    view->view = linalg::lookat_matrix(float3(4.5f, 2, 8), float3(0, 0, 0.0f), float3(0, 1, 0));
+
     pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
         .features =
             {
                 features::Transform::create(),
                 features::BaseColor::create(),
             },
-        .sortMode = SortMode::BackToFront,
     }));
-
-    view = std::make_shared<View>();
-    view->proj = ViewOrthographicProjection{
-        .size = 4.0f,
-        .near = -10.0f,
-        .far = 10.0f,
-    };
-
-    rnd.seed(time(nullptr));
-    buildDrawables();
-  }
-
-  std::default_random_engine rnd;
-  std::vector<DrawablePtr> testDrawables;
-
-  void buildDrawables() {
-    testDrawables.clear();
-
-    MeshPtr planeMesh = createPlaneMesh();
-
-    float4x4 transform;
-    DrawablePtr drawable;
-    transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
-    drawable = std::make_shared<Drawable>(planeMesh, transform);
-    drawable->parameters.set("baseColor", float4(1, 0, 0, 1));
-    testDrawables.push_back(drawable);
-
-    transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
-    drawable = std::make_shared<Drawable>(planeMesh, transform);
-    drawable->parameters.set("baseColor", float4(0, 1, 0, 1));
-    testDrawables.push_back(drawable);
   }
 
   void renderFrame(float time, float deltaTime) {
-    for (auto &drawable : testDrawables) {
+    renderer->beginFrame();
+    for (auto &drawable : drawables) {
       drawQueue.add(drawable);
     }
-
     renderer->render(drawQueue, view, pipelineSteps);
+    renderer->endFrame();
   }
 
   void renderUI(const std::vector<SDL_Event> &events) {
     imgui->beginFrame(events);
-
-    ImGui::ShowDemoWindow();
 
     imgui->endFrame();
   }

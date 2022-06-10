@@ -43,16 +43,16 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
   const char *baseType = nullptr;
   switch (type.baseType) {
   case ShaderFieldBaseType::UInt8:
-    baseType = "u8";
+    baseType = "u32";
     break;
   case ShaderFieldBaseType::Int8:
-    baseType = "i8";
+    baseType = "i32";
     break;
   case ShaderFieldBaseType::UInt16:
-    baseType = "f32";
+    baseType = "u32";
     break;
   case ShaderFieldBaseType::Int16:
-    baseType = "i16";
+    baseType = "i32";
     break;
   case ShaderFieldBaseType::UInt32:
     baseType = "u32";

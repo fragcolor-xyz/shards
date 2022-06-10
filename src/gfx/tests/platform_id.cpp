@@ -1,4 +1,4 @@
-#include "test_platform_id.hpp"
+#include "./platform_id.hpp"
 #include "gfx/context.hpp"
 #include <SDL_stdinc.h>
 

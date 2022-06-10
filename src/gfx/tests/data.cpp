@@ -1,4 +1,4 @@
-#include "test_data.hpp"
+#include "./data.hpp"
 #include <SDL_stdinc.h>
 #include <cassert>
 #include <fstream>
@@ -73,6 +73,12 @@ void TestFrame::set(const uint8_t *imageData, int2 size, TestFrameFormat format,
 }
 
 bool TestFrame::compare(const TestFrame &other, float tolerance, CompareRejection *rejection) const {
+  if (size != other.size) {
+    rejection->position.x = -1;
+    rejection->position.y = -1;
+    return false;
+  }
+
   uint8_t byteTolerance = uint8_t(255.0f * tolerance);
 
   assert(size == other.size);
@@ -143,18 +149,23 @@ void TestData::writeRejectionDetails(const char *id, const TestFrame &frame, con
   fs::create_directories(rejectedDirPath);
 
   fs::path baseFilePath = rejectedDirPath / id;
-  fs::path imagePath = baseFilePath.replace_extension(".png");
-  fs::path logPath = baseFilePath.replace_extension(".log");
+  std::string imagePath = baseFilePath.string() + ".png";
+  std::string logPath = baseFilePath.string() + ".log";
 
   ofstream outLog;
-  outLog.open(logPath.string());
-  size_t pixelIndex = rej.position.x + rej.position.y * referenceFrame.getSize().x;
+  outLog.open(logPath);
   outLog << fmt::format("Comparison failed at ({}, {})", rej.position.x, rej.position.y) << endl;
-  outLog << fmt::format(" Reference Color   : 0x{:08x}", referenceFrame.getPixels()[pixelIndex]) << endl;
-  outLog << fmt::format(" Test Result Color : 0x{:08x} (ABGR)", frame.getPixels()[pixelIndex]) << endl;
+  if (rej.position.x < 0 || rej.position.y < 0) {
+    outLog << fmt::format("Image size mismatch new:({}, {}) => ref:({}, {})", frame.getSize().x, frame.getSize().y,
+                          referenceFrame.getSize().x, referenceFrame.getSize().y);
+  } else {
+    size_t pixelIndex = rej.position.x + rej.position.y * referenceFrame.getSize().x;
+    outLog << fmt::format(" Reference Color   : 0x{:08x}", referenceFrame.getPixels()[pixelIndex]) << endl;
+    outLog << fmt::format(" Test Result Color : 0x{:08x} (ABGR)", frame.getPixels()[pixelIndex]) << endl;
+  }
   outLog.close();
 
-  storeFrame(frame, imagePath.string().c_str());
+  storeFrame(frame, imagePath.c_str());
 }
 
 bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
@@ -174,7 +185,10 @@ bool TestData::loadFrame(TestFrame &frame, const char *filePath) {
 
 void TestData::storeFrame(const TestFrame &frame, const char *filePath) {
   int2 size = frame.getSize();
-  assert(size.x > 0 && size.y > 0);
+  if (size.x <= 0 || size.y <= 0) {
+    spdlog::warn("Can not write empty test frame");
+    return;
+  }
 
   spdlog::info("Writing frame data to {}", filePath);
   const std::vector<TestFrame::pixel_t> &pixels = frame.getPixels();

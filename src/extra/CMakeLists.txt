@@ -8,6 +8,7 @@ set(extra_SOURCES
   gfx/feature.cpp
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
+  gfx/gltf.cpp
   imgui.cpp
   # xr.cpp
   # gizmo.cpp
@@ -40,7 +41,7 @@ endif()
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx_imgui
+  stb gfx gfx_imgui gfx_gltf
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

@@ -30,6 +30,9 @@ public:
     auto it = mapping.find(name);
     TextureBinding *binding;
     if (it == mapping.end()) {
+      size_t index = layout.bindings.size();
+      mapping.insert_or_assign(name, index);
+
       binding = &layout.bindings.emplace_back();
       binding->name = name;
     } else {

@@ -1,0 +1,88 @@
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+
+(defshards get-view-transform [time]
+  (Float4 0 0.2 0.2 1.0) >= .arm-pos
+  time (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
+  {:Position .arm-pos-3 :Target (Float3 0 0.025 0)} (Math.LookAt))
+
+(defshards get-xy-wave-transform [x time]
+  time (Math.Multiply 4.5) (Math.Cos) (Math.Multiply 0.01) >= .tmp-y
+  [x .tmp-y 0] (ToFloat3) (Math.Translation))
+
+(defshards default-setup []
+  0.0 >= .time
+
+  ;; Render steps
+  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+  (GFX.DrawablePass :Features .features) >> .render-steps
+
+  ;; Create view
+  (get-view-transform 0.0) >= .view-transform
+  (GFX.View :View .view-transform) >= .view)
+
+(defshards default-window []
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    ;; Rotate camera
+    .time (Math.Add timestep) > .time
+    (get-view-transform .time) > .view-transform
+
+    .drawables (GFX.Draw)
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(defloop test-static
+  (Setup
+   (default-setup)
+   {} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
+
+  (default-window))
+(schedule root test-static)
+(run root timestep 100)
+
+(defloop test-file
+  (Setup
+   (default-setup)
+   {:Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb"} >= .path
+   .path (GFX.glTF) >> .drawables)
+  
+  (default-window))
+(schedule root test-file)
+(run root timestep 100)
+
+(defloop test-binary
+  (Setup
+   (default-setup)
+   "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" (FS.Read :Bytes true) >= .bytes
+   {:Bytes .bytes} (GFX.glTF) >> .drawables)
+  
+  (default-window))
+(schedule root test-binary)
+(run root timestep 100)
+
+(defloop test-transforms
+  (Setup
+   (default-setup)
+   (Float3 -0.05 0 0) (Math.Translation) >= .t1
+   (get-xy-wave-transform 0.0 0.0) >= .t2
+   (Float3 0.05 0 0) (Math.Translation) >= .t3
+   {:Transform .t1} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
+   {} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" :Transform .t2) >> .drawables
+   {:Transform .t3} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
+  
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    ;; Rotate camera
+    .time (Math.Add timestep) > .time
+    (get-view-transform .time) > .view-transform
+    (get-xy-wave-transform 0.0 .time) > .t2
+
+    .drawables (GFX.Draw)
+    (GFX.Render :Steps .render-steps :View .view))))
+(schedule root test-transforms)
+(run root timestep 100)

@@ -141,7 +141,6 @@ struct ViewShard {
 
     // TODO: Add projection/viewport override params
     view->proj = ViewPerspectiveProjection{};
-    // view->viewport
 
     if (_viewTransform.isVariable()) {
       _view->viewTransformVar = (SHVar &)_viewTransform;
@@ -276,6 +275,7 @@ extern void registerMeshShards();
 extern void registerDrawableShards();
 extern void registerMaterialShards();
 extern void registerFeatureShards();
+extern void registerGLTFShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
@@ -285,6 +285,7 @@ void registerShards() {
   registerDrawableShards();
   registerMaterialShards();
   registerFeatureShards();
+  registerGLTFShards();
   shader::registerTranslatorShards();
 
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
