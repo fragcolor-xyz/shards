@@ -112,7 +112,6 @@ TEST_CASE("Helper lines", "[Editor]") {
           .drawQueue = editorQueue,
           .features =
               {
-                  ScreenSpaceSizeFeature::create(),
                   features::BaseColor::create(),
               },
       }),
@@ -165,7 +164,6 @@ TEST_CASE("Helper circles", "[Editor]") {
           .drawQueue = editorQueue,
           .features =
               {
-                  ScreenSpaceSizeFeature::create(),
                   features::BaseColor::create(),
               },
       }),
@@ -209,7 +207,6 @@ TEST_CASE("Helper rectangles", "[Editor]") {
           .drawQueue = editorQueue,
           .features =
               {
-                  ScreenSpaceSizeFeature::create(),
                   features::BaseColor::create(),
               },
       }),
@@ -253,7 +250,6 @@ TEST_CASE("Helper boxes", "[Editor]") {
           .drawQueue = editorQueue,
           .features =
               {
-                  ScreenSpaceSizeFeature::create(),
                   features::BaseColor::create(),
               },
       }),
@@ -313,7 +309,18 @@ TEST_CASE("Gizmo handles", "[Editor]") {
   TEST_RENDER_LOOP(testRenderer) {
     editorQueue->clear();
 
-    gr.begin(view);
+    gr.begin(view, testRenderer->rtSize);
+    float4 colors[3] = {
+        float4(1, 0, 0, 1),
+        float4(0, 1, 0, 1),
+        float4(0, 0, 1, 1),
+    };
+    for (size_t i = 0; i < 3; i++) {
+      float length = (1.0f + float(i) * 0.2f);
+      float radius =  0.2f;
+      float xOffset = 0.0f + float(i) * 0.2f;
+      gr.addArrow(float3(xOffset, 0, 0), axisY,  radius, length, colors[i], colors[i]);
+    }
     gr.end(editorQueue);
     renderer.render(view, steps);
   };
