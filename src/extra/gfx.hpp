@@ -26,6 +26,10 @@ struct MainWindowGlobals {
   ::gfx::DrawQueue drawQueue;
 };
 
+struct ContextUserData {
+  SHContext *shardsContext{};
+};
+
 struct Base {
   static inline const char *mainWindowGlobalsVarName = "GFX.MainWindow";
   static inline SHExposedTypeInfo mainWindowGlobalsInfo =

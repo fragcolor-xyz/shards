@@ -1,7 +1,7 @@
-#ifndef GFX_SHADER_SHARDS
-#define GFX_SHADER_SHARDS
+#ifndef GFX_SHADER_BLOCKS
+#define GFX_SHADER_BLOCKS
 
-#include "shard.hpp"
+#include "block.hpp"
 #include "generator.hpp"
 #include <string>
 #include <type_traits>
@@ -9,40 +9,40 @@
 namespace gfx {
 namespace shader {
 
-namespace shards {
+namespace blocks {
 
-struct Compound : public Shard {
-  std::vector<UniquePtr<Shard>> children;
+struct Compound : public Block {
+  std::vector<UniquePtr<Block>> children;
 
-  template <typename... TArgs> Compound(TArgs... args) { (..., children.push_back(ConvertToShard<TArgs>{}(std::move(args)))); }
+  template <typename... TArgs> Compound(TArgs... args) { (..., children.push_back(ConvertToBlock<TArgs>{}(std::move(args)))); }
 
   void apply(GeneratorContext &context) const {
     for (auto &c : children)
       c->apply(context);
   }
 
-  ShardPtr clone() {
+  BlockPtr clone() {
     auto result = std::make_unique<Compound>();
     for (auto &child : children)
       result->children.push_back(child->clone());
     return std::move(result);
   }
 };
-template <typename... TArgs> inline auto makeCompoundShard(TArgs &&...args) {
+template <typename... TArgs> inline auto makeCompoundBlock(TArgs &&...args) {
   return std::make_unique<Compound>(std::forward<TArgs>(args)...);
 }
 
-struct WithInput : public Shard {
+struct WithInput : public Block {
   String name;
-  ShardPtr inner;
-  ShardPtr innerElse;
+  BlockPtr inner;
+  BlockPtr innerElse;
 
   template <typename T>
-  WithInput(const String &name, T &&inner) : name(name), inner(ConvertToShard<T>{}(std::forward<T>(inner))) {}
+  WithInput(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
   WithInput(const String &name, T1 &&inner, T2 &&innerElse)
-      : name(name), inner(ConvertToShard<T1>{}(std::forward<T1>(inner))),
-        innerElse(ConvertToShard<T2>{}(std::forward<T2>(innerElse))) {}
+      : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
+        innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithInput(WithInput &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -53,7 +53,7 @@ struct WithInput : public Shard {
     }
   }
 
-  ShardPtr clone() {
+  BlockPtr clone() {
     if (innerElse)
       return std::make_unique<WithInput>(name, inner->clone(), innerElse->clone());
     else
@@ -61,17 +61,17 @@ struct WithInput : public Shard {
   }
 };
 
-struct WithTexture : public Shard {
+struct WithTexture : public Block {
   String name;
-  ShardPtr inner;
-  ShardPtr innerElse;
+  BlockPtr inner;
+  BlockPtr innerElse;
 
   template <typename T>
-  WithTexture(const String &name, T &&inner) : name(name), inner(ConvertToShard<T>{}(std::forward<T>(inner))) {}
+  WithTexture(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
   WithTexture(const String &name, T1 &&inner, T2 &&innerElse)
-      : name(name), inner(ConvertToShard<T1>{}(std::forward<T1>(inner))),
-        innerElse(ConvertToShard<T2>{}(std::forward<T2>(innerElse))) {}
+      : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
+        innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithTexture(WithTexture &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -82,7 +82,7 @@ struct WithTexture : public Shard {
     }
   }
 
-  ShardPtr clone() {
+  BlockPtr clone() {
     if (innerElse)
       return std::make_unique<WithTexture>(name, inner->clone(), innerElse->clone());
     else
@@ -90,17 +90,17 @@ struct WithTexture : public Shard {
   }
 };
 
-struct WithOutput : public Shard {
+struct WithOutput : public Block {
   String name;
-  ShardPtr inner;
-  ShardPtr innerElse;
+  BlockPtr inner;
+  BlockPtr innerElse;
 
   template <typename T>
-  WithOutput(const String &name, T &&inner) : name(name), inner(ConvertToShard<T>{}(std::forward<T>(inner))) {}
+  WithOutput(const String &name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
   WithOutput(const String &name, T1 &&inner, T2 &&innerElse)
-      : name(name), inner(ConvertToShard<T1>{}(std::forward<T1>(inner))),
-        innerElse(ConvertToShard<T2>{}(std::forward<T2>(innerElse))) {}
+      : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
+        innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithOutput(WithOutput &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -111,7 +111,7 @@ struct WithOutput : public Shard {
     }
   }
 
-  ShardPtr clone() {
+  BlockPtr clone() {
     if (innerElse)
       return std::make_unique<WithInput>(name, inner->clone(), innerElse->clone());
     else
@@ -119,17 +119,17 @@ struct WithOutput : public Shard {
   }
 };
 
-struct WriteOutput : public Shard {
+struct WriteOutput : public Block {
   String name;
   FieldType type;
-  ShardPtr inner;
+  BlockPtr inner;
 
   template <typename T>
   WriteOutput(const String &name, FieldType type, T &&inner)
-      : name(name), type(type), inner(ConvertToShard<T>{}(std::forward<T>(inner))) {}
+      : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
   WriteOutput(const String &name, FieldType type, TArgs &&...inner)
-      : name(name), type(type), inner(makeCompoundShard(std::forward<TArgs>(inner)...)) {}
+      : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteOutput(WriteOutput &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -139,10 +139,10 @@ struct WriteOutput : public Shard {
     context.write(";\n");
   }
 
-  ShardPtr clone() { return std::make_unique<WriteOutput>(name, type, inner->clone()); }
+  BlockPtr clone() { return std::make_unique<WriteOutput>(name, type, inner->clone()); }
 };
 
-struct ReadInput : public Shard {
+struct ReadInput : public Block {
   String name;
 
   ReadInput(const String &name) : name(name) {}
@@ -150,20 +150,20 @@ struct ReadInput : public Shard {
 
   void apply(GeneratorContext &context) const { context.readInput(name.c_str()); }
 
-  ShardPtr clone() { return std::make_unique<ReadInput>(name); }
+  BlockPtr clone() { return std::make_unique<ReadInput>(name); }
 };
 
-struct WriteGlobal : public Shard {
+struct WriteGlobal : public Block {
   String name;
   FieldType type;
-  ShardPtr inner;
+  BlockPtr inner;
 
   template <typename T>
   WriteGlobal(const String &name, FieldType type, T &&inner)
-      : name(name), type(type), inner(ConvertToShard<T>{}(std::forward<T>(inner))) {}
+      : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
   WriteGlobal(const String &name, FieldType type, TArgs &&...inner)
-      : name(name), type(type), inner(makeCompoundShard(std::forward<TArgs>(inner)...)) {}
+      : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteGlobal(WriteGlobal &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -173,10 +173,10 @@ struct WriteGlobal : public Shard {
     context.write(";\n");
   }
 
-  ShardPtr clone() { return std::make_unique<WriteGlobal>(name, type, inner->clone()); }
+  BlockPtr clone() { return std::make_unique<WriteGlobal>(name, type, inner->clone()); }
 };
 
-struct ReadGlobal : public Shard {
+struct ReadGlobal : public Block {
   String name;
 
   ReadGlobal(const String &name) : name(name) {}
@@ -184,28 +184,31 @@ struct ReadGlobal : public Shard {
 
   void apply(GeneratorContext &context) const { context.readGlobal(name.c_str()); }
 
-  ShardPtr clone() { return std::make_unique<ReadGlobal>(name); }
+  BlockPtr clone() { return std::make_unique<ReadGlobal>(name); }
 };
 
-struct ReadBuffer : public Shard {
-  String name;
+struct ReadBuffer : public Block {
+  String fieldName;
+  FieldType type;
+  String bufferName;
 
-  ReadBuffer(const String &name) : name(name) {}
+  ReadBuffer(const String &fieldName, const FieldType& type, const String& bufferName = "object")
+      : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 
-  void apply(GeneratorContext &context) const { context.readBuffer(name.c_str()); }
+  void apply(GeneratorContext &context) const { context.readBuffer(fieldName.c_str(), type, bufferName.c_str()); }
 
-  ShardPtr clone() { return std::make_unique<ReadBuffer>(name); }
+  BlockPtr clone() { return std::make_unique<ReadBuffer>(fieldName, type, bufferName); }
 };
 
-struct SampleTexture : public Shard {
+struct SampleTexture : public Block {
   String name;
-  ShardPtr sampleCoordinate;
+  BlockPtr sampleCoordinate;
 
   SampleTexture(const String &name) : name(name) {}
   template <typename T>
   SampleTexture(const String &name, T &&sampleCoordinate)
-      : name(name), sampleCoordinate(ConvertToShard<T>{}(std::forward<T>(sampleCoordinate))) {}
+      : name(name), sampleCoordinate(ConvertToBlock<T>{}(std::forward<T>(sampleCoordinate))) {}
   SampleTexture(SampleTexture &&other) = default;
 
   void apply(GeneratorContext &context) const {
@@ -222,11 +225,11 @@ struct SampleTexture : public Shard {
     context.write(")");
   }
 
-  ShardPtr clone() { return std::make_unique<SampleTexture>(name, sampleCoordinate); }
+  BlockPtr clone() { return std::make_unique<SampleTexture>(name, sampleCoordinate); }
 };
 
 // Runs callback at code generation time
-struct Custom : public Shard {
+struct Custom : public Block {
   typedef std::function<void(GeneratorContext &context)> Callback;
   Callback callback;
 
@@ -236,26 +239,26 @@ struct Custom : public Shard {
 
   void apply(GeneratorContext &context) const { callback(context); }
 
-  ShardPtr clone() { return std::make_unique<Custom>(*this); }
+  BlockPtr clone() { return std::make_unique<Custom>(*this); }
 };
 
 // Generates passthrough outputs for each input if an output is not already written to
 // this is only applied for inputs that match matchPrefixes
-struct DefaultInterpolation : public Shard {
+struct DefaultInterpolation : public Block {
   std::vector<String> matchPrefixes;
 
   DefaultInterpolation();
   void apply(GeneratorContext &context) const;
-  ShardPtr clone() { return std::make_unique<DefaultInterpolation>(*this); }
+  BlockPtr clone() { return std::make_unique<DefaultInterpolation>(*this); }
 };
 
-template <typename T> inline auto toShard(T &&arg) { return ConvertibleToShard(std::forward<T>(arg)); }
-template <typename T, typename... TArgs> inline auto makeShard(TArgs &&...args) {
+template <typename T> inline auto toBlock(T &&arg) { return ConvertibleToBlock(std::forward<T>(arg)); }
+template <typename T, typename... TArgs> inline auto makeBlock(TArgs &&...args) {
   return std::make_unique<T>(std::forward<TArgs>(args)...);
 }
 
-} // namespace shards
+} // namespace blocks
 } // namespace shader
 } // namespace gfx
 
-#endif // GFX_SHADER_SHARDS
+#endif // GFX_SHADER_BLOCKS

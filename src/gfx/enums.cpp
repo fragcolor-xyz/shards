@@ -1,5 +1,7 @@
 #include "enums.hpp"
 #include <magic_enum.hpp>
+#include <nameof.hpp>
+#include <stdexcept>
 #include <stdint.h>
 
 namespace gfx {
@@ -23,10 +25,10 @@ size_t getVertexAttributeTypeSize(const VertexAttributeType &type) {
   case VertexAttributeType::Float32:
     return sizeof(float);
   default:
-    assert(false);
-    return 0;
+    throw std::out_of_range(std::string(NAMEOF_TYPE(VertexAttributeType)));
   }
 }
+
 size_t getIndexFormatSize(const IndexFormat &type) {
   switch (type) {
   case IndexFormat::UInt16:
@@ -34,22 +36,7 @@ size_t getIndexFormatSize(const IndexFormat &type) {
   case IndexFormat::UInt32:
     return sizeof(uint32_t);
   default:
-    assert(false);
-    return 0;
-  }
-}
-
-bool isInteger(const ShaderFieldBaseType &type) {
-  switch (type) {
-  case ShaderFieldBaseType::UInt8:
-  case ShaderFieldBaseType::Int8:
-  case ShaderFieldBaseType::UInt16:
-  case ShaderFieldBaseType::Int16:
-  case ShaderFieldBaseType::UInt32:
-  case ShaderFieldBaseType::Int32:
-    return true;
-  default:
-    return false;
+    throw std::out_of_range(std::string(NAMEOF_TYPE(IndexFormat)));
   }
 }
 
@@ -61,8 +48,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Uint8x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::Int8:
     if (dim == 2)
@@ -70,8 +56,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Sint8x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::UNorm8:
     if (dim == 2)
@@ -79,8 +64,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Unorm8x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::SNorm8:
     if (dim == 2)
@@ -88,8 +72,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Snorm8x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::UInt16:
 
@@ -98,8 +81,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Uint16x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::Int16:
 
@@ -108,8 +90,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Sint16x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::UNorm16:
 
@@ -118,8 +99,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Unorm16x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::SNorm16:
 
@@ -128,8 +108,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Snorm16x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::UInt32:
 
@@ -142,8 +121,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Uint32x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::Int32:
     if (dim == 1) {
@@ -155,8 +133,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Sint32x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::Float16:
     if (dim == 2)
@@ -164,8 +141,7 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Float16x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   case VertexAttributeType::Float32:
     if (dim == 1) {
@@ -177,12 +153,10 @@ WGPUVertexFormat getWGPUVertexFormat(const VertexAttributeType &type, size_t dim
     else if (dim == 4)
       return WGPUVertexFormat_Float32x4;
     else {
-      assert(false);
-      return WGPUVertexFormat_Force32;
+      throw std::out_of_range("VertexAttributeType/dim");
     }
   default:
-    assert(false);
-    return WGPUVertexFormat_Force32;
+    throw std::out_of_range(std::string(NAMEOF_TYPE(VertexAttributeType)));
   }
 }
 WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type) {
@@ -192,8 +166,7 @@ WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type) {
   case IndexFormat::UInt32:
     return WGPUIndexFormat_Uint32;
   default:
-    assert(false);
-    return WGPUIndexFormat_Undefined;
+    throw std::out_of_range(std::string(NAMEOF_TYPE(IndexFormat)));
   }
 }
 } // namespace gfx

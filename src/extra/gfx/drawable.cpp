@@ -1,4 +1,5 @@
 #include "../gfx.hpp"
+#include "shards_utils.hpp"
 #include "material_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
@@ -106,20 +107,6 @@ struct DrawableShard {
   SHTypeInfo compose(SHInstanceData &data) {
     validateInputTableType(data.inputType);
     return Types::Drawable;
-  }
-
-  bool getFromTable(SHContext *shContext, const SHTable &table, const char *key, SHVar &outVar) {
-    if (table.api->tableContains(table, key)) {
-      const SHVar *var = table.api->tableAt(table, key);
-      if (var->valueType == SHType::ContextVar) {
-        SHVar *refencedVariable = referenceVariable(shContext, var->payload.stringValue);
-        outVar = *var;
-        releaseVariable(refencedVariable);
-      }
-      outVar = *var;
-      return true;
-    }
-    return false;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {

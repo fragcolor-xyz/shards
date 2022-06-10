@@ -1,4 +1,5 @@
 #include "generator.hpp"
+#include "fmt.hpp"
 #include "wgsl_mapping.hpp"
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
@@ -102,16 +103,40 @@ void GeneratorContext::textureDefaultSampler(const char *name) {
   }
 }
 
-void GeneratorContext::readBuffer(const char *name) {
-  auto bufferIt = buffers.find(name);
-  assert(bufferIt != buffers.end());
+void GeneratorContext::readBuffer(const char *fieldName, const FieldType &expectedType, const char *bufferName) {
+  auto bufferIt = buffers.find(bufferName);
+  if (bufferIt == buffers.end()) {
+    pushError(formatError("Buffer \"{}\" is not defined", bufferName));
+    return;
+  }
 
   const BufferDefinition &buffer = bufferIt->second;
-  if (buffer.indexedBy) {
-    result += fmt::format("{}.elements[{}]", buffer.variableName, *buffer.indexedBy);
-  } else {
-    result += buffer.variableName;
+
+  const UniformLayout *uniform = findUniform(fieldName, buffer);
+  if (!uniform) {
+    pushError(formatError("Field \"{}\" not found in buffer \"{}\"", fieldName, bufferName));
+    return;
   }
+
+  if (expectedType != uniform->type) {
+    pushError(formatError("Field \"{}\", shader expected type {} but provided was {}", fieldName, expectedType, uniform->type));
+    return;
+  }
+
+  if (buffer.indexedBy) {
+    result += fmt::format("{}.elements[{}].{}", buffer.variableName, *buffer.indexedBy, fieldName);
+  } else {
+    result += fmt::format("{}.{}", buffer.variableName, fieldName);
+  }
+}
+
+const UniformLayout *GeneratorContext::findUniform(const char *fieldName, const BufferDefinition &buffer) {
+  for (size_t i = 0; i < buffer.layout.fieldNames.size(); i++) {
+    if (buffer.layout.fieldNames[i] == fieldName) {
+      return &buffer.layout.items[i];
+    }
+  }
+  return nullptr;
 }
 
 void GeneratorContext::pushError(GeneratorError &&error) { errors.emplace_back(std::move(error)); }
@@ -140,7 +165,7 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
-    output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getParamWGSLTypeName(layout.items[i].type));
+    output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getFieldWGSLTypeName(layout.items[i].type));
   }
   output += "};\n";
 
@@ -186,7 +211,7 @@ template <typename T> static void generateStruct(T &output, const String &typeNa
     std::string typeName = getFieldWGSLTypeName(field.base.type);
 
     String extraTags;
-    if (isInteger(field.base.type.baseType)) {
+    if (isIntegerType(field.base.type.baseType)) {
       // integer vertex outputs requires flat interpolation
       extraTags = "@interpolate(flat)";
     }
@@ -448,8 +473,8 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     generateBuffer(headerCode, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
 
   std::map<String, BufferDefinition> buffers = {
-      {"view", {"u_view"}},
-      {"object", {"u_objects", instanceIndexer}},
+      {"view", {"u_view", viewBufferLayout}},
+      {"object", {"u_objects", objectBufferLayout, instanceIndexer}},
   };
 
   std::vector<StructField> vertexOutputStructFields;

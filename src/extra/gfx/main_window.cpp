@@ -43,6 +43,7 @@ struct MainWindow : public Base {
   ShardsVar _shards;
 
   std::shared_ptr<MainWindowGlobals> globals;
+  std::shared_ptr<ContextUserData> contextUserData;
   ::gfx::Loop loop;
 
   void setParam(int index, const SHVar &value) {
@@ -120,6 +121,7 @@ struct MainWindow : public Base {
 
   void warmup(SHContext *context) {
     globals = std::make_shared<MainWindowGlobals>();
+    contextUserData = std::make_shared<ContextUserData>();
 
     WindowCreationOptions windowOptions = {};
     windowOptions.width = _pwidth;
@@ -132,6 +134,9 @@ struct MainWindow : public Base {
     contextOptions.debug = _debug;
     globals->context = std::make_shared<Context>();
     globals->context->init(*globals->window.get(), contextOptions);
+
+    // Attach user data to context
+    globals->context->userData.set(contextUserData.get());
 
     globals->renderer = std::make_shared<Renderer>(*globals->context.get());
     globals->imgui = std::make_shared<ImGuiRenderer>(*globals->context.get());
@@ -167,6 +172,10 @@ struct MainWindow : public Base {
     auto &window = globals->window;
     auto &events = globals->events;
     auto &imgui = globals->imgui;
+
+    // Store shards context for current activation in user data
+    // this is used by callback chains that need to resolve variables, etc.
+    contextUserData->shardsContext = shContext;
 
     window->pollEvents(events);
     for (auto &event : events) {
@@ -204,6 +213,9 @@ struct MainWindow : public Base {
         context->endFrame();
       }
     }
+
+    // Clear context
+    contextUserData->shardsContext = nullptr;
 
     return SHVar{};
   }

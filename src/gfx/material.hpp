@@ -5,6 +5,7 @@
 #include "params.hpp"
 #include <map>
 #include <memory>
+#include <vector>
 #include <string_view>
 
 namespace gfx {

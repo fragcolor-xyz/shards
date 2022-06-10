@@ -1,25 +1,27 @@
 #ifndef SH_EXTRA_GFX_MATERIAL_UTILS
 #define SH_EXTRA_GFX_MATERIAL_UTILS
 
+#include "gfx/error_utils.hpp"
 #include "shards_types.hpp"
-#include <shards.hpp>
 #include <foundation.hpp>
 #include <gfx/material.hpp>
 #include <gfx/params.hpp>
 #include <magic_enum.hpp>
+#include <shards.hpp>
 #include <spdlog/spdlog.h>
 
+
 namespace gfx {
-inline bool varToParam(const SHVar &var, ParamVariant &outVariant) {
+inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
   switch (var.valueType) {
   case SHType::Float: {
-    float vec;
-    memcpy(&vec, &var.payload.floatValue, sizeof(float));
+    float vec = float(var.payload.floatValue);
     outVariant = vec;
   } break;
   case SHType::Float2: {
     float2 vec;
-    memcpy(&vec.x, &var.payload.float2Value, sizeof(float) * 2);
+    vec.x = float(var.payload.float2Value[0]);
+    vec.y = float(var.payload.float2Value[1]);
     outVariant = vec;
   } break;
   case SHType::Float3: {
@@ -44,15 +46,22 @@ inline bool varToParam(const SHVar &var, ParamVariant &outVariant) {
       }
       outVariant = matrix;
     } else {
-      spdlog::error("Seq inner type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
-      return false;
+      throw formatException("Seq inner type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
     }
     break;
   default:
-    spdlog::error("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
+    throw formatException("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
+  }
+}
+
+inline bool tryVarToParam(const SHVar &var, ParamVariant &outVariant) {
+  try {
+    varToParam(var, outVariant);
+    return true;
+  } catch (std::exception e) {
+    spdlog::error("{}", e.what());
     return false;
   }
-  return true;
 }
 
 inline void initConstantShaderParams(MaterialParameters &out, SHTable &paramsTable) {
@@ -62,7 +71,7 @@ inline void initConstantShaderParams(MaterialParameters &out, SHTable &paramsTab
   paramsTable.api->tableGetIterator(paramsTable, &it);
   while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
     ParamVariant variant;
-    if (varToParam(value, variant)) {
+    if (tryVarToParam(value, variant)) {
       out.set(key, variant);
     }
   }

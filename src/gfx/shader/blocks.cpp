@@ -1,10 +1,10 @@
-#include "shards.hpp"
+#include "blocks.hpp"
 #include "generator.hpp"
 #include <boost/algorithm/string.hpp>
 
 namespace gfx {
 namespace shader {
-namespace shards {
+namespace blocks {
 void Direct::apply(GeneratorContext &context) const { context.write(code); }
 
 DefaultInterpolation::DefaultInterpolation() {

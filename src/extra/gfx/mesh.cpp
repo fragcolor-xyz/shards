@@ -1,5 +1,6 @@
 #include "../gfx.hpp"
 #include "buffer_vars.hpp"
+#include <gfx/geom.hpp>
 #include <gfx/mesh.hpp>
 
 using namespace shards;
@@ -8,7 +9,7 @@ namespace gfx {
 struct MeshShard {
   static inline Type VertexAttributeSeqType = Type::SeqOf(CoreInfo::StringType);
   static inline shards::Types VerticesSeqTypes{
-      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::ColorType, CoreInfo::Int4Type}};
+      {CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type, CoreInfo::ColorType}};
   static inline Type VerticesSeq = Type::SeqOf(VerticesSeqTypes);
   static inline shards::Types IndicesSeqTypes{{CoreInfo::IntType}};
   static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
@@ -115,5 +116,83 @@ struct MeshShard {
   }
 };
 
-void registerMeshShards() { REGISTER_SHARD("GFX.Mesh", MeshShard); }
+template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std::vector<geom::GeneratorBase::index_t> &indices) {
+  MeshPtr mesh = std::make_shared<Mesh>();
+  MeshFormat format{
+      .vertexAttributes = T::getAttributes(),
+  };
+  mesh->update(format, verts.data(), verts.size() * sizeof(T), indices.data(),
+               indices.size() * sizeof(geom::GeneratorBase::index_t));
+  return mesh;
+}
+
+struct BuiltinMeshShard {
+  enum class Type {
+    Cube,
+    Sphere,
+    Plane,
+  };
+
+  static constexpr uint32_t TypeTypeId = 'bmid';
+  static inline shards::Type TypeType = shards::Type::Enum(VendorId, TypeTypeId);
+  static inline EnumInfo<Type> TypeEnumInfo{"BuiltinMeshType", VendorId, TypeTypeId};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::Mesh; }
+
+  Type _type = Type::Cube;
+
+  static SHParametersInfo parameters() {
+    static Parameters params{{"Type", SHCCSTR("The type of object to make."), {TypeType}}};
+    return params;
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _type = Type(value.payload.enumValue);
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var::Enum(_type, VendorId, TypeTypeId);
+      break;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup() {}
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    MeshPtr *meshVar = Types::MeshObjectVar.New();
+
+    switch (_type) {
+    case Type::Cube: {
+      geom::CubeGenerator gen;
+      gen.generate();
+      *meshVar = createMesh(gen.vertices, gen.indices);
+    } break;
+    case Type::Sphere: {
+      geom::SphereGenerator gen;
+      gen.generate();
+      *meshVar = createMesh(gen.vertices, gen.indices);
+    } break;
+    case Type::Plane: {
+      geom::PlaneGenerator gen;
+      gen.generate();
+      *meshVar = createMesh(gen.vertices, gen.indices);
+    } break;
+    }
+
+    return Types::MeshObjectVar.Get(meshVar);
+  }
+};
+void registerMeshShards() {
+  REGISTER_SHARD("GFX.Mesh", MeshShard);
+  REGISTER_SHARD("GFX.BuiltinMesh", BuiltinMeshShard);
+}
 } // namespace gfx

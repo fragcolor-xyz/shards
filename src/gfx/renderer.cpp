@@ -7,8 +7,9 @@
 #include "mesh.hpp"
 #include "params.hpp"
 #include "renderer_types.hpp"
-#include "shader/shards.hpp"
+#include "shader/blocks.hpp"
 #include "shader/entry_point.hpp"
+#include "shader/fmt.hpp"
 #include "shader/generator.hpp"
 #include "shader/textures.hpp"
 #include "shader/uniforms.hpp"
@@ -18,10 +19,13 @@
 #include "view_texture.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
+#include <algorithm>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 namespace gfx {
+using shader::FieldType;
+using shader::FieldTypes;
 using shader::TextureBindingLayout;
 using shader::TextureBindingLayoutBuilder;
 using shader::UniformBufferLayout;
@@ -36,7 +40,7 @@ struct TextureIds {
   std::vector<TextureId> textures;
 
   bool operator==(const TextureIds &other) const {
-    return std::lexicographical_compare(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
+    return std::equal(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
   }
 
   bool operator!=(const TextureIds &other) const { return !(*this == other); }
@@ -166,10 +170,9 @@ static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
     auto drawDataIt = drawData.data.find(fieldName);
     if (drawDataIt != drawData.data.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
-      ShaderParamType drawDataFieldType = getParamVariantType(drawDataIt->second);
+      FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
-        spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", magic_enum::enum_name(itemLayout.type),
-                     magic_enum::enum_name(drawDataFieldType));
+        spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", itemLayout.type, drawDataFieldType);
         continue;
       }
 
@@ -218,11 +221,11 @@ struct RendererImpl final : public ContextData {
 
   RendererImpl(Context &context) : context(context) {
     UniformBufferLayoutBuilder viewBufferLayoutBuilder;
-    viewBufferLayoutBuilder.push("view", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("proj", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("invView", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("invProj", ShaderParamType::Float4x4);
-    viewBufferLayoutBuilder.push("viewport", ShaderParamType::Float4);
+    viewBufferLayoutBuilder.push("view", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("proj", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("invView", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("invProj", FieldTypes::Float4x4);
+    viewBufferLayoutBuilder.push("viewport", FieldTypes::Float4);
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
     placeholderTexture = std::make_unique<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
@@ -247,18 +250,6 @@ struct RendererImpl final : public ContextData {
 
   size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
   size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
-
-  size_t alignTo(size_t size, size_t alignTo) const {
-    size_t alignment = alignTo;
-    if (alignment == 0)
-      return size;
-
-    size_t remainder = size % alignment;
-    if (remainder > 0) {
-      return size + (alignment - remainder);
-    }
-    return size;
-  }
 
   void updateMainOutputFromContext() {
     mainOutput.format = context.getMainOutputFormat();
@@ -442,6 +433,9 @@ struct RendererImpl final : public ContextData {
 
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
+
+      float4x4 worldInvTrans = linalg::transpose(linalg::inverse( drawable->transform));
+      objectDrawData.setParam("worldInvTrans", worldInvTrans);
 
       // Grab draw data from material
       if (Material *material = drawable->material.get()) {
@@ -667,7 +661,9 @@ struct RendererImpl final : public ContextData {
       if (cachedPipeline.drawables.empty())
         continue;
 
-      size_t drawBufferLength = cachedPipeline.objectBufferLayout.size * cachedPipeline.drawables.size();
+      size_t drawBufferLength =
+          alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment) *
+          cachedPipeline.drawables.size();
 
       DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
       fillInstanceBuffer(instanceBuffer, cachedPipeline, view.get());
@@ -782,7 +778,7 @@ struct RendererImpl final : public ContextData {
 
   shader::GeneratorOutput generateShader(const CachedPipeline &cachedPipeline) {
     using namespace shader;
-    using namespace shader::shards;
+    using namespace shader::blocks;
 
     shader::Generator generator;
     generator.meshFormat = cachedPipeline.meshFormat;
@@ -803,7 +799,7 @@ struct RendererImpl final : public ContextData {
 
     static const std::vector<EntryPoint> &builtinEntryPoints = []() -> const std::vector<EntryPoint> & {
       static std::vector<EntryPoint> builtin;
-      builtin.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, shards::DefaultInterpolation());
+      builtin.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
       return builtin;
     }();
     for (auto &builtinEntryPoint : builtinEntryPoints) {
@@ -815,7 +811,8 @@ struct RendererImpl final : public ContextData {
 
   void buildObjectBufferLayout(CachedPipeline &cachedPipeline) {
     UniformBufferLayoutBuilder objectBufferLayoutBuilder;
-    objectBufferLayoutBuilder.push("world", ShaderParamType::Float4x4);
+    objectBufferLayoutBuilder.push("world", FieldTypes::Float4x4);
+    objectBufferLayoutBuilder.push("worldInvTrans", FieldTypes::Float4x4);
     for (const Feature *feature : cachedPipeline.features) {
       for (auto &param : feature->shaderParams) {
         objectBufferLayoutBuilder.push(param.name, param.type);

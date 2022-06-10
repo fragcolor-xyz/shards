@@ -1,7 +1,7 @@
 #ifndef GFX_SHADER_GENERATOR
 #define GFX_SHADER_GENERATOR
 
-#include "shard.hpp"
+#include "block.hpp"
 #include "entry_point.hpp"
 #include "textures.hpp"
 #include "types.hpp"
@@ -52,7 +52,8 @@ struct GeneratorContext {
   void textureDefaultTextureCoordinate(const char *name);
   void textureDefaultSampler(const char *name);
 
-  void readBuffer(const char *name);
+  void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName);
+  const UniformLayout* findUniform(const char *fieldName, const BufferDefinition &buffer);
 
   void pushError(GeneratorError &&error);
 };

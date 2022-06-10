@@ -2,6 +2,7 @@
 #include "feature.hpp"
 
 namespace gfx {
+using shader::FieldType;
 
 BlendComponent BlendComponent::Opaque = BlendComponent{
     .operation = WGPUBlendOperation_Max,
@@ -24,7 +25,7 @@ BlendComponent BlendComponent::AlphaPremultiplied = BlendComponent{
     .dstFactor = WGPUBlendFactor::WGPUBlendFactor_OneMinusSrcAlpha,
 };
 
-NamedShaderParam::NamedShaderParam(std::string name, ShaderParamType type, ParamVariant defaultValue)
+NamedShaderParam::NamedShaderParam(std::string name, const FieldType &type, ParamVariant defaultValue)
     : type(type), name(name), defaultValue(defaultValue) {}
 NamedShaderParam::NamedShaderParam(std::string name, ParamVariant defaultValue)
     : type(getParamVariantType(defaultValue)), name(name), defaultValue(defaultValue) {}

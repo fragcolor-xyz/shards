@@ -5,6 +5,7 @@
 #include "fwd.hpp"
 #include "linalg.hpp"
 #include "params.hpp"
+#include "shader/types.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -129,13 +130,13 @@ enum class ShaderParamFlags {
 };
 
 struct NamedShaderParam {
-  ShaderParamType type = ShaderParamType::Float4;
+  shader::FieldType type = shader::FieldType(ShaderFieldBaseType::Float32, 4);
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedShaderParam() = default;
-  NamedShaderParam(std::string name, ShaderParamType type = ShaderParamType::Float4, ParamVariant defaultValue = ParamVariant());
+  NamedShaderParam(std::string name, const shader::FieldType& type = shader::FieldType(ShaderFieldBaseType::Float32, 4), ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 
   template <typename T> void hashStatic(T &hasher) const {

@@ -10,6 +10,7 @@
 #include "shards.hpp"
 #include "core.hpp"
 #include <sstream>
+#include <stdexcept>
 #include <variant>
 
 #define _PC
@@ -53,7 +54,7 @@ struct UnaryBase : public Base {
 };
 
 struct BinaryBase : public Base {
-  enum OpType { Invalid, Normal, Seq1, SeqSeq };
+  enum OpType { Invalid, Broadcast, Normal, Seq1, SeqSeq };
 
   static inline Types MathTypesOrVar{
       {CoreInfo::IntType,       CoreInfo::IntVarType,   CoreInfo::Int2Type,      CoreInfo::Int2VarType,  CoreInfo::Int3Type,
@@ -68,6 +69,8 @@ struct BinaryBase : public Base {
   ParamVar _operand{shards::Var(0)};
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
+  const VectorTypeTraits *_lhsVecType{};
+  const VectorTypeTraits *_rhsVecType{};
 
   void cleanup() { _operand.cleanup(); }
 
@@ -83,48 +86,64 @@ struct BinaryBase : public Base {
     return ComposeError(errStream.str());
   }
 
+  void validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+    if (rhs != Seq && lhs.basicType != Seq) {
+      _lhsVecType = VectorTypeLookup::getInstance().get(lhs.basicType);
+      _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
+      if (_lhsVecType || _rhsVecType) {
+        if (!_lhsVecType || !_rhsVecType)
+          throw ComposeError("Unsupported type to Math.Multiply");
+
+        bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
+        // Don't check number type here because we have to convert Float64 -> Float32 for broadcasting
+        if (!_lhsVecType->isInteger && !sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
+          _opType = Broadcast;
+          // Result is the vector type
+          if (_rhsVecType->dimension == 1) {
+            resultType = _lhsVecType->type;
+          } else {
+            resultType = _rhsVecType->type;
+          }
+        } else {
+          if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
+            throw ComposeError(
+                fmt::format("Can not multiply vector of size {} and {}", _lhsVecType->dimension, _rhsVecType->dimension));
+          }
+          _opType = Normal;
+        }
+      }
+    } else if (rhs != Seq && lhs.basicType == Seq) {
+      if (lhs.seqTypes.len != 1 || rhs != lhs.seqTypes.elements[0].basicType)
+        throw formatTypeError(lhs.seqTypes.elements[0].basicType, rhs);
+      _opType = Seq1;
+    } else if (rhs == Seq && lhs.basicType == Seq) {
+      // TODO need to have deeper types compatibility at least
+      _opType = SeqSeq;
+    } else {
+      throw ComposeError("Math broadcasting not supported between given types!");
+    }
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
+    SHTypeInfo resultType = data.inputType;
     SHVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         // normal variable
         if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
-          if (data.shared.elements[i].exposedType.basicType != Seq && data.inputType.basicType != Seq) {
-            if (data.shared.elements[i].exposedType != data.inputType)
-              throw formatTypeError(data.inputType.basicType, data.shared.elements[i].exposedType.basicType);
-            _opType = Normal;
-          } else if (data.shared.elements[i].exposedType.basicType != Seq && data.inputType.basicType == Seq) {
-            if (data.inputType.seqTypes.len != 1 || data.shared.elements[i].exposedType != data.inputType.seqTypes.elements[0])
-              throw formatTypeError(data.inputType.seqTypes.elements[0].basicType, data.shared.elements[i].exposedType.basicType);
-            _opType = Seq1;
-          } else if (data.shared.elements[i].exposedType.basicType == Seq && data.inputType.basicType == Seq) {
-            // TODO need to have deeper types compatibility at least
-            _opType = SeqSeq;
-          } else {
-            throw ComposeError("Math broadcasting not supported between given types!");
-          }
+          validateTypes(data.inputType, data.shared.elements[i].exposedType.basicType, resultType);
+          break;
         }
       }
-      if (_opType == Invalid) {
-        throw ComposeError("Math operand variable not found: " + std::string(operandSpec.payload.stringValue));
-      }
     } else {
-      if (operandSpec.valueType != Seq && data.inputType.basicType != Seq) {
-        if (operandSpec.valueType != data.inputType.basicType)
-          throw formatTypeError(data.inputType.basicType, operandSpec.valueType);
-        _opType = Normal;
-      } else if (operandSpec.valueType != Seq && data.inputType.basicType == Seq) {
-        if (data.inputType.seqTypes.len != 1 || operandSpec.valueType != data.inputType.seqTypes.elements[0].basicType)
-          throw formatTypeError(data.inputType.seqTypes.elements[0].basicType, operandSpec.valueType);
-        _opType = Seq1;
-      } else if (operandSpec.valueType == Seq && data.inputType.basicType == Seq) {
-        // TODO need to have deeper types compatibility at least
-        _opType = SeqSeq;
-      } else {
-        throw ComposeError("Math broadcasting not supported between given types!");
-      }
+      validateTypes(data.inputType, operandSpec.valueType, resultType);
     }
-    return data.inputType;
+
+    if (_opType == Invalid) {
+      throw ComposeError("Math operand variable not found: " + std::string(operandSpec.payload.stringValue));
+    }
+
+    return resultType;
   }
 
   SHExposedTypesInfo requiredVariables() {
@@ -143,12 +162,74 @@ struct BinaryBase : public Base {
 };
 
 template <class OP> struct BinaryOperation : public BinaryBase {
+  SH_HAS_MEMBER_TEST(hasApply);
+
   static SHOptionalString help() {
     return SHCCSTR("Applies the binary operation on the input value and the operand and returns the result (or a sequence of "
                    "results if the input and the operand are sequences).");
   }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    SHTypeInfo resultType = BinaryBase::compose(data);
+    if (_opType == Broadcast) {
+      if constexpr (!has_hasApply<OP>::value) {
+        throw ComposeError("Operator broadcast not supported for this type");
+      }
+    }
+    return resultType;
+  }
+
   void operate(OpType opType, SHVar &output, const SHVar &a, const SHVar &b) {
-    if (opType == SeqSeq) {
+    if (opType == Broadcast) {
+      // This implements broadcast operators on float types
+      SHVar scalar = a;
+      SHVar vec = b;
+      const VectorTypeTraits *scalarType = _lhsVecType;
+      const VectorTypeTraits *vecType = _rhsVecType;
+      bool swapped = false;
+      if (_rhsVecType->dimension == 1) {
+        std::swap(scalar, vec);
+        std::swap(scalarType, vecType);
+        swapped = true;
+      }
+
+      if constexpr (has_hasApply<OP>::value) {
+        OP op;
+        output = vec;
+        if (vecType->numberType != scalarType->numberType) {
+          // Should be only one case for floating point types
+          assert(vecType->numberType == NumberType::Float32);
+          assert(scalarType->numberType == NumberType::Float64);
+
+          if (swapped) {
+            for (size_t i = 0; i < vecType->dimension; i++) {
+              output.payload.float4Value[i] =
+                  float(op.template apply<SHFloat>(SHFloat(output.payload.float4Value[i]), scalar.payload.floatValue));
+            }
+          } else {
+            for (size_t i = 0; i < vecType->dimension; i++) {
+              output.payload.float4Value[i] =
+                  float(op.template apply<SHFloat>(scalar.payload.floatValue, SHFloat(output.payload.float4Value[i])));
+            }
+          }
+        } else {
+          if (swapped) {
+            for (size_t i = 0; i < vecType->dimension; i++) {
+              output.payload.float2Value[i] =
+                  op.template apply<SHFloat>(output.payload.float2Value[i], scalar.payload.floatValue);
+            }
+          } else {
+            for (size_t i = 0; i < vecType->dimension; i++) {
+              output.payload.float2Value[i] =
+                  op.template apply<SHFloat>(scalar.payload.floatValue, output.payload.float2Value[i]);
+            }
+          }
+        }
+      } else {
+        // This should be caught during compose
+        throw std::logic_error("Operator broadcast not supported for this type");
+      }
+    } else if (opType == SeqSeq) {
       if (output.valueType != Seq) {
         destroyVar(output);
         output.valueType = Seq;
@@ -225,6 +306,8 @@ template <class OP> struct BinaryIntOperation : public BinaryOperation<OP> {
 // and replace with functional std::plus etc
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO)                                              \
   struct NAME##Op final {                                                                               \
+    static constexpr bool hasApply{};                                                                   \
+    template <typename T> T apply(const T &lhs, const T &rhs) { return lhs OPERATOR rhs; }              \
     ALWAYS_INLINE void operator()(SHVar &output, const SHVar &input, const SHVar &operand, void *) {    \
       switch (input.valueType) {                                                                        \
       case Int:                                                                                         \
@@ -684,6 +767,8 @@ using Inc = UnaryBin<Add>;
 using Dec = UnaryBin<Subtract>;
 
 struct MaxOp final {
+  static constexpr bool hasApply{};
+  template <typename T> T apply(const T &lhs, const T &rhs) { return std::max<T>(lhs, rhs); }
   ALWAYS_INLINE void operator()(SHVar &output, const SHVar &input, const SHVar &operand, void *) {
     output = std::max(input, operand);
   }
@@ -691,6 +776,8 @@ struct MaxOp final {
 using Max = BinaryOperation<MaxOp>;
 
 struct MinOp final {
+  static constexpr bool hasApply{};
+  template <typename T> T apply(const T &lhs, const T &rhs) { return std::min<T>(lhs, rhs); }
   ALWAYS_INLINE void operator()(SHVar &output, const SHVar &input, const SHVar &operand, void *) {
     output = std::min(input, operand);
   }

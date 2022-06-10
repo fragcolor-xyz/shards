@@ -157,6 +157,42 @@
    (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
    (Log)
 
+   (Float3 10.3 2.1 1.1)
+   (Math.Multiply 2.0)
+   (Assert.Is (Float3 (* 10.3 2) (* 2.1 2) (* 1.1 2)) true)
+   (Log "Float3 broadcast")
+
+   2.0 (Math.Multiply (Float3 4.0 1.0 2.0))
+   (Assert.Is (Float3 (* 4.0 2) (* 1.0 2) (* 2.0 2)) true)
+   (Log "Float3 broadcast")
+
+   2.0 >= .f-2
+   (Float3 4.0 1.0 2.0) (Math.Multiply .f-2)
+   (Assert.Is (Float3 (* 4.0 2) (* 1.0 2) (* 2.0 2)) true)
+   (Log "Float3 broadcast")
+
+   (Float3 4.0 1.0 2.0) >= .v-3
+   2.0 (Math.Multiply .v-3)
+   (Assert.Is (Float3 (* 4.0 2) (* 1.0 2) (* 2.0 2)) true)
+   (Log "Float3 broadcast")
+
+   (Float2 10.3 2.1)
+   (Math.Multiply 2.0)
+   (Assert.Is (Float2 (* 10.3 2) (* 2.1 2)) true)
+   (Log "Float2 broadcast")
+
+   2.0 (Math.Multiply (Float2 4.0 1.0))
+   (Assert.Is (Float2 (* 4.0 2) (* 1.0 2)) true)
+   (Log "Float2 broadcast")
+
+   0.5 >= .f
+   (Float2 2.0 1.0) >= .v-2
+   .f (Math.Divide .v-2) (Assert.Is (Float2 (/ 0.5 2.0) (/ 0.5 1.0)) true) (Log "Divide Float/Float2 broadcast")
+   .v-2 (Math.Divide .f) (Assert.Is (Float2 (/ 2.0 0.5) (/ 1.0 0.5)) true) (Log "Divide Float2/Float broadcast")
+
+   .v-2 (Min .f) (Assert.Is (Float2 0.5 0.5) true) (Log "Min Float2 broadcast")
+   .v-2 (Max .f) (Assert.Is (Float2 2.0 1.0) true) (Log "Max Float2 broadcast")
+
    (Float4 4 4 4 4)
    (Math.FastSqrt)
    (| (ToString)

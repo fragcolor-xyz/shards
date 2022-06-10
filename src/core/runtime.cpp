@@ -189,7 +189,7 @@ void loadExternalShards(std::string from) {
   }
 }
 
-void setupSpdLog() {
+static void setupSpdLog() {
   auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
   auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -227,13 +227,21 @@ void setupSpdLog() {
 #endif
 }
 
+void setupSpdLogConditional() {
+  static bool initialized = false;
+  if (!initialized) {
+    initialized = true;
+    setupSpdLog();
+  }
+}
+
 void registerCoreShards() {
   if (globalRegisterDone)
     return;
 
   globalRegisterDone = true;
 
-  setupSpdLog();
+  setupSpdLogConditional();
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
@@ -334,6 +342,10 @@ void registerCoreShards() {
   WS::registerShards();
 #endif
 
+#ifdef SHARDS_WITH_EXTRA_SHARDS
+  shInitExtras();
+#endif
+
   // Enums are auto registered we need to propagate them to observers
   for (auto &einfo : GetGlobals().EnumTypesRegister) {
     int32_t vendorId = (int32_t)((einfo.first & 0xFFFFFFFF00000000) >> 32);
@@ -345,10 +357,6 @@ void registerCoreShards() {
       obs->registerEnumType(vendorId, enumId, einfo.second);
     }
   }
-
-#ifdef SHARDS_WITH_EXTRA_SHARDS
-  shInitExtras();
-#endif
 
   // re run early shards registration!
   for (auto &pair : earlyshards) {
@@ -459,13 +467,22 @@ Shard *createShard(std::string_view name) {
   return blkp;
 }
 
+inline void setupRegisterLogging() {
+#if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_TRACE
+  setupSpdLogConditional();
+#endif
+}
+
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName) {
+  setupRegisterLogging();
+  SHLOG_TRACE("registerBlock({})", name);
+
   auto findIt = GetGlobals().ShardsRegister.find(name);
   if (findIt == GetGlobals().ShardsRegister.end()) {
     GetGlobals().ShardsRegister.insert(std::make_pair(name, constructor));
   } else {
     GetGlobals().ShardsRegister[name] = constructor;
-    SHLOG_INFO("Overriding shard: {}", name);
+    SHLOG_WARNING("Overriding shard: {}", name);
   }
 
   GetGlobals().ShardNamesToFullTypeNames[name] = fullTypeName;
@@ -479,6 +496,9 @@ void registerShard(std::string_view name, SHShardConstructor constructor, std::s
 }
 
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
+  setupRegisterLogging();
+  SHLOG_TRACE("registerObjectType({})", info.name);
+
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
   auto findIt = GetGlobals().ObjectTypesRegister.find(id);
@@ -486,7 +506,7 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
     GetGlobals().ObjectTypesRegister.insert(std::make_pair(id, info));
   } else {
     GetGlobals().ObjectTypesRegister[id] = info;
-    SHLOG_INFO("Overriding object type: {}", typeName);
+    SHLOG_WARNING("Overriding object type: {}", typeName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {
@@ -498,6 +518,9 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
 }
 
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
+  setupRegisterLogging();
+  SHLOG_TRACE("registerEnumType({})", info.name);
+
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
   auto findIt = GetGlobals().EnumTypesRegister.find(id);
@@ -505,7 +528,7 @@ void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
     GetGlobals().EnumTypesRegister.insert(std::make_pair(id, info));
   } else {
     GetGlobals().EnumTypesRegister[id] = info;
-    SHLOG_DEBUG("Overriding enum type: {}", typeName);
+    SHLOG_WARNING("Overriding enum type: {}", typeName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {
@@ -1127,27 +1150,33 @@ void validateConnection(ValidationContext &ctx) {
 
 #ifndef NDEBUG
   // do some sanity checks that also provide coverage on outputTypes
-  auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
-  shards::IterableTypesInfo otypes(outputTypes);
-  auto flowStopper = [&]() {
-    if (strcmp(ctx.bottom->name(ctx.bottom), "Restart") == 0 || strcmp(ctx.bottom->name(ctx.bottom), "Stop") == 0 ||
-        strcmp(ctx.bottom->name(ctx.bottom), "Return") == 0 || strcmp(ctx.bottom->name(ctx.bottom), "Fail") == 0) {
-      return true;
-    } else {
-      return false;
+  if (!ctx.bottom->compose) {
+    auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);
+    shards::IterableTypesInfo otypes(outputTypes);
+    auto flowStopper = [&]() {
+      if (strcmp(ctx.bottom->name(ctx.bottom), "Restart") == 0 || strcmp(ctx.bottom->name(ctx.bottom), "Stop") == 0 ||
+          strcmp(ctx.bottom->name(ctx.bottom), "Return") == 0 || strcmp(ctx.bottom->name(ctx.bottom), "Fail") == 0) {
+        return true;
+      } else {
+        return false;
+      }
+    }();
+
+    auto blockHasValidOutputTypes =
+        flowStopper || std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
+          return t.basicType == SHType::Any ||
+                 (t.basicType == Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
+                  ctx.previousOutputType.basicType == Seq) || // any seq
+                 (t.basicType == Table &&
+                  // TODO find Any in table types
+                  ctx.previousOutputType.basicType == Table) || // any table
+                 t == ctx.previousOutputType;
+        });
+    if (!blockHasValidOutputTypes) {
+      std::string blockName = ctx.bottom->name(ctx.bottom);
+      throw std::runtime_error(fmt::format("Block {} doesn't have a valid output type", blockName));
     }
-  }();
-  auto valid_shard_outputTypes =
-      flowStopper || std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
-        return t.basicType == SHType::Any ||
-               (t.basicType == Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
-                ctx.previousOutputType.basicType == Seq) || // any seq
-               (t.basicType == Table &&
-                // TODO find Any in table types
-                ctx.previousOutputType.basicType == Table) || // any table
-               t == ctx.previousOutputType;
-      });
-  assert(ctx.bottom->compose || valid_shard_outputTypes);
+  }
 #endif
 
   // Grab those after type inference!
