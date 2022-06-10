@@ -178,7 +178,7 @@ void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBa
 
 void ShapeRenderer::begin() { vertices.clear(); }
 
-void ShapeRenderer::finish(DrawQueuePtr queue) {
+void ShapeRenderer::end(DrawQueuePtr queue) {
   if (!mesh)
     mesh = std::make_shared<Mesh>();
   MeshFormat fmt = {
