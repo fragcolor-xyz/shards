@@ -140,7 +140,7 @@ TEST_CASE("Helper lines", "[Editor]") {
       sr.addLine(float3(0, sz, 0), float3(0, sz, 1), float4(0, 0, 1, 1), 1 + i);
       sr.addLine(float3(0, sz, 0), float3(0, sz, 1), float4(0, 0, 1, 1), 1 + i);
     }
-    sr.finish(editorQueue);
+    sr.end(editorQueue);
     renderer.render(view, steps);
   };
 
@@ -184,7 +184,7 @@ TEST_CASE("Helper circles", "[Editor]") {
       sr.addCircle(float3(0, 0, 0), float3(0, 0, 1), float3(0, 1, 0), r - 0.05f, float4(1, 0, 0, 1), thickness, res);
       sr.addCircle(float3(0, 0, 0), float3(1, 0, 0), float3(0, 1, 0), r - 0.1f, float4(0, 0, 1, 1), thickness, res);
     }
-    sr.finish(editorQueue);
+    sr.end(editorQueue);
     renderer.render(view, steps);
   };
 
@@ -228,7 +228,7 @@ TEST_CASE("Helper rectangles", "[Editor]") {
       sr.addRect(float3(0, 0, 0), float3(0, 0, 1), float3(0, 1, 0), size, float4(1, 0, 0, 1), thickness);
       sr.addRect(float3(0, 0, 0), float3(1, 0, 0), float3(0, 1, 0), size, float4(0, 0, 1, 1), thickness);
     }
-    sr.finish(editorQueue);
+    sr.end(editorQueue);
     renderer.render(view, steps);
   };
 
@@ -274,7 +274,47 @@ TEST_CASE("Helper boxes", "[Editor]") {
       uint32_t thickness = (1 + i);
       sr.addBox(float3(0, 0, 0), axisX, axisY, axisZ, size, float4(1, 1, 1, 1), thickness);
     }
-    sr.finish(editorQueue);
+    sr.end(editorQueue);
+    renderer.render(view, steps);
+  };
+
+  CHECK(testRenderer->checkFrame("helper_boxes", comparisonTolerance));
+}
+
+TEST_CASE("Gizmo handles", "[Editor]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  ViewPtr view = std::make_shared<View>();
+  view->view = linalg::lookat_matrix(float3(3.0f, 3.0f, 3.0f), float3(0, 0, 0), float3(0, 1, 0));
+  view->proj = ViewPerspectiveProjection{
+      degToRad(45.0f),
+      FovDirection::Horizontal,
+  };
+
+  DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
+
+  PipelineSteps steps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .drawQueue = editorQueue,
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+              },
+      }),
+  };
+
+  float3 axisX = float3(1, 0, 0);
+  float3 axisY = float3(0, 1, 0);
+  float3 axisZ = float3(0, 0, 1);
+
+  GizmoRenderer gr;
+  TEST_RENDER_LOOP(testRenderer) {
+    editorQueue->clear();
+
+    gr.begin(view);
+    gr.end(editorQueue);
     renderer.render(view, steps);
   };
 

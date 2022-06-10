@@ -228,5 +228,158 @@ void CubeGenerator::generate() {
   buildPlane(0, 1, 2, 1, -1, width, height, depth, widthSegments, heightSegments);   // pz
   buildPlane(0, 1, 2, -1, -1, width, height, -depth, widthSegments, heightSegments); // nz
 }
+
+void CylinderGenerator::generate() {
+  reset();
+
+  size_t index = 0;
+  size_t groupStart = 0;
+  auto halfHeight = height / 2;
+
+  std::vector<std::vector<uint16_t>> indexRows;
+
+  auto generateCap = [&](bool top) {
+    // save the index of the first center vertex
+    auto centerIndexStart = index;
+
+    auto radius = (top) ? radiusTop : radiusBottom;
+    auto sign = (top) ? 1.0f : -1.0f;
+
+    // first we generate the center vertex data of the cap.
+    // because the geometry needs one set of uvs per face,
+    // we must generate a center vertex per face/segment
+    for (auto x = 1; x <= radialSegments; x++) {
+      auto &vertex = vertices.emplace_back();
+
+      float3 pos(0, halfHeight * sign, 0);
+      vertex.setPosition(pos);
+
+      float3 normal(0, sign, 0);
+      vertex.setNormal(normal);
+
+      vertex.setTexCoord(float2(0.5, 0.5));
+
+      index++;
+    }
+
+    // save the index of the last center vertex
+    auto centerIndexEnd = index;
+
+    // now we generate the surrounding vertices, normals and uvs
+    for (auto x = 0; x <= radialSegments; x++) {
+      auto u = float(x) / radialSegments;
+      auto theta = u * thetaLength + thetaStart;
+
+      auto cosTheta = std::cosf(theta);
+      auto sinTheta = std::sinf(theta);
+
+      auto &vertex = vertices.emplace_back();
+
+      float3 pos;
+      pos.x = radius * sinTheta;
+      pos.y = halfHeight * sign;
+      pos.z = radius * cosTheta;
+      vertex.setPosition(pos);
+
+      float3 normal(0, sign, 0);
+      vertex.setNormal(normal);
+
+      float2 uv;
+      uv.x = (cosTheta * 0.5) + 0.5;
+      uv.y = (sinTheta * 0.5 * sign) + 0.5;
+      vertex.setTexCoord(uv);
+
+      index++;
+    }
+
+    // generate indices
+    for (auto x = 0; x < radialSegments; x++) {
+      auto c = centerIndexStart + x;
+      auto i = centerIndexEnd + x;
+
+      if (top) {
+        indices.push_back(i);
+        indices.push_back(i + 1);
+        indices.push_back(c);
+      } else {
+        indices.push_back(i + 1);
+        indices.push_back(i);
+        indices.push_back(c);
+      }
+    }
+  };
+
+  auto generateTorso = [&]() {
+    auto groupCount = 0;
+
+    // this will be used to calculate the normal
+    auto slope = (radiusBottom - radiusTop) / height;
+
+    // generate vertices, normals and uvs
+    for (auto y = 0; y <= heightSegments; y++) {
+      std::vector<uint16_t> indexRow;
+
+      auto v = float(y) / float(heightSegments);
+      auto radius = v * (radiusBottom - radiusTop) + radiusTop;
+
+      for (auto x = 0; x <= radialSegments; x++) {
+        auto u = float(x) / float(radialSegments);
+
+        auto theta = u * thetaLength + thetaStart;
+
+        auto sinTheta = std::sinf(theta);
+        auto cosTheta = std::cosf(theta);
+
+        auto &vertex = vertices.emplace_back();
+
+        float3 pos;
+        pos.x = radius * sinTheta;
+        pos.y = -v * height + halfHeight;
+        pos.z = radius * cosTheta;
+        vertex.setPosition(pos);
+
+        float3 normal = linalg::normalize(float3(sinTheta, slope, cosTheta));
+        vertex.setNormal(normal);
+
+        vertex.setTexCoord(float2(u, 1 - v));
+
+        indexRow.emplace_back(index++);
+      }
+
+      indexRows.emplace_back(std::move(indexRow));
+    }
+
+    for (auto x = 0; x < radialSegments; x++) {
+      for (auto y = 0; y < heightSegments; y++) {
+        auto a = indexRows[y][x];
+        auto b = indexRows[y + 1][x];
+        auto c = indexRows[y + 1][x + 1];
+        auto d = indexRows[y][x + 1];
+
+        indices.push_back(a);
+        indices.push_back(b);
+        indices.push_back(d);
+
+        indices.push_back(b);
+        indices.push_back(c);
+        indices.push_back(d);
+
+        groupCount += 6;
+      }
+    }
+
+    groupStart += groupCount;
+  };
+
+  generateTorso();
+
+  if (!openEnded) {
+    if (radiusTop > 0)
+      generateCap(true);
+    if (radiusBottom > 0)
+      generateCap(false);
+  }
+}
+
 } // namespace geom
 } // namespace gfx

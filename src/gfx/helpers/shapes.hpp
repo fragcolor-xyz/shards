@@ -38,17 +38,20 @@ public:
   void addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, uint32_t thickness, uint32_t resolution);
   void addRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness);
   void addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color, uint32_t thickness);
+
   void begin();
-  void finish(DrawQueuePtr queue);
+  void end(DrawQueuePtr queue);
 };
 
 struct GizmoRenderer {
-  float4x4 view;
+private:
+  ViewPtr view;
 
-  void begin() {}
-  void end() {}
+public:
+  void arrow(float3 origin, float3 direction, float length);
 
-  void append() {}
+  void begin(ViewPtr view) { this->view = view; }
+  void end(DrawQueuePtr queue) { view.reset(); }
 };
 } // namespace gfx
 
