@@ -1205,6 +1205,7 @@ impl From<&CStr> for Var {
   }
 }
 
+// 64-bit precision :[i64;2]
 impl From<(i64, i64)> for Var {
   #[inline(always)]
   fn from(v: (i64, i64)) -> Self {
@@ -1220,6 +1221,23 @@ impl From<(i64, i64)> for Var {
   }
 }
 
+// 64-bit precision :[u64;2]
+impl From<(u64, u64)> for Var {
+  #[inline(always)]
+  fn from(v: (u64, u64)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = i64::from_ne_bytes((v.0).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int2Value[1] = i64::from_ne_bytes((v.1).to_ne_bytes());
+    }
+    res
+  }
+}
+
+// 64-bit precision :[u64;2]
 impl From<(f64, f64)> for Var {
   #[inline(always)]
   fn from(v: (f64, f64)) -> Self {
@@ -1235,6 +1253,125 @@ impl From<(f64, f64)> for Var {
   }
 }
 
+// 32-bit precision :[i32;2]
+impl From<(i32, i32)> for Var {
+  #[inline(always)]
+  fn from(v: (i32, i32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[i32;3]
+impl From<(i32, i32, i32)> for Var {
+  #[inline(always)]
+  fn from(v: (i32, i32, i32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = v.0;
+      res.payload.__bindgen_anon_1.int3Value[1] = v.1;
+      res.payload.__bindgen_anon_1.int3Value[2] = v.2;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[i32;4]
+impl From<(i32, i32, i32, i32)> for Var {
+  #[inline(always)]
+  fn from(v: (i32, i32, i32, i32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = v.0;
+      res.payload.__bindgen_anon_1.int4Value[1] = v.1;
+      res.payload.__bindgen_anon_1.int4Value[2] = v.2;
+      res.payload.__bindgen_anon_1.int4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[u32;2]
+impl From<(u32, u32)> for Var {
+  #[inline(always)]
+  fn from(v: (u32, u32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes()) as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes()) as i64;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[u32;3]
+impl From<(u32, u32, u32)> for Var {
+  #[inline(always)]
+  fn from(v: (u32, u32, u32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int3Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int3Value[2] = i32::from_ne_bytes((v.2).to_ne_bytes());
+    }
+    res
+  }
+}
+
+// 32-bit precision :[u32;4]
+impl From<(u32, u32, u32, u32)> for Var {
+  #[inline(always)]
+  fn from(v: (u32, u32, u32, u32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[2] = i32::from_ne_bytes((v.2).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[3] = i32::from_ne_bytes((v.3).to_ne_bytes());
+    }
+    res
+  }
+}
+
+// 32-bit precision :[f32;2]
+impl From<(f32, f32)> for Var {
+  #[inline(always)]
+  fn from(v: (f32, f32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float2Value[0] = v.0 as f64;
+      res.payload.__bindgen_anon_1.float2Value[1] = v.1 as f64;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[f32;3]
 impl From<(f32, f32, f32)> for Var {
   #[inline(always)]
   fn from(v: (f32, f32, f32)) -> Self {
@@ -1251,6 +1388,7 @@ impl From<(f32, f32, f32)> for Var {
   }
 }
 
+// 32-bit precision :[f32;4]
 impl From<(f32, f32, f32, f32)> for Var {
   #[inline(always)]
   fn from(v: (f32, f32, f32, f32)) -> Self {
@@ -1263,6 +1401,159 @@ impl From<(f32, f32, f32, f32)> for Var {
       res.payload.__bindgen_anon_1.float4Value[1] = v.1;
       res.payload.__bindgen_anon_1.float4Value[2] = v.2;
       res.payload.__bindgen_anon_1.float4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[i16;2]
+impl From<(i16, i16)> for Var {
+  #[inline(always)]
+  fn from(v: (i16, i16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[i16;3]
+impl From<(i16, i16, i16)> for Var {
+  #[inline(always)]
+  fn from(v: (i16, i16, i16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int3Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int3Value[2] = v.2 as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[i16;4]
+impl From<(i16, i16, i16, i16)> for Var {
+  #[inline(always)]
+  fn from(v: (i16, i16, i16, i16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int4Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int4Value[2] = v.2 as i32;
+      res.payload.__bindgen_anon_1.int4Value[3] = v.3 as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[u16;2]
+impl From<(u16, u16)> for Var {
+  #[inline(always)]
+  fn from(v: (u16, u16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i64;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[u16;3]
+impl From<(u16, u16, u16)> for Var {
+  #[inline(always)]
+  fn from(v: (u16, u16, u16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int3Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int3Value[2] = i16::from_ne_bytes((v.2).to_ne_bytes()) as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[u16;4]
+impl From<(u16, u16, u16, u16)> for Var {
+  #[inline(always)]
+  fn from(v: (u16, u16, u16, u16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[2] = i16::from_ne_bytes((v.2).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[3] = i16::from_ne_bytes((v.3).to_ne_bytes()) as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[f16;2]
+impl From<(half::f16, half::f16)> for Var {
+  #[inline(always)]
+  fn from(v: (half::f16, half::f16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float2Value[0] = f64::from(v.0);
+      res.payload.__bindgen_anon_1.float2Value[1] = f64::from(v.1);
+    }
+    res
+  }
+}
+
+// 16-bit precision :[f16;3]
+impl From<(half::f16, half::f16, half::f16)> for Var {
+  #[inline(always)]
+  fn from(v: (half::f16, half::f16, half::f16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float3Value[0] = f32::from(v.0);
+      res.payload.__bindgen_anon_1.float3Value[1] = f32::from(v.1);
+      res.payload.__bindgen_anon_1.float3Value[2] = f32::from(v.2);
+    }
+    res
+  }
+}
+
+// 16-bit precision :[f16;4]
+impl From<(half::f16, half::f16, half::f16, half::f16)> for Var {
+  #[inline(always)]
+  fn from(v: (half::f16, half::f16, half::f16, half::f16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float4Value[0] = f32::from(v.0);
+      res.payload.__bindgen_anon_1.float4Value[1] = f32::from(v.1);
+      res.payload.__bindgen_anon_1.float4Value[2] = f32::from(v.2);
+      res.payload.__bindgen_anon_1.float4Value[3] = f32::from(v.3);
     }
     res
   }
