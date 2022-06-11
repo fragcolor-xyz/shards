@@ -1984,6 +1984,7 @@ impl TryFrom<&Var> for &str {
   }
 }
 
+// 64-bit precision :i64
 impl TryFrom<&Var> for i64 {
   type Error = &'static str;
 
@@ -1997,19 +1998,7 @@ impl TryFrom<&Var> for i64 {
   }
 }
 
-impl TryFrom<&Var> for i32 {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Int {
-      Err("Expected Int variable, but casting failed.")
-    } else {
-      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i32) }
-    }
-  }
-}
-
+// 64-bit precision :u64
 impl TryFrom<&Var> for u64 {
   type Error = &'static str;
 
@@ -2031,24 +2020,7 @@ impl TryFrom<&Var> for u64 {
   }
 }
 
-impl TryFrom<&Var> for (i64, i64) {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Int2 {
-      Err("Expected Int2 variable, but casting failed.")
-    } else {
-      unsafe {
-        Ok((
-          var.payload.__bindgen_anon_1.int2Value[0],
-          var.payload.__bindgen_anon_1.int2Value[1],
-        ))
-      }
-    }
-  }
-}
-
+// 64-bit precision :usize
 impl TryFrom<&Var> for usize {
   type Error = &'static str;
 
@@ -2069,6 +2041,7 @@ impl TryFrom<&Var> for usize {
   }
 }
 
+// 64-bit precision :f64
 impl TryFrom<&Var> for f64 {
   type Error = &'static str;
 
@@ -2082,6 +2055,212 @@ impl TryFrom<&Var> for f64 {
   }
 }
 
+// 64-bit precision :[i64;2]
+impl TryFrom<&Var> for (i64, i64) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int2Value[0],
+          var.payload.__bindgen_anon_1.int2Value[1],
+        ))
+      }
+    }
+  }
+}
+
+// 64-bit precision :[u64;2]
+impl TryFrom<&Var> for (u64, u64) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u64::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0]).to_ne_bytes()),
+          u64::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1]).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 64-bit precision :[f64;2]
+impl TryFrom<&Var> for (f64, f64) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.float2Value[0],
+          var.payload.__bindgen_anon_1.float2Value[1],
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :i32
+impl TryFrom<&Var> for i32 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i32) }
+    }
+  }
+}
+
+// 32-bit precision :[i32;2]
+impl TryFrom<&Var> for (i32, i32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int2Value[0] as i32,
+          var.payload.__bindgen_anon_1.int2Value[1] as i32,
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[i32;3]
+impl TryFrom<&Var> for (i32, i32, i32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int3Value[0],
+          var.payload.__bindgen_anon_1.int3Value[1],
+          var.payload.__bindgen_anon_1.int3Value[2],
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[i32;4]
+impl TryFrom<&Var> for (i32, i32, i32, i32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int4Value[0],
+          var.payload.__bindgen_anon_1.int4Value[1],
+          var.payload.__bindgen_anon_1.int4Value[2],
+          var.payload.__bindgen_anon_1.int4Value[3],
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :u32
+impl TryFrom<&Var> for u32 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u32) }
+    }
+  }
+}
+
+// 32-bit precision :[u32;2]
+impl TryFrom<&Var> for (u32, u32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0] as i32).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1] as i32).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[u32;3]
+impl TryFrom<&Var> for (u32, u32, u32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[0]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[1]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[2]).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[u32;4]
+impl TryFrom<&Var> for (u32, u32, u32, u32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[0]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[1]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[2]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[3]).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :f32
 impl TryFrom<&Var> for f32 {
   type Error = &'static str;
 
@@ -2095,6 +2274,26 @@ impl TryFrom<&Var> for f32 {
   }
 }
 
+// 32-bit precision :[f32;2]
+impl TryFrom<&Var> for (f32, f32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.float2Value[0] as f32,
+          var.payload.__bindgen_anon_1.float2Value[1] as f32,
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[f32;3]
 impl TryFrom<&Var> for (f32, f32, f32) {
   type Error = &'static str;
 
@@ -2114,6 +2313,7 @@ impl TryFrom<&Var> for (f32, f32, f32) {
   }
 }
 
+// 32-bit precision :[f32;4]
 impl TryFrom<&Var> for (f32, f32, f32, f32) {
   type Error = &'static str;
 
@@ -2128,6 +2328,228 @@ impl TryFrom<&Var> for (f32, f32, f32, f32) {
           var.payload.__bindgen_anon_1.float4Value[1],
           var.payload.__bindgen_anon_1.float4Value[2],
           var.payload.__bindgen_anon_1.float4Value[3],
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :i16
+impl TryFrom<&Var> for i16 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i16) }
+    }
+  }
+}
+
+// 16-bit precision :[i16;2]
+impl TryFrom<&Var> for (i16, i16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int2Value[0] as i16,
+          var.payload.__bindgen_anon_1.int2Value[1] as i16,
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[i16;3]
+impl TryFrom<&Var> for (i16, i16, i16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int3Value[0] as i16,
+          var.payload.__bindgen_anon_1.int3Value[1] as i16,
+          var.payload.__bindgen_anon_1.int3Value[2] as i16,
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[i16;4]
+impl TryFrom<&Var> for (i16, i16, i16, i16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int4Value[0] as i16,
+          var.payload.__bindgen_anon_1.int4Value[1] as i16,
+          var.payload.__bindgen_anon_1.int4Value[2] as i16,
+          var.payload.__bindgen_anon_1.int4Value[3] as i16,
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :u16
+impl TryFrom<&Var> for u16 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u16) }
+    }
+  }
+}
+
+// 16-bit precision :[u16;2]
+impl TryFrom<&Var> for (u16, u16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1] as i16).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[u16;3]
+impl TryFrom<&Var> for (u16, u16, u16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[0] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[1] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[2] as i16).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[u16;4]
+impl TryFrom<&Var> for (u16, u16, u16, u16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[0] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[1] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[2] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[3] as i16).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :f16
+impl TryFrom<&Var> for half::f16 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(half::f16::from_f64(var.payload.__bindgen_anon_1.floatValue)) }
+    }
+  }
+}
+
+// 16-bit precision :[f16;2]
+impl TryFrom<&Var> for (half::f16, half::f16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          half::f16::from_f64(var.payload.__bindgen_anon_1.float2Value[0]),
+          half::f16::from_f64(var.payload.__bindgen_anon_1.float2Value[1]),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[f16;3]
+impl TryFrom<&Var> for (half::f16, half::f16, half::f16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float3Value[0]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float3Value[1]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float3Value[2]),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[f16;4]
+impl TryFrom<&Var> for (half::f16, half::f16, half::f16, half::f16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[0]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[1]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[2]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[3]),
         ))
       }
     }
