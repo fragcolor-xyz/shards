@@ -11,69 +11,6 @@ using namespace gfx::shader;
 using namespace shards;
 namespace gfx {
 namespace shader {
-struct TestTranslator {
-  ShardsVar shards{};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-
-  static SHParametersInfo parameters() {
-    static Parameters params{
-        {"Shards", SHCCSTR("The shader shards"), {CoreInfo::Shards}},
-    };
-    return params;
-  }
-
-  void setParam(int index, const SHVar &value) { shards = value; }
-  SHVar getParam(int index) { return shards; }
-
-  void cleanup() { shards.cleanup(); }
-
-  void warmup(SHContext *ctx) { shards.warmup(ctx); }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    shards.compose(data);
-    return CoreInfo::StringType;
-  }
-
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    SPDLOG_INFO("TestTranslator activation");
-
-    TranslationContext context{};
-
-    // Loop over shards passed as parameters
-    // this recurses into child shards
-    for (SHVar &shardVar : IterableSeq(SHVar(shards))) {
-      context.processShard(shardVar.payload.shardValue);
-    }
-
-    // Placeholder to generate preview source code
-    Generator shaderGenerator;
-    {
-      UniformBufferLayoutBuilder builder;
-      builder.push("world", FieldTypes::Float4x4);
-      shaderGenerator.objectBufferLayout = builder.finalize();
-    }
-    {
-      UniformBufferLayoutBuilder builder;
-      builder.push("view", FieldTypes::Float4x4);
-      shaderGenerator.viewBufferLayout = builder.finalize();
-    }
-    shaderGenerator.meshFormat.vertexAttributes = {
-        MeshVertexAttribute("position", 3),
-        MeshVertexAttribute("normal", 3),
-        MeshVertexAttribute("color", 4),
-    };
-    std::vector<EntryPoint> entryPoints;
-    entryPoints.emplace_back("main", ProgrammableGraphicsStage::Vertex, std::move(context.root));
-    GeneratorOutput generatorOutput = shaderGenerator.build(entryPoints);
-
-    SPDLOG_INFO("Generated Shader: \n{}", generatorOutput.wgslSource);
-
-    return SHVar{};
-  }
-};
-
 static TranslationRegistry &getTranslationRegistry() {
   static TranslationRegistry instance;
   return instance;
@@ -172,8 +109,6 @@ using namespace shards::Math::LinAlg;
 template <SHType ToType> using ToNumber = shards::ToNumber<ToType>;
 
 void registerTranslatorShards() {
-  REGISTER_SHARD("GFX.TestTranslator", TestTranslator);
-
   // Literal copy-paste into shader code
   REGISTER_SHADER_SHARD("Shader.Literal", Literal);
   REGISTER_SHADER_SHARD("Shader.ReadInput", gfx::shader::Read<blocks::ReadInput>);
