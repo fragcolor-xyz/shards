@@ -191,8 +191,14 @@ private:
 };
 
 struct ToUpper {
+  static SHOptionalString help() { return SHCCSTR("Converts a string to uppercase"); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A string in uppercase."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     utf8upr(const_cast<char *>(input.payload.stringValue));
     return input;
