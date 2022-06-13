@@ -251,8 +251,18 @@ struct ParseInt : public Parser {
 };
 
 struct ParseFloat : public Parser {
+  static SHOptionalString help() {
+    return SHCCSTR("Converts the string representation of a number to a floating-point number equivalent.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string representing a number."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A floating-point number equivalent to the number contained in the string input.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     char *str = const_cast<char *>(input.payload.stringValue);
     const auto len = SHSTRLEN(input);
