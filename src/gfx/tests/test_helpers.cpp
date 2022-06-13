@@ -317,13 +317,15 @@ TEST_CASE("Gizmo handles", "[Editor]") {
     };
     for (size_t i = 0; i < 3; i++) {
       float length = (1.0f + float(i) * 0.2f);
-      float radius =  0.2f;
+      float radius = 0.1f;
       float xOffset = 0.0f + float(i) * 0.2f;
-      gr.addArrow(float3(xOffset, 0, 0), axisY,  radius, length, colors[i], colors[i]);
+      gr.addHandle(float3(xOffset, 0, 0), axisY, radius, length, colors[i], GizmoRenderer::CapType::Arrow, colors[i]);
+      gr.addHandle(float3(xOffset * 0.5f, 0, 0.5f), axisY, radius * 0.5f, length * 0.5f, float4(1, 1, 1, 1),
+                   GizmoRenderer::CapType::Arrow, colors[i]);
     }
     gr.end(editorQueue);
     renderer.render(view, steps);
   };
 
-  CHECK(testRenderer->checkFrame("helper_boxes", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("helper_handles", comparisonTolerance));
 }
