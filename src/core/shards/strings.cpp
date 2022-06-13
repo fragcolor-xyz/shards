@@ -134,8 +134,17 @@ struct Replace : public Common {
 };
 
 struct Join {
+  static SHOptionalString help() {
+    return SHCCSTR("Concatenates all the elements of a string sequence, using the specified separator between each element.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringSeqType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of string values that will be joined together."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A string consisting of all the elements of the sequence delimited by the separator.");
+  }
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -175,7 +184,7 @@ struct Join {
   }
 
 private:
-  static inline Parameters params{{"Separator", SHCCSTR("The separator."), {CoreInfo::StringType}}};
+  static inline Parameters params{{"Separator", SHCCSTR("The string to use as a separator."), {CoreInfo::StringType}}};
 
   std::string _buffer;
   std::string _separator;
