@@ -222,8 +222,17 @@ struct Parser {
 };
 
 struct ParseInt : public Parser {
+  static SHOptionalString help() {
+    return SHCCSTR("Converts the string representation of a number to a signed integer equivalent.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string representing a number."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A signed integer equivalent to the number contained in the string input.");
+  }
 
   int _base{10};
 
