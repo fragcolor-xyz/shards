@@ -1,0 +1,9 @@
+["The quick brown fox "
+ "jumps over the lazy dog"
+ "."]
+(String.Join) (Log)
+(Assert.Is "The quick brown fox jumps over the lazy dog." :Abort true)
+
+["2001" "01" "01"]
+(String.Join "/") (Log)
+(Assert.Is "2001/01/01" :Abort true)
