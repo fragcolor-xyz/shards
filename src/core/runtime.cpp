@@ -497,7 +497,7 @@ void registerShard(std::string_view name, SHShardConstructor constructor, std::s
 
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
   setupRegisterLogging();
-  SHLOG_TRACE("registerObjectType({})", info.name);
+  // SHLOG_TRACE("registerObjectType({})", info.name);
 
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
@@ -519,7 +519,7 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
 
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
   setupRegisterLogging();
-  SHLOG_TRACE("registerEnumType({})", info.name);
+  // SHLOG_TRACE("registerEnumType({})", info.name);
 
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto typeName = std::string(info.name);
