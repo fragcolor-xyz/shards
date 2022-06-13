@@ -1,0 +1,5 @@
+"hello" (IsNot "HELLO")
+(Assert.Is true :Abort true)
+
+2 (Math.Add 3) (IsNot 4)
+(Assert.Is true :Abort true)
