@@ -23,16 +23,16 @@ rapier3d = { version = "0.11.1", optional = true }
 bs58 = { version = "0.4.0", optional = true }
 sha2 = { version = "0.10.0", optional = true }
 wasabi_leb128 = { version = "0.4.0", optional = true }
-resvg = { version = "0.20.0", optional = true }
-usvg = { version = "0.20.0", optional = true }
+resvg = { version = "0.23.0", optional = true }
+usvg = { version = "0.23.0", optional = true }
 tiny-skia = { version = "0.6.1", optional = true }
 instant = { version = "0.1.10", features = [ "now" ] }
-ethereum-types = { version = "0.12.0", optional = true }
-ethabi = { version = "16.0.0", optional = true }
+ethereum-types = { version = "0.13.1", optional = true }
+ethabi = { version = "17.0.0", optional = true }
 ext-csv = {  package = "csv", version = "1.1", optional = true }
-sp-core = { version = "4.1.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-01', features = ["full_crypto"], optional = true }
-sp-runtime = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-01', optional = true }
-parity-scale-codec = { version = "2.3.1", default-features = false, optional = true }
+sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-06', features = ["full_crypto"], optional = true }
+sp-runtime = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-06', optional = true }
+parity-scale-codec = { version = "3.0.0", default-features = false, optional = true }
 chacha20poly1305 = { version = "0.9.0", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
@@ -40,13 +40,13 @@ dlopen = { version = "0.1.8", optional = true }
 reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
 
 [target.'cfg(not(any(target_arch="wasm32", target_os="ios")))'.dependencies]
-webbrowser = { version = "0.5.5", optional = true }
+webbrowser = { version = "0.7.1", optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"
 
 [build-dependencies]
-bindgen = { version = "0.59.1", optional = true }
+bindgen = { version = "0.60.1", optional = true }
 
 [features]
 default = []
