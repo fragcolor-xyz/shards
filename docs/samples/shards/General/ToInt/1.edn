@@ -1,0 +1,8 @@
+1 (ToInt) (Log)
+(Assert.Is 1 :Abort true)
+
+2.2 (ToInt) (Log)
+(Assert.Is 2 :Abort true)
+
+"3" (ToInt) (Log)
+(Assert.Is 3 :Abort true)
