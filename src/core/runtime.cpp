@@ -475,7 +475,7 @@ inline void setupRegisterLogging() {
 
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName) {
   setupRegisterLogging();
-  SHLOG_TRACE("registerBlock({})", name);
+  // SHLOG_TRACE("registerBlock({})", name);
 
   auto findIt = GetGlobals().ShardsRegister.find(name);
   if (findIt == GetGlobals().ShardsRegister.end()) {

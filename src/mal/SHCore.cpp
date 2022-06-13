@@ -160,7 +160,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   // this is not efficient as it likely will repeat inserting the first time!
   // See Observer down
   for (auto &v : builtIns) {
-    SPDLOG_TRACE("env->set({})", v.first);
+    // SPDLOG_TRACE("env->set({})", v.first);
     env->set(v.first, v.second.ptr());
   }
 
