@@ -1276,8 +1276,11 @@ struct UnsafeActivate {
 
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
+RUNTIME_SHARD_help(And);
 RUNTIME_SHARD_inputTypes(And);
+RUNTIME_SHARD_inputHelp(And);
 RUNTIME_SHARD_outputTypes(And);
+RUNTIME_SHARD_outputHelp(And);
 RUNTIME_SHARD_activate(And);
 RUNTIME_SHARD_END(And);
 

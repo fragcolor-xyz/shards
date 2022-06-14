@@ -410,8 +410,16 @@ struct OnCleanup {
 };
 
 struct And {
+  static SHOptionalString help() {
+    return SHCCSTR("Computes the logical AND between the input of this shard and the output of the next shard.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The first operand to be evaluated."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
