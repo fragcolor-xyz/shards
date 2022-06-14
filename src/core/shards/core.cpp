@@ -1296,8 +1296,11 @@ RUNTIME_SHARD_END(Or);
 
 // Register Not
 RUNTIME_CORE_SHARD_FACTORY(Not);
+RUNTIME_SHARD_help(Not);
 RUNTIME_SHARD_inputTypes(Not);
+RUNTIME_SHARD_inputHelp(Not);
 RUNTIME_SHARD_outputTypes(Not);
+RUNTIME_SHARD_outputHelp(Not);
 RUNTIME_SHARD_activate(Not);
 RUNTIME_SHARD_END(Not);
 

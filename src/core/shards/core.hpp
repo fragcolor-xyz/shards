@@ -458,8 +458,14 @@ struct Or {
 };
 
 struct Not {
+  static SHOptionalString help() { return SHCCSTR("Computes the logical negation of the input."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to be negated."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The negation of the input."); }
+
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(!input.payload.boolValue); }
 };
 
