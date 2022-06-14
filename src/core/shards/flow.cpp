@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "shardwrapper.hpp"
-#include "shards.h"
 #include "foundation.hpp"
+#include "shards.h"
+#include "shardwrapper.hpp"
 #include "shared.hpp"
 
 namespace shards {

@@ -109,9 +109,7 @@ template <typename T, typename... Rest> inline void hash_combine(std::size_t &se
 namespace std {
 
 template <> struct hash<shards::edn::token::Token> {
-  size_t operator()(const shards::edn::token::Token &x) const {
-    return std::hash<shards::edn::token::value::Value>()(x.value);
-  }
+  size_t operator()(const shards::edn::token::Token &x) const { return std::hash<shards::edn::token::value::Value>()(x.value); }
 };
 
 template <> struct hash<shards::edn::form::Special> {

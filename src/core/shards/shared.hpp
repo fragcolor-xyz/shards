@@ -4,7 +4,7 @@
 #ifndef SH_CORE_SHARDS_SHARED
 #define SH_CORE_SHARDS_SHARED
 
-#include "../shards_macros.hpp"
 #include "../runtime.hpp"
+#include "../shards_macros.hpp"
 
 #endif // SH_CORE_SHARDS_SHARED

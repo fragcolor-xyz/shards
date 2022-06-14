@@ -14,8 +14,8 @@
 
 #include <string.h> // memset
 
-#include "shards_macros.hpp"
 #include "foundation.hpp"
+#include "shards_macros.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -50,9 +50,9 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #define CUSTOM_XXH3_kSecret XXH3_kSecret
 #endif
 
-#define SH_SUSPEND(_ctx_, _secs_)                                  \
+#define SH_SUSPEND(_ctx_, _secs_)                             \
   const auto _suspend_state = shards::suspend(_ctx_, _secs_); \
-  if (_suspend_state != SHWireState::Continue)                    \
+  if (_suspend_state != SHWireState::Continue)                \
   return shards::Var::Empty
 
 #define SH_STOP() std::rethrow_exception(shards::GetGlobals().StopWireEx);
@@ -155,12 +155,10 @@ private:
 
 namespace shards {
 [[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
-                                           SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData,
-                                           SHInstanceData data);
+                                          SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData,
-                                           SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 } // namespace shards
@@ -669,8 +667,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   };
 
   template <class Observer>
-  void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty,
-                bool compose = true) {
+  void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
     if (wire->warmedUp) {
       SHLOG_ERROR("Attempted to schedule a wire multiple times, wire: {}", wire->name);
       throw shards::SHException("Multiple wire schedule");
@@ -1090,8 +1087,8 @@ struct Serialization {
       read((uint8_t *)&crc, sizeof(uint32_t));
       if (blk->hash(blk) != crc) {
         throw shards::SHException("Shard hash mismatch, the serialized version is "
-                                       "probably different: " +
-                                       std::string(&buf[0]));
+                                  "probably different: " +
+                                  std::string(&buf[0]));
       }
       blk->setup(blk);
       auto params = blk->parameters(blk).len + 1;

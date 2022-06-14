@@ -20,8 +20,8 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 }
 #endif
 
-#include "shards.h"
 #include "ops_internal.hpp"
+#include "shards.h"
 #include <shards.hpp>
 
 // Included 3rdparty
@@ -100,8 +100,7 @@ struct SHCoro {
 #ifdef SH_COMPRESSED_STRINGS
 #define SHCCSTR(_str_) ::shards::getCompiledCompressedString(::shards::constant<::shards::crc32(_str_)>::value)
 #else
-#define SHCCSTR(_str_) \
-  ::shards::setCompiledCompressedString(::shards::constant<::shards::crc32(_str_)>::value, _str_)
+#define SHCCSTR(_str_) ::shards::setCompiledCompressedString(::shards::constant<::shards::crc32(_str_)>::value, _str_)
 #endif
 
 #define SHLOG_TRACE SPDLOG_TRACE
@@ -124,8 +123,7 @@ SHOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 
 SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
-[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData,
-                                           SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 // caller does not handle return
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output);
 // caller handles return
