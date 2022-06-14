@@ -1286,8 +1286,11 @@ RUNTIME_SHARD_END(And);
 
 // Register Or
 RUNTIME_CORE_SHARD_FACTORY(Or);
+RUNTIME_SHARD_help(Or);
 RUNTIME_SHARD_inputTypes(Or);
+RUNTIME_SHARD_inputHelp(Or);
 RUNTIME_SHARD_outputTypes(Or);
+RUNTIME_SHARD_outputHelp(Or);
 RUNTIME_SHARD_activate(Or);
 RUNTIME_SHARD_END(Or);
 
