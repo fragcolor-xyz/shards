@@ -1556,8 +1556,11 @@ RUNTIME_SHARD_END(Limit);
 
 // Register Repeat
 RUNTIME_CORE_SHARD_FACTORY(Repeat);
+RUNTIME_SHARD_help(Repeat);
 RUNTIME_SHARD_inputTypes(Repeat);
+RUNTIME_SHARD_inputHelp(Repeat);
 RUNTIME_SHARD_outputTypes(Repeat);
+RUNTIME_SHARD_outputHelp(Repeat);
 RUNTIME_SHARD_parameters(Repeat);
 RUNTIME_SHARD_setParam(Repeat);
 RUNTIME_SHARD_getParam(Repeat);

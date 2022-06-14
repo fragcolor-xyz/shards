@@ -3083,9 +3083,17 @@ struct Repeat {
                                             "until it's true"),
                                     CoreInfo::ShardsOrNone}};
 
+  static SHOptionalString help() {
+    return SHCCSTR("Repeat an action a given number of times or until a condition is no longer `true`.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input will be passed to both the action and the `:Until` condition if used.");
+  }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 
   static SHParametersInfo parameters() { return _params; }
 
