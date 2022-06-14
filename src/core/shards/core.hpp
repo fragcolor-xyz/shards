@@ -470,8 +470,14 @@ struct Not {
 };
 
 struct IsNone {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the type of the input is `None`."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value which type to check against."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("`true` is the type of input is `None`; otherwise, `false`."); }
+
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType == None); }
 };
 
