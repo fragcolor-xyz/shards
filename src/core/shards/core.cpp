@@ -737,7 +737,9 @@ struct Map {
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
-      arrayPush(_output.payload.seqValue, output);
+      size_t index = _output.payload.seqValue.len;
+      arrayResize(_output.payload.seqValue, index + 1);
+      cloneVar(_output.payload.seqValue.elements[index], output);
     }
     return _output;
   }
