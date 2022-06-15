@@ -7,10 +7,10 @@
 #include "../shards_macros.hpp"
 // circular warning this is self inclusive on purpose
 #include "../foundation.hpp"
-#include "common_types.hpp"
-#include "number_types.hpp"
 #include "shards.h"
 #include "shards.hpp"
+#include "common_types.hpp"
+#include "number_types.hpp"
 #include <cassert>
 #include <cmath>
 #include <sstream>
@@ -73,8 +73,8 @@ struct Const {
   }
 };
 
-static shards::ParamsInfo compareParamsInfo =
-    shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType));
+static shards::ParamsInfo compareParamsInfo = shards::ParamsInfo(
+    shards::ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType));
 
 struct BaseOpsBin {
   SHVar _value{};
@@ -126,9 +126,9 @@ struct BaseOpsBin {
     FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { \
       const auto &value = *_target;                                                \
       if (input OP value) {                                                        \
-        return shards::Var::True;                                                  \
+        return shards::Var::True;                                             \
       }                                                                            \
-      return shards::Var::False;                                                   \
+      return shards::Var::False;                                              \
     }                                                                              \
   };                                                                               \
   RUNTIME_CORE_SHARD_TYPE(NAME);
@@ -151,31 +151,31 @@ LOGIC_OP(IsLessEqual, <=);
           throw ActivationError("Failed to compare, input len > value len.");             \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i]) { \
-            return shards::Var::True;                                                     \
+            return shards::Var::True;                                                \
           }                                                                               \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        return shards::Var::False;                                                   \
       } else if (input.valueType == Seq && value.valueType != Seq) {                      \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value) {                              \
-            return shards::Var::True;                                                     \
+            return shards::Var::True;                                                \
           }                                                                               \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        return shards::Var::False;                                                   \
       } else if (input.valueType != Seq && value.valueType == Seq) {                      \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                       \
           if (input OP value.payload.seqValue.elements[i]) {                              \
-            return shards::Var::True;                                                     \
+            return shards::Var::True;                                                \
           }                                                                               \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        return shards::Var::False;                                                   \
       } else if (input.valueType != Seq && value.valueType != Seq) {                      \
         if (input OP value) {                                                             \
-          return shards::Var::True;                                                       \
+          return shards::Var::True;                                                  \
         }                                                                                 \
-        return shards::Var::False;                                                        \
+        return shards::Var::False;                                                   \
       }                                                                                   \
-      return shards::Var::False;                                                          \
+      return shards::Var::False;                                                     \
     }                                                                                     \
   };                                                                                      \
   RUNTIME_CORE_SHARD_TYPE(NAME);
@@ -191,31 +191,31 @@ LOGIC_OP(IsLessEqual, <=);
           throw ActivationError("Failed to compare, input len > value len.");                \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value.payload.seqValue.elements[i])) { \
-            return shards::Var::False;                                                       \
+            return shards::Var::False;                                                  \
           }                                                                                  \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        return shards::Var::True;                                                       \
       } else if (input.valueType == Seq && value.valueType != Seq) {                         \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value)) {                              \
-            return shards::Var::False;                                                       \
+            return shards::Var::False;                                                  \
           }                                                                                  \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        return shards::Var::True;                                                       \
       } else if (input.valueType != Seq && value.valueType == Seq) {                         \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                          \
           if (!(input OP value.payload.seqValue.elements[i])) {                              \
-            return shards::Var::False;                                                       \
+            return shards::Var::False;                                                  \
           }                                                                                  \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        return shards::Var::True;                                                       \
       } else if (input.valueType != Seq && value.valueType != Seq) {                         \
         if (!(input OP value)) {                                                             \
-          return shards::Var::False;                                                         \
+          return shards::Var::False;                                                    \
         }                                                                                    \
-        return shards::Var::True;                                                            \
+        return shards::Var::True;                                                       \
       }                                                                                      \
-      return shards::Var::False;                                                             \
+      return shards::Var::False;                                                        \
     }                                                                                        \
   };                                                                                         \
   RUNTIME_CORE_SHARD_TYPE(NAME);
@@ -250,7 +250,9 @@ struct Input {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { return context->wireStack.back()->currentInput; }
+  FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+    return context->wireStack.back()->currentInput;
+  }
 };
 
 struct Pause {
@@ -896,10 +898,10 @@ struct Get : public VariableBase {
 
   static inline shards::ParamsInfo getParamsInfo = shards::ParamsInfo(
       variableParamsInfo, shards::ParamsInfo::Param("Default",
-                                                    SHCCSTR("The default value to use to infer types and output if the "
-                                                            "variable is not set, key is not there and/or type "
-                                                            "mismatches."),
-                                                    CoreInfo::AnyType));
+                                                         SHCCSTR("The default value to use to infer types and output if the "
+                                                                 "variable is not set, key is not there and/or type "
+                                                                 "mismatches."),
+                                                         CoreInfo::AnyType));
 
   static SHParametersInfo parameters() { return SHParametersInfo(getParamsInfo); }
 
@@ -1130,9 +1132,9 @@ struct Get : public VariableBase {
 };
 
 struct Swap {
-  static inline shards::ParamsInfo swapParamsInfo =
-      shards::ParamsInfo(shards::ParamsInfo::Param("NameA", SHCCSTR("The name of first variable."), CoreInfo::StringOrAnyVar),
-                         shards::ParamsInfo::Param("NameB", SHCCSTR("The name of second variable."), CoreInfo::StringOrAnyVar));
+  static inline shards::ParamsInfo swapParamsInfo = shards::ParamsInfo(
+      shards::ParamsInfo::Param("NameA", SHCCSTR("The name of first variable."), CoreInfo::StringOrAnyVar),
+      shards::ParamsInfo::Param("NameB", SHCCSTR("The name of second variable."), CoreInfo::StringOrAnyVar));
 
   std::string _nameA;
   std::string _nameB;
@@ -1269,9 +1271,9 @@ struct Push : public SeqBase {
 
   static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
       variableParamsInfo, shards::ParamsInfo::Param("Clear",
-                                                    SHCCSTR("If we should clear this sequence at every wire iteration; "
-                                                            "works only if this is the first push; default: true."),
-                                                    CoreInfo::BoolType));
+                                                         SHCCSTR("If we should clear this sequence at every wire iteration; "
+                                                                 "works only if this is the first push; default: true."),
+                                                         CoreInfo::BoolType));
 
   static SHParametersInfo parameters() { return SHParametersInfo(pushParams); }
 
@@ -1385,13 +1387,14 @@ struct Sequence : public SeqBase {
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 
-  static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
-      variableParamsInfo,
-      shards::ParamsInfo::Param("Clear",
-                                SHCCSTR("If we should clear this sequence at every wire iteration; "
-                                        "works only if this is the first push; default: true."),
-                                CoreInfo::BoolType),
-      shards::ParamsInfo::Param("Types", SHCCSTR("The sequence inner types to forward declare."), CoreInfo2::BasicTypesTypes));
+  static inline shards::ParamsInfo pushParams =
+      shards::ParamsInfo(variableParamsInfo,
+                              shards::ParamsInfo::Param("Clear",
+                                                             SHCCSTR("If we should clear this sequence at every wire iteration; "
+                                                                     "works only if this is the first push; default: true."),
+                                                             CoreInfo::BoolType),
+                              shards::ParamsInfo::Param("Types", SHCCSTR("The sequence inner types to forward declare."),
+                                                             CoreInfo2::BasicTypesTypes));
 
   static SHParametersInfo parameters() { return SHParametersInfo(pushParams); }
 
@@ -1920,8 +1923,8 @@ struct Count : SeqUser {
       return shards::Var(int64_t(_cell->payload.bytesSize));
     } else if (_cell->valueType == String) {
       return shards::Var(int64_t(_cell->payload.stringLen > 0 || _cell->payload.stringValue == nullptr
-                                     ? _cell->payload.stringLen
-                                     : strlen(_cell->payload.stringValue)));
+                                          ? _cell->payload.stringLen
+                                          : strlen(_cell->payload.stringValue)));
     } else {
       return shards::Var(0);
     }
@@ -2422,7 +2425,7 @@ struct Take {
       return __val__;                                                             \
     } else {                                                                      \
       const uint32_t nindices = indices.payload.seqValue.len;                     \
-      shards::arrayResize(_cachedSeq, nindices);                                  \
+      shards::arrayResize(_cachedSeq, nindices);                             \
       for (uint32_t i = 0; nindices > i; i++) {                                   \
         const auto index = indices.payload.seqValue.elements[i].payload.intValue; \
         if (index < 0 || size_t(index) >= inputLen) {                             \
@@ -2430,7 +2433,7 @@ struct Take {
         }                                                                         \
         _cachedSeq.elements[i] = __val__;                                         \
       }                                                                           \
-      return shards::Var(_cachedSeq);                                             \
+      return shards::Var(_cachedSeq);                                        \
     }                                                                             \
   }
 
@@ -2845,8 +2848,8 @@ struct Slice {
 };
 
 struct Limit {
-  static inline shards::ParamsInfo indicesParamsInfo = shards::ParamsInfo(
-      shards::ParamsInfo::Param("Max", SHCCSTR("How many maximum elements to take from the input sequence."), CoreInfo::IntType));
+  static inline shards::ParamsInfo indicesParamsInfo = shards::ParamsInfo(shards::ParamsInfo::Param(
+      "Max", SHCCSTR("How many maximum elements to take from the input sequence."), CoreInfo::IntType));
 
   SHSeq _cachedResult{};
   int64_t _max = 0;

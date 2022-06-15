@@ -425,7 +425,7 @@ public:
 
 template <class SH_CORE> class TShardsVar {
 private:
-  SHVar _shardsParam{};               // param cache
+  SHVar _shardsParam{};                // param cache
   Shards _shards{};                   // var wrapper we pass to validate and activate
   std::vector<ShardPtr> _shardsArray; // shards actual storage
   SHComposeResult _wireValidation{};

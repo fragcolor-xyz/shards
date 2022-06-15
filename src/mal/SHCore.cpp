@@ -8,8 +8,8 @@
 #include "StaticList.h"
 #include "Types.h"
 #undef String
-#include "../core/runtime.hpp"
 #include "../core/shards/shared.hpp"
+#include "../core/runtime.hpp"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
 #ifdef SHARDS_DESKTOP
@@ -257,7 +257,9 @@ public:
     }
   }
 
-  malSHWire(const std::shared_ptr<SHWire> &wire) : m_wire(wire->newRef()) { SHLOG_TRACE("Loaded a SHWire - {}", wire->name); }
+  malSHWire(const std::shared_ptr<SHWire> &wire) : m_wire(wire->newRef()) {
+    SHLOG_TRACE("Loaded a SHWire - {}", wire->name);
+  }
 
   malSHWire(const malSHWire &that, const malValuePtr &meta) = delete;
 
@@ -291,7 +293,9 @@ public:
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_wire == static_cast<const malSHWire *>(rhs)->m_wire; }
 
-  virtual malValuePtr doWithMeta(malValuePtr meta) const { throw shards::SHException("Meta not supported on shards wires."); }
+  virtual malValuePtr doWithMeta(malValuePtr meta) const {
+    throw shards::SHException("Meta not supported on shards wires.");
+  }
 
 private:
   SHWireRef m_wire;
@@ -330,7 +334,7 @@ public:
   Shard *value() const {
     if (!m_shard) {
       throw shards::SHException("Attempted to use a null shard, shards are unique, "
-                                "probably was already used.");
+                                     "probably was already used.");
     }
     return m_shard;
   }
@@ -339,7 +343,9 @@ public:
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_shard == static_cast<const malShard *>(rhs)->m_shard; }
 
-  virtual malValuePtr doWithMeta(malValuePtr meta) const { throw shards::SHException("Meta not supported on shards shards."); }
+  virtual malValuePtr doWithMeta(malValuePtr meta) const {
+    throw shards::SHException("Meta not supported on shards shards.");
+  }
 
 private:
   Shard *m_shard;
@@ -374,7 +380,9 @@ public:
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_mesh == static_cast<const malSHMesh *>(rhs)->m_mesh; }
 
-  virtual malValuePtr doWithMeta(malValuePtr meta) const { throw shards::SHException("Meta not supported on shards meshs."); }
+  virtual malValuePtr doWithMeta(malValuePtr meta) const {
+    throw shards::SHException("Meta not supported on shards meshs.");
+  }
 
 private:
   std::shared_ptr<SHMesh> m_mesh;
@@ -553,7 +561,7 @@ struct WireFileWatcher {
   }
 
   explicit WireFileWatcher(const std::string &file, std::string currentPath, const SHInstanceData &data,
-                           const malValuePtr &autoexec)
+                            const malValuePtr &autoexec)
       : running(true), fileName(file), autoexec(autoexec), path(currentPath), results(2), garbage(2),
         inputTypeInfo(data.inputType), shared(data.shared) {
     mesh = data.wire->mesh;
@@ -742,7 +750,7 @@ SHType keywordToType(malKeyword *typeKeyword) {
     return SHType::Set;
   else
     throw shards::SHException("Could not infer type for special '.' shard. Need to return a proper "
-                              "type keyword!");
+                                   "type keyword!");
 }
 
 malValuePtr typeToKeyword(SHType type) {
@@ -880,12 +888,12 @@ BUILTIN("Mesh") {
   return malValuePtr(mesh);
 }
 
-#define WRAP_TO_CONST(_var_)                      \
+#define WRAP_TO_CONST(_var_)                           \
   auto constShard = shards::createShard("Const"); \
-  constShard->setup(constShard);                  \
-  constShard->setParam(constShard, 0, &_var_);    \
-  auto mshard = new malShard(constShard);         \
-  mshard->line = arg->line;                       \
+  constShard->setup(constShard);                       \
+  constShard->setParam(constShard, 0, &_var_);         \
+  auto mshard = new malShard(constShard);             \
+  mshard->line = arg->line;                            \
   result.emplace_back(mshard);
 
 // Helper to generate const shards automatically inferring types
@@ -1334,9 +1342,9 @@ BUILTIN("Wire") {
       } else if (v->value() == ":Unsafe") {
         wire->unsafe = true;
       } else if (v->value() == ":LStack") {
-        wire->stackSize = 4 * 1024 * 1024;  // 4mb
+        wire->stackSize = 4 * 1024 * 1024; // 4mb
       } else if (v->value() == ":SStack") { // default is 128kb
-        wire->stackSize = 32 * 1024;        // 32kb
+        wire->stackSize = 32 * 1024;       // 32kb
       }
     } else {
       auto blks = wireify(pbegin, argsEnd);

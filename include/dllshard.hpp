@@ -18,8 +18,8 @@ At runtime just dlopen the dll, that's it!
 #include <cassert>
 #include <functional>
 
-#include "common_types.hpp"
 #include "shardwrapper.hpp"
+#include "common_types.hpp"
 
 namespace shards {
 // this must be defined in the external
@@ -131,7 +131,7 @@ public:
   }
 
   static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output,
-                               const bool handleReturn = false) {
+                                const bool handleReturn = false) {
     return sCore._core->runShards(shards, context, &input, &output, handleReturn);
   }
 

@@ -153,7 +153,7 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
   if (_opType == SeqSeq) {
 #define MATMUL_OP(_v1_, _v2_, _n_)                                                                             \
-  shards::arrayResize(_result.payload.seqValue, _n_);                                                          \
+  shards::arrayResize(_result.payload.seqValue, _n_);                                                     \
   linalg::aliases::_v1_ *a = reinterpret_cast<linalg::aliases::_v1_ *>(&input.payload.seqValue.elements[0]);   \
   linalg::aliases::_v1_ *b = reinterpret_cast<linalg::aliases::_v1_ *>(&operand.payload.seqValue.elements[0]); \
   linalg::aliases::_v1_ *c = reinterpret_cast<linalg::aliases::_v1_ *>(&_result.payload.seqValue.elements[0]); \

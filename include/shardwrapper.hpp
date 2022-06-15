@@ -269,14 +269,15 @@ template <class T> struct ShardWrapper {
   }
 };
 
-#define REGISTER_SHARD(__name__, __type__)                                                                             \
+#define REGISTER_SHARD(__name__, __type__)                                                                                 \
   ::shards::ShardWrapper<__type__>::name = __name__;                                                                   \
-  ::shards::ShardWrapper<__type__>::crc = ::shards::constant<::shards::crc32(__name__ SHARDS_CURRENT_ABI_STR)>::value; \
-  ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create,           \
-                          NAMEOF_FULL_TYPE(__type__))
+  ::shards::ShardWrapper<__type__>::crc =                                                                              \
+      ::shards::constant<::shards::crc32(__name__ SHARDS_CURRENT_ABI_STR)>::value;                           \
+  ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create, \
+                               NAMEOF_FULL_TYPE(__type__))
 
 #define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                \
-  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                      \
+  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                     \
     return reinterpret_cast<ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->shard.__func__(ctx, *v); \
   })
 

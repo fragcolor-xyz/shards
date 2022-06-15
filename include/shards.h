@@ -15,18 +15,18 @@ enum SHType : uint8_t {
   Any,
   Enum,
   Bool,
-  Int,      // A 64bits int
-  Int2,     // A vector of 2 64bits ints
-  Int3,     // A vector of 3 32bits ints
-  Int4,     // A vector of 4 32bits ints
-  Int8,     // A vector of 8 16bits ints
-  Int16,    // A vector of 16 8bits ints
-  Float,    // A 64bits float
-  Float2,   // A vector of 2 64bits floats
-  Float3,   // A vector of 3 32bits floats
-  Float4,   // A vector of 4 32bits floats
-  Color,    // A vector of 4 uint8
-  ShardRef, // a shard, useful for future introspection shards!
+  Int,    // A 64bits int
+  Int2,   // A vector of 2 64bits ints
+  Int3,   // A vector of 3 32bits ints
+  Int4,   // A vector of 4 32bits ints
+  Int8,   // A vector of 8 16bits ints
+  Int16,  // A vector of 16 8bits ints
+  Float,  // A 64bits float
+  Float2, // A vector of 2 64bits floats
+  Float3, // A vector of 3 32bits floats
+  Float4, // A vector of 4 32bits floats
+  Color,  // A vector of 4 uint8
+  ShardRef,  // a shard, useful for future introspection shards!
 
   EndOfBlittableTypes = 50, // anything below this is not blittable (ish)
 
@@ -786,7 +786,7 @@ struct Shard {
 };
 
 struct SHWireProviderUpdate {
-  SHString error;      // if any or nullptr
+  SHString error;        // if any or nullptr
   struct SHWire *wire; // or nullptr if error
 };
 
@@ -866,18 +866,18 @@ typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValida
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef enum SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                               struct SHVar *output);
+                                                struct SHVar *output);
 #else
 typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                          struct SHVar *output);
+                                           struct SHVar *output);
 #endif
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef enum SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                                     struct SHVar *output, struct SHVar *outHash);
+                                                      struct SHVar *output, struct SHVar *outHash);
 #else
 typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                                struct SHVar *output, struct SHVar *outHash);
+                                                 struct SHVar *output, struct SHVar *outHash);
 #endif
 
 typedef void(__cdecl *SHLog)(SHString msg);
@@ -894,7 +894,7 @@ typedef void(__cdecl *SHRemShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHDestroyWire)(SHWireRef wire);
 typedef struct SHVar(__cdecl *SHStopWire)(SHWireRef wire);
 typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, SHValidationCallback callback, void *userData,
-                                                       struct SHInstanceData data);
+                                                        struct SHInstanceData data);
 typedef struct SHRunWireOutput(__cdecl *SHRunWire)(SHWireRef wire, struct SHContext *context, const struct SHVar *input);
 typedef SHWireRef(__cdecl *SHGetGlobalWire)(SHString name);
 typedef void(__cdecl *SHSetGlobalWire)(SHString name, SHWireRef wire);

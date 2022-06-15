@@ -61,7 +61,8 @@
 #define Process_Run(_cmd, _args) shard("Process.Run", _cmd, shards::Var::ContextVar(#_args))
 #define Wasm_Run(_cmd, _args) shard("Wasm.Run", _cmd, shards::Var::ContextVar(#_args))
 
-#define GFX_MainWindow(_name, _shards) shard("GFX.MainWindow", _name, shards::Var::Any, shards::Var::Any, Weave()._shards)
+#define GFX_MainWindow(_name, _shards) \
+  shard("GFX.MainWindow", _name, shards::Var::Any, shards::Var::Any, Weave()._shards)
 #define GFX_Camera() shard("GFX.Camera")
 #define GFX_Shader(_vs, _fs) shard("GFX.Shader", shards::Var::ContextVar(#_vs), shards::Var::ContextVar(#_fs))
 #define GFX_Texture2D() shard("GFX.Texture2D")
@@ -71,7 +72,8 @@
 #define GLTF_Load_WithTransformBefore(_transform) shard("GLTF.Load", shards::Var::Any, shards::Var::Any, _transform)
 #define GLTF_Load_WithTransformAfter(_transform) \
   shard("GLTF.Load", shards::Var::Any, shards::Var::Any, shards::Var::Any, _transform)
-#define GLTF_Load_WithTransforms(_before, _after) shard("GLTF.Load", shards::Var::Any, shards::Var::Any, _before, _after)
+#define GLTF_Load_WithTransforms(_before, _after) \
+  shard("GLTF.Load", shards::Var::Any, shards::Var::Any, _before, _after)
 #define GLTF_Load_NoShaders() shard("GLTF.Load", shards::Var::Any, false)
 #define GLTF_Draw(_model) shard("GLTF.Draw", shards::Var::ContextVar(#_model))
 #define GLTF_Draw_WithMaterials(_model, _mats) \

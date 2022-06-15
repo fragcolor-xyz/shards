@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-#include "runtime.hpp"
 #include "shards/shared.hpp"
+#include "runtime.hpp"
 #include <brotli/decode.h>
 #include <brotli/encode.h>
 

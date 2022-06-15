@@ -4,9 +4,9 @@
 #ifndef SH_CORE_SHARDS_GENETIC
 #define SH_CORE_SHARDS_GENETIC
 
+#include "shardwrapper.hpp"
 #include "shards.h"
 #include "shards.hpp"
-#include "shardwrapper.hpp"
 #include "shared.hpp"
 #include <limits>
 #include <pdqsort.h>
