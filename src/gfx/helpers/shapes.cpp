@@ -190,6 +190,16 @@ void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBa
     addLine(a, b, color, thickness);
   }
 }
+void ShapeRenderer::addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness) {
+  float4 x(1, 0, 0, 0);
+  float4 y(0, 1, 0, 0);
+  float4 z(0, 0, 1, 0);
+  x = linalg::mul(transform, x);
+  y = linalg::mul(transform, y);
+  z = linalg::mul(transform, z);
+  center = linalg::mul(transform, float4(center, 1.0f)).xyz();
+  addBox(center, x.xyz(), y.xyz(), z.xyz(), size, color, thickness);
+}
 
 void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   float3 dir = float3(1, 0, 0);
