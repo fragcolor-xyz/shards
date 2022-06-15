@@ -5,3 +5,4 @@ AccessModifierOffset: -2
 UseTab: Never
 ColumnLimit: 130
 AlignEscapedNewlines: Left
+SortIncludes: false
