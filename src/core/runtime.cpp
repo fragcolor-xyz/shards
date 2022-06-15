@@ -727,7 +727,7 @@ std::unordered_set<const SHWire *> &gatheringWires() {
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
-                                            SHVar *outHash = nullptr) {
+                                           SHVar *outHash = nullptr) {
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
     assert(outHash);
@@ -1318,7 +1318,7 @@ void validateConnection(ValidationContext &ctx) {
 }
 
 SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
-                             SHInstanceData data) {
+                            SHInstanceData data) {
   ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
@@ -1399,7 +1399,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
   // settle input type of wire before compose
   if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(),
-                                               [&](const auto &shard) { return strcmp(shard->name(shard), "Input") == 0; })) {
+                                              [&](const auto &shard) { return strcmp(shard->name(shard), "Input") == 0; })) {
     // If first shard is a plain None, mark this wire has None input
     // But make sure we have no (Input) shards
     auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
@@ -1959,8 +1959,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
   try {
-    auto state =
-        shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wireInput, wire->previousOutput);
+    auto state = shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wireInput, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), Stopped};
@@ -2960,21 +2959,21 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->destroyVar = [](SHVar *var) noexcept { shards::destroyVar(*var); };
 
-#define SH_ARRAY_IMPL(_arr_, _val_, _name_)                                                                         \
+#define SH_ARRAY_IMPL(_arr_, _val_, _name_)                                                                    \
   result->_name_##Free = [](_arr_ *seq) noexcept { shards::arrayFree(*seq); };                                 \
-                                                                                                                    \
+                                                                                                               \
   result->_name_##Resize = [](_arr_ *seq, uint32_t size) noexcept { shards::arrayResize(*seq, size); };        \
-                                                                                                                    \
+                                                                                                               \
   result->_name_##Push = [](_arr_ *seq, const _val_ *value) noexcept { shards::arrayPush(*seq, *value); };     \
-                                                                                                                    \
-  result->_name_##Insert = [](_arr_ *seq, uint32_t index, const _val_ *value) noexcept {                            \
+                                                                                                               \
+  result->_name_##Insert = [](_arr_ *seq, uint32_t index, const _val_ *value) noexcept {                       \
     shards::arrayInsert(*seq, index, *value);                                                                  \
-  };                                                                                                                \
-                                                                                                                    \
+  };                                                                                                           \
+                                                                                                               \
   result->_name_##Pop = [](_arr_ *seq) noexcept { return shards::arrayPop<_arr_, _val_>(*seq); };              \
-                                                                                                                    \
+                                                                                                               \
   result->_name_##FastDelete = [](_arr_ *seq, uint32_t index) noexcept { shards::arrayDelFast(*seq, index); }; \
-                                                                                                                    \
+                                                                                                               \
   result->_name_##SlowDelete = [](_arr_ *seq, uint32_t index) noexcept { shards::arrayDel(*seq, index); }
 
   SH_ARRAY_IMPL(SHSeq, SHVar, seq);
@@ -3098,14 +3097,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wireref);
     auto wire = sc.get();
     SHWireInfo info{wire->name.c_str(),
-                     wire->looped,
-                     wire->unsafe,
-                     wire,
-                     {&wire->shards[0], uint32_t(wire->shards.size()), 0},
-                     shards::isRunning(wire),
-                     wire->state == SHWire::State::Failed,
-                     wire->finishedError.c_str(),
-                     &wire->finishedOutput};
+                    wire->looped,
+                    wire->unsafe,
+                    wire,
+                    {&wire->shards[0], uint32_t(wire->shards.size()), 0},
+                    shards::isRunning(wire),
+                    wire->state == SHWire::State::Failed,
+                    wire->finishedError.c_str(),
+                    &wire->finishedOutput};
     return info;
   };
 

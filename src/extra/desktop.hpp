@@ -58,7 +58,7 @@ protected:
   static inline shards::ParamsInfo windowParams = shards::ParamsInfo(
       shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType),
       shards::ParamsInfo::Param("Class", SHCCSTR("An optional and platform dependent window class."),
-                                     shards::CoreInfo::StringType));
+                                shards::CoreInfo::StringType));
 
   static T WindowDefault();
   std::string _winName;
@@ -87,9 +87,9 @@ struct SizeBase {
 };
 
 struct ResizeWindowBase : public WinOpBase {
-  static inline shards::ParamsInfo sizeParams = shards::ParamsInfo(
-      shards::ParamsInfo::Param("Width", SHCCSTR("The desired width."), shards::CoreInfo::IntType),
-      shards::ParamsInfo::Param("Height", SHCCSTR("The desired height."), shards::CoreInfo::IntType));
+  static inline shards::ParamsInfo sizeParams =
+      shards::ParamsInfo(shards::ParamsInfo::Param("Width", SHCCSTR("The desired width."), shards::CoreInfo::IntType),
+                         shards::ParamsInfo::Param("Height", SHCCSTR("The desired height."), shards::CoreInfo::IntType));
 
   int _width;
   int _height;
@@ -161,8 +161,8 @@ struct MoveWindowBase : public WinOpBase {
 };
 
 struct SetTitleBase : public WinOpBase {
-  static inline shards::ParamsInfo windowParams = shards::ParamsInfo(shards::ParamsInfo::Param(
-      "Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType));
+  static inline shards::ParamsInfo windowParams = shards::ParamsInfo(
+      shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType));
 
   std::string _title;
 
@@ -188,9 +188,9 @@ struct WaitKeyEventBase {
 struct SendKeyEventBase {
   static inline shards::ParamsInfo params =
       shards::ParamsInfo(shards::ParamsInfo::Param("Window",
-                                                             SHCCSTR("None or a window variable if we wish to send "
-                                                                     "the event only to a specific target window."),
-                                                             Globals::windowVarOrNone));
+                                                   SHCCSTR("None or a window variable if we wish to send "
+                                                           "the event only to a specific target window."),
+                                                   Globals::windowVarOrNone));
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -220,8 +220,8 @@ struct SendKeyEventBase {
       _windowVarName.clear();
     } else {
       _windowVarName = value.payload.stringValue;
-      _exposedInfo = shards::ExposedInfo(shards::ExposedInfo::Variable(
-          _windowVarName.c_str(), SHCCSTR("The window to send events to."), Globals::windowType));
+      _exposedInfo = shards::ExposedInfo(
+          shards::ExposedInfo::Variable(_windowVarName.c_str(), SHCCSTR("The window to send events to."), Globals::windowType));
     }
   }
 
@@ -248,8 +248,8 @@ struct MousePosBase {
 
   SHExposedTypesInfo requiredVariables() {
     if (_window.isVariable()) {
-      _consuming = shards::ExposedInfo(
-          shards::ExposedInfo::Variable(_window.variableName(), SHCCSTR("The window."), Globals::windowType));
+      _consuming =
+          shards::ExposedInfo(shards::ExposedInfo::Variable(_window.variableName(), SHCCSTR("The window."), Globals::windowType));
       return SHExposedTypesInfo(_consuming);
     } else {
       return {};

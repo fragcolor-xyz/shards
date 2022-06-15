@@ -500,10 +500,10 @@ template <SHType SHT, typename FuncD, typename FuncF> struct UnaryOperation {
     SHTypeInfo compose(const SHInstanceData &data) {                                             \
       if (data.inputType.basicType == SHType::Seq) {                                             \
         OVERRIDE_ACTIVATE(data, activateSeq);                                                    \
-        static_cast<Shard *>(data.shard)->inlineShardId = NotInline;                            \
+        static_cast<Shard *>(data.shard)->inlineShardId = NotInline;                             \
       } else {                                                                                   \
         OVERRIDE_ACTIVATE(data, activateSingle);                                                 \
-        static_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::Math##NAME;           \
+        static_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::Math##NAME;            \
       }                                                                                          \
       return data.inputType;                                                                     \
     }                                                                                            \
@@ -539,11 +539,11 @@ template <SHType SHT, typename FuncD, typename FuncF> struct UnaryOperation {
                                                                                                  \
     ALWAYS_INLINE SHVar activateSeq(SHContext *context, const SHVar &input) {                    \
       _result.valueType = Seq;                                                                   \
-      shards::arrayResize(_result.payload.seqValue, 0);                                     \
+      shards::arrayResize(_result.payload.seqValue, 0);                                          \
       for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                                \
         SHVar scratch;                                                                           \
         operate(scratch, input.payload.seqValue.elements[i]);                                    \
-        shards::arrayPush(_result.payload.seqValue, scratch);                               \
+        shards::arrayPush(_result.payload.seqValue, scratch);                                    \
       }                                                                                          \
       return _result;                                                                            \
     }                                                                                            \

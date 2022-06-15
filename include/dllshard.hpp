@@ -131,7 +131,7 @@ public:
   }
 
   static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output,
-                                const bool handleReturn = false) {
+                               const bool handleReturn = false) {
     return sCore._core->runShards(shards, context, &input, &output, handleReturn);
   }
 
