@@ -20,8 +20,8 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 }
 #endif
 
-#include "ops_internal.hpp"
 #include "shards.h"
+#include "ops_internal.hpp"
 #include <shards.hpp>
 
 // Included 3rdparty

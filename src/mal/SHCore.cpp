@@ -8,8 +8,8 @@
 #include "StaticList.h"
 #include "Types.h"
 #undef String
-#include "../core/runtime.hpp"
 #include "../core/shards/shared.hpp"
+#include "../core/runtime.hpp"
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
 #ifdef SHARDS_DESKTOP

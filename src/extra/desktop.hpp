@@ -4,8 +4,8 @@
 #ifndef SH_EXTRA_DESKTOP
 #define SH_EXTRA_DESKTOP
 
-#include "runtime.hpp"
 #include "shards/shared.hpp"
+#include "runtime.hpp"
 #include <cstdlib>
 
 namespace Desktop {

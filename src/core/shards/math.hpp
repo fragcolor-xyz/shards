@@ -6,9 +6,9 @@
 #ifndef SH_CORE_SHARDS_MATH
 #define SH_CORE_SHARDS_MATH
 
-#include "core.hpp"
 #include "shards.h"
 #include "shards.hpp"
+#include "core.hpp"
 #include <sstream>
 #include <stdexcept>
 #include <variant>

@@ -7,10 +7,10 @@
 #include "../shards_macros.hpp"
 // circular warning this is self inclusive on purpose
 #include "../foundation.hpp"
-#include "common_types.hpp"
-#include "number_types.hpp"
 #include "shards.h"
 #include "shards.hpp"
+#include "common_types.hpp"
+#include "number_types.hpp"
 #include <cassert>
 #include <cmath>
 #include <sstream>
