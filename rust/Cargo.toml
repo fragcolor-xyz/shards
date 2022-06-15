@@ -34,6 +34,7 @@ sp-core = { version = "4.1.0-dev", default-features = false, git = "https://gith
 sp-runtime = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-01', optional = true }
 parity-scale-codec = { version = "2.3.1", default-features = false, optional = true }
 chacha20poly1305 = { version = "0.9.0", optional = true }
+egui = "0.18.1"
 half = { version = "1.8.2" }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
