@@ -79,6 +79,7 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use std::i32::MAX;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Serialize};
 use std::ffi::CStr;
@@ -1115,7 +1116,7 @@ var_try_from!(u128, intValue, SHType_Int);
 var_try_from!(i128, intValue, SHType_Int);
 var_from_into!(i32, intValue, SHType_Int);
 var_try_from!(usize, intValue, SHType_Int);
-var_try_from!(u64, intValue, SHType_Int);
+// var_try_from!(u64, intValue, SHType_Int); // Don't panic!
 var_from!(f64, floatValue, SHType_Float);
 var_from_into!(f32, floatValue, SHType_Float);
 
@@ -1221,6 +1222,21 @@ impl From<(i64, i64)> for Var {
   }
 }
 
+// 64-bit precision :u64
+impl From<u64> for Var {
+  #[inline(always)]
+  fn from(v: u64) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.intValue = i64::from_ne_bytes((v).to_ne_bytes());
+    }
+    res
+  }
+}
+
 // 64-bit precision :[u64;2]
 impl From<(u64, u64)> for Var {
   #[inline(always)]
@@ -1237,7 +1253,7 @@ impl From<(u64, u64)> for Var {
   }
 }
 
-// 64-bit precision :[u64;2]
+// 64-bit precision :[f64;2]
 impl From<(f64, f64)> for Var {
   #[inline(always)]
   fn from(v: (f64, f64)) -> Self {
@@ -2008,13 +2024,7 @@ impl TryFrom<&Var> for u64 {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
-        let u = var
-          .payload
-          .__bindgen_anon_1
-          .intValue
-          .try_into()
-          .map_err(|_| "i64 -> u64 conversion failed, possible overflow.")?;
-        Ok(u)
+        Ok(u64::from_ne_bytes((var.payload.__bindgen_anon_1.intValue).to_ne_bytes()))
       }
     }
   }
@@ -3278,3 +3288,96 @@ lazy_static! {
   pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
 }
+
+
+
+macro_rules! test_to_from_vec1 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: $type = $value;
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum:$type = <$type>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+macro_rules! test_to_from_vec2 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: ($type, $type) = ($value, $value);
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum: ($type, $type) = <($type, $type)>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+macro_rules! test_to_from_vec3 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: ($type, $type, $type) = ($value, $value, $value);
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum: ($type, $type, $type) = <($type, $type, $type)>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+macro_rules! test_to_from_vec4 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: ($type, $type, $type, $type) = ($value, $value, $value, $value);
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum: ($type, $type, $type, $type) = <($type, $type, $type, $type)>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+#[test]
+fn precision_conversion() {
+  test_to_from_vec1!(i64, i64::MAX, "i64 conversion failed");
+  test_to_from_vec1!(i64, i64::MIN, "i64 conversion failed");
+  test_to_from_vec1!(u64, u64::MAX, "u64 conversion failed"); // Don't panic!
+  test_to_from_vec1!(u64, u64::MIN, "u64 conversion failed");
+  test_to_from_vec1!(f64, f64::MAX, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::MIN, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::MIN_POSITIVE, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::EPSILON, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::INFINITY, "f64 conversion failed");
+
+  test_to_from_vec2!(i64, i64::MAX, "[i64,2] conversion failed");
+  test_to_from_vec2!(i64, i64::MIN, "[i64,2] conversion failed");
+  test_to_from_vec2!(u64, u64::MAX, "[u64,2] conversion failed"); // Don't panic!
+  test_to_from_vec2!(u64, u64::MIN, "[u64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::MAX, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::MIN, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::MIN_POSITIVE, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::EPSILON, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::INFINITY, "[f64,2] conversion failed");
+
+  test_to_from_vec3!(i32, i32::MAX, "[i32,3] conversion failed");
+  test_to_from_vec3!(i32, i32::MIN, "[i32,3] conversion failed");
+  test_to_from_vec3!(u32, u32::MAX, "[u32,3] conversion failed"); // Don't panic!
+  test_to_from_vec3!(u32, u32::MIN, "[u32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::MAX, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::MIN, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::MIN_POSITIVE, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::EPSILON, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::INFINITY, "[f32,3] conversion failed");
+
+  test_to_from_vec4!(i32, i32::MAX, "[i32,4] conversion failed");
+  test_to_from_vec4!(i32, i32::MIN, "[i32,4] conversion failed");
+  test_to_from_vec4!(u32, u32::MAX, "[u32,4] conversion failed"); // Don't panic!
+  test_to_from_vec4!(u32, u32::MIN, "[u32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::MAX, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::MIN, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::MIN_POSITIVE, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::EPSILON, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::INFINITY, "[f32,4] conversion failed");
+
+  test_to_from_vec4!(i16, i16::MAX, "[i16,4] conversion failed");
+  test_to_from_vec4!(i16, i16::MIN, "[i16,4] conversion failed");
+  test_to_from_vec4!(u16, u16::MAX, "[u16,4] conversion failed");
+  test_to_from_vec4!(u16, u16::MIN, "[u16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::ZERO, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::MAX, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::MIN, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::MIN_POSITIVE, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::EPSILON, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::INFINITY, "[half::f16,4] conversion failed");
+}
+
