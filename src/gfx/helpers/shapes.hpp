@@ -53,6 +53,7 @@ public:
   void addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, uint32_t thickness, uint32_t resolution);
   void addRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness);
   void addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color, uint32_t thickness);
+  void addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness);
   void addPoint(float3 center, float4 color, uint32_t thickness);
 
   void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness);
