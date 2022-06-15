@@ -27,3 +27,5 @@ pub mod substrate;
 pub mod curve25519;
 
 pub mod chachapoly;
+
+pub mod gui;
