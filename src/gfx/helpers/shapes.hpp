@@ -13,6 +13,11 @@ struct ScreenSpaceSizeFeature {
   static FeaturePtr create();
 };
 
+struct GizmoLightingFeature {
+  static FeaturePtr create();
+};
+
+
 struct ShapeRenderer {
 public:
   struct LineVertex {
@@ -78,6 +83,8 @@ private:
   std::vector<DrawablePtr> drawables;
 
   ShapeRenderer shapeRenderer;
+
+  FeaturePtr gizmoLightingFeature = GizmoLightingFeature::create();
 
 public:
   GizmoRenderer();

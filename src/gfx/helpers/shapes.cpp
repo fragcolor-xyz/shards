@@ -74,6 +74,34 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
   return result;
 }
 
+FeaturePtr GizmoLightingFeature::create() {
+  FeaturePtr result = std::make_shared<Feature>();
+  result->state.set_culling(false);
+
+  float3 baseLightDir = linalg::normalize(float3(-.5f, -0.5f, -0.2f));
+
+  shader::EntryPoint &entry =
+      result->shaderEntryPoints.emplace_back("gizmoLighting", ProgrammableGraphicsStage::Fragment, shader::BlockPtr());
+
+  using namespace gfx::shader::blocks;
+  using namespace gfx::shader;
+  std::unique_ptr<Compound> code = makeCompoundBlock();
+  code->appendLine(fmt::format("var lightDirVS = vec3<f32>({:f}, {:f}, {:f})", baseLightDir.x, baseLightDir.y, baseLightDir.z));
+  code->appendLine("var invTransposeView = transpose(", ReadBuffer("invView", FieldTypes::Float4x4, "view"), ")");
+  code->appendLine("var normalVS = (invTransposeView * vec4<f32>(", ReadInput("worldNormal"), ", 0.0)).xyz");
+  code->appendLine("var normalWS = ", ReadInput("worldNormal"));
+  code->appendLine("var nDotL = dot(normalVS, -lightDirVS)");
+  code->appendLine("var lighting = ", ReadGlobal("color"), " * mix(0.5, 1.0, max(0.0, nDotL))");
+  code->append(WriteGlobal("color", FieldTypes::Float4, "lighting"));
+  entry.code = std::move(code);
+
+  // Apply after normal/baseColor
+  entry.dependencies.emplace_back("textureColor");
+  entry.dependencies.emplace_back("writeColor", DependencyType::Before);
+
+  return result;
+}
+
 #define UNPACK3(_x) \
   { _x.x, _x.y, _x.z }
 #define UNPACK4(_x) \
@@ -240,7 +268,6 @@ void ShapeRenderer::begin() {
 }
 
 void ShapeRenderer::end(DrawQueuePtr queue) {
-
   if (lineVertices.size() > 0) {
     if (!lineMesh)
       lineMesh = std::make_shared<Mesh>();
@@ -308,11 +335,13 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
   DrawablePtr body = std::make_shared<Drawable>(handleBodyMesh);
   body->transform = linalg::mul(geom.bodyTransform, cylinderAdjustment);
   body->parameters.set("baseColor", bodyColor);
+  body->features.push_back(gizmoLightingFeature);
   drawables.push_back(body);
 
   DrawablePtr cap = std::make_shared<Drawable>(capMesh);
   cap->transform = linalg::mul(geom.capTransform, capPreTransform);
   cap->parameters.set("baseColor", capColor);
+  cap->features.push_back(gizmoLightingFeature);
   drawables.push_back(cap);
 }
 
@@ -378,7 +407,7 @@ void GizmoRenderer::loadGeometry() {
     gen.height = 1.0f;
     gen.radiusTop = 0.0f;
     gen.radiusBottom = 1.0f;
-    gen.radialSegments = 6;
+    gen.radialSegments = 12;
     gen.generate();
     arrowMesh = createMesh(gen.vertices, gen.indices);
   }
