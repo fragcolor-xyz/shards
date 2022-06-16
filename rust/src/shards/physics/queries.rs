@@ -73,8 +73,9 @@ impl Shard for CastRay {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     Some(&EXPOSED_SIMULATION)
   }
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.simulation_var.cleanup();
+    Ok(())
   }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.simulation_var.warmup(context);

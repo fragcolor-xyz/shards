@@ -258,8 +258,9 @@ macro_rules! get_like {
         self.rb._parameters()
       }
 
-      fn setParam(&mut self, index: i32, value: &Var) {
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         self.rb._setParam(index, value);
+        Ok(())
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -270,8 +271,9 @@ macro_rules! get_like {
         self.rb._warmup(context)
       }
 
-      fn cleanup(&mut self) {
+      fn cleanup(&mut self) -> Result<(), &str> {
         self.rb._cleanup();
+        Ok(())
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
@@ -351,8 +353,9 @@ macro_rules! post_like {
         self.rb._parameters()
       }
 
-      fn setParam(&mut self, index: i32, value: &Var) {
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         self.rb._setParam(index, value);
+        Ok(())
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -363,8 +366,9 @@ macro_rules! post_like {
         self.rb._warmup(context)
       }
 
-      fn cleanup(&mut self) {
+      fn cleanup(&mut self) -> Result<(), &str> {
         self.rb._cleanup();
+        Ok(())
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {

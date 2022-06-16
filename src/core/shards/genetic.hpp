@@ -744,7 +744,11 @@ struct Mutant {
         if (mut.valueType == ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->compose) {
-            auto res = blk->compose(blk, dataCopy);
+            auto res0 = blk->compose(blk, dataCopy);
+            if (res0.error.code != 0) {
+              throw ComposeError(res0.error.message);
+            }
+            auto res = res0.result;
             if (res != ptype) {
               throw SHException("Expected same type as input in parameter "
                                 "mutation wire's output.");
@@ -1072,7 +1076,11 @@ struct DShard {
     }
     // and compose finally
     if (_wrapped->compose) {
-      return _wrapped->compose(_wrapped, data);
+      auto res = _wrapped->compose(_wrapped, data);
+      if (res.error.code != 0) {
+        throw SHException("Failed to compose a wrapped DShard.");
+      }
+      return res.result;
     } else {
       // need to return something valid following runtime validation
       auto outputTypes = _wrapped->outputTypes(_wrapped);

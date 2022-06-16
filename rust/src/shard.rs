@@ -28,6 +28,9 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::Wire;
+use crate::SHError;
+use crate::SHShardComposeResult;
+use crate::SHString;
 use core::convert::TryInto;
 use core::result::Result;
 use core::slice;
@@ -83,7 +86,9 @@ pub trait Shard {
   fn parameters(&mut self) -> Option<&Parameters> {
     None
   }
-  fn setParam(&mut self, _index: i32, _value: &Var) {}
+  fn setParam(&mut self, _index: i32, _value: &Var) -> Result<(), &str> {
+    Ok(())
+  }
   fn getParam(&mut self, _index: i32) -> Var {
     Var::default()
   }
@@ -92,7 +97,9 @@ pub trait Shard {
     Ok(())
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
-  fn cleanup(&mut self) {}
+  fn cleanup(&mut self) -> Result<(), &str> {
+    Ok(())
+  }
 
   fn nextFrame(&mut self, _context: &Context) -> Result<(), &str> {
     Ok(())
@@ -124,6 +131,7 @@ pub struct ShardWrapper<T: Shard> {
   pub shard: T,
   name: Option<CString>,
   help: Option<CString>,
+  error: Option<CString>,
 }
 
 /// # Safety
@@ -193,10 +201,20 @@ unsafe extern "C" fn shard_destroy<T: Shard>(arg1: *mut CShard) {
   Box::from_raw(blk); // this will deallocate the Box
 }
 
-unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHContext) {
+unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
-  if let Err(error) = (*blk).shard.warmup(&(*arg2)) {
-    abortWire(&(*arg2), error);
+  match (*blk).shard.warmup(&(*arg2)) {
+    Ok(_) => SHError {
+      message: core::ptr::null(),
+      code: 0,
+    },
+    Err(error) => {
+      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
+      SHError {
+        message: (*blk).error.as_ref().unwrap().as_ptr(),
+        code: 1,
+      }
+    }
   }
 }
 
@@ -227,9 +245,21 @@ unsafe extern "C" fn shard_mutate<T: Shard>(arg1: *mut CShard, arg2: SHTable) {
   (*blk).shard.mutate(arg2.into());
 }
 
-unsafe extern "C" fn shard_cleanup<T: Shard>(arg1: *mut CShard) {
+unsafe extern "C" fn shard_cleanup<T: Shard>(arg1: *mut CShard) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.cleanup();
+  match (*blk).shard.cleanup() {
+    Ok(_) => SHError {
+      message: core::ptr::null(),
+      code: 0,
+    },
+    Err(error) => {
+      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
+      SHError {
+        message: (*blk).error.as_ref().unwrap().as_ptr(),
+        code: 1,
+      }
+    }
+  }
 }
 
 unsafe extern "C" fn shard_exposedVariables<T: Shard>(arg1: *mut CShard) -> SHExposedTypesInfo {
@@ -253,14 +283,30 @@ unsafe extern "C" fn shard_requiredVariables<T: Shard>(arg1: *mut CShard) -> SHE
 unsafe extern "C" fn shard_compose<T: Shard>(
   arg1: *mut CShard,
   data: SHInstanceData,
-) -> SHTypeInfo {
+) -> SHShardComposeResult {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.compose(&data) {
-    Ok(output) => output,
+    Ok(output) => SHShardComposeResult {
+      error: SHError {
+        message: core::ptr::null(),
+        code: 0,
+      },
+      result: output,
+    },
     Err(error) => {
-      let cmsg = CString::new(error).unwrap();
-      data.reportError.unwrap()(data.privateContext, cmsg.as_ptr(), false);
-      SHTypeInfo::default()
+      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
+      data.reportError.unwrap()(
+        data.privateContext,
+        (*blk).error.as_ref().unwrap().as_ptr(),
+        false,
+      );
+      SHShardComposeResult {
+        error: SHError {
+          message: (*blk).error.as_ref().unwrap().as_ptr(),
+          code: 1,
+        },
+        result: SHTypeInfo::default(),
+      }
     }
   }
 }
@@ -295,9 +341,21 @@ unsafe extern "C" fn shard_setParam<T: Shard>(
   arg1: *mut CShard,
   arg2: ::std::os::raw::c_int,
   arg3: *const SHVar,
-) {
+) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.setParam(arg2, &*arg3);
+  match (*blk).shard.setParam(arg2, &*arg3) {
+    Ok(_) => SHError {
+      message: core::ptr::null(),
+      code: 0,
+    },
+    Err(error) => {
+      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
+      SHError {
+        message: (*blk).error.as_ref().unwrap().as_ptr(),
+        code: 1,
+      }
+    }
+  }
 }
 
 unsafe extern "C" fn shard_crossover<T: Shard>(arg1: *mut CShard, s0: *const Var, s1: *const Var) {
@@ -383,5 +441,6 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
     shard: T::default(),
     name: None,
     help: None,
+    error: None,
   }
 }

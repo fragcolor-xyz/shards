@@ -1115,7 +1115,12 @@ void validateConnection(ValidationContext &ctx) {
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
-    ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
+    auto composeResult = ctx.bottom->compose(ctx.bottom, data);
+    if (composeResult.error.code != 0) {
+      SHLOG_ERROR("Error composing shard: %s", composeResult.error.message);
+      throw ComposeError(composeResult.error.message);
+    }
+    ctx.previousOutputType = composeResult.result;
 
     if (externalCtx.externalFailure) {
       if (externalCtx.warning) {

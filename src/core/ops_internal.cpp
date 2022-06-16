@@ -11,7 +11,7 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   case SHType::EndOfBlittableTypes:
     break;
   case SHType::Error:
-    os << "Error: " << var.payload.errorValue.message;
+    os << "Error, Code: " << var.payload.errorValue.code << " Message: " << var.payload.errorValue.message;
     break;
   case SHType::None:
     os << "None";

@@ -396,12 +396,18 @@ impl Shard for StaticRigidBody {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
+      0 | 1 | 2 => Ok(
+        Rc::get_mut(&mut self.rb)
+          .map(|x| x._set_param(index, value))
+          .ok_or_else(|| "Failed to set Rc param")?,
+      ),
       3 => {
         if !value.is_none() {
-          self.self_obj.set_name(value.try_into().unwrap())
+          Ok(self.self_obj.set_name(value.try_into()?))
+        } else {
+          Ok(())
         }
       }
       _ => unreachable!(),
@@ -442,9 +448,10 @@ impl Shard for StaticRigidBody {
     }
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.self_obj.cleanup();
-    Rc::get_mut(&mut self.rb).unwrap()._cleanup();
+    Rc::get_mut(&mut self.rb).map(|x| x._cleanup());
+    Ok(())
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
@@ -523,12 +530,18 @@ impl Shard for DynamicRigidBody {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
+      0 | 1 | 2 => Ok(
+        Rc::get_mut(&mut self.rb)
+          .map(|x| x._set_param(index, value))
+          .ok_or_else(|| "Failed to set Rc param")?,
+      ),
       3 => {
         if !value.is_none() {
-          self.self_obj.set_name(value.try_into().unwrap())
+          Ok(self.self_obj.set_name(value.try_into()?))
+        } else {
+          Ok(())
         }
       }
       _ => unreachable!(),
@@ -569,9 +582,10 @@ impl Shard for DynamicRigidBody {
     }
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.self_obj.cleanup();
-    Rc::get_mut(&mut self.rb).unwrap()._cleanup();
+    Rc::get_mut(&mut self.rb).map(|x| x._cleanup());
+    Ok(())
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
@@ -660,12 +674,18 @@ impl Shard for KinematicRigidBody {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 | 1 | 2 => Rc::get_mut(&mut self.rb).unwrap()._set_param(index, value),
+      0 | 1 | 2 => Ok(
+        Rc::get_mut(&mut self.rb)
+          .map(|x| x._set_param(index, value))
+          .ok_or_else(|| "Failed to set Rc param")?,
+      ),
       3 => {
         if !value.is_none() {
-          self.self_obj.set_name(value.try_into().unwrap())
+          Ok(self.self_obj.set_name(value.try_into()?))
+        } else {
+          Ok(())
         }
       }
       _ => unreachable!(),
@@ -706,9 +726,10 @@ impl Shard for KinematicRigidBody {
     }
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.self_obj.cleanup();
-    Rc::get_mut(&mut self.rb).unwrap()._cleanup();
+    Rc::get_mut(&mut self.rb).map(|x| x._cleanup());
+    Ok(())
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {

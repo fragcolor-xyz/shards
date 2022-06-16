@@ -302,6 +302,7 @@ struct SHAudio {
 };
 
 struct SHError {
+  uint32_t code; // 0 if no error
   SHString message;
   // TODO might need to add more
 };
@@ -437,6 +438,11 @@ struct SHTypeInfo {
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
   SHBool recursiveSelf;
+};
+
+struct SHShardComposeResult {
+  struct SHError error;
+  struct SHTypeInfo result;
 };
 
 // if outData is NULL will just give you a valid outLen
@@ -695,10 +701,10 @@ typedef SHExposedTypesInfo(__cdecl *SHExposedVariablesProc)(struct Shard *);
 typedef SHExposedTypesInfo(__cdecl *SHRequiredVariablesProc)(struct Shard *);
 
 typedef SHParametersInfo(__cdecl *SHParametersProc)(struct Shard *);
-typedef void(__cdecl *SHSetParamProc)(struct Shard *, int, const struct SHVar *);
+typedef struct SHError(__cdecl *SHSetParamProc)(struct Shard *, int, const struct SHVar *);
 typedef struct SHVar(__cdecl *SHGetParamProc)(struct Shard *, int);
 
-typedef struct SHTypeInfo(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData data);
+typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData data);
 
 typedef void(__cdecl *SHComposedProc)(struct Shard *, const struct SHWire *wire, const struct SHComposeResult *data);
 
@@ -706,9 +712,9 @@ typedef void(__cdecl *SHComposedProc)(struct Shard *, const struct SHWire *wire,
 typedef struct SHVar(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
 
 // Generally when stop() is called
-typedef void(__cdecl *SHCleanupProc)(struct Shard *);
+typedef struct SHError(__cdecl *SHCleanupProc)(struct Shard *);
 
-typedef void(__cdecl *SHWarmupProc)(struct Shard *, struct SHContext *);
+typedef struct SHError(__cdecl *SHWarmupProc)(struct Shard *, struct SHContext *);
 
 typedef void(__cdecl *SHNextFrameProc)(struct Shard *, struct SHContext *);
 
