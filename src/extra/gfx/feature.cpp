@@ -367,9 +367,7 @@ struct FeatureShard {
       // TODO: Resolve how to capture these
       struct Captured {
         ShardsVar wire; // Is this safe to capture?
-        ~Captured() {
-          wire.cleanup();
-        }
+        ~Captured() { wire.cleanup(); }
       };
       auto captured = std::make_shared<Captured>();
       captured->wire = input;

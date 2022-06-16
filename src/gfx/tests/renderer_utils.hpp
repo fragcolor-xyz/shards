@@ -104,5 +104,4 @@ inline PipelineSteps createTestPipelineSteps() {
 
 } // namespace gfx
 
-
 #endif // GFX_TESTS_RENDERER_UTILS

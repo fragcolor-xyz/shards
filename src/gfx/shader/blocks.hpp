@@ -192,7 +192,7 @@ struct ReadBuffer : public Block {
   FieldType type;
   String bufferName;
 
-  ReadBuffer(const String &fieldName, const FieldType& type, const String& bufferName = "object")
+  ReadBuffer(const String &fieldName, const FieldType &type, const String &bufferName = "object")
       : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 

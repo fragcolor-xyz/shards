@@ -79,7 +79,7 @@ struct Container {
   static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
 
 #define SH_CONCAT(_a, _b) _a##_b
-#define ENUM(_id, _displayName, _definedAs, _type)                                      \
+#define ENUM(_id, _displayName, _definedAs, _type)                                     \
   static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);             \
   static inline Type _definedAs = Type::Enum(VendorId, SH_CONCAT(_definedAs, TypeId)); \
   static inline EnumInfo<_type> SH_CONCAT(_definedAs, EnumInfo){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};

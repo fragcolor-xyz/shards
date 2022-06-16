@@ -5,6 +5,6 @@
 namespace gfx {
 
 DrawableHierarchyPtr loadGltfFromFile(const char *file);
-DrawableHierarchyPtr loadGltfFromMemory(const uint8_t* data, size_t dataLength);
+DrawableHierarchyPtr loadGltfFromMemory(const uint8_t *data, size_t dataLength);
 
 } // namespace gfx

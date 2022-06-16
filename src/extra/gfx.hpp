@@ -64,7 +64,7 @@ struct BaseConsumer : public Base {
   SHTypeInfo composeCheckMainThread(const SHInstanceData &data) {
     if (data.onWorkerThread) {
       throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
-                                      "within an Await shard)");
+                                 "within an Await shard)");
     }
 
     // Return None to trigger assertion during validation

@@ -124,8 +124,8 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
       .aspect = WGPUTextureAspect_All,
   };
   WGPUTextureDataLayout layout{
-    .bytesPerRow = rowDataLength,
-    .rowsPerImage = uint32_t(resolution.y),
+      .bytesPerRow = rowDataLength,
+      .rowsPerImage = uint32_t(resolution.y),
   };
   WGPUExtent3D writeSize{
       .width = uint32_t(resolution.x),

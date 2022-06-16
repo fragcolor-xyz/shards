@@ -30,7 +30,7 @@ static TestModelDesc testModels[] = {
 // clang-format on
 
 TEST_CASE("glTF sample models", "[glTF]") {
-  auto testRenderer = createTestRenderer(int2(512,512));
+  auto testRenderer = createTestRenderer(int2(512, 512));
 
   ViewPtr view = std::make_shared<View>();
   view->proj = ViewPerspectiveProjection{};
@@ -53,7 +53,8 @@ TEST_CASE("glTF sample models", "[glTF]") {
       assert(gltfScene);
 
       float4x4 origTransform = gltfScene->transform;
-      gltfScene->transform = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset), linalg::scaling_matrix(float3(testModel.scale))));
+      gltfScene->transform = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),
+                                                                    linalg::scaling_matrix(float3(testModel.scale))));
 
       DrawQueue queue;
       queue.add(gltfScene);

@@ -434,7 +434,7 @@ struct RendererImpl final : public ContextData {
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
 
-      float4x4 worldInvTrans = linalg::transpose(linalg::inverse( drawable->transform));
+      float4x4 worldInvTrans = linalg::transpose(linalg::inverse(drawable->transform));
       objectDrawData.setParam("worldInvTrans", worldInvTrans);
 
       // Grab draw data from material

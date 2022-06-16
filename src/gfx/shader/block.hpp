@@ -32,7 +32,7 @@ struct ConvertibleToBlock {
   UniquePtr<Block> block;
   ConvertibleToBlock(const char *str) { block = std::make_unique<Direct>(str); }
   ConvertibleToBlock(const std::string &str) { block = std::make_unique<Direct>(str); }
-  ConvertibleToBlock(std::string&& str) { block = std::make_unique<Direct>(std::move(str)); }
+  ConvertibleToBlock(std::string &&str) { block = std::make_unique<Direct>(std::move(str)); }
   ConvertibleToBlock(BlockPtr &&block) : block(std::move(block)) {}
   UniquePtr<Block> operator()() { return std::move(block); }
 };

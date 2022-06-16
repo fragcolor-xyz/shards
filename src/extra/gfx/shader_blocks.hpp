@@ -62,27 +62,19 @@ struct ConstTranslator {
 
 // Generates global variables
 struct SetTranslator {
-  static void translate(shards::Set *shard, TranslationContext &context) {
-    context.logger.info("gen(set)> {} = ", shard->_name);
-  }
+  static void translate(shards::Set *shard, TranslationContext &context) { context.logger.info("gen(set)> {} = ", shard->_name); }
 };
 
 struct GetTranslator {
-  static void translate(shards::Get *shard, TranslationContext &context) {
-    context.logger.info("gen(get)> {}", shard->_name);
-  }
+  static void translate(shards::Get *shard, TranslationContext &context) { context.logger.info("gen(get)> {}", shard->_name); }
 };
 
 struct RefTranslator {
-  static void translate(shards::Ref *shard, TranslationContext &context) {
-    context.logger.info("gen(ref)> {}", shard->_name);
-  }
+  static void translate(shards::Ref *shard, TranslationContext &context) { context.logger.info("gen(ref)> {}", shard->_name); }
 };
 
 struct UpdateTranslator {
-  static void translate(shards::Update *shard, TranslationContext &context) {
-    context.logger.info("gen(upd)> {}", shard->_name);
-  }
+  static void translate(shards::Update *shard, TranslationContext &context) { context.logger.info("gen(upd)> {}", shard->_name); }
 };
 
 // Generates vector swizzles

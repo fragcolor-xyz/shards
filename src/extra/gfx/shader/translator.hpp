@@ -44,7 +44,7 @@ struct TranslationBlockRef {
   blocks::Block *block{};
   IAppender *appender{};
 
-  TranslationBlockRef(blocks::Block * block, IAppender *appender) : block(block), appender(appender) {}
+  TranslationBlockRef(blocks::Block *block, IAppender *appender) : block(block), appender(appender) {}
 
   template <typename T> static TranslationBlockRef make(blocks::Block *block) {
     return TranslationBlockRef(block, Appender<T>::getInstance());

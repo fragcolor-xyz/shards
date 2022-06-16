@@ -10,7 +10,6 @@
 #include <shards.hpp>
 #include <spdlog/spdlog.h>
 
-
 namespace gfx {
 inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
   switch (var.valueType) {

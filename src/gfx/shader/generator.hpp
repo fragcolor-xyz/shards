@@ -53,7 +53,7 @@ struct GeneratorContext {
   void textureDefaultSampler(const char *name);
 
   void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName);
-  const UniformLayout* findUniform(const char *fieldName, const BufferDefinition &buffer);
+  const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer);
 
   void pushError(GeneratorError &&error);
 };

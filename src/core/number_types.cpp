@@ -123,7 +123,7 @@ template <SHType Type> struct TVectorTypeTraits {};
       dimension = _Dimension;                                               \
       isInteger = std::is_integral<TInner>::value;                          \
       shType = _SHType;                                                     \
-      type = shards::CoreInfo::_SHType##Type;                          \
+      type = shards::CoreInfo::_SHType##Type;                               \
       numberType = _NumberType;                                             \
       name = STRINGIFY(_SHType);                                            \
     }                                                                       \

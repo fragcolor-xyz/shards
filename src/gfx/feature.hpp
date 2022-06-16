@@ -136,7 +136,8 @@ struct NamedShaderParam {
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedShaderParam() = default;
-  NamedShaderParam(std::string name, const shader::FieldType& type = shader::FieldType(ShaderFieldBaseType::Float32, 4), ParamVariant defaultValue = ParamVariant());
+  NamedShaderParam(std::string name, const shader::FieldType &type = shader::FieldType(ShaderFieldBaseType::Float32, 4),
+                   ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 
   template <typename T> void hashStatic(T &hasher) const {

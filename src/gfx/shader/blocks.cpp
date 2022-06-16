@@ -28,6 +28,6 @@ void DefaultInterpolation::apply(GeneratorContext &context) const {
     }
   }
 }
-} // namespace shards
+} // namespace blocks
 } // namespace shader
 } // namespace gfx
