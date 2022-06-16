@@ -57,7 +57,7 @@ inline bool tryVarToParam(const SHVar &var, ParamVariant &outVariant) {
   try {
     varToParam(var, outVariant);
     return true;
-  } catch (std::exception e) {
+  } catch (std::exception& e) {
     spdlog::error("{}", e.what());
     return false;
   }
