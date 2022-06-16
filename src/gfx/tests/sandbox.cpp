@@ -11,8 +11,10 @@
 #include <gfx/features/base_color.hpp>
 #include <gfx/features/debug_color.hpp>
 #include <gfx/features/transform.hpp>
+#include <gfx/fmt.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/gltf/gltf.hpp>
+#include <gfx/helpers/gizmos.hpp>
 #include <gfx/helpers/shapes.hpp>
 #include <gfx/imgui/imgui.hpp>
 #include <gfx/linalg.hpp>
@@ -54,7 +56,11 @@ struct App {
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
   PipelineSteps pipelineSteps;
-  ShapeRenderer sr;
+
+  gizmos::InputState gizmoInputState;
+  gizmos::Context gizmoContext;
+  gizmos::TranslationGizmo translationGizmo;
+  float4x4 gizmoTransform = linalg::identity;
 
   DrawableHierarchyPtr duck;
 
@@ -97,9 +103,128 @@ struct App {
                 },
         }),
     };
+
+    translationGizmo.transform = &gizmoTransform;
   }
 
-  GizmoRenderer gr;
+  // std::vector<gizmos::HandlePtr> handles = {
+  //     std::make_shared<gizmos::Handle>(),
+  //     std::make_shared<gizmos::Handle>(),
+  //     std::make_shared<gizmos::Handle>(),
+  // };
+  // float4x4 gizmoTransform = linalg::identity;
+  // void setupGizmos() {
+  //   struct Callbacks : public gizmos::IGizmoCallbacks {
+  //     std::vector<gizmos::Handle *> handles;
+  //     App *app;
+  //     float4x4 dragStartTransform;
+  //     float3 dragStartPoint;
+
+  //     size_t getHandleIndex(gizmos::Handle &inHandle) {
+  //       for (size_t i = 0; i < 3; i++) {
+  //         gizmos::Handle &handle = *handles[i];
+  //         if (&handle == &inHandle) {
+  //           return i;
+  //         }
+  //       }
+  //       throw std::logic_error("Invalid handle");
+  //     }
+
+  //     float3 getAxis(size_t index) {
+  //       float3 base{};
+  //       base[index] = 1.0f;
+
+  //       return linalg::mul(dragStartTransform, float4(base, 0)).xyz();
+  //     }
+
+  //     virtual void grabbed(gizmos::Handle &handle, gizmos::Context &context) {
+  //       dragStartTransform = app->gizmoTransform;
+
+  //       size_t index = getHandleIndex(handle);
+  //       SPDLOG_INFO("Handle {} ({}) grabbed", index, getAxis(index));
+
+  //       dragStartPoint =
+  //           hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(app->gizmoTransform), getAxis(index));
+  //     }
+
+  //     virtual void released(gizmos::Handle &handle, gizmos::Context &context) {
+  //       size_t index = getHandleIndex(handle);
+  //       SPDLOG_INFO("Handle {} ({}) released", index, getAxis(index));
+  //     }
+
+  //     virtual void move(gizmos::Handle &inHandle, gizmos::Context &context) {
+  //       float3 fwd = getAxis(getHandleIndex(inHandle));
+
+  //       // float3 planeT0 = fwd;
+  //       // float3 planeNormal = dragStartPoint - context.eyeLocation;
+  //       // planeNormal -= linalg::dot(planeNormal, planeT0) * planeT0;
+  //       // planeNormal = linalg::normalize(planeNormal);
+
+  //       // float3 planePoint = extractTranslation(app->gizmoTransform);
+
+  //       auto &sr = app->gizmoRenderer.getShapeRenderer();
+
+  //       float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
+
+  //       // Intersect view ray with movement plane and project onto axis
+  //       // float d;
+  //       // if (intersectPlane(context.eyeLocation, context.rayDirection, planePoint, planeNormal, d)) {
+  //       //   float3 hitPoint = context.eyeLocation + d * context.rayDirection;
+  //       //   hitPoint = projectOntoAxis(hitPoint, extractTranslation(app->gizmoTransform), fwd);
+
+  //       float3 delta = hitPoint - dragStartPoint;
+  //       app->gizmoTransform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
+
+  //       sr.addLine(dragStartPoint, hitPoint, float4(1, 1, 1, 1), 1);
+
+  //       sr.addPoint(hitPoint, float4(0, 1, 0, 1), 6);
+  //       // }
+
+  //       sr.addPoint(dragStartPoint, float4(0, 1, 0, 1), 6);
+  //     }
+  //   };
+  //   auto callbacks = std::make_shared<Callbacks>();
+  //   callbacks->app = this;
+  //   for (auto &handle : handles) {
+  //     gizmoContext.handles.push_back(handle);
+  //     callbacks->handles.push_back(handle.get());
+  //     handle->callbacks = callbacks;
+  //   }
+  // }
+
+  // void updateGizmos(GizmoRenderer &gr) {
+  //   auto &sr = gr.getShapeRenderer();
+
+  //   for (size_t i = 0; i < 3; i++) {
+  //     auto &handle = *handles[i].get();
+  //     size_t axisIndex = i;
+
+  //     float3 fwd{};
+  //     fwd[axisIndex] = 1.0f;
+  //     float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
+  //     float3 t2 = linalg::cross(fwd, t1);
+  //     float width = 0.1f;
+  //     float length = 1.0f;
+
+  //     auto &min = handle.selectionBox.min;
+  //     auto &max = handle.selectionBox.max;
+  //     min = -t1 * width - t2 * width;
+  //     max = t1 * width + t2 * width + fwd * length;
+
+  //     float3 center = (max + min) / 2;
+  //     float3 size = max - min;
+  //     handle.selectionBoxTransform = gizmoTransform;
+
+  //     // Debug draw
+  //     float4 color = float4(.7, .7, .7, 1.);
+  //     uint32_t thickness = 1;
+  //     if (gizmoContext.hovered && gizmoContext.hovered.get() == &handle) {
+  //       color = float4(.5, 1., .5, 1.);
+  //       thickness = 2;
+  //     }
+  //     sr.addBox(handle.selectionBoxTransform, center, size, color, thickness);
+  //   }
+  // }
 
   void renderFrame(float time, float deltaTime) {
     renderer->beginFrame();
@@ -109,35 +234,25 @@ struct App {
 
     float4 q = linalg::rotation_quat(float3(0, 1, 0), time * 0.1f);
     float3 p1 = linalg::qrot(q, p);
+
     view->view = linalg::lookat_matrix(p1, float3(0, 0, 0), float3(0, 1, 0));
 
-    gr.begin(view, context.getMainOutputSize());
-    auto &sr = gr.getShapeRenderer();
+    gizmoContext.begin(gizmoInputState, view);
+    gizmoContext.updateGizmo(translationGizmo);
+    gizmoContext.end(editorQueue);
 
     // Axis lines
-    sr.addLine(float3(0, 0, 0), float3(1, 0, 0) * 2.0f, float4(1, 0, 0, 1), 1);
-    sr.addLine(float3(0, 0, 0), float3(0, 1, 0) * 2.0f, float4(0, 1, 0, 1), 1);
-    sr.addLine(float3(0, 0, 0), float3(0, 0, 1) * 2.0f, float4(0, 0, 1, 1), 1);
+    // sr.addLine(float3(0, 0, 0), float3(1, 0, 0) * 2.0f, float4(1, 0, 0, 1), 1);
+    // sr.addLine(float3(0, 0, 0), float3(0, 1, 0) * 2.0f, float4(0, 1, 0, 1), 1);
+    // sr.addLine(float3(0, 0, 0), float3(0, 0, 1) * 2.0f, float4(0, 0, 1, 1), 1);
 
-    // Gizmo handles
-    float3 axisY = float3(0, 1, 0);
-    float4 colors[3] = {
-        float4(1, 0, 0, 1),
-        float4(0, 1, 0, 1),
-        float4(0, 0, 1, 1),
-    };
-    float4 bodyColor = float4(.5,.5,.5,1.);
-    for (size_t i = 0; i < 5; i++) {
-      float length = (0.2f + float(i) * 0.1f);
-      float radius = 0.02f;
-      float xOffset = 0.0f + float(i) * 0.1f;
-      float3 pos = float3(xOffset, 0, 0);
-      gr.addHandle(pos, axisY, radius, length, bodyColor, GizmoRenderer::CapType::Arrow, colors[i % 3]);
-      gr.addHandle(pos + float3(0, 0, 0.5f), axisY, radius, length, bodyColor, GizmoRenderer::CapType::Cube, colors[i % 3]);
-      gr.addHandle(pos + float3(0, 0, 1.0f), axisY, radius, length, bodyColor, GizmoRenderer::CapType::Sphere, colors[i % 3]);
-    }
+    // updateGizmos(gr);
+    // gizmoContext.update(gizmoInputState, view);
 
-    gr.end(editorQueue);
+    // float3 mousePoint = gizmoContext.eyeLocation + gizmoContext.rayDirection * 0.5f;
+    // sr.addPoint(mousePoint, float4(1, 0, 1, 1), 6);
+
+    // gr.end(editorQueue);
 
     renderer->render(view, pipelineSteps);
     renderer->endFrame();
@@ -150,6 +265,9 @@ struct App {
 
   void runMainLoop() {
     bool quit = false;
+    int2 mousePos{};
+    uint32_t mouseButtonState{};
+
     while (!quit) {
       std::vector<SDL_Event> events;
       window.pollEvents(events);
@@ -160,9 +278,25 @@ struct App {
         }
         if (event.type == SDL_QUIT)
           quit = true;
+
+        if (event.type == SDL_MOUSEMOTION) {
+          mousePos.x = event.motion.x;
+          mousePos.y = event.motion.y;
+        } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+          mousePos.x = event.button.x;
+          mousePos.y = event.button.y;
+          if (event.button.state == SDL_PRESSED)
+            mouseButtonState |= SDL_BUTTON(event.button.button);
+          else
+            mouseButtonState &= ~SDL_BUTTON(event.button.button);
+        }
       }
 
       context.resizeMainOutputConditional(window.getDrawableSize());
+
+      gizmoInputState.pressed = (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+      gizmoInputState.cursorPosition = mousePos;
+      gizmoInputState.viewSize = window.getSize();
 
       float deltaTime;
       if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
