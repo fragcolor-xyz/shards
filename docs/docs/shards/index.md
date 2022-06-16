@@ -16,11 +16,11 @@ The execution of Shards scripts is meant to be fast: the scripting language is j
 The runtime itself is completely detached.
 
 ??? note "Running code samples"
-    Many block code samples (like [Take](/General/Take)) do not include the wire/mesh context they need to run. To run these samples you need to navigate to `../shards/docs/samples/`and use the following command to provide the necessary boilerplate code to these samples.
+    Many shard code samples (like for the shard [Take](/General/Take)) do not include the wire/mesh context they need to run. To run these samples you need to navigate to `../shards/docs/samples/`and use the following command to provide the necessary boilerplate code to these samples.
 
     ```
         cd docs/samples
-        ../../build/cbl.exe run_sample.edn --file "<relative-path-of-sample.edn>"
+        ../../build/shards.exe run_sample.edn --file "<relative-path-of-sample.edn>"
     ```
 
 ## Some examples
@@ -128,7 +128,7 @@ Showing how we mix the Clojure-like language as a template language
     ; if we wanted to pick up the increment uncomment the next line
     ; .counter
     ; also at wire definition time compute the end value
-    ; (+) is not a block, it will be evaluated only once when composing the wire
+    ; (+) is not a shard, it will be evaluated only once when composing the wire
     (When (Is (+ start 10)) (Stop))))
     ; schedule 2 wires for exection
     (schedule main (make-counter 0))
