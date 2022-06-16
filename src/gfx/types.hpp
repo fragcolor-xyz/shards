@@ -6,10 +6,10 @@
 namespace gfx {
 using Color = byte4;
 using Colorf = float4;
-inline Colorf colorToFloat(const Color &color) { return Colorf(color) / Colorf(255.0f); }
-inline Color colorFromFloat(const Colorf &color) { return Color(color * Colorf(255.0f)); }
+inline constexpr Colorf colorToFloat(const Color &color) { return Colorf(color) / Colorf(255.0f); }
+inline constexpr Color colorFromFloat(const Colorf &color) { return Color(color * Colorf(255.0f)); }
 
-inline uint32_t colorToRGBA(const Color &in) {
+inline constexpr uint32_t colorToRGBA(const Color &in) {
   uint32_t result = 0;
   result |= (uint32_t(in.x) << 24);
   result |= (uint32_t(in.y) << 16);
@@ -18,7 +18,7 @@ inline uint32_t colorToRGBA(const Color &in) {
   return result;
 }
 
-inline Color colorFromRGBA(uint32_t in) {
+inline constexpr Color colorFromRGBA(uint32_t in) {
   Color result;
   result.x = uint8_t(in >> 24);
   result.y = uint8_t(in >> 16);
@@ -27,7 +27,7 @@ inline Color colorFromRGBA(uint32_t in) {
   return result;
 }
 
-inline uint32_t colorToARGB(const Color &in) {
+inline constexpr uint32_t colorToARGB(const Color &in) {
   uint32_t result = 0;
   result |= (uint32_t(in.x) << 16);
   result |= (uint32_t(in.y) << 8);
@@ -36,7 +36,7 @@ inline uint32_t colorToARGB(const Color &in) {
   return result;
 }
 
-inline Color colorFromARGB(uint32_t in) {
+inline constexpr Color colorFromARGB(uint32_t in) {
   Color result;
   result.x = uint8_t(in >> 16);
   result.y = uint8_t(in >> 8);
