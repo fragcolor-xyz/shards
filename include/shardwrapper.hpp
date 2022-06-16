@@ -233,7 +233,8 @@ template <class T> struct ShardWrapper {
           return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
-          return SHVar(shards::Var::Error(reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()));
+          shards::abortWire(ctx, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str());
+          return SHVar{};
         }
       });
     }

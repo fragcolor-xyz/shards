@@ -748,8 +748,7 @@ SHType keywordToType(malKeyword *typeKeyword) {
 malValuePtr typeToKeyword(SHType type) {
   switch (type) {
   case SHType::EndOfBlittableTypes:
-  case SHType::Error:
-    return mal::keyword(":Error");
+    return mal::keyword(":EndOfBlittableTypes");
   case SHType::None:
     return mal::keyword(":None");
   case SHType::Any:

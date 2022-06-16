@@ -386,7 +386,7 @@ struct OnCleanup {
         error = _context->getErrorMessage();
       }
       // we need to reset the state or only the first shard will run
-      _context->resetCancelFlow();
+      _context->continueFlow();
       _context->onCleanup = true; // this is kind of a hack
       _shards.activate(_context, shards::Var(error), output);
       // restore the terminal state

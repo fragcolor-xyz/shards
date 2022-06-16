@@ -111,14 +111,8 @@ struct SHContext {
   }
 
   void cancelFlow(std::string_view message) {
-    state = SHWireState::Stop;
+    state = SHWireState::Error;
     errorMessage = message;
-    hasError = true;
-  }
-
-  void resetCancelFlow() {
-    state = SHWireState::Continue;
-    hasError = false;
   }
 
   constexpr void rebaseFlow() { state = SHWireState::Rebase; }
@@ -131,7 +125,7 @@ struct SHContext {
 
   constexpr bool shouldStop() const { return state == SHWireState::Stop; }
 
-  constexpr bool failed() const { return hasError; }
+  constexpr bool failed() const { return state == SHWireState::Error; }
 
   constexpr const std::string &getErrorMessage() { return errorMessage; }
 
@@ -148,7 +142,6 @@ private:
   // Used when flow is stopped/restart/return
   // to store the previous result
   SHVar flowStorage{};
-  bool hasError{false};
   std::string errorMessage;
   mutable std::vector<const Shard *> nextFrameShards;
 };
@@ -628,7 +621,6 @@ struct Serialization {
     switch (output.valueType) {
     case SHType::None:
     case SHType::EndOfBlittableTypes:
-    case SHType::Error: // this is not a valid type we want to serialize...
     case SHType::Any:
       break;
     case SHType::Enum:
@@ -976,7 +968,6 @@ struct Serialization {
     switch (input.valueType) {
     case SHType::None:
     case SHType::EndOfBlittableTypes:
-    case SHType::Error: // this is not a valid type we want to serialize...
     case SHType::Any:
       break;
     case SHType::Enum:

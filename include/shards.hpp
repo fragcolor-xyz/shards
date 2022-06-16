@@ -888,14 +888,6 @@ struct Var : public SHVar {
     return res;
   }
 
-  static Var Error(const char *message, uint32_t code = 1) {
-    Var res{};
-    res.valueType = SHType::Error;
-    res.payload.errorValue.message = message;
-    res.payload.errorValue.code = code;
-    return res;
-  }
-
   uint32_t colorToInt() {
     if (valueType != Color) {
       throw InvalidVarTypeError("Invalid variable casting! expected Color");
@@ -1089,6 +1081,8 @@ public:
 private:
   std::shared_ptr<SHWire> _wire;
 };
+
+void abortWire(struct SHContext *context, std::string_view errorText);
 } // namespace shards
 
 inline SHVar *begin(SHVar &a) {

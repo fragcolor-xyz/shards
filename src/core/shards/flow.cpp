@@ -476,7 +476,7 @@ struct Maybe : public BaseSubFlow {
           if (!_silent) {
             SHLOG_WARNING("Maybe shard Ignored an error: {}", ex.what());
           }
-          context->resetCancelFlow();
+          context->continueFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
         } else {

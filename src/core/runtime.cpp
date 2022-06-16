@@ -714,7 +714,7 @@ std::unordered_set<const SHWire *> &gatheringWires() {
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
-                                           SHVar *outHash = nullptr) {
+                                           SHVar *outHash = nullptr) noexcept {
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
     assert(outHash);
@@ -780,24 +780,18 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     }
 
     // Deal with aftermath of activation
-    if (unlikely(output.valueType == SHType::Error)) {
-      SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), output.payload.errorValue.message);
-      throw ActivationError(output.payload.errorValue.message);
-    } else if (unlikely(!context->shouldContinue())) {
-      // TODO #64 try and benchmark: remove this switch and state
-      // Replace with preallocated exceptions like StopWireException
-      // removing this should make every shard activate faster, 1 check less
-      switch (context->getState()) {
+    if (unlikely(!context->shouldContinue())) {
+      auto state = context->getState();
+      switch (state) {
       case SHWireState::Return:
         if constexpr (HANDLES_RETURN)
           context->continueFlow();
         return SHWireState::Return;
+      case SHWireState::Error:
+        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), context->getErrorMessage());
       case SHWireState::Stop:
-        if (context->failed()) {
-          throw ActivationError(context->getErrorMessage());
-        }
       case SHWireState::Restart:
-        return context->getState();
+        return state;
       case SHWireState::Rebase:
         // reset input to wire one
         // and reset state
@@ -1573,7 +1567,7 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
     break;
   };
   return varType;
-} // namespace shards
+}
 
 // this is potentially called from unsafe code (e.g. networking)
 // let's do some crude stack protection here
@@ -1946,8 +1940,11 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       return {context->getFlowStorage(), Stopped};
     case SHWireState::Restart:
       return {context->getFlowStorage(), Restarted};
+    case SHWireState::Error:
+      // shardsActivation handles error logging and such
+      assert(context->failed());
+      return {wire->previousOutput, Failed};
     case SHWireState::Stop:
-      // On failure shardsActivation throws!
       assert(!context->failed());
       return {context->getFlowStorage(), Stopped};
     case SHWireState::Rebase:
@@ -2601,7 +2598,6 @@ void Serialization::varFree(SHVar &output) {
   switch (output.valueType) {
   case SHType::None:
   case SHType::EndOfBlittableTypes:
-  case SHType::Error:
   case SHType::Any:
   case SHType::Enum:
   case SHType::Bool:
@@ -2687,6 +2683,8 @@ void setString(uint32_t crc, SHString str) {
   (*shards::GetGlobals().CompressedStrings)[crc].string = str;
   (*shards::GetGlobals().CompressedStrings)[crc].crc = crc;
 }
+
+void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 }; // namespace shards
 
 // NO NAMESPACE here!

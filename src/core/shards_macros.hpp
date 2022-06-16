@@ -227,7 +227,8 @@
       return reinterpret_cast<_name_##Runtime *>(shard)->core.activate(context, *input);                    \
     } catch (std::exception & e) {                                                                          \
       reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(e.what());                               \
-      return SHVar(shards::Var::Error(reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()));      \
+      shards::abortWire(context, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str());            \
+      return SHVar{};                                                                                       \
     }                                                                                                       \
   });
 

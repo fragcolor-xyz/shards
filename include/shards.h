@@ -11,6 +11,7 @@
 // All the available types
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 enum SHType : uint8_t {
+  // Blittables
   None,
   Any,
   Enum,
@@ -28,11 +29,10 @@ enum SHType : uint8_t {
   Color,    // A vector of 4 uint8
   ShardRef, // a shard, useful for future introspection shards!
 
-  Error = 49, // This is rather internal, but it's used to signal errors, actual high level wires should not have to deal with
-              // such type
-
+  // Internal use only
   EndOfBlittableTypes = 50, // anything below this is not blittable (ish)
 
+  // Non Blittables
   Bytes, // pointer + size
   String,
   Path,       // An OS filesystem path
@@ -42,7 +42,7 @@ enum SHType : uint8_t {
   Table,
   Wire,
   Object,
-  Array, // Notice: of just bilttable types/WIP!
+  Array, // Notice: of just blittable types/WIP!
   Set,
   Audio,
 };
@@ -52,10 +52,11 @@ enum SHWireState : uint8_t {
   Return,   // Control flow, end this wire/flow and return previous output
   Rebase,   // Continue but put the local wire initial input as next input
   Restart,  // Restart the current wire from the top (non inline wires)
-  Stop      // Stop the flow execution
+  Stop,     // Stop the flow execution
+  Error,    // Stop the flow execution and raise an error
 };
 
-// These shards run fully inline in the runwire threaded execution engine
+// These shards run fully inline in the wire threaded execution engine
 enum SHInlineShards : uint32_t {
   // regular shards
   NotInline,
@@ -166,7 +167,7 @@ struct SHTable {
 
 // 64 bytes should be huge and well enough space for an iterator...
 typedef char SHSetIterator[64];
-struct SHSetnterface;
+struct SHSetInterface;
 struct SHSet {
   void *opaque;
   struct SHSetInterface *api;
@@ -301,10 +302,13 @@ struct SHAudio {
   float *samples;
 };
 
+#define SH_FLOW_CONTINUE (0)
+#define SH_FLOW_ERROR (1 << 0)
+#define SH_FLOW_CHANGE_STATE (1 << 1)
+
 struct SHError {
-  uint32_t code; // 0 if no error
+  uint8_t code; // 0 if no error, 1 if error so far
   SHString message;
-  // TODO might need to add more
 };
 
 // table interface
@@ -602,8 +606,6 @@ struct SHVarPayload {
     };
 
     SHPayloadArray arrayValue;
-
-    struct SHError errorValue;
   };
 } __attribute__((aligned(16)));
 
