@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+use crate::core::registerShard;
 use crate::shards::physics::Simulation;
 use crate::shards::physics::EXPOSED_SIMULATION;
 use crate::shards::physics::RIGIDBODIES_TYPE;
 use crate::shards::physics::RIGIDBODY_TYPE;
 use crate::shards::physics::SIMULATION_TYPE;
 use crate::shardsc::SHPointer;
-use crate::core::registerShard;
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;

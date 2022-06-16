@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+use crate::core::do_blocking;
+use crate::core::log;
+use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHType_Bool;
@@ -9,9 +12,6 @@ use crate::shardsc::SHType_Int;
 use crate::shardsc::SHType_None;
 use crate::shardsc::SHType_Seq;
 use crate::shardsc::SHType_String;
-use crate::core::do_blocking;
-use crate::core::log;
-use crate::core::registerShard;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;

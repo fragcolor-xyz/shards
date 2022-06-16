@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::shardsc::SHWire;
+use crate::core::abortWire;
+use crate::core::Core;
 use crate::shardsc::SHContext;
 use crate::shardsc::SHExposedTypesInfo;
 use crate::shardsc::SHInstanceData;
@@ -13,11 +14,9 @@ use crate::shardsc::SHTable;
 use crate::shardsc::SHTypeInfo;
 use crate::shardsc::SHTypesInfo;
 use crate::shardsc::SHVar;
-use crate::shardsc::{Shard as CShard};
+use crate::shardsc::SHWire;
+use crate::shardsc::Shard as CShard;
 use crate::shardsc::ShardPtr;
-use crate::core::abortWire;
-use crate::core::Core;
-use crate::types::Wire;
 use crate::types::ComposeResult;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -28,6 +27,7 @@ use crate::types::Table;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::Wire;
 use core::convert::TryInto;
 use core::result::Result;
 use core::slice;

@@ -6,16 +6,14 @@
 use crate::shard::shard_construct;
 use crate::shard::Shard;
 use crate::shardsc::SHBool;
-use crate::shardsc::SHWireState;
 use crate::shardsc::SHContext;
 use crate::shardsc::SHCore;
 use crate::shardsc::SHOptionalString;
 use crate::shardsc::SHString;
 use crate::shardsc::SHStrings;
 use crate::shardsc::SHVar;
+use crate::shardsc::SHWireState;
 use crate::shardsc::ShardPtr;
-use crate::types::WireRef;
-use crate::types::WireState;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
@@ -25,6 +23,8 @@ use crate::types::Mesh;
 use crate::types::ParameterInfo;
 use crate::types::Parameters;
 use crate::types::Var;
+use crate::types::WireRef;
+use crate::types::WireState;
 use core::convert::TryInto;
 use core::ffi::c_void;
 use core::slice;
@@ -55,9 +55,9 @@ static mut init_done: bool = false;
 mod internal_core_init {
   extern crate dlopen;
   use super::*;
-  use crate::shardsc::shardsInterface;
   use crate::core::SHCore;
   use crate::core::ABI_VERSION;
+  use crate::shardsc::shardsInterface;
   use dlopen::symbor::Library;
 
   fn try_load_dlls() -> Option<Library> {

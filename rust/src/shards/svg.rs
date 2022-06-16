@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+use crate::core::do_blocking;
+use crate::core::log;
+use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shardsc::SHImage;
 use crate::shardsc::SHVarPayload;
 use crate::shardsc::SHVarPayload__bindgen_ty_1;
 use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
-use crate::core::do_blocking;
-use crate::core::log;
-use crate::core::registerShard;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;

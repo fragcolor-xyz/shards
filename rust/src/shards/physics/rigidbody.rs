@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+use crate::core::deriveType;
+use crate::core::registerShard;
 use crate::shards::physics::fill_seq_from_mat4;
 use crate::shards::physics::mat4_from_seq;
 use crate::shards::physics::BaseShape;
@@ -13,8 +15,6 @@ use crate::shards::physics::SHAPES_VAR_TYPE;
 use crate::shards::physics::SHAPE_TYPE;
 use crate::shards::physics::SHAPE_VAR_TYPE;
 use crate::shards::physics::SIMULATION_TYPE;
-use crate::core::deriveType;
-use crate::core::registerShard;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;

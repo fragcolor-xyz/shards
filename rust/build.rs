@@ -12,10 +12,7 @@ fn bindgen_it() {
 
   println!("cargo:rustc-link-search={}/build", shards_dir);
   // Tell cargo to invalidate the built crate whenever the wrapper changes
-  println!(
-    "cargo:rerun-if-changed={}/include/shards.h",
-    shards_dir
-  );
+  println!("cargo:rerun-if-changed={}/include/shards.h", shards_dir);
 
   let header_path = shards_dir + "/include/shards.h";
 

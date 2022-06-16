@@ -1,15 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+use crate::core::cloneVar;
+use crate::core::Core;
 use crate::shardsc::SHBool;
-use crate::shardsc::SHWire;
-use crate::shardsc::SHWireRef;
-use crate::shardsc::SHWireState;
-use crate::shardsc::SHWireState_Continue;
-use crate::shardsc::SHWireState_Rebase;
-use crate::shardsc::SHWireState_Restart;
-use crate::shardsc::SHWireState_Return;
-use crate::shardsc::SHWireState_Stop;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
 use crate::shardsc::SHExposedTypeInfo;
@@ -32,10 +26,8 @@ use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHTypeInfo_Details_Table;
 use crate::shardsc::SHType_Any;
 use crate::shardsc::SHType_Array;
-use crate::shardsc::SHType_ShardRef;
 use crate::shardsc::SHType_Bool;
 use crate::shardsc::SHType_Bytes;
-use crate::shardsc::SHType_Wire;
 use crate::shardsc::SHType_Color;
 use crate::shardsc::SHType_ContextVar;
 use crate::shardsc::SHType_Enum;
@@ -55,8 +47,10 @@ use crate::shardsc::SHType_Object;
 use crate::shardsc::SHType_Path;
 use crate::shardsc::SHType_Seq;
 use crate::shardsc::SHType_Set;
+use crate::shardsc::SHType_ShardRef;
 use crate::shardsc::SHType_String;
 use crate::shardsc::SHType_Table;
+use crate::shardsc::SHType_Wire;
 use crate::shardsc::SHTypesInfo;
 use crate::shardsc::SHVar;
 use crate::shardsc::SHVarPayload;
@@ -64,14 +58,20 @@ use crate::shardsc::SHVarPayload__bindgen_ty_1;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_1;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_2;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_4;
+use crate::shardsc::SHWire;
+use crate::shardsc::SHWireRef;
+use crate::shardsc::SHWireState;
+use crate::shardsc::SHWireState_Continue;
+use crate::shardsc::SHWireState_Rebase;
+use crate::shardsc::SHWireState_Restart;
+use crate::shardsc::SHWireState_Return;
+use crate::shardsc::SHWireState_Stop;
 use crate::shardsc::Shard;
 use crate::shardsc::ShardPtr;
 use crate::shardsc::Shards;
 use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
 use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
-use crate::core::cloneVar;
-use crate::core::Core;
 use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
 use core::convert::TryInto;
@@ -488,10 +488,8 @@ pub mod common_type {
   use crate::shardsc::SHTypeInfo_Details;
   use crate::shardsc::SHTypeInfo_Details_Table;
   use crate::shardsc::SHType_Any;
-  use crate::shardsc::SHType_ShardRef;
   use crate::shardsc::SHType_Bool;
   use crate::shardsc::SHType_Bytes;
-  use crate::shardsc::SHType_Wire;
   use crate::shardsc::SHType_ContextVar;
   use crate::shardsc::SHType_Enum;
   use crate::shardsc::SHType_Float;
@@ -499,8 +497,10 @@ pub mod common_type {
   use crate::shardsc::SHType_None;
   use crate::shardsc::SHType_Path;
   use crate::shardsc::SHType_Seq;
+  use crate::shardsc::SHType_ShardRef;
   use crate::shardsc::SHType_String;
   use crate::shardsc::SHType_Table;
+  use crate::shardsc::SHType_Wire;
   use crate::shardsc::SHTypesInfo;
   use crate::types::SHType_Float2;
   use crate::types::SHType_Float3;
@@ -1898,9 +1898,7 @@ impl From<WireRef> for Var {
     Var {
       valueType: SHType_Wire,
       payload: SHVarPayload {
-        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
-          wireValue: wire.0,
-        },
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { wireValue: wire.0 },
       },
       ..Default::default()
     }

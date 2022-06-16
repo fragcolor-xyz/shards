@@ -23,19 +23,19 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
+pub mod core;
 pub mod shard;
 mod shardsc;
-pub mod core;
 #[macro_use]
 pub mod types;
 // order matters
 #[cfg(feature = "shards")]
 pub mod shards;
 
-use crate::shard::Shard;
-pub use crate::shardsc::*;
 use crate::core::log;
 use crate::core::Core;
+use crate::shard::Shard;
+pub use crate::shardsc::*;
 use crate::types::Types;
 use crate::types::Var;
 use std::convert::TryInto;
@@ -213,16 +213,6 @@ mod dummy_shard {
 
   use super::shard::create;
   use super::Types;
-  use crate::shard::shard_construct;
-  use crate::shard::Shard;
-  use crate::shard::ShardWrapper;
-  use crate::shlog;
-  use crate::shardsc::SHContext;
-  use crate::shardsc::SHTypeInfo;
-  use crate::shardsc::SHType_Int;
-  use crate::shardsc::SHTypesInfo;
-  use crate::shardsc::SHVar;
-  use crate::shardsc::{Shard as CShard};
   use crate::core::cloneVar;
   use crate::core::createShard;
   use crate::core::init;
@@ -231,6 +221,16 @@ mod dummy_shard {
   use crate::core::sleep;
   use crate::core::suspend;
   use crate::core::Core;
+  use crate::shard::shard_construct;
+  use crate::shard::Shard;
+  use crate::shard::ShardWrapper;
+  use crate::shardsc::SHContext;
+  use crate::shardsc::SHTypeInfo;
+  use crate::shardsc::SHType_Int;
+  use crate::shardsc::SHTypesInfo;
+  use crate::shardsc::SHVar;
+  use crate::shardsc::Shard as CShard;
+  use crate::shlog;
   use crate::types::common_type;
   use crate::types::ClonedVar;
   use crate::types::Table;

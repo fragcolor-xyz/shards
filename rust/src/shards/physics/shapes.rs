@@ -3,13 +3,13 @@
 
 // RigidBody and Collier are unique, Shapes can be shared
 
+use crate::core::registerShard;
 use crate::shards::physics::BaseShape;
 use crate::shards::physics::Simulation;
 use crate::shards::physics::EXPOSED_SIMULATION;
 use crate::shards::physics::SHAPE_TYPE;
 use crate::shards::physics::SHAPE_TYPES;
 use crate::shards::physics::SIMULATION_TYPE;
-use crate::core::registerShard;
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
