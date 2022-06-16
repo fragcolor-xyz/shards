@@ -223,7 +223,12 @@
 
 #define RUNTIME_SHARD_activate(_name_)                                                                      \
   result->activate = static_cast<SHActivateProc>([](Shard *shard, SHContext *context, const SHVar *input) { \
-    return reinterpret_cast<_name_##Runtime *>(shard)->core.activate(context, *input);                      \
+    try {                                                                                                   \
+      return reinterpret_cast<_name_##Runtime *>(shard)->core.activate(context, *input);                    \
+    } catch (std::exception & e) {                                                                          \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(e.what());                               \
+      return SHVar(shards::Var::Error(reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()));      \
+    }                                                                                                       \
   });
 
 #define RUNTIME_SHARD_cleanup(_name_)                                                   \

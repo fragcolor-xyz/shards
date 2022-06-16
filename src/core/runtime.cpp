@@ -279,19 +279,6 @@ void registerCoreShards() {
 
   SHLOG_DEBUG("Registering shards");
 
-  // precap some exceptions to avoid allocations
-  try {
-    throw StopWireException();
-  } catch (...) {
-    GetGlobals().StopWireEx = std::current_exception();
-  }
-
-  try {
-    throw RestartWireException();
-  } catch (...) {
-    GetGlobals().RestartWireEx = std::current_exception();
-  }
-
   // at this point we might have some auto magical static linked shard already
   // keep them stored here and re-register them
   // as we assume the observers were setup in this call caller so too late for
@@ -769,71 +756,60 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       blk = nullptr;
       SHLOG_FATAL("Unreachable shardsActivation case");
     }
-    try {
-      if constexpr (HASHED) {
-        const auto shardHash = blk->hash(blk);
-        SHLOG_TRACE("Hashing shard {}", shardHash);
-        XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
 
-        SHLOG_TRACE("Hashing input {}", input);
-        hash_update(input, &hashState);
+    if constexpr (HASHED) {
+      const auto shardHash = blk->hash(blk);
+      SHLOG_TRACE("Hashing shard {}", shardHash);
+      XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
 
-        const auto params = blk->parameters(blk);
-        for (uint32_t nParam = 0; nParam < params.len; nParam++) {
-          const auto param = blk->getParam(blk, nParam);
-          SHLOG_TRACE("Hashing param {}", param);
-          hash_update(param, &hashState);
-        }
+      SHLOG_TRACE("Hashing input {}", input);
+      hash_update(input, &hashState);
 
-        output = activateShard(blk, context, input);
-        SHLOG_TRACE("Hashing output {}", output);
-        hash_update(output, &hashState);
-      } else {
-        output = activateShard(blk, context, input);
+      const auto params = blk->parameters(blk);
+      for (uint32_t nParam = 0; nParam < params.len; nParam++) {
+        const auto param = blk->getParam(blk, nParam);
+        SHLOG_TRACE("Hashing param {}", param);
+        hash_update(param, &hashState);
       }
-      if (unlikely(!context->shouldContinue())) {
-        // TODO #64 try and benchmark: remove this switch and state
-        // Replace with preallocated exceptions like StopWireException
-        // removing this should make every shard activate faster, 1 check less
-        switch (context->getState()) {
-        case SHWireState::Return:
-          if constexpr (HANDLES_RETURN)
-            context->continueFlow();
-          return SHWireState::Return;
-        case SHWireState::Stop:
-          if (context->failed()) {
-            throw ActivationError(context->getErrorMessage());
-          }
-        case SHWireState::Restart:
-          return context->getState();
-        case SHWireState::Rebase:
-          // reset input to wire one
-          // and reset state
-          input = wireInput;
-          context->continueFlow();
-          continue;
-        case SHWireState::Continue:
-          break;
-        }
-      }
-    } catch (const StopWireException &ex) {
-      return SHWireState::Stop;
-    } catch (const RestartWireException &ex) {
-      return SHWireState::Restart;
-    } catch (const std::exception &e) {
-      SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), e.what());
-      // failure from exceptions need update on context
-      if (!context->failed()) {
-        context->cancelFlow(e.what());
-      }
-      throw; // bubble up
-    } catch (...) {
-      SHLOG_ERROR("Shard activation error, failed shard: {}, error: generic", blk->name(blk));
-      if (!context->failed()) {
-        context->cancelFlow("foreign exception failure, check logs");
-      }
-      throw; // bubble up
+
+      output = activateShard(blk, context, input);
+      SHLOG_TRACE("Hashing output {}", output);
+      hash_update(output, &hashState);
+    } else {
+      output = activateShard(blk, context, input);
     }
+
+    // Deal with aftermath of activation
+    if (unlikely(output.valueType == SHType::Error)) {
+      SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), output.payload.errorValue.message);
+      throw ActivationError(output.payload.errorValue.message);
+    } else if (unlikely(!context->shouldContinue())) {
+      // TODO #64 try and benchmark: remove this switch and state
+      // Replace with preallocated exceptions like StopWireException
+      // removing this should make every shard activate faster, 1 check less
+      switch (context->getState()) {
+      case SHWireState::Return:
+        if constexpr (HANDLES_RETURN)
+          context->continueFlow();
+        return SHWireState::Return;
+      case SHWireState::Stop:
+        if (context->failed()) {
+          throw ActivationError(context->getErrorMessage());
+        }
+      case SHWireState::Restart:
+        return context->getState();
+      case SHWireState::Rebase:
+        // reset input to wire one
+        // and reset state
+        input = wireInput;
+        context->continueFlow();
+        continue;
+      case SHWireState::Continue:
+        break;
+      }
+    }
+
+    // Pass output to next block input
     input = output;
   }
   return SHWireState::Continue;

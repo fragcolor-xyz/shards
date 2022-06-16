@@ -229,7 +229,12 @@ template <class T> struct ShardWrapper {
     static_assert(has_activate<T>::value, "Shards must have an \"activate\" method.");
     if constexpr (has_activate<T>::value) {
       result->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {
-        return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
+        try {
+          return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
+        } catch (const std::exception &e) {
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
+          return SHVar(shards::Var::Error(reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()));
+        }
       });
     }
 

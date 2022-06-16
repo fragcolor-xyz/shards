@@ -414,13 +414,6 @@ using SHMap = std::unordered_map<std::string, OwnedVar, std::hash<std::string>, 
                                  boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>, 16>>;
 using SHMapIt = SHMap::iterator;
 
-struct StopWireException : public SHException {
-  StopWireException() : SHException("The wire has been stopped") {}
-};
-struct RestartWireException : public SHException {
-  RestartWireException() : SHException("The wire has been restarted") {}
-};
-
 struct Globals {
   // sporadically used, don't abuse. And don't use in real time code.
   std::mutex GlobalMutex;
