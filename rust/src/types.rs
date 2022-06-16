@@ -1230,9 +1230,7 @@ impl From<u64> for Var {
       valueType: SHType_Int,
       ..Default::default()
     };
-    unsafe {
-      res.payload.__bindgen_anon_1.intValue = i64::from_ne_bytes((v).to_ne_bytes());
-    }
+    res.payload.__bindgen_anon_1.intValue = i64::from_ne_bytes((v).to_ne_bytes());
     res
   }
 }
