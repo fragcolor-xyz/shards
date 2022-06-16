@@ -9,14 +9,22 @@
   "test"
 
   "frag"
-  (StringToBytes) (Log)
-  (BigInt) (BigInt.ToString) (Log)
+  (StringToBytes) (ToHex) (Log)
+  (BigInt) (BigInt.ToString) (Log "frag")
+
+  "eguU"
+  (StringToBytes) (ToHex) (Log)
+  (BigInt) (BigInt.ToString) (Log "eguU")
+
+  "eguC"
+  (StringToBytes) (ToHex) (Log)
+  (BigInt) (BigInt.ToString) (Log "eguC")
 
   (Const [10 20 3.14])
   (Pack "i32 i32 f32")
   (Set "bytes")
   (Log)
-  
+
   (Get "bytes")
   (Unpack "i32 i32 f32")
   (Log)
@@ -65,7 +73,6 @@
   (Log)
   (Take 2)
   (ExpectInt)
-  (Assert.Is 3 true)
-  ))
+  (Assert.Is 3 true)))
 
 (tick Root)
