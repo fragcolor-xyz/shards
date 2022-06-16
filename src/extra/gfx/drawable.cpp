@@ -53,6 +53,18 @@ struct DrawableShard {
 
   ParamVar _transformVar{};
   ParamVar _paramsVar{};
+  SHDrawable *_returnVar{};
+
+  void releaseReturnVar() {
+    if (_returnVar)
+      Types::DrawableObjectVar.Release(_returnVar);
+    _returnVar = {};
+  }
+
+  void makeNewReturnVar() {
+    releaseReturnVar();
+    _returnVar = Types::DrawableObjectVar.New();
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -86,6 +98,7 @@ struct DrawableShard {
   void cleanup() {
     _transformVar.cleanup();
     _paramsVar.cleanup();
+    releaseReturnVar();
   }
 
   void validateInputTableType(SHTypeInfo &type) {
@@ -138,30 +151,30 @@ struct DrawableShard {
       shMaterial = (SHMaterial *)materialVar.payload.objectValue;
     }
 
-    SHDrawable *shDrawable = Types::DrawableObjectVar.New();
-    shDrawable->drawable = std::make_shared<Drawable>(*meshPtr, transform);
+    makeNewReturnVar();
+    _returnVar->drawable = std::make_shared<Drawable>(*meshPtr, transform);
 
     if (shMaterial) {
-      shDrawable->materialVar = Types::MaterialObjectVar.Get(shMaterial);
-      shDrawable->materialVar.warmup(shContext);
-      shDrawable->drawable->material = shMaterial->material;
+      _returnVar->materialVar = Types::MaterialObjectVar.Get(shMaterial);
+      _returnVar->materialVar.warmup(shContext);
+      _returnVar->drawable->material = shMaterial->material;
     }
 
     SHVar paramsVar{};
     if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
-      initConstantShaderParams(shDrawable->drawable->parameters, paramsVar.payload.tableValue);
+      initConstantShaderParams(_returnVar->drawable->parameters, paramsVar.payload.tableValue);
     }
 
     if (_paramsVar->valueType != SHType::None) {
-      initReferencedShaderParams(shContext, shDrawable->shaderParameters, _paramsVar.get().payload.tableValue);
+      initReferencedShaderParams(shContext, _returnVar->shaderParameters, _paramsVar.get().payload.tableValue);
     }
 
     if (_transformVar.isVariable()) {
-      shDrawable->transformVar = (SHVar &)_transformVar;
-      shDrawable->transformVar.warmup(shContext);
+      _returnVar->transformVar = (SHVar &)_transformVar;
+      _returnVar->transformVar.warmup(shContext);
     }
 
-    return Types::DrawableObjectVar.Get(shDrawable);
+    return Types::DrawableObjectVar.Get(_returnVar);
   }
 };
 
