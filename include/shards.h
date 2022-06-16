@@ -28,6 +28,9 @@ enum SHType : uint8_t {
   Color,    // A vector of 4 uint8
   ShardRef, // a shard, useful for future introspection shards!
 
+  Error = 49, // This is rather internal, but it's used to signal errors, actual high level wires should not have to deal with
+              // such type
+
   EndOfBlittableTypes = 50, // anything below this is not blittable (ish)
 
   Bytes, // pointer + size
@@ -41,7 +44,7 @@ enum SHType : uint8_t {
   Object,
   Array, // Notice: of just bilttable types/WIP!
   Set,
-  Audio
+  Audio,
 };
 
 enum SHWireState : uint8_t {
@@ -296,6 +299,11 @@ struct SHAudio {
   uint16_t nsamples;
   uint16_t channels;
   float *samples;
+};
+
+struct SHError {
+  SHString message;
+  // TODO might need to add more
 };
 
 // table interface
@@ -588,6 +596,8 @@ struct SHVarPayload {
     };
 
     SHPayloadArray arrayValue;
+
+    struct SHError errorValue;
   };
 } __attribute__((aligned(16)));
 

@@ -59,6 +59,7 @@ struct Reader {
 
 TEST_CASE("SHType-type2Name", "[ops]") {
   REQUIRE_THROWS(type2Name(SHType::EndOfBlittableTypes));
+  REQUIRE_THROWS(type2Name(SHType::Error));
   REQUIRE(type2Name(SHType::None) == "None");
   REQUIRE(type2Name(SHType::Any) == "Any");
   REQUIRE(type2Name(SHType::Object) == "Object");

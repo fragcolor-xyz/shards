@@ -13,9 +13,10 @@
 inline std::string type2Name(SHType type) {
   std::string name = "";
   switch (type) {
+  case SHType::Error:
   case EndOfBlittableTypes:
     // this should never happen
-    throw shards::SHException("EndOfBlittableTypes is an invalid type");
+    throw shards::SHException("EndOfBlittableTypes and Error are invalid types");
   case None:
     name = "None";
     break;
@@ -136,6 +137,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case None:
   case SHType::Any:
   case EndOfBlittableTypes:
+  case SHType::Error:
     return true;
   case Object:
     return a.payload.objectVendorId == b.payload.objectVendorId && a.payload.objectTypeId == b.payload.objectTypeId &&

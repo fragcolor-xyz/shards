@@ -10,6 +10,9 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   switch (var.valueType) {
   case SHType::EndOfBlittableTypes:
     break;
+  case SHType::Error:
+    os << "Error: " << var.payload.errorValue.message;
+    break;
   case SHType::None:
     os << "None";
     break;

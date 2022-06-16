@@ -24,6 +24,7 @@ struct Flatten {
     case None:
     case SHType::Any:
     case EndOfBlittableTypes:
+    case SHType::Error: // this is not a valid type we want to serialize...
       // Nothing
       break;
     case SHType::Wire:
@@ -91,6 +92,7 @@ struct Flatten {
     case None:
     case SHType::Any:
     case EndOfBlittableTypes:
+    case SHType::Error: // this is not a valid type we want to serialize...
       // Nothing
       break;
     case SHType::Wire:

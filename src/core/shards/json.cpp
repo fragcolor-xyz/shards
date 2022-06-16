@@ -61,6 +61,7 @@ void to_json(json &j, const SHVar &var) {
   switch (var.valueType) {
   case SHType::Any:
   case SHType::EndOfBlittableTypes:
+  case SHType::Error: // this is not a valid type we want to serialize...
   case SHType::None: {
     j = json{{"type", valType}};
     break;
@@ -281,6 +282,7 @@ void from_json(const json &j, SHVar &var) {
   switch (valType.value()) {
   case SHType::Any:
   case SHType::EndOfBlittableTypes:
+  case SHType::Error: // this is not a valid type we want to serialize...
   case SHType::None: {
     var = {};
     var.valueType = valType.value();

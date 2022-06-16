@@ -34,7 +34,7 @@ enum class BasicTypes {
   Bytes,
   String,
   Image,
-  Audio
+  Audio,
 };
 
 struct CoreInfo {

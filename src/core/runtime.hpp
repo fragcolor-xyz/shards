@@ -838,6 +838,7 @@ struct Serialization {
     switch (output.valueType) {
     case SHType::None:
     case SHType::EndOfBlittableTypes:
+    case SHType::Error: // this is not a valid type we want to serialize...
     case SHType::Any:
       break;
     case SHType::Enum:
@@ -1185,6 +1186,7 @@ struct Serialization {
     switch (input.valueType) {
     case SHType::None:
     case SHType::EndOfBlittableTypes:
+    case SHType::Error: // this is not a valid type we want to serialize...
     case SHType::Any:
       break;
     case SHType::Enum:

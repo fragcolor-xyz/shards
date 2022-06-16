@@ -2620,6 +2620,7 @@ void Serialization::varFree(SHVar &output) {
   switch (output.valueType) {
   case SHType::None:
   case SHType::EndOfBlittableTypes:
+  case SHType::Error:
   case SHType::Any:
   case SHType::Enum:
   case SHType::Bool:
