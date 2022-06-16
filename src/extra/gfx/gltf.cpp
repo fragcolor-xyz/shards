@@ -39,6 +39,18 @@ struct GLTFShard {
   DrawableHierarchyPtr _staticModel;
   ParamVar _transformVar;
   bool _hasConstTransform{};
+  SHDrawableHierarchy *_returnVar{};
+
+  void releaseReturnVar() {
+    if (_returnVar)
+      Types::DrawableHierarchyObjectVar.Release(_returnVar);
+    _returnVar = {};
+  }
+
+  void makeNewReturnVar() {
+    releaseReturnVar();
+    _returnVar = Types::DrawableHierarchyObjectVar.New();
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -120,6 +132,7 @@ struct GLTFShard {
   void cleanup() {
     _transformVar.cleanup();
     _staticModel.reset();
+    releaseReturnVar();
   }
 
   // Set & link transform
@@ -143,21 +156,21 @@ struct GLTFShard {
   SHVar activateStatic(SHContext *context, const SHVar &input) {
     assert(_loadMode == LoadStaticFile);
 
-    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
+    makeNewReturnVar();
     try {
       if (_staticModel) {
-        result->drawableHierarchy = _staticModel->clone();
+        _returnVar->drawableHierarchy = _staticModel->clone();
       } else {
         throw ActivationError("No glTF model was loaded");
       }
 
     } catch (...) {
-      Types::DrawableHierarchyObjectVar.Release(result);
+      Types::DrawableHierarchyObjectVar.Release(_returnVar);
       throw;
     }
 
-    initModel(context, *result, input);
-    return Types::DrawableHierarchyObjectVar.Get(result);
+    initModel(context, *_returnVar, input);
+    return Types::DrawableHierarchyObjectVar.Get(_returnVar);
   }
 
   SHVar activatePath(SHContext *context, const SHVar &input) {
@@ -166,11 +179,11 @@ struct GLTFShard {
     SHVar pathVar{};
     getFromTable(context, input.payload.tableValue, "Path", pathVar);
 
-    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
-    result->drawableHierarchy = loadGltfFromFile(pathVar.payload.stringValue);
+    makeNewReturnVar();
+    _returnVar->drawableHierarchy = loadGltfFromFile(pathVar.payload.stringValue);
 
-    initModel(context, *result, input);
-    return Types::DrawableHierarchyObjectVar.Get(result);
+    initModel(context, *_returnVar, input);
+    return Types::DrawableHierarchyObjectVar.Get(_returnVar);
   }
 
   SHVar activateBytes(SHContext *context, const SHVar &input) {
@@ -179,11 +192,11 @@ struct GLTFShard {
     SHVar bytesVar{};
     getFromTable(context, input.payload.tableValue, "Bytes", bytesVar);
 
-    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
-    result->drawableHierarchy = loadGltfFromMemory(bytesVar.payload.bytesValue, bytesVar.payload.bytesSize);
+    makeNewReturnVar();
+    _returnVar->drawableHierarchy = loadGltfFromMemory(bytesVar.payload.bytesValue, bytesVar.payload.bytesSize);
 
-    initModel(context, *result, input);
-    return Types::DrawableHierarchyObjectVar.Get(result);
+    initModel(context, *_returnVar, input);
+    return Types::DrawableHierarchyObjectVar.Get(_returnVar);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { throw std::logic_error("invalid activation"); }
