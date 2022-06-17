@@ -451,36 +451,36 @@ struct Maybe : public BaseSubFlow {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    SHVar output{};
+    SHVar output = input;
     if (likely(_shards)) {
-      try {
+      if (_silent) {
+        spdlog::set_level(spdlog::level::off);
+      }
+      DEFER({
         if (_silent) {
-          spdlog::set_level(spdlog::level::off);
-        }
-        DEFER({
-          if (_silent) {
 #ifdef NDEBUG
 #if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
-            spdlog::set_level(spdlog::level::debug);
+          spdlog::set_level(spdlog::level::debug);
 #else
-            spdlog::set_level(spdlog::level::info);
+          spdlog::set_level(spdlog::level::info);
 #endif
 #else
-            spdlog::set_level(spdlog::level::trace);
+          spdlog::set_level(spdlog::level::trace);
 #endif
-          }
-        });
-        _shards.activate(context, input, output);
-      } catch (const ActivationError &ex) {
+        }
+      });
+      auto state = _shards.activate(context, input, output);
+      if (state == SHWireState::Error) {
         if (likely(!context->onLastResume)) {
           if (!_silent) {
-            SHLOG_WARNING("Maybe shard Ignored an error: {}", ex.what());
+            SHLOG_WARNING("Maybe shard Ignored an error: {}", context->getErrorMessage());
           }
           context->continueFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
         } else {
-          throw ex;
+          // Just continue as the wire is done
+          return Var::Empty;
         }
       }
     }
