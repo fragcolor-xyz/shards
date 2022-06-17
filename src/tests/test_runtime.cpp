@@ -1150,9 +1150,9 @@ TEST_CASE("HashedActivations") {
   } catch (...) {
   }
   SHLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash.payload.int2Value[0] == 6312058842062295303ll);
-  REQUIRE(hash.payload.int2Value[1] == -1718237385683811710ll);
-  REQUIRE(output == input);
+  REQUIRE(hash.payload.int2Value[0] == 4867318254273060702ll);
+  REQUIRE(hash.payload.int2Value[1] == -743121074487371807ll);
+  REQUIRE(output == Var::Empty);
 }
 
 #include "number_types.hpp"

@@ -727,7 +727,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     outHash->valueType = SHType::Int2;
     outHash->payload.int2Value[0] = int64_t(digest.low64);
     outHash->payload.int2Value[1] = int64_t(digest.high64);
-    SHLOG_TRACE("Hashing digested {}", *outHash);
+    SHLOG_TRACE("Hash digested {}", *outHash);
   });
 
   // store initial input
