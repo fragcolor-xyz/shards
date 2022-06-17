@@ -5,9 +5,9 @@
 
   ; useful to make a good looking app quickly
   (GUI.Panels .this-ui
-              :Upper (-> ...) ; can be None
+              :Top (-> ...) ; can be None
               :Left (-> ...) ; can be None
-              :Central (-> ...) ; can be None
+              :Center (-> ...) ; can be None
               :Right (-> ...) ; can be None
               :Bottom (-> ...) ; can be None
               )

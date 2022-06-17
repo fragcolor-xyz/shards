@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::SHWireState_Error;
 use crate::core::cloneVar;
 use crate::core::Core;
 use crate::shardsc::SHBool;
@@ -73,6 +72,7 @@ use crate::shardsc::Shards;
 use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
 use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
+use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
 use core::convert::TryInto;
@@ -2885,6 +2885,9 @@ impl ShardsVar {
       }
     } else if let Ok(s) = ShardRef::try_from(self.param.0) {
       self.shards.push(s);
+    } else if value.is_none() {
+      // we allow none
+      return Ok(());
     } else {
       return Err("Expected sequence or shard variable, but casting failed.");
     }
@@ -2905,6 +2908,10 @@ impl ShardsVar {
         (*Core).expTypesFree.unwrap()(&compose_result.exposedInfo as *const _ as *mut _);
         (*Core).expTypesFree.unwrap()(&compose_result.requiredInfo as *const _ as *mut _);
       }
+    }
+
+    if self.param.0.is_none() {
+      return Ok(());
     }
 
     let mut failed = false;
@@ -2934,6 +2941,10 @@ impl ShardsVar {
   }
 
   pub fn activate(&mut self, context: &Context, input: &Var, output: &mut Var) -> WireState {
+    if self.param.0.is_none() {
+      return WireState::Continue;
+    }
+
     unsafe {
       (*Core).runShards.unwrap()(
         self.native_shards,
@@ -2951,6 +2962,10 @@ impl ShardsVar {
     input: &Var,
     output: &mut Var,
   ) -> WireState {
+    if self.param.0.is_none() {
+      return WireState::Continue;
+    }
+
     unsafe {
       (*Core).runShards2.unwrap()(
         self.native_shards,
@@ -2960,6 +2975,10 @@ impl ShardsVar {
       )
       .into()
     }
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.param.0.is_none()
   }
 }
 
