@@ -130,9 +130,12 @@ public:
     return sCore._core->composeShards(shards, callback, userData, data);
   }
 
-  static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output,
-                               const bool handleReturn = false) {
-    return sCore._core->runShards(shards, context, &input, &output, handleReturn);
+  static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
+    return sCore._core->runShards(shards, context, &input, &output);
+  }
+
+  static SHWireState runShards2(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
+    return sCore._core->runShards(shards, context, &input, &output);
   }
 
   static void log(const char *msg) { sCore._core->log(msg); }
@@ -141,11 +144,18 @@ public:
 
   static const char *rootPath() { return sCore._core->getRootPath(); }
 
-  static SHVar asyncActivate(SHContext *context, std::function<SHVar()> f) {
-    return sCore._core->asyncActivate(context, &f, [](auto ctx, auto data) {
-      auto f = reinterpret_cast<std::function<SHVar()> *>(data);
-      return (*f)();
-    });
+  static SHVar asyncActivate(SHContext *context, std::function<SHVar()> activate, std::function<void()> cancellation) {
+    auto tup = std::make_tuple(activate, cancellation);
+    return sCore._core->asyncActivate(
+        context, &tup,
+        [](auto ctx, auto data) {
+          auto f = reinterpret_cast<decltype(tup) *>(data);
+          return std::get<0>(*f)();
+        },
+        [](auto ctx, auto data) {
+          auto f = reinterpret_cast<decltype(tup) *>(data);
+          return std::get<1>(*f)();
+        });
   }
 
 private:
@@ -332,6 +342,8 @@ public:
 inline void registerShard(const char *fullName, SHShardConstructor constructor, std::string_view _) {
   Core::registerShard(fullName, constructor);
 }
+
+inline void abortWire(SHContext *ctx, const char *msg) { Core::abortWire(ctx, msg); }
 }; // namespace shards
 
 #endif
