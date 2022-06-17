@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+use crate::SHWireState_Error;
 use crate::core::cloneVar;
 use crate::core::Core;
 use crate::shardsc::SHBool;
@@ -82,6 +83,7 @@ use core::slice;
 use std::i32::MAX;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Serialize};
+use std::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::rc::Rc;
@@ -179,6 +181,41 @@ impl ShardRef {
     ShardRef(unsafe { (*Core).createShard.unwrap()(c_name.as_ptr()) })
   }
 
+  pub fn name(&self) -> &str {
+    unsafe {
+      let c_name = (*self.0).name.unwrap()(self.0);
+      CStr::from_ptr(c_name).to_str().unwrap()
+    }
+  }
+
+  pub fn destroy(&self) {
+    unsafe {
+      (*self.0).destroy.unwrap()(self.0);
+    }
+  }
+
+  pub fn cleanup(&self) -> Result<(), &str> {
+    unsafe {
+      let result = (*self.0).cleanup.unwrap()(self.0);
+      if result.code == 0 {
+        Ok(())
+      } else {
+        Err(CStr::from_ptr(result.message).to_str().unwrap())
+      }
+    }
+  }
+
+  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+    unsafe {
+      let result = (*self.0).warmup.unwrap()(self.0, context as *const _ as *mut _);
+      if result.code == 0 {
+        Ok(())
+      } else {
+        Err(CStr::from_ptr(result.message).to_str().unwrap())
+      }
+    }
+  }
+
   pub fn set_parameter(&self, index: i32, value: Var) {
     unsafe {
       (*self.0).setParam.unwrap()(self.0, index, &value);
@@ -216,6 +253,7 @@ pub enum WireState {
   Rebase,
   Restart,
   Stop,
+  Error,
 }
 
 impl From<SHWireState> for WireState {
@@ -226,6 +264,7 @@ impl From<SHWireState> for WireState {
       SHWireState_Rebase => WireState::Rebase,
       SHWireState_Restart => WireState::Restart,
       SHWireState_Stop => WireState::Stop,
+      SHWireState_Error => WireState::Error,
       _ => unreachable!(),
     }
   }
@@ -2772,6 +2811,155 @@ impl Default for ParamVar {
 impl Drop for ParamVar {
   fn drop(&mut self) {
     self.cleanup();
+  }
+}
+
+// ShardsVar
+
+#[derive(Default)]
+pub struct ShardsVar {
+  param: ClonedVar,
+  shards: Vec<ShardRef>,
+  compose_result: Option<SHComposeResult>,
+  native_shards: Shards,
+}
+
+impl Drop for ShardsVar {
+  fn drop(&mut self) {
+    self.destroy();
+  }
+}
+
+unsafe extern "C" fn shardsvar_compose_cb(
+  errorShard: *const Shard,
+  errorTxt: SHString,
+  nonfatalWarning: SHBool,
+  userData: *mut c_void,
+) {
+  let msg = CStr::from_ptr(errorTxt);
+  let cb: &mut &mut dyn FnMut(ShardRef, &str, bool) = &mut *(userData as *mut _);
+  cb(
+    ShardRef(errorShard as *mut _),
+    msg.to_str().unwrap(),
+    !nonfatalWarning,
+  );
+}
+
+impl ShardsVar {
+  fn destroy(&mut self) {
+    for shard in &self.shards {
+      if let Err(e) = shard.cleanup() {
+        shlog!("Errors during shard cleanup: {}", e);
+      }
+      shard.destroy();
+    }
+    self.shards.clear();
+  }
+
+  pub fn cleanup(&mut self) {
+    for shard in &self.shards {
+      if let Err(e) = shard.cleanup() {
+        shlog!("Errors during shard cleanup: {}", e);
+      }
+    }
+  }
+
+  pub fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    for shard in &mut self.shards {
+      if let Err(e) = shard.warmup(context) {
+        shlog!("Errors during shard warmup: {}", e);
+        return Err(e);
+      }
+    }
+    Ok(())
+  }
+
+  pub fn assign(&mut self, value: Var) -> Result<(), &str> {
+    self.destroy(); // destroy old blocks
+
+    self.param = value.into(); // clone it
+
+    if let Ok(s) = Seq::try_from(self.param.0) {
+      for shard in s.iter() {
+        self.shards.push(shard.try_into()?);
+      }
+    } else if let Ok(s) = ShardRef::try_from(self.param.0) {
+      self.shards.push(s);
+    } else {
+      return Err("Expected sequence or shard variable, but casting failed.");
+    }
+
+    self.native_shards = Shards {
+      elements: self.shards.as_mut_ptr() as *mut *mut _,
+      len: self.shards.len() as u32,
+      cap: 0,
+    };
+
+    Ok(())
+  }
+
+  pub fn compose(&mut self, data: &InstanceData) -> Result<(), &str> {
+    // clear old results if any
+    if let Some(compose_result) = self.compose_result {
+      unsafe {
+        (*Core).expTypesFree.unwrap()(&compose_result.exposedInfo as *const _ as *mut _);
+        (*Core).expTypesFree.unwrap()(&compose_result.requiredInfo as *const _ as *mut _);
+      }
+    }
+
+    let mut failed = false;
+    let cb = |shard: &ShardRef, error: &str, fatal: bool| {
+      if fatal {
+        shlog!("Fatal error: {} shard: {}", error, shard.name());
+        failed = true;
+      } else {
+        shlog!("Error: {} shard: {}", error, shard.name());
+      }
+    };
+
+    self.compose_result = Some(unsafe {
+      (*Core).composeShards.unwrap()(
+        self.native_shards,
+        Some(shardsvar_compose_cb),
+        &cb as *const _ as *mut _,
+        *data,
+      )
+    });
+
+    if failed {
+      Err("Wire composition failed.")
+    } else {
+      Ok(())
+    }
+  }
+
+  pub fn activate(&mut self, context: &Context, input: &Var, output: &mut Var) -> WireState {
+    unsafe {
+      (*Core).runShards.unwrap()(
+        self.native_shards,
+        context as *const _ as *mut _,
+        input,
+        output,
+      )
+      .into()
+    }
+  }
+
+  pub fn activate_handling_return(
+    &mut self,
+    context: &Context,
+    input: &Var,
+    output: &mut Var,
+  ) -> WireState {
+    unsafe {
+      (*Core).runShards2.unwrap()(
+        self.native_shards,
+        context as *const _ as *mut _,
+        input,
+        output,
+      )
+      .into()
+    }
   }
 }
 
