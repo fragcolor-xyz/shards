@@ -1135,6 +1135,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+
+[[package]]
 name = "hash-db"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2647,6 +2653,7 @@ dependencies = [
  "dlopen",
  "ethabi",
  "ethereum-types",
+ "half",
  "hex",
  "instant",
  "lazy_static",

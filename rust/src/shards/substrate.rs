@@ -668,7 +668,7 @@ impl Shard for SHDecode {
             "u64" => {
               let value = u64::decode(&mut bytes).map_err(|_| "Invalid u64")?;
               offset += value.encoded_size();
-              Ok(value.try_into()?)
+              Ok(value.into())
             }
             "u128" => {
               let value = u128::decode(&mut bytes).map_err(|_| "Invalid u128")?;
@@ -703,7 +703,7 @@ impl Shard for SHDecode {
             "c" => {
               let value = Compact::<u64>::decode(&mut bytes).map_err(|_| "Invalid Compact int")?;
               offset += value.encoded_size();
-              Ok(value.0.try_into()?)
+              Ok(value.0.into())
             }
             _ => Err("Invalid hint"),
           }?;

@@ -79,6 +79,7 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use std::i32::MAX;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Serialize};
 use std::ffi::CStr;
@@ -1115,7 +1116,7 @@ var_try_from!(u128, intValue, SHType_Int);
 var_try_from!(i128, intValue, SHType_Int);
 var_from_into!(i32, intValue, SHType_Int);
 var_try_from!(usize, intValue, SHType_Int);
-var_try_from!(u64, intValue, SHType_Int);
+// var_try_from!(u64, intValue, SHType_Int); // Don't panic!
 var_from!(f64, floatValue, SHType_Float);
 var_from_into!(f32, floatValue, SHType_Float);
 
@@ -1205,6 +1206,7 @@ impl From<&CStr> for Var {
   }
 }
 
+// 64-bit precision :[i64;2]
 impl From<(i64, i64)> for Var {
   #[inline(always)]
   fn from(v: (i64, i64)) -> Self {
@@ -1220,6 +1222,36 @@ impl From<(i64, i64)> for Var {
   }
 }
 
+// 64-bit precision :u64
+impl From<u64> for Var {
+  #[inline(always)]
+  fn from(v: u64) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int,
+      ..Default::default()
+    };
+    res.payload.__bindgen_anon_1.intValue = i64::from_ne_bytes((v).to_ne_bytes());
+    res
+  }
+}
+
+// 64-bit precision :[u64;2]
+impl From<(u64, u64)> for Var {
+  #[inline(always)]
+  fn from(v: (u64, u64)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = i64::from_ne_bytes((v.0).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int2Value[1] = i64::from_ne_bytes((v.1).to_ne_bytes());
+    }
+    res
+  }
+}
+
+// 64-bit precision :[f64;2]
 impl From<(f64, f64)> for Var {
   #[inline(always)]
   fn from(v: (f64, f64)) -> Self {
@@ -1235,6 +1267,125 @@ impl From<(f64, f64)> for Var {
   }
 }
 
+// 32-bit precision :[i32;2]
+impl From<(i32, i32)> for Var {
+  #[inline(always)]
+  fn from(v: (i32, i32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[i32;3]
+impl From<(i32, i32, i32)> for Var {
+  #[inline(always)]
+  fn from(v: (i32, i32, i32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = v.0;
+      res.payload.__bindgen_anon_1.int3Value[1] = v.1;
+      res.payload.__bindgen_anon_1.int3Value[2] = v.2;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[i32;4]
+impl From<(i32, i32, i32, i32)> for Var {
+  #[inline(always)]
+  fn from(v: (i32, i32, i32, i32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = v.0;
+      res.payload.__bindgen_anon_1.int4Value[1] = v.1;
+      res.payload.__bindgen_anon_1.int4Value[2] = v.2;
+      res.payload.__bindgen_anon_1.int4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[u32;2]
+impl From<(u32, u32)> for Var {
+  #[inline(always)]
+  fn from(v: (u32, u32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes()) as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes()) as i64;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[u32;3]
+impl From<(u32, u32, u32)> for Var {
+  #[inline(always)]
+  fn from(v: (u32, u32, u32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int3Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int3Value[2] = i32::from_ne_bytes((v.2).to_ne_bytes());
+    }
+    res
+  }
+}
+
+// 32-bit precision :[u32;4]
+impl From<(u32, u32, u32, u32)> for Var {
+  #[inline(always)]
+  fn from(v: (u32, u32, u32, u32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = i32::from_ne_bytes((v.0).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[1] = i32::from_ne_bytes((v.1).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[2] = i32::from_ne_bytes((v.2).to_ne_bytes());
+      res.payload.__bindgen_anon_1.int4Value[3] = i32::from_ne_bytes((v.3).to_ne_bytes());
+    }
+    res
+  }
+}
+
+// 32-bit precision :[f32;2]
+impl From<(f32, f32)> for Var {
+  #[inline(always)]
+  fn from(v: (f32, f32)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float2Value[0] = v.0 as f64;
+      res.payload.__bindgen_anon_1.float2Value[1] = v.1 as f64;
+    }
+    res
+  }
+}
+
+// 32-bit precision :[f32;3]
 impl From<(f32, f32, f32)> for Var {
   #[inline(always)]
   fn from(v: (f32, f32, f32)) -> Self {
@@ -1251,6 +1402,7 @@ impl From<(f32, f32, f32)> for Var {
   }
 }
 
+// 32-bit precision :[f32;4]
 impl From<(f32, f32, f32, f32)> for Var {
   #[inline(always)]
   fn from(v: (f32, f32, f32, f32)) -> Self {
@@ -1263,6 +1415,159 @@ impl From<(f32, f32, f32, f32)> for Var {
       res.payload.__bindgen_anon_1.float4Value[1] = v.1;
       res.payload.__bindgen_anon_1.float4Value[2] = v.2;
       res.payload.__bindgen_anon_1.float4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[i16;2]
+impl From<(i16, i16)> for Var {
+  #[inline(always)]
+  fn from(v: (i16, i16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = v.0 as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = v.1 as i64;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[i16;3]
+impl From<(i16, i16, i16)> for Var {
+  #[inline(always)]
+  fn from(v: (i16, i16, i16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int3Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int3Value[2] = v.2 as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[i16;4]
+impl From<(i16, i16, i16, i16)> for Var {
+  #[inline(always)]
+  fn from(v: (i16, i16, i16, i16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = v.0 as i32;
+      res.payload.__bindgen_anon_1.int4Value[1] = v.1 as i32;
+      res.payload.__bindgen_anon_1.int4Value[2] = v.2 as i32;
+      res.payload.__bindgen_anon_1.int4Value[3] = v.3 as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[u16;2]
+impl From<(u16, u16)> for Var {
+  #[inline(always)]
+  fn from(v: (u16, u16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i64;
+      res.payload.__bindgen_anon_1.int2Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i64;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[u16;3]
+impl From<(u16, u16, u16)> for Var {
+  #[inline(always)]
+  fn from(v: (u16, u16, u16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int3Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int3Value[2] = i16::from_ne_bytes((v.2).to_ne_bytes()) as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[u16;4]
+impl From<(u16, u16, u16, u16)> for Var {
+  #[inline(always)]
+  fn from(v: (u16, u16, u16, u16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = i16::from_ne_bytes((v.0).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[1] = i16::from_ne_bytes((v.1).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[2] = i16::from_ne_bytes((v.2).to_ne_bytes()) as i32;
+      res.payload.__bindgen_anon_1.int4Value[3] = i16::from_ne_bytes((v.3).to_ne_bytes()) as i32;
+    }
+    res
+  }
+}
+
+// 16-bit precision :[f16;2]
+impl From<(half::f16, half::f16)> for Var {
+  #[inline(always)]
+  fn from(v: (half::f16, half::f16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float2Value[0] = f64::from(v.0);
+      res.payload.__bindgen_anon_1.float2Value[1] = f64::from(v.1);
+    }
+    res
+  }
+}
+
+// 16-bit precision :[f16;3]
+impl From<(half::f16, half::f16, half::f16)> for Var {
+  #[inline(always)]
+  fn from(v: (half::f16, half::f16, half::f16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float3Value[0] = f32::from(v.0);
+      res.payload.__bindgen_anon_1.float3Value[1] = f32::from(v.1);
+      res.payload.__bindgen_anon_1.float3Value[2] = f32::from(v.2);
+    }
+    res
+  }
+}
+
+// 16-bit precision :[f16;4]
+impl From<(half::f16, half::f16, half::f16, half::f16)> for Var {
+  #[inline(always)]
+  fn from(v: (half::f16, half::f16, half::f16, half::f16)) -> Self {
+    let mut res = SHVar {
+      valueType: SHType_Float4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float4Value[0] = f32::from(v.0);
+      res.payload.__bindgen_anon_1.float4Value[1] = f32::from(v.1);
+      res.payload.__bindgen_anon_1.float4Value[2] = f32::from(v.2);
+      res.payload.__bindgen_anon_1.float4Value[3] = f32::from(v.3);
     }
     res
   }
@@ -1693,6 +1998,7 @@ impl TryFrom<&Var> for &str {
   }
 }
 
+// 64-bit precision :i64
 impl TryFrom<&Var> for i64 {
   type Error = &'static str;
 
@@ -1706,6 +2012,7 @@ impl TryFrom<&Var> for i64 {
   }
 }
 
+// 64-bit precision :u64
 impl TryFrom<&Var> for u64 {
   type Error = &'static str;
 
@@ -1715,36 +2022,13 @@ impl TryFrom<&Var> for u64 {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
-        let u = var
-          .payload
-          .__bindgen_anon_1
-          .intValue
-          .try_into()
-          .map_err(|_| "i64 -> u64 conversion failed, possible overflow.")?;
-        Ok(u)
+        Ok(u64::from_ne_bytes((var.payload.__bindgen_anon_1.intValue).to_ne_bytes()))
       }
     }
   }
 }
 
-impl TryFrom<&Var> for (i64, i64) {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Int2 {
-      Err("Expected Int2 variable, but casting failed.")
-    } else {
-      unsafe {
-        Ok((
-          var.payload.__bindgen_anon_1.int2Value[0],
-          var.payload.__bindgen_anon_1.int2Value[1],
-        ))
-      }
-    }
-  }
-}
-
+// 64-bit precision :usize
 impl TryFrom<&Var> for usize {
   type Error = &'static str;
 
@@ -1765,6 +2049,7 @@ impl TryFrom<&Var> for usize {
   }
 }
 
+// 64-bit precision :f64
 impl TryFrom<&Var> for f64 {
   type Error = &'static str;
 
@@ -1778,6 +2063,212 @@ impl TryFrom<&Var> for f64 {
   }
 }
 
+// 64-bit precision :[i64;2]
+impl TryFrom<&Var> for (i64, i64) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int2Value[0],
+          var.payload.__bindgen_anon_1.int2Value[1],
+        ))
+      }
+    }
+  }
+}
+
+// 64-bit precision :[u64;2]
+impl TryFrom<&Var> for (u64, u64) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u64::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0]).to_ne_bytes()),
+          u64::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1]).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 64-bit precision :[f64;2]
+impl TryFrom<&Var> for (f64, f64) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.float2Value[0],
+          var.payload.__bindgen_anon_1.float2Value[1],
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :i32
+impl TryFrom<&Var> for i32 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i32) }
+    }
+  }
+}
+
+// 32-bit precision :[i32;2]
+impl TryFrom<&Var> for (i32, i32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int2Value[0] as i32,
+          var.payload.__bindgen_anon_1.int2Value[1] as i32,
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[i32;3]
+impl TryFrom<&Var> for (i32, i32, i32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int3Value[0],
+          var.payload.__bindgen_anon_1.int3Value[1],
+          var.payload.__bindgen_anon_1.int3Value[2],
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[i32;4]
+impl TryFrom<&Var> for (i32, i32, i32, i32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int4Value[0],
+          var.payload.__bindgen_anon_1.int4Value[1],
+          var.payload.__bindgen_anon_1.int4Value[2],
+          var.payload.__bindgen_anon_1.int4Value[3],
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :u32
+impl TryFrom<&Var> for u32 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u32) }
+    }
+  }
+}
+
+// 32-bit precision :[u32;2]
+impl TryFrom<&Var> for (u32, u32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0] as i32).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1] as i32).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[u32;3]
+impl TryFrom<&Var> for (u32, u32, u32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[0]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[1]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[2]).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[u32;4]
+impl TryFrom<&Var> for (u32, u32, u32, u32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[0]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[1]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[2]).to_ne_bytes()),
+          u32::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[3]).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :f32
 impl TryFrom<&Var> for f32 {
   type Error = &'static str;
 
@@ -1791,6 +2282,26 @@ impl TryFrom<&Var> for f32 {
   }
 }
 
+// 32-bit precision :[f32;2]
+impl TryFrom<&Var> for (f32, f32) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.float2Value[0] as f32,
+          var.payload.__bindgen_anon_1.float2Value[1] as f32,
+        ))
+      }
+    }
+  }
+}
+
+// 32-bit precision :[f32;3]
 impl TryFrom<&Var> for (f32, f32, f32) {
   type Error = &'static str;
 
@@ -1810,6 +2321,7 @@ impl TryFrom<&Var> for (f32, f32, f32) {
   }
 }
 
+// 32-bit precision :[f32;4]
 impl TryFrom<&Var> for (f32, f32, f32, f32) {
   type Error = &'static str;
 
@@ -1824,6 +2336,228 @@ impl TryFrom<&Var> for (f32, f32, f32, f32) {
           var.payload.__bindgen_anon_1.float4Value[1],
           var.payload.__bindgen_anon_1.float4Value[2],
           var.payload.__bindgen_anon_1.float4Value[3],
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :i16
+impl TryFrom<&Var> for i16 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i16) }
+    }
+  }
+}
+
+// 16-bit precision :[i16;2]
+impl TryFrom<&Var> for (i16, i16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int2Value[0] as i16,
+          var.payload.__bindgen_anon_1.int2Value[1] as i16,
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[i16;3]
+impl TryFrom<&Var> for (i16, i16, i16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int3Value[0] as i16,
+          var.payload.__bindgen_anon_1.int3Value[1] as i16,
+          var.payload.__bindgen_anon_1.int3Value[2] as i16,
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[i16;4]
+impl TryFrom<&Var> for (i16, i16, i16, i16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          var.payload.__bindgen_anon_1.int4Value[0] as i16,
+          var.payload.__bindgen_anon_1.int4Value[1] as i16,
+          var.payload.__bindgen_anon_1.int4Value[2] as i16,
+          var.payload.__bindgen_anon_1.int4Value[3] as i16,
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :u16
+impl TryFrom<&Var> for u16 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u16) }
+    }
+  }
+}
+
+// 16-bit precision :[u16;2]
+impl TryFrom<&Var> for (u16, u16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[0] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int2Value[1] as i16).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[u16;3]
+impl TryFrom<&Var> for (u16, u16, u16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[0] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[1] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int3Value[2] as i16).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[u16;4]
+impl TryFrom<&Var> for (u16, u16, u16, u16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[0] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[1] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[2] as i16).to_ne_bytes()),
+          u16::from_ne_bytes((var.payload.__bindgen_anon_1.int4Value[3] as i16).to_ne_bytes()),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :f16
+impl TryFrom<&Var> for half::f16 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(half::f16::from_f64(var.payload.__bindgen_anon_1.floatValue)) }
+    }
+  }
+}
+
+// 16-bit precision :[f16;2]
+impl TryFrom<&Var> for (half::f16, half::f16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          half::f16::from_f64(var.payload.__bindgen_anon_1.float2Value[0]),
+          half::f16::from_f64(var.payload.__bindgen_anon_1.float2Value[1]),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[f16;3]
+impl TryFrom<&Var> for (half::f16, half::f16, half::f16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float3Value[0]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float3Value[1]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float3Value[2]),
+        ))
+      }
+    }
+  }
+}
+
+// 16-bit precision :[f16;4]
+impl TryFrom<&Var> for (half::f16, half::f16, half::f16, half::f16) {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok((
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[0]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[1]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[2]),
+          half::f16::from_f32(var.payload.__bindgen_anon_1.float4Value[3]),
         ))
       }
     }
@@ -2552,3 +3286,96 @@ lazy_static! {
   pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
 }
+
+
+
+macro_rules! test_to_from_vec1 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: $type = $value;
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum:$type = <$type>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+macro_rules! test_to_from_vec2 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: ($type, $type) = ($value, $value);
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum: ($type, $type) = <($type, $type)>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+macro_rules! test_to_from_vec3 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: ($type, $type, $type) = ($value, $value, $value);
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum: ($type, $type, $type) = <($type, $type, $type)>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+macro_rules! test_to_from_vec4 {
+  ($type:ty, $value:expr, $msg:literal) => {
+    let fromNum: ($type, $type, $type, $type) = ($value, $value, $value, $value);
+    let asVar: Var = fromNum.try_into().unwrap();
+    let intoNum: ($type, $type, $type, $type) = <($type, $type, $type, $type)>::try_from(&asVar).unwrap();
+    assert_eq!(fromNum, intoNum, $msg);
+  }
+}
+
+#[test]
+fn precision_conversion() {
+  test_to_from_vec1!(i64, i64::MAX, "i64 conversion failed");
+  test_to_from_vec1!(i64, i64::MIN, "i64 conversion failed");
+  test_to_from_vec1!(u64, u64::MAX, "u64 conversion failed"); // Don't panic!
+  test_to_from_vec1!(u64, u64::MIN, "u64 conversion failed");
+  test_to_from_vec1!(f64, f64::MAX, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::MIN, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::MIN_POSITIVE, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::EPSILON, "f64 conversion failed");
+  test_to_from_vec1!(f64, f64::INFINITY, "f64 conversion failed");
+
+  test_to_from_vec2!(i64, i64::MAX, "[i64,2] conversion failed");
+  test_to_from_vec2!(i64, i64::MIN, "[i64,2] conversion failed");
+  test_to_from_vec2!(u64, u64::MAX, "[u64,2] conversion failed"); // Don't panic!
+  test_to_from_vec2!(u64, u64::MIN, "[u64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::MAX, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::MIN, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::MIN_POSITIVE, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::EPSILON, "[f64,2] conversion failed");
+  test_to_from_vec2!(f64, f64::INFINITY, "[f64,2] conversion failed");
+
+  test_to_from_vec3!(i32, i32::MAX, "[i32,3] conversion failed");
+  test_to_from_vec3!(i32, i32::MIN, "[i32,3] conversion failed");
+  test_to_from_vec3!(u32, u32::MAX, "[u32,3] conversion failed"); // Don't panic!
+  test_to_from_vec3!(u32, u32::MIN, "[u32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::MAX, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::MIN, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::MIN_POSITIVE, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::EPSILON, "[f32,3] conversion failed");
+  test_to_from_vec3!(f32, f32::INFINITY, "[f32,3] conversion failed");
+
+  test_to_from_vec4!(i32, i32::MAX, "[i32,4] conversion failed");
+  test_to_from_vec4!(i32, i32::MIN, "[i32,4] conversion failed");
+  test_to_from_vec4!(u32, u32::MAX, "[u32,4] conversion failed"); // Don't panic!
+  test_to_from_vec4!(u32, u32::MIN, "[u32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::MAX, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::MIN, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::MIN_POSITIVE, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::EPSILON, "[f32,4] conversion failed");
+  test_to_from_vec4!(f32, f32::INFINITY, "[f32,4] conversion failed");
+
+  test_to_from_vec4!(i16, i16::MAX, "[i16,4] conversion failed");
+  test_to_from_vec4!(i16, i16::MIN, "[i16,4] conversion failed");
+  test_to_from_vec4!(u16, u16::MAX, "[u16,4] conversion failed");
+  test_to_from_vec4!(u16, u16::MIN, "[u16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::ZERO, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::MAX, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::MIN, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::MIN_POSITIVE, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::EPSILON, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(half::f16, half::f16::INFINITY, "[half::f16,4] conversion failed");
+}
+

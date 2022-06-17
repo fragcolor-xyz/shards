@@ -255,7 +255,7 @@ impl Shard for FromLEB128 {
       let value: (u64, usize) = bytes
         .read_leb128()
         .map_err(|_| "Failed to convert LEB128 bytes into integer")?;
-      Ok(value.0.try_into()?)
+      Ok(value.0.into())
     }
   }
 }
