@@ -73,6 +73,21 @@ jobs:
           done
 
           build/shards src/tests/imgui_demo.edn
+      - name: Test doc samples (GUI)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          set -e
+          export DISPLAY=:1
+          Xvfb "$DISPLAY" &
+          
+          cd docs/samples
+          for i in $(find shards -name '*.edn' -path '*GUI*');
+          do
+            echo "Running sample $i";
+            ../../build/shards run_sample.edn --file "$i";
+          done
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
