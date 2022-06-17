@@ -433,7 +433,11 @@ private:
   void destroy() {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
-      blk->cleanup(blk);
+      auto errors = blk->cleanup(blk);
+      if (errors.code != 0) {
+        auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
+        SH_CORE::log(msg.c_str());
+      }
       blk->destroy(blk);
     }
     _shardsArray.clear();
@@ -450,13 +454,10 @@ public:
   void cleanup() {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
-      try {
-        blk->cleanup(blk);
-      } catch (const std::exception &e) {
-        std::string msg = "Shard cleanup error, failed shard: " + std::string(blk->name(blk)) + ", error: " + e.what();
-        SH_CORE::log(msg.c_str());
-      } catch (...) {
-        std::string msg = "Shard cleanup generic error, failed shard: " + std::string(blk->name(blk));
+
+      auto errors = blk->cleanup(blk);
+      if (errors.code != 0) {
+        auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
         SH_CORE::log(msg.c_str());
       }
     }
