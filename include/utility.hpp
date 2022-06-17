@@ -465,8 +465,12 @@ public:
 
   void warmup(SHContext *context) {
     for (auto &blk : _shardsArray) {
-      if (blk->warmup)
-        blk->warmup(blk, context);
+      if (blk->warmup) {
+        auto errors = blk->warmup(blk, context);
+        if (errors.code != 0) {
+          throw WarmupError(errors.message);
+        }
+      }
     }
   }
 
