@@ -232,8 +232,7 @@ template <class T> struct ShardWrapper {
         try {
           return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
         } catch (const std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
-          shards::abortWire(ctx, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str());
+          shards::abortWire(ctx, e.what());
           return SHVar{};
         }
       });
@@ -310,9 +309,14 @@ template <class T> struct ShardWrapper {
   ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create,           \
                           NAMEOF_FULL_TYPE(__type__))
 
-#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                \
-  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                      \
-    return reinterpret_cast<ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->shard.__func__(ctx, *v); \
+#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                  \
+  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                        \
+    try {                                                                                                                      \
+      return reinterpret_cast<ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->shard.__func__(ctx, *v); \
+    } catch (std::exception & e) {                                                                                             \
+      shards::abortWire(ctx, e.what());                                                                                        \
+      return SHVar{};                                                                                                          \
+    }                                                                                                                          \
   })
 
 template <typename SHCORE, Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType> struct TSimpleShard {
