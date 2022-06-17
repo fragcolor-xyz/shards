@@ -436,9 +436,6 @@ struct Globals {
   std::string RootPath;
   std::string ExePath;
 
-  std::exception_ptr StopWireEx;
-  std::exception_ptr RestartWireEx;
-
   std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
   SHTableInterface TableInterface{

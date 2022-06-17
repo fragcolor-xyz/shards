@@ -333,7 +333,8 @@ struct Device {
     }
 
     if (stopped) {
-      SH_STOP();
+      context->stopFlow(Var::Empty);
+      return Var::Empty;
     }
 
     return input;
@@ -787,7 +788,8 @@ struct ReadFile {
         _done = false;
         _progress = 0;
       } else {
-        SH_STOP();
+        context->stopFlow(Var::Empty);
+        return Var::Empty;
       }
     }
 

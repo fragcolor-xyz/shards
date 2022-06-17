@@ -55,9 +55,6 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
   if (_suspend_state != SHWireState::Continue)                \
   return shards::Var::Empty
 
-#define SH_STOP() std::rethrow_exception(shards::GetGlobals().StopWireEx);
-#define SH_RESTART() std::rethrow_exception(shards::GetGlobals().RestartWireEx);
-
 struct SHContext {
   SHContext(
 #ifndef __EMSCRIPTEN__
