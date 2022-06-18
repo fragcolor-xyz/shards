@@ -157,14 +157,14 @@ template <class T> struct ShardWrapper {
       result->setParam = static_cast<SHSetParamProc>([](Shard *b, int i, const SHVar *v) {
         try {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.setParam(i, *v);
-          return SHError{0};
+          return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()};
         }
       });
     } else {
-      result->setParam = static_cast<SHSetParamProc>([](Shard *b, int i, const SHVar *v) { return SHError{0}; });
+      result->setParam = static_cast<SHSetParamProc>([](Shard *b, int i, const SHVar *v) { return SHError::Success; });
     }
 
     // getParam
@@ -179,7 +179,7 @@ template <class T> struct ShardWrapper {
     if constexpr (has_compose<T>::value) {
       result->compose = static_cast<SHComposeProc>([](Shard *b, SHInstanceData data) {
         try {
-          return SHShardComposeResult{SHError{0}, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(data)};
+          return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(data)};
         } catch (std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHShardComposeResult{SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()}, SHTypeInfo{}};
@@ -205,7 +205,7 @@ template <class T> struct ShardWrapper {
       result->warmup = static_cast<SHWarmupProc>([](Shard *b, SHContext *ctx) {
         try {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.warmup(ctx);
-          return SHError{0};
+          return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()};
@@ -243,14 +243,14 @@ template <class T> struct ShardWrapper {
       result->cleanup = static_cast<SHCleanupProc>([](Shard *b) {
         try {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup();
-          return SHError{0};
+          return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()};
         }
       });
     } else {
-      result->cleanup = static_cast<SHCleanupProc>([](Shard *b) { return SHError{0}; });
+      result->cleanup = static_cast<SHCleanupProc>([](Shard *b) { return SHError::Success; });
     }
 
     // mutate

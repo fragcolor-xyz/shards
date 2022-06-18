@@ -309,7 +309,15 @@ struct SHAudio {
 struct SHError {
   uint8_t code; // 0 if no error, 1 if error so far
   SHString message;
+
+#ifdef __cplusplus
+  static const SHError Success;
+#endif
 };
+
+#ifdef __cplusplus
+constexpr const SHError SHError::Success = {0, nullptr};
+#endif
 
 // table interface
 typedef void(__cdecl *SHTableGetIterator)(struct SHTable table, SHTableIterator *outIter);
