@@ -99,10 +99,10 @@ impl Shard for CSVRead {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.no_header = value.try_into().unwrap(),
-      1 => self.separator = value.try_into().unwrap(),
+      0 => Ok(self.no_header = value.try_into()?),
+      1 => Ok(self.separator = value.try_into()?),
       _ => unreachable!(),
     }
   }
@@ -195,10 +195,10 @@ impl Shard for CSVWrite {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.no_header = value.try_into().unwrap(),
-      1 => self.separator = value.try_into().unwrap(),
+      0 => Ok(self.no_header = value.try_into().unwrap()),
+      1 => Ok(self.separator = value.try_into().unwrap()),
       _ => unreachable!(),
     }
   }

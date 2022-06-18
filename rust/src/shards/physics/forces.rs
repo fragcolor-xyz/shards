@@ -79,11 +79,13 @@ impl Shard for Impulse {
   fn parameters(&mut self) -> Option<&Parameters> {
     Some(&PARAMETERS)
   }
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => {
         if !value.is_none() {
-          self.rb.set_name(value.try_into().unwrap())
+          Ok(self.rb.set_name(value.try_into()?))
+        } else {
+          Ok(())
         }
       }
       _ => unreachable!(),
@@ -117,9 +119,10 @@ impl Shard for Impulse {
     }
     Some(&self.reqs)
   }
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.rb.cleanup();
     self.simulation.cleanup();
+    Ok(())
   }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.rb.warmup(context);

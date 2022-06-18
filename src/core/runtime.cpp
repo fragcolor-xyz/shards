@@ -279,19 +279,6 @@ void registerCoreShards() {
 
   SHLOG_DEBUG("Registering shards");
 
-  // precap some exceptions to avoid allocations
-  try {
-    throw StopWireException();
-  } catch (...) {
-    GetGlobals().StopWireEx = std::current_exception();
-  }
-
-  try {
-    throw RestartWireException();
-  } catch (...) {
-    GetGlobals().RestartWireEx = std::current_exception();
-  }
-
   // at this point we might have some auto magical static linked shard already
   // keep them stored here and re-register them
   // as we assume the observers were setup in this call caller so too late for
@@ -727,7 +714,7 @@ std::unordered_set<const SHWire *> &gatheringWires() {
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
-                                           SHVar *outHash = nullptr) {
+                                           SHVar *outHash = nullptr) noexcept {
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
     assert(outHash);
@@ -740,7 +727,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     outHash->valueType = SHType::Int2;
     outHash->payload.int2Value[0] = int64_t(digest.low64);
     outHash->payload.int2Value[1] = int64_t(digest.high64);
-    SHLOG_TRACE("Hashing digested {}", *outHash);
+    SHLOG_TRACE("Hash digested {}", *outHash);
   });
 
   // store initial input
@@ -769,97 +756,80 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       blk = nullptr;
       SHLOG_FATAL("Unreachable shardsActivation case");
     }
-    try {
-      if constexpr (HASHED) {
-        const auto shardHash = blk->hash(blk);
-        SHLOG_TRACE("Hashing shard {}", shardHash);
-        XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
 
-        SHLOG_TRACE("Hashing input {}", input);
-        hash_update(input, &hashState);
+    if constexpr (HASHED) {
+      const auto shardHash = blk->hash(blk);
+      SHLOG_TRACE("Hashing shard {}", shardHash);
+      XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
 
-        const auto params = blk->parameters(blk);
-        for (uint32_t nParam = 0; nParam < params.len; nParam++) {
-          const auto param = blk->getParam(blk, nParam);
-          SHLOG_TRACE("Hashing param {}", param);
-          hash_update(param, &hashState);
-        }
+      SHLOG_TRACE("Hashing input {}", input);
+      hash_update(input, &hashState);
 
-        output = activateShard(blk, context, input);
-        SHLOG_TRACE("Hashing output {}", output);
-        hash_update(output, &hashState);
-      } else {
-        output = activateShard(blk, context, input);
+      const auto params = blk->parameters(blk);
+      for (uint32_t nParam = 0; nParam < params.len; nParam++) {
+        const auto param = blk->getParam(blk, nParam);
+        SHLOG_TRACE("Hashing param {}", param);
+        hash_update(param, &hashState);
       }
-      if (unlikely(!context->shouldContinue())) {
-        // TODO #64 try and benchmark: remove this switch and state
-        // Replace with preallocated exceptions like StopWireException
-        // removing this should make every shard activate faster, 1 check less
-        switch (context->getState()) {
-        case SHWireState::Return:
-          if constexpr (HANDLES_RETURN)
-            context->continueFlow();
-          return SHWireState::Return;
-        case SHWireState::Stop:
-          if (context->failed()) {
-            throw ActivationError(context->getErrorMessage());
-          }
-        case SHWireState::Restart:
-          return context->getState();
-        case SHWireState::Rebase:
-          // reset input to wire one
-          // and reset state
-          input = wireInput;
-          context->continueFlow();
-          continue;
-        case SHWireState::Continue:
-          break;
-        }
-      }
-    } catch (const StopWireException &ex) {
-      return SHWireState::Stop;
-    } catch (const RestartWireException &ex) {
-      return SHWireState::Restart;
-    } catch (const std::exception &e) {
-      SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), e.what());
-      // failure from exceptions need update on context
-      if (!context->failed()) {
-        context->cancelFlow(e.what());
-      }
-      throw; // bubble up
-    } catch (...) {
-      SHLOG_ERROR("Shard activation error, failed shard: {}, error: generic", blk->name(blk));
-      if (!context->failed()) {
-        context->cancelFlow("foreign exception failure, check logs");
-      }
-      throw; // bubble up
+
+      output = activateShard(blk, context, input);
+      SHLOG_TRACE("Hashing output {}", output);
+      hash_update(output, &hashState);
+    } else {
+      output = activateShard(blk, context, input);
     }
+
+    // Deal with aftermath of activation
+    if (unlikely(!context->shouldContinue())) {
+      auto state = context->getState();
+      switch (state) {
+      case SHWireState::Return:
+        if constexpr (HANDLES_RETURN)
+          context->continueFlow();
+        return SHWireState::Return;
+      case SHWireState::Error:
+        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), context->getErrorMessage());
+      case SHWireState::Stop:
+      case SHWireState::Restart:
+        return state;
+      case SHWireState::Rebase:
+        // reset input to wire one
+        // and reset state
+        input = wireInput;
+        context->continueFlow();
+        continue;
+      case SHWireState::Continue:
+        break;
+      }
+    }
+
+    // Pass output to next block input
     input = output;
   }
   return SHWireState::Continue;
 }
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<Shards, false, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<Shards, true, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<SHSeq, false, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<SHSeq, true, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) {
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
   return shardsActivation<Shards, false, true>(shards, context, wireInput, output, &outHash);
 }
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) {
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
   return shardsActivation<Shards, true, true>(shards, context, wireInput, output, &outHash);
 }
 
@@ -1115,7 +1085,12 @@ void validateConnection(ValidationContext &ctx) {
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
-    ctx.previousOutputType = ctx.bottom->compose(ctx.bottom, data);
+    auto composeResult = ctx.bottom->compose(ctx.bottom, data);
+    if (composeResult.error.code != SH_ERROR_NONE) {
+      SHLOG_ERROR("Error composing shard: %s", composeResult.error.message);
+      throw ComposeError(composeResult.error.message);
+    }
+    ctx.previousOutputType = composeResult.result;
 
     if (externalCtx.externalFailure) {
       if (externalCtx.warning) {
@@ -1592,7 +1567,7 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
     break;
   };
   return varType;
-} // namespace shards
+}
 
 // this is potentially called from unsafe code (e.g. networking)
 // let's do some crude stack protection here
@@ -1965,8 +1940,11 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       return {context->getFlowStorage(), Stopped};
     case SHWireState::Restart:
       return {context->getFlowStorage(), Restarted};
+    case SHWireState::Error:
+      // shardsActivation handles error logging and such
+      assert(context->failed());
+      return {wire->previousOutput, Failed};
     case SHWireState::Stop:
-      // On failure shardsActivation throws!
       assert(!context->failed());
       return {context->getFlowStorage(), Stopped};
     case SHWireState::Rebase:
@@ -2705,6 +2683,8 @@ void setString(uint32_t crc, SHString str) {
   (*shards::GetGlobals().CompressedStrings)[crc].string = str;
   (*shards::GetGlobals().CompressedStrings)[crc].crc = crc;
 }
+
+void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 }; // namespace shards
 
 // NO NAMESPACE here!
@@ -3046,51 +3026,19 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->runShards = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
-    try {
-      return shards::activateShards(shards, context, *input, *output);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards(shards, context, *input, *output);
   };
 
   result->runShards2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
-    try {
-      return shards::activateShards2(shards, context, *input, *output);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards2(shards, context, *input, *output);
   };
 
   result->runShardsHashed = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output, SHVar *outHash) noexcept {
-    try {
-      return shards::activateShards(shards, context, *input, *output, *outHash);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards(shards, context, *input, *output, *outHash);
   };
 
   result->runShardsHashed2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output, SHVar *outHash) noexcept {
-    try {
-      return shards::activateShards2(shards, context, *input, *output, *outHash);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards2(shards, context, *input, *output, *outHash);
   };
 
   result->getWireInfo = [](SHWireRef wireref) noexcept {

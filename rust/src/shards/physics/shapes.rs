@@ -73,11 +73,11 @@ macro_rules! shape {
         self._parameters()
       }
 
-      fn setParam(&mut self, index: i32, value: &Var) {
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => self.position.set_param(value),
-          1 => self.rotation.set_param(value),
-          _ => self._set_param(index, value),
+          0 => Ok(self.position.set_param(value)),
+          1 => Ok(self.rotation.set_param(value)),
+          _ => Ok(self._set_param(index, value)),
         }
       }
 
@@ -89,11 +89,12 @@ macro_rules! shape {
         }
       }
 
-      fn cleanup(&mut self) {
+      fn cleanup(&mut self) -> Result<(), &str> {
         self.bs.shape = None;
         self.position.cleanup();
         self.rotation.cleanup();
         self._cleanup();
+        Ok(())
       }
 
       fn warmup(&mut self, context: &Context) -> Result<(), &str> {

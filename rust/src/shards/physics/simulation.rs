@@ -83,11 +83,12 @@ impl Shard for Simulation {
     Some(&SIMULATION_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => {
-        let (x, y, z) = value.try_into().unwrap();
+        let (x, y, z) = value.try_into()?;
         self.gravity = Vector3::new(x, y, z);
+        Ok(())
       }
       _ => unreachable!(),
     }
@@ -103,8 +104,9 @@ impl Shard for Simulation {
     Some(&EXPOSED_SIMULATION)
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.self_obj.cleanup();
+    Ok(())
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {

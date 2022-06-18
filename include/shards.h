@@ -11,6 +11,7 @@
 // All the available types
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 enum SHType : uint8_t {
+  // Blittables
   None,
   Any,
   Enum,
@@ -28,8 +29,10 @@ enum SHType : uint8_t {
   Color,    // A vector of 4 uint8
   ShardRef, // a shard, useful for future introspection shards!
 
+  // Internal use only
   EndOfBlittableTypes = 50, // anything below this is not blittable (ish)
 
+  // Non Blittables
   Bytes, // pointer + size
   String,
   Path,       // An OS filesystem path
@@ -39,9 +42,9 @@ enum SHType : uint8_t {
   Table,
   Wire,
   Object,
-  Array, // Notice: of just bilttable types/WIP!
+  Array, // Notice: of just blittable types/WIP!
   Set,
-  Audio
+  Audio,
 };
 
 enum SHWireState : uint8_t {
@@ -49,10 +52,11 @@ enum SHWireState : uint8_t {
   Return,   // Control flow, end this wire/flow and return previous output
   Rebase,   // Continue but put the local wire initial input as next input
   Restart,  // Restart the current wire from the top (non inline wires)
-  Stop      // Stop the flow execution
+  Stop,     // Stop the flow execution
+  Error,    // Stop the flow execution and raise an error
 };
 
-// These shards run fully inline in the runwire threaded execution engine
+// These shards run fully inline in the wire threaded execution engine
 enum SHInlineShards : uint32_t {
   // regular shards
   NotInline,
@@ -163,7 +167,7 @@ struct SHTable {
 
 // 64 bytes should be huge and well enough space for an iterator...
 typedef char SHSetIterator[64];
-struct SHSetnterface;
+struct SHSetInterface;
 struct SHSet {
   void *opaque;
   struct SHSetInterface *api;
@@ -298,6 +302,25 @@ struct SHAudio {
   float *samples;
 };
 
+#define SH_FLOW_CONTINUE (0)
+#define SH_FLOW_ERROR (1 << 0)
+#define SH_FLOW_CHANGE_STATE (1 << 1)
+
+struct SHError {
+  uint8_t code; // 0 if no error, 1 if error so far
+  SHString message;
+
+#ifdef __cplusplus
+  static const SHError Success;
+#endif
+};
+
+#define SH_ERROR_NONE (0)
+
+#ifdef __cplusplus
+constexpr const SHError SHError::Success = {SH_ERROR_NONE, nullptr};
+#endif
+
 // table interface
 typedef void(__cdecl *SHTableGetIterator)(struct SHTable table, SHTableIterator *outIter);
 typedef SHBool(__cdecl *SHTableNext)(struct SHTable table, SHTableIterator *inIter, SHString *outKey, struct SHVar *outValue);
@@ -429,6 +452,11 @@ struct SHTypeInfo {
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
   SHBool recursiveSelf;
+};
+
+struct SHShardComposeResult {
+  struct SHError error;
+  struct SHTypeInfo result;
 };
 
 // if outData is NULL will just give you a valid outLen
@@ -685,10 +713,10 @@ typedef SHExposedTypesInfo(__cdecl *SHExposedVariablesProc)(struct Shard *);
 typedef SHExposedTypesInfo(__cdecl *SHRequiredVariablesProc)(struct Shard *);
 
 typedef SHParametersInfo(__cdecl *SHParametersProc)(struct Shard *);
-typedef void(__cdecl *SHSetParamProc)(struct Shard *, int, const struct SHVar *);
+typedef struct SHError(__cdecl *SHSetParamProc)(struct Shard *, int, const struct SHVar *);
 typedef struct SHVar(__cdecl *SHGetParamProc)(struct Shard *, int);
 
-typedef struct SHTypeInfo(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData data);
+typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData data);
 
 typedef void(__cdecl *SHComposedProc)(struct Shard *, const struct SHWire *wire, const struct SHComposeResult *data);
 
@@ -696,9 +724,9 @@ typedef void(__cdecl *SHComposedProc)(struct Shard *, const struct SHWire *wire,
 typedef struct SHVar(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
 
 // Generally when stop() is called
-typedef void(__cdecl *SHCleanupProc)(struct Shard *);
+typedef struct SHError(__cdecl *SHCleanupProc)(struct Shard *);
 
-typedef void(__cdecl *SHWarmupProc)(struct Shard *, struct SHContext *);
+typedef struct SHError(__cdecl *SHWarmupProc)(struct Shard *, struct SHContext *);
 
 typedef void(__cdecl *SHNextFrameProc)(struct Shard *, struct SHContext *);
 

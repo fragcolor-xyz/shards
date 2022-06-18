@@ -161,9 +161,9 @@ impl Shard for ToLEB128 {
     Some(&LEB_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.signed = value.try_into().unwrap(),
+      0 => Ok(self.signed = value.try_into()?),
       _ => unreachable!(),
     }
   }
@@ -230,9 +230,9 @@ impl Shard for FromLEB128 {
     Some(&LEB_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.signed = value.try_into().unwrap(),
+      0 => Ok(self.signed = value.try_into()?),
       _ => unreachable!(),
     }
   }

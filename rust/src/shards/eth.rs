@@ -172,10 +172,10 @@ impl Shard for EncodeCall {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.abi.set_param(value),
-      1 => self.call_name.set_param(value),
+      0 => Ok(self.abi.set_param(value)),
+      1 => Ok(self.call_name.set_param(value)),
       _ => unreachable!(),
     }
   }
@@ -194,9 +194,10 @@ impl Shard for EncodeCall {
     Ok(())
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.abi.cleanup();
     self.call_name.cleanup();
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
@@ -306,11 +307,11 @@ impl Shard for DecodeCall {
     Some(&DECODE_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.abi.set_param(value),
-      1 => self.call_name.set_param(value),
-      2 => self.is_input = value.try_into().unwrap(),
+      0 => Ok(self.abi.set_param(value)),
+      1 => Ok(self.call_name.set_param(value)),
+      2 => Ok(self.is_input = value.try_into()?),
       _ => unreachable!(),
     }
   }
@@ -330,9 +331,10 @@ impl Shard for DecodeCall {
     Ok(())
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.abi.cleanup();
     self.call_name.cleanup();
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {

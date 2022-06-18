@@ -10,6 +10,7 @@
   struct _name_##Runtime {                                                                                               \
     Shard header;                                                                                                        \
     _name_ core;                                                                                                         \
+    std::string lastError;                                                                                               \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
@@ -29,7 +30,8 @@
     result->exposedVariables = static_cast<SHExposedVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); });   \
     result->requiredVariables = static_cast<SHRequiredVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); }); \
     result->parameters = static_cast<SHParametersProc>([](Shard *shard) { return SHParametersInfo(); });                 \
-    result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) {});                  \
+    result->setParam =                                                                                                   \
+        static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
     result->compose = nullptr;                                                                                           \
     result->warmup = nullptr;                                                                                            \
@@ -38,12 +40,13 @@
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
     result->nextFrame = nullptr;                                                                                         \
     result->mutate = nullptr;                                                                                            \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {});
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 #define RUNTIME_CORE_SHARD(_name_)                                                                                       \
   struct _name_##Runtime {                                                                                               \
     Shard header;                                                                                                        \
     _name_ core;                                                                                                         \
+    std::string lastError;                                                                                               \
   };                                                                                                                     \
   __cdecl Shard *createShard##_name_() {                                                                                 \
     Shard *result = reinterpret_cast<Shard *>(new (std::align_val_t{16}) _name_##Runtime());                             \
@@ -62,7 +65,8 @@
     result->exposedVariables = static_cast<SHExposedVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); });   \
     result->requiredVariables = static_cast<SHRequiredVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); }); \
     result->parameters = static_cast<SHParametersProc>([](Shard *shard) { return SHParametersInfo(); });                 \
-    result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) {});                  \
+    result->setParam =                                                                                                   \
+        static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
     result->compose = nullptr;                                                                                           \
     result->warmup = nullptr;                                                                                            \
@@ -71,12 +75,13 @@
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
     result->nextFrame = nullptr;                                                                                         \
     result->mutate = nullptr;                                                                                            \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {});
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 #define RUNTIME_SHARD_TYPE(_namespace_, _name_) \
   struct _name_##Runtime {                      \
     Shard header;                               \
     _name_ core;                                \
+    std::string lastError;                      \
   };
 #define RUNTIME_SHARD_FACTORY(_namespace_, _name_)                                                                       \
   __cdecl Shard *createShard##_name_() {                                                                                 \
@@ -97,7 +102,8 @@
     result->exposedVariables = static_cast<SHExposedVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); });   \
     result->requiredVariables = static_cast<SHRequiredVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); }); \
     result->parameters = static_cast<SHParametersProc>([](Shard *shard) { return SHParametersInfo(); });                 \
-    result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) {});                  \
+    result->setParam =                                                                                                   \
+        static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
     result->compose = nullptr;                                                                                           \
     result->warmup = nullptr;                                                                                            \
@@ -106,12 +112,13 @@
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
     result->nextFrame = nullptr;                                                                                         \
     result->mutate = nullptr;                                                                                            \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {});
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 #define RUNTIME_CORE_SHARD_TYPE(_name_) \
   struct _name_##Runtime {              \
     Shard header;                       \
     _name_ core;                        \
+    std::string lastError;              \
   };
 #define RUNTIME_CORE_SHARD_FACTORY(_name_)                                                                               \
   __cdecl Shard *createShard##_name_() {                                                                                 \
@@ -131,7 +138,8 @@
     result->exposedVariables = static_cast<SHExposedVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); });   \
     result->requiredVariables = static_cast<SHRequiredVariablesProc>([](Shard *shard) { return SHExposedTypesInfo(); }); \
     result->parameters = static_cast<SHParametersProc>([](Shard *shard) { return SHParametersInfo(); });                 \
-    result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) {});                  \
+    result->setParam =                                                                                                   \
+        static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
     result->compose = nullptr;                                                                                           \
     result->warmup = nullptr;                                                                                            \
@@ -140,7 +148,7 @@
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
     result->nextFrame = nullptr;                                                                                         \
     result->mutate = nullptr;                                                                                            \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {});
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root
 // of the call if the shard is all inline
@@ -184,27 +192,59 @@
       static_cast<SHParametersProc>([](Shard *shard) { return reinterpret_cast<_name_##Runtime *>(shard)->core.parameters(); });
 #define RUNTIME_SHARD_setParam(_name_)                                                             \
   result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { \
-    reinterpret_cast<_name_##Runtime *>(shard)->core.setParam(index, *value);                      \
+    try {                                                                                          \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.setParam(index, *value);                    \
+      return SHError::Success;                                                                     \
+    } catch (std::exception & ex) {                                                                \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());                     \
+      return SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()};            \
+    }                                                                                              \
   });
 #define RUNTIME_SHARD_getParam(_name_)            \
   result->getParam = static_cast<SHGetParamProc>( \
       [](Shard *shard, int index) { return reinterpret_cast<_name_##Runtime *>(shard)->core.getParam(index); });
 
-#define RUNTIME_SHARD_compose(_name_)           \
-  result->compose = static_cast<SHComposeProc>( \
-      [](Shard *shard, SHInstanceData data) { return reinterpret_cast<_name_##Runtime *>(shard)->core.compose(data); });
+#define RUNTIME_SHARD_compose(_name_)                                                                                       \
+  result->compose = static_cast<SHComposeProc>([](Shard *shard, SHInstanceData data) {                                      \
+    try {                                                                                                                   \
+      return SHShardComposeResult{SHError::Success, reinterpret_cast<_name_##Runtime *>(shard)->core.compose(data)};        \
+    } catch (std::exception & e) {                                                                                          \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(e.what());                                               \
+      return SHShardComposeResult{SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}, SHTypeInfo{}}; \
+    }                                                                                                                       \
+  });
 
-#define RUNTIME_SHARD_warmup(_name_)          \
-  result->warmup = static_cast<SHWarmupProc>( \
-      [](Shard *shard, SHContext *ctx) { reinterpret_cast<_name_##Runtime *>(shard)->core.warmup(ctx); });
+#define RUNTIME_SHARD_warmup(_name_)                                                    \
+  result->warmup = static_cast<SHWarmupProc>([](Shard *shard, SHContext *ctx) {         \
+    try {                                                                               \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.warmup(ctx);                     \
+      return SHError::Success;                                                          \
+    } catch (std::exception & ex) {                                                     \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());          \
+      return SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}; \
+    }                                                                                   \
+  });
 
 #define RUNTIME_SHARD_activate(_name_)                                                                      \
   result->activate = static_cast<SHActivateProc>([](Shard *shard, SHContext *context, const SHVar *input) { \
-    return reinterpret_cast<_name_##Runtime *>(shard)->core.activate(context, *input);                      \
+    try {                                                                                                   \
+      return reinterpret_cast<_name_##Runtime *>(shard)->core.activate(context, *input);                    \
+    } catch (std::exception & e) {                                                                          \
+      shards::abortWire(context, e.what());                                                                 \
+      return SHVar{};                                                                                       \
+    }                                                                                                       \
   });
 
-#define RUNTIME_SHARD_cleanup(_name_) \
-  result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { reinterpret_cast<_name_##Runtime *>(shard)->core.cleanup(); });
+#define RUNTIME_SHARD_cleanup(_name_)                                                   \
+  result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {                       \
+    try {                                                                               \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.cleanup();                       \
+      return SHError::Success;                                                          \
+    } catch (std::exception & ex) {                                                     \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());          \
+      return SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}; \
+    }                                                                                   \
+  });
 
 #define RUNTIME_SHARD_mutate(_name_)          \
   result->mutate = static_cast<SHMutateProc>( \

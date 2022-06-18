@@ -1081,6 +1081,8 @@ public:
 private:
   std::shared_ptr<SHWire> _wire;
 };
+
+void abortWire(struct SHContext *context, std::string_view errorText);
 } // namespace shards
 
 inline SHVar *begin(SHVar &a) {

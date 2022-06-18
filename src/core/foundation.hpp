@@ -125,17 +125,17 @@ SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 // caller does not handle return
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller does not handle return
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller does not handle return
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash);
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 // caller handles return
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash);
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 SHVar *referenceGlobalVariable(SHContext *ctx, const char *name);
 SHVar *referenceVariable(SHContext *ctx, const char *name);
 void releaseVariable(SHVar *variable);
@@ -414,13 +414,6 @@ using SHMap = std::unordered_map<std::string, OwnedVar, std::hash<std::string>, 
                                  boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>, 16>>;
 using SHMapIt = SHMap::iterator;
 
-struct StopWireException : public SHException {
-  StopWireException() : SHException("The wire has been stopped") {}
-};
-struct RestartWireException : public SHException {
-  RestartWireException() : SHException("The wire has been restarted") {}
-};
-
 struct Globals {
   // sporadically used, don't abuse. And don't use in real time code.
   std::mutex GlobalMutex;
@@ -442,9 +435,6 @@ struct Globals {
 
   std::string RootPath;
   std::string ExePath;
-
-  std::exception_ptr StopWireEx;
-  std::exception_ptr RestartWireEx;
 
   std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 

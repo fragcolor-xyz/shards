@@ -67,9 +67,9 @@ impl Shard for Encrypt {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.key.set_param(value),
+      0 => Ok(self.key.set_param(value)),
       _ => unreachable!(),
     }
   }
@@ -86,8 +86,9 @@ impl Shard for Encrypt {
     Ok(())
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.key.cleanup();
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
@@ -166,9 +167,9 @@ impl Shard for Decrypt {
     Some(&PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.key.set_param(value),
+      0 => Ok(self.key.set_param(value)),
       _ => unreachable!(),
     }
   }
@@ -185,8 +186,9 @@ impl Shard for Decrypt {
     Ok(())
   }
 
-  fn cleanup(&mut self) {
+  fn cleanup(&mut self) -> Result<(), &str> {
     self.key.cleanup();
+    Ok(())
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {

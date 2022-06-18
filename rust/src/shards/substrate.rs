@@ -174,10 +174,10 @@ impl Shard for AccountId {
     Some(&ID_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.is_ecdsa = value.try_into().unwrap(),
-      1 => self.version = value.try_into().unwrap(),
+      0 => Ok(self.is_ecdsa = value.try_into()?),
+      1 => Ok(self.version = value.try_into()?),
       _ => unreachable!(),
     }
   }
@@ -317,9 +317,9 @@ impl Shard for SHStorageMap {
     Some(&STORAGE_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.pre_hashed = value.try_into().unwrap(),
+      0 => Ok(self.pre_hashed = value.try_into()?),
       _ => unreachable!(),
     }
   }
@@ -519,9 +519,9 @@ impl Shard for SHEncode {
     Some(&ENCODE_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.hints = value.into(),
+      0 => Ok(self.hints = value.into()),
       _ => unreachable!(),
     }
   }
@@ -606,11 +606,11 @@ impl Shard for SHDecode {
     Some(&DECODE_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.types = value.into(),
-      1 => self.hints = value.into(),
-      2 => self.version = value.try_into().expect("A valid integer var"),
+      0 => Ok(self.types = value.into()),
+      1 => Ok(self.hints = value.into()),
+      2 => Ok(self.version = value.try_into()?),
       _ => unreachable!(),
     }
   }

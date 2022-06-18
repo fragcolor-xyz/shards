@@ -15,7 +15,7 @@ inline std::string type2Name(SHType type) {
   switch (type) {
   case EndOfBlittableTypes:
     // this should never happen
-    throw shards::SHException("EndOfBlittableTypes is an invalid type");
+    throw shards::SHException("EndOfBlittableTypes and Error are invalid types");
   case None:
     name = "None";
     break;

@@ -104,9 +104,9 @@ macro_rules! add_signer {
         Some(&PARAMETERS)
       }
 
-      fn setParam(&mut self, index: i32, value: &Var) {
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => self.key.set_param(value),
+          0 => Ok(self.key.set_param(value)),
           _ => unreachable!(),
         }
       }
@@ -123,8 +123,9 @@ macro_rules! add_signer {
         Ok(())
       }
 
-      fn cleanup(&mut self) {
+      fn cleanup(&mut self) -> Result<(), &str> {
         self.key.cleanup();
+        Ok(())
       }
 
       fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
