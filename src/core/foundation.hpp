@@ -125,17 +125,17 @@ SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 // caller does not handle return
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller does not handle return
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output);
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller does not handle return
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash);
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 // caller handles return
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash);
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 SHVar *referenceGlobalVariable(SHContext *ctx, const char *name);
 SHVar *referenceVariable(SHContext *ctx, const char *name);
 void releaseVariable(SHVar *variable);

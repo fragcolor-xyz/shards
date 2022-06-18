@@ -809,27 +809,27 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   return SHWireState::Continue;
 }
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<Shards, false, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<Shards, true, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<SHSeq, false, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) {
+SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
   return shardsActivation<SHSeq, true, false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) {
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
   return shardsActivation<Shards, false, true>(shards, context, wireInput, output, &outHash);
 }
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) {
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
   return shardsActivation<Shards, true, true>(shards, context, wireInput, output, &outHash);
 }
 
@@ -3026,51 +3026,19 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->runShards = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
-    try {
-      return shards::activateShards(shards, context, *input, *output);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards(shards, context, *input, *output);
   };
 
   result->runShards2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
-    try {
-      return shards::activateShards2(shards, context, *input, *output);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards2(shards, context, *input, *output);
   };
 
   result->runShardsHashed = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output, SHVar *outHash) noexcept {
-    try {
-      return shards::activateShards(shards, context, *input, *output, *outHash);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards(shards, context, *input, *output, *outHash);
   };
 
   result->runShardsHashed2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output, SHVar *outHash) noexcept {
-    try {
-      return shards::activateShards2(shards, context, *input, *output, *outHash);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-      return SHWireState::Stop;
-    } catch (...) {
-      context->cancelFlow("foreign exception failure during runShards");
-      return SHWireState::Stop;
-    }
+    return shards::activateShards2(shards, context, *input, *output, *outHash);
   };
 
   result->getWireInfo = [](SHWireRef wireref) noexcept {
