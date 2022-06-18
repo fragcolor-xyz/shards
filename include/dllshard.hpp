@@ -135,7 +135,7 @@ public:
   }
 
   static SHWireState runShards2(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
-    return sCore._core->runShards(shards, context, &input, &output);
+    return sCore._core->runShards2(shards, context, &input, &output);
   }
 
   static void log(const char *msg) { sCore._core->log(msg); }
