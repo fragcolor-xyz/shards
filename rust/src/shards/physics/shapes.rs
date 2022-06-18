@@ -7,6 +7,8 @@ use crate::core::registerShard;
 use crate::shards::physics::BaseShape;
 use crate::shards::physics::Simulation;
 use crate::shards::physics::EXPOSED_SIMULATION;
+use crate::shards::physics::POSITION_TYPES_SLICE;
+use crate::shards::physics::ROTATION_TYPES_SLICE;
 use crate::shards::physics::SHAPE_TYPE;
 use crate::shards::physics::SHAPE_TYPES;
 use crate::shards::physics::SIMULATION_TYPE;
@@ -18,6 +20,8 @@ use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::ANY_TYPES;
+use crate::types::FLOAT3_TYPES_SLICE;
+use crate::types::FLOAT_TYPES_SLICE;
 use crate::types::NONE_TYPES;
 use crate::Shard;
 use crate::Types;
@@ -34,13 +38,13 @@ lazy_static! {
     (
       cstr!("Position"),
       shccstr!("The position wrt. the body it is attached to."),
-      vec![common_type::float3, common_type::float3_var]
+      POSITION_TYPES_SLICE
     )
       .into(),
     (
       cstr!("Rotation"),
       shccstr!("The rotation  wrt. the body it is attached to"),
-      vec![common_type::float4, common_type::float4_var]
+      ROTATION_TYPES_SLICE
     )
       .into()
   ];
@@ -143,7 +147,7 @@ lazy_static! {
     let mut v = vec![(
       cstr!("Radius"),
       shccstr!("The radius of the sphere."),
-      vec![common_type::float],
+      FLOAT_TYPES_SLICE,
     )
       .into()];
     v.insert(0, (*PARAMETERS)[1]);
@@ -214,7 +218,7 @@ lazy_static! {
     let mut v = vec![(
       cstr!("HalfExtents"),
       shccstr!("The half-extents of the cuboid shape."),
-      vec![common_type::float3],
+      FLOAT3_TYPES_SLICE,
     )
       .into()];
     v.insert(0, (*PARAMETERS)[1]);

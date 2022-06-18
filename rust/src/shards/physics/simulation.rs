@@ -13,6 +13,7 @@ use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::ANY_TYPES;
+use crate::types::FLOAT_TYPES_SLICE;
 use crate::Shard;
 use crate::Types;
 use crate::Var;
@@ -27,7 +28,7 @@ lazy_static! {
   static ref SIMULATION_PARAMETERS: Parameters = vec![(
     cstr!("Gravity"),
     shccstr!("The gravity force vector."),
-    vec![common_type::float3]
+    FLOAT_TYPES_SLICE
   )
     .into()];
 }

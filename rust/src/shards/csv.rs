@@ -11,8 +11,10 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::SEQ_OF_STRINGS_TYPES;
 use crate::types::STRING_TYPES;
+use crate::types::STRING_TYPES_SLICE;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -27,13 +29,13 @@ lazy_static! {
     (
       cstr!("NoHeader"),
       shccstr!("Whether the shard should parse the first row as data, instead of header."),
-      vec![common_type::bool]
+      BOOL_TYPES_SLICE
     )
       .into(),
     (
       cstr!("Separator"),
       shccstr!("The character to use as fields separator."),
-      vec![common_type::string]
+      STRING_TYPES_SLICE
     )
       .into()
   ];

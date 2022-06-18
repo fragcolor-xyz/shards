@@ -80,12 +80,12 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
-use std::i32::MAX;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Serialize};
 use std::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::i32::MAX;
 use std::rc::Rc;
 
 #[macro_export]
@@ -313,20 +313,13 @@ impl From<&[Type]> for SHTypesInfo {
   }
 }
 
-fn internal_from_types(types: Types) -> SHTypesInfo {
+fn internal_from_types(types: &[Type]) -> SHTypesInfo {
   let len = types.len();
-  let boxed = types.into_boxed_slice();
   SHTypesInfo {
-    elements: Box::into_raw(boxed) as *mut SHTypeInfo,
+    elements: types.as_ptr() as *mut SHTypeInfo,
     len: len as u32,
     cap: 0,
   }
-}
-
-unsafe fn internal_drop_types(types: SHTypesInfo) {
-  // use with care
-  let elems = Box::from_raw(types.elements);
-  drop(elems);
 }
 
 /*
@@ -433,7 +426,7 @@ impl From<&ExposedTypes> for SHExposedTypesInfo {
 SHParameterInfo & co
 */
 impl ParameterInfo {
-  fn new(name: &'static str, types: Types) -> Self {
+  fn new(name: &'static str, types: &[Type]) -> Self {
     SHParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
       help: SHOptionalString {
@@ -444,7 +437,7 @@ impl ParameterInfo {
     }
   }
 
-  fn new1(name: &'static str, help: &'static str, types: Types) -> Self {
+  fn new1(name: &'static str, help: &'static str, types: &[Type]) -> Self {
     SHParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
       help: SHOptionalString {
@@ -455,7 +448,7 @@ impl ParameterInfo {
     }
   }
 
-  fn new2(name: &'static str, help: SHOptionalString, types: Types) -> Self {
+  fn new2(name: &'static str, help: SHOptionalString, types: &[Type]) -> Self {
     SHParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
       help,
@@ -483,20 +476,20 @@ impl From<&str> for SHOptionalString {
   }
 }
 
-impl From<(&'static str, Types)> for ParameterInfo {
-  fn from(v: (&'static str, Types)) -> ParameterInfo {
+impl From<(&'static str, &[Type])> for ParameterInfo {
+  fn from(v: (&'static str, &[Type])) -> ParameterInfo {
     ParameterInfo::new(v.0, v.1)
   }
 }
 
-impl From<(&'static str, &'static str, Types)> for ParameterInfo {
-  fn from(v: (&'static str, &'static str, Types)) -> ParameterInfo {
+impl From<(&'static str, &'static str, &[Type])> for ParameterInfo {
+  fn from(v: (&'static str, &'static str, &[Type])) -> ParameterInfo {
     ParameterInfo::new1(v.0, v.1, v.2)
   }
 }
 
-impl From<(&'static str, SHOptionalString, Types)> for ParameterInfo {
-  fn from(v: (&'static str, SHOptionalString, Types)) -> ParameterInfo {
+impl From<(&'static str, SHOptionalString, &[Type])> for ParameterInfo {
+  fn from(v: (&'static str, SHOptionalString, &[Type])) -> ParameterInfo {
     ParameterInfo::new2(v.0, v.1, v.2)
   }
 }
@@ -2061,7 +2054,9 @@ impl TryFrom<&Var> for u64 {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
-        Ok(u64::from_ne_bytes((var.payload.__bindgen_anon_1.intValue).to_ne_bytes()))
+        Ok(u64::from_ne_bytes(
+          (var.payload.__bindgen_anon_1.intValue).to_ne_bytes(),
+        ))
       }
     }
   }
@@ -3447,6 +3442,19 @@ impl PartialEq for Type {
 
 pub const FRAG_CC: i32 = 0x66726167; // 'frag'
 
+pub static INT_TYPES_SLICE: &[Type] = &[common_type::int];
+pub static INT2_TYPES_SLICE: &[Type] = &[common_type::int2];
+pub static FLOAT_TYPES_SLICE: &[Type] = &[common_type::float];
+pub static FLOAT3_TYPES_SLICE: &[Type] = &[common_type::float3];
+pub static BOOL_TYPES_SLICE: &[Type] = &[common_type::bool];
+pub static STRING_TYPES_SLICE: &[Type] = &[common_type::string];
+pub static STRING_OR_NONE_SLICE: &[Type] = &[common_type::string, common_type::none];
+pub static STRING_VAR_OR_NONE_SLICE: &[Type] = &[
+  common_type::string,
+  common_type::string_var,
+  common_type::none,
+];
+
 // TODO share those from C++ ones to reduce binary size
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
@@ -3457,6 +3465,7 @@ lazy_static! {
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
   pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
+  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
   pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
   pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
   pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];
@@ -3492,17 +3501,17 @@ lazy_static! {
   };
   pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
+  pub static ref ENUMS_TYPES: Vec<Type> = vec![*ENUMS_TYPE];
+  pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, common_type::shard, common_type::shards];
 }
-
-
 
 macro_rules! test_to_from_vec1 {
   ($type:ty, $value:expr, $msg:literal) => {
     let fromNum: $type = $value;
     let asVar: Var = fromNum.try_into().unwrap();
-    let intoNum:$type = <$type>::try_from(&asVar).unwrap();
+    let intoNum: $type = <$type>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  }
+  };
 }
 
 macro_rules! test_to_from_vec2 {
@@ -3511,7 +3520,7 @@ macro_rules! test_to_from_vec2 {
     let asVar: Var = fromNum.try_into().unwrap();
     let intoNum: ($type, $type) = <($type, $type)>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  }
+  };
 }
 
 macro_rules! test_to_from_vec3 {
@@ -3520,16 +3529,17 @@ macro_rules! test_to_from_vec3 {
     let asVar: Var = fromNum.try_into().unwrap();
     let intoNum: ($type, $type, $type) = <($type, $type, $type)>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  }
+  };
 }
 
 macro_rules! test_to_from_vec4 {
   ($type:ty, $value:expr, $msg:literal) => {
     let fromNum: ($type, $type, $type, $type) = ($value, $value, $value, $value);
     let asVar: Var = fromNum.try_into().unwrap();
-    let intoNum: ($type, $type, $type, $type) = <($type, $type, $type, $type)>::try_from(&asVar).unwrap();
+    let intoNum: ($type, $type, $type, $type) =
+      <($type, $type, $type, $type)>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  }
+  };
 }
 
 #[test]
@@ -3578,11 +3588,26 @@ fn precision_conversion() {
   test_to_from_vec4!(i16, i16::MIN, "[i16,4] conversion failed");
   test_to_from_vec4!(u16, u16::MAX, "[u16,4] conversion failed");
   test_to_from_vec4!(u16, u16::MIN, "[u16,4] conversion failed");
-  test_to_from_vec4!(half::f16, half::f16::ZERO, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(
+    half::f16,
+    half::f16::ZERO,
+    "[half::f16,4] conversion failed"
+  );
   test_to_from_vec4!(half::f16, half::f16::MAX, "[half::f16,4] conversion failed");
   test_to_from_vec4!(half::f16, half::f16::MIN, "[half::f16,4] conversion failed");
-  test_to_from_vec4!(half::f16, half::f16::MIN_POSITIVE, "[half::f16,4] conversion failed");
-  test_to_from_vec4!(half::f16, half::f16::EPSILON, "[half::f16,4] conversion failed");
-  test_to_from_vec4!(half::f16, half::f16::INFINITY, "[half::f16,4] conversion failed");
+  test_to_from_vec4!(
+    half::f16,
+    half::f16::MIN_POSITIVE,
+    "[half::f16,4] conversion failed"
+  );
+  test_to_from_vec4!(
+    half::f16,
+    half::f16::EPSILON,
+    "[half::f16,4] conversion failed"
+  );
+  test_to_from_vec4!(
+    half::f16,
+    half::f16::INFINITY,
+    "[half::f16,4] conversion failed"
+  );
 }
-

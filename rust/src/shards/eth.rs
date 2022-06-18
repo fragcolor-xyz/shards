@@ -13,6 +13,9 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BOOL_TYPES_SLICE;
+use crate::types::STRING_OR_NONE_SLICE;
+use crate::types::STRING_VAR_OR_NONE_SLICE;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -32,17 +35,13 @@ lazy_static! {
     (
       cstr!("ABI"),
       shccstr!("The contract's json ABI."),
-      vec![
-        common_type::none,
-        common_type::string,
-        common_type::string_var
-      ]
+      STRING_VAR_OR_NONE_SLICE
     )
       .into(),
     (
       cstr!("Name"),
       shccstr!("The name of the method to call."),
-      vec![common_type::none, common_type::string]
+      STRING_OR_NONE_SLICE
     )
       .into()
   ];
@@ -263,7 +262,7 @@ lazy_static! {
     let mut v = vec![(
       cstr!("Input"),
       shccstr!("If the input is the actual function call transaction input rather than the result of the call."),
-      vec![common_type::bool],
+      BOOL_TYPES_SLICE
     )
       .into()];
     v.insert(0, (*PARAMETERS)[1]);

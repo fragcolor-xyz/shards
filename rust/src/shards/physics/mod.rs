@@ -70,7 +70,24 @@ lazy_static! {
   static ref RIGIDBODY_TYPE_VEC: Vec<Type> = vec![*RIGIDBODY_TYPE];
   static ref RIGIDBODIES_TYPE: Type = Type::seq(&RIGIDBODY_TYPE_VEC);
   static ref RIGIDBODY_VAR_TYPE: Type = Type::context_variable(&RIGIDBODY_TYPE_VEC);
+  static ref RIGIDBODIES_TYPES_SLICE: Vec<Type> = vec![*RIGIDBODY_VAR_TYPE, common_type::none];
+  static ref SHAPES_TYPES_SLICE: Vec<Type> = vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none];
 }
+
+static POSITIONS_TYPES_SLICE: &[Type] = &[
+  common_type::float3,
+  common_type::float3_var,
+  common_type::float3s,
+  common_type::float3s_var,
+];
+static ROTATIONS_TYPES_SLICE: &[Type] = &[
+  common_type::float4,
+  common_type::float4_var,
+  common_type::float4s,
+  common_type::float4s_var,
+];
+static POSITION_TYPES_SLICE: &[Type] = &[common_type::float3, common_type::float3_var];
+static ROTATION_TYPES_SLICE: &[Type] = &[common_type::float4, common_type::float4_var];
 
 struct Simulation {
   pipeline: PhysicsPipeline,

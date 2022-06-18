@@ -6,6 +6,7 @@ use crate::shards::physics::RigidBody;
 use crate::shards::physics::Simulation;
 use crate::shards::physics::EXPOSED_SIMULATION;
 use crate::shards::physics::RIGIDBODIES_TYPE;
+use crate::shards::physics::RIGIDBODIES_TYPES_SLICE;
 use crate::shards::physics::RIGIDBODY_TYPE;
 use crate::shards::physics::RIGIDBODY_VAR_TYPE;
 use crate::shards::physics::SIMULATION_TYPE;
@@ -37,7 +38,7 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("RigidBody"),
     shccstr!("The rigidbody to apply the impulse to."),
-    vec![*RIGIDBODY_VAR_TYPE, common_type::none]
+    &RIGIDBODIES_TYPES_SLICE[..]
   )
     .into()];
 }

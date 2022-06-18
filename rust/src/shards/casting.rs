@@ -13,6 +13,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BYTES_TYPES;
 use crate::types::INT_TYPES;
 use crate::types::STRING_TYPES;
@@ -117,7 +118,7 @@ lazy_static! {
   static ref LEB_PARAMETERS: Parameters = vec![(
     cstr!("Signed"),
     shccstr!("If the integer to encode/decode is signed and can be negative."),
-    vec![common_type::bool]
+    BOOL_TYPES_SLICE
   )
     .into()];
 }

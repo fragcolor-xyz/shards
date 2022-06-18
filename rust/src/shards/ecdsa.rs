@@ -5,6 +5,7 @@ use crate::core::do_blocking;
 use crate::core::log;
 use crate::core::registerShard;
 use crate::shard::Shard;
+use crate::shards::CRYPTO_KEY_TYPES;
 use crate::shardsc::SHType_String;
 use crate::types::common_type;
 use crate::types::ClonedVar;
@@ -15,6 +16,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BYTES_TYPES;
 use crate::types::STRING_TYPES;
 use crate::CString;
@@ -27,36 +29,33 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
 
+static SIGNATURE_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
+
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     shccstr!("The private key to be used to sign the hashed message input."),
-    vec![
-      common_type::bytes,
-      common_type::bytes_var,
-      common_type::string,
-      common_type::string_var
-    ]
+    CRYPTO_KEY_TYPES
   )
     .into()];
   static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref PK_PARAMETERS: Parameters = vec![(
     cstr!("Compressed"),
     shccstr!("If the output PublicKey should use the compressed format."),
-    vec![common_type::bool]
+    BOOL_TYPES_SLICE
   )
     .into()];
   static ref SIG_PARAMETERS: Parameters = vec![
     (
       cstr!("Signature"),
       shccstr!("The signature generated signing the input message with the private key."),
-      vec![common_type::bytes, common_type::bytes_var]
+      SIGNATURE_TYPES
     )
       .into(),
     (
       cstr!("Compressed"),
       shccstr!("If the output PublicKey should use the compressed format."),
-      vec![common_type::bool]
+      BOOL_TYPES_SLICE
     )
       .into()
   ];

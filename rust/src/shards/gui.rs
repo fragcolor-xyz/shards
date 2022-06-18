@@ -6,12 +6,16 @@ use crate::shard::Shard;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::InstanceData;
 use crate::types::ParamVar;
+use crate::types::Parameters;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
+use crate::types::WireState;
 use crate::types::FRAG_CC;
 use crate::types::NONE_TYPES;
+use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::{RawString, Types};
 use egui::containers::panel::{CentralPanel, SidePanel, TopBottomPanel};
 use egui::Context as EguiNativeContext;
@@ -25,9 +29,24 @@ static EGUI_UI_VAR: Type = Type::context_variable(EGUI_UI_SLICE);
 static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, 1701279043); // 'eguC'
 static EGUI_CTX_SLICE: &'static [Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_VAR: Type = Type::context_variable(EGUI_CTX_SLICE);
+static EGUI_CTX_VAR_TYPES: &'static [Type] = &[EGUI_CTX_VAR];
 
 lazy_static! {
   static ref EGUI_CTX_VEC: Types = vec![EGUI_CTX_TYPE];
+  static ref PANELS_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Context"),
+      cstr!("The UI context to render panels onto."),
+      EGUI_CTX_VAR_TYPES,
+    )
+      .into(),
+    (
+      cstr!("Top"),
+      cstr!("A panel that covers the entire top of a UI surface."),
+      &SHARDS_OR_NONE_TYPES[..],
+    )
+      .into(),
+  ];
 }
 
 #[derive(Hash)]
@@ -150,24 +169,104 @@ impl Shard for Panels {
     Some(&self.requiring)
   }
 
-  fn warmup(&mut self, _ctx: &Context) -> Result<(), &str> {
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    if !self.top.is_empty() {
+      self.top.compose(data)?;
+    }
+
+    if !self.left.is_empty() {
+      self.left.compose(data)?;
+    }
+
+    if !self.right.is_empty() {
+      self.right.compose(data)?;
+    }
+
+    if !self.bottom.is_empty() {
+      self.bottom.compose(data)?;
+    }
+
+    // center always last
+    if !self.center.is_empty() {
+      self.center.compose(data)?;
+    }
+
+    Ok(data.inputType)
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.context = Some(Var::from_object_as_clone(
       self.instance.get(),
       &EGUI_CTX_TYPE,
     )?);
+
+    if !self.top.is_empty() {
+      self.top.warmup(ctx)?;
+    }
+
+    if !self.left.is_empty() {
+      self.left.warmup(ctx)?;
+    }
+
+    if !self.right.is_empty() {
+      self.right.warmup(ctx)?;
+    }
+
+    if !self.bottom.is_empty() {
+      self.bottom.warmup(ctx)?;
+    }
+
+    // center always last
+    if !self.center.is_empty() {
+      self.center.warmup(ctx)?;
+    }
+
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    if !self.top.is_empty() {
+      self.top.cleanup();
+    }
+
+    if !self.left.is_empty() {
+      self.left.cleanup();
+    }
+
+    if !self.right.is_empty() {
+      self.right.cleanup();
+    }
+
+    if !self.bottom.is_empty() {
+      self.bottom.cleanup();
+    }
+
+    // center always last
+    if !self.center.is_empty() {
+      self.center.cleanup();
+    }
+
     self.context = None; // release RC etc
+
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let gui_ctx = Var::get_mut_from_clone(&self.context)?;
 
+    let mut failed = false;
+
     if !self.top.is_empty() {
-      TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {});
+      TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {
+        let mut output = Var::default();
+        if self.top.activate(context, input, &mut output) == WireState::Error {
+          failed = true;
+          return;
+        }
+      });
+      if failed {
+        return Err("Failed to activate top panel");
+      }
     }
 
     if !self.left.is_empty() {
