@@ -315,8 +315,10 @@ struct SHError {
 #endif
 };
 
+#define SH_ERROR_NONE (0)
+
 #ifdef __cplusplus
-constexpr const SHError SHError::Success = {0, nullptr};
+constexpr const SHError SHError::Success = {SH_ERROR_NONE, nullptr};
 #endif
 
 // table interface

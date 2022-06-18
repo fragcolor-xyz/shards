@@ -434,7 +434,7 @@ private:
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
       auto errors = blk->cleanup(blk);
-      if (errors.code != 0) {
+      if (errors.code != SH_ERROR_NONE) {
         auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
         SH_CORE::log(msg.c_str());
       }
@@ -456,7 +456,7 @@ public:
       auto blk = *it;
 
       auto errors = blk->cleanup(blk);
-      if (errors.code != 0) {
+      if (errors.code != SH_ERROR_NONE) {
         auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
         SH_CORE::log(msg.c_str());
       }
@@ -467,7 +467,7 @@ public:
     for (auto &blk : _shardsArray) {
       if (blk->warmup) {
         auto errors = blk->warmup(blk, context);
-        if (errors.code != 0) {
+        if (errors.code != SH_ERROR_NONE) {
           throw WarmupError(errors.message);
         }
       }

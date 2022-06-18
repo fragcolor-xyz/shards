@@ -745,7 +745,7 @@ struct Mutant {
           auto blk = mut.payload.shardValue;
           if (blk->compose) {
             auto res0 = blk->compose(blk, dataCopy);
-            if (res0.error.code != 0) {
+            if (res0.error.code != SH_ERROR_NONE) {
               throw ComposeError(res0.error.message);
             }
             auto res = res0.result;

@@ -1086,7 +1086,7 @@ void validateConnection(ValidationContext &ctx) {
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, data);
-    if (composeResult.error.code != 0) {
+    if (composeResult.error.code != SH_ERROR_NONE) {
       SHLOG_ERROR("Error composing shard: %s", composeResult.error.message);
       throw ComposeError(composeResult.error.message);
     }
