@@ -412,6 +412,18 @@ impl ExposedInfo {
 
 pub type ExposedTypes = Vec<ExposedInfo>;
 
+impl From<SHExposedTypesInfo> for ExposedTypes {
+  fn from(types: SHExposedTypesInfo) -> Self {
+    let mut exposed_types = Vec::with_capacity(types.len as usize);
+    for i in 0..types.len {
+      let exposed_type = unsafe { &*types.elements.add(i as usize) };
+      // copy is fine, we just care of the vector
+      exposed_types.push(*exposed_type);
+    }
+    exposed_types
+  }
+}
+
 impl From<&ExposedTypes> for SHExposedTypesInfo {
   fn from(vec: &ExposedTypes) -> Self {
     SHExposedTypesInfo {
@@ -2869,7 +2881,7 @@ impl ShardsVar {
     Ok(())
   }
 
-  pub fn assign(&mut self, value: Var) -> Result<(), &str> {
+  pub fn set_param(&mut self, value: &Var) -> Result<(), &str> {
     self.destroy(); // destroy old blocks
 
     self.param = value.into(); // clone it
@@ -2894,6 +2906,10 @@ impl ShardsVar {
     };
 
     Ok(())
+  }
+
+  pub fn get_param(&self) -> Var {
+    self.param.0
   }
 
   pub fn compose(&mut self, data: &InstanceData) -> Result<(), &str> {
