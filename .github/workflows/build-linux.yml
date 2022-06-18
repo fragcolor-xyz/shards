@@ -69,7 +69,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
-          sharedKey: Linux-${{ steps.setup.outputs.build-type }}
+          key: ${{ steps.setup.outputs.build-type }}
       - name: Build
         run: |
           mkdir build
@@ -118,9 +118,9 @@ jobs:
           rustup toolchain install nightly
           rustup default nightly
       - uses: Swatinem/rust-cache@v1
-        if: ${{ steps.setup.outputs.build-type == 'Debug' && github.event_name != 'workflow_dispatch' }}
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
-          sharedKey: Linux-${{ steps.setup.outputs.build-type }}
+          key: ${{ steps.setup.outputs.build-type }}
       - name: Build (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
@@ -265,7 +265,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
-          sharedKey: Linux-Debug
+          key: ${{ steps.setup.outputs.build-type }}
       - name: Build
         run: |
           cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1
