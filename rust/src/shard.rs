@@ -204,10 +204,7 @@ unsafe extern "C" fn shard_destroy<T: Shard>(arg1: *mut CShard) {
 unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.warmup(&(*arg2)) {
-    Ok(_) => SHError {
-      message: core::ptr::null(),
-      code: 0,
-    },
+    Ok(_) => SHError::default(),
     Err(error) => {
       (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHError {
@@ -248,10 +245,7 @@ unsafe extern "C" fn shard_mutate<T: Shard>(arg1: *mut CShard, arg2: SHTable) {
 unsafe extern "C" fn shard_cleanup<T: Shard>(arg1: *mut CShard) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.cleanup() {
-    Ok(_) => SHError {
-      message: core::ptr::null(),
-      code: 0,
-    },
+    Ok(_) => SHError::default(),
     Err(error) => {
       (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHError {
@@ -287,10 +281,7 @@ unsafe extern "C" fn shard_compose<T: Shard>(
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.compose(&data) {
     Ok(output) => SHShardComposeResult {
-      error: SHError {
-        message: core::ptr::null(),
-        code: 0,
-      },
+      error: SHError::default(),
       result: output,
     },
     Err(error) => {
@@ -344,10 +335,7 @@ unsafe extern "C" fn shard_setParam<T: Shard>(
 ) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.setParam(arg2, &*arg3) {
-    Ok(_) => SHError {
-      message: core::ptr::null(),
-      code: 0,
-    },
+    Ok(_) => SHError::default(),
     Err(error) => {
       (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHError {
