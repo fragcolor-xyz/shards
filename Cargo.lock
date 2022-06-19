@@ -380,7 +380,8 @@ dependencies = [
 [[package]]
 name = "chrono"
 version = "0.4.19"
-source = "git+https://github.com/chronotope/chrono?branch=main#7097f933eb16d4fa5bb94b2a44e7d69c62af755d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
 dependencies = [
  "libc",
  "num-integer",
