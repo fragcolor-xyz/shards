@@ -128,8 +128,7 @@ impl Shard for EguiContext {
   }
 
   fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
-    let result = Var::new_object(&self.context, &EGUI_CTX_TYPE);
-    Ok(result)
+    Ok(Var::new_object(&self.context, &EGUI_CTX_TYPE))
   }
 }
 
@@ -281,14 +280,8 @@ impl Shard for Panels {
       return Err("No UI context variable");
     }
 
-    self
-      .ui_ctx_instance
-      .set(Var::new_object(&self.ui_ctx_rc, &EGUI_UI_TYPE));
-
-    self.context = Some(Var::from_object_as_clone(
-      self.instance.get(),
-      &EGUI_CTX_TYPE,
-    )?);
+    self.instance.warmup(ctx);
+    self.ui_ctx_instance.warmup(ctx);
 
     if !self.top.is_empty() {
       self.top.warmup(ctx)?;
@@ -336,13 +329,34 @@ impl Shard for Panels {
       self.center.cleanup();
     }
 
+    self.ui_ctx_instance.cleanup();
+    self.instance.cleanup();
+
     self.context = None; // release RC etc
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx = Var::get_mut_from_clone(&self.context)?;
+    if self.context.is_none() {
+      // maybe refactor recursing etc
+      self.context = Some(Var::from_object_as_clone(
+        self.instance.get(),
+        &EGUI_CTX_TYPE,
+      )?);
+    }
+
+    let gui_ctx = if let Some(gui_ctx) = self.context.as_ref() {
+      let p = Rc::as_ptr(&gui_ctx);
+      unsafe { &*p }
+    } else {
+      return Err("UI Context was empty");
+    };
+    let gui_ctx = if let Some(gui_ctx) = gui_ctx {
+      gui_ctx
+    } else {
+      return Err("No UI context");
+    };
 
     let mut failed = false;
 
