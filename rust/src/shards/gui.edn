@@ -12,7 +12,7 @@
                )
 
     (UI.Window :Title "My Window" ; can be None (window options)
-               :Content (-> ...)))) = .this-ui
+               :Contents (-> ...)))) = .this-ui
 
   ; requires gpu context etc
   ; but ideally rest of blocks can run from other threads and such
