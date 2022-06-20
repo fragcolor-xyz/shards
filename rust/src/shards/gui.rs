@@ -7,6 +7,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::ShardsVar;
@@ -17,7 +18,6 @@ use crate::types::FRAG_CC;
 use crate::types::NONE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::{RawString, Types};
-use egui::containers::panel::{CentralPanel, SidePanel, TopBottomPanel};
 use egui::Context as EguiNativeContext;
 use egui::RawInput;
 use egui::Ui;
@@ -34,6 +34,9 @@ static EGUI_CTX_SLICE: &'static [Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_VAR: Type = Type::context_variable(EGUI_CTX_SLICE);
 static EGUI_CTX_VAR_TYPES: &'static [Type] = &[EGUI_CTX_VAR];
 
+const CONTEXT_NAME: &'static str = "UI.Context";
+const PARENT_UI_NAME: &'static str = "UI.UI.Parent";
+
 lazy_static! {
   static ref EGUI_CTX_VEC: Types = vec![EGUI_CTX_TYPE];
   static ref CONTEXT_PARAMETERS: Parameters = vec![
@@ -41,16 +44,14 @@ lazy_static! {
       cstr!("Contents"),
       cstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
-    )
-    .into(),
+    ).into(),
   ];
   static ref PANELS_PARAMETERS: Parameters = vec![
     (
       cstr!("Top"),
       cstr!("A panel that covers the entire top of a UI surface."),
       &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
+    ).into(),
     (
       cstr!("Left"),
       cstr!("A panel that covers the entire left side of a UI surface."),
@@ -70,8 +71,7 @@ lazy_static! {
       cstr!("Bottom"),
       cstr!("A panel that covers the entire bottom of a UI surface."),
       &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
+    ).into(),
   ];
 }
 
@@ -101,7 +101,7 @@ struct EguiContext {
 impl Default for EguiContext {
   fn default() -> Self {
     let mut ctx = ParamVar::new(().into());
-    ctx.set_name("GUI.Context");
+    ctx.set_name(CONTEXT_NAME);
     Self {
       context: Rc::new(None),
       instance: ctx,
@@ -112,15 +112,19 @@ impl Default for EguiContext {
 
 impl Shard for EguiContext {
   fn registerName() -> &'static str {
-    cstr!("GUI")
+    cstr!("UI")
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("GUI-rust-0x20200101")
+    compile_time_crc32::crc32!("UI-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "GUI"
+    "UI"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Initializes a UI context."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -157,7 +161,7 @@ impl Shard for EguiContext {
     // append to shared ui vars
     let ctx_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
-      name: shstr!("GUI.Context"),
+      name: shstr!("UI.Context"),
       help: cstr!("The UI context.").into(),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
@@ -236,9 +240,9 @@ struct Panels {
 impl Default for Panels {
   fn default() -> Self {
     let mut ctx = ParamVar::new(().into());
-    ctx.set_name("GUI.Context");
+    ctx.set_name(CONTEXT_NAME);
     let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name("GUI.UI.Parent");
+    ui_ctx.set_name(PARENT_UI_NAME);
     Self {
       instance: ctx,
       requiring: Vec::new(),
@@ -255,15 +259,19 @@ impl Default for Panels {
 
 impl Shard for Panels {
   fn registerName() -> &'static str {
-    cstr!("GUI.Panels")
+    cstr!("UI.Panels")
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("GUI.Panels-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Panels-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "GUI.Panels"
+    "UI.Panels"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Layout UI elements into panels."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -323,7 +331,7 @@ impl Shard for Panels {
     // append to shared ui vars
     let ui_info = ExposedInfo {
       exposedType: EGUI_UI_TYPE,
-      name: shstr!("GUI.UI.Parent"),
+      name: shstr!("UI.UI.Parent"),
       help: cstr!("The parent UI object.").into(),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
@@ -359,10 +367,6 @@ impl Shard for Panels {
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    if !self.instance.is_variable() {
-      return Err("No UI context variable");
-    }
-
     self.instance.warmup(ctx);
     self.ui_ctx_instance.warmup(ctx);
 
@@ -428,7 +432,7 @@ impl Shard for Panels {
     let mut failed = false;
 
     if !self.top.is_empty() {
-      TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {
+      egui::TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
@@ -448,7 +452,7 @@ impl Shard for Panels {
     }
 
     if !self.left.is_empty() {
-      SidePanel::left(EguiId::new(self, 1)).show(gui_ctx, |ui| {
+      egui::SidePanel::left(EguiId::new(self, 1)).show(gui_ctx, |ui| {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
@@ -467,7 +471,7 @@ impl Shard for Panels {
     }
 
     if !self.right.is_empty() {
-      SidePanel::right(EguiId::new(self, 2)).show(gui_ctx, |ui| {
+      egui::SidePanel::right(EguiId::new(self, 2)).show(gui_ctx, |ui| {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
@@ -486,7 +490,7 @@ impl Shard for Panels {
     }
 
     if !self.bottom.is_empty() {
-      TopBottomPanel::bottom(EguiId::new(self, 3)).show(gui_ctx, |ui| {
+      egui::TopBottomPanel::bottom(EguiId::new(self, 3)).show(gui_ctx, |ui| {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
@@ -506,7 +510,7 @@ impl Shard for Panels {
 
     // center always last
     if !self.center.is_empty() {
-      CentralPanel::default().show(gui_ctx, |ui| {
+      egui::CentralPanel::default().show(gui_ctx, |ui| {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
@@ -536,7 +540,7 @@ struct Label {
 impl Default for Label {
   fn default() -> Self {
     let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name("GUI.UI.Parent");
+    ui_ctx.set_name(PARENT_UI_NAME);
     Label {
       parent: ui_ctx,
       text: None,

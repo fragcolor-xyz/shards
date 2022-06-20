@@ -1,23 +1,21 @@
 ; Reference document
 
 (defloop with-ui
-  (GUI) = .this-ui
+  (UI
+   (->
+    ; useful to make a good looking app quickly
+    (UI.Panels :Top (-> ...) ; can be None
+               :Left (-> ...) ; can be None
+               :Center (-> ...) ; can be None
+               :Right (-> ...) ; can be None
+               :Bottom (-> ...) ; can be None
+               )
 
-  ; useful to make a good looking app quickly
-  (GUI.Panels .this-ui
-              :Top (-> ...) ; can be None
-              :Left (-> ...) ; can be None
-              :Center (-> ...) ; can be None
-              :Right (-> ...) ; can be None
-              :Bottom (-> ...) ; can be None
-              )
+    (UI.Window :Title "My Window" ; can be None (window options)
+               :Content (-> ...)))) = .this-ui
 
-  (GUI.Window .this-ui
-              :Title "My Window" ; can be None (window options)
-              :Content (-> ...))
-  
   ; requires gpu context etc
   ; but ideally rest of blocks can run from other threads and such
-  (GUI.Render .this-ui) 
+  (UI.Render .this-ui)
   ;
   )
