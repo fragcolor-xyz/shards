@@ -14,18 +14,20 @@
 #include <gfx/fmt.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/gltf/gltf.hpp>
-#include <gfx/helpers/gizmos.hpp>
 #include <gfx/helpers/shapes.hpp>
+#include <gfx/helpers/translation_gizmo.hpp>
 #include <gfx/imgui/imgui.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/mesh.hpp>
+#include <gfx/moving_average.hpp>
 #include <gfx/paths.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/types.hpp>
 #include <gfx/utils.hpp>
 #include <gfx/view.hpp>
 #include <gfx/window.hpp>
+#include <magic_enum.hpp>
 #include <memory>
 #include <random>
 #include <string>
@@ -46,8 +48,10 @@ void osYield() {}
 
 struct App {
   Window window;
-  Loop loop;
   Context context;
+
+  Loop loop;
+  float deltaTime;
 
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
@@ -74,6 +78,14 @@ struct App {
     context.init(window, contextOptions);
 
     renderer = std::make_shared<Renderer>(context);
+    imgui = std::make_shared<ImGuiRenderer>(context);
+    {
+      auto &io = ImGui::GetIO();
+      io.Fonts->Clear();
+      ImFontConfig config{};
+      config.SizePixels = std::floor(13.0f * 1.5f);
+      io.Fonts->AddFontDefault(&config);
+    }
 
     view = std::make_shared<View>();
     view->view = linalg::lookat_matrix(float3(3.0f, 3.0f, 3.0f), float3(0, 0, 0), float3(0, 1, 0));
@@ -103,8 +115,6 @@ struct App {
                 },
         }),
     };
-
-    translationGizmo.transform = &gizmoTransform;
   }
 
   // std::vector<gizmos::HandlePtr> handles = {
@@ -238,7 +248,11 @@ struct App {
     view->view = linalg::lookat_matrix(p1, float3(0, 0, 0), float3(0, 1, 0));
 
     gizmoContext.begin(gizmoInputState, view);
+
+    translationGizmo.transform = gizmoTransform;
     gizmoContext.updateGizmo(translationGizmo);
+    gizmoTransform = translationGizmo.transform;
+
     gizmoContext.end(editorQueue);
 
     // Axis lines
@@ -258,8 +272,30 @@ struct App {
     renderer->endFrame();
   }
 
+  void renderDebugInfoWindow() {
+    if (ImGui::Begin("Debug Info")) {
+      static MovingAverage ma(16);
+      ma.add(deltaTime);
+      ImGui::LabelText("FPS", "%.2f", 1.0f / ma.getAverage());
+
+      int2 outputSize = context.getMainOutputSize();
+      ImGui::LabelText("Main Output Size", "%d x %d", outputSize.x, outputSize.y);
+      ImGui::LabelText("Main Output Format", "%s", magic_enum::enum_name(context.getMainOutputFormat()).data());
+
+      auto &io = ImGui::GetIO();
+      ImGui::LabelText("io.MouseDelta", "(%.2f, %.2f)", io.MouseDelta.x, io.MouseDelta.x);
+      ImGui::LabelText("io.MousePos", "(%.2f, %.2f)", io.MousePos.x, io.MousePos.x);
+      ImGui::LabelText("io.MouseDown", "%d %d %d %d %d", io.MouseDown[0], io.MouseDown[1], io.MouseDown[2], io.MouseDown[3],
+                       io.MouseDown[4]);
+
+      ImGui::End();
+    }
+  }
+
   void renderUI(const std::vector<SDL_Event> &events) {
     imgui->beginFrame(events);
+    renderDebugInfoWindow();
+
     imgui->endFrame();
   }
 
@@ -269,37 +305,36 @@ struct App {
     uint32_t mouseButtonState{};
 
     while (!quit) {
-      std::vector<SDL_Event> events;
-      window.pollEvents(events);
-      for (auto &event : events) {
-        if (event.type == SDL_WINDOWEVENT) {
-          if (event.window.type == SDL_WINDOWEVENT_SIZE_CHANGED) {
+      if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
+        std::vector<SDL_Event> events;
+        window.pollEvents(events);
+        for (auto &event : events) {
+          if (event.type == SDL_WINDOWEVENT) {
+            if (event.window.type == SDL_WINDOWEVENT_SIZE_CHANGED) {
+            }
+          }
+          if (event.type == SDL_QUIT)
+            quit = true;
+
+          if (event.type == SDL_MOUSEMOTION) {
+            mousePos.x = event.motion.x;
+            mousePos.y = event.motion.y;
+          } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+            mousePos.x = event.button.x;
+            mousePos.y = event.button.y;
+            if (event.button.state == SDL_PRESSED)
+              mouseButtonState |= SDL_BUTTON(event.button.button);
+            else
+              mouseButtonState &= ~SDL_BUTTON(event.button.button);
           }
         }
-        if (event.type == SDL_QUIT)
-          quit = true;
 
-        if (event.type == SDL_MOUSEMOTION) {
-          mousePos.x = event.motion.x;
-          mousePos.y = event.motion.y;
-        } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
-          mousePos.x = event.button.x;
-          mousePos.y = event.button.y;
-          if (event.button.state == SDL_PRESSED)
-            mouseButtonState |= SDL_BUTTON(event.button.button);
-          else
-            mouseButtonState &= ~SDL_BUTTON(event.button.button);
-        }
-      }
+        context.resizeMainOutputConditional(window.getDrawableSize());
 
-      context.resizeMainOutputConditional(window.getDrawableSize());
+        gizmoInputState.pressed = (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+        gizmoInputState.cursorPosition = mousePos;
+        gizmoInputState.viewSize = window.getSize();
 
-      gizmoInputState.pressed = (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
-      gizmoInputState.cursorPosition = mousePos;
-      gizmoInputState.viewSize = window.getSize();
-
-      float deltaTime;
-      if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
         if (context.beginFrame()) {
           renderer->beginFrame();
 
@@ -309,6 +344,9 @@ struct App {
           renderFrame(loop.getAbsoluteTime(), deltaTime);
 
           renderer->endFrame();
+
+          renderUI(events);
+
           context.endFrame();
         }
       }

@@ -4,6 +4,7 @@ namespace gfx {
 namespace gizmos {
 
 void InputContext::begin(const InputState &inputState, ViewPtr view) {
+  this->prevInputState = this->inputState;
   this->inputState = inputState;
   updateView(view);
 
@@ -16,6 +17,8 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
 }
 
 void InputContext::updateHandle(Handle &handle) {
+  bool isHeld = &handle == held;
+
   auto &box = handle.selectionBox;
   float4x4 invHandleTransform = linalg::inverse(handle.selectionBoxTransform);
   float3 rayLoc1 = linalg::mul(invHandleTransform, float4(eyeLocation, 1)).xyz();
@@ -28,43 +31,51 @@ void InputContext::updateHandle(Handle &handle) {
     }
   }
 
-  // Check to see if held handle is not lost between updates
-  if (&handle == held) {
-    heldHandleUpdated = true;
+  // Movement callback for held handle
+  if (isHeld) {
+    updateHeldHandle();
   }
 }
 
-void InputContext::end() {
+void InputContext::updateHeldHandle() {
+  assert(held);
+
+  heldHandleUpdated = true;
+
+  // Force hovered to the same handle
+  hovered = held;
+
+  // Execute movement callback
+  Handle &handle = *held;
+  assert(handle.callbacks);
+  handle.callbacks->move(*this, handle);
+}
+
+void InputContext::updateHitLocation() {
   // Hit location from raycast results
   if (hovered)
     hitLocation = eyeLocation + rayDirection * hitDistance;
   else
     hitLocation = float3(0, 0, 0);
+}
+
+void InputContext::end() {
+  updateHitLocation();
 
   // If a held handle was not updated this frame, clear it
   if (held && !heldHandleUpdated)
     held = nullptr;
-
-  // If holding a handle, force hovered to the same handle
-  if (held)
-    hovered = held;
 
   if (held && !inputState.pressed) {
     Handle &handle = *held;
     assert(handle.callbacks);
     handle.callbacks->released(*this, handle);
     held = nullptr;
-  } else if (!held && inputState.pressed && hovered) {
+  } else if (!held && hovered && !prevInputState.pressed && inputState.pressed) {
     held = hovered;
     Handle &handle = *hovered;
     assert(handle.callbacks);
     handle.callbacks->grabbed(*this, handle);
-  }
-
-  if (held) {
-    Handle &handle = *held;
-    assert(handle.callbacks);
-    handle.callbacks->move(*this, handle);
   }
 }
 
