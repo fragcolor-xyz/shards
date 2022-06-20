@@ -17,6 +17,7 @@ use crate::types::WireState;
 use crate::types::FRAG_CC;
 use crate::types::NONE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
+use crate::types::STRING_TYPES;
 use crate::types::{RawString, Types};
 use egui::Context as EguiNativeContext;
 use egui::RawInput;
@@ -532,8 +533,10 @@ impl Shard for Panels {
   }
 }
 
+/// Displays text.
 struct Label {
   parent: ParamVar,
+  requiring: ExposedTypes,
   text: Option<CString>,
 }
 
@@ -543,6 +546,7 @@ impl Default for Label {
     ui_ctx.set_name(PARENT_UI_NAME);
     Label {
       parent: ui_ctx,
+      requiring: Vec::new(),
       text: None,
     }
   }
@@ -553,31 +557,41 @@ impl Shard for Label {
   where
     Self: Sized,
   {
-    todo!()
+    cstr!("UI.Label")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    todo!()
+    compile_time_crc32::crc32!("UI.Label-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    todo!()
+    "UI.Label"
   }
 
   fn inputTypes(&mut self) -> &Types {
-    todo!()
+    &STRING_TYPES
   }
 
   fn outputTypes(&mut self) -> &Types {
-    todo!()
+    &STRING_TYPES
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    // TODO Add GUI.UI.Parent to the list of required variables
-    todo!()
+    self.requiring.clear();
+
+    // Add GUI.Context to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: EGUI_UI_TYPE,
+      name: self.parent.get_name(),
+      help: cstr!("The parent UI object.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
+    Some(&self.requiring)
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
@@ -590,19 +604,18 @@ impl Shard for Label {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let ui = {
-      let ui_ptr: &mut Ui = Var::from_object_ptr_mut_ref(self.parent.get(), &EGUI_UI_TYPE)?;
-      &*ui_ptr
-    };
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let ui: &mut Ui = Var::from_object_ptr_mut_ref(self.parent.get(), &EGUI_UI_TYPE)?;
 
-    // TODO use ui regularly
+    let text: &str = input.as_ref().try_into()?;
+    ui.label(text);
 
-    todo!()
+    Ok(*input)
   }
 }
 
 pub fn registerShards() {
   registerShard::<EguiContext>();
   registerShard::<Panels>();
+  registerShard::<Label>();
 }
