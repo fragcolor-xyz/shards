@@ -17,6 +17,7 @@ use crate::types::FRAG_CC;
 use crate::types::NONE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::{RawString, Types};
+use egui::RawInput;
 use egui::containers::panel::{CentralPanel, SidePanel, TopBottomPanel};
 use egui::Context as EguiNativeContext;
 use egui::Ui;
@@ -35,13 +36,15 @@ static EGUI_CTX_VAR_TYPES: &'static [Type] = &[EGUI_CTX_VAR];
 
 lazy_static! {
   static ref EGUI_CTX_VEC: Types = vec![EGUI_CTX_TYPE];
-  static ref PANELS_PARAMETERS: Parameters = vec![
+  static ref CONTEXT_PARAMETERS: Parameters = vec![
     (
-      cstr!("Context"),
-      cstr!("The UI context to render panels onto."),
-      EGUI_CTX_VAR_TYPES,
+      cstr!("Contents"),
+      cstr!("The UI contents."),
+      &SHARDS_OR_NONE_TYPES[..],
     )
-      .into(),
+    .into(),
+  ];
+  static ref PANELS_PARAMETERS: Parameters = vec![
     (
       cstr!("Top"),
       cstr!("A panel that covers the entire top of a UI surface."),
@@ -91,12 +94,18 @@ impl EguiId {
 // This could be flat on the screen, or it could be attached to 3D geometry.
 struct EguiContext {
   context: Rc<Option<EguiNativeContext>>,
+  instance: ParamVar,
+  contents: ShardsVar,
 }
 
 impl Default for EguiContext {
   fn default() -> Self {
+    let mut ctx = ParamVar::new(().into());
+    ctx.set_name("GUI.Context");
     Self {
       context: Rc::new(None),
+      instance: ctx,
+      contents: ShardsVar::default(),
     }
   }
 }
@@ -122,18 +131,98 @@ impl Shard for EguiContext {
     &EGUI_CTX_VEC
   }
 
-  fn warmup(&mut self, _ctx: &Context) -> Result<(), &str> {
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&CONTEXT_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+    match index {
+      0 => self.contents.set_param(value),
+      _ => Err("Invalid parameter index"),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.contents.get_param(),
+      _ => Var::default(),
+    }
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    // we need to inject the UI context to the inner shards
+    let mut data = *data;
+    // clone shared into a new vector we can append things to
+    let mut shared: ExposedTypes = data.shared.into();
+    // append to shared ui vars
+    let ctx_info = ExposedInfo {
+      exposedType: EGUI_CTX_TYPE,
+      name: shstr!("GUI.Context"),
+      help: cstr!("The UI context.").into(),
+      isMutable: false,
+      isProtected: true, // don't allow to be used in code/wires
+      isTableEntry: false,
+      global: false,
+      scope: core::ptr::null_mut(),
+    };
+    shared.push(ctx_info);
+    // update shared
+    data.shared = (&shared).into();
+
+    if !self.contents.is_empty() {
+      self.contents.compose(&data)?;
+    }
+
+    Ok(data.inputType)
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.context = Rc::new(Some(EguiNativeContext::default()));
+    self.instance.warmup(ctx);
+    self.contents.warmup(ctx)?;
     Ok(())
   }
 
-  fn activate(&mut self, _: &Context, _input: &Var) -> Result<Var, &str> {
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.contents.cleanup();
+    self.instance.cleanup();
+    Ok(())
+  }
+
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    let gui_ctx = unsafe { &*Rc::as_ptr(&self.context) };
+    let gui_ctx = if let Some(gui_ctx) = gui_ctx {
+      gui_ctx
+    } else {
+      return Err("No UI context");
+    };
+
+    let raw_input = RawInput::default(); // FIXME: where do raw input come from?
+
+    let mut failed = false;
+    let _output = gui_ctx.run(raw_input, |ctx| {
+      unsafe {
+        let var = Var::new_object_from_ptr(ctx as *const _, &EGUI_CTX_TYPE);
+        self.instance.set(var);
+      }
+
+      if !self.contents.is_empty() {
+        let mut output = Var::default();
+        if self.contents.activate(context, input, &mut output) == WireState::Error {
+          failed = true;
+          return;
+        }
+      }
+    });
+    if failed {
+      return Err("Failed to activate UI contents");
+    }
+
     Ok(Var::new_object(&self.context, &EGUI_CTX_TYPE))
   }
 }
 
 struct Panels {
-  context: Option<Rc<Option<EguiNativeContext>>>,
   instance: ParamVar, // Context parameter, this will go will with trait system (users able to plug into existing UIs and interop with them)
   requiring: ExposedTypes,
   top: ShardsVar,
@@ -147,11 +236,12 @@ struct Panels {
 
 impl Default for Panels {
   fn default() -> Self {
+    let mut ctx = ParamVar::new(().into());
+    ctx.set_name("GUI.Context");
     let mut ui_ctx = ParamVar::new(().into());
     ui_ctx.set_name("GUI.UI.Parent");
     Self {
-      context: None,
-      instance: ParamVar::new(().into()),
+      instance: ctx,
       requiring: Vec::new(),
       top: ShardsVar::default(),
       left: ShardsVar::default(),
@@ -191,35 +281,30 @@ impl Shard for Panels {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.instance.set_param(value)),
-      1 => self.top.set_param(value),
-      2 => self.left.set_param(value),
-      3 => self.center.set_param(value),
-      4 => self.right.set_param(value),
-      5 => self.bottom.set_param(value),
+      0 => self.top.set_param(value),
+      1 => self.left.set_param(value),
+      2 => self.center.set_param(value),
+      3 => self.right.set_param(value),
+      4 => self.bottom.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.instance.get_param(),
-      1 => self.top.get_param(),
-      2 => self.left.get_param(),
-      3 => self.center.get_param(),
-      4 => self.right.get_param(),
-      5 => self.bottom.get_param(),
+      0 => self.top.get_param(),
+      1 => self.left.get_param(),
+      2 => self.center.get_param(),
+      3 => self.right.get_param(),
+      4 => self.bottom.get_param(),
       _ => Var::default(),
     }
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    if !self.instance.is_variable() {
-      return None;
-    }
-
     self.requiring.clear();
 
+    // Add GUI.Context to the list of required variables
     let exp_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
       name: self.instance.get_name(),
@@ -248,7 +333,7 @@ impl Shard for Panels {
       scope: core::ptr::null_mut(),
     };
     shared.push(ui_info);
-    // Copy on top of copy
+    // update shared
     data.shared = (&shared).into();
 
     if !self.top.is_empty() {
@@ -332,30 +417,13 @@ impl Shard for Panels {
     self.ui_ctx_instance.cleanup();
     self.instance.cleanup();
 
-    self.context = None; // release RC etc
-
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if self.context.is_none() {
-      // maybe refactor recursing etc
-      self.context = Some(Var::from_object_as_clone(
-        self.instance.get(),
-        &EGUI_CTX_TYPE,
-      )?);
-    }
-
-    let gui_ctx = if let Some(gui_ctx) = self.context.as_ref() {
-      let p = Rc::as_ptr(&gui_ctx);
-      unsafe { &*p }
-    } else {
-      return Err("UI Context was empty");
-    };
-    let gui_ctx = if let Some(gui_ctx) = gui_ctx {
-      gui_ctx
-    } else {
-      return Err("No UI context");
+    let gui_ctx= {
+      let ctx_ptr: &mut EguiNativeContext = Var::from_object_ptr_mut_ref(self.instance.get(), &EGUI_CTX_TYPE)?;
+      &*ctx_ptr
     };
 
     let mut failed = false;
