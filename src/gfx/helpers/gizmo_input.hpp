@@ -70,6 +70,7 @@ public:
 
   // Last input state
   InputState inputState;
+  InputState prevInputState;
 
 private:
   float4x4 cachedViewProj;
@@ -78,6 +79,8 @@ private:
 public:
   void begin(const InputState &inputState, ViewPtr view);
   // Call this within the update for each handle in view
+  //  when a handle is grabbed, this is allowed to run the move callback directly
+  //  since no raycast needs to be performed on the entire set of handles
   void updateHandle(Handle &handle);
   // Call to end input update and run input callbacks
   void end();
@@ -85,6 +88,10 @@ public:
 private:
   // Computes eye location and cursor ray direction
   void updateView(ViewPtr view);
+  // Updates movement for the currently held handle
+  void updateHeldHandle();
+  // Updates `hitLocation` variable based on hovered/held handle
+  void updateHitLocation();
 };
 } // namespace gizmos
 
