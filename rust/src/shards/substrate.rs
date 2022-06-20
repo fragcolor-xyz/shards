@@ -23,10 +23,14 @@ use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
 use crate::types::ANYS_TYPES;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BYTES_TYPES;
 use crate::types::ENUMS_TYPE;
+use crate::types::ENUMS_TYPES;
 use crate::types::FRAG_CC;
+use crate::types::INT_TYPES_SLICE;
 use crate::types::STRINGS_TYPES;
+use crate::types::STRING_OR_NONE_SLICE;
 use crate::types::STRING_TYPES;
 use crate::CString;
 use crate::Types;
@@ -47,45 +51,45 @@ lazy_static! {
   static ref ID_PARAMETERS: Parameters = vec![(
     cstr!("ECDSA"),
     shccstr!("If the input public key is an ECDSA and not the default Sr25519/Ed25519."),
-    vec![common_type::bool]
+    BOOL_TYPES_SLICE
   )
     .into(),
   (
     cstr!("Version"),
     shccstr!("The substrate version prefix."),
-    vec![common_type::int]
+    INT_TYPES_SLICE
   )
     .into()];
   static ref STORAGE_PARAMETERS: Parameters = vec![(
       cstr!("PreHashed"),
       shccstr!("If the keys are already hashed."),
-      vec![common_type::bool]
+      BOOL_TYPES_SLICE
     )
     .into()];
-  static ref STRINGS_OR_NONE: Vec<Type> = vec![common_type::string, common_type::none];
-  static ref STRINGS_OR_NONE_TYPE: Type = Type::seq(&STRINGS_OR_NONE);
+  static ref STRINGS_OR_NONE_TYPE: Type = Type::seq(STRING_OR_NONE_SLICE);
+  static ref HINTS_TYPES: Vec<Type>= vec![*STRINGS_OR_NONE_TYPE];
   static ref ENCODE_PARAMETERS: Parameters = vec![(
     cstr!("Hints"),
     shccstr!("The hints of types to encode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"c\" for Compact int, \"a\" for AccountId or nil for other types."),
-    vec![*STRINGS_OR_NONE_TYPE]
+    &HINTS_TYPES[..]
   )
     .into()];
   static ref DECODE_PARAMETERS: Parameters = vec![(
     cstr!("Types"),
     shccstr!("The list of types expected to decode."),
-    vec![*ENUMS_TYPE]
+    &ENUMS_TYPES[..]
   )
     .into(),
   (
     cstr!("Hints"),
     shccstr!("The hints of the types to decode, either \"i8\"/\"u8\", \"i16\"/\"u16\" etc... for int types, \"c\" for Compact int, \"a\" for AccountId or nil for other types."),
-    vec![*STRINGS_OR_NONE_TYPE]
+    &HINTS_TYPES[..]
   )
     .into(),
   (
     cstr!("Version"),
     shccstr!("The substrate version prefix."),
-    vec![common_type::int]
+    INT_TYPES_SLICE
   )
     .into()];
   static ref METADATA_TYPE: Type = {

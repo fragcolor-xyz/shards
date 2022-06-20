@@ -15,6 +15,8 @@ use crate::types::Parameters;
 use crate::types::RawString;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::BOOL_TYPES_SLICE;
+use crate::types::INT_TYPES_SLICE;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -27,6 +29,13 @@ use std::convert::TryInto;
 use std::ffi::CStr;
 
 const FULL_OUTPUT_KEYS: &[RawString] = &[shstr!("status"), shstr!("headers"), shstr!("body")];
+
+static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
+static HEADERS_TYPES: &[Type] = &[
+  common_type::none,
+  common_type::string_table,
+  common_type::string_table_var,
+];
 
 lazy_static! {
   static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::none, common_type::string_table];
@@ -54,32 +63,23 @@ lazy_static! {
   static ref STR_FULL_OUTPUT_TYPE: Vec<Type> = vec![*STR_FULL_OUTPUT_TTYPE];
   static ref BYTES_FULL_OUTPUT_TYPE: Vec<Type> = vec![*BYTES_FULL_OUTPUT_TTYPE];
   static ref GET_PARAMETERS: Parameters = vec![
-    (
-      cstr!("URL"),
-      shccstr!("The url to request to."),
-      vec![common_type::string, common_type::string_var]
-    )
-      .into(),
+    (cstr!("URL"), shccstr!("The url to request to."), URL_TYPES).into(),
     (
       cstr!("Headers"),
       shccstr!("The headers to use for the request."),
-      vec![
-        common_type::none,
-        common_type::string_table,
-        common_type::string_table_var
-      ]
+      HEADERS_TYPES
     )
       .into(),
     (
       cstr!("Timeout"),
       shccstr!("How many seconds to wait for the request to complete."),
-      vec![common_type::int]
+      INT_TYPES_SLICE
     )
       .into(),
     (
       cstr!("Bytes"),
       shccstr!("If instead of a string the shard should output bytes."),
-      vec![common_type::bool]
+      BOOL_TYPES_SLICE
     )
       .into(),
     (
@@ -87,7 +87,7 @@ lazy_static! {
       shccstr!(
         "If the output should be a table with the full response, including headers and status."
       ),
-      vec![common_type::bool]
+      BOOL_TYPES_SLICE
     )
       .into(),
   ];

@@ -18,6 +18,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::INT2_TYPES_SLICE;
 use crate::CString;
 use crate::Types;
 use crate::Var;
@@ -54,7 +55,7 @@ lazy_static! {
     shccstr!(
       "The desired output size, if (0, 0) will default to the size defined in the svg data."
     ),
-    vec![common_type::int2]
+    INT2_TYPES_SLICE
   )
     .into()];
 }

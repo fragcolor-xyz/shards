@@ -39,8 +39,12 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 
 pub trait Shard {
-  fn registerName() -> &'static str;
-  fn hash() -> u32;
+  fn registerName() -> &'static str
+  where
+    Self: Sized;
+  fn hash() -> u32
+  where
+    Self: Sized;
 
   fn name(&mut self) -> &str;
   fn help(&mut self) -> OptionalString {
@@ -71,14 +75,20 @@ pub trait Shard {
     None
   }
 
-  fn hasCompose() -> bool {
+  fn hasCompose() -> bool
+  where
+    Self: Sized,
+  {
     false
   }
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     Ok(Type::default())
   }
 
-  fn hasComposed() -> bool {
+  fn hasComposed() -> bool
+  where
+    Self: Sized,
+  {
     false
   }
   fn composed(&mut self, _wire: &SHWire, _results: &ComposeResult) {}
@@ -105,17 +115,26 @@ pub trait Shard {
     Ok(())
   }
 
-  fn hasMutate() -> bool {
+  fn hasMutate() -> bool
+  where
+    Self: Sized,
+  {
     false
   }
   fn mutate(&mut self, _options: Table) {}
 
-  fn hasCrossover() -> bool {
+  fn hasCrossover() -> bool
+  where
+    Self: Sized,
+  {
     false
   }
   fn crossover(&mut self, _state0: &Var, _state1: &Var) {}
 
-  fn hasState() -> bool {
+  fn hasState() -> bool
+  where
+    Self: Sized,
+  {
     false
   }
   fn getState(&mut self) -> Var {

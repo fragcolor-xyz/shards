@@ -27,3 +27,12 @@ pub mod substrate;
 pub mod curve25519;
 
 pub mod chachapoly;
+
+pub mod gui;
+
+static CRYPTO_KEY_TYPES: &[Type] = &[
+  common_type::bytes,
+  common_type::bytes_var,
+  common_type::string,
+  common_type::string_var,
+];

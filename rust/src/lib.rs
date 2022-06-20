@@ -491,6 +491,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::curve25519::registerShards();
   shards::substrate::registerShards();
   shards::chachapoly::registerShards();
+  shards::gui::registerShards();
 
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   shards::browse::registerShards();

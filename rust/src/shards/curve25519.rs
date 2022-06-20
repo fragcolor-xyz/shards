@@ -5,6 +5,7 @@ use crate::core::do_blocking;
 use crate::core::log;
 use crate::core::registerShard;
 use crate::shard::Shard;
+use crate::shards::CRYPTO_KEY_TYPES;
 use crate::shardsc::SHType_String;
 use crate::types::common_type;
 use crate::types::ClonedVar;
@@ -28,17 +29,14 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ffi::CStr;
 
+static SIGNATURE_TYPES: &[Type] = &[common_type::bytezs, common_type::bytess_var];
+
 lazy_static! {
   static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     shccstr!("The private key to be used to sign the hashed message input."),
-    vec![
-      common_type::bytes,
-      common_type::bytes_var,
-      common_type::string,
-      common_type::string_var
-    ]
+    CRYPTO_KEY_TYPES
   )
     .into()];
   static ref SIG_PARAMETERS: Parameters = vec![(
@@ -46,7 +44,7 @@ lazy_static! {
     shccstr!(
       "The signature and recovery id generated signing the input message with the private key."
     ),
-    vec![common_type::bytezs, common_type::bytess_var]
+    SIGNATURE_TYPES
   )
     .into()];
 }

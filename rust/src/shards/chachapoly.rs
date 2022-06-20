@@ -4,6 +4,7 @@
 use crate::core::log;
 use crate::core::registerShard;
 use crate::shard::Shard;
+use crate::shards::CRYPTO_KEY_TYPES;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
@@ -25,12 +26,7 @@ lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     shccstr!("The private key to be used to encrypt/decrypt the input payload."),
-    vec![
-      common_type::bytes,
-      common_type::bytes_var,
-      common_type::string,
-      common_type::string_var
-    ]
+    CRYPTO_KEY_TYPES
   )
     .into()];
 }

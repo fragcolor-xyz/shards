@@ -9,8 +9,11 @@ use crate::shards::physics::BaseShape;
 use crate::shards::physics::RigidBody;
 use crate::shards::physics::Simulation;
 use crate::shards::physics::EXPOSED_SIMULATION;
+use crate::shards::physics::POSITIONS_TYPES_SLICE;
 use crate::shards::physics::RIGIDBODY_TYPE;
+use crate::shards::physics::ROTATIONS_TYPES_SLICE;
 use crate::shards::physics::SHAPES_TYPE;
+use crate::shards::physics::SHAPES_TYPES_SLICE;
 use crate::shards::physics::SHAPES_VAR_TYPE;
 use crate::shards::physics::SHAPE_TYPE;
 use crate::shards::physics::SHAPE_VAR_TYPE;
@@ -33,6 +36,7 @@ use crate::types::FLOAT4X4S_TYPE;
 use crate::types::FLOAT4X4_TYPE;
 use crate::types::FLOAT4X4_TYPES;
 use crate::types::NONE_TYPES;
+use crate::types::STRING_OR_NONE_SLICE;
 use crate::Shard;
 use crate::Types;
 use crate::Var;
@@ -65,25 +69,25 @@ lazy_static! {
     (
       cstr!("Shapes"),
       shccstr!("The shape or shapes of this rigid body."),
-      vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none]
+      &SHAPES_TYPES_SLICE[..]
     )
       .into(),
     (
       cstr!("Position"),
       shccstr!("The initial position of this rigid body. Can be updated in the case of a kinematic rigid body."),
-      vec![common_type::float3, common_type::float3_var, common_type::float3s, common_type::float3s_var]
+      POSITIONS_TYPES_SLICE
     )
       .into(),
     (
       cstr!("Rotation"),
       shccstr!("The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body."),
-      vec![common_type::float4, common_type::float4_var, common_type::float4s, common_type::float4s_var]
+      ROTATIONS_TYPES_SLICE
     )
       .into(),
     (
       cstr!("Name"),
       shccstr!("The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body."),
-      vec![common_type::string, common_type::none]
+      STRING_OR_NONE_SLICE
     )
       .into()
   ];
