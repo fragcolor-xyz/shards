@@ -13,11 +13,12 @@ namespace shards {
   static inline ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), _types}; \
   _type _name;
 
-#define PARAM_VAR(_name, _displayName, _help, _types) PARAM(Var, _name, _displayName, _help, _types)
-#define PARAM_PARAMVAR(_name, _displayName, _help, _types) PARAM(ParamVar, _name, _displayName, _help, _types)
+#define PARAM_VAR(_name, _displayName, _help, ...) PARAM(Var, _name, _displayName, _help, __VA_ARGS__)
+#define PARAM_PARAMVAR(_name, _displayName, _help, ...) PARAM(ParamVar, _name, _displayName, _help, __VA_ARGS__)
 
 struct IterableParam {
-  size_t offset;
+  // Return address of param inside shard
+  void *(*resolveParamInShard)(void *shardPtr);
   const ParameterInfo *paramInfo;
 
   void (*setParam)(void *varPtr, SHVar var){};
@@ -25,16 +26,16 @@ struct IterableParam {
   void (*warmup)(void *varPtr, SHContext *ctx){};
   void (*cleanup)(void *varPtr){};
 
-  void *getVarPtr(void *obj) const { return (void *)(size_t(obj) + offset); }
-  template <typename T> T &get(void *obj) const { return *(T *)getVarPtr(obj); }
+  template <typename T> T &get(void *obj) const { return *(T *)resolveParamInShard(obj); }
 
-  template <typename T> static IterableParam create(size_t offset, const ParameterInfo *paramInfo) {
-    return createWithVarInterface<T>(offset, paramInfo);
+  template <typename T> static IterableParam create(void *(*resolveParamInShard)(void *), const ParameterInfo *paramInfo) {
+    return createWithVarInterface<T>(resolveParamInShard, paramInfo);
   }
 
-  template <typename T> static IterableParam createWithVarInterface(size_t offset, const ParameterInfo *paramInfo) {
+  template <typename T>
+  static IterableParam createWithVarInterface(void *(*resolveParamInShard)(void *), const ParameterInfo *paramInfo) {
     IterableParam result{
-        .offset = offset,
+        .resolveParamInShard = resolveParamInShard,
         .paramInfo = paramInfo,
         .setParam = [](void *varPtr, SHVar var) { *((T *)varPtr) = var; },
         .getParam = [](void *varPtr) -> SHVar { return *((T *)varPtr); },
@@ -74,7 +75,8 @@ struct IterableParam {
   PARAM_PARAMS()                                                        \
   PARAM_GET_SET()
 
-#define PARAM_IMPL_FOR(_name) IterableParam::create<decltype(_name)>(offsetof(Self, _name), &_name##ParameterInfo)
+#define PARAM_IMPL_FOR(_name) \
+  IterableParam::create<decltype(_name)>([](void *obj) -> void * { return (void *)&((Self *)obj)->_name; }, &_name##ParameterInfo)
 
 // Implements parameters()
 #define PARAM_PARAMS()                                                          \
@@ -93,34 +95,34 @@ struct IterableParam {
   }
 
 // Implements setParam()/getParam()
-#define PARAM_GET_SET()                                             \
-  void setParam(int index, const SHVar &value) {                    \
-    size_t numParams;                                               \
-    const IterableParam *params = getIterableParams(numParams);     \
-    if (index < numParams) {                                        \
-      params[index].setParam(params[index].getVarPtr(this), value); \
-    } else {                                                        \
-      throw InvalidParameterIndex();                                \
-    }                                                               \
-  }                                                                 \
-  SHVar getParam(int index) {                                       \
-    size_t numParams;                                               \
-    const IterableParam *params = getIterableParams(numParams);     \
-    if (index < numParams) {                                        \
-      return params[index].getParam(params[index].getVarPtr(this)); \
-    } else {                                                        \
-      throw InvalidParameterIndex();                                \
-    }                                                               \
+#define PARAM_GET_SET()                                                       \
+  void setParam(int index, const SHVar &value) {                              \
+    size_t numParams;                                                         \
+    const IterableParam *params = getIterableParams(numParams);               \
+    if (index < numParams) {                                                  \
+      params[index].setParam(params[index].resolveParamInShard(this), value); \
+    } else {                                                                  \
+      throw InvalidParameterIndex();                                          \
+    }                                                                         \
+  }                                                                           \
+  SHVar getParam(int index) {                                                 \
+    size_t numParams;                                                         \
+    const IterableParam *params = getIterableParams(numParams);               \
+    if (index < numParams) {                                                  \
+      return params[index].getParam(params[index].resolveParamInShard(this)); \
+    } else {                                                                  \
+      throw InvalidParameterIndex();                                          \
+    }                                                                         \
   }
 
 // Implements warmup(ctx) for parameters
 // call from warmup manually with context
-#define PARAM_WARMUP(_ctx)                                      \
-  {                                                             \
-    size_t numParams;                                           \
-    const IterableParam *params = getIterableParams(numParams); \
-    for (size_t i = 0; i < numParams; i++)                      \
-      params[i].warmup(params[i].getVarPtr(this), _ctx);        \
+#define PARAM_WARMUP(_ctx)                                         \
+  {                                                                \
+    size_t numParams;                                              \
+    const IterableParam *params = getIterableParams(numParams);    \
+    for (size_t i = 0; i < numParams; i++)                         \
+      params[i].warmup(params[i].resolveParamInShard(this), _ctx); \
   }
 
 // implements cleanup() for parameters
@@ -130,7 +132,7 @@ struct IterableParam {
     size_t numParams;                                           \
     const IterableParam *params = getIterableParams(numParams); \
     for (size_t i = 0; i < numParams; i++)                      \
-      params[i].cleanup(params[i].getVarPtr(this));             \
+      params[i].cleanup(params[i].resolveParamInShard(this));   \
   }
 
 } // namespace shards
