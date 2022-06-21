@@ -1,5 +1,6 @@
 nav:
   - index.md
+  - fragnova-testnet.md
   - shards-primer.md
   - contributing-tutorials.md
   - ...
