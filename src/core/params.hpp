@@ -9,7 +9,7 @@
 // Template helpers for setParam/getParam
 namespace shards {
 
-#define PARAM(_type, _name, _displayName, _help, _types)                                   \
+#define PARAM(_type, _name, _displayName, _help, _types)                                     \
   static inline ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), _types}; \
   _type _name;
 
@@ -77,19 +77,19 @@ struct IterableParam {
 #define PARAM_IMPL_FOR(_name) IterableParam::create<decltype(_name)>(offsetof(Self, _name), &_name##ParameterInfo)
 
 // Implements parameters()
-#define PARAM_PARAMS()                                                           \
-  static SHParametersInfo parameters() {                                         \
-    static SHParametersInfo result = []() {                                      \
-      SHParametersInfo result{};                                                 \
-      size_t numParams;                                                          \
-      const IterableParam *params = getIterableParams(numParams);                \
-      arrayResize(result, numParams);                                            \
-      for (size_t i = 0; i < numParams; i++) {                                   \
+#define PARAM_PARAMS()                                                          \
+  static SHParametersInfo parameters() {                                        \
+    static SHParametersInfo result = []() {                                     \
+      SHParametersInfo result{};                                                \
+      size_t numParams;                                                         \
+      const IterableParam *params = getIterableParams(numParams);               \
+      arrayResize(result, numParams);                                           \
+      for (size_t i = 0; i < numParams; i++) {                                  \
         result.elements[i] = *const_cast<ParameterInfo *>(params[i].paramInfo); \
-      }                                                                          \
-      return result;                                                             \
-    }();                                                                         \
-    return result;                                                               \
+      }                                                                         \
+      return result;                                                            \
+    }();                                                                        \
+    return result;                                                              \
   }
 
 // Implements setParam()/getParam()
@@ -100,7 +100,7 @@ struct IterableParam {
     if (index < numParams) {                                        \
       params[index].setParam(params[index].getVarPtr(this), value); \
     } else {                                                        \
-      throw std::logic_error("Param index out of range");           \
+      throw InvalidParameterIndex();                                \
     }                                                               \
   }                                                                 \
   SHVar getParam(int index) {                                       \
@@ -109,7 +109,7 @@ struct IterableParam {
     if (index < numParams) {                                        \
       return params[index].getParam(params[index].getVarPtr(this)); \
     } else {                                                        \
-      throw std::logic_error("Param index out of range");           \
+      throw InvalidParameterIndex();                                \
     }                                                               \
   }
 
