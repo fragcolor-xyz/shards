@@ -9,6 +9,7 @@ use crate::types::ParamVar;
 struct Label {
   parent: ParamVar,
   requiring: ExposedTypes,
+  wrap: ParamVar,
 }
 
 mod label;
