@@ -104,8 +104,85 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   }
 };
 
+struct alignas(16) Vec2 : public linalg::aliases::float2 {
+  using linalg::aliases::float2::vec;
+  using linalg::aliases::float2::operator=;
+
+  Vec2 &operator=(const SHVar &var);
+
+  template <typename XY_TYPE> Vec2(const XY_TYPE &vec) {
+    x = float(vec.x);
+    y = float(vec.y);
+  }
+
+  template <typename NUMBER> Vec2(NUMBER x_, NUMBER y_) {
+    x = float(x_);
+    y = float(y_);
+  }
+};
+
+struct alignas(16) Vec3 : public linalg::aliases::float3 {
+  using linalg::aliases::float3::vec;
+  using linalg::aliases::float3::operator=;
+
+  Vec3 &operator=(const SHVar &var);
+
+  template <typename XYZ_TYPE> Vec3(const XYZ_TYPE &vec) {
+    x = float(vec.x);
+    y = float(vec.y);
+    z = float(vec.z);
+  }
+
+  template <typename NUMBER> Vec3(NUMBER x_, NUMBER y_, NUMBER z_) {
+    x = float(x_);
+    y = float(y_);
+    z = float(z_);
+  }
+
+  template <typename NUMBER> static Vec3 FromVector(const std::vector<NUMBER> &vec) {
+    // used by gltf
+    assert(vec.size() == 3);
+    Vec3 res;
+    for (int j = 0; j < 3; j++) {
+      res[j] = float(vec[j]);
+    }
+    return res;
+  }
+
+  Vec3 &applyMatrix(const linalg::aliases::float4x4 &mat) {
+    const auto w = 1.0f / (mat.x.w * x + mat.y.w * y + mat.z.w * z + mat.w.w);
+    x = (mat.x.x * x + mat.y.x * y + mat.z.x * z + mat.w.x) * w;
+    y = (mat.x.y * x + mat.y.y * y + mat.z.y * z + mat.w.y) * w;
+    z = (mat.x.z * x + mat.y.z * y + mat.z.z * z + mat.w.z) * w;
+    return *this;
+  }
+
+  operator SHVar() const {
+    auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec3 *>(this));
+    v->valueType = SHType::Float3;
+    return *v;
+  }
+};
+
 struct alignas(16) Vec4 : public linalg::aliases::float4 {
   using linalg::aliases::float4::vec;
+  using linalg::aliases::float4::operator=;
+
+  template <typename XYZW_TYPE> Vec4(const XYZW_TYPE &vec) {
+    x = float(vec.x);
+    y = float(vec.y);
+    z = float(vec.z);
+    w = float(vec.w);
+  }
+
+  template <typename NUMBER> Vec4(NUMBER x_, NUMBER y_, NUMBER z_, NUMBER w_) {
+    x = float(x_);
+    y = float(y_);
+    z = float(z_);
+    w = float(w_);
+  }
+
+  Vec4 &operator=(const SHVar &var);
 
   constexpr static Vec4 Quaternion() {
     Vec4 q;
@@ -141,54 +218,54 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
   }
 };
 
-struct alignas(16) Vec3 : public linalg::aliases::float3 {
-  using linalg::aliases::float3::vec;
+inline linalg::aliases::float2 toFloat2(const SHVar &vec) {
+  if (vec.valueType != SHType::Float2)
+    throw InvalidVarTypeError("Invalid variable casting! expected Float2");
+  return linalg::aliases::float2(float(vec.payload.float2Value[0]), float(vec.payload.float2Value[1]));
+}
 
-  Vec3() : linalg::aliases::float3() {}
+inline linalg::aliases::float3 toFloat3(const SHVar &vec) {
+  if (vec.valueType != SHType::Float3)
+    throw InvalidVarTypeError("Invalid variable casting! expected Float3");
+  return linalg::aliases::float3(float(vec.payload.float3Value[0]), float(vec.payload.float3Value[1]),
+                                 float(vec.payload.float3Value[2]));
+}
 
-  template <typename XYZ_TYPE> Vec3(const XYZ_TYPE &vec) {
-    x = float(vec.x);
-    y = float(vec.y);
-    z = float(vec.z);
-  }
+inline linalg::aliases::float4 toFloat4(const SHVar &vec) {
+  if (vec.valueType != SHType::Float4)
+    throw InvalidVarTypeError("Invalid variable casting! expected Float4");
+  return linalg::aliases::float4(float(vec.payload.float4Value[0]), float(vec.payload.float4Value[1]),
+                                 float(vec.payload.float4Value[2]), float(vec.payload.float4Value[3]));
+}
 
-  template <typename NUMBER> Vec3(NUMBER x_, NUMBER y_, NUMBER z_) {
-    x = float(x_);
-    y = float(y_);
-    z = float(z_);
-  }
+inline linalg::aliases::float4x4 toFloat4x4(const SHVar &vec) { return Mat4(vec); }
 
-  template <typename NUMBER> static Vec3 FromVector(const std::vector<NUMBER> &vec) {
-    // used by gltf
-    assert(vec.size() == 3);
-    Vec3 res;
-    for (int j = 0; j < 3; j++) {
-      res[j] = float(vec[j]);
-    }
-    return res;
-  }
+inline SHVar toVar(const linalg::aliases::float2 &vec) {
+  return SHVar{
+      .payload{
+          .float2Value = {vec.x, vec.y},
+      },
+      .valueType = SHType::Float2,
+  };
+}
 
-  Vec3 &operator=(const linalg::aliases::float3 &vec) {
-    x = vec.x;
-    y = vec.y;
-    z = vec.z;
-    return *this;
-  }
+inline SHVar toVar(const linalg::aliases::float3 &vec) {
+  return SHVar{
+      .payload{
+          .float3Value = {vec.x, vec.y, vec.z},
+      },
+      .valueType = SHType::Float3,
+  };
+}
 
-  Vec3 &applyMatrix(const linalg::aliases::float4x4 &mat) {
-    const auto w = 1.0f / (mat.x.w * x + mat.y.w * y + mat.z.w * z + mat.w.w);
-    x = (mat.x.x * x + mat.y.x * y + mat.z.x * z + mat.w.x) * w;
-    y = (mat.x.y * x + mat.y.y * y + mat.z.y * z + mat.w.y) * w;
-    z = (mat.x.z * x + mat.y.z * y + mat.z.z * z + mat.w.z) * w;
-    return *this;
-  }
-
-  operator SHVar() const {
-    auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec3 *>(this));
-    v->valueType = SHType::Float3;
-    return *v;
-  }
-};
+inline SHVar toVar(const linalg::aliases::float4 &vec) {
+  return SHVar{
+      .payload{
+          .float4Value = {vec.x, vec.y, vec.z, vec.w},
+      },
+      .valueType = SHType::Float4,
+  };
+}
 
 constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
 constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};
