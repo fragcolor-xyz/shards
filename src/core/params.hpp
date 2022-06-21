@@ -131,8 +131,11 @@ struct IterableParam {
   {                                                             \
     size_t numParams;                                           \
     const IterableParam *params = getIterableParams(numParams); \
-    for (size_t i = 0; i < numParams; i++)                      \
+    for (size_t i = numParams - 1;; i--) {                      \
       params[i].cleanup(params[i].resolveParamInShard(this));   \
+      if (i == 0)                                               \
+        break;                                                  \
+    }                                                           \
   }
 
 } // namespace shards
