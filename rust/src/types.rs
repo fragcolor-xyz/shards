@@ -2864,7 +2864,7 @@ impl ShardsVar {
   }
 
   pub fn cleanup(&mut self) {
-    for shard in &self.shards {
+    for shard in self.shards.iter().rev() {
       if let Err(e) = shard.cleanup() {
         shlog!("Errors during shard cleanup: {}", e);
       }
