@@ -7,6 +7,7 @@
 #include <linalg_shim.hpp>
 #include <runtime.hpp>
 #include <spdlog/spdlog.h>
+#include "params.hpp"
 
 using namespace shards;
 
@@ -19,13 +20,9 @@ struct GLTFShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::DrawableHierarchy; }
 
-  static SHParametersInfo parameters() {
-    static Parameters params{
-        {"Transform", SHCCSTR("The transform variable to use"), {TransformVarType}},
-        {"Path", SHCCSTR("The static path to load a model from during warmup"), {CoreInfo::StringType}},
-    };
-    return params;
-  }
+  PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use", {TransformVarType});
+  PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup", {CoreInfo::StringType});
+  PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_staticModelPath));
 
   enum LoadMode {
     Invalid,
@@ -35,9 +32,7 @@ struct GLTFShard {
   };
 
   LoadMode _loadMode{};
-  std::string _staticModelPath;
   DrawableHierarchyPtr _staticModel;
-  ParamVar _transformVar;
   bool _hasConstTransform{};
   SHDrawableHierarchy *_returnVar{};
 
@@ -50,28 +45,6 @@ struct GLTFShard {
   void makeNewReturnVar() {
     releaseReturnVar();
     _returnVar = Types::DrawableHierarchyObjectVar.New();
-  }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _transformVar = value;
-      break;
-    case 1:
-      _staticModelPath = value.payload.stringValue;
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _transformVar;
-    case 1:
-      return Var(_staticModelPath);
-    default:
-      return Var::Empty;
-    }
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -100,7 +73,7 @@ struct GLTFShard {
         throw ComposeError("Path should be a string");
       _loadMode = LoadMemory;
       OVERRIDE_ACTIVATE(data, activateBytes);
-    } else if (!_staticModelPath.empty()) {
+    } else if (_staticModelPath.isSet()) {
       _loadMode = LoadStaticFile;
       OVERRIDE_ACTIVATE(data, activateStatic);
     } else {
@@ -118,11 +91,11 @@ struct GLTFShard {
   }
 
   void warmup(SHContext *context) {
-    _transformVar.warmup(context);
+    PARAM_WARMUP(context);
 
-    if (!_staticModelPath.empty()) {
+    if (_staticModelPath.isSet()) {
       // Since loading from files is more of a debug funcitonality, try to load using the shards relative path
-      std::string resolvedPath = gfx::resolveDataPath(_staticModelPath).string();
+      std::string resolvedPath = gfx::resolveDataPath((const char *)_staticModelPath).string();
 
       SPDLOG_DEBUG("Loading static glTF model from {}", resolvedPath);
       _staticModel = loadGltfFromFile(resolvedPath.c_str());
@@ -130,7 +103,8 @@ struct GLTFShard {
   }
 
   void cleanup() {
-    _transformVar.cleanup();
+    PARAM_CLEANUP()
+
     _staticModel.reset();
     releaseReturnVar();
   }
