@@ -553,7 +553,6 @@ struct Var : public SHVar {
   Var& operator=(const SHVar& other) { memcpy((void *)this, (void *)&other, sizeof(SHVar)); return *this; }
 
   bool isNone() const { return valueType == SHType::None; }
-  bool isSet() const { return !isNone(); }
 
   explicit operator bool() const {
     if (valueType != Bool) {

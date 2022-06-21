@@ -73,7 +73,7 @@ struct GLTFShard {
         throw ComposeError("Path should be a string");
       _loadMode = LoadMemory;
       OVERRIDE_ACTIVATE(data, activateBytes);
-    } else if (_staticModelPath.isSet()) {
+    } else if (!_staticModelPath.isNone()) {
       _loadMode = LoadStaticFile;
       OVERRIDE_ACTIVATE(data, activateStatic);
     } else {
@@ -93,7 +93,7 @@ struct GLTFShard {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    if (_staticModelPath.isSet()) {
+    if (!_staticModelPath.isNone()) {
       // Since loading from files is more of a debug funcitonality, try to load using the shards relative path
       std::string resolvedPath = gfx::resolveDataPath((const char *)_staticModelPath).string();
 
