@@ -2782,6 +2782,11 @@ impl ParamVar {
     unsafe { *self.pointee }
   }
 
+  pub fn get_mut(&mut self) -> &mut Var {
+    assert_ne!(self.pointee, std::ptr::null_mut());
+    unsafe { &mut *self.pointee }
+  }
+
   pub fn try_get(&self) -> Option<Var> {
     if self.pointee.is_null() {
       None
