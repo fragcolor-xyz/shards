@@ -46,6 +46,8 @@ struct FieldTypes {
   static inline FieldType Float3{ShaderFieldBaseType::Float32, 3};
   static inline FieldType Float4{ShaderFieldBaseType::Float32, 4};
   static inline FieldType Float4x4{ShaderFieldBaseType::Float32, FieldType::Float4x4Components};
+  static inline FieldType UInt32{ShaderFieldBaseType::UInt32, 1};
+  static inline FieldType Int32{ShaderFieldBaseType::Int32, 1};
 };
 
 struct NamedField {

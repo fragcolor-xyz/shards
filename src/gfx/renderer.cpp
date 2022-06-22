@@ -433,7 +433,7 @@ struct RendererImpl final : public ContextData {
   void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
     size_t alignedObjectBufferSize =
         alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment);
-    size_t numObjects = cachedPipeline.drawables.size();
+    size_t numObjects = cachedPipeline.drawablesSorted.size();
     size_t instanceBufferLength = numObjects * alignedObjectBufferSize;
     instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
 
@@ -546,13 +546,22 @@ struct RendererImpl final : public ContextData {
     // Sort drawables based on mesh/texture bindings
     for (auto &drawable : cachedPipeline.drawables) {
       drawable->mesh->createContextDataConditional(context);
+
+      // Filter out empty meshes here
+      if (drawable->mesh->contextData->numVertices == 0)
+        continue;
+
       addFrameReference(drawable->mesh->contextData);
 
       SortableDrawable sortableDrawable = createSortableDrawable(cachedPipeline, *drawable);
 
-      auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
-      auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
-      drawablesSorted.insert(it, sortableDrawable);
+      if (step.sortMode == SortMode::Queue) {
+        drawablesSorted.push_back(sortableDrawable);
+      } else {
+        auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
+        auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
+        drawablesSorted.insert(it, sortableDrawable);
+      }
     }
 
     if (step.sortMode == SortMode::BackToFront) {
@@ -614,7 +623,11 @@ struct RendererImpl final : public ContextData {
     textureBindGroupDesc.layout = cachedPipeline.bindGroupLayouts[1];
     textureBindGroupDesc.entries = entries.data();
     textureBindGroupDesc.entryCount = entries.size();
-    return wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
+
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
+    assert(result);
+
+    return result;
   }
 
   void renderDrawables(RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
@@ -681,12 +694,12 @@ struct RendererImpl final : public ContextData {
 
     for (auto &pair : pipelineCache) {
       CachedPipeline &cachedPipeline = *pair.second.get();
-      if (cachedPipeline.drawables.empty())
+      if (cachedPipeline.drawablesSorted.empty())
         continue;
 
       size_t drawBufferLength =
           alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment) *
-          cachedPipeline.drawables.size();
+          cachedPipeline.drawablesSorted.size();
 
       DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
       fillInstanceBuffer(instanceBuffer, cachedPipeline, view.get());
@@ -708,6 +721,7 @@ struct RendererImpl final : public ContextData {
         onFrameCleanup([textureBindGroup]() { wgpuBindGroupRelease(textureBindGroup); });
 
         MeshContextData *meshContextData = drawGroup.key.meshData;
+        assert(meshContextData->vertexBuffer);
         wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0,
                                              meshContextData->vertexBufferLength);
 

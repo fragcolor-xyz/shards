@@ -52,6 +52,8 @@ target_link_libraries(gfx_imgui
   imgui imgui_club implot imguizmo
 )
 
+add_subdirectory(egui)
+
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)
 
 if(NOT EMSCRIPTEN AND (CMAKE_BUILD_TYPE MATCHES Debug))

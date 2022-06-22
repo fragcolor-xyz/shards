@@ -18,6 +18,7 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
 }
 
 void GeneratorContext::write(const StringView &str) { result += str; }
+void GeneratorContext::writeHeader(const StringView &str) { header += str; }
 
 void GeneratorContext::readGlobal(const char *name) {
   auto it = globals.find(name);
@@ -436,7 +437,7 @@ struct Stage {
     }
 
     return StageOutput{
-        globalsHeader + std::move(context.result),
+        globalsHeader + std::move(context.header) + std::move(context.result),
         std::move(context.errors),
     };
   }
