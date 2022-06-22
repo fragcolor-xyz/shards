@@ -15,6 +15,16 @@ struct Button {
   wrap: ParamVar,
 }
 
+/// Checkbox with a text label.
+struct Checkbox {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  label: ParamVar,
+  variable: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+}
+
 /// Displays text.
 struct Label {
   parents: ParamVar,
@@ -33,11 +43,13 @@ struct TextInput {
 }
 
 mod button;
+mod checkbox;
 mod label;
 mod text_input;
 
 pub fn registerShards() {
   registerShard::<Button>();
+  registerShard::<Checkbox>();
   registerShard::<Label>();
   registerShard::<TextInput>();
 }
