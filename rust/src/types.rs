@@ -207,11 +207,15 @@ impl ShardRef {
 
   pub fn warmup(&self, context: &Context) -> Result<(), &str> {
     unsafe {
-      let result = (*self.0).warmup.unwrap()(self.0, context as *const _ as *mut _);
-      if result.code == 0 {
-        Ok(())
+      if (*self.0).warmup.is_some() {
+        let result = (*self.0).warmup.unwrap()(self.0, context as *const _ as *mut _);
+        if result.code == 0 {
+          Ok(())
+        } else {
+          Err(CStr::from_ptr(result.message).to_str().unwrap())
+        }
       } else {
-        Err(CStr::from_ptr(result.message).to_str().unwrap())
+        Ok(())
       }
     }
   }
