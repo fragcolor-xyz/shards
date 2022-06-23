@@ -1,4 +1,4 @@
-set(FEATURES shards)
+set(FEATURES shards run_bindgen)
 
 if(RUST_SHLISP)
   list(APPEND FEATURES scripting)
