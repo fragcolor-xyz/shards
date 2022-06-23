@@ -5,6 +5,7 @@ use crate::core::registerShard;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
+use crate::types::Var;
 
 /// Clickable button with a text label.
 struct Button {
@@ -32,6 +33,17 @@ struct Label {
   wrap: ParamVar,
 }
 
+/// Radio button with a text label.
+struct RadioButton {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  label: ParamVar,
+  variable: ParamVar,
+  value: Var,
+  exposing: ExposedTypes,
+  should_expose: bool,
+}
+
 struct TextInput {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -45,11 +57,13 @@ struct TextInput {
 mod button;
 mod checkbox;
 mod label;
+mod radio_button;
 mod text_input;
 
 pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
   registerShard::<Label>();
+  registerShard::<RadioButton>();
   registerShard::<TextInput>();
 }
