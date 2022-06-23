@@ -734,11 +734,14 @@ struct RendererImpl final : public ContextData {
   void groupByPipeline(RenderDrawablesStep &step, const std::vector<DrawablePtr> &drawables) {
     // TODO: Paralellize
     std::vector<const Feature *> features;
-    const std::vector<FeaturePtr> *featureSources[2] = {&step.features, nullptr};
+    const std::vector<FeaturePtr> *featureSources[3] = {&step.features, nullptr, nullptr};
     for (auto &drawable : drawables) {
       Drawable *drawablePtr = drawable.get();
       assert(drawablePtr->mesh);
       const Mesh &mesh = *drawablePtr->mesh.get();
+
+      featureSources[1] = &drawablePtr->features;
+      featureSources[2] = drawablePtr->material ? &drawablePtr->material->features : nullptr;
 
       features.clear();
       for (auto &featureSource : featureSources) {

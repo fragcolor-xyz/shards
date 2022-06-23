@@ -112,7 +112,7 @@ struct DynamicWGPUBufferPool {
     int64_t smallestDelta = INT64_MAX;
     decltype(freeList)::iterator targetFreeListIt = freeList.end();
     for (auto it = freeList.begin(); it != freeList.end(); ++it) {
-      size_t bufferIndex = freeList[*it];
+      size_t bufferIndex = *it;
       auto &buffer = buffers[bufferIndex];
       int64_t delta = buffer.getCapacity() - size;
       if (delta >= 0) {
