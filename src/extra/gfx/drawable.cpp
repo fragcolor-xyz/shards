@@ -188,7 +188,7 @@ struct DrawShard : public BaseConsumer {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"Queue", SHCCSTR("The queue to add the draw command to"), {Types::DrawQueue, Type::VariableOf(Types::DrawQueue)}},
+        {"Queue", SHCCSTR("The queue to add the draw command to"), {Type::VariableOf(Types::DrawQueue)}},
     };
     return params;
   }

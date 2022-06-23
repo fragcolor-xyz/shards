@@ -21,7 +21,7 @@ struct DrawablePassShard {
 
   static inline Parameters params{
       {"Features", SHCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"Queue", SHCCSTR("The queue to draw from (optional). Uses the default queue if not specified"), {Types::DrawQueue, Type::VariableOf(Types::DrawQueue)}},
+      {"Queue", SHCCSTR("The queue to draw from (optional). Uses the default queue if not specified"), {Type::VariableOf(Types::DrawQueue)}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -175,7 +175,7 @@ struct RenderShard : public BaseConsumer {
 
   static inline Parameters params{
       {"Steps", SHCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"View", SHCCSTR("The view to render into."), {Type::VariableOf(Types::View), Types::View}},
+      {"View", SHCCSTR("The view to render into."), {Type::VariableOf(Types::View)}},
       {"Views", SHCCSTR("The views to render into."), {Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
   };
   static SHParametersInfo parameters() { return params; }

@@ -17,8 +17,10 @@
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
    (Float3 0 0 0) (Math.Translation) >= .transform-0
    (Float3 0 0 0) (Math.Translation) >= .transform-1
+   (Float3 0 0 0) (Math.Translation) >= .transform-2
    {:Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}} (GFX.Drawable :Transform .transform-0) >> .drawable-0
    {:Mesh .mesh :Params {:baseColor (Float4 0 1 1 0.5)}} (GFX.Drawable :Transform .transform-1) >> .drawable-1
+   {:Mesh .mesh :Params {:baseColor (Float4 1 0.2 1 0.5)}} (GFX.Drawable :Transform .transform-2) >> .drawable-2
 
    (GFX.DrawQueue) >= .queue-0
    (GFX.DrawQueue) >= .queue-1
@@ -33,6 +35,7 @@
    ;; Red cube should be draw on top of cyan cube
    (GFX.DrawablePass :Features .features :Queue .queue-1) >> .render-steps
    (GFX.DrawablePass :Features .features :Queue .queue-0) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .non-existing-variable) >> .render-steps ; Test default/none variable on :Queue
 
     ;; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
@@ -44,11 +47,13 @@
     .time (Math.Add timestep) > .time
     (spin-transform .time (Float3 -0.4 0 0)) > .transform-0
     (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.4 0 0)) > .transform-1
+    (spin-transform (-> .time (Math.Multiply 0.7)) (Float3 0.8 0 0)) > .transform-2
 
     .queue-0 (GFX.ClearQueue)
     .queue-1 (GFX.ClearQueue)
     .drawable-0 (GFX.Draw :Queue .queue-0)
     .drawable-1 (GFX.Draw :Queue .queue-1)
+    .drawable-2 (GFX.Draw :Queue .non-existing-variable)
 
     (GFX.Render :Steps .render-steps :View .view))))
 
