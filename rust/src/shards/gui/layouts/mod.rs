@@ -6,6 +6,12 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 
+struct Group {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+}
+
 struct Horizontal {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -24,11 +30,13 @@ struct Vertical {
   contents: ShardsVar,
 }
 
+mod group;
 mod horizontal;
 mod separator;
 mod vertical;
 
 pub fn registerShards() {
+  registerShard::<Group>();
   registerShard::<Horizontal>();
   registerShard::<Separator>();
   registerShard::<Vertical>();
