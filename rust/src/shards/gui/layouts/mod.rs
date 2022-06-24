@@ -13,6 +13,11 @@ struct Horizontal {
   wrap: ParamVar,
 }
 
+struct Separator {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 struct Vertical {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -20,9 +25,11 @@ struct Vertical {
 }
 
 mod horizontal;
+mod separator;
 mod vertical;
 
 pub fn registerShards() {
   registerShard::<Horizontal>();
+  registerShard::<Separator>();
   registerShard::<Vertical>();
 }
