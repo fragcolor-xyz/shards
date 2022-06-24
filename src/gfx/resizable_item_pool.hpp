@@ -7,6 +7,7 @@ namespace gfx {
 
 template <typename T> struct ResizableItemOps {
   size_t getCapacity(T &item) const { return item.getCapacity(); }
+  void init(T &item) {}
 };
 
 // Keeps a pool of resizable objects
@@ -24,7 +25,11 @@ template <typename T, typename TOps = ResizableItemOps<T>> struct ResizableItemP
     }
   }
 
-  T &allocateBufferNew() { return buffers.emplace_back(); }
+  T &allocateBufferNew() {
+    T &item = buffers.emplace_back();
+    ops.init(item);
+    return item;
+  }
 
   T &allocateBufferAny() {
     if (freeList.size() > 0) {
