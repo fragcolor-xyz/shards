@@ -4,14 +4,17 @@
 use super::Button;
 use crate::shard::Shard;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
+use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::EGUI_UI_TYPE;
-use crate::shards::gui::PARENT_UI_NAME;
+use crate::shards::gui::PARENTS_UI_NAME;
+use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
 use crate::types::ParamVar;
 use crate::types::Parameters;
+use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
@@ -48,9 +51,9 @@ lazy_static! {
 impl Default for Button {
   fn default() -> Self {
     let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENT_UI_NAME);
+    ui_ctx.set_name(PARENTS_UI_NAME);
     Self {
-      parent: ui_ctx,
+      parents: ui_ctx,
       requiring: Vec::new(),
       label: ParamVar::new(().into()),
       action: ShardsVar::default(),
@@ -111,11 +114,11 @@ impl Shard for Button {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.UI.Parent to the list of required variables
+    // Add UI.Parents to the list of required variables
     let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_TYPE,
-      name: self.parent.get_name(),
-      help: cstr!("The parent UI object.").into(),
+      exposedType: EGUI_UI_SEQ_TYPE,
+      name: self.parents.get_name(),
+      help: cstr!("The parent UI objects.").into(),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);
@@ -128,11 +131,11 @@ impl Shard for Button {
       self.action.compose(&data)?;
     }
 
-    Ok(data.inputType)
+    Ok(common_type::bool)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parent.warmup(ctx);
+    self.parents.warmup(ctx);
 
     self.label.warmup(ctx);
     if !self.action.is_empty() {
@@ -150,13 +153,15 @@ impl Shard for Button {
     }
     self.label.cleanup();
 
-    self.parent.cleanup();
+    self.parents.cleanup();
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let ui: &mut egui::Ui = Var::from_object_ptr_mut_ref(self.parent.get(), &EGUI_UI_TYPE)?;
+    let parents: Seq = self.parents.get().try_into()?;
+    let ui: &mut egui::Ui =
+      Var::from_object_ptr_mut_ref(parents[parents.len() - 1], &EGUI_UI_TYPE)?;
 
     let label: &str = self.label.get().as_ref().try_into()?;
     let mut button = egui::Button::new(label);

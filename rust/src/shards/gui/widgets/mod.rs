@@ -11,7 +11,7 @@ use crate::types::common_type;
 
 /// Clickable button with a text label.
 struct Button {
-  parent: ParamVar,
+  parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
   action: ShardsVar,
@@ -20,7 +20,7 @@ struct Button {
 
 /// Displays text.
 struct Label {
-  parent: ParamVar,
+  parents: ParamVar,
   requiring: ExposedTypes,
   wrap: ParamVar,
 }

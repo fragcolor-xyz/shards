@@ -4,13 +4,15 @@
 use super::Label;
 use crate::shard::Shard;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
+use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::EGUI_UI_TYPE;
-use crate::shards::gui::PARENT_UI_NAME;
+use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Parameters;
+use crate::types::Seq;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::STRING_TYPES;
@@ -27,9 +29,9 @@ lazy_static! {
 impl Default for Label {
   fn default() -> Self {
     let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENT_UI_NAME);
+    ui_ctx.set_name(PARENTS_UI_NAME);
     Self {
-      parent: ui_ctx,
+      parents: ui_ctx,
       requiring: Vec::new(),
       wrap: ParamVar::new(().into()),
     }
@@ -84,11 +86,11 @@ impl Shard for Label {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.UI.Parent to the list of required variables
+    // Add UI.Parents to the list of required variables
     let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_TYPE,
-      name: self.parent.get_name(),
-      help: cstr!("The parent UI object.").into(),
+      exposedType: EGUI_UI_SEQ_TYPE,
+      name: self.parents.get_name(),
+      help: cstr!("The parent UI objects.").into(),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);
@@ -97,7 +99,7 @@ impl Shard for Label {
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.parent.warmup(context);
+    self.parents.warmup(context);
 
     self.wrap.warmup(context);
 
@@ -105,7 +107,7 @@ impl Shard for Label {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.parent.cleanup();
+    self.parents.cleanup();
 
     self.wrap.cleanup();
 
@@ -113,7 +115,9 @@ impl Shard for Label {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let ui: &mut egui::Ui = Var::from_object_ptr_mut_ref(self.parent.get(), &EGUI_UI_TYPE)?;
+    let parents: Seq = self.parents.get().try_into()?;
+    let ui: &mut egui::Ui =
+      Var::from_object_ptr_mut_ref(parents[parents.len() - 1], &EGUI_UI_TYPE)?;
 
     let text: &str = input.as_ref().try_into()?;
     let mut label = egui::Label::new(text);

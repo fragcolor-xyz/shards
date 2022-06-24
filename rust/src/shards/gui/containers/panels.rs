@@ -6,8 +6,9 @@ use crate::shard::Shard;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
+use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::EGUI_UI_TYPE;
-use crate::shards::gui::PARENT_UI_NAME;
+use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -16,14 +17,14 @@ use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
+use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 use crate::types::WireState;
-use crate::types::NONE_TYPES;
+use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use egui::Context as EguiNativeContext;
-use std::rc::Rc;
 
 lazy_static! {
   static ref PANELS_PARAMETERS: Parameters = vec![
@@ -60,7 +61,7 @@ impl Default for Panels {
     let mut ctx = ParamVar::new(().into());
     ctx.set_name(CONTEXT_NAME);
     let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENT_UI_NAME);
+    ui_ctx.set_name(PARENTS_UI_NAME);
     Self {
       instance: ctx,
       requiring: Vec::new(),
@@ -70,7 +71,6 @@ impl Default for Panels {
       right: ShardsVar::default(),
       bottom: ShardsVar::default(),
       ui_ctx_instance: ui_ctx,
-      ui_ctx_rc: Rc::new(None),
     }
   }
 }
@@ -93,11 +93,11 @@ impl Shard for Panels {
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &NONE_TYPES
+    &ANY_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -148,9 +148,9 @@ impl Shard for Panels {
     let mut shared: ExposedTypes = data.shared.into();
     // append to shared ui vars
     let ui_info = ExposedInfo {
-      exposedType: EGUI_UI_TYPE,
+      exposedType: EGUI_UI_SEQ_TYPE,
       name: self.ui_ctx_instance.get_name(),
-      help: cstr!("The parent UI object.").into(),
+      help: cstr!("The parent UI objects.").into(),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
       isTableEntry: false,
@@ -254,7 +254,9 @@ impl Shard for Panels {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          self.ui_ctx_instance.set(var);
+          let mut seq = Seq::new();
+          seq.push(var);
+          self.ui_ctx_instance.set(seq.as_ref().into());
         }
 
         let mut output = Var::default();
@@ -274,7 +276,9 @@ impl Shard for Panels {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          self.ui_ctx_instance.set(var);
+          let mut seq = Seq::new();
+          seq.push(var);
+          self.ui_ctx_instance.set(seq.as_ref().into());
         }
 
         let mut output = Var::default();
@@ -293,7 +297,9 @@ impl Shard for Panels {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          self.ui_ctx_instance.set(var);
+          let mut seq = Seq::new();
+          seq.push(var);
+          self.ui_ctx_instance.set(seq.as_ref().into());
         }
 
         let mut output = Var::default();
@@ -312,7 +318,9 @@ impl Shard for Panels {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          self.ui_ctx_instance.set(var);
+          let mut seq = Seq::new();
+          seq.push(var);
+          self.ui_ctx_instance.set(seq.as_ref().into());
         }
 
         let mut output = Var::default();
@@ -332,7 +340,9 @@ impl Shard for Panels {
         // pass the ui parent to the inner shards
         unsafe {
           let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          self.ui_ctx_instance.set(var);
+          let mut seq = Seq::new();
+          seq.push(var);
+          self.ui_ctx_instance.set(seq.as_ref().into());
         }
 
         let mut output = Var::default();
