@@ -65,9 +65,26 @@ struct TextInput {
   mutable_text: bool,
 }
 
+macro_rules! decl_ui_input {
+  ($name:ident, $tmp_type:ty) => {
+    struct $name {
+      parents: ParamVar,
+      requiring: ExposedTypes,
+      variable: ParamVar,
+      exposing: ExposedTypes,
+      should_expose: bool,
+      tmp: $tmp_type,
+    }
+  };
+}
+
+decl_ui_input!(FloatInput, f64);
+decl_ui_input!(IntInput, i64);
+
 mod button;
 mod checkbox;
 mod label;
+mod numeric_input;
 mod progress_bar;
 mod radio_button;
 mod spinner;
@@ -77,6 +94,8 @@ pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
   registerShard::<Label>();
+  registerShard::<FloatInput>();
+  registerShard::<IntInput>();
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<Spinner>();
