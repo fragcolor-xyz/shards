@@ -41,10 +41,10 @@ struct DrawableShard {
   };
 
   static inline Parameters params{
-      {"Transform", SHCCSTR("The transform variable to use"), {TransformVarType}},
+      {"Transform", SHCCSTR("The transform variable to use (Optional)"), {CoreInfo::NoneType, TransformVarType}},
       {"Params",
-       SHCCSTR("The params variable to use"),
-       {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
+       SHCCSTR("The params variable to use (Optional)"),
+       {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
@@ -188,7 +188,9 @@ struct DrawShard : public BaseConsumer {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"Queue", SHCCSTR("The queue to add the draw command to"), {Type::VariableOf(Types::DrawQueue)}},
+        {"Queue",
+         SHCCSTR("The queue to add the draw command to (Optional). Uses the default queue if not specified"),
+         {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
     };
     return params;
   }

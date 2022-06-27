@@ -21,7 +21,7 @@ struct DrawablePassShard {
 
   static inline Parameters params{
       {"Features", SHCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"Queue", SHCCSTR("The queue to draw from (optional). Uses the default queue if not specified"), {Type::VariableOf(Types::DrawQueue)}},
+      {"Queue", SHCCSTR("The queue to draw from (Optional). Uses the default queue if not specified"), {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -115,7 +115,7 @@ struct ViewShard {
   static SHTypesInfo outputTypes() { return Types::View; }
 
   static inline Parameters params{
-      {"View", SHCCSTR("The view matrix."), {Type::VariableOf(CoreInfo::Float4x4Type), CoreInfo::Float4x4Type}},
+      {"View", SHCCSTR("The view matrix. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -175,8 +175,8 @@ struct RenderShard : public BaseConsumer {
 
   static inline Parameters params{
       {"Steps", SHCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"View", SHCCSTR("The view to render into."), {Type::VariableOf(Types::View)}},
-      {"Views", SHCCSTR("The views to render into."), {Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
+      {"View", SHCCSTR("The view to render into. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(Types::View)}},
+      {"Views", SHCCSTR("The views to render into. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
   };
   static SHParametersInfo parameters() { return params; }
 

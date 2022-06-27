@@ -21,8 +21,8 @@ struct GLTFShard {
 
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"Transform", SHCCSTR("The transform variable to use"), {TransformVarType}},
-        {"Path", SHCCSTR("The static path to load a model from during warmup"), {CoreInfo::StringType}},
+        {"Transform", SHCCSTR("The transform variable to use (Optional)"), {CoreInfo::NoneType, TransformVarType}},
+        {"Path", SHCCSTR("The static path to load a model from during warmup (Optional)"), {CoreInfo::NoneType, CoreInfo::StringType}},
     };
     return params;
   }
