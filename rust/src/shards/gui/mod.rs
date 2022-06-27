@@ -68,6 +68,7 @@ struct EguiContext {
 
 mod containers;
 mod context;
+mod layouts;
 mod menus;
 mod widgets;
 
@@ -76,6 +77,7 @@ mod util;
 pub fn registerShards() {
   containers::registerShards();
   registerShard::<EguiContext>();
+  layouts::registerShards();
   menus::registerShards();
   widgets::registerShards();
 }
