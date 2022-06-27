@@ -1,6 +1,0 @@
-8
-(Assert.IsNot
- ;:Value
- 16
- ;:Abort
- true)

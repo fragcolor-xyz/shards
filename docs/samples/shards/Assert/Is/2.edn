@@ -1,0 +1,10 @@
+;; :Abort = `true`, assertion false
+;; => abort the program
+7
+(Assert.Is
+ ;:Value
+ 8
+ ;:Abort
+ ;; uncomment next line to abort program on run
+ ; true
+ )
