@@ -1,5 +1,11 @@
+;; string comparison
 "a" (IsLessEqual "z")
 (Assert.Is true :Abort true)
 
+;; integer comparison
 2 (IsLessEqual 5)
+(Assert.Is true :Abort true)
+
+;; float comparison
+4.0 (IsLessEqual (+ 1.0 3.0))
 (Assert.Is true :Abort true)
