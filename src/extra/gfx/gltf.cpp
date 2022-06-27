@@ -23,7 +23,9 @@ struct GLTFShard {
   static SHParametersInfo parameters() {
     static Parameters params{
         {"Transform", SHCCSTR("The transform variable to use (Optional)"), {CoreInfo::NoneType, TransformVarType}},
-        {"Path", SHCCSTR("The static path to load a model from during warmup (Optional)"), {CoreInfo::NoneType, CoreInfo::StringType}},
+        {"Path",
+         SHCCSTR("The static path to load a model from during warmup (Optional)"),
+         {CoreInfo::NoneType, CoreInfo::StringType}},
     };
     return params;
   }
@@ -60,7 +62,10 @@ struct GLTFShard {
       _transformVar = value;
       break;
     case 1:
-      _staticModelPath = value.payload.stringValue;
+      if (value.valueType == SHType::String)
+        _staticModelPath = value.payload.stringValue;
+      else
+        _staticModelPath.clear();
       break;
     }
   }
@@ -70,7 +75,7 @@ struct GLTFShard {
     case 0:
       return _transformVar;
     case 1:
-      return Var(_staticModelPath);
+      return _staticModelPath.size() > 0 ? Var(_staticModelPath) : Var::Empty;
     default:
       return Var::Empty;
     }
