@@ -13,8 +13,16 @@ struct Horizontal {
   wrap: ParamVar,
 }
 
+struct Vertical {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+}
+
 mod horizontal;
+mod vertical;
 
 pub fn registerShards() {
   registerShard::<Horizontal>();
+  registerShard::<Vertical>();
 }
