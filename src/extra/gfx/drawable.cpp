@@ -185,7 +185,7 @@ struct DrawShard : public BaseConsumer {
   static inline shards::Types DrawableTypes{Types::Drawable, Types::DrawableHierarchy, DrawableSeqType};
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHParametersInfo parameters() {
     static Parameters params{
         {"Queue",
@@ -288,7 +288,7 @@ struct DrawShard : public BaseConsumer {
 };
 
 struct DrawQueueShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::DrawQueue; }
   static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
 

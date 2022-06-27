@@ -31,8 +31,8 @@ struct MainWindow : public Base {
        {CoreInfo::BoolType}},
   };
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHParametersInfo parameters() { return params; }
 
   std::string _title;

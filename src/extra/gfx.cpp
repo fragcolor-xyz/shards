@@ -16,7 +16,7 @@ namespace gfx {
 using shards::Mat4;
 
 struct DrawablePassShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
   static inline Parameters params{
@@ -111,7 +111,7 @@ void SHView::updateVariables() {
 }
 
 struct ViewShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::View; }
 
   static inline Parameters params{
@@ -170,8 +170,8 @@ struct ViewShard {
 };
 
 struct RenderShard : public BaseConsumer {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
   static inline Parameters params{
       {"Steps", SHCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},

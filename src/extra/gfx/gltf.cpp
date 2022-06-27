@@ -16,6 +16,7 @@ struct GLTFShard {
   static inline Type PathInputType = CoreInfo::StringType;
   static inline Type ByteInputType = CoreInfo::BytesType;
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::DrawableHierarchy; }
 
