@@ -176,7 +176,7 @@ struct ContextMainOutput {
     swapchainDesc.format = swapchainFormat;
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
-    swapchainDesc.presentMode = WGPUPresentMode_Fifo;
+    swapchainDesc.presentMode = WGPUPresentMode_Immediate;
     swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
     wgpuSwapchain = wgpuDeviceCreateSwapChain(device, wgpuWindowSurface, &swapchainDesc);
     if (!wgpuSwapchain) {
