@@ -99,7 +99,7 @@ struct App {
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
-  DrawQueue drawQueue;
+  DrawQueuePtr drawQueue = std::make_shared<DrawQueue>();
 
   std::vector<DrawableHierarchyPtr> drawables;
 
@@ -148,8 +148,8 @@ struct App {
 
     int sceneIndex = 0;
     for (auto &desc : gltfDescs) {
-      auto glbPath = gfx::resolveDataPath(fmt::format("glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", desc.name));
-      auto gltfScene = loadGlTF(glbPath.string().c_str());
+      auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", desc.name));
+      auto gltfScene = loadGltfFromFile(glbPath.string().c_str());
       assert(gltfScene);
 
       float fx = (sceneIndex++ - 2) * 1.0f;
@@ -173,6 +173,7 @@ struct App {
     view->view = linalg::lookat_matrix(float3(4.5f, 2, 8), float3(0, 0, 0.0f), float3(0, 1, 0));
 
     pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
+        .drawQueue = drawQueue,
         .features =
             {
                 features::Transform::create(),
@@ -184,9 +185,9 @@ struct App {
   void renderFrame(float time, float deltaTime) {
     renderer->beginFrame();
     for (auto &drawable : drawables) {
-      drawQueue.add(drawable);
+      drawQueue->add(drawable);
     }
-    renderer->render(drawQueue, view, pipelineSteps);
+    renderer->render(view, pipelineSteps);
     renderer->endFrame();
   }
 
@@ -217,7 +218,7 @@ struct App {
         if (context.beginFrame()) {
           renderer->beginFrame();
 
-          drawQueue.clear();
+          drawQueue->clear();
 
           renderFrame(loop.getAbsoluteTime(), deltaTime);
           // renderUI(events);

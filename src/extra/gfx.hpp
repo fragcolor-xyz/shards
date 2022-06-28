@@ -3,11 +3,11 @@
 
 #include "gfx/shards_types.hpp"
 #include <SDL_events.h>
-#include <shards.hpp>
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/fwd.hpp>
+#include <shards.hpp>
 
 namespace gfx {
 struct ImGuiRenderer;
@@ -23,7 +23,9 @@ struct MainWindowGlobals {
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
   std::vector<SDL_Event> events;
-  ::gfx::DrawQueue drawQueue;
+
+  // Draw queue used when it's not manually specified
+  ::gfx::DrawQueuePtr drawQueue;
 };
 
 struct ContextUserData {
@@ -48,9 +50,11 @@ struct BaseConsumer : public Base {
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(Base::requiredInfo); }
 
   // Required before _bgfxCtx can be used
-  void baseConsumerWarmup(SHContext *context) {
+  void baseConsumerWarmup(SHContext *context, bool mainWindowRequired = true) {
     _mainWindowGlobalsVar = shards::referenceVariable(context, Base::mainWindowGlobalsVarName);
-    assert(_mainWindowGlobalsVar->valueType == SHType::Object);
+    if (mainWindowRequired) {
+      assert(_mainWindowGlobalsVar->valueType == SHType::Object);
+    }
   }
 
   // Required during cleanup if _warmup() was called
@@ -61,19 +65,34 @@ struct BaseConsumer : public Base {
     }
   }
 
-  SHTypeInfo composeCheckMainThread(const SHInstanceData &data) {
+  void composeCheckMainThread(const SHInstanceData &data) {
     if (data.onWorkerThread) {
       throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
                                  "within an Await shard)");
     }
+  }
 
-    // Return None to trigger assertion during validation
-    return shards::CoreInfo::NoneType;
+  void composeCheckMainWindowGlobals(const SHInstanceData &data) {
+    bool variableFound = false;
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      if (strcmp(data.shared.elements[i].name, Base::mainWindowGlobalsVarName) == 0) {
+        variableFound = true;
+      }
+    }
+
+    if (!variableFound)
+      throw SHComposeError("MainWindow required, but not found");
   }
 
   void warmup(SHContext *context) { baseConsumerWarmup(context); }
+
   void cleanup(SHContext *context) { baseConsumerCleanup(); }
-  SHTypeInfo compose(const SHInstanceData &data) { return composeCheckMainThread(data); }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    composeCheckMainThread(data);
+    composeCheckMainWindowGlobals(data);
+    return shards::CoreInfo::NoneType;
+  }
 };
 } // namespace gfx
 

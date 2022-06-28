@@ -1,15 +1,15 @@
 #ifndef SH_EXTRA_GFX_SHARDS_TYPES
 #define SH_EXTRA_GFX_SHARDS_TYPES
 
-#include <shards.hpp>
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/enums.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/pipeline_step.hpp>
-#include <gfx/shader/types.hpp>
 #include <gfx/shader/entry_point.hpp>
+#include <gfx/shader/types.hpp>
 #include <memory>
+#include <shards.hpp>
 #include <vector>
 
 namespace gfx {
@@ -56,6 +56,10 @@ struct SHMaterial {
   void updateVariables();
 };
 
+struct SHDrawQueue {
+  DrawQueuePtr queue;
+};
+
 constexpr uint32_t VendorId = 'cgfx';
 
 namespace detail {
@@ -92,6 +96,7 @@ struct Container {
   OBJECT('drah', "GFX.DrawableHierarchy", DrawableHierarchy, SHDrawableHierarchy)
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
+  OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
 
   ENUM('_e0', "WindingOrder", WindingOrder, gfx::WindingOrder)
   ENUM('_e1', "ShaderFieldBaseType", ShaderFieldBaseType, gfx::ShaderFieldBaseType)

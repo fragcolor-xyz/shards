@@ -17,11 +17,12 @@ struct GLTFShard {
   static inline Type PathInputType = CoreInfo::StringType;
   static inline Type ByteInputType = CoreInfo::BytesType;
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::DrawableHierarchy; }
 
-  PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use", {TransformVarType});
-  PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup", {CoreInfo::StringType});
+  PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use", {CoreInfo::NoneType, TransformVarType});
+  PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_staticModelPath));
 
   enum LoadMode {
@@ -29,6 +30,7 @@ struct GLTFShard {
     LoadStaticFile,
     LoadFile,
     LoadMemory,
+    LoadCopy,
   };
 
   LoadMode _loadMode{};
@@ -61,8 +63,10 @@ struct GLTFShard {
 
     const SHTypeInfo *pathType = findInputTableType("Path");
     const SHTypeInfo *bytesType = findInputTableType("Bytes");
-    if (pathType && bytesType) {
-      throw ComposeError("glTF can not have a Path and Bytes source");
+    const SHTypeInfo *copyType = findInputTableType("Copy");
+    size_t numSources = (pathType ? 1 : 0) + (bytesType ? 1 : 0) + (copyType ? 1 : 0);
+    if (numSources > 1) {
+      throw ComposeError("glTF can only have one source");
     } else if (pathType) {
       if (*pathType != PathInputType)
         throw ComposeError("Path should be a string");
@@ -73,6 +77,11 @@ struct GLTFShard {
         throw ComposeError("Path should be a string");
       _loadMode = LoadMemory;
       OVERRIDE_ACTIVATE(data, activateBytes);
+    } else if (copyType) {
+      if (*copyType != Types::DrawableHierarchy)
+        throw ComposeError("Copy should be an already loaded glTF model");
+      _loadMode = LoadCopy;
+      OVERRIDE_ACTIVATE(data, activateCopy);
     } else if (!_staticModelPath.isNone()) {
       _loadMode = LoadStaticFile;
       OVERRIDE_ACTIVATE(data, activateStatic);
@@ -171,6 +180,23 @@ struct GLTFShard {
 
     initModel(context, *_returnVar, input);
     return Types::DrawableHierarchyObjectVar.Get(_returnVar);
+  }
+
+  SHVar activateCopy(SHContext *context, const SHVar &input) {
+    assert(_loadMode == LoadCopy);
+
+    SHVar sourceVar{};
+    getFromTable(context, input.payload.tableValue, "Copy", sourceVar);
+
+    SHDrawableHierarchy *source = reinterpret_cast<SHDrawableHierarchy *>(sourceVar.payload.objectValue);
+    if (!source)
+      throw ActivationError("Undefined glTF model passed to Copy");
+
+    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
+    result->drawableHierarchy = source->drawableHierarchy->clone();
+
+    initModel(context, *result, input);
+    return Types::DrawableHierarchyObjectVar.Get(result);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { throw std::logic_error("invalid activation"); }

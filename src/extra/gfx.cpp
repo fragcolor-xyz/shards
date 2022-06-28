@@ -16,16 +16,20 @@ namespace gfx {
 using shards::Mat4;
 
 struct DrawablePassShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
   static inline Parameters params{
       {"Features", SHCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
+      {"Queue",
+       SHCCSTR("The queue to draw from (Optional). Uses the default queue if not specified"),
+       {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
   };
   static SHParametersInfo parameters() { return params; }
 
   PipelineStepPtr *_step{};
   ParamVar _features{};
+  ParamVar _queueVar{};
 
   std::vector<FeaturePtr> _collectedFeatures;
   std::vector<Var> _featureVars;
@@ -35,6 +39,9 @@ struct DrawablePassShard {
     case 0:
       _features = value;
       break;
+    case 1:
+      _queueVar = value;
+      break;
     }
   }
 
@@ -42,6 +49,8 @@ struct DrawablePassShard {
     switch (index) {
     case 0:
       return _features;
+    case 1:
+      return _queueVar;
     default:
       return Var::Empty;
     }
@@ -52,12 +61,14 @@ struct DrawablePassShard {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
+    _queueVar.cleanup();
     _features.cleanup();
   }
 
   void warmup(SHContext *context) {
     _step = Types::PipelineStepObjectVar.New();
     _features.warmup(context);
+    _queueVar.warmup(context);
   }
 
   std::vector<FeaturePtr> collectFeatures(const SHVar &input) {
@@ -68,7 +79,7 @@ struct DrawablePassShard {
 
     for (auto &featureVar : _featureVars) {
       if (featureVar.payload.objectValue) {
-        _collectedFeatures.push_back(*(FeaturePtr *)featureVar.payload.objectValue);
+        _collectedFeatures.push_back(*reinterpret_cast<FeaturePtr *>(featureVar.payload.objectValue));
       }
     }
 
@@ -77,8 +88,18 @@ struct DrawablePassShard {
     return _collectedFeatures;
   }
 
+  DrawQueuePtr getDrawQueue() {
+    SHVar queueVar = _queueVar.get();
+    if (queueVar.payload.objectValue) {
+      return (reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue;
+    } else {
+      return DrawQueuePtr();
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     *_step = makeDrawablePipelineStep(RenderDrawablesStep{
+        .drawQueue = getDrawQueue(),
         .features = collectFeatures(_features),
     });
     return Types::PipelineStepObjectVar.Get(_step);
@@ -92,11 +113,11 @@ void SHView::updateVariables() {
 }
 
 struct ViewShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::View; }
 
   static inline Parameters params{
-      {"View", SHCCSTR("The view matrix."), {Type::VariableOf(CoreInfo::Float4x4Type), CoreInfo::Float4x4Type}},
+      {"View", SHCCSTR("The view matrix. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -151,13 +172,15 @@ struct ViewShard {
 };
 
 struct RenderShard : public BaseConsumer {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
   static inline Parameters params{
       {"Steps", SHCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"View", SHCCSTR("The view to render into."), {Type::VariableOf(Types::View), Types::View}},
-      {"Views", SHCCSTR("The views to render into."), {Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
+      {"View", SHCCSTR("The view to render into. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(Types::View)}},
+      {"Views",
+       SHCCSTR("The views to render into. (Optional)"),
+       {CoreInfo::NoneType, Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -233,14 +256,20 @@ struct RenderShard : public BaseConsumer {
     _collectedViews.clear();
     if (_view->valueType != SHType::None) {
       const SHVar &var = _view.get();
-      SHView *shView = (SHView *)var.payload.objectValue;
+      SHView *shView = reinterpret_cast<SHView *>(var.payload.objectValue);
+      if (!shView)
+        throw formatException("GFX.Render View is not defined");
+
       shView->updateVariables();
       _collectedViews.push_back(shView->view);
     } else if (_views->valueType != SHType::None) {
       SeqVar &seq = (SeqVar &)_views.get();
       for (size_t i = 0; i < seq.size(); i++) {
         const SHVar &viewVar = seq[i];
-        SHView *shView = (SHView *)viewVar.payload.objectValue;
+        SHView *shView = reinterpret_cast<SHView *>(viewVar.payload.objectValue);
+        if (!shView)
+          throw formatException("GFX.Render View[{}] is not defined", i);
+
         shView->updateVariables();
         _collectedViews.push_back(shView->view);
       }
@@ -250,14 +279,34 @@ struct RenderShard : public BaseConsumer {
     return _collectedViews;
   }
 
+  void fixupPipelineStep(PipelineStep &step) {
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
+            if (!arg.drawQueue)
+              arg.drawQueue = getMainWindowGlobals().drawQueue;
+          }
+        },
+        step);
+  }
+
   PipelineSteps collectPipelineSteps() {
     _collectedPipelineSteps.clear();
 
     Var stepsSHVar(_steps.get());
     stepsSHVar.intoVector(_collectedPipelineStepVars);
 
+    size_t index = 0;
     for (const auto &stepVar : _collectedPipelineStepVars) {
-      _collectedPipelineSteps.push_back(*(PipelineStepPtr *)stepVar.payload.objectValue);
+      if (!stepVar.payload.objectValue)
+        throw formatException("GFX.Render PipelineStep[{}] is not defined", index);
+
+      PipelineStepPtr &ptr = *reinterpret_cast<PipelineStepPtr *>(stepVar.payload.objectValue);
+      fixupPipelineStep(*ptr.get());
+
+      _collectedPipelineSteps.push_back(ptr);
+      index++;
     }
 
     return _collectedPipelineSteps;
@@ -265,7 +314,7 @@ struct RenderShard : public BaseConsumer {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     MainWindowGlobals &globals = getMainWindowGlobals();
-    globals.renderer->render(globals.drawQueue, updateAndCollectViews(), collectPipelineSteps());
+    globals.renderer->render(updateAndCollectViews(), collectPipelineSteps());
     return SHVar{};
   }
 };

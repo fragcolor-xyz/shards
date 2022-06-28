@@ -17,9 +17,9 @@
 #include "texture_placeholder.hpp"
 #include "view.hpp"
 #include "view_texture.hpp"
+#include <algorithm>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
-#include <algorithm>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
@@ -73,7 +73,10 @@ public:
     } else {
       texture->createContextDataConditional(context);
 
-      TextureId id = TextureId(textureData.size());
+      size_t newId = textureData.size();
+      assert(newId <= UINT16_MAX);
+
+      TextureId id = TextureId(newId);
       textureData.emplace_back(texture->contextData);
       mapping.insert_or_assign(texture, id);
       return id;
@@ -87,7 +90,10 @@ public:
     }
   }
 
-  void reset() { mapping.clear(); }
+  void reset() {
+    mapping.clear();
+    textureData.clear();
+  }
 };
 
 struct SortableDrawable;
@@ -214,7 +220,9 @@ struct RendererImpl final : public ContextData {
   size_t frameIndex = 0;
   const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
+  // TODO: Replace with render graph https://github.com/fragcolor-xyz/shards/issues/172
   bool mainOutputWrittenTo = false;
+  bool depthStencilWrittenTo = false;
 
   std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth24Plus, "Depth Buffer");
   std::shared_ptr<PlaceholderTexture> placeholderTexture;
@@ -257,13 +265,13 @@ struct RendererImpl final : public ContextData {
     mainOutput.size = context.getMainOutputSize();
   }
 
-  void renderViews(const DrawQueue &drawQueue, const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
+  void renderViews(const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
     for (auto &view : views) {
-      renderView(drawQueue, view, pipelineSteps);
+      renderView(view, pipelineSteps);
     }
   }
 
-  void renderView(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
+  void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     View *viewPtr = view.get();
 
     Rect viewport;
@@ -303,7 +311,7 @@ struct RendererImpl final : public ContextData {
           [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
-              renderDrawables(drawQueue, arg, view, viewport, viewBuffer);
+              renderDrawables(arg, view, viewport, viewBuffer);
             }
           },
           *step.get());
@@ -332,6 +340,7 @@ struct RendererImpl final : public ContextData {
       initializeContextData();
 
     mainOutputWrittenTo = false;
+    depthStencilWrittenTo = false;
 
     if (shouldUpdateMainOutputFromContext) {
       updateMainOutputFromContext();
@@ -606,8 +615,12 @@ struct RendererImpl final : public ContextData {
     return wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
   }
 
-  void renderDrawables(const DrawQueue &drawQueue, RenderDrawablesStep &step, ViewPtr view, Rect viewport,
-                       WGPUBuffer viewBuffer) {
+  void renderDrawables(RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
+    if (!step.drawQueue)
+      throw std::runtime_error("No draw queue assigned to drawable step");
+
+    const DrawQueue &drawQueue = *step.drawQueue.get();
+
     WGPUDevice device = context.wgpuDevice;
     WGPUCommandEncoderDescriptor desc = {};
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
@@ -630,10 +643,18 @@ struct RendererImpl final : public ContextData {
 
     WGPURenderPassDepthStencilAttachment depthAttach = {};
     depthAttach.depthClearValue = 1.0f;
-    depthAttach.depthLoadOp = WGPULoadOp_Clear;
-    depthAttach.depthStoreOp = WGPUStoreOp_Store;
-    depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
-    depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
+    if (!depthStencilWrittenTo) {
+      depthAttach.depthLoadOp = WGPULoadOp_Clear;
+      depthAttach.depthStoreOp = WGPUStoreOp_Store;
+      depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
+      depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
+      depthStencilWrittenTo = true;
+    } else {
+      depthAttach.depthLoadOp = WGPULoadOp_Load;
+      depthAttach.depthStoreOp = WGPUStoreOp_Store;
+      depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
+      depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
+    }
     depthAttach.view = depthTexture->update(context, viewport.getSize());
 
     passDesc.colorAttachments = &mainAttach;
@@ -713,11 +734,14 @@ struct RendererImpl final : public ContextData {
   void groupByPipeline(RenderDrawablesStep &step, const std::vector<DrawablePtr> &drawables) {
     // TODO: Paralellize
     std::vector<const Feature *> features;
-    const std::vector<FeaturePtr> *featureSources[2] = {&step.features, nullptr};
+    const std::vector<FeaturePtr> *featureSources[3] = {&step.features, nullptr, nullptr};
     for (auto &drawable : drawables) {
       Drawable *drawablePtr = drawable.get();
       assert(drawablePtr->mesh);
       const Mesh &mesh = *drawablePtr->mesh.get();
+
+      featureSources[1] = &drawablePtr->features;
+      featureSources[2] = drawablePtr->material ? &drawablePtr->material->features : nullptr;
 
       features.clear();
       for (auto &featureSource : featureSources) {
@@ -1011,12 +1035,8 @@ Renderer::Renderer(Context &context) {
   impl->initializeContextData();
 }
 
-void Renderer::render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) {
-  impl->renderViews(drawQueue, views, pipelineSteps);
-}
-void Renderer::render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps) {
-  impl->renderView(drawQueue, view, pipelineSteps);
-}
+void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { impl->renderViews(views, pipelineSteps); }
+void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;

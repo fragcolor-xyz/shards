@@ -23,8 +23,8 @@ struct Renderer {
 
 public:
   Renderer(Context &context);
-  void render(const DrawQueue &drawQueue, std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps);
-  void render(const DrawQueue &drawQueue, ViewPtr view, const PipelineSteps &pipelineSteps);
+  void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps);
+  void render(ViewPtr view, const PipelineSteps &pipelineSteps);
   void setMainOutput(const MainOutput &output);
 
   void beginFrame();

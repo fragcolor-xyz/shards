@@ -31,8 +31,8 @@ struct MainWindow : public Base {
        {CoreInfo::BoolType}},
   };
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHParametersInfo parameters() { return params; }
 
   std::string _title;
@@ -141,6 +141,8 @@ struct MainWindow : public Base {
     globals->renderer = std::make_shared<Renderer>(*globals->context.get());
     globals->imgui = std::make_shared<ImGuiRenderer>(*globals->context.get());
 
+    globals->drawQueue = std::make_shared<DrawQueue>();
+
     _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
     _mainWindowGlobalsVar->payload.objectTypeId = MainWindowGlobals::TypeId;
     _mainWindowGlobalsVar->payload.objectValue = globals.get();
@@ -165,6 +167,8 @@ struct MainWindow : public Base {
       _mainWindowGlobalsVar = nullptr;
     }
   }
+
+  void frameBegan() { globals->drawQueue->clear(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderer = globals->renderer;
@@ -196,13 +200,12 @@ struct MainWindow : public Base {
     }
 
     float deltaTime = 0.0;
-    auto &drawQueue = globals->drawQueue;
     if (loop.beginFrame(0.0f, deltaTime)) {
       if (context->beginFrame()) {
         imgui->beginFrame(events);
         renderer->beginFrame();
 
-        drawQueue.clear();
+        frameBegan();
 
         SHVar _shardsOutput{};
         _shards.activate(shContext, input, _shardsOutput);

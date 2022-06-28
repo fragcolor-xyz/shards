@@ -86,20 +86,18 @@ inline ViewPtr createTestProjectionView() {
   return view;
 }
 
-inline PipelineSteps createTestPipelineSteps() {
-  static auto result = []() {
-    return PipelineSteps{
-        makeDrawablePipelineStep(RenderDrawablesStep{
-            .features =
-                {
-                    features::Transform::create(),
-                    features::BaseColor::create(),
-                    features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex),
-                },
-        }),
-    };
-  }();
-  return result;
+inline PipelineSteps createTestPipelineSteps(DrawQueuePtr queue) {
+  return PipelineSteps{
+      makeDrawablePipelineStep(RenderDrawablesStep{
+          .drawQueue = queue,
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+                  features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex),
+              },
+      }),
+  };
 }
 
 } // namespace gfx

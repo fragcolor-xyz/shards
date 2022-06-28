@@ -115,7 +115,7 @@ struct BuiltinMeshShard {
   static inline shards::Type TypeType = shards::Type::Enum(VendorId, TypeTypeId);
   static inline EnumInfo<Type> TypeEnumInfo{"BuiltinMeshType", VendorId, TypeTypeId};
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Mesh; }
 
   PARAM_VAR(_type, "Type", "The type of object to make.", {TypeType})

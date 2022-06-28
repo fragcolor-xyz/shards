@@ -7,6 +7,7 @@
 #include "linalg/linalg.h"
 #include <string>
 #include <vector>
+#include <optional>
 
 namespace gfx {
 
@@ -70,22 +71,27 @@ private:
   size_t numIndices = 0;
   std::vector<uint8_t> vertexData;
   std::vector<uint8_t> indexData;
+  bool updateData{};
 
 public:
   const MeshFormat &getFormat() const { return format; }
 
   size_t getNumVertices() const { return numVertices; }
   size_t getNumIndices() const { return numIndices; }
+  const std::vector<uint8_t> &getVertexData() const { return vertexData; }
+  const std::vector<uint8_t> &getIndexData() const { return indexData; }
 
   // Updates mesh data with length in bytes
   void update(const MeshFormat &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData,
               size_t indexDataLength);
-  void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, std::vector<uint8_t> &&indexData);
+  void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData,
+              std::vector<uint8_t> &&indexData = std::vector<uint8_t>());
 
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);
   void update();
   void initContextData(Context &context, MeshContextData &contextData);
+  void updateContextData(Context &context, MeshContextData &contextData);
 };
 
 } // namespace gfx

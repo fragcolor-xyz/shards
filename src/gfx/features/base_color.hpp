@@ -51,7 +51,8 @@ struct BaseColor {
     // Apply base color texture
     auto &sampleTexture = feature->shaderEntryPoints.emplace_back(
         "textureColor", ProgrammableGraphicsStage::Fragment,
-        WithTexture("baseColor", WriteGlobal("color", colorFieldType, ReadGlobal("color"), "*", SampleTexture("baseColor"))));
+        WithTexture("baseColor", true,
+                    WriteGlobal("color", colorFieldType, ReadGlobal("color"), "*", SampleTexture("baseColor"))));
     sampleTexture.dependencies.emplace_back("readColor");
     sampleTexture.dependencies.emplace_back("writeColor", DependencyType::Before);
 

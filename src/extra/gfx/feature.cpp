@@ -27,7 +27,7 @@ struct BuiltinFeatureShard {
   static inline Type IdType = Type::Enum(VendorId, IdTypeId);
   static inline EnumInfo<Id> IdEnumInfo{"BuiltinFeatureId", VendorId, IdTypeId};
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
   static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {IdType}}};

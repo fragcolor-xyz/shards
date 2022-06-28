@@ -1,6 +1,6 @@
 #include "../gfx.hpp"
-#include "shards_utils.hpp"
 #include "material_utils.hpp"
+#include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/material.hpp>
@@ -41,10 +41,11 @@ struct DrawableShard {
   };
 
   static inline Parameters params{
-      {"Transform", SHCCSTR("The transform variable to use"), {TransformVarType}},
+      {"Transform", SHCCSTR("The transform variable to use (Optional)"), {CoreInfo::NoneType, TransformVarType}},
       {"Params",
-       SHCCSTR("The params variable to use"),
-       {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
+       SHCCSTR("The params variable to use (Optional)"),
+       {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
+        Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
@@ -134,7 +135,7 @@ struct DrawableShard {
     SHVar meshVar{};
     MeshPtr *meshPtr{};
     if (getFromTable(shContext, inputTable, "Mesh", meshVar)) {
-      meshPtr = (MeshPtr *)meshVar.payload.objectValue;
+      meshPtr = reinterpret_cast<MeshPtr *>(meshVar.payload.objectValue);
     } else {
       throw formatException("Mesh must be set");
     }
@@ -148,7 +149,7 @@ struct DrawableShard {
     SHVar materialVar{};
     SHMaterial *shMaterial{};
     if (getFromTable(shContext, inputTable, "Material", materialVar)) {
-      shMaterial = (SHMaterial *)materialVar.payload.objectValue;
+      shMaterial = reinterpret_cast<SHMaterial *>(materialVar.payload.objectValue);
     }
 
     makeNewReturnVar();
@@ -178,18 +179,65 @@ struct DrawableShard {
   }
 };
 
+// MainWindow is only required if Queue is not specified
 struct DrawShard : public BaseConsumer {
   static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable, Types::DrawableHierarchy};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
   static inline shards::Types DrawableTypes{Types::Drawable, Types::DrawableHierarchy, DrawableSeqType};
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHParametersInfo parameters() { return SHParametersInfo(); }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHParametersInfo parameters() {
+    static Parameters params{
+        {"Queue",
+         SHCCSTR("The queue to add the draw command to (Optional). Uses the default queue if not specified"),
+         {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
+    };
+    return params;
+  }
 
-  void warmup(SHContext *shContext) { baseConsumerWarmup(shContext); }
-  void cleanup() { baseConsumerCleanup(); }
+  ParamVar _queueVar{};
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo{}; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _queueVar = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _queueVar;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void warmup(SHContext *shContext) {
+    baseConsumerWarmup(shContext, false);
+    _queueVar.warmup(shContext);
+  }
+
+  void cleanup() {
+    baseConsumerCleanup();
+    _queueVar.cleanup();
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_queueVar->valueType != SHType::None) {
+      // Use the specified queue
+    } else {
+      // Use default global queue (check main thread)
+      composeCheckMainThread(data);
+      composeCheckMainWindowGlobals(data);
+    }
+
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
     } else {
@@ -198,20 +246,26 @@ struct DrawShard : public BaseConsumer {
     return CoreInfo::NoneType;
   }
 
-  template <typename T> void addDrawableToQueue(T drawable) {
-    auto &dq = getMainWindowGlobals().drawQueue;
-    dq.add(drawable);
+  DrawQueue &getDrawQueue() {
+    SHVar queueVar = _queueVar.get();
+    if (queueVar.payload.objectValue) {
+      return *(reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue.get();
+    } else {
+      return *getMainWindowGlobals().drawQueue.get();
+    }
   }
+
+  template <typename T> void addDrawableToQueue(T drawable) { getDrawQueue().add(drawable); }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
     if (input.payload.objectTypeId == Types::DrawableTypeId) {
-      SHDrawable *shDrawable = (SHDrawable *)input.payload.objectValue;
+      SHDrawable *shDrawable = reinterpret_cast<SHDrawable *>(input.payload.objectValue);
       assert(shDrawable);
       shDrawable->updateVariables();
       addDrawableToQueue(shDrawable->drawable);
     } else if (input.payload.objectTypeId == Types::DrawableHierarchyTypeId) {
-      SHDrawableHierarchy *shDrawableHierarchy = (SHDrawableHierarchy *)input.payload.objectValue;
+      SHDrawableHierarchy *shDrawableHierarchy = reinterpret_cast<SHDrawableHierarchy *>(input.payload.objectValue);
       assert(shDrawableHierarchy);
       shDrawableHierarchy->updateVariables();
       addDrawableToQueue(shDrawableHierarchy->drawableHierarchy);
@@ -234,8 +288,70 @@ struct DrawShard : public BaseConsumer {
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("GFX.Draw: Unsupported input type"); }
 };
 
+struct DrawQueueShard {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return Types::DrawQueue; }
+  static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
+
+  static SHParametersInfo parameters() {
+    static Parameters parameters = {};
+    return parameters;
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void warmup(SHContext *context) {}
+
+  void cleanup() {}
+
+  SHTypeInfo compose(SHInstanceData &data) { return Types::DrawQueue; }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHDrawQueue *shQueue = Types::DrawQueueObjectVar.New();
+    shQueue->queue = std::make_shared<DrawQueue>();
+    return Types::DrawQueueObjectVar.Get(shQueue);
+  }
+};
+
+struct ClearQueueShard {
+  static SHTypesInfo inputTypes() { return Types::DrawQueue; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Clears a draw queue"); }
+
+  static SHParametersInfo parameters() {
+    static Parameters parameters = {};
+    return parameters;
+  }
+
+  void setParam(int index, const SHVar &value) {}
+  SHVar getParam(int index) { return Var::Empty; }
+
+  void warmup(SHContext *context) {}
+  void cleanup() {}
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
+    shQueue->queue->clear();
+    return SHVar{};
+  }
+};
+
 void registerDrawableShards() {
   REGISTER_SHARD("GFX.Drawable", DrawableShard);
   REGISTER_SHARD("GFX.Draw", DrawShard);
+  REGISTER_SHARD("GFX.DrawQueue", DrawQueueShard);
+  REGISTER_SHARD("GFX.ClearQueue", ClearQueueShard);
 }
 } // namespace gfx

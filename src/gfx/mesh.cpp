@@ -62,10 +62,19 @@ void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLengt
 
 void Mesh::update() {
   // This causes the GPU data to be recreated the next time it is requested
-  contextData.reset();
+  updateData = true;
 }
 
 void Mesh::initContextData(Context &context, MeshContextData &contextData) {
+  contextData.vertexBufferLength = 0;
+  contextData.indexBufferLength = 0;
+}
+
+void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
+  if (!updateData)
+    return;
+  updateData = false;
+
   WGPUDevice device = context.wgpuDevice;
   assert(device);
 
@@ -73,19 +82,26 @@ void Mesh::initContextData(Context &context, MeshContextData &contextData) {
   contextData.numIndices = numIndices;
   contextData.numVertices = numVertices;
 
-  WGPUBufferDescriptor desc = {};
-  desc.size = vertexData.size();
-  desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
-  contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
-  contextData.vertexBufferLength = desc.size;
+  // Grow/create vertex buffer
+  if (contextData.vertexBufferLength < vertexData.size()) {
+    WGPUBufferDescriptor desc = {};
+    desc.size = vertexData.size();
+    desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
+    contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+    contextData.vertexBufferLength = desc.size;
+  }
 
   wgpuQueueWriteBuffer(context.wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
 
   if (indexData.size() > 0) {
-    desc.size = indexData.size();
-    desc.usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst;
-    contextData.indexBuffer = wgpuDeviceCreateBuffer(device, &desc);
-    contextData.indexBufferLength = desc.size;
+    // Grow/create index buffer
+    if (indexData.size() > contextData.indexBufferLength) {
+      WGPUBufferDescriptor desc = {};
+      desc.size = indexData.size();
+      desc.usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst;
+      contextData.indexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+      contextData.indexBufferLength = desc.size;
+    }
 
     wgpuQueueWriteBuffer(context.wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
   }

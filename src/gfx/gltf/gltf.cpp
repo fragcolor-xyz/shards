@@ -154,7 +154,7 @@ struct Loader {
     }
 
     // Make position the first attribute to aid renderdoc debugging
-    if (positionIndex >= 0 && positionIndex != 0) {
+    if (positionIndex > 0) {
       std::swap(accessors[0], accessors[positionIndex]);
       std::swap(format.vertexAttributes[0], format.vertexAttributes[positionIndex]);
 

@@ -2,6 +2,7 @@
 #define GFX_PIPELINE_STEP
 
 #include "fwd.hpp"
+#include <variant>
 #include <vector>
 
 namespace gfx {
@@ -14,6 +15,7 @@ enum class SortMode {
 };
 
 struct RenderDrawablesStep {
+  DrawQueuePtr drawQueue;
   std::vector<FeaturePtr> features;
   SortMode sortMode = SortMode::Batch;
 };
