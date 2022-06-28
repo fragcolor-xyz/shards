@@ -33,6 +33,12 @@ struct Label {
   wrap: ParamVar,
 }
 
+struct ProgressBar {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  overlay: ParamVar,
+}
+
 /// Radio button with a text label.
 struct RadioButton {
   parents: ParamVar,
@@ -57,6 +63,7 @@ struct TextInput {
 mod button;
 mod checkbox;
 mod label;
+mod progress_bar;
 mod radio_button;
 mod text_input;
 
@@ -64,6 +71,7 @@ pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
   registerShard::<Label>();
+  registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<TextInput>();
 }
