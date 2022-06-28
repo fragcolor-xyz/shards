@@ -73,7 +73,7 @@ void Mesh::initContextData(Context &context, MeshContextData &contextData) {
 void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
   if (!updateData)
     return;
-  updateData.reset();
+  updateData = false;
 
   WGPUDevice device = context.wgpuDevice;
   assert(device);

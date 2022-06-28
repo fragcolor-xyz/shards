@@ -71,7 +71,7 @@ private:
   size_t numIndices = 0;
   std::vector<uint8_t> vertexData;
   std::vector<uint8_t> indexData;
-  std::optional<bool> updateData;
+  bool updateData{};
 
 public:
   const MeshFormat &getFormat() const { return format; }
