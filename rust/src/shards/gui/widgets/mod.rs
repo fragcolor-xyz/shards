@@ -50,6 +50,11 @@ struct RadioButton {
   should_expose: bool,
 }
 
+struct Spinner {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 struct TextInput {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -65,6 +70,7 @@ mod checkbox;
 mod label;
 mod progress_bar;
 mod radio_button;
+mod spinner;
 mod text_input;
 
 pub fn registerShards() {
@@ -73,5 +79,6 @@ pub fn registerShards() {
   registerShard::<Label>();
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
+  registerShard::<Spinner>();
   registerShard::<TextInput>();
 }
