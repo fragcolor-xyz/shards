@@ -3533,6 +3533,7 @@ lazy_static! {
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
   pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
+  pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
   pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
   pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
   pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
