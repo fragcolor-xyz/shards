@@ -9,6 +9,8 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
+#include <SDL_stdinc.h>
+
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
 #endif
@@ -27,7 +29,10 @@ static inline std::shared_ptr<spdlog::logger> &getLogger() {
 #ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
 #if GFX_WINDOWS
-  return WGPUBackendType_D3D12;
+  // Vulkan is more performant on windows for now, see:
+  // https://github.com/gfx-rs/wgpu/issues/2719 - Make DX12 the Default API on Windows
+  // https://github.com/gfx-rs/wgpu/issues/2720 - Suballocate Buffers in DX12
+  return WGPUBackendType_Vulkan;
 #elif GFX_APPLE
   return WGPUBackendType_Metal;
 #elif GFX_LINUX || GFX_ANDROID
@@ -466,7 +471,20 @@ void Context::requestAdapter() {
   WGPUAdapterExtras adapterExtras = {};
   requestAdapter.nextInChain = &adapterExtras.chain;
   adapterExtras.chain.sType = (WGPUSType)WGPUSType_AdapterExtras;
-  adapterExtras.backend = getDefaultWgpuBackendType();
+
+  adapterExtras.backend = WGPUBackendType_Null;
+  if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
+    std::string typeStr = std::string("WGPUBackendType_") + backendStr;
+    auto foundValue = magic_enum::enum_cast<WGPUBackendType>(typeStr);
+    if (foundValue) {
+      adapterExtras.backend = foundValue.value();
+    }
+  }
+
+  if (adapterExtras.backend == WGPUBackendType_Null)
+    adapterExtras.backend = getDefaultWgpuBackendType();
+
+  SPDLOG_INFO("Using backend {}", magic_enum::enum_name(adapterExtras.backend));
 #endif
 
   getLogger()->debug("Requesting wgpu adapter");
