@@ -550,6 +550,10 @@ struct Var : public SHVar {
 
   explicit Var(const SHVar &other) { memcpy((void *)this, (void *)&other, sizeof(SHVar)); }
 
+  Var& operator=(const SHVar& other) { memcpy((void *)this, (void *)&other, sizeof(SHVar)); return *this; }
+
+  bool isNone() const { return valueType == SHType::None; }
+
   explicit operator bool() const {
     if (valueType != Bool) {
       throw InvalidVarTypeError("Invalid variable casting! expected Bool");
@@ -609,6 +613,14 @@ struct Var : public SHVar {
       return static_cast<double>(payload.intValue);
     } else {
       throw InvalidVarTypeError("Invalid variable casting! expected Float");
+    }
+  }
+
+  explicit operator const char *() const {
+    if (valueType == SHType::String || valueType == SHType::Path || valueType == SHType::ContextVar) {
+      return payload.stringValue;
+    } else {
+      throw InvalidVarTypeError("Invalid variable casting! expected String/Path/ContextVar");
     }
   }
 
