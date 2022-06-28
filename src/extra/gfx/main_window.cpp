@@ -142,8 +142,6 @@ struct MainWindow : public Base {
     globals->imgui = std::make_shared<ImGuiRenderer>(*globals->context.get());
 
     globals->drawQueue = std::make_shared<DrawQueue>();
-    auto clearDrawQueue = [dq = globals->drawQueue]() { dq->clear(); };
-    globals->onBeginFrame.push_back(MainWindowGlobals::FrameCallback{.context = this, .callback = clearDrawQueue});
 
     _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
     _mainWindowGlobalsVar->payload.objectTypeId = MainWindowGlobals::TypeId;
@@ -169,6 +167,8 @@ struct MainWindow : public Base {
       _mainWindowGlobalsVar = nullptr;
     }
   }
+
+  void frameBegan() { globals->drawQueue->clear(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderer = globals->renderer;
@@ -205,9 +205,7 @@ struct MainWindow : public Base {
         imgui->beginFrame(events);
         renderer->beginFrame();
 
-        for (auto &cb : globals->onBeginFrame) {
-          cb.callback();
-        }
+        frameBegan();
 
         SHVar _shardsOutput{};
         _shards.activate(shContext, input, _shardsOutput);

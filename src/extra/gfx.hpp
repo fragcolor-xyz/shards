@@ -26,13 +26,6 @@ struct MainWindowGlobals {
 
   // Draw queue used when it's not manually specified
   ::gfx::DrawQueuePtr drawQueue;
-
-  // Callback for start-of-frame
-  struct FrameCallback {
-    void *context;
-    std::function<void()> callback;
-  };
-  std::vector<FrameCallback> onBeginFrame;
 };
 
 struct ContextUserData {
