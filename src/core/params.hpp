@@ -9,8 +9,8 @@
 // Template helpers for setParam/getParam
 namespace shards {
 
-#define PARAM(_type, _name, _displayName, _help, _types)                                     \
-  static inline ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), _types}; \
+#define PARAM(_type, _name, _displayName, _help, ...)                                     \
+  static inline ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
   _type _name;
 
 #define PARAM_VAR(_name, _displayName, _help, ...) PARAM(Var, _name, _displayName, _help, __VA_ARGS__)
