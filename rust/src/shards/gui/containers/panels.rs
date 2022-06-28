@@ -132,7 +132,6 @@ macro_rules! impl_panel {
         // update shared
         data.shared = (&shared).into();
 
-        // center always last
         if !self.contents.is_empty() {
           self.contents.compose(&data)?;
         }
@@ -319,7 +318,6 @@ impl Shard for CentralPanel {
     // update shared
     data.shared = (&shared).into();
 
-    // center always last
     if !self.contents.is_empty() {
       self.contents.compose(&data)?;
     }
