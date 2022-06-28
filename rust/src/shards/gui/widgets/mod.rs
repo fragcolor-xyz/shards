@@ -81,10 +81,30 @@ macro_rules! decl_ui_input {
 decl_ui_input!(FloatInput, f64);
 decl_ui_input!(IntInput, i64);
 
+macro_rules! decl_ui_slider {
+  ($name:ident, $tmp_type:ty) => {
+    struct $name {
+      parents: ParamVar,
+      requiring: ExposedTypes,
+      label: ParamVar,
+      variable: ParamVar,
+      min: ParamVar,
+      max: ParamVar,
+      exposing: ExposedTypes,
+      should_expose: bool,
+      tmp: $tmp_type,
+    }
+  };
+}
+
+decl_ui_slider!(FloatSlider, f64);
+decl_ui_slider!(IntSlider, i64);
+
 mod button;
 mod checkbox;
 mod label;
 mod numeric_input;
+mod numeric_slider;
 mod progress_bar;
 mod radio_button;
 mod spinner;
@@ -96,6 +116,8 @@ pub fn registerShards() {
   registerShard::<Label>();
   registerShard::<FloatInput>();
   registerShard::<IntInput>();
+  registerShard::<FloatSlider>();
+  registerShard::<IntSlider>();
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<Spinner>();
