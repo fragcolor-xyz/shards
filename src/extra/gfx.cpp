@@ -21,7 +21,9 @@ struct DrawablePassShard {
 
   static inline Parameters params{
       {"Features", SHCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"Queue", SHCCSTR("The queue to draw from (Optional). Uses the default queue if not specified"), {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
+      {"Queue",
+       SHCCSTR("The queue to draw from (Optional). Uses the default queue if not specified"),
+       {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -77,7 +79,7 @@ struct DrawablePassShard {
 
     for (auto &featureVar : _featureVars) {
       if (featureVar.payload.objectValue) {
-        _collectedFeatures.push_back(*(FeaturePtr *)featureVar.payload.objectValue);
+        _collectedFeatures.push_back(*reinterpret_cast<FeaturePtr *>(featureVar.payload.objectValue));
       }
     }
 
@@ -89,7 +91,7 @@ struct DrawablePassShard {
   DrawQueuePtr getDrawQueue() {
     SHVar queueVar = _queueVar.get();
     if (queueVar.payload.objectValue) {
-      return ((SHDrawQueue *)queueVar.payload.objectValue)->queue;
+      return (reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue;
     } else {
       return DrawQueuePtr();
     }
@@ -176,7 +178,9 @@ struct RenderShard : public BaseConsumer {
   static inline Parameters params{
       {"Steps", SHCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
       {"View", SHCCSTR("The view to render into. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(Types::View)}},
-      {"Views", SHCCSTR("The views to render into. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
+      {"Views",
+       SHCCSTR("The views to render into. (Optional)"),
+       {CoreInfo::NoneType, Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -252,7 +256,7 @@ struct RenderShard : public BaseConsumer {
     _collectedViews.clear();
     if (_view->valueType != SHType::None) {
       const SHVar &var = _view.get();
-      SHView *shView = (SHView *)var.payload.objectValue;
+      SHView *shView = reinterpret_cast<SHView *>(var.payload.objectValue);
       if (!shView)
         throw formatException("GFX.Render View is not defined");
 
@@ -262,7 +266,7 @@ struct RenderShard : public BaseConsumer {
       SeqVar &seq = (SeqVar &)_views.get();
       for (size_t i = 0; i < seq.size(); i++) {
         const SHVar &viewVar = seq[i];
-        SHView *shView = (SHView *)viewVar.payload.objectValue;
+        SHView *shView = reinterpret_cast<SHView *>(viewVar.payload.objectValue);
         if (!shView)
           throw formatException("GFX.Render View[{}] is not defined", i);
 
@@ -295,13 +299,13 @@ struct RenderShard : public BaseConsumer {
 
     size_t index = 0;
     for (const auto &stepVar : _collectedPipelineStepVars) {
-      PipelineStepPtr *ptr = (PipelineStepPtr *)stepVar.payload.objectValue;
-      if (!ptr)
+      if (!stepVar.payload.objectValue)
         throw formatException("GFX.Render PipelineStep[{}] is not defined", index);
 
-      fixupPipelineStep(*ptr->get());
+      PipelineStepPtr &ptr = *reinterpret_cast<PipelineStepPtr *>(stepVar.payload.objectValue);
+      fixupPipelineStep(*ptr.get());
 
-      _collectedPipelineSteps.push_back(*ptr);
+      _collectedPipelineSteps.push_back(ptr);
       index++;
     }
 

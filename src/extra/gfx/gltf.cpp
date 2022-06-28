@@ -219,7 +219,7 @@ struct GLTFShard {
     SHVar sourceVar{};
     getFromTable(context, input.payload.tableValue, "Copy", sourceVar);
 
-    SHDrawableHierarchy *source = (SHDrawableHierarchy *)sourceVar.payload.objectValue;
+    SHDrawableHierarchy *source = reinterpret_cast<SHDrawableHierarchy *>(sourceVar.payload.objectValue);
     if (!source)
       throw ActivationError("Undefined glTF model passed to Copy");
 

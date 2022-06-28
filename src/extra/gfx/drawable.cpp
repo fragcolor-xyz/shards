@@ -44,7 +44,8 @@ struct DrawableShard {
       {"Transform", SHCCSTR("The transform variable to use (Optional)"), {CoreInfo::NoneType, TransformVarType}},
       {"Params",
        SHCCSTR("The params variable to use (Optional)"),
-       {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
+       {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
+        Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
   };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
@@ -134,7 +135,7 @@ struct DrawableShard {
     SHVar meshVar{};
     MeshPtr *meshPtr{};
     if (getFromTable(shContext, inputTable, "Mesh", meshVar)) {
-      meshPtr = (MeshPtr *)meshVar.payload.objectValue;
+      meshPtr = reinterpret_cast<MeshPtr *>(meshVar.payload.objectValue);
     } else {
       throw formatException("Mesh must be set");
     }
@@ -148,7 +149,7 @@ struct DrawableShard {
     SHVar materialVar{};
     SHMaterial *shMaterial{};
     if (getFromTable(shContext, inputTable, "Material", materialVar)) {
-      shMaterial = (SHMaterial *)materialVar.payload.objectValue;
+      shMaterial = reinterpret_cast<SHMaterial *>(materialVar.payload.objectValue);
     }
 
     makeNewReturnVar();
@@ -248,7 +249,7 @@ struct DrawShard : public BaseConsumer {
   DrawQueue &getDrawQueue() {
     SHVar queueVar = _queueVar.get();
     if (queueVar.payload.objectValue) {
-      return *((SHDrawQueue *)queueVar.payload.objectValue)->queue.get();
+      return *(reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue.get();
     } else {
       return *getMainWindowGlobals().drawQueue.get();
     }
@@ -259,12 +260,12 @@ struct DrawShard : public BaseConsumer {
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
     if (input.payload.objectTypeId == Types::DrawableTypeId) {
-      SHDrawable *shDrawable = (SHDrawable *)input.payload.objectValue;
+      SHDrawable *shDrawable = reinterpret_cast<SHDrawable *>(input.payload.objectValue);
       assert(shDrawable);
       shDrawable->updateVariables();
       addDrawableToQueue(shDrawable->drawable);
     } else if (input.payload.objectTypeId == Types::DrawableHierarchyTypeId) {
-      SHDrawableHierarchy *shDrawableHierarchy = (SHDrawableHierarchy *)input.payload.objectValue;
+      SHDrawableHierarchy *shDrawableHierarchy = reinterpret_cast<SHDrawableHierarchy *>(input.payload.objectValue);
       assert(shDrawableHierarchy);
       shDrawableHierarchy->updateVariables();
       addDrawableToQueue(shDrawableHierarchy->drawableHierarchy);
@@ -341,7 +342,7 @@ struct ClearQueueShard {
   void cleanup() {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    SHDrawQueue *shQueue = (SHDrawQueue *)input.payload.objectValue;
+    SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
     shQueue->queue->clear();
     return SHVar{};
   }
