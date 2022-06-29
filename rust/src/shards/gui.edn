@@ -4,12 +4,12 @@
   (UI
    (->
     ; useful to make a good looking app quickly
-    (UI.Panels :Top (-> ...) ; can be None
-               :Left (-> ...) ; can be None
-               :Center (-> ...) ; can be None
-               :Right (-> ...) ; can be None
-               :Bottom (-> ...) ; can be None
-               )
+    (UI.TopPanel (-> ...))
+    (UI.LeftPanel (-> ...))
+    (UI.RightPanel (-> ...))
+    (UI.BottomPanel (-> ...))
+    ; central panel always last
+    (UI.CentralPanel (-> ...))
 
     (UI.Window :Title "My Window" ; can be None (window options)
                :Contents (-> ...)))) = .this-ui

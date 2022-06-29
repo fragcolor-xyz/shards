@@ -6,30 +6,40 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 
-struct Panels {
-  instance: ParamVar, // Context parameter, this will go will with trait system (users able to plug into existing UIs and interop with them)
-  requiring: ExposedTypes,
-  top: ShardsVar,
-  left: ShardsVar,
-  center: ShardsVar,
-  right: ShardsVar,
-  bottom: ShardsVar,
-  ui_ctx_instance: ParamVar,
-}
-
 /// Standalone window.
 struct Window {
-  instance: ParamVar, // Context parameter, this will go will with trait system (users able to plug into existing UIs and interop with them)
+  instance: ParamVar,
   requiring: ExposedTypes,
   title: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
 }
 
+macro_rules! decl_panel {
+  ($name:ident) => {
+    struct $name {
+      instance: ParamVar,
+      requiring: ExposedTypes,
+      contents: ShardsVar,
+      parents: ParamVar,
+    }
+  };
+}
+
+decl_panel!(BottomPanel);
+decl_panel!(CentralPanel);
+decl_panel!(LeftPanel);
+decl_panel!(RightPanel);
+decl_panel!(TopPanel);
+
 mod panels;
 mod window;
 
 pub fn registerShards() {
-  registerShard::<Panels>();
   registerShard::<Window>();
+  registerShard::<BottomPanel>();
+  registerShard::<CentralPanel>();
+  registerShard::<LeftPanel>();
+  registerShard::<RightPanel>();
+  registerShard::<TopPanel>();
 }

@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Panels;
+use super::BottomPanel;
+use super::CentralPanel;
+use super::LeftPanel;
+use super::RightPanel;
+use super::TopPanel;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
@@ -19,75 +23,232 @@ use crate::types::Parameters;
 use crate::types::RawString;
 use crate::types::ShardsVar;
 use crate::types::Type;
+use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use egui::Context as EguiNativeContext;
 
 lazy_static! {
-  static ref PANELS_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Top"),
-      cstr!("A panel that covers the entire top of a UI surface."),
-      &SHARDS_OR_NONE_TYPES[..],
-    ).into(),
-    (
-      cstr!("Left"),
-      cstr!("A panel that covers the entire left side of a UI surface."),
-      &SHARDS_OR_NONE_TYPES[..],
-    ).into(),
-    (
-      cstr!("Center"),
-      cstr!("A panel that covers the remainder of the screen, i.e. whatever area is left after adding other panels."),
-      &SHARDS_OR_NONE_TYPES[..],
-    ).into(),
-    (
-      cstr!("Right"),
-      cstr!("A panel that covers the entire right side of a UI surface."),
-      &SHARDS_OR_NONE_TYPES[..],
-    ).into(),
-    (
-      cstr!("Bottom"),
-      cstr!("A panel that covers the entire bottom of a UI surface."),
-      &SHARDS_OR_NONE_TYPES[..],
-    ).into(),
-  ];
+  static ref PANEL_PARAMETERS: Parameters = vec![(
+    cstr!("Contents"),
+    cstr!("The UI contents."),
+    &SHARDS_OR_NONE_TYPES[..],
+  )
+    .into(),];
 }
 
-impl Default for Panels {
+macro_rules! impl_panel {
+  ($name:ident, $name_str:literal, $hash:literal, $egui_func:expr) => {
+    impl Default for $name {
+      fn default() -> Self {
+        let mut ctx = ParamVar::default();
+        ctx.set_name(CONTEXT_NAME);
+        let mut parents = ParamVar::default();
+        parents.set_name(PARENTS_UI_NAME);
+        Self {
+          instance: ctx,
+          requiring: Vec::new(),
+          contents: ShardsVar::default(),
+          parents,
+        }
+      }
+    }
+
+    impl Shard for $name {
+      fn registerName() -> &'static str {
+        cstr!($name_str)
+      }
+
+      fn hash() -> u32 {
+        compile_time_crc32::crc32!($hash)
+      }
+
+      fn name(&mut self) -> &str {
+        $name_str
+      }
+
+      fn inputTypes(&mut self) -> &Types {
+        &ANY_TYPES
+      }
+
+      fn outputTypes(&mut self) -> &Types {
+        &ANY_TYPES
+      }
+
+      fn parameters(&mut self) -> Option<&Parameters> {
+        Some(&PANEL_PARAMETERS)
+      }
+
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+        match index {
+          0 => self.contents.set_param(value),
+          _ => Err("Invalid parameter index"),
+        }
+      }
+
+      fn getParam(&mut self, index: i32) -> Var {
+        match index {
+          0 => self.contents.get_param(),
+          _ => Var::default(),
+        }
+      }
+
+      fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+        self.requiring.clear();
+
+        // Add UI.Context to the list of required variables
+        let exp_info = ExposedInfo {
+          exposedType: EGUI_CTX_TYPE,
+          name: self.instance.get_name(),
+          help: cstr!("The exposed UI context.").into(),
+          ..ExposedInfo::default()
+        };
+        self.requiring.push(exp_info);
+
+        Some(&self.requiring)
+      }
+
+      fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        // we need to inject UI variable to the inner shards
+        let mut data = *data;
+        // clone shared into a new vector we can append things to
+        let mut shared: ExposedTypes = data.shared.into();
+        // append to shared ui vars
+        let ui_info = ExposedInfo {
+          exposedType: EGUI_UI_SEQ_TYPE,
+          name: self.parents.get_name(),
+          help: cstr!("The parent UI objects.").into(),
+          isMutable: false,
+          isProtected: true, // don't allow to be used in code/wires
+          isTableEntry: false,
+          global: false,
+        };
+        shared.push(ui_info);
+        // update shared
+        data.shared = (&shared).into();
+
+        // center always last
+        if !self.contents.is_empty() {
+          self.contents.compose(&data)?;
+        }
+
+        Ok(data.inputType)
+      }
+
+      fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.instance.warmup(ctx);
+        self.parents.warmup(ctx);
+
+        if !self.contents.is_empty() {
+          self.contents.warmup(ctx)?;
+        }
+
+        Ok(())
+      }
+
+      fn cleanup(&mut self) -> Result<(), &str> {
+        if !self.contents.is_empty() {
+          self.contents.cleanup();
+        }
+
+        self.parents.cleanup();
+        self.instance.cleanup();
+
+        Ok(())
+      }
+
+      fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+        if !self.contents.is_empty() {
+          let ui = util::get_current_parent(self.parents.get())?;
+          let output = if let Some(ui) = ui {
+            $egui_func(EguiId::new(self, 0)).show_inside(ui, |ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+          } else {
+            let gui_ctx = {
+              let ctx_ptr: &mut EguiNativeContext =
+                Var::from_object_ptr_mut_ref(self.instance.get(), &EGUI_CTX_TYPE)?;
+              &*ctx_ptr
+            };
+            $egui_func(EguiId::new(self, 0)).show(gui_ctx, |ui| {
+              util::activate_ui_contents(
+                context,
+                input,
+                ui,
+                &mut self.parents,
+                &mut self.contents,
+              )?;
+              // when used as a top container, the input passes through to be consistent with Window
+              Ok(*input)
+            })
+          }
+          .inner?;
+
+          return Ok(output);
+        }
+
+        Ok(*input)
+      }
+    }
+  };
+}
+
+impl_panel!(
+  BottomPanel,
+  "UI.BottomPanel",
+  "UI.BottomPanel-rust-0x20200101",
+  egui::TopBottomPanel::bottom
+);
+impl_panel!(
+  LeftPanel,
+  "UI.LeftPanel",
+  "UI.LeftPanel-rust-0x20200101",
+  egui::SidePanel::left
+);
+impl_panel!(
+  RightPanel,
+  "UI.RightPanel",
+  "UI.RightPanel-rust-0x20200101",
+  egui::SidePanel::right
+);
+impl_panel!(
+  TopPanel,
+  "UI.TopPanel",
+  "UI.TopPanel-rust-0x20200101",
+  egui::TopBottomPanel::top
+);
+
+impl Default for CentralPanel {
   fn default() -> Self {
-    let mut ctx = ParamVar::new(().into());
+    let mut ctx = ParamVar::default();
     ctx.set_name(CONTEXT_NAME);
-    let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENTS_UI_NAME);
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
     Self {
       instance: ctx,
       requiring: Vec::new(),
-      top: ShardsVar::default(),
-      left: ShardsVar::default(),
-      center: ShardsVar::default(),
-      right: ShardsVar::default(),
-      bottom: ShardsVar::default(),
-      ui_ctx_instance: ui_ctx,
+      contents: ShardsVar::default(),
+      parents,
     }
   }
 }
 
-impl Shard for Panels {
+impl Shard for CentralPanel {
   fn registerName() -> &'static str {
-    cstr!("UI.Panels")
+    cstr!("UI.CentralPanel")
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("UI.Panels-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.CentralPanel-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.Panels"
+    "UI.CentralPanel"
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Layout UI elements into panels."))
+    OptionalString(shccstr!("Layout UI elements into the central panel."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -99,27 +260,19 @@ impl Shard for Panels {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PANELS_PARAMETERS)
+    Some(&PANEL_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => self.top.set_param(value),
-      1 => self.left.set_param(value),
-      2 => self.center.set_param(value),
-      3 => self.right.set_param(value),
-      4 => self.bottom.set_param(value),
+      0 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.top.get_param(),
-      1 => self.left.get_param(),
-      2 => self.center.get_param(),
-      3 => self.right.get_param(),
-      4 => self.bottom.get_param(),
+      0 => self.contents.get_param(),
       _ => Var::default(),
     }
   }
@@ -147,7 +300,7 @@ impl Shard for Panels {
     // append to shared ui vars
     let ui_info = ExposedInfo {
       exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.ui_ctx_instance.get_name(),
+      name: self.parents.get_name(),
       help: cstr!("The parent UI objects.").into(),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
@@ -158,25 +311,9 @@ impl Shard for Panels {
     // update shared
     data.shared = (&shared).into();
 
-    if !self.top.is_empty() {
-      self.top.compose(&data)?;
-    }
-
-    if !self.left.is_empty() {
-      self.left.compose(&data)?;
-    }
-
-    if !self.right.is_empty() {
-      self.right.compose(&data)?;
-    }
-
-    if !self.bottom.is_empty() {
-      self.bottom.compose(&data)?;
-    }
-
     // center always last
-    if !self.center.is_empty() {
-      self.center.compose(&data)?;
+    if !self.contents.is_empty() {
+      self.contents.compose(&data)?;
     }
 
     Ok(data.inputType)
@@ -184,55 +321,21 @@ impl Shard for Panels {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.instance.warmup(ctx);
-    self.ui_ctx_instance.warmup(ctx);
+    self.parents.warmup(ctx);
 
-    if !self.top.is_empty() {
-      self.top.warmup(ctx)?;
-    }
-
-    if !self.left.is_empty() {
-      self.left.warmup(ctx)?;
-    }
-
-    if !self.right.is_empty() {
-      self.right.warmup(ctx)?;
-    }
-
-    if !self.bottom.is_empty() {
-      self.bottom.warmup(ctx)?;
-    }
-
-    // center always last
-    if !self.center.is_empty() {
-      self.center.warmup(ctx)?;
+    if !self.contents.is_empty() {
+      self.contents.warmup(ctx)?;
     }
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    if !self.top.is_empty() {
-      self.top.cleanup();
+    if !self.contents.is_empty() {
+      self.contents.cleanup();
     }
 
-    if !self.left.is_empty() {
-      self.left.cleanup();
-    }
-
-    if !self.right.is_empty() {
-      self.right.cleanup();
-    }
-
-    if !self.bottom.is_empty() {
-      self.bottom.cleanup();
-    }
-
-    // center always last
-    if !self.center.is_empty() {
-      self.center.cleanup();
-    }
-
-    self.ui_ctx_instance.cleanup();
+    self.parents.cleanup();
     self.instance.cleanup();
 
     Ok(())
@@ -245,133 +348,15 @@ impl Shard for Panels {
       &*ctx_ptr
     };
 
-    let ui = util::get_current_parent(self.ui_ctx_instance.get())?;
-    if !self.top.is_empty() {
-      let output = (if let Some(ui) = ui {
-        egui::TopBottomPanel::top(EguiId::new(self, 0)).show_inside(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.ui_ctx_instance, &mut self.top)
-        })
-      } else {
-        egui::TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.ui_ctx_instance, &mut self.top)?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
-        })
-      })
-      .inner?;
-
-      return Ok(output);
-    }
-
-    if !self.left.is_empty() {
-      let output = (if let Some(ui) = ui {
-        egui::SidePanel::left(EguiId::new(self, 1)).show_inside(ui, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.left,
-          )
-        })
-      } else {
-        egui::SidePanel::left(EguiId::new(self, 1)).show(gui_ctx, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.left,
-          )?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
-        })
-      })
-      .inner?;
-
-      return Ok(output);
-    }
-
-    if !self.right.is_empty() {
-      let output = (if let Some(ui) = ui {
-        egui::SidePanel::right(EguiId::new(self, 2)).show_inside(ui, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.right,
-          )
-        })
-      } else {
-        egui::SidePanel::right(EguiId::new(self, 2)).show(gui_ctx, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.right,
-          )?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
-        })
-      })
-      .inner?;
-
-      return Ok(output);
-    }
-
-    if !self.bottom.is_empty() {
-      let output = (if let Some(ui) = ui {
-        egui::TopBottomPanel::bottom(EguiId::new(self, 3)).show_inside(ui, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.bottom,
-          )
-        })
-      } else {
-        egui::TopBottomPanel::bottom(EguiId::new(self, 3)).show(gui_ctx, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.bottom,
-          )?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
-        })
-      })
-      .inner?;
-
-      return Ok(output);
-    }
-
-    // center always last
-    if !self.center.is_empty() {
-      let ui = util::get_current_parent(self.ui_ctx_instance.get())?;
+    if !self.contents.is_empty() {
+      let ui = util::get_current_parent(self.parents.get())?;
       let output = if let Some(ui) = ui {
         egui::CentralPanel::default().show_inside(ui, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.center,
-          )
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
       } else {
         egui::CentralPanel::default().show(gui_ctx, |ui| {
-          util::activate_ui_contents(
-            context,
-            input,
-            ui,
-            &mut self.ui_ctx_instance,
-            &mut self.center,
-          )?;
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
           // when used as a top container, the input passes through to be consistent with Window
           Ok(*input)
         })
