@@ -410,8 +410,16 @@ struct OnCleanup {
 };
 
 struct And {
+  static SHOptionalString help() {
+    return SHCCSTR("Computes the logical AND between the input of this shard and the output of the next shard.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The first operand to be evaluated."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Continue the flow
@@ -426,8 +434,16 @@ struct And {
 };
 
 struct Or {
+  static SHOptionalString help() {
+    return SHCCSTR("Computes the logical OR between the input of this shard and the output of the next shard.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The first operand to be evaluated."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.boolValue) {
       // Reason: We are done, input IS TRUE so we succeed
@@ -442,20 +458,40 @@ struct Or {
 };
 
 struct Not {
+  static SHOptionalString help() { return SHCCSTR("Computes the logical negation of the input."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to be negated."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The negation of the input."); }
+
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(!input.payload.boolValue); }
 };
 
 struct IsNone {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the type of the input is `None`."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value which type to check against."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("`true` is the type of input is `None`; otherwise, `false`."); }
+
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType == None); }
 };
 
 struct IsNotNone {
+  static SHOptionalString help() { return SHCCSTR("Gets whether the type of the input is different from `None`."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value which type to check against."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("`true` is the type of input different from `None`; otherwise, `false`.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType != None); }
 };
 
@@ -3047,9 +3083,17 @@ struct Repeat {
                                             "until it's true"),
                                     CoreInfo::ShardsOrNone}};
 
+  static SHOptionalString help() {
+    return SHCCSTR("Repeat an action a given number of times or until a condition is no longer `true`.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input will be passed to both the action and the `:Until` condition if used.");
+  }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 
   static SHParametersInfo parameters() { return _params; }
 

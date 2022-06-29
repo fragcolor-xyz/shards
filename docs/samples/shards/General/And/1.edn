@@ -1,0 +1,11 @@
+false (And) false
+(Assert.Is false :Abort true)
+
+false (And) true
+(Assert.Is false :Abort true)
+
+true (And) false
+(Assert.Is false :Abort true)
+
+true (And) true
+(Assert.Is true :Abort true)

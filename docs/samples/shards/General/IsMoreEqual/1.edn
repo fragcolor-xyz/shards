@@ -1,0 +1,11 @@
+;; string comparison
+"z" (IsMoreEqual "a")
+(Assert.Is true :Abort true)
+
+;; integer comparison
+5 (IsMoreEqual 2)
+(Assert.Is true :Abort true)
+
+;; float comparison
+9.0 (IsMoreEqual (+ 1.0 1.0))
+(Assert.Is true :Abort true)

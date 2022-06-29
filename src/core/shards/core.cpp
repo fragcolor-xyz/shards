@@ -1278,22 +1278,31 @@ struct UnsafeActivate {
 
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
+RUNTIME_SHARD_help(And);
 RUNTIME_SHARD_inputTypes(And);
+RUNTIME_SHARD_inputHelp(And);
 RUNTIME_SHARD_outputTypes(And);
+RUNTIME_SHARD_outputHelp(And);
 RUNTIME_SHARD_activate(And);
 RUNTIME_SHARD_END(And);
 
 // Register Or
 RUNTIME_CORE_SHARD_FACTORY(Or);
+RUNTIME_SHARD_help(Or);
 RUNTIME_SHARD_inputTypes(Or);
+RUNTIME_SHARD_inputHelp(Or);
 RUNTIME_SHARD_outputTypes(Or);
+RUNTIME_SHARD_outputHelp(Or);
 RUNTIME_SHARD_activate(Or);
 RUNTIME_SHARD_END(Or);
 
 // Register Not
 RUNTIME_CORE_SHARD_FACTORY(Not);
+RUNTIME_SHARD_help(Not);
 RUNTIME_SHARD_inputTypes(Not);
+RUNTIME_SHARD_inputHelp(Not);
 RUNTIME_SHARD_outputTypes(Not);
+RUNTIME_SHARD_outputHelp(Not);
 RUNTIME_SHARD_activate(Not);
 RUNTIME_SHARD_END(Not);
 
@@ -1549,8 +1558,11 @@ RUNTIME_SHARD_END(Limit);
 
 // Register Repeat
 RUNTIME_CORE_SHARD_FACTORY(Repeat);
+RUNTIME_SHARD_help(Repeat);
 RUNTIME_SHARD_inputTypes(Repeat);
+RUNTIME_SHARD_inputHelp(Repeat);
 RUNTIME_SHARD_outputTypes(Repeat);
+RUNTIME_SHARD_outputHelp(Repeat);
 RUNTIME_SHARD_parameters(Repeat);
 RUNTIME_SHARD_setParam(Repeat);
 RUNTIME_SHARD_getParam(Repeat);

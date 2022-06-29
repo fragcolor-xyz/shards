@@ -134,8 +134,17 @@ struct Replace : public Common {
 };
 
 struct Join {
+  static SHOptionalString help() {
+    return SHCCSTR("Concatenates all the elements of a string sequence, using the specified separator between each element.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringSeqType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of string values that will be joined together."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A string consisting of all the elements of the sequence delimited by the separator.");
+  }
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -175,15 +184,21 @@ struct Join {
   }
 
 private:
-  static inline Parameters params{{"Separator", SHCCSTR("The separator."), {CoreInfo::StringType}}};
+  static inline Parameters params{{"Separator", SHCCSTR("The string to use as a separator."), {CoreInfo::StringType}}};
 
   std::string _buffer;
   std::string _separator;
 };
 
 struct ToUpper {
+  static SHOptionalString help() { return SHCCSTR("Converts a string to uppercase"); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A string in uppercase."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     utf8upr(const_cast<char *>(input.payload.stringValue));
     return input;
@@ -191,8 +206,13 @@ struct ToUpper {
 };
 
 struct ToLower {
+  static SHOptionalString help() { return SHCCSTR("Converts a string to lowercase"); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A string in lowercase."); }
   SHVar activate(SHContext *context, const SHVar &input) {
     utf8lwr(const_cast<char *>(input.payload.stringValue));
     return input;
@@ -222,8 +242,17 @@ struct Parser {
 };
 
 struct ParseInt : public Parser {
+  static SHOptionalString help() {
+    return SHCCSTR("Converts the string representation of a number to a signed integer equivalent.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string representing a number."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A signed integer equivalent to the number contained in the string input.");
+  }
 
   int _base{10};
 
@@ -251,8 +280,18 @@ struct ParseInt : public Parser {
 };
 
 struct ParseFloat : public Parser {
+  static SHOptionalString help() {
+    return SHCCSTR("Converts the string representation of a number to a floating-point number equivalent.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("A string representing a number."); }
+
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("A floating-point number equivalent to the number contained in the string input.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     char *str = const_cast<char *>(input.payload.stringValue);
     const auto len = SHSTRLEN(input);

@@ -1,0 +1,8 @@
+1 (ToFloat) (Log)
+(Assert.Is 1.0 :Abort true)
+
+2.2 (ToFloat) (Log)
+(Assert.Is 2.2 :Abort true)
+
+"3" (ToFloat) (Log)
+(Assert.Is 3.0 :Abort true)

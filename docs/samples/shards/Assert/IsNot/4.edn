@@ -1,0 +1,8 @@
+;; :Abort = `false`, assertion false
+;; => log assertion error but don't abort program
+8
+(Assert.IsNot
+ ;:Value
+ 8
+ ;:Abort
+ false)
