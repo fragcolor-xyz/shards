@@ -108,6 +108,7 @@ function(add_rust_library)
     FEATURES             # (Optional) List of features to pass to rust build
     ENVIRONMENT          # (Optional) Environment variables
     DEPENDS              # (Optional) Extra file-level dependencies
+    EXCLUDE_DEPENDS      # (Optional) Extra file-level dependencies to ingore
   )
   cmake_parse_arguments(RUST "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
@@ -127,6 +128,9 @@ function(add_rust_library)
   file(GLOB_RECURSE RUST_TEMP_SOURCES "${RUST_PROJECT_PATH}/target/*.rs" "${RUST_PROJECT_PATH}/target/*.toml")
   if(RUST_TEMP_SOURCES)
     list(REMOVE_ITEM RUST_SOURCES ${RUST_TEMP_SOURCES})
+  endif()
+  if(RUST_EXCLUDE_DEPENDS)
+    list(REMOVE_ITEM RUST_SOURCES ${RUST_EXCLUDE_DEPENDS})
   endif()
   message(VERBOSE "  RUST_SOURCES: ${RUST_SOURCES}")
 
