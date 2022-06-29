@@ -3,6 +3,7 @@
 
 #include "linalg.hpp"
 #include <spdlog/fmt/fmt.h>
+#include <sstream>
 
 template <class T, int M> struct fmt::formatter<linalg::vec<T, M>> {
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
