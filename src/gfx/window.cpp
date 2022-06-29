@@ -77,18 +77,6 @@ void *Window::getNativeWindowHandle() {
 #endif
 }
 
-float2 Window::getDrawScale() const {
-  // DPI for 100% on windows
-  const float referenceDpi = 96.0f;
-
-  int displayIndex = SDL_GetWindowDisplayIndex(window);
-  float2 dpi;
-  float diagonalDpi;
-  SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y);
-
-  return dpi / referenceDpi;
-}
-
 int2 Window::getDrawableSize() const {
   int2 r;
 #if GFX_APPLE
@@ -108,6 +96,20 @@ int2 Window::getSize() const {
   SDL_GetWindowSize(window, &r.x, &r.y);
   return r;
 }
+
+float2 Window::getDrawScale() const {
+  // DPI for 100% on windows
+  const float referenceDpi = 96.0f;
+
+  int displayIndex = SDL_GetWindowDisplayIndex(window);
+  float2 dpi;
+  float diagonalDpi;
+  SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y);
+
+  return dpi / referenceDpi;
+}
+
+float2 Window::getVirtualDrawableSize() { return getDrawableSize() / getDrawScale(); }
 
 Window::~Window() { cleanup(); }
 } // namespace gfx

@@ -32,6 +32,9 @@ struct Window {
   // = draw surface size / window size
   float2 getDrawScale() const;
 
+  // = draw surface size / draw scale
+  float2 getVirtualDrawableSize();
+
   ~Window();
 };
 }; // namespace gfx
