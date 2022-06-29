@@ -1,5 +1,3 @@
-set(BGFX_DIR ${SHARDS_DIR}/deps/bgfx)
-
 option(GFX_DEBUG "Enable context debug mode by default" OFF)
 
 add_library(gfx
@@ -98,47 +96,23 @@ if(ANDROID)
 endif()
 
 if(NOT EMSCRIPTEN)
-  # wgpu-native target
-  if(Rust_CARGO_TARGET)
-    set(TARGET_SWITCH --target ${Rust_CARGO_TARGET})
-  endif()
-
   set(WGPU_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/wgpu-native)
-  set(GENERATED_LIB_PATH ${WGPU_NATIVE_PATH}/target/${Rust_BUILD_SUBDIR}/${Rust_LIB_PREFIX}wgpu_native${Rust_LIB_SUFFIX})
-  file(GLOB_RECURSE SOURCES ${WGPU_NATIVE_PATH}/src/*.rs ${WGPU_NATIVE_PATH}/ffi/*.h ${WGPU_NATIVE_PATH}/*.toml)
+  file(GLOB_RECURSE EXTRA_SOURCES ${WGPU_NATIVE_PATH}/ffi/*.h)
 
-  list(APPEND Rust_CARGO_UNSTABLE_FLAGS --crate-type staticlib)
-
-  if(IOS)
-    set(BUILD_SCRIPT "${SHARDS_DIR}/cmake/osx_rust_build.sh")
-  endif()
-
-  add_custom_command(
-    OUTPUT ${GENERATED_LIB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${Rust_FLAGS}" ${BUILD_SCRIPT} ${CARGO_EXE} ${Rust_CARGO_TOOLCHAIN} rustc ${Rust_CARGO_UNSTABLE_FLAGS} ${TARGET_SWITCH} ${Rust_CARGO_FLAGS}
-    WORKING_DIRECTORY ${WGPU_NATIVE_PATH}
-    DEPENDS ${SOURCES}
-    USES_TERMINAL
-  )
-  add_custom_target(
-    cargo-wgpu-native
-    DEPENDS ${GENERATED_LIB_PATH}
+  add_rust_library(
+    NAME wgpu-native
+    PROJECT_PATH ${WGPU_NATIVE_PATH}
+    DEPENDS ${EXTRA_SOURCES}
   )
 
-  add_library(wgpu-native STATIC IMPORTED GLOBAL)
-  add_dependencies(wgpu-native cargo-wgpu-native)
-  set_target_properties(wgpu-native PROPERTIES
-    IMPORTED_LOCATION ${GENERATED_LIB_PATH}
-  )
-  target_include_directories(wgpu-native INTERFACE ${WGPU_NATIVE_PATH}/ffi)
+  target_include_directories(wgpu-native-rust INTERFACE ${WGPU_NATIVE_PATH}/ffi)
 
   if(WIN32)
-    target_link_libraries(wgpu-native INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
+    target_link_libraries(wgpu-native-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
   endif()
 
-  target_link_libraries(gfx wgpu-native)
+  target_link_libraries(gfx wgpu-native-rust)
   target_compile_definitions(gfx PUBLIC WEBGPU_NATIVE=1)
 endif()
-
 
 add_subdirectory(tests)
