@@ -2925,7 +2925,7 @@ impl ShardsVar {
     self.param.0
   }
 
-  pub fn compose(&mut self, data: &InstanceData) -> Result<(), &str> {
+  pub fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
@@ -2936,7 +2936,7 @@ impl ShardsVar {
     }
 
     if self.param.0.is_none() {
-      return Ok(());
+      return Ok(Type::default());
     }
 
     let mut failed = false;
@@ -2961,7 +2961,7 @@ impl ShardsVar {
     if failed {
       Err("Wire composition failed.")
     } else {
-      Ok(())
+      Ok(self.compose_result.unwrap().outputType)
     }
   }
 
