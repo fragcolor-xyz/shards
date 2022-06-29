@@ -20,10 +20,6 @@ struct ContextCreationOptions {
   void *overrideNativeWindowHandle = nullptr;
 };
 
-struct CopyBuffer {
-  std::vector<uint8_t> data;
-};
-
 enum class ContextState {
   Uninitialized,
   Requesting,
