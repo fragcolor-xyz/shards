@@ -2153,7 +2153,7 @@ impl TryFrom<&Var> for (f64, f64) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      Err("Expected Int2 variable, but casting failed.")
+      Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe {
         Ok((
@@ -2334,7 +2334,7 @@ impl TryFrom<&Var> for (f32, f32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      Err("Expected Float3 variable, but casting failed.")
+      Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe {
         Ok((
@@ -2556,7 +2556,7 @@ impl TryFrom<&Var> for (half::f16, half::f16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      Err("Expected Float3 variable, but casting failed.")
+      Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe {
         Ok((
@@ -2615,7 +2615,7 @@ impl TryFrom<&Var> for bool {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Bool {
-      Err("Expected Float variable, but casting failed.")
+      Err("Expected Bool variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
     }
@@ -2628,7 +2628,7 @@ impl TryFrom<&Var> for &[Var] {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Seq {
-      Err("Expected Float variable, but casting failed.")
+      Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
         let elems = var.payload.__bindgen_anon_1.seqValue.elements;
@@ -2646,7 +2646,7 @@ impl TryFrom<Var> for &[Var] {
   #[inline(always)]
   fn try_from(var: Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Seq {
-      Err("Expected Float variable, but casting failed.")
+      Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
         let elems = var.payload.__bindgen_anon_1.seqValue.elements;
