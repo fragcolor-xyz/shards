@@ -9,6 +9,7 @@ set(extra_SOURCES
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
   gfx/gltf.cpp
+  rust_interop.cpp
   imgui.cpp
   # xr.cpp
   # gizmo.cpp

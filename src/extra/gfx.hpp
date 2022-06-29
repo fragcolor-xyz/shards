@@ -25,7 +25,9 @@ struct MainWindowGlobals {
   std::vector<SDL_Event> events;
 
   // Draw queue used when it's not manually specified
-  ::gfx::DrawQueuePtr drawQueue;
+  SHDrawQueue shDrawQueue;
+
+  ::gfx::DrawQueuePtr getDrawQueue() { return shDrawQueue.queue; }
 };
 
 struct ContextUserData {
