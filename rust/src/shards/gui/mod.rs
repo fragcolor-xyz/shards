@@ -50,6 +50,8 @@ mod containers;
 mod context;
 mod widgets;
 
+mod util;
+
 pub fn registerShards() {
   containers::registerShards();
   registerShard::<EguiContext>();
