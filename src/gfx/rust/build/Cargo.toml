@@ -1,0 +1,7 @@
+[package]
+name = "gfx-build"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bindgen = "0.60.1"
