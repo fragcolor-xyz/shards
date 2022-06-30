@@ -164,7 +164,7 @@ function(add_rust_library)
   #  pass the sysroot to the bindgen clang arguments
   if(EMSCRIPTEN_SYSROOT)
     file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}" TMP_SYSROOT)
-    list(APPEND EXTRA_CLANG_ARGS "--sysroot ${TMP_SYSROOT}")
+    list(APPEND EXTRA_CLANG_ARGS "--sysroot=${TMP_SYSROOT}")
   endif()
 
   # Required to have some symbols be exported
