@@ -19,7 +19,7 @@ add_rust_library(
   DEPENDS rust_interop.hpp
 )
 
-if(BUILD_EGUI_TEST)
+if(BUILD_STANDALONE_EGUI_TEST)
   add_executable(gfx-egui-test test.cpp)
   target_link_libraries(gfx-egui-test egui-gfx-rust gfx_egui)
 endif()
