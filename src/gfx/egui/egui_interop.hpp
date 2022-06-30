@@ -90,6 +90,8 @@ struct EguiRenderer {
 #endif
 
   void render(const FullOutput &output);
+  void getScreenRect(Rect& outScreenRect);
+  float getScale();
 };
 
 } // namespace egui

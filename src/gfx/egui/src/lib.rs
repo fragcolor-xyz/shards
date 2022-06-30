@@ -19,18 +19,18 @@ extern crate lazy_static;
 use std::ptr;
 use std::sync::Mutex;
 
-enum PixelData {
+pub enum PixelData {
     Color(Vec<egui::Color32>),
     Font(Vec<f32>),
 }
 
-struct NativeFullOutput {
-    texture_sets: Vec<egui_TextureSet>,
-    texture_frees: Vec<egui_TextureId>,
-    clipped_primitives: Vec<egui_ClippedPrimitive>,
-    vertex_mem: Vec<egui_Vertex>,
-    index_mem: Vec<u32>,
-    image_mem: Vec<PixelData>,
+pub struct NativeFullOutput {
+    pub texture_sets: Vec<egui_TextureSet>,
+    pub texture_frees: Vec<egui_TextureId>,
+    pub clipped_primitives: Vec<egui_ClippedPrimitive>,
+    pub vertex_mem: Vec<egui_Vertex>,
+    pub index_mem: Vec<u32>,
+    pub image_mem: Vec<PixelData>,
     pub full_output: egui_FullOutput,
 }
 
@@ -40,8 +40,23 @@ impl From<egui::Pos2> for egui_Pos2 {
     }
 }
 
+impl From<egui_Pos2> for egui::Pos2 {
+    fn from(pos: egui_Pos2) -> Self {
+        Self { x: pos.x, y: pos.y }
+    }
+}
+
 impl From<egui::Rect> for egui_Rect {
     fn from(r: egui::Rect) -> Self {
+        Self {
+            min: r.min.into(),
+            max: r.max.into(),
+        }
+    }
+}
+
+impl From<egui_Rect> for egui::Rect {
+    fn from(r: egui_Rect) -> Self {
         Self {
             min: r.min.into(),
             max: r.max.into(),
@@ -86,11 +101,20 @@ fn convert_primitive(
     clipped_primitive: ClippedPrimitive,
     vertex_mem: &mut Vec<egui_Vertex>,
     index_mem: &mut Vec<u32>,
+    ui_scale: f32,
 ) -> Result<egui_ClippedPrimitive, &'static str> {
     if let epaint::Primitive::Mesh(mesh) = &clipped_primitive.primitive {
         let startVertex = vertex_mem.len();
         for vert in &mesh.vertices {
-            vertex_mem.push(vert.clone().into());
+            let vert_native = egui_Vertex {
+                pos: egui_Pos2 {
+                    x: vert.pos.x * ui_scale,
+                    y: vert.pos.y * ui_scale,
+                },
+                color: vert.color.into(),
+                uv: vert.uv.into(),
+            };
+            vertex_mem.push(vert_native);
         }
         let numVerts = (vertex_mem.len() - startVertex);
         let vertsPtr = if numVerts > 0 {
@@ -172,6 +196,7 @@ fn convert_texture_set(
 fn make_native_full_output(
     ctx: &Context,
     input: egui::FullOutput,
+    ui_scale: f32,
 ) -> Result<NativeFullOutput, &str> {
     let primitives = ctx.tessellate(input.shapes);
     let mut numVerts = 0;
@@ -189,7 +214,7 @@ fn make_native_full_output(
     let mut index_mem: Vec<u32> = Vec::with_capacity(numIndices);
     let clipped_primitives: Vec<_> = primitives
         .into_iter()
-        .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem).unwrap())
+        .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem, ui_scale).unwrap())
         .collect();
 
     let mut image_mem: Vec<PixelData> = Vec::new();
@@ -237,15 +262,21 @@ mod egui_test {
 
     use super::*;
 
-    #[derive(Default)]
     struct App {
         pub ctx: egui::Context,
     }
 
+    impl Default for App {
+        fn default() -> Self {
+            let mut ctx = egui::Context::default();
+            // ctx.set_pixels_per_point(1.0);
+            // ctx.set_
+            Self { ctx: ctx }
+        }
+    }
+
     #[derive(Default)]
     struct State {
-        pub age: i32,
-        pub name: String,
         pub color_test: color_test::ColorTest,
     }
 
@@ -262,7 +293,17 @@ mod egui_test {
         use egui::Color32;
 
         let app = APP.lock().unwrap();
-        let input = egui::RawInput::default();
+        let mut input = egui::RawInput::default();
+
+        let mut screen_rect: egui_Rect = egui_Rect {
+            min: egui_Pos2 { x: 0.0, y: 0.0 },
+            max: egui_Pos2 { x: 0.0, y: 0.0 },
+        };
+        egui_EguiRenderer_getScreenRect(renderer, &mut screen_rect);
+        input.screen_rect = Some(screen_rect.into());
+
+        let ui_scale = egui_EguiRenderer_getScale(renderer);
+        input.pixels_per_point = Some(ui_scale);
 
         let full_output = app.ctx.run(input, |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
@@ -273,7 +314,7 @@ mod egui_test {
                         let fps = 1.0 / deltaTime;
                         ui.horizontal_wrapped(|ui| {
                             ui.label(RichText::new("FPS:"));
-                            ui.label(RichText::from(format!("{}", fps)).color(if (fps > 110.0) {
+                            ui.label(RichText::from(format!("{}", fps)).color(if fps > 110.0 {
                                 Color32::GREEN
                             } else {
                                 Color32::RED
@@ -298,7 +339,7 @@ mod egui_test {
             // });
         });
 
-        let native_full_output = make_native_full_output(&app.ctx, full_output).unwrap();
+        let native_full_output = make_native_full_output(&app.ctx, full_output, ui_scale).unwrap();
         egui_EguiRenderer_render(renderer, &native_full_output.full_output);
     }
 }

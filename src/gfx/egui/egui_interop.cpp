@@ -14,6 +14,8 @@
 #include <gfx/resizable_item_pool.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/view.hpp>
+#include <gfx/context.hpp>
+#include <gfx/window.hpp>
 #include <map>
 #include <vector>
 #include <webgpu-headers/webgpu.h>
@@ -249,5 +251,23 @@ void EguiRenderer::render(const FullOutput &output) {
     SPDLOG_INFO("textureFree {}", (uint64_t)id.id);
     impl->textures.free(id);
   }
+}
+
+void EguiRenderer::getScreenRect(Rect& outScreenRect) {
+  Context &context = impl->renderer.getContext();
+  Window &window = context.getWindow();
+  float2 drawScale = window.getDrawScale();
+  float2 screenSize = window.getDrawableSize() / std::max(drawScale.x, drawScale.y);
+  outScreenRect = Rect{
+      .min = Pos2{0.0f, 0.0f},
+      .max = Pos2{screenSize.x, screenSize.y},
+  };
+}
+
+float EguiRenderer::getScale() {
+  Context &context = impl->renderer.getContext();
+  Window &window = context.getWindow();
+  float2 drawScale = window.getDrawScale();
+  return std::max(drawScale.x, drawScale.y);
 }
 } // namespace egui

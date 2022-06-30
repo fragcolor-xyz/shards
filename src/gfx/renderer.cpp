@@ -1051,6 +1051,8 @@ Renderer::Renderer(Context &context) {
   impl->initializeContextData();
 }
 
+Context &Renderer::getContext() { return impl->context; }
+
 void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { impl->renderViews(views, pipelineSteps); }
 void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {

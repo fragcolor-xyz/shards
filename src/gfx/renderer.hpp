@@ -23,6 +23,9 @@ struct Renderer {
 
 public:
   Renderer(Context &context);
+
+  Context &getContext();
+
   void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps);
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);
   void setMainOutput(const MainOutput &output);
