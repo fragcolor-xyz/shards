@@ -5,7 +5,7 @@
 #include "egui_interop.hpp"
 
 extern "C" {
-void render_egui_test_frame(egui::EguiRenderer* renderer);
+void render_egui_test_frame(egui::EguiRenderer* renderer, float deltaTime);
 }
 
 using namespace gfx;
@@ -49,7 +49,7 @@ int main() {
 
       ctx.beginFrame();
       renderer.beginFrame();
-      render_egui_test_frame(&eguiRenderer);
+      render_egui_test_frame(&eguiRenderer, deltaTime);
       renderer.endFrame();
       ctx.endFrame();
     }

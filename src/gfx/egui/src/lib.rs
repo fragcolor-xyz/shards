@@ -233,6 +233,8 @@ mod color_test;
 
 #[cfg(feature = "egui_test")]
 mod egui_test {
+    use egui::{color, RichText};
+
     use super::*;
 
     #[derive(Default)]
@@ -253,7 +255,10 @@ mod egui_test {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn render_egui_test_frame(renderer: *mut egui_EguiRenderer) {
+    pub unsafe extern "C" fn render_egui_test_frame(
+        renderer: *mut egui_EguiRenderer,
+        deltaTime: f32,
+    ) {
         use egui::Color32;
 
         let app = APP.lock().unwrap();
@@ -265,6 +270,15 @@ mod egui_test {
                 egui::ScrollArea::both()
                     .auto_shrink([false; 2])
                     .show(ui, |ui| {
+                        let fps = 1.0 / deltaTime;
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(RichText::new("FPS:"));
+                            ui.label(RichText::from(format!("{}", fps)).color(if (fps > 110.0) {
+                                Color32::GREEN
+                            } else {
+                                Color32::RED
+                            }));
+                        });
                         state.color_test.ui(ui);
                     });
             });

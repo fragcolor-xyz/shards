@@ -190,14 +190,8 @@ fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
     code = shader::blocks::makeCompoundBlock();
     code->appendLine("var color = ", shader::blocks::ReadInput("color"));
     code->appendLine("var texColor = ", shader::blocks::SampleTexture("color"));
-    // code->append("if((", shader::blocks::ReadBuffer("flags", flagsFieldType),
-    //              " & 0x1) != 0) {"
-    //              "texColor = vec4<f32>(1.0, 1.0, 1.0, texColor.x);"
-    //              "}");
     code->appendLine("var isFont = ", shader::blocks::ReadBuffer("flags", flagsFieldType), " & 1u");
-    code->append("if(isFont != 0u) {"
-                 "texColor = vec4<f32>(texColor.xxx, texColor.x);"
-                 "}");
+    code->append("if(isFont != 0u) { texColor = vec4<f32>(texColor.xxx, texColor.x); }\n");
     code->appendLine(shader::blocks::WriteOutput("color", shader::FieldTypes::Float4, "color * texColor"));
     uiFeature->shaderEntryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment, std::move(code));
 
