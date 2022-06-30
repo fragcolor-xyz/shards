@@ -2,6 +2,7 @@
 #define GFX_RENDERER_TYPES
 
 #include "gfx_wgpu.hpp"
+#include "resizable_item_pool.hpp"
 #include <cassert>
 #include <vector>
 
@@ -85,53 +86,7 @@ private:
   }
 };
 
-struct DynamicWGPUBufferPool {
-  std::vector<DynamicWGPUBuffer> buffers;
-  std::vector<size_t> freeList;
-
-  void reset() {
-    freeList.clear();
-    for (size_t i = 0; i < buffers.size(); i++) {
-      freeList.push_back(i);
-    }
-  }
-
-  DynamicWGPUBuffer &allocateBufferNew() { return buffers.emplace_back(); }
-
-  DynamicWGPUBuffer &allocateBufferAny() {
-    if (freeList.size() > 0) {
-      size_t bufferIndex = freeList.back();
-      freeList.pop_back();
-      return buffers[bufferIndex];
-    } else {
-      return allocateBufferNew();
-    }
-  }
-
-  DynamicWGPUBuffer &allocateBuffer(size_t size) {
-    int64_t smallestDelta = INT64_MAX;
-    decltype(freeList)::iterator targetFreeListIt = freeList.end();
-    for (auto it = freeList.begin(); it != freeList.end(); ++it) {
-      size_t bufferIndex = *it;
-      auto &buffer = buffers[bufferIndex];
-      int64_t delta = buffer.getCapacity() - size;
-      if (delta >= 0) {
-        if (delta < smallestDelta) {
-          smallestDelta = delta;
-          targetFreeListIt = it;
-        }
-      }
-    }
-
-    if (targetFreeListIt != freeList.end()) {
-      auto bufferIndex = *targetFreeListIt;
-      freeList.erase(targetFreeListIt);
-      return buffers[bufferIndex];
-    } else {
-      return allocateBufferNew();
-    }
-  }
-};
+typedef ResizableItemPool<DynamicWGPUBuffer> DynamicWGPUBufferPool;
 
 } // namespace gfx
 
