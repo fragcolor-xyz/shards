@@ -20,6 +20,7 @@ add_library(gfx
   shader/generator.cpp
   shader/blocks.cpp
   shader/types.cpp
+  rust_interop.cpp
   # cache_data.cpp
 )
 

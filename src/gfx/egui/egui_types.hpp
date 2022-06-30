@@ -1,13 +1,12 @@
-#ifndef D51F59C5_BA16_47C5_B59B_0C4D8273CADB
-#define D51F59C5_BA16_47C5_B59B_0C4D8273CADB
+#ifndef DBE976AE_DBE6_4455_8698_E341D3B8223F
+#define DBE976AE_DBE6_4455_8698_E341D3B8223F
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../fwd.hpp"
 
 #ifndef RUST_BINDGEN
+#include <vector>
 #include "../mesh.hpp"
-#include <memory>
 #endif
 
 namespace egui {
@@ -77,31 +76,4 @@ struct FullOutput {
 };
 } // namespace egui
 
-namespace gfx {
-struct Context;
-struct Renderer;
-
-Context &Renderer_getContext(Renderer &renderer);
-egui::Rect Context_getScreenRect(gfx::Context &context);
-float Context_getDrawScale(gfx::Context &context);
-} // namespace gfx
-
-namespace egui {
-
-struct RendererImpl;
-
-/// <div rustbindgen opaque></div>
-struct Renderer {
-  std::shared_ptr<RendererImpl> impl;
-
-  Renderer();
-
-  void render(const FullOutput &output, const gfx::DrawQueuePtr &drawQueue);
-
-  static Renderer *create();
-  static void destroy(Renderer *renderer);
-};
-
-} // namespace egui
-
-#endif /* D51F59C5_BA16_47C5_B59B_0C4D8273CADB */
+#endif /* DBE976AE_DBE6_4455_8698_E341D3B8223F */

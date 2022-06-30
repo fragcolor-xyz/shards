@@ -43,7 +43,7 @@ endif()
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx_imgui gfx_gltf gfx_egui_interop
+  stb gfx gfx_imgui gfx_gltf gfx_egui
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

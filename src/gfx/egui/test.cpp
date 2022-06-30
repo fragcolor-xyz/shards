@@ -2,10 +2,13 @@
 #include <gfx/context.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/loop.hpp>
-#include "egui_interop.hpp"
+#include <gfx/drawable.hpp>
+#include <gfx/view.hpp>
+#include "egui_render_pass.hpp"
+#include "rust_interop.hpp"
 
 extern "C" {
-void render_egui_test_frame(egui::Renderer& renderer, float deltaTime);
+void render_egui_test_frame(gfx::Context &context, gfx::DrawQueuePtr &queue, float deltaTime);
 }
 
 using namespace gfx;
@@ -18,8 +21,8 @@ int main() {
 
   // Just for clearing
   Renderer renderer(ctx);
-
-  egui::Renderer eguiRenderer(renderer);
+  DrawQueuePtr queue = std::make_shared<DrawQueue>();
+  ViewPtr view = std::make_shared<View>();
 
   Loop loop;
   float deltaTime;
@@ -27,6 +30,10 @@ int main() {
 
   egui::Input eguiInput{};
   bool quit = false;
+
+  PipelineSteps pipelineSteps = {
+      EguiRenderPass::createPipelineStep(queue),
+  };
 
   while (!quit) {
     if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
@@ -45,11 +52,14 @@ int main() {
         } else if (event.type == SDL_QUIT)
           quit = true;
       }
-      ctx.resizeMainOutputConditional(wnd.getDrawableSize());
 
+      queue->clear();
+      render_egui_test_frame(ctx, queue, deltaTime);
+
+      ctx.resizeMainOutputConditional(wnd.getDrawableSize());
       ctx.beginFrame();
       renderer.beginFrame();
-      render_egui_test_frame(eguiRenderer, deltaTime);
+      renderer.render(view, pipelineSteps);
       renderer.endFrame();
       ctx.endFrame();
     }

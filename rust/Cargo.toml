@@ -49,7 +49,8 @@ webbrowser = { version = "0.5.5", optional = true }
 ctor = "0.1.16"
 
 [build-dependencies]
-bindgen = { version = "0.59.1" }
+bindgen = { version = "0.60.1" }
+gfx-build = { path = "../src/gfx/rust/build" }
 
 [features]
 default = []

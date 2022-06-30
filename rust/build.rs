@@ -2,6 +2,7 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 extern crate bindgen;
+extern crate gfx_build;
 use std::env;
 use std::path::PathBuf;
 
@@ -11,6 +12,7 @@ fn generate_shardsc() {
   let shards_dir = var("SHARDS_DIR").unwrap_or("..".to_string());
   let shards_include_dir = format!("{}/include", shards_dir);
   let src_extra_dir = format!("{}/src/extra", shards_dir);
+  let gfx_path = format!("{}/src/gfx", shards_dir);
 
   let main_header_path = format!("{}/rust_interop.hpp", src_extra_dir);
 
@@ -18,21 +20,16 @@ fn generate_shardsc() {
   println!("cargo:rerun-if-changed={}/shards.h", shards_include_dir);
   println!("cargo:rerun-if-changed={}", main_header_path);
 
-  let bindings = bindgen::Builder::default()
+  let builder = gfx_build::setup_bindgen_for_gfx(gfx_path.as_str(), bindgen::Builder::default());
+  let bindings = builder
     .header(main_header_path)
     .clang_arg("-DSH_NO_ANON")
     .clang_arg("-DSH_USE_ENUMS")
-    .clang_arg("-DRUST_BINDGEN")
     .allowlist_type("SH.*")
     .allowlist_var("SH.*")
     .allowlist_function("SH.*")
-    .allowlist_function("gfx::.*")
-    .allowlist_type("gfx::.*")
-    .allowlist_type("egui::.*")
-    .opaque_type("std::shared_ptr.*")
     .clang_arg(format!("-I{}", shards_include_dir))
     .clang_arg(format!("-I{}/src", shards_dir))
-    .clang_arg(format!("-I{}/src/gfx/wgpu-native/ffi", shards_dir))
     .derive_default(true)
     .use_core()
     .generate()

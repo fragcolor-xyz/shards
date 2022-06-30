@@ -37,6 +37,8 @@ struct ContextData;
 struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
+
+/// <div rustbindgen opaque></div>
 struct Context {
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;

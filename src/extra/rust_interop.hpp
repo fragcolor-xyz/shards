@@ -2,7 +2,7 @@
 #define E325D8E3_F64E_413D_965B_DF275CF18AC4
 
 #include "shards.h"
-#include "../gfx/egui/egui_interop.hpp"
+#include "../gfx/egui/rust_interop.hpp"
 #include "gfx/fwd.hpp"
 
 namespace gfx {

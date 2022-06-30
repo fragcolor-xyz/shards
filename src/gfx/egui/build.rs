@@ -1,20 +1,18 @@
 extern crate bindgen;
+extern crate gfx_build;
 
 use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-changed=egui_interop.hpp");
+    let gfx_path = "..".to_string();
 
-    let bindings = bindgen::Builder::default()
-        .allowlist_type("gfx::.*")
-        .allowlist_function("gfx::.*")
-        .allowlist_type("egui::.*")
-        .opaque_type("std::shared_ptr.*")
-        .clang_arg("-DRUST_BINDGEN=1")
-        .clang_arg("-std=c++17")
-        .header("egui_interop.hpp")
+    let builder = gfx_build::setup_bindgen_for_gfx(gfx_path.as_str(), bindgen::Builder::default());
+
+    let bindings = builder
+        .header("rust_interop.hpp")
         .size_t_is_usize(true)
+        .layout_tests(false)
         .generate()
         .expect("Unable to generate bindings");
 

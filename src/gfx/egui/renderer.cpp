@@ -1,4 +1,4 @@
-#include "egui_interop.hpp"
+#include "renderer.hpp"
 #include "egui_render_pass.hpp"
 #include "gfx/params.hpp"
 #include <gfx/enums.hpp>
@@ -6,8 +6,6 @@
 #include <gfx/renderer.hpp>
 #include <gfx/shader/blocks.hpp>
 #include <gfx/shader/types.hpp>
-#include <memory>
-#include <spdlog/spdlog.h>
 #include <gfx/mesh.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/fwd.hpp>
@@ -17,20 +15,13 @@
 #include <gfx/view.hpp>
 #include <gfx/context.hpp>
 #include <gfx/window.hpp>
+#include <webgpu-headers/webgpu.h>
+#include <spdlog/spdlog.h>
 #include <map>
 #include <vector>
-#include <webgpu-headers/webgpu.h>
-using namespace gfx;
+#include <memory>
 
-namespace egui {
-std::vector<MeshVertexAttribute> Vertex::getAttributes() {
-  return std::vector<MeshVertexAttribute>{
-      MeshVertexAttribute("position", 2),
-      MeshVertexAttribute("texCoord0", 2),
-      MeshVertexAttribute("color", 4, VertexAttributeType::UNorm8),
-  };
-}
-
+namespace gfx {
 struct MeshPoolOps {
   size_t getCapacity(MeshPtr &item) const { return item->getNumVertices() * item->getFormat().getVertexSize(); }
   void init(MeshPtr &item) const { item = std::make_shared<Mesh>(); }
@@ -40,7 +31,7 @@ typedef ResizableItemPool<MeshPtr, MeshPoolOps> MeshPool;
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
 
-  TexturePtr get(const TextureId &id) const {
+  TexturePtr get(const egui::TextureId &id) const {
     auto it = textures.find(id.id);
     if (it != textures.end())
       return it->second;
@@ -67,7 +58,7 @@ struct TextureManager {
     }
   }
 
-  void set(const TextureSet &set) {
+  void set(const egui::TextureSet &set) {
     auto it = textures.find(set.id);
     if (it == textures.end()) {
       it = textures.insert_or_assign(set.id.id, std::make_shared<Texture>()).first;
@@ -79,14 +70,14 @@ struct TextureManager {
     size_t srcPixelSize;
     size_t dstPixelSize;
     switch (set.format) {
-    case TextureFormat::R32F:
+    case egui::TextureFormat::R32F:
       //  Need to convert, 32-bit float types are not filterable in the WebGPU spec
       srcFormat = WGPUTextureFormat_R32Float;
       fmt.pixelFormat = WGPUTextureFormat_R8Unorm;
       srcPixelSize = sizeof(float);
       dstPixelSize = sizeof(uint8_t);
       break;
-    case TextureFormat::RGBA8:
+    case egui::TextureFormat::RGBA8:
       srcFormat = fmt.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
       srcPixelSize = dstPixelSize = sizeof(uint32_t);
       break;
@@ -130,26 +121,26 @@ struct TextureManager {
     texture->init(fmt, int2(set.size[0], set.size[1]), sampler, std::move(imageData));
   }
 
-  void free(TextureId id) { textures.erase(id.id); }
+  void free(egui::TextureId id) { textures.erase(id.id); }
 };
 
-struct RendererImpl {
+struct EguiRendererImpl {
   MeshPool meshPool;
   TextureManager textures;
-  std::vector<TextureId> pendingTextureFrees;
+  std::vector<egui::TextureId> pendingTextureFrees;
 
   MeshFormat meshFormat;
 
-  RendererImpl() {
+  EguiRendererImpl() {
     meshFormat = {
         .primitiveType = PrimitiveType::TriangleList,
         .windingOrder = WindingOrder::CCW,
         .indexFormat = IndexFormat::UInt32,
-        .vertexAttributes = Vertex::getAttributes(),
+        .vertexAttributes = egui::Vertex::getAttributes(),
     };
   }
 
-  void addPendingTextureFree(TextureId id) { pendingTextureFrees.push_back(id); }
+  void addPendingTextureFree(egui::TextureId id) { pendingTextureFrees.push_back(id); }
 
   void processPendingTextureFrees() {
     for (auto &id : pendingTextureFrees) {
@@ -160,8 +151,8 @@ struct RendererImpl {
   }
 };
 
-Renderer::Renderer() { impl = std::make_shared<RendererImpl>(); }
-void Renderer::render(const FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {
+EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
+void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {
   impl->meshPool.reset();
   impl->processPendingTextureFrees();
 
@@ -178,7 +169,7 @@ void Renderer::render(const FullOutput &output, const gfx::DrawQueuePtr &drawQue
     auto &prim = output.primitives[i];
 
     MeshPtr mesh = impl->meshPool.allocateBuffer(prim.numVertices);
-    mesh->update(impl->meshFormat, prim.vertices, prim.numVertices * sizeof(Vertex), prim.indices,
+    mesh->update(impl->meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                  prim.numIndices * sizeof(uint32_t));
 
     DrawablePtr drawable = std::make_shared<Drawable>(mesh);
@@ -200,24 +191,6 @@ void Renderer::render(const FullOutput &output, const gfx::DrawQueuePtr &drawQue
   }
 }
 
-Renderer *Renderer::create() { return new Renderer(); }
-void Renderer::destroy(Renderer *renderer) { delete renderer; }
-} // namespace egui
-
-namespace gfx {
-Context &Renderer_getContext(Renderer &renderer) { return renderer.getContext(); }
-egui::Rect Context_getScreenRect(gfx::Context &context) {
-  Window &window = context.getWindow();
-  float2 drawScale = window.getDrawScale();
-  float2 screenSize = window.getDrawableSize() / std::max(drawScale.x, drawScale.y);
-  return egui::Rect{
-      .min = egui::Pos2{0.0f, 0.0f},
-      .max = egui::Pos2{screenSize.x, screenSize.y},
-  };
-}
-float Context_getDrawScale(gfx::Context &context) {
-  Window &window = context.getWindow();
-  float2 drawScale = window.getDrawScale();
-  return std::max(drawScale.x, drawScale.y);
-}
+EguiRenderer *EguiRenderer::create() { return new EguiRenderer(); }
+void EguiRenderer::destroy(EguiRenderer *renderer) { delete renderer; }
 } // namespace gfx

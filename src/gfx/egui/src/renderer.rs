@@ -8,8 +8,11 @@ use egui::Context;
 use std::ptr;
 
 pub struct Renderer {
-    egui_renderer: *mut egui_Renderer,
+    egui_renderer: *mut gfx_EguiRenderer,
 }
+
+unsafe impl Send for Renderer {}
+unsafe impl Sync for Renderer {}
 
 pub enum PixelData {
     Color(Vec<egui::Color32>),
@@ -249,7 +252,7 @@ fn make_native_full_output(
 impl Drop for Renderer {
     fn drop(&mut self) {
         unsafe {
-            egui_Renderer_destroy(self.egui_renderer);
+            gfx_EguiRenderer_destroy(self.egui_renderer);
         }
     }
 }
@@ -258,7 +261,7 @@ impl Renderer {
     pub fn new() -> Self {
         unsafe {
             Self {
-                egui_renderer: egui_Renderer_create(),
+                egui_renderer: gfx_EguiRenderer_create(),
             }
         }
     }
@@ -272,7 +275,7 @@ impl Renderer {
     ) {
         unsafe {
             let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale).unwrap();
-            egui_Renderer_render(self.egui_renderer, &native_egui_output.full_output, queue);
+            gfx_EguiRenderer_render(self.egui_renderer, &native_egui_output.full_output, queue);
         }
     }
 }
