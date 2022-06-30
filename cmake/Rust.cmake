@@ -160,9 +160,24 @@ function(add_rust_library)
 
   set(RUST_CRATE_TYPE_ARG --crate-type staticlib)
 
+  # When the compiler can't automatically provide include paths (emscripten):
+  #  pass the sysroot to the bindgen clang arguments
+  if(EMSCRIPTEN_SYSROOT)
+    file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}" TMP_SYSROOT)
+    list(APPEND EXTRA_CLANG_ARGS "--sysroot ${TMP_SYSROOT}")
+  endif()
+
+  # Required to have some symbols be exported
+  # https://github.com/rust-lang/rust-bindgen/issues/751
+  list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
+
+  if(RUST_TARGET_PATH)
+    list(APPEND RUST_ENVIRONMENT "CARGO_TARGET_DIR=${RUST_TARGET_PATH}")
+  endif()
+
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
+    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}" ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
     WORKING_DIRECTORY ${RUST_PROJECT_PATH}
     DEPENDS ${RUST_SOURCES} ${RUST_DEPENDS}
     USES_TERMINAL

@@ -25,7 +25,6 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
         .clang_arg(format!("-I{}", deps_path))
         .clang_arg(format!("-I{}/nameof/include", deps_path))
         .clang_arg(format!("-I{}/wgpu-native/ffi", gfx_path))
-        .clang_arg("-std=gnu++20")
-        .clang_arg("-v")
+        .clang_arg("-std=c++17")
         .size_t_is_usize(true)
 }

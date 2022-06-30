@@ -16,6 +16,7 @@ add_rust_library(
   NAME egui-gfx
   FEATURES ${FEATURES}
   PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
+  TARGET_PATH ${CMAKE_CURRENT_LIST_DIR}/target
   DEPENDS rust_interop.hpp
 )
 
