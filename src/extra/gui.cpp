@@ -1,4 +1,3 @@
-#include "gui.hpp"
 #include "gfx/shards_types.hpp"
 #include <foundation.hpp>
 #include <shards_macros.hpp>
