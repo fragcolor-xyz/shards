@@ -3,9 +3,9 @@
 
 use super::Button;
 use crate::shard::Shard;
+use crate::shards::gui::util;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
-use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -14,7 +14,6 @@ use crate::types::ExposedTypes;
 use crate::types::InstanceData;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
@@ -50,14 +49,14 @@ lazy_static! {
 
 impl Default for Button {
   fn default() -> Self {
-    let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENTS_UI_NAME);
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents: ui_ctx,
+      parents,
       requiring: Vec::new(),
-      label: ParamVar::new(().into()),
+      label: ParamVar::default(),
       action: ShardsVar::default(),
-      wrap: ParamVar::new(().into()),
+      wrap: ParamVar::default(),
     }
   }
 }
@@ -159,31 +158,31 @@ impl Shard for Button {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let parents: Seq = self.parents.get().try_into()?;
-    let ui: &mut egui::Ui =
-      Var::from_object_ptr_mut_ref(parents[parents.len() - 1], &EGUI_UI_TYPE)?;
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+      let label: &str = self.label.get().as_ref().try_into()?;
+      let mut button = egui::Button::new(label);
 
-    let label: &str = self.label.get().as_ref().try_into()?;
-    let mut button = egui::Button::new(label);
-
-    let wrap = self.wrap.get();
-    if !wrap.is_none() {
-      let wrap: bool = wrap.as_ref().try_into()?;
-      button = button.wrap(wrap);
-    }
-
-    let response = ui.add(button);
-    if response.clicked() {
-      let mut output = Var::default();
-      if self.action.activate(context, input, &mut output) == WireState::Error {
-        return Err("Failed to activate button");
+      let wrap = self.wrap.get();
+      if !wrap.is_none() {
+        let wrap: bool = wrap.as_ref().try_into()?;
+        button = button.wrap(wrap);
       }
 
-      // button clicked during this frame
-      return Ok(true.into());
-    }
+      let response = ui.add(button);
+      if response.clicked() {
+        let mut output = Var::default();
+        if self.action.activate(context, input, &mut output) == WireState::Error {
+          return Err("Failed to activate button");
+        }
 
-    // button not clicked during this frame
-    Ok(false.into())
+        // button clicked during this frame
+        return Ok(true.into());
+      }
+
+      // button not clicked during this frame
+      Ok(false.into())
+    } else {
+      Err("No UI parent")
+    }
   }
 }

@@ -3,16 +3,15 @@
 
 use super::Label;
 use crate::shard::Shard;
+use crate::shards::gui::util;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
-use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::STRING_TYPES;
@@ -28,12 +27,12 @@ lazy_static! {
 
 impl Default for Label {
   fn default() -> Self {
-    let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENTS_UI_NAME);
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents: ui_ctx,
+      parents,
       requiring: Vec::new(),
-      wrap: ParamVar::new(().into()),
+      wrap: ParamVar::default(),
     }
   }
 }
@@ -115,21 +114,21 @@ impl Shard for Label {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let parents: Seq = self.parents.get().try_into()?;
-    let ui: &mut egui::Ui =
-      Var::from_object_ptr_mut_ref(parents[parents.len() - 1], &EGUI_UI_TYPE)?;
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+      let text: &str = input.as_ref().try_into()?;
+      let mut label = egui::Label::new(text);
 
-    let text: &str = input.as_ref().try_into()?;
-    let mut label = egui::Label::new(text);
+      let wrap = self.wrap.get();
+      if !wrap.is_none() {
+        let wrap: bool = wrap.as_ref().try_into()?;
+        label = label.wrap(wrap);
+      }
 
-    let wrap = self.wrap.get();
-    if !wrap.is_none() {
-      let wrap: bool = wrap.as_ref().try_into()?;
-      label = label.wrap(wrap);
+      ui.add(label);
+
+      Ok(*input)
+    } else {
+      Err("No UI parent")
     }
-
-    ui.add(label);
-
-    Ok(*input)
   }
 }
