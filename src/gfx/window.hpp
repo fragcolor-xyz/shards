@@ -8,6 +8,7 @@
 struct SDL_Window;
 typedef union SDL_Event SDL_Event;
 namespace gfx {
+/// <div rustbindgen opaque></div>
 struct WindowCreationOptions {
   int width = 1280;
   int height = 720;
