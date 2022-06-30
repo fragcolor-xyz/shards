@@ -50,7 +50,7 @@ fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
     uiFeature->shaderEntryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment, std::move(code));
 
     uiFeature->textureParams.emplace_back("color");
-    uiFeature->shaderParams.emplace_back("flags", flagsFieldType, uint8_t(0));
+    uiFeature->shaderParams.emplace_back("flags", flagsFieldType, uint32_t(0));
 
     uiFeature->state.set_depthWrite(false);
     uiFeature->state.set_depthCompare(WGPUCompareFunction_Always);
