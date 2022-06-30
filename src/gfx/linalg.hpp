@@ -2,6 +2,7 @@
 #define GFX_LINALG
 
 #include <linalg/linalg.h>
+#include <cstring>
 
 namespace gfx {
 using namespace linalg::aliases;
