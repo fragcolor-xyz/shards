@@ -15,7 +15,7 @@
 #include <gfx/view.hpp>
 #include <gfx/context.hpp>
 #include <gfx/window.hpp>
-#include <webgpu-headers/webgpu.h>
+#include <gfx/gfx_wgpu.hpp>
 #include <spdlog/spdlog.h>
 #include <map>
 #include <vector>
