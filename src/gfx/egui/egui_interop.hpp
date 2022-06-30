@@ -3,16 +3,12 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "../fwd.hpp"
 
 #ifndef RUST_BINDGEN
 #include "../mesh.hpp"
 #include <memory>
 #endif
-
-namespace gfx {
-struct Context;
-struct Renderer;
-}
 
 namespace egui {
 struct Pos2 {
@@ -79,19 +75,31 @@ struct FullOutput {
   const ClippedPrimitive *primitives;
   size_t numPrimitives;
 };
+} // namespace egui
 
-struct EguiRendererImpl;
+namespace gfx {
+struct Context;
+struct Renderer;
 
-struct EguiRenderer {
-#ifndef RUST_BINDGEN
-  std::shared_ptr<EguiRendererImpl> impl;
+Context &Renderer_getContext(Renderer &renderer);
+egui::Rect Context_getScreenRect(gfx::Context &context);
+float Context_getDrawScale(gfx::Context &context);
+} // namespace gfx
 
-  EguiRenderer( gfx::Renderer& renderer);
-#endif
+namespace egui {
 
-  void render(const FullOutput &output);
-  void getScreenRect(Rect& outScreenRect);
-  float getScale();
+struct RendererImpl;
+
+/// <div rustbindgen opaque></div>
+struct Renderer {
+  std::shared_ptr<RendererImpl> impl;
+
+  Renderer();
+
+  void render(const FullOutput &output, const gfx::DrawQueuePtr &drawQueue);
+
+  static Renderer *create();
+  static void destroy(Renderer *renderer);
 };
 
 } // namespace egui

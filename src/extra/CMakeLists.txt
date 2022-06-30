@@ -9,6 +9,7 @@ set(extra_SOURCES
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
   gfx/gltf.cpp
+  gui.cpp
   rust_interop.cpp
   imgui.cpp
   # xr.cpp
@@ -42,7 +43,7 @@ endif()
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx_imgui gfx_gltf
+  stb gfx gfx_imgui gfx_gltf gfx_egui_interop
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

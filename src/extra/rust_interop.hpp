@@ -2,13 +2,20 @@
 #define E325D8E3_F64E_413D_965B_DF275CF18AC4
 
 #include "shards.h"
+#include "../gfx/egui/egui_interop.hpp"
+#include "gfx/fwd.hpp"
 
 namespace gfx {
 // gfx::MainWindowGlobals::Type
 SHTypeInfo *getMainWindowGlobalsType();
-const char* getMainWindowGlobalsVarName();
+const char *getMainWindowGlobalsVarName();
 SHTypeInfo *getQueueType();
-SHVar getDefaultQueue(const SHVar* mainWindowGlobals);
+
+SHVar MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals);
+Context *MainWindowGlobals_getContext(const SHVar &mainWindowGlobals);
+Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals);
+
+DrawQueuePtr* getDrawQueueFromVar(const SHVar &var);
 } // namespace gfx
 
 #endif /* E325D8E3_F64E_413D_965B_DF275CF18AC4 */

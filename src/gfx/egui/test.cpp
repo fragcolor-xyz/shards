@@ -5,7 +5,7 @@
 #include "egui_interop.hpp"
 
 extern "C" {
-void render_egui_test_frame(egui::EguiRenderer& renderer, float deltaTime);
+void render_egui_test_frame(egui::Renderer& renderer, float deltaTime);
 }
 
 using namespace gfx;
@@ -19,7 +19,7 @@ int main() {
   // Just for clearing
   Renderer renderer(ctx);
 
-  egui::EguiRenderer eguiRenderer(renderer);
+  egui::Renderer eguiRenderer(renderer);
 
   Loop loop;
   float deltaTime;

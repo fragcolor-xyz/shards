@@ -13,11 +13,34 @@ SHTypeInfo *getQueueType() {
   static SHTypeInfo type = Types::DrawQueue;
   return &type;
 }
-SHVar getDefaultQueue(const SHVar *mainWindowGlobals) {
 
-  assert(mainWindowGlobals->payload.objectValue);
-  MainWindowGlobals *globals = reinterpret_cast<MainWindowGlobals *>(mainWindowGlobals->payload.objectValue);
+template <typename T> T *castChecked(const SHVar &var, const shards::Type &type) {
+  SHTypeInfo typeInfo(type);
+  if (var.valueType != SHType::Object)
+    throw std::logic_error("Invalid type");
+  if (var.payload.objectVendorId != typeInfo.object.vendorId)
+    throw std::logic_error("Invalid object vendor id");
+  if (var.payload.objectTypeId != typeInfo.object.typeId)
+    throw std::logic_error("Invalid object type id");
+  return reinterpret_cast<T *>(var.payload.objectValue);
+}
+
+SHVar MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
   return Var::Object(&globals->shDrawQueue, SHTypeInfo(Types::DrawQueue).object.vendorId,
                      SHTypeInfo(Types::DrawQueue).object.typeId);
+}
+Context *MainWindowGlobals_getContext(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+  return globals->context.get();
+}
+Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+  return globals->renderer.get();
+}
+
+DrawQueuePtr *getDrawQueueFromVar(const SHVar &var) {
+  SHDrawQueue *shDrawQueue = castChecked<SHDrawQueue>(var, Types::DrawQueue);
+  return &shDrawQueue->queue;
 }
 } // namespace gfx

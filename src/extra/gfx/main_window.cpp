@@ -146,7 +146,8 @@ struct MainWindow : public Base {
     };
 
     _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
-    _mainWindowGlobalsVar->payload.objectTypeId = MainWindowGlobals::TypeId;
+    _mainWindowGlobalsVar->payload.objectTypeId = SHTypeInfo(MainWindowGlobals::Type).object.typeId;
+    _mainWindowGlobalsVar->payload.objectVendorId = SHTypeInfo(MainWindowGlobals::Type).object.vendorId;
     _mainWindowGlobalsVar->payload.objectValue = globals.get();
     _mainWindowGlobalsVar->valueType = SHType::Object;
 

@@ -7,7 +7,10 @@ fn main() {
     println!("cargo:rerun-if-changed=egui_interop.hpp");
 
     let bindings = bindgen::Builder::default()
-        .blocklist_item("std::.*")
+        .allowlist_type("gfx::.*")
+        .allowlist_function("gfx::.*")
+        .allowlist_type("egui::.*")
+        .opaque_type("std::shared_ptr.*")
         .clang_arg("-DRUST_BINDGEN=1")
         .clang_arg("-std=c++17")
         .header("egui_interop.hpp")

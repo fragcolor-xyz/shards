@@ -3,8 +3,6 @@ name = "egui-gfx"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 egui = { version = "0.18.1" }
 epaint = {version = "0.18.1"}
@@ -16,6 +14,3 @@ bindgen = "0.60.1"
 [features]
 # Enables the test UI code
 egui_test = []
-
-[workspace]
-members = []
