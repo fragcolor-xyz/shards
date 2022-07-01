@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 fn generate_shardsc() {
   use std::env::var;
- 
+
   let shards_dir = var("SHARDS_DIR").unwrap_or("..".to_string());
   let shards_include_dir = format!("{}/include", shards_dir);
   let src_extra_dir = format!("{}/src/extra", shards_dir);
