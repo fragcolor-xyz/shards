@@ -3,6 +3,7 @@
 
 use crate::core::registerShard;
 use crate::shard::Shard;
+use crate::shardsc;
 use crate::types::common_type;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
@@ -21,6 +22,14 @@ static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, 1701279043); // 'eguC'
 static EGUI_CTX_SLICE: &'static [Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_VAR: Type = Type::context_variable(EGUI_CTX_SLICE);
 static EGUI_CTX_VAR_TYPES: &'static [Type] = &[EGUI_CTX_VAR];
+
+lazy_static! {
+  static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
+  static ref GFX_QUEUE_TYPE: Type = unsafe { *shardsc::gfx_getQueueType() };
+  static ref GFX_QUEUE_TYPES: Vec<Type> = vec![GFX_QUEUE_TYPE.clone()];
+  static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
+  static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![GFX_QUEUE_VAR.clone()];
+}
 
 const CONTEXT_NAME: &'static str = "UI.Context";
 const PARENTS_UI_NAME: &'static str = "UI.Parents";
@@ -43,8 +52,10 @@ impl EguiId {
 struct EguiContext {
   context: Option<EguiNativeContext>,
   instance: ParamVar,
+  queue: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
+  renderer: egui_gfx::Renderer,
 }
 
 mod containers;
