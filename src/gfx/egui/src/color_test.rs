@@ -107,7 +107,7 @@ impl ColorTest {
         }
 
         ui.separator();
-/*
+        /*
         self.show_gradients(ui, BLACK, (BLACK, WHITE));
         ui.separator();
         self.show_gradients(ui, WHITE, (BLACK, TRANSPARENT));
@@ -328,7 +328,7 @@ impl TextureManager {
                 epaint::ColorImage {
                     size: [width, height],
                     pixels,
-                }
+                },
             )
         })
     }

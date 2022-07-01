@@ -108,7 +108,7 @@ function(add_rust_library)
     FEATURES             # (Optional) List of features to pass to rust build
     ENVIRONMENT          # (Optional) Environment variables
     DEPENDS              # (Optional) Extra file-level dependencies
-    EXCLUDE_DEPENDS      # (Optional) Extra file-level dependencies to ingore
+    EXCLUDE_DEPENDS      # (Optional) Extra file-level dependencies to ignore
   )
   cmake_parse_arguments(RUST "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 

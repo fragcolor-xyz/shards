@@ -15,7 +15,7 @@ SHVar MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals);
 Context *MainWindowGlobals_getContext(const SHVar &mainWindowGlobals);
 Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals);
 
-DrawQueuePtr* getDrawQueueFromVar(const SHVar &var);
+DrawQueuePtr *getDrawQueueFromVar(const SHVar &var);
 } // namespace gfx
 
 #endif /* E325D8E3_F64E_413D_965B_DF275CF18AC4 */
