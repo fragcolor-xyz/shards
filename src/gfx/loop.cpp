@@ -20,8 +20,8 @@ bool Loop::beginFrame(float targetDeltaTime, float &outDeltaTime) {
   return false;
 }
 
-float Loop::getAbsoluteTime() const {
+double Loop::getAbsoluteTime() const {
   TimePoint now = Clock::now();
-  return std::chrono::duration<float>(now - startTime).count();
+  return std::chrono::duration<double>(now - startTime).count();
 }
 } // namespace gfx

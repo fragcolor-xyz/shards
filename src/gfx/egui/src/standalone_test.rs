@@ -31,25 +31,17 @@ lazy_static! {
 pub unsafe extern "C" fn render_egui_test_frame(
     context: *mut gfx_Context,
     queue: *mut gfx_DrawQueuePtr,
-    delta_time: f32,
+    input_ptr: *const egui_Input,
 ) {
     use egui::Color32;
 
+    let raw_input = translate_raw_input(&*input_ptr);
     let app = APP.lock().unwrap();
-    let mut input = egui::RawInput::default();
 
-    let window = gfx_Context_getWindow(context);
-    let screen_rect_size = gfx_Window_getVirtualDrawableSize_ext(window);
-    input.screen_rect = Some(egui::Rect {
-        min: egui::pos2(0.0, 0.0),
-        max: egui::pos2(screen_rect_size.x, screen_rect_size.y),
-    });
+    let draw_scale = (*input_ptr).pixelsPerPoint;
+    let delta_time = (*input_ptr).predictedDeltaTime;
 
-    let draw_scale_vec = gfx_Window_getDrawScale_ext(window);
-    let draw_scale = f32::max(draw_scale_vec.x, draw_scale_vec.y);
-    input.pixels_per_point = Some(draw_scale);
-
-    let full_output = app.ctx.run(input, |ctx| {
+    let full_output = app.ctx.run(raw_input, |ctx| {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut state = STATE.lock().unwrap();
             egui::ScrollArea::both()

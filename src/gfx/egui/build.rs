@@ -11,6 +11,7 @@ fn main() {
 
     let bindings = builder
         .header("rust_interop.hpp")
+        .allowlist_type("egui::.*")
         .size_t_is_usize(true)
         .layout_tests(false)
         .generate()

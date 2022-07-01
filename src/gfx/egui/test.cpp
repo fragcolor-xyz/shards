@@ -5,10 +5,11 @@
 #include <gfx/drawable.hpp>
 #include <gfx/view.hpp>
 #include "egui_render_pass.hpp"
+#include "input.hpp"
 #include "rust_interop.hpp"
 
 extern "C" {
-void render_egui_test_frame(gfx::Context &context, gfx::DrawQueuePtr &queue, float deltaTime);
+void render_egui_test_frame(gfx::Context &context, gfx::DrawQueuePtr &queue, const egui::Input *input);
 }
 
 using namespace gfx;
@@ -28,7 +29,8 @@ int main() {
   float deltaTime;
   std::vector<SDL_Event> events;
 
-  egui::Input eguiInput{};
+  EguiInputTranslator inputTranslator;
+
   bool quit = false;
 
   PipelineSteps pipelineSteps = {
@@ -39,22 +41,14 @@ int main() {
     if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
       wnd.pollEvents(events);
       for (auto &event : events) {
-        if (event.type == SDL_MOUSEMOTION) {
-          eguiInput.cursorPosition[0] = event.motion.x;
-          eguiInput.cursorPosition[1] = event.motion.y;
-        } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
-          eguiInput.cursorPosition[0] = event.button.x;
-          eguiInput.cursorPosition[1] = event.button.y;
-          if (event.button.state == SDL_PRESSED)
-            eguiInput.mouseButton |= SDL_BUTTON(event.button.button);
-          else
-            eguiInput.mouseButton &= ~SDL_BUTTON(event.button.button);
-        } else if (event.type == SDL_QUIT)
+        if (event.type == SDL_QUIT)
           quit = true;
       }
 
+      const egui::Input *eguiInput = inputTranslator.translateFromInputEvents(events, wnd, loop.getAbsoluteTime(), deltaTime);
+
       queue->clear();
-      render_egui_test_frame(ctx, queue, deltaTime);
+      render_egui_test_frame(ctx, queue, eguiInput);
 
       ctx.resizeMainOutputConditional(wnd.getDrawableSize());
       ctx.beginFrame();

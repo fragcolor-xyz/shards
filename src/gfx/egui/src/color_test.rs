@@ -107,7 +107,7 @@ impl ColorTest {
         }
 
         ui.separator();
-        /*
+
         self.show_gradients(ui, BLACK, (BLACK, WHITE));
         ui.separator();
         self.show_gradients(ui, WHITE, (BLACK, TRANSPARENT));
@@ -128,7 +128,7 @@ impl ColorTest {
 
         ui.separator();
 
-        blending_and_feathering_test(ui); */
+        blending_and_feathering_test(ui);
     }
 
     fn show_gradients(&mut self, ui: &mut Ui, bg_fill: Color32, (left, right): (Color32, Color32)) {
