@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+#![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
+
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
