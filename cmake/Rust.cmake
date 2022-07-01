@@ -167,9 +167,15 @@ function(add_rust_library)
     list(APPEND EXTRA_CLANG_ARGS "--sysroot=${TMP_SYSROOT}")
   endif()
 
-  # Required to have some symbols be exported
-  # https://github.com/rust-lang/rust-bindgen/issues/751
-  list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
+  if(EMSCRIPTEN)
+    # Required to have some symbols be exported
+    # https://github.com/rust-lang/rust-bindgen/issues/751
+    list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
+  endif()
+
+  if(EXTRA_CLANG_ARGS)
+    set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
+  endif()
 
   if(RUST_TARGET_PATH)
     list(APPEND RUST_ENVIRONMENT "CARGO_TARGET_DIR=${RUST_TARGET_PATH}")
@@ -177,7 +183,7 @@ function(add_rust_library)
 
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}" ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
+    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" ${BINDGEN_EXTRA_CLANG_ARGS} ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
     WORKING_DIRECTORY ${RUST_PROJECT_PATH}
     DEPENDS ${RUST_SOURCES} ${RUST_DEPENDS}
     USES_TERMINAL
