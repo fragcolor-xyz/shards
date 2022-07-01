@@ -73,3 +73,47 @@ pub fn translate_raw_input(input: &egui_Input) -> egui::RawInput {
         max_texture_side: None,
     }
 }
+
+pub struct InputTranslator {
+    egui_translator: *mut gfx_EguiInputTranslator,
+}
+
+impl Drop for InputTranslator {
+    fn drop(&mut self) {
+        unsafe {
+            gfx_EguiInputTranslator_destroy(self.egui_translator);
+        }
+    }
+}
+
+impl InputTranslator {
+    pub fn new() -> Self {
+        unsafe {
+            Self {
+                egui_translator: gfx_EguiInputTranslator_create(),
+            }
+        }
+    }
+
+    pub fn as_mut_ptr(self: &Self) -> *mut gfx_EguiInputTranslator {
+        self.egui_translator
+    }
+
+    pub fn translate(
+        self: &Self,
+        window: *mut gfx_Window,
+        sdl_events: *const u8,
+        time: f64,
+        delta_time: f32,
+    ) -> *const egui_Input {
+        unsafe {
+            gfx_EguiInputTranslator_translateFromInputEvents(
+                self.egui_translator,
+                sdl_events,
+                window,
+                time,
+                delta_time,
+            )
+        }
+    }
+}

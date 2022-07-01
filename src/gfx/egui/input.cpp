@@ -5,8 +5,8 @@
 #include "renderer.hpp"
 
 namespace gfx {
-const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vector<SDL_Event>& sdlEvents, Window &window, double time,
-                                                                 float deltaTime) {
+const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vector<SDL_Event> &sdlEvents, Window &window,
+                                                                 double time, float deltaTime) {
   using egui::InputEvent;
   using egui::InputEventType;
 
@@ -96,4 +96,8 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
 
   return &input;
 }
+
+EguiInputTranslator *EguiInputTranslator::create() { return new EguiInputTranslator(); }
+void EguiInputTranslator::destroy(EguiInputTranslator *obj) { delete obj; }
+
 } // namespace gfx

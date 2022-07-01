@@ -15,7 +15,12 @@ private:
   egui::Pos2 lastCursorPosition;
 
 public:
-  const egui::Input* translateFromInputEvents(const std::vector<SDL_Event>& sdlEvents, Window& window, double time, float deltaTime);
+  const egui::Input *translateFromInputEvents(const std::vector<SDL_Event> &sdlEvents, Window &window, double time,
+                                              float deltaTime);
+
+  static EguiInputTranslator *create();
+  static void destroy(EguiInputTranslator *renderer);
+
 };
 } // namespace gfx
 
