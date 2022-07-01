@@ -303,6 +303,7 @@ jobs:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
         run: |
+          export GFX_BACKEND=D3D12
           cd build
           echo "Running test: gfx_window"
           ./shards ../src/tests/gfx_window.edn
