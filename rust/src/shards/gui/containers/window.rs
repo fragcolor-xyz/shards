@@ -3,10 +3,10 @@
 
 use super::Window;
 use crate::shard::Shard;
+use crate::shards::gui::util;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
-use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -15,12 +15,10 @@ use crate::types::InstanceData;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
-use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::WireState;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
@@ -45,16 +43,16 @@ lazy_static! {
 
 impl Default for Window {
   fn default() -> Self {
-    let mut ctx = ParamVar::new(().into());
+    let mut ctx = ParamVar::default();
     ctx.set_name(CONTEXT_NAME);
-    let mut ui_ctx = ParamVar::new(().into());
-    ui_ctx.set_name(PARENTS_UI_NAME);
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
     Self {
       instance: ctx,
       requiring: Vec::new(),
       title: ParamVar::new("My Window".into()),
       contents: ShardsVar::default(),
-      ui_ctx_instance: ui_ctx,
+      parents,
     }
   }
 }
@@ -129,7 +127,7 @@ impl Shard for Window {
     // append to shared ui vars
     let ui_info = ExposedInfo {
       exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.ui_ctx_instance.get_name(),
+      name: self.parents.get_name(),
       help: cstr!("The parent UI objects.").into(),
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
@@ -149,7 +147,7 @@ impl Shard for Window {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.instance.warmup(ctx);
-    self.ui_ctx_instance.warmup(ctx);
+    self.parents.warmup(ctx);
 
     self.title.warmup(ctx);
     if !self.contents.is_empty() {
@@ -165,7 +163,7 @@ impl Shard for Window {
     }
     self.title.cleanup();
 
-    self.ui_ctx_instance.cleanup();
+    self.parents.cleanup();
     self.instance.cleanup();
 
     Ok(())
@@ -182,24 +180,15 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       let title: &str = self.title.get().as_ref().try_into()?;
       egui::Window::new(title).show(gui_ctx, |ui| {
-        // pass the ui parent to the inner shards
-        unsafe {
-          let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          let mut seq = Seq::new();
-          seq.push(var);
-          self.ui_ctx_instance.set(seq.as_ref().into());
-        }
-
-        let mut output = Var::default();
-        if self.contents.activate(context, input, &mut output) == WireState::Error {
+        if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          .is_err()
+        {
           failed = true;
-          return;
         }
       });
 
       if failed {
-        // TODO add a parameter where we can set to allow some panels to fail!
-        return Err("Failed to activate top panel");
+        return Err("Failed to activate window contents");
       }
     }
 

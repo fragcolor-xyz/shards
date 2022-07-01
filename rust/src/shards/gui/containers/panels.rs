@@ -3,11 +3,11 @@
 
 use super::Panels;
 use crate::shard::Shard;
+use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
-use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -17,11 +17,9 @@ use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
-use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
-use crate::types::WireState;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use egui::Context as EguiNativeContext;
@@ -247,113 +245,140 @@ impl Shard for Panels {
       &*ctx_ptr
     };
 
-    let mut failed = false;
-
+    let ui = util::get_current_parent(self.ui_ctx_instance.get())?;
     if !self.top.is_empty() {
-      egui::TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {
-        // pass the ui parent to the inner shards
-        unsafe {
-          let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          let mut seq = Seq::new();
-          seq.push(var);
-          self.ui_ctx_instance.set(seq.as_ref().into());
-        }
+      let output = (if let Some(ui) = ui {
+        egui::TopBottomPanel::top(EguiId::new(self, 0)).show_inside(ui, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.ui_ctx_instance, &mut self.top)
+        })
+      } else {
+        egui::TopBottomPanel::top(EguiId::new(self, 0)).show(gui_ctx, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.ui_ctx_instance, &mut self.top)?;
+          // when used as a top container, the input passes through to be consistent with Window
+          Ok(*input)
+        })
+      })
+      .inner?;
 
-        let mut output = Var::default();
-        if self.top.activate(context, input, &mut output) == WireState::Error {
-          failed = true;
-          return;
-        }
-      });
-      if failed {
-        // TODO add a parameter where we can set to allow some panels to fail!
-        return Err("Failed to activate top panel");
-      }
+      return Ok(output);
     }
 
     if !self.left.is_empty() {
-      egui::SidePanel::left(EguiId::new(self, 1)).show(gui_ctx, |ui| {
-        // pass the ui parent to the inner shards
-        unsafe {
-          let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          let mut seq = Seq::new();
-          seq.push(var);
-          self.ui_ctx_instance.set(seq.as_ref().into());
-        }
+      let output = (if let Some(ui) = ui {
+        egui::SidePanel::left(EguiId::new(self, 1)).show_inside(ui, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.left,
+          )
+        })
+      } else {
+        egui::SidePanel::left(EguiId::new(self, 1)).show(gui_ctx, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.left,
+          )?;
+          // when used as a top container, the input passes through to be consistent with Window
+          Ok(*input)
+        })
+      })
+      .inner?;
 
-        let mut output = Var::default();
-        if self.left.activate(context, input, &mut output) == WireState::Error {
-          failed = true;
-          return;
-        }
-      });
-      if failed {
-        return Err("Failed to activate left panel");
-      }
+      return Ok(output);
     }
 
     if !self.right.is_empty() {
-      egui::SidePanel::right(EguiId::new(self, 2)).show(gui_ctx, |ui| {
-        // pass the ui parent to the inner shards
-        unsafe {
-          let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          let mut seq = Seq::new();
-          seq.push(var);
-          self.ui_ctx_instance.set(seq.as_ref().into());
-        }
+      let output = (if let Some(ui) = ui {
+        egui::SidePanel::right(EguiId::new(self, 2)).show_inside(ui, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.right,
+          )
+        })
+      } else {
+        egui::SidePanel::right(EguiId::new(self, 2)).show(gui_ctx, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.right,
+          )?;
+          // when used as a top container, the input passes through to be consistent with Window
+          Ok(*input)
+        })
+      })
+      .inner?;
 
-        let mut output = Var::default();
-        if self.right.activate(context, input, &mut output) == WireState::Error {
-          failed = true;
-          return;
-        }
-      });
-      if failed {
-        return Err("Failed to activate right panel");
-      }
+      return Ok(output);
     }
 
     if !self.bottom.is_empty() {
-      egui::TopBottomPanel::bottom(EguiId::new(self, 3)).show(gui_ctx, |ui| {
-        // pass the ui parent to the inner shards
-        unsafe {
-          let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          let mut seq = Seq::new();
-          seq.push(var);
-          self.ui_ctx_instance.set(seq.as_ref().into());
-        }
+      let output = (if let Some(ui) = ui {
+        egui::TopBottomPanel::bottom(EguiId::new(self, 3)).show_inside(ui, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.bottom,
+          )
+        })
+      } else {
+        egui::TopBottomPanel::bottom(EguiId::new(self, 3)).show(gui_ctx, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.bottom,
+          )?;
+          // when used as a top container, the input passes through to be consistent with Window
+          Ok(*input)
+        })
+      })
+      .inner?;
 
-        let mut output = Var::default();
-        if self.bottom.activate(context, input, &mut output) == WireState::Error {
-          failed = true;
-          return;
-        }
-      });
-      if failed {
-        return Err("Failed to activate bottom panel");
-      }
+      return Ok(output);
     }
 
     // center always last
     if !self.center.is_empty() {
-      egui::CentralPanel::default().show(gui_ctx, |ui| {
-        // pass the ui parent to the inner shards
-        unsafe {
-          let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
-          let mut seq = Seq::new();
-          seq.push(var);
-          self.ui_ctx_instance.set(seq.as_ref().into());
-        }
-
-        let mut output = Var::default();
-        if self.center.activate(context, input, &mut output) == WireState::Error {
-          failed = true;
-          return;
-        }
-      });
-      if failed {
-        return Err("Failed to activate center panel");
+      let ui = util::get_current_parent(self.ui_ctx_instance.get())?;
+      let output = if let Some(ui) = ui {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.center,
+          )
+        })
+      } else {
+        egui::CentralPanel::default().show(gui_ctx, |ui| {
+          util::activate_ui_contents(
+            context,
+            input,
+            ui,
+            &mut self.ui_ctx_instance,
+            &mut self.center,
+          )?;
+          // when used as a top container, the input passes through to be consistent with Window
+          Ok(*input)
+        })
       }
+      .inner?;
+
+      return Ok(output);
     }
 
     Ok(*input)

@@ -23,7 +23,7 @@ struct Window {
   requiring: ExposedTypes,
   title: ParamVar,
   contents: ShardsVar,
-  ui_ctx_instance: ParamVar,
+  parents: ParamVar,
 }
 
 mod panels;
