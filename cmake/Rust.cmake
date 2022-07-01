@@ -90,7 +90,7 @@ endmacro()
 
 # Need this custom build script to inherit the correct SDK variables from XCode
 if(IOS)
-  set(RUST_BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/osx_rust_build.sh")
+  set(RUST_BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/osx_rust_build.sh" ${XCODE_SDK})
 endif()
 
 # Defines a rust target
