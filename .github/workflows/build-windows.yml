@@ -195,7 +195,7 @@ jobs:
         run: |
           cd build
           ninja test_gfx
-          GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
+          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
