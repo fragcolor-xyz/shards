@@ -1,3 +1,4 @@
+#include "rust_interop.hpp"
 #include "gfx/shards_types.hpp"
 #include "gfx.hpp"
 #include <foundation.hpp>
@@ -42,5 +43,10 @@ Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
 DrawQueuePtr *getDrawQueueFromVar(const SHVar &var) {
   SHDrawQueue *shDrawQueue = castChecked<SHDrawQueue>(var, Types::DrawQueue);
   return &shDrawQueue->queue;
+}
+
+const egui::Input *getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+  return translator->translateFromInputEvents(globals->events, *globals->window.get(), globals->time, globals->deltaTime);
 }
 } // namespace gfx
