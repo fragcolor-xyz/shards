@@ -427,7 +427,11 @@ struct RendererImpl final : public ContextData {
     desc.entries = entries.data();
     desc.entryCount = entries.size();
     desc.layout = layout;
-    return wgpuDeviceCreateBindGroup(device, &desc);
+
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(device, &desc);
+    assert(result);
+
+    return result;
   }
 
   void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
