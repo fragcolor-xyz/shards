@@ -107,9 +107,11 @@ struct TextureManager {
       size = texture->getResolution();
       size_t dstPitch = size.x * dstPixelSize;
       size_t srcPitch = set.size[0] * srcPixelSize;
-      for (size_t y = set.offset[0]; y < set.size[1]; y++) {
-        uint8_t *dstPtr = imageData.data() + dstPitch * y;
-        const uint8_t *srcPtr = set.pixels + srcPitch * y;
+      uint8_t *dstBase = imageData.data() + set.offset[0] * dstPixelSize;
+      for (size_t srcY = 0; srcY < set.size[1]; srcY++) {
+        size_t dstY = set.offset[1] + srcY;
+        uint8_t *dstPtr = dstBase + dstPitch * dstY;
+        const uint8_t *srcPtr = set.pixels + srcPitch * srcY;
         imageCopy(fmt.pixelFormat, srcFormat, dstPtr, srcPtr, set.size[0]);
       }
     } else { // Full image
@@ -118,7 +120,7 @@ struct TextureManager {
       imageCopy(fmt.pixelFormat, srcFormat, imageData.data(), set.pixels, size.x * size.y);
     }
 
-    texture->init(fmt, int2(set.size[0], set.size[1]), sampler, std::move(imageData));
+    texture->init(fmt, size, sampler, std::move(imageData));
   }
 
   void free(egui::TextureId id) { textures.erase(id.id); }
