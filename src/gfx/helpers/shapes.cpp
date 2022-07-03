@@ -91,8 +91,9 @@ FeaturePtr GizmoLightingFeature::create() {
   code->appendLine("var normalVS = (invTransposeView * vec4<f32>(", ReadInput("worldNormal"), ", 0.0)).xyz");
   code->appendLine("var normalWS = ", ReadInput("worldNormal"));
   code->appendLine("var nDotL = dot(normalVS, -lightDirVS)");
-  code->appendLine("var lighting = ", ReadGlobal("color"), " * mix(0.5, 1.0, max(0.0, nDotL))");
-  code->append(WriteGlobal("color", FieldTypes::Float4, "lighting"));
+  code->appendLine("var baseColor = ", ReadGlobal("color"));
+  code->appendLine("var lighting = baseColor * mix(0.5, 1.0, max(0.0, nDotL))");
+  code->append(WriteGlobal("color", FieldTypes::Float4, "vec4<f32>(lighting.xyz, baseColor.a)"));
   entry.code = std::move(code);
 
   // Apply after normal/baseColor
