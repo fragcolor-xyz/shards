@@ -99,6 +99,7 @@ struct HelperContextShard : public gfx::BaseConsumer {
 
     assert(queueVar.payload.objectValue);
     _context.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
+    assert(_context.queue);
 
     gfx::Context &gfxContext = getContext();
     gfx::MainWindowGlobals &mainWindowGlobals = getMainWindowGlobals();
@@ -110,6 +111,9 @@ struct HelperContextShard : public gfx::BaseConsumer {
     gizmoInput.cursorPosition = _cursorPosition;
     gizmoInput.pressed = _mouseButtonState;
     gizmoInput.viewSize = outputSize;
+
+    // need to update the context var
+    _contextVarRef->payload.objectValue = &_context;
 
     _context.gizmoContext.begin(gizmoInput, view);
 
@@ -124,10 +128,12 @@ struct HelperContextShard : public gfx::BaseConsumer {
 
 extern void registerHighlightShards();
 extern void registerGizmoShards();
+extern void registerShapeShards();
 void registerShards() {
   REGISTER_SHARD("Helpers.Context", HelperContextShard);
   registerHighlightShards();
   registerGizmoShards();
+  registerShapeShards();
 }
 } // namespace Helpers
 } // namespace shards

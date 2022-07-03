@@ -669,7 +669,7 @@ struct RendererImpl final : public ContextData {
 
     WGPURenderPassDepthStencilAttachment depthAttach = {};
     depthAttach.depthClearValue = 1.0f;
-    if (!depthStencilWrittenTo) {
+    if (!depthStencilWrittenTo || step.forceDepthClear) {
       depthAttach.depthLoadOp = WGPULoadOp_Clear;
       depthAttach.depthStoreOp = WGPUStoreOp_Store;
       depthAttach.stencilLoadOp = WGPULoadOp_Undefined;

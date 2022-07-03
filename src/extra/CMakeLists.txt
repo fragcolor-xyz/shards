@@ -14,6 +14,7 @@ set(extra_SOURCES
   helpers/helpers.cpp
   helpers/gizmos.cpp
   helpers/highlight.cpp
+  helpers/shapes.cpp
   imgui.cpp
   # xr.cpp
   # gizmo.cpp
