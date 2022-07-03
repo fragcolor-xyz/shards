@@ -77,7 +77,7 @@ struct DrawablePassShard {
     *_step = makeDrawablePipelineStep(RenderDrawablesStep{
         .drawQueue = getDrawQueue(),
         .features = collectFeatures(_features),
-        .forceDepthClear = forceDepthClearVar.isSet() ? bool(forceDepthClearVar) : false,
+        .forceDepthClear = forceDepthClearVar.isNone() ? false : bool(forceDepthClearVar),
     });
     return Types::PipelineStepObjectVar.Get(_step);
   }

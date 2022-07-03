@@ -95,7 +95,7 @@ struct CircleShard : public BaseConsumer {
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     Var radiusVar(_radius.get());
-    float radius = radiusVar.isSet() ? float(radiusVar) : 1.0f;
+    float radius = radiusVar.isNone() ? 1.0f : float(radiusVar);
 
     shapeRenderer.addCircle(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), radius,
                             colorOrDefault(_color.get()), thicknessOrDefault(_thickness), 64);
@@ -148,7 +148,7 @@ struct RectShard : public BaseConsumer {
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     Var sizeVar(_size.get());
-    float2 size = sizeVar.isSet() ? toFloat2(sizeVar) : float2(1.0f, 1.0f);
+    float2 size = sizeVar.isNone() ? float2(1.0f, 1.0f) : toFloat2(sizeVar);
 
     shapeRenderer.addRect(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), size,
                           colorOrDefault(_color.get()), thicknessOrDefault(_thickness));
@@ -195,10 +195,10 @@ struct BoxShard : public BaseConsumer {
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     Var sizeVar(_size.get());
-    float3 size = sizeVar.isSet() ? toFloat3(sizeVar) : float3(1.0f, 1.0f, 1.0f);
+    float3 size = sizeVar.isNone() ? float3(1.0f, 1.0f, 1.0f) : toFloat3(sizeVar);
 
     Var transformVar(_transform.get());
-    float4x4 transform = transformVar.isSet() ? toFloat4x4(transformVar) : linalg::identity;
+    float4x4 transform = transformVar.isNone() ? linalg::identity : toFloat4x4(transformVar);
 
     shapeRenderer.addBox(transform, toFloat3(_center.get()), size, colorOrDefault(_color.get()), thicknessOrDefault(_thickness));
 
