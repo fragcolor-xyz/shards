@@ -37,11 +37,10 @@
    :Contents
    (->
     .time (Math.Add timestep) > .time
-    ;; (spin-transform .time (Float3 0.0 0 0)) > .transform-0
 
     .drawable-0 (GFX.Draw)
 
-    ; Draw overlaid
+    ; Draw helpers (using scene depth)
     .editor-queue (GFX.ClearQueue)
     (Helpers.Context :Queue .editor-queue :View .view
                      :Content (->  .drawable-0 (Helpers.Highlight)
@@ -65,7 +64,7 @@
                                    (Helpers.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)
                                    ))
 
-    ; Draw on top of everything
+    ; Draw on top of everything (ignore depth)
     .editor-queue-no-depth (GFX.ClearQueue)
     (Helpers.Context :Queue .editor-queue-no-depth :View .view
                      :Content (->
