@@ -76,6 +76,12 @@ inline MeshPtr createPlaneMesh() {
   return createMesh(gen.vertices, gen.indices);
 }
 
+inline MeshPtr createCubeMesh() {
+  geom::CubeGenerator gen;
+  gen.generate();
+  return createMesh(gen.vertices, gen.indices);
+}
+
 inline ViewPtr createTestProjectionView() {
   ViewPtr view = std::make_shared<View>();
   view->view = linalg::lookat_matrix(float3(0, 10.0f, 10.0f), float3(0, 0, 0), float3(0, 1, 0));
