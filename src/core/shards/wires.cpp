@@ -1639,6 +1639,7 @@ struct Branch {
 
   void composeSubWire(const SHInstanceData &data, SHWireRef &wireref) {
     auto wire = SHWire::sharedFromRef(wireref);
+    wire->mesh = _mesh; // this is needed to be correct
 
     auto dataCopy = data;
     dataCopy.wire = wire.get();
