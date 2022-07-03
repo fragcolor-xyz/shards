@@ -9,7 +9,6 @@ add_library(gfx
   gfx_wgpu.cpp
   renderer.cpp
   mesh.cpp
-  wireframe.cpp
   geom.cpp
   drawable.cpp
   enums.cpp
@@ -18,6 +17,8 @@ add_library(gfx
   utils.cpp
   feature.cpp
   texture.cpp
+  helpers/wireframe.cpp
+  helpers/shapes.cpp
   shader/generator.cpp
   shader/blocks.cpp
   shader/types.cpp

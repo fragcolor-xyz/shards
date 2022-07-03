@@ -13,15 +13,13 @@
 #include <gfx/features/transform.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/gltf/gltf.hpp>
+#include <gfx/helpers/shapes.hpp>
 #include <gfx/imgui/imgui.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/mesh.hpp>
-#include <gfx/moving_average.hpp>
 #include <gfx/paths.hpp>
 #include <gfx/renderer.hpp>
-#include <gfx/texture.hpp>
-#include <gfx/texture_file/texture_file.hpp>
 #include <gfx/types.hpp>
 #include <gfx/utils.hpp>
 #include <gfx/view.hpp>
@@ -44,156 +42,122 @@ void osYield() {
 void osYield() {}
 #endif
 
-struct VertexPC {
-  float position[3];
-  float color[4];
-
-  VertexPC() = default;
-  VertexPC(const geom::VertexPNT &other) {
-    setPosition(*(float3 *)other.position);
-    setColor(float4(1, 1, 1, 1));
-  }
-
-  void setPosition(const float3 &v) { memcpy(position, &v.x, sizeof(float) * 3); }
-  void setColor(const float4 &v) { memcpy(color, &v.x, sizeof(float) * 4); }
-
-  static std::vector<MeshVertexAttribute> getAttributes() {
-    std::vector<MeshVertexAttribute> attribs;
-    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
-    attribs.emplace_back("color", 4, VertexAttributeType::Float32);
-    return attribs;
-  }
-};
-
-template <typename T> std::vector<T> convertVertices(const std::vector<geom::VertexPNT> &input) {
-  std::vector<T> result;
-  for (auto &vert : input)
-    result.emplace_back(vert);
-  return result;
-}
-
-template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std::vector<geom::GeneratorBase::index_t> &indices) {
-  MeshPtr mesh = std::make_shared<Mesh>();
-  MeshFormat format{
-      .vertexAttributes = T::getAttributes(),
-  };
-  mesh->update(format, verts.data(), verts.size() * sizeof(T), indices.data(),
-               indices.size() * sizeof(geom::GeneratorBase::index_t));
-  return mesh;
-}
-
-MeshPtr createSphereMesh() {
-  geom::SphereGenerator gen;
-  gen.generate();
-  return createMesh(gen.vertices, gen.indices);
-}
-
 struct App {
   Window window;
   Loop loop;
   Context context;
 
-  DrawableHierarchyPtr gltfScene;
-  MeshPtr sphereMesh;
-
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
-  DrawQueuePtr drawQueue = std::make_shared<DrawQueue>();
 
-  std::vector<DrawableHierarchyPtr> drawables;
-
-  std::vector<TexturePtr> textures;
-
+  DrawQueuePtr queue = std::make_shared<DrawQueue>();
+  DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
   PipelineSteps pipelineSteps;
+  ShapeRenderer sr;
+
+  DrawableHierarchyPtr duck;
 
   App() {}
 
-  DrawablePtr createColoredSphere(float4 color) {
-    if (!sphereMesh)
-      sphereMesh = createSphereMesh();
-
-    DrawablePtr result = std::make_shared<Drawable>(sphereMesh);
-    result->parameters.set("baseColor", color);
-    return result;
-  }
-
   void init(const char *hostElement) {
-    spdlog::debug("sandbox Init");
     window.init(WindowCreationOptions{.width = 1280, .height = 720});
 
     gfx::ContextCreationOptions contextOptions = {};
     contextOptions.overrideNativeWindowHandle = const_cast<char *>(hostElement);
-    contextOptions.debug = true;
     context.init(window, contextOptions);
 
     renderer = std::make_shared<Renderer>(context);
-    imgui = std::make_shared<ImGuiRenderer>(context);
-
-    struct GlTFDesc {
-      const char *name;
-      float scale;
-    };
-
-    // clang-format off
-		GlTFDesc gltfDescs[] = {
-			{"Fox", 1.0f / 100.0f},
-			{"Duck", 1.0f/4.0f},
-			{"BarramundiFish", 1.7f},
-            {"Avocado", 6.2f},
-			{"Lantern", 1.0f/20.0f},
-			// {"Buggy", 1.0f / 100.0f},
-		};
-    // clang-format on
-
-    int sceneIndex = 0;
-    for (auto &desc : gltfDescs) {
-      auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", desc.name));
-      auto gltfScene = loadGltfFromFile(glbPath.string().c_str());
-      assert(gltfScene);
-
-      float fx = (sceneIndex++ - 2) * 1.0f;
-      float3 pos = float3(fx, 0, 0);
-
-      DrawableHierarchyPtr obj = gltfScene->clone();
-      float4x4 t = linalg::translation_matrix(pos);
-      float4x4 s = linalg::scaling_matrix(float3(desc.scale));
-      obj->transform = linalg::mul(t, s);
-      drawables.push_back(obj);
-
-      DrawableHierarchyPtr indicator = std::make_shared<DrawableHierarchy>();
-      indicator->drawables.push_back(createColoredSphere(float4(1, 0, 1, 1)));
-      indicator->transform = linalg::mul(linalg::translation_matrix(pos), linalg::scaling_matrix(float3(0.25f)));
-      // drawables.push_back(indicator);
-    }
 
     view = std::make_shared<View>();
-    view->proj = ViewPerspectiveProjection{};
-    // view->view = linalg::lookat_matrix(float3(-70, 110, 240), float3(0, 40, 0.0f), float3(0, 1, 0));
-    view->view = linalg::lookat_matrix(float3(4.5f, 2, 8), float3(0, 0, 0.0f), float3(0, 1, 0));
+    view->view = linalg::lookat_matrix(float3(3.0f, 3.0f, 3.0f), float3(0, 0, 0), float3(0, 1, 0));
+    view->proj = ViewPerspectiveProjection{
+        degToRad(45.0f),
+        FovDirection::Horizontal,
+    };
 
-    pipelineSteps.emplace_back(makeDrawablePipelineStep(RenderDrawablesStep{
-        .drawQueue = drawQueue,
-        .features =
-            {
-                features::Transform::create(),
-                features::BaseColor::create(),
-            },
-    }));
+    auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", "Duck"));
+    duck = loadGltfFromFile(glbPath.string().c_str());
+
+    pipelineSteps = {
+        makeDrawablePipelineStep(RenderDrawablesStep{
+            .drawQueue = queue,
+            .features =
+                {
+                    features::Transform::create(),
+                    features::BaseColor::create(),
+                },
+        }),
+        makeDrawablePipelineStep(RenderDrawablesStep{
+            .drawQueue = editorQueue,
+            .features =
+                {
+                    ScreenSpaceSizeFeature::create(),
+                    features::BaseColor::create(),
+                },
+        }),
+    };
   }
 
   void renderFrame(float time, float deltaTime) {
     renderer->beginFrame();
-    for (auto &drawable : drawables) {
-      drawQueue->add(drawable);
+
+    // queue->add(duck);
+
+    const float3 p = float3(0, 3, 3);
+
+    float4 q = linalg::rotation_quat(float3(0, 1, 0), time*0.1f);
+    float3 p1 = linalg::qrot(q, p);
+    view->view = linalg::lookat_matrix(p1, float3(0, 0, 0), float3(0, 1, 0));
+
+    sr.begin();
+
+    // size_t numSteps = 16;
+    // float spacing = 1.0f / 8.0f;
+    // for (size_t i = 0; i < numSteps; i++) {
+    //   float sz = (float(i)) * spacing;
+    //   sr.addLine(float3(0, 0, sz), float3(1, 0, sz), float4(1, 0, 0, 1), 1 + i);
+    //   sr.addLine(float3(0, 0, sz), float3(1, 0, sz), float4(1, 0, 0, 1), 1 + i);
+
+    //   sr.addLine(float3(sz, 0, 0), float3(sz, 1, 0), float4(0, 1, 0, 1), 1 + i);
+    //   sr.addLine(float3(sz, 0, 0), float3(sz, 1, 0), float4(0, 1, 0, 1), 1 + i);
+
+    //   sr.addLine(float3(0, sz, 0), float3(0, sz, 1), float4(0, 0, 1, 1), 1 + i);
+    //   sr.addLine(float3(0, sz, 0), float3(0, sz, 1), float4(0, 0, 1, 1), 1 + i);
+    // }
+
+    // auto doTriangle = [&](float3 center, float3 x, float3 y, float4 color, uint32_t thickness) {
+    //   float3 triangleVerts[3] = {};
+    //   triangleVerts[0] = center - 0.25f * x;
+    //   triangleVerts[1] = center + 0.25f * x;
+    //   triangleVerts[2] = center + 0.25f * y;
+    //   sr.addLine(triangleVerts[0], triangleVerts[1], color, thickness);
+    //   sr.addLine(triangleVerts[1], triangleVerts[2], color, thickness);
+    //   sr.addLine(triangleVerts[2], triangleVerts[0], color, thickness);
+    // };
+
+    // for (size_t i = 0; i < 9; i++) {
+    //   float3 offset = float3(0, 0, 0.2f) * (1 + i);
+    //   doTriangle(float3(0.5, 0.5, 0.0) + offset, float3(1, 0, 0), float3(0, 1, 0), float4(1, 1, 1, 1), 1 + i);
+    // }
+
+    for (size_t i = 1; i < 5; i++) {
+      float r = 0.2f + (0.2f * i);
+      float2 size = float2(r * 0.9f, r * 1.1f);
+      uint32_t thickness = (1 + i);
+      sr.addRect(float3(0, 0, 0), float3(1, 0, 0), float3(0, 0, 1), size, float4(0, 1, 0, 1), thickness);
+      sr.addRect(float3(0, 0, 0), float3(0, 0, 1), float3(0, 1, 0), size, float4(1, 0, 0, 1), thickness);
+      sr.addRect(float3(0, 0, 0), float3(1, 0, 0), float3(0, 1, 0), size, float4(0, 0, 1, 1), thickness);
     }
+
+    sr.finish(editorQueue);
+
     renderer->render(view, pipelineSteps);
     renderer->endFrame();
   }
 
   void renderUI(const std::vector<SDL_Event> &events) {
     imgui->beginFrame(events);
-
     imgui->endFrame();
   }
 
@@ -218,23 +182,13 @@ struct App {
         if (context.beginFrame()) {
           renderer->beginFrame();
 
-          drawQueue->clear();
+          queue->clear();
+          editorQueue->clear();
 
           renderFrame(loop.getAbsoluteTime(), deltaTime);
-          // renderUI(events);
 
           renderer->endFrame();
           context.endFrame();
-
-          static MovingAverage delaTimeMa(32);
-          delaTimeMa.add(deltaTime);
-
-          static float fpsCounter = 0.0f;
-          fpsCounter += deltaTime;
-          if (fpsCounter >= 1.0f) {
-            spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
-            fpsCounter = 0.0f;
-          }
         }
       }
       osYield();
