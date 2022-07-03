@@ -99,7 +99,7 @@ struct IterableParam {
   void setParam(int index, const SHVar &value) {                              \
     size_t numParams;                                                         \
     const IterableParam *params = getIterableParams(numParams);               \
-    if (index < numParams) {                                                  \
+    if (index < int(numParams)) {                                                  \
       params[index].setParam(params[index].resolveParamInShard(this), value); \
     } else {                                                                  \
       throw InvalidParameterIndex();                                          \
@@ -108,7 +108,7 @@ struct IterableParam {
   SHVar getParam(int index) {                                                 \
     size_t numParams;                                                         \
     const IterableParam *params = getIterableParams(numParams);               \
-    if (index < numParams) {                                                  \
+    if (index < int(numParams)) {                                                  \
       return params[index].getParam(params[index].resolveParamInShard(this)); \
     } else {                                                                  \
       throw InvalidParameterIndex();                                          \

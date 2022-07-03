@@ -550,7 +550,10 @@ struct Var : public SHVar {
 
   explicit Var(const SHVar &other) { memcpy((void *)this, (void *)&other, sizeof(SHVar)); }
 
-  Var& operator=(const SHVar& other) { memcpy((void *)this, (void *)&other, sizeof(SHVar)); return *this; }
+  Var &operator=(const SHVar &other) {
+    memcpy((void *)this, (void *)&other, sizeof(SHVar));
+    return *this;
+  }
 
   bool isNone() const { return valueType == SHType::None; }
 

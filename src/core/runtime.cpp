@@ -1087,7 +1087,7 @@ void validateConnection(ValidationContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      SHLOG_ERROR("Error composing shard: {}", composeResult.error.message);
+      SHLOG_ERROR("Error composing shard: {}, wire: {}", composeResult.error.message, ctx.wire ? ctx.wire->name : "(unwired)");
       throw ComposeError(composeResult.error.message);
     }
     ctx.previousOutputType = composeResult.result;

@@ -837,6 +837,7 @@ struct Match {
         bool hasVariables = false;
         TypeInfo cinfo(case_, data, &hasVariables);
         if (cinfo != data.inputType) {
+          SHLOG_ERROR("Match - case type does not match input type: {} != {}", SHTypeInfo(cinfo), data.inputType);
           throw ComposeError("Match: each case must match the input type!, found a mismatch.");
         }
       }
@@ -855,6 +856,7 @@ struct Match {
         } else {
           if (!cres.flowStopper) {
             if (cres.outputType != firstOutput) {
+              SHLOG_ERROR("Match - case output types do not match: {} != {}", cres.outputType, firstOutput);
               throw ComposeError("Match: when not Passthrough output types "
                                  "must match between cases.");
             }
