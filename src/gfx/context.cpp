@@ -299,7 +299,19 @@ bool Context::beginFrame() {
 
   collectContextData();
   if (!isHeadless()) {
-    if (!mainOutput->requestFrame())
+    const int maxAttempts = 2;
+    bool success = false;
+
+    // Try to request the swapchain texture, automatically recreate swapchain on failure
+    for (size_t i = 0; !success && i < maxAttempts; i++) {
+      success = mainOutput->requestFrame();
+      if (!success) {
+        SPDLOG_LOGGER_INFO(getLogger(), "Failed to get current swapchain texture, forcing recreate");
+        mainOutput->resizeSwapchain(wgpuDevice, wgpuAdapter, mainOutput->currentSize);
+      }
+    }
+
+    if (!success)
       return false;
   }
 
