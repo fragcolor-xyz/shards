@@ -811,9 +811,10 @@ struct RendererImpl final : public ContextData {
       }
     }
 
+    // Update default texture coordinates based on material
     if (material) {
       for (auto &pair : material->parameters.texture) {
-        textureBindingLayoutBuilder.addOrUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
+        textureBindingLayoutBuilder.tryUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
       }
     }
 
