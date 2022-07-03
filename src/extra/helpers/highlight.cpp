@@ -31,10 +31,10 @@ struct HighlightShard : public BaseConsumer {
                          .object = {.vendorId = input.payload.objectVendorId, .typeId = input.payload.objectTypeId}};
     if (gfx::Types::Drawable == inputType) {
       SHDrawable *dPtr = static_cast<SHDrawable *>(input.payload.objectValue);
-      helperContext.wireframeRenderer.overlayWireframe(helperContext.queue, dPtr->drawable);
+      helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), dPtr->drawable);
     } else if (gfx::Types::DrawableHierarchy == inputType) {
       SHDrawableHierarchy *dhPtr = static_cast<SHDrawableHierarchy *>(input.payload.objectValue);
-      helperContext.wireframeRenderer.overlayWireframe(helperContext.queue, dhPtr->drawableHierarchy);
+      helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), dhPtr->drawableHierarchy);
     }
 
     return SHVar{};
