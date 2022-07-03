@@ -6,6 +6,7 @@ set(extra_SOURCES
   gfx/drawable.cpp
   gfx/material.cpp
   gfx/feature.cpp
+  gfx/highlight.cpp
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
   gfx/gltf.cpp

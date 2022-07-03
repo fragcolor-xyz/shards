@@ -9,6 +9,7 @@ add_library(gfx
   gfx_wgpu.cpp
   renderer.cpp
   mesh.cpp
+  wireframe.cpp
   geom.cpp
   drawable.cpp
   enums.cpp

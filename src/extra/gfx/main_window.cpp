@@ -160,14 +160,9 @@ struct MainWindow : public Base {
 
     if (_mainWindowGlobalsVar) {
       if (_mainWindowGlobalsVar->refcount > 1) {
-#ifdef NDEBUG
-        SHLOG_ERROR("MainWindow: Found a dangling reference to GFX.Context");
-#else
         SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to GFX.Context", _mainWindowGlobalsVar->refcount - 1);
-#endif
       }
-      memset(_mainWindowGlobalsVar, 0x0, sizeof(SHVar));
-      _mainWindowGlobalsVar = nullptr;
+      releaseVariable(_mainWindowGlobalsVar);
     }
   }
 
