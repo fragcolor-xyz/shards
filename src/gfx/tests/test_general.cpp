@@ -6,11 +6,11 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
+#include <gfx/helpers/wireframe.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/paths.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
-#include <gfx/wireframe.hpp>
 #include <spdlog/fmt/fmt.h>
 
 using namespace gfx;
@@ -318,61 +318,6 @@ TEST_CASE("Textures", "[General]") {
 
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
   CHECK(testRenderer->checkFrame("textures", comparisonTolerance));
-
-  testRenderer.reset();
-}
-
-TEST_CASE("Wireframe", "[General]") {
-  auto testRenderer = createTestRenderer();
-  Renderer &renderer = *testRenderer->renderer.get();
-
-  MeshPtr sphereMesh = createCubeMesh();
-
-  ViewPtr view = std::make_shared<View>();
-  view->view = linalg::lookat_matrix(float3(3, 3.0f, 3.0f), float3(0, 0, 0), float3(0, 1, 0));
-  view->proj = ViewPerspectiveProjection{
-      degToRad(45.0f),
-      FovDirection::Horizontal,
-  };
-
-  DrawQueue queue;
-  DrawQueue editorQueue;
-  float4x4 transform;
-  DrawablePtr drawable;
-
-  transform = linalg::translation_matrix(float3(0.0f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(sphereMesh, transform);
-  drawable->parameters.set("baseColor", float4(0.2f, 0.2f, 0.2f, 1.0f));
-
-  PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
-          .features =
-              {
-                  features::Transform::create(),
-                  features::BaseColor::create(),
-              },
-      }),
-  };
-
-  WireframeRenderer wr0(false);
-  WireframeRenderer wr1(true);
-
-  auto loop = [&](WireframeRenderer &wr) {
-    queue.clear();
-    editorQueue.clear();
-
-    queue.add(drawable);
-    wr.overlayWireframe(editorQueue, drawable);
-
-    renderer.render(queue, view, steps);
-    renderer.render(editorQueue, view, steps);
-  };
-
-  TEST_RENDER_LOOP(testRenderer) { loop(wr0); };
-  CHECK(testRenderer->checkFrame("wireframe", comparisonTolerance));
-
-  TEST_RENDER_LOOP(testRenderer) { loop(wr1); };
-  CHECK(testRenderer->checkFrame("wireframe-backfaces", comparisonTolerance));
 
   testRenderer.reset();
 }

@@ -20,6 +20,7 @@ struct Wireframe {
     if (showBackfaces) {
       feature->state.set_depthWrite(false);
       feature->state.set_culling(false);
+      feature->state.set_depthCompare(WGPUCompareFunction_Always);
     } else {
       feature->state.set_depthCompare(WGPUCompareFunction_LessEqual);
     }
@@ -30,25 +31,23 @@ struct Wireframe {
     });
 
     // Generate vertex barycentric coordinates from a non-indexed mesh (all unique vertices)
-    auto a = blocks::makeCompoundBlock("var bx: i32 = max(0, ((i32(", blocks::ReadInput("vertex_index"), ") + 4) % 3) - 1);\n");
-    auto b = blocks::makeCompoundBlock("var by: i32 = max(0, ((i32(", blocks::ReadInput("vertex_index"), ") + 2) % 3) - 1);\n");
-    auto c = blocks::makeCompoundBlock("var bz: i32 = 1 - bx - by;\n");
-    auto initBarycentricCoordinates =
-        makeCompoundBlock(std::move(a), std::move(b), std::move(c),
-                          blocks::WriteOutput("barycentricCoord", FieldTypes::Float3, "vec3<f32>(f32(bx), f32(by), f32(bz))"));
-    feature->shaderEntryPoints.emplace_back("initBarycentricCoordinates", ProgrammableGraphicsStage::Vertex,
-                                            std::move(initBarycentricCoordinates));
+    auto code = makeCompoundBlock();
+    code->appendLine("var bx: i32 = max(0, ((i32(", blocks::ReadInput("vertex_index"), ") + 4) % 3) - 1)");
+    code->appendLine("var by: i32 = max(0, ((i32(", blocks::ReadInput("vertex_index"), ") + 2) % 3) - 1)");
+    code->appendLine("var bz: i32 = 1 - bx - by");
+    code->append(blocks::WriteOutput("barycentricCoord", FieldTypes::Float3, "vec3<f32>(f32(bx), f32(by), f32(bz))"));
+    feature->shaderEntryPoints.emplace_back("initBarycentricCoordinates", ProgrammableGraphicsStage::Vertex, std::move(code));
 
     // Generate screen space edge distance to wireframe color
-    auto wireDistance = blocks::makeCompoundBlock("var bary = ", blocks::ReadInput("barycentricCoord"), ";\n ",
-                                                  "var deltas = fwidth(bary);\n"
-                                                  "bary = smoothStep(deltas, deltas * 1.0, bary);\n"
-                                                  "var distance = min(bary.x, min(bary.y, bary.z));\n"
-                                                  "var wire = max(0.0, 1.0 - round(distance));\n");
-    auto visualizeBarycentricCoordinates = makeCompoundBlock(
-        std::move(wireDistance), blocks::WriteGlobal("color", FieldTypes::Float4, "wire * vec4<f32>(1.0, 1.0, 1.0, 1.0)"));
+    code = blocks::makeCompoundBlock();
+    code->appendLine("var bary = ", blocks::ReadInput("barycentricCoord"));
+    code->appendLine("var deltas = fwidth(bary)");
+    code->appendLine("bary = smoothStep(deltas, deltas * 1.0, bary)");
+    code->appendLine("var distance = min(bary.x, min(bary.y, bary.z))");
+    code->appendLine("var wire = max(0.0, 1.0 - round(distance))");
+    code->append(blocks::WriteGlobal("color", FieldTypes::Float4, "wire * vec4<f32>(1.0, 1.0, 1.0, 1.0)"));
     auto &entry = feature->shaderEntryPoints.emplace_back("visualizeBarycentricCoordinates", ProgrammableGraphicsStage::Fragment,
-                                                          std::move(visualizeBarycentricCoordinates));
+                                                          std::move(code));
     entry.dependencies.emplace_back("initColor");
 
     return feature;

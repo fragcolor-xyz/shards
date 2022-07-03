@@ -1,7 +1,7 @@
-#ifndef GFX_WIRE_MESH
-#define GFX_WIRE_MESH
+#ifndef F0B0C3A4_7AFF_4365_AF86_57E4D7CF0623
+#define F0B0C3A4_7AFF_4365_AF86_57E4D7CF0623
 
-#include "fwd.hpp"
+#include "../fwd.hpp"
 #include <map>
 
 namespace gfx {
@@ -29,4 +29,4 @@ public:
 };
 } // namespace gfx
 
-#endif // GFX_WIRE_MESH
+#endif /* F0B0C3A4_7AFF_4365_AF86_57E4D7CF0623 */
