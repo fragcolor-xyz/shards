@@ -40,8 +40,9 @@
     .drawable-0 (GFX.Draw)
 
     .editor-queue (GFX.ClearQueue)
-    (GFX.HighlightRenderer :Queue .editor-queue :Content (->
-                                                          .drawable-0 (GFX.Highlight)))
+    (Helpers.Context :Queue .editor-queue :View .view
+                     :Content (->
+                               .drawable-0 (Helpers.Highlight)))
 
     (GFX.Render :Steps .render-steps :View .view))))
 
