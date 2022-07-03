@@ -44,6 +44,7 @@ struct EguiContext {
   context: Option<EguiNativeContext>,
   instance: ParamVar,
   contents: ShardsVar,
+  parents: ParamVar,
 }
 
 mod containers;

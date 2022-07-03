@@ -18,14 +18,8 @@ pub(crate) fn activate_ui_contents<'a>(
 ) -> Result<Var, &'a str> {
   // pass the ui parent to the inner shards
   let var = parents.get();
-  let mut seq = if var.is_seq() {
-    let seq: Seq = var.as_ref().try_into()?;
-    // crate::core::logLevel(0, &format!("Parent count={}\0", seq.len()));
-    seq
-  } else {
-    // crate::core::logLevel(0, &format!("Empty parents\0"));
-    Seq::new()
-  };
+  let mut seq: Seq = var.as_ref().try_into()?;
+
   unsafe {
     let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);
     seq.push(var);
@@ -47,19 +41,13 @@ pub(crate) fn activate_ui_contents<'a>(
 }
 
 pub(crate) fn get_current_parent<'a>(parents: Var) -> Result<Option<&'a mut egui::Ui>, &'a str> {
-  let ui;
-  if parents.is_seq() {
-    let seq: Seq = parents.try_into()?;
-    if seq.len() > 0 {
-      ui = Some(Var::from_object_ptr_mut_ref(
-        seq[seq.len() - 1],
-        &EGUI_UI_TYPE,
-      )?);
-    } else {
-      ui = None;
-    }
+  let seq: Seq = parents.try_into()?;
+  if seq.len() > 0 {
+    Ok(Some(Var::from_object_ptr_mut_ref(
+      seq[seq.len() - 1],
+      &EGUI_UI_TYPE,
+    )?))
   } else {
-    ui = None;
+    Ok(None)
   }
-  Ok(ui)
 }

@@ -4,6 +4,7 @@
 use super::EguiContext;
 use super::CONTEXT_NAME;
 use super::EGUI_CTX_TYPE;
+use super::PARENTS_UI_NAME;
 use crate::shard::Shard;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -13,6 +14,7 @@ use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
+use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
@@ -35,10 +37,15 @@ impl Default for EguiContext {
   fn default() -> Self {
     let mut ctx = ParamVar::new(().into());
     ctx.set_name(CONTEXT_NAME);
+
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
+
     Self {
       context: None,
       instance: ctx,
       contents: ShardsVar::default(),
+      parents,
     }
   }
 }
@@ -117,10 +124,15 @@ impl Shard for EguiContext {
     self.context = Some(EguiNativeContext::default());
     self.instance.warmup(ctx);
     self.contents.warmup(ctx)?;
+    self.parents.warmup(ctx);
+    // Initialize the parents stack in the root UI.
+    // Every other UI elements will reference it and push or pop UIs to it.
+    self.parents.set(Seq::new().as_ref().into());
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.parents.cleanup();
     self.contents.cleanup();
     self.instance.cleanup();
     Ok(())
