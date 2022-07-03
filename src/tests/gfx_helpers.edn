@@ -1,0 +1,77 @@
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+(def BlendAlphaPremul {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.OneMinusSrcAlpha})
+(def BlendOne {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
+
+(defn spin-transform [t location]
+  (->
+   t >= .tmp-0
+   .tmp-0 (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+   .tmp-0 (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+   .tmp-0 (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+   location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ)))
+
+(defloop test-wire
+  (Setup
+   0.0 >= .time
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+   (Float3 0 0 0) (Math.Translation) >= .transform-0
+   {:Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}} (GFX.Drawable :Transform .transform-0) >> .drawable-0
+
+   (GFX.DrawQueue) >= .editor-queue
+   (GFX.DrawQueue) >= .editor-queue-no-depth
+
+    ; Create render steps
+   (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
+
+   (GFX.DrawablePass :Features .features) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .editor-queue :ForceDepthClear false) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .editor-queue-no-depth :ForceDepthClear true) >> .render-steps
+
+    ;; Create view
+   {:Position (Float3 3 3 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    .time (Math.Add timestep) > .time
+    ;; (spin-transform .time (Float3 0.0 0 0)) > .transform-0
+
+    .drawable-0 (GFX.Draw)
+
+    ; Draw overlaid
+    .editor-queue (GFX.ClearQueue)
+    (Helpers.Context :Queue .editor-queue :View .view
+                     :Content (->  .drawable-0 (Helpers.Highlight)
+                                   (Float3 0 0 0) >= .a
+                                   (Float3 0 0 2) >= .z-2
+                                   (Helpers.Line :A (Float3 0 0 0) :B (Float3 2 0 0) :Color (Float4 1 0 0 1) :Thickness 8)
+                                   (Helpers.Line :A .a :B (Float3 0 2 0) :Color (Float4 0 1 0 1))
+                                   (Helpers.Line :A .a :B .z-2 :Color (Float4 0 0 1 1) :Thickness 4)
+                                   
+                                   (Float3 1 0 0) >= .xbase
+                                   (Float3 0 1 0) >= .ybase
+                                   (Float3 0 0 1) >= .zbase
+                                   (Helpers.Circle :Center (Float3 1 1 1) :XBase .xbase :YBase .ybase)
+                                   (Helpers.Circle :Center (Float3 1 1 1) :XBase .zbase :YBase .ybase :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
+
+                                   (Helpers.Rect :Center (Float3 1 1 1.2) :XBase .xbase :YBase .ybase :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
+
+                                   (Helpers.Box :Center (Float3 1 1 1) :Size (Float3 0.5 0.2 0.3) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 4)
+
+                                   (Helpers.Point :Center (Float3 1.4 1.4 1) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 16)
+                                   (Helpers.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)
+                                   ))
+
+    ; Draw on top of everything
+    .editor-queue-no-depth (GFX.ClearQueue)
+    (Helpers.Context :Queue .editor-queue-no-depth :View .view
+                     :Content (->
+                               .transform-0 (Helpers.TranslationGizmo) > .transform-0))
+
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule root test-wire)
+(run root timestep)

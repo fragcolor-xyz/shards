@@ -9,6 +9,7 @@
 #include <gfx/window.hpp>
 #include <linalg_shim.hpp>
 #include <magic_enum.hpp>
+#include <params.hpp>
 
 using namespace shards;
 
@@ -19,56 +20,29 @@ struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  static inline Parameters params{
-      {"Features", SHCCSTR("Features to use."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"Queue",
-       SHCCSTR("The queue to draw from (Optional). Uses the default queue if not specified"),
-       {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
-  };
-  static SHParametersInfo parameters() { return params; }
+  PARAM_PARAMVAR(_features, "Features", "Features to use.", {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq});
+  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (optional). Uses the default queue if not specified",
+                 {Type::VariableOf(Types::DrawQueue)});
+  PARAM_PARAMVAR(_forceDepthClear, "ForceDepthClear", "When true, forces a depth clear before rendering",
+                 {CoreInfo::BoolType, shards::Type::VariableOf(CoreInfo::BoolType)});
+  PARAM_IMPL(DrawablePassShard, PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_forceDepthClear));
 
   PipelineStepPtr *_step{};
-  ParamVar _features{};
-  ParamVar _queueVar{};
 
   std::vector<FeaturePtr> _collectedFeatures;
   std::vector<Var> _featureVars;
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _features = value;
-      break;
-    case 1:
-      _queueVar = value;
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _features;
-    case 1:
-      return _queueVar;
-    default:
-      return Var::Empty;
-    }
-  }
 
   void cleanup() {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
-    _queueVar.cleanup();
-    _features.cleanup();
+    PARAM_CLEANUP();
   }
 
   void warmup(SHContext *context) {
     _step = Types::PipelineStepObjectVar.New();
-    _features.warmup(context);
-    _queueVar.warmup(context);
+    PARAM_WARMUP(context);
   }
 
   std::vector<FeaturePtr> collectFeatures(const SHVar &input) {
@@ -89,7 +63,7 @@ struct DrawablePassShard {
   }
 
   DrawQueuePtr getDrawQueue() {
-    SHVar queueVar = _queueVar.get();
+    SHVar queueVar = _queue.get();
     if (queueVar.payload.objectValue) {
       return (reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue;
     } else {
@@ -98,9 +72,12 @@ struct DrawablePassShard {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    Var forceDepthClearVar(_forceDepthClear.get());
+
     *_step = makeDrawablePipelineStep(RenderDrawablesStep{
         .drawQueue = getDrawQueue(),
         .features = collectFeatures(_features),
+        .forceDepthClear = forceDepthClearVar.isSet() ? bool(forceDepthClearVar) : false,
     });
     return Types::PipelineStepObjectVar.Get(_step);
   }
