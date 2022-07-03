@@ -892,6 +892,7 @@ struct RendererImpl final : public ContextData {
     objectEntry.buffer.hasDynamicOffset = false;
 
     WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = {};
+    bindGroupLayoutDesc.label = "batch";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
     return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
@@ -919,6 +920,7 @@ struct RendererImpl final : public ContextData {
     }
 
     WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = {};
+    bindGroupLayoutDesc.label = "textures";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
     return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
