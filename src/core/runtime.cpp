@@ -1158,9 +1158,8 @@ void validateConnection(ValidationContext &ctx) {
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
   for (uint32_t i = 0; exposedVars.len > i; i++) {
-    auto exposed_param = exposedVars.elements[i];
+    auto &exposed_param = exposedVars.elements[i];
     std::string name(exposed_param.name);
-    exposed_param.scope = exposed_param.global ? nullptr : ctx.wire;
     ctx.exposed[name].emplace(exposed_param);
 
     // Reference mutability checks

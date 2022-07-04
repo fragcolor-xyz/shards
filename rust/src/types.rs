@@ -344,7 +344,6 @@ impl ExposedInfo {
       isProtected: false,
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     }
   }
 
@@ -360,7 +359,6 @@ impl ExposedInfo {
       isProtected: false,
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     }
   }
 
@@ -373,7 +371,6 @@ impl ExposedInfo {
       isProtected: false,
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     }
   }
 
@@ -391,7 +388,6 @@ impl ExposedInfo {
       isProtected: false,
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     }
   }
 
@@ -409,7 +405,6 @@ impl ExposedInfo {
       isProtected: false,
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     }
   }
 }

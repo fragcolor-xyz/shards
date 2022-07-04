@@ -287,3 +287,33 @@
 
 (schedule Root wire-loop-inline-parent)
 (run Root)
+
+(defwire spawned-wire
+  .consumed-variable
+  (ToInt)
+  (Math.Add 1))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (Spawn spawned-wire) = .spawned-wire
+  (Wait .spawned-wire)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(run Root)
+
+(defwire detached-wire
+  .consumed-variable
+  (ToInt)
+  (Math.Add 1))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (Detach detached-wire)
+  (Wait detached-wire)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(run Root)

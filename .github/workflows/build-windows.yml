@@ -275,7 +275,7 @@ jobs:
           echo "Running test: struct"
           ./shards ../src/tests/struct.clj
           echo "Running test: flows"
-          ./shards ../src/tests/flows.clj
+          ./shards ../src/tests/flows.edn
           echo "Running test: kdtree"
           ./shards ../src/tests/kdtree.clj
           echo "Running test: channels"

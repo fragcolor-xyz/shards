@@ -35,6 +35,7 @@ struct WireBase {
   ParamVar wireref{};
   std::shared_ptr<SHWire> wire;
   bool passthrough{false};
+  bool capturing{false};
   RunWireMode mode{RunWireMode::Inline};
   SHComposeResult wireValidation{};
   IterableExposedInfo exposedInfo{};
@@ -99,7 +100,7 @@ struct WireBase {
       return mesh->visitedWires[wire.get()];
     }
 
-    // avoid stackoverflow
+    // avoid stack-overflow
     if (wire->isRoot || gatheringWires().count(wire.get())) {
       SHLOG_DEBUG("WireBase::compose early return, wire is being visited, name: {}", wire->name);
       return data.inputType; // we don't know yet...
@@ -129,7 +130,7 @@ struct WireBase {
     dataCopy.wire = wire.get();
     IterableExposedInfo shared(data.shared);
     IterableExposedInfo sharedCopy;
-    if (mode == RunWireMode::Detached) {
+    if (mode == RunWireMode::Detached && !capturing) {
       // keep only globals
       auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
       sharedCopy = IterableExposedInfo(shared.begin(), end);
@@ -559,8 +560,9 @@ struct Recur : public WireBase {
 
     // find all variables to store in current wire
     // use vector in the end.. cos slightly faster
+    _vars.clear();
     for (auto &shared : data.shared) {
-      if (shared.scope == data.wire) {
+      if (!shared.global) {
         SHVar ctxVar{};
         ctxVar.valueType = ContextVar;
         ctxVar.payload.stringValue = shared.name;
@@ -699,9 +701,12 @@ struct BaseRunner : public WireBase {
 };
 
 template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public BaseRunner {
+  std::deque<ParamVar> _vars;
+
   void setup() {
     passthrough = INPUT_PASSTHROUGH;
     mode = WIRE_MODE;
+    capturing = WIRE_MODE == RunWireMode::Detached;
   }
 
   static SHParametersInfo parameters() { return runWireParamsInfo; }
@@ -733,6 +738,19 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     } else if (wire->looped && WIRE_MODE == RunWireMode::Inline) {
       OVERRIDE_ACTIVATE(data, activateLoop);
     } else {
+      if constexpr (WIRE_MODE == RunWireMode::Detached) {
+        // build the list of variables to capture and inject into spawned chain
+        _vars.clear();
+        for (auto &require : wireValidation.requiredInfo) {
+          if (!require.global) {
+            SHVar ctxVar{};
+            ctxVar.valueType = ContextVar;
+            ctxVar.payload.stringValue = require.name;
+            auto &p = _vars.emplace_back();
+            p = ctxVar;
+          }
+        }
+      }
       OVERRIDE_ACTIVATE(data, activate);
     }
     return res;
@@ -741,6 +759,29 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   void warmup(SHContext *context) {
     WireBase::warmup(context);
     doWarmup(context);
+
+    if constexpr (WIRE_MODE == RunWireMode::Detached) {
+      for (auto &v : _vars) {
+        v.warmup(context);
+      }
+    }
+
+    wire->onStop.clear();
+    wire->onStop.emplace_back([this]() {
+      for (auto &v : _vars) {
+        // notice, this should be already destroyed by the wire releaseVariable
+        destroyVar(wire->variables[v.variableName()]);
+      }
+    });
+  }
+
+  void cleanup() {
+    if constexpr (WIRE_MODE == RunWireMode::Detached) {
+      for (auto &v : _vars) {
+        v.cleanup();
+      }
+    }
+    WireBase::cleanup();
   }
 
   SHVar activateNil(SHContext *, const SHVar &input) { return input; }
@@ -780,6 +821,10 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if constexpr (WIRE_MODE == RunWireMode::Detached) {
+      for (auto &v : _vars) {
+        auto &var = v.get();
+        cloneVar(wire->variables[v.variableName()], var);
+      }
       activateDetached(context, input);
       return input;
     } else if constexpr (WIRE_MODE == RunWireMode::Stepped) {
@@ -1513,7 +1558,10 @@ struct Expand : public ParallelBase {
 };
 
 struct Spawn : public WireBase {
-  Spawn() { mode = RunWireMode::Detached; }
+  Spawn() {
+    mode = RunWireMode::Detached;
+    capturing = true;
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
@@ -1544,14 +1592,28 @@ struct Spawn : public WireBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     WireBase::compose(data); // discard the result, we do our thing here
+
+    // build the list of variables to capture and inject into spawned chain
+    _vars.clear();
+    for (auto &require : wireValidation.requiredInfo) {
+      if (!require.global) {
+        SHVar ctxVar{};
+        ctxVar.valueType = ContextVar;
+        ctxVar.payload.stringValue = require.name;
+        auto &p = _vars.emplace_back();
+        p = ctxVar;
+      }
+    }
+
     // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
 
-    const IterableExposedInfo shared(data.shared);
     // copy shared
+    const IterableExposedInfo shared(data.shared);
     _sharedCopy = shared;
-
+    // copy input type
     _inputType = data.inputType;
+
     return CoreInfo::WireType;
   }
 
@@ -1581,7 +1643,21 @@ struct Spawn : public WireBase {
     }
   } _composer{*this};
 
-  void warmup(SHContext *context) { _composer.context = context; }
+  void warmup(SHContext *context) {
+    _composer.context = context;
+
+    for (auto &v : _vars) {
+      v.warmup(context);
+    }
+  }
+
+  void cleanup() {
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+
+    _composer.context = nullptr;
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
@@ -1589,9 +1665,20 @@ struct Spawn : public WireBase {
     c->wire->onStop.clear(); // we have a fresh recycled wire here
     std::weak_ptr<ManyWire> wc(c);
     c->wire->onStop.emplace_back([this, wc]() {
-      if (auto c = wc.lock())
+      if (auto c = wc.lock()) {
+        for (auto &v : _vars) {
+          // notice, this should be already destroyed by the wire releaseVariable
+          destroyVar(c->wire->variables[v.variableName()]);
+        }
         _pool->release(c);
+      }
     });
+
+    for (auto &v : _vars) {
+      auto &var = v.get();
+      cloneVar(c->wire->variables[v.variableName()], var);
+    }
+
     mesh->schedule(c->wire, input, false);
     return Var(c->wire); // notice this is "weak"
   }
@@ -1599,6 +1686,7 @@ struct Spawn : public WireBase {
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
   IterableExposedInfo _sharedCopy;
   SHTypeInfo _inputType{};
+  std::deque<ParamVar> _vars;
 };
 
 struct Branch {
