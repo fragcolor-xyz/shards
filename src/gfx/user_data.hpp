@@ -10,6 +10,7 @@
 
 namespace gfx {
 // Container for user data while validating expected type
+/// <div rustbindgen opaque></div>
 struct TypedUserData {
 private:
   void *data;

@@ -195,7 +195,7 @@ jobs:
         run: |
           cd build
           ninja test_gfx
-          GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
+          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -303,6 +303,7 @@ jobs:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
         run: |
+          export GFX_BACKEND=D3D12
           cd build
           echo "Running test: gfx_window"
           ./shards ../src/tests/gfx_window.edn

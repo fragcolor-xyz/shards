@@ -8,6 +8,7 @@
 struct SDL_Window;
 typedef union SDL_Event SDL_Event;
 namespace gfx {
+/// <div rustbindgen opaque></div>
 struct WindowCreationOptions {
   int width = 1280;
   int height = 720;
@@ -31,6 +32,9 @@ struct Window {
 
   // = draw surface size / window size
   float2 getDrawScale() const;
+
+  // = draw surface size / draw scale
+  float2 getVirtualDrawableSize();
 
   ~Window();
 };

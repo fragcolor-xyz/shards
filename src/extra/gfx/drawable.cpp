@@ -251,7 +251,7 @@ struct DrawShard : public BaseConsumer {
     if (queueVar.payload.objectValue) {
       return *(reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue.get();
     } else {
-      return *getMainWindowGlobals().drawQueue.get();
+      return *getMainWindowGlobals().getDrawQueue().get();
     }
   }
 

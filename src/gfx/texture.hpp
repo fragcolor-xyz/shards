@@ -10,6 +10,7 @@
 namespace gfx {
 
 enum class TextureFormatFlags : uint8_t {
+  None = 0x0,
   AutoGenerateMips = 0x01,
 };
 inline bool TextureFormatFlagsContains(TextureFormatFlags left, TextureFormatFlags right) {
@@ -75,6 +76,8 @@ public:
             const ImmutableSharedBuffer &data = ImmutableSharedBuffer());
 
   void setSamplerState(const SamplerState &samplerState);
+  ImmutableSharedBuffer getData() { return data; }
+  int2 getResolution() const { return resolution; }
 
   std::shared_ptr<Texture> clone();
 

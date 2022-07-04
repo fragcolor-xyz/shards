@@ -42,6 +42,10 @@ namespace DSP {
 extern void registerShards();
 }
 
+namespace Gui {
+extern void registerShards();
+}
+
 void shInitExtras() {
 #if SHARDS_WITH_RUST_SHARDS
   registerRustShards(shardsInterface(SHARDS_CURRENT_ABI));
@@ -55,6 +59,7 @@ void shInitExtras() {
   Inputs::registerShards();
   Audio::registerShards();
   DSP::registerShards();
+  Gui::registerShards();
 
 #ifdef _WIN32
   Desktop::registerDesktopShards();

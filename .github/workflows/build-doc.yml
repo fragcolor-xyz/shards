@@ -36,6 +36,7 @@ jobs:
       - name: Run samples
         shell: msys2 {0}
         run: |
+          export GFX_BACKEND=D3D12
           cd docs/samples
           for i in $(find shards -name '*.edn');
           do
@@ -135,7 +136,7 @@ jobs:
           git config --global user.name "Fragcolor bot"
           git config --global user.email "bot@fragcolor.xyz"
           mkdocs gh-deploy --force --message "Publish documentation from {sha}
-          
+
           Using MkDocs {version}."
       - name: Upload artifact
         uses: actions/upload-artifact@v2

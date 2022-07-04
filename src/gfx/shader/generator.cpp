@@ -18,6 +18,7 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
 }
 
 void GeneratorContext::write(const StringView &str) { result += str; }
+void GeneratorContext::writeHeader(const StringView &str) { header += str; }
 
 void GeneratorContext::readGlobal(const char *name) {
   auto it = globals.find(name);
@@ -121,7 +122,6 @@ bool GeneratorContext::hasTexture(const char *name, bool defaultTexcoordRequired
 const TextureDefinition *GeneratorContext::getTexture(const char *name) {
   auto it = textures.find(name);
   if (it == textures.end()) {
-    pushError(formatError("Texture {} does not exist", name));
     return nullptr;
   } else {
     return &it->second;
@@ -131,6 +131,8 @@ const TextureDefinition *GeneratorContext::getTexture(const char *name) {
 void GeneratorContext::texture(const char *name) {
   if (const TextureDefinition *texture = getTexture(name)) {
     result += texture->variableName;
+  } else {
+    pushError(formatError("Texture {} does not exist", name));
   }
 }
 
@@ -435,7 +437,7 @@ struct Stage {
     }
 
     return StageOutput{
-        globalsHeader + std::move(context.result),
+        globalsHeader + std::move(context.header) + std::move(context.result),
         std::move(context.errors),
     };
   }

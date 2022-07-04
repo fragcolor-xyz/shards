@@ -61,6 +61,7 @@ struct Rect {
 
   static Rect fromCorners(int x0, int y0, int x1, int y1) { return Rect(x0, y0, x1 - x0, y1 - y0); }
 };
+
 } // namespace gfx
 
 #endif // GFX_TYPES

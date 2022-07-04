@@ -12,7 +12,7 @@
 
 namespace gfx {
 
-typedef std::variant<std::monostate, float, float2, float3, float4, float4x4> ParamVariant;
+typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> ParamVariant;
 
 struct TextureParameter {
   TexturePtr texture;

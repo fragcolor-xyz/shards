@@ -2871,8 +2871,8 @@ impl ShardsVar {
     }
     self.shards.clear();
 
-     // clear old results if any
-     if let Some(compose_result) = self.compose_result {
+    // clear old results if any
+    if let Some(compose_result) = self.compose_result {
       unsafe {
         (*Core).expTypesFree.unwrap()(&compose_result.exposedInfo as *const _ as *mut _);
         (*Core).expTypesFree.unwrap()(&compose_result.requiredInfo as *const _ as *mut _);

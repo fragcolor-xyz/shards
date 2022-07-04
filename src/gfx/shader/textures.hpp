@@ -41,6 +41,14 @@ public:
     binding->defaultTexcoordBinding = defaultTexcoordBinding;
   }
 
+  void tryUpdateSlot(const String &name, size_t defaultTexcoordBinding) {
+    auto it = mapping.find(name);
+    if (it != mapping.end()) {
+      auto &binding = layout.bindings[it->second];
+      binding.defaultTexcoordBinding = defaultTexcoordBinding;
+    }
+  }
+
   TextureBindingLayout &&finalize() { return std::move(layout); }
 };
 } // namespace shader

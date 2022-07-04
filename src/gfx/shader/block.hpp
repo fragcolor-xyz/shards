@@ -18,12 +18,24 @@ struct Block {
 };
 using BlockPtr = UniquePtr<Block>;
 
+// Source block injected directly into the generated shader
 struct Direct : public Block {
   String code;
 
   Direct(const char *code) : code(code) {}
   Direct(const String &code) : code(code) {}
   Direct(String &&code) : code(code) {}
+  void apply(GeneratorContext &context) const;
+  BlockPtr clone() { return std::make_unique<Direct>(code); }
+};
+
+// Source block applied outside of the function body
+struct Header : public Block {
+  String code;
+
+  Header(const char *code) : code(code) {}
+  Header(const String &code) : code(code) {}
+  Header(String &&code) : code(code) {}
   void apply(GeneratorContext &context) const;
   BlockPtr clone() { return std::make_unique<Direct>(code); }
 };

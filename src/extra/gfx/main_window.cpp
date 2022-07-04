@@ -141,10 +141,13 @@ struct MainWindow : public Base {
     globals->renderer = std::make_shared<Renderer>(*globals->context.get());
     globals->imgui = std::make_shared<ImGuiRenderer>(*globals->context.get());
 
-    globals->drawQueue = std::make_shared<DrawQueue>();
+    globals->shDrawQueue = SHDrawQueue{
+        .queue = std::make_shared<DrawQueue>(),
+    };
 
     _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
-    _mainWindowGlobalsVar->payload.objectTypeId = MainWindowGlobals::TypeId;
+    _mainWindowGlobalsVar->payload.objectTypeId = SHTypeInfo(MainWindowGlobals::Type).object.typeId;
+    _mainWindowGlobalsVar->payload.objectVendorId = SHTypeInfo(MainWindowGlobals::Type).object.vendorId;
     _mainWindowGlobalsVar->payload.objectValue = globals.get();
     _mainWindowGlobalsVar->valueType = SHType::Object;
 
@@ -168,7 +171,7 @@ struct MainWindow : public Base {
     }
   }
 
-  void frameBegan() { globals->drawQueue->clear(); }
+  void frameBegan() { globals->getDrawQueue()->clear(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderer = globals->renderer;

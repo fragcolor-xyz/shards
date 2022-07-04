@@ -1,11 +1,14 @@
-set(FEATURES shards run_bindgen)
+set(FEATURES shards)
 
 if(RUST_SHLISP)
   list(APPEND FEATURES scripting)
 endif()
 
 # Bindgen dependency
-list(APPEND EXTRA_SOURCES ${SHARDS_DIR}/include/shards.h)
+list(APPEND EXTRA_SOURCES ${SHARDS_DIR}/src/extra/rust_interop.hpp ${SHARDS_DIR}/include/shards.h)
+
+# egui integration sources
+file(GLOB_RECURSE EXTRA_SOURCES "${SHARDS_DIR}/src/gfx/egui/src/*.rs")
 
 if(ANDROID OR LINUX)
   set(NEED_OPENSSL_SYS ON)

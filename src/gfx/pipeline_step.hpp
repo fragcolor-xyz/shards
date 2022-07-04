@@ -8,6 +8,8 @@
 namespace gfx {
 
 enum class SortMode {
+  // Keep queue ordering,
+  Queue,
   // Optimal for batching
   Batch,
   // For transparent object rendering

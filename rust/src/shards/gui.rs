@@ -17,9 +17,9 @@ use crate::types::FRAG_CC;
 use crate::types::NONE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::{RawString, Types};
-use egui::RawInput;
 use egui::containers::panel::{CentralPanel, SidePanel, TopBottomPanel};
 use egui::Context as EguiNativeContext;
+use egui::RawInput;
 use egui::Ui;
 use std::ffi::c_void;
 use std::ffi::CString;
@@ -421,8 +421,9 @@ impl Shard for Panels {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx= {
-      let ctx_ptr: &mut EguiNativeContext = Var::from_object_ptr_mut_ref(self.instance.get(), &EGUI_CTX_TYPE)?;
+    let gui_ctx = {
+      let ctx_ptr: &mut EguiNativeContext =
+        Var::from_object_ptr_mut_ref(self.instance.get(), &EGUI_CTX_TYPE)?;
       &*ctx_ptr
     };
 

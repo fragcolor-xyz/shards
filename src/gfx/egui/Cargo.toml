@@ -1,0 +1,17 @@
+[package]
+name = "egui-gfx"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+egui = { version = "0.18.1" }
+epaint = {version = "0.18.1"}
+lazy_static = "1.4.0"
+
+[build-dependencies]
+bindgen = "0.60.1"
+gfx-build = { path = "../rust/build" }
+
+[features]
+# Enables the test UI code
+standalone_test = []

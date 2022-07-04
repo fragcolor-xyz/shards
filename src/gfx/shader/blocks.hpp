@@ -14,7 +14,10 @@ namespace blocks {
 struct Compound : public Block {
   std::vector<UniquePtr<Block>> children;
 
-  template <typename... TArgs> Compound(TArgs... args) { (..., children.push_back(ConvertToBlock<TArgs>{}(std::move(args)))); }
+  template <typename... TArgs> Compound(TArgs... args) { append<TArgs...>(std::forward<TArgs>(args)...); }
+
+  template <typename... TArgs> void append(TArgs... args) { (..., children.push_back(ConvertToBlock<TArgs>{}(std::move(args)))); }
+  template <typename... TArgs> void appendLine(TArgs... args) { append(std::forward<TArgs>(args)..., ";\n"); }
 
   void apply(GeneratorContext &context) const {
     for (auto &c : children)

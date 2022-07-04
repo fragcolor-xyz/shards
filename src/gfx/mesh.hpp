@@ -11,6 +11,7 @@
 
 namespace gfx {
 
+/// <div rustbindgen opaque></div>
 struct MeshVertexAttribute {
   std::string name;
   uint8_t numComponents;
@@ -32,6 +33,7 @@ struct MeshVertexAttribute {
   }
 };
 
+/// <div rustbindgen opaque></div>
 struct MeshFormat {
   PrimitiveType primitiveType = PrimitiveType::TriangleList;
   WindingOrder windingOrder = WindingOrder::CCW;
@@ -48,6 +50,7 @@ struct MeshFormat {
   }
 };
 
+/// <div rustbindgen opaque></div>
 struct MeshContextData : public ContextData {
   MeshFormat format;
   size_t numVertices = 0;
@@ -64,6 +67,7 @@ struct MeshContextData : public ContextData {
   }
 };
 
+/// <div rustbindgen opaque></div>
 struct Mesh final : public TWithContextData<MeshContextData> {
 private:
   MeshFormat format;

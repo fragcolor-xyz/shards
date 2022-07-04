@@ -296,6 +296,8 @@ struct RendererImpl final : public ContextData {
     float4x4 projMatrix = viewData.projectionMatrix = viewPtr->getProjectionMatrix(viewSize);
     viewDrawData.setParam("proj", projMatrix);
     viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
+    viewDrawData.setParam("viewport",
+                          float4(float(viewport.x), float(viewport.y), float(viewport.width), float(viewport.height)));
 
     DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
     viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
@@ -425,13 +427,17 @@ struct RendererImpl final : public ContextData {
     desc.entries = entries.data();
     desc.entryCount = entries.size();
     desc.layout = layout;
-    return wgpuDeviceCreateBindGroup(device, &desc);
+
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(device, &desc);
+    assert(result);
+
+    return result;
   }
 
   void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
     size_t alignedObjectBufferSize =
         alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment);
-    size_t numObjects = cachedPipeline.drawables.size();
+    size_t numObjects = cachedPipeline.drawablesSorted.size();
     size_t instanceBufferLength = numObjects * alignedObjectBufferSize;
     instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
 
@@ -544,13 +550,22 @@ struct RendererImpl final : public ContextData {
     // Sort drawables based on mesh/texture bindings
     for (auto &drawable : cachedPipeline.drawables) {
       drawable->mesh->createContextDataConditional(context);
+
+      // Filter out empty meshes here
+      if (drawable->mesh->contextData->numVertices == 0)
+        continue;
+
       addFrameReference(drawable->mesh->contextData);
 
       SortableDrawable sortableDrawable = createSortableDrawable(cachedPipeline, *drawable);
 
-      auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
-      auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
-      drawablesSorted.insert(it, sortableDrawable);
+      if (step.sortMode == SortMode::Queue) {
+        drawablesSorted.push_back(sortableDrawable);
+      } else {
+        auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
+        auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
+        drawablesSorted.insert(it, sortableDrawable);
+      }
     }
 
     if (step.sortMode == SortMode::BackToFront) {
@@ -612,7 +627,11 @@ struct RendererImpl final : public ContextData {
     textureBindGroupDesc.layout = cachedPipeline.bindGroupLayouts[1];
     textureBindGroupDesc.entries = entries.data();
     textureBindGroupDesc.entryCount = entries.size();
-    return wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
+
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
+    assert(result);
+
+    return result;
   }
 
   void renderDrawables(RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
@@ -679,12 +698,12 @@ struct RendererImpl final : public ContextData {
 
     for (auto &pair : pipelineCache) {
       CachedPipeline &cachedPipeline = *pair.second.get();
-      if (cachedPipeline.drawables.empty())
+      if (cachedPipeline.drawablesSorted.empty())
         continue;
 
       size_t drawBufferLength =
           alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment) *
-          cachedPipeline.drawables.size();
+          cachedPipeline.drawablesSorted.size();
 
       DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
       fillInstanceBuffer(instanceBuffer, cachedPipeline, view.get());
@@ -706,6 +725,7 @@ struct RendererImpl final : public ContextData {
         onFrameCleanup([textureBindGroup]() { wgpuBindGroupRelease(textureBindGroup); });
 
         MeshContextData *meshContextData = drawGroup.key.meshData;
+        assert(meshContextData->vertexBuffer);
         wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0,
                                              meshContextData->vertexBufferLength);
 
@@ -791,9 +811,10 @@ struct RendererImpl final : public ContextData {
       }
     }
 
+    // Update default texture coordinates based on material
     if (material) {
       for (auto &pair : material->parameters.texture) {
-        textureBindingLayoutBuilder.addOrUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
+        textureBindingLayoutBuilder.tryUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
       }
     }
 
@@ -871,6 +892,7 @@ struct RendererImpl final : public ContextData {
     objectEntry.buffer.hasDynamicOffset = false;
 
     WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = {};
+    bindGroupLayoutDesc.label = "batch";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
     return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
@@ -898,6 +920,7 @@ struct RendererImpl final : public ContextData {
     }
 
     WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = {};
+    bindGroupLayoutDesc.label = "textures";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
     return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
@@ -1034,6 +1057,8 @@ Renderer::Renderer(Context &context) {
   }
   impl->initializeContextData();
 }
+
+Context &Renderer::getContext() { return impl->context; }
 
 void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { impl->renderViews(views, pipelineSteps); }
 void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(view, pipelineSteps); }

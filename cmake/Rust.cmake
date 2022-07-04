@@ -90,7 +90,7 @@ endmacro()
 
 # Need this custom build script to inherit the correct SDK variables from XCode
 if(IOS)
-  set(RUST_BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/osx_rust_build.sh")
+  set(RUST_BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/osx_rust_build.sh" ${XCODE_SDK})
 endif()
 
 # Defines a rust target
@@ -108,6 +108,7 @@ function(add_rust_library)
     FEATURES             # (Optional) List of features to pass to rust build
     ENVIRONMENT          # (Optional) Environment variables
     DEPENDS              # (Optional) Extra file-level dependencies
+    EXCLUDE_DEPENDS      # (Optional) Extra file-level dependencies to ignore
   )
   cmake_parse_arguments(RUST "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
@@ -127,6 +128,9 @@ function(add_rust_library)
   file(GLOB_RECURSE RUST_TEMP_SOURCES "${RUST_PROJECT_PATH}/target/*.rs" "${RUST_PROJECT_PATH}/target/*.toml")
   if(RUST_TEMP_SOURCES)
     list(REMOVE_ITEM RUST_SOURCES ${RUST_TEMP_SOURCES})
+  endif()
+  if(RUST_EXCLUDE_DEPENDS)
+    list(REMOVE_ITEM RUST_SOURCES ${RUST_EXCLUDE_DEPENDS})
   endif()
   message(VERBOSE "  RUST_SOURCES: ${RUST_SOURCES}")
 
@@ -156,9 +160,30 @@ function(add_rust_library)
 
   set(RUST_CRATE_TYPE_ARG --crate-type staticlib)
 
+  # When the compiler can't automatically provide include paths (emscripten):
+  #  pass the sysroot to the bindgen clang arguments
+  if(EMSCRIPTEN_SYSROOT)
+    file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}" TMP_SYSROOT)
+    list(APPEND EXTRA_CLANG_ARGS "--sysroot=${TMP_SYSROOT}")
+  endif()
+
+  if(EMSCRIPTEN)
+    # Required to have some symbols be exported
+    # https://github.com/rust-lang/rust-bindgen/issues/751
+    list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
+  endif()
+
+  if(EXTRA_CLANG_ARGS)
+    set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
+  endif()
+
+  if(RUST_TARGET_PATH)
+    list(APPEND RUST_ENVIRONMENT "CARGO_TARGET_DIR=${RUST_TARGET_PATH}")
+  endif()
+
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
+    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" ${BINDGEN_EXTRA_CLANG_ARGS} ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
     WORKING_DIRECTORY ${RUST_PROJECT_PATH}
     DEPENDS ${RUST_SOURCES} ${RUST_DEPENDS}
     USES_TERMINAL

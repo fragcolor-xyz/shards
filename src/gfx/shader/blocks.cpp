@@ -6,6 +6,7 @@ namespace gfx {
 namespace shader {
 namespace blocks {
 void Direct::apply(GeneratorContext &context) const { context.write(code); }
+void Header::apply(GeneratorContext &context) const { context.writeHeader(code); }
 
 DefaultInterpolation::DefaultInterpolation() {
   matchPrefixes = {

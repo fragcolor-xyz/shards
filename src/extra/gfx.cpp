@@ -285,7 +285,7 @@ struct RenderShard : public BaseConsumer {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
             if (!arg.drawQueue)
-              arg.drawQueue = getMainWindowGlobals().drawQueue;
+              arg.drawQueue = getMainWindowGlobals().getDrawQueue();
           }
         },
         step);

@@ -20,6 +20,7 @@ add_library(gfx
   shader/generator.cpp
   shader/blocks.cpp
   shader/types.cpp
+  rust_interop.cpp
   # cache_data.cpp
 )
 
@@ -51,6 +52,8 @@ target_link_libraries(gfx_imgui
   gfx
   imgui imgui_club implot imguizmo
 )
+
+add_subdirectory(egui)
 
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)
 

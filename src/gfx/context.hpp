@@ -16,12 +16,8 @@
 
 namespace gfx {
 struct ContextCreationOptions {
-  bool debug = true;
+  bool debug = false;
   void *overrideNativeWindowHandle = nullptr;
-};
-
-struct CopyBuffer {
-  std::vector<uint8_t> data;
 };
 
 enum class ContextState {
@@ -41,6 +37,8 @@ struct ContextData;
 struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
+
+/// <div rustbindgen opaque></div>
 struct Context {
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;

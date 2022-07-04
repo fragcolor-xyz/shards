@@ -32,6 +32,7 @@ struct IGeneratorDynamicHandler {
 
 struct GeneratorContext {
   String result;
+  String header;
   String inputVariableName;
   String outputVariableName;
   String globalsVariableName;
@@ -47,6 +48,9 @@ struct GeneratorContext {
   std::vector<IGeneratorDynamicHandler *> dynamicHandlers;
 
   void write(const StringView &str);
+
+  // Writes into a separate buffer that is prepended to the combined output of write and all other generated code
+  void writeHeader(const StringView &str);
 
   void readGlobal(const char *name);
   void writeGlobal(const char *name, const FieldType &type);
