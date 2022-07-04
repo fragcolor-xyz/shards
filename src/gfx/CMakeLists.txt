@@ -45,12 +45,14 @@ target_link_libraries(gfx
   shards-logging
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+target_link_libraries(gfx Tracy::TracyClient)
 
 add_library(gfx-texture-file texture_file/texture_file.cpp)
 target_link_libraries(gfx-texture-file gfx)
 
 add_library(gfx-gltf gltf/gltf.cpp)
 target_link_libraries(gfx-gltf gfx tinygltf)
+target_link_libraries(gfx-gltf Tracy::TracyClient)
 
 add_subdirectory(egui)
 

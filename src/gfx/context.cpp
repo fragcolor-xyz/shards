@@ -5,6 +5,7 @@
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
+#include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -15,9 +16,25 @@
 #include <emscripten/html5.h>
 #endif
 
-namespace gfx {
+#ifdef TRACY_ENABLE
+// Defined in the gfx rust crate
+//   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
+//   but since we link to the dll, we can use it from C++ too
+extern "C" void gfxTracyInit();
+#endif
 
+namespace gfx {
 static auto logger = getLogger();
+
+static void gfxTracyInitOnce() {
+#ifdef TRACY_ENABLE
+  static bool tracyInitialized{};
+  if (!tracyInitialized) {
+    gfxTracyInit();
+    tracyInitialized = true;
+  }
+#endif
+}
 
 static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
 #if GFX_ANDROID
@@ -115,6 +132,8 @@ struct ContextMainOutput {
   }
 
   WGPUSurface initSurface(WGPUInstance instance, void *overrideNativeWindowHandle) {
+    ZoneScoped;
+
     if (!wgpuWindowSurface) {
       void *surfaceHandle = overrideNativeWindowHandle;
 
@@ -150,6 +169,8 @@ struct ContextMainOutput {
 #ifdef WEBGPU_NATIVE
     wgpuSwapChainPresent(wgpuSwapchain);
 #endif
+
+    FrameMark;
   }
 
   void initSwapchain(WGPUAdapter adapter, WGPUDevice device) {
@@ -229,6 +250,8 @@ Window &Context::getWindow() {
 }
 
 void Context::resizeMainOutputConditional(const int2 &newSize) {
+  ZoneScoped;
+
   if (state != ContextState::Ok)
     return;
 
@@ -257,6 +280,7 @@ WGPUTextureFormat Context::getMainOutputFormat() const {
 bool Context::isHeadless() const { return !mainOutput; }
 
 void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
+  ZoneScoped;
   assert(!ptr.expired());
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();
@@ -287,6 +311,7 @@ void Context::releaseAllContextData() {
 }
 
 bool Context::beginFrame() {
+  ZoneScoped;
   assert(frameState == ContextFrameState::Ok);
 
   // Automatically request
@@ -327,6 +352,7 @@ bool Context::beginFrame() {
 }
 
 void Context::endFrame() {
+  ZoneScoped;
   assert(frameState == ContextFrameState::WaitingForEnd);
 
   if (!isHeadless())
@@ -336,6 +362,7 @@ void Context::endFrame() {
 }
 
 void Context::sync() {
+  ZoneScoped;
 #ifdef WEBGPU_NATIVE
   wgpuDevicePoll(wgpuDevice, true, nullptr);
 #endif
@@ -357,7 +384,10 @@ void Context::suspend() {
 
 void Context::resume() { suspended = false; }
 
-void Context::submit(WGPUCommandBuffer cmdBuffer) { wgpuQueueSubmit(wgpuQueue, 1, &cmdBuffer); }
+void Context::submit(WGPUCommandBuffer cmdBuffer) {
+  ZoneScoped;
+  wgpuQueueSubmit(wgpuQueue, 1, &cmdBuffer);
+}
 
 void Context::deviceLost() {
   if (state != ContextState::Incomplete) {
@@ -369,6 +399,7 @@ void Context::deviceLost() {
 }
 
 void Context::tickRequesting() {
+  ZoneScoped;
   SPDLOG_LOGGER_DEBUG(logger, "tickRequesting");
   try {
     if (adapterRequest) {
@@ -404,6 +435,7 @@ void Context::tickRequesting() {
 }
 
 void Context::deviceObtained() {
+  ZoneScoped;
   state = ContextState::Ok;
   SPDLOG_LOGGER_DEBUG(logger, "wgpuDevice obtained");
 
@@ -430,6 +462,7 @@ void Context::deviceObtained() {
 }
 
 void Context::requestDevice() {
+  ZoneScoped;
   assert(!wgpuDevice);
   assert(!wgpuQueue);
 
@@ -451,6 +484,7 @@ void Context::requestDevice() {
 }
 
 void Context::releaseDevice() {
+  ZoneScoped;
   releaseAllContextData();
 
   if (mainOutput) {
@@ -468,6 +502,7 @@ WGPUSurface Context::getOrCreateSurface() {
 }
 
 void Context::requestAdapter() {
+  ZoneScoped;
   assert(!wgpuAdapter);
 
   state = ContextState::Requesting;
@@ -502,11 +537,15 @@ void Context::requestAdapter() {
 }
 
 void Context::releaseAdapter() {
+  ZoneScoped;
   releaseDevice();
   WGPU_SAFE_RELEASE(wgpuAdapterRelease, wgpuAdapter);
 }
 
 void Context::initCommon() {
+  gfxTracyInitOnce();
+
+  ZoneScoped;
   SPDLOG_LOGGER_DEBUG(logger, "initCommon");
 
   assert(!isInitialized());
@@ -548,6 +587,7 @@ void Context::initCommon() {
 }
 
 void Context::present() {
+  ZoneScoped;
   assert(mainOutput);
   mainOutput->present();
 }
