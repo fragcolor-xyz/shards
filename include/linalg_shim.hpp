@@ -241,30 +241,33 @@ inline linalg::aliases::float4 toFloat4(const SHVar &vec) {
 inline linalg::aliases::float4x4 toFloat4x4(const SHVar &vec) { return Mat4(vec); }
 
 inline SHVar toVar(const linalg::aliases::float2 &vec) {
-  return SHVar{
-      .payload{
-          .float2Value = {vec.x, vec.y},
-      },
+  SHVar var{
       .valueType = SHType::Float2,
   };
+  var.payload.float2Value[0] = vec.x;
+  var.payload.float2Value[1] = vec.y;
+  return var;
 }
 
 inline SHVar toVar(const linalg::aliases::float3 &vec) {
-  return SHVar{
-      .payload{
-          .float3Value = {vec.x, vec.y, vec.z},
-      },
+  SHVar var{
       .valueType = SHType::Float3,
   };
+  var.payload.float3Value[0] = vec.x;
+  var.payload.float3Value[1] = vec.y;
+  var.payload.float3Value[2] = vec.z;
+  return var;
 }
 
 inline SHVar toVar(const linalg::aliases::float4 &vec) {
-  return SHVar{
-      .payload{
-          .float4Value = {vec.x, vec.y, vec.z, vec.w},
-      },
+  SHVar var{
       .valueType = SHType::Float4,
   };
+  var.payload.float4Value[0] = vec.x;
+  var.payload.float4Value[1] = vec.y;
+  var.payload.float4Value[2] = vec.z;
+  var.payload.float4Value[3] = vec.w;
+  return var;
 }
 
 constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
