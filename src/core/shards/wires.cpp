@@ -633,6 +633,28 @@ struct Recur : public WireBase {
 };
 
 struct BaseRunner : public WireBase {
+  std::deque<ParamVar> _vars;
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    auto res = WireBase::compose(data);
+
+    if (capturing) {
+      // build the list of variables to capture and inject into spawned chain
+      _vars.clear();
+      for (auto &require : wireValidation.requiredInfo) {
+        if (!require.global) {
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = require.name;
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
+      }
+    }
+
+    return res;
+  }
+
   // Only wire runners should expose variables to the context
   SHExposedTypesInfo exposedVariables() {
     // Only inline mode ensures that variables will be really avail
@@ -642,6 +664,12 @@ struct BaseRunner : public WireBase {
   }
 
   void cleanup() {
+    if (capturing) {
+      for (auto &v : _vars) {
+        v.cleanup();
+      }
+    }
+
     if (wire) {
       if (mode == RunWireMode::Inline && wire->wireUsers.count(this) != 0) {
         wire->wireUsers.erase(this);
@@ -650,7 +678,24 @@ struct BaseRunner : public WireBase {
         shards::stop(wire.get());
       }
     }
+
     WireBase::cleanup();
+  }
+
+  void warmup(SHContext *ctx) {
+    if (capturing) {
+      for (auto &v : _vars) {
+        v.warmup(ctx);
+      }
+
+      wire->onStop.clear();
+      wire->onStop.emplace_back([this]() {
+        for (auto &v : _vars) {
+          // notice, this should be already destroyed by the wire releaseVariable
+          destroyVar(wire->variables[v.variableName()]);
+        }
+      });
+    }
   }
 
   void doWarmup(SHContext *context) {
@@ -661,6 +706,13 @@ struct BaseRunner : public WireBase {
   }
 
   void activateDetached(SHContext *context, const SHVar &input) {
+    if (capturing) {
+      for (auto &v : _vars) {
+        auto &var = v.get();
+        cloneVar(wire->variables[v.variableName()], var);
+      }
+    }
+
     if (!shards::isRunning(wire.get())) {
       // validated during infer not here! (false)
       auto mesh = context->main->mesh.lock();
@@ -701,8 +753,6 @@ struct BaseRunner : public WireBase {
 };
 
 template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public BaseRunner {
-  std::deque<ParamVar> _vars;
-
   void setup() {
     passthrough = INPUT_PASSTHROUGH;
     mode = WIRE_MODE;
@@ -738,51 +788,15 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     } else if (wire->looped && WIRE_MODE == RunWireMode::Inline) {
       OVERRIDE_ACTIVATE(data, activateLoop);
     } else {
-      if constexpr (WIRE_MODE == RunWireMode::Detached) {
-        // build the list of variables to capture and inject into spawned chain
-        _vars.clear();
-        for (auto &require : wireValidation.requiredInfo) {
-          if (!require.global) {
-            SHVar ctxVar{};
-            ctxVar.valueType = ContextVar;
-            ctxVar.payload.stringValue = require.name;
-            auto &p = _vars.emplace_back();
-            p = ctxVar;
-          }
-        }
-      }
       OVERRIDE_ACTIVATE(data, activate);
     }
     return res;
   }
 
   void warmup(SHContext *context) {
-    WireBase::warmup(context);
+    BaseRunner::warmup(context);
+
     doWarmup(context);
-
-    if constexpr (WIRE_MODE == RunWireMode::Detached) {
-      for (auto &v : _vars) {
-        v.warmup(context);
-      }
-
-      wire->onStop.clear();
-      wire->onStop.emplace_back([this]() {
-        for (auto &v : _vars) {
-          // notice, this should be already destroyed by the wire releaseVariable
-          destroyVar(wire->variables[v.variableName()]);
-        }
-      });
-    }
-  }
-
-  void cleanup() {
-    if constexpr (WIRE_MODE == RunWireMode::Detached) {
-      for (auto &v : _vars) {
-        v.cleanup();
-      }
-    }
-
-    BaseRunner::cleanup();
   }
 
   SHVar activateNil(SHContext *, const SHVar &input) { return input; }
@@ -822,10 +836,6 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if constexpr (WIRE_MODE == RunWireMode::Detached) {
-      for (auto &v : _vars) {
-        auto &var = v.get();
-        cloneVar(wire->variables[v.variableName()], var);
-      }
       activateDetached(context, input);
       return input;
     } else if constexpr (WIRE_MODE == RunWireMode::Stepped) {
@@ -868,6 +878,8 @@ template <class T> struct BaseLoader : public BaseRunner {
   IterableExposedInfo _sharedCopy;
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    BaseRunner::compose(data);
+
     _inputTypeCopy = data.inputType;
     const IterableExposedInfo sharedStb(data.shared);
     // copy shared
