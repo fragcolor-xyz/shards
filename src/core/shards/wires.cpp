@@ -782,7 +782,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       }
     }
 
-    WireBase::cleanup();
+    BaseRunner::cleanup();
   }
 
   SHVar activateNil(SHContext *, const SHVar &input) { return input; }
@@ -1645,6 +1645,8 @@ struct Spawn : public WireBase {
   } _composer{*this};
 
   void warmup(SHContext *context) {
+    WireBase::warmup(context);
+
     _composer.context = context;
 
     for (auto &v : _vars) {
@@ -1658,6 +1660,8 @@ struct Spawn : public WireBase {
     }
 
     _composer.context = nullptr;
+
+    WireBase::cleanup();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
