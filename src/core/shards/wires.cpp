@@ -764,15 +764,15 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       for (auto &v : _vars) {
         v.warmup(context);
       }
-    }
 
-    wire->onStop.clear();
-    wire->onStop.emplace_back([this]() {
-      for (auto &v : _vars) {
-        // notice, this should be already destroyed by the wire releaseVariable
-        destroyVar(wire->variables[v.variableName()]);
-      }
-    });
+      wire->onStop.clear();
+      wire->onStop.emplace_back([this]() {
+        for (auto &v : _vars) {
+          // notice, this should be already destroyed by the wire releaseVariable
+          destroyVar(wire->variables[v.variableName()]);
+        }
+      });
+    }
   }
 
   void cleanup() {
@@ -781,6 +781,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         v.cleanup();
       }
     }
+
     WireBase::cleanup();
   }
 
@@ -1121,7 +1122,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     data.wire = context->wireStack.back();
     wire->mesh = context->main->mesh;
 
-    // avoid stackoverflow
+    // avoid stack-overflow
     if (gatheringWires().count(wire.get()))
       return; // we don't know yet...
 
