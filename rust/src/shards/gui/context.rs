@@ -6,7 +6,6 @@ use super::CONTEXT_NAME;
 use super::EGUI_CTX_TYPE;
 use super::GFX_QUEUE_VAR_TYPES;
 use super::PARENTS_UI_NAME;
-use crate::core::referenceVariable;
 use crate::shard::Shard;
 use crate::shardsc;
 use crate::types::Context;
@@ -26,6 +25,7 @@ use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use egui::Context as EguiNativeContext;
 use egui::RawInput;
+use std::ffi::CStr;
 
 lazy_static! {
   static ref CONTEXT_PARAMETERS: Parameters = vec![
@@ -46,8 +46,14 @@ lazy_static! {
 
 impl Default for EguiContext {
   fn default() -> Self {
-    let mut ctx = ParamVar::new(().into());
+    let mut ctx = ParamVar::default();
     ctx.set_name(CONTEXT_NAME);
+
+    let mut mw_globals = ParamVar::default();
+    unsafe {
+      let gfx_globals_var_name = shardsc::gfx_getMainWindowGlobalsVarName() as shardsc::SHString;
+      mw_globals.set_name(CStr::from_ptr(gfx_globals_var_name).to_str().unwrap());
+    }
 
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
@@ -57,6 +63,7 @@ impl Default for EguiContext {
       instance: ctx,
       queue: ParamVar::default(),
       contents: ShardsVar::default(),
+      main_window_globals: mw_globals,
       parents,
       renderer: egui_gfx::Renderer::new(),
     }
@@ -140,6 +147,7 @@ impl Shard for EguiContext {
     self.instance.warmup(ctx);
     self.queue.warmup(ctx);
     self.contents.warmup(ctx)?;
+    self.main_window_globals.warmup(ctx);
     self.parents.warmup(ctx);
     // Initialize the parents stack in the root UI.
     // Every other UI elements will reference it and push or pop UIs to it.
@@ -149,6 +157,7 @@ impl Shard for EguiContext {
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.parents.cleanup();
+    self.main_window_globals.cleanup();
     self.contents.cleanup();
     self.queue.cleanup();
     self.instance.cleanup();
@@ -168,9 +177,8 @@ impl Shard for EguiContext {
 
     // Grab the screen rect & UI scale from the graphics context
     let (screen_rect, draw_scale) = unsafe {
-      let gfx_globals_var_name = shardsc::gfx_getMainWindowGlobalsVarName() as shardsc::SHString;
-      let main_window_globals = referenceVariable(&context, gfx_globals_var_name);
-      let gfx_context = shardsc::gfx_MainWindowGlobals_getContext(main_window_globals);
+      let main_window_globals = self.main_window_globals.get();
+      let gfx_context = shardsc::gfx_MainWindowGlobals_getContext(&main_window_globals);
       let window = shardsc::gfx_Context_getWindow(gfx_context);
 
       let screen_rect_size = shardsc::gfx_Window_getVirtualDrawableSize_ext(window);

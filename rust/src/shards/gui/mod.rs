@@ -54,6 +54,7 @@ struct EguiContext {
   instance: ParamVar,
   queue: ParamVar,
   contents: ShardsVar,
+  main_window_globals: ParamVar,
   parents: ParamVar,
   renderer: egui_gfx::Renderer,
 }
