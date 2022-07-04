@@ -9,7 +9,7 @@
 // Template helpers for setParam/getParam
 namespace shards {
 
-#define PARAM(_type, _name, _displayName, _help, ...)                                     \
+#define PARAM(_type, _name, _displayName, _help, ...)                                             \
   static inline ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
   _type _name;
 
@@ -99,7 +99,7 @@ struct IterableParam {
   void setParam(int index, const SHVar &value) {                              \
     size_t numParams;                                                         \
     const IterableParam *params = getIterableParams(numParams);               \
-    if (index < int(numParams)) {                                                  \
+    if (index < int(numParams)) {                                             \
       params[index].setParam(params[index].resolveParamInShard(this), value); \
     } else {                                                                  \
       throw InvalidParameterIndex();                                          \
@@ -108,7 +108,7 @@ struct IterableParam {
   SHVar getParam(int index) {                                                 \
     size_t numParams;                                                         \
     const IterableParam *params = getIterableParams(numParams);               \
-    if (index < int(numParams)) {                                                  \
+    if (index < int(numParams)) {                                             \
       return params[index].getParam(params[index].resolveParamInShard(this)); \
     } else {                                                                  \
       throw InvalidParameterIndex();                                          \

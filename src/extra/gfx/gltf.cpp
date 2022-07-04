@@ -22,7 +22,8 @@ struct GLTFShard {
   static SHTypesInfo outputTypes() { return Types::DrawableHierarchy; }
 
   PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use", {CoreInfo::NoneType, TransformVarType});
-  PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup",
+            {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_staticModelPath));
 
   enum LoadMode {
