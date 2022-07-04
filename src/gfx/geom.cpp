@@ -270,8 +270,8 @@ void CylinderGenerator::generate() {
       auto u = float(x) / radialSegments;
       auto theta = u * thetaLength + thetaStart;
 
-      auto cosTheta = std::cosf(theta);
-      auto sinTheta = std::sinf(theta);
+      auto cosTheta = std::cos(theta);
+      auto sinTheta = std::sin(theta);
 
       auto &vertex = vertices.emplace_back();
 
@@ -327,8 +327,8 @@ void CylinderGenerator::generate() {
 
         auto theta = u * thetaLength + thetaStart;
 
-        auto sinTheta = std::sinf(theta);
-        auto cosTheta = std::cosf(theta);
+        auto sinTheta = std::sin(theta);
+        auto cosTheta = std::cos(theta);
 
         auto &vertex = vertices.emplace_back();
 
