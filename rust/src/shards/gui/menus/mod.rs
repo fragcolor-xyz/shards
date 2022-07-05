@@ -5,6 +5,11 @@ use crate::types::ShardsVar;
 
 mod menu;
 
+struct CloseMenu {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 struct Menu {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -19,6 +24,7 @@ struct MenuBar {
 }
 
 pub fn registerShards() {
+  registerShard::<CloseMenu>();
   registerShard::<Menu>();
   registerShard::<MenuBar>();
 }

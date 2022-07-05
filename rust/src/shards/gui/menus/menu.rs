@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::CloseMenu;
 use super::Menu;
 use super::MenuBar;
 use crate::shard::Shard;
@@ -44,6 +45,79 @@ lazy_static! {
     &SHARDS_OR_NONE_TYPES[..],
   )
     .into(),];
+}
+
+impl Default for CloseMenu {
+  fn default() -> Self {
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
+    Self {
+      parents,
+      requiring: Vec::new(),
+    }
+  }
+}
+
+impl Shard for CloseMenu {
+  fn registerName() -> &'static str
+  where
+    Self: Sized,
+  {
+    cstr!("UI.CloseMenu")
+  }
+
+  fn hash() -> u32
+  where
+    Self: Sized,
+  {
+    compile_time_crc32::crc32!("UI.CloseMenu-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "UI.CloseMenu"
+  }
+
+  fn inputTypes(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.requiring.clear();
+
+    // Add UI.Parents to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: EGUI_UI_SEQ_TYPE,
+      name: self.parents.get_name(),
+      help: cstr!("The parent UI objects.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
+    Some(&self.requiring)
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.parents.warmup(ctx);
+    Ok(())
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.parents.cleanup();
+    Ok(())
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      ui.close_menu();
+      Ok(*input)
+    } else {
+      Err("No UI parent")
+    }
+  }
 }
 
 impl Default for Menu {
