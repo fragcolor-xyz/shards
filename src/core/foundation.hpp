@@ -226,7 +226,9 @@ uint64_t deriveTypeHash(const SHTypeInfo &value);
 struct TypeInfo {
   TypeInfo() {}
 
-  TypeInfo(const SHVar &var, const SHInstanceData &data) { _info = deriveTypeInfo(var, data, nullptr); }
+  TypeInfo(const SHVar &var, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr) {
+    _info = deriveTypeInfo(var, data, expInfo);
+  }
 
   TypeInfo(const SHTypeInfo &info) { _info = cloneTypeInfo(info); }
 
