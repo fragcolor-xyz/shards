@@ -1377,12 +1377,16 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
     // If first shard is a plain None, mark this wire has None input
     // But make sure we have no (Input) shards
     auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
-    if (inTypes.len == 1 && inTypes.elements[0].basicType == None)
+    if (inTypes.len == 1 && inTypes.elements[0].basicType == None) {
       wire->inputType = SHTypeInfo{};
-    else
+      wire->inputTypeForceNone = true;
+    } else {
       wire->inputType = data.inputType;
+      wire->inputTypeForceNone = false;
+    }
   } else {
     wire->inputType = data.inputType;
+    wire->inputTypeForceNone = false;
   }
 
   auto res = composeWire(wire->shards, callback, userData, data);

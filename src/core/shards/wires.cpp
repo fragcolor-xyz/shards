@@ -166,7 +166,7 @@ struct WireBase {
     } else {
       SHLOG_TRACE("Skipping {} compose", wire->name);
       // verify input type
-      if (!passthrough && mode != Stepped && data.inputType != wire->inputType) {
+      if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
         SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
         throw ComposeError("Attempted to call an already composed wire with a "
                            "different input type! wire: " +
@@ -662,6 +662,8 @@ struct BaseRunner : public WireBase {
     SHExposedTypesInfo empty{};
     return mode == RunWireMode::Inline ? SHExposedTypesInfo(exposedInfo) : empty;
   }
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(wireValidation.requiredInfo); }
 
   void cleanup() {
     if (capturing) {
