@@ -3,7 +3,6 @@
 #include <SDL.h>
 #include <gfx/window.hpp>
 #include "renderer.hpp"
-#include <spdlog/spdlog.h>
 #include <map>
 
 namespace gfx {
@@ -144,7 +143,6 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
       if (!imeComposing) {
         imeComposing = true;
         newEvent(InputEventType::CompositionStart);
-        SPDLOG_DEBUG("CompositionStart");
       }
 
       newEvent(InputEventType::CompositionUpdate);
@@ -152,8 +150,6 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
       deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
         events[eventIdx].compositionUpdate.text = strings[stringIdx].c_str();
       });
-
-      SPDLOG_DEBUG("TEXTEDITING: {}", editingText);
       break;
     }
     case SDL_TEXTINPUT: {
@@ -165,7 +161,6 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
         deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
           events[eventIdx].compositionEnd.text = strings[stringIdx].c_str();
         });
-        SPDLOG_DEBUG("CompositionEnd: {}", strings.back());
         imeComposing = false;
       } else {
         newEvent(InputEventType::Text);
@@ -174,8 +169,6 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
         deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
           events[eventIdx].text.text = strings[stringIdx].c_str();
         });
-
-        SPDLOG_DEBUG("TEXTINPUT: {}", strings.back());
       }
       break;
     }
@@ -237,14 +230,12 @@ void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::P
     if (!textInputActive) {
       SDL_StartTextInput();
       textInputActive = true;
-      SPDLOG_DEBUG("SDL_StartTextInput");
     }
   } else {
     if (textInputActive) {
       SDL_StopTextInput();
       textInputActive = false;
       imeComposing = false;
-      SPDLOG_DEBUG("SDL_StopTextInput");
     }
   }
 }
