@@ -1455,7 +1455,7 @@ void freeDerivedInfo(SHTypeInfo info) {
   };
 }
 
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *containsVariables) {
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo) {
   // We need to guess a valid SHTypeInfo for this var in order to validate
   // Build a SHTypeInfo for the var
   // this is not complete at all, missing Array and ContextVar for example
@@ -1476,7 +1476,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *
   case Seq: {
     std::unordered_set<SHTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, containsVariables);
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, expInfo);
       if (!types.count(derived)) {
         shards::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
@@ -1492,7 +1492,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *
     SHString k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      auto derived = deriveTypeInfo(v, data, containsVariables);
+      auto derived = deriveTypeInfo(v, data, expInfo);
       shards::arrayPush(varType.table.types, derived);
       shards::arrayPush(varType.table.keys, strdup(k));
     }
@@ -1503,22 +1503,19 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *
     s.api->setGetIterator(s, &sit);
     SHVar v;
     while (s.api->setNext(s, &sit, &v)) {
-      auto derived = deriveTypeInfo(v, data, containsVariables);
+      auto derived = deriveTypeInfo(v, data, expInfo);
       shards::arrayPush(varType.setTypes, derived);
     }
   } break;
   case SHType::ContextVar: {
-    if (containsVariables) {
-      // containsVariables is used by Const shard mostly
-      *containsVariables = true;
+    if (expInfo) {
       const auto varName = value.payload.stringValue;
       for (auto info : data.shared) {
         if (strcmp(info.name, varName) == 0) {
+          expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
           return info.exposedType;
         }
       }
-      // not found! reset containsVariables.
-      *containsVariables = false;
       SHLOG_WARNING("Could not find variable {} when deriving type info", varName);
     }
     // if we reach this point, no variable was found...

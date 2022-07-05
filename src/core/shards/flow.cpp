@@ -834,8 +834,7 @@ struct Match {
     for (auto &case_ : _pcases) {
       if (case_.valueType != None) {
         // must compare deeply
-        bool hasVariables = false;
-        TypeInfo cinfo(case_, data, &hasVariables);
+        TypeInfo cinfo(case_, data);
         if (cinfo != data.inputType) {
           SHLOG_ERROR("Match - case type does not match input type: {} != {}", SHTypeInfo(cinfo), data.inputType);
           throw ComposeError("Match: each case must match the input type!, found a mismatch.");

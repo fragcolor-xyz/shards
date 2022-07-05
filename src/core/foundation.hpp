@@ -217,7 +217,7 @@ template <typename T> struct stack_allocator : public std::allocator<T> {
 #endif
 
 void freeDerivedInfo(SHTypeInfo info);
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *containsVariables = nullptr);
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr);
 SHTypeInfo cloneTypeInfo(const SHTypeInfo &other);
 
 uint64_t deriveTypeHash(const SHVar &value);
@@ -226,9 +226,7 @@ uint64_t deriveTypeHash(const SHTypeInfo &value);
 struct TypeInfo {
   TypeInfo() {}
 
-  TypeInfo(const SHVar &var, const SHInstanceData &data, bool *containsVariables = nullptr) {
-    _info = deriveTypeInfo(var, data, containsVariables);
-  }
+  TypeInfo(const SHVar &var, const SHInstanceData &data) { _info = deriveTypeInfo(var, data, nullptr); }
 
   TypeInfo(const SHTypeInfo &info) { _info = cloneTypeInfo(info); }
 

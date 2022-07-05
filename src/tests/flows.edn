@@ -288,8 +288,14 @@
 (schedule Root wire-loop-inline-parent)
 (run Root)
 
+(defwire depth-wire
+  ["This is a " .consumed-variable]
+  (String.Join)
+  (Log)
+  .consumed-variable)
+
 (defwire spawned-wire
-  .consumed-variable
+  (Do "depth-wire")
   (ToInt)
   (Math.Add 1))
 
@@ -306,7 +312,8 @@
 (defwire detached-wire
   .consumed-variable
   (ToInt)
-  (Math.Add 1))
+  (Math.Add 1)
+  (| (Do "depth-wire")))
 
 (defwire test-capture
   "2" = .consumed-variable
