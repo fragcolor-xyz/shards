@@ -4,12 +4,13 @@
 #include <gfx/loop.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/view.hpp>
+#include <spdlog/spdlog.h>
 #include "egui_render_pass.hpp"
 #include "input.hpp"
 #include "rust_interop.hpp"
 
 extern "C" {
-void render_egui_test_frame(gfx::Context &context, gfx::DrawQueuePtr &queue, const egui::Input *input);
+void render_egui_test_frame(gfx::Context &context, gfx::DrawQueuePtr &queue, gfx::EguiInputTranslator& inputTranslator, const egui::Input *input);
 }
 
 using namespace gfx;
@@ -37,6 +38,8 @@ int main() {
       EguiRenderPass::createPipelineStep(queue),
   };
 
+  spdlog::set_level(spdlog::level::debug);
+
   while (!quit) {
     if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
       wnd.pollEvents(events);
@@ -48,7 +51,7 @@ int main() {
       const egui::Input *eguiInput = inputTranslator.translateFromInputEvents(events, wnd, loop.getAbsoluteTime(), deltaTime);
 
       queue->clear();
-      render_egui_test_frame(ctx, queue, eguiInput);
+      render_egui_test_frame(ctx, queue, inputTranslator, eguiInput);
 
       ctx.resizeMainOutputConditional(wnd.getDrawableSize());
       ctx.beginFrame();

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <SDL_keycode.h>
 
 #ifndef RUST_BINDGEN
 #include <vector>
@@ -86,6 +87,12 @@ union InputEvent {
   } common;
   struct {
     InputEventType type;
+    SDL_KeyCode key;
+    bool pressed;
+    ModifierKeys modifiers;
+  } key;
+  struct {
+    InputEventType type;
   } copy;
   struct {
     InputEventType type;
@@ -96,7 +103,7 @@ union InputEvent {
   } paste;
   struct {
     InputEventType type;
-    const char *str;
+    const char *text;
   } text;
   struct {
     InputEventType type;
@@ -139,6 +146,44 @@ union InputEvent {
     Pos2 pos;
     float force;
   } touch;
+};
+
+enum class CursorIcon {
+  Default,
+  None,
+  ContextMenu,
+  Help,
+  PointingHand,
+  Progress,
+  Wait,
+  Cell,
+  Crosshair,
+  Text,
+  VerticalText,
+  Alias,
+  Copy,
+  Move,
+  NoDrop,
+  NotAllowed,
+  Grab,
+  Grabbing,
+  AllScroll,
+  ResizeHorizontal,
+  ResizeNeSw,
+  ResizeNwSe,
+  ResizeVertical,
+  ResizeEast,
+  ResizeSouthEast,
+  ResizeSouth,
+  ResizeSouthWest,
+  ResizeWest,
+  ResizeNorthWest,
+  ResizeNorth,
+  ResizeNorthEast,
+  ResizeColumn,
+  ResizeRow,
+  ZoomIn,
+  ZoomOut,
 };
 
 struct HoveredFile {
