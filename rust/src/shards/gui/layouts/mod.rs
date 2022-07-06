@@ -19,6 +19,14 @@ struct Horizontal {
   wrap: ParamVar,
 }
 
+struct ScrollArea {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  horizontal: ParamVar,
+  vertical: ParamVar,
+}
+
 struct Separator {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -32,12 +40,14 @@ struct Vertical {
 
 mod group;
 mod horizontal;
+mod scroll_area;
 mod separator;
 mod vertical;
 
 pub fn registerShards() {
   registerShard::<Group>();
   registerShard::<Horizontal>();
+  registerShard::<ScrollArea>();
   registerShard::<Separator>();
   registerShard::<Vertical>();
 }
