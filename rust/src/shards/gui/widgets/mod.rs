@@ -26,6 +26,12 @@ struct Checkbox {
   should_expose: bool,
 }
 
+struct Hyperlink {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  label: ParamVar,
+}
+
 /// Displays text.
 struct Label {
   parents: ParamVar,
@@ -102,6 +108,7 @@ decl_ui_slider!(IntSlider, i64);
 
 mod button;
 mod checkbox;
+mod hyperlink;
 mod label;
 mod numeric_input;
 mod numeric_slider;
@@ -113,6 +120,7 @@ mod text_input;
 pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
+  registerShard::<Hyperlink>();
   registerShard::<Label>();
   registerShard::<FloatInput>();
   registerShard::<IntInput>();
