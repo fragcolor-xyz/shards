@@ -177,17 +177,15 @@ struct WireBase {
       wireOutput = wire->outputType;
 
       // ensure requirements match our input data
-      for (auto req : wire->requiredVariables) {
+      for (auto &[req, _] : wire->requiredVariables) {
         // find each in shared
         auto res = std::find_if(shared.begin(), shared.end(), [&](SHExposedTypeInfo &x) {
           std::string_view vx(x.name);
           return req == vx;
         });
         if (res == shared.end()) {
-          throw ComposeError("Attempted to call an already composed wire (" + wire->name +
-                             ") with "
-                             "a missing required variable: " +
-                             req);
+          SHLOG_ERROR("Previous wire composed missing required variable: {}", req);
+          throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
         }
       }
     }
@@ -641,11 +639,11 @@ struct BaseRunner : public WireBase {
     if (capturing) {
       // build the list of variables to capture and inject into spawned chain
       _vars.clear();
-      for (auto &require : wireValidation.requiredInfo) {
-        if (!require.global) {
+      for (auto &[name, global] : wire->requiredVariables) {
+        if (!global) {
           SHVar ctxVar{};
           ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = require.name;
+          ctxVar.payload.stringValue = name.data();
           auto &p = _vars.emplace_back();
           p = ctxVar;
         }
@@ -1610,11 +1608,11 @@ struct Spawn : public WireBase {
 
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
-    for (auto &require : wireValidation.requiredInfo) {
-      if (!require.global) {
+    for (auto &[name, global] : wire->requiredVariables) {
+      if (!global) {
         SHVar ctxVar{};
         ctxVar.valueType = ContextVar;
-        ctxVar.payload.stringValue = require.name;
+        ctxVar.payload.stringValue = name.data();
         auto &p = _vars.emplace_back();
         p = ctxVar;
       }
@@ -1637,6 +1635,7 @@ struct Spawn : public WireBase {
     SHContext *context;
 
     void compose(SHWire *wire) {
+      SHLOG_TRACE("Spawn::Composer::compose {}", wire->name);
       SHInstanceData data{};
       data.inputType = server._inputType;
       data.shared = server._sharedCopy;
@@ -1647,7 +1646,7 @@ struct Spawn : public WireBase {
           [](const struct Shard *errorShard, const char *errorTxt, SHBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR(errorTxt);
-              throw ActivationError("Http.Server handler wire compose failed");
+              throw ActivationError("Spawn handler wire compose failed");
             } else {
               SHLOG_WARNING(errorTxt);
             }

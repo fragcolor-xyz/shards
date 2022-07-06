@@ -1404,7 +1404,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
 
   // add variables
   for (auto req : res.requiredInfo) {
-    wire->requiredVariables.emplace_back(req.name);
+    wire->requiredVariables.emplace_back(req.name, req.global);
   }
 
   return res;

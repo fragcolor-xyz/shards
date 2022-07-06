@@ -353,7 +353,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   mutable bool inputTypeForceNone{false};
   // this one is a shard inside the wire, so won't disappear
   mutable SHTypeInfo outputType{};
-  mutable std::vector<std::string> requiredVariables;
+  mutable std::vector<std::tuple<std::string_view, bool>> requiredVariables;
 
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards
