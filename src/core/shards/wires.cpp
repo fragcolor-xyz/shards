@@ -179,9 +179,10 @@ struct WireBase {
       // ensure requirements match our input data
       for (auto &[req, _] : wire->requiredVariables) {
         // find each in shared
-        auto res = std::find_if(shared.begin(), shared.end(), [&](SHExposedTypeInfo &x) {
-          std::string_view vx(x.name);
-          return req == vx;
+        auto name = req;
+        auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
+          std::string_view xNameView(x.name);
+          return name == xNameView;
         });
         if (res == shared.end()) {
           SHLOG_ERROR("Previous wire composed missing required variable: {}", req);
