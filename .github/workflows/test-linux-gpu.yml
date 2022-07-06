@@ -72,6 +72,10 @@ jobs:
             build/shards "$i"
           done
 
+          echo "Running egui demo"
+          build/shards src/tests/egui_demo.edn
+
+          echo "Running imgui demo"
           build/shards src/tests/imgui_demo.edn
       - name: Test doc samples (GUI)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

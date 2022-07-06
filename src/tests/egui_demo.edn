@@ -1,0 +1,68 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+(def lorem_ipsum
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+
+(defshards window-with-panels []
+  (UI.Window
+   :Title "Window with Panels"
+   :Contents
+   (-> (UI.TopPanel
+        (->
+         "Top Window Panel" (UI.Label)))
+       (UI.BottomPanel
+        (->
+         "Bottom Window Panel" (UI.Label)))
+       (UI.LeftPanel
+        (->
+         "Left Window Panel" (UI.Label)))
+       (UI.RightPanel
+        (->
+         "Right Window Panel" (UI.Label)))
+       (UI.CentralPanel
+        (->
+         "Central Window Panel" (UI.Label))))))
+
+(defloop ui-wire
+  (GFX.MainWindow
+   :Title "egui Shards Example" :Width 1280 :Height 768 :Debug false
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+
+    (| .ui-draw-queue (GFX.ClearQueue))
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.TopPanel
+       (->
+        "Top Panel" (UI.Label)))
+      (UI.LeftPanel
+       (->
+        "Left Panel" (UI.Label)
+        (UI.Button "Click me!" (-> (Msg "Hello World!")))))
+      (UI.RightPanel
+       (->
+        "Right Panel" (UI.Label)))
+      (UI.BottomPanel
+       (->
+        "Bottom Panel" (UI.Label)))
+      (UI.CentralPanel
+       (->
+        "Central Panel" (UI.Label)
+         lorem_ipsum (UI.Label)))
+
+      (window-with-panels)))
+
+    (GFX.Render :Steps .render-steps))))
+
+(defmesh main)
+(schedule main ui-wire)
+(run main (/ 1.0 60.0) 120)
+
+(schedule main ui-wire)
+(run main (/ 1.0 60.0) 120)

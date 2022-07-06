@@ -311,6 +311,8 @@ jobs:
           ./shards ../src/tests/gfx_cube.edn
           echo "Running test: gfx_materials"
           ./shards ../src/tests/gfx_materials.edn
+          echo "Running test: egui_demo"
+          ./shards ../src/tests/egui_demo.edn
           echo "Running test: imgui_demo"
           ./shards ../src/tests/imgui_demo.edn
       - name: Test (64bits)
