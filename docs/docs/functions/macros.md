@@ -47,7 +47,7 @@ Defines an alias.
 
 Defines new shards that can be grouped together and inserted into an existing wire program.
 
-A `defshards` shard looks structurally similar to a function (see [defn](#defn)), but can directly contain multiple shards in its body (unlike a function).
+A `defshards` shard looks structurally similar to a function (see [defn](#defn)), but unlike a `defn`, it can contain multiple shards in its body without needing to use `->`.
 
 === "Code"
 
@@ -79,9 +79,9 @@ Just like a function a `defshards` shard can be invoked by name and can process 
     [info] [2022-05-13 15:31:09.232] [T-4796] [logging.cpp::98] [mywire] Shards
     ```
 
-Since `defshards` serves a very common use case an alias, `->`, is also provided. This alias is equivalent to `defshards` but is much more succint to use.
+`(defshards)` can be used in place of a `(defn)` (function declaration) plus `(->)` (shard-container).
 
-See the last two code examples in [defn](#defn) for a use case of `defshards` and its alias `->`.
+See the last two code examples in [`(defn)`](#defn) for a comparison of these use cases.
 
 ## defwire
 
@@ -243,7 +243,7 @@ Function with multiple input parameters:
     [info] [2022-05-13 14:03:38.570] [T-11468] [logging.cpp::98] [mywire] 2nd parameter
     ```
 
-The function cannot return multiple values. So if you need to process multiple shards in the function's body you'll have to group them by wrapping them with either `defshards`
+A function cannot return multiple values. So if you need to process multiple shards in the function's body then you'll have to either use `(defshards)` instead of `(defn)`,
 
 === "Code"
 
@@ -266,7 +266,7 @@ The function cannot return multiple values. So if you need to process multiple s
     [info] [2022-05-13 14:44:51.294] [T-16928] [logging.cpp::98] [mywire] shards
     ```
 
-or with its alias, `->` (which is more succint than `defshards`).
+or use `(->)` to group and process the multiple shards inside the `(defn)`:
 
 === "Code"
 
