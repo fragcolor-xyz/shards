@@ -35,7 +35,14 @@ if(NOT EMSCRIPTEN)
   set_property(GLOBAL PROPERTY OPENSSL_SOURCE_DIR ${libressl_SOURCE_DIR})
 endif()
 
-add_subdirectory(boost)
+message(STATUS "Fetching boost")
+FetchContent_Declare(
+  boost
+  URL      https://github.com/chainblocks/boost/releases/download/boost-f74a225c09/output.7z
+  URL_HASH SHA256=EB73BDD6B5B78C6A09A8F45B50AE8FAF5C44A6C741487313E978F0AF3073DA7A
+)
+FetchContent_MakeAvailable(boost)
+message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 
 if(NOT EMSCRIPTEN)
   if(EXTERNAL_BUILD_TYPE MATCHES "Debug")
