@@ -197,8 +197,6 @@ struct Client {
             ws->close();
           });
     } catch (const std::exception &ex) {
-      // TODO some exceptions could be left unhandled
-      // or anyway should be fatal
       SHLOG_WARNING("WebSocket connection failed: {}", ex.what());
       throw ActivationError("WebSocket connection failed.");
     }
@@ -321,8 +319,6 @@ struct WriteString : public User {
           },
           [] {});
     } catch (const std::exception &ex) {
-      // TODO some exceptions could be left unhandled
-      // or anyway should be fatal
       SHLOG_WARNING("WebSocket write failed: {}", ex.what());
       throw ActivationError("WebSocket write failed.");
     }
@@ -339,9 +335,6 @@ struct ReadString : public User {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    // TODO refactor, we are not awaiting here...
-    // either refactor Send of await as well
-
     ensureSocket();
 
     _buffer.clear();
