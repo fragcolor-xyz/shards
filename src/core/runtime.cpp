@@ -1391,7 +1391,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
 
   auto res = composeWire(wire->shards, callback, userData, data);
 
-  // set outputtype
+  // set output type
   wire->outputType = res.outputType;
 
   std::vector<shards::ShardInfo> allShards;
