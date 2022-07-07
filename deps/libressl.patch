@@ -1,0 +1,40 @@
+diff --git a/crypto/CMakeLists.txt b/crypto/CMakeLists.txt
+index b1ded85..0cb1738 100644
+--- a/crypto/CMakeLists.txt
++++ b/crypto/CMakeLists.txt
+@@ -986,7 +986,7 @@ target_include_directories(crypto_obj
+ 	PUBLIC
+ 		../include)
+ 
+-add_library(crypto $<TARGET_OBJECTS:crypto_obj>)
++add_library(crypto $<TARGET_OBJECTS:crypto_obj> dummy.c)
+ target_include_directories(crypto
+ 	PRIVATE
+ 		.
+diff --git a/crypto/dummy.c b/crypto/dummy.c
+new file mode 100644
+index 0000000..ff7bd09
+--- /dev/null
++++ b/crypto/dummy.c
+@@ -0,0 +1 @@
++// placeholder
+diff --git a/ssl/CMakeLists.txt b/ssl/CMakeLists.txt
+index a772d12..6ba9b36 100644
+--- a/ssl/CMakeLists.txt
++++ b/ssl/CMakeLists.txt
+@@ -62,7 +62,7 @@ target_include_directories(ssl_obj
+ 	PUBLIC
+ 		../include)
+ 
+-add_library(ssl $<TARGET_OBJECTS:ssl_obj>)
++add_library(ssl $<TARGET_OBJECTS:ssl_obj> dummy.c)
+ target_include_directories(ssl
+ 	PRIVATE
+ 		.
+diff --git a/ssl/dummy.c b/ssl/dummy.c
+new file mode 100644
+index 0000000..ff7bd09
+--- /dev/null
++++ b/ssl/dummy.c
+@@ -0,0 +1 @@
++// placeholder
