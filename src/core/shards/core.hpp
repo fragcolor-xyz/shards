@@ -588,8 +588,8 @@ struct VariableBase {
   static inline ParamsInfo variableParamsInfo =
       ParamsInfo(ParamsInfo::Param("Name", SHCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar),
                  ParamsInfo::Param("Key",
-                                   SHCCSTR("The key of the value to read/write from/in the table (this "
-                                           "variable will become a table)."),
+                                   SHCCSTR("The key of the value to read/write from/in the table (parameter applicable only if "
+                                           "the target variable is or will become a table)."),
                                    CoreInfo::StringStringVarOrNone),
                  ParamsInfo::Param("Global",
                                    SHCCSTR("If the variable is or should be available to "
@@ -2003,6 +2003,10 @@ struct Clear : SeqUser {
 struct Drop : SeqUser {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Drops the last element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
@@ -2032,6 +2036,10 @@ struct Drop : SeqUser {
 struct DropFront : SeqUser {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Drops the first element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
@@ -2057,6 +2065,11 @@ struct Pop : SeqUser {
   // TODO refactor like Push
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Pops (drops as well as passes as output) the last element of the sequence variable passed in the `:Name` "
+                   "parameter. Works only on sequences.");
+  }
 
   SHVar _output{};
 
@@ -2124,6 +2137,11 @@ struct PopFront : SeqUser {
   // TODO refactor like push
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Pops (drops as well as passes as output) the first element of the sequence variable passed in the `:Name` "
+                   "parameter. Works only on sequences.");
+  }
 
   SHVar _output{};
 
