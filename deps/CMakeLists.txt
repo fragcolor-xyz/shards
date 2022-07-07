@@ -21,7 +21,7 @@ if(NOT EMSCRIPTEN)
     libressl
     URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
     URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
-    PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch 
+    PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch
   )
   FetchContent_MakeAvailable(libressl)
   message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
@@ -97,6 +97,13 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(SDL2-static INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
   elseif(LINUX)
     target_link_libraries(SDL2-static INTERFACE dl)
+  endif()
+
+  # Required for SDL2main entry point to call main
+  if(NOT DESKTOP)
+    target_compile_definitions(SDL2main INTERFACE "main=SDL_main")
+  else()
+    target_compile_definitions(SDL2-static INTERFACE "SDL_MAIN_HANDLED=1")
   endif()
 endif()
 

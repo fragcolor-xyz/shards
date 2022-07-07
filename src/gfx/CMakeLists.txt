@@ -91,6 +91,10 @@ if(EMSCRIPTEN)
   endif()
 else()
   target_link_libraries(gfx SDL2-static)
+  if(NOT DESKTOP)
+    # Only need SDL2main for setup on mobile platforms
+    target_link_libraries(gfx SDL2main)
+  endif()
 endif()
 
 
