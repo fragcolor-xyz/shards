@@ -98,7 +98,7 @@ public:
   void submit(WGPUCommandBuffer cmdBuffer);
 
   // start tracking an object implementing WithContextData so it's data is released with this context
-  void addContextDataInternal(std::weak_ptr<ContextData> ptr);
+  void addContextDataInternal(const std::weak_ptr<ContextData>& ptr);
   void removeContextDataInternal(ContextData *ptr);
 
 private:

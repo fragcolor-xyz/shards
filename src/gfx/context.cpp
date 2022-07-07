@@ -250,7 +250,7 @@ WGPUTextureFormat Context::getMainOutputFormat() const {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
-void Context::addContextDataInternal(std::weak_ptr<ContextData> ptr) {
+void Context::addContextDataInternal(const std::weak_ptr<ContextData>& ptr) {
   assert(!ptr.expired());
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();
