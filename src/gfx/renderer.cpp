@@ -231,7 +231,7 @@ struct RendererImpl final : public ContextData {
       WGPUTextureFormat_Depth32Float
 #endif
       ;
-  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth32Float, "Depth Buffer");
+  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(defaultDepthTextureFormat, "Depth Buffer");
   std::shared_ptr<PlaceholderTexture> placeholderTexture;
 
   RendererImpl(Context &context) : context(context) {
