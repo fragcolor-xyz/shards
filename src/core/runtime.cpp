@@ -1158,9 +1158,8 @@ void validateConnection(ValidationContext &ctx) {
   auto exposedVars = ctx.bottom->exposedVariables(ctx.bottom);
   // Add the vars we expose
   for (uint32_t i = 0; exposedVars.len > i; i++) {
-    auto exposed_param = exposedVars.elements[i];
+    auto &exposed_param = exposedVars.elements[i];
     std::string name(exposed_param.name);
-    exposed_param.scope = exposed_param.global ? nullptr : ctx.wire;
     ctx.exposed[name].emplace(exposed_param);
 
     // Reference mutability checks
@@ -1378,17 +1377,21 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
     // If first shard is a plain None, mark this wire has None input
     // But make sure we have no (Input) shards
     auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
-    if (inTypes.len == 1 && inTypes.elements[0].basicType == None)
+    if (inTypes.len == 1 && inTypes.elements[0].basicType == None) {
       wire->inputType = SHTypeInfo{};
-    else
+      wire->inputTypeForceNone = true;
+    } else {
       wire->inputType = data.inputType;
+      wire->inputTypeForceNone = false;
+    }
   } else {
     wire->inputType = data.inputType;
+    wire->inputTypeForceNone = false;
   }
 
   auto res = composeWire(wire->shards, callback, userData, data);
 
-  // set outputtype
+  // set output type
   wire->outputType = res.outputType;
 
   std::vector<shards::ShardInfo> allShards;
@@ -1401,7 +1404,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
 
   // add variables
   for (auto req : res.requiredInfo) {
-    wire->requiredVariables.emplace_back(req.name);
+    wire->requiredVariables.emplace_back(req.name, req.global);
   }
 
   return res;
@@ -1452,7 +1455,7 @@ void freeDerivedInfo(SHTypeInfo info) {
   };
 }
 
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *containsVariables) {
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo) {
   // We need to guess a valid SHTypeInfo for this var in order to validate
   // Build a SHTypeInfo for the var
   // this is not complete at all, missing Array and ContextVar for example
@@ -1473,7 +1476,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *
   case Seq: {
     std::unordered_set<SHTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, containsVariables);
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, expInfo);
       if (!types.count(derived)) {
         shards::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
@@ -1489,7 +1492,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *
     SHString k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      auto derived = deriveTypeInfo(v, data, containsVariables);
+      auto derived = deriveTypeInfo(v, data, expInfo);
       shards::arrayPush(varType.table.types, derived);
       shards::arrayPush(varType.table.keys, strdup(k));
     }
@@ -1500,22 +1503,19 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *
     s.api->setGetIterator(s, &sit);
     SHVar v;
     while (s.api->setNext(s, &sit, &v)) {
-      auto derived = deriveTypeInfo(v, data, containsVariables);
+      auto derived = deriveTypeInfo(v, data, expInfo);
       shards::arrayPush(varType.setTypes, derived);
     }
   } break;
   case SHType::ContextVar: {
-    if (containsVariables) {
-      // containsVariables is used by Const shard mostly
-      *containsVariables = true;
+    if (expInfo) {
       const auto varName = value.payload.stringValue;
       for (auto info : data.shared) {
         if (strcmp(info.name, varName) == 0) {
+          expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
           return info.exposedType;
         }
       }
-      // not found! reset containsVariables.
-      *containsVariables = false;
       SHLOG_WARNING("Could not find variable {} when deriving type info", varName);
     }
     // if we reach this point, no variable was found...

@@ -163,7 +163,6 @@ impl Shard for EguiContext {
       isProtected: true, // don't allow to be used in code/wires
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     };
     shared.push(ctx_info);
     // update shared
@@ -330,7 +329,6 @@ impl Shard for Panels {
       isProtected: true, // don't allow to be used in code/wires
       isTableEntry: false,
       global: false,
-      scope: core::ptr::null_mut(),
     };
     shared.push(ui_info);
     // update shared

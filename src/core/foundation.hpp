@@ -217,7 +217,7 @@ template <typename T> struct stack_allocator : public std::allocator<T> {
 #endif
 
 void freeDerivedInfo(SHTypeInfo info);
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, bool *containsVariables = nullptr);
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr);
 SHTypeInfo cloneTypeInfo(const SHTypeInfo &other);
 
 uint64_t deriveTypeHash(const SHVar &value);
@@ -226,8 +226,8 @@ uint64_t deriveTypeHash(const SHTypeInfo &value);
 struct TypeInfo {
   TypeInfo() {}
 
-  TypeInfo(const SHVar &var, const SHInstanceData &data, bool *containsVariables = nullptr) {
-    _info = deriveTypeInfo(var, data, containsVariables);
+  TypeInfo(const SHVar &var, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr) {
+    _info = deriveTypeInfo(var, data, expInfo);
   }
 
   TypeInfo(const SHTypeInfo &info) { _info = cloneTypeInfo(info); }
@@ -349,9 +349,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // we need to clone this, as might disappear, since outside wire
   mutable shards::TypeInfo inputType{};
+  // flag if we changed inputType to None on purpose (first block is none)
+  mutable bool inputTypeForceNone{false};
   // this one is a shard inside the wire, so won't disappear
   mutable SHTypeInfo outputType{};
-  mutable std::vector<std::string> requiredVariables;
+  mutable std::vector<std::tuple<std::string_view, bool>> requiredVariables;
 
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards

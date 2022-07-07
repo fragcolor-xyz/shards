@@ -32,6 +32,7 @@ struct Const {
   OwnedVar _clone{};
   SHTypeInfo _innerInfo{};
   VariableResolver resolver;
+  std::vector<SHExposedTypeInfo> _dependencies;
 
   void destroy() { freeDerivedInfo(_innerInfo); }
 
@@ -47,9 +48,9 @@ struct Const {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     freeDerivedInfo(_innerInfo);
-    bool hasVariables = false;
-    _innerInfo = deriveTypeInfo(_value, data, &hasVariables);
-    if (hasVariables) {
+    _dependencies.clear();
+    _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
+    if (!_dependencies.empty()) {
       _clone = _value;
       const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::NotInline;
     } else {
@@ -58,6 +59,8 @@ struct Const {
     }
     return _innerInfo;
   }
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo{_dependencies.data(), uint32_t(_dependencies.size())}; }
 
   void cleanup() { resolver.cleanup(); }
 

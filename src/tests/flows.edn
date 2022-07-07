@@ -245,11 +245,11 @@
          (AppendTo .payload)
          gateways
          (TryMany (Wire "IPFS-Upload"
-                         >= .gateway
-                         "/api/v0/add?pin=true" (AppendTo .gateway)
-                         .payload
-                         (Http.Post .gateway
-                                    :Headers {"Content-Type" (str "multipart/form-data; boundary=" boundary)}))
+                        >= .gateway
+                        "/api/v0/add?pin=true" (AppendTo .gateway)
+                        .payload
+                        (Http.Post .gateway
+                                   :Headers {"Content-Type" (str "multipart/form-data; boundary=" boundary)}))
                   :Policy WaitUntil.SomeSuccess)
          (Take 0) (FromJson) (ExpectTable)
          (Take "Hash") (ExpectString)
@@ -286,4 +286,46 @@
   (Msg "Ok done looping..."))
 
 (schedule Root wire-loop-inline-parent)
+(run Root)
+
+(defwire depth-wire
+  ["This is a " .consumed-variable]
+  (String.Join)
+  (Log)
+  .consumed-variable)
+
+(defwire spawned-wire
+  (Do "depth-wire")
+  (ToInt)
+  (Math.Add 1)
+  (Log "X"))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (Spawn spawned-wire) = .spawned-wire-0
+  (Spawn spawned-wire) = .spawned-wire-1
+  (Wait .spawned-wire-0)
+  (Assert.Is 3 true)
+  (Wait .spawned-wire-1)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(run Root)
+
+(defwire detached-wire
+  .consumed-variable
+  (ToInt)
+  (Math.Add 1)
+  (| (Do "depth-wire"))
+  (Log "X"))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (Detach detached-wire)
+  (Wait detached-wire)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
 (run Root)

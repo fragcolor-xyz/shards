@@ -517,9 +517,6 @@ struct SHExposedTypeInfo {
 
   // If the exposed variable should be available to all wires in the mesh
   SHBool global;
-
-  // private/internal, leave nullptr
-  struct SHWire *scope;
 };
 
 struct SHFlow {
