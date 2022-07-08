@@ -10,7 +10,7 @@
           (Log "ws-client"))
    (WS.ReadString .ws-client)
    (Log "Reading string")
-   "Hello!" (WS.SendString .ws-client)
+   "Hello!" (WS.WriteString .ws-client)
    (WS.ReadString .ws-client)
    (Log "Reading string")
    (Assert.Is "Hello!" true)))

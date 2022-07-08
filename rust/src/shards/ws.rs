@@ -194,27 +194,27 @@ impl Shard for ReadString {
 }
 
 #[derive(Default)]
-struct SendString {
+struct WriteString {
   client: ClientUser,
 }
 
-impl Shard for SendString {
+impl Shard for WriteString {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("WS.SendString")
+    cstr!("WS.WriteString")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("WS.SendString-rust-0x20200101")
+    compile_time_crc32::crc32!("WS.WriteString-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "WS.SendString"
+    "WS.WriteString"
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -265,5 +265,5 @@ impl Shard for SendString {
 pub fn registerShards() {
   registerShard::<Client>();
   registerShard::<ReadString>();
-  registerShard::<SendString>();
+  registerShard::<WriteString>();
 }
