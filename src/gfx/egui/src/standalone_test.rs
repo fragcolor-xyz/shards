@@ -1,9 +1,9 @@
 use super::*;
 use crate::input::to_egui_cursor_icon;
 use crate::Renderer;
-use egui::{FontData, RichText};
+use egui::{RichText};
 use epaint::Color32;
-use std::{collections::BTreeMap, ffi::CString, os::raw::c_char, ptr::null, sync::Mutex};
+use std::{ffi::CString, ptr::null, sync::Mutex};
 
 struct App {
     pub ctx: egui::Context,
