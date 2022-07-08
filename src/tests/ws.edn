@@ -1,0 +1,22 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
+(def Root (Mesh))
+
+(def test
+  (Wire
+   "ws-test"
+   (Setup "ws://echo.websocket.events/ws" (WS.Client) = .ws-client
+          (Log "ws-client"))
+   (WS.ReadString .ws-client)
+   (Log "Reading string")
+   "Hello!" (WS.SendString .ws-client)
+   (WS.ReadString .ws-client)
+   (Log "Reading string")
+   (Assert.Is "Hello!" true)))
+
+(schedule Root test)
+(run Root 0.5)
+
+(def test nil)
+(def Root nil)

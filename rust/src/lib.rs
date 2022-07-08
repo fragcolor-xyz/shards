@@ -513,8 +513,12 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::chachapoly::registerShards();
   shards::gui::registerShards();
 
+
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   shards::browse::registerShards();
+
+  #[cfg(not(target_arch = "wasm32"))]
+  shards::ws::registerShards();
 }
 
 #[no_mangle]

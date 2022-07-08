@@ -12,9 +12,9 @@
   (StringToBytes) (ToHex) (Log)
   (BigInt) (BigInt.ToString) (Log "frag")
 
-  "eguU"
+  "wsCl"
   (StringToBytes) (ToHex) (Log)
-  (BigInt) (BigInt.ToString) (Log "eguU")
+  (BigInt) (BigInt.ToString) (Log "wsCl")
 
   "eguC"
   (StringToBytes) (ToHex) (Log)

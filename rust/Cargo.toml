@@ -35,12 +35,13 @@ sp-runtime = { version = "4.0.0-dev", git = "https://github.com/paritytech/subst
 parity-scale-codec = { version = "2.3.1", default-features = false, optional = true }
 chacha20poly1305 = { version = "0.9.0", optional = true }
 egui = { version = "0.18.1", optional = true }
+egui-gfx = { path = "../src/gfx/egui", optional = true }
 half = { version = "2.0.0" }
-egui-gfx = { path = "../src/gfx/egui"}
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
 reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
+tungstenite = { version = "0.17.2", features = ["native-tls"], optional = true }
 
 [target.'cfg(not(any(target_arch="wasm32", target_os="ios")))'.dependencies]
 webbrowser = { version = "0.5.5", optional = true }
@@ -75,7 +76,9 @@ shards = ["reqwest",
           "sp-runtime",
           "parity-scale-codec",
           "chacha20poly1305",
-          "egui"]
+          "egui",
+          "egui-gfx",
+          "tungstenite"]
 dllshard = ["dlopen"]
 scripting = []
 
