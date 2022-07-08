@@ -150,15 +150,12 @@ impl From<std::str::Utf8Error> for TranslationError {
 impl std::fmt::Display for TranslationError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            TranslationError::Text(text) => text.fmt(f)
+            TranslationError::Text(text) => text.fmt(f),
         }
     }
 }
 
-
-pub fn translate_raw_input(
-    input: &egui_Input,
-) -> Result<egui::RawInput, TranslationError> {
+pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, TranslationError> {
     let mut events = Vec::new();
 
     unsafe {
@@ -203,19 +200,19 @@ pub fn translate_raw_input(
                 egui_InputEventType_CompositionStart => Some(Event::CompositionStart),
                 egui_InputEventType_CompositionUpdate => {
                     let event = &in_event.compositionUpdate;
-                    let text = CStr::from_ptr(event.text).to_str().unwrap().to_owned();
+                    let text = CStr::from_ptr(event.text).to_str()?.to_owned();
                     Some(Event::CompositionUpdate(text))
                 }
                 egui_InputEventType_CompositionEnd => {
                     let event = &in_event.compositionEnd;
-                    let text = CStr::from_ptr(event.text).to_str().unwrap().to_owned();
+                    let text = CStr::from_ptr(event.text).to_str()?.to_owned();
                     Some(Event::CompositionEnd(text))
                 }
                 egui_InputEventType_Copy => Some(Event::Copy),
                 egui_InputEventType_Cut => Some(Event::Cut),
                 egui_InputEventType_Paste => {
                     let event = &in_event.paste;
-                    let str = CStr::from_ptr(event.str_).to_str().unwrap().to_owned();
+                    let str = CStr::from_ptr(event.str_).to_str()?.to_owned();
                     Some(Event::Paste(str))
                 }
                 _ => {

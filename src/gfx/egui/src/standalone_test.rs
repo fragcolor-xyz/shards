@@ -1,7 +1,7 @@
 use super::*;
 use crate::input::to_egui_cursor_icon;
 use crate::Renderer;
-use egui::{RichText};
+use egui::RichText;
 use epaint::Color32;
 use std::{ffi::CString, ptr::null, sync::Mutex};
 
@@ -88,5 +88,6 @@ pub unsafe extern "C" fn render_egui_test_frame(
     );
 
     app.renderer
-        .render(&app.ctx, full_output, queue, draw_scale);
+        .render(&app.ctx, full_output, queue, draw_scale)
+        .unwrap();
 }

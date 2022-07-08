@@ -125,7 +125,7 @@ fn make_native_full_output(
     ctx: &Context,
     input: egui::FullOutput,
     draw_scale: f32,
-) -> Result<NativeFullOutput, &str> {
+) -> Result<NativeFullOutput, &'static str> {
     let primitives = ctx.tessellate(input.shapes);
     let mut numVerts = 0;
     let mut numIndices = 0;
@@ -142,16 +142,16 @@ fn make_native_full_output(
     let mut index_mem: Vec<u32> = Vec::with_capacity(numIndices);
     let clipped_primitives: Vec<_> = primitives
         .into_iter()
-        .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem, draw_scale).unwrap())
-        .collect();
+        .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem, draw_scale))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let mut image_mem: Vec<PixelData> = Vec::new();
     let texture_sets: Vec<_> = input
         .textures_delta
         .set
         .into_iter()
-        .map(|pair| convert_texture_set(pair.0, pair.1, &mut image_mem).unwrap())
-        .collect();
+        .map(|pair| convert_texture_set(pair.0, pair.1, &mut image_mem))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let texture_frees: Vec<egui_TextureId> = input
         .textures_delta
@@ -205,10 +205,11 @@ impl Renderer {
         egui_output: egui::FullOutput,
         queue: *const gfx_DrawQueuePtr,
         draw_scale: f32,
-    ) {
+    ) -> Result<(), &str> {
         unsafe {
-            let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale).unwrap();
+            let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
             gfx_EguiRenderer_render(self.egui_renderer, &native_egui_output.full_output, queue);
+            Ok(())
         }
     }
 }
