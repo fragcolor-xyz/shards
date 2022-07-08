@@ -29,7 +29,6 @@ set(core_SOURCES
 set(os_SOURCES
   shards/process.cpp
   shards/network.cpp
-  shards/ws.cpp
 )
 
 add_library(shards-core-static STATIC ${core_SOURCES})
