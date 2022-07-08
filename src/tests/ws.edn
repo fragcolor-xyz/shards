@@ -16,7 +16,7 @@
    (Assert.Is "Hello!" true)))
 
 (schedule Root test)
-(run Root 0.5)
+(run Root 0.01)
 
 (def test nil)
 (def Root nil)

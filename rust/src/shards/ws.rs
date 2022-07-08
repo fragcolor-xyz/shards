@@ -1,5 +1,5 @@
 use crate::{
-  core::registerShard,
+  core::{activate_blocking, do_blocking, registerShard},
   types::{
     ClonedVar, Context, ParamVar, Parameters, Type, Types, Var, ANYS_TYPES, FRAG_CC, NONE_TYPES,
     STRING_TYPES,
@@ -67,16 +67,18 @@ impl Shard for Client {
     &WS_CLIENT_VEC
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let addr: &str = input.try_into()?;
-    let ws = tungstenite::client::connect(addr).map_err(|e| {
-      shlog!("{}", e);
-      "Failed to connect to server."
-    })?;
-    // we need to keep this alive here, otherwise it will be dropped at the end of this function
-    self.ws = Rc::new(Some(ws.0));
-    let var_ws = Var::new_object(&self.ws, &WS_CLIENT_TYPE);
-    Ok(var_ws)
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    Ok(do_blocking(context, || {
+      let addr: &str = input.try_into()?;
+      let ws = tungstenite::client::connect(addr).map_err(|e| {
+        shlog!("{}", e);
+        "Failed to connect to server."
+      })?;
+      // we need to keep this alive here, otherwise it will be dropped at the end of this function
+      self.ws = Rc::new(Some(ws.0));
+      let var_ws = Var::new_object(&self.ws, &WS_CLIENT_TYPE);
+      Ok(var_ws)
+    }))
   }
 }
 
@@ -177,21 +179,22 @@ impl Shard for ReadString {
     self.client.cleanup()
   }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
+    Ok(do_blocking(context, || {
+      let msg = ws.read_message().map_err(|e| {
+        shlog!("{}", e);
+        "Failed to read message."
+      })?;
 
-    let msg = ws.read_message().map_err(|e| {
-      shlog!("{}", e);
-      "Failed to read message."
-    })?;
-
-    match msg {
-      Message::Text(text) => {
-        self.text = text.into();
+      match msg {
+        Message::Text(text) => {
+          self.text = text.into();
+        }
+        _ => return Err("Invalid message type."),
       }
-      _ => return Err("Invalid message type."),
-    }
-    Ok(self.text.0)
+      Ok(self.text.0)
+    }))
   }
 }
 
@@ -248,18 +251,19 @@ impl Shard for SendString {
     self.client.cleanup()
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
+    Ok(do_blocking(context, || {
+      let msg: &str = input.try_into()?;
 
-    let msg: &str = input.try_into()?;
+      ws.write_message(Message::Text(msg.to_string()))
+        .map_err(|e| {
+          shlog!("{}", e);
+          "Failed to send message."
+        })?;
 
-    ws.write_message(Message::Text(msg.to_string()))
-      .map_err(|e| {
-        shlog!("{}", e);
-        "Failed to send message."
-      })?;
-
-    Ok(*input)
+      Ok(*input)
+    }))
   }
 }
 
