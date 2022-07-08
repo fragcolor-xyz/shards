@@ -12,7 +12,7 @@ We'll explore in depth the binary tree representation, how to flatten it to a li
 
 ## The Tree
 
-Each node in the tree is either a simple shape (a leaf node) or an operator, which takes the result of one or more child nodes (operands) and combines it. For simplicity we consider unary and binary operators only. Operations on three or more elements can be split into binary operations by nesting some of the elements deeper in the tree. In the example above the right node is an union of three cylinders, but it has been split into two binary union operators.
+Each node in the tree is either a simple shape (a leaf node) or an operator that takes the result of one or more child nodes (operands) and combines them. For simplicity we consider unary and binary operators only. Operations on three or more elements can be split into binary operations by nesting some of the elements deeper in the tree. In the example above the right node is an union of three cylinders, but it has been split into two binary union operators.
 
 ### Operators
 
@@ -96,12 +96,41 @@ To keep nodes uniform, they are all the same size (64 bytes = float4x4) where th
 
 `ControlCode` (`m_Control.w`) - control flags used by the shader.
 
-TODO Examples of some of the codes
+### Examples of some of the codes
+
+`OpCodeSphere` - the current node should trace a sphere using `sdSphere` and put the distance on the stack.
+
+`AuxCodeOpData` - the auxiliary data is operator data. Operator data is different per OpCode. For example, the `OpCodeSphere` requires a radius for the sphere it traces. If OpData is available, it gets it from GetOpData().x;
+
+`AuxCodeRotation` - the auxiliary data is rotation data for the node, given as a quaternion. See the Math section for details.
 
 ## The Math
 
-TODO
-
 Location: `//.../Shaders/Math.h`
 
+There are two important concepts in the math library - the use of quaternions for rotation, and the order of operations when traversing from parent node to child node.
 
+### Quaternions
+
+[Quaternions and spatial rotation](https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation) - A spatial rotation of θ radians about a unit axis `(ux, uy, uz)` is mathematically given by `q = (cos(θ/2), ux * sin(θ/2), uy * sin(θ/2), uz * sin(θ/2))`. In the shader we choose to set the real component to `.w` and the imaginary components i, j and k to `.x`, `.y` and `.z` respectively . This means normalizing the  `.xyz` tuple gives you the rotation axis `(ux, uy, uz)`.
+
+To rotate a vector p (or a fixed point p) around the rotation axis, we need to evaluate the conjugation of p by q:
+```
+p(rotated) = q p q^(-1)
+```
+
+### Node inheritance
+
+Nodes define a position, an uniform scale and optionally a rotation quaternion. If they don't define a rotation, we use `(0, 0, 0, 1)` instead which is a 0 radian rotation.
+
+When we need to modify a point or a child node local to the current node, we 1. Scale, 2. Rotate and 3. Translate it. We can swap the scale and rotate operations because we use uniform scaling. Non-uniform scaling requires scale to be applied first.
+
+```
+new Pos = Rotate(Pos(child), Rot(parent)) * Scl(parent) + Pos(parent)
+new Rot = Rot(parent) * Rot(child)
+new Scl = Scl(parent) * Scl(child)
+```
+
+In the above assignment the order of multiplication for the rotation matters as it involves multiplication of their real and three imaginary components. Refer to the Wikipedia article for details.
+
+It's an arbitrary decision if we should resolve the child node's position before mapping the data and feeding it to the shader or if should handle the math in the shader. For performance it's better to resolve the location before mapping it, so we can reduce the workload on the shader. This way the shader can assume every node's location is given with the base node as a reference, not its immediate parent as a reference.
