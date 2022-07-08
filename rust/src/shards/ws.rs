@@ -83,7 +83,7 @@ impl BlockingShard for Client {
 
 #[derive(Default)]
 struct ClientUser {
-  ws: Option<Rc<Option<WebSocket<MaybeTlsStream<TcpStream>>>>>,
+  ws: Rc<Option<WebSocket<MaybeTlsStream<TcpStream>>>>,
   instance: ParamVar,
   requiring: Vec<ExposedInfo>,
 }
@@ -131,10 +131,10 @@ impl ClientUser {
   fn activate(&mut self) -> Result<&mut WebSocket<MaybeTlsStream<TcpStream>>, &str> {
     if self.ws.is_none() {
       let ws = self.instance.get();
-      self.ws = Some(Var::from_object_as_clone(ws, &WS_CLIENT_TYPE)?);
+      self.ws = Var::from_object_as_clone(ws, &WS_CLIENT_TYPE)?;
     }
 
-    let ws = Var::get_mut_from_clone(&self.ws)?;
+    let ws = Var::from_object_mut_ref(self.instance.get(), &WS_CLIENT_TYPE)?;
 
     Ok(ws)
   }
