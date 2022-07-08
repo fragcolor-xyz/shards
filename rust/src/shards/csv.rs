@@ -1,4 +1,6 @@
-use crate::core::do_blocking;
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2021 Fragcolor Pte. Ltd. */
+
 use crate::core::log;
 use crate::core::registerShard;
 use crate::shard::Shard;

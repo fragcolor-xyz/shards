@@ -403,35 +403,6 @@ impl WireRef {
 
 //--------------------------------------------------------------------------------------------------
 
-unsafe extern "C" fn do_blocking_c_call(context: *mut SHContext, arg2: *mut c_void) -> SHVar {
-  let trait_obj_ref: &mut &mut dyn FnMut() -> Result<SHVar, &'static str> =
-    { &mut *(arg2 as *mut _) };
-  match trait_obj_ref() {
-    Ok(value) => value,
-    Err(error) => {
-      shlog_debug!("do_blocking failure detected"); // in case error leads to crash
-      shlog_debug!("do_blocking failure: {}", error);
-      abortWire(&(*context), error);
-      Var::default()
-    }
-  }
-}
-
-pub fn do_blocking<F>(context: &SHContext, f: F) -> SHVar
-where
-  F: FnMut() -> Result<SHVar, &'static str>,
-{
-  unsafe {
-    let ctx = context as *const SHContext as *mut SHContext;
-    let mut trait_obj: &dyn FnMut() -> Result<SHVar, &'static str> = &f;
-    let trait_obj_ref = &mut trait_obj;
-    let closure_pointer_pointer = trait_obj_ref as *mut _ as *mut c_void;
-    (*Core).asyncActivate.unwrap()(ctx, closure_pointer_pointer, Some(do_blocking_c_call), None)
-  }
-}
-
-//--------------------------------------------------------------------------------------------------
-
 pub trait BlockingShard {
   fn run_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
   fn cancel_activation(&mut self, _context: &Context) {}

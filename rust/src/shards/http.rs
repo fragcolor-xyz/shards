@@ -2,7 +2,6 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 use crate::core::activate_blocking;
-use crate::core::do_blocking;
 use crate::core::log;
 use crate::core::registerShard;
 use crate::core::BlockingShard;

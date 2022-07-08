@@ -1,5 +1,5 @@
 use crate::{
-  core::{activate_blocking, do_blocking, registerShard, BlockingShard},
+  core::{activate_blocking, registerShard, BlockingShard},
   types::{
     ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var,
     ANYS_TYPES, FRAG_CC, NONE_TYPES, STRING_TYPES,
@@ -215,6 +215,18 @@ impl BlockingShard for ReadString {
     match msg {
       Message::Text(text) => {
         self.text = text.into();
+      }
+      Message::Binary(_) => {
+        return Err("Received binary message, expected text.");
+      }
+      Message::Close(_) => {
+        return Err("Received close message, expected text.");
+      }
+      Message::Ping(_) => {
+        return Err("Received ping message, expected text.");
+      }
+      Message::Pong(_) => {
+        return Err("Received pong message, expected text.");
       }
       _ => return Err("Invalid message type."),
     }
