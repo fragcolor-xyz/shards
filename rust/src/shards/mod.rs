@@ -30,6 +30,7 @@ pub mod chachapoly;
 
 pub mod gui;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod ws;
 
 static CRYPTO_KEY_TYPES: &[Type] = &[
