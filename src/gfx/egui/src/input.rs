@@ -136,9 +136,29 @@ pub fn to_egui_cursor_icon(i: CursorIcon) -> egui_CursorIcon {
     }
 }
 
+#[derive(Debug)]
+pub enum TranslationError {
+    Text(std::str::Utf8Error),
+}
+
+impl From<std::str::Utf8Error> for TranslationError {
+    fn from(e: std::str::Utf8Error) -> Self {
+        TranslationError::Text(e)
+    }
+}
+
+impl std::fmt::Display for TranslationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TranslationError::Text(text) => text.fmt(f)
+        }
+    }
+}
+
+
 pub fn translate_raw_input(
     input: &egui_Input,
-) -> Result<egui::RawInput, Box<dyn std::error::Error>> {
+) -> Result<egui::RawInput, TranslationError> {
     let mut events = Vec::new();
 
     unsafe {
@@ -166,7 +186,7 @@ pub fn translate_raw_input(
                 }
                 egui_InputEventType_Text => {
                     let event = &in_event.text;
-                    let text = CStr::from_ptr(event.text).to_str().unwrap().to_owned();
+                    let text = CStr::from_ptr(event.text).to_str()?.to_owned();
                     Some(Event::Text(text))
                 }
                 egui_InputEventType_Key => {
