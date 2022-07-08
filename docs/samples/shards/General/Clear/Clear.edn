@@ -1,0 +1,3 @@
+[10 20 30 40] >= .seq
+(Clear .seq)    ;; removes all elements from sequence
+.seq (Log)      ;; sequence is empty => []  

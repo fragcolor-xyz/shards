@@ -1,0 +1,16 @@
+"Shards" >= .string
+[10 20 30] >= .sequence
+{"k1" 11 "k2" 22} >= .table
+12345 >= .number
+
+(Count .string)         
+(Log "string count") ;; no. of characters in string => 6
+
+(Count .sequence)         
+(Log "sequence count") ;; no. of elements in sequence => 3
+
+(Count .table)         
+(Log "table count") ;; no. of table key-value pairs => 2
+
+(Count .number)         
+(Log "number count") ;; displays zero for numbers => 0

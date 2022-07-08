@@ -1203,6 +1203,10 @@ struct Swap {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Swaps the values of the two variables passed to it via `:NameA` and `:NameB` parameters.");
+  }
+
   SHExposedTypesInfo requiredVariables() {
     _exposedInfo = ExposedInfo(ExposedInfo::Variable(_nameA.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType),
                                ExposedInfo::Variable(_nameB.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType));
@@ -1955,6 +1959,14 @@ struct Count : SeqUser {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
+  }
+  static SHOptionalString help() {
+    return SHCCSTR("Parses the value in passed to in the `:Name` parameter and returns the count of characters (if string "
+                   "passed), elements (fif sequence passed), or key-value pairs (if table passed).");
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
@@ -1978,6 +1990,11 @@ struct Count : SeqUser {
 
 struct Clear : SeqUser {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR(
+        "Removes all the elements of the sequence passed to it in the `:Name` parameter. Applicable only to sequences.");
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
