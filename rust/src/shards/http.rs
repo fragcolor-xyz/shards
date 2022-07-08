@@ -282,7 +282,7 @@ macro_rules! get_like {
     }
 
     impl BlockingShard for $shard_name {
-      fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+      fn run_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
         let request = self.rb.url.get();
         let request_string: &str = request.as_ref().try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
@@ -377,7 +377,7 @@ macro_rules! post_like {
     }
 
     impl BlockingShard for $shard_name {
-      fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+      fn run_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
         let request = self.rb.url.get();
         let request_string: &str = request.as_ref().try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);

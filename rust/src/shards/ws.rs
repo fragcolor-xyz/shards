@@ -63,12 +63,12 @@ impl Shard for Client {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(BlockingShard::activate_blocking(self, context, input)?)
+    Ok(activate_blocking(self, context, input))
   }
 }
 
 impl BlockingShard for Client {
-  fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn run_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let addr: &str = input.try_into()?;
     let ws = tungstenite::client::connect(addr).map_err(|e| {
       shlog!("{}", e);
@@ -199,12 +199,12 @@ impl Shard for ReadString {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(BlockingShard::activate_blocking(self, context, input)?)
+    Ok(activate_blocking(self, context, input))
   }
 }
 
 impl BlockingShard for ReadString {
-  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn run_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
 
     let msg = ws.read_message().map_err(|e| {
@@ -280,12 +280,12 @@ impl Shard for WriteString {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(BlockingShard::activate_blocking(self, context, input)?)
+    Ok(activate_blocking(self, context, input))
   }
 }
 
 impl BlockingShard for WriteString {
-  fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn run_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
 
     let msg: &str = input.try_into()?;

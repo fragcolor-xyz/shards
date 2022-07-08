@@ -433,7 +433,7 @@ where
 //--------------------------------------------------------------------------------------------------
 
 pub trait BlockingShard {
-  fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
+  fn run_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
   fn cancel_activation(&mut self, _context: &Context) {}
 }
 
@@ -447,7 +447,7 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingShard>(
   arg2: *mut c_void,
 ) -> SHVar {
   let data = arg2 as *mut AsyncCallData<T>;
-  let res = (*(*data).caller).activate_blocking(&*context, &*(*data).input);
+  let res = (*(*data).caller).run_blocking(&*context, &*(*data).input);
   match res {
     Ok(value) => value,
     Err(error) => {
