@@ -97,7 +97,16 @@ int2 Window::getSize() const {
   return r;
 }
 
+#if GFX_APPLE
+#define VIRTUAL_WINDOW_SIZE 1
+#else
+#define VIRTUAL_WINDOW_SIZE 0
+#endif
+
 float2 Window::getDrawScale() const {
+#if VIRTUAL_WINDOW_SIZE
+  return float2(getDrawableSize()) / float2(getSize());
+#else
   // DPI for 100% on windows
   const float referenceDpi = 96.0f;
 
@@ -107,9 +116,20 @@ float2 Window::getDrawScale() const {
   SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y);
 
   return dpi / referenceDpi;
+#endif
 }
 
-float2 Window::getVirtualDrawableSize() { return getDrawableSize() / getDrawScale(); }
+float2 Window::getVirtualDrawableSize() const { return toVirtualCoord(float2(getDrawableSize())); }
+
+bool Window::isWindowSizeVirtual() const {
+#if VIRTUAL_WINDOW_SIZE
+  return true;
+#else
+  return false;
+#endif
+}
+float2 Window::toVirtualCoord(float2 screenCoord) const { return screenCoord / getDrawScale(); }
+float2 Window::toScreenCoord(float2 virtualCoord) const { return virtualCoord * getDrawScale(); }
 
 Window::~Window() { cleanup(); }
 } // namespace gfx

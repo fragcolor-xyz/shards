@@ -72,14 +72,14 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
 
   reset();
 
-  float drawScale = EguiRenderer::getDrawScale(window);
-  float2 screenSize = window.getDrawableSize() / drawScale;
+  float eguiDrawScale = EguiRenderer::getDrawScale(window);
+  float2 eguiScreenSize = window.getVirtualDrawableSize();
 
   input.screenRect = egui::Rect{
       .min = egui::Pos2{0, 0},
-      .max = egui::Pos2{screenSize.x, screenSize.y},
+      .max = egui::Pos2{eguiScreenSize.x, eguiScreenSize.y},
   };
-  input.pixelsPerPoint = drawScale;
+  input.pixelsPerPoint = eguiDrawScale;
 
   auto newEvent = [&](egui::InputEventType type) -> InputEvent & {
     InputEvent &event = events.emplace_back();
@@ -90,8 +90,11 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
   egui::ModifierKeys modifierKeys = translateModifierKeys(SDL_GetModState());
 
   auto updateCursorPosition = [&](int32_t x, int32_t y) -> const egui::Pos2 & {
-    float2 virtualCursorPosition = float2(x, y) / drawScale;
-    return lastCursorPosition = egui::Pos2{.x = virtualCursorPosition.x, .y = virtualCursorPosition.y};
+    float2 cursorPosition = float2(x, y);
+    if (!window.isWindowSizeVirtual())
+      cursorPosition = window.toVirtualCoord(cursorPosition);
+
+    return lastCursorPosition = egui::Pos2{.x = cursorPosition.x, .y = cursorPosition.y};
   };
 
   std::vector<std::function<void()>> deferQueue;
@@ -240,9 +243,7 @@ void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::P
   }
 }
 
-void EguiInputTranslator::copyText(const char *text) {
-  SDL_SetClipboardText(text);
-}
+void EguiInputTranslator::copyText(const char *text) { SDL_SetClipboardText(text); }
 
 void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
   if (icon == egui::CursorIcon::None) {
