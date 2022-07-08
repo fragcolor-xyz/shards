@@ -41,7 +41,7 @@ half = { version = "2.0.0" }
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
 reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
-tungstenite = { version = "0.17.2", features = ["native-tls-vendored"], optional = true }
+tungstenite = { version = "0.17.2", features = ["rustls-tls-webpki-roots"], optional = true }
 
 [target.'cfg(not(any(target_arch="wasm32", target_os="ios")))'.dependencies]
 webbrowser = { version = "0.5.5", optional = true }
