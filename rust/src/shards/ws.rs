@@ -1,8 +1,8 @@
 use crate::{
-  core::{activate_blocking, do_blocking, registerShard},
+  core::{activate_blocking, do_blocking, registerShard, BlockingShard},
   types::{
-    ClonedVar, Context, ParamVar, Parameters, Type, Types, Var, ANYS_TYPES, FRAG_CC, NONE_TYPES,
-    STRING_TYPES,
+    ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var,
+    ANYS_TYPES, FRAG_CC, NONE_TYPES, STRING_TYPES,
   },
   Shard,
 };
@@ -63,17 +63,21 @@ impl Shard for Client {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(do_blocking(context, || {
-      let addr: &str = input.try_into()?;
-      let ws = tungstenite::client::connect(addr).map_err(|e| {
-        shlog!("{}", e);
-        "Failed to connect to server."
-      })?;
-      // we need to keep this alive here, otherwise it will be dropped at the end of this function
-      self.ws = Rc::new(Some(ws.0));
-      let var_ws = Var::new_object(&self.ws, &WS_CLIENT_TYPE);
-      Ok(var_ws)
-    }))
+    Ok(BlockingShard::activate_blocking(self, context, input)?)
+  }
+}
+
+impl BlockingShard for Client {
+  fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let addr: &str = input.try_into()?;
+    let ws = tungstenite::client::connect(addr).map_err(|e| {
+      shlog!("{}", e);
+      "Failed to connect to server."
+    })?;
+    // we need to keep this alive here, otherwise it will be dropped at the end of this function
+    self.ws = Rc::new(Some(ws.0));
+    let var_ws = Var::new_object(&self.ws, &WS_CLIENT_TYPE);
+    Ok(var_ws)
   }
 }
 
@@ -81,6 +85,7 @@ impl Shard for Client {
 struct ClientUser {
   ws: Option<Rc<Option<WebSocket<MaybeTlsStream<TcpStream>>>>>,
   instance: ParamVar,
+  requiring: Vec<ExposedInfo>,
 }
 
 impl ClientUser {
@@ -96,6 +101,21 @@ impl ClientUser {
       0 => self.instance.get_param(),
       _ => panic!("Invalid index {}", index),
     }
+  }
+
+  fn required_variables(&mut self) -> Option<&ExposedTypes> {
+    self.requiring.clear();
+
+    // Add GUI.Context to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: WS_CLIENT_TYPE,
+      name: self.instance.get_name(),
+      help: cstr!("The exposed UI context.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
+    Some(&self.requiring)
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
@@ -157,6 +177,10 @@ impl Shard for ReadString {
     Some(&WS_CLIENT_USER_PARAMS)
   }
 
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.client.required_variables()
+  }
+
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     self.client.set_param(index, value);
     Ok(())
@@ -174,22 +198,27 @@ impl Shard for ReadString {
     self.client.cleanup()
   }
 
-  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Var, &str> {
-    let ws = self.client.activate()?;
-    Ok(do_blocking(context, || {
-      let msg = ws.read_message().map_err(|e| {
-        shlog!("{}", e);
-        "Failed to read message."
-      })?;
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    Ok(BlockingShard::activate_blocking(self, context, input)?)
+  }
+}
 
-      match msg {
-        Message::Text(text) => {
-          self.text = text.into();
-        }
-        _ => return Err("Invalid message type."),
+impl BlockingShard for ReadString {
+  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    let ws = self.client.activate()?;
+
+    let msg = ws.read_message().map_err(|e| {
+      shlog!("{}", e);
+      "Failed to read message."
+    })?;
+
+    match msg {
+      Message::Text(text) => {
+        self.text = text.into();
       }
-      Ok(self.text.0)
-    }))
+      _ => return Err("Invalid message type."),
+    }
+    Ok(self.text.0)
   }
 }
 
@@ -229,6 +258,10 @@ impl Shard for WriteString {
     Some(&WS_CLIENT_USER_PARAMS)
   }
 
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.client.required_variables()
+  }
+
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     self.client.set_param(index, value);
     Ok(())
@@ -247,18 +280,23 @@ impl Shard for WriteString {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    Ok(BlockingShard::activate_blocking(self, context, input)?)
+  }
+}
+
+impl BlockingShard for WriteString {
+  fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
-    Ok(do_blocking(context, || {
-      let msg: &str = input.try_into()?;
 
-      ws.write_message(Message::Text(msg.to_string()))
-        .map_err(|e| {
-          shlog!("{}", e);
-          "Failed to send message."
-        })?;
+    let msg: &str = input.try_into()?;
 
-      Ok(*input)
-    }))
+    ws.write_message(Message::Text(msg.to_string()))
+      .map_err(|e| {
+        shlog!("{}", e);
+        "Failed to send message."
+      })?;
+
+    Ok(*input)
   }
 }
 
