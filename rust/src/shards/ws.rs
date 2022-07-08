@@ -13,12 +13,7 @@ use tungstenite::{
   accept, handshake::client::Response, stream::MaybeTlsStream, Message, WebSocket,
 };
 
-/*
-"wss://xyz.xyz" (WS.Client) = .xyz-client
-
-(WS.ReadString .xyz-client) ...
-"Ok" (WS.WriteString .xyz-client)
-*/
+// TODO EXPOSE AND REQUIRE VARIABLES
 
 static WS_CLIENT_TYPE: Type = Type::object(FRAG_CC, 2004042604); // 'wsCl'
 static WS_CLIENT_SLICE: &'static [Type] = &[WS_CLIENT_TYPE];
