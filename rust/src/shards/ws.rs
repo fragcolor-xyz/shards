@@ -207,30 +207,36 @@ impl BlockingShard for ReadString {
   fn run_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
 
-    let msg = ws.read_message().map_err(|e| {
-      shlog!("{}", e);
-      "Failed to read message."
-    })?;
+    loop {
+      let msg = ws.read_message().map_err(|e| {
+        shlog!("{}", e);
+        "Failed to read message."
+      })?;
 
-    match msg {
-      Message::Text(text) => {
-        self.text = text.into();
+      match msg {
+        Message::Text(text) => {
+          self.text = text.into();
+          return Ok(self.text.0);
+        }
+        Message::Binary(_) => {
+          return Err("Received binary message, expected text.");
+        }
+        Message::Close(_) => {
+          return Err("Received close message, expected text.");
+        }
+        Message::Ping(_) => {
+          shlog_debug!("Received ping message, sending pong.");
+          ws.write_message(Message::Pong(vec![])).map_err(|e| {
+            shlog!("{}", e);
+            "Failed to write message."
+          })?;
+        }
+        Message::Pong(_) => {
+          return Err("Received pong message, expected text.");
+        }
+        _ => return Err("Invalid message type."),
       }
-      Message::Binary(_) => {
-        return Err("Received binary message, expected text.");
-      }
-      Message::Close(_) => {
-        return Err("Received close message, expected text.");
-      }
-      Message::Ping(_) => {
-        return Err("Received ping message, expected text.");
-      }
-      Message::Pong(_) => {
-        return Err("Received pong message, expected text.");
-      }
-      _ => return Err("Invalid message type."),
     }
-    Ok(self.text.0)
   }
 }
 
