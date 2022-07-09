@@ -293,6 +293,8 @@ void registerCoreShards() {
   static_assert(sizeof(SHVar) == 32);
   static_assert(sizeof(SHMapIt) <= sizeof(SHTableIterator));
 
+  SHLOG_DEBUG("Hardware concurrency: {}", std::thread::hardware_concurrency());
+
   Assert::registerShards();
   registerWiresShards();
   registerLoggingShards();
@@ -835,12 +837,7 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
-#ifdef __EMSCRIPTEN__
-// limit to 4 under emscripten
-Shared<boost::asio::thread_pool, int, 4> SharedThreadPool{};
-#else
-Shared<boost::asio::thread_pool> SharedThreadPool{};
-#endif
+Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool{};
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict) {
   if (receiverType.basicType == SHType::Any)

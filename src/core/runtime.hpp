@@ -9,7 +9,7 @@
 #include <winsock2.h>
 #endif
 
-#include <boost/asio/dispatch.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
 
 #include <string.h> // memset
@@ -1329,10 +1329,15 @@ template <typename T> inline T emscripten_wait(SHContext *context, emscripten::v
 
 #ifdef __EMSCRIPTEN__
 // limit to 4 under emscripten
-extern Shared<boost::asio::thread_pool, int, 4> SharedThreadPool;
+struct SharedThreadPoolConcurrency {
+  static int get() { return 4; }
+};
 #else
-extern Shared<boost::asio::thread_pool> SharedThreadPool;
+struct SharedThreadPoolConcurrency {
+  static int get() { return std::thread::hardware_concurrency(); }
+};
 #endif
+extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool;
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
@@ -1343,14 +1348,17 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   SHVar res{};
   std::atomic_bool complete = false;
 
-  boost::asio::dispatch(shards::SharedThreadPool(), [&]() {
+  boost::asio::post(shards::SharedThreadPool(), [&]() {
     try {
+      // SHLOG_TRACE("Awaitne: starting {}", reinterpret_cast<void *>(&func));
       res = func();
     } catch (...) {
       exp = std::current_exception();
     }
     complete = true;
   });
+
+  // SHLOG_TRACE("Awaitne: waiting for completion {}", reinterpret_cast<void *>(&func));
 
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
@@ -1385,14 +1393,17 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
   std::exception_ptr exp = nullptr;
   std::atomic_bool complete = false;
 
-  boost::asio::dispatch(shards::SharedThreadPool(), [&]() {
+  boost::asio::post(shards::SharedThreadPool(), [&]() {
     try {
+      // SHLOG_TRACE("Await: starting {}", reinterpret_cast<void *>(&func));
       func();
     } catch (...) {
       exp = std::current_exception();
     }
     complete = true;
   });
+
+  // SHLOG_TRACE("Await: waiting for completion {}", reinterpret_cast<void *>(&func));
 
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)

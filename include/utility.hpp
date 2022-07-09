@@ -162,7 +162,7 @@ private:
 /*
   Lazy initialization of a static variable.
 */
-template <typename T, typename ARG = void *, ARG defaultValue = nullptr> class Shared {
+template <typename T, typename DEFAULT = void> class Shared {
 public:
   Shared() { addRef(); }
 
@@ -172,9 +172,9 @@ public:
     if (!getState().tp) {
       std::unique_lock<std::mutex> lock(getState().mutex);
       // check again as another thread might have locked
-      if constexpr (!std::is_same<ARG, void *>::value) {
+      if constexpr (!std::is_same<DEFAULT, void>::value) {
         if (!getState().tp)
-          getState().tp = new T(defaultValue);
+          getState().tp = new T(DEFAULT::get());
       } else {
         if (!getState().tp)
           getState().tp = new T();
