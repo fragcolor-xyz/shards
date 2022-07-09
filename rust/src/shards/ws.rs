@@ -225,7 +225,7 @@ impl BlockingShard for ReadString {
           return Err("Received close message, expected text.");
         }
         Message::Ping(_) => {
-          shlog_debug!("Received ping message, sending pong.");
+          // shlog_debug!("Received ping message, sending pong.");
           ws.write_message(Message::Pong(vec![])).map_err(|e| {
             shlog!("{}", e);
             "Failed to write message."
