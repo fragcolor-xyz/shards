@@ -113,7 +113,9 @@ float2 Window::getDrawScale() const {
   int displayIndex = SDL_GetWindowDisplayIndex(window);
   float2 dpi;
   float diagonalDpi;
-  SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y);
+  if(SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y) != 0) {
+    return float2(1.0f);
+  }
 
   return dpi / referenceDpi;
 #endif
