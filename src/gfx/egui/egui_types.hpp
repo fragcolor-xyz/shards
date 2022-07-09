@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <SDL_keycode.h>
 
 #ifndef RUST_BINDGEN
 #include <vector>
@@ -32,9 +33,187 @@ struct Vertex {
 #endif
 };
 
+struct TouchDeviceId {
+  uint64_t id;
+  operator uint64_t() const { return id; }
+};
+
+struct TouchId {
+  uint64_t id;
+  operator uint64_t() const { return id; }
+};
+
+enum class InputEventType : uint8_t {
+  Copy,
+  Cut,
+  Paste,
+  Text,
+  Key,
+  PointerMoved,
+  PointerButton,
+  PointerGone,
+  Scroll,
+  Zoom,
+  CompositionStart,
+  CompositionUpdate,
+  CompositionEnd,
+  Touch
+};
+
+enum class TouchPhase : uint8_t {
+  Start,
+  Move,
+  End,
+  Cancel,
+};
+
+enum class PointerButton : uint8_t {
+  Primary = 0,
+  Secondary = 1,
+  Middle = 2,
+};
+
+struct ModifierKeys {
+  bool alt;
+  bool ctrl;
+  bool shift;
+  bool macCmd;
+  bool command;
+};
+
+union InputEvent {
+  struct {
+    InputEventType type;
+  } common;
+  struct {
+    InputEventType type;
+    SDL_KeyCode key;
+    bool pressed;
+    ModifierKeys modifiers;
+  } key;
+  struct {
+    InputEventType type;
+  } copy;
+  struct {
+    InputEventType type;
+  } cut;
+  struct {
+    InputEventType type;
+    const char *str;
+  } paste;
+  struct {
+    InputEventType type;
+    const char *text;
+  } text;
+  struct {
+    InputEventType type;
+    Pos2 pos;
+  } pointerMoved;
+  struct {
+    InputEventType type;
+    Pos2 pos;
+    PointerButton button;
+    bool pressed;
+    ModifierKeys modifiers;
+  } pointerButton;
+  struct {
+    InputEventType type;
+  } pointerGone;
+  struct {
+    InputEventType type;
+    Pos2 delta;
+  } scroll;
+  struct {
+    InputEventType type;
+    float delta;
+  } zoom;
+  struct {
+    InputEventType type;
+  } compositionStart;
+  struct {
+    InputEventType type;
+    const char *text;
+  } compositionUpdate;
+  struct {
+    InputEventType type;
+    const char *text;
+  } compositionEnd;
+  struct {
+    InputEventType type;
+    TouchDeviceId deviceId;
+    TouchId id;
+    TouchPhase phase;
+    Pos2 pos;
+    float force;
+  } touch;
+};
+
+enum class CursorIcon {
+  Default,
+  None,
+  ContextMenu,
+  Help,
+  PointingHand,
+  Progress,
+  Wait,
+  Cell,
+  Crosshair,
+  Text,
+  VerticalText,
+  Alias,
+  Copy,
+  Move,
+  NoDrop,
+  NotAllowed,
+  Grab,
+  Grabbing,
+  AllScroll,
+  ResizeHorizontal,
+  ResizeNeSw,
+  ResizeNwSe,
+  ResizeVertical,
+  ResizeEast,
+  ResizeSouthEast,
+  ResizeSouth,
+  ResizeSouthWest,
+  ResizeWest,
+  ResizeNorthWest,
+  ResizeNorth,
+  ResizeNorthEast,
+  ResizeColumn,
+  ResizeRow,
+  ZoomIn,
+  ZoomOut,
+};
+
+struct HoveredFile {
+  const char *path;
+  const char *mime;
+};
+
+struct DroppedFile {
+  const char *path;
+  const char *name;
+  const char *lastModified; // ISO 8601 timestamp / strftime("%FT%TZ")
+  const uint8_t *data;
+  size_t dataLength;
+};
+
 struct Input {
-  int cursorPosition[2];
-  bool mouseButton{};
+  Rect screenRect;
+  float pixelsPerPoint;
+  double time;
+  float predictedDeltaTime;
+  ModifierKeys modifierKeys;
+
+  const InputEvent *inputEvents;
+  size_t numInputEvents;
+
+  const HoveredFile *hoveredFiles;
+  size_t numHoveredFiles;
+
+  const DroppedFile *droppedFiles;
+  size_t numDroppedFiles;
 };
 
 struct TextureId {

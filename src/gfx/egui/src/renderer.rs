@@ -25,69 +25,6 @@ pub struct NativeFullOutput {
     pub full_output: egui_FullOutput,
 }
 
-impl From<egui::Pos2> for egui_Pos2 {
-    fn from(pos: egui::Pos2) -> Self {
-        Self { x: pos.x, y: pos.y }
-    }
-}
-
-impl From<egui_Pos2> for egui::Pos2 {
-    fn from(pos: egui_Pos2) -> Self {
-        Self { x: pos.x, y: pos.y }
-    }
-}
-
-impl From<egui::Rect> for egui_Rect {
-    fn from(r: egui::Rect) -> Self {
-        Self {
-            min: r.min.into(),
-            max: r.max.into(),
-        }
-    }
-}
-
-impl From<egui_Rect> for egui::Rect {
-    fn from(r: egui_Rect) -> Self {
-        Self {
-            min: r.min.into(),
-            max: r.max.into(),
-        }
-    }
-}
-
-impl From<epaint::Color32> for egui_Color32 {
-    fn from(c: epaint::Color32) -> Self {
-        Self {
-            r: c.r(),
-            g: c.g(),
-            b: c.b(),
-            a: c.a(),
-        }
-    }
-}
-
-impl From<epaint::Vertex> for egui_Vertex {
-    fn from(v: epaint::Vertex) -> Self {
-        Self {
-            pos: v.pos.into(),
-            uv: v.uv.into(),
-            color: v.color.into(),
-        }
-    }
-}
-
-impl From<epaint::TextureId> for egui_TextureId {
-    fn from(v: epaint::TextureId) -> Self {
-        Self {
-            id: if let epaint::TextureId::Managed(managed) = v {
-                managed
-            } else {
-                0
-            },
-        }
-    }
-}
-
 fn convert_primitive(
     clipped_primitive: ClippedPrimitive,
     vertex_mem: &mut Vec<egui_Vertex>,
@@ -188,7 +125,7 @@ fn make_native_full_output(
     ctx: &Context,
     input: egui::FullOutput,
     draw_scale: f32,
-) -> Result<NativeFullOutput, &str> {
+) -> Result<NativeFullOutput, &'static str> {
     let primitives = ctx.tessellate(input.shapes);
     let mut numVerts = 0;
     let mut numIndices = 0;
@@ -205,16 +142,16 @@ fn make_native_full_output(
     let mut index_mem: Vec<u32> = Vec::with_capacity(numIndices);
     let clipped_primitives: Vec<_> = primitives
         .into_iter()
-        .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem, draw_scale).unwrap())
-        .collect();
+        .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem, draw_scale))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let mut image_mem: Vec<PixelData> = Vec::new();
     let texture_sets: Vec<_> = input
         .textures_delta
         .set
         .into_iter()
-        .map(|pair| convert_texture_set(pair.0, pair.1, &mut image_mem).unwrap())
-        .collect();
+        .map(|pair| convert_texture_set(pair.0, pair.1, &mut image_mem))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let texture_frees: Vec<egui_TextureId> = input
         .textures_delta
@@ -268,10 +205,11 @@ impl Renderer {
         egui_output: egui::FullOutput,
         queue: *const gfx_DrawQueuePtr,
         draw_scale: f32,
-    ) {
+    ) -> Result<(), &str> {
         unsafe {
-            let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale).unwrap();
+            let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
             gfx_EguiRenderer_render(self.egui_renderer, &native_egui_output.full_output, queue);
+            Ok(())
         }
     }
 }

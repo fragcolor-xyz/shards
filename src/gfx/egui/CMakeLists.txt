@@ -9,6 +9,7 @@ endif()
 add_library(gfx_egui
   egui_types.cpp
   renderer.cpp
+  input.cpp
 )
 target_link_libraries(gfx_egui gfx)
 

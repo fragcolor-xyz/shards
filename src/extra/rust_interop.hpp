@@ -16,6 +16,8 @@ Context *MainWindowGlobals_getContext(const SHVar &mainWindowGlobals);
 Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals);
 
 DrawQueuePtr *getDrawQueueFromVar(const SHVar &var);
+
+const egui::Input* getEguiWindowInputs(gfx::EguiInputTranslator* translator, const SHVar &mainWindowGlobals);
 } // namespace gfx
 
 #endif /* E325D8E3_F64E_413D_965B_DF275CF18AC4 */

@@ -205,6 +205,9 @@ struct MainWindow : public Base {
     float deltaTime = 0.0;
     if (loop.beginFrame(0.0f, deltaTime)) {
       if (context->beginFrame()) {
+        globals->time = loop.getAbsoluteTime();
+        globals->deltaTime = deltaTime;
+
         imgui->beginFrame(events);
         renderer->beginFrame();
 

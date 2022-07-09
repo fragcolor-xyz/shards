@@ -6,6 +6,7 @@
 #include <memory>
 
 namespace gfx {
+struct Window;
 struct EguiRendererImpl;
 
 /// <div rustbindgen opaque></div>
@@ -18,6 +19,8 @@ struct EguiRenderer {
 
   static EguiRenderer *create();
   static void destroy(EguiRenderer *renderer);
+
+  static float getDrawScale(Window& window);
 };
 
 } // namespace gfx

@@ -1,7 +1,9 @@
 use super::*;
+use crate::input::to_egui_cursor_icon;
 use crate::Renderer;
 use egui::RichText;
-use std::sync::Mutex;
+use epaint::Color32;
+use std::{ffi::CString, ptr::null, sync::Mutex};
 
 struct App {
     pub ctx: egui::Context,
@@ -20,6 +22,7 @@ impl Default for App {
 #[derive(Default)]
 struct State {
     pub color_test: color_test::ColorTest,
+    pub multiline_text: String,
 }
 
 lazy_static! {
@@ -31,25 +34,21 @@ lazy_static! {
 pub unsafe extern "C" fn render_egui_test_frame(
     context: *mut gfx_Context,
     queue: *mut gfx_DrawQueuePtr,
-    delta_time: f32,
+    input_translator: *mut gfx_EguiInputTranslator,
+    input_ptr: *const egui_Input,
 ) {
-    use egui::Color32;
-
+    let raw_input = translate_raw_input(&*input_ptr).unwrap();
     let app = APP.lock().unwrap();
-    let mut input = egui::RawInput::default();
-
     let window = gfx_Context_getWindow(context);
-    let screen_rect_size = gfx_Window_getVirtualDrawableSize_ext(window);
-    input.screen_rect = Some(egui::Rect {
-        min: egui::pos2(0.0, 0.0),
-        max: egui::pos2(screen_rect_size.x, screen_rect_size.y),
-    });
 
-    let draw_scale_vec = gfx_Window_getDrawScale_ext(window);
-    let draw_scale = f32::max(draw_scale_vec.x, draw_scale_vec.y);
-    input.pixels_per_point = Some(draw_scale);
+    let draw_scale = (*input_ptr).pixelsPerPoint;
+    let delta_time = (*input_ptr).predictedDeltaTime;
 
-    let full_output = app.ctx.run(input, |ctx| {
+    let full_output = app.ctx.run(raw_input, |ctx| {
+        egui::SidePanel::right("input").show(ctx, |ui| {
+            let mut state = STATE.lock().unwrap();
+            ui.code_editor(&mut state.multiline_text);
+        });
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut state = STATE.lock().unwrap();
             egui::ScrollArea::both()
@@ -69,6 +68,26 @@ pub unsafe extern "C" fn render_egui_test_frame(
         });
     });
 
+    match full_output.platform_output.text_cursor_pos {
+        Some(pos) => {
+            let native_pos: egui_Pos2 = pos.into();
+            gfx_EguiInputTranslator_updateTextCursorPosition(input_translator, window, &native_pos);
+        }
+        None => gfx_EguiInputTranslator_updateTextCursorPosition(input_translator, window, null()),
+    };
+
+    if !full_output.platform_output.copied_text.is_empty() {
+        if let Ok(c_str) = CString::new(full_output.platform_output.copied_text.to_owned()) {
+            gfx_EguiInputTranslator_copyText(input_translator, c_str.as_ptr());
+        }
+    }
+
+    gfx_EguiInputTranslator_updateCursorIcon(
+        input_translator,
+        to_egui_cursor_icon(full_output.platform_output.cursor_icon),
+    );
+
     app.renderer
-        .render(&app.ctx, full_output, queue, draw_scale);
+        .render(&app.ctx, full_output, queue, draw_scale)
+        .unwrap();
 }

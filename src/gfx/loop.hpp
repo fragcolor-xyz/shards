@@ -16,7 +16,7 @@ struct Loop {
 
   Loop();
   bool beginFrame(float targetDeltaTime, float &deltaTime);
-  float getAbsoluteTime() const;
+  double getAbsoluteTime() const;
 };
 } // namespace gfx
 

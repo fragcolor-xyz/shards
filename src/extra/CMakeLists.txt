@@ -66,6 +66,9 @@ option(SHARDS_EXTRA_BUILD_SHARED OFF "Build shards extra as dynamic library")
 if(SHARDS_WITH_RUST_SHARDS)
   target_compile_definitions(shards-extra PUBLIC "-DSHARDS_WITH_RUST_SHARDS=1")
   target_link_libraries(shards-extra shards-rust)
+
+  # Because we have some references to c++ code from rust
+  target_link_libraries(shards-rust INTERFACE shards-extra)
 endif()
 
 

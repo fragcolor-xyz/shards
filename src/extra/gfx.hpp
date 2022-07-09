@@ -24,6 +24,9 @@ struct MainWindowGlobals {
   std::shared_ptr<ImGuiRenderer> imgui;
   std::vector<SDL_Event> events;
 
+  double time;
+  float deltaTime;
+
   // Draw queue used when it's not manually specified
   SHDrawQueue shDrawQueue;
 
