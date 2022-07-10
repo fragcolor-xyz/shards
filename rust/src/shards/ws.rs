@@ -221,7 +221,7 @@ impl Shard for ReadString {
       let result = activate_blocking(self, context, input);
       if result.is_none() {
         // none means we should yield
-        shlog_debug!("ReadString: yield");
+        // shlog_debug!("ReadString: yield");
         let next_state = suspend(context, 0.0);
         if next_state != WireState::Continue {
           return Err("Stopped");
