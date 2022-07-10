@@ -1,14 +1,15 @@
 use crate::{
-  core::{activate_blocking, registerShard, BlockingShard},
+  core::{activate_blocking, registerShard, suspend, BlockingShard},
   types::{
     ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var,
-    ANYS_TYPES, FRAG_CC, NONE_TYPES, STRING_TYPES,
+    WireState, ANYS_TYPES, FRAG_CC, NONE_TYPES, STRING_TYPES,
   },
   Shard,
 };
-use std::net::TcpStream;
+use instant::Duration;
 use std::rc::Rc;
 use std::thread::spawn;
+use std::{io::ErrorKind, net::TcpStream};
 use tungstenite::{
   accept, handshake::client::Response, stream::MaybeTlsStream, Message, WebSocket,
 };
@@ -70,10 +71,26 @@ impl Shard for Client {
 impl BlockingShard for Client {
   fn run_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let addr: &str = input.try_into()?;
-    let ws = tungstenite::client::connect(addr).map_err(|e| {
+    let mut ws = tungstenite::client::connect(addr).map_err(|e| {
       shlog!("{}", e);
       "Failed to connect to server."
     })?;
+
+    // setup timeouts, we don't want to wait forever inside our thread pool for a response
+    // and so every 100ms we yield to allow coroutine scheduler suspension
+    let stream = ws.0.get_mut();
+    match *stream {
+      MaybeTlsStream::Plain(ref mut s) => s.set_read_timeout(Some(Duration::new(0, 100_000_000))),
+      MaybeTlsStream::Rustls(ref mut s) => {
+        s.sock.set_read_timeout(Some(Duration::new(0, 100_000_000)))
+      }
+      _ => unimplemented!(),
+    }
+    .map_err(|e| {
+      shlog!("{}", e);
+      "Failed to set read timeout."
+    })?;
+
     // we need to keep this alive here, otherwise it will be dropped at the end of this function
     self.ws = Rc::new(Some(ws.0));
     let var_ws = Var::new_object(&self.ws, &WS_CLIENT_TYPE);
@@ -199,42 +216,77 @@ impl Shard for ReadString {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(activate_blocking(self, context, input))
+    // stay away from sys calls from main coroutine
+    loop {
+      let result = activate_blocking(self, context, input);
+      if result.is_none() {
+        // none means we should yield
+        shlog_debug!("ReadString: yield");
+        let next_state = suspend(context, 0.0);
+        if next_state != WireState::Continue {
+          return Err("Stopped");
+        }
+        continue;
+      } else {
+        return Ok(result);
+      }
+    }
   }
 }
 
 impl BlockingShard for ReadString {
   fn run_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let ws = self.client.activate()?;
-
     loop {
-      let msg = ws.read_message().map_err(|e| {
-        shlog!("{}", e);
-        "Failed to read message."
-      })?;
+      let pending_data = {
+        let stream = ws.get_mut();
+        let mut buf = [0u8; 1];
+        match *stream {
+          MaybeTlsStream::Plain(ref mut s) => s.peek(&mut buf),
+          MaybeTlsStream::Rustls(ref mut s) => s.sock.peek(&mut buf),
+          _ => unimplemented!(),
+        }
+      };
 
-      match msg {
-        Message::Text(text) => {
-          self.text = text.into();
-          return Ok(self.text.0);
-        }
-        Message::Binary(_) => {
-          return Err("Received binary message, expected text.");
-        }
-        Message::Close(_) => {
-          return Err("Received close message, expected text.");
-        }
-        Message::Ping(_) => {
-          // shlog_debug!("Received ping message, sending pong.");
-          ws.write_message(Message::Pong(vec![])).map_err(|e| {
+      match pending_data {
+        Ok(_) => {
+          let msg = ws.read_message().map_err(|e| {
             shlog!("{}", e);
-            "Failed to write message."
+            "Failed to read message."
           })?;
+
+          match msg {
+            Message::Text(text) => {
+              self.text = text.into();
+              return Ok(self.text.0);
+            }
+            Message::Binary(_) => {
+              return Err("Received binary message, expected text.");
+            }
+            Message::Close(_) => {
+              return Err("Received close message, expected text.");
+            }
+            Message::Ping(_) => {
+              // shlog_debug!("Received ping message, sending pong.");
+              ws.write_message(Message::Pong(vec![])).map_err(|e| {
+                shlog!("{}", e);
+                "Failed to write message."
+              })?;
+            }
+            Message::Pong(_) => {
+              return Err("Received pong message, expected text.");
+            }
+            _ => return Err("Invalid message type."),
+          }
         }
-        Message::Pong(_) => {
-          return Err("Received pong message, expected text.");
+        Err(e) => {
+          if e.kind() == ErrorKind::TimedOut {
+            return Ok(().into());
+          } else {
+            shlog!("ReadMessage failed with error: {}", e);
+            return Err("Failed to read message.");
+          }
         }
-        _ => return Err("Invalid message type."),
       }
     }
   }
