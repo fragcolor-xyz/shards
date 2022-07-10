@@ -18,6 +18,8 @@ use crate::Types;
 use crate::Var;
 use core::time::Duration;
 use sha2::{Digest, Sha256, Sha512};
+use sp_core::twox_128;
+use sp_core::twox_64;
 use sp_core::{blake2_128, blake2_256};
 use std::convert::TryFrom;
 use std::convert::TryInto;
@@ -280,6 +282,22 @@ add_hasher3!(
   32
 );
 
+add_hasher3!(
+  SHTwoX_64,
+  "Hash.XXH-64",
+  "Hash.XXH-64-rust-0x20200101",
+  twox_64,
+  8
+);
+
+add_hasher3!(
+  SHTwoX_128,
+  "Hash.XXH-128",
+  "Hash.XXH-128-rust-0x20200101",
+  twox_128,
+  16
+);
+
 pub fn registerShards() {
   registerShard::<Keccak_256>();
   registerShard::<Keccak_512>();
@@ -289,4 +307,6 @@ pub fn registerShards() {
   registerShard::<SHSha2_512>();
   registerShard::<SHBlake_128>();
   registerShard::<SHBlake_256>();
+  registerShard::<SHTwoX_64>();
+  registerShard::<SHTwoX_128>();
 }
