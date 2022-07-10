@@ -1334,7 +1334,10 @@ struct SharedThreadPoolConcurrency {
 };
 #else
 struct SharedThreadPoolConcurrency {
-  static int get() { return std::thread::hardware_concurrency(); }
+  static int get() {
+    const auto sys = std::thread::hardware_concurrency();
+    return sys > 4 ? sys * 2 : 4;
+  }
 };
 #endif
 extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool;
