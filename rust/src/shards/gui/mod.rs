@@ -5,6 +5,7 @@ use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shardsc;
 use crate::types::common_type;
+use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 use crate::types::Type;
@@ -26,9 +27,9 @@ static EGUI_CTX_VAR_TYPES: &'static [Type] = &[EGUI_CTX_VAR];
 lazy_static! {
   static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
   static ref GFX_QUEUE_TYPE: Type = unsafe { *shardsc::gfx_getQueueType() };
-  static ref GFX_QUEUE_TYPES: Vec<Type> = vec![GFX_QUEUE_TYPE.clone()];
+  static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
-  static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![GFX_QUEUE_VAR.clone()];
+  static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
 }
 
 const CONTEXT_NAME: &'static str = "UI.Context";
@@ -52,6 +53,7 @@ impl EguiId {
 struct EguiContext {
   context: Option<EguiNativeContext>,
   instance: ParamVar,
+  requiring: ExposedTypes,
   queue: ParamVar,
   contents: ShardsVar,
   main_window_globals: ParamVar,

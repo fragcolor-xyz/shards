@@ -4,6 +4,7 @@
 use super::EguiContext;
 use super::CONTEXT_NAME;
 use super::EGUI_CTX_TYPE;
+use super::GFX_GLOBALS_TYPE;
 use super::GFX_QUEUE_VAR_TYPES;
 use super::PARENTS_UI_NAME;
 use crate::shard::Shard;
@@ -61,6 +62,7 @@ impl Default for EguiContext {
     Self {
       context: None,
       instance: ctx,
+      requiring: Vec::new(),
       queue: ParamVar::default(),
       contents: ShardsVar::default(),
       main_window_globals: mw_globals,
@@ -114,6 +116,21 @@ impl Shard for EguiContext {
       1 => self.contents.get_param(),
       _ => Var::default(),
     }
+  }
+
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.requiring.clear();
+
+    // Add GFX.MainWindow to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: *GFX_GLOBALS_TYPE,
+      name: self.main_window_globals.get_name(),
+      help: cstr!("The exposed main window.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
+    Some(&self.requiring)
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
