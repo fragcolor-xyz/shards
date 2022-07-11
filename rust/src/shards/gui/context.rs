@@ -66,6 +66,7 @@ impl Default for EguiContext {
       main_window_globals: mw_globals,
       parents,
       renderer: egui_gfx::Renderer::new(),
+      input_translator: egui_gfx::InputTranslator::new(),
     }
   }
 }
@@ -175,56 +176,52 @@ impl Shard for EguiContext {
       return Ok(*input);
     }
 
-    // Grab the screen rect & UI scale from the graphics context
-    let (screen_rect, draw_scale) = unsafe {
-      let main_window_globals = self.main_window_globals.get();
-      let gfx_context = shardsc::gfx_MainWindowGlobals_getContext(&main_window_globals);
-      let window = shardsc::gfx_Context_getWindow(gfx_context);
-
-      let screen_rect_size = shardsc::gfx_Window_getVirtualDrawableSize_ext(window);
-      let draw_scale_vec = shardsc::gfx_Window_getDrawScale_ext(window);
-
-      (
-        egui::Rect {
-          min: egui::pos2(0.0, 0.0),
-          max: egui::pos2(screen_rect_size.x, screen_rect_size.y),
-        },
-        f32::max(draw_scale_vec.x, draw_scale_vec.y),
-      )
+    let raw_input = unsafe {
+      let inputs = shardsc::gfx_getEguiWindowInputs(
+        self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,
+        &self.main_window_globals.get(),
+      ) as *const egui_gfx::egui_Input;
+      egui_gfx::translate_raw_input(&*inputs)
     };
 
-    let mut raw_input = RawInput::default(); // FIXME: where do raw input come from?
-    raw_input.screen_rect = Some(screen_rect);
-    raw_input.pixels_per_point = Some(draw_scale);
-
-    let mut failed = false;
-    let mut output = Var::default();
-    let egui_output = gui_ctx.run(raw_input, |ctx| {
-      unsafe {
-        let var = Var::new_object_from_ptr(ctx as *const _, &EGUI_CTX_TYPE);
-        self.instance.set(var);
+    match raw_input {
+      Err(error) => {
+        shlog_debug!("Input translation error: {:?}", error);
+        Err("Input translation error")
       }
+      Ok(raw_input) => {
+        let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
-      if self.contents.activate(context, input, &mut output) == WireState::Error {
-        failed = true;
-        return;
+        let mut failed = false;
+        let mut output = Var::default();
+        let egui_output = gui_ctx.run(raw_input, |ctx| {
+          unsafe {
+            let var = Var::new_object_from_ptr(ctx as *const _, &EGUI_CTX_TYPE);
+            self.instance.set(var);
+          }
+
+          if self.contents.activate(context, input, &mut output) == WireState::Error {
+            failed = true;
+            return;
+          }
+        });
+        if failed {
+          return Err("Failed to activate UI contents");
+        }
+
+        let queue_var = self.queue.get();
+        unsafe {
+          let queue = shardsc::gfx_getDrawQueueFromVar(&queue_var);
+          self.renderer.render(
+            &gui_ctx,
+            egui_output,
+            queue as *const egui_gfx::gfx_DrawQueuePtr,
+            draw_scale,
+          )?;
+        }
+
+        Ok(output)
       }
-    });
-    if failed {
-      return Err("Failed to activate UI contents");
     }
-
-    let queue_var = self.queue.get();
-    unsafe {
-      let queue = shardsc::gfx_getDrawQueueFromVar(&queue_var);
-      self.renderer.render(
-        &gui_ctx,
-        egui_output,
-        queue as *const egui_gfx::gfx_DrawQueuePtr,
-        draw_scale,
-      )?;
-    }
-
-    Ok(output)
   }
 }

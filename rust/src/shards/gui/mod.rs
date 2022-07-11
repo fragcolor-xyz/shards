@@ -57,6 +57,7 @@ struct EguiContext {
   main_window_globals: ParamVar,
   parents: ParamVar,
   renderer: egui_gfx::Renderer,
+  input_translator: egui_gfx::InputTranslator,
 }
 
 mod containers;
