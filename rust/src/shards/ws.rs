@@ -219,7 +219,8 @@ impl Shard for ReadString {
     // stay away from sys calls from main coroutine
     loop {
       let result = activate_blocking(self, context, input);
-      if result.is_none() {
+      // a bit of an hack, use bool as none would return if we had an error!
+      if result.is_bool() {
         // none means we should yield
         // shlog_debug!("ReadString: yield");
         let next_state = suspend(context, 0.0);
@@ -263,7 +264,8 @@ impl BlockingShard for ReadString {
             Message::Binary(_) => {
               return Err("Received binary message, expected text.");
             }
-            Message::Close(_) => {
+            Message::Close(packet) => {
+              shlog!("Received close message: {:?}", packet);
               return Err("Received close message, expected text.");
             }
             Message::Ping(_) => {
@@ -281,7 +283,7 @@ impl BlockingShard for ReadString {
         }
         Err(e) => {
           if e.kind() == ErrorKind::TimedOut {
-            return Ok(().into());
+            return Ok(false.into());
           } else {
             shlog!("ReadMessage failed with error: {}", e);
             return Err("Failed to read message.");

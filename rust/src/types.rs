@@ -1875,6 +1875,10 @@ impl Var {
     self.valueType == SHType_None
   }
 
+  pub fn is_bool(&self) -> bool {
+    self.valueType == SHType_Bool
+  }
+
   pub fn is_string(&self) -> bool {
     self.valueType == SHType_String
   }
