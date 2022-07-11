@@ -1199,13 +1199,15 @@ struct Swap {
     _targetB = referenceVariable(ctx, _nameB.c_str());
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
   static SHOptionalString help() {
     return SHCCSTR("Swaps the values of the two variables passed to it via `:NameA` and `:NameB` parameters.");
   }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
 
   SHExposedTypesInfo requiredVariables() {
     _exposedInfo = ExposedInfo(ExposedInfo::Variable(_nameA.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType),
@@ -1956,15 +1958,17 @@ struct SeqUser : VariableBase {
 };
 
 struct Count : SeqUser {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
-
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
-  }
   static SHOptionalString help() {
     return SHCCSTR("Parses the value in passed to in the `:Name` parameter and returns the count of characters (if string "
-                   "passed), elements (fif sequence passed), or key-value pairs (if table passed).");
+                   "passed), elements (if sequence passed), or key-value pairs (if table passed).");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Count of characters, elements, or key-value pairs contained in the `:Name` parameter variable.");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1989,12 +1993,15 @@ struct Count : SeqUser {
 };
 
 struct Clear : SeqUser {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
   static SHOptionalString help() {
     return SHCCSTR(
         "Removes all the elements of the sequence passed to it in the `:Name` parameter. Applicable only to sequences.");
   }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2018,11 +2025,14 @@ struct Clear : SeqUser {
 };
 
 struct Drop : SeqUser {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
   static SHOptionalString help() {
     return SHCCSTR("Drops the last element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
   }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2051,11 +2061,14 @@ struct Drop : SeqUser {
 };
 
 struct DropFront : SeqUser {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
   static SHOptionalString help() {
     return SHCCSTR("Drops the first element of the sequence variable passed in the `:Name` parameter. Works only on sequences.");
   }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2080,13 +2093,15 @@ struct DropFront : SeqUser {
 
 struct Pop : SeqUser {
   // TODO refactor like Push
-
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
   static SHOptionalString help() {
     return SHCCSTR("Pops (drops as well as passes as output) the last element of the sequence variable passed in the `:Name` "
                    "parameter. Works only on sequences.");
   }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("ELement popped from the sequence passed to this shard."); }
 
   SHVar _output{};
 
@@ -2152,13 +2167,15 @@ struct Pop : SeqUser {
 
 struct PopFront : SeqUser {
   // TODO refactor like push
-
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-
   static SHOptionalString help() {
     return SHCCSTR("Pops (drops as well as passes as output) the first element of the sequence variable passed in the `:Name` "
                    "parameter. Works only on sequences.");
   }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("ELement popped from the sequence passed to this shard."); }
 
   SHVar _output{};
 

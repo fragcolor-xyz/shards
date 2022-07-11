@@ -1,6 +1,6 @@
 `Drop` drops (removes) the first element of the sequence variable that has been passed to in the `:Name` parameter. 
 
-This shard works only on sequences and does not take any input. Its output is the original sequence passed to it via the `:Name` parameter.
+This shard works only on sequences and input/output fields are not applicable for it.
 
 !!! note "See also"
     - [`Drop`](../Drop)
