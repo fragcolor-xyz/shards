@@ -1699,9 +1699,13 @@ struct TableDecl : public VariableBase {
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
+  static SHOptionalString help() { return SHCCSTR("Creates an empty table."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
 
   void destroy() {
     if (_tableInfo.table.keys.elements)
