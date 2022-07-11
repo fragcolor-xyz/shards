@@ -1438,6 +1438,12 @@ struct Sequence : public SeqBase {
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 
+  static SHOptionalString help() { return SHCCSTR("Creates an empty sequence (or table if a key is passed)."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+
   static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
       variableParamsInfo,
       shards::ParamsInfo::Param("Clear",
