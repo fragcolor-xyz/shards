@@ -1,23 +1,30 @@
 ; Reference document
 
 (defloop with-ui
-  (GUI) = .this-ui
+  (GFX.MainWindow
+   :Title "egui demo" :Width 1024 :Height 768
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
 
-  ; useful to make a good looking app quickly
-  (GUI.Panels .this-ui
-              :Top (-> ...) ; can be None
-              :Left (-> ...) ; can be None
-              :Center (-> ...) ; can be None
-              :Right (-> ...) ; can be None
-              :Bottom (-> ...) ; can be None
-              )
+    (UI
+     .ui-draw-queue
+     (->
+      ; useful to make a good looking app quickly
+      (UI.TopPanel (-> ...))
+      (UI.LeftPanel (-> ...))
+      (UI.RightPanel (-> ...))
+      (UI.BottomPanel (-> ...))
+      ; central panel always last
+      (UI.CentralPanel (-> ...))
 
-  (GUI.Window .this-ui
-              :Title "My Window" ; can be None (window options)
-              :Content (-> ...))
-  
-  ; requires gpu context etc
-  ; but ideally rest of blocks can run from other threads and such
-  (GUI.Render .this-ui) 
+      (UI.Window :Title "My Window" ; can be None (window options)
+                 :Contents (-> ...))))
+
+    ; requires gpu context etc
+    ; but ideally rest of blocks can run from other threads and such
+    (GFX.Render :Steps .render-steps)))
   ;
   )
