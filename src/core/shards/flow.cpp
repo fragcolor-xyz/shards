@@ -830,7 +830,15 @@ struct Match {
     }
   }
 
+  SHExposedTypesInfo _mergedReqs;
+
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
+  void destroy() { arrayFree(_mergedReqs); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
+    destroy();
+
     for (auto &case_ : _pcases) {
       if (case_.valueType != None) {
         // must compare deeply
@@ -863,6 +871,11 @@ struct Match {
             }
           }
         }
+      }
+
+      // add to merged requirements
+      for (auto &req : cres.requiredInfo) {
+        arrayPush(_mergedReqs, req);
       }
     }
 
