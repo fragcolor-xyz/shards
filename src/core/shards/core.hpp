@@ -36,9 +36,13 @@ struct Const {
 
   void destroy() { freeDerivedInfo(_innerInfo); }
 
+  static SHOptionalString help() { return SHCCSTR("Declares an un-named constant value (of any data type)."); }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
 
   static SHParametersInfo parameters() { return SHParametersInfo(constParamsInfo); }
 
