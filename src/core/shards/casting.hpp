@@ -53,7 +53,7 @@ template <SHType ToType> struct ToNumber {
     return fixedElemNumberType;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
     if (!_outputVectorType) {
       throw ComposeError("Conversion not implemented for this type");

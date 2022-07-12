@@ -129,7 +129,7 @@ struct Produce : public Base {
 
   static SHParametersInfo parameters() { return producerParams; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 0: {
@@ -184,7 +184,7 @@ struct Broadcast : public Base {
 
   static SHParametersInfo parameters() { return producerParams; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 0: {
@@ -311,7 +311,7 @@ struct Consumers : public Base {
 };
 
 struct Consume : public Consumers {
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 1: {
@@ -382,7 +382,7 @@ struct Listen : public Consumers {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 2: {
@@ -448,7 +448,7 @@ struct Complete : public Base {
 
   static SHParametersInfo parameters() { return consumerParams; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 1: {

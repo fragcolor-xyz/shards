@@ -410,7 +410,7 @@ struct Profile {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto res = _shards.compose(data);
     _exposed = res.exposedInfo;
     return res.outputType;
@@ -471,7 +471,7 @@ struct XpendTo : public XPendBase {
 
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&
@@ -623,7 +623,7 @@ struct ForEachShard {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.basicType != Seq && data.inputType.basicType != Table) {
       throw ComposeError("ForEach shard expected a sequence or a table as input.");
     }
@@ -710,7 +710,7 @@ struct Map {
 
   void destroy() { destroyVar(_output); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.seqTypes.len != 1) {
       throw SHException("Map: Invalid sequence inner type, must be a single defined type.");
     }
@@ -766,7 +766,7 @@ struct Reduce {
 
   void destroy() { destroyVar(_output); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.seqTypes.len != 1) {
       throw SHException("Reduce: Invalid sequence inner type, must be a single "
                         "defined type.");
@@ -866,7 +866,7 @@ struct Erase : SeqUser {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     bool valid = false;
     _isTable = data.inputType.basicType == Table;
     // Figure if we output a sequence or not
@@ -996,7 +996,7 @@ struct Assoc : public VariableBase {
 
   // TODO we need to evaluate deeper and figure out we don't mutate types
 
-  // SHTypeInfo compose(const SHInstanceData &data) {
+  // SHTypeInfo compose(SHInstanceData &data) {
   //   _exposedInfo = {};
 
   //   if (_isTable) {
@@ -1152,7 +1152,7 @@ struct Replace {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_patterns->valueType == None) {
       data.shard->inlineShardId = NoopShard;
     } else {

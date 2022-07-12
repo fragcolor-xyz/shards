@@ -89,7 +89,7 @@ template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOpera
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     SHVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {

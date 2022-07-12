@@ -452,7 +452,7 @@ struct Server {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     const IterableExposedInfo shared(data.shared);
     // copy shared
     _sharedCopy = shared;

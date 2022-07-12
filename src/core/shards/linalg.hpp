@@ -12,7 +12,7 @@ struct VectorUnaryBase : public UnaryBase {
 
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
+  SHTypeInfo compose(SHInstanceData &data) { return data.inputType; }
 
   template <class Operation> SHVar doActivate(SHContext *context, const SHVar &input, Operation operate) {
     if (input.valueType == Seq) {
@@ -81,7 +81,7 @@ struct Cross : public VectorBinaryBase {
 struct Dot : public VectorBinaryBase {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     VectorBinaryBase::compose(data);
     return CoreInfo::FloatType;
   }
@@ -96,7 +96,7 @@ struct Dot : public VectorBinaryBase {
 struct LengthSquared : public VectorUnaryBase {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     VectorUnaryBase::compose(data);
     return CoreInfo::FloatType;
   }
@@ -114,7 +114,7 @@ struct LengthSquared : public VectorUnaryBase {
 struct Length : public VectorUnaryBase {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     VectorUnaryBase::compose(data);
     return CoreInfo::FloatType;
   }
@@ -140,7 +140,7 @@ struct Normalize : public VectorUnaryBase {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1 &&
         data.inputType.seqTypes.elements[0].basicType == Float) {
       OVERRIDE_ACTIVATE(data, activateFloatSeq);
@@ -176,7 +176,7 @@ struct MatMul : public VectorBinaryBase {
   // Mat @ Vec = Vec
   // If ever becomes a bottle neck, valgrind and optimize
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     BinaryBase::compose(data);
     if (_opType == SeqSeq) {
       return data.inputType;
@@ -192,7 +192,7 @@ struct MatMul : public VectorBinaryBase {
 };
 
 struct Transpose : public VectorUnaryBase {
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.basicType != Seq) {
       throw ComposeError("Transpose expected a Seq matrix array as input.");
     }
@@ -217,7 +217,7 @@ struct Orthographic : VectorUnaryBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float4SeqType; }
+  SHTypeInfo compose(SHInstanceData &data) { return CoreInfo::Float4SeqType; }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4SeqType; }

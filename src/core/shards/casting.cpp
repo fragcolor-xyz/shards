@@ -419,7 +419,7 @@ struct ExpectLike {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_example.isVariable()) {
       throw ComposeError("The example value of ExpectLike cannot be a variable");
     } else {

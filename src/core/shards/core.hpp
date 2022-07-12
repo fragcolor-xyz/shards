@@ -46,7 +46,7 @@ struct Const {
 
   SHVar getParam(int index) { return _value; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     freeDerivedInfo(_innerInfo);
     _dependencies.clear();
     _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
@@ -369,7 +369,7 @@ struct OnCleanup {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return data.inputType;
   }
@@ -500,7 +500,7 @@ struct IsNotNone {
 
 struct Restart {
   // Must ensure input is the same kind of wire root input
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.wire->inputType->basicType != SHType::None && data.inputType != data.wire->inputType)
       throw ComposeError("Restart input and wire input type mismatch, Restart "
                          "feeds back to the wire input, wire: " +
@@ -544,7 +544,7 @@ struct NaNTo0 {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatOrFloatSeq; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.basicType == Float) {
       OVERRIDE_ACTIVATE(data, activateSingle);
     } else {
@@ -732,7 +732,7 @@ struct SetBase : public VariableBase {
 };
 
 struct Set : public SetBase {
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     sanityChecks(data, true);
 
     // bake exposed types
@@ -772,7 +772,7 @@ struct Set : public SetBase {
 };
 
 struct Ref : public SetBase {
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     sanityChecks(data, true);
 
     // bake exposed types
@@ -866,7 +866,7 @@ struct Ref : public SetBase {
 };
 
 struct Update : public SetBase {
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     sanityChecks(data, false);
 
     // make sure we update to the same type
@@ -964,7 +964,7 @@ struct Get : public VariableBase {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shard = const_cast<Shard *>(data.shard);
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
@@ -1330,7 +1330,7 @@ struct Push : public SeqBase {
     throw SHException("Param index out of range.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     const auto updateSeqInfo = [this, &data] {
       _seqInfo.basicType = Seq;
       _seqInnerInfo = data.inputType;
@@ -1535,7 +1535,7 @@ struct Sequence : public SeqBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     const auto updateTableInfo = [this] {
       _tableInfo.basicType = Table;
       if (_tableInfo.table.types.elements) {
@@ -1803,7 +1803,7 @@ struct TableDecl : public VariableBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     const auto updateTableInfo = [this] {
       _tableInfo.basicType = Table;
       if (_tableInfo.table.types.elements) {
@@ -2053,7 +2053,7 @@ struct Pop : SeqUser {
 
   void destroy() { destroyVar(_output); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
@@ -2120,7 +2120,7 @@ struct PopFront : SeqUser {
 
   void destroy() { destroyVar(_output); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
@@ -2239,7 +2239,7 @@ struct Take {
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     bool valid = false;
     bool isTable = data.inputType.basicType == Table;
     // Figure if we output a sequence or not
@@ -2548,7 +2548,7 @@ struct RTake : public Take {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The extracted elements."); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     SHTypeInfo result = Take::compose(data);
     if (data.inputType.basicType == Seq) {
       OVERRIDE_ACTIVATE(data, activate);
@@ -2648,7 +2648,7 @@ struct Slice {
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     bool valid = false;
 
     if (_from.valueType == Int) {
@@ -2902,7 +2902,7 @@ struct Limit {
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // Figure if we output a sequence or not
     if (_max > 1) {
       if (data.inputType.basicType == Seq) {
@@ -2998,7 +2998,7 @@ struct ForRangeShard {
     _shards.warmup(context);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::IntType;
 
@@ -3147,7 +3147,7 @@ struct Repeat {
     throw SHException("Parameter out of range.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _blks.compose(data);
     const auto predres = _pred.compose(data);
     if (_pred && predres.outputType.basicType != Bool) {
@@ -3264,7 +3264,7 @@ struct Once {
     throw SHException("Parameter out of range.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     self = data.shard;
     _validation = _blks.compose(data);
     return data.inputType;

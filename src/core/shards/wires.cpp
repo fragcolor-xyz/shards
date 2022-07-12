@@ -59,7 +59,7 @@ struct WireBase {
 #endif
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // Free any previous result!
     arrayFree(wireValidation.requiredInfo);
     arrayFree(wireValidation.exposedInfo);
@@ -335,7 +335,7 @@ struct StopWire : public WireBase {
 
   SHTypeInfo _inputType{};
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _inputType = data.inputType;
     WireBase::compose(data);
     return data.inputType;
@@ -439,7 +439,7 @@ struct Resume : public WireBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     WireBase::compose(data);
     return data.inputType;
   }
@@ -553,7 +553,7 @@ struct Recur : public WireBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // set current wire as `wire`
     _wwire = data.wire->shared_from_this();
 
@@ -634,7 +634,7 @@ struct Recur : public WireBase {
 struct BaseRunner : public WireBase {
   std::deque<ParamVar> _vars;
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto res = WireBase::compose(data);
 
     if (capturing) {
@@ -782,7 +782,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     return Var::Empty;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto res = BaseRunner::compose(data);
     if (!wire) {
       OVERRIDE_ACTIVATE(data, activateNil);
@@ -878,7 +878,7 @@ template <class T> struct BaseLoader : public BaseRunner {
   SHTypeInfo _inputTypeCopy{};
   IterableExposedInfo _sharedCopy;
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     BaseRunner::compose(data);
 
     _inputTypeCopy = data.inputType;
@@ -1008,7 +1008,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     SHInstanceData data2 = data;
     data2.inputType = CoreInfo::WireType;
     _onReloadShards.compose(data2);
@@ -1247,7 +1247,7 @@ struct ParallelBase : public WireBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_threads > 1) {
       mode = RunWireMode::Detached;
     } else {
@@ -1498,7 +1498,7 @@ struct TryMany : public ParallelBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     ParallelBase::compose(data);
 
     if (data.inputType.seqTypes.len == 1) {
@@ -1554,7 +1554,7 @@ struct Expand : public ParallelBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     ParallelBase::compose(data);
 
     // input
@@ -1604,7 +1604,7 @@ struct Spawn : public WireBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     WireBase::compose(data); // discard the result, we do our thing here
 
     // build the list of variables to capture and inject into spawned chain
@@ -1782,7 +1782,7 @@ struct Branch {
     arrayFree(_mergedReqs);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // release any old info
     destroy();
 

@@ -116,7 +116,7 @@ struct FeatureShard {
 
   void cleanup() {}
   void warmup(SHContext *context) {}
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // Capture variables for callbacks
     // TODO: Refactor IterableArray
     const IterableExposedInfo _hack(data.shared);

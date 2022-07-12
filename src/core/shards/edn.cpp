@@ -269,7 +269,7 @@ struct Uglify {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     SHInstanceData dataCopy = data;
     dataCopy.inputType = CoreInfo::AnySeqType;
     for (auto &action : _actions) {

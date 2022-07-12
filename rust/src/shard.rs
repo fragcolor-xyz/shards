@@ -298,7 +298,7 @@ unsafe extern "C" fn shard_compose<T: Shard>(
   data: *mut SHInstanceData,
 ) -> SHShardComposeResult {
   let blk = arg1 as *mut ShardWrapper<T>;
-  let data = &*data;
+  let data = &mut *data;
   match (*blk).shard.compose(data) {
     Ok(output) => SHShardComposeResult {
       error: SHError::default(),

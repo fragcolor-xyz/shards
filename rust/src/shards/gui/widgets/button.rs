@@ -131,7 +131,7 @@ impl Shard for Button {
 
   fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
     if !self.action.is_empty() {
-      self.action.compose(&mut data)?;
+      self.action.compose(data)?;
     }
 
     Ok(common_type::bool)

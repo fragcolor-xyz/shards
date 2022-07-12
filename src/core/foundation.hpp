@@ -935,7 +935,7 @@ struct InternalCore {
     shards::registerObjectType(vendorId, objectId, info);
   }
 
-  static SHComposeResult composeShards(Shards shards, SHValidationCallback callback, void *userData, SHInstanceData data) {
+  static SHComposeResult composeShards(Shards shards, SHValidationCallback callback, void *userData, SHInstanceData &data) {
     return shards::composeWire(shards, callback, userData, data);
   }
 

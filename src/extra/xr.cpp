@@ -86,7 +86,7 @@ struct Consumer {
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(requiredInfo); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.onWorkerThread) {
       throw ComposeError("XR Shards cannot be used on a worker thread (e.g. "
                          "within an Await shard)");
@@ -545,7 +545,7 @@ struct Controller : public Consumer {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     Consumer::compose(data);
     return ControllerTable::ValueType;
   }

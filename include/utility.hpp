@@ -504,7 +504,7 @@ public:
 
   operator SHVar() const { return _shardsParam; }
 
-  SHComposeResult compose(const SHInstanceData &data) {
+  SHComposeResult compose(SHInstanceData &data) {
     // Free any previous result!
     SH_CORE::expTypesFree(_wireValidation.exposedInfo);
     SH_CORE::expTypesFree(_wireValidation.requiredInfo);

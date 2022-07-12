@@ -139,7 +139,7 @@ struct Style : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     switch (_key) {
     case WindowRounding:
     case WindowBorderSize:
@@ -565,7 +565,7 @@ struct Window : public Base {
 
   static SHParametersInfo parameters() { return _params; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _blks.compose(data);
     return data.inputType;
   }
@@ -715,7 +715,7 @@ struct ChildWindow : public Base {
 
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _blks.compose(data);
     return data.inputType;
   }
@@ -803,7 +803,7 @@ template <SHType CT> struct Variable : public Base {
 
   void warmup(SHContext *context) { _variable.warmup(context); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_variable.isVariable()) {
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
@@ -896,7 +896,7 @@ template <SHType CT1, SHType CT2> struct Variable2 : public Base {
 
   void warmup(SHContext *context) { _variable.warmup(context); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_variable.isVariable()) {
       _exposing = true; // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
@@ -1034,7 +1034,7 @@ struct CheckboxFlags : public Variable2<SHType::Int, SHType::Enum> {
       return _value;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     Variable2<SHType::Int, SHType::Enum>::compose(data);
 
     // ideally here we should check that the type of _value is the same as
@@ -1341,7 +1341,7 @@ struct Button : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return CoreInfo::BoolType;
   }
@@ -1579,7 +1579,7 @@ struct TreeNode : public Base {
 
   static SHParametersInfo parameters() { return _params; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return CoreInfo::BoolType;
   }
@@ -1703,7 +1703,7 @@ struct CollapsingHeader : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return CoreInfo::BoolType;
   }
@@ -2495,7 +2495,7 @@ struct Plot : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return data.inputType;
   }
@@ -2630,7 +2630,7 @@ struct PlottableBase : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     assert(data.inputType.basicType == Seq);
     if (data.inputType.seqTypes.len != 1 ||
         (data.inputType.seqTypes.elements[0].basicType != Float && data.inputType.seqTypes.elements[0].basicType != Float2)) {
@@ -2880,7 +2880,7 @@ struct Tooltip : public Base {
 
   void warmup(SHContext *context) { _shards.warmup(context); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return data.inputType;
   }
@@ -3038,7 +3038,7 @@ struct MenuBase : public Base {
 
   void warmup(SHContext *context) { shards.warmup(context); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     shards.compose(data);
     return CoreInfo::BoolType;
   }
@@ -3243,7 +3243,7 @@ struct MenuItem : public Base {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _action.compose(data);
 
     if (_isChecked.isVariable()) {
@@ -3491,7 +3491,7 @@ struct TabBase : public Base {
 
   void warmup(SHContext *context) { shards.warmup(context); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     shards.compose(data);
     return CoreInfo::BoolType;
   }
@@ -3636,7 +3636,7 @@ struct Group : public Base {
 
   void warmup(SHContext *context) { _shards.warmup(context); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return CoreInfo::BoolType;
   }
@@ -3712,7 +3712,7 @@ struct Disable : public Base {
     return {_required.data(), uint32_t(idx), 0};
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return data.inputType;
   }
@@ -3793,7 +3793,7 @@ struct Table : public Base {
     _flags.warmup(context);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shards.compose(data);
     return CoreInfo::BoolType;
   }

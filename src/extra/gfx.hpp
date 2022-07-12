@@ -93,7 +93,7 @@ struct BaseConsumer : public Base {
 
   void cleanup(SHContext *context) { baseConsumerCleanup(); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
     composeCheckMainWindowGlobals(data);
     return shards::CoreInfo::NoneType;

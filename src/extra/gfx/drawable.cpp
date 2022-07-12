@@ -229,7 +229,7 @@ struct DrawShard : public BaseConsumer {
     _queueVar.cleanup();
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_queueVar->valueType != SHType::None) {
       // Use the specified queue
     } else {

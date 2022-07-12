@@ -28,7 +28,7 @@ struct Base {
 
   void destroy() { destroyVar(_result); }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
+  SHTypeInfo compose(SHInstanceData &data) { return data.inputType; }
 
   static SHTypesInfo inputTypes() { return MathTypes; }
   static SHOptionalString inputHelp() {
@@ -124,7 +124,7 @@ struct BinaryBase : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     SHVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
@@ -169,7 +169,7 @@ template <class OP> struct BinaryOperation : public BinaryBase {
                    "results if the input and the operand are sequences).");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     SHTypeInfo resultType = BinaryBase::compose(data);
     if (_opType == Broadcast) {
       if constexpr (!has_hasApply<OP>::value) {
@@ -497,7 +497,7 @@ template <SHType SHT, typename FuncD, typename FuncF> struct UnaryOperation {
                      "sequence of results if input is a sequence.");                             \
     }                                                                                            \
                                                                                                  \
-    SHTypeInfo compose(const SHInstanceData &data) {                                             \
+    SHTypeInfo compose(SHInstanceData &data) {                                                   \
       if (data.inputType.basicType == SHType::Seq) {                                             \
         OVERRIDE_ACTIVATE(data, activateSeq);                                                    \
         static_cast<Shard *>(data.shard)->inlineShardId = NotInline;                             \
@@ -724,7 +724,7 @@ template <class T> struct UnaryBin : public T {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (!_value.isVariable()) {
       throw ComposeError("Math.Inc/Dec Expected a variable");
     }

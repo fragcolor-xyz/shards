@@ -96,7 +96,7 @@ struct Evolve {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // we still want to run a compose on the subject, in order
     // to serialize it properly!
     assert(_baseWire.valueType == SHType::Wire);
@@ -729,7 +729,7 @@ struct Mutant {
 
   void warmup(SHContext *ctx) { _shard.warmup(ctx); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto inner = mutant();
     // validate parameters
     if (_mutations.valueType == Seq && inner) {

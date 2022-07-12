@@ -417,7 +417,7 @@ struct Channel {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _data.shards.compose(data);
     return data.inputType;
   }

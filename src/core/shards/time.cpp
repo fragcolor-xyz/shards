@@ -93,7 +93,7 @@ struct Pop {
 
   SHVar getParam(int index) { return _pseq; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (!_pseq.isVariable())
       throw ComposeError("Time.Pop expects a variable");
 

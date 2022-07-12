@@ -46,7 +46,7 @@ struct FFT : public FFTBase {
 
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (data.inputType.basicType == SHType::Audio) {
       OVERRIDE_ACTIVATE(data, activateAudio);
     } else {
@@ -171,7 +171,7 @@ struct IFFT : public FFTBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_asAudio) {
       OVERRIDE_ACTIVATE(data, activateAudio);
       return CoreInfo::AudioType;
@@ -392,7 +392,7 @@ struct WTBase {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatSeqsOrAudio; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatSeqsOrAudio; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
+  SHTypeInfo compose(SHInstanceData &data) { return data.inputType; }
 };
 
 struct WT : public WTBase {

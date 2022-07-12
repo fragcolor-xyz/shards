@@ -1188,7 +1188,7 @@ struct Run {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (!_reset) {
       // if we _reset, we do this at activation time
       loadModule();

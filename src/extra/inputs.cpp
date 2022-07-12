@@ -19,7 +19,7 @@ struct MousePixelPos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // no base call.. Await should be fine here
     return CoreInfo::Int2Type;
   }
@@ -37,7 +37,7 @@ struct MouseDelta : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
@@ -66,7 +66,7 @@ struct MousePos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
@@ -89,7 +89,7 @@ struct WindowSize : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
     return CoreInfo::Float2Type;
   }
@@ -149,7 +149,7 @@ struct Mouse : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
     return data.inputType;
   }
@@ -250,7 +250,7 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   ShardsVar _rightButton{};
   ShardsVar _middleButton{};
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
 
     _leftButton.compose(data);
@@ -341,7 +341,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
     baseConsumerWarmup(context);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     composeCheckMainThread(data);
 
     _shards.compose(data);

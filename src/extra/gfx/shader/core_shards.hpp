@@ -190,7 +190,7 @@ struct IOBase {
 
   SHParametersInfo parameters() { return params; };
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shFieldTypes = shards::Types{fieldTypeToShardsType(_fieldType)};
     return CoreInfo::NoneType;
   }
@@ -230,7 +230,7 @@ template <typename TShard> struct Read final : public IOBase {
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   SHTypesInfo outputTypes() { return _shFieldTypes; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shFieldTypes = shards::Types{fieldTypeToShardsType(_fieldType)};
     return _shFieldTypes._types[0];
   }
@@ -249,7 +249,7 @@ struct ReadBuffer final : public IOBase {
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   SHTypesInfo outputTypes() { return _shFieldTypes; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _shFieldTypes = shards::Types{fieldTypeToShardsType(_fieldType)};
     return _shFieldTypes._types[0];
   }

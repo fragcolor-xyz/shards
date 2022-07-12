@@ -77,7 +77,7 @@ struct Flatten {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     std::unordered_set<SHTypeInfo> types;
     addInnerType(data.inputType, types);
     std::vector<SHTypeInfo> vtypes(types.begin(), types.end());

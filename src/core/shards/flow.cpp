@@ -355,7 +355,7 @@ struct BaseSubFlow {
       _shards.warmup(ctx);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (_shards)
       _composition = _shards.compose(data);
     else
@@ -409,7 +409,7 @@ struct Maybe : public BaseSubFlow {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // exposed stuff should be balanced
     // and output should the same
     SHComposeResult elseComp{};
@@ -511,7 +511,7 @@ struct Await : public BaseSubFlow {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto dataCopy = data;
     // flag that we might use a worker
     dataCopy.onWorkerThread = true;
@@ -603,7 +603,7 @@ template <bool COND> struct When {
       return Var(_passth);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // both not exposing!
     const auto cres = _cond.compose(data);
     if (cres.outputType.basicType != SHType::Bool) {
@@ -698,7 +698,7 @@ struct IfBlock {
       return Var(_passth);
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // both not exposing!
     const auto cres = _cond.compose(data);
     if (cres.outputType.basicType != SHType::Bool) {
@@ -830,7 +830,7 @@ struct Match {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     for (auto &case_ : _pcases) {
       if (case_.valueType != None) {
         // must compare deeply
@@ -943,7 +943,7 @@ struct Sub {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _composition = _shards.compose(data);
     return data.inputType;
   }
@@ -992,7 +992,7 @@ struct HashedShards {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     _composition = _shards.compose(data);
     _outputTableTypes._types[0] = _composition.outputType;
     return _outputTableType;
