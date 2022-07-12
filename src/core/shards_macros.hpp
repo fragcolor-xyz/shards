@@ -205,9 +205,9 @@
       [](Shard *shard, int index) { return reinterpret_cast<_name_##Runtime *>(shard)->core.getParam(index); });
 
 #define RUNTIME_SHARD_compose(_name_)                                                                                       \
-  result->compose = static_cast<SHComposeProc>([](Shard *shard, SHInstanceData data) {                                      \
+  result->compose = static_cast<SHComposeProc>([](Shard *shard, SHInstanceData *data) {                                     \
     try {                                                                                                                   \
-      return SHShardComposeResult{SHError::Success, reinterpret_cast<_name_##Runtime *>(shard)->core.compose(data)};        \
+      return SHShardComposeResult{SHError::Success, reinterpret_cast<_name_##Runtime *>(shard)->core.compose(*data)};       \
     } catch (std::exception & e) {                                                                                          \
       reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(e.what());                                               \
       return SHShardComposeResult{SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}, SHTypeInfo{}}; \

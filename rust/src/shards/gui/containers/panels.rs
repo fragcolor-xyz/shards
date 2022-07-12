@@ -109,7 +109,11 @@ macro_rules! impl_panel {
         Some(&self.requiring)
       }
 
-      fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+      fn hasCompose() -> bool {
+        true
+      }
+
+      fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
         // we need to inject UI variable to the inner shards
         let mut data = *data;
         // clone shared into a new vector we can append things to
@@ -130,7 +134,7 @@ macro_rules! impl_panel {
 
         // center always last
         if !self.contents.is_empty() {
-          self.contents.compose(&data)?;
+          self.contents.compose(&mut data)?;
         }
 
         Ok(data.inputType)
@@ -292,7 +296,11 @@ impl Shard for CentralPanel {
     Some(&self.requiring)
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
     // we need to inject UI variable to the inner shards
     let mut data = *data;
     // clone shared into a new vector we can append things to
@@ -313,7 +321,7 @@ impl Shard for CentralPanel {
 
     // center always last
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(&mut data)?;
     }
 
     Ok(data.inputType)

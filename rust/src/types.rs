@@ -2920,7 +2920,7 @@ impl ShardsVar {
     self.param.0
   }
 
-  pub fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  pub fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
@@ -2949,7 +2949,7 @@ impl ShardsVar {
         self.native_shards,
         Some(shardsvar_compose_cb),
         &cb as *const _ as *mut _,
-        *data,
+        data as *mut _,
       )
     });
 

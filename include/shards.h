@@ -713,7 +713,7 @@ typedef SHParametersInfo(__cdecl *SHParametersProc)(struct Shard *);
 typedef struct SHError(__cdecl *SHSetParamProc)(struct Shard *, int, const struct SHVar *);
 typedef struct SHVar(__cdecl *SHGetParamProc)(struct Shard *, int);
 
-typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData data);
+typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData *data);
 
 typedef void(__cdecl *SHComposedProc)(struct Shard *, const struct SHWire *wire, const struct SHComposeResult *data);
 
@@ -887,7 +887,7 @@ typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, cons
                                             SHValidationCallback callback, void *userData);
 
 typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValidationCallback callback, void *userData,
-                                                         struct SHInstanceData data);
+                                                         struct SHInstanceData *data);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef enum SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
@@ -919,7 +919,7 @@ typedef void(__cdecl *SHRemShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHDestroyWire)(SHWireRef wire);
 typedef struct SHVar(__cdecl *SHStopWire)(SHWireRef wire);
 typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, SHValidationCallback callback, void *userData,
-                                                       struct SHInstanceData data);
+                                                       struct SHInstanceData *data);
 typedef struct SHRunWireOutput(__cdecl *SHRunWire)(SHWireRef wire, struct SHContext *context, const struct SHVar *input);
 typedef SHWireRef(__cdecl *SHGetGlobalWire)(SHString name);
 typedef void(__cdecl *SHSetGlobalWire)(SHString name, SHWireRef wire);

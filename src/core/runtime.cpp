@@ -1082,7 +1082,7 @@ void validateConnection(ValidationContext &ctx) {
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
-    auto composeResult = ctx.bottom->compose(ctx.bottom, data);
+    auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
       SHLOG_ERROR("Error composing shard: {}, wire: {}", composeResult.error.message, ctx.wire ? ctx.wire->name : "(unwired)");
       throw ComposeError(composeResult.error.message);
@@ -1289,7 +1289,7 @@ void validateConnection(ValidationContext &ctx) {
 }
 
 SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
-                            SHInstanceData data) {
+                            SHInstanceData &data) {
   ValidationContext ctx{};
   ctx.originalInputType = data.inputType;
   ctx.previousOutputType = data.inputType;
@@ -1367,7 +1367,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   return result;
 }
 
-SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData &data) {
   // settle input type of wire before compose
   if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(),
                                               [&](const auto &shard) { return strcmp(shard->name(shard), "Input") == 0; })) {
@@ -1407,7 +1407,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   return res;
 }
 
-SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData &data) {
   std::vector<Shard *> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
     shards.push_back(wire.elements[i]);
@@ -1415,7 +1415,7 @@ SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, vo
   return composeWire(shards, callback, userData, data);
 }
 
-SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, void *userData, SHInstanceData &data) {
   std::vector<Shard *> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
     shards.push_back(wire.elements[i].payload.shardValue);
@@ -2975,10 +2975,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return res;
   };
 
-  result->composeWire = [](SHWireRef wire, SHValidationCallback callback, void *userData, SHInstanceData data) noexcept {
+  result->composeWire = [](SHWireRef wire, SHValidationCallback callback, void *userData, SHInstanceData *data) noexcept {
     auto sc = SHWire::sharedFromRef(wire);
     try {
-      return composeWire(sc.get(), callback, userData, data);
+      return composeWire(sc.get(), callback, userData, *data);
     } catch (const std::exception &e) {
       SHComposeResult res{};
       res.failed = true;
@@ -2999,9 +2999,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return shards::runSubWire(sc.get(), context, *input);
   };
 
-  result->composeShards = [](Shards shards, SHValidationCallback callback, void *userData, SHInstanceData data) noexcept {
+  result->composeShards = [](Shards shards, SHValidationCallback callback, void *userData, SHInstanceData *data) noexcept {
     try {
-      return shards::composeWire(shards, callback, userData, data);
+      return shards::composeWire(shards, callback, userData, *data);
     } catch (const std::exception &e) {
       SHComposeResult res{};
       res.failed = true;

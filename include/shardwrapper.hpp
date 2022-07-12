@@ -177,9 +177,9 @@ template <class T> struct ShardWrapper {
 
     // compose
     if constexpr (has_compose<T>::value) {
-      result->compose = static_cast<SHComposeProc>([](Shard *b, SHInstanceData data) {
+      result->compose = static_cast<SHComposeProc>([](Shard *b, SHInstanceData *data) {
         try {
-          return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(data)};
+          return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(*data)};
         } catch (std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHShardComposeResult{SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()}, SHTypeInfo{}};

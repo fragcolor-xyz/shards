@@ -181,7 +181,7 @@ struct Cond {
     return Var();
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     // Free any previous result!
     shards::arrayFree(_wireValidation.exposedInfo);
     shards::arrayFree(_wireValidation.requiredInfo);

@@ -526,7 +526,7 @@ impl Shard for DynamicRigidBody {
     true
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
     Rc::get_mut(&mut self.rb).unwrap()._compose(data)
   }
 
@@ -670,7 +670,7 @@ impl Shard for KinematicRigidBody {
     true
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
     Rc::get_mut(&mut self.rb).unwrap()._compose(data)
   }
 

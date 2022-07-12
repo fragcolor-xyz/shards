@@ -133,7 +133,11 @@ impl Shard for EguiContext {
     Some(&self.requiring)
   }
 
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, data: &mut InstanceData) -> Result<Type, &str> {
     // we need to inject the UI context to the inner shards
     let mut data = *data;
     // clone shared into a new vector we can append things to
@@ -153,7 +157,7 @@ impl Shard for EguiContext {
     data.shared = (&shared).into();
 
     if !self.contents.is_empty() {
-      let outputType = self.contents.compose(&data)?;
+      let outputType = self.contents.compose(&mut data)?;
       return Ok(outputType);
     }
 

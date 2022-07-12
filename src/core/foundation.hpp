@@ -123,7 +123,7 @@ SHOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 
 SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
-[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const Shards wire, SHValidationCallback callback, void *userData, SHInstanceData &data);
 // caller does not handle return
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return

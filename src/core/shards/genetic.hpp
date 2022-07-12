@@ -744,7 +744,7 @@ struct Mutant {
         if (mut.valueType == ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->compose) {
-            auto res0 = blk->compose(blk, dataCopy);
+            auto res0 = blk->compose(blk, &dataCopy);
             if (res0.error.code != SH_ERROR_NONE) {
               throw ComposeError(res0.error.message);
             }
@@ -1061,7 +1061,7 @@ struct DShard {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (!_wrapped)
       return {};
 
@@ -1076,7 +1076,7 @@ struct DShard {
     }
     // and compose finally
     if (_wrapped->compose) {
-      auto res = _wrapped->compose(_wrapped, data);
+      auto res = _wrapped->compose(_wrapped, &data);
       if (res.error.code != 0) {
         throw SHException("Failed to compose a wrapped DShard.");
       }
