@@ -1733,13 +1733,6 @@ impl Var {
     }
   }
 
-  pub fn ephemeral_context_variable(name: &'static str) -> Var {
-    debug_assert!(name.as_bytes()[name.len() - 1] == 0);
-    let mut v: Var = Var::ephemeral_string(name);
-    v.valueType = SHType_ContextVar;
-    v
-  }
-
   pub fn new_object<T>(obj: &Rc<T>, info: &Type) -> Var {
     unsafe {
       Var {
