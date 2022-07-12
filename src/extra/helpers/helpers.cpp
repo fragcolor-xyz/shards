@@ -129,11 +129,13 @@ struct HelperContextShard : public gfx::BaseConsumer {
 extern void registerHighlightShards();
 extern void registerGizmoShards();
 extern void registerShapeShards();
+extern void registerCameraShards();
 void registerShards() {
   REGISTER_SHARD("Helpers.Context", HelperContextShard);
   registerHighlightShards();
   registerGizmoShards();
   registerShapeShards();
+  registerCameraShards();
 }
 } // namespace Helpers
 } // namespace shards

@@ -15,6 +15,7 @@ set(extra_SOURCES
   helpers/gizmos.cpp
   helpers/highlight.cpp
   helpers/shapes.cpp
+  helpers/camera.cpp
   imgui.cpp
   # xr.cpp
   # gizmo.cpp
