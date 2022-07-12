@@ -113,7 +113,8 @@ fn token_to_var(token: Token) -> Result<ClonedVar, &'static str> {
       let hex = address.as_bytes();
       let mut hex = hex::encode(hex);
       hex.insert_str(0, "0x");
-      Ok(hex.as_str().into())
+      let s = Var::ephemeral_string(hex.as_str());
+      Ok(s.into()) // Clone
     }
     Token::Bytes(bytes) | Token::FixedBytes(bytes) => Ok(bytes.as_slice().into()),
     Token::Array(tokens) | Token::FixedArray(tokens) => {

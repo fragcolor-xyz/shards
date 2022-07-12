@@ -31,12 +31,14 @@ lazy_static! {
 }
 
 struct ToBase58 {
-  output: String,
+  buffer: String,
+  output: ClonedVar,
 }
 impl Default for ToBase58 {
   fn default() -> Self {
     ToBase58 {
-      output: String::new(),
+      buffer: String::new(),
+      output: ().into(),
     }
   }
 }
@@ -64,14 +66,15 @@ impl Shard for ToBase58 {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: Result<&[u8], &str> = input.as_ref().try_into();
     if let Ok(bytes) = bytes {
-      self.output = bs58::encode(bytes).into_string();
+      self.buffer = bs58::encode(bytes).into_string();
     } else {
       let string: Result<&str, &str> = input.as_ref().try_into();
       if let Ok(string) = string {
-        self.output = bs58::encode(string).into_string();
+        self.buffer = bs58::encode(string).into_string();
       }
     }
-    Ok(self.output.as_str().into())
+    self.output = Var::ephemeral_string(self.buffer.as_str()).into();
+    Ok(self.output.0)
   }
 }
 

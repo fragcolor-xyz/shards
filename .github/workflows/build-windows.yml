@@ -120,7 +120,7 @@ jobs:
         env:
           RUSTUP_USE_CURL: 1
         run: |
-          rustup toolchain install nightly
+          rustup toolchain install --no-self-update nightly
           rustup +nightly target add ${{ steps.setup.outputs.arch }}-pc-windows-gnu
           rustup default nightly-${{ steps.setup.outputs.arch }}-pc-windows-gnu
       - name: Set up rust (32-bits)
