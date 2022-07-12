@@ -792,7 +792,7 @@ private:
 public:
   iterator begin() { return iterator(&_seq.elements[0]); }
   const_iterator begin() const { return const_iterator(&_seq.elements[0]); }
-  const_iterator shegin() const { return const_iterator(&_seq.elements[0]); }
+  const_iterator cbegin() const { return const_iterator(&_seq.elements[0]); }
   iterator end() { return iterator(&_seq.elements[0] + size()); }
   const_iterator end() const { return const_iterator(&_seq.elements[0] + size()); }
   const_iterator cend() const { return const_iterator(&_seq.elements[0] + size()); }
