@@ -84,11 +84,49 @@ impl egui::TextBuffer for Var {
       self.byte_index_from_char_index(char_index)
     };
 
-    let mut str = String::from(self.as_str());
+    let text_len = text.len();
+    let (current_len, current_cap) = unsafe {
+      (
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
+        self
+          .payload
+          .__bindgen_anon_1
+          .__bindgen_anon_2
+          .stringCapacity as usize,
+      )
+    };
 
-    str.insert_str(byte_idx, text);
-    let var = Var::ephemeral_string(str.as_str());
-    cloneVar(self, &var);
+    if current_cap == 0usize {
+      // new string
+      let var = Var::ephemeral_string(text);
+      cloneVar(self, &var);
+    } else if (current_cap - current_len) >= text_len {
+      // text can fit within existing capacity
+      unsafe {
+        let base_ptr =
+          self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+        // move the rest of the string to the end
+        std::ptr::copy(
+          base_ptr.add(byte_idx),
+          base_ptr.add(byte_idx).add(text_len),
+          current_len - byte_idx,
+        );
+        // insert the new text
+        let bytes = text.as_ptr() as *const std::os::raw::c_char;
+        std::ptr::copy_nonoverlapping(bytes, base_ptr.add(byte_idx), text_len);
+        // update the length
+        let new_len = current_len + text_len;
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+        // fixup null-terminator
+        *base_ptr.add(new_len) = 0;
+      }
+    } else {
+      // not enough capacity, allocate a new string
+      let mut str = String::from(self.as_str());
+      str.insert_str(byte_idx, text);
+      let var = Var::ephemeral_string(str.as_str());
+      cloneVar(self, &var);
+    }
 
     text.chars().count()
   }
@@ -99,11 +137,27 @@ impl egui::TextBuffer for Var {
     let byte_start = self.byte_index_from_char_index(char_range.start);
     let byte_end = self.byte_index_from_char_index(char_range.end);
 
-    let mut str = String::from(self.as_str());
-    str.drain(byte_start..byte_end);
+    if byte_start == byte_end {
+      // nothing to do
+      return;
+    }
 
-    let var = Var::ephemeral_string(str.as_str());
-    cloneVar(self, &var);
+    unsafe {
+      let current_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
+      let base_ptr =
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+      // move rest of the text at the deletion location
+      std::ptr::copy(
+        base_ptr.add(byte_end),
+        base_ptr.add(byte_start),
+        current_len - byte_end,
+      );
+      // update the length
+      let new_len = current_len - byte_end + byte_start;
+      self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+      // fixup null-terminator
+      *base_ptr.add(new_len) = 0;
+    }
   }
 }
 
