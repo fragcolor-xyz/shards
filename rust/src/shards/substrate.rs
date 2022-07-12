@@ -738,11 +738,11 @@ impl Shard for SHDecode {
               .map_err(|_| "Invalid account")?
               .to_ss58check_with_version(prefix.into());
             offset += value.encoded_size();
-            self.output.push(value.as_str().into());
+            self.output.push(Var::ephemeral_string(value.as_str())); // Will Clone
           } else {
             let value = String::decode(&mut bytes).map_err(|_| "Invalid string")?;
             offset += value.encoded_size();
-            self.output.push(value.as_str().into());
+            self.output.push(Var::ephemeral_string(value.as_str())); // Will Clone
           }
         }
         _ => return Err("Invalid value type"),

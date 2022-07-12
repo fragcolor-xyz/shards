@@ -1205,31 +1205,6 @@ impl From<String> for &str {
   }
 }
 
-impl<'a> From<&'a str> for Var {
-  #[inline(always)]
-  fn from(v: &'a str) -> Self {
-    let len = v.len();
-    let p = if len > 0 {
-      v.as_ptr()
-    } else {
-      core::ptr::null()
-    };
-    SHVar {
-      valueType: SHType_String,
-      payload: SHVarPayload {
-        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
-          __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
-            stringValue: p as *const std::os::raw::c_char,
-            stringLen: len as u32,
-            stringCapacity: 0,
-          },
-        },
-      },
-      ..Default::default()
-    }
-  }
-}
-
 impl From<&CStr> for Var {
   #[inline(always)]
   fn from(v: &CStr) -> Self {
@@ -1733,8 +1708,34 @@ impl From<&[u8]> for Var {
 }
 
 impl Var {
-  pub fn context_variable(name: &'static str) -> Var {
-    let mut v: Var = name.into();
+  /// To be used while &str is in scope.
+  /// Such string likely doesn't have NULL terminator!
+  /// CloneVar is safe but the rest might not be!
+  pub fn ephemeral_string(s: &str) -> Var {
+    let len = s.len();
+    let p = if len > 0 {
+      s.as_ptr()
+    } else {
+      core::ptr::null()
+    };
+    SHVar {
+      valueType: SHType_String,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
+            stringValue: p as *const std::os::raw::c_char,
+            stringLen: len as u32,
+            stringCapacity: 0,
+          },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn ephemeral_context_variable(name: &'static str) -> Var {
+    debug_assert!(name.as_bytes()[name.len() - 1] == 0);
+    let mut v: Var = Var::ephemeral_string(name);
     v.valueType = SHType_ContextVar;
     v
   }
@@ -2804,7 +2805,8 @@ impl ParamVar {
   }
 
   pub fn set_name(&mut self, name: &str) {
-    self.parameter = name.into();
+    let s = Var::ephemeral_string(name);
+    self.parameter = s.into(); // clone it!
     self.parameter.0.valueType = SHType_ContextVar;
   }
 

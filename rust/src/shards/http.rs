@@ -109,7 +109,7 @@ impl Default for RequestBase {
   fn default() -> Self {
     let mut s = Self {
       client: None,
-      url: ParamVar::new(cstr!("").into()),
+      url: ParamVar::new(Var::ephemeral_string("")),
       headers: ParamVar::new(().into()),
       output_table: Table::new(),
       timeout: 10,
@@ -215,7 +215,7 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), str.as_str().into());
+        .insert_fast_static(cstr!("body"), Var::ephemeral_string(str.as_str())); // will clone
     }
 
     if self.full_response {

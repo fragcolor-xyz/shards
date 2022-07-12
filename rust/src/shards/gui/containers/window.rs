@@ -50,7 +50,7 @@ impl Default for Window {
     Self {
       instance: ctx,
       requiring: Vec::new(),
-      title: ParamVar::new("My Window".into()),
+      title: ParamVar::new(Var::ephemeral_string("My Window")),
       contents: ShardsVar::default(),
       parents,
     }
