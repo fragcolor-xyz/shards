@@ -42,6 +42,25 @@ use crate::types::Var;
 use std::convert::TryInto;
 use std::ffi::CString;
 
+pub trait IntoVar {
+  fn into_var(self) -> Var;
+}
+
+impl IntoVar for &str {
+  fn into_var(self) -> Var {
+    Var::ephemeral_string(self)
+  }
+}
+
+impl<T: Into<Var>> IntoVar for T
+where
+  Var: From<T>,
+{
+  fn into_var(self) -> Var {
+    Var::from(self)
+  }
+}
+
 // use this to develop/debug:
 // cargo +nightly rustc --profile=check -- -Zunstable-options --pretty=expanded
 
@@ -57,7 +76,7 @@ macro_rules! var {
         $crate::types::ClonedVar::from($crate::types::Var::from(&vblks))
     }};
 
-    ($vexp:expr) => { $crate::types::WrappedVar($crate::types::Var::from($vexp)) }
+    ($vexp:expr) => { $crate::types::WrappedVar(crate::IntoVar::into_var($vexp)) };
 }
 
 macro_rules! shards {
@@ -331,7 +350,7 @@ mod dummy_shard {
   }
 
   #[test]
-  fn instanciate() {
+  fn instantiate() {
     init();
 
     let mut blk = create::<DummyShard>();
@@ -344,8 +363,8 @@ mod dummy_shard {
       (*shlk).destroy.unwrap()(shlk);
     }
 
-    let svar1: Var = "Hello\0".into();
-    let svar2: Var = "Hello\0".into();
+    let svar1: Var = Var::ephemeral_string("Hello\0");
+    let svar2: Var = Var::ephemeral_string("Hello\0");
     let svar3: Var = 10.into();
     let sstr1: &str = svar1.as_ref().try_into().unwrap();
     assert_eq!("Hello", sstr1);
