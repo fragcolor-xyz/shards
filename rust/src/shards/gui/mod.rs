@@ -14,6 +14,7 @@ use egui::Context as EguiNativeContext;
 use std::ffi::c_void;
 
 static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
+static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, 1701279061); // 'eguU'
 static EGUI_UI_SLICE: &'static [Type] = &[EGUI_UI_TYPE];

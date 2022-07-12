@@ -185,7 +185,7 @@ impl RequestBase {
         .insert_fast_static(cstr!("status"), response.status().as_u16().try_into()?);
 
       let headers = self.output_table.get_mut_fast_static(cstr!("headers"));
-      let mut headers: Table = headers.as_ref().try_into()?;
+      let mut headers: Table = <&mut Var as AsRef<Var>>::as_ref(&headers).try_into()?;
       for (key, value) in response.headers() {
         let key = CString::new(key.as_str()).map_err(|e| {
           shlog!("Failure details: {}", e);
@@ -214,7 +214,8 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), Var::ephemeral_string(str.as_str())); // will clone
+        .insert_fast_static(cstr!("body"), Var::ephemeral_string(str.as_str()));
+      // will clone
     }
 
     if self.full_response {
