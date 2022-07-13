@@ -6,7 +6,7 @@
 (def test
   (Wire
    "ws-test"
-   (Setup "ws://echo.websocket.events/ws" (WS.Client) = .ws-client
+   (Setup (WS.Client "echo.websocket.events" "/ws" 80 false) = .ws-client
           (Log "ws-client"))
    (WS.ReadString .ws-client)
    (Log "Reading string")
