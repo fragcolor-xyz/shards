@@ -1810,7 +1810,6 @@ struct Branch {
     for (const auto &cr : _composes) {
       for (const auto &req : cr.requiredInfo) {
         if (_mesh->refs.count(req.name) == 0) {
-          SHLOG_TRACE("Branch: warming up {}", req.name);
           auto vp = referenceVariable(context, req.name);
           _mesh->refs[req.name] = vp;
         }

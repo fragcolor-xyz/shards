@@ -409,13 +409,7 @@ struct Maybe : public BaseSubFlow {
     }
   }
 
-  SHExposedTypesInfo _mergedReqs{};
-  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
-  void destroyReqs() { arrayFree(_mergedReqs); }
-
   SHTypeInfo compose(const SHInstanceData &data) {
-    destroyReqs();
-
     // exposed stuff should be balanced
     // and output should the same
     SHComposeResult elseComp{};
@@ -423,20 +417,10 @@ struct Maybe : public BaseSubFlow {
       elseComp = _elseBlks.compose(data);
     }
 
-    // add to merged requirements
-    for (auto &req : elseComp.requiredInfo) {
-      arrayPush(_mergedReqs, req);
-    }
-
     if (_shards)
       _composition = _shards.compose(data);
     else
       _composition = {};
-
-    // add to merged requirements
-    for (auto &req : _composition.requiredInfo) {
-      arrayPush(_mergedReqs, req);
-    }
 
     const auto nextIsNone =
         data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == None);
@@ -846,12 +830,14 @@ struct Match {
     }
   }
 
-  SHExposedTypesInfo _mergedReqs{};
+  SHExposedTypesInfo _mergedReqs;
+
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
-  void destroyReqs() { arrayFree(_mergedReqs); }
+
+  void destroy() { arrayFree(_mergedReqs); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    destroyReqs();
+    destroy();
 
     for (auto &case_ : _pcases) {
       if (case_.valueType != None) {
@@ -969,8 +955,6 @@ struct Sub {
   void setParam(int index, const SHVar &value) { _shards = value; }
 
   SHVar getParam(int index) { return _shards; }
-
-  SHExposedTypesInfo requiredVariables() { return _composition.requiredInfo; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _composition = _shards.compose(data);
