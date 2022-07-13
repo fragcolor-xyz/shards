@@ -1011,6 +1011,8 @@ struct ValidationContext {
   void *userData{};
 
   bool onWorkerThread{false};
+
+  std::unordered_map<std::string_view, SHExposedTypeInfo> *fullRequired{nullptr};
 };
 
 void validateConnection(ValidationContext &ctx) {
@@ -1047,6 +1049,7 @@ void validateConnection(ValidationContext &ctx) {
     data.shard = ctx.bottom;
     data.wire = ctx.wire;
     data.inputType = previousOutput;
+    data.requiredVariables = ctx.fullRequired;
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
@@ -1297,6 +1300,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   ctx.wire = data.wire;
   ctx.userData = userData;
   ctx.onWorkerThread = data.onWorkerThread;
+  ctx.fullRequired = reinterpret_cast<decltype(ValidationContext::fullRequired)>(data.requiredVariables);
 
   // add externally added variables
   if (ctx.wire) {
@@ -1352,8 +1356,15 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
     }
   }
 
-  for (auto &req : ctx.required) {
-    shards::arrayPush(result.requiredInfo, req);
+  if (ctx.fullRequired) {
+    for (auto &req : ctx.required) {
+      shards::arrayPush(result.requiredInfo, req);
+      (*ctx.fullRequired)[req.name] = req;
+    }
+  } else {
+    for (auto &req : ctx.required) {
+      shards::arrayPush(result.requiredInfo, req);
+    }
   }
 
   if (wire.size() > 0) {

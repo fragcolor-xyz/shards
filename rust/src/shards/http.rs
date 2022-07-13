@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::core::activate_blocking;
-use crate::core::do_blocking;
+use crate::core::run_blocking;
 use crate::core::log;
 use crate::core::registerShard;
 use crate::core::BlockingShard;
@@ -277,7 +276,7 @@ macro_rules! get_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        Ok(activate_blocking(self, context, input))
+        Ok(run_blocking(self, context, input))
       }
     }
 
@@ -372,7 +371,7 @@ macro_rules! post_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        Ok(activate_blocking(self, context, input))
+        Ok(run_blocking(self, context, input))
       }
     }
 

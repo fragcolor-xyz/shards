@@ -74,12 +74,11 @@ struct Socket {
 };
 
 struct Client {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return Common::WebSocket; }
 
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"Name", SHCCSTR("The name of this websocket instance."), {CoreInfo::StringType}},
         {"Host", SHCCSTR("The remote host address or IP."), {CoreInfo::StringType, CoreInfo::StringVarType}},
         {"Target", SHCCSTR("The remote host target path."), {CoreInfo::StringType, CoreInfo::StringVarType}},
         {"Port", SHCCSTR("The remote host port."), {CoreInfo::IntType, CoreInfo::IntVarType}},
@@ -91,18 +90,15 @@ struct Client {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      name = value.payload.stringValue;
-      break;
-    case 1:
       host = value;
       break;
-    case 2:
+    case 1:
       target = value;
       break;
-    case 3:
+    case 2:
       port = value;
       break;
-    case 4:
+    case 3:
       ssl = value.payload.boolValue;
       break;
     default:
@@ -113,14 +109,12 @@ struct Client {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(name);
-    case 1:
       return host;
-    case 2:
+    case 1:
       return target;
-    case 3:
+    case 2:
       return port;
-    case 4:
+    case 3:
       return Var(ssl);
     default:
       return {};
@@ -233,12 +227,8 @@ struct Client {
   SHVar activate(SHContext *context, const SHVar &input) {
     if (!connected) {
       connect(context);
-      socket->payload.objectVendorId = CoreCC;
-      socket->payload.objectTypeId = WebSocketCC;
-      socket->payload.objectValue = &ws;
     }
-
-    return input;
+    return Var::Object(&ws, CoreCC, WebSocketCC);
   }
 
 protected:
@@ -363,9 +353,9 @@ struct ReadString : public User {
 };
 
 void registerShards() {
-  REGISTER_SHARD("WebSocket.Client", Client);
-  REGISTER_SHARD("WebSocket.WriteString", WriteString);
-  REGISTER_SHARD("WebSocket.ReadString", ReadString);
+  REGISTER_SHARD("WS.Client", Client);
+  REGISTER_SHARD("WS.WriteString", WriteString);
+  REGISTER_SHARD("WS.ReadString", ReadString);
 }
 } // namespace WS
 } // namespace shards

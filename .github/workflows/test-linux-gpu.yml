@@ -85,7 +85,7 @@ jobs:
           set -e
           export DISPLAY=:1
           Xvfb "$DISPLAY" &
-          
+
           cd docs/samples
           for i in $(find shards -name '*.edn' -path '*GUI*');
           do

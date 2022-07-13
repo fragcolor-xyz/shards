@@ -188,6 +188,8 @@ struct Broadcast : public Base {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 0: {
+      SHLOG_TRACE("Creating broadcast channel: {}", _name);
+
       vchannel.emplace<BroadcastChannel>(_noCopy);
       auto &channel = std::get<BroadcastChannel>(vchannel);
       // no cloning here, this is potentially dangerous if the type is dynamic
@@ -195,12 +197,14 @@ struct Broadcast : public Base {
       _mpchannel = &channel;
     } break;
     case 2: {
+      SHLOG_TRACE("Subscribing to broadcast channel: {}", _name);
+
       auto &channel = std::get<BroadcastChannel>(vchannel);
       verifyInputType(channel, data);
       _mpchannel = &channel;
     } break;
     default:
-      throw SHException("Broadcast/Listen channel type expected.");
+      throw SHException("Broadcast: channel type expected.");
     }
     return data.inputType;
   }
@@ -386,6 +390,8 @@ struct Listen : public Consumers {
     auto &vchannel = Globals::get(_name);
     switch (vchannel.index()) {
     case 2: {
+      SHLOG_TRACE("Listening broadcast channel: {}", _name);
+
       auto &channel = std::get<BroadcastChannel>(vchannel);
       auto &sub = channel.subscribe();
       _bchannel = &channel;
@@ -401,7 +407,7 @@ struct Listen : public Consumers {
       }
     };
     default:
-      throw SHException("Broadcast/Listen channel type expected.");
+      throw SHException("Listen: channel type expected.");
     }
   }
 

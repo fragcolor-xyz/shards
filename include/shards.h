@@ -689,6 +689,9 @@ struct SHInstanceData {
   SHComposeError reportError;
   // Reserved to use and pass with reportError
   void *privateContext;
+
+  // Internally used
+  void *requiredVariables;
 };
 
 typedef struct Shard *(__cdecl *SHShardConstructor)();
