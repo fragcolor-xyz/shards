@@ -1751,6 +1751,12 @@ struct Branch {
     auto dataCopy = data;
     dataCopy.wire = wire.get();
     dataCopy.inputType = data.inputType;
+
+    // Branch needs to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+    dataCopy.requiredVariables = &requirements;
+
     auto cr = composeWire(
         wire.get(),
         [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
@@ -1763,24 +1769,26 @@ struct Branch {
         },
         this, dataCopy);
 
-    _composes.emplace_back(cr);
     _runWires.emplace_back(wire);
 
     // add to merged requirements
     for (auto &req : cr.requiredInfo) {
       arrayPush(_mergedReqs, req);
     }
+
+    for (auto &avail : data.shared) {
+      auto it = requirements.find(avail.name);
+      if (it != requirements.end()) {
+        SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
+        arrayPush(_mergedReqs, it->second);
+      }
+    }
+
+    arrayFree(cr.requiredInfo);
+    arrayFree(cr.exposedInfo);
   }
 
-  void destroy() {
-    // release any old compose
-    for (auto &cr : _composes) {
-      arrayFree(cr.requiredInfo);
-      arrayFree(cr.exposedInfo);
-    }
-    _composes.clear();
-    arrayFree(_mergedReqs);
-  }
+  void destroy() { arrayFree(_mergedReqs); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     // release any old info
@@ -1807,12 +1815,13 @@ struct Branch {
 
   void warmup(SHContext *context) {
     // grab all the variables we need and reference them
-    for (const auto &cr : _composes) {
-      for (const auto &req : cr.requiredInfo) {
-        if (_mesh->refs.count(req.name) == 0) {
-          auto vp = referenceVariable(context, req.name);
-          _mesh->refs[req.name] = vp;
-        }
+    for (const auto &req : _mergedReqs) {
+      if (_mesh->refs.count(req.name) == 0) {
+        SHLOG_TRACE("Branch: referencing required variable: {}", req.name);
+        auto vp = referenceVariable(context, req.name);
+        _mesh->refs[req.name] = vp;
+      } else {
+        SHLOG_TRACE("Branch: could not find required variable to reference: {}", req.name);
       }
     }
 
@@ -1842,7 +1851,6 @@ private:
   OwnedVar _wires{Var::Empty};
   std::shared_ptr<SHMesh> _mesh = SHMesh::make();
   IterableExposedInfo _sharedCopy;
-  std::vector<SHComposeResult> _composes;
   SHExposedTypesInfo _mergedReqs;
   std::vector<std::shared_ptr<SHWire>> _runWires;
 };
