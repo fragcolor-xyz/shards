@@ -46,6 +46,7 @@ struct Wireframe {
     code->appendLine("var distance = min(bary.x, min(bary.y, bary.z))");
     code->appendLine("var wire = max(0.0, 1.0 - round(distance))");
     code->append(blocks::WriteGlobal("color", FieldTypes::Float4, "wire * vec4<f32>(1.0, 1.0, 1.0, 1.0)"));
+    code->appendLine("if(wire == 0.0) {discard;}");
     auto &entry = feature->shaderEntryPoints.emplace_back("visualizeBarycentricCoordinates", ProgrammableGraphicsStage::Fragment,
                                                           std::move(code));
     entry.dependencies.emplace_back("initColor");
