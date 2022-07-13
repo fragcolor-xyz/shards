@@ -49,7 +49,7 @@ lazy_static! {
     .into()];
 }
 
-fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
+fn get_key<T: Pair>(input: &Var) -> Result<T, &'static str> {
   let key: Result<&[u8], &str> = input.as_ref().try_into();
   if let Ok(key) = key {
     T::from_seed_slice(key).map_err(|e| {
@@ -188,7 +188,7 @@ macro_rules! add_pub_key {
       }
 
       fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-        let key: $key_type::Pair = get_key(*input)?;
+        let key: $key_type::Pair = get_key(input)?;
         let key = key.public();
         let key: &[u8; $size] = key.as_array_ref();
         self.output = key[..].into();

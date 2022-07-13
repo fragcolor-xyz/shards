@@ -158,7 +158,7 @@ impl Shard for Button {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let label: &str = self.label.get().as_ref().try_into()?;
       let mut button = egui::Button::new(label);
 

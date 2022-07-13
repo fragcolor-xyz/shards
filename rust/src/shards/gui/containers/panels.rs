@@ -160,7 +160,7 @@ macro_rules! impl_panel {
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
         if !self.contents.is_empty() {
-          let ui = util::get_current_parent(self.parents.get())?;
+          let ui = util::get_current_parent(*self.parents.get())?;
           let output = if let Some(ui) = ui {
             $egui_func(EguiId::new(self, 0)).show_inside(ui, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
@@ -168,7 +168,7 @@ macro_rules! impl_panel {
           } else {
             let gui_ctx = {
               let ctx_ptr: &mut EguiNativeContext =
-                Var::from_object_ptr_mut_ref(self.instance.get(), &EGUI_CTX_TYPE)?;
+                Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
               &*ctx_ptr
             };
             $egui_func(EguiId::new(self, 0)).show(gui_ctx, |ui| {
@@ -344,12 +344,12 @@ impl Shard for CentralPanel {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let gui_ctx = {
       let ctx_ptr: &mut EguiNativeContext =
-        Var::from_object_ptr_mut_ref(self.instance.get(), &EGUI_CTX_TYPE)?;
+        Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
       &*ctx_ptr
     };
 
     if !self.contents.is_empty() {
-      let ui = util::get_current_parent(self.parents.get())?;
+      let ui = util::get_current_parent(*self.parents.get())?;
       let output = if let Some(ui) = ui {
         egui::CentralPanel::default().show_inside(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)

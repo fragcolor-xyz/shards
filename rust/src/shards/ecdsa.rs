@@ -61,7 +61,7 @@ lazy_static! {
   ];
 }
 
-fn get_key(input: Var) -> Result<libsecp256k1::SecretKey, &'static str> {
+fn get_key(input: &Var) -> Result<libsecp256k1::SecretKey, &'static str> {
   let key: Result<&[u8], &str> = input.as_ref().try_into();
   if let Ok(key) = key {
     libsecp256k1::SecretKey::parse_slice(key).map_err(|e| {
@@ -208,7 +208,7 @@ impl Shard for ECDSAPubKey {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let key = get_key(*input)?;
+    let key = get_key(input)?;
     let key = libsecp256k1::PublicKey::from_secret_key(&key);
     if !self.compressed {
       let key: [u8; 65] = key.serialize();
@@ -267,7 +267,7 @@ impl Shard for ECDSAPrivKey {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let key = get_key(*input)?;
+    let key = get_key(input)?;
     let key: [u8; 32] = key.serialize();
     self.output = key[..].into();
     Ok(self.output.0)

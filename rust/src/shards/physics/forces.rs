@@ -132,11 +132,11 @@ impl Shard for Impulse {
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let simulation = self.simulation.get();
-    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(*simulation, &SIMULATION_TYPE)
       .map_err(|_| "Physics simulation not found")?;
 
     let rb = self.rb.get();
-    let rb = Var::from_object_mut_ref::<RigidBody>(rb, &RIGIDBODY_TYPE)
+    let rb = Var::from_object_mut_ref::<RigidBody>(*rb, &RIGIDBODY_TYPE)
       .map_err(|_| "RigidBody not found")?;
 
     for rb in &rb.rigid_bodies {

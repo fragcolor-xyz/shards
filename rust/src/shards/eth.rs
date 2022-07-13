@@ -207,7 +207,7 @@ impl Shard for EncodeCall {
     // process abi, create contract if needed
     if let Some(current_abi) = &self.current_abi {
       // abi might change on the fly, so we need to check it
-      if self.abi.is_variable() && abi != current_abi.0 {
+      if self.abi.is_variable() && *abi != current_abi.0 {
         self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
           shlog!("{}", e);
           "Failed to parse abi json string"
@@ -344,7 +344,7 @@ impl Shard for DecodeCall {
     // process abi, create contract if needed
     if let Some(current_abi) = &self.current_abi {
       // abi might change on the fly, so we need to check it
-      if self.abi.is_variable() && abi != current_abi.0 {
+      if self.abi.is_variable() && *abi != current_abi.0 {
         self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
           shlog!("{}", e);
           "Failed to parse abi json string"
