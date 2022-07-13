@@ -1008,7 +1008,7 @@ struct ValidationContext {
   bool onWorkerThread{false};
 };
 
-void validateConnection(ValidationContext &ctx) {
+void validateConnection(ValidationContext &ctx, ValidationContext *previousCtx) {
   auto previousOutput = ctx.previousOutputType;
 
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
@@ -1042,6 +1042,7 @@ void validateConnection(ValidationContext &ctx) {
     data.shard = ctx.bottom;
     data.wire = ctx.wire;
     data.inputType = previousOutput;
+    data.composeContext = &ctx;
     if (ctx.next) {
       data.outputTypes = ctx.next->inputTypes(ctx.next);
     }
@@ -1318,6 +1319,17 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
     }
   }
 
+  // also add from previous context if we have it
+  if(data.composeContext) {
+    const auto prevContext = reinterpret_cast<ValidationContext*>(data.composeContext);
+    for(auto &[key, exposed] : prevContext->exposed) {
+      ctx.inherited[key] = exposed;
+    }
+    for(auto &[key, inherited] : prevContext->inherited) {
+      ctx.inherited[key] = inherited;
+    }
+  }
+
   size_t chsize = wire.size();
   for (size_t i = 0; i < chsize; i++) {
     Shard *blk = wire[i];
@@ -1335,7 +1347,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
       ctx.previousOutputType = ctx.originalInputType;
     } else {
       ctx.bottom = blk;
-      validateConnection(ctx);
+      validateConnection(ctx, reinterpret_cast<ValidationContext*>(data.composeContext));
     }
   }
 
