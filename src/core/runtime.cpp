@@ -1497,7 +1497,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       for (auto info : data.shared) {
         if (strcmp(info.name, varName) == 0) {
           expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
-          return info.exposedType;
+          return cloneTypeInfo(info.exposedType);
         }
       }
       SHLOG_WARNING("Could not find variable {} when deriving type info", varName);
