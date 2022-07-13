@@ -115,12 +115,12 @@ impl Shard for Label {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let text: &str = input.as_ref().try_into()?;
+      let text: &str = input.try_into()?;
       let mut label = egui::Label::new(text);
 
       let wrap = self.wrap.get();
       if !wrap.is_none() {
-        let wrap: bool = wrap.as_ref().try_into()?;
+        let wrap: bool = wrap.try_into()?;
         label = label.wrap(wrap);
       }
 

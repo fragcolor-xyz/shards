@@ -284,12 +284,12 @@ macro_rules! get_like {
     impl BlockingShard for $shard_name {
       fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
         let request = self.rb.url.get();
-        let request_string: &str = request.as_ref().try_into()?;
+        let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
         request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
         if !headers.is_none() {
-          let headers_table: Table = headers.as_ref().try_into()?;
+          let headers_table: Table = headers.try_into()?;
           for (k, v) in headers_table.iter() {
             let key: &str = k.into();
             let hname: HeaderName = key
@@ -302,7 +302,7 @@ macro_rules! get_like {
         }
 
         if !input.is_none() {
-          let input_table: Table = input.as_ref().try_into()?;
+          let input_table: Table = input.try_into()?;
           for (k, v) in input_table.iter() {
             let key: &str = k.into();
             let value: &str = v.as_ref().try_into()?;
@@ -379,13 +379,13 @@ macro_rules! post_like {
     impl BlockingShard for $shard_name {
       fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
         let request = self.rb.url.get();
-        let request_string: &str = request.as_ref().try_into()?;
+        let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
         request = request.timeout(Duration::from_secs(self.rb.timeout));
         let headers = self.rb.headers.get();
         if !input.is_none() {
           // .form ( kv table )
-          let input_table: Result<Table, &str> = input.as_ref().try_into();
+          let input_table: Result<Table, &str> = input.try_into();
           if let Ok(input_table) = input_table {
             for (k, v) in input_table.iter() {
               let key: &str = k.into();
@@ -396,14 +396,14 @@ macro_rules! post_like {
             request = request.header("content-type", "application/x-www-form-urlencoded");
           } else {
             // .body ( string )
-            let input_string: Result<&str, &str> = input.as_ref().try_into();
+            let input_string: Result<&str, &str> = input.try_into();
             if let Ok(input_string) = input_string {
               // default to this in this case but users can edit under
               request = request.header("content-type", "application/json");
               request = request.body(input_string);
             } else {
               // .body ( bytes )
-              let input_bytes: Result<&[u8], &str> = input.as_ref().try_into();
+              let input_bytes: Result<&[u8], &str> = input.try_into();
               if let Ok(input_bytes) = input_bytes {
                 request = request.body(input_bytes);
                 // default to this in this case but users can edit under

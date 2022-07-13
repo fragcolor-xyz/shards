@@ -103,15 +103,15 @@ lazy_static! {
   static ref METADATA_TYPES: Vec<Type> = vec![*METADATA_TYPE];
 }
 
-fn get_key<T: Pair>(input: Var) -> Result<T, &'static str> {
-  let key: Result<&[u8], &str> = input.as_ref().try_into();
+fn get_key<T: Pair>(input: &Var) -> Result<T, &'static str> {
+  let key: Result<&[u8], &str> = input.try_into();
   if let Ok(key) = key {
     T::from_seed_slice(key).map_err(|e| {
       shlog!("{:?}", e);
       "Failed to parse secret key"
     })
   } else {
-    let key: Result<&str, &str> = input.as_ref().try_into();
+    let key: Result<&str, &str> = input.try_into();
     if let Ok(key) = key {
       T::from_string(key, None).map_err(|e| {
         shlog!("{:?}", e);
@@ -195,7 +195,7 @@ impl Shard for AccountId {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let bytes: &[u8] = input.as_ref().try_into()?;
+    let bytes: &[u8] = input.try_into()?;
     let prefix: u16 = self
       .version
       .try_into()
@@ -629,7 +629,7 @@ impl Shard for SHDecode {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let bytes: &[u8] = input.as_ref().try_into()?;
+    let bytes: &[u8] = input.try_into()?;
     let types: Seq = self.types.0.try_into()?;
     let hints: Seq = self.hints.0.try_into()?;
     let mut offset = 0;

@@ -142,7 +142,7 @@ impl Shard for Impulse {
     for rb in &rb.rigid_bodies {
       let rb = simulation.bodies.get_mut(*rb);
       if let Some(rb) = rb {
-        let (x, y, z) = input.as_ref().try_into()?;
+        let (x, y, z) = input.try_into()?;
         rb.apply_impulse(Vector3::new(x, y, z), true);
       } else {
         return Err("RigidBody not found in the simulation");

@@ -47,44 +47,44 @@ lazy_static! {
   ];
 }
 
-fn var_to_token(var: Var, param_type: &ParamType) -> Result<Token, &'static str> {
+fn var_to_token(var: &Var, param_type: &ParamType) -> Result<Token, &'static str> {
   match param_type {
     ParamType::Uint(size) => {
       if *size > 64 && *size <= 256 {
-        let bytes: &[u8] = var.as_ref().try_into()?;
+        let bytes: &[u8] = var.try_into()?;
         let u: U256 = bytes.into();
         let u: [u8; 32] = u.into();
         Ok(Token::Uint(u.into()))
       } else if *size <= 64 {
-        let uint: u64 = var.as_ref().try_into()?;
+        let uint: u64 = var.try_into()?;
         Ok(Token::Uint(uint.into()))
       } else {
         Err("Invalid Uint size")
       }
     }
     ParamType::Address => {
-      let s: String = var.as_ref().try_into()?;
+      let s: String = var.try_into()?;
       Ok(Token::Address(
         s.parse().map_err(|_| "Invalid address string")?,
       ))
     }
     ParamType::Bytes => {
-      let bytes: &[u8] = var.as_ref().try_into()?;
+      let bytes: &[u8] = var.try_into()?;
       Ok(Token::Bytes(bytes.to_vec()))
     }
     ParamType::FixedBytes(size) => {
-      let bytes: &[u8] = var.as_ref().try_into()?;
+      let bytes: &[u8] = var.try_into()?;
       let mut u = Vec::new();
       u.resize(*size, 0);
       u[..bytes.len()].clone_from_slice(&bytes[..bytes.len()]);
       Ok(Token::FixedBytes(u))
     }
     ParamType::String => {
-      let s: String = var.as_ref().try_into()?;
+      let s: String = var.try_into()?;
       Ok(Token::String(s))
     }
     ParamType::Bool => {
-      let b: bool = var.as_ref().try_into()?;
+      let b: bool = var.try_into()?;
       Ok(Token::Bool(b))
     }
     ParamType::Array(inner_type) => {
@@ -94,7 +94,7 @@ fn var_to_token(var: Var, param_type: &ParamType) -> Result<Token, &'static str>
         let mut tokens = Vec::new();
         let s: Seq = var.try_into()?;
         for v in s.iter() {
-          tokens.push(var_to_token(v, inner_type)?);
+          tokens.push(var_to_token(&v, inner_type)?);
         }
         Ok(Token::Array(tokens))
       }
@@ -208,14 +208,14 @@ impl Shard for EncodeCall {
     if let Some(current_abi) = &self.current_abi {
       // abi might change on the fly, so we need to check it
       if self.abi.is_variable() && *abi != current_abi.0 {
-        self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
+        self.contract = serde_json::from_str(abi.try_into()?).map_err(|e| {
           shlog!("{}", e);
           "Failed to parse abi json string"
         })?;
         self.current_abi = Some(abi.into());
       }
     } else {
-      self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
+      self.contract = serde_json::from_str(abi.try_into()?).map_err(|e| {
         shlog!("{}", e);
         "Failed to parse abi json string"
       })?;
@@ -224,7 +224,7 @@ impl Shard for EncodeCall {
 
     // encode the call
     if let Some(contract) = &self.contract {
-      let name: String = call_name.as_ref().try_into()?;
+      let name: String = call_name.try_into()?;
       let func = if let Some(func) = &contract.functions.get(&name) {
         if !func.is_empty() {
           Ok(&func[0])
@@ -244,7 +244,7 @@ impl Shard for EncodeCall {
 
       for (idx, input_type) in func.inputs.iter().enumerate() {
         let value = inputs[idx];
-        self.input.push(var_to_token(value, &input_type.kind)?);
+        self.input.push(var_to_token(&value, &input_type.kind)?);
       }
 
       self.output = func.encode_input(self.input.as_slice()).map_err(|e| {
@@ -345,14 +345,14 @@ impl Shard for DecodeCall {
     if let Some(current_abi) = &self.current_abi {
       // abi might change on the fly, so we need to check it
       if self.abi.is_variable() && *abi != current_abi.0 {
-        self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
+        self.contract = serde_json::from_str(abi.try_into()?).map_err(|e| {
           shlog!("{}", e);
           "Failed to parse abi json string"
         })?;
         self.current_abi = Some(abi.into());
       }
     } else {
-      self.contract = serde_json::from_str(abi.as_ref().try_into()?).map_err(|e| {
+      self.contract = serde_json::from_str(abi.try_into()?).map_err(|e| {
         shlog!("{}", e);
         "Failed to parse abi json string"
       })?;
@@ -361,7 +361,7 @@ impl Shard for DecodeCall {
 
     // encode the call
     if let Some(contract) = &self.contract {
-      let name: String = call_name.as_ref().try_into()?;
+      let name: String = call_name.try_into()?;
       let func = if let Some(func) = &contract.functions.get(&name) {
         if !func.is_empty() {
           Ok(&func[0])
@@ -373,7 +373,7 @@ impl Shard for DecodeCall {
       }?;
 
       let decoded = {
-        let str_input: Result<&str, &str> = input.as_ref().try_into();
+        let str_input: Result<&str, &str> = input.try_into();
         if self.is_input {
           if let Ok(str_input) = str_input {
             let bytes = hex::decode(str_input.trim_start_matches("0x").trim_start_matches("0X"))
@@ -386,7 +386,7 @@ impl Shard for DecodeCall {
               "Failed to parse input bytes"
             })
           } else {
-            let input: &[u8] = input.as_ref().try_into()?;
+            let input: &[u8] = input.try_into()?;
             func.decode_input(input).map_err(|e| {
               shlog!("{}", e);
               "Failed to parse input bytes"
@@ -403,7 +403,7 @@ impl Shard for DecodeCall {
             "Failed to parse input bytes"
           })
         } else {
-          let input: &[u8] = input.as_ref().try_into()?;
+          let input: &[u8] = input.try_into()?;
           func.decode_output(input).map_err(|e| {
             shlog!("{}", e);
             "Failed to parse input bytes"

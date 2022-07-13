@@ -178,7 +178,7 @@ impl Shard for Window {
 
     let mut failed = false;
     if !self.contents.is_empty() {
-      let title: &str = self.title.get().as_ref().try_into()?;
+      let title: &str = self.title.get().try_into()?;
       egui::Window::new(title).show(gui_ctx, |ui| {
         if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           .is_err()

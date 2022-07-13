@@ -42,7 +42,7 @@ impl Shard for Browse {
     &INPUT_TYPES
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    webbrowser::open(input.as_ref().try_into()?).map_err(|e| {
+    webbrowser::open(input.try_into()?).map_err(|e| {
       shlog!("{}", e);
       "Failed to browse."
     })?;

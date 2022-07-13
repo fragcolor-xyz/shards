@@ -50,14 +50,14 @@ lazy_static! {
 }
 
 fn get_key<T: Pair>(input: &Var) -> Result<T, &'static str> {
-  let key: Result<&[u8], &str> = input.as_ref().try_into();
+  let key: Result<&[u8], &str> = input.try_into();
   if let Ok(key) = key {
     T::from_seed_slice(key).map_err(|e| {
       shlog!("{:?}", e);
       "Failed to parse secret key"
     })
   } else {
-    let key: Result<&str, &str> = input.as_ref().try_into();
+    let key: Result<&str, &str> = input.try_into();
     if let Ok(key) = key {
       T::from_string(key, None).map_err(|e| {
         shlog!("{:?}", e);
@@ -127,7 +127,7 @@ macro_rules! add_signer {
       }
 
       fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-        let bytes: &[u8] = input.as_ref().try_into()?;
+        let bytes: &[u8] = input.try_into()?;
 
         let key = self.key.get();
         let key: $key_type::Pair = get_key(key)?;
@@ -244,7 +244,7 @@ macro_rules! add_priv_key {
       }
 
       fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-        let key: &str = input.as_ref().try_into()?;
+        let key: &str = input.try_into()?;
         let (_, seed) = $key_type::Pair::from_string_with_seed(key, None).map_err(|e| {
           shlog!("{:?}", e);
           "Failed to parse secret key mnemonic or string"
