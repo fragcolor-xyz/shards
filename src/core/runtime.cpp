@@ -129,6 +129,10 @@ namespace Http {
 extern void registerShards();
 }
 
+namespace WS {
+extern void registerShards();
+}
+
 namespace BigInt {
 extern void registerShards();
 }
@@ -324,6 +328,7 @@ void registerCoreShards() {
   registerProcessShards();
   Genetic::registerShards();
   registerNetworkShards();
+  WS::registerShards();
 #endif
 
 #ifdef SHARDS_WITH_EXTRA_SHARDS

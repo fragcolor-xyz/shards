@@ -141,7 +141,7 @@ jobs:
           ./shards ../src/tests/channels.clj
           ./shards ../src/tests/imaging.clj
           ./shards ../src/tests/http.clj
-          ./shards ../src/tests/ws.edn
+          ./shards ../src/tests/ws.clj
           ./shards ../src/tests/bigint.clj
           ./shards ../src/tests/brotli.clj
           ./shards ../src/tests/snappy.clj

@@ -56,6 +56,7 @@ set(
   ${SHARDS_DIR}/src/extra/snappy.cpp
   ${SHARDS_DIR}/src/extra/brotli.cpp
   ${SHARDS_DIR}/src/extra/xr.cpp
+  ${SHARDS_DIR}/src/core/shards/ws.cpp
   ${SHARDS_DIR}/src/core/shards/bigint.cpp
   ${SHARDS_DIR}/src/core/shards/wasm.cpp
   ${SHARDS_DIR}/src/core/shards/edn.cpp
