@@ -131,6 +131,15 @@ struct Sort : public ActionJointOp {
 
   void setup() { shardsKeyFn._bu = this; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Sorts the elements of a sequence. Can also move around the elements of a joined sequence in alignment with "
+                   "the sorted sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Output is the sorted sequence."); }
+
   static inline Parameters paramsInfo{
       joinOpParams,
       {{"Desc", SHCCSTR("If sorting should be in descending order, defaults ascending."), {CoreInfo::BoolType}},
@@ -285,6 +294,15 @@ struct Sort : public ActionJointOp {
 
 struct Remove : public ActionJointOp {
   bool _fast = false;
+
+  static SHOptionalString help() {
+    return SHCCSTR("Removes all elements from a sequence that match the given condition. Can also take these matched indices and "
+                   "remove corresponding elements from a joined sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Output is the filtered sequence."); }
 
   static inline Parameters paramsInfo{joinOpParams,
                                       {{"Predicate",
@@ -832,9 +850,15 @@ private:
 };
 
 struct Erase : SeqUser {
+  static SHOptionalString help() {
+    return SHCCSTR("Deletes identfied element(s) from a sequence or key-value pair(s) from a table.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -1649,8 +1673,11 @@ RUNTIME_SHARD_END(Repeat);
 // Register Sort
 RUNTIME_CORE_SHARD(Sort);
 RUNTIME_SHARD_setup(Sort);
+RUNTIME_SHARD_help(Sort);
 RUNTIME_SHARD_inputTypes(Sort);
+RUNTIME_SHARD_inputHelp(Sort);
 RUNTIME_SHARD_outputTypes(Sort);
+RUNTIME_SHARD_outputHelp(Sort);
 RUNTIME_SHARD_compose(Sort);
 RUNTIME_SHARD_activate(Sort);
 RUNTIME_SHARD_parameters(Sort);
@@ -1660,10 +1687,13 @@ RUNTIME_SHARD_cleanup(Sort);
 RUNTIME_SHARD_warmup(Sort);
 RUNTIME_SHARD_END(Sort);
 
-// Register
+// Register Remove
 RUNTIME_CORE_SHARD(Remove);
+RUNTIME_SHARD_help(Remove);
 RUNTIME_SHARD_inputTypes(Remove);
+RUNTIME_SHARD_inputHelp(Remove);
 RUNTIME_SHARD_outputTypes(Remove);
+RUNTIME_SHARD_outputHelp(Remove);
 RUNTIME_SHARD_parameters(Remove);
 RUNTIME_SHARD_setParam(Remove);
 RUNTIME_SHARD_getParam(Remove);
