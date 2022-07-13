@@ -1300,7 +1300,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   ctx.wire = data.wire;
   ctx.userData = userData;
   ctx.onWorkerThread = data.onWorkerThread;
-  ctx.fullRequired = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
+  ctx.fullRequired = reinterpret_cast<decltype(ValidationContext::fullRequired)>(data.requiredVariables);
 
   // add externally added variables
   if (ctx.wire) {
