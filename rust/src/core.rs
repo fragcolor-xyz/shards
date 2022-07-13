@@ -404,7 +404,7 @@ impl WireRef {
 //--------------------------------------------------------------------------------------------------
 
 pub trait BlockingShard {
-  fn run_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
+  fn activate_blocking(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
   fn cancel_activation(&mut self, _context: &Context) {}
 }
 
@@ -418,7 +418,7 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingShard>(
   arg2: *mut c_void,
 ) -> SHVar {
   let data = arg2 as *mut AsyncCallData<T>;
-  let res = (*(*data).caller).run_blocking(&*context, &*(*data).input);
+  let res = (*(*data).caller).activate_blocking(&*context, &*(*data).input);
   match res {
     Ok(value) => value,
     Err(error) => {
@@ -438,7 +438,7 @@ unsafe extern "C" fn cancel_blocking_c_call<T: BlockingShard>(
   (*(*data).caller).cancel_activation(&*context);
 }
 
-pub fn activate_blocking<'a, T>(
+pub fn run_blocking<'a, T>(
   caller: &'a mut T,
   context: &'a SHContext,
   input: &'a SHVar,
