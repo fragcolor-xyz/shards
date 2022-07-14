@@ -740,6 +740,12 @@ struct SetBase : public VariableBase {
 };
 
 struct Set : public SetBase {
+  static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Input becomes the value of the variable being created."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     sanityChecks(data, true);
 
@@ -780,6 +786,14 @@ struct Set : public SetBase {
 };
 
 struct Ref : public SetBase {
+  static SHOptionalString help() {
+    return SHCCSTR("Creates an immutable variable with a constant value. Once created this variable cannot be changed.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Input becomes the value of the variable being created."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     sanityChecks(data, true);
 
@@ -874,6 +888,12 @@ struct Ref : public SetBase {
 };
 
 struct Update : public SetBase {
+  static SHOptionalString help() { return SHCCSTR("Modifies the value of an existing mutable variable."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Input is the new value of the variable being updated."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     sanityChecks(data, false);
 
@@ -967,10 +987,13 @@ struct Get : public VariableBase {
   }
 
   void destroy() { freeDerivedInfo(_defaultType); }
+  static SHOptionalString help() { return SHCCSTR("Reads the value of the variable passed to it."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output is the value read from the variable."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _shard = const_cast<Shard *>(data.shard);
@@ -1319,6 +1342,14 @@ struct Push : public SeqBase {
   bool _firstPush = false;
   SHTypeInfo _seqInfo{};
   SHTypeInfo _seqInnerInfo{};
+
+  static SHOptionalString help() {
+    return SHCCSTR("Updates sequences and tables by pushing elements and/or sequences into them.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Input is the update value to be pushed into the variables."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
       variableParamsInfo, shards::ParamsInfo::Param("Clear",
