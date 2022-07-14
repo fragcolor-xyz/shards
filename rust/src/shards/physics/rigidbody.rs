@@ -144,7 +144,7 @@ impl RigidBody {
   fn _cleanup(&mut self) {
     if let Some(simulation) = self.simulation_var.try_get() {
       let simulation =
-        Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE).unwrap();
+        Var::from_object_ptr_mut_ref::<Simulation>(*simulation, &SIMULATION_TYPE).unwrap();
       for rigid_body in &self.rigid_bodies {
         // this removes both RigidBodies and colliders attached.
         simulation.bodies.remove(
@@ -246,7 +246,7 @@ impl RigidBody {
       let rigid_body = {
         // Mut borrow - this is repeated a lot sadly - TODO figure out
         let simulation =
-          Var::from_object_ptr_mut_ref::<Simulation>(self.simulation_var.get(), &SIMULATION_TYPE)?;
+          Var::from_object_ptr_mut_ref::<Simulation>(*self.simulation_var.get(), &SIMULATION_TYPE)?;
         let rigid_body = Self::make_rigid_body(simulation, self.user_data, status, p, r)?;
         self.rigid_bodies.push(rigid_body);
         rigid_body
@@ -258,7 +258,7 @@ impl RigidBody {
         for shape in shapes {
           // Mut borrow - this is repeated a lot sadly - TODO figure out
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
-            self.simulation_var.get(),
+            *self.simulation_var.get(),
             &SIMULATION_TYPE,
           )?;
           self.colliders.push(Self::make_collider(
@@ -271,11 +271,11 @@ impl RigidBody {
       } else {
         // Mut borrow - this is repeated a lot sadly - TODO figure out
         let simulation =
-          Var::from_object_ptr_mut_ref::<Simulation>(self.simulation_var.get(), &SIMULATION_TYPE)?;
+          Var::from_object_ptr_mut_ref::<Simulation>(*self.simulation_var.get(), &SIMULATION_TYPE)?;
         self.colliders.push(Self::make_collider(
           simulation,
           self.user_data,
-          shape,
+          *shape,
           rigid_body,
         )?);
       }
@@ -298,7 +298,7 @@ impl RigidBody {
         let rigid_body = {
           // Mut borrow - this is repeated a lot sadly - TODO figure out
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
-            self.simulation_var.get(),
+            *self.simulation_var.get(),
             &SIMULATION_TYPE,
           )?;
           if r.is_seq() {
@@ -320,7 +320,7 @@ impl RigidBody {
           for shape in shapes {
             // Mut borrow - this is repeated a lot sadly - TODO figure out
             let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
-              self.simulation_var.get(),
+              *self.simulation_var.get(),
               &SIMULATION_TYPE,
             )?;
             self.colliders.push(Self::make_collider(
@@ -333,13 +333,13 @@ impl RigidBody {
         } else {
           // Mut borrow - this is repeated a lot sadly - TODO figure out
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(
-            self.simulation_var.get(),
+            *self.simulation_var.get(),
             &SIMULATION_TYPE,
           )?;
           self.colliders.push(Self::make_collider(
             simulation,
             self.user_data,
-            shape,
+            *shape,
             rigid_body,
           )?);
         }
@@ -349,12 +349,12 @@ impl RigidBody {
   }
 
   fn _populate(&mut self, status: RigidBodyType) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
-    let p = &self.position.get();
-    let r = &self.rotation.get();
+    let p = *self.position.get();
+    let r = *self.rotation.get();
     if p.is_seq() {
-      self.populate_multi(status, p, r)
+      self.populate_multi(status, &p, &r)
     } else {
-      self.populate_single(status, p, r)
+      self.populate_single(status, &p, &r)
     }
   }
 }
@@ -611,7 +611,7 @@ impl Shard for DynamicRigidBody {
     // after that will be driven by the physics engine so what we do is get the new matrix and output it
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
-    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(*sim_var, &SIMULATION_TYPE)?;
     let (rbs, _, _) = rbData._populate(RigidBodyType::Dynamic)?;
     if rbs.len() == 1 {
       let rb = simulation.bodies.get(rbs[0]).unwrap();
@@ -755,7 +755,7 @@ impl Shard for KinematicRigidBody {
     // it will also output a properly interpolated matrix
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = rbData.simulation_var.get();
-    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(*sim_var, &SIMULATION_TYPE)?;
     let (rbs, p, r) = rbData._populate(RigidBodyType::KinematicPositionBased)?; // TODO KinematicVelocityBased as well
     if rbs.len() == 1 {
       let rb = simulation.bodies.get_mut(rbs[0]).unwrap();

@@ -63,11 +63,11 @@ impl Shard for ToBase58 {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let bytes: Result<&[u8], &str> = input.as_ref().try_into();
+    let bytes: Result<&[u8], &str> = input.try_into();
     if let Ok(bytes) = bytes {
       self.buffer = bs58::encode(bytes).into_string();
     } else {
-      let string: Result<&str, &str> = input.as_ref().try_into();
+      let string: Result<&str, &str> = input.try_into();
       if let Ok(string) = string {
         self.buffer = bs58::encode(string).into_string();
       }
@@ -107,7 +107,7 @@ impl Shard for FromBase58 {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let str_input: &str = input.as_ref().try_into()?;
+    let str_input: &str = input.try_into()?;
     self.output = bs58::decode(str_input).into_vec().map_err(|e| {
       shlog!("{}", e);
       "Failed to decode base58"
@@ -180,14 +180,14 @@ impl Shard for ToLEB128 {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     if self.signed {
-      let int_input: i64 = input.as_ref().try_into()?;
+      let int_input: i64 = input.try_into()?;
       self.output.clear();
       self
         .output
         .write_leb128(int_input)
         .map_err(|_| "Failed to convert int to leb128")?;
     } else {
-      let int_input: u64 = input.as_ref().try_into()?;
+      let int_input: u64 = input.try_into()?;
       self.output.clear();
       self
         .output
@@ -248,7 +248,7 @@ impl Shard for FromLEB128 {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let mut bytes: &[u8] = input.as_ref().try_into()?;
+    let mut bytes: &[u8] = input.try_into()?;
     if self.signed {
       let value: (i64, usize) = bytes
         .read_leb128()

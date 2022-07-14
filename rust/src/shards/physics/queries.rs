@@ -85,7 +85,7 @@ impl Shard for CastRay {
     self.output.clear();
 
     let simulation = self.simulation_var.get();
-    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(simulation, &SIMULATION_TYPE)
+    let simulation = Var::from_object_ptr_mut_ref::<Simulation>(*simulation, &SIMULATION_TYPE)
       .map_err(|_| "Physics simulation not found.")?;
 
     let inputs: Seq = input.try_into().unwrap();

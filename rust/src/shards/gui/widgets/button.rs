@@ -158,13 +158,13 @@ impl Shard for Button {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      let label: &str = self.label.get().as_ref().try_into()?;
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let label: &str = self.label.get().try_into()?;
       let mut button = egui::Button::new(label);
 
       let wrap = self.wrap.get();
       if !wrap.is_none() {
-        let wrap: bool = wrap.as_ref().try_into()?;
+        let wrap: bool = wrap.try_into()?;
         button = button.wrap(wrap);
       }
 

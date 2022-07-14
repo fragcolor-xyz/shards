@@ -18,7 +18,7 @@ pub(crate) fn activate_ui_contents<'a>(
 ) -> Result<Var, &'a str> {
   // pass the ui parent to the inner shards
   let var = parents.get();
-  let mut seq: Seq = var.as_ref().try_into()?;
+  let mut seq: Seq = var.try_into()?;
 
   unsafe {
     let var = Var::new_object_from_ptr(ui as *const _, &EGUI_UI_TYPE);

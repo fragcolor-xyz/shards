@@ -79,11 +79,11 @@ macro_rules! add_hasher {
             }
           }
         } else {
-          let bytes: Result<&[u8], &str> = input.as_ref().try_into();
+          let bytes: Result<&[u8], &str> = input.try_into();
           if let Ok(bytes) = bytes {
             k.update(bytes);
           } else {
-            let string: Result<&str, &str> = input.as_ref().try_into();
+            let string: Result<&str, &str> = input.try_into();
             if let Ok(string) = string {
               let bytes = string.as_bytes();
               k.update(bytes);
@@ -169,11 +169,11 @@ macro_rules! add_hasher2 {
             }
           }
         } else {
-          let bytes: Result<&[u8], &str> = input.as_ref().try_into();
+          let bytes: Result<&[u8], &str> = input.try_into();
           if let Ok(bytes) = bytes {
             k.update(bytes);
           } else {
-            let string: Result<&str, &str> = input.as_ref().try_into();
+            let string: Result<&str, &str> = input.try_into();
             if let Ok(string) = string {
               let bytes = string.as_bytes();
               k.update(bytes);
@@ -247,11 +247,11 @@ macro_rules! add_hasher3 {
             }
           }
         } else {
-          let bytes: Result<&[u8], &str> = input.as_ref().try_into();
+          let bytes: Result<&[u8], &str> = input.try_into();
           if let Ok(bytes) = bytes {
             self.scratch.extend(bytes);
           } else {
-            let string: Result<&str, &str> = input.as_ref().try_into();
+            let string: Result<&str, &str> = input.try_into();
             if let Ok(string) = string {
               let bytes = string.as_bytes();
               self.scratch.extend(bytes);

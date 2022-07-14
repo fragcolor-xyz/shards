@@ -113,7 +113,7 @@ macro_rules! shape {
           if p.is_none() {
             Vector3::new(0.0, 0.0, 0.0)
           } else {
-            let (tx, ty, tz): (f32, f32, f32) = p.as_ref().try_into()?;
+            let (tx, ty, tz): (f32, f32, f32) = p.try_into()?;
             Vector3::new(tx, ty, tz)
           }
         };
@@ -122,7 +122,7 @@ macro_rules! shape {
           if r.is_none() {
             Isometry3::new(pos, Vector3::new(0.0, 0.0, 0.0))
           } else {
-            let quaternion: Result<(f32, f32, f32, f32), &str> = r.as_ref().try_into();
+            let quaternion: Result<(f32, f32, f32, f32), &str> = r.try_into();
             if let Ok(quaternion) = quaternion {
               let quaternion =
                 Quaternion::new(quaternion.3, quaternion.0, quaternion.1, quaternion.2);
@@ -188,7 +188,7 @@ impl BallShape {
   }
 
   fn make(&mut self) -> SharedShape {
-    let radius = self.radius.get().as_ref().try_into().unwrap();
+    let radius = self.radius.get().try_into().unwrap();
     SharedShape::ball(radius)
   }
 
@@ -259,7 +259,7 @@ impl CubeShape {
   }
 
   fn make(&mut self) -> SharedShape {
-    let (x, y, z) = self.half_extents.get().as_ref().try_into().unwrap();
+    let (x, y, z) = self.half_extents.get().try_into().unwrap();
     SharedShape::cuboid(x, y, z)
   }
 

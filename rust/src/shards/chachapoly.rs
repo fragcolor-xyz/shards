@@ -99,12 +99,12 @@ impl Shard for Encrypt {
     let key = self.key.get();
 
     // TODO cache me?
-    let key = if let Ok(key) = <&[u8]>::try_from(&key) {
+    let key = if let Ok(key) = <&[u8]>::try_from(key) {
       if key.len() != 32 {
         return Err("Invalid key length");
       }
       Key::from_slice(key)
-    } else if let Ok(key) = <&str>::try_from(&key) {
+    } else if let Ok(key) = <&str>::try_from(key) {
       if key.len() != 32 {
         return Err("Invalid key length");
       }
@@ -197,12 +197,12 @@ impl Shard for Decrypt {
     let key = self.key.get();
 
     // TODO cache me?
-    let key = if let Ok(key) = <&[u8]>::try_from(&key) {
+    let key = if let Ok(key) = <&[u8]>::try_from(key) {
       if key.len() != 32 {
         return Err("Invalid key length");
       }
       Key::from_slice(key)
-    } else if let Ok(key) = <&str>::try_from(&key) {
+    } else if let Ok(key) = <&str>::try_from(key) {
       if key.len() != 32 {
         return Err("Invalid key length");
       }

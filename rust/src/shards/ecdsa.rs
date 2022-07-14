@@ -60,15 +60,15 @@ lazy_static! {
   ];
 }
 
-fn get_key(input: Var) -> Result<libsecp256k1::SecretKey, &'static str> {
-  let key: Result<&[u8], &str> = input.as_ref().try_into();
+fn get_key(input: &Var) -> Result<libsecp256k1::SecretKey, &'static str> {
+  let key: Result<&[u8], &str> = input.try_into();
   if let Ok(key) = key {
     libsecp256k1::SecretKey::parse_slice(key).map_err(|e| {
       shlog!("{}", e);
       "Failed to parse secret key"
     })
   } else {
-    let key: Result<&str, &str> = input.as_ref().try_into();
+    let key: Result<&str, &str> = input.try_into();
     if let Ok(key) = key {
       // use this to allow even mnemonics to work!
       let pair = ecdsa::Pair::from_string(key, None).map_err(|e| {
@@ -142,7 +142,7 @@ impl Shard for ECDSASign {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let bytes: &[u8] = input.as_ref().try_into()?;
+    let bytes: &[u8] = input.try_into()?;
 
     let key = self.key.get();
     let key = get_key(key)?;
@@ -207,7 +207,7 @@ impl Shard for ECDSAPubKey {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let key = get_key(*input)?;
+    let key = get_key(input)?;
     let key = libsecp256k1::PublicKey::from_secret_key(&key);
     if !self.compressed {
       let key: [u8; 65] = key.serialize();
@@ -266,7 +266,7 @@ impl Shard for ECDSAPrivKey {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let key = get_key(*input)?;
+    let key = get_key(input)?;
     let key: [u8; 32] = key.serialize();
     self.output = key[..].into();
     Ok(self.output.0)
@@ -332,10 +332,10 @@ impl Shard for ECDSARecover {
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
-    let bytes: &[u8] = input.as_ref().try_into()?;
+    let bytes: &[u8] = input.try_into()?;
 
     let signature = self.signature.get();
-    let x: &[u8] = signature.as_ref().try_into()?;
+    let x: &[u8] = signature.try_into()?;
     let sig = libsecp256k1::Signature::parse_overflowing_slice(&x[..64]).map_err(|e| {
       shlog!("{}", e);
       "Failed to parse signature"

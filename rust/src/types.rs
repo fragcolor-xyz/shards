@@ -2770,9 +2770,9 @@ impl ParamVar {
     }
   }
 
-  pub fn get(&self) -> Var {
+  pub fn get(&self) -> &Var {
     assert_ne!(self.pointee, std::ptr::null_mut());
-    unsafe { *self.pointee }
+    unsafe { &*self.pointee }
   }
 
   pub fn get_mut(&mut self) -> &mut Var {
@@ -2780,12 +2780,11 @@ impl ParamVar {
     unsafe { &mut *self.pointee }
   }
 
-  pub fn try_get(&self) -> Option<Var> {
+  pub fn try_get(&self) -> Option<&Var> {
     if self.pointee.is_null() {
       None
     } else {
-      let v = unsafe { *self.pointee };
-      Some(v)
+      Some(unsafe { &*self.pointee })
     }
   }
 

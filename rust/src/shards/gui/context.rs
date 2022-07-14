@@ -196,7 +196,7 @@ impl Shard for EguiContext {
     let raw_input = unsafe {
       let inputs = shardsc::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,
-        &self.main_window_globals.get(),
+        self.main_window_globals.get(),
       ) as *const egui_gfx::egui_Input;
       egui_gfx::translate_raw_input(&*inputs)
     };
@@ -228,7 +228,7 @@ impl Shard for EguiContext {
 
         let queue_var = self.queue.get();
         unsafe {
-          let queue = shardsc::gfx_getDrawQueueFromVar(&queue_var);
+          let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
           self.renderer.render(
             &gui_ctx,
             egui_output,
