@@ -4,7 +4,7 @@
 (defmesh main)
 
 (defloop play-files
-  (Audio.ReadFile "../../external/Ode_to_Joy.ogg" :From 1.0 :To 1.023219954648526)
+  (Audio.ReadFile "./data/Ode_to_Joy.ogg" :From 1.0 :To 1.023219954648526)
   (Log))
 
 (schedule main play-files)
@@ -13,7 +13,7 @@
 (run main)
 
 (defloop play-file-fft
-  (Audio.ReadFile "../../external/Ode_to_Joy.ogg" :Channels 1 :From 5.0 :To 6.0)
+  (Audio.ReadFile "./data/Ode_to_Joy.ogg" :Channels 1 :From 5.0 :To 6.0)
   (DSP.FFT) = .freq-domain
   (DSP.IFFT :Audio true)
   (Audio.WriteFile "example-fft.wav" :Channels 1)
@@ -27,7 +27,7 @@
 (run main)
 
 ;; (defloop play-file-dwt
-;;   (Audio.ReadFile "../../external/Ode_to_Joy.ogg" :Channels 1 :From 5.0 :To 6.0)
+;;   (Audio.ReadFile "./data/Ode_to_Joy.ogg" :Channels 1 :From 5.0 :To 6.0)
 ;;   (DSP.Wavelet)
 ;;   (DSP.InverseWavelet)
 ;;   (Audio.WriteFile "example-dwt.wav" :Channels 1))
@@ -44,7 +44,7 @@
 
 (defloop device-test
   (Audio.Device)
-  (Audio.Channel :Shards (-> (Audio.ReadFile "../../external/Ode_to_Joy.ogg"
+  (Audio.Channel :Shards (-> (Audio.ReadFile "./data/Ode_to_Joy.ogg"
                                              :Channels 2
                                              :From 4.0 :To 6.0))))
 
