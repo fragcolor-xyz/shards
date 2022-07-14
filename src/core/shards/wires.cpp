@@ -421,6 +421,8 @@ struct StopWire : public WireBase {
 };
 
 struct Resume : public WireBase {
+  std::deque<ParamVar> _vars;
+
   static SHOptionalString help() {
     return SHCCSTR("Resumes a given wire and suspends the current one. In "
                    "other words, switches flow execution to another wire.");
@@ -429,7 +431,8 @@ struct Resume : public WireBase {
   void setup() {
     // we use those during WireBase::compose
     passthrough = true;
-    mode = Detached;
+    mode = RunWireMode::Detached;
+    capturing = true;
   }
 
   static inline Parameters params{{"Wire", SHCCSTR("The name of the wire to switch to."), {WireTypes}}};
@@ -441,6 +444,21 @@ struct Resume : public WireBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     WireBase::compose(data);
+
+    // build the list of variables to capture and inject into spawned chain
+    _vars.clear();
+    if (wire) {
+      for (auto &[name, global] : wire->requiredVariables) {
+        if (!global) {
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = name.data();
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
+      }
+    }
+
     return data.inputType;
   }
 
@@ -453,12 +471,29 @@ struct Resume : public WireBase {
   // Cleanup mechanics still to figure, for now ref count of the actual wire
   // symbol, TODO maybe use SHVar refcount!
 
+  void warmup(SHContext *context) {
+    WireBase::warmup(context);
+
+    for (auto &v : _vars) {
+      v.warmup(context);
+    }
+  }
+
+  void cleanup() {
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+
+    WireBase::cleanup();
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
 
-    auto pwire = [&] {
+    auto p_wire = [&] {
       if (!wire) {
         if (current->resumer) {
+          SHLOG_TRACE("Resume, wire not found, using resumer: {}", current->resumer->name);
           return current->resumer;
         } else {
           throw ActivationError("Resume, wire not found.");
@@ -469,26 +504,35 @@ struct Resume : public WireBase {
     }();
 
     // assign the new wire as current wire on the flow
-    context->flow->wire = pwire;
+    context->flow->wire = p_wire;
 
     // Allow to re run wires
-    if (shards::hasEnded(pwire)) {
-      shards::stop(pwire);
+    if (shards::hasEnded(p_wire)) {
+      shards::stop(p_wire);
     }
 
     // Prepare if no callc was called
-    if (!pwire->coro) {
-      pwire->mesh = context->main->mesh;
-      shards::prepare(pwire, context->flow);
+    if (!p_wire->coro) {
+      p_wire->mesh = context->main->mesh;
+      shards::prepare(p_wire, context->flow);
     }
 
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
-    pwire->resumer = current;
+    if (p_wire->resumer == nullptr)
+      p_wire->resumer = current;
+
+    // capture variables
+    for (auto &v : _vars) {
+      auto &var = v.get();
+      auto &v_ref = p_wire->variables[v.variableName()];
+      assert(v_ref.refcount > 0);
+      cloneVar(v_ref, var);
+    }
 
     // Start it if not started
-    if (!shards::isRunning(pwire)) {
-      shards::start(pwire, input);
+    if (!shards::isRunning(p_wire)) {
+      shards::start(p_wire, input);
     }
 
     // And normally we just delegate the Mesh + SHFlow
@@ -496,6 +540,11 @@ struct Resume : public WireBase {
     // and in mesh tick when re-evaluated tick will
     // resume with the wire we just set above!
     shards::suspend(context, 0);
+
+    // We will end here when we get resumed!
+
+    // reset resumer
+    p_wire->resumer = nullptr;
 
     return input;
   }
@@ -510,9 +559,10 @@ struct Start : public Resume {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
 
-    auto pwire = [&] {
+    auto p_wire = [&] {
       if (!wire) {
         if (current->resumer) {
+          SHLOG_TRACE("Start, wire not found, using resumer: {}", current->resumer->name);
           return current->resumer;
         } else {
           throw ActivationError("Start, wire not found.");
@@ -523,27 +573,41 @@ struct Start : public Resume {
     }();
 
     // assign the new wire as current wire on the flow
-    context->flow->wire = pwire;
+    context->flow->wire = p_wire;
 
     // ensure wire is not running, we start from top
-    shards::stop(pwire);
+    shards::stop(p_wire);
 
     // Prepare
-    pwire->mesh = context->main->mesh;
-    shards::prepare(pwire, context->flow);
+    p_wire->mesh = context->main->mesh;
+    shards::prepare(p_wire, context->flow);
 
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
-    pwire->resumer = current;
+    if (p_wire->resumer == nullptr)
+      p_wire->resumer = current;
+
+    // capture variables
+    for (auto &v : _vars) {
+      auto &var = v.get();
+      auto &v_ref = p_wire->variables[v.variableName()];
+      assert(v_ref.refcount > 0);
+      cloneVar(v_ref, var);
+    }
 
     // Start
-    shards::start(pwire, input);
+    shards::start(p_wire, input);
 
     // And normally we just delegate the Mesh + SHFlow
     // the following will suspend this current wire
     // and in mesh tick when re-evaluated tick will
     // resume with the wire we just set above!
     shards::suspend(context, 0);
+
+    // We will end here when we get resumed!
+
+    // reset resumer
+    p_wire->resumer = nullptr;
 
     return input;
   }
