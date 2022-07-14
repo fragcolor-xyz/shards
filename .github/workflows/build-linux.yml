@@ -135,9 +135,13 @@ jobs:
           name: shards-linux ${{ steps.setup.outputs.build-type }}
           path: build
       - name: Get sample files
-        run: |
-          mkdir external && cd external
-          wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.dweb.link -O Ode_to_Joy.ogg
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: |
+            mkdir external && cd external
+            wget -nv https://bafybeifsdqdnhjk4triskonqqin2jvylfcwbdqhvrpsc4oxjgbwgle7ipe.ipfs.dweb.link -O Ode_to_Joy.ogg
       - name: Test
         env:
           RUST_BACKTRACE: 1
