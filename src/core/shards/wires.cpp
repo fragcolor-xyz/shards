@@ -442,20 +442,36 @@ struct Resume : public WireBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  SHExposedTypesInfo _mergedReqs;
+  void destroy() {
+    arrayFree(_mergedReqs);
+    WireBase::destroy();
+  }
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    WireBase::compose(data);
+    // Start/Resume need to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+    dataCopy.requiredVariables = &requirements;
+
+    WireBase::compose(dataCopy);
 
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
-    if (wire) {
-      for (auto &[name, global] : wire->requiredVariables) {
-        if (!global) {
-          SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = name.data();
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
-        }
+    arrayResize(_mergedReqs, 0);
+    for (auto &avail : data.shared) {
+      auto it = requirements.find(avail.name);
+      if (it != requirements.end() && !avail.global) {
+        SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+        SHVar ctxVar{};
+        ctxVar.valueType = ContextVar;
+        ctxVar.payload.stringValue = avail.name;
+        auto &p = _vars.emplace_back();
+        p = ctxVar;
+
+        arrayPush(_mergedReqs, it->second);
       }
     }
 
@@ -698,19 +714,38 @@ struct Recur : public WireBase {
 struct BaseRunner : public WireBase {
   std::deque<ParamVar> _vars;
 
+  SHExposedTypesInfo _mergedReqs;
+  void destroy() {
+    arrayFree(_mergedReqs);
+    WireBase::destroy();
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto res = WireBase::compose(data);
+    // Start/Resume need to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+    if (capturing) {
+      dataCopy.requiredVariables = &requirements;
+    }
+
+    auto res = WireBase::compose(dataCopy);
 
     if (capturing) {
       // build the list of variables to capture and inject into spawned chain
       _vars.clear();
-      for (auto &[name, global] : wire->requiredVariables) {
-        if (!global) {
+      arrayResize(_mergedReqs, 0);
+      for (auto &avail : data.shared) {
+        auto it = requirements.find(avail.name);
+        if (it != requirements.end() && !avail.global) {
+          SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
           ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = name.data();
+          ctxVar.payload.stringValue = avail.name;
           auto &p = _vars.emplace_back();
           p = ctxVar;
+
+          arrayPush(_mergedReqs, it->second);
         }
       }
     }
@@ -726,7 +761,7 @@ struct BaseRunner : public WireBase {
     return mode == RunWireMode::Inline ? SHExposedTypesInfo(exposedInfo) : empty;
   }
 
-  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(wireValidation.requiredInfo); }
+  SHExposedTypesInfo requiredVariables() { return capturing ? _mergedReqs : SHExposedTypesInfo(wireValidation.requiredInfo); }
 
   void cleanup() {
     if (capturing) {
@@ -1668,18 +1703,36 @@ struct Spawn : public WireBase {
     }
   }
 
+  SHExposedTypesInfo _mergedReqs;
+  void destroy() {
+    arrayFree(_mergedReqs);
+    WireBase::destroy();
+  }
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    WireBase::compose(data); // discard the result, we do our thing here
+    // Spawn needs to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+    dataCopy.requiredVariables = &requirements;
+
+    WireBase::compose(dataCopy); // discard the result, we do our thing here
 
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
-    for (auto &[name, global] : wire->requiredVariables) {
-      if (!global) {
+    arrayResize(_mergedReqs, 0);
+    for (auto &avail : data.shared) {
+      auto it = requirements.find(avail.name);
+      if (it != requirements.end() && !avail.global) {
+        SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
         SHVar ctxVar{};
         ctxVar.valueType = ContextVar;
-        ctxVar.payload.stringValue = name.data();
+        ctxVar.payload.stringValue = avail.name;
         auto &p = _vars.emplace_back();
         p = ctxVar;
+
+        arrayPush(_mergedReqs, it->second);
       }
     }
 
@@ -1843,7 +1896,7 @@ struct Branch {
     for (auto &avail : data.shared) {
       auto it = requirements.find(avail.name);
       if (it != requirements.end()) {
-        SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
+        SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
         arrayPush(_mergedReqs, it->second);
       }
     }
