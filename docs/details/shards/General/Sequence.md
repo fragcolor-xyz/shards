@@ -1,4 +1,4 @@
-`Sequence` creates an empty sequence when the `:Key` parameter is not set. If a key is passed via this parameter `Sequence` creates an empty table instead (behaving like the [`Table`](../Table) shard). 
+`Sequence` creates an empty sequence when the `:Key` parameter is not set. If a key is passed via this parameter `Sequence` creates an empty table instead (behaving like the [`Table`](../Table) shard). The created sequence name is defined in the `:Name` parameter.
 
 This shard can control the scope of the created sequence variable. A `true` value for the `:Global` parameter makes the scope of the sequence global (available to all wires on the mesh), and a `false` value makes the scope local (available only to the wire its defined in).
 
@@ -6,7 +6,11 @@ By default a sequence created with this shard would be cleared (emptied) every t
 
 This shard can also define the sequence's inner data types via the `:Types` parameter. More than one data type may be set.
 
-Input/output fields are not applicable for this shard.
+Any input to this shard is ignored and instead passed through as its output.
 
 !!! note "See also"
     - [`Table`](../Table)
+    - [`Set`](../Set)
+    - [`Push`](../Push)
+    - [`Update`](../Update)
+    - [`Get`](../Get)

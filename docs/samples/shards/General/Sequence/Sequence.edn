@@ -1,5 +1,5 @@
 ;; without key, without types, local scope, :Clear true, using `Push`
-(Sequence .seqA)
+(Sequence :Name .seqA)
 .seqA (Log)             ;; created an empty sequence => []
 1 (Push .seqA)
 .seqA (Log)             ;; updated sequence => [1]
@@ -24,8 +24,8 @@
 
 ;; with key (becomes table), single type, local scope, :Clear true, using `Push`
 (Sequence .seqD :Key "A" :Types Type.Int)
-.seqD (Log)         ;; created an empty table => {A: []}
+.seqD (Log)             ;; created an empty table => {A: []}
 10 (Push .seqD "A")
-.seqD(Log)         ;; updated table => {A: [10]}
+.seqD(Log)              ;; updated table => {A: [10]}
 20 (Push .seqD"A") 
-.seqD (Log)         ;; updated table => {A: [10, 20]}
+.seqD (Log)             ;; updated table => {A: [10, 20]}

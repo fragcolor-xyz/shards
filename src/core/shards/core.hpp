@@ -39,10 +39,10 @@ struct Const {
   static SHOptionalString help() { return SHCCSTR("Declares an un-named constant value (of any data type)."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The declared constant value."); }
 
   static SHParametersInfo parameters() { return SHParametersInfo(constParamsInfo); }
 
@@ -1208,10 +1208,10 @@ struct Swap {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHExposedTypesInfo requiredVariables() {
     _exposedInfo = ExposedInfo(ExposedInfo::Variable(_nameA.c_str(), SHCCSTR("The required variable."), CoreInfo::AnyType),
@@ -1444,9 +1444,9 @@ struct Sequence : public SeqBase {
 
   static SHOptionalString help() { return SHCCSTR("Creates an empty sequence (or table if a key is passed)."); }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
       variableParamsInfo,
@@ -1712,10 +1712,10 @@ struct TableDecl : public VariableBase {
   static SHOptionalString help() { return SHCCSTR("Creates an empty table."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   void destroy() {
     if (_tableInfo.table.keys.elements)
@@ -1978,7 +1978,7 @@ struct Count : SeqUser {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   static SHOptionalString outputHelp() {
@@ -2013,9 +2013,9 @@ struct Clear : SeqUser {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2044,9 +2044,9 @@ struct Drop : SeqUser {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2080,9 +2080,9 @@ struct DropFront : SeqUser {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
@@ -2113,9 +2113,9 @@ struct Pop : SeqUser {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("ELement popped from the sequence passed to this shard."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Element popped from the sequence."); }
 
   SHVar _output{};
 
@@ -2187,9 +2187,9 @@ struct PopFront : SeqUser {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("N/A"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
-  static SHOptionalString outputHelp() { return SHCCSTR("ELement popped from the sequence passed to this shard."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("Element popped from the sequence."); }
 
   SHVar _output{};
 

@@ -1,5 +1,5 @@
 ;; without key, without types, local scope, using `Push` (puts sequence values)
-(Table .tableA)
+(Table :Name .tableA)
 .tableA (Log)         ;; created a table => {A: []}
 1 (Push .tableA "A")
 .tableA (Log)         ;; updated table => {A: [1]}

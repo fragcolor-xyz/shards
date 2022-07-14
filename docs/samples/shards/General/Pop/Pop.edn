@@ -1,5 +1,5 @@
 [10 20 30 40] >= .seq
-(Log)         ;; prints original sequence => [10 20 30 40]
-(Pop .seq)    ;; drops the last element i.e., 40
-(Log)         ;; and pops it out as output => 40
-.seq (Log)    ;; prints updated sequence => [10 20 30]
+(Log)               ;; prints original sequence => [10 20 30 40]
+(Pop :Name .seq)    ;; drops the last element i.e., 40
+(Log)               ;; and pops it out as output => 40
+.seq (Log)          ;; prints updated sequence => [10 20 30]

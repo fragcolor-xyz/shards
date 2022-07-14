@@ -1,5 +1,5 @@
 [10 20 30 40] >= .seq
-(Log)               ;; prints original sequence => [10 20 30 40]
-(PopFront .seq)     ;; drops the first element i.e., 10
-(Log)               ;; and pops it out as output => 10
-.seq (Log)          ;; prints updated sequence => [20 30 40]
+(Log)                   ;; prints original sequence => [10 20 30 40]
+(PopFront :Name .seq)   ;; drops the first element i.e., 10
+(Log)                   ;; and pops it out as output => 10
+.seq (Log)              ;; prints updated sequence => [20 30 40]
