@@ -102,7 +102,7 @@ struct FSIn {
     @location(1) UV: vec2<f32>,
 };
 
-@stage(vertex)
+@vertex
 fn vs_main(
     @location(0) aPos: vec2<f32>,
     @location(1) aUV: vec2<f32>,
@@ -114,7 +114,7 @@ fn vs_main(
     return Out;
 }
 
-@stage(fragment)
+@fragment
 fn fs_main(In: FSIn) -> @location(0) vec4<f32> {
     return In.Color * textureSample(t_color, s_color, In.UV);
 }
