@@ -19,18 +19,27 @@ use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::NONE_TYPES;
 use crate::types::STRING_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
 
 lazy_static! {
-  static ref TEXTINPUT_PARAMETERS: Parameters = vec![(
-    cstr!("Variable"),
-    cstr!("The variable that holds the input value."),
-    STRING_VAR_SLICE,
-  )
-    .into(),];
+  static ref TEXTINPUT_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Variable"),
+      cstr!("The variable that holds the input value."),
+      STRING_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Multiline"),
+      cstr!("Support multiple lines."),
+      BOOL_TYPES_SLICE,
+    )
+      .into(),
+  ];
 }
 
 impl Default for TextInput {
@@ -41,6 +50,7 @@ impl Default for TextInput {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
+      multiline: ParamVar::new(false.into()),
       exposing: Vec::new(),
       should_expose: false,
       mutable_text: true,
@@ -55,7 +65,6 @@ enum VarTextBuffer<'a> {
 
 impl AsRef<str> for VarTextBuffer<'_> {
   fn as_ref(&self) -> &str {
-
     let var = match self {
       VarTextBuffer::Editable(var) => var.as_ref(),
       VarTextBuffer::ReadOnly(var) => var,
@@ -239,6 +248,7 @@ impl Shard for TextInput {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.variable.set_param(value)),
+      1 => Ok(self.multiline.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -246,6 +256,7 @@ impl Shard for TextInput {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
+      1 => self.multiline.get_param(),
       _ => Var::default(),
     }
   }
@@ -318,11 +329,13 @@ impl Shard for TextInput {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
+    self.multiline.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.multiline.cleanup();
     self.variable.cleanup();
     self.parents.cleanup();
 
@@ -336,7 +349,11 @@ impl Shard for TextInput {
       } else {
         VarTextBuffer::ReadOnly(self.variable.get())
       };
-      let text_edit = egui::TextEdit::singleline(text);
+      let text_edit = if self.multiline.get().try_into()? {
+        egui::TextEdit::multiline(text)
+      } else {
+        egui::TextEdit::singleline(text)
+      };
       let response = ui.add(text_edit);
 
       if response.changed() || response.lost_focus() {

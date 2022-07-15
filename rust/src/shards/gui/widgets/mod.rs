@@ -26,6 +26,7 @@ struct TextInput {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
+  multiline: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
   mutable_text: bool,
