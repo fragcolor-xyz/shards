@@ -3,290 +3,290 @@
 
 (def Root (Mesh))
 
-;; Notice, if running with valgrind:
-;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
-;; To run this properly or valgrind will complain
+;; ;; Notice, if running with valgrind:
+;; ;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
+;; ;; To run this properly or valgrind will complain
 
-(def wire1
-  (Wire
-   "one"
-   (Msg "one - 1")
-   (Resume "two")
-   (Msg "one - 2")
-   (Msg "one - 3")
-   (Resume "two")
-   (Msg "one - Done")
-   (Resume "two")))
-
-(def wire2
-  (Wire
-   "two"
-   (Msg "two - 1")
-   (Resume "one")
-   (Msg "two - 2")
-   (Msg "two - 3")
-   (Resume "one")
-   (Msg "two - 4")
-   (Msg "two - Done")))
-
-(schedule Root wire1)
-(run Root 0.1)
-
-(def recursive
-  (Wire
-   "recur"
-   (Log "depth")
-   (Math.Add 1)
-   (Cond
-    [(-> (IsLess 5))
-     (Do "recur")])
-   (Log "res")))
-
-(def logicWire
-  (Wire
-   "dologic"
-   (IsMore 10)
-   (Or)
-   (IsLess 0)))
-
-;; ;; Broken for now indeed, until we implement jumps
-
-;; ;; (def recursiveAnd
-;; ;;   (Wire
-;; ;;    "recurAnd"
-;; ;;    (Log "depth")
-;; ;;    (Math.Inc)
-;; ;;    (Push)
-;; ;;    (IsLess 5)
-;; ;;    (And)
-;; ;;    (Pop)
-;; ;;    (Do "recurAnd")
-;; ;;    (Log "res")
-;; ;;    ))
-
-(schedule
- Root
- (Wire
-  "doit"
-  0
-  (Do recursive)
-  ;; (Do recursiveAnd)
-  ))
-
-;; test stack overflow, notice in this case (below) we could have tail call optimized,
-;; TODO implement TCO
-
-;; (def recursiveCrash
+;; (def wire1
 ;;   (Wire
-;;    "recurCrash"
+;;    "one"
+;;    (Msg "one - 1")
+;;    (Resume "two")
+;;    (Msg "one - 2")
+;;    (Msg "one - 3")
+;;    (Resume "two")
+;;    (Msg "one - Done")
+;;    (Resume "two")))
+
+;; (def wire2
+;;   (Wire
+;;    "two"
+;;    (Msg "two - 1")
+;;    (Resume "one")
+;;    (Msg "two - 2")
+;;    (Msg "two - 3")
+;;    (Resume "one")
+;;    (Msg "two - 4")
+;;    (Msg "two - Done")))
+
+;; (schedule Root wire1)
+;; (run Root 0.1)
+
+;; (def recursive
+;;   (Wire
+;;    "recur"
 ;;    (Log "depth")
-;;    (Math.Inc)
-;;    (Do "recurCrash")
-;;    ))
+;;    (Math.Add 1)
+;;    (Cond
+;;     [(-> (IsLess 5))
+;;      (Do "recur")])
+;;    (Log "res")))
+
+;; (def logicWire
+;;   (Wire
+;;    "dologic"
+;;    (IsMore 10)
+;;    (Or)
+;;    (IsLess 0)))
+
+;; ;; ;; Broken for now indeed, until we implement jumps
+
+;; ;; ;; (def recursiveAnd
+;; ;; ;;   (Wire
+;; ;; ;;    "recurAnd"
+;; ;; ;;    (Log "depth")
+;; ;; ;;    (Math.Inc)
+;; ;; ;;    (Push)
+;; ;; ;;    (IsLess 5)
+;; ;; ;;    (And)
+;; ;; ;;    (Pop)
+;; ;; ;;    (Do "recurAnd")
+;; ;; ;;    (Log "res")
+;; ;; ;;    ))
 
 ;; (schedule
 ;;  Root
 ;;  (Wire
 ;;   "doit"
 ;;   0
-;;   (Do recursiveCrash)))
+;;   (Do recursive)
+;;   ;; (Do recursiveAnd)
+;;   ))
 
-(def spawner
-  (Wire
-   "spawner"
-   (Spawn logicWire)))
+;; ;; test stack overflow, notice in this case (below) we could have tail call optimized,
+;; ;; TODO implement TCO
 
-(def Loop
-  (Wire
-   "Loop" :Looped
-   (Math.Add 1)
-   (Log)
-   (Cond
-    [(-> (Is 5))
-     (Stop)])
-   (Restart)))
+;; ;; (def recursiveCrash
+;; ;;   (Wire
+;; ;;    "recurCrash"
+;; ;;    (Log "depth")
+;; ;;    (Math.Inc)
+;; ;;    (Do "recurCrash")
+;; ;;    ))
 
-(schedule
- Root
- (Wire
-  "loop-test"
-  0
-  (Detach Loop)
-  (Wait Loop)
-  (Assert.Is 5 true)
-  (Log)
+;; ;; (schedule
+;; ;;  Root
+;; ;;  (Wire
+;; ;;   "doit"
+;; ;;   0
+;; ;;   (Do recursiveCrash)))
 
-  ;; test logic
-  ;; ensure a sub inline wire
-  ;; using Return mechanics
-  ;; is handled by (If)
-  -10
-  (If (Do logicWire)
-      (-> true)
-      (-> false))
-  (Assert.Is true false)
+;; (def spawner
+;;   (Wire
+;;    "spawner"
+;;    (Spawn logicWire)))
 
-  -10
-  (If (Do logicWire)
-      (-> true)
-      (-> false))
-  (Assert.IsNot false false)
+;; (def Loop
+;;   (Wire
+;;    "Loop" :Looped
+;;    (Math.Add 1)
+;;    (Log)
+;;    (Cond
+;;     [(-> (Is 5))
+;;      (Stop)])
+;;    (Restart)))
 
-  11
-  (If (Do logicWire)
-      (-> true)
-      (-> false))
-  (Assert.Is true false)
+;; (schedule
+;;  Root
+;;  (Wire
+;;   "loop-test"
+;;   0
+;;   (Detach Loop)
+;;   (Wait Loop)
+;;   (Assert.Is 5 true)
+;;   (Log)
 
-  11
-  (If (Do logicWire)
-      (-> true)
-      (-> false))
-  (Assert.IsNot false false)
+;;   ;; test logic
+;;   ;; ensure a sub inline wire
+;;   ;; using Return mechanics
+;;   ;; is handled by (If)
+;;   -10
+;;   (If (Do logicWire)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is true false)
 
-  0
-  (If (Do logicWire)
-      (-> true)
-      (-> false))
-  (Assert.Is false false)
+;;   -10
+;;   (If (Do logicWire)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot false false)
 
-  0
-  (If (Do logicWire)
-      (-> true)
-      (-> false))
-  (Assert.IsNot true false)
+;;   11
+;;   (If (Do logicWire)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is true false)
 
-  "Hello world" = .hello-var
+;;   11
+;;   (If (Do logicWire)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot false false)
 
-  (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) .hello-var (Log) "Ok"))
-  (Assert.Is ["Ok" "Ok" "Ok"] false)
-  (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
-  (Assert.Is "A" false)
+;;   0
+;;   (If (Do logicWire)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is false false)
 
-  (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) "Ok") :Threads 3)
-  (Assert.Is ["Ok" "Ok" "Ok"] false)
-  (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
-  (Assert.Is "A" false)
+;;   0
+;;   (If (Do logicWire)
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot true false)
 
-  (Repeat (-> 10
-              (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)
-              (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
-              (Log))
-          :Times 10)
+;;   "Hello world" = .hello-var
 
-  (Repeat (-> 10
-              (Expand 10 (defwire wide-test (RandomBytes 8) (ToHex)) :Threads 10)
-              (Log))
-          :Times 10)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Wire "print-stuff" (Log) .hello-var (Log) "Ok"))
+;;   (Assert.Is ["Ok" "Ok" "Ok"] false)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Wire "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
+;;   (Assert.Is "A" false)
 
-  10
-  (Expand 10 (defwire wide-test (Math.Add 1)))
-  (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
-  (Log)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Wire "print-stuff" (Log) "Ok") :Threads 3)
+;;   (Assert.Is ["Ok" "Ok" "Ok"] false)
+;;   (Const ["A" "B" "C"])
+;;   (TryMany (Wire "print-stuff" (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
+;;   (Assert.Is "A" false)
 
-  -10
-  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
-      (-> true)
-      (-> false))
-  (Assert.IsNot false false)
+;;   (Repeat (-> 10
+;;               (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)
+;;               (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+;;               (Log))
+;;           :Times 10)
 
-  11
-  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
-      (-> true)
-      (-> false))
-  (Assert.Is true false)
+;;   (Repeat (-> 10
+;;               (Expand 10 (defwire wide-test (RandomBytes 8) (ToHex)) :Threads 10)
+;;               (Log))
+;;           :Times 10)
 
-  (Msg "Done")))
+;;   10
+;;   (Expand 10 (defwire wide-test (Math.Add 1)))
+;;   (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+;;   (Log)
 
-(run Root 0.1)
+;;   -10
+;;   (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.IsNot false false)
 
-(def test-case-step
-  (Wire
-   "test-case-step"
-   :Looped
-   .x ?? 0
-   (Math.Add 1) >= .x
-   (Log "x")))
+;;   11
+;;   (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
+;;       (-> true)
+;;       (-> false))
+;;   (Assert.Is true false)
 
-(prepare test-case-step)
-(start test-case-step)
-(tick test-case-step)
-(tick test-case-step)
+;;   (Msg "Done")))
 
-(schedule
- Root
- (Wire
-  "continue-stepping"
-  :Looped
-  (Step test-case-step)
-  (Assert.Is 3 true)
-  (Msg "Done")
-  (Stop)))
+;; (run Root 0.1)
 
-(run Root 0.1)
+;; (def test-case-step
+;;   (Wire
+;;    "test-case-step"
+;;    :Looped
+;;    .x ?? 0
+;;    (Math.Add 1) >= .x
+;;    (Log "x")))
 
-(if (hasShard? "Http.Post")
-  (do
-    (defwire upload-to-ipfs
-      (let [boundary "----SH-IPFS-Upload-0xC0FFEE"
-            gateways ["https://ipfs.infura.io:5001"
-                      "https://ipfs.komputing.org"
-                      "http://hasten-ipfs.local:5001"
-                      "http://127.0.0.1:5001"]]
-        (->
-         >= .payload
-         (str "--" boundary "\r\nContent-Disposition: form-data; name=\"path\"\r\nContent-Type: application/octet-stream\r\n\r\n")
-         (PrependTo .payload)
-         (str "\r\n--" boundary "--")
-         (AppendTo .payload)
-         gateways
-         (TryMany (Wire "IPFS-Upload"
-                        >= .gateway
-                        "/api/v0/add?pin=true" (AppendTo .gateway)
-                        .payload
-                        (Http.Post .gateway
-                                   :Headers {"Content-Type" (str "multipart/form-data; boundary=" boundary)}))
-                  :Policy WaitUntil.SomeSuccess)
-         (Take 0) (FromJson) (ExpectTable)
-         (Take "Hash") (ExpectString)
-         (Assert.Is "QmNRCQWfgze6AbBCaT1rkrkV5tJ2aP4oTNPb5JZcXYywve" true))))
+;; (prepare test-case-step)
+;; (start test-case-step)
+;; (tick test-case-step)
+;; (tick test-case-step)
 
-    (defwire test-ipfs
-      "Hello world" (Do upload-to-ipfs) (Log "ipfs hash"))
+;; (schedule
+;;  Root
+;;  (Wire
+;;   "continue-stepping"
+;;   :Looped
+;;   (Step test-case-step)
+;;   (Assert.Is 3 true)
+;;   (Msg "Done")
+;;   (Stop)))
 
-    (schedule Root test-ipfs)
-    (run Root 0.1)))
+;; (run Root 0.1)
 
-(defwire hashed
-  10
-  (|#
-   (Math.Add 1)
-   (Math.Add 2)
-   (Math.Add 3)
-   (Math.Add 4)
-   (Math.Add 5)
-   (Math.Add 6))
-  (Log)
-  (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
+;; (if (hasShard? "Http.Post")
+;;   (do
+;;     (defwire upload-to-ipfs
+;;       (let [boundary "----SH-IPFS-Upload-0xC0FFEE"
+;;             gateways ["https://ipfs.infura.io:5001"
+;;                       "https://ipfs.komputing.org"
+;;                       "http://hasten-ipfs.local:5001"
+;;                       "http://127.0.0.1:5001"]]
+;;         (->
+;;          >= .payload
+;;          (str "--" boundary "\r\nContent-Disposition: form-data; name=\"path\"\r\nContent-Type: application/octet-stream\r\n\r\n")
+;;          (PrependTo .payload)
+;;          (str "\r\n--" boundary "--")
+;;          (AppendTo .payload)
+;;          gateways
+;;          (TryMany (Wire "IPFS-Upload"
+;;                         >= .gateway
+;;                         "/api/v0/add?pin=true" (AppendTo .gateway)
+;;                         .payload
+;;                         (Http.Post .gateway
+;;                                    :Headers {"Content-Type" (str "multipart/form-data; boundary=" boundary)}))
+;;                   :Policy WaitUntil.SomeSuccess)
+;;          (Take 0) (FromJson) (ExpectTable)
+;;          (Take "Hash") (ExpectString)
+;;          (Assert.Is "QmNRCQWfgze6AbBCaT1rkrkV5tJ2aP4oTNPb5JZcXYywve" true))))
 
-(schedule Root hashed)
-(run Root)
+;;     (defwire test-ipfs
+;;       "Hello world" (Do upload-to-ipfs) (Log "ipfs hash"))
 
-(defloop wire-loop-inline
-  (Setup 0 >= .count)
-  (Math.Inc .count)
-  .count (Log) (When (IsMore 10) (-> (Return))))
+;;     (schedule Root test-ipfs)
+;;     (run Root 0.1)))
 
-(defwire wire-loop-inline-parent
-  (Dispatch wire-loop-inline)
-  (Msg "Ok done looping..."))
+;; (defwire hashed
+;;   10
+;;   (|#
+;;    (Math.Add 1)
+;;    (Math.Add 2)
+;;    (Math.Add 3)
+;;    (Math.Add 4)
+;;    (Math.Add 5)
+;;    (Math.Add 6))
+;;   (Log)
+;;   (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
 
-(schedule Root wire-loop-inline-parent)
-(run Root)
+;; (schedule Root hashed)
+;; (run Root)
+
+;; (defloop wire-loop-inline
+;;   (Setup 0 >= .count)
+;;   (Math.Inc .count)
+;;   .count (Log) (When (IsMore 10) (-> (Return))))
+
+;; (defwire wire-loop-inline-parent
+;;   (Dispatch wire-loop-inline)
+;;   (Msg "Ok done looping..."))
+
+;; (schedule Root wire-loop-inline-parent)
+;; (run Root)
 
 (defwire depth-wire
   ["This is a " .consumed-variable]
@@ -303,8 +303,8 @@
 (defwire test-capture
   "2" = .consumed-variable
   ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
-  (Spawn spawned-wire) = .spawned-wire-0
-  (Spawn spawned-wire) = .spawned-wire-1
+  (| (Spawn spawned-wire) = .spawned-wire-0)
+  (| (Spawn spawned-wire) = .spawned-wire-1)
   (Wait .spawned-wire-0)
   (Assert.Is 3 true)
   (Wait .spawned-wire-1)
@@ -313,19 +313,19 @@
 (schedule Root test-capture)
 (run Root)
 
-(defwire detached-wire
-  .consumed-variable
-  (ToInt)
-  (Math.Add 1)
-  (| (Do "depth-wire"))
-  (Log "X"))
+;; (defwire detached-wire
+;;   .consumed-variable
+;;   (ToInt)
+;;   (Math.Add 1)
+;;   (| (Do "depth-wire"))
+;;   (Log "X"))
 
-(defwire test-capture
-  "2" = .consumed-variable
-  ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
-  (Detach detached-wire)
-  (Wait detached-wire)
-  (Assert.Is 3 true))
+;; (defwire test-capture
+;;   "2" = .consumed-variable
+;;   ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+;;   (Detach detached-wire)
+;;   (Wait detached-wire)
+;;   (Assert.Is 3 true))
 
-(schedule Root test-capture)
-(run Root)
+;; (schedule Root test-capture)
+;; (run Root)
