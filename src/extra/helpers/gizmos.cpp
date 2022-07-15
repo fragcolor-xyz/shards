@@ -7,6 +7,7 @@
 
 namespace shards {
 namespace Helpers {
+using linalg::aliases::float3;
 using linalg::aliases::float4x4;
 
 struct TranslationGizmo : public BaseConsumer {
@@ -63,7 +64,13 @@ struct TranslationGizmo : public BaseConsumer {
     }
 
     _gizmo.transform = inputMat;
+
+    // Scale based on screen distance
+    float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
+    _gizmo.scale = helperContext.gizmoContext.renderer.getSize(gizmoLocation);
+
     helperContext.gizmoContext.updateGizmo(_gizmo);
+
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
 
