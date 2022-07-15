@@ -12,8 +12,12 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 dragStartTransform;
   float3 dragStartPoint;
 
+  float scale = 1.0f;
   const float axisRadius = 0.1f;
   const float axisLength = 0.7f;
+
+  float getGlobalAxisRadius() const { return axisRadius * scale; }
+  float getGlobalAxisLength() const { return axisLength * scale; }
 
   TranslationGizmo() {
     for (size_t i = 0; i < 3; i++) {
@@ -33,8 +37,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
-      min = -t1 * axisRadius - t2 * axisRadius;
-      max = t1 * axisRadius + t2 * axisRadius + fwd * axisLength;
+      min = -t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius();
+      max = t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius() + fwd * getGlobalAxisLength();
 
       handle.selectionBoxTransform = transform;
 
@@ -47,7 +51,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float3 getAxisDirection(size_t index, float4x4 transform) {
     float3 base{};
     base[index] = 1.0f;
-    return linalg::mul(transform, float4(base, 0)).xyz();
+    return linalg::normalize(linalg::mul(transform, float4(base, 0)).xyz());
   }
 
   virtual void grabbed(InputContext &context, Handle &handle) {
@@ -97,7 +101,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
       float4 axisColor = axisColors[i];
       axisColor.xyz() *= hovered ? 1.1f : 0.9f;
-      renderer.addHandle(loc, dir, axisRadius, axisLength, axisColor, GizmoRenderer::CapType::Arrow, axisColor);
+      renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
+                         axisColor);
     }
   }
 };

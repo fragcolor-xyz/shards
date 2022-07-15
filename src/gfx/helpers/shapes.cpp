@@ -306,8 +306,9 @@ GizmoRenderer::GizmoRenderer() { loadGeometry(); }
 float GizmoRenderer::getSize(float3 position) const {
   float4 proj = linalg::mul(view->view, float4(position, 1.0f));
   proj /= proj.w;
-  float distanceFromCamera = proj.z;
-  return distanceFromCamera;
+  float distanceFromCamera = std::abs(-proj.z);
+  float scalingFactor = std::max(1.0f, distanceFromCamera) * 0.1f;
+  return scalingFactor;
 }
 
 void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType,
