@@ -414,7 +414,7 @@ struct Stage {
     }
 
     context.write(
-        fmt::format("@stage({})\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
+        fmt::format("@{}\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
     context.write(fmt::format("\t{} = in;\n", inputVariableName));
 
     context.write("\t" + mainFunctionHeader + "\n");

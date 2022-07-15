@@ -331,7 +331,7 @@ void Context::endFrame() {
 
 void Context::sync() {
 #ifdef WEBGPU_NATIVE
-  wgpuDevicePoll(wgpuDevice, true);
+  wgpuDevicePoll(wgpuDevice, true, nullptr);
 #endif
 }
 
