@@ -124,7 +124,7 @@ impl egui::TextBuffer for VarTextBuffer<'_> {
           *base_ptr.add(new_len) = 0;
         }
       } else {
-        let mut str = String::from(VarTextBuffer::as_str_from_mut(var));
+        let mut str = String::from(VarTextBuffer::as_str(var));
         str.insert_str(byte_idx, text);
         let tmp = Var::ephemeral_string(str.as_str());
         cloneVar(var, &tmp);
@@ -169,28 +169,6 @@ impl egui::TextBuffer for VarTextBuffer<'_> {
 }
 
 impl VarTextBuffer<'_> {
-  fn as_str_from_mut(var: &mut Var) -> &str {
-    if var.valueType != shardsc::SHType_String
-      && var.valueType != shardsc::SHType_Path
-      && var.valueType != shardsc::SHType_ContextVar
-      && var.valueType != shardsc::SHType_None
-    {
-      panic!("Expected None, String, Path or ContextVar variable, but casting failed.")
-    }
-
-    if var.valueType == shardsc::SHType_None {
-      return "";
-    }
-
-    unsafe {
-      CStr::from_ptr(
-        var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char,
-      )
-      .to_str()
-      .unwrap()
-    }
-  }
-
   fn as_str(var: &Var) -> &str {
     if var.valueType != shardsc::SHType_String
       && var.valueType != shardsc::SHType_Path
