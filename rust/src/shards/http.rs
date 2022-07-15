@@ -214,7 +214,8 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), Var::ephemeral_string(str.as_str())); // will clone
+        .insert_fast_static(cstr!("body"), Var::ephemeral_string(str.as_str()));
+      // will clone
     }
 
     if self.full_response {

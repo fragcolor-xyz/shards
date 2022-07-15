@@ -133,6 +133,10 @@ impl Shard for EguiContext {
     Some(&self.requiring)
   }
 
+  fn hasCompose() -> bool {
+    true
+  }
+
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // we need to inject the UI context to the inner shards
     let mut data = *data;

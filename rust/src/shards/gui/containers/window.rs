@@ -119,6 +119,10 @@ impl Shard for Window {
     Some(&self.requiring)
   }
 
+  fn hasCompose() -> bool {
+    true
+  }
+
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // we need to inject UI variable to the inner shards
     let mut data = *data;

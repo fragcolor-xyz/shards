@@ -22,10 +22,22 @@ struct Label {
   wrap: ParamVar,
 }
 
+struct TextInput {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  variable: ParamVar,
+  multiline: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  mutable_text: bool,
+}
+
 mod button;
 mod label;
+mod text_input;
 
 pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Label>();
+  registerShard::<TextInput>();
 }

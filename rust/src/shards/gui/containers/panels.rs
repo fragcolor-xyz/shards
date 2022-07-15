@@ -109,6 +109,10 @@ macro_rules! impl_panel {
         Some(&self.requiring)
       }
 
+      fn hasCompose() -> bool {
+        true
+      }
+
       fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
         // we need to inject UI variable to the inner shards
         let mut data = *data;
@@ -290,6 +294,10 @@ impl Shard for CentralPanel {
     self.requiring.push(exp_info);
 
     Some(&self.requiring)
+  }
+
+  fn hasCompose() -> bool {
+    true
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
