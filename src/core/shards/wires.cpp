@@ -59,6 +59,38 @@ struct WireBase {
 #endif
   }
 
+  void verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
+    // verify input type
+    if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
+      SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
+      throw ComposeError("Attempted to call an already composed wire with a "
+                         "different input type! wire: " +
+                         wire->name);
+    }
+
+    // ensure requirements match our input data
+    for (auto &[req, _] : wire->requiredVariables) {
+      // find each in shared
+      auto name = req;
+      auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
+        std::string_view xNameView(x.name);
+        return name == xNameView;
+      });
+      if (res == shared.end()) {
+        SHLOG_ERROR("Previous wire composed missing required variable: {}", req);
+        throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
+      }
+    }
+
+    // also restore deep reqs
+    if (data.requiredVariables) {
+      auto reqs = reinterpret_cast<decltype(SHWire::deepRequirements) *>(data.requiredVariables);
+      for (auto &req : wire->deepRequirements) {
+        (*reqs).insert(req);
+      }
+    }
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     // Free any previous result!
     arrayFree(wireValidation.requiredInfo);
@@ -95,8 +127,11 @@ struct WireBase {
 
     // TODO FIXME, wireloader/wire runner might access this from threads
     if (mesh->visitedWires.count(wire.get())) {
-      // TODO FIXME, we need to verify input and shared here...
       // but visited does not mean composed...
+      if (wire->composedHash.valueType != None) {
+        IterableExposedInfo shared(data.shared);
+        verifyAlreadyComposed(data, shared);
+      }
       return mesh->visitedWires[wire.get()];
     }
 
@@ -145,6 +180,7 @@ struct WireBase {
     // make sure to compose only once...
     if (wire->composedHash.valueType == None) {
       SHLOG_TRACE("Running {} compose", wire->name);
+
       wireValidation = composeWire(
           wire.get(),
           [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
@@ -162,33 +198,23 @@ struct WireBase {
       // keep only globals
       exposedInfo = IterableExposedInfo(
           exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
+
+      // also store deep reqs
+      if (data.requiredVariables) {
+        auto reqs = reinterpret_cast<decltype(SHWire::deepRequirements) *>(data.requiredVariables);
+        for (auto &req : (*reqs)) {
+          wire->deepRequirements.insert(req);
+        }
+      }
+
       SHLOG_TRACE("Wire {} composed", wire->name);
     } else {
       SHLOG_TRACE("Skipping {} compose", wire->name);
-      // verify input type
-      if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
-        SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
-        throw ComposeError("Attempted to call an already composed wire with a "
-                           "different input type! wire: " +
-                           wire->name);
-      }
+
+      verifyAlreadyComposed(data, shared);
 
       // write output type
       wireOutput = wire->outputType;
-
-      // ensure requirements match our input data
-      for (auto &[req, _] : wire->requiredVariables) {
-        // find each in shared
-        auto name = req;
-        auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
-          std::string_view xNameView(x.name);
-          return name == xNameView;
-        });
-        if (res == shared.end()) {
-          SHLOG_ERROR("Previous wire composed missing required variable: {}", req);
-          throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
-        }
-      }
     }
 
     auto outputType = data.inputType;
