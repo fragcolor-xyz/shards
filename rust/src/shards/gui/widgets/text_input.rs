@@ -309,6 +309,10 @@ impl Shard for TextInput {
     self.variable.warmup(ctx);
     self.multiline.warmup(ctx);
 
+    if self.should_expose {
+      self.variable.get_mut().valueType = common_type::string.basicType;
+    }
+
     Ok(())
   }
 
