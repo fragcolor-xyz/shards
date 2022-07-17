@@ -2698,6 +2698,7 @@ void SHWire::reset() {
   inputType = SHTypeInfo();
   outputType = {};
   requiredVariables.clear();
+  deepRequirements.clear();
 
   auto n = mesh.lock();
   if (n) {

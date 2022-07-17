@@ -753,6 +753,15 @@ template <class T> struct UnaryBin : public T {
     throw ComposeError("Math.Inc/Dec variable not found");
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    if (_value.isVariable()) {
+      _requiredInfo = ExposedInfo(
+          ExposedInfo::Variable(_value.variableName(), SHCCSTR("The required operand."), CoreInfo::AnyType));
+      return SHExposedTypesInfo(_requiredInfo);
+    }
+    return {};
+  }
+
   void warmup(SHContext *context) { _value.warmup(context); }
 
   void cleanup() { _value.cleanup(); }
@@ -761,6 +770,8 @@ template <class T> struct UnaryBin : public T {
     T::operateFast(T::_opType, _value.get(), _value.get(), T::_operand);
     return input;
   }
+
+  ExposedInfo _requiredInfo{};
 };
 
 using Inc = UnaryBin<Add>;
