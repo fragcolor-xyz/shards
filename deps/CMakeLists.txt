@@ -46,7 +46,7 @@ FetchContent_MakeAvailable(boost)
 message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 
 if(NOT EMSCRIPTEN)
-  if(EXTERNAL_BUILD_TYPE MATCHES "Debug")
+  if(NOT ANDROID AND EXTERNAL_BUILD_TYPE MATCHES "Debug")
     set(SDL_LIB_SUFFIX "d")
   endif()
 
