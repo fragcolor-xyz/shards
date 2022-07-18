@@ -755,8 +755,8 @@ template <class T> struct UnaryBin : public T {
 
   SHExposedTypesInfo requiredVariables() {
     if (_value.isVariable()) {
-      _requiredInfo = ExposedInfo(
-          ExposedInfo::Variable(_value.variableName(), SHCCSTR("The required operand."), CoreInfo::AnyType));
+      _requiredInfo =
+          ExposedInfo(ExposedInfo::Variable(_value.variableName(), SHCCSTR("The required operand."), CoreInfo::AnyType));
       return SHExposedTypesInfo(_requiredInfo);
     }
     return {};

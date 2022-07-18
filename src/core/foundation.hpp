@@ -353,9 +353,9 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   mutable bool inputTypeForceNone{false};
   // this one is a shard inside the wire, so won't disappear
   mutable SHTypeInfo outputType{};
-  mutable std::vector<std::tuple<std::string_view, bool>> requiredVariables;
-  // Not always used, we need this in Spawn, Detach, Branch, etc as wires might skip compose
-  mutable std::unordered_map<std::string_view, SHExposedTypeInfo> deepRequirements;
+
+  // used in wires.cpp to store exposed/required types from compose operations
+  mutable std::optional<SHComposeResult> wireValidation;
 
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards

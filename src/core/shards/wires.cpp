@@ -37,12 +37,16 @@ struct WireBase {
   bool passthrough{false};
   bool capturing{false};
   RunWireMode mode{RunWireMode::Inline};
-  SHComposeResult wireValidation{};
   IterableExposedInfo exposedInfo{};
 
-  void destroy() {
-    shards::arrayFree(wireValidation.requiredInfo);
-    shards::arrayFree(wireValidation.exposedInfo);
+  void resetComposition() {
+    if (wire) {
+      if (wire->wireValidation) {
+        shards::arrayFree(wire->wireValidation->requiredInfo);
+        shards::arrayFree(wire->wireValidation->exposedInfo);
+        wire->wireValidation.reset();
+      }
+    }
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -50,6 +54,7 @@ struct WireBase {
 
   std::unordered_set<const SHWire *> &gatheringWires() {
 #ifdef WIN32
+    // TODO FIX THIS
     // we have to leak.. or windows tls emulation will crash at process end
     thread_local std::unordered_set<const SHWire *> *wires = new std::unordered_set<const SHWire *>();
     return *wires;
@@ -69,33 +74,21 @@ struct WireBase {
     }
 
     // ensure requirements match our input data
-    for (auto &[req, _] : wire->requiredVariables) {
+    for (auto &req : wire->wireValidation->requiredInfo) {
       // find each in shared
-      auto name = req;
+      auto name = req.name;
       auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
         std::string_view xNameView(x.name);
         return name == xNameView;
       });
       if (res == shared.end()) {
-        SHLOG_ERROR("Previous wire composed missing required variable: {}", req);
+        SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
         throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
-      }
-    }
-
-    // also restore deep reqs
-    if (data.requiredVariables) {
-      auto reqs = reinterpret_cast<decltype(SHWire::deepRequirements) *>(data.requiredVariables);
-      for (auto &req : wire->deepRequirements) {
-        (*reqs).insert(req);
       }
     }
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    // Free any previous result!
-    arrayFree(wireValidation.requiredInfo);
-    arrayFree(wireValidation.exposedInfo);
-
     // Actualize the wire here, if we are deserialized
     // wire might already be populated!
     if (!wire) {
@@ -128,7 +121,7 @@ struct WireBase {
     // TODO FIXME, wireloader/wire runner might access this from threads
     if (mesh->visitedWires.count(wire.get())) {
       // but visited does not mean composed...
-      if (wire->composedHash.valueType != None) {
+      if (wire->wireValidation) {
         IterableExposedInfo shared(data.shared);
         verifyAlreadyComposed(data, shared);
       }
@@ -178,10 +171,10 @@ struct WireBase {
 
     SHTypeInfo wireOutput;
     // make sure to compose only once...
-    if (wire->composedHash.valueType == None) {
+    if (!wire->wireValidation) {
       SHLOG_TRACE("Running {} compose", wire->name);
 
-      wireValidation = composeWire(
+      wire->wireValidation = composeWire(
           wire.get(),
           [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
@@ -192,20 +185,13 @@ struct WireBase {
             }
           },
           this, dataCopy);
-      wire->composedHash = Var(1, 1); // no need to hash properly here
-      wireOutput = wireValidation.outputType;
-      IterableExposedInfo exposing(wireValidation.exposedInfo);
+
+      wireOutput = wire->wireValidation->outputType;
+
+      IterableExposedInfo exposing(wire->wireValidation->exposedInfo);
       // keep only globals
       exposedInfo = IterableExposedInfo(
           exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
-
-      // also store deep reqs
-      if (data.requiredVariables) {
-        auto reqs = reinterpret_cast<decltype(SHWire::deepRequirements) *>(data.requiredVariables);
-        for (auto &req : (*reqs)) {
-          wire->deepRequirements.insert(req);
-        }
-      }
 
       SHLOG_TRACE("Wire {} composed", wire->name);
     } else {
@@ -469,10 +455,7 @@ struct Resume : public WireBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   SHExposedTypesInfo _mergedReqs;
-  void destroy() {
-    arrayFree(_mergedReqs);
-    WireBase::destroy();
-  }
+  void destroy() { arrayFree(_mergedReqs); }
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -516,7 +499,9 @@ struct Resume : public WireBase {
   void warmup(SHContext *context) {
     WireBase::warmup(context);
 
+    SHLOG_TRACE("Start/Resume: warming up {} required variables by wire {}.", _vars.size(), wire ? wire->name : "null");
     for (auto &v : _vars) {
+      SHLOG_TRACE("Start/Resume: warming up variable: {}", v.variableName());
       v.warmup(context);
     }
   }
@@ -741,10 +726,7 @@ struct BaseRunner : public WireBase {
   std::deque<ParamVar> _vars;
 
   SHExposedTypesInfo _mergedReqs;
-  void destroy() {
-    arrayFree(_mergedReqs);
-    WireBase::destroy();
-  }
+  void destroy() { arrayFree(_mergedReqs); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     // Start/Resume need to capture all it needs, so we need deeper informations
@@ -753,6 +735,8 @@ struct BaseRunner : public WireBase {
     std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
     if (capturing) {
       dataCopy.requiredVariables = &requirements;
+    } else {
+      dataCopy.requiredVariables = nullptr;
     }
 
     auto res = WireBase::compose(dataCopy);
@@ -787,7 +771,11 @@ struct BaseRunner : public WireBase {
     return mode == RunWireMode::Inline ? SHExposedTypesInfo(exposedInfo) : empty;
   }
 
-  SHExposedTypesInfo requiredVariables() { return capturing ? _mergedReqs : SHExposedTypesInfo(wireValidation.requiredInfo); }
+  SHExposedTypesInfo requiredVariables() {
+    assert(wire);
+    assert(wire->wireValidation);
+    return capturing ? _mergedReqs : SHExposedTypesInfo(wire->wireValidation->requiredInfo);
+  }
 
   void cleanup() {
     if (capturing) {
@@ -1730,10 +1718,7 @@ struct Spawn : public WireBase {
   }
 
   SHExposedTypesInfo _mergedReqs;
-  void destroy() {
-    arrayFree(_mergedReqs);
-    WireBase::destroy();
-  }
+  void destroy() { arrayFree(_mergedReqs); }
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
