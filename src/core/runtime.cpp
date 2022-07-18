@@ -1387,11 +1387,6 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
       blk.shard->composed(const_cast<Shard *>(blk.shard), wire, &res);
   }
 
-  // add variables
-  for (auto req : res.requiredInfo) {
-    wire->requiredVariables.emplace_back(req.name, req.global);
-  }
-
   return res;
 }
 
@@ -2697,8 +2692,12 @@ void SHWire::reset() {
   composedHash = Var::Empty;
   inputType = SHTypeInfo();
   outputType = {};
-  requiredVariables.clear();
-  deepRequirements.clear();
+
+  if (wireValidation) {
+    shards::arrayFree(wireValidation->requiredInfo);
+    shards::arrayFree(wireValidation->exposedInfo);
+    wireValidation.reset();
+  }
 
   auto n = mesh.lock();
   if (n) {
@@ -2749,6 +2748,8 @@ void SHWire::warmup(SHContext *context) {
     }
 
     SHLOG_DEBUG("Ran warmup on wire: {}", name);
+  } else {
+    SHLOG_WARNING("Warmup already run on wire: {}, not supposed to happen!", name);
   }
 }
 
