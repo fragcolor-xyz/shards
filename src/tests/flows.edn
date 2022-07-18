@@ -288,9 +288,12 @@
 ;; (schedule Root wire-loop-inline-parent)
 ;; (run Root)
 
-(defwire depth-wire-deeper
+(defwire depth-wire-deeper-do
   ["This is a " .consumed-variable]
-  (String.Join)
+  (String.Join))
+
+(defwire depth-wire-deeper
+  (Do depth-wire-deeper-do)
   (Log)
   (Resume))
 
