@@ -138,6 +138,7 @@ SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireI
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 SHVar *referenceGlobalVariable(SHContext *ctx, const char *name);
 SHVar *referenceVariable(SHContext *ctx, const char *name);
+SHVar *referenceWireVariable(SHWire *wire, const char *name);
 void releaseVariable(SHVar *variable);
 void setSharedVariable(const char *name, const SHVar &value);
 void unsetSharedVariable(const char *name);

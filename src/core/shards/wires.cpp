@@ -85,6 +85,12 @@ struct WireBase {
         SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
         throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
       }
+
+      if (data.requiredVariables) {
+        // in this case we should also add to required variables as compose won't do it for us
+        auto requirements = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
+        requirements->emplace(name, req);
+      }
     }
   }
 
@@ -499,7 +505,6 @@ struct Resume : public WireBase {
   void warmup(SHContext *context) {
     WireBase::warmup(context);
 
-    SHLOG_TRACE("Start/Resume: warming up {} required variables by wire {}.", _vars.size(), wire ? wire->name : "null");
     for (auto &v : _vars) {
       SHLOG_TRACE("Start/Resume: warming up variable: {}", v.variableName());
       v.warmup(context);
@@ -538,24 +543,33 @@ struct Resume : public WireBase {
       shards::stop(p_wire);
     }
 
+    // capture variables
+    for (auto &v : _vars) {
+      auto &var = v.get();
+      auto &v_ref = p_wire->variables[v.variableName()];
+      cloneVar(v_ref, var);
+    }
+
     // Prepare if no callc was called
     if (!p_wire->coro) {
       p_wire->mesh = context->main->mesh;
       shards::prepare(p_wire, context->flow);
+
+      // handle early failure
+      if (p_wire->state == SHWire::State::Failed) {
+        // destroy fresh cloned variables
+        for (auto &v : _vars) {
+          destroyVar(p_wire->variables[v.variableName()]);
+        }
+        SHLOG_ERROR("Wire {} failed to start.", p_wire->name);
+        throw ActivationError("Wire failed to start.");
+      }
     }
 
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
     if (p_wire->resumer == nullptr)
       p_wire->resumer = current;
-
-    // capture variables
-    for (auto &v : _vars) {
-      auto &var = v.get();
-      auto &v_ref = p_wire->variables[v.variableName()];
-      assert(v_ref.refcount > 0);
-      cloneVar(v_ref, var);
-    }
 
     // Start it if not started
     if (!shards::isRunning(p_wire)) {
@@ -605,22 +619,31 @@ struct Start : public Resume {
     // ensure wire is not running, we start from top
     shards::stop(p_wire);
 
+    // capture variables
+    for (auto &v : _vars) {
+      auto &var = v.get();
+      auto &v_ref = p_wire->variables[v.variableName()];
+      cloneVar(v_ref, var);
+    }
+
     // Prepare
     p_wire->mesh = context->main->mesh;
     shards::prepare(p_wire, context->flow);
+
+    // handle early failure
+    if (p_wire->state == SHWire::State::Failed) {
+      // destroy fresh cloned variables
+      for (auto &v : _vars) {
+        destroyVar(p_wire->variables[v.variableName()]);
+      }
+      SHLOG_ERROR("Wire {} failed to start.", p_wire->name);
+      throw ActivationError("Wire failed to start.");
+    }
 
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
     if (p_wire->resumer == nullptr)
       p_wire->resumer = current;
-
-    // capture variables
-    for (auto &v : _vars) {
-      auto &var = v.get();
-      auto &v_ref = p_wire->variables[v.variableName()];
-      assert(v_ref.refcount > 0);
-      cloneVar(v_ref, var);
-    }
 
     // Start
     shards::start(p_wire, input);

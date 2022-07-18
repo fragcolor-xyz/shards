@@ -288,6 +288,51 @@
 ;; (schedule Root wire-loop-inline-parent)
 ;; (run Root)
 
+;; (defwire depth-wire-indirect
+;;   ["This is a " .consumed-variable]
+;;   (String.Join))
+
+;; (defwire depth-wire
+;;   (Do depth-wire-indirect)
+;;   (Log)
+;;   .consumed-variable)
+
+;; (defwire spawned-wire
+;;   (Do "depth-wire")
+;;   (ToInt)
+;;   (Math.Add 1)
+;;   (Log "X"))
+
+;; (defwire test-capture
+;;   "2" = .consumed-variable
+;;   ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+;;   (| (Spawn spawned-wire) = .spawned-wire-0)
+;;   (| (Spawn spawned-wire) = .spawned-wire-1)
+;;   (Wait .spawned-wire-0)
+;;   (Assert.Is 3 true)
+;;   (Wait .spawned-wire-1)
+;;   (Assert.Is 3 true))
+
+;; (schedule Root test-capture)
+;; (run Root)
+
+;; (defwire detached-wire
+;;   .consumed-variable
+;;   (ToInt)
+;;   (Math.Add 1)
+;;   (| (Do "depth-wire"))
+;;   (Log "X"))
+
+;; (defwire test-capture
+;;   "2" = .consumed-variable
+;;   ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+;;   (Detach detached-wire)
+;;   (Wait detached-wire)
+;;   (Assert.Is 3 true))
+
+;; (schedule Root test-capture)
+;; (run Root)
+
 (defwire depth-wire-deeper-do
   ["This is a " .consumed-variable]
   (String.Join))
@@ -307,8 +352,8 @@
   (ToInt)
   (Math.Add 1)
   (Log "X")
-  (Stop "depth-wire")
-  (Stop "depth-wire-deeper"))
+  (Stop "depth-wire-deeper")
+  (Stop "depth-wire"))
 
 (defwire test-capture
   "2" = .consumed-variable
@@ -322,20 +367,3 @@
 
 (schedule Root test-capture)
 (run Root)
-
-;; (defwire detached-wire
-;;   .consumed-variable
-;;   (ToInt)
-;;   (Math.Add 1)
-;;   (| (Do "depth-wire"))
-;;   (Log "X"))
-
-;; (defwire test-capture
-;;   "2" = .consumed-variable
-;;   ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
-;;   (Detach detached-wire)
-;;   (Wait detached-wire)
-;;   (Assert.Is 3 true))
-
-;; (schedule Root test-capture)
-;; (run Root)
