@@ -569,12 +569,16 @@ void callExitCallbacks() {
   }
 }
 
-SHVar *referenceWireVariable(SHWireRef wire, const char *name) {
-  auto swire = SHWire::sharedFromRef(wire);
-  SHVar &v = swire->variables[name];
+SHVar *referenceWireVariable(SHWire *wire, const char *name) {
+  SHVar &v = wire->variables[name];
   v.refcount++;
   v.flags |= SHVAR_FLAGS_REF_COUNTED;
   return &v;
+}
+
+SHVar *referenceWireVariable(SHWireRef wire, const char *name) {
+  auto swire = SHWire::sharedFromRef(wire);
+  return referenceWireVariable(swire.get(), name);
 }
 
 SHVar *referenceGlobalVariable(SHContext *ctx, const char *name) {
@@ -620,7 +624,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
   auto mesh = ctx->main->mesh.lock();
   assert(mesh);
 
-  // Was not in wires.. find in meshs
+  // Was not in wires.. find in mesh
   {
     auto it = mesh->variables.find(name);
     if (it != mesh->variables.end()) {
