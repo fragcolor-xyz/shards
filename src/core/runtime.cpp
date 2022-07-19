@@ -205,7 +205,7 @@ static void setupSpdLog() {
   spdlog::set_default_logger(logger);
 
 #ifdef __ANDROID__
-  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("android");
+  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
   logger->sinks().push_back(android_sink);
 #endif
 
