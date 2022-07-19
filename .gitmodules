@@ -82,3 +82,6 @@
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "cmake/android-cmake"]
+	path = cmake/android-cmake
+	url = git@github.com:guusw/android-cmake.git
