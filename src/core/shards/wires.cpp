@@ -796,8 +796,9 @@ struct BaseRunner : public WireBase {
 
   SHExposedTypesInfo requiredVariables() {
     assert(wire);
-    assert(wire->wireValidation);
-    return capturing ? _mergedReqs : SHExposedTypesInfo(wire->wireValidation->requiredInfo);
+    return capturing              ? _mergedReqs
+           : wire->wireValidation ? SHExposedTypesInfo(wire->wireValidation->requiredInfo)
+                                  : SHExposedTypesInfo{};
   }
 
   void cleanup() {
