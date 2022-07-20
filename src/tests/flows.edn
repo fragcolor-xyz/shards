@@ -369,3 +369,18 @@
 
 (schedule Root test-capture)
 (run Root)
+
+(defloop inner-loop
+  .root-variable
+  (Log)
+  (Pause 2.0))
+
+(defwire fire-starter
+  (Spawn inner-loop))
+
+(defloop main
+  (Setup "Hello" = .root-variable)
+  (Branch [fire-starter]))
+
+(schedule Root main)
+(run Root 0.1 100)
