@@ -164,4 +164,13 @@ Showing how we mix the Clojure-like language as a template language
     [info] [2021-04-04 21:05:50.123] [T-285088] [logging.cpp::53] [counter-10] 20
     ```
 
+## Shards' types
+
+This section documents all the valid data types that are accepted by various shards either as their input value or as their parameter values. These data types also apply to the output created by any shard.
+
+Valid data types for every shard are listed under the `Type` column of their Parameters, Input, and Output sections (types are enclosed within parenthesis and if multiple types apply then they are separated by a space).
+
+!!! note
+    Types are helpful as they reduce errors in programming. They are also very useful in visual programming as type-matching can be used to reduce the dropdown options when prompting a user on what shard to use next (depending on which shard's input type matches with the current shard's output type).
+
 --8<-- "includes/license.md"
