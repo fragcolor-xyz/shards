@@ -173,4 +173,18 @@ Valid data types for every shard are listed under the `Type` column of their Par
 !!! note
     Types are helpful as they reduce errors in programming. They are also very useful in visual programming as type-matching can be used to reduce the dropdown options when prompting a user on what shard to use next (depending on which shard's input type matches with the current shard's output type).
 
+### None
+
+Indicates that the absence of a value is a valid scenario.
+
+For example, the option of `None` for the `:Max` parameter in `(RandomInt)` means that a value for this parameter is not mandatory.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (RandomInt
+    :Max [(None) (Int) (ContextVar [(Int)])]
+    )
+    ```
+    
 --8<-- "includes/license.md"
