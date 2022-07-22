@@ -304,4 +304,37 @@ In simple terms it just means that you pass in one of the allowed named constant
     [info] [2022-07-22 15:35:00.883] [T-15316] [logging.cpp::55] [mywire] 6
     ```
 
+### Bool
+
+Type `Bool` allows only two values - `true` or `false`.
+In that sense it can be thought of as a special case of an [`Enum`](#-enum) data type.
+
+Consider the shard [`(Is)`](https://docs.fragcolor.xyz/shards/General/Is/). This shard compares its input and the value in the `:Value` parameter for equality. After the comparison it needs to communicate its result in a yes/no format (yes values are equal; no values are not equal).
+
+```clojure linenums="1"
+(Is
+  :Value [(Any)]
+)
+```
+
+To allow the shard to do this its output type is defined as a `Bool`. If the values are equal this shard emits `true` as its output, if the values are inequal it emits `false`. No other output is allowed.
+
+
+=== "Code"
+
+    ```clojure linenums="1"
+    100 (Is :Value (* 10 10))
+    (Log)   ;; Is equal => true
+
+    [20] (Is :Value 20)
+    (Log)   ;; Is not equal => false
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 18:38:24.383] [T-25360] [logging.cpp::55] [mywire] true
+    [info] [2022-07-22 18:38:24.395] [T-25360] [logging.cpp::55] [mywire] false
+    ```
+
 --8<-- "includes/license.md"
