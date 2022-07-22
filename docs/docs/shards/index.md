@@ -249,4 +249,59 @@ For example, `None` as one of the valid data types for `:Max` parameter in shard
     [info] [2022-07-22 13:45:03.293] [T-19992] [logging.cpp::55] [mywire] 311828859
     ```
 
+### Enum
+
+`Enum` stands for enumerated data type. 
+
+What this means is that the value you pass to an enumerated variable can only take certain 'states' or named constant values.
+
+For example, in [`(Math.Mean)`](https://docs.fragcolor.xyz/shards/Math/Mean/) the value for `:Kind` parameter needs to be of type `Enum`.
+
+```clojure linenums="1"
+(Math.Mean
+  :Kind [(Enum)]
+)
+```
+
+`(Math.Mean)` computes the mean of a sequence of floating-point numbers. But there are three kinds of means - Arithmetic mean, Geometric mean, and Harmonic mean.
+
+So the parameter `:Kind` is defined as an enum variable with these three fixed states :
+` :Kind = {Arithmtic mean, Geometric mean, Harmonic mean}`
+
+And hence `:Kind` expects a value that matches one of its possible states. In other words the value you pass in for `:Kind` needs to be an enumerated data type.
+
+In simple terms it just means that you pass in one of the allowed named constant values. Anything else will fail validation.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    [2.0 10.0]
+    (Math.Mean :Kind Mean.Arithmetic)
+    (Log)   ;; AM => 6
+
+    [2.0 10.0]
+    (Math.Mean :Kind Mean.Geometric)
+    (Log)   ;; GM => 4.47214
+
+    [2.0 10.0]
+    (Math.Mean :Kind Mean.Harmonic)
+    (Log)   ;; HM => 3.33333
+    
+    [2.0 10.0]
+    (Math.Mean 
+    ;; AM is default, anything else will throw error
+        ;; :Kind 123
+        )   
+    (Log)   ;; AM => 6
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 15:35:00.868] [T-15316] [logging.cpp::55] [mywire] 6
+    [info] [2022-07-22 15:35:00.881] [T-15316] [logging.cpp::55] [mywire] 4.47214
+    [info] [2022-07-22 15:35:00.882] [T-15316] [logging.cpp::55] [mywire] 3.33333
+    [info] [2022-07-22 15:35:00.883] [T-15316] [logging.cpp::55] [mywire] 6
+    ```
+
 --8<-- "includes/license.md"
