@@ -505,4 +505,105 @@ An `Int16` type value looks like this:
     Error: 'Int16' not found, line: 30
     ```
 
+### Float
+
+Type `Float` (or its alias `float`) defines a 64-bit signed floating point number.
+
+Floating point means it has the capability to store a decimal point and hence supports decimal numbers.
+
+64 bits of memory allows this data type to support a very large range of positive and negative decimal numbers (16 significant decimal digits and an exponent range of −383 to +384).
+
+A `Float` value looks like this: `(Float 2.53)`.
+It may also be represented without the keyword `Float`, with just the floating-point value: `2.53`.
+
+[`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (Float 2.4) (Math.Add (Float 1.43))
+    (Log)   ;; Float output => 3.83
+
+    2.4 (Math.Add 1.43)
+    (Log)   ;; Float output => 3.83
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 22:06:32.856] [T-20204] [logging.cpp::55] [mywire] 3.83
+    [info] [2022-07-22 22:06:32.873] [T-20204] [logging.cpp::55] [mywire] 3.83
+    ```
+
+### Float2
+
+Type `Float2` (or its alias `float2`) defines a vector of two [`Float`](#-float) type numbers.
+
+A vector can be thought of as a group or list of items that are considered together for processing.
+
+A `Float2` type value looks like this: `(Float2 3.4 -5.0)`.
+
+[`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (Float2 4.1 5.0) (Math.Add (Float2 6.3 9.2))
+    (Log)   ;; Float2 output => (10.4, 14.2)
+    ```
+
+=== "Output"
+
+    ```
+[info] [2022-07-22 22:10:00.688] [T-24616] [logging.cpp::55] [mywire] (10.4, 14.2)
+    ```
+
+### Float3
+
+Type `Float3` (or its alias `float3`) defines a vector of three 32-bit signed floating point numbers.
+
+Floating point means it has the capability to store a decimal point and hence supports decimal numbers.
+
+32 bits of memory allows this data type to support a large range of positive and negative decimal numbers (7 significant decimal digits and an exponent range of −101 to +90).
+
+A `Float3` type value looks like this: `(Float3 2.9 -4.23 7.83)`.
+
+[`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (Float3 1.2 3.4 5.6) (Math.Add (Float3 6.5 4.3 2.1))
+    (Log)   ;; Float3 output => (7.7, 7.7, 7.7)
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 22:19:36.923] [T-16128] [logging.cpp::55] [mywire] (7.7, 7.7, 7.7) 
+    ```
+
+### Float4
+
+Type `Float4` (or its alias `float4`) is like type [`Float3`](#-float3) but a vector of four 32-bit signed floating point numbers instead.
+
+A `Float4` type value looks like this: `(Float4 -8.84 38.2 4.7 0.4)`.
+
+[`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (Float4 3.1 6.4 9.2 4.6)
+    (Math.Add (Float4 6.8 3.5 0.9 5.3))
+    (Log)   ;; Int4 output => (9.9, 9.9, 9.9, 9.9)
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 22:23:24.076] [T-25152] [logging.cpp::55] [mywire] (9.9, 9.9, 10.1, 9.9)
+    ```
+
+
 --8<-- "includes/license.md"
