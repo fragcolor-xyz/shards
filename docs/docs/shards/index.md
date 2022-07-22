@@ -170,7 +170,10 @@ This section documents all the valid data types that are accepted by various sha
 
 Valid data types for every shard are listed under the `Type` column of their Parameters, Input, and Output sections (types are enclosed within parenthesis and if multiple types apply then they are separated by a space).
 
-!!! note
+??? note "Compound types"
+    While this section lists the simple (or primitive) data types, you can combine these to create compound data types. For example, combining `Int`, `String`, and `Seq`, can give you a sequence of sequences (`(Seq [(Seq)])`), a sequence of integers and strings (`(Seq [(Int)] [(String)])`), and so on.
+
+??? note "Why types?"
     Types are helpful as they reduce errors in programming. They are also very useful in visual programming as type-matching can be used to reduce the dropdown options when prompting a user on what shard to use next (depending on which shard's input type matches with the current shard's output type).
 
 ### Any
@@ -318,7 +321,6 @@ Consider the shard [`(Is)`](https://docs.fragcolor.xyz/shards/General/Is/). This
 ```
 
 To allow the shard to do this its output type is defined as a `Bool`. If the values are equal this shard emits `true` as its output, if the values are inequal it emits `false`. No other output is allowed.
-
 
 === "Code"
 
