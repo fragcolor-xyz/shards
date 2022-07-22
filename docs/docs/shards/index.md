@@ -164,7 +164,7 @@ Showing how we mix the Clojure-like language as a template language
     [info] [2021-04-04 21:05:50.123] [T-285088] [logging.cpp::53] [counter-10] 20
     ```
 
-## Shards' types
+## Valid data types for shards
 
 This section documents all the valid data types that are accepted by various shards either as their input value or as their parameter values. These data types also apply to the output created by any shard.
 
@@ -175,30 +175,78 @@ Valid data types for every shard are listed under the `Type` column of their Par
 
 ### Any
 
-Indicates that all data types are valid.
+Type `Any` indicates that all valid data types are allowed.
 
-For example, the type `Any` is accepted for the `:Value` parameter (and for the 'Input' field) in `(AnyNot)`. This means that all data types listed in this section are valid for a comparison by `(AnyNot)`.
+For example, `Any` as the allowed data type for input and `:Value` parameter of shard [`(All)`](https://docs.fragcolor.xyz/shards/General/All/) means that `(All)` accepts and compares across all data types.
+
+```clojure linenums="1"
+(All
+  :Value [(Any)]
+)
+```
+
+`(All)` compares the input and`:Value` parameter values and returns `true` only if both the value and data type of these entities is equal/same.
 
 === "Code"
 
     ```clojure linenums="1"
-    (AnyNot
-    :Value [(Any)]
-    )
+    [4 5 6] (All :Value [4 5 6])
+    (Log)   ;; value and type match => true
+
+    "I'm a string" >= .var1
+    "I'm a string" >= .var2
+    .var1 (All :Value .var2)
+    (Log)   ;; value and type match => true
+
+    "I'm a string" >= .var3
+    "I'm a different string" >= .var4
+    .var3 (All :Value .var4)
+    (Log)   ;; value mismatch => false
+
+    (Float 4.0) >= .var5
+    (Int 4) >= .var6
+    .var5 (All :Value .var6)
+    (Log)   ;; type mismatch => false
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 13:05:25.848] [T-18072] [logging.cpp::55] [mywire] true
+    [info] [2022-07-22 13:05:25.861] [T-18072] [logging.cpp::55] [mywire] true
+    [info] [2022-07-22 13:05:25.862] [T-18072] [logging.cpp::55] [mywire] false
+    [info] [2022-07-22 13:05:25.864] [T-18072] [logging.cpp::55] [mywire] false
     ```
 
 ### None
 
-Indicates that the absence of a value is a valid scenario.
+Type `None` indicates that no data type is expected. This implies that no value is expected.
 
-For example, the option of `None` for the `:Max` parameter in `(RandomInt)` means that a value for this parameter is not mandatory.
+For example, `None` as one of the valid data types for `:Max` parameter in shard [`(RandomInt)`](https://docs.fragcolor.xyz/shards/General/RandomInt/) means that setting a value for this parameter is not mandatory.
+
+```clojure linenums="1"
+(RandomInt
+:Max [(None) (Int) (ContextVar [(Int)])]
+)
+```
+
+`(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have `None` as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer.
 
 === "Code"
 
     ```clojure linenums="1"
-    (RandomInt
-    :Max [(None) (Int) (ContextVar [(Int)])]
-    )
+    (RandomInt 8)
+    (Log)   ;; max int that can be generated is 7
+    
+    (RandomInt)
+    (Log)   ;; no upper limit on the generated int
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-22 13:45:03.282] [T-19992] [logging.cpp::55] [mywire] 4
+    [info] [2022-07-22 13:45:03.293] [T-19992] [logging.cpp::55] [mywire] 311828859
     ```
 
 --8<-- "includes/license.md"
