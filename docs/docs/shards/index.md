@@ -441,31 +441,11 @@ Type `Int8` (or its alias `int8`) defines a vector of eight 16-bit signed intege
 
 16 bits of memory for each number allows this data type to store integer values ranging from −32,768 to +32,767 (no decimals).
 
-An `Int8` type value looks like this:
+However, unlike `(Int)`, `(Int2)`, `(Int3)`, and `(Int4)`), there is no keyword yet defined or supported for `Int8` for Shards scripting environment.
 
-```clojure linenums="1"
-(Int8   2 4 -4 5 
-        6 7 -7 9)
-```
+An `Int8` type value though, still works like the other integer type values (described above) in the context of a Shard's input, output, or parameter value data.
 
-[`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
-
-=== "Code"
-
-    ```clojure linenums="1"
-    (Int8   2 6 8 0
-            5 2 6 4)
-    (Math.Add
-        (Int8   6 2 0 8
-                3 6 2 4))
-    (Log)   ;; Int8 output => (8, 8, 8, 8, 8, 8, 8, 8)
-    ```
-
-=== "Output"
-
-    ```
-    Error: 'Int8' not found, line: 30
-    ```
+So, if a vector of 8 integers is fed into `(Math.Add)` as input and as its `:Operand`, the shard would add them up and output it as another vector of 8 integers. 
 
 ### Int16
 
@@ -473,37 +453,11 @@ Type `Int16` (or its alias `int16`) defines a vector of sixteen 8-bit signed int
 
 8 bits of memory for each number allows this data type to store integer values ranging from −128 to +127 (no decimals).
 
-An `Int16` type value looks like this: 
+However, unlike `(Int)`, `(Int2)`, `(Int3)`, and `(Int4)`), there is no keyword yet defined or supported for `Int16` for Shards scripting environment.
 
-```clojure linenums="1"
-(Int16  2   1  2 -5 
-        8   6 -5  9
-        -1 -8  3  0
-        8   1  3  4)
-```
+An `Int16` type value though, still works like the other integer type values (described above) in the context of a Shard's input, output, or parameter value data.
 
-[`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
-
-=== "Code"
-
-    ```clojure linenums="1"
-    (Int16  0 5 7 3
-            3 1 6 1
-            2 5 7 0
-            4 2 3 1)
-    (Math.Add
-        (Int16  7 2 0 4
-                4 6 1 6
-                5 2 0 7
-                3 5 4 6))
-    (Log)   ;; Int16 output => (7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7)
-    ```
-
-=== "Output"
-
-    ```
-    Error: 'Int16' not found, line: 30
-    ```
+So, if a vector of 16 integers is fed into `(Math.Add)` as input and as its `:Operand`, the shard would add them up and output it as another vector of 16 integers. 
 
 ### Float
 
@@ -604,6 +558,5 @@ A `Float4` type value looks like this: `(Float4 -8.84 38.2 4.7 0.4)`.
     ```
     [info] [2022-07-22 22:23:24.076] [T-25152] [logging.cpp::55] [mywire] (9.9, 9.9, 10.1, 9.9)
     ```
-
 
 --8<-- "includes/license.md"
