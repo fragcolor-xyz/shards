@@ -3191,11 +3191,6 @@ struct Repeat {
 };
 
 struct Once {
-  struct ProcessClock {
-    decltype(std::chrono::high_resolution_clock::now()) Start;
-    ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
-  } _clock;
-
   SHTime current;
   SHTimeDiff next;
   SHDuration dsleep;

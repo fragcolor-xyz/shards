@@ -448,6 +448,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   template <class Observer>
   void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
+    SHLOG_TRACE("Scheduling wire {}", wire->name);
+
     if (wire->warmedUp) {
       SHLOG_ERROR("Attempted to schedule a wire multiple times, wire: {}", wire->name);
       throw shards::SHException("Multiple wire schedule");
@@ -481,6 +483,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       shards::arrayFree(validation.exposedInfo);
       shards::arrayFree(validation.requiredInfo);
       shards::freeDerivedInfo(data.inputType);
+
+      SHLOG_TRACE("Wire {} composed", wire->name);
+    } else {
+      SHLOG_TRACE("Wire {} skipped compose", wire->name);
     }
 
     observer.before_prepare(wire.get());
@@ -490,6 +496,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     shards::start(wire.get(), input);
 
     scheduled.insert(wire);
+
+    SHLOG_TRACE("Wire {} scheduled", wire->name);
   }
 
   void schedule(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {

@@ -2807,7 +2807,13 @@ impl ParamVar {
   }
 
   pub fn get_name(&self) -> *const std::os::raw::c_char {
-    (&self.parameter.0).try_into().unwrap()
+    if self.is_variable() {
+      (&self.parameter.0)
+        .try_into()
+        .expect("parameter name is a string")
+    } else {
+      std::ptr::null()
+    }
   }
 }
 
@@ -2846,12 +2852,14 @@ unsafe extern "C" fn shardsvar_compose_cb(
   userData: *mut c_void,
 ) {
   let msg = CStr::from_ptr(errorTxt);
-  let cb: &mut &mut dyn FnMut(ShardRef, &str, bool) = &mut *(userData as *mut _);
-  cb(
-    ShardRef(errorShard as *mut _),
-    msg.to_str().unwrap(),
-    !nonfatalWarning,
-  );
+  let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
+  if !nonfatalWarning {
+    shlog!("Fatal error: {} shard: {}", msg.to_str().unwrap(), shard_name.to_str().unwrap());
+    let failed = userData as *mut bool;
+    *failed = true;
+  } else {
+    shlog!("Error: {} shard: {}", msg.to_str().unwrap(), shard_name.to_str().unwrap());
+  }
 }
 
 impl ShardsVar {
@@ -2937,21 +2945,13 @@ impl ShardsVar {
       return Ok(Type::default());
     }
 
-    let mut failed = false;
-    let cb = |shard: &ShardRef, error: &str, fatal: bool| {
-      if fatal {
-        shlog!("Fatal error: {} shard: {}", error, shard.name());
-        failed = true;
-      } else {
-        shlog!("Error: {} shard: {}", error, shard.name());
-      }
-    };
+    let failed = false;
 
     self.compose_result = Some(unsafe {
       (*Core).composeShards.unwrap()(
         self.native_shards,
         Some(shardsvar_compose_cb),
-        &cb as *const _ as *mut _,
+        &failed as *const _ as *mut _,
         *data,
       )
     });
@@ -3002,6 +3002,30 @@ impl ShardsVar {
 
   pub fn is_empty(&self) -> bool {
     self.param.0.is_none()
+  }
+
+  pub fn get_exposing(&self) -> Option<&[ExposedInfo]> {
+    if let Some(compose_result) = self.compose_result {
+      Some(unsafe {
+        let elems = compose_result.exposedInfo.elements;
+        let len = compose_result.exposedInfo.len;
+        std::slice::from_raw_parts(elems, len as usize)
+      })
+    } else {
+      None
+    }
+  }
+
+  pub fn get_requiring(&self) -> Option<&[ExposedInfo]> {
+    if let Some(compose_result) = self.compose_result {
+      Some(unsafe {
+        let elems = compose_result.requiredInfo.elements;
+        let len = compose_result.requiredInfo.len;
+        std::slice::from_raw_parts(elems, len as usize)
+      })
+    } else {
+      None
+    }
   }
 }
 
