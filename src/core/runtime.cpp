@@ -1055,19 +1055,6 @@ void validateConnection(ValidationContext &ctx) {
     }
     data.onWorkerThread = ctx.onWorkerThread;
 
-    struct ComposeContext {
-      std::string externalError;
-      bool externalFailure = false;
-      bool warning = false;
-    } externalCtx;
-    data.privateContext = &externalCtx;
-    data.reportError = [](auto ctx, auto message, auto warningOnly) {
-      auto cctx = reinterpret_cast<ComposeContext *>(ctx);
-      cctx->externalError = message;
-      cctx->externalFailure = true;
-      cctx->warning = warningOnly;
-    };
-
     // Pass all we got in the context!
     // notice that shards might add new records to this array
     for (auto &info : ctx.exposed) {
@@ -1091,16 +1078,6 @@ void validateConnection(ValidationContext &ctx) {
       throw ComposeError(composeResult.error.message);
     }
     ctx.previousOutputType = composeResult.result;
-
-    if (externalCtx.externalFailure) {
-      if (externalCtx.warning) {
-        externalCtx.externalError.insert(0, "Wire compose warning: ");
-        ctx.cb(ctx.bottom, externalCtx.externalError.c_str(), true, ctx.userData);
-      } else {
-        externalCtx.externalError.insert(0, "Wire compose failed with error: ");
-        ctx.cb(ctx.bottom, externalCtx.externalError.c_str(), false, ctx.userData);
-      }
-    }
   } else {
     // Short-cut if it's just one type and not any type
     auto outputTypes = ctx.bottom->outputTypes(ctx.bottom);

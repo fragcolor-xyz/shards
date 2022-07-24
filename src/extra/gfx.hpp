@@ -86,7 +86,7 @@ struct BaseConsumer : public Base {
     }
 
     if (!variableFound)
-      throw SHComposeError("MainWindow required, but not found");
+      throw shards::ComposeError("MainWindow required, but not found");
   }
 
   void warmup(SHContext *context) { baseConsumerWarmup(context); }

@@ -305,11 +305,6 @@ unsafe extern "C" fn shard_compose<T: Shard>(
     },
     Err(error) => {
       (*blk).error = Some(CString::new(error).expect("CString::new failed"));
-      data.reportError.unwrap()(
-        data.privateContext,
-        (*blk).error.as_ref().unwrap().as_ptr(),
-        false,
-      );
       SHShardComposeResult {
         error: SHError {
           message: (*blk).error.as_ref().unwrap().as_ptr(),
