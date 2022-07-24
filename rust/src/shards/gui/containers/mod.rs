@@ -10,6 +10,7 @@ struct Scope {
   parents: ParamVar,
   requiring: ExposedTypes,
   contents: ShardsVar,
+  exposing: ExposedTypes,
 }
 
 /// Standalone window.
@@ -28,6 +29,7 @@ macro_rules! decl_panel {
       requiring: ExposedTypes,
       contents: ShardsVar,
       parents: ParamVar,
+      exposing: ExposedTypes,
     }
   };
 }

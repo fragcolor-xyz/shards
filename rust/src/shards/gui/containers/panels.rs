@@ -51,6 +51,7 @@ macro_rules! impl_panel {
           requiring: Vec::new(),
           contents: ShardsVar::default(),
           parents,
+          exposing: Vec::new(),
         }
       }
     }
@@ -164,7 +165,7 @@ macro_rules! impl_panel {
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
         if !self.contents.is_empty() {
           let ui = util::get_current_parent(*self.parents.get())?;
-          let output = if let Some(ui) = ui {
+          let _ = if let Some(ui) = ui {
             $egui_func(EguiId::new(self, 0)).show_inside(ui, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
@@ -181,14 +182,9 @@ macro_rules! impl_panel {
                 ui,
                 &mut self.parents,
                 &mut self.contents,
-              )?;
-              // when used as a top container, the input passes through to be consistent with Window
-              Ok(*input)
+              )
             })
-          }
-          .inner?;
-
-          return Ok(output);
+          };
         }
 
         Ok(*input)
@@ -233,6 +229,7 @@ impl Default for CentralPanel {
       requiring: Vec::new(),
       contents: ShardsVar::default(),
       parents,
+      exposing: Vec::new(),
     }
   }
 }
@@ -293,6 +290,24 @@ impl Shard for CentralPanel {
     self.requiring.push(exp_info);
 
     Some(&self.requiring)
+  }
+
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if !self.contents.is_empty() {
+      let exposing = self.contents.get_exposing();
+      if let Some(exposing) = exposing {
+        for exp in exposing {
+          self.exposing.push(*exp);
+        }
+        Some(&self.exposing)
+      } else {
+        None
+      }
+    } else {
+      None
+    }
   }
 
   fn hasCompose() -> bool {
@@ -356,20 +371,16 @@ impl Shard for CentralPanel {
 
     if !self.contents.is_empty() {
       let ui = util::get_current_parent(*self.parents.get())?;
-      let output = if let Some(ui) = ui {
+      let _ = if let Some(ui) = ui {
         egui::CentralPanel::default().show_inside(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
       } else {
         egui::CentralPanel::default().show(gui_ctx, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
       }
       .inner?;
-
-      return Ok(output);
     }
 
     Ok(*input)

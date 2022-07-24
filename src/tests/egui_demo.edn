@@ -9,23 +9,24 @@
   (UI.Window
    :Title "Window with Panels"
    :Contents
-   (-> (UI.TopPanel
-        (->
-         ;; input was passed down the UI hierarchy
-         (Assert.Is input_value :Abort true)
-         "Top Window Panel" (UI.Label)))
-       (UI.BottomPanel
-        (->
-         "Bottom Window Panel" (UI.Label)))
-       (UI.LeftPanel
-        (->
-         "Left Window Panel" (UI.Label)))
-       (UI.RightPanel
-        (->
-         "Right Window Panel" (UI.Label)))
-       (UI.CentralPanel
-        (->
-         "Central Window Panel" (UI.Label))))))
+   (->
+    (Once (-> (Log "Window is Open and running!")) :Every 2.0)
+
+    (UI.TopPanel
+     (->
+      "Top Window Panel" (UI.Label)))
+    (UI.BottomPanel
+     (->
+      "Bottom Window Panel" (UI.Label)))
+    (UI.LeftPanel
+     (->
+      "Left Window Panel" (UI.Label)))
+    (UI.RightPanel
+     (->
+      "Right Window Panel" (UI.Label)))
+    (UI.CentralPanel
+     (->
+      "Central Window Panel" (UI.Label))))))
 
 (defloop ui-wire
   input_value ;; some input
@@ -60,15 +61,26 @@
         "Central Panel" (UI.Label)
         lorem_ipsum (UI.Label)))
 
-      (window-with-panels)))
-    ;; input passed through the whole UI
-    (Assert.Is input_value :Abort true)
+      (window-with-panels)
+
+      ;; (UI.Collapsing "X"
+      ;;                (->
+      ;;                 "Collapsing Header" (UI.Label)))
+
+      (UI.Scope
+       (->
+        "Collapsing Header" (UI.Label)
+        ))
+
+      ;
+      ))
 
     (GFX.Render :Steps .render-steps))))
 
 (defmesh main)
 (schedule main ui-wire)
-(run main (/ 1.0 60.0) 120)
+;; (run main (/ 1.0 60.0) 120)
+(run main (/ 1.0 60.0))
 
-(schedule main ui-wire)
-(run main (/ 1.0 60.0) 120)
+;; (schedule main ui-wire)
+;; (run main (/ 1.0 60.0) 120)

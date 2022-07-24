@@ -36,6 +36,7 @@ impl Default for Scope {
       parents,
       requiring: Vec::new(),
       contents: ShardsVar::default(),
+      exposing: Vec::new(),
     }
   }
 }
@@ -100,21 +101,39 @@ impl Shard for Scope {
     Some(&self.requiring)
   }
 
+  // fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+  //   self.exposing.clear();
+
+  //   if !self.contents.is_empty() {
+  //     let exposing = self.contents.get_exposing();
+  //     if let Some(exposing) = exposing {
+  //       for exp in exposing {
+  //         self.exposing.push(*exp);
+  //       }
+  //       Some(&self.exposing)
+  //     } else {
+  //       None
+  //     }
+  //   } else {
+  //     None
+  //   }
+  // }
+
   fn hasCompose() -> bool {
     true
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      let outputType = self.contents.compose(&data)?;
-      return Ok(outputType);
+      self.contents.compose(&data)
+    } else {
+      Ok(data.inputType)
     }
-
-    Ok(data.inputType)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
+
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
@@ -126,6 +145,7 @@ impl Shard for Scope {
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
+
     self.parents.cleanup();
 
     Ok(())

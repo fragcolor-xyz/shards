@@ -25,7 +25,7 @@ lazy_static! {
   static ref COLLAPSING_PARAMETERS: Parameters = vec![
     (
       cstr!("Heading"),
-      cstr!("The heading text for this collpasing header."),
+      cstr!("The heading text for this collapsing header."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
@@ -128,8 +128,7 @@ impl Shard for CollapsingHeader {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      let outputType = self.contents.compose(&data)?;
-      return Ok(outputType);
+      self.contents.compose(&data)?;
     }
 
     Ok(data.inputType)
@@ -166,13 +165,16 @@ impl Shard for CollapsingHeader {
       let heading: &str = self.heading.get().try_into()?;
       let defaultOpen: bool = self.defaultOpen.get().try_into()?;
       let header = egui::CollapsingHeader::new(heading).default_open(defaultOpen);
-      if let Some(output) = header
+      if let Some(res) = header
         .show(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
         .body_returned
       {
-        Ok(output?)
+        match res {
+          Err(err) => Err(err),
+          Ok(_) => Ok(*input),
+        }
       } else {
         Ok(*input)
       }
