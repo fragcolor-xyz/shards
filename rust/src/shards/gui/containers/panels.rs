@@ -51,6 +51,7 @@ macro_rules! impl_panel {
           requiring: Vec::new(),
           contents: ShardsVar::default(),
           parents,
+          exposing: Vec::new(),
         }
       }
     }
@@ -133,10 +134,10 @@ macro_rules! impl_panel {
         data.shared = (&shared).into();
 
         if !self.contents.is_empty() {
-          self.contents.compose(&data)?;
+          self.contents.compose(&data)
+        } else {
+          Ok(data.inputType)
         }
-
-        Ok(data.inputType)
       }
 
       fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -164,34 +165,39 @@ macro_rules! impl_panel {
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
         if !self.contents.is_empty() {
           let ui = util::get_current_parent(*self.parents.get())?;
-          let output = if let Some(ui) = ui {
-            $egui_func(EguiId::new(self, 0)).show_inside(ui, |ui| {
-              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-            })
+          if let Some(ui) = ui {
+            $egui_func(EguiId::new(self, 0))
+              .show_inside(ui, |ui| {
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
+              })
+              .inner
           } else {
             let gui_ctx = {
               let ctx_ptr: &mut EguiNativeContext =
                 Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
               &*ctx_ptr
             };
-            $egui_func(EguiId::new(self, 0)).show(gui_ctx, |ui| {
-              util::activate_ui_contents(
-                context,
-                input,
-                ui,
-                &mut self.parents,
-                &mut self.contents,
-              )?;
-              // when used as a top container, the input passes through to be consistent with Window
-              Ok(*input)
-            })
+            $egui_func(EguiId::new(self, 0))
+              .show(gui_ctx, |ui| {
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
+              })
+              .inner
           }
-          .inner?;
-
-          return Ok(output);
+        } else {
+          Ok(*input)
         }
-
-        Ok(*input)
       }
     }
   };
@@ -233,6 +239,7 @@ impl Default for CentralPanel {
       requiring: Vec::new(),
       contents: ShardsVar::default(),
       parents,
+      exposing: Vec::new(),
     }
   }
 }
@@ -295,6 +302,24 @@ impl Shard for CentralPanel {
     Some(&self.requiring)
   }
 
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if !self.contents.is_empty() {
+      let exposing = self.contents.get_exposing();
+      if let Some(exposing) = exposing {
+        for exp in exposing {
+          self.exposing.push(*exp);
+        }
+        Some(&self.exposing)
+      } else {
+        None
+      }
+    } else {
+      None
+    }
+  }
+
   fn hasCompose() -> bool {
     true
   }
@@ -319,10 +344,10 @@ impl Shard for CentralPanel {
     data.shared = (&shared).into();
 
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(&data)
+    } else {
+      Ok(data.inputType)
     }
-
-    Ok(data.inputType)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -356,22 +381,21 @@ impl Shard for CentralPanel {
 
     if !self.contents.is_empty() {
       let ui = util::get_current_parent(*self.parents.get())?;
-      let output = if let Some(ui) = ui {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
+      if let Some(ui) = ui {
+        egui::CentralPanel::default()
+          .show_inside(ui, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
       } else {
-        egui::CentralPanel::default().show(gui_ctx, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
-        })
+        egui::CentralPanel::default()
+          .show(gui_ctx, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .inner
       }
-      .inner?;
-
-      return Ok(output);
+    } else {
+      Ok(*input)
     }
-
-    Ok(*input)
   }
 }

@@ -18,6 +18,7 @@ struct Group {
   parents: ParamVar,
   requiring: ExposedTypes,
   contents: ShardsVar,
+  exposing: ExposedTypes,
 }
 
 struct Horizontal {
@@ -25,6 +26,7 @@ struct Horizontal {
   requiring: ExposedTypes,
   contents: ShardsVar,
   wrap: ParamVar,
+  exposing: ExposedTypes,
 }
 
 struct ScrollArea {
@@ -33,6 +35,7 @@ struct ScrollArea {
   contents: ShardsVar,
   horizontal: ParamVar,
   vertical: ParamVar,
+  exposing: ExposedTypes,
 }
 
 struct Separator {
@@ -44,6 +47,7 @@ struct Vertical {
   parents: ParamVar,
   requiring: ExposedTypes,
   contents: ShardsVar,
+  exposing: ExposedTypes,
 }
 
 mod collapsing_header;

@@ -46,6 +46,7 @@ impl Default for Horizontal {
       requiring: Vec::new(),
       contents: ShardsVar::default(),
       wrap: ParamVar::new(false.into()),
+      exposing: Vec::new(),
     }
   }
 }
@@ -112,17 +113,34 @@ impl Shard for Horizontal {
     Some(&self.requiring)
   }
 
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if !self.contents.is_empty() {
+      let exposing = self.contents.get_exposing();
+      if let Some(exposing) = exposing {
+        for exp in exposing {
+          self.exposing.push(*exp);
+        }
+        Some(&self.exposing)
+      } else {
+        None
+      }
+    } else {
+      None
+    }
+  }
+
   fn hasCompose() -> bool {
     true
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      let outputType = self.contents.compose(&data)?;
-      return Ok(outputType);
+      self.contents.compose(&data)
+    } else {
+      Ok(data.inputType)
     }
-
-    Ok(data.inputType)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -152,7 +170,7 @@ impl Shard for Horizontal {
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let wrap: bool = self.wrap.get().try_into()?;
-      let output = if wrap {
+      if wrap {
         ui.horizontal_wrapped(|ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
@@ -161,9 +179,7 @@ impl Shard for Horizontal {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
       }
-      .inner?;
-
-      Ok(output)
+      .inner
     } else {
       Err("No UI parent")
     }
