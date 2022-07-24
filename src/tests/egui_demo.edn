@@ -12,15 +12,22 @@
    (->
     (Once (-> (Log "Window is Open and running!")) :Every 2.0)
 
+    (UI.Scope
+     (->
+      "Collapsing Header" (UI.Label)))
+    1
     (UI.TopPanel
      (->
-      "Top Window Panel" (UI.Label)))
+      (| "Top Window Panel" (UI.Label))
+      (Math.Add 1)))
     (UI.BottomPanel
      (->
-      "Bottom Window Panel" (UI.Label)))
+      (| "Bottom Window Panel" (UI.Label))
+      (Math.Add 1)))
     (UI.LeftPanel
      (->
-      "Left Window Panel" (UI.Label)))
+      (ToString)
+      (UI.Label)))
     (UI.RightPanel
      (->
       "Right Window Panel" (UI.Label)))
@@ -62,16 +69,6 @@
         lorem_ipsum (UI.Label)))
 
       (window-with-panels)
-
-      ;; (UI.Collapsing "X"
-      ;;                (->
-      ;;                 "Collapsing Header" (UI.Label)))
-
-      (UI.Scope
-       (->
-        "Collapsing Header" (UI.Label)
-        ))
-
       ;
       ))
 

@@ -71,5 +71,4 @@ E.g. `(UI.Button)`, `(UI.Checkbox)`, `(UI.RadioButton)`
                (UI.Button "Click me!")
                ;; button returns true when clicked
                (Log "click status")))))
-;; output of Window is whether the button was clicked
 ```
