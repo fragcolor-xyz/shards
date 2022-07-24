@@ -664,8 +664,6 @@ struct SHComposeResult {
   bool flowStopper;
 };
 
-typedef void(__cdecl *SHComposeError)(void *privateContext, SHString errorText, SHBool warningOnly);
-
 struct SHInstanceData {
   // Used to optimize activations,
   // replacing function pointers during compose
@@ -684,11 +682,6 @@ struct SHInstanceData {
 
   // basically what the next shard can get as input
   struct SHTypesInfo outputTypes;
-
-  // Use this to report compose errors (or warnings)
-  SHComposeError reportError;
-  // Reserved to use and pass with reportError
-  void *privateContext;
 
   // Internally used
   void *requiredVariables;

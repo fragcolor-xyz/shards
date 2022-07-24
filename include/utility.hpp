@@ -449,6 +449,7 @@ public:
     SH_CORE::destroyVar(_shardsParam);
     SH_CORE::expTypesFree(_wireValidation.exposedInfo);
     SH_CORE::expTypesFree(_wireValidation.requiredInfo);
+    SH_CORE::destroyVar(_wireValidation.failureMessage);
   }
 
   void cleanup() {
@@ -508,6 +509,7 @@ public:
     // Free any previous result!
     SH_CORE::expTypesFree(_wireValidation.exposedInfo);
     SH_CORE::expTypesFree(_wireValidation.requiredInfo);
+    SH_CORE::destroyVar(_wireValidation.failureMessage);
 
     _wireValidation = SH_CORE::composeShards(
         _shards,
@@ -515,13 +517,14 @@ public:
           if (!nonfatalWarning) {
             auto msg = "Error during inner wire validation: " + std::string(errorTxt);
             SH_CORE::log(msg.c_str());
-            throw shards::ComposeError("Failed inner wire validation.");
+            throw shards::ComposeError("Failed inner wire validation");
           } else {
             auto msg = "Warning during inner wire validation: " + std::string(errorTxt);
             SH_CORE::log(msg.c_str());
           }
         },
         this, data);
+
     return _wireValidation;
   }
 
