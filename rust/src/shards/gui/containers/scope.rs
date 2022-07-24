@@ -101,23 +101,23 @@ impl Shard for Scope {
     Some(&self.requiring)
   }
 
-  // fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-  //   self.exposing.clear();
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
 
-  //   if !self.contents.is_empty() {
-  //     let exposing = self.contents.get_exposing();
-  //     if let Some(exposing) = exposing {
-  //       for exp in exposing {
-  //         self.exposing.push(*exp);
-  //       }
-  //       Some(&self.exposing)
-  //     } else {
-  //       None
-  //     }
-  //   } else {
-  //     None
-  //   }
-  // }
+    if !self.contents.is_empty() {
+      let exposing = self.contents.get_exposing();
+      if let Some(exposing) = exposing {
+        for exp in exposing {
+          self.exposing.push(*exp);
+        }
+        Some(&self.exposing)
+      } else {
+        None
+      }
+    } else {
+      None
+    }
+  }
 
   fn hasCompose() -> bool {
     true

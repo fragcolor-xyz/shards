@@ -2850,7 +2850,7 @@ unsafe extern "C" fn shardsvar_compose_cb(
   errorShard: *const Shard,
   errorTxt: SHString,
   nonfatalWarning: SHBool,
-  _userData: *mut c_void,
+  userData: *mut c_void,
 ) {
   let msg = CStr::from_ptr(errorTxt);
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));

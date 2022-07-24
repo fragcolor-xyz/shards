@@ -131,6 +131,7 @@ impl Shard for CollapsingHeader {
       self.contents.compose(&data)?;
     }
 
+    // Always passthrough the input
     Ok(data.inputType)
   }
 

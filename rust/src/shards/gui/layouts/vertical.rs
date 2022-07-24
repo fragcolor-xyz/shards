@@ -101,10 +101,6 @@ impl Shard for Vertical {
     Some(&self.requiring)
   }
 
-  fn hasCompose() -> bool {
-    true
-  }
-
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     self.exposing.clear();
 
@@ -123,9 +119,13 @@ impl Shard for Vertical {
     }
   }
 
+  fn hasCompose() -> bool {
+    true
+  }
+
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      Ok(self.contents.compose(&data)?)
+      self.contents.compose(&data)
     } else {
       Ok(data.inputType)
     }
