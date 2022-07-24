@@ -146,6 +146,7 @@ impl Shard for Window {
       self.contents.compose(&data)?;
     }
 
+    // Always passthrough the input
     Ok(data.inputType)
   }
 

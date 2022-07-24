@@ -180,16 +180,14 @@ impl Shard for ScrollArea {
     }
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let output = egui::ScrollArea::new([
+      egui::ScrollArea::new([
         self.horizontal.get().try_into()?,
         self.vertical.get().try_into()?,
       ])
       .show(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })
-      .inner?;
-
-      Ok(output)
+      .inner
     } else {
       Err("No UI parent")
     }

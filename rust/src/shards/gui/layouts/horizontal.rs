@@ -170,7 +170,7 @@ impl Shard for Horizontal {
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let wrap: bool = self.wrap.get().try_into()?;
-      let output = if wrap {
+      if wrap {
         ui.horizontal_wrapped(|ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
@@ -179,9 +179,7 @@ impl Shard for Horizontal {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
       }
-      .inner?;
-
-      Ok(output)
+      .inner
     } else {
       Err("No UI parent")
     }
