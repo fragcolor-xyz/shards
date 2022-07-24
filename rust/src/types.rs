@@ -2,8 +2,8 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 use crate::core::cloneVar;
-use crate::core::Core;
 use crate::core::destroyVar;
+use crate::core::Core;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
@@ -2850,14 +2850,24 @@ unsafe extern "C" fn shardsvar_compose_cb(
   errorShard: *const Shard,
   errorTxt: SHString,
   nonfatalWarning: SHBool,
-  _userData: *mut c_void,
+  userData: *mut c_void,
 ) {
   let msg = CStr::from_ptr(errorTxt);
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
   if !nonfatalWarning {
-    shlog!("Fatal error: {} shard: {}", msg.to_str().unwrap(), shard_name.to_str().unwrap());
+    shlog_error!(
+      "Fatal error: {} shard: {}",
+      msg.to_str().unwrap(),
+      shard_name.to_str().unwrap()
+    );
+    let failed = userData as *mut bool;
+    *failed = true;
   } else {
-    shlog!("Error: {} shard: {}", msg.to_str().unwrap(), shard_name.to_str().unwrap());
+    shlog_error!(
+      "Error: {} shard: {}",
+      msg.to_str().unwrap(),
+      shard_name.to_str().unwrap()
+    );
   }
 }
 
@@ -2944,11 +2954,13 @@ impl ShardsVar {
       return Ok(Type::default());
     }
 
+    let failed = false;
+
     let mut result = unsafe {
       (*Core).composeShards.unwrap()(
         self.native_shards,
         Some(shardsvar_compose_cb),
-        std::ptr::null_mut(),
+        &failed as *const _ as *mut _,
         *data,
       )
     };
@@ -2957,6 +2969,8 @@ impl ShardsVar {
       let msg: &str = (&result.failureMessage).try_into().unwrap();
       shlog!("Compose failed with error {}", msg);
       destroyVar(&mut result.failureMessage);
+      Err("Composition failed.")
+    } else if failed {
       Err("Composition failed.")
     } else {
       let output_type = result.outputType;

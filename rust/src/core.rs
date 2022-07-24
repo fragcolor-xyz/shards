@@ -204,6 +204,20 @@ macro_rules! shlog {
     };
 }
 
+#[macro_export]
+macro_rules! shlog_error {
+  ($text:expr, $($arg:expr),*) => {
+    use std::io::Write as __stdWrite;
+    let mut buf = vec![];
+    ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+    $crate::core::logLevel(4, ::std::str::from_utf8(&buf).unwrap());
+  };
+
+  ($text:expr) => {
+    $crate::core::logLevel(4, concat!($text, "\0"));
+  };
+}
+
 #[inline(always)]
 pub fn sleep(seconds: f64) {
   unsafe {
@@ -438,11 +452,7 @@ unsafe extern "C" fn cancel_blocking_c_call<T: BlockingShard>(
   (*(*data).caller).cancel_activation(&*context);
 }
 
-pub fn run_blocking<'a, T>(
-  caller: &'a mut T,
-  context: &'a SHContext,
-  input: &'a SHVar,
-) -> SHVar
+pub fn run_blocking<'a, T>(caller: &'a mut T, context: &'a SHContext, input: &'a SHVar) -> SHVar
 where
   T: BlockingShard,
 {

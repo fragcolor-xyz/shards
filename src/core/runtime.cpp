@@ -2991,12 +2991,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     try {
       return shards::composeWire(shards, callback, userData, data);
     } catch (const std::exception &e) {
+      SHLOG_TRACE("composeShards failed: {}", e.what());
       SHComposeResult res{};
       res.failed = true;
       auto msgTmp = shards::Var(e.what());
       shards::cloneVar(res.failureMessage, msgTmp);
       return res;
     } catch (...) {
+      SHLOG_TRACE("composeShards failed: ...");
       SHComposeResult res{};
       res.failed = true;
       auto msgTmp = shards::Var("foreign exception failure during composeWire");
