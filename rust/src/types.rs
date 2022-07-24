@@ -4,6 +4,7 @@
 use crate::core::cloneVar;
 use crate::core::destroyVar;
 use crate::core::Core;
+use crate::core::destroyVar;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
@@ -2850,7 +2851,7 @@ unsafe extern "C" fn shardsvar_compose_cb(
   errorShard: *const Shard,
   errorTxt: SHString,
   nonfatalWarning: SHBool,
-  userData: *mut c_void,
+  _userData: *mut c_void,
 ) {
   let msg = CStr::from_ptr(errorTxt);
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
@@ -2960,7 +2961,7 @@ impl ShardsVar {
       (*Core).composeShards.unwrap()(
         self.native_shards,
         Some(shardsvar_compose_cb),
-        &failed as *const _ as *mut _,
+        std::ptr::null_mut(),
         *data,
       )
     };
