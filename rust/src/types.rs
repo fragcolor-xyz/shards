@@ -2960,7 +2960,7 @@ impl ShardsVar {
       (*Core).composeShards.unwrap()(
         self.native_shards,
         Some(shardsvar_compose_cb),
-        std::ptr::null_mut(),
+        &failed as *const _ as *mut _,
         *data,
       )
     };
