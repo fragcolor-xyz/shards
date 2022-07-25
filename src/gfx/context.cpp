@@ -189,7 +189,11 @@ struct ContextMainOutput {
     swapchainDesc.format = swapchainFormat;
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
+#if GFX_WINDOWS || GFX_APPLE || GFX_LINUX
     swapchainDesc.presentMode = WGPUPresentMode_Immediate;
+#else
+    swapchainDesc.presentMode = WGPUPresentMode_Fifo;
+#endif
     swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
     wgpuSwapchain = wgpuDeviceCreateSwapChain(device, wgpuWindowSurface, &swapchainDesc);
     if (!wgpuSwapchain) {
@@ -258,7 +262,7 @@ WGPUTextureFormat Context::getMainOutputFormat() const {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
-void Context::addContextDataInternal(const std::weak_ptr<ContextData>& ptr) {
+void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
   assert(!ptr.expired());
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();
