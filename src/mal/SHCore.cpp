@@ -495,8 +495,8 @@ struct WireFileWatcher {
 
         SHLOG_TRACE("Processed {}", fileNameOnly.string());
 
-        // run validation to infertypes and specialize
-        auto wireValidation = composeWire(
+        // run compose to infer types and specialize
+        auto composeResult = composeWire(
             wire.get(),
             [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
               if (!nonfatalWarning) {
@@ -507,7 +507,7 @@ struct WireFileWatcher {
               }
             },
             nullptr, data);
-        shards::arrayFree(wireValidation.exposedInfo);
+        shards::arrayFree(composeResult.exposedInfo);
 
         SHLOG_TRACE("Validated {}", fileNameOnly.string());
 
@@ -1502,7 +1502,7 @@ BUILTIN("prepare") {
   SHInstanceData data{};
   data.wire = wire.get();
   wire->mesh = TLSRootSHMesh->shared_from_this();
-  auto wireValidation = composeWire(
+  auto composeResult = composeWire(
       wire.get(),
       [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
         if (!nonfatalWarning) {
@@ -1514,7 +1514,7 @@ BUILTIN("prepare") {
       },
       nullptr, data);
   wire->composedHash = Var(1, 1); // just to mark as composed
-  shards::arrayFree(wireValidation.exposedInfo);
+  shards::arrayFree(composeResult.exposedInfo);
   shards::prepare(wire.get(), nullptr);
   return mal::nilValue();
 }

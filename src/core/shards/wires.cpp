@@ -41,10 +41,10 @@ struct WireBase {
 
   void resetComposition() {
     if (wire) {
-      if (wire->wireValidation) {
-        shards::arrayFree(wire->wireValidation->requiredInfo);
-        shards::arrayFree(wire->wireValidation->exposedInfo);
-        wire->wireValidation.reset();
+      if (wire->composeResult) {
+        shards::arrayFree(wire->composeResult->requiredInfo);
+        shards::arrayFree(wire->composeResult->exposedInfo);
+        wire->composeResult.reset();
       }
     }
   }
@@ -74,7 +74,7 @@ struct WireBase {
     }
 
     // ensure requirements match our input data
-    for (auto &req : wire->wireValidation->requiredInfo) {
+    for (auto &req : wire->composeResult->requiredInfo) {
       // find each in shared
       auto name = req.name;
       auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
@@ -127,7 +127,7 @@ struct WireBase {
     // TODO FIXME, wireloader/wire runner might access this from threads
     if (mesh->visitedWires.count(wire.get())) {
       // but visited does not mean composed...
-      if (wire->wireValidation) {
+      if (wire->composeResult) {
         IterableExposedInfo shared(data.shared);
         verifyAlreadyComposed(data, shared);
       }
@@ -177,10 +177,10 @@ struct WireBase {
 
     SHTypeInfo wireOutput;
     // make sure to compose only once...
-    if (!wire->wireValidation) {
+    if (!wire->composeResult) {
       SHLOG_TRACE("Running {} compose", wire->name);
 
-      wire->wireValidation = composeWire(
+      wire->composeResult = composeWire(
           wire.get(),
           [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
@@ -192,9 +192,9 @@ struct WireBase {
           },
           this, dataCopy);
 
-      wireOutput = wire->wireValidation->outputType;
+      wireOutput = wire->composeResult->outputType;
 
-      IterableExposedInfo exposing(wire->wireValidation->exposedInfo);
+      IterableExposedInfo exposing(wire->composeResult->exposedInfo);
       // keep only globals
       exposedInfo = IterableExposedInfo(
           exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
@@ -522,7 +522,7 @@ struct Resume : public WireBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
 
-    auto p_wire = [&] {
+    auto pWire = [&] {
       if (!wire) {
         if (current->resumer) {
           SHLOG_TRACE("Resume, wire not found, using resumer: {}", current->resumer->name);
@@ -536,44 +536,44 @@ struct Resume : public WireBase {
     }();
 
     // assign the new wire as current wire on the flow
-    context->flow->wire = p_wire;
+    context->flow->wire = pWire;
 
     // Allow to re run wires
-    if (shards::hasEnded(p_wire)) {
-      shards::stop(p_wire);
+    if (shards::hasEnded(pWire)) {
+      shards::stop(pWire);
     }
 
     // capture variables
     for (auto &v : _vars) {
       auto &var = v.get();
-      auto &v_ref = p_wire->variables[v.variableName()];
+      auto &v_ref = pWire->variables[v.variableName()];
       cloneVar(v_ref, var);
     }
 
     // Prepare if no callc was called
-    if (!p_wire->coro) {
-      p_wire->mesh = context->main->mesh;
-      shards::prepare(p_wire, context->flow);
+    if (!pWire->coro) {
+      pWire->mesh = context->main->mesh;
+      shards::prepare(pWire, context->flow);
 
       // handle early failure
-      if (p_wire->state == SHWire::State::Failed) {
+      if (pWire->state == SHWire::State::Failed) {
         // destroy fresh cloned variables
         for (auto &v : _vars) {
-          destroyVar(p_wire->variables[v.variableName()]);
+          destroyVar(pWire->variables[v.variableName()]);
         }
-        SHLOG_ERROR("Wire {} failed to start.", p_wire->name);
+        SHLOG_ERROR("Wire {} failed to start.", pWire->name);
         throw ActivationError("Wire failed to start.");
       }
     }
 
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
-    if (p_wire->resumer == nullptr)
-      p_wire->resumer = current;
+    if (pWire->resumer == nullptr)
+      pWire->resumer = current;
 
     // Start it if not started
-    if (!shards::isRunning(p_wire)) {
-      shards::start(p_wire, input);
+    if (!shards::isRunning(pWire)) {
+      shards::start(pWire, input);
     }
 
     // And normally we just delegate the Mesh + SHFlow
@@ -585,7 +585,7 @@ struct Resume : public WireBase {
     // We will end here when we get resumed!
 
     // reset resumer
-    p_wire->resumer = nullptr;
+    pWire->resumer = nullptr;
 
     return input;
   }
@@ -600,7 +600,7 @@ struct Start : public Resume {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
 
-    auto p_wire = [&] {
+    auto pWire = [&] {
       if (!wire) {
         if (current->resumer) {
           SHLOG_TRACE("Start, wire not found, using resumer: {}", current->resumer->name);
@@ -614,39 +614,39 @@ struct Start : public Resume {
     }();
 
     // assign the new wire as current wire on the flow
-    context->flow->wire = p_wire;
+    context->flow->wire = pWire;
 
     // ensure wire is not running, we start from top
-    shards::stop(p_wire);
+    shards::stop(pWire);
 
     // capture variables
     for (auto &v : _vars) {
       auto &var = v.get();
-      auto &v_ref = p_wire->variables[v.variableName()];
+      auto &v_ref = pWire->variables[v.variableName()];
       cloneVar(v_ref, var);
     }
 
     // Prepare
-    p_wire->mesh = context->main->mesh;
-    shards::prepare(p_wire, context->flow);
+    pWire->mesh = context->main->mesh;
+    shards::prepare(pWire, context->flow);
 
     // handle early failure
-    if (p_wire->state == SHWire::State::Failed) {
+    if (pWire->state == SHWire::State::Failed) {
       // destroy fresh cloned variables
       for (auto &v : _vars) {
-        destroyVar(p_wire->variables[v.variableName()]);
+        destroyVar(pWire->variables[v.variableName()]);
       }
-      SHLOG_ERROR("Wire {} failed to start.", p_wire->name);
+      SHLOG_ERROR("Wire {} failed to start.", pWire->name);
       throw ActivationError("Wire failed to start.");
     }
 
     // we should be valid as this shard should be dependent on current
     // do this here as stop/prepare might overwrite
-    if (p_wire->resumer == nullptr)
-      p_wire->resumer = current;
+    if (pWire->resumer == nullptr)
+      pWire->resumer = current;
 
     // Start
-    shards::start(p_wire, input);
+    shards::start(pWire, input);
 
     // And normally we just delegate the Mesh + SHFlow
     // the following will suspend this current wire
@@ -657,7 +657,7 @@ struct Start : public Resume {
     // We will end here when we get resumed!
 
     // reset resumer
-    p_wire->resumer = nullptr;
+    pWire->resumer = nullptr;
 
     return input;
   }
@@ -799,8 +799,8 @@ struct BaseRunner : public WireBase {
       return _mergedReqs;
     } else {
       if (wire) {
-        if (wire->wireValidation) {
-          return SHExposedTypesInfo(wire->wireValidation->requiredInfo);
+        if (wire->composeResult) {
+          return SHExposedTypesInfo(wire->composeResult->requiredInfo);
         } else {
           return SHExposedTypesInfo{};
         }

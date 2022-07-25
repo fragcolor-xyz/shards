@@ -2697,10 +2697,10 @@ void SHWire::reset() {
   inputType = SHTypeInfo();
   outputType = {};
 
-  if (wireValidation) {
-    shards::arrayFree(wireValidation->requiredInfo);
-    shards::arrayFree(wireValidation->exposedInfo);
-    wireValidation.reset();
+  if (composeResult) {
+    shards::arrayFree(composeResult->requiredInfo);
+    shards::arrayFree(composeResult->exposedInfo);
+    composeResult.reset();
   }
 
   auto n = mesh.lock();

@@ -356,7 +356,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   mutable SHTypeInfo outputType{};
 
   // used in wires.cpp to store exposed/required types from compose operations
-  mutable std::optional<SHComposeResult> wireValidation;
+  mutable std::optional<SHComposeResult> composeResult;
 
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards
