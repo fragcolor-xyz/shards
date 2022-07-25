@@ -85,3 +85,10 @@
 [submodule "cmake/android-cmake"]
 	path = cmake/android-cmake
 	url = git@github.com:guusw/android-cmake.git
+[submodule "src/gfx/wgpu"]
+	path = src/gfx/wgpu
+	url = git@github.com:chainblocks/wgpu.git
+	branch = master
+[submodule "src/gfx/naga"]
+	path = src/gfx/naga
+	url = https://github.com/chainblocks/naga
