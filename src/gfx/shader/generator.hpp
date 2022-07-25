@@ -30,6 +30,10 @@ struct IGeneratorDynamicHandler {
   virtual bool createDynamicOutput(const char *name, FieldType requestedType) { return false; }
 };
 
+template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
+  return GeneratorError{fmt::format(format, args...)};
+}
+
 struct GeneratorContext {
   String result;
   String header;
@@ -53,7 +57,21 @@ struct GeneratorContext {
   void writeHeader(const StringView &str);
 
   void readGlobal(const char *name);
-  void writeGlobal(const char *name, const FieldType &type);
+
+  template <typename T> void writeGlobal(const char *name, const FieldType &type, T &&inner) {
+    auto it = globals.find(name);
+    if (it == globals.end()) {
+      globals.insert_or_assign(name, type);
+    } else {
+      if (it->second != type) {
+        pushError(formatError("Global type doesn't match previously expected type"));
+      }
+    }
+
+    result += fmt::format("{}.{} = ", globalsVariableName, name);
+    inner();
+    result += ";\n";
+  }
 
   bool hasInput(const char *name);
   void readInput(const char *name);
