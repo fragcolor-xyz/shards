@@ -57,7 +57,6 @@ mod internal_core_init {
   use super::*;
   use crate::core::SHCore;
   use crate::core::ABI_VERSION;
-  use crate::shardsc::shardsInterface;
   use dlopen::symbor::Library;
 
   fn try_load_dlls() -> Option<Library> {
