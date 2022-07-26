@@ -559,4 +559,101 @@ A `Float4` type value looks like this: `(Float4 -8.84 38.2 4.7 0.4)`.
     [info] [2022-07-22 22:23:24.076] [T-25152] [logging.cpp::55] [mywire] (9.9, 9.9, 10.1, 9.9)
     ```
 
+### Bytes
+
+Type `Bytes` represents the current memory address of the raw bytes value of the passed data. This type also has a lower case alias `bytes`.
+
+The shard [`(ToBytes)`](https://docs.fragcolor.xyz/shards/General/ToBytes/) extracts and returns the current memory address of the passed input data, as its output.
+
+!!! note
+    Since this is a memory address, it will change everytime you invoke these shards.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (Bytes "string") (Log)  ;; => current memory address of the "string" data bytes
+    123 (ToBytes) (Log)     ;; => current memory address of the number 123 data bytes
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-26 17:12:27.878] [T-7536] [logging.cpp::55] [mywire] Bytes: 0x1608eefb9b0 size: 6
+    [info] [2022-07-26 17:12:27.889] [T-7536] [logging.cpp::55] [mywire] Bytes: 0x1608ef78a00 size: 9
+    ```
+
+### Color
+
+Type `Color` represents an RGBA color format and is constructed from four unsigned 8 bit integers (one each for the R, G, B, and A values). This type also has a lower case alias `color`.
+
+Each of the R, G, B, and A values range from 0 to 255. R, G, and B stand for red, blue, and green components of the color. A represents the *alpha channel* property (how opaqe a pixel is - 0 is fully transparent, 255 is fully opaque). 
+
+The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) converts its input into a `Color`.
+
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (int4 255 10 10 257) (ToColor)
+    (Log)    ;; if input > 255, 256 is subtracted from it => 255, 10, 10, 1
+  
+    [23 45 56 78] (ToColor)
+    (Log)   ;; input in range 0-255 so => 23, 45, 56, 78 
+    
+    "Hello" (ToColor)
+    (Log)   ;; non-numeric input so => 0, 0, 0, 0
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-26 19:08:24.520] [T-24408] [logging.cpp::55] [mywire] 255, 10, 10, 1  
+    [info] [2022-07-26 19:08:24.533] [T-24408] [logging.cpp::55] [mywire] 23, 45, 56, 78  
+    [info] [2022-07-26 19:08:24.534] [T-24408] [logging.cpp::55] [mywire] 0, 0, 0, 0  
+    ```
+
+### ContextVar
+
+Type `ContextVar` represents a contextual variable (i.e., a variable that is in scope for the shard processing this data). This type also has a lower case alias `context-var`.
+
+The shard [`(Math.Inc)`](https://docs.fragcolor.xyz/shards/Math/Inc/) accepts only `ContextVar` type numeric data (i.e., a variable that holds numeric data) into its `:Value` parameter, and increments it by 1.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    11 >= .intvar                   ;; .intvar is of type `ContextVar`
+    (Math.Inc .intvar)
+    .intvar (Log)                   ;; => 12
+
+    (Float2 4.5 5.7) >= .floatvar   ;; .floatvar is of type `ContextVar`
+    (Math.Inc .floatvar)
+    .floatvar (Log)                 ;; => (5.5, 6.7)
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-26 19:30:22.837] [T-27800] [logging.cpp::55] [mywire] 12
+    [info] [2022-07-26 19:30:22.843] [T-27800] [logging.cpp::55] [mywire] (5.5, 6.7) 
+    ```
+
+### String
+
+Type `String` represents string data. This type also has a lower case alias `string`.
+
+An example of a shard that processes `String` type data is [`(StringToBytes)`](https://docs.fragcolor.xyz/shards/General/StringToBytes/). It converts its `String` type input into a `Bytes` type output.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    "Hello World" (StringToBytes)  
+    (Log)   ;; memory address of the string data => Bytes: 0x20440058720 size: 11
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-26 19:38:14.813] [T-18168] [logging.cpp::55] [mywire] Bytes: 0x20440058720 size: 11
+    ```
+
 --8<-- "includes/license.md"
