@@ -30,12 +30,16 @@ usvg = { version = "0.23.0", optional = true }
 tiny-skia = { version = "0.6.3", optional = true }
 
 instant = { version = "0.1.10", features = [ "now" ] }
-ethereum-types = { version = "0.12.0", optional = true }
-ethabi = { version = "16.0.0", optional = true }
+ethereum-types = { version = "0.13.1", optional = true }
+ethabi = { version = "17.1.0", optional = true }
 ext-csv = {  package = "csv", version = "1.1", optional = true }
-sp-core = { version = "4.1.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-01', features = ["full_crypto"], optional = true }
-sp-runtime = { version = "4.0.0-dev", git = "https://github.com/paritytech/substrate.git", tag = 'monthly-2022-01', optional = true }
-parity-scale-codec = { version = "2.3.1", default-features = false, optional = true }
+
+# substrate related
+sp-core = { version = "6.0.0", default-features = false, git = "https://github.com/fragcolor-xyz/substrate.git", tag = 'clamor-04-07-2022', optional = true }
+sp-runtime = { version = "6.0.0", git = "https://github.com/fragcolor-xyz/substrate.git", tag = 'clamor-04-07-2022', optional = true }
+parity-scale-codec = { version = "3.0.0", default-features = false, features = ["derive"], optional = true }
+scale-info = { version = "2.0", features = ["derive"], optional = true }
+
 chacha20poly1305 = { version = "0.9.0", optional = true }
 egui = { version = "0.18.1", optional = true }
 egui-gfx = { path = "../src/gfx/egui", optional = true }
@@ -77,6 +81,7 @@ shards = ["reqwest",
           "sp-core",
           "sp-runtime",
           "parity-scale-codec",
+          "scale-info",
           "chacha20poly1305",
           "egui",
           "egui-gfx"]
