@@ -656,4 +656,59 @@ An example of a shard that processes `String` type data is [`(StringToBytes)`](h
     [info] [2022-07-26 19:38:14.813] [T-18168] [logging.cpp::55] [mywire] Bytes: 0x20440058720 size: 11
     ```
 
+### Set
+
+Type `Set` is a collection of unique values.
+
+It's different from other collections like [`Seq`](#-seq) and [`Array`](#-array) which can contain non-unique or duplicate items.
+
+An example of a `Set` type data would be `(22 3 378 4)`.
+
+### Seq
+
+Type `Seq` is a collection of values that can be accessed sequentially (i.e., they're iterable).
+
+Also called a sequence. An example would be `[7 2 54 42]`.
+
+The shard [`(Take)`](https://docs.fragcolor.xyz/shards/General/Take/) works on `Seq` type. It copies out the sequence element which is at a given position.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    [7 2 54 42] (Take 2)
+    (Log)   ;; copy out the 2nd elemetn => 54
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-26 22:24:48.918] [T-20928] [logging.cpp::55] [mywire] 54
+    ```
+
+### Array
+
+Type `Array` is a collection of values that can be accessed directly via indexes (since items are indexed by contiguous integers).
+
+Also called a vector. Looks exactly like the `Seq` type, but its items are accessible by index (and not by position). An example of `Array` would be: `[43 6 1]`.
+
+### Table
+
+Type `Table` is a collection of key/value pairs.
+
+Also called map, data dictionary, and associative array. An example of a `Table` type would be: `{:key1 "Hello" :key2 "World"}`.
+
+=== "Code"
+
+    ```clojure linenums="1"
+    {:k1 123} >= .tabvar    ;; .tabvar is type `Table` now
+    .tabvar (ExpectTable)
+    (Log)                   ;; `ExpectTable` outputs `Table` type  =>   {k1: 123} 
+    ```
+
+=== "Output"
+
+    ```
+    [info] [2022-07-26 22:46:17.194] [T-26104] [logging.cpp::55] [mywire] {k1: 123} 
+    ```
+
 --8<-- "includes/license.md"
