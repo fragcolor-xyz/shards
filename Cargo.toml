@@ -2,6 +2,3 @@
 members = [
     "rust",
 ]
-
-[patch.crates-io]
-chrono = { git = "https://github.com/chronotope/chrono", branch = "main" }
