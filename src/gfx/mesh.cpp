@@ -91,6 +91,7 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
     contextData.vertexBufferLength = desc.size;
   }
 
+  assert(contextData.vertexBuffer);
   wgpuQueueWriteBuffer(context.wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
 
   if (indexData.size() > 0) {
@@ -103,6 +104,7 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
       contextData.indexBufferLength = desc.size;
     }
 
+    assert(contextData.indexBuffer);
     wgpuQueueWriteBuffer(context.wgpuQueue, contextData.indexBuffer, 0, indexData.data(), indexData.size());
   }
 }
