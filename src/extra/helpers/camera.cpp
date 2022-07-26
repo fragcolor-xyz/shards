@@ -74,11 +74,11 @@ struct FreeCameraShard : public gfx::BaseConsumer {
         }
         break;
       case SDL_MOUSEMOTION:
-        _input.look.cursorPosition = getWindow().toVirtualCoord(float2(event.motion.x, event.motion.y));
+        _input.look.cursorPosition = float2(event.motion.x, event.motion.y);
         break;
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
-        _input.look.cursorPosition = getWindow().toVirtualCoord(float2(event.button.x, event.button.y));
+        _input.look.cursorPosition = float2(event.button.x, event.button.y);
         switch (event.button.button) {
         case SDL_BUTTON_LEFT:
           _input.look.primary = event.button.type == SDL_MOUSEBUTTONDOWN;
