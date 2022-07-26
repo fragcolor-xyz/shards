@@ -83,16 +83,18 @@ void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
   contextData.numVertices = numVertices;
 
   // Grow/create vertex buffer
-  if (contextData.vertexBufferLength < vertexData.size()) {
-    WGPUBufferDescriptor desc = {};
-    desc.size = vertexData.size();
-    desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
-    contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
-    contextData.vertexBufferLength = desc.size;
-  }
+  if (vertexData.size() > 0) {
+    if (contextData.vertexBufferLength < vertexData.size()) {
+      WGPUBufferDescriptor desc = {};
+      desc.size = vertexData.size();
+      desc.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
+      contextData.vertexBuffer = wgpuDeviceCreateBuffer(device, &desc);
+      contextData.vertexBufferLength = desc.size;
+    }
 
-  assert(contextData.vertexBuffer);
-  wgpuQueueWriteBuffer(context.wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
+    assert(contextData.vertexBuffer);
+    wgpuQueueWriteBuffer(context.wgpuQueue, contextData.vertexBuffer, 0, vertexData.data(), vertexData.size());
+  }
 
   if (indexData.size() > 0) {
     // Grow/create index buffer
