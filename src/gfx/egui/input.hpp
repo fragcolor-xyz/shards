@@ -24,7 +24,7 @@ public:
   const EguiInputTranslator &operator=(const EguiInputTranslator &) = delete;
 
   const egui::Input *translateFromInputEvents(const std::vector<SDL_Event> &sdlEvents, Window &window, double time,
-                                              float deltaTime);
+                                              float deltaTime, float scalingFactor = 1.0f);
 
   // Set or clear the position for the text cursor
   void updateTextCursorPosition(Window &window, const egui::Pos2 *pos);

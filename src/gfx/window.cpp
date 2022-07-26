@@ -97,41 +97,31 @@ int2 Window::getSize() const {
   return r;
 }
 
-#if GFX_APPLE
-#define VIRTUAL_WINDOW_SIZE 1
-#else
-#define VIRTUAL_WINDOW_SIZE 0
-#endif
-
-float2 Window::getDrawScale() const {
-#if VIRTUAL_WINDOW_SIZE
-  return float2(getDrawableSize()) / float2(getSize());
-#else
-  // DPI for 100% on windows
-  const float referenceDpi = 96.0f;
-
-  int displayIndex = SDL_GetWindowDisplayIndex(window);
+static float2 getUIScaleFromDisplayDPI(int displayIndex) {
   float2 dpi;
   float diagonalDpi;
-  if(SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y) != 0) {
+  if (SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y) != 0) {
     return float2(1.0f);
   }
 
-  return dpi / referenceDpi;
-#endif
-}
-
-float2 Window::getVirtualDrawableSize() const { return toVirtualCoord(float2(getDrawableSize())); }
-
-bool Window::isWindowSizeVirtual() const {
-#if VIRTUAL_WINDOW_SIZE
-  return true;
+#if GFX_WINDOWS
+  // DPI for 100% on windows
+  return dpi / 96;
 #else
-  return false;
+  const float referenceDpi = 440;
+  const float referenceScale = 4.0;
+  return dpi / referenceDpi * referenceScale;
 #endif
 }
-float2 Window::toVirtualCoord(float2 screenCoord) const { return screenCoord / getDrawScale(); }
-float2 Window::toScreenCoord(float2 virtualCoord) const { return virtualCoord * getDrawScale(); }
+
+float2 Window::getUIScale() const {
+#if GFX_APPLE
+  // On apply, derive display scale from drawable size / window size
+  return float2(getDrawableSize()) / float2(getSize());
+#else
+  return getUIScaleFromDisplayDPI(SDL_GetWindowDisplayIndex(window));
+#endif
+}
 
 Window::~Window() { cleanup(); }
 } // namespace gfx

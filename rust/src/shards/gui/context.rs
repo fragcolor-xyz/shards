@@ -201,6 +201,7 @@ impl Shard for EguiContext {
       let inputs = shardsc::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,
         self.main_window_globals.get(),
+        1.0,
       ) as *const egui_gfx::egui_Input;
       egui_gfx::translate_raw_input(&*inputs)
     };

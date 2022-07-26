@@ -2,6 +2,7 @@
 
 using namespace gfx;
 extern "C" {
-gfx::float2 gfx_Window_getVirtualDrawableSize_ext(gfx::Window *window) { return window->getVirtualDrawableSize(); }
-gfx::float2 gfx_Window_getDrawScale_ext(gfx::Window *window) { return window->getDrawScale(); }
+gfx::int2 gfx_Window_getSize_ext(gfx::Window *window) { return window->getSize(); }
+gfx::int2 gfx_Window_getDrawableSize_ext(gfx::Window *window) { return window->getDrawableSize(); }
+gfx::float2 gfx_Window_getUIScale_ext(gfx::Window *window) { return window->getUIScale(); }
 }

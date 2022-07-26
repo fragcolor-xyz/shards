@@ -196,7 +196,7 @@ void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePt
 EguiRenderer *EguiRenderer::create() { return new EguiRenderer(); }
 void EguiRenderer::destroy(EguiRenderer *renderer) { delete renderer; }
 float EguiRenderer::getDrawScale(Window &window) {
-  float2 drawScaleVec = window.getDrawScale();
+  float2 drawScaleVec = window.getUIScale();
   return std::max<float>(drawScaleVec.x, drawScaleVec.y);
 }
 } // namespace gfx

@@ -10,7 +10,9 @@
 #include "rust_interop.hpp"
 
 extern "C" {
-void render_egui_test_frame(gfx::Context &context, gfx::DrawQueuePtr &queue, gfx::EguiInputTranslator& inputTranslator, const egui::Input *input);
+void *new_app();
+void render_egui_test_frame(void *app, gfx::Context &context, gfx::DrawQueuePtr &queue, const std::vector<SDL_Event> &events,
+                            double time, float deltaTime);
 }
 
 using namespace gfx;
@@ -30,7 +32,7 @@ int main() {
   float deltaTime;
   std::vector<SDL_Event> events;
 
-  EguiInputTranslator inputTranslator;
+  void *rustAppState = new_app();
 
   bool quit = false;
 
@@ -48,10 +50,8 @@ int main() {
           quit = true;
       }
 
-      const egui::Input *eguiInput = inputTranslator.translateFromInputEvents(events, wnd, loop.getAbsoluteTime(), deltaTime);
-
       queue->clear();
-      render_egui_test_frame(ctx, queue, inputTranslator, eguiInput);
+      render_egui_test_frame(rustAppState, ctx, queue, events, loop.getAbsoluteTime(), deltaTime);
 
       ctx.resizeMainOutputConditional(wnd.getDrawableSize());
       ctx.beginFrame();
