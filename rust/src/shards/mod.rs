@@ -30,6 +30,8 @@ pub mod chachapoly;
 
 pub mod gui;
 
+pub mod date;
+
 static CRYPTO_KEY_TYPES: &[Type] = &[
   common_type::bytes,
   common_type::bytes_var,

@@ -88,6 +88,10 @@
   "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n"
   (CSV.Read :NoHeader true :Separator ";") (Log)
   (CSV.Write :NoHeader true :Separator ";")
-  (Assert.Is "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n" true)))
+  (Assert.Is "city;country;pop\nBoston;United States;4628910\nConcord;United States;42695\n" true)
+  
+  1500000000 (Date.Format) (Log "Date formatted")
+  (Assert.Is "Fri Jul 14 02:40:00 2017" true)
+  ))
 
 (run Root)

@@ -30,7 +30,15 @@
    (| (BigInt.ToHex) (Log))
    (BigInt.ToBytes :Bits 256) (Log)
    (ToHex) (Log)
-   (Assert.Is "0x00000000000000000000000000000000000000000000006c6b935b8bbd400000" true)))
+   (Assert.Is "0x00000000000000000000000000000000000000000000006c6b935b8bbd400000" true)
+
+   "18446744073709551615" (BigInt) (BigInt.ToBytes 64) = .max-u64
+   (BigInt) (BigInt.ToString) (Assert.Is "18446744073709551615" true) (Log "Returned")
+   .max-u64 (Substrate.Decode [Type.Int] ["u64"]) (Log "Decoded")
+
+   ;
+   ))
+
 
 (schedule Root test)
 (run Root 0.1 10)
