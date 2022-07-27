@@ -578,7 +578,6 @@ Each of the R, G, B, and A values range from 0 to 255. R, G, and B stand for red
 
 The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) converts its input into a `Color`.
 
-
 === "Code"
 
     ```clojure linenums="1"
@@ -677,13 +676,13 @@ The shard [`(Take)`](https://docs.fragcolor.xyz/shards/General/Take/) works on `
 
 Type `Array` is a collection of values that can be accessed directly via indexes (since items are indexed by contiguous integers).
 
-Also called a vector. Looks exactly like the `Seq` type, but its items are accessible by index (and not by position). An example of `Array` would be: `[43 6 1]`.
+Also called a vector. Looks exactly like the `Seq` type, but its items are accessible by index (and hence accessible randomly). An example of `Array` would be: `[43 6 1]`.
 
 ### Table
 
 Type `Table` is a collection of key/value pairs.
 
-Also called map, data dictionary, or associative array. An example of a `Table` type would be: `{:key1 "Hello" :key2 "World"}`.
+Also called a map, a data dictionary, or an associative array. An example of a `Table` type would be: `{:key1 "Hello" :key2 "World"}`.
 
 === "Code"
 
@@ -698,5 +697,55 @@ Also called map, data dictionary, or associative array. An example of a `Table` 
     ```
     [info] [2022-07-26 22:46:17.194] [T-26104] [logging.cpp::55] [mywire] {k1: 123} 
     ```
+
+### Path
+
+Type `Path` is string data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.  
+
+This type also has a lower case alias `path`.
+
+A valid `Path` type data string would look like this: `"../../external/sample-models/Avocado.glb"`
+
+!!! note
+    For shards this type is the same as `String` type as far as type validations are concerned (when you execute your script Shards first checks the types before running your code). However,if the path-string passed is invalid, malformed, or missing the resource to be loaded, the shard will complain with an error message at runtime (i.e., when your code actually runs).
+
+A shard that uses this type is [`(Process.Run)`](https://docs.fragcolor.xyz/shards/Process/Run/). This shard takes a `Path` type in its `:Executable` parameter (you can seet that the `String` type too is an option).
+
+### Audio
+
+Type `Audio` is uncompressed audio data.
+
+Examples of shards that use this type are [`(Audio.Oscillator)`](https://docs.fragcolor.xyz/shards/Audio/Oscillator/), [`(Audio.ReadFile)`](https://docs.fragcolor.xyz/shards/Audio/ReadFile/), and [`(Audio.WriteFile)`](https://docs.fragcolor.xyz/shards/Audio/WriteFile/) all of which generate `Audio` type data as their output.
+
+!!! note
+    Shards supports the audio formats WAV, MP3, OGG, and FLAC.
+
+### Image
+
+Type `Image` is uncompressed image data.
+
+A shard that uses this type is [`(StripAlpha)`](https://docs.fragcolor.xyz/shards/General/StripAlpha/). This takes an `Image` type input, strips out its alpha (transparency) channel, and outputs an `Image` type (transformed image).
+
+!!! note
+    Shards supports the image formats PNG and SVG.
+
+### ShardRef
+
+Type `ShardRef` (or `Shard`) represents a shard being passed as data.
+
+!!! note
+    `ShardRef` is needed to support Homoiconicity (i.e., code/data interangeability) in Shards. 
+
+The shard [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) expects the type `ShardRef` for its `:Apply` parameter (the other option here is a sequence of `ShardRef` types, which as we will see next is a [`Wire`](#-wire) type).
+
+`(ForEach)` then applies this shard (or sequence of shards) on its input to transform it into its output.
+
+### Wire
+
+Type `Wire` is a sequence of shards (i.e., a sequence of [`ShardRef`](#-shardref) types).
+
+Since a collection of shards makes up wire, its fitting to call a sequence of `Shard` types as `Wire`.
+
+Going back to [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) we see that other than `ShardRef` (or `Shard`) as a valid type for its `:Apply` parameter, this shard also accepts a sequence of `Shard` types, or in other words a `Wire` type. 
 
 --8<-- "includes/license.md"
