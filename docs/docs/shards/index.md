@@ -748,4 +748,12 @@ Since a collection of shards makes up wire, its fitting to call a sequence of `S
 
 Going back to [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) we see that other than `ShardRef` (or `Shard`) as a valid type for its `:Apply` parameter, this shard also accepts a sequence of `Shard` types, or in other words a `Wire` type. 
 
+### Object
+
+Type `Object` is an *opaque* data type in Shards.
+
+This means that the structure of this kind of data is not defined in an interface and is visible only to shards that use this type. What this also implies is that the internal structure of this data type will vary from shard to shard.
+
+For example, the `:Socket` parameter object of [`(WS.ReadString)`](https://docs.fragcolor.xyz/shards/WS/ReadString/) is different from the output object of [`(GFX.DrawQueue)`](https://docs.fragcolor.xyz/shards/GFX/DrawQueue/).
+
 --8<-- "includes/license.md"
