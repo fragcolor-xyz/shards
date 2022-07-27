@@ -34,3 +34,9 @@
 ["a" "b"] (Set :Name .tableA :Key "key1")
 (Get .tableA :Key "key2") ?? "Key still missing"
 (Log)                               ;; => "Key still missing"
+
+;; create mutable local/global variables and get their values
+"Local" (Set .str)                 ;; create local variable
+"Global" (Set .str :Global true)   ;; create same-name global variable
+(Get .str) (Log)                   ;; get local variable => "Local"
+(Get .str :Global true) (Log)      ;; get same-name global variable => "Global"

@@ -1,33 +1,43 @@
 ;; push into existing sequence created by `Sequence`, retain value across iterations
 (Sequence :Name .sequence1)
-.sequence1 (Log ".sequence1")   ;; => .sequence1: []
+.sequence1 (Log ".sequence1")       ;; => .sequence1: []
 10 (Push :Name .sequence1 :Clear false)
-.sequence1 (Log ".sequence1")   ;; => .sequence1: [10]
+.sequence1 (Log ".sequence1")       ;; => .sequence1: [10]
 20 (Push :Name .sequence1 :Clear false)
-.sequence1 (Log ".sequence1")   ;; => .sequence1: [10, 20]
+.sequence1 (Log ".sequence1")       ;; => .sequence1: [10, 20]
 
 ;; push into existing sequence created by `Set`, value available to all wires
 [10 20] (Set :Name .sequence2 :Global true)
-.sequence2 (Log ".sequence2")   ;; => .sequence2: [10, 20]
+.sequence2 (Log ".sequence2")       ;; => .sequence2: [10, 20]
 30 (Push :Name .sequence2 :Global true)
-.sequence2 (Log ".sequence2")   ;; => .sequence2: [10, 20, 30]
+.sequence2 (Log ".sequence2")       ;; => .sequence2: [10, 20, 30]
 
 ;; create a mutable sequence with the first `Push`
 100 (Push :Name .sequence3)
-.sequence3 (Log ".sequence3")   ;; => .sequence3: [100]
+.sequence3 (Log ".sequence3")       ;; => .sequence3: [100]
 
 ;; update a mutable table's existing key-value (push elements in value sequence)
 ["abc"] (Set :Name "table" :Key "key1")
-.table (Log ".table")           ;; => .table: {key1: [abc]}
+.table (Log ".table")               ;; => .table: {key1: [abc]}
 "def" (Push :Name .table :Key "key1")
-.table (Log ".table")           ;; => .table: {key1: [abc, def]}
+.table (Log ".table")               ;; => .table: {key1: [abc, def]}
 
 ;; Using a `Push` alias
 
 ;; `>>` is alias for `(Push :Clear true)`: create sequence with first push
 "Hello" >> .sequence4
-.sequence4 (Log ".sequence4")   ;; => .sequence4: [Hello]
+.sequence4 (Log ".sequence4")       ;; => .sequence4: [Hello]
 
 ;; `>>!` is alias for `(Push :Clear false)`: create sequence with first push
 "World" >>! .sequence5
-.sequence5 (Log ".sequence5")   ;; => .sequence5: [World]
+.sequence5 (Log ".sequence5")       ;; => .sequence5: [World]
+
+;; create and update local/global sequence variables
+"Local" (Push .seq)                 ;; create local sequence variable with first push
+"Global" (Push .seq :Global true)   ;; create same-name global sequence variable with first push
+(Get .seq) (Log)                    ;; get local variable => [Local]
+(Get .seq :Global true) (Log)       ;; get same-name updated global variable => [Global]
+"Local2" (Push .seq)                ;; push new value into local sequence variable
+"Global2" (Push .seq :Global true)  ;; push new value into  same-name global sequence variable
+(Get .seq) (Log)                    ;; get updated local sequence variable => [Local, Local2]
+(Get .seq :Global true) (Log)       ;; get updated global seqeunce variable => [Global, Global2]
