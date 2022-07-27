@@ -1,4 +1,4 @@
-`Drop` drops (removes) the first element of the sequence variable that has been passed to in the `:Name` parameter. 
+`DropFront` drops (removes) the first element of the sequence variable that has been passed to in the `:Name` parameter. 
 
 This shard works only on sequences and the parameters `:Key` and `:Global` are not applicable to it.
 

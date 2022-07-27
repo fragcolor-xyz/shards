@@ -1,6 +1,6 @@
 ;; declare an int with `Const` and consume in `Math.Multiply`
-999 (Const :Value 2) 
-    (Math.Multiply 4) (Log)     ;; => 8
+(Const :Value 2) 
+(Math.Multiply 4) (Log)         ;; => 8
 
 ;; declare an int without `Const` and consume in `Math.Multiply`
 2 (Math.Multiply 4) (Log)       ;; => 8
