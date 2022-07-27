@@ -20,7 +20,7 @@ struct EguiRenderer {
   static EguiRenderer *create();
   static void destroy(EguiRenderer *renderer);
 
-  static float getDrawScale(Window& window);
+  static float getDrawScale(Window &window);
 };
 
 } // namespace gfx

@@ -44,7 +44,7 @@ public:
       textureDesc.size.height = size.y;
       textureDesc.label = label.c_str();
       texture = wgpuDeviceCreateTexture(context.wgpuDevice, &textureDesc);
-        assert(texture);
+      assert(texture);
 
       WGPUTextureViewDescriptor viewDesc{};
       viewDesc.arrayLayerCount = 1;
@@ -55,7 +55,7 @@ public:
       viewDesc.aspect = WGPUTextureAspect_All;
       viewDesc.format = format;
       textureView = wgpuTextureCreateView(texture, &viewDesc);
-        assert(textureView);
+      assert(textureView);
 
       bindToContext(context);
     }

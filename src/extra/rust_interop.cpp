@@ -45,8 +45,10 @@ DrawQueuePtr *getDrawQueueFromVar(const SHVar &var) {
   return &shDrawQueue->queue;
 }
 
-const egui::Input *getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals, float scalingFactor) {
+const egui::Input *getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
+                                       float scalingFactor) {
   MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
-  return translator->translateFromInputEvents(globals->events, *globals->window.get(), globals->time, globals->deltaTime, scalingFactor);
+  return translator->translateFromInputEvents(globals->events, *globals->window.get(), globals->time, globals->deltaTime,
+                                              scalingFactor);
 }
 } // namespace gfx
