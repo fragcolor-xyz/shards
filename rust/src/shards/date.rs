@@ -31,7 +31,7 @@ lazy_static! {
     (
       cstr!("Format"),
       shccstr!("The actual formatting string, see full docs: https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html#specifiers"),
-      BOOL_TYPES_SLICE
+      STRING_TYPES_SLICE
     )
       .into(),
   ];
