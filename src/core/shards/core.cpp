@@ -1242,6 +1242,44 @@ struct Replace {
   SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }
 };
 
+struct Reverse {
+  static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
+
+  static SHTypesInfo inputTypes() { return inTypes; }
+  static SHTypesInfo outputTypes() { return inTypes; }
+
+  std::string _stringOutput;
+  OwnedVar _vectorOutput;
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == String) {
+      OVERRIDE_ACTIVATE(data, activateString);
+      return CoreInfo::StringType;
+    } else {
+      // this should be only sequence
+      OVERRIDE_ACTIVATE(data, activateSeq);
+      return data.inputType;
+    }
+  }
+
+  SHVar activateSeq(SHContext *context, const SHVar &input) {
+    _vectorOutput = input;
+    IterableSeq o(_vectorOutput);
+    std::reverse(o.begin(), o.end());
+    return Var(_vectorOutput);
+  }
+
+  SHVar activateString(SHContext *context, const SHVar &input) {
+    const auto source = input.payload.stringLen > 0 ? std::string_view(input.payload.stringValue, input.payload.stringLen)
+                                                    : std::string_view(input.payload.stringValue);
+    _stringOutput.assign(source);
+    std::reverse(_stringOutput.begin(), _stringOutput.end());
+    return Var(_stringOutput);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }
+};
+
 struct UnsafeActivate {
   static inline Parameters params{
       {"Pointer", SHCCSTR("The function address, must be of type SHVar f(Context*, SHVar*)."), {CoreInfo::IntType}}};
@@ -1812,6 +1850,7 @@ void registerShardsCoreShards() {
   REGISTER_SHARD("Input", Input);
   REGISTER_SHARD("Comment", Comment);
   REGISTER_SHARD("Replace", Replace);
+  REGISTER_SHARD("Reverse", Reverse);
   REGISTER_SHARD("OnCleanup", OnCleanup);
   REGISTER_SHARD("UnsafeActivate!", UnsafeActivate);
 }
