@@ -197,6 +197,7 @@ impl Shard for Window {
       }
     }
 
+    // Always passthrough the input
     Ok(*input)
   }
 }

@@ -134,10 +134,11 @@ macro_rules! impl_panel {
         data.shared = (&shared).into();
 
         if !self.contents.is_empty() {
-          self.contents.compose(&data)
-        } else {
-          Ok(data.inputType)
+          self.contents.compose(&data)?;
         }
+
+        // Always passthrough the input
+        Ok(data.inputType)
       }
 
       fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -163,41 +164,31 @@ macro_rules! impl_panel {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        if !self.contents.is_empty() {
-          let ui = util::get_current_parent(*self.parents.get())?;
-          if let Some(ui) = ui {
-            $egui_func(EguiId::new(self, 0))
-              .show_inside(ui, |ui| {
-                util::activate_ui_contents(
-                  context,
-                  input,
-                  ui,
-                  &mut self.parents,
-                  &mut self.contents,
-                )
-              })
-              .inner
-          } else {
-            let gui_ctx = {
-              let ctx_ptr: &mut EguiNativeContext =
-                Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
-              &*ctx_ptr
-            };
-            $egui_func(EguiId::new(self, 0))
-              .show(gui_ctx, |ui| {
-                util::activate_ui_contents(
-                  context,
-                  input,
-                  ui,
-                  &mut self.parents,
-                  &mut self.contents,
-                )
-              })
-              .inner
-          }
-        } else {
-          Ok(*input)
+        if self.contents.is_empty() {
+          return Ok(*input);
         }
+
+        if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+          $egui_func(EguiId::new(self, 0))
+            .show_inside(ui, |ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+            .inner?;
+        } else {
+          let gui_ctx = {
+            let ctx_ptr: &mut EguiNativeContext =
+              Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
+            &*ctx_ptr
+          };
+          $egui_func(EguiId::new(self, 0))
+            .show(gui_ctx, |ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+            .inner?;
+        }
+
+        // Always passthrough the input
+        Ok(*input)
       }
     }
   };
@@ -344,10 +335,11 @@ impl Shard for CentralPanel {
     data.shared = (&shared).into();
 
     if !self.contents.is_empty() {
-      self.contents.compose(&data)
-    } else {
-      Ok(data.inputType)
+      self.contents.compose(&data)?;
     }
+
+    // Always passthrough the input
+    Ok(data.inputType)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -373,29 +365,31 @@ impl Shard for CentralPanel {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    if self.contents.is_empty() {
+      return Ok(*input);
+    }
+
     let gui_ctx = {
       let ctx_ptr: &mut EguiNativeContext =
         Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
       &*ctx_ptr
     };
 
-    if !self.contents.is_empty() {
-      let ui = util::get_current_parent(*self.parents.get())?;
-      if let Some(ui) = ui {
-        egui::CentralPanel::default()
-          .show_inside(ui, |ui| {
-            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          })
-          .inner
-      } else {
-        egui::CentralPanel::default()
-          .show(gui_ctx, |ui| {
-            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          })
-          .inner
-      }
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      egui::CentralPanel::default()
+        .show_inside(ui, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+        .inner?;
     } else {
-      Ok(*input)
+      egui::CentralPanel::default()
+        .show(gui_ctx, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+        .inner?;
     }
+
+    // Always passthrough the input
+    Ok(*input)
   }
 }

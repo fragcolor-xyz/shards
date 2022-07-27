@@ -19,7 +19,7 @@ The UI context object passes its input to the inner UI.
      (UI.Window)))
 ```
 
-### Top-level containers*
+### Top-level containers
 
 They also pass their input to the inner UI contents. Usually that input is the same as the one received by the parent UI context.
 They return their initial input as output.
@@ -38,25 +38,25 @@ E.g. `(UI.Window)`, `(UI.BottomPanel)`, `(UI.CentralPanel)`, `(UI.LeftPanel)`, `
 
 ### Intermediate containers
 
-Those containers are here to group or layout other widgets together. They only impact the visual organisation of other widgets. They could also be swapped from each other or removed altogether. In such case, they should pass their own input to the inner shards and return the output of those same inner shards.
+Those containers are here to group or layout other widgets together. They impact the visual organisation of other widgets.
 
 E.g. `(UI.Group)`, `(UI.Scope)`, `(UI.Horizontal)`, `(UI.Vertical)`, `(UI.Grid)`, `(UI.Columns)`
 
-Remarks: `(UI.BottomPanel)`, `(UI.CentralPanel)`, `(UI.LeftPanel)`, `(UI.RightPanel)` and `(UI.TopPanel)` can also be placed into other panels or within a window. For that reason, they can also be considered "intermediate containers" and do return the output from their inner shards in such case.
+Remarks: `(UI.BottomPanel)`, `(UI.CentralPanel)`, `(UI.LeftPanel)`, `(UI.RightPanel)` and `(UI.TopPanel)` can also be placed into other panels or within a window. For that reason, they can also be considered "intermediate containers".
 
 ```clj
 1 (Math.Add 2)
 (UI.Horizontal
- (-> ;; input here is the result of 1 + 2
+ (-> ;; input here is the result of 1 + 2 (i.e. 3)
      (| "Result" (UI.Label))
      ;; label displays the input but doesn't consume it
      (UI.Label)
      ;; still the same input here
-     (Log)
-     ;; a different value
-     42))
-;; input is now 42
-(Log)
+     (Math.Multiply 2)
+     (Log) ;; 6
+ ))
+;; horizontal passed through its input
+(Log) ;; 3
 ```
 
 ### Actionable widgets

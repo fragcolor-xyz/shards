@@ -146,10 +146,11 @@ impl Shard for ScrollArea {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      self.contents.compose(&data)
-    } else {
-      Ok(data.inputType)
+      self.contents.compose(&data)?;
     }
+
+    // Always passthrough the input
+    Ok(data.inputType)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -187,7 +188,10 @@ impl Shard for ScrollArea {
       .show(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })
-      .inner
+      .inner?;
+
+      // Always passthrough the input
+      Ok(*input)
     } else {
       Err("No UI parent")
     }
