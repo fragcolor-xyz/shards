@@ -561,26 +561,14 @@ A `Float4` type value looks like this: `(Float4 -8.84 38.2 4.7 0.4)`.
 
 ### Bytes
 
-Type `Bytes` represents the current memory address of the raw bytes value of the passed data. This type also has a lower case alias `bytes`.
+Type `Bytes` represents binary data. This type also has a lower case alias `bytes`.
 
-The shard [`(ToBytes)`](https://docs.fragcolor.xyz/shards/General/ToBytes/) extracts and returns the current memory address of the passed input data, as its output.
+A byte is made up of 8 bits (for example, `10111010`) and a `Bytes` type is an array of such bytes: `[11110001 10110111 10000111]`
 
-!!! note
-    Since this is a memory address, it will change everytime you invoke these shards.
+??? note "Bits and Bytes"
+    Bits are how data is stored in a computer at the level of ectrical circuits. A bit can have only two values (1 or 0, representing the circuit is on or off) - hence the name binary data. A group of eight bits make a byte: `11111111`, `10101010`, etc. Since a bit can have only two values, a Byte can represent a total of 256 numbers (2^8): 0 to 255.
 
-=== "Code"
-
-    ```clojure linenums="1"
-    (Bytes "string") (Log)  ;; => current memory address of the "string" data bytes
-    123 (ToBytes) (Log)     ;; => current memory address of the number 123 data bytes
-    ```
-
-=== "Output"
-
-    ```
-    [info] [2022-07-26 17:12:27.878] [T-7536] [logging.cpp::55] [mywire] Bytes: 0x1608eefb9b0 size: 6
-    [info] [2022-07-26 17:12:27.889] [T-7536] [logging.cpp::55] [mywire] Bytes: 0x1608ef78a00 size: 9
-    ```
+Shards like [`(ToBytes)`](https://docs.fragcolor.xyz/shards/General/ToBytes/),  [`(BytesToString)`](https://docs.fragcolor.xyz/shards/General/BytesToString/), [`(BytesToInts)`](https://docs.fragcolor.xyz/shards/General/BytesToInts/), etc. all use the type `Bytes` either for their input or their output.
 
 ### Color
 
@@ -695,7 +683,7 @@ Also called a vector. Looks exactly like the `Seq` type, but its items are acces
 
 Type `Table` is a collection of key/value pairs.
 
-Also called map, data dictionary, and associative array. An example of a `Table` type would be: `{:key1 "Hello" :key2 "World"}`.
+Also called map, data dictionary, or associative array. An example of a `Table` type would be: `{:key1 "Hello" :key2 "World"}`.
 
 === "Code"
 
