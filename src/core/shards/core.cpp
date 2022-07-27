@@ -1243,18 +1243,22 @@ struct Replace {
 };
 
 struct Reverse {
-  static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType}};
+  static inline Types inTypes{{CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
 
   static SHTypesInfo inputTypes() { return inTypes; }
   static SHTypesInfo outputTypes() { return inTypes; }
 
   std::string _stringOutput;
   OwnedVar _vectorOutput;
+  std::vector<uint8_t> _bytesOutput;
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.inputType.basicType == String) {
       OVERRIDE_ACTIVATE(data, activateString);
       return CoreInfo::StringType;
+    } else if (data.inputType.basicType == Bytes) {
+      OVERRIDE_ACTIVATE(data, activateBytes);
+      return CoreInfo::BytesType;
     } else {
       // this should be only sequence
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -1275,6 +1279,12 @@ struct Reverse {
     _stringOutput.assign(source);
     std::reverse(_stringOutput.begin(), _stringOutput.end());
     return Var(_stringOutput);
+  }
+
+  SHVar activateBytes(SHContext *context, const SHVar &input) {
+    _bytesOutput.assign(input.payload.bytesValue, input.payload.bytesValue + input.payload.bytesSize);
+    std::reverse(_bytesOutput.begin(), _bytesOutput.end());
+    return Var(_bytesOutput);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }

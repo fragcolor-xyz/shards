@@ -219,7 +219,11 @@
 
   .assoc-test-seq (Reverse) (Assert.Is [3 22 1] true)
   (Log "Reversed")
-  "Hello World" (Reverse) (Assert.Is "dlroW olleH" true) 
+  "Hello World" (Reverse) (Assert.Is "dlroW olleH" true)
+  (Log "Reversed")
+
+  "Hello World" (StringToBytes) (Reverse) (BytesToString)
+  (Assert.Is "dlroW olleH" true)
   (Log "Reversed")
 
   {"x" 1 "y" 2 "z" 3} = .assoc-test-table
