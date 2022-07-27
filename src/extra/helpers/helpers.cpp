@@ -103,12 +103,15 @@ struct HelperContextShard : public gfx::BaseConsumer {
 
     gfx::Context &gfxContext = getContext();
     gfx::MainWindowGlobals &mainWindowGlobals = getMainWindowGlobals();
+    gfx::Window& window = getWindow();
     int2 outputSize = gfxContext.getMainOutputSize();
 
     handleGizmoInputEvents(mainWindowGlobals.events);
 
+    float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
+
     gfx::gizmos::InputState gizmoInput;
-    gizmoInput.cursorPosition = _cursorPosition;
+    gizmoInput.cursorPosition = float2(_cursorPosition) * drawableScale;
     gizmoInput.pressed = _mouseButtonState;
     gizmoInput.viewSize = outputSize;
 
