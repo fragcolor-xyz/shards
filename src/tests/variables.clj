@@ -217,6 +217,11 @@
   [1 22] (Assoc .assoc-test-seq)
   .assoc-test-seq (Assert.Is [1 22 3] true)
 
+  .assoc-test-seq (Reverse) (Assert.Is [3 22 1] true)
+  (Log "Reversed")
+  "Hello World" (Reverse) (Assert.Is "dlroW olleH" true) 
+  (Log "Reversed")
+
   {"x" 1 "y" 2 "z" 3} = .assoc-test-table
   ["z" 33] (Assoc .assoc-test-table)
   .assoc-test-table (Assert.Is {"x" 1 "y" 2 "z" 33} true)
