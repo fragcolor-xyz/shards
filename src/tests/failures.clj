@@ -92,5 +92,10 @@
   4 (Push .table :Key "k" :Clear false) ;; whether :Clear is explicitly stated doesn't seem to matter
   .table (Log))
 
-(schedule Root table-push-mix)
+(defwire wrap
+  table-push-mix (ToBytes) = .bad-wire
+  .bad-wire (FromBytes) (ExpectWire) = .bad-loaded-wire
+  (WireRunner .bad-loaded-wire))
+
+(schedule Root wrap)
 (run Root 0.1)
