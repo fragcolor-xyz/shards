@@ -10,6 +10,7 @@ Input field is ignored and the output of this shard is the element which was pop
     - [`PopFront`](../PopFront)
     - [`Drop`](../Drop)
     - [`DropFront`](../DropFront)
+    - [`AppendTo`](../AppendTo)
     - [`Clear`](../Clear)
     - [`Remove`](../Remove)
     - [`Erase`](../Erase)

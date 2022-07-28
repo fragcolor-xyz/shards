@@ -10,6 +10,7 @@ Any input to this shard is ignored and instead passed through as its output.
     - [`DropFront`](../DropFront)
     - [`Pop`](../Pop)
     - [`PopFront`](../PopFront)
+    - [`AppendTo`](../AppendTo)
     - [`Clear`](../Clear)
     - [`Remove`](../Remove)
     - [`Erase`](../Erase)

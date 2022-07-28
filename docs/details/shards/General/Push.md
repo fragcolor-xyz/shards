@@ -23,5 +23,7 @@ The input to this shard is the new update value that is to be pushed into the se
 !!! note "See also"
     - [`Set`](../Set)
     - [`Update`](../Update)
+    - [`AppendTo`](../AppendTo)
+    - [`PrependTo`](../PrependTo)
     - [`Sequence`](../Sequence)
     - [`Table`](../Table)

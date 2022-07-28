@@ -24,3 +24,5 @@ The input to this shard is used as the value for the variable being created and 
     - [`Const`](../Const)
     - [`Sequence`](../Sequence)
     - [`Table`](../Table)
+    - [`AppendTo`](../AppendTo)
+    - [`PrependTo`](../PrependTo)

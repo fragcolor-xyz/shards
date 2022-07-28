@@ -16,5 +16,7 @@ The input to this shard is the update value to be applied to the mutable variabl
 !!! note "See also"
     - [`Set`](../Set)
     - [`Push`](../Push)
+    - [`AppendTo`](../AppendTo)
+    - [`PrependTo`](../PrependTo)
     - [`Sequence`](../Sequence)
     - [`Table`](../Table)
