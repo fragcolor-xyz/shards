@@ -1,5 +1,5 @@
 #include "gizmo_input.hpp"
-#include <limits.h>
+#include <float.h>
 
 namespace gfx {
 namespace gizmos {
