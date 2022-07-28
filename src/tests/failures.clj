@@ -86,3 +86,11 @@
 
 (schedule Root d)
 (run Root 0.1)
+
+(defwire table-push-mix
+  {:k [1 2 3]} >= .table
+  4 (Push .table :Key "k" :Clear false) ;; whether :Clear is explicitly stated doesn't seem to matter
+  .table (Log))
+
+(schedule Root table-push-mix)
+(run Root 0.1)
