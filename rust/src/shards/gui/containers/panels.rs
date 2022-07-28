@@ -127,6 +127,7 @@ macro_rules! impl_panel {
           isProtected: true, // don't allow to be used in code/wires
           isTableEntry: false,
           global: false,
+          isPushTable: false,
         };
         shared.push(ui_info);
         // update shared
@@ -314,6 +315,7 @@ impl Shard for CentralPanel {
       isProtected: true, // don't allow to be used in code/wires
       isTableEntry: false,
       global: false,
+      isPushTable: false,
     };
     shared.push(ui_info);
     // update shared
