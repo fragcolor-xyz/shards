@@ -184,6 +184,11 @@
   ; Seq of Floats Seqs and so on
   (Sequence .sff :Types [Type.Float])
 
+  {:k [1 2 3]} >= .table
+  4 (Push .table :Key "k") ;; whether :Clear is explicitly stated doesn't seem to matter
+  .table (Log)
+  (Assert.Is {:k [1 2 3 4]} true)
+
   (Repeat
    (->
     0.1 >> .sf
