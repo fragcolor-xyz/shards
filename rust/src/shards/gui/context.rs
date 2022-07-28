@@ -151,6 +151,7 @@ impl Shard for EguiContext {
       isProtected: true, // don't allow to be used in code/wires
       isTableEntry: false,
       global: false,
+      isPushTable: false,
     };
     shared.push(ctx_info);
     // update shared

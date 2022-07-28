@@ -137,6 +137,7 @@ impl Shard for Window {
       isProtected: true, // don't allow to be used in code/wires
       isTableEntry: false,
       global: false,
+      isPushTable: false,
     };
     shared.push(ui_info);
     // update shared

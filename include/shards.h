@@ -517,6 +517,10 @@ struct SHExposedTypeInfo {
 
   // If the exposed variable should be available to all wires in the mesh
   SHBool global;
+
+  // If this variable is a table that is populated using Push blocks
+  // Which makes some assumptions and optimizations for keys caching
+  SHBool isPushTable;
 };
 
 struct SHFlow {

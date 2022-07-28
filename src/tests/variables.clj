@@ -116,8 +116,10 @@
   (Assert.Is 6 true)
   (Log)
 
-  (Const ["a" "b"])
-  (Set "d" "k1")
+  "a"
+  (Push "d" "k1")
+  "b"
+  (Push "d" "k1")
   "c"
   (Push "d" "k1")
   (Get "d" "k1")
@@ -127,7 +129,6 @@
   (Get .d)
   (Push .nested)
 
-  (Sequence .d "k2")
   1111
   (Push .d "k2")
   (Get .d)
@@ -184,6 +185,11 @@
   ; Seq of Floats Seqs and so on
   (Sequence .sff :Types [Type.Float])
 
+  [1 2 3] >= .mut-seq
+  4 (Push .mut-seq)
+  .mut-seq (Log)
+  (Assert.Is [1 2 3 4] true)
+  
   (Repeat
    (->
     0.1 >> .sf
