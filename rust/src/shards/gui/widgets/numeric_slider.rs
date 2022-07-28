@@ -13,6 +13,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
@@ -86,12 +87,24 @@ macro_rules! impl_ui_slider {
         $name_str
       }
 
+      fn help(&mut self) -> OptionalString {
+        OptionalString(shccstr!("A numeric slider."))
+      }
+
       fn inputTypes(&mut self) -> &Types {
         &NONE_TYPES
       }
 
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The value is ignored."))
+      }
+
       fn outputTypes(&mut self) -> &Types {
         &$output_type
+      }
+
+      fn outputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The value produced."))
       }
 
       fn parameters(&mut self) -> Option<&Parameters> {

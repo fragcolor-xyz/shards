@@ -9,6 +9,7 @@ use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Types;
 use crate::types::Var;
@@ -44,12 +45,26 @@ impl Shard for Separator {
     "UI.Separator"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "A visual separator. A horizontal or vertical line (depending on the layout)."
+    ))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The value is ignored."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {

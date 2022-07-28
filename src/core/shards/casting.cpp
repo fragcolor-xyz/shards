@@ -328,6 +328,8 @@ template <SHType ET> struct ExpectX {
   RUNTIME_SHARD_activate(Expect##_name_);              \
   RUNTIME_SHARD_END(Expect##_name_);
 
+EXPECT_SHARD(None, None);
+EXPECT_SHARD(Any, SHType::Any);
 EXPECT_SHARD(Float, Float);
 EXPECT_SHARD(Float2, Float2);
 EXPECT_SHARD(Float3, Float3);
@@ -558,6 +560,8 @@ void registerCastingShards() {
   REGISTER_CORE_SHARD(BitSwap32);
   REGISTER_CORE_SHARD(BitSwap64);
 
+  REGISTER_CORE_SHARD(ExpectNone);
+  REGISTER_CORE_SHARD(ExpectAny);
   REGISTER_CORE_SHARD(ExpectInt);
   REGISTER_CORE_SHARD(ExpectInt2);
   REGISTER_CORE_SHARD(ExpectInt3);

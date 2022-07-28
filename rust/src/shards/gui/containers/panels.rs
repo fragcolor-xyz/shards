@@ -69,12 +69,26 @@ macro_rules! impl_panel {
         $name_str
       }
 
+      fn help(&mut self) -> OptionalString {
+        OptionalString(shccstr!("Layout UI elements into the panel."))
+      }
+
       fn inputTypes(&mut self) -> &Types {
         &ANY_TYPES
       }
 
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!(
+          "The value that will be passed to the Contents shards of the panel."
+        ))
+      }
+
       fn outputTypes(&mut self) -> &Types {
         &ANY_TYPES
+      }
+
+      fn outputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The output of this shard will be its input."))
       }
 
       fn parameters(&mut self) -> Option<&Parameters> {
@@ -256,8 +270,18 @@ impl Shard for CentralPanel {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the panel."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

@@ -9,6 +9,7 @@ use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Types;
@@ -56,12 +57,24 @@ impl Shard for Hyperlink {
     "UI.Hyperlink"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A clickable hyperlink."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &STRING_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The URL."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &STRING_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

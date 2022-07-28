@@ -9,6 +9,7 @@ use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Types;
@@ -56,12 +57,26 @@ impl Shard for ProgressBar {
     "UI.ProgressBar"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A progress bar with an optional overlay text."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &FLOAT_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The progress amount in the [0.0, 1.0] range, where 1 means completed."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &FLOAT_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

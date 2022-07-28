@@ -12,6 +12,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
@@ -76,12 +77,28 @@ impl Shard for Window {
     "UI.Window"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Creates a floating window which can be dragged, closed, collapsed, resized."
+    ))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the rendered window."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

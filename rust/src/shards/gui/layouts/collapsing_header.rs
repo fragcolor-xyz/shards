@@ -10,6 +10,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::ShardsVar;
@@ -77,12 +78,28 @@ impl Shard for CollapsingHeader {
     "UI.Collapsing"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "A header which can be collapsed/expanded, revealing a contained UI region."
+    ))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the collapsing header."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -166,13 +183,13 @@ impl Shard for CollapsingHeader {
       let heading: &str = self.heading.get().try_into()?;
       let defaultOpen: bool = self.defaultOpen.get().try_into()?;
       let header = egui::CollapsingHeader::new(heading).default_open(defaultOpen);
-      if let Some(res) = header
+      if let Some(result) = header
         .show(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
         .body_returned
       {
-        match res {
+        match result {
           Err(err) => Err(err),
           Ok(_) => Ok(*input),
         }

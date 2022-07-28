@@ -13,6 +13,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Type;
@@ -83,12 +84,28 @@ impl Shard for RadioButton {
     "UI.RadioButton"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "A radio button for selecting a value amongst multiple choices."
+    ))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &NONE_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The value is ignored."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &BOOL_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Indicates whether the radio button was clicked during this frame."
+    ))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

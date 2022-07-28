@@ -10,6 +10,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::ShardsVar;
@@ -70,12 +71,26 @@ impl Shard for Horizontal {
     "UI.Horizontal"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Layout the contents horizontally."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the layout."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

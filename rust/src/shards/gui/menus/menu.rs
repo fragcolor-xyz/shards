@@ -13,6 +13,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::ShardsVar;
@@ -152,12 +153,31 @@ impl Shard for Menu {
     "UI.Menu"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Creates a menu button that when clicked will show the given menu. \r\n
+      If called from within a menu this will instead create a button for a sub-menu."
+    ))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the menu."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &BOOL_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "A boolean value indicating whether the menu is active."
+    ))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -235,18 +255,17 @@ impl Shard for Menu {
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let title: &str = self.title.get().try_into()?;
-      if let Some(output) = ui
+      if let Some(result) = ui
         .menu_button(title, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
         .inner
       {
-        if output.is_err() {
+        match result {
           // propagate the error
-          output
-        } else {
+          Err(err) => Err(err),
           // menu is active
-          Ok(true.into())
+          Ok(_) => Ok(true.into()),
         }
       } else {
         // menu is inactive
@@ -289,12 +308,28 @@ impl Shard for MenuBar {
     "UI.MenuBar"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The menu bar goes well in a `UI.TopPanel`."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the menu bar."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &BOOL_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "A boolean value indicating whether the menu bar is active."
+    ))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -367,16 +402,15 @@ impl Shard for MenuBar {
     }
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let output = egui::menu::bar(ui, |ui| {
+      match egui::menu::bar(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })
-      .inner;
-      if output.is_err() {
+      .inner
+      {
         // propagate the error
-        output
-      } else {
+        Err(err) => Err(err),
         // menubar is active
-        Ok(true.into())
+        Ok(_) => Ok(true.into()),
       }
     } else {
       Err("No UI parent")

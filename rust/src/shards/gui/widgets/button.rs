@@ -12,6 +12,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::ShardsVar;
@@ -19,8 +20,8 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::WireState;
+use crate::types::ANY_TYPES;
 use crate::types::BOOL_TYPES;
-use crate::types::NONE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
 
@@ -80,12 +81,28 @@ impl Shard for Button {
     "UI.Button"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Clickable button with text."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Action shards of the button."
+    ))
   }
 
   fn outputTypes(&mut self) -> &Types {
     &BOOL_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Indicates whether the button was clicked during this frame."
+    ))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
