@@ -70,7 +70,7 @@ struct BaseConsumer {
     }
 
     if (!variableFound)
-      throw SHComposeError("Context required, but not found");
+      throw shards::ComposeError("Context required, but not found");
   }
 
   void warmup(SHContext *context) { baseConsumerWarmup(context); }
