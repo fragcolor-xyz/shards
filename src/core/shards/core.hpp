@@ -680,6 +680,10 @@ struct SetBase : public VariableBase {
                      "Update to avoid this warning, variable: {}",
                      _name);
         }
+        if (reference.isPushTable) {
+          SHLOG_ERROR("Error with variable: {}", _name);
+          throw ComposeError("Set/Ref/Update, attempted to write a table variable that is filled using Push shards.");
+        }
       }
     }
   }
@@ -712,7 +716,7 @@ struct SetBase : public VariableBase {
       auto &kv = _key.get();
       SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
-      // Clone will try to recyle memory and such
+      // Clone will try to recycle memory and such
       cloneVar(*vptr, input);
 
       // use fast cell from now
@@ -720,7 +724,7 @@ struct SetBase : public VariableBase {
       if (!_key.isVariable())
         _cell = vptr;
     } else {
-      // Clone will try to recyle memory and such
+      // Clone will try to recycle memory and such
       cloneVar(*_target, input);
 
       // use fast cell from now
@@ -1342,7 +1346,7 @@ struct Push : public SeqBase {
       }
     };
 
-    const auto updateTableInfo = [this, &data] {
+    const auto updateTableInfo = [this, &data](bool firstPush) {
       _tableInfo.basicType = Table;
       if (_tableInfo.table.types.elements) {
         shards::arrayFree(_tableInfo.table.types);
@@ -1359,24 +1363,28 @@ struct Push : public SeqBase {
         shards::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
       }
       if (_global) {
-        _exposedInfo =
-            ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."),
+                                                               SHTypeInfo(_tableInfo), true, false, firstPush));
       } else {
-        _exposedInfo =
-            ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true, false, firstPush));
       }
     };
 
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
+          if (!data.shared.elements[i].isPushTable) {
+            SHLOG_ERROR("Table {} is already assigned using Set/Update/Ref.", _name.c_str());
+            throw ComposeError("Table is already assigned using Set/Update/Ref.");
+          }
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
             SHVar kv = _key;
             if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == Seq) {
-              updateTableInfo();
+              updateTableInfo(false);
               return data.inputType; // found lets escape
             }
           }
@@ -1384,7 +1392,7 @@ struct Push : public SeqBase {
       }
       // not found
       // implicitly initialize anyway
-      updateTableInfo();
+      updateTableInfo(true);
       _firstPush = true;
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -1837,7 +1845,8 @@ struct TableDecl : public VariableBase {
       }
     } else {
       for (uint32_t i = 0; data.shared.len > i; i++) {
-        if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
+        auto &reference = data.shared.elements[i];
+        if (strcmp(reference.name, _name.c_str()) == 0 && data.shared.elements[i].exposedType.table.types.elements) {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
