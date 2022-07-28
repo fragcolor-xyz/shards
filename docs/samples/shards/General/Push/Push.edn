@@ -41,3 +41,11 @@
 "Global2" (Push .seq :Global true)  ;; push new value into  same-name global sequence variable
 (Get .seq) (Log)                    ;; get updated local sequence variable => [Local, Local2]
 (Get .seq :Global true) (Log)       ;; get updated global seqeunce variable => [Global, Global2]
+
+;; Updating sequence values in a table not created by `Push`
+{:k1 [1 2 3]} >= .table             ;; table is created using `Set`
+(Get .table "k1") >= .seqvar        ;; target value offloaded into a variable
+4 (Push .seqvar)                    ;; update .seqvar using `Push`
+.seqvar (Log)                       ;; updated .seqvar => [1, 2, 3, 4] 
+{:k1 .seqvar} >= .table             ;; update table value with modified .seqvar                         
+.table (Log)                        ;; table updated => {:key1 [1 2 3 4]}
