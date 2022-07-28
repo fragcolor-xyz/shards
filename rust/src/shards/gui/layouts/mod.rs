@@ -35,6 +35,7 @@ struct ScrollArea {
   contents: ShardsVar,
   horizontal: ParamVar,
   vertical: ParamVar,
+  alwaysShow: ParamVar,
   exposing: ExposedTypes,
 }
 

@@ -180,7 +180,7 @@ impl Shard for CollapsingHeader {
     }
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let heading: &str = self.heading.get().try_into()?;
+      let heading: &str = self.heading.get().try_into().or::<&str>(Ok(""))?;
       let defaultOpen: bool = self.defaultOpen.get().try_into()?;
       let header = egui::CollapsingHeader::new(heading).default_open(defaultOpen);
       if let Some(result) = header

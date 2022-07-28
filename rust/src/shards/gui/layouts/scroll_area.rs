@@ -41,6 +41,12 @@ lazy_static! {
       &BOOL_TYPES[..],
     )
       .into(),
+    (
+      cstr!("AlwaysShow"),
+      cstr!("Always show the enabled scroll bars even if not needed."),
+      &BOOL_TYPES[..],
+    )
+      .into(),
   ];
 }
 
@@ -54,6 +60,7 @@ impl Default for ScrollArea {
       contents: ShardsVar::default(),
       horizontal: ParamVar::new(false.into()),
       vertical: ParamVar::new(true.into()),
+      alwaysShow: ParamVar::new(false.into()),
       exposing: Vec::new(),
     }
   }
@@ -111,6 +118,7 @@ impl Shard for ScrollArea {
       0 => self.contents.set_param(value),
       1 => Ok(self.horizontal.set_param(value)),
       2 => Ok(self.vertical.set_param(value)),
+      3 => Ok(self.alwaysShow.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -120,6 +128,7 @@ impl Shard for ScrollArea {
       0 => self.contents.get_param(),
       1 => self.horizontal.get_param(),
       2 => self.vertical.get_param(),
+      3 => self.alwaysShow.get_param(),
       _ => Var::default(),
     }
   }
@@ -177,11 +186,13 @@ impl Shard for ScrollArea {
     }
     self.horizontal.warmup(ctx);
     self.vertical.warmup(ctx);
+    self.alwaysShow.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.alwaysShow.cleanup();
     self.vertical.cleanup();
     self.horizontal.cleanup();
     if !self.contents.is_empty() {
@@ -202,6 +213,7 @@ impl Shard for ScrollArea {
         self.horizontal.get().try_into()?,
         self.vertical.get().try_into()?,
       ])
+      .always_show_scroll(self.alwaysShow.get().try_into()?)
       .show(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })
