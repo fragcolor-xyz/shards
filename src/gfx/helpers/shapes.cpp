@@ -161,8 +161,8 @@ void ShapeRenderer::addCircle(float3 center, float3 xBase, float3 yBase, float r
   float3 prevDelta;
   for (size_t i = 0; i < resolution; i++) {
     float t = i / float(resolution - 1) * pi2;
-    float tCos = std::cosf(t);
-    float tSin = std::sinf(t);
+    float tCos = std::cos(t);
+    float tSin = std::sin(t);
     float3 pos = center + tCos * xBase * radius + tSin * yBase * radius;
     float3 delta = center + -tSin * xBase + tCos * yBase;
     if (i > 0) {
@@ -236,7 +236,7 @@ void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   uint32_t resolution = 6 + std::max<int32_t>(0, int32_t(thickness) - 4);
   for (uint32_t i = 0; i < resolution; i++) {
     float t = i / float(resolution - 1) * pi2;
-    float2 pos(std::cosf(t), std::sinf(t));
+    float2 pos(std::cos(t), std::sin(t));
     if (i > 0) {
       lineVertices.push_back(LineVertex{
           .position = UNPACK3(center),
