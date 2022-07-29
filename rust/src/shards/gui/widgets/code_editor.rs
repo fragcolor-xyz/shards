@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::TextInput;
+use super::CodeEditor;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::ImmutableVar;
 use crate::shards::gui::MutableVar;
+use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_VAR_SLICE;
 use crate::shardsc;
@@ -27,23 +28,15 @@ use std::cmp::Ordering;
 use std::ffi::CStr;
 
 lazy_static! {
-  static ref TEXTINPUT_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Variable"),
-      cstr!("The variable that holds the input value."),
-      STRING_VAR_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Multiline"),
-      cstr!("Support multiple lines."),
-      BOOL_TYPES_SLICE,
-    )
-      .into(),
-  ];
+  static ref CODEEDITOR_PARAMETERS: Parameters = vec![(
+    cstr!("Variable"),
+    cstr!("The variable that holds the input value."),
+    STRING_VAR_SLICE,
+  )
+    .into(),];
 }
 
-impl Default for TextInput {
+impl Default for CodeEditor {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
@@ -51,7 +44,6 @@ impl Default for TextInput {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
-      multiline: ParamVar::new(false.into()),
       exposing: Vec::new(),
       should_expose: false,
       mutable_text: true,
@@ -59,27 +51,27 @@ impl Default for TextInput {
   }
 }
 
-impl Shard for TextInput {
+impl Shard for CodeEditor {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.TextInput")
+    cstr!("UI.CodeEditor")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.TextInput-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.CodeEditor-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.TextInput"
+    "UI.CodeEditor"
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("A widget where text can be entered."))
+    OptionalString(shccstr!("TODO"))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -87,7 +79,7 @@ impl Shard for TextInput {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    OptionalString(shccstr!("TODO"))
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -95,17 +87,16 @@ impl Shard for TextInput {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value produced when changed."))
+    OptionalString(shccstr!("TODO"))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&TEXTINPUT_PARAMETERS)
+    Some(&CODEEDITOR_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.variable.set_param(value)),
-      1 => Ok(self.multiline.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -113,7 +104,6 @@ impl Shard for TextInput {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
-      1 => self.multiline.get_param(),
       _ => Var::default(),
     }
   }
@@ -134,7 +124,7 @@ impl Shard for TextInput {
             CStr::from_ptr(self.variable.get_name()),
           )
         };
-        if CStr::cmp(a, b) == Ordering::Equal {
+        if CStr::cmp(&a, &b) == Ordering::Equal {
           self.should_expose = false;
           self.mutable_text = var.isMutable;
           if var.exposedType.basicType != shardsc::SHType_String {
@@ -172,7 +162,13 @@ impl Shard for TextInput {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    let exp_info = ExposedInfo {
+      exposedType: EGUI_UI_SEQ_TYPE,
+      name: self.parents.get_name(),
+      help: cstr!("The parent UI objects.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
 
     Some(&self.requiring)
   }
@@ -180,7 +176,6 @@ impl Shard for TextInput {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
-    self.multiline.warmup(ctx);
 
     if self.should_expose {
       self.variable.get_mut().valueType = common_type::string.basicType;
@@ -190,7 +185,6 @@ impl Shard for TextInput {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.multiline.cleanup();
     self.variable.cleanup();
     self.parents.cleanup();
 
@@ -208,12 +202,11 @@ impl Shard for TextInput {
         immutable = ImmutableVar(self.variable.get());
         &mut immutable
       };
-      let text_edit = if self.multiline.get().try_into()? {
-        egui::TextEdit::multiline(text)
-      } else {
-        egui::TextEdit::singleline(text)
-      };
-      let response = ui.add(text_edit);
+      let code_editor = egui::TextEdit::multiline(text)
+        .code_editor()
+        .desired_rows(10)
+        .desired_width(f32::INFINITY);
+      let response = ui.add(code_editor);
 
       if response.changed() || response.lost_focus() {
         Ok(*self.variable.get())
