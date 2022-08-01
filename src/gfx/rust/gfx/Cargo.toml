@@ -3,8 +3,14 @@ name = "gfx"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[features]
+default = []
+
 [dependencies]
-wgpu-native = { path = "../wgpu-native" }
+wgpu-native = { path = "../wgpu-native", optional = true }
 
 [patch.crates-io]
 inplace_it = { git = "https://github.com/NotIntMan/inplace_it.git", rev = "3f479a3" } # Until inplace_it gets updated to 0.3.4 in wgpu-hal

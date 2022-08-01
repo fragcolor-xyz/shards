@@ -10,6 +10,7 @@ add_rust_library(
   NAME gfx
   PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/gfx
   DEPENDS ${EXTRA_SOURCES}
+  FEATURES ${FEATURES}
 )
 
 if(WIN32)
