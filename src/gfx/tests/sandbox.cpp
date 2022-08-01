@@ -332,7 +332,7 @@ struct App {
         context.resizeMainOutputConditional(window.getDrawableSize());
 
         gizmoInputState.pressed = (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
-        gizmoInputState.cursorPosition = mousePos;
+        gizmoInputState.cursorPosition = float2(mousePos);
         gizmoInputState.viewSize = window.getSize();
 
         if (context.beginFrame()) {
