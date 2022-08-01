@@ -17,10 +17,28 @@
 .sequence3 (Log ".sequence3")       ;; => .sequence3: [100]
 
 ;; update a mutable table's existing key-value (push elements in value sequence)
-["abc"] (Set :Name "table" :Key "key1")
+"abc" (Push :Name .table :Key "key1")
 .table (Log ".table")               ;; => .table: {key1: [abc]}
 "def" (Push :Name .table :Key "key1")
 .table (Log ".table")               ;; => .table: {key1: [abc, def]}
+
+;; create and update local/global sequence variables
+"Local" (Push .seq)                 ;; create local sequence variable with first push
+"Global" (Push .seq :Global true)   ;; create same-name global sequence variable with first push
+(Get .seq) (Log)                    ;; get local variable => [Local]
+(Get .seq :Global true) (Log)       ;; get same-name updated global variable => [Global]
+"Local2" (Push .seq)                ;; push new value into local sequence variable
+"Global2" (Push .seq :Global true)  ;; push new value into  same-name global sequence variable
+(Get .seq) (Log)                    ;; get updated local sequence variable => [Local, Local2]
+(Get .seq :Global true) (Log)       ;; get updated global sequence variable => [Global, Global2]
+
+;; Updating sequence values in a table not created by `Push`
+{:k1 [1 2 3]} >= .tbl               ;; table is created using `Set`
+(Get .tbl "k1") >= .seqvar          ;; target value offloaded into a variable
+4 (Push .seqvar)                    ;; update .seqvar using `Push`
+.seqvar (Log)                       ;; updated .seqvar => [1, 2, 3, 4] 
+{:k1 .seqvar} >= .tbl               ;; update table value with modified .seqvar                         
+.tbl (Log)                          ;; table updated => {:k1 [1 2 3 4]}
 
 ;; Using a `Push` alias
 
@@ -31,21 +49,3 @@
 ;; `>>!` is alias for `(Push :Clear false)`: create sequence with first push
 "World" >>! .sequence5
 .sequence5 (Log ".sequence5")       ;; => .sequence5: [World]
-
-;; create and update local/global sequence variables
-"Local" (Push .seq)                 ;; create local sequence variable with first push
-"Global" (Push .seq :Global true)   ;; create same-name global sequence variable with first push
-(Get .seq) (Log)                    ;; get local variable => [Local]
-(Get .seq :Global true) (Log)       ;; get same-name updated global variable => [Global]
-"Local2" (Push .seq)                ;; push new value into local sequence variable
-"Global2" (Push .seq :Global true)  ;; push new value into  same-name global sequence variable
-(Get .seq) (Log)                    ;; get updated local sequence variable => [Local, Local2]
-(Get .seq :Global true) (Log)       ;; get updated global seqeunce variable => [Global, Global2]
-
-;; Updating sequence values in a table not created by `Push`
-{:k1 [1 2 3]} >= .table             ;; table is created using `Set`
-(Get .table "k1") >= .seqvar        ;; target value offloaded into a variable
-4 (Push .seqvar)                    ;; update .seqvar using `Push`
-.seqvar (Log)                       ;; updated .seqvar => [1, 2, 3, 4] 
-{:k1 .seqvar} >= .table             ;; update table value with modified .seqvar                         
-.table (Log)                        ;; table updated => {:key1 [1 2 3 4]}
