@@ -216,6 +216,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
                     let str = CStr::from_ptr(event.str_).to_str()?.to_owned();
                     Some(Event::Paste(str))
                 }
+                egui_InputEventType_PointerGone => Some(Event::PointerGone),
                 _ => {
                     panic!("Invalid input event type")
                 }
@@ -275,27 +276,6 @@ impl InputTranslator {
         self.egui_translator
     }
 
-    pub fn translate(
-        &mut self,
-        window: *mut gfx_Window,
-        sdl_events: *const u8,
-        time: f64,
-        delta_time: f32,
-        scaling_factor: f32,
-    ) -> Result<egui::RawInput, TranslationError> {
-        unsafe {
-            let native_raw_input = &*gfx_EguiInputTranslator_translateFromInputEvents(
-                self.egui_translator,
-                sdl_events,
-                window,
-                time,
-                delta_time,
-                scaling_factor,
-            );
-            translate_raw_input(native_raw_input)
-        }
-    }
-
     pub fn update_text_cursor_position(
         &mut self,
         window: *mut gfx_Window,
@@ -321,7 +301,7 @@ impl InputTranslator {
     }
 
     pub fn copy_text(&mut self, text: &String) {
-        unsafe {
+    unsafe {
             if let Ok(c_str) = CString::new(text.to_owned()) {
                 gfx_EguiInputTranslator_copyText(self.egui_translator, c_str.as_ptr());
             }

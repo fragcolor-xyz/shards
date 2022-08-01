@@ -126,7 +126,7 @@ fn convert_texture_set(
     })
 }
 
-fn make_native_full_output(
+pub fn make_native_full_output(
     ctx: &Context,
     input: egui::FullOutput,
     draw_scale: f32,
@@ -219,7 +219,7 @@ impl Renderer {
     ) -> Result<(), &str> {
         unsafe {
             let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
-            gfx_EguiRenderer_render(self.egui_renderer, &native_egui_output.full_output, queue);
+            gfx_EguiRenderer_renderNoTransform(self.egui_renderer, &native_egui_output.full_output, queue);
             Ok(())
         }
     }

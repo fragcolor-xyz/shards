@@ -25,7 +25,6 @@ add_library(gfx
   shader/blocks.cpp
   shader/types.cpp
   rust_interop.cpp
-  window_mapping.cpp
   view_stack.cpp
   render_target.cpp
   # cache_data.cpp
@@ -39,7 +38,7 @@ target_include_directories(gfx
 )
 target_link_libraries(gfx
   tinygltf
-  magic_enum nameof
+  magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem
   shards-logging
 )

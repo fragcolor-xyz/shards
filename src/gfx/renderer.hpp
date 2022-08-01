@@ -6,7 +6,6 @@
 #include "linalg.hpp"
 #include "pipeline_step.hpp"
 #include "view_stack.hpp"
-#include "window_mapping.hpp"
 #include <functional>
 #include <memory>
 
@@ -22,7 +21,6 @@ struct Renderer {
   /// <div rustbindgen hide></div>
   struct MainOutput {
     TexturePtr texture;
-    std::optional<WindowMapping> windowMapping;
   };
 
 public:

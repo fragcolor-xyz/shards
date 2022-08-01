@@ -4,19 +4,23 @@
 #include "../feature.hpp"
 #include "../pipeline_step.hpp"
 #include "../shader/blocks.hpp"
+#include "../features/transform.hpp"
 
 namespace gfx {
 struct EguiRenderPass {
   static PipelineStepPtr createPipelineStep(DrawQueuePtr queue) {
     auto drawableStep = makePipelineStep(RenderDrawablesStep{
         .drawQueue = queue,
-        .features = std::vector<FeaturePtr>{createFeature()},
+        .features =
+            std::vector<FeaturePtr>{
+                createFeature(true),
+            },
         .sortMode = SortMode::Queue,
     });
     return drawableStep;
   }
 
-  static FeaturePtr createFeature() {
+  static FeaturePtr createFeature(bool writeUiPosition) {
     using namespace shader::blocks;
     auto uiFeature = std::make_shared<Feature>();
     auto code = makeCompoundBlock();
@@ -29,12 +33,16 @@ fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
   let higher = pow((srgb_bytes + vec3<f32>(14.025)) / vec3<f32>(269.025), vec3<f32>(2.4));
   return select(higher, lower, cutoff);
 })"));
-    code->appendLine("var vp = ", ReadBuffer("viewport", shader::FieldTypes::Float4, "view"));
-    code->appendLine("var p1 = ", ReadInput("position"), " * (1.0 / vp.zw)");
-    code->appendLine("p1.y = -p1.y;");
-    code->appendLine("p1 = p1 * 2.0 + vec2<f32>(-1.0, 1.0)");
-    code->appendLine("var p4 = vec4<f32>(p1.xy, 0.0, 1.0)");
-    code->appendLine(WriteOutput("position", shader::FieldTypes::Float4, "p4"));
+
+    if (writeUiPosition) {
+      code->appendLine("var vp = ", ReadBuffer("viewport", shader::FieldTypes::Float4, "view"));
+      code->appendLine("var p1 = ", ReadInput("position"), " * (1.0 / vp.zw)");
+      code->appendLine("p1.y = -p1.y;");
+      code->appendLine("p1 = p1 * 2.0 + vec2<f32>(-1.0, 1.0)");
+      code->appendLine("var p4 = vec4<f32>(p1.xy, 0.0, 1.0)");
+      code->appendLine(WriteOutput("position", shader::FieldTypes::Float4, "p4"));
+    }
+
     code->appendLine("var color = ", ReadInput("color"));
     code->appendLine(WriteOutput("color", shader::FieldTypes::Float4, "vec4<f32>(linear_from_srgb(color.xyz), color.a)"));
 

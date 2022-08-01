@@ -49,7 +49,7 @@ public:
   View();
   View(const View &) = delete;
 
-  float4x4 getProjectionMatrix(const int2 &viewSize) const;
+  float4x4 getProjectionMatrix(const float2 &viewSize) const;
 };
 
 } // namespace gfx

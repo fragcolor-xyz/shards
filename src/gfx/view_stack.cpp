@@ -33,7 +33,6 @@ ViewStack::Output ViewStack::getOutput() const {
       result.referenceSize = item.referenceSize.value();
       hasReferenceSize = true;
     }
-    result.windowMapping = item.windowMapping;
   }
 
   if (result.renderTarget && !hasReferenceSize) {
@@ -55,21 +54,4 @@ ViewStack::Output ViewStack::getOutput() const {
   return result;
 }
 
-// Marker used for checking view stack balance
-ViewStack::Marker ViewStack::getMarker() const { return items.size(); }
-
-// Validates check balance compared to marker start
-// throws on unmatched push/pop
-void ViewStack::restoreMarkerChecked(Marker barrier) {
-  size_t numItemsBeforeFixup = items.size();
-
-  // Fixup before throw in case error is handled
-  items.resize(barrier);
-
-  if (numItemsBeforeFixup != barrier) {
-    throw std::runtime_error(fmt::format("View stack imbalance ({} elements, expected {})", numItemsBeforeFixup, barrier));
-  }
-}
-
-void ViewStack::reset() { restoreMarkerChecked(Marker(0)); }
 } // namespace gfx

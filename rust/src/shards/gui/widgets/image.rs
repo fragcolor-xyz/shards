@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use egui::Ui;
+use egui::Vec2;
+
 use super::Image;
 use crate::shard::Shard;
 use crate::shards::gui::util;
@@ -154,6 +157,11 @@ impl Shard for Image {
 }
 
 impl Image {
+  fn get_scale(scale_var: &ParamVar, ui: &Ui) -> Result<egui::Vec2, &'static str> {
+    let scale: (f32, f32) = scale_var.get().try_into()?;
+    Ok(egui::vec2(scale.0, scale.1) / ui.ctx().pixels_per_point())
+  }
+
   fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let shimage: &SHImage = input.try_into()?;
@@ -170,9 +178,8 @@ impl Image {
         self.texture.as_ref().unwrap()
       };
 
-      let scale: (f32, f32) = self.scale.get().try_into()?;
-      let scale: egui::Vec2 = scale.into();
-      ui.image(texture, scale * texture.size_vec2());
+      let scale = Self::get_scale(&self.scale, ui)?;
+      ui.image(texture, texture.size_vec2() * scale);
 
       Ok(*input)
     } else {
@@ -185,14 +192,15 @@ impl Image {
       let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
 
       let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
-      let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
+      let texture_size = {
+        let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
+        egui::vec2(texture_res.x as f32, texture_res.y as f32)
+      };
 
       let textureId = egui::epaint::TextureId::User(ptr);
 
-      let scale: (f32, f32) = self.scale.get().try_into()?;
-      let size =
-        egui::vec2(texture_res.x as f32, texture_res.y as f32) * egui::vec2(scale.0, scale.1);
-      ui.image(textureId, size);
+      let scale = Self::get_scale(&self.scale, ui)?;
+      ui.image(textureId, texture_size * scale);
 
       Ok(*input)
     } else {

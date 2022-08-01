@@ -21,6 +21,7 @@ gfx::Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals)
 gfx::DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var);
 
 gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals);
+gfx::int4 gfx_getViewport(const SHVar &mainWindowGlobals);
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
                                            float scalingFactor);
 }

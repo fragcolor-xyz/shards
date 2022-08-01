@@ -7,6 +7,7 @@
 #include <foundation.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/fwd.hpp>
+#include <input/input_stack.hpp>
 #include <shards.hpp>
 
 namespace gfx {
@@ -23,6 +24,7 @@ struct MainWindowGlobals {
   std::shared_ptr<Renderer> renderer;
   std::shared_ptr<ImGuiRenderer> imgui;
   std::vector<SDL_Event> events;
+  shards::input::InputStack inputStack;
 
   double time;
   float deltaTime;

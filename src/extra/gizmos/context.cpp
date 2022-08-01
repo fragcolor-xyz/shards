@@ -103,7 +103,7 @@ struct GizmosContextShard : public gfx::BaseConsumer {
     gfx::gizmos::InputState gizmoInput;
     gizmoInput.cursorPosition = float2(_cursorPosition) * drawableScale;
     gizmoInput.pressed = _mouseButtonState;
-    gizmoInput.viewSize = outputSize;
+    gizmoInput.viewSize = float2(outputSize);
 
     SHVar _shardsOutput{};
     withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] {

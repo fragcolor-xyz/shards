@@ -3,6 +3,7 @@
 #include "gfx.hpp"
 #include <foundation.hpp>
 
+using namespace shards::input;
 using shards::Var;
 using namespace gfx;
 
@@ -40,38 +41,62 @@ DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
 gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals) {
   MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
 
-  auto &viewStack = globals->renderer->getViewStack();
-  ViewStack::Output viewStackOutput = viewStack.getOutput();
+  auto &inputStack = globals->inputStack;
+  InputStack::Item inputStackOutput = inputStack.getTop();
 
   int4 result{};
-  if (viewStackOutput.windowMapping) {
-    auto &windowMapping = viewStackOutput.windowMapping.value();
-    std::visit(
-        [&](auto &&arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, WindowSubRegion>) {
-            Rect &region = arg.region;
-            result = int4(region.x, region.y, region.getX1(), region.getY1());
-          }
-        },
-        windowMapping);
+  if (inputStackOutput.windowMapping) {
   }
   return result;
+}
+
+gfx::int4 gfx_getViewport(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+
+  auto &viewStack = globals->renderer->getViewStack();
+  auto viewStackOutput = viewStack.getOutput();
+
+  gfx::Rect viewportRect = viewStackOutput.viewport;
+  return int4(viewportRect.x, viewportRect.y, viewportRect.getX1(), viewportRect.getY1());
 }
 
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
                                            float scalingFactor) {
   MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
 
-  auto &viewStack = globals->renderer->getViewStack();
-  ViewStack::Output viewStackOutput = viewStack.getOutput();
-
   static std::vector<SDL_Event> noEvents{};
   const std::vector<SDL_Event> *eventsPtr = &noEvents;
-  if (viewStackOutput.windowMapping) {
-    eventsPtr = &globals->events;
+  int4 mappedWindowRegion;
+
+  auto &viewStack = globals->renderer->getViewStack();
+  auto viewStackOutput = viewStack.getOutput();
+
+  // Get viewport size from view stack
+  int2 viewportSize = viewStackOutput.viewport.getSize();
+
+  // Get events based on input stack
+  auto &inputStack = globals->inputStack;
+  InputStack::Item inputStackOutput = inputStack.getTop();
+  if (inputStackOutput.windowMapping) {
+    auto &windowMapping = inputStackOutput.windowMapping.value();
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, WindowSubRegion>) {
+            mappedWindowRegion = arg.region;
+            eventsPtr = &globals->events;
+          }
+        },
+        windowMapping);
   }
 
-  return translator->translateFromInputEvents(*eventsPtr, *globals->window.get(), globals->time, globals->deltaTime,
-                                              scalingFactor);
+  return translator->translateFromInputEvents(EguiInputTranslatorArgs{
+      .events = *eventsPtr,
+      .window = *globals->window.get(),
+      .time = globals->time,
+      .deltaTime = globals->deltaTime,
+      .viewportSize = viewportSize,
+      .mappedWindowRegion = mappedWindowRegion,
+      .scalingFactor = scalingFactor,
+  });
 }

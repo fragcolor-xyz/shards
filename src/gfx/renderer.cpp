@@ -121,7 +121,6 @@ struct RendererImpl final : public ContextData {
               .externalTexture = view,
           })
           .initWithLabel("mainOutput");
-      mainOutput.windowMapping = WindowSubRegion::fromEntireWindow(context.getWindow());
     }
   }
 
@@ -158,7 +157,7 @@ struct RendererImpl final : public ContextData {
     DrawData viewDrawData;
     viewDrawData.setParam("view", viewPtr->view);
     viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
-    float4x4 projMatrix = cachedViewData.projectionMatrix = viewPtr->getProjectionMatrix(viewData.viewport.getSize());
+    float4x4 projMatrix = cachedViewData.projectionMatrix = viewPtr->getProjectionMatrix(float2(viewData.viewport.getSize()));
     viewDrawData.setParam("proj", projMatrix);
     viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
     viewDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y),
@@ -417,7 +416,6 @@ struct RendererImpl final : public ContextData {
     viewStack.push(ViewStack::Item{
         .viewport = Rect(mainOutputResolution),
         .referenceSize = mainOutputResolution,
-        .windowMapping = mainOutput.windowMapping,
     });
 
     resizeMainRenderAttachments(mainOutputResolution);

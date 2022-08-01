@@ -67,6 +67,7 @@ lazy_static! {
 }
 
 pub struct GetProperty {
+  instance: ParamVar,
   requiring: ExposedTypes,
   parents: ParamVar,
   property: Var,
@@ -75,9 +76,12 @@ pub struct GetProperty {
 
 impl Default for GetProperty {
   fn default() -> Self {
+    let mut instance = ParamVar::default();
+    instance.set_name(CONTEXT_NAME);
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
+      instance,
       requiring: Vec::new(),
       parents,
       property: Var::default(),
@@ -169,10 +173,19 @@ impl Shard for GetProperty {
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring, &self.parents);
 
+    let exp_info = ExposedInfo {
+      exposedType: EGUI_CTX_TYPE,
+      name: self.instance.get_name(),
+      help: cstr!("The exposed UI context.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
     Some(&self.requiring)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.instance.warmup(ctx);
     self.parents.warmup(ctx);
 
     Ok(())
@@ -180,6 +193,7 @@ impl Shard for GetProperty {
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.parents.cleanup();
+    self.instance.cleanup();
 
     Ok(())
   }
@@ -195,21 +209,21 @@ impl Shard for GetProperty {
     true
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       match self.get_ui_property()? {
         UIProperty::RemainingSpace => {
           let target_size = ui.available_size();
           let cursor = ui.cursor();
 
+          let draw_scale = ui.ctx().pixels_per_point();
+
+          let min = (cursor.min.to_vec2()) * draw_scale;
+          let max = (cursor.min + target_size).to_vec2() * draw_scale;
+          let rect = egui::Rect::from_min_max(min.to_pos2(), max.to_pos2());
+
           // Float4 rect as (X0, Y0, X1, Y1)
-          let result_rect: Var = (
-            cursor.min.x,
-            cursor.min.y,
-            cursor.min.x + target_size.x,
-            cursor.min.y + target_size.y,
-          )
-            .into();
+          let result_rect: Var = (rect.min.x, rect.min.y, rect.max.x, rect.max.y).into();
           Ok(result_rect)
         }
         _ => Err("Unknown property"),

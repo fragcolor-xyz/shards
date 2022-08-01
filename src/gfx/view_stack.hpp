@@ -3,7 +3,7 @@
 
 #include "types.hpp"
 #include "render_target.hpp"
-#include "window_mapping.hpp"
+#include "checked_stack.hpp"
 
 namespace gfx {
 
@@ -15,8 +15,6 @@ struct ViewStack {
     std::optional<Rect> viewport;
     // Override render target reference size
     std::optional<int2> referenceSize;
-    // Set the input mapping, if unsed, not input will be handled inside this view
-    std::optional<WindowMapping> windowMapping;
     // Sets the render target to render to inside this view, will render to main output if unset
     RenderTargetPtr renderTarget;
   };
@@ -24,15 +22,14 @@ struct ViewStack {
   /// <div rustbindgen hide></div>
   struct Output {
     Rect viewport;
-    std::optional<WindowMapping> windowMapping;
     RenderTargetPtr renderTarget;
     int2 referenceSize;
   };
 
-  typedef size_t Marker;
+  typedef CheckedStack<Item>::Marker Marker;
 
 private:
-  std::vector<Item> items;
+  CheckedStack<Item> items;
 
 public:
   ViewStack();
@@ -46,18 +43,14 @@ public:
   /// <div rustbindgen hide></div>
   Output getOutput() const;
 
-  /// Marker used for checking view stack balance
-  /// <div rustbindgen hide></div>
-  Marker getMarker() const;
+  // see CheckedStack
+  Marker getMarker() const { return items.getMarker(); }
 
-  /// Validates check balance compared to marker start
-  /// throws on unmatched push/pop
-  /// <div rustbindgen hide></div>
-  void restoreMarkerChecked(Marker barrier);
+  // see CheckedStack
+  void restoreMarkerChecked(Marker marker) { items.restoreMarkerChecked(marker); }
 
-  // Call at the end of the render loop, checks and throws if stack is not empty
-  /// <div rustbindgen hide></div>
-  void reset();
+  // see CheckedStack
+  void reset() { items.reset(); }
 };
 } // namespace gfx
 
