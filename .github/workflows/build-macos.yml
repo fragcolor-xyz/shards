@@ -146,3 +146,13 @@ jobs:
           ./shards ../src/tests/audio.edn
           ./shards ../src/tests/time.edn
           ./shards ../src/tests/eth.edn
+      - name: Test doc samples (non-UI)
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd docs/samples
+          for i in $(find shards -name '*.edn' ! -path '*UI*');
+          do
+            echo "Running sample $i";
+            ../../build/shards run_sample.edn --file "$i";
+          done

@@ -73,8 +73,7 @@ jobs:
 
           echo "Running imgui demo"
           build/shards src/tests/imgui_demo.edn
-      - name: Test doc samples (GUI)
-        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+      - name: Test doc samples (UI)
         env:
           RUST_BACKTRACE: 1
         run: |
@@ -83,7 +82,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           cd docs/samples
-          for i in $(find shards -name '*.edn' -path '*GUI*');
+          for i in $(find shards -name '*.edn' -path '*UI*');
           do
             echo "Running sample $i";
             ../../build/shards run_sample.edn --file "$i";
