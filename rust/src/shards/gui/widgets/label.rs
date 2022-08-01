@@ -5,10 +5,8 @@ use super::Label;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
-use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
@@ -99,13 +97,7 @@ impl Shard for Label {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
+    util::require_parents(&mut self.requiring, &self.parents);
 
     Some(&self.requiring)
   }

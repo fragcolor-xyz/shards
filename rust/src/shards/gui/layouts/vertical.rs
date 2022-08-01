@@ -4,10 +4,8 @@
 use super::Vertical;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
-use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
 use crate::types::OptionalString;
@@ -105,13 +103,7 @@ impl Shard for Vertical {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
+    util::require_parents(&mut self.requiring, &self.parents);
 
     Some(&self.requiring)
   }
@@ -119,16 +111,8 @@ impl Shard for Vertical {
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     self.exposing.clear();
 
-    if !self.contents.is_empty() {
-      let exposing = self.contents.get_exposing();
-      if let Some(exposing) = exposing {
-        for exp in exposing {
-          self.exposing.push(*exp);
-        }
-        Some(&self.exposing)
-      } else {
-        None
-      }
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+      Some(&self.exposing)
     } else {
       None
     }

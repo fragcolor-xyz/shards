@@ -320,16 +320,8 @@ impl Shard for CentralPanel {
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     self.exposing.clear();
 
-    if !self.contents.is_empty() {
-      let exposing = self.contents.get_exposing();
-      if let Some(exposing) = exposing {
-        for exp in exposing {
-          self.exposing.push(*exp);
-        }
-        Some(&self.exposing)
-      } else {
-        None
-      }
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+      Some(&self.exposing)
     } else {
       None
     }

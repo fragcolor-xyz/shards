@@ -5,7 +5,6 @@ use super::TextInput;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_VAR_SLICE;
 use crate::shardsc;
@@ -306,13 +305,7 @@ impl Shard for TextInput {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
+    util::require_parents(&mut self.requiring, &self.parents);
 
     Some(&self.requiring)
   }

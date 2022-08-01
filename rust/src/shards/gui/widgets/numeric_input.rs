@@ -5,7 +5,6 @@ use super::FloatInput;
 use super::IntInput;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
@@ -163,13 +162,7 @@ macro_rules! impl_ui_input {
         self.requiring.clear();
 
         // Add UI.Parents to the list of required variables
-        let exp_info = ExposedInfo {
-          exposedType: EGUI_UI_SEQ_TYPE,
-          name: self.parents.get_name(),
-          help: cstr!("The parent UI objects.").into(),
-          ..ExposedInfo::default()
-        };
-        self.requiring.push(exp_info);
+        util::require_parents(&mut self.requiring, &self.parents);
 
         Some(&self.requiring)
       }
