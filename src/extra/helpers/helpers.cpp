@@ -32,11 +32,9 @@ struct HelperContextShard : public gfx::BaseConsumer {
 
     // Reference and setup context
     _contextVarRef = referenceVariable(context, Context::contextVarName);
-    _contextVarRef->payload = {
-        .objectValue = &_context,
-        .objectVendorId = SHTypeInfo(Context::Type).object.vendorId,
-        .objectTypeId = SHTypeInfo(Context::Type).object.typeId,
-    };
+    _contextVarRef->payload.objectValue = &_context;
+    _contextVarRef->payload.objectVendorId = SHTypeInfo(Context::Type).object.vendorId;
+    _contextVarRef->payload.objectTypeId = SHTypeInfo(Context::Type).object.typeId;
     _contextVarRef->valueType = SHType::Object;
 
     PARAM_WARMUP(context);
@@ -103,7 +101,7 @@ struct HelperContextShard : public gfx::BaseConsumer {
 
     gfx::Context &gfxContext = getContext();
     gfx::MainWindowGlobals &mainWindowGlobals = getMainWindowGlobals();
-    gfx::Window& window = getWindow();
+    gfx::Window &window = getWindow();
     int2 outputSize = gfxContext.getMainOutputSize();
 
     handleGizmoInputEvents(mainWindowGlobals.events);
