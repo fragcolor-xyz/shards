@@ -1,0 +1,21 @@
+[package]
+name = "gfx"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu-native = { path = "../wgpu-native" }
+
+[patch.crates-io]
+inplace_it = { git = "https://github.com/NotIntMan/inplace_it.git", rev = "3f479a3" } # Until inplace_it gets updated to 0.3.4 in wgpu-hal
+naga = { path = "../naga" }
+
+[patch."https://github.com/gfx-rs/naga"]
+naga = { path = "../naga" }
+
+[patch."https://github.com/gfx-rs/wgpu"]
+wgpu-types = { path = "../wgpu/wgpu-types" }
+wgpu-core = { path = "../wgpu/wgpu-core" }
+
+[workspace]
+members = []

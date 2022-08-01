@@ -97,29 +97,11 @@ else()
   endif()
 endif()
 
-
 if(ANDROID)
   target_link_libraries(gfx android OpenSLES)
 endif()
 
-if(NOT EMSCRIPTEN)
-  set(WGPU_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/wgpu-native)
-  file(GLOB_RECURSE EXTRA_SOURCES ${WGPU_NATIVE_PATH}/ffi/*.h)
-
-  add_rust_library(
-    NAME wgpu-native
-    PROJECT_PATH ${WGPU_NATIVE_PATH}
-    DEPENDS ${EXTRA_SOURCES}
-  )
-
-  target_include_directories(wgpu-native-rust INTERFACE ${WGPU_NATIVE_PATH}/ffi)
-
-  if(WIN32)
-    target_link_libraries(wgpu-native-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
-  endif()
-
-  target_link_libraries(gfx wgpu-native-rust)
-  target_compile_definitions(gfx PUBLIC WEBGPU_NATIVE=1)
-endif()
+add_subdirectory(rust)
+target_link_libraries(gfx gfx-rust)
 
 add_subdirectory(tests)
