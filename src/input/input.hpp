@@ -6,53 +6,41 @@
 
 namespace shards::input {
 
+enum class ConsumeEventFilter : uint8_t {
+  None = 0,
+  Keyboard = 1 << 0,
+  Mouse = 1 << 1,
+  Touch = 1 << 2,
+  Controller = 1 << 3,
+};
+inline ConsumeEventFilter operator&(ConsumeEventFilter a, ConsumeEventFilter b) {
+  return ConsumeEventFilter(uint8_t(a) & uint8_t(b));
+}
+inline ConsumeEventFilter operator|(ConsumeEventFilter a, ConsumeEventFilter b) {
+  return ConsumeEventFilter(uint8_t(a) | uint8_t(b));
+}
+
 struct IConsumer;
+struct InputBufferIterator;
 struct InputBuffer {
   typedef std::vector<SDL_Event> Events;
-  typedef std::vector<IConsumer *> ConsumedBy;
+  typedef std::vector<void *> ConsumedBy;
+  friend struct InputBufferIterator;
 
 private:
   Events events;
   ConsumedBy consumedBy;
 
 public:
-  struct Iterator {
-    Events *events;
-    ConsumedBy *consumedBy;
-    bool onlyNonConsumed;
-    size_t index;
-
-    Iterator(Events &events, ConsumedBy &consumedBy, bool onlyNonConsumed, size_t index)
-        : events(&events), consumedBy(&consumedBy), onlyNonConsumed(onlyNonConsumed), index(index) {
-      if (onlyNonConsumed && getConsumedBy() != nullptr) {
-        nextNonConsumed();
-      }
-    }
-    operator bool() const { return index < events->size(); }
-    Iterator &operator++() {
-      nextNonConsumed();
-      return *this;
-    }
-    bool operator==(const Iterator &other) const { return events == other.events && index == other.index; }
-    bool operator!=(const Iterator &other) const { return events != other.events || index != other.index; }
-    const SDL_Event *operator*() const { return &(*events)[index]; }
-    const SDL_Event *operator->() const { return &(*events)[index]; }
-
-    void consume(IConsumer *by) { (*consumedBy)[index] = by; }
-    IConsumer *getConsumedBy() const { return (*consumedBy)[index]; }
-    void nextNonConsumed() {
-      do {
-        ++index;
-      } while (index < events->size() && (*consumedBy)[index] != nullptr);
-    }
-  };
-
-  auto begin(bool onlyNonConsumed = true) { return Iterator(events, consumedBy, onlyNonConsumed, 0); }
-  auto end() { return Iterator(events, consumedBy, false, events.size()); }
+  InputBufferIterator begin(bool onlyNonConsumed = true);
+  InputBufferIterator end();
 
   size_t size() const { return events.size(); }
   const SDL_Event &operator[](const size_t i) const { return events[i]; }
-  IConsumer *getConsumedBy(size_t i) const { return consumedBy[i]; }
+  operator const std::vector<SDL_Event> &() const { return events; }
+  void *getConsumedBy(size_t i) const { return consumedBy[i]; }
+
+  void consumeEvents(ConsumeEventFilter filter, void *by = (void *)1);
 
   void clear() {
     events.clear();
@@ -64,6 +52,39 @@ public:
     consumedBy.push_back(nullptr);
   }
 };
+
+struct InputBufferIterator {
+  InputBuffer *buffer;
+  bool onlyNonConsumed;
+  size_t index;
+
+  InputBufferIterator(InputBuffer *buffer, bool onlyNonConsumed, size_t index)
+      : buffer(buffer), onlyNonConsumed(onlyNonConsumed), index(index) {
+    if (onlyNonConsumed && getConsumedBy() != nullptr) {
+      nextNonConsumed();
+    }
+  }
+  operator bool() const { return index < buffer->events.size(); }
+  InputBufferIterator &operator++() {
+    nextNonConsumed();
+    return *this;
+  }
+  bool operator==(const InputBufferIterator &other) const { return buffer == other.buffer && index == other.index; }
+  bool operator!=(const InputBufferIterator &other) const { return buffer != other.buffer || index != other.index; }
+  const SDL_Event &operator*() const { return buffer->events[index]; }
+  const SDL_Event *operator->() const { return &buffer->events[index]; }
+
+  void consume(void *by = (void *)1) { buffer->consumedBy[index] = by; }
+  void *getConsumedBy() const { return buffer->consumedBy[index]; }
+  void nextNonConsumed() {
+    do {
+      ++index;
+    } while (index < buffer->events.size() && buffer->consumedBy[index] != nullptr);
+  }
+};
+
+inline InputBufferIterator InputBuffer::begin(bool onlyNonConsumed) { return InputBufferIterator(this, onlyNonConsumed, 0); }
+inline InputBufferIterator InputBuffer::end() { return InputBufferIterator(this, false, events.size()); }
 
 struct IConsumer {
   virtual ~IConsumer() = default;

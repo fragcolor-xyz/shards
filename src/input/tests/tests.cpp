@@ -59,7 +59,23 @@ void generateTestInputMotionUpDown(InputBuffer &buffer, int x, int y, uint8_t bu
   });
 }
 
-TEST_CASE("Input") {
+void generateKeyEvents(InputBuffer &buffer) {
+  SDL_Event textEvent{
+      .text = {.type = SDL_TEXTINPUT},
+  };
+  strncpy_s(textEvent.text.text, "w", 1);
+  buffer.push_back(textEvent);
+
+  buffer.push_back(SDL_Event{
+      .key = {.type = SDL_KEYDOWN, .keysym = {.sym = SDLK_w}},
+  });
+
+  buffer.push_back(SDL_Event{
+      .key = {.type = SDL_KEYUP, .keysym = {.sym = SDLK_w}},
+  });
+}
+
+TEST_CASE("Mouse events") {
   RegionConsumer ra(int2(0, 0), int2(100, 100));
   RegionConsumer rb(int2(10, 10), int2(150, 150));
   auto resetConsumers = [&]() {
@@ -124,12 +140,39 @@ TEST_CASE("Input") {
     ctx.add(&ra, 1);
     testCase(ctx);
   }
+
   {
     Context ctx;
     ctx.add(&ra, 1);
     ctx.add(&rb, 0);
     testCase(ctx);
   }
+}
+
+TEST_CASE("Consume all key events") {
+  RegionConsumer consumer(int2(0, 0), int2(100, 100));
+
+  InputBuffer buffer;
+  generateKeyEvents(buffer);
+  CHECK(buffer.size() > 0);
+
+  buffer.consumeEvents(ConsumeEventFilter::Keyboard);
+
+  consumer.handleInput(buffer);
+  CHECK(consumer.receivedEventCount == 0);
+}
+
+TEST_CASE("Consume all mouse events") {
+  RegionConsumer consumer(int2(0, 0), int2(100, 100));
+
+  InputBuffer buffer;
+  generateTestInputMotionUpDown(buffer, 0, 0, 0);
+  CHECK(buffer.size() > 0);
+
+  buffer.consumeEvents(ConsumeEventFilter::Touch | ConsumeEventFilter::Mouse);
+
+  consumer.handleInput(buffer);
+  CHECK(consumer.receivedEventCount == 0);
 }
 
 int main(int argc, char *argv[]) {
