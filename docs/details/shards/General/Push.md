@@ -8,7 +8,7 @@ For tables `Push` can update only those existing keys whose values are of the ty
 
 !!! note
    1. Do not use `Push` to update any variables created by `Set` (or its aliases `>=`/`>>=`). `Push` is best used to update variables that were themselves created by `Push` (first push).
-   2. Though if you want to update a sequence value in a table not created by `Push` you can offload the current sequence into another sequence variable, push new values into it, and update the table with this sequence variable (see last code example).  
+   2. Though, if really want to do (1.) you can offload the current sequence into another sequence variable, push new values into it, and update the table with this sequence variable (see the last code example).  
 
 The `:Global` parameter controls whether the created variables can be referenced across wires (`:Global` set to `true`) or only within the current wire (`:Global` set to `false`, default behaviour).
 
