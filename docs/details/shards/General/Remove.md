@@ -16,12 +16,10 @@ The `:Unordered` parameter can be set to `true` if you need to make the removal 
 Any input to this shard is ignored and its output is the main filtered sequence.
 
 !!! note "See also"
+    - [`Clear`](../Clear)
+    - [`Drop`](../Drop)
+    - [`DropFront`](../DropFront)
+    - [`Erase`](../Erase)
     - [`Pop`](../Pop)
     - [`PopFront`](../PopFront)
-    - [`Drop`](../Drop)
-    - [`DropFront`](../DropFront)
-    - [`Drop`](../Drop)
-    - [`DropFront`](../DropFront)
-    - [`Clear`](../Clear)
-    - [`Erase`](../Erase)
     - [`Sort`](../Sort)

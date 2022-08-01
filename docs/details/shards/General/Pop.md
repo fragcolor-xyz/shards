@@ -7,11 +7,11 @@ Since variables may be locally scoped (created with `(:Global false)`; exists on
 Input field is ignored and the output of this shard is the element which was popped from the sequence passed to it via the `:Name` parameter. 
 
 !!! note "See also"
-    - [`PopFront`](../PopFront)
-    - [`Drop`](../Drop)
-    - [`DropFront`](../DropFront)
     - [`AppendTo`](../AppendTo)
     - [`Clear`](../Clear)
-    - [`Remove`](../Remove)
+    - [`Drop`](../Drop)
+    - [`DropFront`](../DropFront)
     - [`Erase`](../Erase)
+    - [`PopFront`](../PopFront)
+    - [`Remove`](../Remove)
    

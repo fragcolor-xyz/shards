@@ -5,8 +5,8 @@ This shard works on string and sequence variables.
 The input to this shard is also passed through as its output.
 
 !!! note "See also"
-    - [`Push`](../Push)
-    - [`Update`](../Update)
     - [`DropFront`](../DropFront)
     - [`PopFront`](../PopFront)
+    - [`Push`](../Push)
     - [`Set`](../Set)
+    - [`Update`](../Update)

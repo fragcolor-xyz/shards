@@ -9,8 +9,8 @@ This shard can also define the sequence's inner data types via the `:Types` para
 Any input to this shard is ignored and instead passed through as its output.
 
 !!! note "See also"
-    - [`Table`](../Table)
-    - [`Set`](../Set)
-    - [`Push`](../Push)
-    - [`Update`](../Update)
     - [`Get`](../Get)
+    - [`Push`](../Push)
+    - [`Set`](../Set)
+    - [`Table`](../Table)
+    - [`Update`](../Update)

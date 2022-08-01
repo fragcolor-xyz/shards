@@ -22,9 +22,9 @@ The input to this shard is the new update value that is to be pushed into the se
     `Push` has two aliases: `>>` which is an alias for `(Push ... :Clear true)`, and `>>!` which is an alias for `(Push ... :Clear false)`. See the code examples at the end to understand how these aliases are used.
 
 !!! note "See also"
-    - [`Set`](../Set)
-    - [`Update`](../Update)
     - [`AppendTo`](../AppendTo)
     - [`PrependTo`](../PrependTo)
     - [`Sequence`](../Sequence)
+    - [`Set`](../Set)
     - [`Table`](../Table)
+    - [`Update`](../Update)

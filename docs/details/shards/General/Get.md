@@ -12,8 +12,8 @@ Any input to this shard is ignored and its output contains the value of the vari
     `Get` has an alias `??`. This symbol represents the logical operator `OR`. Hence, `??` functions as an alias for `Get` with a default value. For example, `.var1 ?? 40` means `.var1 or 40` and this is effectively an alias for `(Get .var1 :Default 40)`. See the code examples at the end to understand how this alias is used.
 
 !!! note "See also"
-    - [`Ref`](../Ref)
-    - [`Set`](../Get)
     - [`Const`](../Const)
+    - [`Ref`](../Ref)
     - [`Sequence`](../Sequence)
+    - [`Set`](../Get)
     - [`Table`](../Table)

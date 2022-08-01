@@ -14,9 +14,9 @@ The input to this shard is the update value to be applied to the mutable variabl
     `Update` has an alias `>`. Its an alias for `Update` with the defaults: `(Update ...)`. See the code examples at the end to understand how this alias is used.
 
 !!! note "See also"
-    - [`Set`](../Set)
-    - [`Push`](../Push)
     - [`AppendTo`](../AppendTo)
     - [`PrependTo`](../PrependTo)
+    - [`Push`](../Push)
     - [`Sequence`](../Sequence)
+    - [`Set`](../Set)
     - [`Table`](../Table)

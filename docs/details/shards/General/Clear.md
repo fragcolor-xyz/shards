@@ -7,11 +7,9 @@ Since variables may be locally scoped (created with `(:Global false)`; exists on
 Any input to this shard is ignored and instead passed through as its output.
 
 !!! note "See also"
+    - [`Drop`](../Drop)
+    - [`DropFront`](../DropFront)
+    - [`Erase`](../Erase)
     - [`Pop`](../Pop)
     - [`PopFront`](../PopFront)
-    - [`Drop`](../Drop)
-    - [`DropFront`](../DropFront)
-    - [`Drop`](../Drop)
-    - [`DropFront`](../DropFront)
     - [`Remove`](../Remove)
-    - [`Erase`](../Erase)

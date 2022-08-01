@@ -7,8 +7,8 @@ In addition to the key and the scope, this shard can also define the table's inn
 Any input to this shard is ignored and instead passed through as its output.
 
 !!! note "See also"
+    - [`Get`](../Get)
+    - [`Push`](../Push)
     - [`Sequence`](../Sequence)
     - [`Set`](../Set)
-    - [`Push`](../Push)
     - [`Update`](../Update)
-    - [`Get`](../Get)

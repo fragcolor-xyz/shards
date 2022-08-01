@@ -12,6 +12,6 @@ The input to this shard is used as the value for the new variable and is also pa
     `Ref` has two aliases: `=` and `&>`. Both are aliases for `(Ref ... :Global false)`. See the code examples at the end to understand how these aliases are used.
 
 !!! note "See also"
-    - [`Set`](../Set)
-    - [`Get`](../Get)
     - [`Const`](../Const)
+    - [`Get`](../Get)
+    - [`Set`](../Set)

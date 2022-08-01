@@ -19,10 +19,10 @@ The input to this shard is used as the value for the variable being created and 
     `Set` has two aliases: `>=` is an alias for `(Set ... :Global false)` while `>==` is an alias for `(Set ... :Global true)`. See the code examples at the end to understand how these aliases are used.
 
 !!! note "See also"
-    - [`Ref`](../Ref)
-    - [`Get`](../Get)
+    - [`AppendTo`](../AppendTo)
     - [`Const`](../Const)
+    - [`Get`](../Get)
+    - [`PrependTo`](../PrependTo)
+    - [`Ref`](../Ref)
     - [`Sequence`](../Sequence)
     - [`Table`](../Table)
-    - [`AppendTo`](../AppendTo)
-    - [`PrependTo`](../PrependTo)
