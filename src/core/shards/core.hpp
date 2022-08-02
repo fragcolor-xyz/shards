@@ -879,6 +879,10 @@ struct Update : public SetBase {
         auto &name = data.shared.elements[i].name;
         if (name == _name && data.shared.elements[i].exposedType.basicType == Table &&
             data.shared.elements[i].exposedType.table.types.elements) {
+          if (data.shared.elements[i].isPushTable) {
+            SHLOG_ERROR("Error with variable: {}", _name);
+            throw ComposeError("Set/Ref/Update, attempted to write a table variable that is filled using Push shards.");
+          }
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
