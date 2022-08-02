@@ -21,7 +21,17 @@ struct Window {
 
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();
+
+  template <typename T> void pollEventsForEach(T &&callback) {
+    SDL_Event event;
+    while (pollEvent(event)) {
+      callback(event);
+    }
+  }
+
   void pollEvents(std::vector<SDL_Event> &events);
+  bool pollEvent(SDL_Event &outEvent);
+
   void *getNativeWindowHandle();
 
   // draw surface size

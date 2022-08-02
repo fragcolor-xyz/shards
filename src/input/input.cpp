@@ -27,9 +27,18 @@ void InputBuffer::consumeEvents(ConsumeEventFilter filter, void *by) {
       break;
     case SDL_MOUSEMOTION:
     case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
     case SDL_MOUSEWHEEL:
-      if ((filter & ConsumeEventFilter::Mouse) != ConsumeEventFilter::None)
+    case SDL_DOLLARGESTURE:
+    case SDL_DOLLARRECORD:
+    case SDL_MULTIGESTURE:
+    case SDL_FINGERDOWN:
+    case SDL_FINGERMOTION:
+      if ((filter & ConsumeEventFilter::PointerDown) != ConsumeEventFilter::None)
+        it.consume(by);
+      break;
+    case SDL_FINGERUP:
+    case SDL_MOUSEBUTTONUP:
+      if ((filter & ConsumeEventFilter::PointerUp) != ConsumeEventFilter::None)
         it.consume(by);
       break;
     case SDL_KEYDOWN:
@@ -39,15 +48,6 @@ void InputBuffer::consumeEvents(ConsumeEventFilter filter, void *by) {
     case SDL_KEYMAPCHANGED:
     case SDL_TEXTEDITING_EXT:
       if ((filter & ConsumeEventFilter::Keyboard) != ConsumeEventFilter::None)
-        it.consume(by);
-      break;
-    case SDL_FINGERDOWN:
-    case SDL_FINGERUP:
-    case SDL_FINGERMOTION:
-    case SDL_DOLLARGESTURE:
-    case SDL_DOLLARRECORD:
-    case SDL_MULTIGESTURE:
-      if ((filter & ConsumeEventFilter::Touch) != ConsumeEventFilter::None)
         it.consume(by);
       break;
     }

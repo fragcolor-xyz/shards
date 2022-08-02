@@ -149,6 +149,15 @@ TEST_CASE("Mouse events") {
   }
 }
 
+TEST_CASE("Empty iterator") {
+  size_t iterations = 0;
+  InputBuffer buffer;
+  for (auto it = buffer.begin(); it; ++it)
+    iterations++;
+
+  CHECK(iterations == 0);
+}
+
 TEST_CASE("Consume all key events") {
   RegionConsumer consumer(int2(0, 0), int2(100, 100));
 
@@ -169,7 +178,7 @@ TEST_CASE("Consume all mouse events") {
   generateTestInputMotionUpDown(buffer, 0, 0, 0);
   CHECK(buffer.size() > 0);
 
-  buffer.consumeEvents(ConsumeEventFilter::Touch | ConsumeEventFilter::Mouse);
+  buffer.consumeEvents(ConsumeEventFilter::PointerDown | ConsumeEventFilter::PointerUp);
 
   consumer.handleInput(buffer);
   CHECK(consumer.receivedEventCount == 0);

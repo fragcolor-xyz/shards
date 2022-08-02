@@ -9,8 +9,8 @@ namespace shards::input {
 enum class ConsumeEventFilter : uint8_t {
   None = 0,
   Keyboard = 1 << 0,
-  Mouse = 1 << 1,
-  Touch = 1 << 2,
+  PointerDown = 1 << 1,
+  PointerUp = 1 << 2,
   Controller = 1 << 3,
 };
 inline ConsumeEventFilter operator&(ConsumeEventFilter a, ConsumeEventFilter b) {
@@ -60,7 +60,7 @@ struct InputBufferIterator {
 
   InputBufferIterator(InputBuffer *buffer, bool onlyNonConsumed, size_t index)
       : buffer(buffer), onlyNonConsumed(onlyNonConsumed), index(index) {
-    if (onlyNonConsumed && getConsumedBy() != nullptr) {
+    if (onlyNonConsumed && buffer->size() > 0 && getConsumedBy() != nullptr) {
       nextNonConsumed();
     }
   }
