@@ -8,6 +8,29 @@ license: CC-BY-SA-4.0
 !!! note "Uncategorized"
     This page references all other functions that don't fit in the previous categories. Overtime, they might be moved to a different or new category.
 
+## ->
+
+Groups multiple shards together (as if they were a single shard). Also called shard-container.
+
+This is useful for cases where you need multiple shards (to transform your data) but are allowed to have only one: for example, as the return value of a function (see function `print-messages` below).  
+
+=== "Code"
+
+    ```clojure linenums="1"
+    (defn print-messages []
+        (-> 
+            (Msg "Hello World!")
+            (Msg "Hello Universe!")
+        ))
+    ```
+
+=== "Result"
+
+    ```
+    [info] [2022-07-06 14:14:43.056] [T-2168] [logging.cpp::98] [main] Hello World!
+    [info] [2022-07-06 14:14:43.058] [T-2168] [logging.cpp::98] [main] Hello Universe! 
+    ```
+
 ## apply
 
 ```clojure linenums="1"

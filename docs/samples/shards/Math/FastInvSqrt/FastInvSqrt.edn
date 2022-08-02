@@ -1,3 +1,5 @@
 4.0
-(Math.FastInvSqrt)
-(Assert.Is 0.4999978 true)
+(Math.FastInvSqrt) (Log)
+
+(Math.Subtract 0.4999978) (Math.Abs)
+(IsLess 1e-05) (Assert.Is true true)

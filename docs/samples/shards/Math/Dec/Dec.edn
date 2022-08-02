@@ -2,5 +2,6 @@
 (Math.Dec
  ;:Value
  .mutable)
-.mutable
+.mutable (Log)
+
 (Assert.Is 9.0 true)

@@ -296,14 +296,39 @@ jobs:
           ./shards ../src/tests/eth.edn
           echo "Running test: crypto"
           ./shards ../src/tests/crypto.edn
-      - name: Graphics Test (64bits)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+      - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: 1
         shell: msys2 {0}
         run: |
-          export GFX_BACKEND=D3D12
+          cd docs/samples
+          for i in $(find shards -name '*.edn' ! -path '*UI*');
+          do
+            echo "Running sample $i";
+            ../../build/shards.exe run_sample.edn --file "$i";
+          done
+      - name: Test doc samples (UI)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+        env:
+          GFX_BACKEND: D3D12
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd docs/samples
+          for i in $(find shards -name '*.edn' -path '*UI*');
+          do
+            echo "Running sample $i";
+            ../../build/shards.exe run_sample.edn --file "$i";
+          done
+      - name: Graphics Test (64bits)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+        env:
+          GFX_BACKEND: D3D12
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
           cd build
           echo "Running test: gfx_window"
           ./shards ../src/tests/gfx_window.edn

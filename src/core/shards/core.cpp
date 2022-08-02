@@ -131,6 +131,15 @@ struct Sort : public ActionJointOp {
 
   void setup() { shardsKeyFn._bu = this; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Sorts the elements of a sequence. Can also move around the elements of a joined sequence in alignment with "
+                   "the sorted sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Output is the sorted sequence."); }
+
   static inline Parameters paramsInfo{
       joinOpParams,
       {{"Desc", SHCCSTR("If sorting should be in descending order, defaults ascending."), {CoreInfo::BoolType}},
@@ -285,6 +294,15 @@ struct Sort : public ActionJointOp {
 
 struct Remove : public ActionJointOp {
   bool _fast = false;
+
+  static SHOptionalString help() {
+    return SHCCSTR("Removes all elements from a sequence that match the given condition. Can also take these matched indices and "
+                   "remove corresponding elements from a joined sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("Output is the filtered sequence."); }
 
   static inline Parameters paramsInfo{joinOpParams,
                                       {{"Predicate",
@@ -524,6 +542,11 @@ struct XpendTo : public XPendBase {
 };
 
 struct AppendTo : public XpendTo {
+
+  static SHOptionalString help() { return SHCCSTR("Appends the input to the context variable passed to `:Collection`."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to append to the collection."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &collection = _collection.get();
     switch (collection.valueType) {
@@ -562,6 +585,11 @@ struct AppendTo : public XpendTo {
 };
 
 struct PrependTo : public XpendTo {
+
+  static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `:Collection`."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value to prepend to the collection."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &collection = _collection.get();
     switch (collection.valueType) {
@@ -832,9 +860,15 @@ private:
 };
 
 struct Erase : SeqUser {
+  static SHOptionalString help() {
+    return SHCCSTR("Deletes identfied element(s) from a sequence or key-value pair(s) from a table.");
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -1365,8 +1399,11 @@ RUNTIME_SHARD_END(IsValidNumber);
 RUNTIME_CORE_SHARD_FACTORY(Set);
 RUNTIME_SHARD_cleanup(Set);
 RUNTIME_SHARD_warmup(Set);
+RUNTIME_SHARD_help(Set);
 RUNTIME_SHARD_inputTypes(Set);
+RUNTIME_SHARD_inputHelp(Set);
 RUNTIME_SHARD_outputTypes(Set);
+RUNTIME_SHARD_outputHelp(Set);
 RUNTIME_SHARD_parameters(Set);
 RUNTIME_SHARD_compose(Set);
 RUNTIME_SHARD_exposedVariables(Set);
@@ -1379,8 +1416,11 @@ RUNTIME_SHARD_END(Set);
 RUNTIME_CORE_SHARD_FACTORY(Ref);
 RUNTIME_SHARD_cleanup(Ref);
 RUNTIME_SHARD_warmup(Ref);
+RUNTIME_SHARD_help(Ref);
 RUNTIME_SHARD_inputTypes(Ref);
+RUNTIME_SHARD_inputHelp(Ref);
 RUNTIME_SHARD_outputTypes(Ref);
+RUNTIME_SHARD_outputHelp(Ref);
 RUNTIME_SHARD_parameters(Ref);
 RUNTIME_SHARD_compose(Ref);
 RUNTIME_SHARD_exposedVariables(Ref);
@@ -1393,8 +1433,11 @@ RUNTIME_SHARD_END(Ref);
 RUNTIME_CORE_SHARD_FACTORY(Update);
 RUNTIME_SHARD_cleanup(Update);
 RUNTIME_SHARD_warmup(Update);
+RUNTIME_SHARD_help(Update);
 RUNTIME_SHARD_inputTypes(Update);
+RUNTIME_SHARD_inputHelp(Update);
 RUNTIME_SHARD_outputTypes(Update);
+RUNTIME_SHARD_outputHelp(Update);
 RUNTIME_SHARD_parameters(Update);
 RUNTIME_SHARD_compose(Update);
 RUNTIME_SHARD_requiredVariables(Update);
@@ -1408,8 +1451,11 @@ RUNTIME_CORE_SHARD_FACTORY(Push);
 RUNTIME_SHARD_cleanup(Push);
 RUNTIME_SHARD_destroy(Push);
 RUNTIME_SHARD_warmup(Push);
+RUNTIME_SHARD_help(Push);
 RUNTIME_SHARD_inputTypes(Push);
+RUNTIME_SHARD_inputHelp(Push);
 RUNTIME_SHARD_outputTypes(Push);
+RUNTIME_SHARD_outputHelp(Push);
 RUNTIME_SHARD_parameters(Push);
 RUNTIME_SHARD_compose(Push);
 RUNTIME_SHARD_exposedVariables(Push);
@@ -1423,8 +1469,11 @@ RUNTIME_CORE_SHARD_FACTORY(Sequence);
 RUNTIME_SHARD_cleanup(Sequence);
 RUNTIME_SHARD_destroy(Sequence);
 RUNTIME_SHARD_warmup(Sequence);
+RUNTIME_SHARD_help(Sequence);
 RUNTIME_SHARD_inputTypes(Sequence);
+RUNTIME_SHARD_inputHelp(Sequence);
 RUNTIME_SHARD_outputTypes(Sequence);
+RUNTIME_SHARD_outputHelp(Sequence);
 RUNTIME_SHARD_parameters(Sequence);
 RUNTIME_SHARD_compose(Sequence);
 RUNTIME_SHARD_exposedVariables(Sequence);
@@ -1438,8 +1487,11 @@ RUNTIME_CORE_SHARD_FACTORY(Pop);
 RUNTIME_SHARD_cleanup(Pop);
 RUNTIME_SHARD_warmup(Pop);
 RUNTIME_SHARD_destroy(Pop);
+RUNTIME_SHARD_help(Pop);
 RUNTIME_SHARD_inputTypes(Pop);
+RUNTIME_SHARD_inputHelp(Pop);
 RUNTIME_SHARD_outputTypes(Pop);
+RUNTIME_SHARD_outputHelp(Pop);
 RUNTIME_SHARD_parameters(Pop);
 RUNTIME_SHARD_compose(Pop);
 RUNTIME_SHARD_requiredVariables(Pop);
@@ -1453,8 +1505,11 @@ RUNTIME_CORE_SHARD_FACTORY(PopFront);
 RUNTIME_SHARD_cleanup(PopFront);
 RUNTIME_SHARD_warmup(PopFront);
 RUNTIME_SHARD_destroy(PopFront);
+RUNTIME_SHARD_help(PopFront);
 RUNTIME_SHARD_inputTypes(PopFront);
+RUNTIME_SHARD_inputHelp(PopFront);
 RUNTIME_SHARD_outputTypes(PopFront);
+RUNTIME_SHARD_outputHelp(PopFront);
 RUNTIME_SHARD_parameters(PopFront);
 RUNTIME_SHARD_compose(PopFront);
 RUNTIME_SHARD_requiredVariables(PopFront);
@@ -1467,8 +1522,11 @@ RUNTIME_SHARD_END(PopFront);
 RUNTIME_CORE_SHARD_FACTORY(Count);
 RUNTIME_SHARD_cleanup(Count);
 RUNTIME_SHARD_warmup(Count);
+RUNTIME_SHARD_help(Count);
 RUNTIME_SHARD_inputTypes(Count);
+RUNTIME_SHARD_inputHelp(Count);
 RUNTIME_SHARD_outputTypes(Count);
+RUNTIME_SHARD_outputHelp(Count);
 RUNTIME_SHARD_parameters(Count);
 RUNTIME_SHARD_setParam(Count);
 RUNTIME_SHARD_getParam(Count);
@@ -1479,8 +1537,11 @@ RUNTIME_SHARD_END(Count);
 RUNTIME_CORE_SHARD_FACTORY(Clear);
 RUNTIME_SHARD_cleanup(Clear);
 RUNTIME_SHARD_warmup(Clear);
+RUNTIME_SHARD_help(Clear);
 RUNTIME_SHARD_inputTypes(Clear);
+RUNTIME_SHARD_inputHelp(Clear);
 RUNTIME_SHARD_outputTypes(Clear);
+RUNTIME_SHARD_outputHelp(Clear);
 RUNTIME_SHARD_parameters(Clear);
 RUNTIME_SHARD_setParam(Clear);
 RUNTIME_SHARD_getParam(Clear);
@@ -1491,8 +1552,11 @@ RUNTIME_SHARD_END(Clear);
 RUNTIME_CORE_SHARD_FACTORY(Drop);
 RUNTIME_SHARD_cleanup(Drop);
 RUNTIME_SHARD_warmup(Drop);
+RUNTIME_SHARD_help(Drop);
 RUNTIME_SHARD_inputTypes(Drop);
+RUNTIME_SHARD_inputHelp(Drop);
 RUNTIME_SHARD_outputTypes(Drop);
+RUNTIME_SHARD_outputHelp(Drop);
 RUNTIME_SHARD_parameters(Drop);
 RUNTIME_SHARD_setParam(Drop);
 RUNTIME_SHARD_getParam(Drop);
@@ -1503,8 +1567,11 @@ RUNTIME_SHARD_END(Drop);
 RUNTIME_CORE_SHARD_FACTORY(DropFront);
 RUNTIME_SHARD_cleanup(DropFront);
 RUNTIME_SHARD_warmup(DropFront);
+RUNTIME_SHARD_help(DropFront);
 RUNTIME_SHARD_inputTypes(DropFront);
+RUNTIME_SHARD_inputHelp(DropFront);
 RUNTIME_SHARD_outputTypes(DropFront);
+RUNTIME_SHARD_outputHelp(DropFront);
 RUNTIME_SHARD_parameters(DropFront);
 RUNTIME_SHARD_setParam(DropFront);
 RUNTIME_SHARD_getParam(DropFront);
@@ -1516,8 +1583,11 @@ RUNTIME_CORE_SHARD_FACTORY(Get);
 RUNTIME_SHARD_cleanup(Get);
 RUNTIME_SHARD_warmup(Get);
 RUNTIME_SHARD_destroy(Get);
+RUNTIME_SHARD_help(Get);
 RUNTIME_SHARD_inputTypes(Get);
+RUNTIME_SHARD_inputHelp(Get);
 RUNTIME_SHARD_outputTypes(Get);
+RUNTIME_SHARD_outputHelp(Get);
 RUNTIME_SHARD_parameters(Get);
 RUNTIME_SHARD_compose(Get);
 RUNTIME_SHARD_requiredVariables(Get);
@@ -1531,7 +1601,11 @@ RUNTIME_CORE_SHARD_FACTORY(Swap);
 RUNTIME_SHARD_inputTypes(Swap);
 RUNTIME_SHARD_warmup(Swap);
 RUNTIME_SHARD_cleanup(Swap);
+RUNTIME_SHARD_help(Swap);
+RUNTIME_SHARD_inputTypes(Swap);
+RUNTIME_SHARD_inputHelp(Swap);
 RUNTIME_SHARD_outputTypes(Swap);
+RUNTIME_SHARD_outputHelp(Swap);
 RUNTIME_SHARD_parameters(Swap);
 RUNTIME_SHARD_requiredVariables(Swap);
 RUNTIME_SHARD_setParam(Swap);
@@ -1624,8 +1698,11 @@ RUNTIME_SHARD_END(Repeat);
 // Register Sort
 RUNTIME_CORE_SHARD(Sort);
 RUNTIME_SHARD_setup(Sort);
+RUNTIME_SHARD_help(Sort);
 RUNTIME_SHARD_inputTypes(Sort);
+RUNTIME_SHARD_inputHelp(Sort);
 RUNTIME_SHARD_outputTypes(Sort);
+RUNTIME_SHARD_outputHelp(Sort);
 RUNTIME_SHARD_compose(Sort);
 RUNTIME_SHARD_activate(Sort);
 RUNTIME_SHARD_parameters(Sort);
@@ -1635,10 +1712,13 @@ RUNTIME_SHARD_cleanup(Sort);
 RUNTIME_SHARD_warmup(Sort);
 RUNTIME_SHARD_END(Sort);
 
-// Register
+// Register Remove
 RUNTIME_CORE_SHARD(Remove);
+RUNTIME_SHARD_help(Remove);
 RUNTIME_SHARD_inputTypes(Remove);
+RUNTIME_SHARD_inputHelp(Remove);
 RUNTIME_SHARD_outputTypes(Remove);
+RUNTIME_SHARD_outputHelp(Remove);
 RUNTIME_SHARD_parameters(Remove);
 RUNTIME_SHARD_setParam(Remove);
 RUNTIME_SHARD_getParam(Remove);
