@@ -1,3 +1,4 @@
 (float 5)
-(Math.Exp2)
+(Math.Exp2) (Log)
+
 (Assert.Is (float 32) true)

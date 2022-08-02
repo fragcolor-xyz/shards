@@ -1,5 +1,6 @@
 2.0
 (Math.Pow
  ;:Operand
- 3.0)
+ 3.0) (Log)
+
 (Assert.Is 8.0 true)

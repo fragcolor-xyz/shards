@@ -1,3 +1,4 @@
 (int 4)
-(Math.RShift 2)
+(Math.RShift 2) (Log)
+
 (Assert.Is 1 true)
