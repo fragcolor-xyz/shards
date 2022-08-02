@@ -6,6 +6,13 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 
+struct Scope {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  exposing: ExposedTypes,
+}
+
 /// Standalone window.
 struct Window {
   instance: ParamVar,
@@ -22,6 +29,7 @@ macro_rules! decl_panel {
       requiring: ExposedTypes,
       contents: ShardsVar,
       parents: ParamVar,
+      exposing: ExposedTypes,
     }
   };
 }
@@ -33,9 +41,11 @@ decl_panel!(RightPanel);
 decl_panel!(TopPanel);
 
 mod panels;
+mod scope;
 mod window;
 
 pub fn registerShards() {
+  registerShard::<Scope>();
   registerShard::<Window>();
   registerShard::<BottomPanel>();
   registerShard::<CentralPanel>();

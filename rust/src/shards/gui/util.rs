@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::EGUI_UI_TYPE;
 use crate::types::Context;
+use crate::types::ExposedInfo;
+use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Seq;
 use crate::types::ShardsVar;
@@ -40,6 +43,21 @@ pub(crate) fn activate_ui_contents<'a>(
   Ok(output)
 }
 
+pub(crate) fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsVar) -> bool {
+  if !contents.is_empty() {
+    if let Some(contents_exposing) = contents.get_exposing() {
+      for exp in contents_exposing {
+        exposing.push(*exp);
+      }
+      true
+    } else {
+      false
+    }
+  } else {
+    false
+  }
+}
+
 pub(crate) fn get_current_parent<'a>(parents: Var) -> Result<Option<&'a mut egui::Ui>, &'a str> {
   let seq: Seq = parents.try_into()?;
   if seq.len() > 0 {
@@ -50,4 +68,14 @@ pub(crate) fn get_current_parent<'a>(parents: Var) -> Result<Option<&'a mut egui
   } else {
     Ok(None)
   }
+}
+
+pub(crate) fn require_parents(requiring: &mut ExposedTypes, parents: &ParamVar) {
+  let exp_info = ExposedInfo {
+    exposedType: EGUI_UI_SEQ_TYPE,
+    name: parents.get_name(),
+    help: cstr!("The parent UI objects.").into(),
+    ..ExposedInfo::default()
+  };
+  requiring.push(exp_info);
 }

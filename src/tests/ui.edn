@@ -1,0 +1,588 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+;; Notes:
+;;   This file contains unit tests for the UI shards.
+;;   It is not meant to be realistic. For such samples, look at egui_demo.edn.
+
+(defmesh main)
+(def timestep (/ 1.0 60.0))
+(def duration 60)
+(def input "**input**")
+
+;; context
+(defloop context-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    input
+    (UI .ui-draw-queue)
+    ;; input passthrough
+    (Assert.Is input :Abort true)
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main context-test)
+(run main timestep duration)
+
+;; window
+(defloop window-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      input
+      (UI.Window
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)))
+      ;; input passthrough
+      (Assert.Is input :Abort true)))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main window-test)
+(run main timestep duration)
+
+;; scope
+(defloop scope-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.Window
+       :Contents
+       (->
+        input
+        (UI.Scope
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main scope-test)
+(run main timestep duration)
+
+;; panels
+(defloop panels-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      input
+      (UI.TopPanel
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)))
+      (UI.LeftPanel
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)))
+      (UI.RightPanel
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)))
+      (UI.BottomPanel
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)))
+      (UI.CentralPanel
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)))
+        ;; input passthrough
+      (Assert.Is input :Abort true)))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main panels-test)
+(run main timestep duration)
+
+;; collapsing header
+(defloop collapsing-header-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Collapsing
+         :DefaultOpen true
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main collapsing-header-test)
+(run main timestep duration)
+
+;; group
+(defloop group-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Group
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main group-test)
+(run main timestep duration)
+
+;; horizontal layout
+(defloop horizontal-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Horizontal
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main horizontal-test)
+(run main timestep duration)
+
+;; scroll area
+(defloop scroll-area-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.ScrollArea
+         :Horizontal true :Vertical true
+         :AlwaysShow true
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main scroll-area-test)
+(run main timestep duration)
+
+;; vertical layout
+(defloop vertical-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Vertical
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main vertical-test)
+(run main timestep duration)
+
+;; separator
+(defloop separator-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Separator)
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main separator-test)
+(run main timestep duration)
+
+;; menu bar
+(defloop menubar-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.TopPanel
+       :Contents
+       (->
+        (UI.MenuBar) (ExpectBool)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main menubar-test)
+(run main timestep duration)
+
+;; menu
+(defloop menu-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.TopPanel
+       :Contents
+       (UI.MenuBar
+        (->
+         (UI.Menu :Title "Menu" :Contents (-> nil)) (ExpectBool))))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main menu-test)
+(run main timestep duration)
+
+;; button
+(defloop button-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      input
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.Button
+         "Click me!"
+         (->
+          (Assert.Is input :Abort true)
+          (Msg "Clicked")))
+        (ExpectBool)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main button-test)
+(run main timestep duration)
+
+;; checkbox
+(defloop checkbox-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.Checkbox "Checked" .checked)
+        (ExpectBool)
+        .checked (ExpectBool)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main checkbox-test)
+(run main timestep duration)
+
+;; hyperlink
+(defloop hyperlink-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        "https://docs.fragcolor.xyz" (UI.Hyperlink "Fragcolor documentation")
+        (Assert.Is "https://docs.fragcolor.xyz" :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main hyperlink-test)
+(run main timestep duration)
+
+;; label
+(defloop label-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        "Hello Shards!" (UI.Label)
+        (Assert.Is "Hello Shards!" :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main label-test)
+(run main timestep duration)
+
+;; numeric input
+(defloop numeric-input-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.IntInput) (ExpectInt)
+        (UI.FloatInput) (ExpectFloat)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main numeric-input-test)
+(run main timestep duration)
+
+;; numeric slider
+(defloop numeric-slider-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.IntSlider :Min 1 :Max 100) (ExpectInt)
+        (UI.FloatSlider :Min 0.0 :Max 1.0) (ExpectFloat)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main numeric-slider-test)
+(run main timestep duration)
+
+;; progress bar
+(defloop progress-bar-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (Setup 0.1 >= .progress)
+        .progress
+        (UI.ProgressBar)
+        (ExpectFloat)
+        (Math.Add 0.01) > .progress))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main progress-bar-test)
+(run main timestep duration)
+
+;; radio button
+(defloop radio-button-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.RadioButton "Choice 1" .choice 1) (ExpectBool)
+        (UI.RadioButton "Choice 2" .choice 2) (ExpectBool)
+        (UI.RadioButton "Choice 3" .choice 3) (ExpectBool)
+        .choice (ExpectInt)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main radio-button-test)
+(run main timestep duration)
+
+;; spinner
+(defloop spinner-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Spinner)
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main spinner-test)
+(run main timestep duration)
+
+;; text input
+(defloop text-input-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (Setup "Lorem ipsum dolor sit amet" >= .text)
+        (UI.TextInput "read-only") (ExpectNone)
+        (UI.TextInput .text) (Maybe (ExpectNone) :Else (ExpectString))))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main text-input-test)
+(run main timestep duration)

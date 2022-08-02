@@ -67,7 +67,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: shards-win64 Debug
-          path: src/tests
+          path: ./
       - name: Set up MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -77,8 +77,8 @@ jobs:
       - name: Generate markdown
         shell: msys2 {0}
         run: |
-          cd src/tests
-          ./shards.exe infos_docs.edn
+          ./shards.exe src/tests/infos_docs.edn
+          mv docs/docs/shards/General/UI.md docs/docs/shards/UI/index.md
       - name: Upload markdown
         uses: actions/upload-artifact@v2
         with:

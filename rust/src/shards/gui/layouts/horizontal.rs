@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Button;
+use super::Horizontal;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
-use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -17,70 +15,62 @@ use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::WireState;
 use crate::types::ANY_TYPES;
 use crate::types::BOOL_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
-use crate::types::STRING_TYPES;
 
 lazy_static! {
-  static ref BUTTON_PARAMETERS: Parameters = vec![
+  static ref HORIZONTAL_PARAMETERS: Parameters = vec![
     (
-      cstr!("Label"),
-      cstr!("The text label of this button."),
-      &STRING_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Action"),
-      cstr!("The shards to execute when the button is pressed."),
+      cstr!("Contents"),
+      cstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Wrap"),
-      cstr!("Wrap the text depending on the layout."),
-      BOOL_OR_NONE_SLICE,
+      cstr!("Wrap the content once it reaches the right edge."),
+      &BOOL_TYPES[..],
     )
       .into(),
   ];
 }
 
-impl Default for Button {
+impl Default for Horizontal {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
       parents,
       requiring: Vec::new(),
-      label: ParamVar::default(),
-      action: ShardsVar::default(),
-      wrap: ParamVar::default(),
+      contents: ShardsVar::default(),
+      wrap: ParamVar::new(false.into()),
+      exposing: Vec::new(),
     }
   }
 }
 
-impl Shard for Button {
+impl Shard for Horizontal {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.Button")
+    cstr!("UI.Horizontal")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Button-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Horizontal-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.Button"
+    "UI.Horizontal"
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Clickable button with text."))
+    OptionalString(shccstr!("Layout the contents horizontally."))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -89,38 +79,34 @@ impl Shard for Button {
 
   fn inputHelp(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The value that will be passed to the Action shards of the button."
+      "The value that will be passed to the Contents shards of the layout."
     ))
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &BOOL_TYPES
+    &ANY_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Indicates whether the button was clicked during this frame."
-    ))
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&BUTTON_PARAMETERS)
+    Some(&HORIZONTAL_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.label.set_param(value)),
-      1 => self.action.set_param(value),
-      2 => Ok(self.wrap.set_param(value)),
+      0 => self.contents.set_param(value),
+      1 => Ok(self.wrap.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.label.get_param(),
-      1 => self.action.get_param(),
-      2 => self.wrap.get_param(),
+      0 => self.contents.get_param(),
+      1 => self.wrap.get_param(),
       _ => Var::default(),
     }
   }
@@ -134,24 +120,33 @@ impl Shard for Button {
     Some(&self.requiring)
   }
 
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+      Some(&self.exposing)
+    } else {
+      None
+    }
+  }
+
   fn hasCompose() -> bool {
     true
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    if !self.action.is_empty() {
-      self.action.compose(&data)?;
+    if !self.contents.is_empty() {
+      self.contents.compose(&data)?;
     }
 
-    Ok(common_type::bool)
+    // Always passthrough the input
+    Ok(data.inputType)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-
-    self.label.warmup(ctx);
-    if !self.action.is_empty() {
-      self.action.warmup(ctx)?;
+    if !self.contents.is_empty() {
+      self.contents.warmup(ctx)?;
     }
     self.wrap.warmup(ctx);
 
@@ -160,40 +155,34 @@ impl Shard for Button {
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.wrap.cleanup();
-    if !self.action.is_empty() {
-      self.action.cleanup();
+    if !self.contents.is_empty() {
+      self.contents.cleanup();
     }
-    self.label.cleanup();
-
     self.parents.cleanup();
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    if self.contents.is_empty() {
+      return Ok(*input);
+    }
+
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let label: &str = self.label.get().try_into()?;
-      let mut button = egui::Button::new(label);
-
-      let wrap = self.wrap.get();
-      if !wrap.is_none() {
-        let wrap: bool = wrap.try_into()?;
-        button = button.wrap(wrap);
+      let wrap: bool = self.wrap.get().try_into()?;
+      if wrap {
+        ui.horizontal_wrapped(|ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+      } else {
+        ui.horizontal(|ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
       }
+      .inner?;
 
-      let response = ui.add(button);
-      if response.clicked() {
-        let mut output = Var::default();
-        if self.action.activate(context, input, &mut output) == WireState::Error {
-          return Err("Failed to activate button");
-        }
-
-        // button clicked during this frame
-        return Ok(true.into());
-      }
-
-      // button not clicked during this frame
-      Ok(false.into())
+      // Always passthrough the input
+      Ok(*input)
     } else {
       Err("No UI parent")
     }

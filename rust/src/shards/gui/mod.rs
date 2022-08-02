@@ -13,7 +13,10 @@ use crate::types::FRAG_CC;
 use egui::Context as EguiNativeContext;
 use std::ffi::c_void;
 
+static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
 static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
+static BOOL_VAR_OR_NONE_SLICE: &[Type] =
+  &[common_type::bool, common_type::bool_var, common_type::none];
 static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, 1701279061); // 'eguU'
@@ -63,8 +66,16 @@ struct EguiContext {
   input_translator: egui_gfx::InputTranslator,
 }
 
+struct Reset {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 mod containers;
 mod context;
+mod layouts;
+mod menus;
+mod reset;
 mod widgets;
 
 mod util;
@@ -72,5 +83,8 @@ mod util;
 pub fn registerShards() {
   containers::registerShards();
   registerShard::<EguiContext>();
+  layouts::registerShards();
+  menus::registerShards();
+  registerShard::<Reset>();
   widgets::registerShards();
 }

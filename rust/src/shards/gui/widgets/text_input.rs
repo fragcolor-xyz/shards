@@ -5,7 +5,6 @@ use super::TextInput;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_VAR_SLICE;
 use crate::shardsc;
@@ -14,6 +13,7 @@ use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Type;
@@ -211,12 +211,24 @@ impl Shard for TextInput {
     "UI.TextInput"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A widget where text can be entered."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &NONE_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The value is ignored."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &STRING_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The value produced when changed."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -293,13 +305,7 @@ impl Shard for TextInput {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
+    util::require_parents(&mut self.requiring, &self.parents);
 
     Some(&self.requiring)
   }
@@ -308,6 +314,10 @@ impl Shard for TextInput {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
     self.multiline.warmup(ctx);
+
+    if self.should_expose {
+      self.variable.get_mut().valueType = common_type::string.basicType;
+    }
 
     Ok(())
   }

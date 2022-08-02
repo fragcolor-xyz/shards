@@ -51,6 +51,7 @@ macro_rules! impl_panel {
           requiring: Vec::new(),
           contents: ShardsVar::default(),
           parents,
+          exposing: Vec::new(),
         }
       }
     }
@@ -68,12 +69,26 @@ macro_rules! impl_panel {
         $name_str
       }
 
+      fn help(&mut self) -> OptionalString {
+        OptionalString(shccstr!("Layout UI elements into the panel."))
+      }
+
       fn inputTypes(&mut self) -> &Types {
         &ANY_TYPES
       }
 
+      fn inputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!(
+          "The value that will be passed to the Contents shards of the panel."
+        ))
+      }
+
       fn outputTypes(&mut self) -> &Types {
         &ANY_TYPES
+      }
+
+      fn outputHelp(&mut self) -> OptionalString {
+        OptionalString(shccstr!("The output of this shard will be its input."))
       }
 
       fn parameters(&mut self) -> Option<&Parameters> {
@@ -133,11 +148,11 @@ macro_rules! impl_panel {
         // update shared
         data.shared = (&shared).into();
 
-        // center always last
         if !self.contents.is_empty() {
           self.contents.compose(&data)?;
         }
 
+        // Always passthrough the input
         Ok(data.inputType)
       }
 
@@ -164,35 +179,30 @@ macro_rules! impl_panel {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-        if !self.contents.is_empty() {
-          let ui = util::get_current_parent(*self.parents.get())?;
-          let output = if let Some(ui) = ui {
-            $egui_func(EguiId::new(self, 0)).show_inside(ui, |ui| {
-              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-            })
-          } else {
-            let gui_ctx = {
-              let ctx_ptr: &mut EguiNativeContext =
-                Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
-              &*ctx_ptr
-            };
-            $egui_func(EguiId::new(self, 0)).show(gui_ctx, |ui| {
-              util::activate_ui_contents(
-                context,
-                input,
-                ui,
-                &mut self.parents,
-                &mut self.contents,
-              )?;
-              // when used as a top container, the input passes through to be consistent with Window
-              Ok(*input)
-            })
-          }
-          .inner?;
-
-          return Ok(output);
+        if self.contents.is_empty() {
+          return Ok(*input);
         }
 
+        if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+          $egui_func(EguiId::new(self, 0))
+            .show_inside(ui, |ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+            .inner?;
+        } else {
+          let gui_ctx = {
+            let ctx_ptr: &mut EguiNativeContext =
+              Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
+            &*ctx_ptr
+          };
+          $egui_func(EguiId::new(self, 0))
+            .show(gui_ctx, |ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+            .inner?;
+        }
+
+        // Always passthrough the input
         Ok(*input)
       }
     }
@@ -235,6 +245,7 @@ impl Default for CentralPanel {
       requiring: Vec::new(),
       contents: ShardsVar::default(),
       parents,
+      exposing: Vec::new(),
     }
   }
 }
@@ -260,8 +271,18 @@ impl Shard for CentralPanel {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the panel."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -297,6 +318,16 @@ impl Shard for CentralPanel {
     Some(&self.requiring)
   }
 
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+      Some(&self.exposing)
+    } else {
+      None
+    }
+  }
+
   fn hasCompose() -> bool {
     true
   }
@@ -321,11 +352,11 @@ impl Shard for CentralPanel {
     // update shared
     data.shared = (&shared).into();
 
-    // center always last
     if !self.contents.is_empty() {
       self.contents.compose(&data)?;
     }
 
+    // Always passthrough the input
     Ok(data.inputType)
   }
 
@@ -352,30 +383,31 @@ impl Shard for CentralPanel {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    if self.contents.is_empty() {
+      return Ok(*input);
+    }
+
     let gui_ctx = {
       let ctx_ptr: &mut EguiNativeContext =
         Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
       &*ctx_ptr
     };
 
-    if !self.contents.is_empty() {
-      let ui = util::get_current_parent(*self.parents.get())?;
-      let output = if let Some(ui) = ui {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      egui::CentralPanel::default()
+        .show_inside(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
-      } else {
-        egui::CentralPanel::default().show(gui_ctx, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
-          // when used as a top container, the input passes through to be consistent with Window
-          Ok(*input)
+        .inner?;
+    } else {
+      egui::CentralPanel::default()
+        .show(gui_ctx, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
-      }
-      .inner?;
-
-      return Ok(output);
+        .inner?;
     }
 
+    // Always passthrough the input
     Ok(*input)
   }
 }
