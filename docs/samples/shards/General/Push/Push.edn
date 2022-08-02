@@ -19,8 +19,8 @@
 .seq3 (Log ".seq3")                     ;; sequence updated => [1, 2]    
 
 ;; create empty table with `Table`; add/update key sequence values with `Push`
-(Table :Name .table1)                   ;; created an empty table (one key, no value)
-.table1 (Log)                           ;; table with one key (no value) created => {A: []}
+;; (Table :Name .table1)                   ;; created an empty table (one key, no value)
+;; .table1 (Log)                           ;; table with one key (no value) created => {A: []}
 1 (Push .table1 "A")                    ;; push new key "A" with sequence value "[1]"
 .table1 (Log)                           ;; table key/value updated => {A: [1]}
 2 (Push .table1 "A")                    ;; push new element into key "A" existing sequence
