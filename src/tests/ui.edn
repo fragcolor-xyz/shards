@@ -155,6 +155,37 @@
 (schedule main collapsing-header-test)
 (run main timestep duration)
 
+;; columns
+(defloop columns-header-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Columns
+         [(->
+           ;; input pass into
+           (Assert.Is input :Abort true))
+          (->
+           ;; input pass into
+           (Assert.Is input :Abort true))])
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main columns-header-test)
+(run main timestep duration)
+
 ;; group
 (defloop group-test
   (GFX.MainWindow

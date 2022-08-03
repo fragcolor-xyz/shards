@@ -3850,6 +3850,8 @@ lazy_static! {
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
   pub static ref ENUMS_TYPES: Vec<Type> = vec![*ENUMS_TYPE];
   pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, common_type::shard, common_type::shards];
+  pub static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
+  pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
 }
 
 macro_rules! test_to_from_vec1 {

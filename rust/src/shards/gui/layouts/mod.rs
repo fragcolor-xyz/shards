@@ -14,6 +14,14 @@ struct CollapsingHeader {
   defaultOpen: ParamVar,
 }
 
+struct Columns {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ParamVar,
+  shards: Vec<ShardsVar>,
+  exposing: ExposedTypes,
+}
+
 struct Group {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -52,6 +60,7 @@ struct Vertical {
 }
 
 mod collapsing_header;
+mod columns;
 mod group;
 mod horizontal;
 mod scroll_area;
@@ -60,6 +69,7 @@ mod vertical;
 
 pub fn registerShards() {
   registerShard::<CollapsingHeader>();
+  registerShard::<Columns>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
   registerShard::<ScrollArea>();
