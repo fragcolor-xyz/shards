@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 egui = { version = "0.18.1" }
 egui-gfx = { path = "../../gfx/egui" }
+
+[workspace]
+members = []
