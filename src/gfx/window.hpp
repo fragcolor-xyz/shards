@@ -2,11 +2,11 @@
 #define GFX_WINDOW
 
 #include "linalg.hpp"
+#include <SDL_events.h>
 #include <string>
 #include <vector>
 
 struct SDL_Window;
-typedef union SDL_Event SDL_Event;
 namespace gfx {
 /// <div rustbindgen opaque></div>
 struct WindowCreationOptions {
