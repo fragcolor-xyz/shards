@@ -3849,6 +3849,7 @@ lazy_static! {
   pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
   pub static ref ENUMS_TYPES: Vec<Type> = vec![*ENUMS_TYPE];
+  pub static ref IMAGE_TYPES: Vec<Type> = vec![common_type::image];
   pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, common_type::shard, common_type::shards];
   pub static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
   pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];

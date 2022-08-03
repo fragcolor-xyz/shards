@@ -2,10 +2,14 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use crate::core::registerShard;
+use crate::types::common_type;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
+use crate::types::Type;
 use crate::types::Var;
+
+static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
 
 /// Clickable button with a text label.
 struct Button {
@@ -30,6 +34,13 @@ struct Hyperlink {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
+}
+
+struct Image {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  scale: ParamVar,
+  texture: Option<egui::TextureHandle>,
 }
 
 /// Displays text.
@@ -109,6 +120,7 @@ decl_ui_slider!(IntSlider, i64);
 mod button;
 mod checkbox;
 mod hyperlink;
+mod image;
 mod label;
 mod numeric_input;
 mod numeric_slider;
@@ -121,6 +133,7 @@ pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
   registerShard::<Hyperlink>();
+  registerShard::<Image>();
   registerShard::<Label>();
   registerShard::<FloatInput>();
   registerShard::<IntInput>();

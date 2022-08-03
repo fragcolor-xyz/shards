@@ -17,6 +17,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Type;
+use crate::types::IMAGE_TYPES;
 use crate::types::INT2_TYPES_SLICE;
 use crate::CString;
 use crate::Types;
@@ -48,7 +49,6 @@ impl From<&mut Pixmap> for Var {
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
-  static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::image];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Size"),
     shccstr!(
@@ -79,7 +79,7 @@ impl Shard for ToImage {
     &INPUT_TYPES
   }
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
-    &OUTPUT_TYPES
+    &IMAGE_TYPES
   }
   fn parameters(&mut self) -> Option<&Parameters> {
     Some(&PARAMETERS)
