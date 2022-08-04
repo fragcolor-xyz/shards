@@ -43,6 +43,18 @@ struct Image {
   texture: Option<egui::TextureHandle>,
 }
 
+/// Clickable button with an image.
+struct ImageButton {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  action: ShardsVar,
+  scale: ParamVar,
+  selected: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  texture: Option<egui::TextureHandle>,
+}
+
 /// Displays text.
 struct Label {
   parents: ParamVar,
@@ -121,6 +133,7 @@ mod button;
 mod checkbox;
 mod hyperlink;
 mod image;
+mod image_button;
 mod label;
 mod numeric_input;
 mod numeric_slider;
@@ -134,6 +147,7 @@ pub fn registerShards() {
   registerShard::<Checkbox>();
   registerShard::<Hyperlink>();
   registerShard::<Image>();
+  registerShard::<ImageButton>();
   registerShard::<Label>();
   registerShard::<FloatInput>();
   registerShard::<IntInput>();

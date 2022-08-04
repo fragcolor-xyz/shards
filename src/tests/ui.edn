@@ -475,6 +475,32 @@
 (schedule main image-test)
 (run main timestep duration)
 
+;; image button
+(defloop image-button-test
+  (GFX.MainWindow
+   :Width 640 :Height 640
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (Setup
+         (LoadImage "../../assets/ShardsLogo.png") = .image
+         (float2 0.1 0.1) = .scale)
+        .image (UI.ImageButton :Scale .scale :Action (Msg "Clicked"))))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main image-button-test)
+(run main timestep duration)
+
 ;; label
 (defloop label-test
   (GFX.MainWindow
