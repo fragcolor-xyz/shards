@@ -3,7 +3,7 @@
 (defloop test-wire
    :Looped
    (GFX.MainWindow
-    :Title "SDL Window" :Width 1280 :Height 720 :Debug false))
+    :Title "SDL Window" :Width nil :Height nil :Debug false))
 
 (schedule Root test-wire)
 (run Root timestep 100)

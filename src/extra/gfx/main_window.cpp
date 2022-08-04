@@ -22,8 +22,8 @@ SDL_Window *Base::getSdlWindow() { return getWindow().window; }
 struct MainWindow : public Base {
   static inline Parameters params{
       {"Title", SHCCSTR("The title of the window to create."), {CoreInfo::StringType}},
-      {"Width", SHCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
-      {"Height", SHCCSTR("The height of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
+      {"Width", SHCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntOrNone}},
+      {"Height", SHCCSTR("The height of the window to create. In pixels and DPI aware."), {CoreInfo::IntOrNone}},
       {"Contents", SHCCSTR("The contents of this window."), {CoreInfo::ShardsOrNone}},
       {"Debug",
        SHCCSTR("If the device backing the window should be created with "
@@ -36,8 +36,8 @@ struct MainWindow : public Base {
   static SHParametersInfo parameters() { return params; }
 
   std::string _title;
-  int _pwidth = 1280;
-  int _pheight = 720;
+  int _pwidth = 0;
+  int _pheight = 0;
   bool _debug = false;
   Window _window;
   ShardsVar _shards;
@@ -52,10 +52,16 @@ struct MainWindow : public Base {
       _title = value.payload.stringValue;
       break;
     case 1:
-      _pwidth = int(value.payload.intValue);
+      if (value.valueType == SHType::None)
+        _pwidth = 0;
+      else
+        _pwidth = int(value.payload.intValue);
       break;
     case 2:
-      _pheight = int(value.payload.intValue);
+      if (value.valueType == SHType::None)
+        _pheight = 0;
+      else
+        _pheight = int(value.payload.intValue);
       break;
     case 3:
       _shards = value;
@@ -73,9 +79,15 @@ struct MainWindow : public Base {
     case 0:
       return Var(_title);
     case 1:
-      return Var(_pwidth);
+      if (_pwidth == 0)
+        return Var::Empty;
+      else
+        return Var(_pwidth);
     case 2:
-      return Var(_pheight);
+      if (_pheight == 0)
+        return Var::Empty;
+      else
+        return Var(_pheight);
     case 3:
       return _shards;
     case 4:
@@ -126,6 +138,11 @@ struct MainWindow : public Base {
     WindowCreationOptions windowOptions = {};
     windowOptions.width = _pwidth;
     windowOptions.height = _pheight;
+    if (_pwidth == 0 || _pheight == 0) {
+      windowOptions.fullscreen = true;
+    } else {
+      windowOptions.fullscreen = false;
+    }
     windowOptions.title = _title;
     globals->window = std::make_shared<Window>();
     globals->window->init(windowOptions);
@@ -193,6 +210,7 @@ struct MainWindow : public Base {
           throw ActivationError("Window closed, aborting wire.");
         } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           gfx::int2 newSize = window->getDrawableSize();
+          SHLOG_DEBUG("Window resized to {}x{}", newSize.x, newSize.y);
           context->resizeMainOutputConditional(newSize);
         }
       } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
