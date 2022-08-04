@@ -168,7 +168,7 @@ Showing how we mix the Clojure-like language as a template language
 
 This section documents all the valid data types that are accepted by various shards either as their input value or as their parameter values. These data types also apply to the output created by any shard.
 
-Valid data types for every shard are listed under the `Type` column of their Parameters, Input, and Output sections (types are enclosed within parenthesis and if multiple types apply then they are separated by a space).
+Valid data types for every shard are listed under the `Type` column of their Parameters, Input, and Output sections (types are enclosed within parentheses and if multiple types apply then they are separated by a space).
 
 ??? note "Compound types"
     While this section lists the simple (or primitive) data types, you can combine these to create compound data types. For example, combining `Int`, `String`, and `Seq`, can give you a sequence of sequences (`(Seq [(Seq)])`), a sequence of integers and strings (`(Seq [(Int)] [(String)])`), and so on.
@@ -176,11 +176,17 @@ Valid data types for every shard are listed under the `Type` column of their Par
 ??? note "Why types?"
     Types are helpful as they reduce errors in programming. They are also very useful in visual programming as type-matching can be used to reduce the dropdown options when prompting a user on what shard to use next (depending on which shard's input type matches with the current shard's output type).
 
+!!! note
+    While all the following types are available internally to various shards, only a few are currently accessible in the Shards scripting environment. Consequently, only these types have keywords/aliases.
+
 ### Any
 
-Type `Any` indicates that all valid data types are allowed.
+Type **Any** indicates that all valid data types are allowed.
 
-For example, `Any` as the allowed data type for input and `:Value` parameter of shard [`(All)`](https://docs.fragcolor.xyz/shards/General/All/) means that `(All)` accepts and compares across all data types.
+!!! note
+    No keyword or alias exists for this type. [`(Any)`](https://docs.fragcolor.xyz/shards/General/Any/) is an unrelated shard.
+
+For example, **Any** as the allowed data type for input and `:Value` parameter of shard [`(All)`](https://docs.fragcolor.xyz/shards/General/All/) means that `(All)` accepts and compares across all data types.
 
 ```clojure linenums="1"
 (All
@@ -223,9 +229,12 @@ For example, `Any` as the allowed data type for input and `:Value` parameter of 
 
 ### None
 
-Type `None` indicates that no data type is expected. This implies that no value is expected.
+Type **None** indicates that no data type is expected. This implies that no value is expected.
 
-For example, `None` as one of the valid data types for `:Max` parameter in shard [`(RandomInt)`](https://docs.fragcolor.xyz/shards/General/RandomInt/) means that setting a value for this parameter is not mandatory.
+!!! note
+    No keyword or alias exists for this type.
+
+For example, **None** as one of the valid data types for `:Max` parameter in shard [`(RandomInt)`](https://docs.fragcolor.xyz/shards/General/RandomInt/) means that setting a value for this parameter is not mandatory.
 
 ```clojure linenums="1"
 (RandomInt
@@ -233,7 +242,7 @@ For example, `None` as one of the valid data types for `:Max` parameter in shard
 )
 ```
 
-`(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have `None` as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer.
+`(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have **None** as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer.
 
 === "Code"
 
@@ -252,13 +261,16 @@ For example, `None` as one of the valid data types for `:Max` parameter in shard
     [info] [2022-07-22 13:45:03.293] [T-19992] [logging.cpp::55] [mywire] 311828859
     ```
 
-### Enum
+### enum
 
-`Enum` stands for enumerated data type. 
+[`enum`](https://docs.fragcolor.xyz/functions/values/#enum) stands for enumerated data type. 
 
-What this means is that the value you pass to an enumerated variable can only take certain 'states' or named constant values.
+!!! note
+    Has a pascal case alias, `Enum`.
 
-For example, in [`(Math.Mean)`](https://docs.fragcolor.xyz/shards/Math/Mean/) the value for `:Kind` parameter needs to be of type `Enum`.
+The value that you pass to an enumerated variable can only take certain 'states' or named constant values.
+
+For example, in [`(Math.Mean)`](https://docs.fragcolor.xyz/shards/Math/Mean/) the value for `:Kind` parameter needs to be of type `enum`.
 
 ```clojure linenums="1"
 (Math.Mean
@@ -309,8 +321,11 @@ In simple terms it just means that you pass in one of the allowed named constant
 
 ### Bool
 
-Type `Bool` allows only two values - `true` or `false`.
-In that sense it can be thought of as a special case of an [`Enum`](#-enum) data type.
+Type **Bool** allows only two values - `true` or `false`.
+In that sense it can be thought of as a special case of an [`enum`](#enum) data type.
+
+!!! note
+    No keyword or alias exists for this type.
 
 Consider the shard [`(Is)`](https://docs.fragcolor.xyz/shards/General/Is/). This shard compares its input and the value in the `:Value` parameter for equality. After the comparison it needs to communicate its result in a yes/no format (yes values are equal; no values are not equal).
 
@@ -320,7 +335,7 @@ Consider the shard [`(Is)`](https://docs.fragcolor.xyz/shards/General/Is/). This
 )
 ```
 
-To allow the shard to do this its output type is defined as a `Bool`. If the values are equal this shard emits `true` as its output, if the values are inequal it emits `false`. No other output is allowed.
+To allow the shard to do this its output type is defined as a **Bool**. If the values are equal this shard emits `true` as its output, if the values are inequal it emits `false`. No other output is allowed.
 
 === "Code"
 
@@ -339,14 +354,17 @@ To allow the shard to do this its output type is defined as a `Bool`. If the val
     [info] [2022-07-22 18:38:24.395] [T-25360] [logging.cpp::55] [mywire] false
     ```
 
-### Int
+### int
 
-Type `Int` (or its alias `int`) defines a 64-bit signed integer.
+Type [`int`](https://docs.fragcolor.xyz/functions/values/#int) defines a 64-bit signed integer.
+
+!!! note
+    Has a pascal case alias, `Int`.
 
 64 bits of memory allows this data type to store integer values ranging from -9,223,372,036,854,775,808 to +9,223,372,036,854,775,807 (no decimals).
 
-An `Int` value looks like this: `(Int 2)`.
-It may also be represented without the keyword `Int`, with just the integer value: `2`.
+An `int` value looks like this: `(int 2)`.
+It may also be represented without the keyword `int`, with just the integer value: `2`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -367,13 +385,16 @@ It may also be represented without the keyword `Int`, with just the integer valu
     [info] [2022-07-22 21:20:18.782] [T-4568] [logging.cpp::55] [mywire] 5
     ```
 
-### Int2
+### int2
 
-Type `Int2` (or its alias `int2`) defines a vector of two [`Int`](#-int) type numbers.
+Type [`int2`](https://docs.fragcolor.xyz/functions/values/#int2) defines a vector of two [`int`](#int) type numbers.
+
+!!! note
+    Has a pascal case alias, `Int2`.
 
 A vector can be thought of as a group or list of items that are considered together for processing.
 
-An `Int2` type value looks like this: `(Int2 3 -5)`.
+An `int2` type value looks like this: `(int2 3 -5)`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -390,13 +411,16 @@ An `Int2` type value looks like this: `(Int2 3 -5)`.
     [info] [2022-07-22 21:22:26.381] [T-17748] [logging.cpp::55] [mywire] (10, 14)
     ```
 
-### Int3
+### int3
 
-Type `Int3` (or its alias `int3`) defines a vector of three 32-bit signed integers.
+Type [`int3`](https://docs.fragcolor.xyz/functions/values/#int3) defines a vector of three 32-bit signed integers.
+
+!!! note
+    Has a pascal case alias, `Int3`.
 
 32 bits of memory for each number allows this data type to store integer values ranging from -2147483648 to +2147483647 (no decimals).
 
-An `Int3` type value looks like this: `(Int3 2 4 -4)`.
+An `int3` type value looks like this: `(int3 2 4 -4)`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -413,11 +437,14 @@ An `Int3` type value looks like this: `(Int3 2 4 -4)`.
     [info] [2022-07-22 21:24:38.132] [T-25580] [logging.cpp::55] [mywire] (100, 100, 100)
     ```
 
-### Int4
+### int4
 
-Type `Int4` (or its alias `int4`) is like type [`Int3`](#-int3) but a vector of four 32-bit signed integers instead.
+Type [`int4`](https://docs.fragcolor.xyz/functions/values/#int4) is like type [`int3`](#int3) but a vector of four 32-bit signed integers instead.
 
-An `Int4` type value looks like this: `(Int4 1 -4 0 3)`.
+!!! note
+    Has a pascal case alias, `Int4`.
+
+An `int4` type value looks like this: `(int4 1 -4 0 3)`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -437,38 +464,39 @@ An `Int4` type value looks like this: `(Int4 1 -4 0 3)`.
 
 ### Int8
 
-Type `Int8` (or its alias `int8`) defines a vector of eight 16-bit signed integers.
+Type **Int8** defines a vector of eight 16-bit signed integers.
+
+!!! note
+    No keyword or alias exists for this type.
 
 16 bits of memory for each number allows this data type to store integer values ranging from −32,768 to +32,767 (no decimals).
 
-However, unlike `(Int)`, `(Int2)`, `(Int3)`, and `(Int4)`), there is no keyword yet defined or supported for `Int8` for Shards scripting environment.
-
-An `Int8` type value though, still works like the other integer type values (described above) in the context of a Shard's input, output, or parameter value data.
-
-So, if a vector of 8 integers is fed into `(Math.Add)` as input and as its `:Operand`, the shard would add them up and output it as another vector of 8 integers. 
+The shard `(Math.Add)` accepts **Int8** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 8 integers or **Int8** data type. 
 
 ### Int16
 
-Type `Int16` (or its alias `int16`) defines a vector of sixteen 8-bit signed integers.
+Type **Int16** defines a vector of sixteen 8-bit signed integers.
+
+!!! note
+    No keyword or alias exists for this type.
 
 8 bits of memory for each number allows this data type to store integer values ranging from −128 to +127 (no decimals).
 
-However, unlike `(Int)`, `(Int2)`, `(Int3)`, and `(Int4)`), there is no keyword yet defined or supported for `Int16` for Shards scripting environment.
+The shard `(Math.Add)` accepts **Int16** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 16 integers or **Int16** data type. 
 
-An `Int16` type value though, still works like the other integer type values (described above) in the context of a Shard's input, output, or parameter value data.
+### float
 
-So, if a vector of 16 integers is fed into `(Math.Add)` as input and as its `:Operand`, the shard would add them up and output it as another vector of 16 integers. 
+Type [`float`](https://docs.fragcolor.xyz/functions/values/#float) defines a 64-bit signed floating point number.
 
-### Float
-
-Type `Float` (or its alias `float`) defines a 64-bit signed floating point number.
+!!! note
+    Has a pascal case alias, `Float`.
 
 Floating point means it has the capability to store a decimal point and hence supports decimal numbers.
 
 64 bits of memory allows this data type to support a very large range of positive and negative decimal numbers (16 significant decimal digits and an exponent range of −383 to +384).
 
-A `Float` value looks like this: `(Float 2.53)`.
-It may also be represented without the keyword `Float`, with just the floating-point value: `2.53`.
+A `float` value looks like this: `(float 2.53)`.
+It may also be represented without the keyword `float`, with just the floating-point value: `2.53`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -489,13 +517,16 @@ It may also be represented without the keyword `Float`, with just the floating-p
     [info] [2022-07-22 22:06:32.873] [T-20204] [logging.cpp::55] [mywire] 3.83
     ```
 
-### Float2
+### float2
 
-Type `Float2` (or its alias `float2`) defines a vector of two [`Float`](#-float) type numbers.
+Type [`float2`](https://docs.fragcolor.xyz/functions/values/#float2) defines a vector of two [`float`](#float) type numbers.
+
+!!! note
+    Has a pascal case alias, `Float2`.
 
 A vector can be thought of as a group or list of items that are considered together for processing.
 
-A `Float2` type value looks like this: `(Float2 3.4 -5.0)`.
+A `float2` type value looks like this: `(float2 3.4 -5.0)`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -512,15 +543,18 @@ A `Float2` type value looks like this: `(Float2 3.4 -5.0)`.
 [info] [2022-07-22 22:10:00.688] [T-24616] [logging.cpp::55] [mywire] (10.4, 14.2)
     ```
 
-### Float3
+### float3
 
-Type `Float3` (or its alias `float3`) defines a vector of three 32-bit signed floating point numbers.
+Type [`float3`](https://docs.fragcolor.xyz/functions/values/#float3) defines a vector of three 32-bit signed floating point numbers.
+
+!!! note
+    Has a pascal case alias, `Float3`.
 
 Floating point means it has the capability to store a decimal point and hence supports decimal numbers.
 
 32 bits of memory allows this data type to support a large range of positive and negative decimal numbers (7 significant decimal digits and an exponent range of −101 to +90).
 
-A `Float3` type value looks like this: `(Float3 2.9 -4.23 7.83)`.
+A `float3` type value looks like this: `(float3 2.9 -4.23 7.83)`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -537,11 +571,14 @@ A `Float3` type value looks like this: `(Float3 2.9 -4.23 7.83)`.
     [info] [2022-07-22 22:19:36.923] [T-16128] [logging.cpp::55] [mywire] (7.7, 7.7, 7.7) 
     ```
 
-### Float4
+### float4
 
-Type `Float4` (or its alias `float4`) is like type [`Float3`](#-float3) but a vector of four 32-bit signed floating point numbers instead.
+Type [`float4`](https://docs.fragcolor.xyz/functions/values/#float4) is like type [`float3`](#float3) but a vector of four 32-bit signed floating point numbers instead.
 
-A `Float4` type value looks like this: `(Float4 -8.84 38.2 4.7 0.4)`.
+!!! note
+    Has a pascal case alias, `Float4`.
+
+A `float4` type value looks like this: `(float4 -8.84 38.2 4.7 0.4)`.
 
 [`(Math.Add)`](https://docs.fragcolor.xyz/shards/Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
 
@@ -559,24 +596,30 @@ A `Float4` type value looks like this: `(Float4 -8.84 38.2 4.7 0.4)`.
     [info] [2022-07-22 22:23:24.076] [T-25152] [logging.cpp::55] [mywire] (9.9, 9.9, 10.1, 9.9)
     ```
 
-### Bytes
+### bytes
 
-Type `Bytes` represents binary data. This type also has a lower case alias `bytes`.
+Type [`bytes`](https://docs.fragcolor.xyz/functions/values/#bytes) represents binary data.
 
-A byte is made up of 8 bits (for example, `10111010`) and a `Bytes` type is an array of such bytes: `[11110001 10110111 10000111]`
+!!! note
+    Has a pascal case alias, `Bytes`.
+
+A byte is made up of 8 bits (for example, `10111010`) and a `bytes` type is an array of such bytes: `[11110001 10110111 10000111]`
 
 ??? note "Bits and Bytes"
     Bits are how data is stored in a computer at the level of ectrical circuits. A bit can have only two values (1 or 0, representing the circuit is on or off) - hence the name binary data. A group of eight bits make a byte: `11111111`, `10101010`, etc. Since a bit can have only two values, a Byte can represent a total of 256 numbers (2^8): 0 to 255.
 
-Shards like [`(ToBytes)`](https://docs.fragcolor.xyz/shards/General/ToBytes/),  [`(BytesToString)`](https://docs.fragcolor.xyz/shards/General/BytesToString/), [`(BytesToInts)`](https://docs.fragcolor.xyz/shards/General/BytesToInts/), etc. all use the type `Bytes` either for their input or their output.
+Shards like [`(ToBytes)`](https://docs.fragcolor.xyz/shards/General/ToBytes/),  [`(BytesToString)`](https://docs.fragcolor.xyz/shards/General/BytesToString/), [`(BytesToInts)`](https://docs.fragcolor.xyz/shards/General/BytesToInts/), etc. all use the type `bytes` either for their input or their output.
 
-### Color
+### color
 
-Type `Color` represents an RGBA color format and is constructed from four unsigned 8 bit integers (one each for the R, G, B, and A values). This type also has a lower case alias `color`.
+Type [`color`](https://docs.fragcolor.xyz/functions/values/#color) represents an RGBA color format and is constructed from four unsigned 8 bit integers (one each for the R, G, B, and A values).
+
+!!! note
+    Has a pascal case alias, `Color`.
 
 Each of the R, G, B, and A values range from 0 to 255. R, G, and B stand for red, blue, and green components of the color. A represents the *alpha channel* property (how opaqe a pixel is - 0 is fully transparent, 255 is fully opaque). 
 
-The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) converts its input into a `Color`.
+The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) converts its input into a `color`.
 
 === "Code"
 
@@ -599,11 +642,14 @@ The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) conv
     [info] [2022-07-26 19:08:24.534] [T-24408] [logging.cpp::55] [mywire] 0, 0, 0, 0  
     ```
 
-### ContextVar
+### context-var
 
-Type `ContextVar` represents a contextual variable (i.e., a variable that is in scope for the shard processing this data). This type also has a lower case alias `context-var`.
+Type [`context-var`](https://docs.fragcolor.xyz/functions/values/#context-var) represents a contextual variable (i.e., a variable that is in scope for the shard processing this data).
 
-The shard [`(Math.Inc)`](https://docs.fragcolor.xyz/shards/Math/Inc/) accepts only `ContextVar` type numeric data (i.e., a variable that holds numeric data) into its `:Value` parameter, and increments it by 1.
+!!! note
+    Has a pascal case alias, `ContextVar`.
+
+The shard [`(Math.Inc)`](https://docs.fragcolor.xyz/shards/Math/Inc/) accepts only `context-var` type numeric data (i.e., a variable that holds numeric data) into its `:Value` parameter, and increments it by 1.
 
 === "Code"
 
@@ -624,11 +670,14 @@ The shard [`(Math.Inc)`](https://docs.fragcolor.xyz/shards/Math/Inc/) accepts on
     [info] [2022-07-26 19:30:22.843] [T-27800] [logging.cpp::55] [mywire] (5.5, 6.7) 
     ```
 
-### String
+### string
 
-Type `String` represents string data. This type also has a lower case alias `string`.
+Type [`string`](https://docs.fragcolor.xyz/functions/values/#string) represents string data.
 
-An example of a shard that processes `String` type data is [`(StringToBytes)`](https://docs.fragcolor.xyz/shards/General/StringToBytes/). It converts its `String` type input into a `Bytes` type output.
+!!! note
+    Has a pascal case alias, `String`.
+
+An example of a shard that processes `string` type data is [`(StringToBytes)`](https://docs.fragcolor.xyz/shards/General/StringToBytes/). It converts its `string` type input into a `bytes` type output.
 
 === "Code"
 
@@ -645,25 +694,28 @@ An example of a shard that processes `String` type data is [`(StringToBytes)`](h
 
 ### Set
 
-Type `Set` is a collection of unique values.
+Type **Set** is a collection of unique values.
 
-It's different from other collections like [`Seq`](#-seq) and [`Array`](#-array) which can contain non-unique or duplicate items.
+!!! note
+    No keyword or alias exists for this type. [`(Set)`](https://docs.fragcolor.xyz/shards/General/Set/) is an unrelated shard.
 
-An example of a `Set` type data would be `(22 3 378 4)`.
+It's different from other collections like [`seq`](#seq) and [**Array**](#array), both of which can contain non-unique or duplicate items.
 
-### Seq
+An example of a **Set** type data would be `(22 3 378 4)`.
 
-Type `Seq` is a collection of values that can be accessed sequentially (i.e., they're iterable).
+### seq
 
-Also called a sequence. An example would be `[7 2 54 42]`.
+Type [`seq`](https://docs.fragcolor.xyz/functions/values/#seq) is a collection of values that can be accessed sequentially (i.e., they're iterable).
 
-The shard [`(Take)`](https://docs.fragcolor.xyz/shards/General/Take/) works on `Seq` type. It copies out the sequence element which is at a given position.
+Also called a sequence. An example of `seq` type would be `[7 2 54 42]`.
+
+The shard [`(Take)`](https://docs.fragcolor.xyz/shards/General/Take/) works on this type. This shard can access `seq` elements by their position.
 
 === "Code"
 
     ```clojure linenums="1"
     [7 2 54 42] (Take 2)
-    (Log)   ;; copy out the 2nd elemetn => 54
+    (Log)   ;; print the 2nd element => 54
     ```
 
 === "Output"
@@ -674,15 +726,21 @@ The shard [`(Take)`](https://docs.fragcolor.xyz/shards/General/Take/) works on `
 
 ### Array
 
-Type `Array` is a collection of values that can be accessed directly via indexes (since items are indexed by contiguous integers).
+Type **Array** is a collection of values that can be accessed directly via indexes (since items are indexed by contiguous integers).
 
-Also called a vector. Looks exactly like the `Seq` type, but its items are accessible by index (and hence accessible randomly). An example of `Array` would be: `[43 6 1]`.
+!!! note
+    No keyword or alias exists for this type.
+
+Also called a vector. Looks exactly like the `seq` type, but an **Array** type's items are accessible by index (and hence accessible randomly). Example of an **Array** type would be: `[43 6 1]`.
 
 ### Table
 
-Type `Table` is a collection of key/value pairs.
+Type **Table** is a collection of key/value pairs.
 
-Also called a map, a data dictionary, or an associative array. An example of a `Table` type would be: `{:key1 "Hello" :key2 "World"}`.
+!!! note
+    No keyword or alias exists for this type. [`(Table)`](https://docs.fragcolor.xyz/shards/General/Table/) is a shard for creating a table; it does not denote the data type **Table**.
+
+Also called a map, a data dictionary, or an associative array. An example of a **Table** type would be: `{:key1 "Hello" :key2 "World"}`.
 
 === "Code"
 
@@ -698,62 +756,72 @@ Also called a map, a data dictionary, or an associative array. An example of a `
     [info] [2022-07-26 22:46:17.194] [T-26104] [logging.cpp::55] [mywire] {k1: 123} 
     ```
 
-### Path
+### path
 
-Type `Path` is string data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.  
-
-This type also has a lower case alias `path`.
-
-A valid `Path` type data string would look like this: `"../../external/sample-models/Avocado.glb"`
+Type [`path`](https://docs.fragcolor.xyz/functions/values/#path) is string data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.  
 
 !!! note
-    For shards this type is the same as `String` type as far as type validations are concerned (when you execute your script Shards first checks the types before running your code). However,if the path-string passed is invalid, malformed, or missing the resource to be loaded, the shard will complain with an error message at runtime (i.e., when your code actually runs).
+    Has a pascal case alias, `Path`.
 
-A shard that uses this type is [`(Process.Run)`](https://docs.fragcolor.xyz/shards/Process/Run/). This shard takes a `Path` type in its `:Executable` parameter (you can seet that the `String` type too is an option).
+A valid `path` type data string would look like this: `"../../external/sample-models/Avocado.glb"`
+
+!!! note
+    For shards this type is the same as [`string`](#string) type as far as type validations are concerned (when you execute your script Shards first checks the types before running your code). However,if the path-string passed is invalid, malformed, or missing the resource to be loaded, the shard will complain with an error message at runtime (i.e., when your code actually runs).
+
+A shard that uses this type is [`(Process.Run)`](https://docs.fragcolor.xyz/shards/Process/Run/). This shard takes a `path` (as well as a `string`) type in its `:Executable` parameter.
 
 ### Audio
 
-Type `Audio` is uncompressed audio data.
-
-Examples of shards that use this type are [`(Audio.Oscillator)`](https://docs.fragcolor.xyz/shards/Audio/Oscillator/), [`(Audio.ReadFile)`](https://docs.fragcolor.xyz/shards/Audio/ReadFile/), and [`(Audio.WriteFile)`](https://docs.fragcolor.xyz/shards/Audio/WriteFile/) all of which generate `Audio` type data as their output.
+Type **Audio** is uncompressed audio data.
 
 !!! note
+    No keyword or alias exists for this type.
+
+Examples of shards that use this type are [`(Audio.Oscillator)`](https://docs.fragcolor.xyz/shards/Audio/Oscillator/), [`(Audio.ReadFile)`](https://docs.fragcolor.xyz/shards/Audio/ReadFile/), and [`(Audio.WriteFile)`](https://docs.fragcolor.xyz/shards/Audio/WriteFile/) all of which generate **Audio** type data as their output.
+
+??? note "Supported formats"
     Shards supports the audio formats WAV, MP3, OGG, and FLAC.
 
 ### Image
 
-Type `Image` is uncompressed image data.
-
-A shard that uses this type is [`(StripAlpha)`](https://docs.fragcolor.xyz/shards/General/StripAlpha/). This takes an `Image` type input, strips out its alpha (transparency) channel, and outputs an `Image` type (transformed image).
+Type **Image** is uncompressed image data.
 
 !!! note
+    No keyword or alias exists for this type.
+
+A shard that uses this type is [`(StripAlpha)`](https://docs.fragcolor.xyz/shards/General/StripAlpha/). This takes an **Image** type input, strips out its alpha (transparency) channel, and outputs an **Image** type (transformed image).
+
+??? note "Supported formats"
     Shards supports the image formats PNG and SVG.
 
 ### ShardRef
 
-Type `ShardRef` (or `Shard`) represents a shard being passed as data.
+Type **ShardRef** (or type **Shard**) represents a shard being passed as data.
 
 !!! note
-    `ShardRef` is needed to support Homoiconicity (i.e., code/data interangeability) in Shards. 
+    No keyword or alias exists for this type.
 
-The shard [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) expects the type `ShardRef` for its `:Apply` parameter (the other option here is a sequence of `ShardRef` types, which as we will see next is a [`Wire`](#-wire) type).
+This type is an important aspect of the homoiconicity feature (i.e., code/data interchangeability) in Shards. 
+
+The shard [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) expects type **ShardRef** for its `:Apply` parameter (the other option being a sequence of **ShardRef** type values, i.e., a [`Wire`](#wire) type).
 
 `(ForEach)` then applies this shard (or sequence of shards) on its input to transform it into its output.
 
 ### Wire
 
-Type `Wire` is a sequence of shards (i.e., a sequence of [`ShardRef`](#-shardref) types).
+Type [`Wire`](https://docs.fragcolor.xyz/functions/values/#wire) is a sequence of shards (i.e., a sequence of [**ShardRef**](#shardref) types).
 
-Since a collection of shards makes up wire, its fitting to call a sequence of `Shard` types as `Wire`.
-
-Going back to [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) we see that other than `ShardRef` (or `Shard`) as a valid type for its `:Apply` parameter, this shard also accepts a sequence of `Shard` types, or in other words a `Wire` type. 
+In addition to the **Shard** type, [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) also accepts a sequence of **Shard** type values, or in other words a `Wire` type, for its `:Apply` parameter.
 
 ### Object
 
-Type `Object` is an *opaque* data type in Shards.
+Type **Object** is an *opaque* data type in Shards.
 
-This means that the structure of this kind of data is not defined in an interface and is visible only to shards that use this type. What this also implies is that the internal structure of this data type will vary from shard to shard.
+!!! note
+    No keyword or alias exists for this type.
 
-For example, the `:Socket` parameter object of [`(WS.ReadString)`](https://docs.fragcolor.xyz/shards/WS/ReadString/) is different from the output object of [`(GFX.DrawQueue)`](https://docs.fragcolor.xyz/shards/GFX/DrawQueue/).
+Opacit in a data type means that the structure of this kind of data is not defined in an interface and is visible only to shards that use this type. What this also implies is that the internal structure of this data type will vary from shard to shard.
+
+For example, the `:Socket` parameter object of [`(WS.ReadString)`](https://docs.fragcolor.xyz/shards/WS/ReadString/) is different from the output object of [`(GFX.DrawQueue)`](https://docs.fragcolor.xyz/shards/GFX/DrawQueue/), even though both are of type **Object**.
 
 --8<-- "includes/license.md"
