@@ -84,6 +84,90 @@
 (schedule main scope-test)
 (run main timestep duration)
 
+;; area
+(defloop area-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      input
+      (UI.Area
+       :Anchor Anchor.TopLeft
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "TopLeft" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Top
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Top" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.TopRight
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "TopRight" (UI.Label :Wrap false)))
+      (UI.Area
+       :Anchor Anchor.Left
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Left" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Center
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Center" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Right
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Right" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.BottomLeft
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "BottomLeft" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Bottom
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Bottom" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.BottomRight
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "BottomRight" (UI.Label :Wrap false)))
+        ;; input passthrough
+      (Assert.Is input :Abort true)))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main area-test)
+(run main timestep duration)
+
 ;; panels
 (defloop panels-test
   (GFX.MainWindow
