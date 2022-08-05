@@ -103,7 +103,7 @@ rustup update
 Next, update other packages with `pacman`.
 
 !!! note
-    `pacman` comes preinstalled on Linux and as part of `MSYS2` on Windows. For Mac you can get it [here](https://github.com/kladd/pacman-osx) or use the pre-installed package manager, [Homebrew](https://formulae.brew.sh/).
+    `pacman` comes preinstalled as part of `MSYS2` on Windows. For Mac you can get it [here](https://github.com/kladd/pacman-osx) or use the pre-installed package manager, [Homebrew](https://formulae.brew.sh/).
 
 Sync, refresh, and update all local packages that have a newer version available.
 
@@ -226,24 +226,25 @@ You need to run the following two commands every time you want to build the proj
 Configure the build with `cmake`,
 
 ```
-# Windows
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..
-
-# Ubuntu (WSL)
+# Windows and Linux (WSL)
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+
 ```
 
 ??? note "Release mode build"
-    In case you need less verbose script execution logs, build Shards in release mode (instead of the debug mode) by using the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..`
+    In case you need less verbose script execution logs, build Shards in release mode (instead of the debug mode) by using the option `-DCMAKE_BUILD_TYPE=Release ..`
 
-then format the source code and build the target with `ninja`
+then build the target with `ninja`
 
 ```
+ninja shards
+```
+
+??? note "Build with formatting (useful for pull requests)"
+    Formatting the source is required when raising a PR (for contributing a change). You can do it simply by running 
+```    
 ninja format; ninja shards
 ```
-
-??? note "Build without formatting"
-    Formatting the source is required when raising a PR (for contributing a change). For testing the build locally just use `ninja shards`.
 
 The build ends with a successful linking of the Shards executable (shards.exe).
 
