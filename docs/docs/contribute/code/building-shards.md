@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 # Building Shards
 
-This guide explains how to build [Shards](https://github.com/fragcolor-xyz/shards) from the sources, for Windows.
+This guide explains how to build [Shards](https://github.com/fragcolor-xyz/shards) from the sources, for Windows and Ubuntu (on WSL).
 
 Before you start, ensure you've [set up your development environment](../getting-started/#development-environment).
 
@@ -14,10 +14,13 @@ Before you start, ensure you've [set up your development environment](../getting
 !!! note
     We use GCC and Clang a lot; MSVC might work, but it's uncharted territory.
 
-For Windows, ensure your system environment PATH variable includess the MinGW bin location. This value can be set from: Settings > Edit environment variables for your account > User variables for 'user' > Path > Edit. This allows you to run MinGW from Powershell, VS Code, etc. The value of this PATH is usually `C:\msys64\mingw64\bin`.
+### For Windows
+
+Ensure your system environment PATH variable includess the MinGW bin location. This value can be set from: Settings > Edit environment variables for your account > User variables for 'user' > Path > Edit. This allows you to run MinGW from Powershell, VS Code, etc. The value of this PATH is usually `C:\msys64\mingw64\bin`.
 
 ![Add mingw64 bin to user's PATH](assets/build-sh_acc-env-var.png)
 
+### Clone the Shards repo
 You'd normally clone the Shards repository locally (`git clone ...`), checkout the branch you want to work with (`git checkout ...`), and pull the latest changes to your machine (`git pull`).
 
 But since the Shards repository contains [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (links to external repositories), you also have to pull the latest changes for these submodules (including nested submodules).
@@ -27,14 +30,20 @@ This can be done with the following command (to be run every time you want to bu
 ```
 git submodule update --init --recursive
 ```
+### Set up the RUST toolchain
 
 Install and switch to the Rust GNU toolchain with the following rustup commands (from any terminal).
 
 === "Command"
 
     ```
+    # Windows
     rustup toolchain install nightly
     rustup default nightly-x86_64-pc-windows-gnu
+
+    # Ubuntu (WSL)
+    rustup install nightly
+    rustup default nightly
     ```
 
 === "Output"
@@ -62,7 +71,11 @@ When adding rust targets, ensure they're installed for nightly toolchain. For ex
 === "Command"
 
     ```
+    # Windows 
     rustup +nightly target add x86_64-pc-windows-gnu
+
+    # Ubuntu (WSL)
+    rustup target add wasm32-unknown-unknown --toolchain nightly
     ```
 
 === "Output"
@@ -77,7 +90,9 @@ When adding rust targets, ensure they're installed for nightly toolchain. For ex
 
 You should update your system packages frequently and preferably every time you want to build the project.
 
-On Windows you'll need to run these commands in a MinGW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MinGW' and click the version appropriate for your machine (x86 or x64).
+### Windows 
+
+You'll need to run these commands in a MinGW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MinGW' and click the version appropriate for your machine (x86 or x64).
 
 Update the Rust packages with `rustup` (works with Windows, Mac, and Linux).
 
@@ -88,7 +103,7 @@ rustup update
 Next, update other packages with `pacman`.
 
 !!! note
-    `pacman` comes preinstalled on Linux and as part of `MSYS2` on Windows. For Mac you can get it [here](https://github.com/kladd/pacman-osx) or use the pre-installed package manager, [Homebrew](https://formulae.brew.sh/).
+    `pacman` comes preinstalled as part of `MSYS2` on Windows. For Mac you can get it [here](https://github.com/kladd/pacman-osx) or use the pre-installed package manager, [Homebrew](https://formulae.brew.sh/).
 
 Sync, refresh, and update all local packages that have a newer version available.
 
@@ -140,11 +155,28 @@ Restart the MinGW terminal (if needed) and install the required build dependenci
     (1/1) Updating the info directory file...
     ```
 
+### Ubuntu (WSL) 
+
+Update the Rust packages with `rustup` (works with Windows, Mac, and Linux).
+
+```
+rustup update
+```
+
+Next, update packages and install dependencies.
+
+=== "Command"
+
+    ```
+    sudo apt update
+    sudo apt install -y build-essential git cmake g++ wget clang ninja-build valgrind xorg-dev libdbus-1-dev libssl-dev lcov ca-certificates
+    ```
+
 ## Build & run the project
 
 ### Bootstrap the project
 
-Continuing with the MinGW terminal, navigate to Shards root directory, and run the `bootstrap` shell script (to be run only once, when you build the project for the first time).
+Continuing with the MinGW terminal (or any terminal on Linux), navigate to Shards root directory, and run the `bootstrap` shell script (to be run only once, when you build the project for the first time).
 
 === "Windows"
 
@@ -153,8 +185,9 @@ Continuing with the MinGW terminal, navigate to Shards root directory, and run t
     ```
 
 === "Mac/Linux"
+    
     ```
-    bash bootstrap
+    bash bootstrap # or ./bootstrap
     ```
 
 === "Output"
@@ -182,9 +215,7 @@ Continuing with the MinGW terminal, navigate to Shards root directory, and run t
 
 ### Build the project
 
-Now you may continue in a normal Windows/VS Code terminal.
-
-Go to Shards root and create a build directory (if it doesn't already exist) and navigate to it.
+Go to Shards root and create a build directory (if it doesn't already exist) and navigate into it.
 
 ```
 mkdir build
@@ -195,20 +226,25 @@ You need to run the following two commands every time you want to build the proj
 Configure the build with `cmake`,
 
 ```
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..
+# Windows and Linux (WSL)
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+
 ```
 
 ??? note "Release mode build"
-    In case you need less verbose script execution logs, build Shards in release mode (instead of the debug mode) by using the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ..`
+    In case you need less verbose script execution logs, build Shards in release mode (instead of the debug mode) by using the option `-DCMAKE_BUILD_TYPE=Release ..`
 
-then format the source code and build the target with `ninja`
+then build the target with `ninja`
 
 ```
+ninja shards
+```
+
+??? note "Build with formatting (useful for pull requests)"
+    Formatting the source is required when raising a PR (for contributing a change). You can do it simply by running 
+```    
 ninja format; ninja shards
 ```
-
-??? note "Build without formatting"
-    Formatting the source is required when raising a PR (for contributing a change). For testing the build locally just use `ninja shards`.
 
 The build ends with a successful linking of the Shards executable (shards.exe).
 
