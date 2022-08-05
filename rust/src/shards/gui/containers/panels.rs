@@ -124,6 +124,16 @@ macro_rules! impl_panel {
         Some(&self.requiring)
       }
 
+      fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+        self.exposing.clear();
+
+        if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+          Some(&self.exposing)
+        } else {
+          None
+        }
+      }
+
       fn hasCompose() -> bool {
         true
       }

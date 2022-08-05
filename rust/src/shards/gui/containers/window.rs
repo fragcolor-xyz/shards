@@ -54,6 +54,7 @@ impl Default for Window {
       title: ParamVar::new(Var::ephemeral_string("My Window")),
       contents: ShardsVar::default(),
       parents,
+      exposing: Vec::new(),
     }
   }
 }
@@ -134,6 +135,16 @@ impl Shard for Window {
     self.requiring.push(exp_info);
 
     Some(&self.requiring)
+  }
+
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+      Some(&self.exposing)
+    } else {
+      None
+    }
   }
 
   fn hasCompose() -> bool {
