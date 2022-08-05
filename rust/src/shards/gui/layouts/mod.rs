@@ -22,6 +22,19 @@ struct Columns {
   exposing: ExposedTypes,
 }
 
+struct Frame {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  innerMargin: ParamVar,
+  outerMargin: ParamVar,
+  rounding: ParamVar,
+  fillColor: ParamVar,
+  strokeColor: ParamVar,
+  strokeWidth: ParamVar,
+  contents: ShardsVar,
+  exposing: ExposedTypes,
+}
+
 struct Group {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -61,6 +74,7 @@ struct Vertical {
 
 mod collapsing_header;
 mod columns;
+mod frame;
 mod group;
 mod horizontal;
 mod scroll_area;
@@ -70,6 +84,7 @@ mod vertical;
 pub fn registerShards() {
   registerShard::<CollapsingHeader>();
   registerShard::<Columns>();
+  registerShard::<Frame>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
   registerShard::<ScrollArea>();

@@ -270,6 +270,38 @@
 (schedule main columns-header-test)
 (run main timestep duration)
 
+;; frame
+(defloop frame-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Frame
+         :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 5)
+         :FillColor (color 32 32 128)
+         :StrokeColor (color 255 64 255) :StrokeWidth 8.0
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main frame-test)
+(run main timestep duration)
+
 ;; group
 (defloop group-test
   (GFX.MainWindow
