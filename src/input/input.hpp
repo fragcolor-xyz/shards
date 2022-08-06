@@ -13,6 +13,9 @@ enum class ConsumeEventFilter : uint8_t {
   PointerUp = 1 << 2,
   Controller = 1 << 3,
 };
+
+ConsumeEventFilter categorizeEvent(const SDL_Event &event);
+
 inline ConsumeEventFilter operator&(ConsumeEventFilter a, ConsumeEventFilter b) {
   return ConsumeEventFilter(uint8_t(a) & uint8_t(b));
 }
@@ -54,17 +57,18 @@ public:
 };
 
 struct InputBufferIterator {
-  InputBuffer *buffer;
+  InputBuffer *buffer{};
   bool onlyNonConsumed;
-  size_t index;
+  size_t index{};
 
+  InputBufferIterator() = default;
   InputBufferIterator(InputBuffer *buffer, bool onlyNonConsumed, size_t index)
       : buffer(buffer), onlyNonConsumed(onlyNonConsumed), index(index) {
     if (onlyNonConsumed && buffer->size() > 0 && getConsumedBy() != nullptr) {
       nextNonConsumed();
     }
   }
-  operator bool() const { return index < buffer->events.size(); }
+  operator bool() const { return buffer && index < buffer->events.size(); }
   InputBufferIterator &operator++() {
     nextNonConsumed();
     return *this;

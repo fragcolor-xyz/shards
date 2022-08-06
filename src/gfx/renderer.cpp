@@ -282,12 +282,12 @@ struct RendererImpl final : public ContextData {
     View *viewPtr = view.get();
 
     Rect viewport;
-    int2 viewSize;
+    float2 viewSize;
     if (viewPtr->viewport) {
-      viewSize = viewPtr->viewport->getSize();
+      viewSize = float2(viewPtr->viewport->getSize());
       viewport = viewPtr->viewport.value();
     } else {
-      viewSize = mainOutput.size;
+      viewSize = float2(mainOutput.size);
       viewport = Rect(0, 0, viewSize.x, viewSize.y);
     }
 

@@ -2,6 +2,7 @@
 #define D9CD6261_7BAB_402B_BC43_8BC66551E95D
 
 #include "egui_types.hpp"
+#include "../linalg.hpp"
 #include "../fwd.hpp"
 #include <memory>
 
@@ -15,7 +16,8 @@ struct EguiRenderer {
 
   EguiRenderer();
 
-  void render(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue);
+  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue);
+  void renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue);
 
   static EguiRenderer *create();
   static void destroy(EguiRenderer *renderer);

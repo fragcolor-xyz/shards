@@ -2,9 +2,12 @@ extern crate egui;
 extern crate egui_gfx;
 use std::boxed::Box;
 
+use egui_gfx::make_native_full_output;
+
 pub struct Instance {
     pub renderer: egui_gfx::Renderer,
     pub ctx: egui::Context,
+    pub text: String,
 }
 
 impl Instance {
@@ -12,18 +15,19 @@ impl Instance {
         Self {
             renderer: egui_gfx::Renderer::new(),
             ctx: egui::Context::default(),
+            text: String::new(),
         }
     }
 }
 
+type RenderCallback = unsafe extern "C" fn(ctx: *mut u8, output: *const egui_gfx::egui_FullOutput);
+
 #[repr(C)]
 pub struct VUIArgs {
     instance: *mut Instance,
-    queue: *const egui_gfx::gfx_DrawQueuePtr,
+    render_context: *mut u8,
+    render: RenderCallback,
     input: *const egui_gfx::egui_Input,
-    draw_scale: f32,
-    time: f64,
-    delta_time: f32,
 }
 
 #[no_mangle]
@@ -36,23 +40,20 @@ pub unsafe extern "C" fn vui_drop_instance(inst: *mut Instance) {
     drop(Box::from_raw(inst))
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn vui_0(args: &mut VUIArgs) {
     let ctx = &(*args.instance).ctx;
 
     let raw_input = egui_gfx::translate_raw_input(&*args.input).unwrap();
-
     let output = ctx.run(raw_input, |ctx| {
         egui::Window::new("My Window 0").show(ctx, |ui| {
             ui.label("Hello world");
-            ui.button("Press me");
             ui.label(":)");
         });
     });
 
-    let renderer = &(*args.instance).renderer;
-    renderer.render(ctx, output, args.queue, args.draw_scale).unwrap();
+    let native_egui_output = make_native_full_output(ctx, output, 1.0).unwrap();
+    (args.render)(args.render_context, &native_egui_output.full_output);
 }
 
 #[no_mangle]
@@ -61,13 +62,31 @@ pub unsafe extern "C" fn vui_1(args: &mut VUIArgs) {
 
     let raw_input = egui_gfx::translate_raw_input(&*args.input).unwrap();
     let output = ctx.run(raw_input, |ctx| {
-        egui::Window::new("My Window 1").show(ctx, |ui| {
+        let area = egui::Area::new("Main");
+        area.show(ctx, |ui| {
             ui.label("Hello world");
-            ui.button("Press me");
             ui.label(":)");
+            if ui.button("Press me").clicked() {}
         });
     });
 
-    let renderer = &(*args.instance).renderer;
-    renderer.render(ctx, output, args.queue, args.draw_scale).unwrap();
+    let native_egui_output = make_native_full_output(ctx, output, 1.0).unwrap();
+    (args.render)(args.render_context, &native_egui_output.full_output);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn vui_2(args: &mut VUIArgs) {
+    let ctx = &(*args.instance).ctx;
+
+    let raw_input = egui_gfx::translate_raw_input(&*args.input).unwrap();
+    let output = ctx.run(raw_input, |ctx| {
+        let area = egui::Area::new("Main");
+        area.show(ctx, |ui| {
+            ui.label("Text control");
+            ui.text_edit_multiline(&mut (*args.instance).text);
+        });
+    });
+
+    let native_egui_output = make_native_full_output(ctx, output, 1.0).unwrap();
+    (args.render)(args.render_context, &native_egui_output.full_output);
 }

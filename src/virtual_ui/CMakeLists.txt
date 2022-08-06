@@ -1,6 +1,6 @@
-add_library(virtual_ui dummy.cpp)
+add_library(virtual_ui context.cpp panel.cpp)
 target_include_directories(virtual_ui PUBLIC ${CMAKE_CURRENT_LIST_DIR}/..)
-target_link_libraries(virtual_ui SDL2-static)
+target_link_libraries(virtual_ui SDL2-static gfx)
 target_compile_features(virtual_ui PUBLIC cxx_std_20)
 
 add_rust_library(

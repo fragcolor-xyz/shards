@@ -40,7 +40,7 @@ struct Handle {
 
 struct InputState {
   float2 cursorPosition{};
-  int2 viewSize{};
+  float2 viewSize{};
   bool pressed{};
 };
 

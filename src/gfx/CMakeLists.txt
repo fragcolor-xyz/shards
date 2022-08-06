@@ -36,7 +36,7 @@ target_include_directories(gfx
 )
 target_link_libraries(gfx
   tinygltf
-  magic_enum nameof
+  magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")

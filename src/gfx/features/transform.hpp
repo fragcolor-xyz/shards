@@ -17,11 +17,29 @@ struct Transform {
 
     FeaturePtr feature = std::make_shared<Feature>();
 
-    auto vec4Pos = makeCompoundBlock("vec4<f32>(", ReadInput("position"), ".xyz, 1.0)");
+    auto vec4Pos = blocks::Custom([&](shader::GeneratorContext &ctx) {
+      ctx.write("vec4<f32>(");
+      ctx.readInput("position");
+      auto it = ctx.inputs.find("position");
+      if (it != ctx.inputs.end()) {
+        auto &type = it->second;
+        switch (type.numComponents) {
+        case 2:
+          ctx.write(".xy, 0.0, 1.0)");
+          break;
+        case 3:
+          ctx.write(".xyz, 1.0)");
+          break;
+        default:
+          ctx.pushError(formatError("Unsupported position type"));
+          break;
+        }
+      }
+    });
 
     feature->shaderEntryPoints.emplace_back(
         "initWorldPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", vec4Pos->clone()));
+        WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", std::move(vec4Pos)));
     auto &initScreenPosition = feature->shaderEntryPoints.emplace_back(
         "initScreenPosition", ProgrammableGraphicsStage::Vertex,
         WriteGlobal("screenPosition", FieldTypes::Float4, ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*",

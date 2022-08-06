@@ -23,6 +23,7 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
         .clang_arg("-DRUST_BINDGEN=1")
         .clang_arg("-DWEBGPU_NATIVE=1")
         .clang_arg(format!("-I{}", deps_path))
+        .clang_arg(format!("-I{}/linalg", deps_path))
         .clang_arg(format!("-I{}/nameof/include", deps_path))
         .clang_arg(format!("-I{}/SDL/include", deps_path))
         .clang_arg(format!("-I{}/rust/wgpu-native/ffi", gfx_path))

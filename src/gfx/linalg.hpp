@@ -1,7 +1,7 @@
 #ifndef GFX_LINALG
 #define GFX_LINALG
 
-#include <linalg/linalg.h>
+#include <linalg.h>
 #include <cstring>
 
 namespace gfx {
@@ -33,10 +33,10 @@ inline bool intersectPlane(const float3 &rayOrigin, const float3 &rayDir, const 
                            float &outDistance) {
   // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-plane-and-ray-disk-intersection
   const float epsilon = 1e-6;
-  float denom = linalg::dot(planeNormal, rayDir);
+  float denom = linalg::dot(-planeNormal, rayDir);
   if (denom > epsilon) {
     float3 toPlane = planePoint - rayOrigin;
-    outDistance = linalg::dot(toPlane, planeNormal) / denom;
+    outDistance = linalg::dot(toPlane, -planeNormal) / denom;
     return (outDistance >= 0);
   }
 
