@@ -84,10 +84,10 @@
 	url = https://github.com/ocornut/imgui.git
 [submodule "cmake/android-cmake"]
 	path = cmake/android-cmake
-	url = git@github.com:guusw/android-cmake.git
+	url = https://github.com/guusw/android-cmake.git
 [submodule "src/gfx/wgpu"]
 	path = src/gfx/rust/wgpu
-	url = git@github.com:chainblocks/wgpu.git
+	url = https://github.com/chainblocks/wgpu.git
 	branch = master
 [submodule "src/gfx/naga"]
 	path = src/gfx/rust/naga
