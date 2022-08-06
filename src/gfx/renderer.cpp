@@ -224,13 +224,7 @@ struct RendererImpl final : public ContextData {
   bool mainOutputWrittenTo = false;
   bool depthStencilWrittenTo = false;
 
-  static constexpr WGPUTextureFormat defaultDepthTextureFormat =
-#if GFX_APPLE
-      WGPUTextureFormat_Depth32Float
-#else
-      WGPUTextureFormat_Depth32Float
-#endif
-      ;
+  static constexpr WGPUTextureFormat defaultDepthTextureFormat = WGPUTextureFormat_Depth32Float;
   std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(defaultDepthTextureFormat, "Depth Buffer");
   std::shared_ptr<PlaceholderTexture> placeholderTexture;
 
