@@ -26,6 +26,7 @@ struct Context {
   gfx::EguiInputTranslator eguiInputTranslator;
   gfx::EguiRenderer eguiRenderer;
 
+  PanelPtr lastFocusedPanel;
   PanelPtr focusedPanel;
 
   struct PointerInput {

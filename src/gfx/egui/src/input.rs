@@ -216,6 +216,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
                     let str = CStr::from_ptr(event.str_).to_str()?.to_owned();
                     Some(Event::Paste(str))
                 }
+                egui_InputEventType_PointerGone => Some(Event::PointerGone),
                 _ => {
                     panic!("Invalid input event type")
                 }

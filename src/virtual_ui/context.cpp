@@ -44,6 +44,7 @@ void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewSc
 
   std::vector<egui::InputEvent> panelEvents;
 
+  lastFocusedPanel = focusedPanel;
   for (auto &evt : pointerInputs) {
     for (size_t panelIndex = 0; panelIndex < panels.size(); panelIndex++) {
       auto &panel = panels[panelIndex];
@@ -124,12 +125,33 @@ static void renderPanel(const RenderContext &ctx, const egui::FullOutput &output
 }
 
 void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
+  bool panelFocusChanged = lastFocusedPanel != focusedPanel;
+
   for (auto &panel : panels) {
     // Points per world space unit
     float virtualPointScale = 200.0f;
     float pixelsPerPoint = 4.0f;
 
     eguiInputTranslator.begin(time, deltaTime);
+
+    if (panelFocusChanged && lastFocusedPanel == panel) {
+      egui::InputEvent evt;
+      auto &pointerGone = evt.pointerGone;
+      pointerGone.type = egui::InputEventType::PointerGone;
+      eguiInputTranslator.pushEvent(evt);
+
+      // Simulate deselect
+      auto &pointerButton = evt.pointerButton;
+      pointerButton.type = egui::InputEventType::PointerButton;
+      pointerButton.button = egui::PointerButton::Primary;
+      pointerButton.pos = egui::toPos2(float2(-1, -1));
+      pointerButton.type = egui::InputEventType::PointerButton;
+      pointerButton.pressed = true;
+      eguiInputTranslator.pushEvent(evt);
+      pointerButton.pressed = false;
+      eguiInputTranslator.pushEvent(evt);
+    }
+
     for (auto &pointerInput : pointerInputs) {
       if (pointerInput.hitPanel == panel) {
         const SDL_Event &sdlEvent = *pointerInput.iterator;

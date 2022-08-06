@@ -2,6 +2,7 @@ extern crate egui;
 extern crate egui_gfx;
 use std::boxed::Box;
 
+use egui::{Pos2, Rect, Vec2};
 use egui_gfx::make_native_full_output;
 
 pub struct Instance {
@@ -80,11 +81,27 @@ pub unsafe extern "C" fn vui_2(args: &mut VUIArgs) {
 
     let raw_input = egui_gfx::translate_raw_input(&*args.input).unwrap();
     let output = ctx.run(raw_input, |ctx| {
-        let area = egui::Area::new("Main");
-        area.show(ctx, |ui| {
-            ui.label("Text control");
-            ui.text_edit_multiline(&mut (*args.instance).text);
-        });
+        let area = egui::Area::new("Main")
+            // .drag_bounds(Rect::from_min_size(
+            //     Pos2::new(0.0, 0.0),
+            //     Vec2::new(0.0, 0.0),
+            // ))
+            .current_pos(Pos2::ZERO)
+            // .fixed_pos(Pos2::ZERO)
+            ;
+
+        let resp = area
+            .show(ctx, |ui| {
+                ui.label("Text control");
+                ui.text_edit_multiline(&mut (*args.instance).text);
+            })
+            .response;
+
+        if resp.dragged() {
+            let delta = resp.drag_delta();
+
+            println!("Dragging ({}, {})", delta.x, delta.y);
+        }
     });
 
     let native_egui_output = make_native_full_output(ctx, output, 1.0).unwrap();
