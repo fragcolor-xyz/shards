@@ -1,0 +1,21 @@
+;; Asynchronous execution of shards (using keyword `Await`)
+(defmesh mesh)
+
+(defloop await-wire
+(Await
+  ;:Shards
+  (->
+    (Msg "Await worker1")
+    ;; printed 1st => [info] [2022-08-07 16:35:31.636] [T-29916] [logging.cpp::98] [await-wire] Await worker1
+    (Msg "Await worker2")
+    ;; printed 3rd => [info] [2022-08-07 16:35:31.638] [T-29916] [logging.cpp::98] [await-wire] Await worker2
+  )))
+
+(defloop my-wire
+    (Msg "Log without waiting for Await shards to complete")
+    ;; printed 2nd => [info] [2022-08-07 16:35:31.637] [T-13248] [logging.cpp::98] [my-wire] Log without waiting for Await shards to complete
+    )
+
+(schedule mesh await-wire)
+(schedule mesh my-wire)
+(run mesh 1 1)

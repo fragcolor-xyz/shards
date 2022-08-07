@@ -1,0 +1,19 @@
+;; Asynchronous execution of shards (using alias `||`)
+(defmesh mesh)
+
+(defloop await-wire
+(||
+    (Msg "Await worker1")
+    ;; printed 1st => [info] [2022-08-07 16:39:45.782] [T-3424] [logging.cpp::98] [await-wire] Await worker1
+    (Msg "Await worker2")
+    ;; printed 3rd => [info] [2022-08-07 16:39:45.784] [T-3424] [logging.cpp::98] [await-wire] Await worker2
+  ))
+
+(defloop my-wire
+    (Msg "Log without waiting for Await shards to complete")
+    ;; printed 2nd => [info] [2022-08-07 16:39:45.783] [T-5736] [logging.cpp::98] [my-wire] Log without waiting for Await shards to complete
+    )
+
+(schedule mesh await-wire)
+(schedule mesh my-wire)
+(run mesh 1 1)
