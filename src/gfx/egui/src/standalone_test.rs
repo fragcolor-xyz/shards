@@ -1,20 +1,23 @@
 use super::*;
-use crate::input::to_egui_cursor_icon;
+use crate::InputTranslator;
 use crate::Renderer;
 use egui::RichText;
 use epaint::Color32;
-use std::{ffi::CString, ptr::null, sync::Mutex};
+use std::boxed::Box;
+use std::sync::Mutex;
 
-struct App {
+pub struct App {
     pub ctx: egui::Context,
     pub renderer: Renderer,
+    pub input_translator: InputTranslator,
 }
 
-impl Default for App {
-    fn default() -> Self {
+impl App {
+    fn new() -> Self {
         Self {
             ctx: egui::Context::default(),
             renderer: Renderer::new(),
+            input_translator: InputTranslator::new(),
         }
     }
 }
@@ -27,22 +30,30 @@ struct State {
 
 lazy_static! {
     static ref STATE: Mutex<State> = Mutex::new(State::default());
-    static ref APP: Mutex<App> = Mutex::new(App::default());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn new_app() -> *mut App {
+    Box::into_raw(Box::new(App::new()))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn render_egui_test_frame(
+    app_ptr: *mut App,
     context: *mut gfx_Context,
     queue: *mut gfx_DrawQueuePtr,
-    input_translator: *mut gfx_EguiInputTranslator,
-    input_ptr: *const egui_Input,
+    sdl_events: *const u8,
+    time: f64,
+    delta_time: f32,
 ) {
-    let raw_input = translate_raw_input(&*input_ptr).unwrap();
-    let app = APP.lock().unwrap();
+    let app = &mut *app_ptr;
     let window = gfx_Context_getWindow(context);
 
-    let draw_scale = (*input_ptr).pixelsPerPoint;
-    let delta_time = (*input_ptr).predictedDeltaTime;
+    let raw_input = app
+        .input_translator
+        .translate(window, sdl_events, time, delta_time, 1.0)
+        .unwrap();
+    let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
     let full_output = app.ctx.run(raw_input, |ctx| {
         egui::SidePanel::right("input").show(ctx, |ui| {
@@ -68,24 +79,16 @@ pub unsafe extern "C" fn render_egui_test_frame(
         });
     });
 
-    match full_output.platform_output.text_cursor_pos {
-        Some(pos) => {
-            let native_pos: egui_Pos2 = pos.into();
-            gfx_EguiInputTranslator_updateTextCursorPosition(input_translator, window, &native_pos);
-        }
-        None => gfx_EguiInputTranslator_updateTextCursorPosition(input_translator, window, null()),
-    };
+    app.input_translator
+        .update_text_cursor_position(window, full_output.platform_output.text_cursor_pos);
 
     if !full_output.platform_output.copied_text.is_empty() {
-        if let Ok(c_str) = CString::new(full_output.platform_output.copied_text.to_owned()) {
-            gfx_EguiInputTranslator_copyText(input_translator, c_str.as_ptr());
-        }
+        app.input_translator
+            .copy_text(&full_output.platform_output.copied_text);
     }
 
-    gfx_EguiInputTranslator_updateCursorIcon(
-        input_translator,
-        to_egui_cursor_icon(full_output.platform_output.cursor_icon),
-    );
+    app.input_translator
+        .update_cursor_icon(full_output.platform_output.cursor_icon);
 
     app.renderer
         .render(&app.ctx, full_output, queue, draw_scale)

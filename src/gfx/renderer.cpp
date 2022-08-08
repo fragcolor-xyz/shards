@@ -224,7 +224,8 @@ struct RendererImpl final : public ContextData {
   bool mainOutputWrittenTo = false;
   bool depthStencilWrittenTo = false;
 
-  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(WGPUTextureFormat_Depth24Plus, "Depth Buffer");
+  static constexpr WGPUTextureFormat defaultDepthTextureFormat = WGPUTextureFormat_Depth32Float;
+  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(defaultDepthTextureFormat, "Depth Buffer");
   std::shared_ptr<PlaceholderTexture> placeholderTexture;
 
   RendererImpl(Context &context) : context(context) {

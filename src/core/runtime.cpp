@@ -205,7 +205,7 @@ static void setupSpdLog() {
   spdlog::set_default_logger(logger);
 
 #ifdef __ANDROID__
-  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("android");
+  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
   logger->sinks().push_back(android_sink);
 #endif
 
@@ -1497,7 +1497,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
       for (auto info : data.shared) {
         if (strcmp(info.name, varName) == 0) {
           expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
-          return info.exposedType;
+          return cloneTypeInfo(info.exposedType);
         }
       }
       SHLOG_WARNING("Could not find variable {} when deriving type info", varName);

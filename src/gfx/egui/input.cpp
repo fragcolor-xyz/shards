@@ -66,14 +66,16 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
 }
 
 const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vector<SDL_Event> &sdlEvents, Window &window,
-                                                                 double time, float deltaTime) {
+                                                                 double time, float deltaTime, float scalingFactor) {
   using egui::InputEvent;
   using egui::InputEventType;
 
   reset();
 
-  float eguiDrawScale = EguiRenderer::getDrawScale(window);
-  float2 eguiScreenSize = window.getVirtualDrawableSize();
+  float eguiDrawScale = EguiRenderer::getDrawScale(window) * scalingFactor;
+  float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
+  float2 windowToEguiScale = drawableScale / eguiDrawScale;
+  float2 eguiScreenSize = window.getDrawableSize() / eguiDrawScale;
 
   input.screenRect = egui::Rect{
       .min = egui::Pos2{0, 0},
@@ -90,10 +92,7 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
   egui::ModifierKeys modifierKeys = translateModifierKeys(SDL_GetModState());
 
   auto updateCursorPosition = [&](int32_t x, int32_t y) -> const egui::Pos2 & {
-    float2 cursorPosition = float2(x, y);
-    if (!window.isWindowSizeVirtual())
-      cursorPosition = window.toVirtualCoord(cursorPosition);
-
+    float2 cursorPosition = float2(x, y) * windowToEguiScale;
     return lastCursorPosition = egui::Pos2{.x = cursorPosition.x, .y = cursorPosition.y};
   };
 
@@ -222,7 +221,7 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
 
 void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::Pos2 *pos) {
   if (pos) {
-    float2 drawScale = window.getDrawScale();
+    float2 drawScale = window.getUIScale();
     SDL_Rect rect;
     rect.x = int(pos->x * drawScale.x);
     rect.y = int(pos->y * drawScale.y);

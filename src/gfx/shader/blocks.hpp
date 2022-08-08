@@ -172,10 +172,7 @@ struct WriteGlobal : public Block {
   WriteGlobal(WriteGlobal &&other) = default;
 
   void apply(GeneratorContext &context) const {
-    context.writeGlobal(name.c_str(), type);
-    context.write(" = ");
-    inner->apply(context);
-    context.write(";\n");
+    context.writeGlobal(name.c_str(), type, [&]() { inner->apply(context); });
   }
 
   BlockPtr clone() { return std::make_unique<WriteGlobal>(name, type, inner->clone()); }

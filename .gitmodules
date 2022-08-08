@@ -77,8 +77,18 @@
 	path = deps/snappy
 	url = https://github.com/chainblocks/snappy.git
 [submodule "src/gfx/wgpu-native"]
-	path = src/gfx/wgpu-native
+	path = src/gfx/rust/wgpu-native
 	url = https://github.com/chainblocks/wgpu-native.git
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "cmake/android-cmake"]
+	path = cmake/android-cmake
+	url = https://github.com/guusw/android-cmake.git
+[submodule "src/gfx/wgpu"]
+	path = src/gfx/rust/wgpu
+	url = https://github.com/chainblocks/wgpu.git
+	branch = master
+[submodule "src/gfx/naga"]
+	path = src/gfx/rust/naga
+	url = https://github.com/chainblocks/naga

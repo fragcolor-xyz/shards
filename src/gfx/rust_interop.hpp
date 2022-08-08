@@ -49,8 +49,9 @@ struct int4 {
 extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
-gfx::float2 gfx_Window_getVirtualDrawableSize_ext(gfx::Window *window);
-gfx::float2 gfx_Window_getDrawScale_ext(gfx::Window *window);
+gfx::int2 gfx_Window_getSize_ext(gfx::Window *window);
+gfx::int2 gfx_Window_getDrawableSize_ext(gfx::Window *window);
+gfx::float2 gfx_Window_getUIScale_ext(gfx::Window *window);
 #pragma clang diagnostic push
 }
 

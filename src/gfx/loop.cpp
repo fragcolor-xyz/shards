@@ -16,7 +16,6 @@ bool Loop::beginFrame(float targetDeltaTime, float &outDeltaTime) {
     lastFrameTime = now;
     return true;
   }
-
   return false;
 }
 

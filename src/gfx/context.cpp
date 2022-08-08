@@ -26,6 +26,14 @@ static inline std::shared_ptr<spdlog::logger> &getLogger() {
   return logger;
 }
 
+static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
+#if GFX_ANDROID
+  return WGPUTextureFormat_RGBA8UnormSrgb;
+#else
+  return WGPUTextureFormat_BGRA8UnormSrgb;
+#endif
+}
+
 #ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
 #if GFX_WINDOWS
@@ -160,7 +168,7 @@ struct ContextMainOutput {
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
 
     // Force the backbuffer to srgb format so we don't have to convert manually in shader
-    preferredFormat = WGPUTextureFormat_BGRA8UnormSrgb;
+    preferredFormat = getDefaultSrgbBackbufferFormat();
 
     if (preferredFormat != swapchainFormat) {
       SPDLOG_LOGGER_DEBUG(getLogger(), "swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
@@ -181,7 +189,11 @@ struct ContextMainOutput {
     swapchainDesc.format = swapchainFormat;
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
+#if GFX_WINDOWS || GFX_APPLE || GFX_LINUX
     swapchainDesc.presentMode = WGPUPresentMode_Immediate;
+#else
+    swapchainDesc.presentMode = WGPUPresentMode_Fifo;
+#endif
     swapchainDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
     wgpuSwapchain = wgpuDeviceCreateSwapChain(device, wgpuWindowSurface, &swapchainDesc);
     if (!wgpuSwapchain) {
@@ -250,7 +262,7 @@ WGPUTextureFormat Context::getMainOutputFormat() const {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
-void Context::addContextDataInternal(const std::weak_ptr<ContextData>& ptr) {
+void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
   assert(!ptr.expired());
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();

@@ -30,21 +30,8 @@ struct Window {
   // window size
   int2 getSize() const;
 
-  // = draw surface size / window size
-  float2 getDrawScale() const;
-
-  // = draw surface size / draw scale
-  float2 getVirtualDrawableSize() const;
-
-  // Returns true when the window size is represented using virtual coordinates (OSX)
-  // Otherwise the window size is the same as the drawable size (Windows)
-  bool isWindowSizeVirtual() const;
-
-  // Converts from  screen coordinates to virtual coordinates
-  float2 toVirtualCoord(float2 screenCoord) const;
-
-  // Converts from virtual coordinates to screen coordinates
-  float2 toScreenCoord(float2 virtualCoord) const;
+  // OS UI scaling factor for the display the window is on
+  float2 getUIScale() const;
 
   ~Window();
 };

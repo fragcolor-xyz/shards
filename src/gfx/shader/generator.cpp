@@ -13,10 +13,6 @@
 namespace gfx {
 namespace shader {
 
-template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
-  return GeneratorError{fmt::format(format, args...)};
-}
-
 void GeneratorContext::write(const StringView &str) { result += str; }
 void GeneratorContext::writeHeader(const StringView &str) { header += str; }
 
@@ -27,19 +23,6 @@ void GeneratorContext::readGlobal(const char *name) {
   } else {
     result += fmt::format("{}.{}", globalsVariableName, name);
   }
-}
-
-void GeneratorContext::writeGlobal(const char *name, const FieldType &type) {
-  auto it = globals.find(name);
-  if (it == globals.end()) {
-    globals.insert_or_assign(name, type);
-  } else {
-    if (it->second != type) {
-      pushError(formatError("Global type doesn't match previously expected type"));
-    }
-  }
-
-  result += fmt::format("{}.{}", globalsVariableName, name);
 }
 
 bool GeneratorContext::hasInput(const char *name) { return inputs.find(name) != inputs.end(); }

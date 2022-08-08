@@ -75,7 +75,7 @@ struct GLTFShard {
       OVERRIDE_ACTIVATE(data, activatePath);
     } else if (bytesType) {
       if (*bytesType != ByteInputType)
-        throw ComposeError("Path should be a string");
+        throw ComposeError("Bytes should be a byte array");
       _loadMode = LoadMemory;
       OVERRIDE_ACTIVATE(data, activateBytes);
     } else if (copyType) {

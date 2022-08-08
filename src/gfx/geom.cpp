@@ -22,6 +22,7 @@
 
 #include "geom.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace gfx {
 namespace geom {
