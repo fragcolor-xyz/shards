@@ -222,7 +222,6 @@ struct Client {
     host.warmup(ctx);
     target.warmup(ctx);
 
-    ws = std::make_shared<Socket>(ssl);
     socket = referenceVariable(ctx, name.c_str());
   }
 
@@ -233,9 +232,8 @@ struct Client {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!connected) {
-      connect(context);
-    }
+    ws = std::make_shared<Socket>(ssl);
+    connect(context);
     return Var::Object(&ws, CoreCC, WebSocketCC);
   }
 
@@ -257,6 +255,7 @@ protected:
 
 struct User {
   std::shared_ptr<Socket> _ws;
+  void *_lastObject = nullptr;
   ParamVar _wsVar{};
   SHExposedTypeInfo _expInfo{};
 
@@ -272,13 +271,21 @@ struct User {
   void cleanup() {
     _wsVar.cleanup();
     _ws = nullptr;
+    _lastObject = nullptr;
   }
 
-  void warmup(SHContext *context) { _wsVar.warmup(context); }
+  void warmup(SHContext *context) {
+    _wsVar.warmup(context);
+    _lastObject = nullptr;
+  }
 
   void ensureSocket() {
-    if (_ws == nullptr)
-      _ws = *reinterpret_cast<std::shared_ptr<Socket> *>(_wsVar.get().payload.objectValue);
+    auto p_ws = reinterpret_cast<std::shared_ptr<Socket> *>(_wsVar.get().payload.objectValue);
+    auto obj = p_ws->get();
+    if (_lastObject != obj) {
+      _ws = *p_ws;
+      _lastObject = obj;
+    }
   }
 
   SHExposedTypesInfo requiredVariables() {
