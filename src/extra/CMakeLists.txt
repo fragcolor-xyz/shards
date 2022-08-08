@@ -27,19 +27,7 @@ else()
   add_library(shards-extra STATIC ${extra_SOURCES})
 endif()
 
-if(EMSCRIPTEN)
-  # Use builtin SDL2 port
-  target_compile_options(shards-extra PUBLIC
-    "SHELL:-s USE_SDL=2"
-  )
-  target_link_options(shards-extra PUBLIC
-    "SHELL:-s MIN_WEBGL_VERSION=2"
-    "SHELL:-s MAX_WEBGL_VERSION=2"
-    "SHELL:-s USE_SDL=2"
-  )
-else()
-  target_link_libraries(shards-extra SDL2-static)
-endif()
+target_link_libraries(shards-extra SDL2-static)
 
 target_link_libraries(shards-extra
   shards-core
