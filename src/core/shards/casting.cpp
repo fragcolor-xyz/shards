@@ -4,7 +4,7 @@
 #include "casting.hpp"
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
-
+#include <boost/algorithm/hex.hpp>
 namespace shards {
 struct FromImage {
   // TODO SIMD this
@@ -505,26 +505,47 @@ struct HexToBytes {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  static int char2int(char input) {
-    if (input >= '0' && input <= '9')
-      return input - '0';
-    if (input >= 'A' && input <= 'F')
-      return input - 'A' + 10;
-    if (input >= 'a' && input <= 'f')
-      return input - 'a' + 10;
-    throw std::invalid_argument("Invalid input string");
+  int convert(const char *hex_str, unsigned char *byte_array, int byte_array_max) {
+    int hex_str_len = strlen(hex_str);
+    int i = 0, j = 0;
+
+    // The output array size is half the hex_str length (rounded up)
+    int byte_array_size = (hex_str_len + 1) / 2;
+
+    if (byte_array_size > byte_array_max) {
+      // Too big for the output array
+      return -1;
+    }
+
+    if (hex_str_len % 2 == 1) {
+      // hex_str is an odd length, so assume an implicit "0" prefix
+      if (sscanf(&(hex_str[0]), "%1hhx", &(byte_array[0])) != 1) {
+        return -1;
+      }
+
+      i = j = 1;
+    }
+
+    for (; i < hex_str_len; i += 2, j++) {
+      if (sscanf(&(hex_str[i]), "%2hhx", &(byte_array[j])) != 1) {
+        return -1;
+      }
+    }
+
+    return byte_array_size;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    output.clear();
     auto src = input.payload.stringValue;
     // allow 0x prefix
     if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X'))
       src += 2;
-    while (*src && src[1]) {
-      output.emplace_back(char2int(*src) * 16 + char2int(src[1]));
-      src += 2;
-    }
+
+    auto input_view = std::string_view(src);
+    output.clear();
+    output.resize(input_view.size() / 2 + input_view.size() % 2);
+    convert(input_view.data(), output.data(), output.size());
+
     return Var(output.data(), output.size());
   }
 };
