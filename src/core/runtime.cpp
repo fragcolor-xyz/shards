@@ -3,12 +3,6 @@
 
 #include "runtime.hpp"
 #include "shards/shared.hpp"
-#include "spdlog/sinks/dist_sink.h"
-#include "spdlog/sinks/rotating_file_sink.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
-#ifdef __ANDROID__
-#include <spdlog/sinks/android_sink.h>
-#endif
 #include "utility.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
@@ -19,6 +13,7 @@
 #include <set>
 #include <string.h>
 #include <unordered_set>
+#include <log/log.hpp>
 
 namespace fs = boost::filesystem;
 
@@ -189,59 +184,13 @@ void loadExternalShards(std::string from) {
   }
 }
 
-static void setupSpdLog() {
-  auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
-
-  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  dist_sink->add_sink(sink1);
-
-#ifdef SHARDS_DESKTOP
-  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("shards.log", 1048576, 3, false);
-  dist_sink->add_sink(sink2);
-#endif
-
-  auto logger = std::make_shared<spdlog::logger>("shards_logger", dist_sink);
-  logger->flush_on(spdlog::level::err);
-  spdlog::set_default_logger(logger);
-
-#ifdef __ANDROID__
-  auto android_sink = std::make_shared<spdlog::sinks::android_sink_mt>("shards");
-  logger->sinks().push_back(android_sink);
-#endif
-
-#ifdef __ANDROID
-  // Logcat already countains timestamps & log level
-  spdlog::set_pattern("[T-%t] [%s::%#] %v");
-#else
-  spdlog::set_pattern("%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v");
-#endif
-
-#ifdef NDEBUG
-#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
-  spdlog::set_level(spdlog::level::debug);
-#else
-  spdlog::set_level(spdlog::level::info);
-#endif
-#else
-  spdlog::set_level(spdlog::level::trace);
-#endif
-}
-
-void setupSpdLogConditional() {
-  static bool initialized = false;
-  if (!initialized) {
-    initialized = true;
-    setupSpdLog();
-  }
-}
-
 void registerCoreShards() {
   if (globalRegisterDone)
     return;
 
   globalRegisterDone = true;
 
-  setupSpdLogConditional();
+  logging::setupDefaultLoggerConditional();
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
@@ -458,7 +407,7 @@ Shard *createShard(std::string_view name) {
 
 inline void setupRegisterLogging() {
 #if SPDLOG_ACTIVE_LEVEL <= SPDLOG_LEVEL_TRACE
-  setupSpdLogConditional();
+  logging::setupDefaultLoggerConditional();
 #endif
 }
 

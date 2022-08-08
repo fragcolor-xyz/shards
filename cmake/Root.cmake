@@ -27,6 +27,7 @@ set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 
 add_subdirectory(${SHARDS_DIR}/deps deps)
 
+add_subdirectory(${SHARDS_DIR}/src/log src/log)
 add_subdirectory(${SHARDS_DIR}/src/core src/core)
 add_subdirectory(${SHARDS_DIR}/src/mal src/mal)
 add_subdirectory(${SHARDS_DIR}/src/gfx src/gfx)

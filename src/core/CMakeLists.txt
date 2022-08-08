@@ -99,6 +99,7 @@ endif()
 target_link_libraries(shards-core-static
   spdlog magic_enum nameof linalg xxHash
   pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
+  shards-logging
 )
 
 if(DESKTOP)

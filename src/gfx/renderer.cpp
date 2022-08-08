@@ -17,6 +17,7 @@
 #include "texture_placeholder.hpp"
 #include "view.hpp"
 #include "view_texture.hpp"
+#include "log.hpp"
 #include <algorithm>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
@@ -31,6 +32,8 @@ using shader::TextureBindingLayoutBuilder;
 using shader::UniformBufferLayout;
 using shader::UniformBufferLayoutBuilder;
 using shader::UniformLayout;
+
+static auto logger = getLogger();
 
 PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
 
@@ -989,7 +992,7 @@ struct RendererImpl final : public ContextData {
 
     wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
     wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
-    spdlog::info("Generated WGSL:\n {}", generatorOutput.wgslSource);
+    SPDLOG_LOGGER_DEBUG(logger, "Generated WGSL:\n {}", generatorOutput.wgslSource);
 
     cachedPipeline.shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
     assert(cachedPipeline.shaderModule);

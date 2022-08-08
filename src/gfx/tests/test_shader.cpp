@@ -140,7 +140,7 @@ TEST_CASE("Shader basic", "[Shader]") {
       blocks::makeCompoundBlock(blocks::WriteOutput("color", colorFieldType, "vec4<f32>(0.0, 1.0, 0.0, 1.0);")));
 
   GeneratorOutput output = generator.build(entryPoints);
-  spdlog::info(output.wgslSource);
+  SPDLOG_INFO(output.wgslSource);
 
   GeneratorOutput::dumpErrors(output);
   CHECK(output.errors.empty());
@@ -186,7 +186,7 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
   entryPoints.back().dependencies.emplace_back("colorDefault", DependencyType::After);
 
   GeneratorOutput output = generator.build(entryPoints);
-  spdlog::info(output.wgslSource);
+  SPDLOG_INFO(output.wgslSource);
 
   GeneratorOutput::dumpErrors(output);
   CHECK(output.errors.empty());
@@ -220,7 +220,7 @@ TEST_CASE("Shader textures", "[Shader]") {
   entryPoints.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
 
   GeneratorOutput output = generator.build(entryPoints);
-  spdlog::info(output.wgslSource);
+  SPDLOG_INFO(output.wgslSource);
 
   GeneratorOutput::dumpErrors(output);
   CHECK(output.errors.empty());

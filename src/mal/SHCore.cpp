@@ -21,6 +21,7 @@
 #include <ostream>
 #include <set>
 #include <thread>
+#include <log/log.hpp>
 
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -50,9 +51,6 @@ static StaticList<malBuiltIn *> handlers;
     return mal::boolean(DYNAMIC_CAST(type, *argsBegin)); \
   }
 
-namespace shards {
-extern void setupSpdLogConditional();
-}
 extern void shRegisterAllShards();
 
 #ifndef SH_CORE_ONLY
@@ -87,7 +85,7 @@ static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
 void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
   // Setup logging first
-  shards::setupSpdLogConditional();
+  logging::setupDefaultLoggerConditional();
 
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);

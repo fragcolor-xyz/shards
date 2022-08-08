@@ -232,7 +232,7 @@ struct App {
           static float fpsCounter = 0.0f;
           fpsCounter += deltaTime;
           if (fpsCounter >= 1.0f) {
-            spdlog::info("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
+            SPDLOG_INFO("Average FPS: {:0.01f}", 1.0f / delaTimeMa.getAverage());
             fpsCounter = 0.0f;
           }
         }
