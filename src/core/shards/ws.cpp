@@ -137,6 +137,14 @@ struct Client {
 
             SHLOG_TRACE("Websocket resolved remote host");
 
+            if (ssl) {
+              // Set SNI Hostname (many hosts need this to handshake successfully)
+              if (!SSL_set_tlsext_host_name(ws->get_secure().next_layer().native_handle(), host.get().payload.stringValue)) {
+                boost::system::error_code ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
+                throw boost::system::system_error{ec};
+              }
+            }
+
             // Make the connection on the IP address we get from a lookup
             auto ep = ssl ? net::connect(get_lowest_layer(ws->get_secure()), resolved)
                           : net::connect(ws->get_unsecure().next_layer(), resolved);

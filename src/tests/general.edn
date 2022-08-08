@@ -686,6 +686,8 @@
    .hexbytes-mut (ToHex) (Assert.Is "0x0badf00dc0ffee" true)
    (StringToBytes) (BytesToString) (Assert.Is "0x0badf00dc0ffee" true)
 
+   "4e2" (HexToBytes) (Log)
+
    "test.txt" (FS.Write .text2 :Overwrite true)
    (FS.Read)
    (Assert.Is "## The result is: Hello world, this is a string again" true)
