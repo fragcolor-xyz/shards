@@ -217,7 +217,7 @@ unsafe extern "C" fn shard_setup<T: Shard>(arg1: *mut CShard) {
 unsafe extern "C" fn shard_destroy<T: Shard>(arg1: *mut CShard) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.destroy();
-  Box::from_raw(blk); // this will deallocate the Box
+  drop(Box::from_raw(blk)); // this will deallocate the Box
 }
 
 unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
