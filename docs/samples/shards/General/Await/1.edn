@@ -1,19 +1,21 @@
 ;; Asynchronous execution of shards (using keyword `Await`)
+;; Printing order of messages not consistent across program runs --
+;; -- as asynchronous shards might complete at different times
 (defmesh mesh)
 
 (defloop await-wire
 (Await
   ;:Shards
   (->
-    (Msg "Await worker1")
-    ;; printed 1st => [info] [2022-08-07 16:35:31.636] [T-29916] [logging.cpp::98] [await-wire] Await worker1
-    (Msg "Await worker2")
-    ;; printed 3rd => [info] [2022-08-07 16:35:31.638] [T-29916] [logging.cpp::98] [await-wire] Await worker2
+    (Msg "Message 1")
+    ;; messages might print in any order (1/2/3, 1/3/2, 3/2/1, etc.)
+    (Msg "Message 2")
+    ;; messages might print in any order (1/2/3, 1/3/2, 3/2/1, etc.)
   )))
 
 (defloop my-wire
-    (Msg "Log without waiting for Await shards to complete")
-    ;; printed 2nd => [info] [2022-08-07 16:35:31.637] [T-13248] [logging.cpp::98] [my-wire] Log without waiting for Await shards to complete
+    (Msg "Message 3")
+    ;; messages might print in any order (1/2/3, 1/3/2, 3/2/1, etc.)
     )
 
 (schedule mesh await-wire)
