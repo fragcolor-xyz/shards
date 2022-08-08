@@ -505,12 +505,11 @@ struct HexToBytes {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
-  int convert(const char *hex_str, unsigned char *byte_array, int byte_array_max) {
-    int hex_str_len = strlen(hex_str);
-    int i = 0, j = 0;
+  int convert(const char *hex_str, size_t hex_str_len, unsigned char *byte_array, size_t byte_array_max) {
+    size_t i = 0, j = 0;
 
     // The output array size is half the hex_str length (rounded up)
-    int byte_array_size = (hex_str_len + 1) / 2;
+    size_t byte_array_size = (hex_str_len + 1) / 2;
 
     if (byte_array_size > byte_array_max) {
       // Too big for the output array
@@ -544,7 +543,7 @@ struct HexToBytes {
     auto input_view = std::string_view(src);
     output.clear();
     output.resize(input_view.size() / 2 + input_view.size() % 2);
-    convert(input_view.data(), output.data(), output.size());
+    convert(input_view.data(), input_view.size(), output.data(), output.size());
 
     return Var(output.data(), output.size());
   }
