@@ -74,7 +74,7 @@ static void setupDefaultLogger() {
 #endif
 
   // Set default log level
-  spdlog::set_level(spdlog::level::info);
+  spdlog::set_level(spdlog::level::level_enum(SPDLOG_ACTIVE_LEVEL));
 
   // Init log level from environment variable
   initLogLevel(logger);
