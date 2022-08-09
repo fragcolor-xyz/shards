@@ -29,6 +29,7 @@ struct Checkbox {
   should_expose: bool,
 }
 
+#[cfg(feature = "code_editor")]
 struct CodeEditor {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -193,6 +194,7 @@ decl_ui_slider!(Int4Slider, [i32; 4]);
 
 mod button;
 mod checkbox;
+#[cfg(feature = "code_editor")]
 mod code_editor;
 mod color_input;
 mod combo;
@@ -212,7 +214,6 @@ mod tooltip;
 pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
-  registerShard::<CodeEditor>();
   registerShard::<ColorInput>();
   registerShard::<Combo>();
   registerShard::<Hyperlink>();
@@ -241,4 +242,18 @@ pub fn registerShards() {
   registerShard::<Spinner>();
   registerShard::<TextInput>();
   registerShard::<Tooltip>();
+
+  if cfg!(feature = "code_editor") {
+    registerCodeEditor();
+  }
 }
+
+#[cfg(feature = "code_editor")]
+#[inline(always)]
+pub fn registerCodeEditor() {
+  registerShard::<CodeEditor>();
+}
+
+#[cfg(not(feature = "code_editor"))]
+#[inline(always)]
+pub fn registerCodeEditor() {}

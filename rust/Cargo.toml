@@ -86,6 +86,7 @@ shards = ["reqwest",
           "egui",
           "egui-gfx",
           "tract-onnx"]
+code_editor = []
 dllshard = ["dlopen"]
 scripting = []
 
