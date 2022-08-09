@@ -18,5 +18,8 @@
 (schedule Root test)
 (if (run Root 0.01) nil (throw "Failed"))
 
+(schedule Root test)
+(if (run Root 0.01) nil (throw "Failed"))
+
 (def test nil)
 (def Root nil)
