@@ -756,30 +756,24 @@ struct BaseRunner : public WireBase {
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
     std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    if (capturing) {
-      dataCopy.requiredVariables = &requirements;
-    } else {
-      dataCopy.requiredVariables = nullptr;
-    }
+    dataCopy.requiredVariables = &requirements;
 
     auto res = WireBase::compose(dataCopy);
 
-    if (capturing) {
-      // build the list of variables to capture and inject into spawned chain
-      _vars.clear();
-      arrayResize(_mergedReqs, 0);
-      for (auto &avail : data.shared) {
-        auto it = requirements.find(avail.name);
-        if (it != requirements.end() && !avail.global) {
-          SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
+    // build the list of variables to capture and inject into spawned chain
+    _vars.clear();
+    arrayResize(_mergedReqs, 0);
+    for (auto &avail : data.shared) {
+      auto it = requirements.find(avail.name);
+      if (it != requirements.end() && !avail.global) {
+        SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+        SHVar ctxVar{};
+        ctxVar.valueType = ContextVar;
+        ctxVar.payload.stringValue = avail.name;
+        auto &p = _vars.emplace_back();
+        p = ctxVar;
 
-          arrayPush(_mergedReqs, it->second);
-        }
+        arrayPush(_mergedReqs, it->second);
       }
     }
 
@@ -795,19 +789,7 @@ struct BaseRunner : public WireBase {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    if (capturing) {
-      return _mergedReqs;
-    } else {
-      if (wire) {
-        if (wire->composeResult) {
-          return SHExposedTypesInfo(wire->composeResult->requiredInfo);
-        } else {
-          return SHExposedTypesInfo{};
-        }
-      } else {
-        return SHExposedTypesInfo{};
-      }
-    }
+    return _mergedReqs;
   }
 
   void cleanup() {
@@ -1981,8 +1963,6 @@ struct Branch {
         SHLOG_TRACE("Branch: referencing required variable: {}", req.name);
         auto vp = referenceVariable(context, req.name);
         _mesh->refs[req.name] = vp;
-      } else {
-        SHLOG_TRACE("Branch: could not find required variable to reference: {}", req.name);
       }
     }
 
