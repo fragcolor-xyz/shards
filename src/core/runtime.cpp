@@ -640,6 +640,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
   {
     auto it = mesh->refs.find(name);
     if (it != mesh->refs.end()) {
+      SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
       // found, lets get out here
       SHVar *cv = it->second;
       cv->refcount++;

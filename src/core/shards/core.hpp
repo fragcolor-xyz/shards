@@ -3279,6 +3279,14 @@ struct Repeat {
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     auto repeats = _forever ? 1 : *_repeats;
     while (repeats) {
+      if (_pred) {
+        SHVar pres{};
+        auto state = _pred.activate<true>(context, input, pres);
+        // logic flow here!
+        if (unlikely(state > SHWireState::Return || pres.payload.boolValue))
+          break;
+      }
+
       SHVar repeatOutput{};
       SHVar blks = _blks;
       auto state = activateShards2(blks.payload.seqValue, context, input, repeatOutput);
@@ -3287,14 +3295,6 @@ struct Repeat {
 
       if (!_forever)
         repeats--;
-
-      if (_pred) {
-        SHVar pres{};
-        state = _pred.activate<true>(context, input, pres);
-        // logic flow here!
-        if (unlikely(state > SHWireState::Return || pres.payload.boolValue))
-          break;
-      }
     }
     return input;
   }
