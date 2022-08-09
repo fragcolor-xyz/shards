@@ -499,7 +499,7 @@ For example, **None** as one of the valid data types for `:Max` parameter in sha
 )
 ```
 
-`(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have **None** as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer.
+`(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have **None** as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer (though in this case the system will inherently set the upper limit to the maximum value a 64-bit signed integer can hold: 9,223,372,036,854,775,807).
 
 === "Code"
 
@@ -508,7 +508,7 @@ For example, **None** as one of the valid data types for `:Max` parameter in sha
     (Log)   ;; max int that can be generated is 7
     
     (RandomInt)
-    (Log)   ;; no upper limit on the generated int
+    (Log)   ;; now upper limit subject to max capacity of a 64-bit signed integer
     ```
 
 === "Output"
