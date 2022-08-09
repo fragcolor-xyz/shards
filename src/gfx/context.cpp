@@ -4,11 +4,11 @@
 #include "platform.hpp"
 #include "platform_surface.hpp"
 #include "window.hpp"
+#include "log.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
-
 #include <SDL_stdinc.h>
 
 #if GFX_EMSCRIPTEN
@@ -17,14 +17,7 @@
 
 namespace gfx {
 
-static inline std::shared_ptr<spdlog::logger> &getLogger() {
-  static std::shared_ptr<spdlog::logger> logger = []() {
-    auto defaultLogger = spdlog::default_logger();
-    auto gfxLogger = defaultLogger->clone("GFX.Context");
-    return gfxLogger;
-  }();
-  return logger;
-}
+static auto logger = getLogger();
 
 static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
 #if GFX_ANDROID
@@ -171,7 +164,7 @@ struct ContextMainOutput {
     preferredFormat = getDefaultSrgbBackbufferFormat();
 
     if (preferredFormat != swapchainFormat) {
-      SPDLOG_LOGGER_DEBUG(getLogger(), "swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
+      SPDLOG_LOGGER_DEBUG(logger, "swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
       swapchainFormat = preferredFormat;
     }
 
@@ -180,7 +173,7 @@ struct ContextMainOutput {
     assert(wgpuWindowSurface);
     assert(swapchainFormat != WGPUTextureFormat_Undefined);
 
-    SPDLOG_LOGGER_DEBUG(getLogger(), "resized width: {} height: {}", newSize.x, newSize.y);
+    SPDLOG_LOGGER_DEBUG(logger, "resized width: {} height: {}", newSize.x, newSize.y);
     currentSize = newSize;
 
     releaseSwapchain();
@@ -222,7 +215,7 @@ void Context::init(const ContextCreationOptions &inOptions) {
 }
 
 void Context::release() {
-  SPDLOG_LOGGER_DEBUG(getLogger(), "release");
+  SPDLOG_LOGGER_DEBUG(logger, "release");
   state = ContextState::Uninitialized;
 
   releaseAdapter();
@@ -318,7 +311,7 @@ bool Context::beginFrame() {
     for (size_t i = 0; !success && i < maxAttempts; i++) {
       success = mainOutput->requestFrame();
       if (!success) {
-        SPDLOG_LOGGER_INFO(getLogger(), "Failed to get current swapchain texture, forcing recreate");
+        SPDLOG_LOGGER_INFO(logger, "Failed to get current swapchain texture, forcing recreate");
         mainOutput->resizeSwapchain(wgpuDevice, wgpuAdapter, mainOutput->currentSize);
       }
     }
@@ -367,7 +360,7 @@ void Context::submit(WGPUCommandBuffer cmdBuffer) { wgpuQueueSubmit(wgpuQueue, 1
 
 void Context::deviceLost() {
   if (state != ContextState::Incomplete) {
-    SPDLOG_LOGGER_DEBUG(getLogger(), "Device lost");
+    SPDLOG_LOGGER_DEBUG(logger, "Device lost");
     state = ContextState::Incomplete;
 
     releaseDevice();
@@ -375,7 +368,7 @@ void Context::deviceLost() {
 }
 
 void Context::tickRequesting() {
-  SPDLOG_LOGGER_DEBUG(getLogger(), "tickRequesting");
+  SPDLOG_LOGGER_DEBUG(logger, "tickRequesting");
   try {
     if (adapterRequest) {
       if (adapterRequest->finished) {
@@ -411,12 +404,12 @@ void Context::tickRequesting() {
 
 void Context::deviceObtained() {
   state = ContextState::Ok;
-  SPDLOG_LOGGER_DEBUG(getLogger(), "wgpuDevice obtained");
+  SPDLOG_LOGGER_DEBUG(logger, "wgpuDevice obtained");
 
   auto errorCallback = [](WGPUErrorType type, char const *message, void *userdata) {
     Context &context = *(Context *)userdata;
     std::string msgString(message);
-    SPDLOG_LOGGER_ERROR(getLogger(), "{} ({})", message, type);
+    SPDLOG_LOGGER_ERROR(logger, "{} ({})", message, type);
     if (type == WGPUErrorType_DeviceLost) {
       context.deviceLost();
     }
@@ -430,7 +423,7 @@ void Context::deviceObtained() {
   }
 
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
-    SPDLOG_LOGGER_WARN(getLogger(), "Device lost: {} ()", message, magic_enum::enum_name(reason));
+    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
   };
   wgpuDeviceSetDeviceLostCallback(wgpuDevice, deviceLostCallback, this);
 }
@@ -460,7 +453,7 @@ void Context::requestDevice() {
   deviceDesc.nextInChain = &deviceExtras.chain;
 #endif
 
-  SPDLOG_LOGGER_DEBUG(getLogger(), "Requesting wgpu device");
+  SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
   deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
 }
 
@@ -508,10 +501,10 @@ void Context::requestAdapter() {
   if (adapterExtras.backend == WGPUBackendType_Null)
     adapterExtras.backend = getDefaultWgpuBackendType();
 
-  SPDLOG_LOGGER_INFO(getLogger(), "Using backend {}", magic_enum::enum_name(adapterExtras.backend));
+  SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(adapterExtras.backend));
 #endif
 
-  SPDLOG_LOGGER_DEBUG(getLogger(), "Requesting wgpu adapter");
+  SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
   adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
 }
 
@@ -521,7 +514,7 @@ void Context::releaseAdapter() {
 }
 
 void Context::initCommon() {
-  SPDLOG_LOGGER_DEBUG(getLogger(), "initCommon");
+  SPDLOG_LOGGER_DEBUG(logger, "initCommon");
 
   assert(!isInitialized());
 
@@ -529,26 +522,26 @@ void Context::initCommon() {
   wgpuSetLogCallback([](WGPULogLevel level, const char *msg) {
     switch (level) {
     case WGPULogLevel_Error:
-      getLogger()->error("{}", msg);
+      logger->error("{}", msg);
       break;
     case WGPULogLevel_Warn:
-      getLogger()->warn("{}", msg);
+      logger->warn("{}", msg);
       break;
     case WGPULogLevel_Info:
-      getLogger()->info("{}", msg);
+      logger->info("{}", msg);
       break;
     case WGPULogLevel_Debug:
-      getLogger()->debug("{}", msg);
+      logger->debug("{}", msg);
       break;
     case WGPULogLevel_Trace:
-      getLogger()->trace("{}", msg);
+      logger->trace("{}", msg);
       break;
     default:
       break;
     }
   });
 
-  if (options.debug) {
+  if (logger->level() <= spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);
   } else {
     wgpuSetLogLevel(WGPULogLevel_Info);

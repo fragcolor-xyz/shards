@@ -16,12 +16,16 @@
 #include <gfx/context.hpp>
 #include <gfx/window.hpp>
 #include <gfx/gfx_wgpu.hpp>
+#include <gfx/log.hpp>
 #include <spdlog/spdlog.h>
 #include <map>
 #include <vector>
 #include <memory>
 
 namespace gfx {
+
+static auto logger = getLogger();
+
 struct MeshPoolOps {
   size_t getCapacity(MeshPtr &item) const { return item->getNumVertices() * item->getFormat().getVertexSize(); }
   void init(MeshPtr &item) const { item = std::make_shared<Mesh>(); }
@@ -146,7 +150,7 @@ struct EguiRendererImpl {
 
   void processPendingTextureFrees() {
     for (auto &id : pendingTextureFrees) {
-      SPDLOG_INFO("textureFree {}", (uint64_t)id.id);
+      SPDLOG_LOGGER_INFO(logger, "textureFree {}", (uint64_t)id.id);
       textures.free(id);
     }
     pendingTextureFrees.clear();
@@ -162,7 +166,7 @@ void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePt
   auto &textureUpdates = output.textureUpdates;
   for (size_t i = 0; i < textureUpdates.numSets; i++) {
     auto &textureSet = textureUpdates.sets[i];
-    SPDLOG_INFO("textureSet {}", (uint64_t)textureSet.id);
+    SPDLOG_LOGGER_INFO(logger, "textureSet {}", (uint64_t)textureSet.id);
     impl->textures.set(textureSet);
   }
 

@@ -190,7 +190,7 @@ void TestData::storeFrame(const TestFrame &frame, const char *filePath) {
     return;
   }
 
-  spdlog::info("Writing frame data to {}", filePath);
+  SPDLOG_INFO("Writing frame data to {}", filePath);
   const std::vector<TestFrame::pixel_t> &pixels = frame.getPixels();
   stbi_write_png(filePath, size.x, size.y, 4, pixels.data(), sizeof(TestFrame::pixel_t) * size.x);
 
