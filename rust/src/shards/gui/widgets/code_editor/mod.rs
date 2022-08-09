@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use self::syntax_highlighting::highlight;
+use self::syntax_highlighting::CodeTheme;
 use super::CodeEditor;
 use crate::shard::Shard;
 use crate::shards::gui::util;
@@ -26,6 +28,8 @@ use crate::types::NONE_TYPES;
 use crate::types::STRING_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
+
+mod syntax_highlighting;
 
 lazy_static! {
   static ref CODEEDITOR_PARAMETERS: Parameters = vec![(
@@ -71,7 +75,7 @@ impl Shard for CodeEditor {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("TODO"))
+    OptionalString(shccstr!("A TextInput with support for highlighting"))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -79,7 +83,7 @@ impl Shard for CodeEditor {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("TODO"))
+    OptionalString(shccstr!("The value is ignored."))
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -87,7 +91,7 @@ impl Shard for CodeEditor {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("TODO"))
+    OptionalString(shccstr!("The value produced when changed."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -193,6 +197,16 @@ impl Shard for CodeEditor {
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let theme = if ui.style().visuals.dark_mode {
+        CodeTheme::dark()
+      } else {
+        CodeTheme::light()
+      };
+      let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+        let mut layout_job = highlight(ui.ctx(), &theme, string, "Clojure");
+        layout_job.wrap.max_width = wrap_width;
+        ui.fonts().layout_job(layout_job)
+      };
       let mut mutable;
       let mut immutable;
       let text: &mut dyn egui::TextBuffer = if self.mutable_text {
@@ -205,8 +219,11 @@ impl Shard for CodeEditor {
       let code_editor = egui::TextEdit::multiline(text)
         .code_editor()
         .desired_rows(10)
-        .desired_width(f32::INFINITY);
-      let response = ui.add(code_editor);
+        .desired_width(f32::INFINITY)
+        .layouter(&mut layouter);
+      let response = egui::ScrollArea::vertical()
+        .show(ui, |ui| ui.add(code_editor))
+        .inner;
 
       if response.changed() || response.lost_focus() {
         Ok(*self.variable.get())

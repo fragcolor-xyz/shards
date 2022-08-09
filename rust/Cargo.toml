@@ -43,6 +43,7 @@ chrono = { version = "0.4", optional = true }
 chacha20poly1305 = { version = "0.9.0", optional = true }
 egui = { version = "0.19.0", optional = true }
 egui-gfx = { path = "../src/gfx/egui", optional = true }
+syntect = { version = "5.0.0", default-features = false, features = ["default-fancy"], optional = true }
 half = { version = "2.0.0" }
 tract-onnx = { version = "0.17.7", optional = true }
 
@@ -86,7 +87,7 @@ shards = ["reqwest",
           "egui",
           "egui-gfx",
           "tract-onnx"]
-code_editor = []
+code_editor = ["syntect"]
 dllshard = ["dlopen"]
 scripting = []
 
