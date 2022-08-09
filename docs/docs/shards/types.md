@@ -631,12 +631,14 @@ Its also known as map, data dictionary, or associative array. An example of a **
 
 ## Wire
 
-Type **Wire** is a sequence of shards (i.e., a sequence of [**ShardRef**](#shardref) or [**Shard**](#shardref) types).
+Type **Wire** represents a wire being passed as data. 
 
 !!! note
     Has keyword [`Wire`](https://docs.fragcolor.xyz/functions/values/#wire).
 
-In addition to the **Shard** type, [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) also accepts a *sequence of **Shard** type values*, or in other words a `Wire` type, as data for its `:Apply` parameter.
+A **Wire** type thus consists of a sequence of shards (which make up the wire), their shared state (memory) context, name of the wire, and other properties that enable operations on the wire like scheduling it on a mesh, starting/stopping/pausing the wire, etc.
+
+For example, the shard [`(Stop)`](https://docs.fragcolor.xyz/shards/General/Stop/) accepts **Wire** type data in its `:Wire` parameter and stops that wire's execution if its currently running.
 
 
 --8<-- "includes/license.md"
