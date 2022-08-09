@@ -6,6 +6,7 @@ use self::syntax_highlighting::CodeTheme;
 use super::CodeEditor;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::EguiId;
 use crate::shards::gui::ImmutableVar;
 use crate::shards::gui::MutableVar;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
@@ -32,12 +33,20 @@ use std::ffi::CStr;
 mod syntax_highlighting;
 
 lazy_static! {
-  static ref CODEEDITOR_PARAMETERS: Parameters = vec![(
-    cstr!("Variable"),
-    cstr!("The variable that holds the input value."),
-    STRING_VAR_SLICE,
-  )
-    .into(),];
+  static ref CODEEDITOR_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Variable"),
+      cstr!("The variable that holds the input value."),
+      STRING_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Language"),
+      cstr!("The name of the programming language for syntax highlighting."),
+      STRING_VAR_SLICE,
+    )
+      .into(),
+  ];
 }
 
 impl Default for CodeEditor {
@@ -48,6 +57,7 @@ impl Default for CodeEditor {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
+      language: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       mutable_text: true,
@@ -101,6 +111,7 @@ impl Shard for CodeEditor {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.variable.set_param(value)),
+      1 => Ok(self.language.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -108,6 +119,7 @@ impl Shard for CodeEditor {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
+      1 => self.language.get_param(),
       _ => Var::default(),
     }
   }
@@ -180,6 +192,7 @@ impl Shard for CodeEditor {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
+    self.language.warmup(ctx);
 
     if self.should_expose {
       self.variable.get_mut().valueType = common_type::string.basicType;
@@ -189,6 +202,7 @@ impl Shard for CodeEditor {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.language.cleanup();
     self.variable.cleanup();
     self.parents.cleanup();
 
@@ -202,11 +216,18 @@ impl Shard for CodeEditor {
       } else {
         CodeTheme::light()
       };
+      let language = self.language.get();
+      let language = if language.is_none() {
+        ""
+      } else {
+        language.try_into()?
+      };
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
-        let mut layout_job = highlight(ui.ctx(), &theme, string, "Clojure");
+        let mut layout_job = highlight(ui.ctx(), &theme, string, language);
         layout_job.wrap.max_width = wrap_width;
         ui.fonts().layout_job(layout_job)
       };
+      let id_source = EguiId::new(self, 0);
       let mut mutable;
       let mut immutable;
       let text: &mut dyn egui::TextBuffer = if self.mutable_text {
@@ -222,6 +243,7 @@ impl Shard for CodeEditor {
         .desired_width(f32::INFINITY)
         .layouter(&mut layouter);
       let response = egui::ScrollArea::vertical()
+        .id_source(id_source)
         .show(ui, |ui| ui.add(code_editor))
         .inner;
 

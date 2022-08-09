@@ -34,6 +34,7 @@ struct CodeEditor {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
+  language: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
   mutable_text: bool,
