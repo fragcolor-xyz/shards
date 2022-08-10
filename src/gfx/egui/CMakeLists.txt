@@ -6,12 +6,12 @@ if(BUILD_STANDALONE_EGUI_TEST)
   list(APPEND FEATURES standalone_test)
 endif()
 
-add_library(gfx_egui
+add_library(gfx-egui
   egui_types.cpp
   renderer.cpp
   input.cpp
 )
-target_link_libraries(gfx_egui gfx)
+target_link_libraries(gfx-egui gfx)
 
 add_rust_library(
   NAME egui-gfx
@@ -23,5 +23,5 @@ add_rust_library(
 
 if(BUILD_STANDALONE_EGUI_TEST)
   add_executable(gfx-egui-test test.cpp)
-  target_link_libraries(gfx-egui-test egui-gfx-rust gfx_egui)
+  target_link_libraries(gfx-egui-test egui-gfx-rust gfx-egui)
 endif()

@@ -52,8 +52,8 @@ if(NOT EMSCRIPTEN)
 
   sh_add_external_project(
     NAME sdl_a
-    TARGETS   SDL2-static SDL2main
-    LIB_NAMES SDL2        SDL2main
+    TARGETS   SDL2 SDL2main
+    LIB_NAMES SDL2 SDL2main
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
     RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2
@@ -62,7 +62,7 @@ if(NOT EMSCRIPTEN)
 
 
   if(APPLE)
-    target_link_libraries(SDL2-static INTERFACE
+    target_link_libraries(SDL2 INTERFACE
       "-framework Foundation"
       "-framework CoreAudio"
       "-framework AudioToolbox"
@@ -78,14 +78,14 @@ if(NOT EMSCRIPTEN)
     )
 
     if(IOS)
-      target_link_libraries(SDL2-static INTERFACE
+      target_link_libraries(SDL2 INTERFACE
         "-framework AVFoundation"
         "-framework CoreMotion"
         "-framework CoreGraphics"
         "-framework UIKit"
       )
     else()
-      target_link_libraries(SDL2-static INTERFACE
+      target_link_libraries(SDL2 INTERFACE
         "-framework Cocoa"
         "-framework Carbon"
         "-framework ForceFeedback"
@@ -94,26 +94,26 @@ if(NOT EMSCRIPTEN)
   endif()
 
   if(WIN32)
-    target_link_libraries(SDL2-static INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
+    target_link_libraries(SDL2 INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
   elseif(LINUX)
-    target_link_libraries(SDL2-static INTERFACE dl)
+    target_link_libraries(SDL2 INTERFACE dl)
   endif()
 
   # Required for SDL2main entry point to call main
   if(NOT DESKTOP)
     target_compile_definitions(SDL2main INTERFACE "main=SDL_main")
   else()
-    target_compile_definitions(SDL2-static INTERFACE "SDL_MAIN_HANDLED=1")
+    target_compile_definitions(SDL2 INTERFACE "SDL_MAIN_HANDLED=1")
   endif()
 else()
-  add_library(SDL2-static INTERFACE)
+  add_library(SDL2 INTERFACE)
   add_library(SDL2main INTERFACE)
 
   # Use builtin SDL2 port
-  target_compile_options(SDL2-static INTERFACE
+  target_compile_options(SDL2 INTERFACE
     "SHELL:-s USE_SDL=2"
   )
-  target_link_options(SDL2-static INTERFACE
+  target_link_options(SDL2 INTERFACE
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"
@@ -182,8 +182,8 @@ add_library(imgui STATIC
 )
 target_include_directories(imgui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} imgui)
 
-add_library(imgui_club INTERFACE)
-target_include_directories(imgui_club INTERFACE imgui_club/imgui_memory_editor)
+add_library(imgui-club INTERFACE)
+target_include_directories(imgui-club INTERFACE imgui_club/imgui_memory_editor)
 
 set(imguizmo_SOURCES
   imguizmo/ImCurveEdit.cpp

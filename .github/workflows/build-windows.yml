@@ -176,8 +176,8 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ninja test_runtime
-          ./test_runtime
+          ninja test-runtime
+          ./test-runtime
       - name: Checkout glTF-Sample-Models
         # Match with test step below
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
@@ -194,8 +194,8 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ninja test_gfx
-          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
+          ninja test-gfx
+          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:

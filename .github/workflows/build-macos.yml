@@ -82,8 +82,8 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
-          ninja test_runtime
-          ./test_runtime
+          ninja test-runtime
+          ./test-runtime
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:

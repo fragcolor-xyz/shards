@@ -38,20 +38,20 @@ target_link_libraries(gfx
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 
-add_library(gfx_texture_file texture_file/texture_file.cpp)
-target_link_libraries(gfx_texture_file gfx)
+add_library(gfx-texture-file texture_file/texture_file.cpp)
+target_link_libraries(gfx-texture-file gfx)
 
-add_library(gfx_gltf gltf/gltf.cpp)
-target_link_libraries(gfx_gltf gfx tinygltf)
+add_library(gfx-gltf gltf/gltf.cpp)
+target_link_libraries(gfx-gltf gfx tinygltf)
 
-add_library(gfx_imgui
+add_library(gfx-imgui
   imgui/imgui.cpp
   imgui/imgui_impl_wgpu.cpp
   imgui/imgui_impl_sdl.cpp
 )
-target_link_libraries(gfx_imgui
+target_link_libraries(gfx-imgui
   gfx
-  imgui imgui_club implot imguizmo
+  imgui imgui-club implot imguizmo
 )
 
 add_subdirectory(egui)
@@ -91,7 +91,7 @@ if(EMSCRIPTEN)
     )
   endif()
 else()
-  target_link_libraries(gfx SDL2-static)
+  target_link_libraries(gfx SDL2)
   if(NOT DESKTOP)
     # Only need SDL2main for setup on mobile platforms
     target_link_libraries(gfx SDL2main)
