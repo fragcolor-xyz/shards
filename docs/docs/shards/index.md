@@ -20,7 +20,7 @@ The runtime itself is completely detached.
 
     ```
         cd docs/samples
-        ../../build/shards.exe run_sample.edn --file "<relative-path-of-sample.edn>"
+        ../../build/shards.exe run-sample.edn --file "<relative-path-of-sample.edn>"
     ```
 
 ## Some examples
@@ -304,7 +304,7 @@ Type [`color`](https://docs.fragcolor.xyz/functions/values/#color) represents an
 !!! note
     Has a pascal case alias, `Color`.
 
-Each of the R, G, B, and A values range from 0 to 255. R, G, and B stand for red, blue, and green components of the color. A represents the *alpha channel* property (how opaqe a pixel is - 0 is fully transparent, 255 is fully opaque). 
+Each of the R, G, B, and A values range from 0 to 255. R, G, and B stand for red, blue, and green components of the color. A represents the *alpha channel* property (how opaqe a pixel is - 0 is fully transparent, 255 is fully opaque).
 
 The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) converts its input into a `color`.
 
@@ -313,10 +313,10 @@ The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) conv
     ```clojure linenums="1"
     (int4 255 10 10 257) (ToColor)
     (Log)    ;; if input > 255, 256 is subtracted from it => 255, 10, 10, 1
-  
+
     [23 45 56 78] (ToColor)
-    (Log)   ;; input in range 0-255 so => 23, 45, 56, 78 
-    
+    (Log)   ;; input in range 0-255 so => 23, 45, 56, 78
+
     "Hello" (ToColor)
     (Log)   ;; non-numeric input so => 0, 0, 0, 0
     ```
@@ -324,9 +324,9 @@ The shard [`(ToColor)`](https://docs.fragcolor.xyz/shards/General/ToColor/) conv
 === "Output"
 
     ```
-    [info] [2022-07-26 19:08:24.520] [T-24408] [logging.cpp::55] [mywire] 255, 10, 10, 1  
-    [info] [2022-07-26 19:08:24.533] [T-24408] [logging.cpp::55] [mywire] 23, 45, 56, 78  
-    [info] [2022-07-26 19:08:24.534] [T-24408] [logging.cpp::55] [mywire] 0, 0, 0, 0  
+    [info] [2022-07-26 19:08:24.520] [T-24408] [logging.cpp::55] [mywire] 255, 10, 10, 1
+    [info] [2022-07-26 19:08:24.533] [T-24408] [logging.cpp::55] [mywire] 23, 45, 56, 78
+    [info] [2022-07-26 19:08:24.534] [T-24408] [logging.cpp::55] [mywire] 0, 0, 0, 0
     ```
 
 ### context-var
@@ -354,12 +354,12 @@ The shard [`(Math.Inc)`](https://docs.fragcolor.xyz/shards/Math/Inc/) accepts on
 
     ```
     [info] [2022-07-26 19:30:22.837] [T-27800] [logging.cpp::55] [mywire] 12
-    [info] [2022-07-26 19:30:22.843] [T-27800] [logging.cpp::55] [mywire] (5.5, 6.7) 
+    [info] [2022-07-26 19:30:22.843] [T-27800] [logging.cpp::55] [mywire] (5.5, 6.7)
     ```
 
 ### enum
 
-[`enum`](https://docs.fragcolor.xyz/functions/values/#enum) stands for enumerated data type. 
+[`enum`](https://docs.fragcolor.xyz/functions/values/#enum) stands for enumerated data type.
 
 !!! note
     Has a pascal case alias, `Enum`.
@@ -397,12 +397,12 @@ In simple terms it just means that you pass in one of the allowed named constant
     [2.0 10.0]
     (Math.Mean :Kind Mean.Harmonic)
     (Log)   ;; HM => 3.33333
-    
+
     [2.0 10.0]
-    (Math.Mean 
+    (Math.Mean
     ;; AM is default, anything else will throw error
         ;; :Kind 123
-        )   
+        )
     (Log)   ;; AM => 6
     ```
 
@@ -499,7 +499,7 @@ A `float3` type value looks like this: `(float3 2.9 -4.23 7.83)`.
 === "Output"
 
     ```
-    [info] [2022-07-22 22:19:36.923] [T-16128] [logging.cpp::55] [mywire] (7.7, 7.7, 7.7) 
+    [info] [2022-07-22 22:19:36.923] [T-16128] [logging.cpp::55] [mywire] (7.7, 7.7, 7.7)
     ```
 
 ### float4
@@ -656,7 +656,7 @@ Type **Int8** defines a vector of eight 16-bit signed integers.
 
 16 bits of memory for each number allows this data type to store integer values ranging from −32,768 to +32,767 (no decimals).
 
-The shard `(Math.Add)` accepts **Int8** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 8 integers or **Int8** data type. 
+The shard `(Math.Add)` accepts **Int8** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 8 integers or **Int8** data type.
 
 ### Int16
 
@@ -667,7 +667,7 @@ Type **Int16** defines a vector of sixteen 8-bit signed integers.
 
 8 bits of memory for each number allows this data type to store integer values ranging from −128 to +127 (no decimals).
 
-The shard `(Math.Add)` accepts **Int16** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 16 integers or **Int16** data type. 
+The shard `(Math.Add)` accepts **Int16** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 16 integers or **Int16** data type.
 
 ### None
 
@@ -691,7 +691,7 @@ For example, **None** as one of the valid data types for `:Max` parameter in sha
     ```clojure linenums="1"
     (RandomInt 8)
     (Log)   ;; max int that can be generated is 7
-    
+
     (RandomInt)
     (Log)   ;; no upper limit on the generated int
     ```
@@ -716,7 +716,7 @@ For example, the `:Socket` parameter object of [`(WS.ReadString)`](https://docs.
 
 ### path
 
-Type [`path`](https://docs.fragcolor.xyz/functions/values/#path) is string data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.  
+Type [`path`](https://docs.fragcolor.xyz/functions/values/#path) is string data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.
 
 !!! note
     Has a pascal case alias, `Path`.
@@ -767,7 +767,7 @@ Type **ShardRef** (or type **Shard**) represents a shard being passed as data.
 !!! note
     No keyword or alias exists for this type.
 
-This type is an important aspect of the homoiconicity feature (i.e., code/data interchangeability) in Shards. 
+This type is an important aspect of the homoiconicity feature (i.e., code/data interchangeability) in Shards.
 
 The shard [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) expects type **ShardRef** for its `:Apply` parameter (the other option being a sequence of **ShardRef** type values, i.e., a [`Wire`](#wire) type).
 
@@ -785,7 +785,7 @@ An example of a shard that processes `string` type data is [`(StringToBytes)`](h
 === "Code"
 
     ```clojure linenums="1"
-    "Hello World" (StringToBytes)  
+    "Hello World" (StringToBytes)
     (Log)   ;; memory address of the string data => Bytes: 0x20440058720 size: 11
     ```
 
@@ -809,13 +809,13 @@ Also called a map, a data dictionary, or an associative array. An example of a *
     ```clojure linenums="1"
     {:k1 123} >= .tabvar    ;; .tabvar is type `Table` now
     .tabvar (ExpectTable)
-    (Log)                   ;; `ExpectTable` outputs `Table` type  =>   {k1: 123} 
+    (Log)                   ;; `ExpectTable` outputs `Table` type  =>   {k1: 123}
     ```
 
 === "Output"
 
     ```
-    [info] [2022-07-26 22:46:17.194] [T-26104] [logging.cpp::55] [mywire] {k1: 123} 
+    [info] [2022-07-26 22:46:17.194] [T-26104] [logging.cpp::55] [mywire] {k1: 123}
     ```
 
 ### Wire

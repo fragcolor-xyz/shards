@@ -42,7 +42,7 @@ jobs:
           for i in $(find shards -name '*.edn');
           do
             echo "Running sample $i";
-            ./shards.exe run_sample.edn --file "$i" > >(tee "$i.log");
+            ./shards.exe run-sample.edn --file "$i" > >(tee "$i.log");
           done
       - name: Upload samples logs
         uses: actions/upload-artifact@v2
@@ -78,7 +78,7 @@ jobs:
       - name: Generate markdown
         shell: msys2 {0}
         run: |
-          ./shards.exe src/tests/infos_docs.edn
+          ./shards.exe src/tests/infos-docs.edn
           mv docs/docs/shards/General/UI.md docs/docs/shards/UI/index.md
       - name: Upload markdown
         uses: actions/upload-artifact@v2

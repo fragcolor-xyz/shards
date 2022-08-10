@@ -72,10 +72,10 @@ jobs:
           build/shards src/tests/ui.edn
 
           echo "Running egui demo"
-          build/shards src/tests/egui_demo.edn
+          build/shards src/tests/egui-demo.edn
 
           echo "Running imgui demo"
-          build/shards src/tests/imgui_demo.edn
+          build/shards src/tests/imgui-demo.edn
       - name: Test doc samples (UI)
         env:
           RUST_BACKTRACE: 1
@@ -88,7 +88,7 @@ jobs:
           for i in $(find shards -name '*.edn' -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards run_sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

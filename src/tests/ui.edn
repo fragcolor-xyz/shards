@@ -3,7 +3,7 @@
 
 ;; Notes:
 ;;   This file contains unit tests for the UI shards.
-;;   It is not meant to be realistic. For such samples, look at egui_demo.edn.
+;;   It is not meant to be realistic. For such samples, look at egui-demo.edn.
 
 (defmesh main)
 (def timestep (/ 1.0 60.0))

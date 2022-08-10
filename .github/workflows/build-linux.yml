@@ -170,7 +170,7 @@ jobs:
           ./shards ../src/tests/time.edn
           ./shards ../src/tests/eth.edn
           ./shards ../src/tests/take.edn
-          ./shards ../src/tests/casting_numbers.edn
+          ./shards ../src/tests/casting-numbers.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -187,32 +187,32 @@ jobs:
           for i in $(find shards -name '*.edn' ! -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards run_sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done
       - name: Test Headless (gfx_window)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/gfx_window.edn
+          run: ./shards ../src/tests/gfx-window.edn
       - name: Test Headless (gfx_cube)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/gfx_cube.edn
+          run: ./shards ../src/tests/gfx-cube.edn
       - name: Test Headless (gfx_materials)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/gfx_materials.edn
+          run: ./shards ../src/tests/gfx-materials.edn
       - name: Test Headless (imgui_demo)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/imgui_demo.edn
+          run: ./shards ../src/tests/imgui-demo.edn
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |

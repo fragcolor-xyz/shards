@@ -154,5 +154,5 @@ jobs:
           for i in $(find shards -name '*.edn' ! -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards run_sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done

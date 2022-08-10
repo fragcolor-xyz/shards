@@ -61,7 +61,7 @@ set(
   ${SHARDS_DIR}/src/core/shards/wasm.cpp
   ${SHARDS_DIR}/src/core/shards/edn.cpp
   ${SHARDS_DIR}/src/core/shards/reflection.cpp
-  ${SHARDS_DIR}/src/tests/test-runtime.cpp
+  ${SHARDS_DIR}/src/tests/test_runtime.cpp
   ${SHARDS_DIR}/src/core/shccstrings.hpp
   ${SHARDS_DIR}/src/extra/dsp.cpp
   )
