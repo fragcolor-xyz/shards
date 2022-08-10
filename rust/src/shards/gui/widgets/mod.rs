@@ -127,7 +127,13 @@ macro_rules! decl_ui_slider {
 }
 
 decl_ui_slider!(FloatSlider, f64);
+decl_ui_slider!(Float2Slider, [f64; 2]);
+decl_ui_slider!(Float3Slider, [f32; 3]);
+decl_ui_slider!(Float4Slider, [f32; 4]);
 decl_ui_slider!(IntSlider, i64);
+decl_ui_slider!(Int2Slider, [i64; 2]);
+decl_ui_slider!(Int3Slider, [i32; 3]);
+decl_ui_slider!(Int4Slider, [i32; 4]);
 
 mod button;
 mod checkbox;
@@ -152,7 +158,13 @@ pub fn registerShards() {
   registerShard::<FloatInput>();
   registerShard::<IntInput>();
   registerShard::<FloatSlider>();
+  registerShard::<Float2Slider>();
+  registerShard::<Float3Slider>();
+  registerShard::<Float4Slider>();
   registerShard::<IntSlider>();
+  registerShard::<Int2Slider>();
+  registerShard::<Int3Slider>();
+  registerShard::<Int4Slider>();
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<Spinner>();

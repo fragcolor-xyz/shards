@@ -546,8 +546,16 @@ pub mod common_type {
   use crate::shardsc::SHType_ContextVar;
   use crate::shardsc::SHType_Enum;
   use crate::shardsc::SHType_Float;
+  use crate::shardsc::SHType_Float2;
+  use crate::shardsc::SHType_Float3;
+  use crate::shardsc::SHType_Float4;
+  use crate::shardsc::SHType_Image;
   use crate::shardsc::SHType_Int;
+  use crate::shardsc::SHType_Int2;
+  use crate::shardsc::SHType_Int3;
+  use crate::shardsc::SHType_Int4;
   use crate::shardsc::SHType_None;
+  use crate::shardsc::SHType_Object;
   use crate::shardsc::SHType_Path;
   use crate::shardsc::SHType_Seq;
   use crate::shardsc::SHType_ShardRef;
@@ -555,12 +563,6 @@ pub mod common_type {
   use crate::shardsc::SHType_Table;
   use crate::shardsc::SHType_Wire;
   use crate::shardsc::SHTypesInfo;
-  use crate::types::SHType_Float2;
-  use crate::types::SHType_Float3;
-  use crate::types::SHType_Float4;
-  use crate::types::SHType_Image;
-  use crate::types::SHType_Int2;
-  use crate::types::SHType_Object;
 
   const fn base_info() -> SHTypeInfo {
     SHTypeInfo {
@@ -748,6 +750,26 @@ pub mod common_type {
     int2s_var,
     int2_table,
     int2_table_var
+  );
+  shtype!(
+    make_int3,
+    SHType_Int3,
+    int3,
+    int3s,
+    int3_var,
+    int3s_var,
+    int3_table,
+    int3_table_var
+  );
+  shtype!(
+    make_int4,
+    SHType_Int4,
+    int4,
+    int4s,
+    int4_var,
+    int4s_var,
+    int4_table,
+    int4_table_var
   );
   shtype!(
     make_float,
@@ -1271,6 +1293,21 @@ impl From<(i64, i64)> for Var {
   }
 }
 
+impl From<&[i64; 2]> for Var {
+  #[inline(always)]
+  fn from(v: &[i64; 2]) -> Self {
+    let mut res = Var {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = v[0];
+      res.payload.__bindgen_anon_1.int2Value[1] = v[1];
+    }
+    res
+  }
+}
+
 // 64-bit precision :u64
 impl From<u64> for Var {
   #[inline(always)]
@@ -1316,6 +1353,21 @@ impl From<(f64, f64)> for Var {
   }
 }
 
+impl From<&[f64; 2]> for Var {
+  #[inline(always)]
+  fn from(v: &[f64; 2]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Float2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float2Value[0] = v[0];
+      res.payload.__bindgen_anon_1.float2Value[1] = v[1];
+    }
+    res
+  }
+}
+
 // 32-bit precision :[i32;2]
 impl From<(i32, i32)> for Var {
   #[inline(always)]
@@ -1349,6 +1401,22 @@ impl From<(i32, i32, i32)> for Var {
   }
 }
 
+impl From<&[i32; 3]> for Var {
+  #[inline(always)]
+  fn from(v: &[i32; 3]) -> Self {
+    let mut res = Var {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = v[0];
+      res.payload.__bindgen_anon_1.int3Value[1] = v[1];
+      res.payload.__bindgen_anon_1.int3Value[2] = v[2];
+    }
+    res
+  }
+}
+
 // 32-bit precision :[i32;4]
 impl From<(i32, i32, i32, i32)> for Var {
   #[inline(always)]
@@ -1362,6 +1430,23 @@ impl From<(i32, i32, i32, i32)> for Var {
       res.payload.__bindgen_anon_1.int4Value[1] = v.1;
       res.payload.__bindgen_anon_1.int4Value[2] = v.2;
       res.payload.__bindgen_anon_1.int4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+impl From<&[i32; 4]> for Var {
+  #[inline(always)]
+  fn from(v: &[i32; 4]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = v[0];
+      res.payload.__bindgen_anon_1.int4Value[1] = v[1];
+      res.payload.__bindgen_anon_1.int4Value[2] = v[2];
+      res.payload.__bindgen_anon_1.int4Value[3] = v[3];
     }
     res
   }
@@ -1451,6 +1536,22 @@ impl From<(f32, f32, f32)> for Var {
   }
 }
 
+impl From<&[f32; 3]> for Var {
+  #[inline(always)]
+  fn from(v: &[f32; 3]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Float3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float3Value[0] = v[0];
+      res.payload.__bindgen_anon_1.float3Value[1] = v[1];
+      res.payload.__bindgen_anon_1.float3Value[2] = v[2];
+    }
+    res
+  }
+}
+
 // 32-bit precision :[f32;4]
 impl From<(f32, f32, f32, f32)> for Var {
   #[inline(always)]
@@ -1464,6 +1565,23 @@ impl From<(f32, f32, f32, f32)> for Var {
       res.payload.__bindgen_anon_1.float4Value[1] = v.1;
       res.payload.__bindgen_anon_1.float4Value[2] = v.2;
       res.payload.__bindgen_anon_1.float4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+impl From<&[f32; 4]> for Var {
+  #[inline(always)]
+  fn from(v: &[f32; 4]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Float4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float4Value[0] = v[0];
+      res.payload.__bindgen_anon_1.float4Value[1] = v[1];
+      res.payload.__bindgen_anon_1.float4Value[2] = v[2];
+      res.payload.__bindgen_anon_1.float4Value[3] = v[3];
     }
     res
   }
@@ -3844,11 +3962,15 @@ lazy_static! {
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
   pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
+  pub static ref INT2_TYPES: Vec<Type> = vec![common_type::int2];
+  pub static ref INT3_TYPES: Vec<Type> = vec![common_type::int3];
+  pub static ref INT4_TYPES: Vec<Type> = vec![common_type::int4];
   pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
-  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
-  pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
+  pub static ref FLOAT2_TYPES: Vec<Type> = vec![common_type::float2];
   pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
   pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];
+  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
+  pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
   pub static ref FLOAT4X4_TYPE: Type = {
     let mut t = common_type::float4s;
     t.fixedSize = 4;

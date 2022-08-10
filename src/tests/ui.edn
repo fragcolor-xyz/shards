@@ -680,7 +680,13 @@
        :Contents
        (->
         (UI.IntSlider :Min 1 :Max 100) (ExpectInt)
-        (UI.FloatSlider :Min 0.0 :Max 1.0) (ExpectFloat)))))
+        (UI.Int2Slider :Min (int2 1) :Max (int2 100)) (ExpectInt2)
+        (UI.Int3Slider :Min (int3 1) :Max (int3 100)) (ExpectInt3)
+        (UI.Int4Slider :Min (int4 1) :Max (int4 100)) (ExpectInt4)
+        (UI.FloatSlider :Min 0.0 :Max 1.0) (ExpectFloat)
+        (UI.Float2Slider :Min (float2 0) :Max (float2 1)) (ExpectFloat2)
+        (UI.Float3Slider :Min (float3 0) :Max (float3 1)) (ExpectFloat3)
+        (UI.Float4Slider :Min (float4 0) :Max (float4 1)) (ExpectFloat4)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main numeric-slider-test)
