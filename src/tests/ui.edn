@@ -657,7 +657,13 @@
        :Contents
        (->
         (UI.IntInput) (ExpectInt)
-        (UI.FloatInput) (ExpectFloat)))))
+        (UI.Int2Input) (ExpectInt2)
+        (UI.Int3Input) (ExpectInt3)
+        (UI.Int4Input) (ExpectInt4)
+        (UI.FloatInput) (ExpectFloat)
+        (UI.Float2Input) (ExpectFloat2)
+        (UI.Float3Input) (ExpectFloat3)
+        (UI.Float4Input) (ExpectFloat4)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main numeric-input-test)

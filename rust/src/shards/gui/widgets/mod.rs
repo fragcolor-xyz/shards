@@ -108,7 +108,13 @@ macro_rules! decl_ui_input {
 }
 
 decl_ui_input!(FloatInput, f64);
+decl_ui_input!(Float2Input, [f64; 2]);
+decl_ui_input!(Float3Input, [f32; 3]);
+decl_ui_input!(Float4Input, [f32; 4]);
 decl_ui_input!(IntInput, i64);
+decl_ui_input!(Int2Input, [i64; 2]);
+decl_ui_input!(Int3Input, [i32; 3]);
+decl_ui_input!(Int4Input, [i32; 4]);
 
 macro_rules! decl_ui_slider {
   ($name:ident, $tmp_type:ty) => {
@@ -156,7 +162,13 @@ pub fn registerShards() {
   registerShard::<ImageButton>();
   registerShard::<Label>();
   registerShard::<FloatInput>();
+  registerShard::<Float2Input>();
+  registerShard::<Float3Input>();
+  registerShard::<Float4Input>();
   registerShard::<IntInput>();
+  registerShard::<Int2Input>();
+  registerShard::<Int3Input>();
+  registerShard::<Int4Input>();
   registerShard::<FloatSlider>();
   registerShard::<Float2Slider>();
   registerShard::<Float3Slider>();
