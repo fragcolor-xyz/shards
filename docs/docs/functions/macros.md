@@ -47,7 +47,12 @@ Defines an alias.
 
 Defines new shards that can be grouped together and inserted into an existing wire program.
 
+!!! note
+    What's a [`shard`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#shard)?
+
 A `defshards` shard looks structurally similar to a function (see [defn](#defn)), but unlike a `defn`, it can contain multiple shards in its body without needing to use `->`.
+
+During the execution phase `defshards` is physically replaced by it's inner shards wherever it's invoked.
 
 === "Code"
 
@@ -96,6 +101,9 @@ Defines a new non-looped wire.
     )
     ```
 
+!!! note
+    What's a [`wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
+
 `(defwire <wire-name>)` is actually a shorthand for the more verbose non-looped wire definition: `def <wire-name>` + `Wire "wire-name"`.
 === "Code"
 
@@ -107,9 +115,7 @@ Defines a new non-looped wire.
     ))
     ```
 
-A wire is a stateful function (read more about this [here](https://docs.fragcolor.xyz/architecture-guides/shards#stateful-functions) and [here](https://learn.fragcolor.xyz/how-to/shards-primer#stateful-functions)).
-
-To run it you must first schedule it on a mesh. When you run this mesh, all the wires scheduled on it are executed (in the order of scheduling).
+To run a wire you must first schedule it on a mesh. When you run this mesh, all the wires scheduled on it are executed (in the order of scheduling).
 
 A mesh will execute a non-looped wire only once (even though the mesh itself may continue running).
 
@@ -145,10 +151,10 @@ A mesh will execute a non-looped wire only once (even though the mesh itself may
     ```clojure linenums="1"
     (defmesh main)
     (defwire mywire
-        = .wirevar                    ;; save mywire input to wirevar
-        .wirevar (Log "wire input")) ;; log mywire input to screen
+        = .wirevar                      ;; save mywire input to wirevar
+        .wirevar (Log "wire input"))    ;; log mywire input to screen
     (defwire mainwire
-        "shards" (Do mywire))    ;; invoke mywire with an input
+        "shards" (Do mywire))           ;; invoke mywire with an input
     (schedule main mainwire)
     (run main)
     ```
@@ -307,6 +313,9 @@ Defines a new macro.
 
 Defines a new `mesh` on which wires can be scheduled and then run.
 
+!!! note
+    What's a [`mesh`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#mesh)?
+
 === "Code"
 
     ```clojure linenums="1"
@@ -322,19 +331,19 @@ Defines a new `mesh` on which wires can be scheduled and then run.
     (def main (Mesh))   ;; define a mesh named 'main'
     ```
 
-A mesh is a self-contained execution-context and software environment (like a server) that executes the wire code logic. It can run both on the local hardware as well as peer-to-peer hardware over the network (shardwire).
+Here's an example that schedules a looped and a non-looped wire on a mesh.
 
 === "Code"
 
     ```clojure linenums="1"
-    (defmesh main)             ;; define a mesh (main)
-    (defloop wire-hi          ;; define a looped wire
+    (defmesh main)              ;; define a mesh (main)
+    (defloop wire-hi            ;; define a looped wire
         (Msg "Hello World!"))
-    (defwire wire-bye        ;; define a non-looped wire
+    (defwire wire-bye           ;; define a non-looped wire
         (Msg "Goodbye World"))
-    (schedule main wire-hi)   ;; schedule looped wire (wire-hi) on this mesh
-    (schedule main wire-bye)  ;; schedule non-looped wire (wire-hi) on this mesh
-    (run main)                 ;; run all the scheduled wires on this mesh
+    (schedule main wire-hi)     ;; schedule looped wire (wire-hi) on this mesh
+    (schedule main wire-bye)    ;; schedule non-looped wire (wire-hi) on this mesh
+    (run main)                  ;; run all the scheduled wires on this mesh
     ```
 === "Result"
 
@@ -363,8 +372,11 @@ Defines a new looped wire.
     ;; defloop
     (defloop my-loop       ;; define a looped wire
         ;; shards here
-    ))
+    )
     ```
+
+!!! note
+    What's a [`wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
 
 `(defloop <looped wire-name)` is actually a shorthand for the more verbose looped wire definition: `def <looped wire-name>` + `Wire "looped wire-name"`.
 === "Code"
@@ -405,14 +417,14 @@ A mesh will continue executing a looped wire till the mesh itself stops running 
 === "Code"
 
     ```clojure linenums="1"
-    (defmesh main)             ;; define a mesh
-    (defloop wire-hi          ;; define a looped wire (wire-hello)
+    (defmesh main)              ;; define a mesh
+    (defloop wire-hi            ;; define a looped wire (wire-hello)
         (Msg "Hello World!"))
-    (defloop wire-bye         ;; define another looped wire (wire-bye)
+    (defloop wire-bye           ;; define another looped wire (wire-bye)
         (Msg "Goodbye World"))
-    (schedule main wire-hi)   ;; schedule the wire (wire-hi) on the mesh
-    (schedule main wire-bye)  ;; schedule the wire (wire-bye) on the mesh
-    (run main)                 ;; run all the wires scheduled on this mesh
+    (schedule main wire-hi)     ;; schedule the wire (wire-hi) on the mesh
+    (schedule main wire-bye)    ;; schedule the wire (wire-bye) on the mesh
+    (run main)                  ;; run all the wires scheduled on this mesh
     ```
 === "Result"
 
