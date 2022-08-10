@@ -1802,56 +1802,78 @@ BUILTIN("int") {
 }
 
 BUILTIN("int2") {
-  CHECK_ARGS_IS(2);
+  CHECK_ARGS_BETWEEN(1, 2);
   ARG(malNumber, value0);
-  ARG(malNumber, value1);
   SHVar var{};
   var.valueType = Int2;
   var.payload.int2Value[0] = value0->value();
-  var.payload.int2Value[1] = value1->value();
+  if (argsBegin != argsEnd) {
+    CHECK_ARGS_IS(1);
+    ARG(malNumber, value1);
+    var.payload.int2Value[1] = value1->value();
+  } else {
+    var.payload.int2Value[1] = value0->value();
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
 BUILTIN("int3") {
-  CHECK_ARGS_IS(3);
+  CHECK_ARGS_BETWEEN(1, 3);
   ARG(malNumber, value0);
-  ARG(malNumber, value1);
-  ARG(malNumber, value2);
   SHVar var{};
   var.valueType = Int3;
   var.payload.int3Value[0] = value0->value();
-  var.payload.int3Value[1] = value1->value();
-  var.payload.int3Value[2] = value2->value();
+  if (argsBegin != argsEnd) {
+    CHECK_ARGS_IS(2);
+    ARG(malNumber, value1);
+    ARG(malNumber, value2);
+    var.payload.int3Value[1] = value1->value();
+    var.payload.int3Value[2] = value2->value();
+  } else {
+    var.payload.int3Value[1] = value0->value();
+    var.payload.int3Value[2] = value0->value();
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
 BUILTIN("int4") {
-  CHECK_ARGS_IS(4);
+  CHECK_ARGS_BETWEEN(1, 4);
   ARG(malNumber, value0);
-  ARG(malNumber, value1);
-  ARG(malNumber, value2);
-  ARG(malNumber, value3);
   SHVar var{};
   var.valueType = Int4;
   var.payload.int4Value[0] = value0->value();
-  var.payload.int4Value[1] = value1->value();
-  var.payload.int4Value[2] = value2->value();
-  var.payload.int4Value[3] = value3->value();
+  if (argsBegin != argsEnd) {
+    CHECK_ARGS_IS(3);
+    ARG(malNumber, value1);
+    ARG(malNumber, value2);
+    ARG(malNumber, value3);
+    var.payload.int4Value[1] = value1->value();
+    var.payload.int4Value[2] = value2->value();
+    var.payload.int4Value[3] = value3->value();
+  } else {
+    var.payload.int4Value[1] = value0->value();
+    var.payload.int4Value[2] = value0->value();
+    var.payload.int4Value[3] = value0->value();
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
 BUILTIN("color") {
-  CHECK_ARGS_IS(4);
+  CHECK_ARGS_BETWEEN(3, 4);
   ARG(malNumber, value0);
   ARG(malNumber, value1);
   ARG(malNumber, value2);
-  ARG(malNumber, value3);
   SHVar var{};
   var.valueType = Color;
   var.payload.colorValue.r = static_cast<uint8_t>(value0->value());
   var.payload.colorValue.g = static_cast<uint8_t>(value1->value());
   var.payload.colorValue.b = static_cast<uint8_t>(value2->value());
-  var.payload.colorValue.a = static_cast<uint8_t>(value3->value());
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, value3);
+    var.payload.colorValue.a = static_cast<uint8_t>(value3->value());
+  } else {
+    var.payload.colorValue.a = 255;
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
@@ -1865,41 +1887,59 @@ BUILTIN("float") {
 }
 
 BUILTIN("float2") {
-  CHECK_ARGS_IS(2);
+  CHECK_ARGS_BETWEEN(1, 2);
   ARG(malNumber, value0);
-  ARG(malNumber, value1);
   SHVar var{};
   var.valueType = Float2;
   var.payload.float2Value[0] = value0->value();
-  var.payload.float2Value[1] = value1->value();
+  if (argsBegin != argsEnd) {
+    CHECK_ARGS_IS(1);
+    ARG(malNumber, value1);
+    var.payload.float2Value[1] = value1->value();
+  } else {
+    var.payload.float2Value[1] = value0->value();
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
 BUILTIN("float3") {
-  CHECK_ARGS_IS(3);
+  CHECK_ARGS_BETWEEN(1, 3);
   ARG(malNumber, value0);
-  ARG(malNumber, value1);
-  ARG(malNumber, value2);
   SHVar var{};
   var.valueType = Float3;
   var.payload.float3Value[0] = value0->value();
-  var.payload.float3Value[1] = value1->value();
-  var.payload.float3Value[2] = value2->value();
+  if (argsBegin != argsEnd) {
+    CHECK_ARGS_IS(2);
+    ARG(malNumber, value1);
+    ARG(malNumber, value2);
+    var.payload.float3Value[1] = value1->value();
+    var.payload.float3Value[2] = value2->value();
+  } else {
+    var.payload.float3Value[1] = value0->value();
+    var.payload.float3Value[2] = value0->value();
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
 BUILTIN("float4") {
-  CHECK_ARGS_IS(4);
+  CHECK_ARGS_BETWEEN(1, 4);
   ARG(malNumber, value0);
-  ARG(malNumber, value1);
-  ARG(malNumber, value2);
-  ARG(malNumber, value3);
   SHVar var{};
   var.valueType = Float4;
   var.payload.float4Value[0] = value0->value();
-  var.payload.float4Value[1] = value1->value();
-  var.payload.float4Value[2] = value2->value();
-  var.payload.float4Value[3] = value3->value();
+  if (argsBegin != argsEnd) {
+    CHECK_ARGS_IS(3);
+    ARG(malNumber, value1);
+    ARG(malNumber, value2);
+    ARG(malNumber, value3);
+    var.payload.float4Value[1] = value1->value();
+    var.payload.float4Value[2] = value2->value();
+    var.payload.float4Value[3] = value3->value();
+  } else {
+    var.payload.float4Value[1] = value0->value();
+    var.payload.float4Value[2] = value0->value();
+    var.payload.float4Value[3] = value0->value();
+  }
   return malValuePtr(new malSHVar(var, false));
 }
 
