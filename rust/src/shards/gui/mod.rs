@@ -86,16 +86,11 @@ struct EguiContext {
   input_translator: egui_gfx::InputTranslator,
 }
 
-struct Reset {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-}
-
 mod containers;
 mod context;
 mod layouts;
 mod menus;
-mod reset;
+mod misc;
 mod util;
 mod widgets;
 
@@ -104,6 +99,6 @@ pub fn registerShards() {
   registerShard::<EguiContext>();
   layouts::registerShards();
   menus::registerShards();
-  registerShard::<Reset>();
+  misc::registerShards();
   widgets::registerShards();
 }
