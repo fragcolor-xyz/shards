@@ -578,6 +578,9 @@ Type **ShardRef** (also called type **Shard**) represents a shard being passed a
 
 This type is an important aspect of the homoiconicity feature (i.e., code/data interchangeability) in Shards. 
 
+!!! note
+    What's a [`shard`](https://learn.fragcolor.xyz/primer/#shard)?
+
 The shard [`(ForEach)`](https://docs.fragcolor.xyz/shards/General/ForEach/) expects type **ShardRef** for its `:Apply` parameter (the other option being a sequence of **ShardRef** type values, i.e., a [`Wire`](#wire) type).
 
 `(ForEach)` then applies this shard (or sequence of shards) on its input to transform it into its output.
@@ -637,6 +640,9 @@ Type **Wire** represents a wire being passed as data.
     Has keyword [`Wire`](https://docs.fragcolor.xyz/functions/values/#wire).
 
 A **Wire** type thus consists of a sequence of shards (which make up the wire), their shared state (memory) context, name of the wire, and other properties that enable operations on the wire like scheduling it on a mesh, starting/stopping/pausing the wire, etc.
+
+!!! note
+    What's a [`wire`](https://learn.fragcolor.xyz/primer/#wire)?
 
 For example, the shard [`(Stop)`](https://docs.fragcolor.xyz/shards/General/Stop/) accepts **Wire** type data in its `:Wire` parameter and stops that wire's execution if its currently running.
 
