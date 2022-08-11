@@ -78,7 +78,7 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNODEJS=1 -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=1 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=${{ steps.setup.outputs.threading == 'mt' }} -DEMSCRIPTEN_IDBFS=1 -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
-          ninja shards && ninja test_runtime
+          ninja shards && ninja test-runtime
       # Node LTS v16.15.0 freezes during exit on the st build, using version 18 works
       - uses: actions/setup-node@v3
         with:
@@ -88,8 +88,8 @@ jobs:
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'st' }}
         run: |
           cd build
-          node ../src/tests/test_shards.js shards-st.js || [[ $? == 143 ]] || exit
-          node ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
+          node ../src/tests/test-shards.js shards-st.js || [[ $? == 143 ]] || exit
+          node ../src/tests/test-runtime.js || [[ $? == 143 ]] || exit
           mkdir shards
           cp shards-st.wasm shards/
           cp shards-st.js shards/
@@ -97,8 +97,8 @@ jobs:
         if: ${{ steps.setup.outputs.threading == 'mt' }}
         run: |
           cd build
-          node --experimental-wasm-threads ../src/tests/test_shards.js shards-mt.js || [[ $? == 143 ]] || exit
-          node --experimental-wasm-threads ../src/tests/test_runtime.js || [[ $? == 143 ]] || exit
+          node --experimental-wasm-threads ../src/tests/test-shards.js shards-mt.js || [[ $? == 143 ]] || exit
+          node --experimental-wasm-threads ../src/tests/test-runtime.js || [[ $? == 143 ]] || exit
           mkdir shards
           cp shards-mt.wasm shards/
           cp shards-mt.js shards/

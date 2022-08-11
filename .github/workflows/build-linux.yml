@@ -170,7 +170,7 @@ jobs:
           ./shards ../src/tests/time.edn
           ./shards ../src/tests/eth.edn
           ./shards ../src/tests/take.edn
-          ./shards ../src/tests/casting_numbers.edn
+          ./shards ../src/tests/casting-numbers.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -187,32 +187,32 @@ jobs:
           for i in $(find shards -name '*.edn' ! -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards run_sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done
       - name: Test Headless (gfx_window)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/gfx_window.edn
+          run: ./shards ../src/tests/gfx-window.edn
       - name: Test Headless (gfx_cube)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/gfx_cube.edn
+          run: ./shards ../src/tests/gfx-cube.edn
       - name: Test Headless (gfx_materials)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/gfx_materials.edn
+          run: ./shards ../src/tests/gfx-materials.edn
       - name: Test Headless (imgui_demo)
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
-          run: ./shards ../src/tests/imgui_demo.edn
+          run: ./shards ../src/tests/imgui-demo.edn
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
@@ -265,24 +265,24 @@ jobs:
         run: |
           cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1
           cd build
-          ninja test_runtime && ninja test_gfx
+          ninja test-runtime && ninja test-gfx
       - name: Test runtime
         env:
           RUST_BACKTRACE: 1
         run: |
           cd build
-          ./test_runtime
+          ./test-runtime
       - name: Test graphics
         uses: chainblocks/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
           run: |
-            ./test_gfx
+            ./test-gfx
       - name: CodeCov
         run: |
           mkdir coverage
-          lcov --capture --directory build/src/core/CMakeFiles/shards-core-static.dir --directory build/src/core/CMakeFiles/test_runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
+          lcov --capture --directory build/src/core/CMakeFiles/shards-core-static.dir --directory build/src/core/CMakeFiles/test-runtime.dir --directory build/src/extra/CMakeFiles --directory build/src/gfx --output-file coverage/coverage.info
           lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"

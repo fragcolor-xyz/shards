@@ -42,7 +42,7 @@ jobs:
       - name: Build
         run: |
           cmake -Bbuild -G Ninja -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
-          cmake --build build --target shards test_gfx
+          cmake --build build --target shards test-gfx
       - name: Checkout glTF-Sample-Models
         uses: actions/checkout@v3
         with:
@@ -58,7 +58,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           echo "Running graphics library tests"
-          build/test_gfx -r JUnit --out test_gfx.xml
+          build/test-gfx -r JUnit --out test-gfx.xml
 
           echo "\n"
           echo "Running graphics test scripts"
@@ -72,10 +72,10 @@ jobs:
           build/shards src/tests/ui.edn
 
           echo "Running egui demo"
-          build/shards src/tests/egui_demo.edn
+          build/shards src/tests/egui-demo.edn
 
           echo "Running imgui demo"
-          build/shards src/tests/imgui_demo.edn
+          build/shards src/tests/imgui-demo.edn
       - name: Test doc samples (UI)
         env:
           RUST_BACKTRACE: 1
@@ -88,7 +88,7 @@ jobs:
           for i in $(find shards -name '*.edn' -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards run_sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -105,7 +105,7 @@ jobs:
           name: shards-linux-gpu-coverage
           path: |
             coverage
-            test_gfx.xml
+            test-gfx.xml
           if-no-files-found: error
       - uses: actions/upload-artifact@v3
         if: failure()

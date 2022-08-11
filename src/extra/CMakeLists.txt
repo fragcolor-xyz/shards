@@ -27,11 +27,11 @@ else()
   add_library(shards-extra STATIC ${extra_SOURCES})
 endif()
 
-target_link_libraries(shards-extra SDL2-static)
+target_link_libraries(shards-extra SDL2)
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx_imgui gfx_gltf gfx_egui
+  stb gfx gfx-imgui gfx-gltf gfx-egui
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json
@@ -65,11 +65,11 @@ if(SHARDS_BUILD_TESTS)
   target_compile_definitions(shards-extra PRIVATE SHARDS_BUILD_TESTS=1)
   target_link_libraries(shards-extra Catch2)
 
-  add_executable(test_extra
+  add_executable(test-extra
     ../tests/test_extra.cpp
   )
 
-  target_link_libraries(test_extra
+  target_link_libraries(test-extra
     shards-core shards-extra Catch2 Catch2Main
   )
 endif()

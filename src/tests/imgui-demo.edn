@@ -53,7 +53,7 @@
                  "and Metrics/Debugger (general purpose UI debugging tool).") (GUI.Text :Bullet true)
             (GUI.Separator)
             "PROGRAMMER GUIDE:" (GUI.Text)
-            "See the demo-window shard in imgui_demo.edn. <- you are here!" (GUI.Text :Bullet true)
+            "See the demo-window shard in imgui-demo.edn. <- you are here!" (GUI.Text :Bullet true)
             (GUI.Separator)
             "USER GUIDE:" (GUI.Text)
             "Double-click on title bar to collapse window." (GUI.Text :Bullet true)

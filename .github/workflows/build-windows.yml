@@ -176,8 +176,8 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ninja test_runtime
-          ./test_runtime
+          ninja test-runtime
+          ./test-runtime
       - name: Checkout glTF-Sample-Models
         # Match with test step below
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
@@ -194,8 +194,8 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ninja test_gfx
-          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test_gfx
+          ninja test-gfx
+          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -305,7 +305,7 @@ jobs:
           for i in $(find shards -name '*.edn' ! -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards.exe run_sample.edn --file "$i";
+            ../../build/shards.exe run-sample.edn --file "$i";
           done
       - name: Test doc samples (UI)
         # NOTE: Graphics backend doesn't run on 32bits
@@ -319,7 +319,7 @@ jobs:
           for i in $(find shards -name '*.edn' -path '*UI*');
           do
             echo "Running sample $i";
-            ../../build/shards.exe run_sample.edn --file "$i";
+            ../../build/shards.exe run-sample.edn --file "$i";
           done
       - name: Graphics Test (64bits)
         # NOTE: Graphics backend doesn't run on 32bits
@@ -331,17 +331,17 @@ jobs:
         run: |
           cd build
           echo "Running test: gfx_window"
-          ./shards ../src/tests/gfx_window.edn
+          ./shards ../src/tests/gfx-window.edn
           echo "Running test: gfx_cube"
-          ./shards ../src/tests/gfx_cube.edn
+          ./shards ../src/tests/gfx-cube.edn
           echo "Running test: gfx_materials"
-          ./shards ../src/tests/gfx_materials.edn
+          ./shards ../src/tests/gfx-materials.edn
           echo "Running test: ui"
           ./shards ../src/tests/ui.edn
           echo "Running test: egui_demo"
-          ./shards ../src/tests/egui_demo.edn
+          ./shards ../src/tests/egui-demo.edn
           echo "Running test: imgui_demo"
-          ./shards ../src/tests/imgui_demo.edn
+          ./shards ../src/tests/imgui-demo.edn
       - name: Test (64bits)
         if: ${{ steps.setup.outputs.bitness == '64bits' }}
         env:
