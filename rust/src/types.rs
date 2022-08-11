@@ -3939,7 +3939,9 @@ impl PartialEq for Type {
 pub const FRAG_CC: i32 = 0x66726167; // 'frag'
 
 pub static INT_TYPES_SLICE: &[Type] = &[common_type::int];
+pub static INT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::int, common_type::none];
 pub static INT2_TYPES_SLICE: &[Type] = &[common_type::int2];
+pub static INT2_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::int2, common_type::none];
 pub static FLOAT_TYPES_SLICE: &[Type] = &[common_type::float];
 pub static FLOAT2_TYPES_SLICE: &[Type] = &[common_type::float2];
 pub static FLOAT3_TYPES_SLICE: &[Type] = &[common_type::float3];
