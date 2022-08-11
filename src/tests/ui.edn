@@ -331,6 +331,35 @@
 (schedule main group-test)
 (run main timestep duration)
 
+;; indent
+(defloop indent-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Indent
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main indent-test)
+(run main timestep duration)
+
 ;; horizontal layout
 (defloop horizontal-test
   (GFX.MainWindow

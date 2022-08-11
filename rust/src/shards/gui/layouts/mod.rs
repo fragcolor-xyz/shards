@@ -50,6 +50,13 @@ struct Horizontal {
   exposing: ExposedTypes,
 }
 
+struct Indent {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  exposing: ExposedTypes,
+}
+
 struct ScrollArea {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -77,6 +84,7 @@ mod columns;
 mod frame;
 mod group;
 mod horizontal;
+mod indent;
 mod scroll_area;
 mod separator;
 mod vertical;
@@ -87,6 +95,7 @@ pub fn registerShards() {
   registerShard::<Frame>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
+  registerShard::<Indent>();
   registerShard::<ScrollArea>();
   registerShard::<Separator>();
   registerShard::<Vertical>();
