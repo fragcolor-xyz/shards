@@ -270,6 +270,36 @@
 (schedule main columns-header-test)
 (run main timestep duration)
 
+;; disable
+(defloop disable-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Disable
+         :Disable true
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main disable-test)
+(run main timestep duration)
+
 ;; frame
 (defloop frame-test
   (GFX.MainWindow

@@ -22,6 +22,14 @@ struct Columns {
   exposing: ExposedTypes,
 }
 
+struct Disable {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  disable: ParamVar,
+  exposing: ExposedTypes,
+}
+
 struct Frame {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -81,6 +89,7 @@ struct Vertical {
 
 mod collapsing_header;
 mod columns;
+mod disable;
 mod frame;
 mod group;
 mod horizontal;
@@ -92,6 +101,7 @@ mod vertical;
 pub fn registerShards() {
   registerShard::<CollapsingHeader>();
   registerShard::<Columns>();
+  registerShard::<Disable>();
   registerShard::<Frame>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
