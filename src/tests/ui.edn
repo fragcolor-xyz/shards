@@ -571,6 +571,29 @@
 (schedule main checkbox-test)
 (run main timestep duration)
 
+;; color-input
+(defloop color-input-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.ColorInput .color) (ExpectColor)
+        .color (ExpectColor)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main color-input-test)
+(run main timestep duration)
+
 ;; combo
 (defloop combo-test
   (GFX.MainWindow

@@ -335,6 +335,7 @@ EXPECT_SHARD(Float2, Float2);
 EXPECT_SHARD(Float3, Float3);
 EXPECT_SHARD(Float4, Float4);
 EXPECT_SHARD(Bool, Bool);
+EXPECT_SHARD(Color, Color);
 EXPECT_SHARD(Int, Int);
 EXPECT_SHARD(Int2, Int2);
 EXPECT_SHARD(Int3, Int3);
@@ -594,6 +595,7 @@ void registerCastingShards() {
   REGISTER_CORE_SHARD(ExpectString);
   REGISTER_CORE_SHARD(ExpectImage);
   REGISTER_CORE_SHARD(ExpectBool);
+  REGISTER_CORE_SHARD(ExpectColor);
   REGISTER_CORE_SHARD(ExpectSeq);
   REGISTER_CORE_SHARD(ExpectWire);
   REGISTER_CORE_SHARD(ExpectTable);

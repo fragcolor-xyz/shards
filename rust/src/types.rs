@@ -1205,6 +1205,7 @@ macro_rules! var_try_from {
 
 var_from!(bool, boolValue, SHType_Bool);
 var_from!(i64, intValue, SHType_Int);
+var_from!(SHColor, colorValue, SHType_Color);
 var_try_from!(u8, intValue, SHType_Int);
 var_try_from!(u16, intValue, SHType_Int);
 var_try_from!(u32, intValue, SHType_Int);
@@ -3963,6 +3964,7 @@ lazy_static! {
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
+  pub static ref COLOR_TYPES: Vec<Type> = vec![common_type::color];
   pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
   pub static ref INT2_TYPES: Vec<Type> = vec![common_type::int2];
   pub static ref INT3_TYPES: Vec<Type> = vec![common_type::int3];

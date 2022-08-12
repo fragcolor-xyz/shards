@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use crate::core::registerShard;
+use crate::shardsc;
 use crate::types::common_type;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
@@ -28,6 +29,15 @@ struct Checkbox {
   variable: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
+}
+
+struct ColorInput {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  variable: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  tmp: shardsc::SHColor,
 }
 
 struct Combo {
@@ -162,6 +172,7 @@ decl_ui_slider!(Int4Slider, [i32; 4]);
 
 mod button;
 mod checkbox;
+mod color_input;
 mod combo;
 mod hyperlink;
 mod image;
@@ -178,6 +189,7 @@ mod text_input;
 pub fn registerShards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
+  registerShard::<ColorInput>();
   registerShard::<Combo>();
   registerShard::<Hyperlink>();
   registerShard::<Image>();

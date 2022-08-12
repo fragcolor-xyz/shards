@@ -17,6 +17,11 @@ static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
 static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
 static BOOL_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::bool, common_type::bool_var, common_type::none];
+static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
+  common_type::color,
+  common_type::color_var,
+  common_type::none,
+];
 static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
 static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
