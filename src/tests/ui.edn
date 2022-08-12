@@ -692,6 +692,29 @@
 (schedule main label-test)
 (run main timestep duration)
 
+;; listbox
+(defloop listbox-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        ["Hello" "World"] (UI.ListBox .index) (ExpectString)
+        .index (ExpectInt)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main listbox-test)
+(run main timestep duration)
+
 ;; numeric input
 (defloop numeric-input-test
   (GFX.MainWindow

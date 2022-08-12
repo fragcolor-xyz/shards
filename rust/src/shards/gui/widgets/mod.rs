@@ -72,6 +72,15 @@ struct Label {
   wrap: ParamVar,
 }
 
+struct ListBox {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  index: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  tmp: usize,
+}
+
 struct ProgressBar {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -158,6 +167,7 @@ mod hyperlink;
 mod image;
 mod image_button;
 mod label;
+mod listbox;
 mod numeric_input;
 mod numeric_slider;
 mod progress_bar;
@@ -173,6 +183,7 @@ pub fn registerShards() {
   registerShard::<Image>();
   registerShard::<ImageButton>();
   registerShard::<Label>();
+  registerShard::<ListBox>();
   registerShard::<FloatInput>();
   registerShard::<Float2Input>();
   registerShard::<Float3Input>();
