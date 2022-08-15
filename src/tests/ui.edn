@@ -227,6 +227,7 @@
        (->
         input
         (UI.Collapsing
+         :Heading (UI.Button "Heading")
          :DefaultOpen true
          :Contents
          (->

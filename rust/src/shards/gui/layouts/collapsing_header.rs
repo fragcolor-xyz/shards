@@ -4,7 +4,9 @@
 use super::CollapsingHeader;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::EguiId;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -18,14 +20,19 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 use crate::types::BOOL_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
-use crate::types::STRING_OR_NONE_SLICE;
 
 lazy_static! {
+  pub static ref STRING_OR_SHARDS_OR_NONE_TYPES: Vec<Type> = vec![
+    common_type::string,
+    common_type::shard,
+    common_type::shards,
+    common_type::none
+  ];
   static ref COLLAPSING_PARAMETERS: Parameters = vec![
     (
       cstr!("Heading"),
-      cstr!("The heading text for this collapsing header."),
-      STRING_OR_NONE_SLICE,
+      cstr!("The heading text or widgets for this collapsing header."),
+      &STRING_OR_SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
@@ -50,9 +57,11 @@ impl Default for CollapsingHeader {
     Self {
       parents,
       requiring: Vec::new(),
-      heading: ParamVar::default(),
+      text: ParamVar::default(),
+      header: ShardsVar::default(),
       contents: ShardsVar::default(),
       defaultOpen: ParamVar::new(false.into()),
+      exposing: Vec::new(),
     }
   }
 }
@@ -106,7 +115,8 @@ impl Shard for CollapsingHeader {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.heading.set_param(value)),
+      0 if value.is_none() || value.is_string() => Ok(self.text.set_param(value)),
+      0 => self.header.set_param(value),
       1 => self.contents.set_param(value),
       2 => Ok(self.defaultOpen.set_param(value)),
       _ => Err("Invalid parameter index"),
@@ -115,7 +125,8 @@ impl Shard for CollapsingHeader {
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.heading.get_param(),
+      0 if self.header.is_empty() => self.text.get_param(),
+      0 => self.header.get_param(),
       1 => self.contents.get_param(),
       2 => self.defaultOpen.get_param(),
       _ => Var::default(),
@@ -131,13 +142,31 @@ impl Shard for CollapsingHeader {
     Some(&self.requiring)
   }
 
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    let mut exposed = false;
+    exposed |= util::expose_contents_variables(&mut self.exposing, &self.header);
+    exposed |= util::expose_contents_variables(&mut self.exposing, &self.contents);
+
+    if exposed {
+      Some(&self.exposing)
+    } else {
+      None
+    }
+  }
+
   fn hasCompose() -> bool {
     true
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    if !self.header.is_empty() {
+      self.header.compose(data)?;
+    }
+
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(data)?;
     }
 
     // Always passthrough the input
@@ -146,7 +175,10 @@ impl Shard for CollapsingHeader {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-    self.heading.warmup(ctx);
+    self.text.warmup(ctx);
+    if !self.header.is_empty() {
+      self.header.warmup(ctx)?;
+    }
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
@@ -160,28 +192,46 @@ impl Shard for CollapsingHeader {
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
-    self.heading.cleanup();
+    if !self.header.is_empty() {
+      self.header.cleanup();
+    }
+    self.text.cleanup();
     self.parents.cleanup();
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if self.contents.is_empty() {
-      return Ok(*input);
-    }
-
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let heading: &str = self.heading.get().try_into().or::<&str>(Ok(""))?;
-      let defaultOpen: bool = self.defaultOpen.get().try_into()?;
-      let header = egui::CollapsingHeader::new(heading).default_open(defaultOpen);
-      if let Some(result) = header
-        .show(ui, |ui| {
+      let default_open: bool = self.defaultOpen.get().try_into()?;
+
+      if let Some(ret) = if self.header.is_empty() {
+        let text: &str = self.text.get().try_into().or::<&str>(Ok(""))?;
+        egui::CollapsingHeader::new(text)
+          .default_open(default_open)
+          .show(ui, |ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+          .body_returned
+      } else if let Some(body_response) =
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+          ui.ctx(),
+          egui::Id::new(EguiId::new(self, 0)),
+          default_open,
+        )
+        .show_header(ui, |ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.header)
+        })
+        .body(|ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
-        .body_returned
+        .2
       {
-        match result {
+        Some(body_response.inner)
+      } else {
+        None
+      } {
+        match ret {
           Err(err) => Err(err),
           Ok(_) => Ok(*input),
         }

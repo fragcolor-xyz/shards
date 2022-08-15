@@ -9,9 +9,11 @@ use crate::types::ShardsVar;
 struct CollapsingHeader {
   parents: ParamVar,
   requiring: ExposedTypes,
-  heading: ParamVar,
+  text: ParamVar,
+  header: ShardsVar,
   contents: ShardsVar,
   defaultOpen: ParamVar,
+  exposing: ExposedTypes,
 }
 
 struct Columns {
