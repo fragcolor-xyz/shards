@@ -971,20 +971,16 @@ struct HashedShards {
 
   TableVar _outputTable{};
 
-  static SHOptionalString help() {
-    return SHCCSTR("Activates a shard or a sequence of shards independently, without "
-                   "consuming the input. In other words, the ouput of the sub flow will "
-                   "be its input regardless of the shards activated in this sub flow.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Hashes the output of a shard or of a sequence of shards."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString inputHelp() { return SHCCSTR("The value given to the shard or sequence of shards in this sub flow."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The value passed to the first shard in the hashed sequence."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The hash of the output of the last shard in the hashed sequence."); }
 
   static SHParametersInfo parameters() {
-    static Parameters params{{"Shards", SHCCSTR("The shards to execute in the sub flow."), {CoreInfo::ShardsOrNone}}};
+    static Parameters params{{"Shards", SHCCSTR("The shards to execute in the hashed flow."), {CoreInfo::ShardsOrNone}}};
     return params;
   }
 
