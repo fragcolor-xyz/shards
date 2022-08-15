@@ -60,7 +60,7 @@ pub(crate) fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &
 
 pub(crate) fn get_current_parent<'a>(parents: Var) -> Result<Option<&'a mut egui::Ui>, &'a str> {
   let seq: Seq = parents.try_into()?;
-  if seq.len() > 0 {
+  if !seq.is_empty() {
     Ok(Some(Var::from_object_ptr_mut_ref(
       seq[seq.len() - 1],
       &EGUI_UI_TYPE,

@@ -139,7 +139,7 @@ macro_rules! impl_ui_input {
                 CStr::from_ptr(self.variable.get_name()),
               )
             };
-            if CStr::cmp(&a, &b) == Ordering::Equal {
+            if CStr::cmp(a, b) == Ordering::Equal {
               self.should_expose = false;
               let t = common_type::$type;
               if var.exposedType.basicType != t.basicType {

@@ -133,7 +133,7 @@ impl Shard for Checkbox {
             CStr::from_ptr(self.variable.get_name()),
           )
         };
-        if CStr::cmp(&a, &b) == Ordering::Equal {
+        if CStr::cmp(a, b) == Ordering::Equal {
           self.should_expose = false;
           if var.exposedType.basicType != shardsc::SHType_Bool {
             return Err("Checkbox: bool variable required.");
@@ -200,15 +200,12 @@ impl Shard for Checkbox {
       let text: &str = self.label.get().try_into()?;
 
       if self.variable.is_variable() {
-        let mut checked =
-          &mut unsafe { self.variable.get_mut().payload.__bindgen_anon_1.boolValue };
-        let checkbox = egui::Checkbox::new(&mut checked, text);
+        let checked = &mut unsafe { self.variable.get_mut().payload.__bindgen_anon_1.boolValue };
+        let checkbox = egui::Checkbox::new(checked, text);
 
         let response = ui.add(checkbox);
-        if response.changed {
-          if self.variable.is_variable() {
-            self.variable.set((*checked).into());
-          }
+        if response.changed && self.variable.is_variable() {
+          self.variable.set((*checked).into());
         }
         Ok(response.changed().into())
       } else {

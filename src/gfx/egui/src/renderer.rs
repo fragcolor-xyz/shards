@@ -67,7 +67,7 @@ fn convert_primitive(
             vertices: vertsPtr,
             numVertices: numVerts,
             indices: indicesPtr,
-            numIndices: numIndices,
+            numIndices,
             textureId: mesh.texture_id.into(),
         })
     } else {
@@ -83,7 +83,7 @@ fn convert_texture_set(
     let (format, ptr, size, pixels) = match delta.image {
         epaint::ImageData::Color(color) => {
             let ptr = color.pixels.as_ptr();
-            let size = color.size.clone();
+            let size = color.size;
             (
                 egui_TextureFormat_RGBA8,
                 ptr as *const u8,
@@ -93,7 +93,7 @@ fn convert_texture_set(
         }
         epaint::ImageData::Font(font) => {
             let ptr = font.pixels.as_ptr();
-            let size = font.size.clone();
+            let size = font.size;
             (
                 egui_TextureFormat_R32F,
                 ptr as *const u8,
@@ -112,12 +112,12 @@ fn convert_texture_set(
     };
 
     Ok(egui_TextureSet {
-        format: format,
+        format,
         pixels: ptr,
         id: id.into(),
-        offset: offset,
+        offset,
         subRegion: sub_region,
-        size: size,
+        size,
     })
 }
 
@@ -172,13 +172,13 @@ fn make_native_full_output(
     };
 
     Ok(NativeFullOutput {
-        clipped_primitives: clipped_primitives,
-        texture_sets: texture_sets,
-        texture_frees: texture_frees,
-        vertex_mem: vertex_mem,
-        index_mem: index_mem,
-        image_mem: image_mem,
-        full_output: full_output,
+        clipped_primitives,
+        texture_sets,
+        texture_frees,
+        vertex_mem,
+        index_mem,
+        image_mem,
+        full_output,
     })
 }
 
@@ -187,6 +187,12 @@ impl Drop for Renderer {
         unsafe {
             gfx_EguiRenderer_destroy(self.egui_renderer);
         }
+    }
+}
+
+impl Default for Renderer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -200,7 +206,7 @@ impl Renderer {
     }
 
     pub fn render(
-        self: &Self,
+        &self,
         ctx: &egui::Context,
         egui_output: egui::FullOutput,
         queue: *const gfx_DrawQueuePtr,

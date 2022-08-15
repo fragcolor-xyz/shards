@@ -27,13 +27,13 @@ static INT_VAR_OR_NONE_SLICE: &[Type] =
 static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, 1701279061); // 'eguU'
-static EGUI_UI_SLICE: &'static [Type] = &[EGUI_UI_TYPE];
+static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];
 static EGUI_UI_SEQ_TYPE: Type = Type::seq(EGUI_UI_SLICE);
 
 static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, 1701279043); // 'eguC'
-static EGUI_CTX_SLICE: &'static [Type] = &[EGUI_CTX_TYPE];
+static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_VAR: Type = Type::context_variable(EGUI_CTX_SLICE);
-static EGUI_CTX_VAR_TYPES: &'static [Type] = &[EGUI_CTX_VAR];
+static EGUI_CTX_VAR_TYPES: &[Type] = &[EGUI_CTX_VAR];
 
 lazy_static! {
   static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
@@ -43,8 +43,8 @@ lazy_static! {
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
 }
 
-const CONTEXT_NAME: &'static str = "UI.Context";
-const PARENTS_UI_NAME: &'static str = "UI.Parents";
+const CONTEXT_NAME: &str = "UI.Context";
+const PARENTS_UI_NAME: &str = "UI.Parents";
 
 #[derive(Hash)]
 struct EguiId {

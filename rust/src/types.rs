@@ -253,7 +253,7 @@ impl Drop for DerivedType {
   }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum WireState {
   Continue,
   Return,
@@ -2037,10 +2037,6 @@ impl Var {
     self.valueType == SHType_Path
   }
 
-  pub fn as_ref(&self) -> &Self {
-    self
-  }
-
   pub fn is_context_var(&self) -> bool {
     self.valueType == SHType_ContextVar
   }
@@ -3183,27 +3179,19 @@ impl ShardsVar {
   }
 
   pub fn get_exposing(&self) -> Option<&[ExposedInfo]> {
-    if let Some(compose_result) = self.compose_result {
-      Some(unsafe {
-        let elems = compose_result.exposedInfo.elements;
-        let len = compose_result.exposedInfo.len;
-        std::slice::from_raw_parts(elems, len as usize)
-      })
-    } else {
-      None
-    }
+    self.compose_result.map(|compose_result| unsafe {
+      let elems = compose_result.exposedInfo.elements;
+      let len = compose_result.exposedInfo.len;
+      std::slice::from_raw_parts(elems, len as usize)
+    })
   }
 
   pub fn get_requiring(&self) -> Option<&[ExposedInfo]> {
-    if let Some(compose_result) = self.compose_result {
-      Some(unsafe {
-        let elems = compose_result.requiredInfo.elements;
-        let len = compose_result.requiredInfo.len;
-        std::slice::from_raw_parts(elems, len as usize)
-      })
-    } else {
-      None
-    }
+    self.compose_result.map(|compose_result| unsafe {
+      let elems = compose_result.requiredInfo.elements;
+      let len = compose_result.requiredInfo.len;
+      std::slice::from_raw_parts(elems, len as usize)
+    })
   }
 }
 
@@ -3231,7 +3219,7 @@ macro_rules! shenum {
 
     $vis struct $SHEnumInfo {
       name: &'static str,
-      labels: crate::types::Strings,
+      labels: $crate::types::Strings,
       values: Vec<i32>,
     }
 
@@ -3302,26 +3290,21 @@ macro_rules! __impl_shenuminfo {
       }
     }
 
-    impl $SHEnumInfo {
+    impl<'a> $SHEnumInfo {
       $(
-        pub const $EnumValue: &str = cstr!(std::stringify!($EnumValue));
+        pub const $EnumValue: &'a str = cstr!(std::stringify!($EnumValue));
       )*
 
       fn new() -> Self {
-        let mut labels = crate::types::Strings::new();
+        let mut labels = $crate::types::Strings::new();
         $(
           labels.push($SHEnumInfo::$EnumValue);
-        )*
-
-        let mut values = Vec::new();
-        $(
-          values.push($value);
         )*
 
         Self {
           name: cstr!(std::stringify!($SHEnum)),
           labels,
-          values
+          values: vec![$($value,)*],
         }
       }
     }
@@ -3332,12 +3315,12 @@ macro_rules! __impl_shenuminfo {
       }
     }
 
-    impl From<&$SHEnumInfo> for crate::shardsc::SHEnumInfo {
+    impl From<&$SHEnumInfo> for $crate::shardsc::SHEnumInfo {
       fn from(info: &$SHEnumInfo) -> Self {
         Self {
           name: info.name.as_ptr() as *const std::os::raw::c_char,
           labels: info.labels.s,
-          values: crate::shardsc::SHEnums {
+          values: $crate::shardsc::SHEnums {
             elements: (&info.values).as_ptr() as *mut i32,
             len: info.values.len() as u32,
             cap: 0
@@ -3470,7 +3453,7 @@ impl Default for Strings {
 impl AsRef<Strings> for Strings {
   #[inline(always)]
   fn as_ref(&self) -> &Strings {
-    &self
+    self
   }
 }
 
@@ -3643,7 +3626,7 @@ impl Default for Seq {
 impl AsRef<Seq> for Seq {
   #[inline(always)]
   fn as_ref(&self) -> &Seq {
-    &self
+    self
   }
 }
 

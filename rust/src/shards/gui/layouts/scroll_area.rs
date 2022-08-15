@@ -156,7 +156,7 @@ impl Shard for ScrollArea {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(data)?;
     }
 
     // Always passthrough the input
