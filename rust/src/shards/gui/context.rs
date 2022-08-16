@@ -232,6 +232,16 @@ impl Shard for EguiContext {
           return Err("Failed to activate UI contents");
         }
 
+        if !egui_output.platform_output.copied_text.is_empty() {
+          self
+            .input_translator
+            .copy_text(&egui_output.platform_output.copied_text);
+        }
+
+        self
+          .input_translator
+          .update_cursor_icon(egui_output.platform_output.cursor_icon);
+
         let queue_var = self.queue.get();
         unsafe {
           let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
