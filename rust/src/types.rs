@@ -7,6 +7,7 @@ use crate::core::Core;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
+use crate::shardsc::SHEnumInfo;
 use crate::shardsc::SHExposedTypeInfo;
 use crate::shardsc::SHExposedTypesInfo;
 use crate::shardsc::SHInstanceData;
@@ -3060,6 +3061,140 @@ impl ShardsVar {
       None
     }
   }
+}
+
+// Enum
+
+#[macro_export]
+macro_rules! shenum {
+  (
+    $(#[$outer:meta])*
+    $vis:vis struct $SHEnum:ident {
+      $(
+        $(#[$inner:ident $($args:tt)*])*
+        const $EnumValue:ident = $value:expr;
+      )+
+    }
+    struct $SHEnumInfo:ident { }
+
+    $($t:tt)*
+  ) => {
+    $(#[$outer])*
+    #[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
+    $vis struct $SHEnum {
+      bits: i32,
+    }
+
+    $vis struct $SHEnumInfo {
+      name: &'static str,
+      labels: crate::types::Strings,
+      values: Vec<i32>,
+    }
+
+    __impl_shenuminfo! {
+      $SHEnum {
+        $(
+          $(#[$inner $($args)*])*
+          $EnumValue = $value;
+        )*
+      }
+      $SHEnumInfo
+    }
+
+    __impl_shenum! {
+      $SHEnum {
+        $(
+          $(#[$inner $($args)*])*
+          $EnumValue = $value;
+        )*
+      }
+    }
+
+    shenum! {
+      $($t)*
+    }
+  };
+  () => {};
+}
+
+macro_rules! __impl_shenum {
+  (
+    $SHEnum:ident {
+      $(
+        $(#[$attr:ident $($args:tt)*])*
+        $EnumValue:ident = $value:expr;
+      )*
+    }
+  ) => {
+    impl $SHEnum {
+      $(
+        $(#[$attr $($args)*])*
+        pub const $EnumValue: $SHEnum = $SHEnum { bits: $value };
+      )*
+    }
+  };
+}
+
+macro_rules! __impl_shenuminfo {
+  (
+    $SHEnum:ident {
+      $(
+        $(#[$attr:ident $($args:tt)*])*
+        $EnumValue:ident = $value:expr;
+      )*
+    }
+    $SHEnumInfo:ident
+  ) => {
+    impl Default for $SHEnumInfo {
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $SHEnumInfo {
+      $(
+        pub const $EnumValue: &str = cstr!(std::stringify!($EnumValue));
+      )*
+
+      fn new() -> Self {
+        let mut labels = crate::types::Strings::new();
+        $(
+          labels.push($SHEnumInfo::$EnumValue);
+        )*
+
+        let mut values = Vec::new();
+        $(
+          values.push($value);
+        )*
+
+        Self {
+          name: cstr!(std::stringify!($SHEnum)),
+          labels,
+          values
+        }
+      }
+    }
+
+    impl AsRef<$SHEnumInfo> for $SHEnumInfo {
+      fn as_ref(&self) -> &$SHEnumInfo{
+        self
+      }
+    }
+
+    impl From<&$SHEnumInfo> for crate::shardsc::SHEnumInfo {
+      fn from(info: &$SHEnumInfo) -> Self {
+        Self {
+          name: info.name.as_ptr() as *const std::os::raw::c_char,
+          labels: info.labels.s,
+          values: crate::shardsc::SHEnums {
+            elements: (&info.values).as_ptr() as *mut i32,
+            len: info.values.len() as u32,
+            cap: 0
+          },
+        }
+      }
+    }
+  };
 }
 
 // Strings / SHStrings
