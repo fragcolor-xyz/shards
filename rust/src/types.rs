@@ -845,6 +845,18 @@ impl Type {
     }
   }
 
+  pub const fn enumeration(vendorId: i32, typeId: i32) -> Type {
+    Type {
+      basicType: SHType_Enum,
+      details: SHTypeInfo_Details {
+        enumeration: SHTypeInfo_Details_Enum { vendorId, typeId },
+      },
+      fixedSize: 0,
+      innerType: SHType_None,
+      recursiveSelf: false,
+    }
+  }
+
   pub const fn object(vendorId: i32, typeId: i32) -> Type {
     Type {
       basicType: SHType_Object,
