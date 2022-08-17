@@ -6,7 +6,7 @@
 (defwire uglify
   "general.edn"
   (FS.Read)
-  (EDN.Uglify ["WriteFile" 
+  (EDN.Uglify ["WriteFile"
                (->
                 = .input
                 (Sequence .output)
@@ -27,11 +27,14 @@
   "loader.ugly.clj"
   (FS.Write .ugly2 :Overwrite true)
   (Log)
-  "bgfx.clj"
+  "loader.clj"
   (FS.Read)
   (EDN.Uglify) = .ugly3
   "bgfx.ugly.clj"
   (FS.Write .ugly3 :Overwrite true)
+
+  "(* 2 2)" (Edn.Eval) (Assert.Is 4 true)
+
   (Log))
 
 (schedule main uglify)

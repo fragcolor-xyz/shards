@@ -83,6 +83,28 @@ static std::map<MalString, malValuePtr> builtIns;
 static std::mutex observersMutex;
 static std::map<malEnv *, std::shared_ptr<Observer>> observers;
 
+namespace shards {
+struct EdnEval {
+  static malEnvPtr &GetThreadEnv() {
+    thread_local malEnvPtr threadEnv;
+    if (!threadEnv) {
+      threadEnv = malEnvPtr(new malEnv());
+      // path should not matter as malinit should have been called already
+      malinit(threadEnv, nullptr, nullptr);
+    }
+    return threadEnv;
+  }
+
+  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  OwnedVar output{};
+
+  SHVar activate(SHContext *context, const SHVar &input);
+};
+} // namespace shards
+
 void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
   // Setup logging first
   logging::setupDefaultLoggerConditional();
@@ -104,6 +126,8 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 #endif
 
     shRegisterAllShards();
+
+    REGISTER_SHARD("Edn.Eval", EdnEval);
 
     initDoneOnce = true;
 
@@ -807,73 +831,6 @@ malValuePtr typeToKeyword(SHType type) {
   return mal::keyword(":None");
 }
 
-namespace shards {
-struct InnerCall {
-  malValuePtr malInfer; // a fn* [inputType]
-  malList *malActivateList;
-  malValuePtr malActivate; // a fn* [input]
-  malSHVar *innerVar;
-  SHVar outputVar{};
-
-  void init(const malValuePtr &infer, const malValuePtr &activate) {
-    malInfer = infer;
-
-    auto avec = new malValueVec();
-    avec->push_back(activate);
-
-    SHVar empty{};
-    innerVar = new malSHVar(empty, false);
-    avec->push_back(malValuePtr(innerVar));
-
-    malActivateList = new malList(avec);
-    malActivate = malValuePtr(malActivateList);
-  }
-
-  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  SHTypeInfo compose(SHInstanceData data) {
-    // call a fn* [inputTypeKeyword] in place
-    auto ivec = new malValueVec();
-    ivec->push_back(malInfer);
-    ivec->push_back(typeToKeyword(data.inputType.basicType));
-    auto res = EVAL(malValuePtr(new malList(ivec)), nullptr);
-
-    auto typeKeyword = VALUE_CAST(malKeyword, res);
-    auto returnType = SHTypeInfo();
-    returnType.basicType = keywordToType(typeKeyword);
-
-    return returnType;
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    cloneVar(innerVar->value(), input);
-    auto res = EVAL(malActivate, nullptr);
-    auto resStaticVar = STATIC_CAST(malSHVar, res); // for perf here we use static, it's dangerous tho!
-    cloneVar(outputVar, resStaticVar->value());
-    return outputVar;
-  }
-};
-
-RUNTIME_CORE_SHARD(InnerCall);
-RUNTIME_SHARD_inputTypes(InnerCall);
-RUNTIME_SHARD_outputTypes(InnerCall);
-RUNTIME_SHARD_compose(InnerCall);
-RUNTIME_SHARD_activate(InnerCall);
-RUNTIME_SHARD_END(InnerCall);
-}; // namespace shards
-
-BUILTIN(".") {
-  CHECK_ARGS_IS(2);
-  ARG(malLambda, infer);
-  ARG(malLambda, activate);
-  auto blk = shards::createShardInnerCall();
-  auto inner = reinterpret_cast<shards::InnerCallRuntime *>(blk);
-  inner->core.init(infer, activate);
-  return malValuePtr(new malShard(blk));
-}
-
 BUILTIN("Mesh") {
   auto mesh = new malSHMesh();
   return malValuePtr(mesh);
@@ -1364,6 +1321,13 @@ static MalString printValues(malValueIter begin, malValueIter end, const MalStri
   }
 
   return out;
+}
+
+SHVar shards::EdnEval::activate(SHContext *context, const SHVar &input) {
+  auto malRes = maleval(input.payload.stringValue, GetThreadEnv());
+  auto malVar = varify(malRes);
+  output = malVar->value();
+  return output;
 }
 
 BUILTIN("LOG") {
