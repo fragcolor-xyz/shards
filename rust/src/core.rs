@@ -8,6 +8,7 @@ use crate::shard::Shard;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHContext;
 use crate::shardsc::SHCore;
+use crate::shardsc::SHEnumInfo;
 use crate::shardsc::SHOptionalString;
 use crate::shardsc::SHString;
 use crate::shardsc::SHStrings;
@@ -376,6 +377,12 @@ pub fn releaseVariable(var: &SHVar) {
   unsafe {
     let v = var as *const SHVar as *mut SHVar;
     (*Core).releaseVariable.unwrap()(v);
+  }
+}
+
+pub fn registerEnumType(vendorId: i32, typeId: i32, info: SHEnumInfo) {
+  unsafe {
+    (*Core).registerEnumType.unwrap()(vendorId, typeId, info);
   }
 }
 

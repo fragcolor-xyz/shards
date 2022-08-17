@@ -144,7 +144,6 @@ void setSharedVariable(const char *name, const SHVar &value);
 void unsetSharedVariable(const char *name);
 SHVar getSharedVariable(const char *name);
 SHWireState suspend(SHContext *context, double seconds);
-void registerEnumType(int32_t vendorId, int32_t enumId, SHEnumInfo info);
 
 Shard *createShard(std::string_view name);
 void registerCoreShards();
