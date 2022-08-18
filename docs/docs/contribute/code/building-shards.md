@@ -11,8 +11,8 @@ Before you start, ensure you've [set up your development environment](../getting
 
 ## Requirements
 
-!!! note
-    We use GCC and Clang a lot; MSVC might work, but it's uncharted territory.
+??? note "Use `MSYS2 MinGW x64` on Windows"
+    If working on Windows, use `MSYS2 MinGW x64` terminal for running any C++ or Rust installation/update commands (*Windows control panel > Search > MSYS2 MinGW x64*). Powershell will not work in most cases.
 
 ### For Windows
 
