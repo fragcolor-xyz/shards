@@ -3062,6 +3062,102 @@ impl ShardsVar {
   }
 }
 
+// Strings / SHStrings
+
+#[derive(Clone)]
+pub struct Strings {
+  pub(crate) s: SHStrings,
+  owned: bool,
+}
+
+impl Drop for Strings {
+  fn drop(&mut self) {
+    if self.owned {
+      unsafe {
+        (*Core).stringsFree.unwrap()(&self.s as *const SHStrings as *mut SHStrings);
+      }
+    }
+  }
+}
+
+impl Strings {
+  pub const fn new() -> Self {
+    Self {
+      s: SHStrings {
+        elements: core::ptr::null_mut(),
+        len: 0,
+        cap: 0,
+      },
+      owned: true,
+    }
+  }
+
+  pub fn set_len(&mut self, len: usize) {
+    unsafe {
+      (*Core).stringsResize.unwrap()(
+        &self.s as *const SHStrings as *mut SHStrings,
+        len.try_into().unwrap(),
+      );
+    }
+  }
+
+  pub fn push(&mut self, value: &str) {
+    let str = value.as_ptr() as *const std::os::raw::c_char;
+    unsafe {
+      (*Core).stringsPush.unwrap()(&self.s as *const SHStrings as *mut SHStrings, &str);
+    }
+  }
+
+  pub fn insert(&mut self, index: usize, value: &str) {
+    let str = value.as_ptr() as *const std::os::raw::c_char;
+    unsafe {
+      (*Core).stringsInsert.unwrap()(
+        &self.s as *const SHStrings as *mut SHStrings,
+        index.try_into().unwrap(),
+        &str,
+      );
+    }
+  }
+
+  pub fn len(&self) -> usize {
+    self.s.len.try_into().unwrap()
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.s.len == 0
+  }
+
+  pub fn pop(&mut self) -> Option<&str> {
+    unsafe {
+      if !self.is_empty() {
+        let v = (*Core).stringsPop.unwrap()(&self.s as *const SHStrings as *mut SHStrings);
+        Some(CStr::from_ptr(v).to_str().unwrap())
+      } else {
+        None
+      }
+    }
+  }
+
+  pub fn clear(&mut self) {
+    unsafe {
+      (*Core).stringsResize.unwrap()(&self.s as *const SHStrings as *mut SHStrings, 0);
+    }
+  }
+}
+
+impl Default for Strings {
+  fn default() -> Self {
+    Strings::new()
+  }
+}
+
+impl AsRef<Strings> for Strings {
+  #[inline(always)]
+  fn as_ref(&self) -> &Strings {
+    &self
+  }
+}
+
 // Seq / SHSeq
 
 #[derive(Clone)]
