@@ -788,9 +788,7 @@ struct BaseRunner : public WireBase {
     return mode == RunWireMode::Inline ? SHExposedTypesInfo(exposedInfo) : empty;
   }
 
-  SHExposedTypesInfo requiredVariables() {
-    return _mergedReqs;
-  }
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
   void cleanup() {
     if (capturing) {

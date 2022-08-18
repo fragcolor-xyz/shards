@@ -284,6 +284,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! defshards (fn* [name args & shards] `(defn ~(symbol (str "
       "name)) ~args (wireify (vector ~@shards)))))",
       env);
+  rep("(defmacro! $ (fn* [prefix sym] (symbol (str prefix \"/\" sym))))", env);
 
   // overrides for some built-in types
   rep("(def! Bytes bytes)", env);
