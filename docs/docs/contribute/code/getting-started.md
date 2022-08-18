@@ -10,7 +10,7 @@ license: CC-BY-SA-4.0
 The Fragcolor ecosystem has a few primary components.
 
 - [Shards](https://github.com/fragcolor-xyz/shards) open-scripting programming language
-- [Hasten](https://github.com/fragcolor-xyz/hasten) creativity engine (to build apps, games, and open worlds)
+- [Claymore](https://github.com/fragcolor-xyz/claymore) visual creativity engine (to build apps, games, and open worlds)
 - [Clamor](https://github.com/fragcolor-xyz/clamor) protocol and networking stack
 
 To contribute code to any of the above projects, you'll first need to set up a development environment.
@@ -30,62 +30,25 @@ Although you can use any code editor, we recommend Visual Studio Code (VS Code).
 
 Download the appropriate installation file for your platform and follow the on-screen instructions.
 
+??? note "Use `MSYS2 MinGW x64` on Windows"
+    If working on Windows, use `MSYS2 MinGW x64` terminal for running any C++ or Rust installation/update commands (*Windows control panel > Search > MSYS2 MinGW x64*). This terminal is installed on Windows as part of the C++ installation process (as mentioned below).
+
 ### Install & setup C++
 
-If you're using VS Code, you can set up C++ (and the appropriate compiler for your operating system) by referring to Microsoft's official documentation.
+Install and C++ and associated tools as per your operating system from the official links below.
 
-- C++ and GCC (MinGW) for [Windows](https://code.visualstudio.com/docs/cpp/config-mingw)
+- C++ and GCC (MinGW) for [Windows with VS Code](https://code.visualstudio.com/docs/cpp/config-mingw)
 - C++ and GCC for [Linux](https://code.visualstudio.com/docs/cpp/config-linux)
 - C++ and Clang/ LLVM for [Mac](https://code.visualstudio.com/docs/cpp/config-clang-mac)
 
-??? note "Other code editors"
-    For other code editors, refer to the official C++ installation [documentation](https://isocpp.org/get-started).
-
 ### Install & setup Rust
 
-Refer to the official Rust [documentation](https://www.rust-lang.org/tools/install) to install Rust on your machine.
+Refer to the official Rust [documentation](https://www.rust-lang.org/tools/install) to install Rust on your machine, as per your operating system.
 
-After installation, you can set up Rust to work with VS Code for [Windows](https://docs.microsoft.com/en-us/windows/dev-environment/rust/setup#install-rust), [Linux](https://www.nayab.xyz/rust/rust-010-setting-up-rust-vscode-linux), or [Mac](https://levelup.gitconnected.com/rust-with-visual-studio-code-46404befed8), as needed.
+After installation, set up Rust to work with VS Code for [Windows](https://docs.microsoft.com/en-us/windows/dev-environment/rust/setup#install-rust), [Linux](https://www.nayab.xyz/rust/rust-010-setting-up-rust-vscode-linux), or [Mac](https://levelup.gitconnected.com/rust-with-visual-studio-code-46404befed8), as needed.
 
-Before attempting to build a Rust project, ensure that you've covered the following development dependencies:
-
-- Get latest package information
-  ```
-  sudo apt-get update
-  ```
-
-- Install the `rust gcc toolchain`
-  ```
-  sudo apt install build-essential
-  ```
-
-- Install `clang`
-  ```
-  sudo apt install clang
-  ```
-
-- Install the `rust wasm toolchain`
-  ```
-  rustup target add wasm32-unknown-unknown --toolchain nightly
-  ```
-
-In our projects we use the nightly version of the Rust tools. Since the nightly build is updated every week, you should run the following update command weekly as well:
-```
-rustup update
-```
-
-To switch from the stable build to the nightly build, use:
-```
-rustup default nightly
-```
-
-And to switch back to the stable build, use:
-```
-rustup default stable
-```
-
-??? note "WSL for Windows"
-    If you're using Windows you might want to check out [WSL](https://docs.microsoft.com/en-us/windows/wsl/) for a Linux-like development experience.
+??? note "Add `~/.cargo/bin` to Windows PATH"
+    [Rust installation](https://www.rust-lang.org/tools/install), should automatically add `~/.cargo/bin` to your Windows PATH but it's not guaranteed. Hence after installing Rust, verify and update your PATH accordingly: *Windows control panel > Search > "env" > Edit environment variables or your account > Top pane > Path > Edit > Add entry `C:\Users\<your-username>\.cargo\bin` if it doesn't exist > Save*.
 
 ### Get VS Code extensions
 
