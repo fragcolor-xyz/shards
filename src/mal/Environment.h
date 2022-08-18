@@ -21,8 +21,12 @@ public:
   malValuePtr set(const String &symbol, malValuePtr value);
   malEnvPtr getRoot();
 
+  void setPrefix(const String &prefix) { m_prefix = prefix; }
+  void unsetPrefix() { m_prefix.clear(); }
+
 private:
   typedef std::map<String, malValuePtr> Map;
+  String m_prefix;
   Map m_map;
   malEnvPtr m_outer;
 };

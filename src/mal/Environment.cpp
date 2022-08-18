@@ -39,17 +39,28 @@ malEnvPtr malEnv::find(const String &symbol) {
 }
 
 malValuePtr malEnv::get(const String &symbol) {
+  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != String::npos ? symbol : m_prefix + "/" + symbol);
   for (malEnvPtr env = this; env; env = env->m_outer) {
-    auto it = env->m_map.find(symbol);
+    auto it = env->m_map.find(name);
     if (it != env->m_map.end()) {
       return it->second;
+    }
+  }
+  if (!m_prefix.empty()) {
+    // well basically if prefix existed we wanna still run the search without it
+    for (malEnvPtr env = this; env; env = env->m_outer) {
+      auto it = env->m_map.find(symbol);
+      if (it != env->m_map.end()) {
+        return it->second;
+      }
     }
   }
   MAL_FAIL("'%s' not found", symbol.c_str());
 }
 
 malValuePtr malEnv::set(const String &symbol, malValuePtr value) {
-  m_map[symbol] = value;
+  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != String::npos ? symbol : m_prefix + "/" + symbol);
+  m_map[name] = value;
   return value;
 }
 

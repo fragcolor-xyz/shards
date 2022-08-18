@@ -95,26 +95,55 @@ struct EdnEval {
     return threadEnv;
   }
 
-  static inline Parameters params{{"Global",
-                                   SHCCSTR("If true the script will be evaluated in the global root thread environment, if false "
-                                           "a new child environment will be created."),
-                                   {CoreInfo::BoolType}}};
+  static inline Parameters params{
+      {"Global",
+       SHCCSTR("If true the script will be evaluated in the global root thread environment, if false "
+               "a new child environment will be created."),
+       {CoreInfo::BoolType}},
+      {"Prefix",
+       SHCCSTR("The prefix (similar to namespace) to add when setting and getting variables when evaluating this script."),
+       CoreInfo::StringStringVarOrNone}};
 
   SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const SHVar &value) { global = value.payload.boolValue; }
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      global = value.payload.boolValue;
+      break;
+    case 1:
+      prefix = value;
+      break;
+    default:
+      throw std::runtime_error("Invalid parameter index");
+    }
+  }
 
-  SHVar getParam(int index) { return Var(global); }
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(global);
+    case 1:
+      return prefix;
+    default:
+      throw std::runtime_error("Invalid parameter index");
+    }
+  }
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void warmup(SHContext *context) { prefix.warmup(context); }
+
+  void cleanup() { prefix.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input);
 
 private:
   OwnedVar output{};
   bool global{true};
+  ParamVar prefix;
 };
 } // namespace shards
 
@@ -1339,9 +1368,21 @@ static MalString printValues(malValueIter begin, malValueIter end, const MalStri
 
 SHVar shards::EdnEval::activate(SHContext *context, const SHVar &input) {
   auto env = global ? GetThreadEnv() : malEnvPtr(new malEnv(GetThreadEnv()));
-  auto malRes = maleval(input.payload.stringValue, env);
-  auto malVar = varify(malRes);
-  output = malVar->value();
+
+  auto p = prefix.get();
+  if (p.valueType == SHType::String) {
+    env->setPrefix(p.payload.stringValue);
+  }
+  DEFER(env->unsetPrefix());
+
+  try {
+    auto malRes = maleval(input.payload.stringValue, env);
+    auto malVar = varify(malRes);
+    output = malVar->value();
+  } catch (const MalString &exStr) {
+    throw ActivationError(exStr);
+  }
+
   return output;
 }
 
