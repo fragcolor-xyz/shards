@@ -95,13 +95,26 @@ struct EdnEval {
     return threadEnv;
   }
 
+  static inline Parameters params{{"Global",
+                                   SHCCSTR("If true the script will be evaluated in the global root thread environment, if false "
+                                           "a new child environment will be created."),
+                                   {CoreInfo::BoolType}}};
+
+  SHParametersInfo parameters() { return params; }
+
+  void setParam(int index, const SHVar &value) { global = value.payload.boolValue; }
+
+  SHVar getParam(int index) { return Var(global); }
+
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  OwnedVar output{};
-
   SHVar activate(SHContext *context, const SHVar &input);
+
+private:
+  OwnedVar output{};
+  bool global{true};
 };
 } // namespace shards
 
@@ -206,6 +219,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! let  (_alias_add_implicit 'let* 'do))", env);
   rep("(defmacro! when (_alias_add_implicit 'if   'do))", env);
   rep("(defmacro! def  (_alias_add_implicit 'def! 'do))", env);
+  rep("(defmacro! deflocal  (_alias_add_implicit 'deflocal! 'do))", env);
   rep("(defmacro! fn   (_alias_add_implicit 'fn*  'do))", env);
   rep("(defmacro! defn (_alias_add_implicit 'def! 'fn))", env);
   rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
@@ -1324,7 +1338,8 @@ static MalString printValues(malValueIter begin, malValueIter end, const MalStri
 }
 
 SHVar shards::EdnEval::activate(SHContext *context, const SHVar &input) {
-  auto malRes = maleval(input.payload.stringValue, GetThreadEnv());
+  auto env = global ? GetThreadEnv() : malEnvPtr(new malEnv(GetThreadEnv()));
+  auto malRes = maleval(input.payload.stringValue, env);
   auto malVar = varify(malRes);
   output = malVar->value();
   return output;
