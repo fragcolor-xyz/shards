@@ -3197,6 +3197,36 @@ macro_rules! __impl_shenuminfo {
   };
 }
 
+#[macro_export]
+macro_rules! shenum_types {
+  (
+    $SHEnumInfo:ident,
+    const $SHEnumCC:ident = $value:expr;
+    static ref $SHEnumEnumInfo:ident;
+    static ref $SHEnum_TYPE:ident: Type;
+    static ref $SHEnum_TYPES:ident: Vec<Type>;
+    static ref $SEQ_OF_SHEnum:ident: Type;
+    static ref $SEQ_OF_SHEnum_TYPES:ident: Vec<Type>;
+
+    $($t:tt)*
+  ) => {
+    const $SHEnumCC: i32 = $value;
+
+    lazy_static! {
+      static ref $SHEnumEnumInfo: $SHEnumInfo = $SHEnumInfo::new();
+      static ref $SHEnum_TYPE: Type = Type::enumeration(FRAG_CC, $SHEnumCC);
+      static ref $SHEnum_TYPES: Vec<Type> = vec![*$SHEnum_TYPE];
+      static ref $SEQ_OF_SHEnum: Type = Type::seq(&$SHEnum_TYPES);
+      static ref $SEQ_OF_SHEnum_TYPES: Vec<Type> = vec![*$SEQ_OF_SHEnum];
+    }
+
+    shenum_types! {
+      $($t)*
+    }
+  };
+  () => {};
+}
+
 // Strings / SHStrings
 
 #[derive(Clone)]
