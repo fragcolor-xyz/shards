@@ -1010,6 +1010,127 @@ struct HashedShards {
   }
 };
 
+struct Worker {
+  static inline std::unordered_map<std::string, boost::asio::thread_pool> _unitPools;
+  static inline std::mutex _unitPoolsMutex;
+
+  ParamVar _name{};
+  ShardsVar _shards{};
+  std::optional<std::reference_wrapper<boost::asio::thread_pool>> _pool;
+  SHComposeResult _composition{};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static SHParametersInfo parameters() {
+    static Parameters params{{"Name",
+                              SHCCSTR("The unique name of this worker, further instances of this shard will run on the same "
+                                      "worker if the name is the same."),
+                              CoreInfo::StringStringVarOrNone},
+                             {"Shards", SHCCSTR("The shards to activate on this worker."), {CoreInfo::ShardsOrNone}}};
+    return params;
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _name = value;
+      break;
+    case 1:
+      _shards = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _name;
+    case 1:
+      return _shards;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    auto dataCopy = data;
+    // flag that we might use a worker
+    dataCopy.onWorkerThread = true;
+    _composition = _shards.compose(dataCopy);
+    return _composition.outputType;
+  }
+
+  SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
+
+  void warmup(SHContext *ctx) {
+    _name.warmup(ctx);
+    _shards.warmup(ctx);
+  }
+
+  void cleanup() {
+    _name.cleanup();
+    _shards.cleanup();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHVar res{};
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    _shards.activate(context, input, res);
+#else
+    std::exception_ptr exp = nullptr;
+    std::atomic_bool complete = false;
+
+    if (!_pool) {
+      auto name = _name.get();
+      std::unique_lock lock(_unitPoolsMutex);
+      auto poolIt = _unitPools.find(name.payload.stringValue);
+      if (poolIt != _unitPools.end()) {
+        *_pool = poolIt->second;
+      } else {
+        *_pool = _unitPools.emplace(name.payload.stringValue, 1).first->second;
+      }
+    }
+
+    boost::asio::post((*_pool).get(), [&]() {
+      try {
+        _shards.activate(context, input, res);
+      } catch (...) {
+        exp = std::current_exception();
+      }
+      complete = true;
+    });
+
+    while (!complete && context->shouldContinue()) {
+      if (shards::suspend(context, 0) != SHWireState::Continue)
+        break;
+    }
+
+    if (unlikely(!complete)) {
+      while (!complete) {
+        std::this_thread::yield();
+      }
+    }
+
+    if (exp) {
+      try {
+        std::rethrow_exception(exp);
+      } catch (const std::exception &e) {
+        context->cancelFlow(e.what());
+      } catch (...) {
+        context->cancelFlow("foreign exception failure");
+      }
+    }
+#endif
+
+    return res;
+  }
+};
+
 void registerFlowShards() {
   REGISTER_SHARD("Cond", Cond);
   REGISTER_SHARD("Maybe", Maybe);
@@ -1020,5 +1141,6 @@ void registerFlowShards() {
   REGISTER_SHARD("Match", Match);
   REGISTER_SHARD("Sub", Sub);
   REGISTER_SHARD("Hashed", HashedShards);
+  REGISTER_SHARD("Worker", Worker);
 }
 }; // namespace shards
