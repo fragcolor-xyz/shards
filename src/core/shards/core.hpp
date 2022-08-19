@@ -282,7 +282,7 @@ struct Pause {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.onWorkerThread) {
-      throw ComposeError("Pause shard cannot be used on worker thread.");
+      throw ComposeError("Pause shard cannot be used on a worker thread.");
     }
     return data.inputType;
   }
