@@ -123,6 +123,15 @@ struct TextInput {
   mutable_text: bool,
 }
 
+struct Tooltip {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  text: ParamVar,
+  onhover: ShardsVar,
+  exposing: ExposedTypes,
+}
+
 macro_rules! decl_ui_input {
   ($name:ident, $tmp_type:ty) => {
     struct $name {
@@ -185,6 +194,7 @@ mod progress_bar;
 mod radio_button;
 mod spinner;
 mod text_input;
+mod tooltip;
 
 pub fn registerShards() {
   registerShard::<Button>();
@@ -216,4 +226,5 @@ pub fn registerShards() {
   registerShard::<RadioButton>();
   registerShard::<Spinner>();
   registerShard::<TextInput>();
+  registerShard::<Tooltip>();
 }

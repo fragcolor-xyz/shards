@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::CollapsingHeader;
+use super::Tooltip;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EguiId;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
-use crate::types::common_type;
 use crate::types::Context;
+use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
 use crate::types::OptionalString;
@@ -19,17 +18,10 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
-use crate::types::BOOL_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
-  static ref COLLAPSING_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Heading"),
-      cstr!("The heading text or widgets for this collapsing header."),
-      STRING_OR_SHARDS_OR_NONE_TYPES_SLICE,
-    )
-      .into(),
+  static ref TOOLTIP_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
       cstr!("The UI contents."),
@@ -37,53 +29,50 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("DefaultOpen"),
-      cstr!("Whether the collapsing header is opened by default."),
-      BOOL_TYPES_SLICE,
+      cstr!("OnHover"),
+      cstr!("The tooltip contents."),
+      STRING_OR_SHARDS_OR_NONE_TYPES_SLICE,
     )
       .into(),
   ];
 }
 
-impl Default for CollapsingHeader {
+impl Default for Tooltip {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
       parents,
       requiring: Vec::new(),
-      text: ParamVar::default(),
-      header: ShardsVar::default(),
       contents: ShardsVar::default(),
-      defaultOpen: ParamVar::new(false.into()),
+      text: ParamVar::default(),
+      onhover: ShardsVar::default(),
       exposing: Vec::new(),
     }
   }
 }
 
-impl Shard for CollapsingHeader {
+impl Shard for Tooltip {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.Collapsing")
+    cstr!("UI.Tooltip")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Collapsing-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Tooltip-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.Collapsing"
+    "UI.Tooltip"
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "A header which can be collapsed/expanded, revealing a contained UI region."
-    ))
+    OptionalString(shccstr!("Display a tooltip when the contents is hovered."))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -92,7 +81,7 @@ impl Shard for CollapsingHeader {
 
   fn inputHelp(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The value that will be passed to the Contents shards of the collapsing header."
+      "The value that will be passed to both the Contents and OnHover shards of the tooltip."
     ))
   }
 
@@ -105,25 +94,23 @@ impl Shard for CollapsingHeader {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&COLLAPSING_PARAMETERS)
+    Some(&TOOLTIP_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 if value.is_none() || value.is_string() => Ok(self.text.set_param(value)),
-      0 => self.header.set_param(value),
-      1 => self.contents.set_param(value),
-      2 => Ok(self.defaultOpen.set_param(value)),
+      0 => self.contents.set_param(value),
+      1 if value.is_none() || value.is_string() => Ok(self.text.set_param(value)),
+      1 => self.onhover.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 if self.header.is_empty() => self.text.get_param(),
-      0 => self.header.get_param(),
-      1 => self.contents.get_param(),
-      2 => self.defaultOpen.get_param(),
+      0 => self.contents.get_param(),
+      1 if self.onhover.is_empty() => self.text.get_param(),
+      1 => self.onhover.get_param(),
       _ => Var::default(),
     }
   }
@@ -141,8 +128,8 @@ impl Shard for CollapsingHeader {
     self.exposing.clear();
 
     let mut exposed = false;
-    exposed |= util::expose_contents_variables(&mut self.exposing, &self.header);
     exposed |= util::expose_contents_variables(&mut self.exposing, &self.contents);
+    exposed |= util::expose_contents_variables(&mut self.exposing, &self.onhover);
 
     if exposed {
       Some(&self.exposing)
@@ -156,12 +143,11 @@ impl Shard for CollapsingHeader {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    if !self.header.is_empty() {
-      self.header.compose(data)?;
-    }
-
     if !self.contents.is_empty() {
       self.contents.compose(data)?;
+    }
+    if !self.onhover.is_empty() {
+      self.onhover.compose(data)?;
     }
 
     // Always passthrough the input
@@ -170,69 +156,62 @@ impl Shard for CollapsingHeader {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-    self.text.warmup(ctx);
-    if !self.header.is_empty() {
-      self.header.warmup(ctx)?;
-    }
+
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
-    self.defaultOpen.warmup(ctx);
+    self.text.warmup(ctx);
+    if !self.onhover.is_empty() {
+      self.onhover.warmup(ctx)?;
+    }
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.defaultOpen.cleanup();
+    if !self.onhover.is_empty() {
+      self.onhover.cleanup();
+    }
+    self.text.cleanup();
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
-    if !self.header.is_empty() {
-      self.header.cleanup();
-    }
-    self.text.cleanup();
+
     self.parents.cleanup();
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let default_open: bool = self.defaultOpen.get().try_into()?;
+    if self.contents.is_empty() {
+      return Ok(*input);
+    }
 
-      if let Some(ret) = if self.header.is_empty() {
-        let text: &str = self.text.get().try_into().or::<&str>(Ok(""))?;
-        egui::CollapsingHeader::new(text)
-          .default_open(default_open)
-          .show(ui, |ui| {
-            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          })
-          .body_returned
-      } else if let Some(body_response) =
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-          ui.ctx(),
-          egui::Id::new(EguiId::new(self, 0)),
-          default_open,
-        )
-        .show_header(ui, |ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.header)
-        })
-        .body(|ui| {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let response = {
+        let inner_response = ui.scope(|ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
-        .2
-      {
-        Some(body_response.inner)
-      } else {
-        None
-      } {
-        match ret {
-          Err(err) => Err(err),
-          Ok(_) => Ok(*input),
+        });
+        inner_response.inner?;
+        inner_response.response
+      };
+
+      if response.hovered() {
+        if self.onhover.is_empty() {
+          let text: &str = self.text.get().try_into()?;
+          response.on_hover_text(text);
+        } else {
+          let mut ret = Ok(Var::default());
+          response.on_hover_ui(|ui| {
+            ret =
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.onhover);
+          });
+
+          ret?;
         }
-      } else {
-        Ok(*input)
       }
+
+      Ok(*input)
     } else {
       Err("No UI parent")
     }

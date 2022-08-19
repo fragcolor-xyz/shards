@@ -25,6 +25,12 @@ static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
 static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
 static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
+static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
+  common_type::string,
+  common_type::shard,
+  common_type::shards,
+  common_type::none,
+];
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, 1701279061); // 'eguU'
 static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];

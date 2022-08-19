@@ -926,3 +926,40 @@
     (GFX.Render :Steps .render-steps))))
 (schedule main text-input-test)
 (run main timestep duration)
+
+;; tooltip
+(defloop tooltip-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    input
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      :Contents
+      (->
+       (UI.Tooltip
+        :Contents
+        (->
+         ;; input pass into
+         (Assert.Is input :Abort true)
+         "Lorem ipsum" (UI.Label))
+        :OnHover
+        (->
+         ;; input pass into
+         (Assert.Is input :Abort true)
+         "Tooltip" (UI.Label)))
+       ;; input passthrough
+       (Assert.Is input :Abort true))
+      ))
+    ;; input passthrough
+    (Assert.Is input :Abort true)
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main tooltip-test)
+(run main timestep duration)
