@@ -280,6 +280,13 @@ struct Pause {
 
   SHVar getParam(int index) { return time; }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.onWorkerThread) {
+      throw ComposeError("Pause shard cannot be used on worker thread.");
+    }
+    return data.inputType;
+  }
+
   void warmup(SHContext *context) { time.warmup(context); }
 
   void cleanup() { time.cleanup(); }
