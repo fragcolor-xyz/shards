@@ -7,6 +7,7 @@ use crate::core::Core;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
+use crate::shardsc::SHEnumInfo;
 use crate::shardsc::SHExposedTypeInfo;
 use crate::shardsc::SHExposedTypesInfo;
 use crate::shardsc::SHInstanceData;
@@ -838,6 +839,18 @@ impl Type {
           len: types.len() as u32,
           cap: 0,
         },
+      },
+      fixedSize: 0,
+      innerType: SHType_None,
+      recursiveSelf: false,
+    }
+  }
+
+  pub const fn enumeration(vendorId: i32, typeId: i32) -> Type {
+    Type {
+      basicType: SHType_Enum,
+      details: SHTypeInfo_Details {
+        enumeration: SHTypeInfo_Details_Enum { vendorId, typeId },
       },
       fixedSize: 0,
       innerType: SHType_None,
@@ -3047,6 +3060,266 @@ impl ShardsVar {
     } else {
       None
     }
+  }
+}
+
+// Enum
+
+#[macro_export]
+macro_rules! shenum {
+  (
+    $(#[$outer:meta])*
+    $vis:vis struct $SHEnum:ident {
+      $(
+        $(#[$inner:ident $($args:tt)*])*
+        const $EnumValue:ident = $value:expr;
+      )+
+    }
+    struct $SHEnumInfo:ident { }
+
+    $($t:tt)*
+  ) => {
+    $(#[$outer])*
+    #[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
+    $vis struct $SHEnum {
+      bits: i32,
+    }
+
+    $vis struct $SHEnumInfo {
+      name: &'static str,
+      labels: crate::types::Strings,
+      values: Vec<i32>,
+    }
+
+    __impl_shenuminfo! {
+      $SHEnum {
+        $(
+          $(#[$inner $($args)*])*
+          $EnumValue = $value;
+        )*
+      }
+      $SHEnumInfo
+    }
+
+    __impl_shenum! {
+      $SHEnum {
+        $(
+          $(#[$inner $($args)*])*
+          $EnumValue = $value;
+        )*
+      }
+    }
+
+    shenum! {
+      $($t)*
+    }
+  };
+  () => {};
+}
+
+macro_rules! __impl_shenum {
+  (
+    $SHEnum:ident {
+      $(
+        $(#[$attr:ident $($args:tt)*])*
+        $EnumValue:ident = $value:expr;
+      )*
+    }
+  ) => {
+    impl $SHEnum {
+      $(
+        $(#[$attr $($args)*])*
+        pub const $EnumValue: $SHEnum = $SHEnum { bits: $value };
+      )*
+    }
+  };
+}
+
+macro_rules! __impl_shenuminfo {
+  (
+    $SHEnum:ident {
+      $(
+        $(#[$attr:ident $($args:tt)*])*
+        $EnumValue:ident = $value:expr;
+      )*
+    }
+    $SHEnumInfo:ident
+  ) => {
+    impl Default for $SHEnumInfo {
+      fn default() -> Self {
+        Self::new()
+      }
+    }
+
+    impl $SHEnumInfo {
+      $(
+        pub const $EnumValue: &str = cstr!(std::stringify!($EnumValue));
+      )*
+
+      fn new() -> Self {
+        let mut labels = crate::types::Strings::new();
+        $(
+          labels.push($SHEnumInfo::$EnumValue);
+        )*
+
+        let mut values = Vec::new();
+        $(
+          values.push($value);
+        )*
+
+        Self {
+          name: cstr!(std::stringify!($SHEnum)),
+          labels,
+          values
+        }
+      }
+    }
+
+    impl AsRef<$SHEnumInfo> for $SHEnumInfo {
+      fn as_ref(&self) -> &$SHEnumInfo{
+        self
+      }
+    }
+
+    impl From<&$SHEnumInfo> for crate::shardsc::SHEnumInfo {
+      fn from(info: &$SHEnumInfo) -> Self {
+        Self {
+          name: info.name.as_ptr() as *const std::os::raw::c_char,
+          labels: info.labels.s,
+          values: crate::shardsc::SHEnums {
+            elements: (&info.values).as_ptr() as *mut i32,
+            len: info.values.len() as u32,
+            cap: 0
+          },
+        }
+      }
+    }
+  };
+}
+
+#[macro_export]
+macro_rules! shenum_types {
+  (
+    $SHEnumInfo:ident,
+    const $SHEnumCC:ident = $value:expr;
+    static ref $SHEnumEnumInfo:ident;
+    static ref $SHEnum_TYPE:ident: Type;
+    static ref $SHEnum_TYPES:ident: Vec<Type>;
+    static ref $SEQ_OF_SHEnum:ident: Type;
+    static ref $SEQ_OF_SHEnum_TYPES:ident: Vec<Type>;
+
+    $($t:tt)*
+  ) => {
+    const $SHEnumCC: i32 = $value;
+
+    lazy_static! {
+      static ref $SHEnumEnumInfo: $SHEnumInfo = $SHEnumInfo::new();
+      static ref $SHEnum_TYPE: Type = Type::enumeration(FRAG_CC, $SHEnumCC);
+      static ref $SHEnum_TYPES: Vec<Type> = vec![*$SHEnum_TYPE];
+      static ref $SEQ_OF_SHEnum: Type = Type::seq(&$SHEnum_TYPES);
+      static ref $SEQ_OF_SHEnum_TYPES: Vec<Type> = vec![*$SEQ_OF_SHEnum];
+    }
+
+    shenum_types! {
+      $($t)*
+    }
+  };
+  () => {};
+}
+
+// Strings / SHStrings
+
+#[derive(Clone)]
+pub struct Strings {
+  pub(crate) s: SHStrings,
+  owned: bool,
+}
+
+impl Drop for Strings {
+  fn drop(&mut self) {
+    if self.owned {
+      unsafe {
+        (*Core).stringsFree.unwrap()(&self.s as *const SHStrings as *mut SHStrings);
+      }
+    }
+  }
+}
+
+impl Strings {
+  pub const fn new() -> Self {
+    Self {
+      s: SHStrings {
+        elements: core::ptr::null_mut(),
+        len: 0,
+        cap: 0,
+      },
+      owned: true,
+    }
+  }
+
+  pub fn set_len(&mut self, len: usize) {
+    unsafe {
+      (*Core).stringsResize.unwrap()(
+        &self.s as *const SHStrings as *mut SHStrings,
+        len.try_into().unwrap(),
+      );
+    }
+  }
+
+  pub fn push(&mut self, value: &str) {
+    let str = value.as_ptr() as *const std::os::raw::c_char;
+    unsafe {
+      (*Core).stringsPush.unwrap()(&self.s as *const SHStrings as *mut SHStrings, &str);
+    }
+  }
+
+  pub fn insert(&mut self, index: usize, value: &str) {
+    let str = value.as_ptr() as *const std::os::raw::c_char;
+    unsafe {
+      (*Core).stringsInsert.unwrap()(
+        &self.s as *const SHStrings as *mut SHStrings,
+        index.try_into().unwrap(),
+        &str,
+      );
+    }
+  }
+
+  pub fn len(&self) -> usize {
+    self.s.len.try_into().unwrap()
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.s.len == 0
+  }
+
+  pub fn pop(&mut self) -> Option<&str> {
+    unsafe {
+      if !self.is_empty() {
+        let v = (*Core).stringsPop.unwrap()(&self.s as *const SHStrings as *mut SHStrings);
+        Some(CStr::from_ptr(v).to_str().unwrap())
+      } else {
+        None
+      }
+    }
+  }
+
+  pub fn clear(&mut self) {
+    unsafe {
+      (*Core).stringsResize.unwrap()(&self.s as *const SHStrings as *mut SHStrings, 0);
+    }
+  }
+}
+
+impl Default for Strings {
+  fn default() -> Self {
+    Strings::new()
+  }
+}
+
+impl AsRef<Strings> for Strings {
+  #[inline(always)]
+  fn as_ref(&self) -> &Strings {
+    &self
   }
 }
 
