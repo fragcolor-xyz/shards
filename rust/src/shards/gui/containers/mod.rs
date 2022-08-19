@@ -1,10 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use crate::core::registerEnumType;
 use crate::core::registerShard;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
+use crate::types::Type;
+use crate::types::FRAG_CC;
 
 struct Area {
   instance: ParamVar,
@@ -57,9 +60,30 @@ struct Window {
   position: ParamVar,
   width: ParamVar,
   height: ParamVar,
+  flags: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
   exposing: ExposedTypes,
+}
+
+shenum! {
+  struct WindowFlags {
+    const NoTitleBar = 1 << 0;
+    const NoResize = 1 << 1;
+    const NoScrollbars = 1 << 2;
+    const NoCollapse = 1 << 3;
+  }
+  struct WindowFlagsInfo {}
+}
+
+shenum_types! {
+  WindowFlagsInfo,
+  const WindowFlagsCC = 1701271366; // 'egWF'
+  static ref WindowFlagsEnumInfo;
+  static ref WINDOW_FLAGS_TYPE: Type;
+  static ref WINDOW_FLAGS_TYPES: Vec<Type>;
+  static ref SEQ_OF_WINDOW_FLAGS: Type;
+  static ref SEQ_OF_WINDOW_FLAGS_TYPES: Vec<Type>;
 }
 
 macro_rules! decl_panel {
@@ -90,6 +114,7 @@ pub fn registerShards() {
   registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
   registerShard::<Scope>();
   registerShard::<Window>();
+  registerEnumType(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
   registerShard::<BottomPanel>();
   registerShard::<CentralPanel>();
   registerShard::<LeftPanel>();

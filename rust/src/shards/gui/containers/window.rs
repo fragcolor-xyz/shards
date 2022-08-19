@@ -2,7 +2,10 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Window;
+use super::WindowFlags;
 use crate::shard::Shard;
+use crate::shards::gui::containers::SEQ_OF_WINDOW_FLAGS;
+use crate::shards::gui::containers::WINDOW_FLAGS_TYPE;
 use crate::shards::gui::util;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
@@ -16,6 +19,7 @@ use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
+use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
@@ -28,6 +32,7 @@ use crate::types::STRING_TYPES;
 use egui::Context as EguiNativeContext;
 
 lazy_static! {
+  static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
   static ref WINDOW_PARAMETERS: Parameters = vec![
     (
       cstr!("Title"),
@@ -54,6 +59,12 @@ lazy_static! {
     )
       .into(),
     (
+      cstr!("Flags"),
+      cstr!("Window flags."),
+      &WINDOW_FLAGS_OR_SEQ_TYPES[..],
+    )
+      .into(),
+    (
       cstr!("Contents"),
       cstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
@@ -75,6 +86,7 @@ impl Default for Window {
       position: ParamVar::default(),
       width: ParamVar::default(),
       height: ParamVar::default(),
+      flags: ParamVar::default(),
       contents: ShardsVar::default(),
       parents,
       exposing: Vec::new(),
@@ -135,7 +147,8 @@ impl Shard for Window {
       1 => Ok(self.position.set_param(value)),
       2 => Ok(self.width.set_param(value)),
       3 => Ok(self.height.set_param(value)),
-      4 => self.contents.set_param(value),
+      4 => Ok(self.flags.set_param(value)),
+      5 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -146,7 +159,8 @@ impl Shard for Window {
       1 => self.position.get_param(),
       2 => self.width.get_param(),
       3 => self.height.get_param(),
-      4 => self.contents.get_param(),
+      4 => self.flags.get_param(),
+      5 => self.contents.get_param(),
       _ => Var::default(),
     }
   }
@@ -216,6 +230,7 @@ impl Shard for Window {
     self.position.warmup(ctx);
     self.width.warmup(ctx);
     self.height.warmup(ctx);
+    self.flags.warmup(ctx);
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
@@ -227,6 +242,7 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
+    self.flags.cleanup();
     self.height.cleanup();
     self.width.cleanup();
     self.position.cleanup();
@@ -276,6 +292,24 @@ impl Shard for Window {
         window = window.default_height(height as f32);
       }
 
+      for bits in Window::try_get_flags(self.flags.get())? {
+        match (WindowFlags { bits }) {
+          WindowFlags::NoTitleBar => {
+            window = window.title_bar(false);
+          }
+          WindowFlags::NoResize => {
+            window = window.resizable(false);
+          }
+          WindowFlags::NoScrollbars => {
+            window = window.scroll2([false, false]);
+          }
+          WindowFlags::NoCollapse => {
+            window = window.collapsible(false);
+          }
+          _ => (),
+        }
+      }
+
       window.show(gui_ctx, |ui| {
         if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           .is_err()
@@ -291,5 +325,24 @@ impl Shard for Window {
 
     // Always passthrough the input
     Ok(*input)
+  }
+}
+
+impl Window {
+  fn try_get_flags(var: &Var) -> Result<Vec<i32>, &str> {
+    match var.valueType {
+      crate::shardsc::SHType_Enum => Ok(vec![unsafe {
+        var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
+      }]),
+      crate::shardsc::SHType_Seq => {
+        let seq: Seq = var.try_into()?;
+        seq
+          .iter()
+          .map(|v| Ok(unsafe { v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue }))
+          .collect()
+      }
+      crate::shardsc::SHType_None => Ok(Vec::new()),
+      _ => Err("Invalid type"),
+    }
   }
 }
