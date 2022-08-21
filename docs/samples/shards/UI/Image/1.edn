@@ -1,0 +1,21 @@
+(defloop main-wire
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      (->
+       (Setup
+        (LoadImage "data/ShardsLogo.png") = .image)
+       .image (UI.Image :Scale (float2 0.25)))))
+
+    (GFX.Render :Steps .render-steps))))
+(defmesh root)
+(schedule root main-wire)
+(run root 0.1 10)
