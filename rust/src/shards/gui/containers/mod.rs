@@ -63,7 +63,6 @@ struct Window {
   flags: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
-  exposing: ExposedTypes,
 }
 
 shenum! {

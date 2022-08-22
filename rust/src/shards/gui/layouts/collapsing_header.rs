@@ -142,7 +142,6 @@ impl Shard for CollapsingHeader {
 
     let mut exposed = false;
     exposed |= util::expose_contents_variables(&mut self.exposing, &self.header);
-    exposed |= util::expose_contents_variables(&mut self.exposing, &self.contents);
 
     if exposed {
       Some(&self.exposing)
