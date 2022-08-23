@@ -2,7 +2,7 @@
 #include <gfx/texture.hpp>
 #include <gfx/error_utils.hpp>
 #include <params.hpp>
-#include <exception>
+#include <stdexcept>
 
 using namespace shards;
 namespace gfx {
@@ -13,14 +13,12 @@ enum ComponentType {
   Int16,
 };
 
-struct TextureFormatException : public std::exception {
-  TextureFormatException(ComponentType componentType, Types::TextureType_ asType) : std::exception(init(componentType, asType)) {}
+struct TextureFormatException : public std::runtime_error {
+  TextureFormatException(ComponentType componentType, Types::TextureType_ asType) : std::runtime_error(formatError(componentType, asType)) {}
 
-  std::string err;
-  const char *init(ComponentType componentType, Types::TextureType_ asType) {
-    err = fmt::format("Image with component type '{}' can not be converted to texture type '{}'",
+  static std::string formatError(ComponentType componentType, Types::TextureType_ asType) {
+    return fmt::format("Image with component type '{}' can not be converted to texture type '{}'",
                       magic_enum::enum_name(componentType), magic_enum::enum_name(asType));
-    return err.c_str();
   }
 };
 
