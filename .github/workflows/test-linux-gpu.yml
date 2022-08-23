@@ -58,7 +58,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           echo "Running graphics library tests"
-          build/test-gfx -r JUnit --out test-gfx.xml
+          GFX_TEST_PLATFORM_ID="github-linux" build/test-gfx -r JUnit --out test-gfx.xml
 
           echo "\n"
           echo "Running graphics test scripts"
