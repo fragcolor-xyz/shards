@@ -5,7 +5,7 @@ if(EMSCRIPTEN)
 endif()
 
 add_executable(gfx-sandbox sandbox.cpp)
-target_link_libraries(gfx-sandbox gfx gfx-texture-file gfx-imgui gfx-gltf)
+target_link_libraries(gfx-sandbox gfx gfx-texture-file gfx-imgui gfx-gltf shards-logging)
 
 add_executable(test-gfx
   main.cpp

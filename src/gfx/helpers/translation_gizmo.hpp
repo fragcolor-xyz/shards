@@ -74,6 +74,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
 
     float3 delta = hitPoint - dragStartPoint;
+    delta = linalg::dot(delta, fwd) * fwd;
     transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
   }
 

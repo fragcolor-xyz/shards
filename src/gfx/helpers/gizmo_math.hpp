@@ -7,7 +7,7 @@ namespace gfx {
 namespace gizmos {
 // Projects a point onto a 3D line by projecting it
 inline float3 projectOntoAxis(float3 point, float3 axisPoint, float3 axisForward) {
-  float3 T0 = float3(-axisForward.y, -axisForward.z, axisForward.x);
+  float3 T0 = generateTangent(axisForward);
   float3 T1 = linalg::cross(T0, axisForward);
   return point - (linalg::dot(point, T0) - linalg::dot(axisPoint, T0)) * T0 -
          (linalg::dot(point, T1) - linalg::dot(axisPoint, T1)) * T1;

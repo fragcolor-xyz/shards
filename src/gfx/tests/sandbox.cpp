@@ -33,6 +33,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <log/log.hpp>
 
 using namespace gfx;
 
@@ -249,6 +250,7 @@ struct App {
 };
 
 int main() {
+  shards::logging::setupDefaultLoggerConditional();
   App instance;
   instance.init(nullptr);
   instance.runMainLoop();
