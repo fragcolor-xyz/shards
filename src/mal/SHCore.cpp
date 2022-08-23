@@ -1377,7 +1377,7 @@ SHVar shards::EdnEval::activate(SHContext *context, const SHVar &input) {
   DEFER(env->unsetPrefix());
 
   try {
-    auto malRes = maleval(input.payload.stringValue, env);
+    auto malRes = EVAL(READ(input.payload.stringValue), env);
     auto malVar = varify(malRes);
     output = malVar->value();
   } catch (const MalString &exStr) {
