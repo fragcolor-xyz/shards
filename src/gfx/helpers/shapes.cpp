@@ -362,13 +362,6 @@ void GizmoRenderer::end(DrawQueuePtr queue) {
   shapeRenderer.end(queue);
 }
 
-float4x4 rotationFromXDirection(float3 direction) {
-  float3 right = direction;
-  float3 fwd = linalg::normalize(float3(-direction.y, direction.z, -direction.x));
-  float3 up = linalg::cross(fwd, right);
-  return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
-}
-
 GizmoRenderer::HandleGeometry GizmoRenderer::generateHandleGeometry(float3 origin, float3 direction, float radius, float length,
                                                                     float bodyRatio, float capRatio, bool extendBodyToCapCenter) {
   HandleGeometry result;

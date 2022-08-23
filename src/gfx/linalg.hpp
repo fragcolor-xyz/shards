@@ -3,6 +3,7 @@
 
 #include <linalg/linalg.h>
 #include <cstring>
+#include "math.hpp"
 
 namespace gfx {
 using namespace linalg::aliases;
@@ -54,6 +55,22 @@ inline void decomposeTRS(const float4x4 &transform, float3 &translation, float3 
   scale.y = linalg::length(y);
   scale.z = linalg::length(z);
   rotationMatrix = float3x3(x / scale.x, y / scale.y, z / scale.z);
+}
+
+inline float4x4 rotationFromXDirection(float3 direction) {
+  const float tolerance = 0.05f;
+
+  float3 right = direction;
+  float3 fwd;
+  if (isWithinRange(std::abs(direction.y), 1.0f, tolerance)) {
+    fwd = linalg::normalize(float3(-direction.y, direction.x, direction.z));
+  } else {
+    fwd = linalg::normalize(float3(-direction.z, direction.y, direction.x));
+  }
+
+  float3 up = linalg::normalize(linalg::cross(fwd, right));
+  fwd = linalg::normalize(linalg::cross(right, up));
+  return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
 }
 
 } // namespace gfx

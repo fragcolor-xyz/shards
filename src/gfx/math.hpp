@@ -40,6 +40,11 @@ template <size_t Alignment> inline constexpr size_t alignTo(size_t size) {
   }
 }
 
+template <typename T> inline bool isWithinRange(T val, T target, T tolerance = 0.05f) {
+  T delta = std::abs(val - target);
+  return delta > -tolerance && delta < tolerance;
+}
+
 } // namespace gfx
 
 #endif // GFX_MATH
