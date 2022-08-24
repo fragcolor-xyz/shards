@@ -25,6 +25,7 @@ struct BaseColor {
 
     feature->state.set_blend(BlendState{
         .color = BlendComponent::Alpha,
+        .alpha = BlendComponent::Opaque,
     });
 
     const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";

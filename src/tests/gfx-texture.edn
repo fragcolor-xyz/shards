@@ -1,5 +1,6 @@
 (def timestep (/ 1.0 120.0))
 (defmesh Root)
+(def BlendAlpha {:Operation BlendOperation.Add :Src BlendFactor.SrcAlpha :Dst BlendFactor.OneMinusSrcAlpha})
 (defloop test-wire
   (Setup
    0.0 >= .time
