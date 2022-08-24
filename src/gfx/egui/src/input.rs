@@ -230,7 +230,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
     Ok(egui::RawInput {
         dropped_files: Vec::new(),
         hovered_files: Vec::new(),
-        events: events,
+        events,
         modifiers: Modifiers::default(),
         time: Some(input.time),
         predicted_dt: input.predictedDeltaTime,
@@ -242,6 +242,12 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
 
 pub struct InputTranslator {
     egui_translator: *mut gfx_EguiInputTranslator,
+}
+
+impl Default for InputTranslator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Drop for InputTranslator {
@@ -264,12 +270,12 @@ impl InputTranslator {
         }
     }
 
-    pub fn as_mut_ptr(self: &Self) -> *mut gfx_EguiInputTranslator {
+    pub fn as_mut_ptr(&self) -> *mut gfx_EguiInputTranslator {
         self.egui_translator
     }
 
     pub fn translate(
-        self: &mut Self,
+        &mut self,
         window: *mut gfx_Window,
         sdl_events: *const u8,
         time: f64,
@@ -290,7 +296,7 @@ impl InputTranslator {
     }
 
     pub fn update_text_cursor_position(
-        self: &mut Self,
+        &mut self,
         window: *mut gfx_Window,
         pos: Option<egui::Pos2>,
     ) {
@@ -313,7 +319,7 @@ impl InputTranslator {
         }
     }
 
-    pub fn copy_text(self: &mut Self, text: &String) {
+    pub fn copy_text(&mut self, text: &String) {
         unsafe {
             if let Ok(c_str) = CString::new(text.to_owned()) {
                 gfx_EguiInputTranslator_copyText(self.egui_translator, c_str.as_ptr());
@@ -321,7 +327,7 @@ impl InputTranslator {
         }
     }
 
-    pub fn update_cursor_icon(self: &mut Self, icon: egui::CursorIcon) {
+    pub fn update_cursor_icon(&mut self, icon: egui::CursorIcon) {
         unsafe {
             gfx_EguiInputTranslator_updateCursorIcon(
                 self.egui_translator,

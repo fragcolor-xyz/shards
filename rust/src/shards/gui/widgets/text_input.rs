@@ -66,7 +66,7 @@ enum VarTextBuffer<'a> {
 impl AsRef<str> for VarTextBuffer<'_> {
   fn as_ref(&self) -> &str {
     let var = match self {
-      VarTextBuffer::Editable(var) => var.as_ref(),
+      VarTextBuffer::Editable(var) => &**var,
       VarTextBuffer::ReadOnly(var) => var,
     };
 
@@ -267,7 +267,7 @@ impl Shard for TextInput {
             CStr::from_ptr(self.variable.get_name()),
           )
         };
-        if CStr::cmp(&a, &b) == Ordering::Equal {
+        if CStr::cmp(a, b) == Ordering::Equal {
           self.should_expose = false;
           self.mutable_text = var.isMutable;
           if var.exposedType.basicType != shardsc::SHType_String {

@@ -2,7 +2,10 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Window;
+use super::WindowFlags;
 use crate::shard::Shard;
+use crate::shards::gui::containers::SEQ_OF_WINDOW_FLAGS;
+use crate::shards::gui::containers::WINDOW_FLAGS_TYPE;
 use crate::shards::gui::util;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
@@ -16,21 +19,49 @@ use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
+use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use crate::types::INT2_OR_NONE_TYPES_SLICE;
+use crate::types::INT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
 use egui::Context as EguiNativeContext;
 
 lazy_static! {
+  static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
   static ref WINDOW_PARAMETERS: Parameters = vec![
     (
       cstr!("Title"),
       cstr!("The window title displayed on the titlebar."),
       &STRING_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("Position"),
+      cstr!("The (x,y) position of the rendered window."),
+      INT2_OR_NONE_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Width"),
+      cstr!("The width of the rendered window."),
+      INT_OR_NONE_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Height"),
+      cstr!("The height of the rendered window."),
+      INT_OR_NONE_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Flags"),
+      cstr!("Window flags."),
+      &WINDOW_FLAGS_OR_SEQ_TYPES[..],
     )
       .into(),
     (
@@ -52,6 +83,10 @@ impl Default for Window {
       instance: ctx,
       requiring: Vec::new(),
       title: ParamVar::new(Var::ephemeral_string("My Window")),
+      position: ParamVar::default(),
+      width: ParamVar::default(),
+      height: ParamVar::default(),
+      flags: ParamVar::default(),
       contents: ShardsVar::default(),
       parents,
     }
@@ -108,7 +143,11 @@ impl Shard for Window {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.title.set_param(value)),
-      1 => self.contents.set_param(value),
+      1 => Ok(self.position.set_param(value)),
+      2 => Ok(self.width.set_param(value)),
+      3 => Ok(self.height.set_param(value)),
+      4 => Ok(self.flags.set_param(value)),
+      5 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -116,7 +155,11 @@ impl Shard for Window {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.title.get_param(),
-      1 => self.contents.get_param(),
+      1 => self.position.get_param(),
+      2 => self.width.get_param(),
+      3 => self.height.get_param(),
+      4 => self.flags.get_param(),
+      5 => self.contents.get_param(),
       _ => Var::default(),
     }
   }
@@ -173,6 +216,10 @@ impl Shard for Window {
     self.parents.warmup(ctx);
 
     self.title.warmup(ctx);
+    self.position.warmup(ctx);
+    self.width.warmup(ctx);
+    self.height.warmup(ctx);
+    self.flags.warmup(ctx);
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
@@ -184,6 +231,10 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
+    self.flags.cleanup();
+    self.height.cleanup();
+    self.width.cleanup();
+    self.position.cleanup();
     self.title.cleanup();
 
     self.parents.cleanup();
@@ -202,7 +253,53 @@ impl Shard for Window {
     let mut failed = false;
     if !self.contents.is_empty() {
       let title: &str = self.title.get().try_into()?;
-      egui::Window::new(title).show(gui_ctx, |ui| {
+      let mut window = egui::Window::new(title);
+      let rect = gui_ctx.available_rect();
+
+      let position = self.position.get();
+      if !position.is_none() {
+        // note: in egui the position is relative to the top-left corner of the whole UI
+        // but a window is constrained by the available rect of the central panel.
+        // Thus, we offset it to make it more intuitive for users.
+        // i.e. the position is now relative to the top-left corner of the central panel.
+        let position: (i64, i64) = position.try_into()?;
+        window = window.default_pos(egui::Pos2 {
+          x: position.0 as f32 + rect.min.x,
+          y: position.1 as f32 + rect.min.y,
+        });
+      }
+
+      let width = self.width.get();
+      if !width.is_none() {
+        let width: i64 = width.try_into()?;
+        window = window.default_width(width as f32);
+      }
+
+      let height = self.height.get();
+      if !height.is_none() {
+        let height: i64 = height.try_into()?;
+        window = window.default_height(height as f32);
+      }
+
+      for bits in Window::try_get_flags(self.flags.get())? {
+        match (WindowFlags { bits }) {
+          WindowFlags::NoTitleBar => {
+            window = window.title_bar(false);
+          }
+          WindowFlags::NoResize => {
+            window = window.resizable(false);
+          }
+          WindowFlags::NoScrollbars => {
+            window = window.scroll2([false, false]);
+          }
+          WindowFlags::NoCollapse => {
+            window = window.collapsible(false);
+          }
+          _ => (),
+        }
+      }
+
+      window.show(gui_ctx, |ui| {
         if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           .is_err()
         {
@@ -217,5 +314,24 @@ impl Shard for Window {
 
     // Always passthrough the input
     Ok(*input)
+  }
+}
+
+impl Window {
+  fn try_get_flags(var: &Var) -> Result<Vec<i32>, &str> {
+    match var.valueType {
+      crate::shardsc::SHType_Enum => Ok(vec![unsafe {
+        var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
+      }]),
+      crate::shardsc::SHType_Seq => {
+        let seq: Seq = var.try_into()?;
+        seq
+          .iter()
+          .map(|v| Ok(unsafe { v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue }))
+          .collect()
+      }
+      crate::shardsc::SHType_None => Ok(Vec::new()),
+      _ => Err("Invalid type"),
+    }
   }
 }

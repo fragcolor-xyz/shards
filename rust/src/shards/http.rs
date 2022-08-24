@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::core::run_blocking;
 use crate::core::log;
 use crate::core::registerShard;
+use crate::core::run_blocking;
 use crate::core::BlockingShard;
 use crate::shard::Shard;
 use crate::types::common_type;

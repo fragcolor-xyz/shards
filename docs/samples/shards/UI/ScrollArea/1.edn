@@ -1,0 +1,26 @@
+(def lorem_ipsum
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+
+(defloop main-wire
+  (GFX.MainWindow
+   :Width 480 :Height 320
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      (UI.ScrollArea
+       :Horizontal true
+       :Contents
+       (->
+        lorem_ipsum (UI.Label :Wrap false)))))
+
+    (GFX.Render :Steps .render-steps))))
+(defmesh root)
+(schedule root main-wire)
+(run root 0.1 10)

@@ -207,7 +207,7 @@ impl Shard for Menu {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(data)?;
     }
 
     Ok(common_type::bool)
@@ -351,7 +351,7 @@ impl Shard for MenuBar {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(data)?;
     }
 
     Ok(common_type::bool)

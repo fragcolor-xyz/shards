@@ -105,7 +105,7 @@ impl Shard for DateFormat {
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.formatting.0.into(),
+      0 => self.formatting.0,
       _ => unreachable!(),
     }
   }

@@ -5,11 +5,13 @@ use crate::core::cloneVar;
 use crate::core::destroyVar;
 use crate::core::Core;
 use crate::shardsc::SHBool;
+use crate::shardsc::SHColor;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
 use crate::shardsc::SHEnumInfo;
 use crate::shardsc::SHExposedTypeInfo;
 use crate::shardsc::SHExposedTypesInfo;
+use crate::shardsc::SHImage;
 use crate::shardsc::SHInstanceData;
 use crate::shardsc::SHMeshRef;
 use crate::shardsc::SHOptionalString;
@@ -252,7 +254,7 @@ impl Drop for DerivedType {
   }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum WireState {
   Continue,
   Return,
@@ -541,11 +543,20 @@ pub mod common_type {
   use crate::shardsc::SHType_Any;
   use crate::shardsc::SHType_Bool;
   use crate::shardsc::SHType_Bytes;
+  use crate::shardsc::SHType_Color;
   use crate::shardsc::SHType_ContextVar;
   use crate::shardsc::SHType_Enum;
   use crate::shardsc::SHType_Float;
+  use crate::shardsc::SHType_Float2;
+  use crate::shardsc::SHType_Float3;
+  use crate::shardsc::SHType_Float4;
+  use crate::shardsc::SHType_Image;
   use crate::shardsc::SHType_Int;
+  use crate::shardsc::SHType_Int2;
+  use crate::shardsc::SHType_Int3;
+  use crate::shardsc::SHType_Int4;
   use crate::shardsc::SHType_None;
+  use crate::shardsc::SHType_Object;
   use crate::shardsc::SHType_Path;
   use crate::shardsc::SHType_Seq;
   use crate::shardsc::SHType_ShardRef;
@@ -553,12 +564,6 @@ pub mod common_type {
   use crate::shardsc::SHType_Table;
   use crate::shardsc::SHType_Wire;
   use crate::shardsc::SHTypesInfo;
-  use crate::types::SHType_Float2;
-  use crate::types::SHType_Float3;
-  use crate::types::SHType_Float4;
-  use crate::types::SHType_Image;
-  use crate::types::SHType_Int2;
-  use crate::types::SHType_Object;
 
   const fn base_info() -> SHTypeInfo {
     SHTypeInfo {
@@ -748,6 +753,26 @@ pub mod common_type {
     int2_table_var
   );
   shtype!(
+    make_int3,
+    SHType_Int3,
+    int3,
+    int3s,
+    int3_var,
+    int3s_var,
+    int3_table,
+    int3_table_var
+  );
+  shtype!(
+    make_int4,
+    SHType_Int4,
+    int4,
+    int4s,
+    int4_var,
+    int4s_var,
+    int4_table,
+    int4_table_var
+  );
+  shtype!(
     make_float,
     SHType_Float,
     float,
@@ -786,6 +811,16 @@ pub mod common_type {
     float4s_var,
     float4_table,
     float4_table_var
+  );
+  shtype!(
+    make_color,
+    SHType_Color,
+    color,
+    colors,
+    color_var,
+    colors_var,
+    color_table,
+    color_table_var
   );
   shtype!(
     make_bool,
@@ -1171,6 +1206,7 @@ macro_rules! var_try_from {
 
 var_from!(bool, boolValue, SHType_Bool);
 var_from!(i64, intValue, SHType_Int);
+var_from!(SHColor, colorValue, SHType_Color);
 var_try_from!(u8, intValue, SHType_Int);
 var_try_from!(u16, intValue, SHType_Int);
 var_try_from!(u32, intValue, SHType_Int);
@@ -1259,6 +1295,21 @@ impl From<(i64, i64)> for Var {
   }
 }
 
+impl From<&[i64; 2]> for Var {
+  #[inline(always)]
+  fn from(v: &[i64; 2]) -> Self {
+    let mut res = Var {
+      valueType: SHType_Int2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int2Value[0] = v[0];
+      res.payload.__bindgen_anon_1.int2Value[1] = v[1];
+    }
+    res
+  }
+}
+
 // 64-bit precision :u64
 impl From<u64> for Var {
   #[inline(always)]
@@ -1304,6 +1355,21 @@ impl From<(f64, f64)> for Var {
   }
 }
 
+impl From<&[f64; 2]> for Var {
+  #[inline(always)]
+  fn from(v: &[f64; 2]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Float2,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float2Value[0] = v[0];
+      res.payload.__bindgen_anon_1.float2Value[1] = v[1];
+    }
+    res
+  }
+}
+
 // 32-bit precision :[i32;2]
 impl From<(i32, i32)> for Var {
   #[inline(always)]
@@ -1337,6 +1403,22 @@ impl From<(i32, i32, i32)> for Var {
   }
 }
 
+impl From<&[i32; 3]> for Var {
+  #[inline(always)]
+  fn from(v: &[i32; 3]) -> Self {
+    let mut res = Var {
+      valueType: SHType_Int3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int3Value[0] = v[0];
+      res.payload.__bindgen_anon_1.int3Value[1] = v[1];
+      res.payload.__bindgen_anon_1.int3Value[2] = v[2];
+    }
+    res
+  }
+}
+
 // 32-bit precision :[i32;4]
 impl From<(i32, i32, i32, i32)> for Var {
   #[inline(always)]
@@ -1350,6 +1432,23 @@ impl From<(i32, i32, i32, i32)> for Var {
       res.payload.__bindgen_anon_1.int4Value[1] = v.1;
       res.payload.__bindgen_anon_1.int4Value[2] = v.2;
       res.payload.__bindgen_anon_1.int4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+impl From<&[i32; 4]> for Var {
+  #[inline(always)]
+  fn from(v: &[i32; 4]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Int4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.int4Value[0] = v[0];
+      res.payload.__bindgen_anon_1.int4Value[1] = v[1];
+      res.payload.__bindgen_anon_1.int4Value[2] = v[2];
+      res.payload.__bindgen_anon_1.int4Value[3] = v[3];
     }
     res
   }
@@ -1439,6 +1538,22 @@ impl From<(f32, f32, f32)> for Var {
   }
 }
 
+impl From<&[f32; 3]> for Var {
+  #[inline(always)]
+  fn from(v: &[f32; 3]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Float3,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float3Value[0] = v[0];
+      res.payload.__bindgen_anon_1.float3Value[1] = v[1];
+      res.payload.__bindgen_anon_1.float3Value[2] = v[2];
+    }
+    res
+  }
+}
+
 // 32-bit precision :[f32;4]
 impl From<(f32, f32, f32, f32)> for Var {
   #[inline(always)]
@@ -1452,6 +1567,23 @@ impl From<(f32, f32, f32, f32)> for Var {
       res.payload.__bindgen_anon_1.float4Value[1] = v.1;
       res.payload.__bindgen_anon_1.float4Value[2] = v.2;
       res.payload.__bindgen_anon_1.float4Value[3] = v.3;
+    }
+    res
+  }
+}
+
+impl From<&[f32; 4]> for Var {
+  #[inline(always)]
+  fn from(v: &[f32; 4]) -> Self {
+    let mut res = Var {
+      valueType: crate::shardsc::SHType_Float4,
+      ..Default::default()
+    };
+    unsafe {
+      res.payload.__bindgen_anon_1.float4Value[0] = v[0];
+      res.payload.__bindgen_anon_1.float4Value[1] = v[1];
+      res.payload.__bindgen_anon_1.float4Value[2] = v[2];
+      res.payload.__bindgen_anon_1.float4Value[3] = v[3];
     }
     res
   }
@@ -1906,10 +2038,6 @@ impl Var {
     self.valueType == SHType_Path
   }
 
-  pub fn as_ref(&self) -> &Self {
-    self
-  }
-
   pub fn is_context_var(&self) -> bool {
     self.valueType == SHType_ContextVar
   }
@@ -2058,6 +2186,19 @@ impl TryFrom<&Var> for &str {
   }
 }
 
+impl<'a> TryFrom<&'a Var> for &'a SHImage {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Image {
+      Err("Expected Image variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.imageValue) }
+    }
+  }
+}
+
 // 64-bit precision :i64
 impl TryFrom<&Var> for i64 {
   type Error = &'static str;
@@ -2068,6 +2209,19 @@ impl TryFrom<&Var> for i64 {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut i64 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.intValue) }
     }
   }
 }
@@ -2125,6 +2279,19 @@ impl TryFrom<&Var> for f64 {
   }
 }
 
+impl<'a> TryFrom<&'a mut Var> for &'a mut f64 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.floatValue) }
+    }
+  }
+}
+
 // 64-bit precision :[i64;2]
 impl TryFrom<&Var> for (i64, i64) {
   type Error = &'static str;
@@ -2140,6 +2307,32 @@ impl TryFrom<&Var> for (i64, i64) {
           var.payload.__bindgen_anon_1.int2Value[1],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [i64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.int2Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [i64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.int2Value) }
     }
   }
 }
@@ -2178,6 +2371,32 @@ impl TryFrom<&Var> for (f64, f64) {
           var.payload.__bindgen_anon_1.float2Value[1],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [f64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.float2Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [f64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.float2Value) }
     }
   }
 }
@@ -2235,6 +2454,40 @@ impl TryFrom<&Var> for (i32, i32, i32) {
   }
 }
 
+impl<'a> TryFrom<&'a Var> for &'a [i32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &var.payload.__bindgen_anon_1.int3Value,
+        ))
+      }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [i32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &mut var.payload.__bindgen_anon_1.int3Value,
+        ))
+      }
+    }
+  }
+}
+
 // 32-bit precision :[i32;4]
 impl TryFrom<&Var> for (i32, i32, i32, i32) {
   type Error = &'static str;
@@ -2252,6 +2505,32 @@ impl TryFrom<&Var> for (i32, i32, i32, i32) {
           var.payload.__bindgen_anon_1.int4Value[3],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [i32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.int4Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [i32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.int4Value) }
     }
   }
 }
@@ -2383,6 +2662,40 @@ impl TryFrom<&Var> for (f32, f32, f32) {
   }
 }
 
+impl<'a> TryFrom<&'a Var> for &'a [f32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &var.payload.__bindgen_anon_1.float3Value,
+        ))
+      }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [f32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &mut var.payload.__bindgen_anon_1.float3Value,
+        ))
+      }
+    }
+  }
+}
+
 // 32-bit precision :[f32;4]
 impl TryFrom<&Var> for (f32, f32, f32, f32) {
   type Error = &'static str;
@@ -2400,6 +2713,32 @@ impl TryFrom<&Var> for (f32, f32, f32, f32) {
           var.payload.__bindgen_anon_1.float4Value[3],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [f32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.float4Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [f32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.float4Value) }
     }
   }
 }
@@ -2626,6 +2965,19 @@ impl TryFrom<&Var> for (half::f16, half::f16, half::f16, half::f16) {
   }
 }
 
+impl TryFrom<&Var> for SHColor {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Color {
+      Err("Expected Color variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.colorValue) }
+    }
+  }
+}
+
 impl TryFrom<&Var> for bool {
   type Error = &'static str;
 
@@ -2635,6 +2987,19 @@ impl TryFrom<&Var> for bool {
       Err("Expected Bool variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut bool {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Bool {
+      Err("Expected Bool variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.boolValue) }
     }
   }
 }
@@ -3039,27 +3404,19 @@ impl ShardsVar {
   }
 
   pub fn get_exposing(&self) -> Option<&[ExposedInfo]> {
-    if let Some(compose_result) = self.compose_result {
-      Some(unsafe {
-        let elems = compose_result.exposedInfo.elements;
-        let len = compose_result.exposedInfo.len;
-        std::slice::from_raw_parts(elems, len as usize)
-      })
-    } else {
-      None
-    }
+    self.compose_result.map(|compose_result| unsafe {
+      let elems = compose_result.exposedInfo.elements;
+      let len = compose_result.exposedInfo.len;
+      std::slice::from_raw_parts(elems, len as usize)
+    })
   }
 
   pub fn get_requiring(&self) -> Option<&[ExposedInfo]> {
-    if let Some(compose_result) = self.compose_result {
-      Some(unsafe {
-        let elems = compose_result.requiredInfo.elements;
-        let len = compose_result.requiredInfo.len;
-        std::slice::from_raw_parts(elems, len as usize)
-      })
-    } else {
-      None
-    }
+    self.compose_result.map(|compose_result| unsafe {
+      let elems = compose_result.requiredInfo.elements;
+      let len = compose_result.requiredInfo.len;
+      std::slice::from_raw_parts(elems, len as usize)
+    })
   }
 }
 
@@ -3087,7 +3444,7 @@ macro_rules! shenum {
 
     $vis struct $SHEnumInfo {
       name: &'static str,
-      labels: crate::types::Strings,
+      labels: $crate::types::Strings,
       values: Vec<i32>,
     }
 
@@ -3132,6 +3489,13 @@ macro_rules! __impl_shenum {
         pub const $EnumValue: $SHEnum = $SHEnum { bits: $value };
       )*
     }
+
+    impl From<$SHEnum> for i32 {
+      #[inline(always)]
+      fn from(info: $SHEnum) -> Self {
+        info.bits
+      }
+    }
   };
 }
 
@@ -3151,26 +3515,21 @@ macro_rules! __impl_shenuminfo {
       }
     }
 
-    impl $SHEnumInfo {
+    impl<'a> $SHEnumInfo {
       $(
-        pub const $EnumValue: &str = cstr!(std::stringify!($EnumValue));
+        pub const $EnumValue: &'a str = cstr!(std::stringify!($EnumValue));
       )*
 
       fn new() -> Self {
-        let mut labels = crate::types::Strings::new();
+        let mut labels = $crate::types::Strings::new();
         $(
           labels.push($SHEnumInfo::$EnumValue);
-        )*
-
-        let mut values = Vec::new();
-        $(
-          values.push($value);
         )*
 
         Self {
           name: cstr!(std::stringify!($SHEnum)),
           labels,
-          values
+          values: vec![$($value,)*],
         }
       }
     }
@@ -3181,12 +3540,12 @@ macro_rules! __impl_shenuminfo {
       }
     }
 
-    impl From<&$SHEnumInfo> for crate::shardsc::SHEnumInfo {
+    impl From<&$SHEnumInfo> for $crate::shardsc::SHEnumInfo {
       fn from(info: &$SHEnumInfo) -> Self {
         Self {
           name: info.name.as_ptr() as *const std::os::raw::c_char,
           labels: info.labels.s,
-          values: crate::shardsc::SHEnums {
+          values: $crate::shardsc::SHEnums {
             elements: (&info.values).as_ptr() as *mut i32,
             len: info.values.len() as u32,
             cap: 0
@@ -3319,7 +3678,7 @@ impl Default for Strings {
 impl AsRef<Strings> for Strings {
   #[inline(always)]
   fn as_ref(&self) -> &Strings {
-    &self
+    self
   }
 }
 
@@ -3492,7 +3851,7 @@ impl Default for Seq {
 impl AsRef<Seq> for Seq {
   #[inline(always)]
   fn as_ref(&self) -> &Seq {
-    &self
+    self
   }
 }
 
@@ -3789,8 +4148,11 @@ impl PartialEq for Type {
 pub const FRAG_CC: i32 = 0x66726167; // 'frag'
 
 pub static INT_TYPES_SLICE: &[Type] = &[common_type::int];
+pub static INT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::int, common_type::none];
 pub static INT2_TYPES_SLICE: &[Type] = &[common_type::int2];
+pub static INT2_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::int2, common_type::none];
 pub static FLOAT_TYPES_SLICE: &[Type] = &[common_type::float];
+pub static FLOAT2_TYPES_SLICE: &[Type] = &[common_type::float2];
 pub static FLOAT3_TYPES_SLICE: &[Type] = &[common_type::float3];
 pub static BOOL_TYPES_SLICE: &[Type] = &[common_type::bool];
 pub static STRING_TYPES_SLICE: &[Type] = &[common_type::string];
@@ -3810,12 +4172,17 @@ lazy_static! {
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
+  pub static ref COLOR_TYPES: Vec<Type> = vec![common_type::color];
   pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
+  pub static ref INT2_TYPES: Vec<Type> = vec![common_type::int2];
+  pub static ref INT3_TYPES: Vec<Type> = vec![common_type::int3];
+  pub static ref INT4_TYPES: Vec<Type> = vec![common_type::int4];
   pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
-  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
-  pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
+  pub static ref FLOAT2_TYPES: Vec<Type> = vec![common_type::float2];
   pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
   pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];
+  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
+  pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
   pub static ref FLOAT4X4_TYPE: Type = {
     let mut t = common_type::float4s;
     t.fixedSize = 4;
@@ -3849,7 +4216,10 @@ lazy_static! {
   pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
   pub static ref ENUMS_TYPES: Vec<Type> = vec![*ENUMS_TYPE];
+  pub static ref IMAGE_TYPES: Vec<Type> = vec![common_type::image];
   pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, common_type::shard, common_type::shards];
+  pub static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
+  pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
 }
 
 macro_rules! test_to_from_vec1 {

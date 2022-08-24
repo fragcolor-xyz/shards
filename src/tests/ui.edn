@@ -84,6 +84,90 @@
 (schedule main scope-test)
 (run main timestep duration)
 
+;; area
+(defloop area-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      input
+      (UI.Area
+       :Anchor Anchor.TopLeft
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "TopLeft" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Top
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Top" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.TopRight
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "TopRight" (UI.Label :Wrap false)))
+      (UI.Area
+       :Anchor Anchor.Left
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Left" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Center
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Center" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Right
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Right" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.BottomLeft
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "BottomLeft" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.Bottom
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "Bottom" (UI.Label)))
+      (UI.Area
+       :Anchor Anchor.BottomRight
+       :Contents
+       (->
+        ;; input pass into
+        (Assert.Is input :Abort true)
+        "BottomRight" (UI.Label :Wrap false)))
+        ;; input passthrough
+      (Assert.Is input :Abort true)))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main area-test)
+(run main timestep duration)
+
 ;; panels
 (defloop panels-test
   (GFX.MainWindow
@@ -143,6 +227,7 @@
        (->
         input
         (UI.Collapsing
+         :Heading (UI.Button "Heading")
          :DefaultOpen true
          :Contents
          (->
@@ -153,6 +238,99 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main collapsing-header-test)
+(run main timestep duration)
+
+;; columns
+(defloop columns-header-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Columns
+         [(->
+           ;; input pass into
+           (Assert.Is input :Abort true))
+          (->
+           ;; input pass into
+           (Assert.Is input :Abort true))])
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main columns-header-test)
+(run main timestep duration)
+
+;; disable
+(defloop disable-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Disable
+         :Disable true
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main disable-test)
+(run main timestep duration)
+
+;; frame
+(defloop frame-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Frame
+         :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 5)
+         :FillColor (color 32 32 128)
+         :StrokeColor (color 255 64 255) :StrokeWidth 8.0
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main frame-test)
 (run main timestep duration)
 
 ;; group
@@ -182,6 +360,35 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main group-test)
+(run main timestep duration)
+
+;; indent
+(defloop indent-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        input
+        (UI.Indent
+         :Contents
+         (->
+          ;; input pass into
+          (Assert.Is input :Abort true)))
+        ;; input passthrough
+        (Assert.Is input :Abort true)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main indent-test)
 (run main timestep duration)
 
 ;; horizontal layout
@@ -395,6 +602,52 @@
 (schedule main checkbox-test)
 (run main timestep duration)
 
+;; color-input
+(defloop color-input-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (UI.ColorInput .color) (ExpectColor)
+        .color (ExpectColor)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main color-input-test)
+(run main timestep duration)
+
+;; combo
+(defloop combo-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        ["Hello" "World"] (UI.Combo "Word" .index) (ExpectString)
+        .index (ExpectInt)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main combo-test)
+(run main timestep duration)
+
 ;; hyperlink
 (defloop hyperlink-test
   (GFX.MainWindow
@@ -416,6 +669,58 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main hyperlink-test)
+(run main timestep duration)
+
+;; image
+(defloop image-test
+  (GFX.MainWindow
+   :Width 640 :Height 640
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (Setup
+         (LoadImage "../../assets/ShardsLogo.png") = .image
+         (float2 0.25 0.25) = .scale)
+        .image (UI.Image .scale)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main image-test)
+(run main timestep duration)
+
+;; image button
+(defloop image-button-test
+  (GFX.MainWindow
+   :Width 640 :Height 640
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        (Setup
+         (LoadImage "../../assets/ShardsLogo.png") = .image
+         (float2 0.1 0.1) = .scale)
+        .image (UI.ImageButton :Scale .scale :Action (Msg "Clicked"))))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main image-button-test)
 (run main timestep duration)
 
 ;; label
@@ -441,6 +746,29 @@
 (schedule main label-test)
 (run main timestep duration)
 
+;; listbox
+(defloop listbox-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (->
+      (UI.CentralPanel
+       :Contents
+       (->
+        ["Hello" "World"] (UI.ListBox .index) (ExpectString)
+        .index (ExpectInt)))))
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main listbox-test)
+(run main timestep duration)
+
 ;; numeric input
 (defloop numeric-input-test
   (GFX.MainWindow
@@ -458,7 +786,13 @@
        :Contents
        (->
         (UI.IntInput) (ExpectInt)
-        (UI.FloatInput) (ExpectFloat)))))
+        (UI.Int2Input) (ExpectInt2)
+        (UI.Int3Input) (ExpectInt3)
+        (UI.Int4Input) (ExpectInt4)
+        (UI.FloatInput) (ExpectFloat)
+        (UI.Float2Input) (ExpectFloat2)
+        (UI.Float3Input) (ExpectFloat3)
+        (UI.Float4Input) (ExpectFloat4)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main numeric-input-test)
@@ -481,7 +815,13 @@
        :Contents
        (->
         (UI.IntSlider :Min 1 :Max 100) (ExpectInt)
-        (UI.FloatSlider :Min 0.0 :Max 1.0) (ExpectFloat)))))
+        (UI.Int2Slider :Min (int2 1) :Max (int2 100)) (ExpectInt2)
+        (UI.Int3Slider :Min (int3 1) :Max (int3 100)) (ExpectInt3)
+        (UI.Int4Slider :Min (int4 1) :Max (int4 100)) (ExpectInt4)
+        (UI.FloatSlider :Min 0.0 :Max 1.0) (ExpectFloat)
+        (UI.Float2Slider :Min (float2 0) :Max (float2 1)) (ExpectFloat2)
+        (UI.Float3Slider :Min (float3 0) :Max (float3 1)) (ExpectFloat3)
+        (UI.Float4Slider :Min (float4 0) :Max (float4 1)) (ExpectFloat4)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main numeric-slider-test)
@@ -585,4 +925,41 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main text-input-test)
+(run main timestep duration)
+
+;; tooltip
+(defloop tooltip-test
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    input
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      :Contents
+      (->
+       (UI.Tooltip
+        :Contents
+        (->
+         ;; input pass into
+         (Assert.Is input :Abort true)
+         "Lorem ipsum" (UI.Label))
+        :OnHover
+        (->
+         ;; input pass into
+         (Assert.Is input :Abort true)
+         "Tooltip" (UI.Label)))
+       ;; input passthrough
+       (Assert.Is input :Abort true))
+      ))
+    ;; input passthrough
+    (Assert.Is input :Abort true)
+
+    (GFX.Render :Steps .render-steps))))
+(schedule main tooltip-test)
 (run main timestep duration)

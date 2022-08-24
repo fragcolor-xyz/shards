@@ -208,8 +208,8 @@ impl Shard for EguiContext {
     };
 
     match raw_input {
-      Err(error) => {
-        shlog_debug!("Input translation error: {:?}", error);
+      Err(_error) => {
+        shlog_debug!("Input translation error: {:?}", _error);
         Err("Input translation error")
       }
       Ok(raw_input) => {
@@ -225,7 +225,6 @@ impl Shard for EguiContext {
 
           if self.contents.activate(context, input, &mut output) == WireState::Error {
             failed = true;
-            return;
           }
         });
         if failed {
@@ -236,7 +235,7 @@ impl Shard for EguiContext {
         unsafe {
           let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
           self.renderer.render(
-            &gui_ctx,
+            gui_ctx,
             egui_output,
             queue as *const egui_gfx::gfx_DrawQueuePtr,
             draw_scale,

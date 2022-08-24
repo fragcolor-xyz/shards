@@ -19,7 +19,7 @@ lazy_static! {
   static ref HYPERLINK_PARAMETERS: Parameters = vec![(
     cstr!("Label"),
     cstr!("Optional label for the hyperlink"),
-    &STRING_OR_NONE_SLICE[..],
+    STRING_OR_NONE_SLICE,
   )
     .into(),];
 }
