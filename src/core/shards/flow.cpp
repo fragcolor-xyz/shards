@@ -1011,12 +1011,12 @@ struct HashedShards {
 };
 
 struct Worker {
-  static inline std::unordered_map<std::string, boost::asio::thread_pool> _unitPools;
+  static inline std::unordered_map<std::string, std::weak_ptr<boost::asio::thread_pool>> _unitPools;
   static inline std::mutex _unitPoolsMutex;
 
-  ParamVar _name{};
+  std::string _name{};
   ShardsVar _shards{};
-  std::optional<std::reference_wrapper<boost::asio::thread_pool>> _pool;
+  std::shared_ptr<boost::asio::thread_pool> _pool;
   SHComposeResult _composition{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -1027,16 +1027,18 @@ struct Worker {
     static Parameters params{{"Name",
                               SHCCSTR("The unique name of this worker, further instances of this shard will run on the same "
                                       "worker if the name is the same."),
-                              CoreInfo::StringStringVarOrNone},
+                              CoreInfo::StringOrNone},
                              {"Shards", SHCCSTR("The shards to activate on this worker."), {CoreInfo::ShardsOrNone}}};
     return params;
   }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
-    case 0:
-      _name = value;
+    case 0: {
+      auto name = SHSTRVIEW(value);
+      _name = name;
       break;
+    }
     case 1:
       _shards = value;
       break;
@@ -1048,7 +1050,7 @@ struct Worker {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _name;
+      return Var(_name);
     case 1:
       return _shards;
     default:
@@ -1067,13 +1069,29 @@ struct Worker {
   SHExposedTypesInfo exposedVariables() { return _composition.exposedInfo; }
 
   void warmup(SHContext *ctx) {
-    _name.warmup(ctx);
     _shards.warmup(ctx);
+    if (!_pool) {
+      std::unique_lock lock(_unitPoolsMutex);
+      auto poolIt = _unitPools.find(_name);
+      if (poolIt != _unitPools.end()) {
+        _pool = poolIt->second.lock();
+      } else {
+        _pool = std::make_shared<boost::asio::thread_pool>(1);
+        _unitPools.emplace(_name, _pool);
+      }
+    }
   }
 
   void cleanup() {
-    _name.cleanup();
     _shards.cleanup();
+
+    if (_pool) {
+      _pool = nullptr;
+      auto weakPool = _unitPools[_name];
+      if (!weakPool.lock()) {
+        _unitPools.erase(_name);
+      }
+    }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1085,18 +1103,7 @@ struct Worker {
     std::exception_ptr exp = nullptr;
     std::atomic_bool complete = false;
 
-    if (!_pool) {
-      auto name = _name.get();
-      std::unique_lock lock(_unitPoolsMutex);
-      auto poolIt = _unitPools.find(name.payload.stringValue);
-      if (poolIt != _unitPools.end()) {
-        *_pool = poolIt->second;
-      } else {
-        *_pool = _unitPools.emplace(name.payload.stringValue, 1).first->second;
-      }
-    }
-
-    boost::asio::post((*_pool).get(), [&]() {
+    boost::asio::post(*_pool, [&]() {
       try {
         _shards.activate(context, input, res);
       } catch (...) {
