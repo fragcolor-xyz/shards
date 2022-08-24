@@ -226,8 +226,8 @@ impl Shard for ImageButton {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let texture = &*self.texture.get_or_insert_with(|| {
-        let image: SHImage = input.try_into().unwrap();
-        let image: egui::ColorImage = (&image).into();
+        let image: &SHImage = input.try_into().unwrap();
+        let image: egui::ColorImage = image.into();
 
         ui.ctx().load_texture("example", image) // FIXME name
       });

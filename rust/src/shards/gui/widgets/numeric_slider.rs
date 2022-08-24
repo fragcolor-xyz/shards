@@ -40,8 +40,8 @@ use std::cmp::Ordering;
 use std::ffi::CStr;
 
 macro_rules! impl_ui_slider {
-  ($shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $type:ident, $var_type:ident, $field:ident, $parameters:ident, $output_type:ident) => {
-    static $static: &[Type] = &[common_type::$type, common_type::$var_type];
+  ($shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $common_type:ident, $var_type:ident, $native_type:ident, $parameters:ident, $output_type:ident) => {
+    static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
       static ref $parameters: Parameters = vec![
@@ -161,7 +161,7 @@ macro_rules! impl_ui_slider {
             };
             if CStr::cmp(a, b) == Ordering::Equal {
               self.should_expose = false;
-              let t = common_type::$type;
+              let t = common_type::$common_type;
               if var.exposedType.basicType != t.basicType {
                 return Err(concat!($name_str, ": incorrect type of variable."));
               }
@@ -170,7 +170,7 @@ macro_rules! impl_ui_slider {
           }
         }
 
-        Ok(common_type::$type)
+        Ok(common_type::$common_type)
       }
 
       fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -178,7 +178,7 @@ macro_rules! impl_ui_slider {
           self.exposing.clear();
 
           let exp_info = ExposedInfo {
-            exposedType: common_type::$type,
+            exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: cstr!("The exposed variable").into(),
             ..ExposedInfo::default()
@@ -208,7 +208,7 @@ macro_rules! impl_ui_slider {
         self.max.warmup(ctx);
 
         if self.should_expose {
-          self.variable.get_mut().valueType = common_type::$type.basicType;
+          self.variable.get_mut().valueType = common_type::$common_type.basicType;
         }
 
         Ok(())
@@ -226,10 +226,10 @@ macro_rules! impl_ui_slider {
 
       fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
         if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-          let value = &mut if self.variable.is_variable() {
-            unsafe { self.variable.get_mut().payload.__bindgen_anon_1.$field }
+          let value: &mut $native_type = if self.variable.is_variable() {
+            self.variable.get_mut().try_into()?
           } else {
-            self.tmp
+            &mut self.tmp
           };
           let max = self.max.get().try_into()?;
           let min = self.min.get().try_into()?;
@@ -240,14 +240,8 @@ macro_rules! impl_ui_slider {
             slider = slider.text(text);
           }
 
-          let response = ui.add(slider);
-          if response.changed() || response.lost_focus() {
-            if self.variable.is_variable() {
-              self.variable.set((*value).into());
-            } else {
-              self.tmp = *value;
-            }
-          }
+          ui.add(slider);
+
           Ok((*value).into())
         } else {
           Err("No UI parent")
@@ -264,7 +258,7 @@ impl_ui_slider!(
   INT_VAR_SLICE,
   int,
   int_var,
-  intValue,
+  i64,
   INT_SLIDER_PARAMETERS,
   INT_TYPES
 );
@@ -276,14 +270,14 @@ impl_ui_slider!(
   FLOAT_VAR_SLICE,
   float,
   float_var,
-  floatValue,
+  f64,
   FLOAT_SLIDER_PARAMETERS,
   FLOAT_TYPES
 );
 
 macro_rules! impl_ui_n_slider {
-  ($n:literal, $shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $type:ident, $var_type:ident, $field:ident, $parameters:ident, $output_type:ident) => {
-    static $static: &[Type] = &[common_type::$type, common_type::$var_type];
+  ($n:literal, $shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $common_type:ident, $var_type:ident, $native_type:ident, $parameters:ident, $output_type:ident) => {
+    static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
       static ref $parameters: Parameters = vec![
@@ -403,7 +397,7 @@ macro_rules! impl_ui_n_slider {
             };
             if CStr::cmp(a, b) == Ordering::Equal {
               self.should_expose = false;
-              let t = common_type::$type;
+              let t = common_type::$common_type;
               if var.exposedType.basicType != t.basicType {
                 return Err(concat!($name_str, ": incorrect type of variable."));
               }
@@ -412,7 +406,7 @@ macro_rules! impl_ui_n_slider {
           }
         }
 
-        Ok(common_type::$type)
+        Ok(common_type::$common_type)
       }
 
       fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -420,7 +414,7 @@ macro_rules! impl_ui_n_slider {
           self.exposing.clear();
 
           let exp_info = ExposedInfo {
-            exposedType: common_type::$type,
+            exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: cstr!("The exposed variable").into(),
             ..ExposedInfo::default()
@@ -450,7 +444,7 @@ macro_rules! impl_ui_n_slider {
         self.max.warmup(ctx);
 
         if self.should_expose {
-          self.variable.get_mut().valueType = common_type::$type.basicType;
+          self.variable.get_mut().valueType = common_type::$common_type.basicType;
         }
 
         Ok(())
@@ -468,36 +462,26 @@ macro_rules! impl_ui_n_slider {
 
       fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
         if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-          let max = unsafe { self.max.get().payload.__bindgen_anon_1.$field };
-          let min = unsafe { self.min.get().payload.__bindgen_anon_1.$field };
+          let max: &[$native_type; $n] = self.max.get().try_into()?;
+          let min: &[$native_type; $n] = self.min.get().try_into()?;
 
           ui.horizontal(|ui| {
+            let values: &mut [$native_type; $n] = if self.variable.is_variable() {
+              self.variable.get_mut().try_into()?
+            } else {
+              &mut self.tmp
+            };
             for i in 0..$n {
-              let value = &mut if self.variable.is_variable() {
-                unsafe { self.variable.get_mut().payload.__bindgen_anon_1.$field[i] }
-              } else {
-                self.tmp[i]
-              };
-
               let max = max[i];
               let min = min[i];
 
-              let mut slider = egui::Slider::new(value, min..=max);
+              let mut slider = egui::Slider::new(&mut values[i], min..=max);
               if !self.label.get().is_none() {
                 let text: &str = self.label.get().try_into()?;
                 slider = slider.text(text);
               }
 
-              let response = ui.add(slider);
-              if response.changed() || response.lost_focus() {
-                if self.variable.is_variable() {
-                  unsafe {
-                    self.variable.get_mut().payload.__bindgen_anon_1.$field[i] = *value;
-                  }
-                } else {
-                  self.tmp[i] = *value;
-                }
-              }
+              ui.add(slider);
             }
 
             Ok::<(), &str>(())
@@ -526,7 +510,7 @@ impl_ui_n_slider!(
   FLOAT2_VAR_SLICE,
   float2,
   float2_var,
-  float2Value,
+  f64,
   FLOAT2_SLIDER_PARAMETERS,
   FLOAT2_TYPES
 );
@@ -539,7 +523,7 @@ impl_ui_n_slider!(
   FLOAT3_VAR_SLICE,
   float3,
   float3_var,
-  float3Value,
+  f32,
   FLOAT3_SLIDER_PARAMETERS,
   FLOAT3_TYPES
 );
@@ -552,7 +536,7 @@ impl_ui_n_slider!(
   FLOAT4_VAR_SLICE,
   float4,
   float4_var,
-  float4Value,
+  f32,
   FLOAT4_SLIDER_PARAMETERS,
   FLOAT4_TYPES
 );
@@ -565,7 +549,7 @@ impl_ui_n_slider!(
   INT2_VAR_SLICE,
   int2,
   int2_var,
-  int2Value,
+  i64,
   INT2_SLIDER_PARAMETERS,
   INT2_TYPES
 );
@@ -578,7 +562,7 @@ impl_ui_n_slider!(
   INT3_VAR_SLICE,
   int3,
   int3_var,
-  int3Value,
+  i32,
   INT3_SLIDER_PARAMETERS,
   INT3_TYPES
 );
@@ -591,7 +575,7 @@ impl_ui_n_slider!(
   INT4_VAR_SLICE,
   int4,
   int4_var,
-  int4Value,
+  i32,
   INT4_SLIDER_PARAMETERS,
   INT4_TYPES
 );

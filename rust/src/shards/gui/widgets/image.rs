@@ -123,8 +123,8 @@ impl Shard for Image {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let texture = &*self.texture.get_or_insert_with(|| {
-        let image: SHImage = input.try_into().unwrap();
-        let image: egui::ColorImage = (&image).into();
+        let image: &SHImage = input.try_into().unwrap();
+        let image: egui::ColorImage = image.into();
 
         ui.ctx().load_texture("example", image) // FIXME name
       });
@@ -136,19 +136,6 @@ impl Shard for Image {
       Ok(*input)
     } else {
       Err("No UI parent")
-    }
-  }
-}
-
-impl TryFrom<&Var> for SHImage {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(var: &Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Image {
-      Err("Expected Image variable, but casting failed.")
-    } else {
-      unsafe { Ok(var.payload.__bindgen_anon_1.imageValue) }
     }
   }
 }

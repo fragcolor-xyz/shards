@@ -181,7 +181,8 @@ impl Shard for ListBox {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let index = &mut if self.index.is_variable() {
-        unsafe { self.index.get_mut().payload.__bindgen_anon_1.intValue as usize }
+        let index: i64 = self.index.get().try_into()?;
+        index as usize
       } else {
         self.tmp
       };

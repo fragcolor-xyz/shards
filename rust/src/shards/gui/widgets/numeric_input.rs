@@ -39,8 +39,8 @@ use std::cmp::Ordering;
 use std::ffi::CStr;
 
 macro_rules! impl_ui_input {
-  ($shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $type:ident, $var_type:ident, $field:ident, $parameters:ident, $output_type:ident) => {
-    static $static: &[Type] = &[common_type::$type, common_type::$var_type];
+  ($shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $common_type:ident, $var_type:ident, $native_type:ident, $parameters:ident, $output_type:ident) => {
+    static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
       static ref $parameters: Parameters = vec![(
@@ -141,7 +141,7 @@ macro_rules! impl_ui_input {
             };
             if CStr::cmp(a, b) == Ordering::Equal {
               self.should_expose = false;
-              let t = common_type::$type;
+              let t = common_type::$common_type;
               if var.exposedType.basicType != t.basicType {
                 return Err(concat!($name_str, ": incorrect type of variable."));
               }
@@ -150,7 +150,7 @@ macro_rules! impl_ui_input {
           }
         }
 
-        Ok(common_type::$type)
+        Ok(common_type::$common_type)
       }
 
       fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -158,7 +158,7 @@ macro_rules! impl_ui_input {
           self.exposing.clear();
 
           let exp_info = ExposedInfo {
-            exposedType: common_type::$type,
+            exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: cstr!("The exposed variable").into(),
             ..ExposedInfo::default()
@@ -185,7 +185,7 @@ macro_rules! impl_ui_input {
         self.variable.warmup(ctx);
 
         if self.should_expose {
-          self.variable.get_mut().valueType = common_type::$type.basicType;
+          self.variable.get_mut().valueType = common_type::$common_type.basicType;
         }
 
         Ok(())
@@ -200,21 +200,13 @@ macro_rules! impl_ui_input {
 
       fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
         if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-          let value = &mut if self.variable.is_variable() {
-            unsafe { self.variable.get_mut().payload.__bindgen_anon_1.$field }
+          let value: &mut $native_type = if self.variable.is_variable() {
+            self.variable.get_mut().try_into()?
           } else {
-            self.tmp
+            &mut self.tmp
           };
 
-          let drag = egui::DragValue::new(value);
-          let response = ui.add(drag);
-          if response.changed() || response.lost_focus() {
-            if self.variable.is_variable() {
-              self.variable.set((*value).into());
-            } else {
-              self.tmp = *value;
-            }
-          }
+          ui.add(egui::DragValue::new(value));
 
           Ok((*value).into())
         } else {
@@ -232,7 +224,7 @@ impl_ui_input!(
   INT_VAR_SLICE,
   int,
   int_var,
-  intValue,
+  i64,
   INT_INPUT_PARAMETERS,
   INT_TYPES
 );
@@ -244,14 +236,14 @@ impl_ui_input!(
   FLOAT_VAR_SLICE,
   float,
   float_var,
-  floatValue,
+  f64,
   FLOAT_INPUT_PARAMETERS,
   FLOAT_TYPES
 );
 
 macro_rules! impl_ui_n_input {
-  ($n:literal, $shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $type:ident, $var_type:ident, $field:ident, $parameters:ident, $output_type:ident) => {
-    static $static: &[Type] = &[common_type::$type, common_type::$var_type];
+  ($n:literal, $shard_name:ident, $name_str:literal, $hash:literal, $static:ident, $common_type:ident, $var_type:ident, $native_type:ident, $parameters:ident, $output_type:ident) => {
+    static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
       static ref $parameters: Parameters = vec![(
@@ -352,7 +344,7 @@ macro_rules! impl_ui_n_input {
             };
             if CStr::cmp(a, b) == Ordering::Equal {
               self.should_expose = false;
-              let t = common_type::$type;
+              let t = common_type::$common_type;
               if var.exposedType.basicType != t.basicType {
                 return Err(concat!($name_str, ": incorrect type of variable."));
               }
@@ -361,7 +353,7 @@ macro_rules! impl_ui_n_input {
           }
         }
 
-        Ok(common_type::$type)
+        Ok(common_type::$common_type)
       }
 
       fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -369,7 +361,7 @@ macro_rules! impl_ui_n_input {
           self.exposing.clear();
 
           let exp_info = ExposedInfo {
-            exposedType: common_type::$type,
+            exposedType: common_type::$common_type,
             name: self.variable.get_name(),
             help: cstr!("The exposed variable").into(),
             ..ExposedInfo::default()
@@ -396,7 +388,7 @@ macro_rules! impl_ui_n_input {
         self.variable.warmup(ctx);
 
         if self.should_expose {
-          self.variable.get_mut().valueType = common_type::$type.basicType;
+          self.variable.get_mut().valueType = common_type::$common_type.basicType;
         }
 
         Ok(())
@@ -412,24 +404,13 @@ macro_rules! impl_ui_n_input {
       fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
         if let Some(ui) = util::get_current_parent(*self.parents.get())? {
           ui.horizontal(|ui| {
+            let values: &mut [$native_type; $n] = if self.variable.is_variable() {
+              self.variable.get_mut().try_into()?
+            } else {
+              &mut self.tmp
+            };
             for i in 0..$n {
-              let value = &mut if self.variable.is_variable() {
-                unsafe { self.variable.get_mut().payload.__bindgen_anon_1.$field[i] }
-              } else {
-                self.tmp[i]
-              };
-
-              let drag = egui::DragValue::new(value);
-              let response = ui.add(drag);
-              if response.changed() || response.lost_focus() {
-                if self.variable.is_variable() {
-                  unsafe {
-                    self.variable.get_mut().payload.__bindgen_anon_1.$field[i] = *value;
-                  }
-                } else {
-                  self.tmp[i] = *value;
-                }
-              }
+              ui.add(egui::DragValue::new(&mut values[i]));
             }
 
             Ok::<(), &str>(())
@@ -458,7 +439,7 @@ impl_ui_n_input!(
   FLOAT2_VAR_SLICE,
   float2,
   float2_var,
-  float2Value,
+  f64,
   FLOAT2_INPUT_PARAMETERS,
   FLOAT2_TYPES
 );
@@ -471,7 +452,7 @@ impl_ui_n_input!(
   FLOAT3_VAR_SLICE,
   float3,
   float3_var,
-  float3Value,
+  f32,
   FLOAT3_INPUT_PARAMETERS,
   FLOAT3_TYPES
 );
@@ -484,7 +465,7 @@ impl_ui_n_input!(
   FLOAT4_VAR_SLICE,
   float4,
   float4_var,
-  float4Value,
+  f32,
   FLOAT4_INPUT_PARAMETERS,
   FLOAT4_TYPES
 );
@@ -497,7 +478,7 @@ impl_ui_n_input!(
   INT2_VAR_SLICE,
   int2,
   int2_var,
-  int2Value,
+  i64,
   INT2_INPUT_PARAMETERS,
   INT2_TYPES
 );
@@ -510,7 +491,7 @@ impl_ui_n_input!(
   INT3_VAR_SLICE,
   int3,
   int3_var,
-  int3Value,
+  i32,
   INT3_INPUT_PARAMETERS,
   INT3_TYPES
 );
@@ -523,7 +504,7 @@ impl_ui_n_input!(
   INT4_VAR_SLICE,
   int4,
   int4_var,
-  int4Value,
+  i32,
   INT4_INPUT_PARAMETERS,
   INT4_TYPES
 );

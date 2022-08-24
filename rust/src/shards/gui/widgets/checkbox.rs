@@ -200,13 +200,10 @@ impl Shard for Checkbox {
       let text: &str = self.label.get().try_into()?;
 
       if self.variable.is_variable() {
-        let checked = &mut unsafe { self.variable.get_mut().payload.__bindgen_anon_1.boolValue };
+        let checked: &mut bool = self.variable.get_mut().try_into()?;
         let checkbox = egui::Checkbox::new(checked, text);
 
         let response = ui.add(checkbox);
-        if response.changed && self.variable.is_variable() {
-          self.variable.set((*checked).into());
-        }
         Ok(response.changed().into())
       } else {
         let variable = self.variable.get();

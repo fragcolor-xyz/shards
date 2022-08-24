@@ -11,6 +11,7 @@ use crate::shardsc::SHContext;
 use crate::shardsc::SHEnumInfo;
 use crate::shardsc::SHExposedTypeInfo;
 use crate::shardsc::SHExposedTypesInfo;
+use crate::shardsc::SHImage;
 use crate::shardsc::SHInstanceData;
 use crate::shardsc::SHMeshRef;
 use crate::shardsc::SHOptionalString;
@@ -2185,6 +2186,19 @@ impl TryFrom<&Var> for &str {
   }
 }
 
+impl<'a> TryFrom<&'a Var> for &'a SHImage {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Image {
+      Err("Expected Image variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.imageValue) }
+    }
+  }
+}
+
 // 64-bit precision :i64
 impl TryFrom<&Var> for i64 {
   type Error = &'static str;
@@ -2195,6 +2209,19 @@ impl TryFrom<&Var> for i64 {
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut i64 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int {
+      Err("Expected Int variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.intValue) }
     }
   }
 }
@@ -2252,6 +2279,19 @@ impl TryFrom<&Var> for f64 {
   }
 }
 
+impl<'a> TryFrom<&'a mut Var> for &'a mut f64 {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float {
+      Err("Expected Float variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.floatValue) }
+    }
+  }
+}
+
 // 64-bit precision :[i64;2]
 impl TryFrom<&Var> for (i64, i64) {
   type Error = &'static str;
@@ -2267,6 +2307,32 @@ impl TryFrom<&Var> for (i64, i64) {
           var.payload.__bindgen_anon_1.int2Value[1],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [i64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.int2Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [i64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int2 {
+      Err("Expected Int2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.int2Value) }
     }
   }
 }
@@ -2305,6 +2371,32 @@ impl TryFrom<&Var> for (f64, f64) {
           var.payload.__bindgen_anon_1.float2Value[1],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [f64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.float2Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [f64; 2] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float2 {
+      Err("Expected Float2 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.float2Value) }
     }
   }
 }
@@ -2362,6 +2454,40 @@ impl TryFrom<&Var> for (i32, i32, i32) {
   }
 }
 
+impl<'a> TryFrom<&'a Var> for &'a [i32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &var.payload.__bindgen_anon_1.int3Value,
+        ))
+      }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [i32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int3 {
+      Err("Expected Int3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &mut var.payload.__bindgen_anon_1.int3Value,
+        ))
+      }
+    }
+  }
+}
+
 // 32-bit precision :[i32;4]
 impl TryFrom<&Var> for (i32, i32, i32, i32) {
   type Error = &'static str;
@@ -2379,6 +2505,32 @@ impl TryFrom<&Var> for (i32, i32, i32, i32) {
           var.payload.__bindgen_anon_1.int4Value[3],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [i32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.int4Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [i32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Int4 {
+      Err("Expected Int4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.int4Value) }
     }
   }
 }
@@ -2510,6 +2662,40 @@ impl TryFrom<&Var> for (f32, f32, f32) {
   }
 }
 
+impl<'a> TryFrom<&'a Var> for &'a [f32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &var.payload.__bindgen_anon_1.float3Value,
+        ))
+      }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [f32; 3] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float3 {
+      Err("Expected Float3 variable, but casting failed.")
+    } else {
+      unsafe {
+        Ok(core::mem::transmute(
+          &mut var.payload.__bindgen_anon_1.float3Value,
+        ))
+      }
+    }
+  }
+}
+
 // 32-bit precision :[f32;4]
 impl TryFrom<&Var> for (f32, f32, f32, f32) {
   type Error = &'static str;
@@ -2527,6 +2713,32 @@ impl TryFrom<&Var> for (f32, f32, f32, f32) {
           var.payload.__bindgen_anon_1.float4Value[3],
         ))
       }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a Var> for &'a [f32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&var.payload.__bindgen_anon_1.float4Value) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut [f32; 4] {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Float4 {
+      Err("Expected Float4 variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.float4Value) }
     }
   }
 }
@@ -2775,6 +2987,19 @@ impl TryFrom<&Var> for bool {
       Err("Expected Bool variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
+    }
+  }
+}
+
+impl<'a> TryFrom<&'a mut Var> for &'a mut bool {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Bool {
+      Err("Expected Bool variable, but casting failed.")
+    } else {
+      unsafe { Ok(&mut var.payload.__bindgen_anon_1.boolValue) }
     }
   }
 }
