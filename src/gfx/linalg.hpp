@@ -60,7 +60,7 @@ inline void decomposeTRS(const float4x4 &transform, float3 &translation, float3 
 inline float3 generateTangent(float3 direction) {
   const float tolerance = 0.05f;
   float3 tangent;
-  if (isWithinRange(std::abs(direction.y), 1.0f, tolerance)) {
+  if (isRoughlyEqual(std::abs(direction.y), 1.0f, tolerance)) {
     tangent = linalg::normalize(float3(-direction.y, direction.x, direction.z));
   } else {
     tangent = linalg::normalize(float3(-direction.z, direction.y, direction.x));
