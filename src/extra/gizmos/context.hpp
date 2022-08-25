@@ -15,7 +15,7 @@ namespace Gizmos {
 
 struct Context {
   static constexpr uint32_t TypeId = 'HLPc';
-  static inline shards::Type Type{{SHType::Object, {.object = {.vendorId = gfx::VendorId, .typeId = TypeId}}}};
+  static inline shards::Type Type = shards::Type::Object(gfx::VendorId, TypeId);
 
   static inline const char *contextVarName = "Gizmos.Context";
   static inline SHExposedTypeInfo contextExposedType =
