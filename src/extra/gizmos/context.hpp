@@ -41,6 +41,7 @@ struct BaseConsumer {
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(Context::contextExposedTypes); }
 
   void baseConsumerWarmup(SHContext *context, bool contextRequired = true) {
+    assert(!_contextVar);
     _contextVar = shards::referenceVariable(context, Context::contextVarName);
     if (contextRequired) {
       assert(_contextVar->valueType == SHType::Object);

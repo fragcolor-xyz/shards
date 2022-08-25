@@ -2,6 +2,7 @@
 #include "../gfx/shards_types.hpp"
 #include <gfx/context.hpp>
 #include <gfx/window.hpp>
+#include <object_var_scope.hpp>
 #include <params.hpp>
 
 namespace shards {
@@ -29,25 +30,24 @@ struct HelperContextShard : public gfx::BaseConsumer {
   void warmup(SHContext *context) {
     baseConsumerWarmup(context, true);
 
-    // Reference and setup context
+    // Reference context variable
     _contextVarRef = referenceVariable(context, Context::contextVarName);
-    _contextVarRef->payload.objectValue = &_context;
-    _contextVarRef->payload.objectVendorId = SHTypeInfo(Context::Type).object.vendorId;
-    _contextVarRef->payload.objectTypeId = SHTypeInfo(Context::Type).object.typeId;
-    _contextVarRef->valueType = SHType::Object;
 
-    PARAM_WARMUP(context);
+    {
+      ObjectVarScope _scope(*_contextVarRef, &_context, Context::Type);
+      PARAM_WARMUP(context);
+    }
   }
 
   void cleanup() {
+    {
+      ObjectVarScope _scope(*_contextVarRef, &_context, Context::Type);
+      PARAM_CLEANUP();
+    }
+
     baseConsumerCleanup();
 
-    PARAM_CLEANUP();
-
     if (_contextVarRef) {
-      if (_contextVarRef->refcount > 1) {
-        SHLOG_ERROR("Found {} dangling reference(s) to {}", _contextVarRef->refcount - 1, Context::contextVarName);
-      }
       releaseVariable(_contextVarRef);
     }
   }
@@ -112,15 +112,14 @@ struct HelperContextShard : public gfx::BaseConsumer {
     gizmoInput.pressed = _mouseButtonState;
     gizmoInput.viewSize = outputSize;
 
-    // need to update the context var
-    _contextVarRef->payload.objectValue = &_context;
-
-    _context.gizmoContext.begin(gizmoInput, view);
-
     SHVar _shardsOutput{};
-    _content.activate(shContext, input, _shardsOutput);
+    {
+      ObjectVarScope _scope(*_contextVarRef, &_context, Context::Type);
 
-    _context.gizmoContext.end(_context.queue);
+      _context.gizmoContext.begin(gizmoInput, view);
+      _content.activate(shContext, input, _shardsOutput);
+      _context.gizmoContext.end(_context.queue);
+    }
 
     return _shardsOutput;
   }

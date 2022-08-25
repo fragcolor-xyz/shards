@@ -43,32 +43,31 @@
     ; Draw helpers (using scene depth)
     .editor-queue (GFX.ClearQueue)
     (Gizmos.Context :Queue .editor-queue :View .view
-                     :Content (->  .drawable-0 (Gizmos.Highlight)
-                                   (Float3 0 0 0) >= .a
-                                   (Float3 0 0 2) >= .z-2
-                                   (Gizmos.Line :A (Float3 0 0 0) :B (Float3 2 0 0) :Color (Float4 1 0 0 1) :Thickness 8)
-                                   (Gizmos.Line :A .a :B (Float3 0 2 0) :Color (Float4 0 1 0 1))
-                                   (Gizmos.Line :A .a :B .z-2 :Color (Float4 0 0 1 1) :Thickness 4)
-                                   
-                                   (Float3 1 0 0) >= .xbase
-                                   (Float3 0 1 0) >= .ybase
-                                   (Float3 0 0 1) >= .zbase
-                                   (Gizmos.Circle :Center (Float3 1 1 1) :XBase .xbase :YBase .ybase)
-                                   (Gizmos.Circle :Center (Float3 1 1 1) :XBase .zbase :YBase .ybase :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
+                    :Content (->  .drawable-0 (Gizmos.Highlight)
+                                  (Float3 0 0 0) >= .a
+                                  (Float3 0 0 2) >= .z-2
+                                  (Gizmos.Line :A (Float3 0 0 0) :B (Float3 2 0 0) :Color (Float4 1 0 0 1) :Thickness 8)
+                                  (Gizmos.Line :A .a :B (Float3 0 2 0) :Color (Float4 0 1 0 1))
+                                  (Gizmos.Line :A .a :B .z-2 :Color (Float4 0 0 1 1) :Thickness 4)
 
-                                   (Gizmos.Rect :Center (Float3 1 1 1.2) :XBase .xbase :YBase .ybase :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
+                                  (Float3 1 0 0) >= .xbase
+                                  (Float3 0 1 0) >= .ybase
+                                  (Float3 0 0 1) >= .zbase
+                                  (Gizmos.Circle :Center (Float3 1 1 1) :XBase .xbase :YBase .ybase)
+                                  (Gizmos.Circle :Center (Float3 1 1 1) :XBase .zbase :YBase .ybase :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
 
-                                   (Gizmos.Box :Center (Float3 1 1 1) :Size (Float3 0.5 0.2 0.3) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 4)
+                                  (Gizmos.Rect :Center (Float3 1 1 1.2) :XBase .xbase :YBase .ybase :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
 
-                                   (Gizmos.Point :Center (Float3 1.4 1.4 1) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 16)
-                                   (Gizmos.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)
-                                   ))
+                                  (Gizmos.Box :Center (Float3 1 1 1) :Size (Float3 0.5 0.2 0.3) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 4)
+
+                                  (Gizmos.Point :Center (Float3 1.4 1.4 1) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 16)
+                                  (Gizmos.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)))
 
     ; Draw on top of everything (ignore depth)
     .editor-queue-no-depth (GFX.ClearQueue)
     (Gizmos.Context :Queue .editor-queue-no-depth :View .view
-                     :Content (->
-                               .transform-0 (Gizmos.Translation) > .transform-0))
+                    :Content (->
+                              .transform-0 (Gizmos.Translation) > .transform-0))
 
     (GFX.Render :Steps .render-steps :View .view))))
 
