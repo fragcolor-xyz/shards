@@ -1,10 +1,10 @@
-#include "helpers.hpp"
+#include "context.hpp"
+#include <linalg_shim.hpp>
 #include <gfx/helpers/shapes.hpp>
-#include "linalg_shim.hpp"
 #include <params.hpp>
 
 namespace shards {
-namespace Helpers {
+namespace Gizmos {
 using linalg::aliases::float2;
 using linalg::aliases::float3;
 using linalg::aliases::float4;
@@ -255,11 +255,11 @@ struct PointShard : public BaseConsumer {
 };
 
 void registerShapeShards() {
-  REGISTER_SHARD("Helpers.Line", LineShard);
-  REGISTER_SHARD("Helpers.Circle", CircleShard);
-  REGISTER_SHARD("Helpers.Rect", RectShard);
-  REGISTER_SHARD("Helpers.Box", BoxShard);
-  REGISTER_SHARD("Helpers.Point", PointShard);
+  REGISTER_SHARD("Gizmos.Line", LineShard);
+  REGISTER_SHARD("Gizmos.Circle", CircleShard);
+  REGISTER_SHARD("Gizmos.Rect", RectShard);
+  REGISTER_SHARD("Gizmos.Box", BoxShard);
+  REGISTER_SHARD("Gizmos.Point", PointShard);
 }
-} // namespace Helpers
+} // namespace Gizmos
 } // namespace shards

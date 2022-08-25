@@ -1,7 +1,7 @@
-#include "helpers.hpp"
+#include "context.hpp"
 
 namespace shards {
-namespace Helpers {
+namespace Gizmos {
 
 using namespace gfx;
 
@@ -54,6 +54,6 @@ struct HighlightShard : public BaseConsumer {
   void cleanup() { baseConsumerCleanup(); }
 };
 
-void registerHighlightShards() { REGISTER_SHARD("Helpers.Highlight", HighlightShard); }
-} // namespace Helpers
+void registerHighlightShards() { REGISTER_SHARD("Gizmos.Highlight", HighlightShard); }
+} // namespace Gizmos
 } // namespace shards

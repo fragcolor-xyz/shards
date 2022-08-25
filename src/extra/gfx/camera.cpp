@@ -1,6 +1,3 @@
-#ifndef D0D31C79_6DAC_4176_B686_B1E579CCEC65
-#define D0D31C79_6DAC_4176_B686_B1E579CCEC65
-
 #include <foundation.hpp>
 #include <params.hpp>
 #include <linalg_shim.hpp>
@@ -9,9 +6,9 @@
 #include <gfx/fmt.hpp>
 #include "../gfx.hpp"
 
-namespace shards {
-namespace Helpers {
-using namespace linalg::aliases;
+using namespace shards;
+
+namespace gfx {
 
 struct FreeCameraShard : public gfx::BaseConsumer {
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
@@ -185,9 +182,6 @@ struct FreeCameraShard : public gfx::BaseConsumer {
   }
 };
 
-void registerCameraShards() { REGISTER_SHARD("Helpers.FreeCamera", FreeCameraShard); }
+void registerCameraShards() { REGISTER_SHARD("FreeCamera", FreeCameraShard); }
 
-} // namespace Helpers
-} // namespace shards
-
-#endif /* D0D31C79_6DAC_4176_B686_B1E579CCEC65 */
+} // namespace gfx

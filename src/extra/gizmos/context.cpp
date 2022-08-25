@@ -1,12 +1,11 @@
-#include "helpers.hpp"
-#include <gfx/helpers/gizmos.hpp>
+#include "context.hpp"
+#include "../gfx/shards_types.hpp"
 #include <gfx/context.hpp>
 #include <gfx/window.hpp>
-#include "../gfx/shards_types.hpp"
 #include <params.hpp>
 
 namespace shards {
-namespace Helpers {
+namespace Gizmos {
 using namespace gfx;
 struct HelperContextShard : public gfx::BaseConsumer {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -130,13 +129,11 @@ struct HelperContextShard : public gfx::BaseConsumer {
 extern void registerHighlightShards();
 extern void registerGizmoShards();
 extern void registerShapeShards();
-extern void registerCameraShards();
 void registerShards() {
-  REGISTER_SHARD("Helpers.Context", HelperContextShard);
+  REGISTER_SHARD("Gizmos.Context", HelperContextShard);
   registerHighlightShards();
   registerGizmoShards();
   registerShapeShards();
-  registerCameraShards();
 }
-} // namespace Helpers
+} // namespace Gizmos
 } // namespace shards

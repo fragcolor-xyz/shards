@@ -11,13 +11,13 @@
 namespace shards {
 // Shards for rendering visual helpers
 // Gizmos, grids, lines, etc.
-namespace Helpers {
+namespace Gizmos {
 
 struct Context {
   static constexpr uint32_t TypeId = 'HLPc';
   static inline shards::Type Type{{SHType::Object, {.object = {.vendorId = gfx::VendorId, .typeId = TypeId}}}};
 
-  static inline const char *contextVarName = "Helpers.Context";
+  static inline const char *contextVarName = "Gizmos.Context";
   static inline SHExposedTypeInfo contextExposedType =
       shards::ExposedInfo::Variable(contextVarName, SHCCSTR("The helper context."), Context::Type);
   static inline shards::ExposedInfo contextExposedTypes = shards::ExposedInfo(contextExposedType);
@@ -84,7 +84,7 @@ struct BaseConsumer {
   }
 };
 
-} // namespace Helpers
+} // namespace Gizmos
 } // namespace shards
 
 #endif /* C55FCF15_9B8F_44F0_AA7B_73BA2144579D */

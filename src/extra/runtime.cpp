@@ -46,7 +46,7 @@ namespace Gui {
 extern void registerShards();
 }
 
-namespace Helpers {
+namespace Gizmos {
 extern void registerShards();
 }
 
@@ -60,7 +60,7 @@ void shInitExtras() {
 
   gfx::registerShards();
   shards::ImGui::registerShards();
-  Helpers::registerShards();
+  Gizmos::registerShards();
   Inputs::registerShards();
   Audio::registerShards();
   DSP::registerShards();

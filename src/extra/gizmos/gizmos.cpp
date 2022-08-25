@@ -1,4 +1,4 @@
-#include "helpers.hpp"
+#include "context.hpp"
 #include "../gfx/shards_types.hpp"
 #include <linalg_shim.hpp>
 #include <params.hpp>
@@ -6,7 +6,7 @@
 #include <stdexcept>
 
 namespace shards {
-namespace Helpers {
+namespace Gizmos {
 using linalg::aliases::float3;
 using linalg::aliases::float4x4;
 
@@ -93,6 +93,6 @@ struct TranslationGizmo : public BaseConsumer {
     return outputTypes().elements[0];
   }
 };
-void registerGizmoShards() { REGISTER_SHARD("Helpers.TranslationGizmo", TranslationGizmo); }
-} // namespace Helpers
+void registerGizmoShards() { REGISTER_SHARD("Gizmos.Translation", TranslationGizmo); }
+} // namespace Gizmos
 } // namespace shards

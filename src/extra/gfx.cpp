@@ -302,6 +302,7 @@ extern void registerDrawableShards();
 extern void registerMaterialShards();
 extern void registerFeatureShards();
 extern void registerGLTFShards();
+extern void registerCameraShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
@@ -312,10 +313,12 @@ void registerShards() {
   registerMaterialShards();
   registerFeatureShards();
   registerGLTFShards();
+  registerCameraShards();
   shader::registerTranslatorShards();
 
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.Render", RenderShard);
+
 }
 } // namespace gfx
