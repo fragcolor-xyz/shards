@@ -373,7 +373,7 @@ dependencies = [
 [[package]]
 name = "chrono"
 version = "0.4.19"
-source = "git+https://github.com/chainblocks/chrono?rev=b1d74aef688c27fccc738c64746535905903471a#b1d74aef688c27fccc738c64746535905903471a"
+source = "git+https://github.com/shards-lang/chrono?rev=b1d74aef688c27fccc738c64746535905903471a#b1d74aef688c27fccc738c64746535905903471a"
 dependencies = [
  "num-integer",
  "num-traits",

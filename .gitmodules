@@ -1,84 +1,84 @@
 [submodule "deps/stb"]
 	path = deps/stb
-	url = https://github.com/chainblocks/stb.git
+	url = https://github.com/shards-lang/stb.git
 [submodule "deps/json"]
 	path = deps/json
-	url = https://github.com/chainblocks/json.git
+	url = https://github.com/shards-lang/json.git
 [submodule "deps/imgui_club"]
 	path = deps/imgui_club
-	url = https://github.com/chainblocks/imgui_club.git
+	url = https://github.com/shards-lang/imgui_club.git
 [submodule "kcp"]
 	path = deps/kcp
-	url = https://github.com/chainblocks/kcp.git
+	url = https://github.com/shards-lang/kcp.git
 [submodule "magic_enum"]
 	path = deps/magic_enum
-	url = https://github.com/chainblocks/magic_enum.git
+	url = https://github.com/shards-lang/magic_enum.git
 [submodule "cpp-taskflow"]
 	path = deps/cpp-taskflow
-	url = https://github.com/chainblocks/cpp-taskflow.git
+	url = https://github.com/shards-lang/cpp-taskflow.git
 [submodule "deps/replxx"]
 	path = deps/replxx
-	url = https://github.com/chainblocks/replxx.git
+	url = https://github.com/shards-lang/replxx.git
 [submodule "deps/nameof"]
 	path = deps/nameof
-	url = https://github.com/chainblocks/nameof.git
+	url = https://github.com/shards-lang/nameof.git
 [submodule "deps/pdqsort"]
 	path = deps/pdqsort
-	url = https://github.com/chainblocks/pdqsort.git
+	url = https://github.com/shards-lang/pdqsort.git
 [submodule "deps/SDL"]
 	path = deps/SDL
-	url = https://github.com/chainblocks/SDL-org.git
+	url = https://github.com/shards-lang/SDL-org.git
 [submodule "deps/implot"]
 	path = deps/implot
-	url = https://github.com/chainblocks/implot.git
+	url = https://github.com/shards-lang/implot.git
 [submodule "deps/filesystem"]
 	path = deps/filesystem
-	url = https://github.com/chainblocks/filesystem.git
+	url = https://github.com/shards-lang/filesystem.git
 [submodule "deps/libbacktrace"]
 	path = deps/libbacktrace
-	url = https://github.com/chainblocks/libbacktrace.git
+	url = https://github.com/shards-lang/libbacktrace.git
 [submodule "deps/wasm3"]
 	path = deps/wasm3
-	url = https://github.com/chainblocks/wasm3.git
+	url = https://github.com/shards-lang/wasm3.git
 [submodule "deps/xxHash"]
 	path = deps/xxHash
-	url = https://github.com/chainblocks/xxHash.git
+	url = https://github.com/shards-lang/xxHash.git
 [submodule "deps/Catch2"]
 	path = deps/Catch2
-	url = https://github.com/chainblocks/Catch2.git
+	url = https://github.com/shards-lang/Catch2.git
 [submodule "deps/linalg"]
 	path = deps/linalg
-	url = https://github.com/chainblocks/linalg.git
+	url = https://github.com/shards-lang/linalg.git
 [submodule "deps/tinygltf"]
 	path = deps/tinygltf
-	url = https://github.com/chainblocks/tinygltf.git
+	url = https://github.com/shards-lang/tinygltf.git
 [submodule "deps/miniaudio"]
 	path = deps/miniaudio
-	url = https://github.com/chainblocks/miniaudio.git
+	url = https://github.com/shards-lang/miniaudio.git
 [submodule "deps/utf8.h"]
 	path = deps/utf8.h
-	url = https://github.com/chainblocks/utf8.h.git
+	url = https://github.com/shards-lang/utf8.h.git
 [submodule "deps/spdlog"]
 	path = deps/spdlog
-	url = https://github.com/chainblocks/spdlog.git
+	url = https://github.com/shards-lang/spdlog.git
 [submodule "deps/kissfft"]
 	path = deps/kissfft
-	url = https://github.com/chainblocks/kissfft.git
+	url = https://github.com/shards-lang/kissfft.git
 [submodule "deps/pareto"]
 	path = deps/pareto
-	url = https://github.com/chainblocks/pareto.git
+	url = https://github.com/shards-lang/pareto.git
 [submodule "deps/imguizmo"]
 	path = deps/imguizmo
-	url = https://github.com/chainblocks/ImGuizmo.git
+	url = https://github.com/shards-lang/ImGuizmo.git
 [submodule "deps/brotli"]
 	path = deps/brotli
-	url = https://github.com/chainblocks/brotli.git
+	url = https://github.com/shards-lang/brotli.git
 [submodule "deps/snappy"]
 	path = deps/snappy
-	url = https://github.com/chainblocks/snappy.git
+	url = https://github.com/shards-lang/snappy.git
 [submodule "src/gfx/wgpu-native"]
 	path = src/gfx/rust/wgpu-native
-	url = https://github.com/chainblocks/wgpu-native.git
+	url = https://github.com/shards-lang/wgpu-native.git
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
@@ -87,8 +87,8 @@
 	url = https://github.com/guusw/android-cmake.git
 [submodule "src/gfx/wgpu"]
 	path = src/gfx/rust/wgpu
-	url = https://github.com/chainblocks/wgpu.git
+	url = https://github.com/shards-lang/wgpu.git
 	branch = master
 [submodule "src/gfx/naga"]
 	path = src/gfx/rust/naga
-	url = https://github.com/chainblocks/naga
+	url = https://github.com/shards-lang/naga

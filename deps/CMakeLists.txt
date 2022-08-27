@@ -39,7 +39,7 @@ endif()
 message(STATUS "Fetching boost")
 FetchContent_Declare(
   boost
-  URL      https://github.com/chainblocks/boost/releases/download/boost-f74a225c09/output.7z
+  URL      https://github.com/shards-lang/boost/releases/download/boost-f74a225c09/output.7z
   URL_HASH SHA256=EB73BDD6B5B78C6A09A8F45B50AE8FAF5C44A6C741487313E978F0AF3073DA7A
 )
 FetchContent_MakeAvailable(boost)
@@ -134,7 +134,7 @@ sh_add_external_project(
   CMAKE_ARGS -DSNAPPY_BUILD_TESTS=0
   RELATIVE_INCLUDE_PATHS .
   RELATIVE_BINARY_INCLUDE_PATHS .
-  REPO_ARGS GIT_REPOSITORY    https://github.com/chainblocks/snappy.git
+  REPO_ARGS GIT_REPOSITORY    https://github.com/shards-lang/snappy.git
             GIT_TAG           563e4e90f4ed6314a14055826f027b2239a8bf0e)
 
 sh_add_external_project(
@@ -142,7 +142,7 @@ sh_add_external_project(
   TARGETS brotlidec-static brotlienc-static brotlicommon-static
   CMAKE_ARGS -DBROTLI_BUNDLED_MODE=1
   RELATIVE_INCLUDE_PATHS c/include
-  REPO_ARGS GIT_REPOSITORY    https://github.com/chainblocks/brotli.git
+  REPO_ARGS GIT_REPOSITORY    https://github.com/shards-lang/brotli.git
             GIT_TAG           e83c7b8e8fb8b696a1df6866bc46cbb76d7e0348)
 
 

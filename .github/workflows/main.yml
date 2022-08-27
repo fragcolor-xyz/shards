@@ -12,7 +12,7 @@ jobs:
   #   runs-on: ubuntu-latest
   #   steps:
   #     - name: Cancel Previous Runs
-  #       uses: chainblocks/cancel-workflow-action@0.7.0
+  #       uses: shards-lang/cancel-workflow-action@0.7.0
   #       with:
   #         access_token: ${{ secrets.TOKEN }}
 
