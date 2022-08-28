@@ -32,7 +32,7 @@ jobs:
           mkdir build
           docker cp shards:/home/shards/repo/build/shards ./build/shards
       - name: Build and upload to hub runtime image
-        uses: chainblocks/Publish-Docker-Github-Action@master
+        uses: shards-lang/Publish-Docker-Github-Action@master
         if: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
         with:
           name: chainblocks/shards
