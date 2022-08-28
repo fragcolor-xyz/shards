@@ -191,25 +191,25 @@ jobs:
             ../../build/shards run-sample.edn --file "$i";
           done
       - name: Test Headless (gfx_window)
-        uses: chainblocks/xvfb-action@master
+        uses: shards-lang/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
           run: ./shards ../src/tests/gfx-window.edn
       - name: Test Headless (gfx_cube)
-        uses: chainblocks/xvfb-action@master
+        uses: shards-lang/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
           run: ./shards ../src/tests/gfx-cube.edn
       - name: Test Headless (gfx_materials)
-        uses: chainblocks/xvfb-action@master
+        uses: shards-lang/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
           run: ./shards ../src/tests/gfx-materials.edn
       - name: Test Headless (imgui_demo)
-        uses: chainblocks/xvfb-action@master
+        uses: shards-lang/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build
@@ -274,7 +274,7 @@ jobs:
           cd build
           ./test-runtime
       - name: Test graphics
-        uses: chainblocks/xvfb-action@master
+        uses: shards-lang/xvfb-action@master
         if: ${{ false }} # Failed to create vulkan backend on github runner
         with:
           working-directory: ./build

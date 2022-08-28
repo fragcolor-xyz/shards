@@ -5,4 +5,4 @@ members = [
 
 [patch.crates-io]
 # If we don't use this exact rev the semver of cargo will screw up
-chrono = { git = "https://github.com/chainblocks/chrono", rev = "b1d74aef688c27fccc738c64746535905903471a" }
+chrono = { git = "https://github.com/shards-lang/chrono", rev = "b1d74aef688c27fccc738c64746535905903471a" }

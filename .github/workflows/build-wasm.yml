@@ -111,7 +111,7 @@ jobs:
             build/shards/
           if-no-files-found: error
       # - name: Upload shards to IPFS
-      #   uses: chainblocks/ipfs-action@master
+      #   uses: shards-lang/ipfs-action@master
       #   if: ${{ github.event_name == 'push' }}
       #   with:
       #     path: build/shards/
