@@ -478,13 +478,16 @@ struct Resume : public WireBase {
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
       auto it = requirements.find(avail.name);
-      if (it != requirements.end() && !avail.global) {
-        SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-        SHVar ctxVar{};
-        ctxVar.valueType = ContextVar;
-        ctxVar.payload.stringValue = avail.name;
-        auto &p = _vars.emplace_back();
-        p = ctxVar;
+      if (it != requirements.end()) {
+        if (!avail.global) {
+          // Capture if not global as we need to copy it!
+          SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = avail.name;
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
 
         arrayPush(_mergedReqs, it->second);
       }
@@ -765,13 +768,16 @@ struct BaseRunner : public WireBase {
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
       auto it = requirements.find(avail.name);
-      if (it != requirements.end() && !avail.global) {
-        SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-        SHVar ctxVar{};
-        ctxVar.valueType = ContextVar;
-        ctxVar.payload.stringValue = avail.name;
-        auto &p = _vars.emplace_back();
-        p = ctxVar;
+      if (it != requirements.end()) {
+        if (!avail.global) {
+          // Capture if not global as we need to copy it!
+          SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = avail.name;
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
 
         arrayPush(_mergedReqs, it->second);
       }
@@ -1748,13 +1754,16 @@ struct Spawn : public WireBase {
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
       auto it = requirements.find(avail.name);
-      if (it != requirements.end() && !avail.global) {
-        SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-        SHVar ctxVar{};
-        ctxVar.valueType = ContextVar;
-        ctxVar.payload.stringValue = avail.name;
-        auto &p = _vars.emplace_back();
-        p = ctxVar;
+      if (it != requirements.end()) {
+        if (!avail.global) {
+          // Capture if not global as we need to copy it!
+          SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = avail.name;
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
 
         arrayPush(_mergedReqs, it->second);
       }
