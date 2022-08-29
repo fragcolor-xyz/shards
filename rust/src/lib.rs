@@ -25,6 +25,7 @@ extern crate lazy_static;
 extern crate compile_time_crc32;
 
 pub mod core;
+#[macro_use]
 pub mod shard;
 mod shardsc;
 #[macro_use]
