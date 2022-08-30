@@ -8,17 +8,25 @@ use crate::shards::gui::widgets::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Image;
+use crate::shardsc::SHType_Object;
 use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
+use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedTypes;
+use crate::types::InstanceData;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
+use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::IMAGE_TYPES;
+use crate::types::FRAG_CC;
+
+const TextureCC: i32 = 1952807007; // 'tex_'
 
 lazy_static! {
+  static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
+  static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
   static ref IMAGE_PARAMETERS: Parameters = vec![(
     cstr!("Scale"),
     cstr!("Scaling to apply to the source image"),
@@ -36,6 +44,7 @@ impl Default for Image {
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
       texture: None,
+      prev_ptr: std::ptr::null_mut(),
     }
   }
 }
@@ -64,7 +73,7 @@ impl Shard for Image {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &IMAGE_TYPES
+    &TEXTURE_OR_IMAGE_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -72,7 +81,7 @@ impl Shard for Image {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &IMAGE_TYPES
+    &TEXTURE_OR_IMAGE_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -106,6 +115,26 @@ impl Shard for Image {
     Some(&self.requiring)
   }
 
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    match data.inputType.basicType {
+      SHType_Image => decl_override_activate! {
+        data.activate = Image::image_activate;
+      },
+      SHType_Object if unsafe { data.inputType.details.object.typeId } == TextureCC => {
+        decl_override_activate! {
+          data.activate = Image::texture_activate;
+        }
+      }
+      _ => (),
+    }
+    // Always passthrough the input
+    Ok(data.inputType)
+  }
+
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.parents.warmup(context);
     self.scale.warmup(context);
@@ -120,14 +149,22 @@ impl Shard for Image {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let texture = &*self.texture.get_or_insert_with(|| {
-        let image: &SHImage = input.try_into().unwrap();
-        let image: egui::ColorImage = image.into();
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    Err("Invalid input type")
+  }
+}
 
-        ui.ctx().load_texture("example", image) // FIXME name
-      });
+impl Image {
+  fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let image: &SHImage = input.try_into()?;
+      let ptr = image.data;
+      let texture = if ptr != self.prev_ptr {
+        let image: egui::ColorImage = image.into();
+        self.texture.insert(ui.ctx().load_texture("example", image))
+      } else {
+        self.texture.as_ref().unwrap()
+      };
 
       let scale: (f32, f32) = self.scale.get().try_into()?;
       let scale: egui::Vec2 = scale.into();
@@ -136,6 +173,33 @@ impl Shard for Image {
       Ok(*input)
     } else {
       Err("No UI parent")
+    }
+  }
+
+  fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
+      let textureId = egui::epaint::TextureId::User(ptr);
+
+      let scale: (f32, f32) = self.scale.get().try_into()?;
+      let scale: egui::Vec2 = scale.into();
+      ui.image(textureId, scale); // FIXME texture scale
+
+      Ok(*input)
+    } else {
+      Err("No UI parent")
+    }
+  }
+
+  impl_override_activate! {
+    extern "C" fn image_activate() -> Var {
+      Image::activateImage()
+    }
+  }
+
+  impl_override_activate! {
+    extern "C" fn texture_activate() -> Var {
+      Image::activateTexture()
     }
   }
 }

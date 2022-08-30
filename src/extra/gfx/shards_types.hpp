@@ -61,7 +61,7 @@ struct SHDrawQueue {
   DrawQueuePtr queue;
 };
 
-constexpr uint32_t VendorId = 'cgfx';
+constexpr uint32_t VendorId = 'frag';
 
 namespace detail {
 using namespace shards;
