@@ -1859,13 +1859,22 @@ struct Spawn : public WireBase {
 };
 
 struct Branch {
+  enum BranchFailureBehavior { Everything, Unknown, Ignore };
+  static constexpr int32_t FailureCC = 'brcB';
+  typedef EnumInfo<BranchFailureBehavior> BranchFailureBehaviorInfo;
+  static inline BranchFailureBehaviorInfo runWireModeInfo{"BranchFailure", CoreCC, 'brcB'};
+  static inline Type BehaviorType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'brcB'}}}};
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() {
     static Parameters params{{"Wires",
                               SHCCSTR("The wires to schedule and run on this branch."),
-                              {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}}};
+                              {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}},
+                             {"FailureBehavior",
+                              SHCCSTR("The behavior to take when some of the wires running on this branch mesh fail."),
+                              {BehaviorType}}};
     return params;
   }
 
@@ -1873,6 +1882,9 @@ struct Branch {
     switch (index) {
     case 0:
       _wires = value;
+      break;
+    case 1:
+      _failureBehavior = BranchFailureBehavior(value.payload.enumValue);
       break;
     default:
       break;
@@ -1883,6 +1895,8 @@ struct Branch {
     switch (index) {
     case 0:
       return _wires;
+    case 1:
+      return Var::Enum(_failureBehavior, CoreCC, FailureCC);
     default:
       return Var::Empty;
     }
@@ -1989,8 +2003,20 @@ struct Branch {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (!_mesh->tick(input)) {
-      // the mesh had errors in this case
-      throw ActivationError("Branched mesh had errors");
+      switch (_failureBehavior) {
+      case BranchFailureBehavior::Ignore:
+        break;
+      case BranchFailureBehavior::Everything:
+        throw ActivationError("Branched mesh had errors");
+      case BranchFailureBehavior::Unknown:
+        for (const auto &wire : _runWires) {
+          auto failed = _mesh->failedWires();
+          if (std::count(failed.begin(), failed.end(), wire.get())) {
+            throw ActivationError("Branched mesh had errors");
+          }
+        }
+        break;
+      }
     }
     return input;
   }
@@ -2001,6 +2027,7 @@ private:
   IterableExposedInfo _sharedCopy;
   SHExposedTypesInfo _mergedReqs;
   std::vector<std::shared_ptr<SHWire>> _runWires;
+  BranchFailureBehavior _failureBehavior = BranchFailureBehavior::Everything;
 };
 
 void registerWiresShards() {

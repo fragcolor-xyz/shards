@@ -508,6 +508,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   template <class Observer> bool tick(Observer observer, SHVar input = shards::Var::Empty) {
     auto noErrors = true;
     _errors.clear();
+    _failedWires.clear();
+
     if (shards::GetGlobals().SigIntTerm > 0) {
       terminate();
     } else {
@@ -519,6 +521,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         if (unlikely(!shards::isRunning(flow->wire))) {
           if (flow->wire->finishedError.size() > 0) {
             _errors.emplace_back(flow->wire->finishedError);
+          }
+          if (flow->wire->state == SHWire::State::Failed) {
+            _failedWires.emplace_back(flow->wire);
           }
           observer.before_stop(flow->wire);
           if (!shards::stop(flow->wire)) {
@@ -574,6 +579,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   const std::vector<std::string> &errors() { return _errors; }
 
+  const std::vector<SHWire *> &failedWires() { return _failedWires; }
+
   std::unordered_map<std::string, SHVar, std::hash<std::string>, std::equal_to<std::string>,
                      boost::alignment::aligned_allocator<std::pair<const std::string, SHVar>, 16>>
       variables;
@@ -589,6 +596,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 private:
   std::list<std::shared_ptr<SHFlow>> _flows;
   std::vector<std::string> _errors;
+  std::vector<SHWire *> _failedWires;
   SHMesh() = default;
 };
 

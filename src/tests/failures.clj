@@ -99,3 +99,32 @@
 
 (schedule Root wrap)
 (run Root 0.1)
+
+(defmesh main)
+
+(defloop c1
+  .msg1 (Log))
+
+(defloop c2
+  .msg2 (Log))
+
+(defloop cDead
+  (Fail))
+
+(defloop c
+  "Hello" = .msg1
+  "World" = .msg2
+  (Branch [c1 c2 cDead] BranchFailure.Unknown)
+  (Msg "And Universe"))
+
+(schedule Root c)
+(run Root 0.2 25)
+
+(defloop c
+  "Hello" = .msg1
+  "World" = .msg2
+  (Branch [c1 c2 cDead] BranchFailure.Ignore)
+  (Msg "And Universe"))
+
+(schedule Root c)
+(run Root 0.2 25)
