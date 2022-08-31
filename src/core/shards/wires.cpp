@@ -326,7 +326,8 @@ struct Wait : public WireBase {
         SH_SUSPEND(context, 0);
       }
 
-      if (wire->finishedError.size() > 0) {
+      if (wire->finishedError.size() > 0 || wire->state == SHWire::State::Failed) {
+        SHLOG_TRACE("Waiting wire: {} failed with error: {}", wire->name, wire->finishedError);
         // if the wire has errors we need to propagate them
         // we can avoid interruption using Maybe shards
         throw ActivationError(wire->finishedError);
@@ -2002,7 +2003,7 @@ struct Branch {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_mesh->tick(input)) {
+    if (!_mesh->tick(input, false)) { // pass false to not stop failed wires
       switch (_failureBehavior) {
       case BranchFailureBehavior::Ignore:
         break;

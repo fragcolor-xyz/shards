@@ -505,7 +505,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     schedule(obs, wire, input, compose);
   }
 
-  template <class Observer> bool tick(Observer observer, SHVar input = shards::Var::Empty) {
+  template <class Observer> bool tick(Observer observer, SHVar input = shards::Var::Empty, bool stopFailed = true) {
     auto noErrors = true;
     _errors.clear();
     _failedWires.clear();
@@ -522,13 +522,19 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           if (flow->wire->finishedError.size() > 0) {
             _errors.emplace_back(flow->wire->finishedError);
           }
+
           if (flow->wire->state == SHWire::State::Failed) {
             _failedWires.emplace_back(flow->wire);
-          }
-          observer.before_stop(flow->wire);
-          if (!shards::stop(flow->wire)) {
             noErrors = false;
           }
+
+          if (stopFailed) {
+            observer.before_stop(flow->wire);
+            if (!shards::stop(flow->wire)) {
+              noErrors = false;
+            }
+          }
+
           flow->wire->mesh.reset();
           it = _flows.erase(it);
         } else {
@@ -539,9 +545,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return noErrors;
   }
 
-  bool tick(SHVar input = shards::Var::Empty) {
+  bool tick(SHVar input = shards::Var::Empty, bool stopFailed = true) {
     EmptyObserver obs;
-    return tick(obs, input);
+    return tick(obs, input, stopFailed);
   }
 
   void terminate() {
