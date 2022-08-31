@@ -1859,7 +1859,7 @@ struct Spawn : public WireBase {
 };
 
 struct Branch {
-  enum BranchFailureBehavior { Everything, Unknown, Ignore };
+  enum BranchFailureBehavior { Everything, Known, Ignore };
   static constexpr int32_t FailureCC = 'brcB';
   typedef EnumInfo<BranchFailureBehavior> BranchFailureBehaviorInfo;
   static inline BranchFailureBehaviorInfo runWireModeInfo{"BranchFailure", CoreCC, 'brcB'};
@@ -2008,7 +2008,7 @@ struct Branch {
         break;
       case BranchFailureBehavior::Everything:
         throw ActivationError("Branched mesh had errors");
-      case BranchFailureBehavior::Unknown:
+      case BranchFailureBehavior::Known:
         for (const auto &wire : _runWires) {
           auto failed = _mesh->failedWires();
           if (std::count(failed.begin(), failed.end(), wire.get())) {

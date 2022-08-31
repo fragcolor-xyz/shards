@@ -114,7 +114,7 @@
 (defloop c
   "Hello" = .msg1
   "World" = .msg2
-  (Branch [c1 c2 cDead] BranchFailure.Unknown)
+  (Branch [c1 c2 cDead] BranchFailure.Known)
   (Msg "And Universe"))
 
 (schedule Root c)
