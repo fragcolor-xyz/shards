@@ -262,10 +262,12 @@ public:
   }
 
   void cleanup() {
-    if (_v.valueType == ContextVar) {
-      SH_CORE::releaseVariable(_cp);
+    if (_cp) {
+      if (_v.valueType == ContextVar) {
+        SH_CORE::releaseVariable(_cp);
+      }
+      _cp = nullptr;
     }
-    _cp = nullptr;
   }
 
   SHVar &operator=(const SHVar &value) {

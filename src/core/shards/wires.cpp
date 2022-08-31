@@ -849,6 +849,8 @@ struct BaseRunner : public WireBase {
 
     if (!shards::isRunning(wire.get())) {
       // validated during infer not here! (false)
+      // stop in case we need to clean up
+      stop(wire.get());
       auto mesh = context->main->mesh.lock();
       if (mesh)
         mesh->schedule(wire, input, false);

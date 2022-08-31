@@ -267,7 +267,7 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
 
 inline void start(SHWire *wire, SHVar input = {}) {
   if (wire->state != SHWire::State::Prepared) {
-    SHLOG_ERROR("Attempted to start a wire not ready for running!");
+    SHLOG_ERROR("Attempted to start a wire ({}) not ready for running!", wire->name);
     return;
   }
 
