@@ -2,7 +2,7 @@
 #include "../gfx/shards_types.hpp"
 #include <gfx/context.hpp>
 #include <gfx/window.hpp>
-#include <object_var_scope.hpp>
+#include <object_var_util.hpp>
 #include <params.hpp>
 
 namespace shards {
@@ -33,17 +33,11 @@ struct HelperContextShard : public gfx::BaseConsumer {
     // Reference context variable
     _contextVarRef = referenceVariable(context, Context::contextVarName);
 
-    {
-      ObjectVarScope _scope(*_contextVarRef, &_context, Context::Type);
-      PARAM_WARMUP(context);
-    }
+    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_WARMUP(context); });
   }
 
   void cleanup() {
-    {
-      ObjectVarScope _scope(*_contextVarRef, &_context, Context::Type);
-      PARAM_CLEANUP();
-    }
+    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_CLEANUP(); });
 
     baseConsumerCleanup();
 
@@ -113,13 +107,11 @@ struct HelperContextShard : public gfx::BaseConsumer {
     gizmoInput.viewSize = outputSize;
 
     SHVar _shardsOutput{};
-    {
-      ObjectVarScope _scope(*_contextVarRef, &_context, Context::Type);
-
+    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] {
       _context.gizmoContext.begin(gizmoInput, view);
       _content.activate(shContext, input, _shardsOutput);
       _context.gizmoContext.end(_context.queue);
-    }
+    });
 
     return _shardsOutput;
   }
