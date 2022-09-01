@@ -840,17 +840,18 @@ struct BaseRunner : public WireBase {
   }
 
   void activateDetached(SHContext *context, const SHVar &input) {
-    if (capturing) {
-      for (auto &v : _vars) {
-        auto &var = v.get();
-        cloneVar(wire->variables[v.variableName()], var);
-      }
-    }
-
     if (!shards::isRunning(wire.get())) {
-      // validated during infer not here! (false)
       // stop in case we need to clean up
       stop(wire.get());
+
+      if (capturing) {
+        for (auto &v : _vars) {
+          auto &var = v.get();
+          cloneVar(wire->variables[v.variableName()], var);
+        }
+      }
+
+      // validated during infer not here! (false)
       auto mesh = context->main->mesh.lock();
       if (mesh)
         mesh->schedule(wire, input, false);
