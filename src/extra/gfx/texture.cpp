@@ -14,11 +14,12 @@ enum ComponentType {
 };
 
 struct TextureFormatException : public std::runtime_error {
-  TextureFormatException(ComponentType componentType, Types::TextureType_ asType) : std::runtime_error(formatError(componentType, asType)) {}
+  TextureFormatException(ComponentType componentType, Types::TextureType_ asType)
+      : std::runtime_error(formatError(componentType, asType)) {}
 
   static std::string formatError(ComponentType componentType, Types::TextureType_ asType) {
     return fmt::format("Image with component type '{}' can not be converted to texture type '{}'",
-                      magic_enum::enum_name(componentType), magic_enum::enum_name(asType));
+                       magic_enum::enum_name(componentType), magic_enum::enum_name(asType));
   }
 };
 
@@ -39,17 +40,17 @@ struct TextureShard {
   void cleanup() { PARAM_CLEANUP(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
+    using TextureType = Types::TextureType_;
+
     auto &image = input.payload.imageValue;
+
+    if (!texture)
+      texture = std::make_shared<Texture>();
 
     textureVar.valueType = SHType::Object;
     textureVar.payload.objectTypeId = Types::TextureTypeId;
     textureVar.payload.objectVendorId = gfx::VendorId;
     textureVar.payload.objectValue = &texture;
-
-    if (!texture)
-      texture = std::make_shared<Texture>();
-
-    using TextureType = Types::TextureType_;
 
     ComponentType componentType;
     TextureType asType;
