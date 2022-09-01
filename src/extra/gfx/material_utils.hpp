@@ -52,7 +52,6 @@ inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
     float4 vec;
     memcpy(&vec.x, &var.payload.float4Value, sizeof(float) * 4);
     outVariant = vec;
-
   } break;
   case SHType::Seq:
     if (var.innerType == SHType::Float4) {
@@ -83,7 +82,7 @@ inline bool tryVarToParam(const SHVar &var, ParamVariant &outVariant) {
   }
 }
 
-inline void initConstantShaderParams(MaterialParameters &out, SHTable &paramsTable) {
+inline void initConstantShaderParams(const SHTable &paramsTable, MaterialParameters &out) {
   SHTableIterator it{};
   SHString key{};
   SHVar value{};
@@ -96,7 +95,7 @@ inline void initConstantShaderParams(MaterialParameters &out, SHTable &paramsTab
   }
 }
 
-inline void initConstantTextureParams(MaterialParameters &out, SHTable &texturesTable) {
+inline void initConstantTextureParams(const SHTable &texturesTable, MaterialParameters &out) {
   SHTableIterator it{};
   SHString key{};
   SHVar value{};
@@ -108,7 +107,8 @@ inline void initConstantTextureParams(MaterialParameters &out, SHTable &textures
   }
 }
 
-inline void initReferencedShaderParams(SHContext *shContext, std::vector<SHBasicShaderParameter> &outParams, SHTable &inTable) {
+inline void initReferencedShaderParams(SHContext *shContext, const SHTable &inTable,
+                                       std::vector<SHBasicShaderParameter> &outParams) {
   SHTableIterator it{};
   SHString key{};
   SHVar value{};
@@ -120,22 +120,22 @@ inline void initReferencedShaderParams(SHContext *shContext, std::vector<SHBasic
   }
 }
 
-inline void initShaderParams(SHContext *shContext, MaterialParameters &outParams, SHShaderParameters &outSHParams,
-                             const SHTable &inputTable, shards::ParamVar &inParams, shards::ParamVar &inTextures) {
+inline void initShaderParams(SHContext *shContext, const SHTable &inputTable, const shards::ParamVar &inParams,
+                             const shards::ParamVar &inTextures, MaterialParameters &outParams, SHShaderParameters &outSHParams) {
   SHVar paramsVar{};
   if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
-    initConstantShaderParams(outParams, paramsVar.payload.tableValue);
+    initConstantShaderParams(paramsVar.payload.tableValue, outParams);
   }
   if (inParams->valueType != SHType::None) {
-    initReferencedShaderParams(shContext, outSHParams.basic, inParams.get().payload.tableValue);
+    initReferencedShaderParams(shContext, inParams.get().payload.tableValue, outSHParams.basic);
   }
 
   SHVar texturesVar{};
   if (getFromTable(shContext, inputTable, "Textures", texturesVar)) {
-    initConstantTextureParams(outParams, texturesVar.payload.tableValue);
+    initConstantTextureParams(texturesVar.payload.tableValue, outParams);
   }
   if (inTextures->valueType != SHType::None) {
-    initReferencedShaderParams(shContext, outSHParams.textures, inTextures.get().payload.tableValue);
+    initReferencedShaderParams(shContext, inTextures.get().payload.tableValue, outSHParams.textures);
   }
 }
 

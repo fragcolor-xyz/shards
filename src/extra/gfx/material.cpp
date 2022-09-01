@@ -67,8 +67,8 @@ struct MaterialShard {
     SHMaterial *shMaterial = Types::MaterialObjectVar.New();
     shMaterial->material = std::make_shared<Material>();
 
-    initShaderParams(shContext, shMaterial->material->parameters, shMaterial->shaderParameters, inputTable, _paramsVar,
-                     _texturesVar);
+    initShaderParams(shContext, inputTable, _paramsVar, _texturesVar, shMaterial->material->parameters,
+                     shMaterial->shaderParameters);
 
     return Types::MaterialObjectVar.Get(shMaterial);
   }

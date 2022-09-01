@@ -143,8 +143,8 @@ struct DrawableShard {
       _returnVar->drawable->material = shMaterial->material;
     }
 
-    initShaderParams(shContext, _returnVar->drawable->parameters, _returnVar->shaderParameters, inputTable, _paramsVar,
-                     _texturesVar);
+    initShaderParams(shContext, inputTable, _paramsVar,
+                     _texturesVar, _returnVar->drawable->parameters, _returnVar->shaderParameters);
 
     if (_transformVar.isVariable()) {
       _returnVar->transformVar = (SHVar &)_transformVar;
