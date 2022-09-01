@@ -5,11 +5,6 @@
 #include <map>
 
 namespace gfx {
-
-struct InputTextureFormat {
-  uint8_t pixelSize;
-};
-
 typedef std::map<WGPUTextureFormat, InputTextureFormat> InputTextureFormatMap;
 static const InputTextureFormatMap &getInputTextureFormatMap() {
   static InputTextureFormatMap instance = []() {
@@ -61,6 +56,15 @@ static const InputTextureFormatMap &getInputTextureFormatMap() {
   return instance;
 }
 
+const InputTextureFormat &Texture::getInputFormat(WGPUTextureFormat pixelFormat) {
+  auto &inputTextureFormatMap = getInputTextureFormatMap();
+  auto it = inputTextureFormatMap.find(pixelFormat);
+  if (it == inputTextureFormatMap.end()) {
+    throw formatException("Unsupported texture input format", magic_enum::enum_name(pixelFormat));
+  }
+  return it->second;
+}
+
 void Texture::init(const TextureFormat &format, int2 resolution, const SamplerState &samplerState,
                    const ImmutableSharedBuffer &data) {
   contextData.reset();
@@ -109,13 +113,7 @@ static WGPUTextureView createView(const TextureFormat &format, WGPUTexture textu
 
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
-  auto &inputTextureFormatMap = getInputTextureFormatMap();
-  auto it = inputTextureFormatMap.find(format.pixelFormat);
-  if (it == inputTextureFormatMap.end()) {
-    throw formatException("Unsupported pixel format for texture initialization", magic_enum::enum_name(format.pixelFormat));
-  }
-
-  const InputTextureFormat &inputFormat = it->second;
+  const InputTextureFormat &inputFormat = Texture::getInputFormat(format.pixelFormat);
   uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
 
   WGPUImageCopyTexture dst{

@@ -23,6 +23,10 @@ struct BaseColor {
     feature->shaderParams.emplace_back("baseColor", float4(1, 1, 1, 1));
     feature->textureParams.emplace_back("baseColor");
 
+    feature->state.set_blend(BlendState{
+        .color = BlendComponent::Alpha,
+    });
+
     const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
 
     auto readColorParam = makeCompoundBlock(ReadBuffer("baseColor", FieldTypes::Float4));

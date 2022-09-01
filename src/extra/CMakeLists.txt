@@ -10,6 +10,7 @@ set(extra_SOURCES
   gfx/shader/wgsl.cpp
   gfx/gltf.cpp
   gfx/camera.cpp
+  gfx/texture.cpp
   gui.cpp
   rust_interop.cpp
   gizmos/context.cpp

@@ -4,6 +4,7 @@
 #include "linalg_shim.hpp"
 #include "material_utils.hpp"
 #include <gfx/material.hpp>
+#include <params.hpp>
 
 using namespace shards;
 namespace gfx {
@@ -12,6 +13,11 @@ void SHShaderParameters::updateVariables(MaterialParameters &output) {
     ParamVariant variant;
     varToParam(param.var.get(), variant);
     output.set(param.key, variant);
+  }
+  for (SHBasicShaderParameter &texture : textures) {
+    TexturePtr variant;
+    varToTexture(texture.var.get(), variant);
+    output.set(texture.key, variant);
   }
 }
 
@@ -23,40 +29,19 @@ struct MaterialShard {
 
   static inline std::map<std::string, Type> InputTableTypes{};
 
-  static inline Parameters params{
-      {"Params",
-       SHCCSTR("The params variable to use"),
-       {Type::TableOf(Types::ShaderParamVarTypes), Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
-  };
-
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Material; }
-  static SHParametersInfo parameters() { return params; }
 
-  ParamVar _paramsVar{};
+  PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
+                 {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
+                  Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))});
+  PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
+                 {CoreInfo::NoneType, Type::TableOf(Types::TextureTypes),
+                  Type::VariableOf(Type::TableOf(Types::TextureVarTypes))});
+  PARAM_IMPL(MaterialShard, PARAM_IMPL_FOR(_paramsVar), PARAM_IMPL_FOR(_texturesVar));
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _paramsVar = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _paramsVar;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void warmup(SHContext *context) { _paramsVar.warmup(context); }
-
-  void cleanup() { _paramsVar.cleanup(); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
 
   void validateInputTableType(SHTypeInfo &type) {
     auto &inputTable = type.table;
@@ -82,14 +67,8 @@ struct MaterialShard {
     SHMaterial *shMaterial = Types::MaterialObjectVar.New();
     shMaterial->material = std::make_shared<Material>();
 
-    SHVar paramsVar{};
-    if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
-      initConstantShaderParams(shMaterial->material->parameters, paramsVar.payload.tableValue);
-    }
-
-    if (_paramsVar->valueType != SHType::None) {
-      initReferencedShaderParams(shContext, shMaterial->shaderParameters, _paramsVar.get().payload.tableValue);
-    }
+    initShaderParams(shContext, shMaterial->material->parameters, shMaterial->shaderParameters, inputTable, _paramsVar,
+                     _texturesVar);
 
     return Types::MaterialObjectVar.Get(shMaterial);
   }

@@ -3,6 +3,7 @@
 
 #include "gfx/error_utils.hpp"
 #include "shards_types.hpp"
+#include "shards_utils.hpp"
 #include <foundation.hpp>
 #include <gfx/material.hpp>
 #include <gfx/params.hpp>
@@ -11,6 +12,25 @@
 #include <spdlog/spdlog.h>
 
 namespace gfx {
+inline void varToTexture(const SHVar &var, TexturePtr &outVariant) {
+  switch (var.valueType) {
+  case SHType::Object: {
+    shards::Type type =
+        SHTypeInfo{SHType::Object, {.object = {.vendorId = var.payload.objectVendorId, .typeId = var.payload.objectTypeId}}};
+
+    if (type == Types::Texture) {
+      auto ptr = reinterpret_cast<TexturePtr *>(var.payload.objectValue);
+      assert(ptr);
+      outVariant = *ptr;
+    } else {
+      throw formatException("Expected texture object");
+    }
+  } break;
+  default:
+    throw formatException("Value type {} can not be converted to TextureVariant", magic_enum::enum_name(var.valueType));
+  };
+}
+
 inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
   switch (var.valueType) {
   case SHType::Float: {
@@ -76,15 +96,46 @@ inline void initConstantShaderParams(MaterialParameters &out, SHTable &paramsTab
   }
 }
 
-inline void initReferencedShaderParams(SHContext *shContext, SHShaderParameters &shShaderParameters, SHTable &paramsTable) {
+inline void initConstantTextureParams(MaterialParameters &out, SHTable &texturesTable) {
   SHTableIterator it{};
   SHString key{};
   SHVar value{};
-  paramsTable.api->tableGetIterator(paramsTable, &it);
-  while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
+  texturesTable.api->tableGetIterator(texturesTable, &it);
+  while (texturesTable.api->tableNext(texturesTable, &it, &key, &value)) {
+    TexturePtr texture;
+    varToTexture(value, texture);
+    out.set(key, texture);
+  }
+}
+
+inline void initReferencedShaderParams(SHContext *shContext, std::vector<SHBasicShaderParameter> &outParams, SHTable &inTable) {
+  SHTableIterator it{};
+  SHString key{};
+  SHVar value{};
+  inTable.api->tableGetIterator(inTable, &it);
+  while (inTable.api->tableNext(inTable, &it, &key, &value)) {
     shards::ParamVar paramVar(value);
     paramVar.warmup(shContext);
-    shShaderParameters.basic.emplace_back(key, std::move(paramVar));
+    outParams.emplace_back(key, std::move(paramVar));
+  }
+}
+
+inline void initShaderParams(SHContext *shContext, MaterialParameters &outParams, SHShaderParameters &outSHParams,
+                             const SHTable &inputTable, shards::ParamVar &inParams, shards::ParamVar &inTextures) {
+  SHVar paramsVar{};
+  if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
+    initConstantShaderParams(outParams, paramsVar.payload.tableValue);
+  }
+  if (inParams->valueType != SHType::None) {
+    initReferencedShaderParams(shContext, outSHParams.basic, inParams.get().payload.tableValue);
+  }
+
+  SHVar texturesVar{};
+  if (getFromTable(shContext, inputTable, "Textures", texturesVar)) {
+    initConstantTextureParams(outParams, texturesVar.payload.tableValue);
+  }
+  if (inTextures->valueType != SHType::None) {
+    initReferencedShaderParams(shContext, outSHParams.textures, inTextures.get().payload.tableValue);
   }
 }
 
