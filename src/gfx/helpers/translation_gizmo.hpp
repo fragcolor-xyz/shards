@@ -101,7 +101,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 loc = extractTranslation(handle.selectionBoxTransform);
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
       float4 axisColor = axisColors[i];
-      axisColor.xyz() *= hovered ? 1.1f : 0.9f;
+      axisColor = float4(axisColor.xyz() * (hovered ? 1.1f : 0.9f), 1.0f);
       renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
                          axisColor);
     }

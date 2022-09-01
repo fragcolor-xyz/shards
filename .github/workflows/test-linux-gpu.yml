@@ -125,5 +125,5 @@ jobs:
         if: failure()
         with:
           name: shards-linux-gpu rejected test data
-          path: src/gfx/tests/data/default/rejected
+          path: src/gfx/tests/data/github-linux/rejected
           if-no-files-found: ignore

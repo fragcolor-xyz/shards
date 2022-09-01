@@ -7,6 +7,7 @@
 #include <gfx/mesh.hpp>
 #include <linalg_shim.hpp>
 #include <magic_enum.hpp>
+#include <params.hpp>
 
 using namespace shards;
 namespace gfx {
@@ -34,26 +35,22 @@ struct DrawableShard {
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
   static inline std::map<std::string, Type> InputTableTypes = {
-      std::make_pair("Transform", CoreInfo::Float4x4Type),
-      std::make_pair("Mesh", Types::Mesh),
-      std::make_pair("Params", Types::ShaderParamTable),
+      std::make_pair("Transform", CoreInfo::Float4x4Type), std::make_pair("Mesh", Types::Mesh),
+      std::make_pair("Params", Types::ShaderParamTable),   std::make_pair("Textures", Types::TexturesTable),
       std::make_pair("Material", Types::Material),
   };
 
-  static inline Parameters params{
-      {"Transform", SHCCSTR("The transform variable to use (Optional)"), {CoreInfo::NoneType, TransformVarType}},
-      {"Params",
-       SHCCSTR("The params variable to use (Optional)"),
-       {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
-        Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))}},
-  };
+  PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use (Optional)", {CoreInfo::NoneType, TransformVarType});
+  PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
+                 {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
+                  Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))});
+  PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
+                 {CoreInfo::NoneType, Type::TableOf(Types::TextureTypes),
+                  Type::VariableOf(Type::TableOf(Types::TextureVarTypes))});
+  PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_paramsVar), PARAM_IMPL_FOR(_texturesVar));
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
-  static SHParametersInfo parameters() { return params; }
-
-  ParamVar _transformVar{};
-  ParamVar _paramsVar{};
   SHDrawable *_returnVar{};
 
   void releaseReturnVar() {
@@ -67,39 +64,22 @@ struct DrawableShard {
     _returnVar = Types::DrawableObjectVar.New();
   }
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _transformVar = value;
-      break;
-    case 1:
-      _paramsVar = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _transformVar;
-    case 1:
-      return _paramsVar;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void warmup(SHContext *context) {
-    _transformVar.warmup(context);
-    _paramsVar.warmup(context);
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   void cleanup() {
-    _transformVar.cleanup();
-    _paramsVar.cleanup();
+    PARAM_CLEANUP();
     releaseReturnVar();
+  }
+
+  void validateTexturesInputType(SHTypeInfo &type) {
+    if (type.basicType != SHType::Table)
+      throw ComposeError("Textures should be a table");
+
+    auto &tableTypes = type.table.types;
+    for (auto &type : tableTypes) {
+      if (type != Types::Texture)
+        throw ComposeError("Unexpected type in Textures table");
+    }
   }
 
   void validateInputTableType(SHTypeInfo &type) {
@@ -111,6 +91,8 @@ struct DrawableShard {
 
       if (strcmp(key, "Params") == 0) {
         validateShaderParamsType(type);
+      } else if (strcmp(key, "Textures") == 0) {
+        validateTexturesInputType(type);
       } else {
         auto expectedTypeIt = InputTableTypes.find(key);
         if (expectedTypeIt == InputTableTypes.end()) {
@@ -161,14 +143,8 @@ struct DrawableShard {
       _returnVar->drawable->material = shMaterial->material;
     }
 
-    SHVar paramsVar{};
-    if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
-      initConstantShaderParams(_returnVar->drawable->parameters, paramsVar.payload.tableValue);
-    }
-
-    if (_paramsVar->valueType != SHType::None) {
-      initReferencedShaderParams(shContext, _returnVar->shaderParameters, _paramsVar.get().payload.tableValue);
-    }
+    initShaderParams(shContext, inputTable, _paramsVar,
+                     _texturesVar, _returnVar->drawable->parameters, _returnVar->shaderParameters);
 
     if (_transformVar.isVariable()) {
       _returnVar->transformVar = (SHVar &)_transformVar;
