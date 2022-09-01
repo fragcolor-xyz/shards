@@ -145,6 +145,7 @@ struct Container {
   ENUM('_e8', "ColorMask", ColorMask, ColorMask_)
 
   enum class TextureType_ {
+    Default = 0,
     Int,
     UInt,
     UNorm,
