@@ -15,9 +15,7 @@ namespace gfx {
 inline void varToTexture(const SHVar &var, TexturePtr &outVariant) {
   switch (var.valueType) {
   case SHType::Object: {
-    shards::Type type =
-        SHTypeInfo{SHType::Object, {.object = {.vendorId = var.payload.objectVendorId, .typeId = var.payload.objectTypeId}}};
-
+    shards::Type type = shards::Type::Object(var.payload.objectVendorId, var.payload.objectTypeId);
     if (type == Types::Texture) {
       auto ptr = reinterpret_cast<TexturePtr *>(var.payload.objectValue);
       assert(ptr);
