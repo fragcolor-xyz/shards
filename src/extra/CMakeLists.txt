@@ -9,11 +9,15 @@ set(extra_SOURCES
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
   gfx/gltf.cpp
+  gfx/camera.cpp
   gui.cpp
   rust_interop.cpp
+  gizmos/context.cpp
+  gizmos/gizmos.cpp
+  gizmos/highlight.cpp
+  gizmos/shapes.cpp
   imgui.cpp
   # xr.cpp
-  # gizmo.cpp
   dsp.cpp
   inputs.cpp
   snappy.cpp

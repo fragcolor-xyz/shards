@@ -11,12 +11,21 @@ on:
         options:
           - Debug
           - Release
+      clean-workspace:
+        description: Remove the workspace folder before checking out?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       build-type:
         required: true
         default: Debug
         type: string
+      clean-workspace:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   #
@@ -30,6 +39,11 @@ jobs:
         id: setup
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+      - name: Clean workspace
+        if: ${{ github.event.inputs.clean-workspace == 'true' || inputs.clean-workspace == 'true' }}
+        run: |
+            rm -rf $GITHUB_WORKSPACE
+            mkdir $GITHUB_WORKSPACE
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -58,7 +72,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           echo "Running graphics library tests"
-          build/test-gfx -r JUnit --out test-gfx.xml
+          GFX_TEST_PLATFORM_ID="github-linux" build/test-gfx -r JUnit --out test-gfx.xml
 
           echo "\n"
           echo "Running graphics test scripts"

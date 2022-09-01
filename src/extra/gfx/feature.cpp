@@ -7,6 +7,7 @@
 #include <gfx/features/base_color.hpp>
 #include <gfx/features/debug_color.hpp>
 #include <gfx/features/transform.hpp>
+#include <gfx/features/wireframe.hpp>
 #include <linalg_shim.hpp>
 #include <magic_enum.hpp>
 #include <shards/shared.hpp>
@@ -21,6 +22,7 @@ struct BuiltinFeatureShard {
     Transform,
     BaseColor,
     VertexColorFromNormal,
+    Wireframe,
   };
 
   static constexpr uint32_t IdTypeId = 'feid';
@@ -71,6 +73,9 @@ struct BuiltinFeatureShard {
       break;
     case Id::VertexColorFromNormal:
       *_feature = features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex);
+      break;
+    case Id::Wireframe:
+      *_feature = features::Wireframe::create();
       break;
     }
   }

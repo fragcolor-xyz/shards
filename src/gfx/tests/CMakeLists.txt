@@ -5,7 +5,7 @@ if(EMSCRIPTEN)
 endif()
 
 add_executable(gfx-sandbox sandbox.cpp)
-target_link_libraries(gfx-sandbox gfx gfx-texture-file gfx-imgui gfx-gltf)
+target_link_libraries(gfx-sandbox gfx gfx-texture-file gfx-imgui gfx-gltf shards-logging)
 
 add_executable(test-gfx
   main.cpp
@@ -17,6 +17,7 @@ add_executable(test-gfx
   test_context_data.cpp
   test_shader.cpp
   test_gltf.cpp
+  test_helpers.cpp
 )
 
 set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)
