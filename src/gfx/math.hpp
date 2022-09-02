@@ -40,7 +40,8 @@ template <size_t Alignment> inline constexpr size_t alignTo(size_t size) {
   }
 }
 
-template <typename T> inline bool isRoughlyEqual(T val, T target, T tolerance = 0.05f) {
+template <typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
+inline bool isRoughlyEqual(T val, T target, T tolerance = T(0.05)) {
   T delta = val - target;
   return delta > -tolerance && delta < tolerance;
 }
