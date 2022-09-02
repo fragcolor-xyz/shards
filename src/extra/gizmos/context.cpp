@@ -74,10 +74,9 @@ struct GizmosContextShard : public gfx::BaseConsumer {
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
         _cursorPosition.x = event.button.x;
         _cursorPosition.y = event.button.y;
-        if (event.button.state == SDL_PRESSED)
-          _mouseButtonState |= SDL_BUTTON(event.button.button);
-        else
-          _mouseButtonState &= ~SDL_BUTTON(event.button.button);
+        if (event.button.button == SDL_BUTTON_LEFT) {
+          _mouseButtonState = event.button.state == SDL_PRESSED;
+        }
       }
     }
   }
