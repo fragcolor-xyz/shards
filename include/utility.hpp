@@ -284,6 +284,10 @@ public:
     return *_cp;
   }
 
+  const SHVar &get() const {
+    return const_cast<TParamVar*>(this)->get();
+  }
+
   bool isVariable() { return _v.valueType == ContextVar; }
 
   const char *variableName() {

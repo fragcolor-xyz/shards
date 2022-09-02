@@ -45,6 +45,10 @@ struct TextureFormat {
   bool hasMips() { return TextureFormatFlagsContains(flags, TextureFormatFlags::AutoGenerateMips); }
 };
 
+struct InputTextureFormat {
+  uint8_t pixelSize;
+};
+
 struct TextureContextData : public ContextData {
   TextureFormat format;
   WGPUTexture texture = nullptr;
@@ -71,9 +75,12 @@ private:
 public:
   const TextureFormat &getFormat() const { return format; }
 
+  static const InputTextureFormat &getInputFormat(WGPUTextureFormat pixelFormat);
+
   // Creates a texture
   void init(const TextureFormat &format, int2 resolution, const SamplerState &samplerState = SamplerState(),
             const ImmutableSharedBuffer &data = ImmutableSharedBuffer());
+
 
   void setSamplerState(const SamplerState &samplerState);
   ImmutableSharedBuffer getData() { return data; }

@@ -106,6 +106,12 @@ struct Type {
     return res;
   }
 
+  static Type Object(int32_t vendorId, int32_t typeId) {
+    Type res;
+    res._type = {SHType::Object, {.object = {.vendorId = vendorId, .typeId = typeId}}};
+    return res;
+  }
+
   static Type TableOf(SHTypesInfo types) {
     Type res;
     res._type = {SHType::Table, {.table = {.types = types}}};

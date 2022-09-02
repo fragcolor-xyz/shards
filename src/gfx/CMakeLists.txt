@@ -17,6 +17,10 @@ add_library(gfx
   utils.cpp
   feature.cpp
   texture.cpp
+  helpers/wireframe.cpp
+  helpers/shapes.cpp
+  helpers/gizmo_input.cpp
+  helpers/gizmos.cpp
   shader/generator.cpp
   shader/blocks.cpp
   shader/types.cpp

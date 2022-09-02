@@ -22,6 +22,7 @@ struct SHBasicShaderParameter {
 struct MaterialParameters;
 struct SHShaderParameters {
   std::vector<SHBasicShaderParameter> basic;
+  std::vector<SHBasicShaderParameter> textures;
 
   void updateVariables(MaterialParameters &output);
 };
@@ -66,22 +67,6 @@ namespace detail {
 using namespace shards;
 // NOTE: This needs to be a struct ensure correct initialization order under clang
 struct Container {
-  static inline Types ShaderParamTypes{{
-      CoreInfo::Float4x4Type,
-      CoreInfo::Float4Type,
-      CoreInfo::Float3Type,
-      CoreInfo::Float2Type,
-      CoreInfo::FloatType,
-  }};
-  static inline Types ShaderParamVarTypes{{
-      Type::VariableOf(CoreInfo::Float4x4Type),
-      Type::VariableOf(CoreInfo::Float4Type),
-      Type::VariableOf(CoreInfo::Float3Type),
-      Type::VariableOf(CoreInfo::Float2Type),
-      Type::VariableOf(CoreInfo::FloatType),
-  }};
-  static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
-
 #define SH_CONCAT(_a, _b) _a##_b
 #define ENUM(_id, _displayName, _definedAs, _type)                                     \
   static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);             \
@@ -97,6 +82,7 @@ struct Container {
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
+  OBJECT('tex_', "GFX.Texture", Texture, TexturePtr)
 
   ENUM('_e0', "WindingOrder", WindingOrder, gfx::WindingOrder)
   ENUM('_e1', "ShaderFieldBaseType", ShaderFieldBaseType, gfx::ShaderFieldBaseType)
@@ -158,6 +144,17 @@ struct Container {
   };
   ENUM('_e8', "ColorMask", ColorMask, ColorMask_)
 
+  enum class TextureType_ {
+    Default = 0,
+    Int,
+    UInt,
+    UNorm,
+    UNormSRGB,
+    SNorm,
+    Float,
+  };
+  ENUM('_e9', "TextureType", TextureType, TextureType_)
+
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
 
   OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
@@ -167,6 +164,37 @@ struct Container {
   static inline Type ViewSeq = Type::SeqOf(View);
 
   OBJECT('mat_', "GFX.Material", Material, SHMaterial)
+
+  static inline Types ShaderParamTypes{{
+      CoreInfo::Float4x4Type,
+      CoreInfo::Float4Type,
+      CoreInfo::Float3Type,
+      CoreInfo::Float2Type,
+      CoreInfo::FloatType,
+  }};
+
+  static inline Types ShaderParamVarTypes{{
+      Type::VariableOf(CoreInfo::Float4x4Type),
+      Type::VariableOf(CoreInfo::Float4Type),
+      Type::VariableOf(CoreInfo::Float3Type),
+      Type::VariableOf(CoreInfo::Float2Type),
+      Type::VariableOf(CoreInfo::FloatType),
+  }};
+
+  // Valid types for shader :Params
+  static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
+
+  static inline Types TextureTypes = {{
+      TextureType,
+  }};
+
+  static inline Types TextureVarTypes = {{
+      Type::VariableOf(TextureType),
+  }};
+
+  // Valid types for shader :Textures
+  static inline Type TexturesTable = Type::TableOf(TextureTypes);
+
 #undef ENUM
 #undef OBJECT
 #undef SH_CONCAT

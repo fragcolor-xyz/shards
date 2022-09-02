@@ -10,7 +10,7 @@
 namespace shards {
 
 #define PARAM(_type, _name, _displayName, _help, ...)                                             \
-  static inline ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
+  static inline shards::ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
   _type _name;
 
 #define PARAM_VAR(_name, _displayName, _help, ...) PARAM(Var, _name, _displayName, _help, __VA_ARGS__)
@@ -19,7 +19,7 @@ namespace shards {
 struct IterableParam {
   // Return address of param inside shard
   void *(*resolveParamInShard)(void *shardPtr);
-  const ParameterInfo *paramInfo;
+  const shards::ParameterInfo *paramInfo;
 
   void (*setParam)(void *varPtr, SHVar var){};
   SHVar (*getParam)(void *varPtr){};

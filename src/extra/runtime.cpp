@@ -46,6 +46,10 @@ namespace Gui {
 extern void registerShards();
 }
 
+namespace Gizmos {
+extern void registerShards();
+}
+
 void shInitExtras() {
 #if SHARDS_WITH_RUST_SHARDS
   registerRustShards(shardsInterface(SHARDS_CURRENT_ABI));
@@ -56,6 +60,7 @@ void shInitExtras() {
 
   gfx::registerShards();
   shards::ImGui::registerShards();
+  Gizmos::registerShards();
   Inputs::registerShards();
   Audio::registerShards();
   DSP::registerShards();

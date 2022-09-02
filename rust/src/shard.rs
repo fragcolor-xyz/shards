@@ -446,3 +446,76 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
     error: None,
   }
 }
+
+/// Declares a function as an override to [`Shard::activate`].
+///
+/// This macro is meant to be invoked from [`Shard::compose`].
+///
+/// # Examples
+///
+/// ```ignore (only-for-syntax-highlight)
+/// impl Shard for MyShard {
+///   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+///     decl_override_activate! {
+///       data.activate = MyShard::my_activate_override;
+///     }
+///   }
+/// }
+/// ```
+///
+/// See also: [`impl_override_activate!`]
+macro_rules! decl_override_activate {
+  (
+    $data:ident.activate = $shard_name:ident::$override_name:ident;
+  ) => {
+    unsafe {
+      (*$data.shard).activate = Some($shard_name::$override_name);
+    }
+  };
+}
+
+/// Implements an override of [`Shard::activate`] that can be called from C/C++.
+///
+/// This macro is meant to be invoked from the custom implementation of a [`Shard`].
+///
+/// # Examples
+///
+/// ```ignore (only-for-syntax-highlight)
+/// impl MyShard {
+///   fn activateOverride() {
+///     todo!()
+///   }
+///
+///   impl_override_activate! {
+///     extern "C" fn my_activate_override() -> Var {
+///       MyShard::activateOverride()
+///     }
+///   }
+/// }
+/// ```
+///
+/// See also: [`decl_override_activate!`]
+macro_rules! impl_override_activate {
+  (
+    $(#[$meta:meta])*
+    extern "C" fn $override_name:ident() -> Var {
+      $shard_name:ident::$override_impl:ident()
+    }
+  ) => {
+    $(#[$meta])*
+    unsafe extern "C" fn $override_name(
+      arg1: *mut $crate::shardsc::Shard,
+      arg2: *mut Context,
+      arg3: *const Var,
+    ) -> Var {
+      let blk = arg1 as *mut $crate::shard::ShardWrapper<$shard_name>;
+      match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
+        Ok(value) => value,
+        Err(error) => {
+          $crate::core::abortWire(&(*arg2), error);
+          Var::default()
+        }
+      }
+    }
+  };
+}

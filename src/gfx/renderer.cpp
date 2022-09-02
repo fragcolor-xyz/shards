@@ -500,7 +500,7 @@ struct RendererImpl final : public ContextData {
 
     float4x4 viewProjMatrix = linalg::mul(viewData.projectionMatrix, view.view);
 
-    size_t numDrawables = cachedPipeline.drawables.size();
+    size_t numDrawables = cachedPipeline.drawablesSorted.size();
     for (size_t i = 0; i < numDrawables; i++) {
       SortableDrawable &sortable = cachedPipeline.drawablesSorted[i];
       float4 projected = mul(viewProjMatrix, mul(sortable.drawable->transform, float4(0, 0, 0, 1)));
@@ -666,7 +666,7 @@ struct RendererImpl final : public ContextData {
 
     WGPURenderPassDepthStencilAttachment depthAttach = {};
     depthAttach.depthClearValue = 1.0f;
-    if (!depthStencilWrittenTo) {
+    if (!depthStencilWrittenTo || step.forceDepthClear) {
       depthAttach.depthLoadOp = WGPULoadOp_Clear;
       depthAttach.depthStoreOp = WGPUStoreOp_Store;
       depthAttach.stencilLoadOp = WGPULoadOp_Undefined;

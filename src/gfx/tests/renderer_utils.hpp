@@ -9,6 +9,7 @@
 #include <gfx/mesh.hpp>
 #include <gfx/pipeline_step.hpp>
 #include <gfx/view.hpp>
+#include <gfx/mesh_utils.hpp>
 
 namespace gfx {
 struct VertexP {
@@ -54,16 +55,6 @@ template <typename T> std::vector<T> convertVertices(const std::vector<geom::Ver
   return result;
 }
 
-template <typename T> MeshPtr createMesh(const std::vector<T> &verts, const std::vector<geom::GeneratorBase::index_t> &indices) {
-  MeshPtr mesh = std::make_shared<Mesh>();
-  MeshFormat format{
-      .vertexAttributes = T::getAttributes(),
-  };
-  mesh->update(format, verts.data(), verts.size() * sizeof(T), indices.data(),
-               indices.size() * sizeof(geom::GeneratorBase::index_t));
-  return mesh;
-}
-
 inline MeshPtr createSphereMesh() {
   geom::SphereGenerator gen;
   gen.generate();
@@ -72,6 +63,12 @@ inline MeshPtr createSphereMesh() {
 
 inline MeshPtr createPlaneMesh() {
   geom::PlaneGenerator gen;
+  gen.generate();
+  return createMesh(gen.vertices, gen.indices);
+}
+
+inline MeshPtr createCubeMesh() {
+  geom::CubeGenerator gen;
   gen.generate();
   return createMesh(gen.vertices, gen.indices);
 }

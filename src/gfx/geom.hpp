@@ -67,6 +67,21 @@ struct CubeGenerator : public GeneratorBase {
   void generate();
 };
 
+struct CylinderGenerator : public GeneratorBase {
+  float radiusTop = 1;
+  float radiusBottom = 1;
+  float height = 1;
+
+  size_t radialSegments = 8;
+  size_t heightSegments = 1;
+
+  bool openEnded = false;
+  float thetaStart = 0.0f;
+  float thetaLength = pi2;
+
+  void generate();
+};
+
 } // namespace geom
 } // namespace gfx
 
