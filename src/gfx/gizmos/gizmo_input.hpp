@@ -62,7 +62,7 @@ public:
 
   // Currently hovered handle
   // will be locked to the held handle while the interaction button is pressed
-  Handle *hovered{};
+  Handle *hovering{};
 
   // Information about handle that was hit by cursor ray
   float3 hitLocation;

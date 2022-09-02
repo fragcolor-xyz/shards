@@ -85,8 +85,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
-      bool hovered = inputContext.hovered && inputContext.hovered == &handle;
-      if (hovered) {
+      bool hovering = inputContext.hovering && inputContext.hovering == &handle;
+      if (hovering) {
         color = float4(.5, 1., .5, 1.);
         thickness = 2;
       }
@@ -101,7 +101,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 loc = extractTranslation(handle.selectionBoxTransform);
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
       float4 axisColor = axisColors[i];
-      axisColor = float4(axisColor.xyz() * (hovered ? 1.1f : 0.9f), 1.0f);
+      axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
                          axisColor);
     }
