@@ -8,18 +8,18 @@
 namespace shards {
 namespace Gizmos {
 using namespace gfx;
-struct HelperContextShard : public gfx::BaseConsumer {
+struct GizmosContextShard : public gfx::BaseConsumer {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("Provides a context for rendering helpers"); }
+  static SHOptionalString help() { return SHCCSTR("Provides a context for rendering gizmos"); }
 
   PARAM_PARAMVAR(_view, "View",
-                 "The view used to render the helpers."
+                 "The view used to render the gizmos."
                  "When drawing over a scene, the view should be the same",
                  {Type::VariableOf(gfx::Types::View)});
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into", {Type::VariableOf(gfx::Types::DrawQueue)});
   PARAM(ShardsVar, _content, "Content", "Content", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(HelperContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
+  PARAM_IMPL(GizmosContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
   Context _context{};
   SHVar *_contextVarRef{};
@@ -121,7 +121,7 @@ extern void registerHighlightShards();
 extern void registerGizmoShards();
 extern void registerShapeShards();
 void registerShards() {
-  REGISTER_SHARD("Gizmos.Context", HelperContextShard);
+  REGISTER_SHARD("Gizmos.Context", GizmosContextShard);
   registerHighlightShards();
   registerGizmoShards();
   registerShapeShards();

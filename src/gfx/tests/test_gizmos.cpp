@@ -9,14 +9,14 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
-#include <gfx/helpers/shapes.hpp>
-#include <gfx/helpers/wireframe.hpp>
+#include <gfx/gizmos/shapes.hpp>
+#include <gfx/gizmos/wireframe.hpp>
 
 using namespace gfx;
 
 static constexpr float comparisonTolerance = 0.05f;
 
-TEST_CASE("Wireframe", "[Editor]") {
+TEST_CASE("Wireframe", "[Gizmos]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -77,7 +77,7 @@ TEST_CASE("Wireframe", "[Editor]") {
   CHECK(testRenderer->checkFrame("wireframe-backfaces", comparisonTolerance));
 }
 
-TEST_CASE("Helper lines", "[Editor]") {
+TEST_CASE("Helper lines", "[Gizmos]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -146,7 +146,7 @@ TEST_CASE("Helper lines", "[Editor]") {
   CHECK(testRenderer->checkFrame("helper_lines", comparisonTolerance));
 }
 
-TEST_CASE("Helper circles", "[Editor]") {
+TEST_CASE("Helper circles", "[Gizmos]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -189,7 +189,7 @@ TEST_CASE("Helper circles", "[Editor]") {
   CHECK(testRenderer->checkFrame("helper_circles", comparisonTolerance));
 }
 
-TEST_CASE("Helper rectangles", "[Editor]") {
+TEST_CASE("Helper rectangles", "[Gizmos]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -232,7 +232,7 @@ TEST_CASE("Helper rectangles", "[Editor]") {
   CHECK(testRenderer->checkFrame("helper_rectangles", comparisonTolerance));
 }
 
-TEST_CASE("Helper boxes", "[Editor]") {
+TEST_CASE("Helper boxes", "[Gizmos]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -277,7 +277,7 @@ TEST_CASE("Helper boxes", "[Editor]") {
   CHECK(testRenderer->checkFrame("helper_boxes", comparisonTolerance));
 }
 
-TEST_CASE("Gizmo handles", "[Editor]") {
+TEST_CASE("Gizmo handles", "[Gizmos]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 

@@ -14,8 +14,8 @@
 #include <gfx/fmt.hpp>
 #include <gfx/geom.hpp>
 #include <gfx/gltf/gltf.hpp>
-#include <gfx/helpers/shapes.hpp>
-#include <gfx/helpers/translation_gizmo.hpp>
+#include <gfx/gizmos/shapes.hpp>
+#include <gfx/gizmos/translation_gizmo.hpp>
 #include <gfx/imgui/imgui.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/loop.hpp>

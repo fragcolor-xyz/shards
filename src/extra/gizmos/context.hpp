@@ -5,8 +5,8 @@
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/fwd.hpp>
-#include <gfx/helpers/gizmos.hpp>
-#include <gfx/helpers/wireframe.hpp>
+#include <gfx/gizmos/gizmos.hpp>
+#include <gfx/gizmos/wireframe.hpp>
 
 namespace shards {
 // Shards for rendering visual helpers
