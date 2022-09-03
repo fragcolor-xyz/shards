@@ -29,7 +29,10 @@
           30)
   (Log)
   .baseImg
-  (ResizeImage 200 200)
-  (WritePNG "testResized.png")))
+  (ResizeImage :Width 200)
+  (WritePNG "testResized1.png")
+  .baseImg
+  (ResizeImage :Height 200)
+  (WritePNG "testResized2.png")))
 
 (run Root 0.1)
