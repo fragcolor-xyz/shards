@@ -341,6 +341,91 @@ struct LoadImage : public FileBase {
   }
 };
 
+struct BytesToImage {
+  LoadImage::BPP _bpp{LoadImage::BPP::u8};
+  SHVar _output{};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  static inline Parameters params{{{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {LoadImage::BPPEnumInfo}}}};
+
+  static SHParametersInfo parameters() { return params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _bpp = LoadImage::BPP(value.payload.enumValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var::Enum(_bpp, CoreCC, 'ibpp');
+    default:
+      throw ActivationError("Invalid parameter index");
+    }
+  }
+
+  void cleanup() {
+    if (_output.valueType == Image && _output.payload.imageValue.data) {
+      stbi_image_free(_output.payload.imageValue.data);
+      _output = Var::Empty;
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.valueType != SHType::Bytes)
+      throw ActivationError("Expected Bytes type.");
+
+    if (_output.valueType == Image && _output.payload.imageValue.data) {
+      stbi_image_free(_output.payload.imageValue.data);
+      _output = Var::Empty;
+    }
+
+    _output.valueType = Image;
+    int x, y, n;
+    if (_bpp == LoadImage::BPP::u8) {
+      _output.payload.imageValue.data =
+          (uint8_t *)stbi_load_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
+      if (!_output.payload.imageValue.data) {
+        throw ActivationError("Failed to load image file");
+      }
+    } else if (_bpp == LoadImage::BPP::u16) {
+      _output.payload.imageValue.data =
+          (uint8_t *)stbi_load_16_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
+      if (!_output.payload.imageValue.data) {
+        throw ActivationError("Failed to load image file");
+      }
+    } else {
+      _output.payload.imageValue.data =
+          (uint8_t *)stbi_loadf_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
+      if (!_output.payload.imageValue.data) {
+        throw ActivationError("Failed to load image file");
+      }
+    }
+    _output.payload.imageValue.width = uint16_t(x);
+    _output.payload.imageValue.height = uint16_t(y);
+    _output.payload.imageValue.channels = uint16_t(n);
+    switch (_bpp) {
+    case LoadImage::BPP::u16:
+      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
+      break;
+    case LoadImage::BPP::f32:
+      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
+      break;
+    default:
+      _output.payload.imageValue.flags = 0;
+      break;
+    }
+    return _output;
+  }
+};
+
 struct WritePNG : public FileBase {
   std::vector<uint8_t> _scratch;
 
@@ -431,5 +516,6 @@ void registerSerializationShards() {
   REGISTER_SHARD("WritePNG", WritePNG);
   REGISTER_SHARD("FromBytes", FromBytes);
   REGISTER_SHARD("ToBytes", ToBytes);
+  REGISTER_SHARD("BytesToImage", BytesToImage);
 }
 }; // namespace shards

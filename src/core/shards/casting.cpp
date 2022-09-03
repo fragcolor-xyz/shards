@@ -560,6 +560,25 @@ struct StringToBytes {
   }
 };
 
+struct ImageToBytes {
+  static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+      pixsize = 4;
+
+    int w = int(input.payload.imageValue.width);
+    int h = int(input.payload.imageValue.height);
+    int c = int(input.payload.imageValue.channels);
+
+    return Var((uint8_t *)input.payload.imageValue.data, uint32_t(w * h * c * pixsize));
+  }
+};
+
 void registerCastingShards() {
   REGISTER_SHARD("ToInt", ToNumber<Int>);
   REGISTER_SHARD("ToInt2", ToNumber<Int2>);
@@ -612,6 +631,7 @@ void registerCastingShards() {
   REGISTER_SHARD("BytesToString", BytesToString);
   REGISTER_SHARD("IntsToBytes", IntsToBytes);
   REGISTER_SHARD("StringToBytes", StringToBytes);
+  REGISTER_SHARD("ImageToBytes", ImageToBytes);
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_SHARD("ExpectFloatSeq", ExpectFloatSeq);
