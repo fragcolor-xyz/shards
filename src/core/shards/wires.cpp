@@ -777,7 +777,7 @@ struct BaseRunner : public WireBase {
       if (it != requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
           ctxVar.valueType = ContextVar;
           ctxVar.payload.stringValue = avail.name;
