@@ -2703,7 +2703,7 @@ void SHWire::warmup(SHContext *context) {
 
     SHLOG_DEBUG("Ran warmup on wire: {}", name);
   } else {
-    SHLOG_WARNING("Warmup already run on wire: {}, not supposed to happen!", name);
+    SHLOG_DEBUG("Warmup already run on wire: {}", name);
   }
 }
 
