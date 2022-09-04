@@ -428,9 +428,23 @@ struct BytesToImage {
 
 struct WritePNG : public FileBase {
   std::vector<uint8_t> _scratch;
+  std::vector<uint8_t> _output;
 
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  SHTypesInfo outputTypes() {
+    // If param is none we output the bytes directly
+    if (_filename->valueType == SHType::None) {
+      return CoreInfo::BytesType;
+    } else {
+      return CoreInfo::ImageType;
+    }
+  }
+
+  static void write_func(void *context, void *data, int size) {
+    auto self = reinterpret_cast<WritePNG *>(context);
+    self->_output.resize(size);
+    memcpy(self->_output.data(), data, size);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto pixsize = 1;
@@ -444,8 +458,10 @@ struct WritePNG : public FileBase {
     }
 
     std::string filename;
-    if (!getFilename(context, filename, false)) {
-      throw ActivationError("Path does not exist!");
+    if (_filename->valueType != SHType::None) {
+      if (!getFilename(context, filename, false)) {
+        throw ActivationError("Path does not exist!");
+      }
     }
 
     int w = int(input.payload.imageValue.width);
@@ -496,13 +512,25 @@ struct WritePNG : public FileBase {
         }
       }
 
-      // all done, write the file
-      if (0 == stbi_write_png(filename.c_str(), w, h, c, _scratch.data(), w * c))
-        throw ActivationError("Failed to write PNG file.");
+      // all done, write the file or buffer
+      if (!filename.empty()) {
+        if (0 == stbi_write_png(filename.c_str(), w, h, c, _scratch.data(), w * c))
+          throw ActivationError("Failed to write PNG file.");
+      } else {
+        if (0 == stbi_write_png_to_func(write_func, this, w, h, c, _scratch.data(), w * c))
+          throw ActivationError("Failed to write PNG file.");
+        return Var(_output.data(), _output.size());
+      }
     } else {
-      // just write the file in this case straight
-      if (0 == stbi_write_png(filename.c_str(), w, h, c, input.payload.imageValue.data, w * c))
-        throw ActivationError("Failed to write PNG file.");
+      // just write the file or buffer in this case straight
+      if (!filename.empty()) {
+        if (0 == stbi_write_png(filename.c_str(), w, h, c, input.payload.imageValue.data, w * c))
+          throw ActivationError("Failed to write PNG file.");
+      } else {
+        if (0 == stbi_write_png_to_func(write_func, this, w, h, c, input.payload.imageValue.data, w * c))
+          throw ActivationError("Failed to write PNG file.");
+        return Var(_output.data(), _output.size());
+      }
     }
 
     return input;
