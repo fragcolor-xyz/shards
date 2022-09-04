@@ -411,37 +411,37 @@
 (schedule Root test-capture)
 (run Root)
 
-;; (defloop inner-loop
-;;   .root-variable
-;;   (Log)
-;;   (Pause 2.0))
+(defloop inner-loop
+  .root-variable
+  (Log)
+  (Pause 2.0))
 
-;; (defwire fire-starter
-;;   (Spawn inner-loop))
+(defwire fire-starter
+  (Spawn inner-loop))
 
-;; (defloop main
-;;   (Setup "Hello" = .root-variable)
-;;   (Branch [fire-starter]))
+(defloop main
+  (Setup "Hello" = .root-variable)
+  (Branch [fire-starter]))
 
-;; (schedule Root main)
-;; (run Root 0.1 100)
+(schedule Root main)
+(run Root 0.1 100)
 
-;; (defloop test-worker-1
-;;   10
-;;   (Worker "worker1"
-;;           (-> (Log "Hello from worker1 on 1")
-;;               (Math.Add 1)))
-;;   (Assert.Is 11 true)
-;;   (Log "Done"))
+(defloop test-worker-1
+  10
+  (Worker "worker1"
+          (-> (Log "Hello from worker1 on 1")
+              (Math.Add 1)))
+  (Assert.Is 11 true)
+  (Log "Done"))
 
-;; (defloop test-worker-2
-;;   11
-;;   (Worker "worker1"
-;;           (-> (Log "Hello from worker1 on 2")
-;;               (Math.Add 2)))
-;;   (Assert.Is 13 true)
-;;   (Log "Done"))
+(defloop test-worker-2
+  11
+  (Worker "worker1"
+          (-> (Log "Hello from worker1 on 2")
+              (Math.Add 2)))
+  (Assert.Is 13 true)
+  (Log "Done"))
 
-;; (schedule Root test-worker-1)
-;; (schedule Root test-worker-2)
-;; (run Root 0.1 20)
+(schedule Root test-worker-1)
+(schedule Root test-worker-2)
+(run Root 0.1 20)
