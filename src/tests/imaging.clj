@@ -35,6 +35,7 @@
   (ResizeImage :Width 0 :Height 200)
   (WritePNG "testResized2.png")
   (WritePNG) (ExpectBytes) ;
+  (BytesToImage) (ImageToBytes) (ExpectBytes) ;
   ))
 
 (run Root 0.1)
