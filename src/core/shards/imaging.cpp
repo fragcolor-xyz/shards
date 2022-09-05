@@ -77,11 +77,7 @@ struct Convolve {
     int32_t h = int32_t(input.payload.imageValue.height);
     int32_t c = int32_t(input.payload.imageValue.channels);
 
-    auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(input);
 
     _bytes.resize(_kernel * _kernel * c * pixsize);
 
@@ -222,28 +218,34 @@ struct Resize {
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
-  static inline Parameters _params{{"Width", SHCCSTR("The target width."), {CoreInfo::IntType}},
-                                   {"Height", SHCCSTR("How target height."), {CoreInfo::IntType}}};
+  static inline Parameters _params{{"Width", SHCCSTR("The target width."), CoreInfo::IntOrIntVar},
+                                   {"Height", SHCCSTR("How target height."), CoreInfo::IntOrIntVar}};
 
   static SHParametersInfo parameters() { return _params; }
 
   SHVar getParam(int index) {
     if (index == 0)
-      return Var(int64_t(_width));
+      return _width;
     else
-      return Var(int64_t(_height));
+      return _height;
   }
 
   void setParam(int index, const SHVar &value) {
     if (index == 0) {
-      _width = int32_t(value.payload.intValue);
+      _width = value;
     } else {
-      _height = int32_t(value.payload.intValue);
+      _height = value;
     }
   }
 
   void warmup(SHContext *context) {
-    _bytes.resize(_width * _height * 4); // assume max 4 channels
+    _width.warmup(context);
+    _height.warmup(context);
+  }
+
+  void cleanup() {
+    _width.cleanup();
+    _height.cleanup();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -251,50 +253,53 @@ struct Resize {
     int h = uint32_t(input.payload.imageValue.height);
     int c = uint32_t(input.payload.imageValue.channels);
 
-    auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    int width = int(_width.get().payload.intValue);
+    int height = int(_height.get().payload.intValue);
+    if (width == 0) {
+      width = int(float(w) * float(height) / float(h));
+    } else if (height == 0) {
+      height = int(float(h) * float(width) / float(w));
+    }
 
-    _bytes.resize(_width * _height * c * pixsize);
+    auto pixsize = getPixelSize(input);
+
+    _bytes.resize(width * height * c * pixsize);
 
     int flags = 0;
     if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
       flags = STBIR_FLAG_ALPHA_PREMULTIPLIED;
 
     if (pixsize == 1) {
-      auto res = stbir_resize_uint8_generic(input.payload.imageValue.data, w, h, w * c, &_bytes.front(), _width, _height,
-                                            _width * c, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
+      auto res = stbir_resize_uint8_generic(input.payload.imageValue.data, w, h, w * c, &_bytes.front(), width, height, width * c,
+                                            c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO,
                                             STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     } else if (pixsize == 2) {
-      auto res =
-          stbir_resize_uint16_generic((uint16_t *)input.payload.imageValue.data, w, h, w * c * 2, (uint16_t *)&_bytes.front(),
-                                      _width, _height, _width * c * 2, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
-                                      STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
+      auto res = stbir_resize_uint16_generic(
+          (uint16_t *)input.payload.imageValue.data, w, h, w * c * 2, (uint16_t *)&_bytes.front(), width, height, width * c * 2,
+          c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags, STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_SRGB, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     } else if (pixsize == 4) {
       auto res = stbir_resize_float_generic((float *)input.payload.imageValue.data, w, h, w * c * 4, (float *)&_bytes.front(),
-                                            _width, _height, _width * c * 4, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
+                                            width, height, width * c * 4, c, c == 4 ? 3 : STBIR_ALPHA_CHANNEL_NONE, flags,
                                             STBIR_EDGE_ZERO, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR, nullptr);
       if (res == 0) {
         throw ActivationError("Failed to resize image!");
       }
     }
 
-    return Var(&_bytes.front(), uint16_t(_width), uint16_t(_height), input.payload.imageValue.channels,
+    return Var(&_bytes.front(), uint16_t(width), uint16_t(height), input.payload.imageValue.channels,
                input.payload.imageValue.flags);
   }
 
 private:
   std::vector<uint8_t> _bytes;
-  int _width{32};
-  int _height{32};
+  ParamVar _width{Var(32)};
+  ParamVar _height{Var(32)};
 };
 
 void registerShards() {

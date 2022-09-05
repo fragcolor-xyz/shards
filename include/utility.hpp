@@ -262,10 +262,12 @@ public:
   }
 
   void cleanup() {
-    if (_v.valueType == ContextVar) {
-      SH_CORE::releaseVariable(_cp);
+    if (_cp) {
+      if (_v.valueType == ContextVar) {
+        SH_CORE::releaseVariable(_cp);
+      }
+      _cp = nullptr;
     }
-    _cp = nullptr;
   }
 
   SHVar &operator=(const SHVar &value) {
@@ -282,9 +284,7 @@ public:
     return *_cp;
   }
 
-  const SHVar &get() const {
-    return const_cast<TParamVar*>(this)->get();
-  }
+  const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
 
   bool isVariable() { return _v.valueType == ContextVar; }
 
@@ -694,6 +694,15 @@ template <class Function> struct Defer {
 #define DEFER(body) DEFER_DEF(__LINE__, body)
 
 template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
+
+inline size_t getPixelSize(const SHVar &input) {
+  auto pixsize = 1;
+  if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+    pixsize = 2;
+  else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+    pixsize = 4;
+  return pixsize;
+}
 }; // namespace shards
 
 #endif

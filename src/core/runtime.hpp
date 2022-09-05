@@ -267,7 +267,7 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
 
 inline void start(SHWire *wire, SHVar input = {}) {
   if (wire->state != SHWire::State::Prepared) {
-    SHLOG_ERROR("Attempted to start a wire not ready for running!");
+    SHLOG_ERROR("Attempted to start a wire ({}) not ready for running!", wire->name);
     return;
   }
 
@@ -610,7 +610,7 @@ namespace shards {
 struct Serialization {
   static void varFree(SHVar &output);
 
-  std::unordered_map<std::string, SHWireRef> wires;
+  std::unordered_map<SHVar, SHWireRef> wires;
   std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
   void reset() {
@@ -827,11 +827,7 @@ struct Serialization {
       read((uint8_t *)&output.payload.imageValue.width, sizeof(output.payload.imageValue.width));
       read((uint8_t *)&output.payload.imageValue.height, sizeof(output.payload.imageValue.height));
 
-      auto pixsize = 1;
-      if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
+      auto pixsize = getPixelSize(output);
 
       size_t size =
           output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * pixsize;
@@ -895,8 +891,8 @@ struct Serialization {
       blk->setup(blk);
       auto params = blk->parameters(blk).len + 1;
       while (params--) {
-        int idx;
-        read((uint8_t *)&idx, sizeof(int));
+        int32_t idx;
+        read((uint8_t *)&idx, sizeof(int32_t));
         if (idx == -1)
           break;
         SHVar tmp{};
@@ -921,8 +917,11 @@ struct Serialization {
       read((uint8_t *)&buf[0], len);
       buf[len] = 0;
 
+      SHVar hash{};
+      deserialize(read, hash);
+
       // search if we already have this wire!
-      auto cit = wires.find(&buf[0]);
+      auto cit = wires.find(hash);
       if (cit != wires.end()) {
         SHLOG_TRACE("Skipping deserializing wire: {}", SHWire::sharedFromRef(cit->second)->name);
         output.payload.wireValue = SHWire::addRef(cit->second);
@@ -931,7 +930,7 @@ struct Serialization {
 
       auto wire = SHWire::make(&buf[0]);
       output.payload.wireValue = wire->newRef();
-      wires.emplace(wire->name, SHWire::addRef(output.payload.wireValue));
+      wires.emplace(hash, SHWire::addRef(output.payload.wireValue));
       SHLOG_TRACE("Deserializing wire: {}", wire->name);
       read((uint8_t *)&wire->looped, 1);
       read((uint8_t *)&wire->unsafe, 1);
@@ -1122,11 +1121,7 @@ struct Serialization {
       break;
     }
     case SHType::Image: {
-      auto pixsize = 1;
-      if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
+      auto pixsize = getPixelSize(input);
       write((const uint8_t *)&input.payload.imageValue.channels, sizeof(input.payload.imageValue.channels));
       total += sizeof(input.payload.imageValue.channels);
       write((const uint8_t *)&input.payload.imageValue.flags, sizeof(input.payload.imageValue.flags));
@@ -1180,17 +1175,17 @@ struct Serialization {
       }
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
-        auto idx = int(i);
+        auto idx = int32_t(i);
         auto dval = model->getParam(model, idx);
         auto pval = blk->getParam(blk, idx);
         if (pval != dval) {
-          write((const uint8_t *)&idx, sizeof(int));
-          total += serialize(pval, write) + sizeof(int);
+          write((const uint8_t *)&idx, sizeof(int32_t));
+          total += serialize(pval, write) + sizeof(int32_t);
         }
       }
-      int idx = -1; // end of params
-      write((const uint8_t *)&idx, sizeof(int));
-      total += sizeof(int);
+      int32_t idx = -1; // end of params
+      write((const uint8_t *)&idx, sizeof(int32_t));
+      total += sizeof(int32_t);
       // optional state
       if (blk->getState) {
         auto state = blk->getState(blk);
@@ -1210,14 +1205,20 @@ struct Serialization {
         total += len;
       }
 
+      SHVar hash;
+      { // Hash
+        hash = shards::hash(input);
+        total += serialize(hash, write);
+      }
+
       // stop here if we had it already
-      if (wires.count(wire->name) > 0) {
+      if (wires.count(hash) > 0) {
         SHLOG_TRACE("Skipping serializing wire: {}", wire->name);
         break;
       }
 
       SHLOG_TRACE("Serializing wire: {}", wire->name);
-      wires.emplace(wire->name, SHWire::addRef(input.payload.wireValue));
+      wires.emplace(hash, SHWire::addRef(input.payload.wireValue));
 
       { // Looped & Unsafe
         write((const uint8_t *)&wire->looped, 1);

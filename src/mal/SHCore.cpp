@@ -331,7 +331,7 @@ public:
     // unref all we hold  first
     m_refs.clear();
 
-    // remove from globals TODO some mutex maybe
+    // remove from globals
     auto cp = SHWire::sharedFromRef(m_wire);
     {
       std::scoped_lock lock(shards::GetGlobals().GlobalMutex);

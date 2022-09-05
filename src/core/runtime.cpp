@@ -2379,11 +2379,7 @@ void hash_update(const SHVar &var, void *state) {
     i.data = nullptr;
     error = XXH3_128bits_update(hashState, &i, sizeof(SHImage));
     assert(error == XXH_OK);
-    auto pixsize = 1;
-    if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(var);
     error = XXH3_128bits_update(
         hashState, var.payload.imageValue.data,
         size_t(var.payload.imageValue.channels * var.payload.imageValue.width * var.payload.imageValue.height * pixsize));
@@ -2679,8 +2675,13 @@ void SHWire::warmup(SHContext *context) {
     DEFER({ context->wireStack.pop_back(); });
     for (auto blk : shards) {
       try {
-        if (blk->warmup)
-          blk->warmup(blk, context);
+        if (blk->warmup) {
+          auto status = blk->warmup(blk, context);
+          if (status.code != SH_ERROR_NONE) {
+            SHLOG_ERROR("Warmup failed on wire: {}, shard: {}", name, blk->name);
+            throw shards::WarmupError(status.message);
+          }
+        }
         if (context->failed()) {
           throw shards::WarmupError(context->getErrorMessage());
         }
@@ -2703,7 +2704,7 @@ void SHWire::warmup(SHContext *context) {
 
     SHLOG_DEBUG("Ran warmup on wire: {}", name);
   } else {
-    SHLOG_WARNING("Warmup already run on wire: {}, not supposed to happen!", name);
+    SHLOG_DEBUG("Warmup already run on wire: {}", name);
   }
 }
 

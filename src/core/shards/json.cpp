@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "shards.h"
 #include "shared.hpp"
+#include "utility.hpp"
 #include <magic_enum.hpp>
 
 using json = nlohmann::json;
@@ -134,11 +135,7 @@ void to_json(json &j, const SHVar &var) {
   }
   case SHType::Image: {
     if (var.payload.imageValue.data) {
-      auto pixsize = 1;
-      if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
+      auto pixsize = shards::getPixelSize(var);
       auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels * pixsize;
       std::vector<uint8_t> buffer;
       buffer.resize(binsize);
@@ -401,11 +398,7 @@ void from_json(const json &j, SHVar &var) {
     var.payload.imageValue.height = j.at("height").get<int32_t>();
     var.payload.imageValue.channels = j.at("channels").get<int32_t>();
     var.payload.imageValue.flags = j.at("flags").get<int32_t>();
-    auto pixsize = 1;
-    if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = shards::getPixelSize(var);
     auto binsize = var.payload.imageValue.width * var.payload.imageValue.height * var.payload.imageValue.channels * pixsize;
     var.payload.imageValue.data = new uint8_t[binsize];
     auto buffer = j.at("data").get<std::vector<uint8_t>>();

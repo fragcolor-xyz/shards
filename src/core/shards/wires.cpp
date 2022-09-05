@@ -101,6 +101,7 @@ struct WireBase {
       if (wireref->valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(wireref->payload.wireValue);
       } else if (wireref->valueType == String) {
+        SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
         wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
       } else {
         wire = nullptr;
@@ -198,6 +199,8 @@ struct WireBase {
       // keep only globals
       exposedInfo = IterableExposedInfo(
           exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
+
+      // Notice we DON'T need here to merge the required info here even if we had data.requiredVariables non null
 
       SHLOG_TRACE("Wire {} composed", wire->name);
     } else {
@@ -311,6 +314,7 @@ struct Wait : public WireBase {
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       } else if (vwire.valueType == String) {
+        SHLOG_DEBUG("Wait: Resolving wire {}", vwire.payload.stringValue);
         wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
       } else {
         wire = nullptr;
@@ -417,6 +421,7 @@ struct StopWire : public WireBase {
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       } else if (vwire.valueType == String) {
+        SHLOG_DEBUG("Stop: Resolving wire {}", vwire.payload.stringValue);
         wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
       } else {
         wire = nullptr;
@@ -772,7 +777,7 @@ struct BaseRunner : public WireBase {
       if (it != requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Detach: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
           ctxVar.valueType = ContextVar;
           ctxVar.payload.stringValue = avail.name;
@@ -840,14 +845,17 @@ struct BaseRunner : public WireBase {
   }
 
   void activateDetached(SHContext *context, const SHVar &input) {
-    if (capturing) {
-      for (auto &v : _vars) {
-        auto &var = v.get();
-        cloneVar(wire->variables[v.variableName()], var);
-      }
-    }
-
     if (!shards::isRunning(wire.get())) {
+      // stop in case we need to clean up
+      stop(wire.get());
+
+      if (capturing) {
+        for (auto &v : _vars) {
+          auto &var = v.get();
+          cloneVar(wire->variables[v.variableName()], var);
+        }
+      }
+
       // validated during infer not here! (false)
       auto mesh = context->main->mesh.lock();
       if (mesh)
@@ -1815,8 +1823,11 @@ struct Spawn : public WireBase {
     _composer.context = context;
 
     for (auto &v : _vars) {
+      SHLOG_TRACE("Spawn: warming up variable: {}", v.variableName());
       v.warmup(context);
     }
+
+    SHLOG_TRACE("Spawn: warmed up {} variables", _vars.size());
   }
 
   void cleanup() {
