@@ -176,6 +176,7 @@ impl RequestBase {
   fn _cleanup(&mut self) {
     self.url.cleanup();
     self.headers.cleanup();
+    self.client = None;
   }
 
   fn _finalize(&mut self, response: Response) -> Result<Var, &str> {
