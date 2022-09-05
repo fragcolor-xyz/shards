@@ -63,7 +63,7 @@ struct FreeCameraShard : public gfx::BaseConsumer {
     // XYZ camera translation (time scaled)
     float3 velocity;
     // XYZ camera translation (absolute)
-    float3 movement;
+    float3 translation;
     // Roll-Pitch-Yaw camera rotation
     float3 lookRotation;
   };
@@ -146,12 +146,12 @@ struct FreeCameraShard : public gfx::BaseConsumer {
     }
 
     if (inputState.pointer.tertiaryButton) {
-      inputs.movement.x += -pointerDelta.x * panSpeed;
-      inputs.movement.y += pointerDelta.y * panSpeed;
+      inputs.translation.x += -pointerDelta.x * panSpeed;
+      inputs.translation.y += pointerDelta.y * panSpeed;
     }
 
     if (_inputState.mouseWheel != 0.0f) {
-      inputs.movement.z += -_inputState.mouseWheel * scrollSpeed;
+      inputs.translation.z += -_inputState.mouseWheel * scrollSpeed;
     }
 
     return inputs;
@@ -183,7 +183,7 @@ struct FreeCameraShard : public gfx::BaseConsumer {
 
     cameraTranslation +=
         (cameraX * inputs.velocity.x + cameraY * inputs.velocity.y + cameraZ * inputs.velocity.z) * flySpeed * deltaTime;
-    cameraTranslation += (cameraX * inputs.movement.x + cameraY * inputs.movement.y + cameraZ * inputs.movement.z);
+    cameraTranslation += (cameraX * inputs.translation.x + cameraY * inputs.translation.y + cameraZ * inputs.translation.z);
 
     // Reconstruct view matrix using the inverse rotation/translation of the camera
     float4x4 newViewMatrix = linalg::identity;
