@@ -255,7 +255,7 @@ struct LoadImage : public FileBase {
   static inline EnumInfo<BPP> BPPEnum{"BPP", CoreCC, 'ibpp'};
   static inline Type BPPEnumInfo{{SHType::Enum, {.enumeration = {CoreCC, 'ibpp'}}}};
 
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters params{FileBase::params,
@@ -295,9 +295,14 @@ struct LoadImage : public FileBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    bool bytesInput = input.valueType == SHType::Bytes;
+
     std::string filename;
-    if (!getFilename(context, filename)) {
-      throw ActivationError("File not found!");
+    if (!bytesInput) {
+      // need a proper filename in this case
+      if (!getFilename(context, filename)) {
+        throw ActivationError("File not found!");
+      }
     }
 
     if (_output.valueType == Image && _output.payload.imageValue.data) {
@@ -308,17 +313,35 @@ struct LoadImage : public FileBase {
     _output.valueType = Image;
     int x, y, n;
     if (_bpp == BPP::u8) {
-      _output.payload.imageValue.data = (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
+      if (bytesInput) {
+        _output.payload.imageValue.data =
+            (uint8_t *)stbi_load_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
+      } else {
+        _output.payload.imageValue.data = (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
+      }
+
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
     } else if (_bpp == BPP::u16) {
-      _output.payload.imageValue.data = (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
+      if (bytesInput) {
+        _output.payload.imageValue.data =
+            (uint8_t *)stbi_load_16_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
+      } else {
+        _output.payload.imageValue.data = (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
+      }
+
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
     } else {
-      _output.payload.imageValue.data = (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
+      if (bytesInput) {
+        _output.payload.imageValue.data =
+            (uint8_t *)stbi_loadf_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
+      } else {
+        _output.payload.imageValue.data = (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
+      }
+
       if (!_output.payload.imageValue.data) {
         throw ActivationError("Failed to load image file");
       }
@@ -331,91 +354,6 @@ struct LoadImage : public FileBase {
       _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
       break;
     case BPP::f32:
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
-      break;
-    default:
-      _output.payload.imageValue.flags = 0;
-      break;
-    }
-    return _output;
-  }
-};
-
-struct BytesToImage {
-  LoadImage::BPP _bpp{LoadImage::BPP::u8};
-  SHVar _output{};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::BytesType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
-
-  static inline Parameters params{{{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {LoadImage::BPPEnumInfo}}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _bpp = LoadImage::BPP(value.payload.enumValue);
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var::Enum(_bpp, CoreCC, 'ibpp');
-    default:
-      throw ActivationError("Invalid parameter index");
-    }
-  }
-
-  void cleanup() {
-    if (_output.valueType == Image && _output.payload.imageValue.data) {
-      stbi_image_free(_output.payload.imageValue.data);
-      _output = Var::Empty;
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.valueType != SHType::Bytes)
-      throw ActivationError("Expected Bytes type.");
-
-    if (_output.valueType == Image && _output.payload.imageValue.data) {
-      stbi_image_free(_output.payload.imageValue.data);
-      _output = Var::Empty;
-    }
-
-    _output.valueType = Image;
-    int x, y, n;
-    if (_bpp == LoadImage::BPP::u8) {
-      _output.payload.imageValue.data =
-          (uint8_t *)stbi_load_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    } else if (_bpp == LoadImage::BPP::u16) {
-      _output.payload.imageValue.data =
-          (uint8_t *)stbi_load_16_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    } else {
-      _output.payload.imageValue.data =
-          (uint8_t *)stbi_loadf_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    }
-    _output.payload.imageValue.width = uint16_t(x);
-    _output.payload.imageValue.height = uint16_t(y);
-    _output.payload.imageValue.channels = uint16_t(n);
-    switch (_bpp) {
-    case LoadImage::BPP::u16:
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
-      break;
-    case LoadImage::BPP::f32:
       _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
       break;
     default:
@@ -447,11 +385,7 @@ struct WritePNG : public FileBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(input);
 
     if (pixsize != 1) {
       throw ActivationError("Bits per pixel must be 8");
@@ -544,6 +478,5 @@ void registerSerializationShards() {
   REGISTER_SHARD("WritePNG", WritePNG);
   REGISTER_SHARD("FromBytes", FromBytes);
   REGISTER_SHARD("ToBytes", ToBytes);
-  REGISTER_SHARD("BytesToImage", BytesToImage);
 }
 }; // namespace shards

@@ -2379,11 +2379,7 @@ void hash_update(const SHVar &var, void *state) {
     i.data = nullptr;
     error = XXH3_128bits_update(hashState, &i, sizeof(SHImage));
     assert(error == XXH_OK);
-    auto pixsize = 1;
-    if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((var.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(var);
     error = XXH3_128bits_update(
         hashState, var.payload.imageValue.data,
         size_t(var.payload.imageValue.channels * var.payload.imageValue.width * var.payload.imageValue.height * pixsize));

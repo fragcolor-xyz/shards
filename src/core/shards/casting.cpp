@@ -14,11 +14,7 @@ struct FromImage {
       if (input.valueType != SHType::Image)
         throw ActivationError("Expected Image type.");
 
-      auto pixsize = 1;
-      if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
+      auto pixsize = getPixelSize(input);
 
       const int w = int(input.payload.imageValue.width);
       const int h = int(input.payload.imageValue.height);
@@ -565,11 +561,7 @@ struct ImageToBytes {
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(input);
 
     int w = int(input.payload.imageValue.width);
     int h = int(input.payload.imageValue.height);

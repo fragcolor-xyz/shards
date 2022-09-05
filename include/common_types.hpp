@@ -121,6 +121,8 @@ struct CoreInfo {
 
   static inline Types ShardsOrNone{Shards, {NoneType}};
 
+  static inline Types BytesOrAny{{BytesType, AnyType}};
+
   static inline Types WireOrNone{{WireType, NoneType}};
 
   static inline Type ShardsOrNoneSeq{{SHType::Seq, {.seqTypes = ShardsOrNone}}};

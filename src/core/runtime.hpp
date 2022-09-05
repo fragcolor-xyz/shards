@@ -827,11 +827,7 @@ struct Serialization {
       read((uint8_t *)&output.payload.imageValue.width, sizeof(output.payload.imageValue.width));
       read((uint8_t *)&output.payload.imageValue.height, sizeof(output.payload.imageValue.height));
 
-      auto pixsize = 1;
-      if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((output.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
+      auto pixsize = getPixelSize(output);
 
       size_t size =
           output.payload.imageValue.channels * output.payload.imageValue.height * output.payload.imageValue.width * pixsize;
@@ -1125,11 +1121,7 @@ struct Serialization {
       break;
     }
     case SHType::Image: {
-      auto pixsize = 1;
-      if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-        pixsize = 2;
-      else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-        pixsize = 4;
+      auto pixsize = getPixelSize(input);
       write((const uint8_t *)&input.payload.imageValue.channels, sizeof(input.payload.imageValue.channels));
       total += sizeof(input.payload.imageValue.channels);
       write((const uint8_t *)&input.payload.imageValue.flags, sizeof(input.payload.imageValue.flags));

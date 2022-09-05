@@ -77,11 +77,7 @@ struct Convolve {
     int32_t h = int32_t(input.payload.imageValue.height);
     int32_t c = int32_t(input.payload.imageValue.channels);
 
-    auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(input);
 
     _bytes.resize(_kernel * _kernel * c * pixsize);
 
@@ -265,11 +261,7 @@ struct Resize {
       height = int(float(h) * float(width) / float(w));
     }
 
-    auto pixsize = 1;
-    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
-      pixsize = 2;
-    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
-      pixsize = 4;
+    auto pixsize = getPixelSize(input);
 
     _bytes.resize(width * height * c * pixsize);
 
