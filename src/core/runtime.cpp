@@ -2679,8 +2679,13 @@ void SHWire::warmup(SHContext *context) {
     DEFER({ context->wireStack.pop_back(); });
     for (auto blk : shards) {
       try {
-        if (blk->warmup)
-          blk->warmup(blk, context);
+        if (blk->warmup) {
+          auto status = blk->warmup(blk, context);
+          if (status.code != SH_ERROR_NONE) {
+            SHLOG_ERROR("Warmup failed on wire: {}, shard: {}", name, blk->name);
+            throw shards::WarmupError(status.message);
+          }
+        }
         if (context->failed()) {
           throw shards::WarmupError(context->getErrorMessage());
         }
