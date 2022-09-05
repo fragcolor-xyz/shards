@@ -1,6 +1,6 @@
 #include "context.hpp"
 #include <linalg_shim.hpp>
-#include <gfx/helpers/shapes.hpp>
+#include <gfx/gizmos/shapes.hpp>
 #include <params.hpp>
 
 namespace shards {

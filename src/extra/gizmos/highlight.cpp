@@ -27,7 +27,7 @@ struct HighlightShard : public BaseConsumer {
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     Context &helperContext = getContext();
 
-    SHTypeInfo inputType = shards::Type::Object(input.payload.objectVendorId,input.payload.objectTypeId);
+    SHTypeInfo inputType = shards::Type::Object(input.payload.objectVendorId, input.payload.objectTypeId);
     if (gfx::Types::Drawable == inputType) {
       SHDrawable *dPtr = static_cast<SHDrawable *>(input.payload.objectValue);
       helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), dPtr->drawable);

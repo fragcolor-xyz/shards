@@ -17,7 +17,7 @@ add_executable(test-gfx
   test_context_data.cpp
   test_shader.cpp
   test_gltf.cpp
-  test_helpers.cpp
+  test_gizmos.cpp
 )
 
 set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)

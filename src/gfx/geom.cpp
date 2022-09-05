@@ -157,8 +157,8 @@ void CubeGenerator::generate() {
   reset();
 
   size_t vertexOffset = 0;
-  auto buildPlane = [&](float u, float v, float w, float udir, float vdir, float width, float height, float depth, int gridX,
-                        int gridY) {
+  auto buildPlane = [&](float u, float v, float w, float udir, float vdir, float width, float height, float depth, size_t gridX,
+                        size_t gridY) {
     const float segmentWidth = width / gridX;
     const float segmentHeight = height / gridY;
 
@@ -166,15 +166,15 @@ void CubeGenerator::generate() {
     const float heightHalf = height / 2;
     const float depthHalf = depth / 2;
 
-    const int gridX1 = gridX + 1;
-    const int gridY1 = gridY + 1;
+    const size_t gridX1 = gridX + 1;
+    const size_t gridY1 = gridY + 1;
 
     // generate vertices, normals and uvs
     size_t vertexCounter = 0;
-    for (auto iy = 0; iy < gridY1; iy++) {
+    for (size_t iy = 0; iy < gridY1; iy++) {
       const float y = iy * segmentHeight - heightHalf;
 
-      for (auto ix = 0; ix < gridX1; ix++) {
+      for (size_t ix = 0; ix < gridX1; ix++) {
         const float x = ix * segmentWidth - widthHalf;
 
         VertexPNT &vertex = vertices.emplace_back();
@@ -200,8 +200,8 @@ void CubeGenerator::generate() {
     }
 
     // indices
-    for (auto iy = 0; iy < gridY; iy++) {
-      for (auto ix = 0; ix < gridX; ix++) {
+    for (size_t iy = 0; iy < gridY; iy++) {
+      for (size_t ix = 0; ix < gridX; ix++) {
         const size_t a = vertexOffset + ix + gridX1 * iy;
         const size_t b = vertexOffset + ix + gridX1 * (iy + 1);
         const size_t c = vertexOffset + (ix + 1) + gridX1 * (iy + 1);
@@ -248,7 +248,7 @@ void CylinderGenerator::generate() {
     // first we generate the center vertex data of the cap.
     // because the geometry needs one set of uvs per face,
     // we must generate a center vertex per face/segment
-    for (auto x = 1; x <= radialSegments; x++) {
+    for (size_t x = 1; x <= radialSegments; x++) {
       auto &vertex = vertices.emplace_back();
 
       float3 pos(0, halfHeight * sign, 0);
@@ -266,7 +266,7 @@ void CylinderGenerator::generate() {
     auto centerIndexEnd = index;
 
     // now we generate the surrounding vertices, normals and uvs
-    for (auto x = 0; x <= radialSegments; x++) {
+    for (size_t x = 0; x <= radialSegments; x++) {
       auto u = float(x) / radialSegments;
       auto theta = u * thetaLength + thetaStart;
 
@@ -293,7 +293,7 @@ void CylinderGenerator::generate() {
     }
 
     // generate indices
-    for (auto x = 0; x < radialSegments; x++) {
+    for (size_t x = 0; x < radialSegments; x++) {
       auto c = centerIndexStart + x;
       auto i = centerIndexEnd + x;
 
@@ -316,13 +316,13 @@ void CylinderGenerator::generate() {
     auto slope = (radiusBottom - radiusTop) / height;
 
     // generate vertices, normals and uvs
-    for (auto y = 0; y <= heightSegments; y++) {
+    for (size_t y = 0; y <= heightSegments; y++) {
       std::vector<uint16_t> indexRow;
 
       auto v = float(y) / float(heightSegments);
       auto radius = v * (radiusBottom - radiusTop) + radiusTop;
 
-      for (auto x = 0; x <= radialSegments; x++) {
+      for (size_t x = 0; x <= radialSegments; x++) {
         auto u = float(x) / float(radialSegments);
 
         auto theta = u * thetaLength + thetaStart;
@@ -349,8 +349,8 @@ void CylinderGenerator::generate() {
       indexRows.emplace_back(std::move(indexRow));
     }
 
-    for (auto x = 0; x < radialSegments; x++) {
-      for (auto y = 0; y < heightSegments; y++) {
+    for (size_t x = 0; x < radialSegments; x++) {
+      for (size_t y = 0; y < heightSegments; y++) {
         auto a = indexRows[y][x];
         auto b = indexRows[y + 1][x];
         auto c = indexRows[y + 1][x + 1];

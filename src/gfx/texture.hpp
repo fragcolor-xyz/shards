@@ -81,7 +81,6 @@ public:
   void init(const TextureFormat &format, int2 resolution, const SamplerState &samplerState = SamplerState(),
             const ImmutableSharedBuffer &data = ImmutableSharedBuffer());
 
-
   void setSamplerState(const SamplerState &samplerState);
   ImmutableSharedBuffer getData() { return data; }
   int2 getResolution() const { return resolution; }

@@ -2,7 +2,7 @@
 #include "../gfx/shards_types.hpp"
 #include <linalg_shim.hpp>
 #include <params.hpp>
-#include <gfx/helpers/translation_gizmo.hpp>
+#include <gfx/gizmos/translation_gizmo.hpp>
 #include <stdexcept>
 
 namespace shards {

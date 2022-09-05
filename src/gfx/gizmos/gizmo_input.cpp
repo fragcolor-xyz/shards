@@ -11,7 +11,7 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
 
   // Reset hover state
   hitDistance = FLT_MAX;
-  hovered = nullptr;
+  hovering = nullptr;
 
   // Reset tracker for held handle
   heldHandleUpdated = false;
@@ -28,7 +28,7 @@ void InputContext::updateHandle(Handle &handle) {
   if (hit.x < hit.y) {
     if (hit.x < hitDistance) {
       hitDistance = hit.x;
-      hovered = &handle;
+      hovering = &handle;
     }
   }
 
@@ -44,7 +44,7 @@ void InputContext::updateHeldHandle() {
   heldHandleUpdated = true;
 
   // Force hovered to the same handle
-  hovered = held;
+  hovering = held;
 
   // Execute movement callback
   Handle &handle = *held;
@@ -54,7 +54,7 @@ void InputContext::updateHeldHandle() {
 
 void InputContext::updateHitLocation() {
   // Hit location from raycast results
-  if (hovered)
+  if (hovering)
     hitLocation = eyeLocation + rayDirection * hitDistance;
   else
     hitLocation = float3(0, 0, 0);
@@ -72,9 +72,9 @@ void InputContext::end() {
     assert(handle.callbacks);
     handle.callbacks->released(*this, handle);
     held = nullptr;
-  } else if (!held && hovered && !prevInputState.pressed && inputState.pressed) {
-    held = hovered;
-    Handle &handle = *hovered;
+  } else if (!held && hovering && !prevInputState.pressed && inputState.pressed) {
+    held = hovering;
+    Handle &handle = *hovering;
     assert(handle.callbacks);
     handle.callbacks->grabbed(*this, handle);
   }

@@ -17,7 +17,6 @@ struct GizmoLightingFeature {
   static FeaturePtr create();
 };
 
-
 struct ShapeRenderer {
 public:
   struct LineVertex {

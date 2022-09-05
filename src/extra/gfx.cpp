@@ -321,6 +321,5 @@ void registerShards() {
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.Render", RenderShard);
-
 }
 } // namespace gfx

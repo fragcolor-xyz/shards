@@ -6,7 +6,7 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
-#include <gfx/helpers/wireframe.hpp>
+#include <gfx/gizmos/wireframe.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/paths.hpp>
 #include <gfx/texture.hpp>
