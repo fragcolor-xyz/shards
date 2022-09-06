@@ -36,10 +36,15 @@ struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
 
   TexturePtr get(const egui::TextureId &id) const {
-    auto it = textures.find(id.id);
-    if (it != textures.end())
-      return it->second;
-    return TexturePtr();
+    if (id.managed) {
+      auto it = textures.find(id.id);
+      if (it != textures.end())
+        return it->second;
+      return TexturePtr();
+    } else {
+      TexturePtr texture = *reinterpret_cast<TexturePtr *>(id.id);
+      return texture;
+    }
   }
 
   void imageCopy(WGPUTextureFormat dstFormat, WGPUTextureFormat srcFormat, uint8_t *dst, const uint8_t *src, size_t numPixels) {

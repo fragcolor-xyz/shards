@@ -6,6 +6,9 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shardsc::gfx_TexturePtr;
+use crate::shardsc::gfx_TexturePtr_getResolution_ext;
+use crate::shardsc::linalg_aliases_int2;
 use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
@@ -179,11 +182,16 @@ impl Image {
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
+
+      let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
+      let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
+
       let textureId = egui::epaint::TextureId::User(ptr);
 
       let scale: (f32, f32) = self.scale.get().try_into()?;
-      let scale: egui::Vec2 = scale.into();
-      ui.image(textureId, scale); // FIXME texture scale
+      let size =
+        egui::vec2(texture_res.x as f32, texture_res.y as f32) * egui::vec2(scale.0, scale.1);
+      ui.image(textureId, size);
 
       Ok(*input)
     } else {
