@@ -25,7 +25,6 @@ constexpr uint32_t WebSocketCC = 'webs';
 
 struct Common {
   static inline Type WebSocket{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = WebSocketCC}}}};
-
   static inline Type WebSocketVar{{SHType::ContextVar, {.contextVarTypes = WebSocket}}};
 };
 
@@ -83,6 +82,9 @@ struct Client {
         {"Target", SHCCSTR("The remote host target path."), {CoreInfo::StringType, CoreInfo::StringVarType}},
         {"Port", SHCCSTR("The remote host port."), {CoreInfo::IntType, CoreInfo::IntVarType}},
         {"Secure", SHCCSTR("If the connection should be secured."), {CoreInfo::BoolType}},
+        {"Certificate",
+         SHCCSTR("If the connection is secured, you can specify a CA certificate pem file to use."),
+         {CoreInfo::StringType, CoreInfo::StringVarType, CoreInfo::NoneType}},
     };
     return params;
   }
@@ -101,6 +103,9 @@ struct Client {
     case 3:
       ssl = value.payload.boolValue;
       break;
+    case 4:
+      certificate = value;
+      break;
     default:
       break;
     }
@@ -116,6 +121,8 @@ struct Client {
       return port;
     case 3:
       return Var(ssl);
+    case 4:
+      return certificate;
     default:
       return {};
     }
@@ -142,6 +149,15 @@ struct Client {
               if (!SSL_set_tlsext_host_name(ws->get_secure().next_layer().native_handle(), host.get().payload.stringValue)) {
                 boost::system::error_code ec{static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
                 throw boost::system::system_error{ec};
+              }
+
+              // add custom certs if we need
+              auto certVar = certificate.get();
+              if (certVar.valueType != SHType::None) {
+                auto cert = certVar.payload.stringValue;
+                auto certPath = SHSTRVIEW(certificate.get());
+                std::string certStr(certPath.begin(), certPath.end());
+                ws->secureCtx.load_verify_file(certStr);
               }
             }
 
@@ -243,6 +259,7 @@ protected:
   ParamVar host{Var("echo.websocket.org")};
   ParamVar target{Var("/")};
   bool ssl = true;
+  ParamVar certificate{};
 
   SHExposedTypeInfo _expInfo{};
 
