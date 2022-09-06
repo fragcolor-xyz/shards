@@ -24,7 +24,11 @@ struct WireBase {
 
   static inline Parameters waitParamsInfo{
       {"Wire", SHCCSTR("The wire to wait."), {WireVarTypes}},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
+      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}},
+      {"Timeout",
+       SHCCSTR("The optional amount of time in seconds to wait for the wire to complete, if the time elapses the wire will be "
+               "stopped and the flow will fail with a timeout error."),
+       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
 
   static inline Parameters stopWireParamsInfo{
       {"Wire", SHCCSTR("The wire to stop."), {WireVarTypes}},
@@ -266,12 +270,7 @@ struct Wait : public WireBase {
   // we keep the wire referenced!
   SHVar _output{};
   SHExposedTypeInfo _requiredWire{};
-
-  void cleanup() {
-    if (wireref.isVariable())
-      wire = nullptr;
-    WireBase::cleanup();
-  }
+  ParamVar _timeout{};
 
   static SHParametersInfo parameters() { return waitParamsInfo; }
 
@@ -283,6 +282,8 @@ struct Wait : public WireBase {
     case 1:
       passthrough = value.payload.boolValue;
       break;
+    case 2:
+      _timeout = value;
     default:
       break;
     }
@@ -294,6 +295,8 @@ struct Wait : public WireBase {
       return wireref;
     case 1:
       return Var(passthrough);
+    case 2:
+      return _timeout;
     default:
       return Var::Empty;
     }
@@ -306,6 +309,18 @@ struct Wait : public WireBase {
     } else {
       return {};
     }
+  }
+
+  void warmup(SHContext *ctx) {
+    WireBase::warmup(ctx);
+    _timeout.warmup(ctx);
+  }
+
+  void cleanup() {
+    _timeout.cleanup();
+    if (wireref.isVariable())
+      wire = nullptr;
+    WireBase::cleanup();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -325,9 +340,25 @@ struct Wait : public WireBase {
       SHLOG_WARNING("Wait's wire is void");
       return input;
     } else {
-      // Make sure to actually wait only if the wire is running on another context.
-      while (wire->context != context && isRunning(wire.get())) {
-        SH_SUSPEND(context, 0);
+      auto timeout = _timeout.get();
+      if (timeout.valueType == SHType::Float) {
+        SHTime start = SHClock::now();
+        auto dTimeout = SHDuration(timeout.payload.floatValue);
+        while (wire->context != context && isRunning(wire.get())) {
+          SH_SUSPEND(context, 0);
+
+          // Deal with timeout
+          SHTime now = SHClock::now();
+          if ((now - start) > dTimeout) {
+            SHLOG_ERROR("Wait: Wire {} timed out", wire->name);
+            throw ActivationError("Wait: Wire timed out");
+          }
+        }
+      } else {
+        // Make sure to actually wait only if the wire is running on another context.
+        while (wire->context != context && isRunning(wire.get())) {
+          SH_SUSPEND(context, 0);
+        }
       }
 
       if (wire->finishedError.size() > 0 || wire->state == SHWire::State::Failed) {

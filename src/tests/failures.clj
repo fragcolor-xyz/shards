@@ -128,3 +128,13 @@
 
 (schedule Root c)
 (run Root 0.2 25)
+
+(defwire too-long-wire
+  (Pause 120))
+
+(defloop short-wire
+  (Detach too-long-wire)
+  (Wait too-long-wire :Timeout 1.0))
+
+(schedule Root short-wire)
+(run Root 0.2 25)
