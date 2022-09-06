@@ -224,6 +224,7 @@ struct Client {
     port.cleanup();
     host.cleanup();
     target.cleanup();
+    certificate.cleanup();
 
     if (socket) {
       releaseVariable(socket);
@@ -237,6 +238,7 @@ struct Client {
     port.warmup(ctx);
     host.warmup(ctx);
     target.warmup(ctx);
+    certificate.warmup(ctx);
 
     socket = referenceVariable(ctx, name.c_str());
   }
