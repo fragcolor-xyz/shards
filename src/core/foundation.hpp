@@ -339,6 +339,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   SHVar currentInput{};
   SHVar previousOutput{};
 
+  // notice we preserve those even over stop/reset!
+  // they are cleared only on a following prepare
   shards::OwnedVar finishedOutput{};
   std::string finishedError{};
 
