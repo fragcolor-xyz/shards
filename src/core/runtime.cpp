@@ -2015,8 +2015,12 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
 endOfWire:
   wire->finishedOutput = wire->previousOutput;
-  if (context.failed())
+  if (context.failed()) {
     wire->finishedError = context.getErrorMessage();
+    if(wire->finishedError.empty()) {
+      wire->finishedError = "Generic error";
+    }
+  }
 
   // run cleanup on all the shards
   // ensure stop state is set
