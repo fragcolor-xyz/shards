@@ -4,6 +4,8 @@
 #include "linalg.hpp"
 #include "context.hpp"
 #include "window.hpp"
+#include "texture.hpp"
+#include "fwd.hpp"
 
 namespace gfx {
 struct Context;
@@ -52,6 +54,7 @@ extern "C" {
 gfx::int2 gfx_Window_getSize_ext(gfx::Window *window);
 gfx::int2 gfx_Window_getDrawableSize_ext(gfx::Window *window);
 gfx::float2 gfx_Window_getUIScale_ext(gfx::Window *window);
+gfx::int2 gfx_TexturePtr_getResolution_ext(gfx::TexturePtr* texture);
 #pragma clang diagnostic push
 }
 

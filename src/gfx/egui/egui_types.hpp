@@ -218,6 +218,7 @@ struct Input {
 
 struct TextureId {
   uint64_t id;
+  bool managed;
   operator uint64_t() const { return id; }
 };
 

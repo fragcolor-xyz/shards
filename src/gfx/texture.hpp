@@ -49,6 +49,7 @@ struct InputTextureFormat {
   uint8_t pixelSize;
 };
 
+/// <div rustbindgen opaque></div>
 struct TextureContextData : public ContextData {
   TextureFormat format;
   WGPUTexture texture = nullptr;
@@ -65,6 +66,7 @@ struct TextureContextData : public ContextData {
   }
 };
 
+/// <div rustbindgen opaque></div>
 struct Texture final : public TWithContextData<TextureContextData> {
 private:
   TextureFormat format;
