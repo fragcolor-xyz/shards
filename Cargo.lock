@@ -3675,8 +3675,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tar"
 version = "0.4.38"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b55807c0344e1e6c04d7c965f5289c39a8d94ae23ed5c0b57aabac549f871c6"
+source = "git+https://github.com/shards-lang/tar-rs?rev=12ab43e905b2fb5abd2b23ff89c0a77a6885b3b1#12ab43e905b2fb5abd2b23ff89c0a77a6885b3b1"
 dependencies = [
  "filetime",
  "libc",
