@@ -92,6 +92,8 @@
   
   1500000000 (Date.Format) (Log "Date formatted")
   (Assert.Is "Fri Jul 14 02:40:00 2017" true)
+
+  (ONNX.Test)
   ))
 
 (run Root)
