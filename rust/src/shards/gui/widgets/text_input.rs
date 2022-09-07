@@ -58,13 +58,16 @@ impl Default for TextInput {
   }
 }
 
-impl egui::TextBuffer for &Var {
+struct MutableVar<'a>(&'a mut Var);
+struct ImmutableVar<'a>(&'a Var);
+
+impl egui::TextBuffer for ImmutableVar<'_> {
   fn is_mutable(&self) -> bool {
     false
   }
 
   fn as_str(&self) -> &str {
-    (*self).try_into().unwrap()
+    (self.0).try_into().unwrap()
   }
 
   fn insert_text(&mut self, _text: &str, _char_index: usize) -> usize {
@@ -74,17 +77,17 @@ impl egui::TextBuffer for &Var {
   fn delete_char_range(&mut self, _char_range: std::ops::Range<usize>) {}
 }
 
-impl egui::TextBuffer for &mut Var {
+impl egui::TextBuffer for MutableVar<'_> {
   fn is_mutable(&self) -> bool {
     true
   }
 
   fn as_str(&self) -> &str {
-    self.as_ref().try_into().unwrap()
+    self.0.as_ref().try_into().unwrap()
   }
 
   fn insert_text(&mut self, text: &str, char_index: usize) -> usize {
-    let byte_idx = if !self.is_string() {
+    let byte_idx = if !self.0.is_string() {
       0usize
     } else {
       self.byte_index_from_char_index(char_index)
@@ -93,8 +96,9 @@ impl egui::TextBuffer for &mut Var {
     let text_len = text.len();
     let (current_len, current_cap) = unsafe {
       (
-        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
+        self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
         self
+          .0
           .payload
           .__bindgen_anon_1
           .__bindgen_anon_2
@@ -105,12 +109,12 @@ impl egui::TextBuffer for &mut Var {
     if current_cap == 0usize {
       // new string
       let tmp = Var::ephemeral_string(text);
-      cloneVar(self, &tmp);
+      cloneVar(self.0, &tmp);
     } else if (current_cap - current_len) >= text_len {
       // text can fit within existing capacity
       unsafe {
         let base_ptr =
-          self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+          self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
         // move the rest of the string to the end
         std::ptr::copy(
           base_ptr.add(byte_idx),
@@ -122,7 +126,7 @@ impl egui::TextBuffer for &mut Var {
         std::ptr::copy_nonoverlapping(bytes, base_ptr.add(byte_idx), text_len);
         // update the length
         let new_len = current_len + text_len;
-        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+        self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
         // fixup null-terminator
         *base_ptr.add(new_len) = 0;
       }
@@ -130,7 +134,7 @@ impl egui::TextBuffer for &mut Var {
       let mut str = String::from(self.as_str());
       str.insert_str(byte_idx, text);
       let tmp = Var::ephemeral_string(str.as_str());
-      cloneVar(self, &tmp);
+      cloneVar(self.0, &tmp);
     }
 
     text.chars().count()
@@ -148,9 +152,9 @@ impl egui::TextBuffer for &mut Var {
     }
 
     unsafe {
-      let current_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
+      let current_len = self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
       let base_ptr =
-      self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+        self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
       // move rest of the text at the deletion location
       std::ptr::copy(
         base_ptr.add(byte_end),
@@ -159,7 +163,7 @@ impl egui::TextBuffer for &mut Var {
       );
       // update the length
       let new_len = current_len - byte_end + byte_start;
-      self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+      self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
       // fixup null-terminator
       *base_ptr.add(new_len) = 0;
     }
@@ -306,10 +310,14 @@ impl Shard for TextInput {
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let text = &mut if self.mutable_text {
-        self.variable.get_mut()
+      let mut mutable;
+      let mut immutable;
+      let text: &mut dyn egui::TextBuffer = if self.mutable_text {
+        mutable = MutableVar(self.variable.get_mut());
+        &mut mutable
       } else {
-        self.variable.get()
+        immutable = ImmutableVar(self.variable.get());
+        &mut immutable
       };
       let text_edit = if self.multiline.get().try_into()? {
         egui::TextEdit::multiline(text)
