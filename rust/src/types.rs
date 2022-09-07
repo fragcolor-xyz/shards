@@ -2173,9 +2173,13 @@ impl TryFrom<&Var> for &str {
     if var.valueType != SHType_String
       && var.valueType != SHType_Path
       && var.valueType != SHType_ContextVar
+      && var.valueType != SHType_None
     {
       Err("Expected None, String, Path or ContextVar variable, but casting failed.")
     } else {
+      if var.valueType == SHType_None {
+        return Ok("");
+      }
       unsafe {
         let cstr = CStr::from_ptr(
           var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char,

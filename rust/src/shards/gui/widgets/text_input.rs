@@ -58,82 +58,82 @@ impl Default for TextInput {
   }
 }
 
-enum VarTextBuffer<'a> {
-  Editable(&'a mut Var),
-  ReadOnly(&'a Var),
-}
-
-impl AsRef<str> for VarTextBuffer<'_> {
-  fn as_ref(&self) -> &str {
-    let var = match self {
-      VarTextBuffer::Editable(var) => &**var,
-      VarTextBuffer::ReadOnly(var) => var,
-    };
-
-    VarTextBuffer::as_str(var)
-  }
-}
-
-impl egui::TextBuffer for VarTextBuffer<'_> {
+impl egui::TextBuffer for &Var {
   fn is_mutable(&self) -> bool {
-    matches!(*self, VarTextBuffer::Editable(_))
+    false
+  }
+
+  fn as_str(&self) -> &str {
+    (*self).try_into().unwrap()
+  }
+
+  fn insert_text(&mut self, _text: &str, _char_index: usize) -> usize {
+    0usize
+  }
+
+  fn delete_char_range(&mut self, _char_range: std::ops::Range<usize>) {}
+}
+
+impl egui::TextBuffer for &mut Var {
+  fn is_mutable(&self) -> bool {
+    true
+  }
+
+  fn as_str(&self) -> &str {
+    self.as_ref().try_into().unwrap()
   }
 
   fn insert_text(&mut self, text: &str, char_index: usize) -> usize {
-    let byte_idx = if let VarTextBuffer::Editable(var) = self {
-      if !var.is_string() {
-        0usize
-      } else {
-        self.byte_index_from_char_index(char_index)
-      }
-    } else {
+    let byte_idx = if !self.is_string() {
       0usize
+    } else {
+      self.byte_index_from_char_index(char_index)
     };
 
-    if let VarTextBuffer::Editable(var) = self {
-      let text_len = text.len();
-      let (current_len, current_cap) = unsafe {
-        (
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringCapacity as usize,
-        )
-      };
+    let text_len = text.len();
+    let (current_len, current_cap) = unsafe {
+      (
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
+        self
+          .payload
+          .__bindgen_anon_1
+          .__bindgen_anon_2
+          .stringCapacity as usize,
+      )
+    };
 
-      if current_cap == 0usize {
-        // new string
-        let tmp = Var::ephemeral_string(text);
-        cloneVar(var, &tmp);
-      } else if (current_cap - current_len) >= text_len {
-        // text can fit within existing capacity
-        unsafe {
-          let base_ptr =
-            var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
-          // move the rest of the string to the end
-          std::ptr::copy(
-            base_ptr.add(byte_idx),
-            base_ptr.add(byte_idx).add(text_len),
-            current_len - byte_idx,
-          );
-          // insert the new text
-          let bytes = text.as_ptr() as *const std::os::raw::c_char;
-          std::ptr::copy_nonoverlapping(bytes, base_ptr.add(byte_idx), text_len);
-          // update the length
-          let new_len = current_len + text_len;
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
-          // fixup null-terminator
-          *base_ptr.add(new_len) = 0;
-        }
-      } else {
-        let mut str = String::from(VarTextBuffer::as_str(var));
-        str.insert_str(byte_idx, text);
-        let tmp = Var::ephemeral_string(str.as_str());
-        cloneVar(var, &tmp);
+    if current_cap == 0usize {
+      // new string
+      let tmp = Var::ephemeral_string(text);
+      cloneVar(self, &tmp);
+    } else if (current_cap - current_len) >= text_len {
+      // text can fit within existing capacity
+      unsafe {
+        let base_ptr =
+          self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+        // move the rest of the string to the end
+        std::ptr::copy(
+          base_ptr.add(byte_idx),
+          base_ptr.add(byte_idx).add(text_len),
+          current_len - byte_idx,
+        );
+        // insert the new text
+        let bytes = text.as_ptr() as *const std::os::raw::c_char;
+        std::ptr::copy_nonoverlapping(bytes, base_ptr.add(byte_idx), text_len);
+        // update the length
+        let new_len = current_len + text_len;
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+        // fixup null-terminator
+        *base_ptr.add(new_len) = 0;
       }
-
-      text.chars().count()
     } else {
-      0usize
+      let mut str = String::from(self.as_str());
+      str.insert_str(byte_idx, text);
+      let tmp = Var::ephemeral_string(str.as_str());
+      cloneVar(self, &tmp);
     }
+
+    text.chars().count()
   }
 
   fn delete_char_range(&mut self, char_range: std::ops::Range<usize>) {
@@ -147,47 +147,21 @@ impl egui::TextBuffer for VarTextBuffer<'_> {
       return;
     }
 
-    if let VarTextBuffer::Editable(var) = self {
-      unsafe {
-        let current_len = var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
-        let base_ptr =
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
-        // move rest of the text at the deletion location
-        std::ptr::copy(
-          base_ptr.add(byte_end),
-          base_ptr.add(byte_start),
-          current_len - byte_end,
-        );
-        // update the length
-        let new_len = current_len - byte_end + byte_start;
-        var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
-        // fixup null-terminator
-        *base_ptr.add(new_len) = 0;
-      }
-    }
-  }
-}
-
-impl VarTextBuffer<'_> {
-  fn as_str(var: &Var) -> &str {
-    if var.valueType != shardsc::SHType_String
-      && var.valueType != shardsc::SHType_Path
-      && var.valueType != shardsc::SHType_ContextVar
-      && var.valueType != shardsc::SHType_None
-    {
-      panic!("Expected None, String, Path or ContextVar variable, but casting failed.")
-    }
-
-    if var.valueType == shardsc::SHType_None {
-      return "";
-    }
-
     unsafe {
-      CStr::from_ptr(
-        var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char,
-      )
-      .to_str()
-      .unwrap()
+      let current_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
+      let base_ptr =
+      self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+      // move rest of the text at the deletion location
+      std::ptr::copy(
+        base_ptr.add(byte_end),
+        base_ptr.add(byte_start),
+        current_len - byte_end,
+      );
+      // update the length
+      let new_len = current_len - byte_end + byte_start;
+      self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+      // fixup null-terminator
+      *base_ptr.add(new_len) = 0;
     }
   }
 }
@@ -333,9 +307,9 @@ impl Shard for TextInput {
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let text = &mut if self.mutable_text {
-        VarTextBuffer::Editable(self.variable.get_mut())
+        self.variable.get_mut()
       } else {
-        VarTextBuffer::ReadOnly(self.variable.get())
+        self.variable.get()
       };
       let text_edit = if self.multiline.get().try_into()? {
         egui::TextEdit::multiline(text)

@@ -229,7 +229,7 @@ impl Shard for ImageButton {
         let image: &SHImage = input.try_into().unwrap();
         let image: egui::ColorImage = image.into();
 
-        ui.ctx().load_texture("example", image) // FIXME name
+        ui.ctx().load_texture("example", image, Default::default()) // FIXME name
       });
 
       let scale: (f32, f32) = self.scale.get().try_into()?;

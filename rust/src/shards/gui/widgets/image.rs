@@ -165,7 +165,7 @@ impl Image {
       let texture = if ptr != self.prev_ptr {
         let image: egui::ColorImage = image.into();
         self.prev_ptr = ptr;
-        self.texture.insert(ui.ctx().load_texture("example", image))
+        self.texture.insert(ui.ctx().load_texture("example", image, Default::default())) // FIXME name
       } else {
         self.texture.as_ref().unwrap()
       };
