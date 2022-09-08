@@ -3675,7 +3675,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tar"
 version = "0.4.38"
-source = "git+https://github.com/shards-lang/tar-rs?rev=12ab43e905b2fb5abd2b23ff89c0a77a6885b3b1#12ab43e905b2fb5abd2b23ff89c0a77a6885b3b1"
+source = "git+https://github.com/shards-lang/tar-rs?rev=6d26c0d1724326c8c1b06eaafc25a19253afbcdc#6d26c0d1724326c8c1b06eaafc25a19253afbcdc"
 dependencies = [
  "filetime",
  "libc",
