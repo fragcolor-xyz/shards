@@ -1,7 +1,7 @@
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::types::{
-  ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_SEQ_OF_FLOAT_TYPES,
-  SEQ_OF_SEQ_OF_INT_TYPES, STRINGS_TYPES, STRING_TYPES,
+  ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, SEQ_OF_SEQ_OF_FLOAT_TYPES,
+  STRINGS_TYPES, STRING_TYPES,
 };
 use crate::{
   core::registerShard,
@@ -39,7 +39,7 @@ lazy_static! {
     (
       cstr!("Input Shape"),
       shccstr!("The shape of the input tensor."),
-      &SEQ_OF_SEQ_OF_INT_TYPES[..]
+      &SEQ_OF_INT_TYPES[..]
     )
       .into(),
   ];
@@ -54,9 +54,14 @@ lazy_static! {
   ];
 }
 
+struct ModelWrapper {
+  model: OnnxModel,
+  shape: Vec<usize>,
+}
+
 #[derive(Default)]
 struct Load {
-  model: Option<Rc<OnnxModel>>,
+  model: Option<Rc<ModelWrapper>>,
   path: CString,
   shape: Seq,
 }
@@ -112,25 +117,23 @@ impl Shard for Load {
         "Failed to load model from given input path"
       })?;
 
-    for (i, v) in self.shape.iter().enumerate() {
-      // specify input type and shape
-      let shape: Seq = v.try_into()?;
-      let shape: Vec<usize> = shape
-        .iter()
-        .map(|v| {
-          v.as_ref()
-            .try_into()
-            .expect("Shards validation should prevent this")
-        })
-        .collect();
-      let fact = ShapeFact::from_dims(shape.iter().map(TDim::from));
-      let shape = TypedFact::dt_shape(DatumType::F32, fact);
+    // specify input type and shape
+    let shape: Vec<usize> = self
+      .shape
+      .iter()
+      .map(|v| {
+        v.as_ref()
+          .try_into()
+          .expect("Shards validation should prevent this")
+      })
+      .collect();
+    let fact = ShapeFact::from_dims(shape.iter().map(TDim::from));
+    let fact = TypedFact::dt_shape(DatumType::F32, fact);
 
-      model.set_input_fact(i, shape.into()).map_err(|e| {
-        shlog!("Error: {}", e);
-        "Failed to setup model inputs"
-      })?;
-    }
+    model.set_input_fact(0, fact.into()).map_err(|e| {
+      shlog!("Error: {}", e);
+      "Failed to setup model inputs"
+    })?;
 
     // optimize the model
     let model = model
@@ -146,7 +149,7 @@ impl Shard for Load {
         "Failed to make model runnable"
       })?;
 
-    self.model = Some(Rc::new(model));
+    self.model = Some(Rc::new(ModelWrapper { model, shape }));
 
     let model_ref = self.model.as_ref().unwrap();
     Ok(Var::new_object(model_ref, &MODEL_VAR_TYPE))
@@ -157,7 +160,7 @@ impl Shard for Load {
 struct Activate {
   model_var: ParamVar,
   previous_model: Option<Var>,
-  model: Option<Rc<OnnxModel>>,
+  model: Option<Rc<ModelWrapper>>,
 }
 
 impl Shard for Activate {
@@ -178,7 +181,7 @@ impl Shard for Activate {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &SEQ_OF_SEQ_OF_FLOAT_TYPES
+    &SEQ_OF_FLOAT_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -215,7 +218,7 @@ impl Shard for Activate {
       None => {
         self.model = Some(Var::from_object_as_clone(*current_model, &MODEL_VAR_TYPE)?);
         unsafe {
-          let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut OnnxModel;
+          let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut ModelWrapper;
           &*model_ptr
         }
       }
@@ -223,17 +226,42 @@ impl Shard for Activate {
         if previous_model != current_model {
           self.model = Some(Var::from_object_as_clone(*current_model, &MODEL_VAR_TYPE)?);
           unsafe {
-            let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut OnnxModel;
+            let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut ModelWrapper;
             &*model_ptr
           }
         } else {
           unsafe {
-            let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut OnnxModel;
+            let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut ModelWrapper;
             &*model_ptr
           }
         }
       }
     };
+
+    let mut tensor = unsafe {
+      Tensor::uninitialized_dt(DatumType::F32, &model.shape)
+        .map_err(|_| "Failed to allocate tensor")?
+    };
+    let tensor_slice = unsafe { tensor.as_slice_mut_unchecked::<f32>() };
+
+    let input: Seq = input.try_into()?;
+    for (x, col) in input.iter().enumerate() {
+      let col: Seq = col.try_into()?;
+      for (y, row) in col.iter().enumerate() {
+        let value: f32 = row.as_ref().try_into()?;
+        tensor_slice[x * col.len() + y] = value;
+      }
+    }
+
+    let result = model.model.run(tvec!(tensor)).map_err(|e| {
+      shlog!("Error: {}", e);
+      "Failed to activate model"
+    })?;
+
+    let result = result[0]
+      .to_array_view::<f32>()
+      .map_err(|_| "Failed to map result tensor")?;
+
     Ok(().into())
   }
 }

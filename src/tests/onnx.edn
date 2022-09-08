@@ -1,7 +1,7 @@
 (defmesh main)
 
 (defwire onnx-test
-  (ONNX.Load "nsfw-mnet.onnx" [[1 224 224 3]]) = .model
+  (ONNX.Load "nsfw-mnet.onnx" [1 224 224 3]) = .model
   [[1.0 1.0]] (ONNX.Activate :Model .model) (Log))
 
 (schedule main onnx-test)
