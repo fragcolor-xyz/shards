@@ -5,7 +5,7 @@ use super::Image;
 use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::widgets::FLOAT2_VAR_SLICE;
+use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::gfx_TexturePtr;
 use crate::shardsc::gfx_TexturePtr_getResolution_ext;
@@ -166,7 +166,11 @@ impl Image {
       let texture = if ptr != self.prev_ptr {
         let image: egui::ColorImage = shimage.into();
         self.prev_ptr = ptr;
-        self.texture.insert(ui.ctx().load_texture(format!("UI.Image: {:p}", shimage.data), image, Default::default()))
+        self.texture.insert(ui.ctx().load_texture(
+          format!("UI.Image: {:p}", shimage.data),
+          image,
+          Default::default(),
+        ))
       } else {
         self.texture.as_ref().unwrap()
       };

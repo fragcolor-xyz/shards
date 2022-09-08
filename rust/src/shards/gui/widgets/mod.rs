@@ -10,8 +10,6 @@ use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 
-static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
-
 /// Clickable button with a text label.
 struct Button {
   parents: ParamVar,

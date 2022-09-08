@@ -10,6 +10,7 @@ use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
+use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -24,7 +25,6 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
-use crate::types::FLOAT2_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
 use egui::Context as EguiNativeContext;
@@ -34,7 +34,7 @@ lazy_static! {
     (
       cstr!("Position"),
       cstr!("Absolute position; or when anchor is set, relative offset."),
-      FLOAT2_TYPES_SLICE,
+      FLOAT2_VAR_SLICE,
     )
       .into(),
     (
