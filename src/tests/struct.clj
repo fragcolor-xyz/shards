@@ -16,9 +16,9 @@
   (StringToBytes) (ToHex) (Log)
   (BigInt) (BigInt.ToString) (Log "wsCl")
 
-  "eguC"
+  "onnx"
   (StringToBytes) (ToHex) (Log)
-  (BigInt) (BigInt.ToString) (Log "eguC")
+  (BigInt) (BigInt.ToString) (Log "onnx")
 
   (Const [10 20 3.14])
   (Pack "i32 i32 f32")
