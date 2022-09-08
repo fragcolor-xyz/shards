@@ -1,17 +1,21 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use std::cmp::Ordering;
-use std::ffi::CStr;
-
 use super::ImageButton;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::TextureCC;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shards::gui::TEXTURE_OR_IMAGE_TYPES;
+use crate::shards::gui::TEXTURE_TYPE;
+use crate::shardsc::gfx_TexturePtr;
+use crate::shardsc::gfx_TexturePtr_getResolution_ext;
 use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Bool;
+use crate::shardsc::SHType_Image;
+use crate::shardsc::SHType_Object;
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -25,10 +29,10 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::WireState;
-use crate::types::ANY_TYPES;
 use crate::types::BOOL_TYPES;
-use crate::types::IMAGE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
+use std::cmp::Ordering;
+use std::ffi::CStr;
 
 lazy_static! {
   static ref IMAGEBUTTON_PARAMETERS: Parameters = vec![
@@ -66,6 +70,7 @@ impl Default for ImageButton {
       exposing: Vec::new(),
       should_expose: false,
       texture: None,
+      prev_ptr: std::ptr::null_mut(),
     }
   }
 }
@@ -94,7 +99,7 @@ impl Shard for ImageButton {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &IMAGE_TYPES
+    &TEXTURE_OR_IMAGE_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -192,6 +197,17 @@ impl Shard for ImageButton {
       self.action.compose(data)?;
     }
 
+    match data.inputType.basicType {
+      SHType_Image => decl_override_activate! {
+        data.activate = ImageButton::image_activate;
+      },
+      SHType_Object if unsafe { data.inputType.details.object.typeId } == TextureCC => {
+        decl_override_activate! {
+          data.activate = ImageButton::texture_activate;
+        }
+      }
+      _ => (),
+    }
     Ok(common_type::bool)
   }
 
@@ -223,43 +239,99 @@ impl Shard for ImageButton {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let texture = &*self.texture.get_or_insert_with(|| {
-        let shimage: &SHImage = input.try_into().unwrap();
-        let image: egui::ColorImage = shimage.into();
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    Err("Invalid input type")
+  }
+}
 
-        ui.ctx().load_texture(format!("UI.ImageButton: {:p}", shimage.data), image, Default::default())
-      });
+impl ImageButton {
+  fn activateImage(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let shimage: &SHImage = input.try_into()?;
+      let ptr = shimage.data;
+      let texture = if ptr != self.prev_ptr {
+        let image: egui::ColorImage = shimage.into();
+        self.prev_ptr = ptr;
+        self.texture.insert(ui.ctx().load_texture(
+          format!("UI.ImageButton: {:p}", shimage.data),
+          image,
+          Default::default(),
+        ))
+      } else {
+        self.texture.as_ref().unwrap()
+      };
 
       let scale: (f32, f32) = self.scale.get().try_into()?;
       let scale: egui::Vec2 = scale.into();
-      let mut button = egui::ImageButton::new(texture, scale * texture.size_vec2());
-
-      let selected = self.selected.get();
-      if !selected.is_none() {
-        button = button.selected(selected.try_into()?);
-      }
-
-      let response = ui.add(button);
-      if response.clicked() {
-        if self.selected.is_variable() {
-          let selected: bool = selected.try_into()?;
-          self.selected.set((!selected).into());
-        }
-        let mut output = Var::default();
-        if self.action.activate(context, input, &mut output) == WireState::Error {
-          return Err("Failed to activate button");
-        }
-
-        // button clicked during this frame
-        return Ok(true.into());
-      }
-
-      // button not clicked during this frame
-      Ok(false.into())
+      let size = scale * texture.size_vec2();
+      let texture_id = texture.into();
+      self.activateCommon(context, input, ui, texture_id, size)
     } else {
       Err("No UI parent")
+    }
+  }
+
+  fn activateTexture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
+
+      let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
+      let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
+
+      let texture_id = egui::epaint::TextureId::User(ptr);
+
+      let scale: (f32, f32) = self.scale.get().try_into()?;
+      let size =
+        egui::vec2(texture_res.x as f32, texture_res.y as f32) * egui::vec2(scale.0, scale.1);
+      self.activateCommon(context, input, ui, texture_id, size)
+    } else {
+      Err("No UI parent")
+    }
+  }
+
+  fn activateCommon(
+    &mut self,
+    context: &Context,
+    input: &Var,
+    ui: &mut egui::Ui,
+    texture_id: egui::TextureId,
+    size: egui::Vec2,
+  ) -> Result<Var, &str> {
+    let mut button = egui::ImageButton::new(texture_id, size);
+
+    let selected = self.selected.get();
+    if !selected.is_none() {
+      button = button.selected(selected.try_into()?);
+    }
+
+    let response = ui.add(button);
+    if response.clicked() {
+      if self.selected.is_variable() {
+        let selected: bool = selected.try_into()?;
+        self.selected.set((!selected).into());
+      }
+      let mut output = Var::default();
+      if self.action.activate(context, input, &mut output) == WireState::Error {
+        return Err("Failed to activate button");
+      }
+
+      // button clicked during this frame
+      return Ok(true.into());
+    }
+
+    // button not clicked during this frame
+    Ok(false.into())
+  }
+
+  impl_override_activate! {
+    extern "C" fn image_activate() -> Var {
+      ImageButton::activateImage()
+    }
+  }
+
+  impl_override_activate! {
+    extern "C" fn texture_activate() -> Var {
+      ImageButton::activateTexture()
     }
   }
 }

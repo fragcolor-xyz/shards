@@ -72,6 +72,7 @@ struct ImageButton {
   exposing: ExposedTypes,
   should_expose: bool,
   texture: Option<egui::TextureHandle>,
+  prev_ptr: *mut u8,
 }
 
 /// Displays text.
