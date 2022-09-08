@@ -182,7 +182,7 @@ struct ContextMainOutput {
     swapchainDesc.format = swapchainFormat;
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
-#if GFX_WINDOWS || GFX_APPLE || GFX_LINUX
+#if GFX_WINDOWS || GFX_OSX || GFX_LINUX
     swapchainDesc.presentMode = WGPUPresentMode_Immediate;
 #else
     swapchainDesc.presentMode = WGPUPresentMode_Fifo;
@@ -441,17 +441,8 @@ void Context::requestDevice() {
 
   state = ContextState::Requesting;
 
-  WGPURequiredLimits requiredLimits{
-      .limits = wgpuGetUndefinedLimits(),
-  };
-
   WGPUDeviceDescriptor deviceDesc = {};
-  deviceDesc.requiredLimits = &requiredLimits;
-
-#ifdef WEBGPU_NATIVE
-  WGPUDeviceExtras deviceExtras = {};
-  deviceDesc.nextInChain = &deviceExtras.chain;
-#endif
+  deviceDesc.requiredLimits = nullptr;
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
   deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
@@ -519,7 +510,8 @@ void Context::initCommon() {
   assert(!isInitialized());
 
 #ifdef WEBGPU_NATIVE
-  wgpuSetLogCallback([](WGPULogLevel level, const char *msg) {
+  wgpuSetLogCallback([](WGPULogLevel level, const char *msg, void* userData) {
+    Context& context = *(Context*)userData;
     switch (level) {
     case WGPULogLevel_Error:
       logger->error("{}", msg);
@@ -539,7 +531,7 @@ void Context::initCommon() {
     default:
       break;
     }
-  });
+  }, this);
 
   if (logger->level() <= spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);

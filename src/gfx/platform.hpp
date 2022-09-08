@@ -16,7 +16,15 @@
 #elif defined(__EMSCRIPTEN__)
 #define GFX_EMSCRIPTEN 1
 #elif defined(__APPLE__)
+#include <TargetConditionals.h>
 #define GFX_APPLE 1
+
+#if defined(TARGET_IPHONE_SIMULATOR) || defined(TARGET_OS_IPHONE)
+#define GFX_IOS 1
+#else 
+#define GFX_OSX 1
+#endif
+
 #elif defined(__linux__) && !defined(__EMSCRIPTEN__)
 #define GFX_LINUX 1
 #else
@@ -29,6 +37,15 @@
 
 #ifndef GFX_APPLE
 #define GFX_APPLE 0
+#endif
+
+
+#ifndef GFX_OSX
+#define GFX_OSX 0
+#endif
+
+#ifndef GFX_IOS
+#define GFX_IOS 0
 #endif
 
 #ifndef GFX_WINDOWS
