@@ -142,13 +142,14 @@ struct ContextMainOutput {
   void present() {
     assert(currentView);
 
+    wgpuTextureViewDrop(currentView);
+    currentView = nullptr;
+
     // Web doesn't have a swapchain, it automatically present the current texture when control
     // is returned to the browser
 #ifdef WEBGPU_NATIVE
     wgpuSwapChainPresent(wgpuSwapchain);
 #endif
-
-    currentView = nullptr;
   }
 
   void initSwapchain(WGPUAdapter adapter, WGPUDevice device) {
