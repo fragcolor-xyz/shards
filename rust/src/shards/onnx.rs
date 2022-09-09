@@ -161,6 +161,7 @@ struct Activate {
   model_var: ParamVar,
   previous_model: Option<Var>,
   model: Option<Rc<ModelWrapper>>,
+  output: Seq,
 }
 
 impl Shard for Activate {
@@ -177,7 +178,7 @@ impl Shard for Activate {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &SEQ_OF_SEQ_OF_FLOAT_TYPES
+    &SEQ_OF_FLOAT_TYPES
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -244,13 +245,22 @@ impl Shard for Activate {
     };
     let tensor_slice = unsafe { tensor.as_slice_mut_unchecked::<f32>() };
 
-    let input: Seq = input.try_into()?;
-    for (x, col) in input.iter().enumerate() {
-      let col: Seq = col.try_into()?;
-      for (y, row) in col.iter().enumerate() {
-        let value: f32 = row.as_ref().try_into()?;
-        tensor_slice[x * col.len() + y] = value;
-      }
+    // let input: Seq = input.try_into()?;
+    // for (x, col) in input.iter().enumerate() {
+    //   let col: Seq = col.try_into()?;
+    //   for (y, row) in col.iter().enumerate() {
+    //     let value: f32 = row.as_ref().try_into()?;
+    //     tensor_slice[x * col.len() + y] = value;
+    //   }
+    // }
+
+    let seq: Seq = input.try_into()?;
+    if seq.len() != tensor_slice.len() {
+      return Err("Input sequence length does not match model input shape");
+    }
+    for (i, v) in seq.iter().enumerate() {
+      let value: f32 = v.as_ref().try_into()?;
+      tensor_slice[i] = value;
     }
 
     let result = model.model.run(tvec!(tensor)).map_err(|e| {
@@ -258,11 +268,19 @@ impl Shard for Activate {
       "Failed to activate model"
     })?;
 
-    let result = result[0]
+    let result: Vec<f32> = result[0]
       .to_array_view::<f32>()
-      .map_err(|_| "Failed to map result tensor")?;
+      .map_err(|_| "Failed to map result tensor")?
+      .iter()
+      .cloned()
+      .collect();
 
-    Ok(().into())
+    self.output.set_len(result.len());
+    for (i, v) in result.iter().enumerate() {
+      self.output[i] = Var::from(*v);
+    }
+
+    Ok(self.output.as_ref().into())
   }
 }
 
