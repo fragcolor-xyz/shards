@@ -442,7 +442,8 @@ void Context::requestDevice() {
   state = ContextState::Requesting;
 
   WGPUDeviceDescriptor deviceDesc = {};
-  deviceDesc.requiredLimits = nullptr;
+  WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
+  deviceDesc.requiredLimits = &requiredLimits;
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
   deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
@@ -510,28 +511,30 @@ void Context::initCommon() {
   assert(!isInitialized());
 
 #ifdef WEBGPU_NATIVE
-  wgpuSetLogCallback([](WGPULogLevel level, const char *msg, void* userData) {
-    Context& context = *(Context*)userData;
-    switch (level) {
-    case WGPULogLevel_Error:
-      logger->error("{}", msg);
-      break;
-    case WGPULogLevel_Warn:
-      logger->warn("{}", msg);
-      break;
-    case WGPULogLevel_Info:
-      logger->info("{}", msg);
-      break;
-    case WGPULogLevel_Debug:
-      logger->debug("{}", msg);
-      break;
-    case WGPULogLevel_Trace:
-      logger->trace("{}", msg);
-      break;
-    default:
-      break;
-    }
-  }, this);
+  wgpuSetLogCallback(
+      [](WGPULogLevel level, const char *msg, void *userData) {
+        Context &context = *(Context *)userData;
+        switch (level) {
+        case WGPULogLevel_Error:
+          logger->error("{}", msg);
+          break;
+        case WGPULogLevel_Warn:
+          logger->warn("{}", msg);
+          break;
+        case WGPULogLevel_Info:
+          logger->info("{}", msg);
+          break;
+        case WGPULogLevel_Debug:
+          logger->debug("{}", msg);
+          break;
+        case WGPULogLevel_Trace:
+          logger->trace("{}", msg);
+          break;
+        default:
+          break;
+        }
+      },
+      this);
 
   if (logger->level() <= spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);

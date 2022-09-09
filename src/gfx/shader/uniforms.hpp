@@ -28,6 +28,9 @@ struct UniformBufferLayout {
   UniformBufferLayout(UniformBufferLayout &&other) = default;
   UniformBufferLayout &operator=(UniformBufferLayout &&other) = default;
   UniformBufferLayout &operator=(const UniformBufferLayout &other) = default;
+
+  // Get the size of this structure inside an array
+  size_t getArrayStride() const { return alignTo(size, maxAlignment); }
 };
 
 struct UniformBufferLayoutBuilder {

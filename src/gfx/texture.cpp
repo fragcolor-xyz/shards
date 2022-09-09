@@ -170,6 +170,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   desc.mipLevelCount = 1;
 
   contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &desc);
+  assert(contextData.texture);
 
   if (data)
     writeTextureData(context, format, resolution, contextData.texture, data);

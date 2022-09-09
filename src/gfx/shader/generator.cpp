@@ -197,6 +197,10 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
+    // Force alignment on first struct member
+    if (isArray && i == 0) {
+      output += fmt::format("@align({}) ", layout.maxAlignment);
+    }
     output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getFieldWGSLTypeName(layout.items[i].type));
   }
   output += "};\n";

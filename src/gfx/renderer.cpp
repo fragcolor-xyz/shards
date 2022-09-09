@@ -485,9 +485,9 @@ struct RendererImpl final : public ContextData {
     return result;
   }
 
-  void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view, size_t alignment) {
+  void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
     size_t numObjects = cachedPipeline.drawablesSorted.size();
-    size_t stride = alignToArrayBounds(cachedPipeline.objectBufferLayout.size, alignment);
+    size_t stride = cachedPipeline.objectBufferLayout.getArrayStride();
 
     size_t instanceBufferLength = numObjects * stride;
     instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
@@ -720,13 +720,11 @@ struct RendererImpl final : public ContextData {
         continue;
 
       // Bytes between object buffer entries
-      size_t objectBufferAlignment =
-          std::max<size_t>(cachedPipeline.objectBufferLayout.maxAlignment, deviceLimits.limits.minStorageBufferOffsetAlignment);
-      size_t objectBufferStride = alignToArrayBounds(cachedPipeline.objectBufferLayout.size, objectBufferAlignment);
+      size_t objectBufferStride = cachedPipeline.objectBufferLayout.getArrayStride();
       size_t objectBufferLength = objectBufferStride * cachedPipeline.drawablesSorted.size();
 
       DynamicWGPUBuffer &objectBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(objectBufferLength);
-      fillInstanceBuffer(objectBuffer, cachedPipeline, view.get(), objectBufferAlignment);
+      fillInstanceBuffer(objectBuffer, cachedPipeline, view.get());
 
       wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
 
@@ -737,7 +735,8 @@ struct RendererImpl final : public ContextData {
       auto objectBinding = Bindable(objectBuffer, cachedPipeline.objectBufferLayout, objectBufferLength);
 
       // Pipeline-shared bind group
-      WGPUBindGroup pipelineBindGroup = createBindGroup(device, cachedPipeline.bindGroupLayouts[0], pipelineBindings, "pipelineShared");
+      WGPUBindGroup pipelineBindGroup =
+          createBindGroup(device, cachedPipeline.bindGroupLayouts[0], pipelineBindings, "pipelineShared");
       onFrameCleanup([pipelineBindGroup]() { wgpuBindGroupRelease(pipelineBindGroup); });
       wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, pipelineBindGroup, 0, nullptr);
 
@@ -891,7 +890,10 @@ struct RendererImpl final : public ContextData {
       }
     }
 
-    cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
+    auto &layout = cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
+
+    // Align the struct ot storage buffer offset requriements
+    layout.maxAlignment = alignTo(layout.maxAlignment, deviceLimits.limits.minStorageBufferOffsetAlignment);
   }
 
   FeaturePipelineState computePipelineState(const std::vector<const Feature *> &features) {
