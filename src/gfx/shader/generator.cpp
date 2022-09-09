@@ -529,7 +529,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   if (!viewBufferLayout.fieldNames.empty())
     generateBuffer(headerCode, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
   if (!objectBufferLayout.fieldNames.empty())
-    generateBuffer(headerCode, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
+    generateBuffer(headerCode, "u_objects", BufferType::Storage, 1, 0, objectBufferLayout, true);
 
   std::map<String, BufferDefinition> buffers = {
       {"view", {"u_view", viewBufferLayout}},
@@ -543,7 +543,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
   std::map<String, TextureDefinition> textureDefinitions;
   size_t textureBindGroup = 1;
-  size_t textureBindingCounter = 0;
+  size_t textureBindingCounter = 1;
   for (auto &texture : textureBindingLayout.bindings) {
     TextureDefinition def;
     def.variableName = "t_" + texture.name;
