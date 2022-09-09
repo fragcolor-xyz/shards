@@ -1,14 +1,9 @@
 (defmesh main)
 
 (defwire onnx-test
-  ;; (LoadImage "IMG_9703.JPG") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  ;; (LoadImage "images.jpeg") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  ;; (LoadImage "preview.jpeg") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  ;; (LoadImage "redraw.jpeg") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  ;; (LoadImage "svgtest.png") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  (LoadImage "IMG_9701.JPG") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  (ONNX.Load "nsfw-mnet2.onnx" [1 224 224 3]) = .model
-  .image (ONNX.Activate :Model .model) (Log))
+  (LoadImage "svgtest.png") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
+  (ONNX.Load "nsfw-mnet2.onnx" [1 224 224 3]) = .model (Log)
+  (|| .image (ONNX.Activate :Model .model) (Log)))
 
 (schedule main onnx-test)
 (run main)
