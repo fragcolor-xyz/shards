@@ -1,8 +1,8 @@
 (defmesh main)
 
 (defwire onnx-test
-  (LoadImage "svgtest.png") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  (ONNX.Load "mobilenetv2-7.onnx" [1 224 224 3]) = .model (Log)
+  (LoadImage "../../assets/simple1.PNG") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
+  (ONNX.Load "mobilenetv2-7.onnx" [1 3 224 224]) = .model (Log)
   (|| .image (ONNX.Activate :Model .model) (Log)))
 
 (schedule main onnx-test)
