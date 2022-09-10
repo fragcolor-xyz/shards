@@ -63,6 +63,10 @@ jobs:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models
           fetch-depth: 1
+      - name: Download MobileNet v2
+        run: |
+          cd src/tests
+          wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
       - name: Test (GPU)
         env:
           RUST_BACKTRACE: 1

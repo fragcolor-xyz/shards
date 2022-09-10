@@ -2,7 +2,7 @@
 
 (defwire onnx-test
   (LoadImage "svgtest.png") (StripAlpha) (ResizeImage 224 224) (ImageToFloats) = .image
-  (ONNX.Load "nsfw-mnet2.onnx" [1 224 224 3]) = .model (Log)
+  (ONNX.Load "mobilenetv2-7.onnx" [1 224 224 3]) = .model (Log)
   (|| .image (ONNX.Activate :Model .model) (Log)))
 
 (schedule main onnx-test)
