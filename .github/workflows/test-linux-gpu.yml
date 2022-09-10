@@ -94,6 +94,9 @@ jobs:
 
           echo "Running imgui demo"
           build/shards src/tests/imgui-demo.edn
+
+          echo "Running onnx test"
+          build/shards src/tests/onnx.edn
       - name: Test doc samples (UI)
         env:
           RUST_BACKTRACE: 1
