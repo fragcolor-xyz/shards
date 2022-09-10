@@ -4,6 +4,7 @@
 use crate::core::cloneVar;
 use crate::core::destroyVar;
 use crate::core::Core;
+use crate::fourCharacterCode;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHColor;
 use crate::shardsc::SHComposeResult;
@@ -4145,7 +4146,7 @@ impl PartialEq for Type {
   }
 }
 
-pub const FRAG_CC: i32 = 0x66726167; // 'frag'
+pub const FRAG_CC: i32 = fourCharacterCode(*b"frag");
 
 pub static INT_TYPES_SLICE: &[Type] = &[common_type::int];
 pub static INT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::int, common_type::none];
@@ -4208,8 +4209,8 @@ lazy_static! {
   pub static ref ENUM_TYPE: Type = {
     let mut t = common_type::enumeration;
     t.details.enumeration = SHTypeInfo_Details_Enum {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: 0x74797065, // 'type'
+      vendorId: FRAG_CC,
+      typeId: fourCharacterCode(*b"type"),
     };
     t
   };

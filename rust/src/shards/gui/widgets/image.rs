@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Image;
+use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::FLOAT2_VAR_SLICE;
@@ -25,7 +26,7 @@ use crate::types::Types;
 use crate::types::Var;
 use crate::types::FRAG_CC;
 
-const TextureCC: i32 = 1952807007; // 'tex_'
+const TextureCC: i32 = fourCharacterCode(*b"tex_");
 
 lazy_static! {
   static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);

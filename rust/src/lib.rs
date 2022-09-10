@@ -43,6 +43,14 @@ use crate::types::Var;
 use std::convert::TryInto;
 use std::ffi::CString;
 
+pub const fn fourCharacterCode(val: [u8; 4]) -> i32 {
+  let unsigned_val = ((val[0] as u32) << 24 & 0xff000000)
+    | ((val[1] as u32) << 16 & 0x00ff0000)
+    | ((val[2] as u32) << 8 & 0x0000ff00)
+    | ((val[3] as u32) & 0x000000ff);
+  unsigned_val as i32
+}
+
 pub trait IntoVar {
   fn into_var(self) -> Var;
 }
