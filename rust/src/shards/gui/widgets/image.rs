@@ -160,12 +160,12 @@ impl Shard for Image {
 impl Image {
   fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let image: &SHImage = input.try_into()?;
-      let ptr = image.data;
+      let shimage: &SHImage = input.try_into()?;
+      let ptr = shimage.data;
       let texture = if ptr != self.prev_ptr {
-        let image: egui::ColorImage = image.into();
+        let image: egui::ColorImage = shimage.into();
         self.prev_ptr = ptr;
-        self.texture.insert(ui.ctx().load_texture("example", image, Default::default())) // FIXME name
+        self.texture.insert(ui.ctx().load_texture(format!("UI.Image: {:p}", shimage.data), image, Default::default()))
       } else {
         self.texture.as_ref().unwrap()
       };
