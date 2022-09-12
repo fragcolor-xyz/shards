@@ -11,7 +11,6 @@ use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -120,6 +119,8 @@ macro_rules! impl_panel {
           ..ExposedInfo::default()
         };
         self.requiring.push(exp_info);
+        // Add UI.Parents to the list of required variables
+        util::require_parents(&mut self.requiring, &self.parents);
 
         Some(&self.requiring)
       }
@@ -139,25 +140,6 @@ macro_rules! impl_panel {
       }
 
       fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        // we need to inject UI variable to the inner shards
-        let mut data = *data;
-        // clone shared into a new vector we can append things to
-        let mut shared: ExposedTypes = data.shared.into();
-        // append to shared ui vars
-        let ui_info = ExposedInfo {
-          exposedType: EGUI_UI_SEQ_TYPE,
-          name: self.parents.get_name(),
-          help: cstr!("The parent UI objects.").into(),
-          isMutable: false,
-          isProtected: true, // don't allow to be used in code/wires
-          isTableEntry: false,
-          global: false,
-          isPushTable: false,
-        };
-        shared.push(ui_info);
-        // update shared
-        data.shared = (&shared).into();
-
         if !self.contents.is_empty() {
           self.contents.compose(&data)?;
         }
@@ -339,25 +321,6 @@ impl Shard for CentralPanel {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    // we need to inject UI variable to the inner shards
-    let mut data = *data;
-    // clone shared into a new vector we can append things to
-    let mut shared: ExposedTypes = data.shared.into();
-    // append to shared ui vars
-    let ui_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      isMutable: false,
-      isProtected: true, // don't allow to be used in code/wires
-      isTableEntry: false,
-      global: false,
-      isPushTable: false,
-    };
-    shared.push(ui_info);
-    // update shared
-    data.shared = (&shared).into();
-
     if !self.contents.is_empty() {
       self.contents.compose(&data)?;
     }
