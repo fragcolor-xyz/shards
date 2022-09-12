@@ -5,7 +5,7 @@ set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
 find_package(Git REQUIRED)
 
 include(SHExternalProject)
-include(ExternalProject)
+include(FetchContent)
 
 add_subdirectory(filesystem)
 add_subdirectory(json)
