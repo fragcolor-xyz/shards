@@ -4,7 +4,8 @@ set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ON)
 find_package(Git REQUIRED)
 
-include(CBExternalProject)
+include(SHExternalProject)
+include(ExternalProject)
 
 add_subdirectory(filesystem)
 add_subdirectory(json)
