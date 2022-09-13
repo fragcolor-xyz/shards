@@ -42,8 +42,8 @@ jobs:
       - name: Clean workspace
         if: ${{ github.event.inputs.clean-workspace == 'true' || inputs.clean-workspace == 'true' }}
         run: |
-            rm -rf $GITHUB_WORKSPACE
-            mkdir $GITHUB_WORKSPACE
+          rm -rf $GITHUB_WORKSPACE
+          mkdir $GITHUB_WORKSPACE
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -84,6 +84,9 @@ jobs:
 
           echo "Running UI"
           build/shards src/tests/ui.edn
+
+          echo "Running UI (nested)"
+          build/shards src/tests/ui-nested.edn
 
           echo "Running egui demo"
           build/shards src/tests/egui-demo.edn

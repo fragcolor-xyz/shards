@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::util;
 use super::EguiContext;
 use super::CONTEXT_NAME;
 use super::EGUI_CTX_TYPE;
@@ -172,9 +173,18 @@ impl Shard for EguiContext {
     self.contents.warmup(ctx)?;
     self.main_window_globals.warmup(ctx);
     self.parents.warmup(ctx);
+
     // Initialize the parents stack in the root UI.
     // Every other UI elements will reference it and push or pop UIs to it.
-    self.parents.set(Seq::new().as_ref().into());
+    if !self.parents.get().is_seq() {
+      self.parents.set(Seq::new().as_ref().into());
+    }
+
+    // Context works the same
+    if !self.instance.get().is_seq() {
+      self.instance.set(Seq::new().as_ref().into());
+    }
+
     Ok(())
   }
 
@@ -215,20 +225,38 @@ impl Shard for EguiContext {
       Ok(raw_input) => {
         let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
-        let mut failed = false;
         let mut output = Var::default();
+        let mut error: Option<&str> = None;
         let egui_output = gui_ctx.run(raw_input, |ctx| {
-          unsafe {
-            let var = Var::new_object_from_ptr(ctx as *const _, &EGUI_CTX_TYPE);
-            self.instance.set(var);
-          }
+          error = (|| -> Result<(), &str> {
+            // Push empty parent UI in case this context is nested inside another UI
+            util::update_seq(&mut self.parents, |seq| {
+              seq.push(Var::default());
+            })?;
 
-          if self.contents.activate(context, input, &mut output) == WireState::Error {
-            failed = true;
-          }
+            let wire_state = util::with_object_stack_var(
+              &mut self.instance,
+              ctx,
+              &EGUI_CTX_TYPE,
+              || Ok(self.contents.activate(context, input, &mut output)),
+            )?;
+
+            if wire_state == WireState::Error {
+              return Err("Failed to activate UI contents");
+            }
+
+            // Pop empty parent UI
+            util::update_seq(&mut self.parents, |seq| {
+              seq.pop();
+            })?;
+
+            Ok(())
+          })()
+          .err();
         });
-        if failed {
-          return Err("Failed to activate UI contents");
+
+        if let Some(e) = error {
+          return Err(e);
         }
 
         let queue_var = self.queue.get();
