@@ -61,6 +61,7 @@ struct Image {
   requiring: ExposedTypes,
   scale: ParamVar,
   texture: Option<egui::TextureHandle>,
+  prev_ptr: *mut u8,
 }
 
 /// Clickable button with an image.

@@ -63,12 +63,13 @@ impl From<epaint::Vertex> for egui_Vertex {
 
 impl From<epaint::TextureId> for egui_TextureId {
     fn from(v: epaint::TextureId) -> Self {
+        let (id, managed) = match v {
+            epaint::TextureId::Managed(id) => (id, true),
+            epaint::TextureId::User(id) => (id, false),
+        };
         Self {
-            id: if let epaint::TextureId::Managed(managed) = v {
-                managed
-            } else {
-                0
-            },
+            id,
+            managed,
         }
     }
 }
