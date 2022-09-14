@@ -329,6 +329,7 @@ impl TextureManager {
                     size: [width, height],
                     pixels,
                 },
+                Default::default(),
             )
         })
     }
