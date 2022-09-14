@@ -169,7 +169,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 
     shRegisterAllShards();
 
-    REGISTER_SHARD("Edn.Eval", EdnEval);
+    REGISTER_SHARD("EDN.Eval", EdnEval);
 
     initDoneOnce = true;
 

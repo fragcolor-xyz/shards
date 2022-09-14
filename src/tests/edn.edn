@@ -35,14 +35,14 @@
   (Log)
 
   "pp" = .prefix
-  "(* 2 2)" (Edn.Eval) (Assert.Is 4 true)
-  "(def available 1)" (Edn.Eval)
-  "available" (Edn.Eval) (Assert.Is 1 true)
-  "(deflocal! available 2)" (Edn.Eval false)
-  "available" (Edn.Eval) (Assert.Is 1 true)
-  "(def test 11)" (Edn.Eval :Prefix .prefix)
-  "pp/test" (Edn.Eval) (Assert.Is 11 true)
-  "test" (Edn.Eval :Prefix "pp") (Assert.Is 11 true)
+  "(* 2 2)" (EDN.Eval) (Assert.Is 4 true)
+  "(def available 1)" (EDN.Eval)
+  "available" (EDN.Eval) (Assert.Is 1 true)
+  "(deflocal! available 2)" (EDN.Eval false)
+  "available" (EDN.Eval) (Assert.Is 1 true)
+  "(def test 11)" (EDN.Eval :Prefix .prefix)
+  "pp/test" (EDN.Eval) (Assert.Is 11 true)
+  "test" (EDN.Eval :Prefix "pp") (Assert.Is 11 true)
   ;
   )
 
