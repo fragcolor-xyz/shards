@@ -142,7 +142,7 @@ struct ContextMainOutput {
   void present() {
     assert(currentView);
 
-    wgpuTextureViewDrop(currentView);
+    wgpuTextureViewRelease(currentView);
     currentView = nullptr;
 
     // Web doesn't have a swapchain, it automatically present the current texture when control
