@@ -113,7 +113,8 @@
 
            .rt-1 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
 
-           (UI.Separator) "Footer" (UI.Label)))))
+           (UI.Separator) "Footer" (UI.Label)))
+         ))
 
     (GFX.Render :Steps .render-steps))))
 
