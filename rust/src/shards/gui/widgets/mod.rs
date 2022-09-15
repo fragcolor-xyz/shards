@@ -267,6 +267,7 @@ pub fn registerShards() {
   registerShard::<Combo>();
   registerShard::<Console>();
   registerShard::<Hyperlink>();
+  registerShard::<RenderTarget>();
   registerShard::<Image>();
   registerShard::<ImageButton>();
   registerShard::<RenderTarget>();
