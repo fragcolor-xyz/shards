@@ -86,6 +86,14 @@ struct Image {
   prev_ptr: *mut u8,
 }
 
+struct RenderTarget {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  scale: ParamVar,
+  texture: Option<egui::TextureHandle>,
+  prev_ptr: *mut u8,
+}
+
 /// Clickable button with an image.
 struct ImageButton {
   parents: ParamVar,
@@ -233,6 +241,7 @@ mod numeric_input;
 mod numeric_slider;
 mod progress_bar;
 mod radio_button;
+mod render_target;
 mod spinner;
 mod text_input;
 mod text_util;
@@ -245,6 +254,7 @@ pub fn registerShards() {
   registerShard::<Combo>();
   registerShard::<Console>();
   registerShard::<Hyperlink>();
+  registerShard::<RenderTarget>();
   registerShard::<Image>();
   registerShard::<ImageButton>();
   registerShard::<Label>();

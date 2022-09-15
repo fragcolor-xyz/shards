@@ -214,16 +214,15 @@ impl Shard for GetProperty {
       match self.get_ui_property()? {
         UIProperty::RemainingSpace => {
           let target_size = ui.available_size();
-          let cursor = ui.cursor();
+          let target_pos = ui.next_widget_position().to_vec2();
 
           let draw_scale = ui.ctx().pixels_per_point();
 
-          let min = (cursor.min.to_vec2()) * draw_scale;
-          let max = (cursor.min + target_size).to_vec2() * draw_scale;
-          let rect = egui::Rect::from_min_max(min.to_pos2(), max.to_pos2());
+          let min = target_pos * draw_scale;
+          let max = (target_pos + target_size) * draw_scale;
 
           // Float4 rect as (X0, Y0, X1, Y1)
-          let result_rect: Var = (rect.min.x, rect.min.y, rect.max.x, rect.max.y).into();
+          let result_rect: Var = (min.x, min.y, max.x, max.y).into();
           Ok(result_rect)
         }
         _ => Err("Unknown property"),

@@ -10,7 +10,6 @@
 
 (defn make-inner-wire [id base-color]
   (Wire id :Looped
-        "Child" (UI.Label)
         (Setup
          0.0 >= .time
 
@@ -19,9 +18,11 @@
          {:Mesh .mesh :Params {:baseColor base-color}} (GFX.Drawable :Transform .transform-0) >> .drawables
 
          (GFX.DrawQueue) >= .queue
+         (GFX.DrawQueue) >= .ui-queue
 
          (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features1
          (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features1
+         (GFX.UIPass :Queue .ui-queue) >> .render-steps1
          (GFX.DrawablePass :Features .features1 :Queue .queue) >> .render-steps1
 
          ;; Create view
@@ -32,7 +33,15 @@
         (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
 
         .queue (GFX.ClearQueue)
+        .ui-queue (GFX.ClearQueue)
+
         .drawables (GFX.Draw .queue)
+
+        (UI .ui-queue
+            (-> ; UI Content
+             (UI.Window
+              :Contents
+              (-> "This is UI inside a render target" (UI.Label)))))
 
         ; This renders to the render target that was pushed in the outer wire
         (GFX.Render :Steps .render-steps1 :View .view)))
@@ -78,7 +87,7 @@
            (Step inner-wire-0)
            (GFX.PopView)
 
-           .rt-0 (GFX.RenderTargetTexture "main") (UI.Image)))
+           .rt-0 (GFX.RenderTargetTexture "main") (UI.RenderTarget)))
 
          (UI.Window
           :Title "Second Window"
@@ -93,9 +102,10 @@
            (Step inner-wire-1)
            (GFX.PopView)
 
-           .rt-1 (GFX.RenderTargetTexture "main") (UI.Image)
+           .rt-1 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
 
-           (UI.Separator) "Footer" (UI.Label)))))
+           (UI.Separator) "Footer" (UI.Label)))
+         ))
 
     (GFX.Render :Steps .render-steps))))
 
