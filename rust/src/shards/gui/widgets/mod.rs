@@ -43,6 +43,7 @@ struct Combo {
   requiring: ExposedTypes,
   label: ParamVar,
   index: ParamVar,
+  width: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: usize,
