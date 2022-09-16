@@ -82,6 +82,12 @@ struct Separator {
   requiring: ExposedTypes,
 }
 
+struct Space {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  amount: ParamVar,
+}
+
 struct Vertical {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -98,6 +104,7 @@ mod horizontal;
 mod indent;
 mod scroll_area;
 mod separator;
+mod space;
 mod vertical;
 
 pub fn registerShards() {
@@ -110,5 +117,6 @@ pub fn registerShards() {
   registerShard::<Indent>();
   registerShard::<ScrollArea>();
   registerShard::<Separator>();
+  registerShard::<Space>();
   registerShard::<Vertical>();
 }
