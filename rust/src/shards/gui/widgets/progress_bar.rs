@@ -4,6 +4,7 @@
 use super::ProgressBar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -13,15 +14,23 @@ use crate::types::Parameters;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::FLOAT_TYPES;
-use crate::types::STRING_OR_NONE_SLICE;
+use crate::types::STRING_VAR_OR_NONE_SLICE;
 
 lazy_static! {
-  static ref PROGRESSBAR_PARAMETERS: Parameters = vec![(
-    cstr!("Overlay"),
-    cstr!("The text displayed inside the progress bar."),
-    STRING_OR_NONE_SLICE,
-  )
-    .into(),];
+  static ref PROGRESSBAR_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Overlay"),
+      cstr!("The text displayed inside the progress bar."),
+      STRING_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Width"),
+      cstr!("The desired width of the progress bar. Will use all horizontal space if not set."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
+  ];
 }
 
 impl Default for ProgressBar {
@@ -32,6 +41,7 @@ impl Default for ProgressBar {
       parents,
       requiring: Vec::new(),
       overlay: ParamVar::default(),
+      desired_width: ParamVar::default(),
     }
   }
 }
@@ -84,6 +94,7 @@ impl Shard for ProgressBar {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.overlay.set_param(value)),
+      1 => Ok(self.desired_width.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -91,6 +102,7 @@ impl Shard for ProgressBar {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.overlay.get_param(),
+      1 => self.desired_width.get_param(),
       _ => Var::default(),
     }
   }
@@ -108,11 +120,13 @@ impl Shard for ProgressBar {
     self.parents.warmup(ctx);
 
     self.overlay.warmup(ctx);
+    self.desired_width.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.desired_width.cleanup();
     self.overlay.cleanup();
 
     self.parents.cleanup();
@@ -125,9 +139,15 @@ impl Shard for ProgressBar {
       let progress = input.try_into()?;
       let mut progressBar = egui::ProgressBar::new(progress);
 
-      if !self.overlay.get().is_none() {
-        let text: &str = self.overlay.get().try_into()?;
+      let overlay = self.overlay.get();
+      if !overlay.is_none() {
+        let text: &str = overlay.try_into()?;
         progressBar = progressBar.text(text);
+      }
+
+      let desired_width = self.desired_width.get();
+      if !desired_width.is_none() {
+        progressBar = progressBar.desired_width(desired_width.try_into()?);
       }
 
       ui.add(progressBar);

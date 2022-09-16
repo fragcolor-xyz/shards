@@ -96,6 +96,7 @@ struct ProgressBar {
   parents: ParamVar,
   requiring: ExposedTypes,
   overlay: ParamVar,
+  desired_width: ParamVar,
 }
 
 /// Radio button with a text label.
