@@ -179,8 +179,6 @@ impl RenderTarget {
         egui::vec2(texture_res.x as f32, texture_res.y as f32)
       };
 
-      let target_pos = ui.next_widget_position().to_vec2();
-
       // Manually allocate region to consume input events
       let scale = Self::get_scale(&self.scale, ui)?;
       let (rect, _response) = ui.allocate_exact_size(texture_size * scale, Sense::click_and_drag());

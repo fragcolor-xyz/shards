@@ -66,12 +66,15 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
 }
 
 void EguiInputTranslator::setupWindowInput(Window &window, int4 mappedWindowRegion, int2 viewportSize, float scalingFactor) {
-  this->mappedWindowRegion = mappedWindowRegion;
-  this->viewportSize = viewportSize;
-
+  // UI Points per pixel
   float eguiDrawScale = EguiRenderer::getDrawScale(window) * scalingFactor;
+
+  // Drawable/Window scale
   float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
   windowToEguiScale = drawableScale / eguiDrawScale;
+
+  // Convert from pixel to window coordinates
+  this->mappedWindowRegion = int4(float4(mappedWindowRegion) / float4(drawableScale.x, drawableScale.y, drawableScale.x, drawableScale.y));
 
   // Take viewport size and scale it by the draw scale
   float2 viewportSizeFloat = float2(float(viewportSize.x), float(viewportSize.y));

@@ -121,10 +121,8 @@ struct PushViewShard : public BaseConsumer {
       };
 
       // Safe to automatically set reference size based on region
-      Window &window = getWindow();
-      float2 inputCoordScale = float2(window.getDrawableSize()) / float2(window.getSize());
       float2 regionSize = float2(region.z - region.x, region.w - region.y);
-      viewItem.referenceSize = int2(linalg::floor(float2(regionSize) * inputCoordScale));
+      viewItem.referenceSize = int2(linalg::floor(float2(regionSize)));
     }
 
     auto &mwg = getMainWindowGlobals();

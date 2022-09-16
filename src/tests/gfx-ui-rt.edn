@@ -72,7 +72,7 @@
    (->
 
     (GFX.RenderTarget) >= .rt-0
-    (GFX.RenderTarget) >= .rt-1
+    ;; (GFX.RenderTarget) >= .rt-1
 
     .ui-draw-queue (GFX.ClearQueue)
     (UI .ui-draw-queue
@@ -89,22 +89,22 @@
 
            .rt-0 (GFX.RenderTargetTexture "main") (UI.RenderTarget)))
 
-         (UI.Window
-          :Title "Second Window"
-          :Contents
-          (->
-           "Header" (UI.Label) (UI.Separator)
+        ;;  (UI.Window
+        ;;   :Title "Second Window"
+        ;;   :Contents
+        ;;   (->
+        ;;    "Header" (UI.Label) (UI.Separator)
 
-           (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
-           (compute-rt-region-16-9) > .rt-region
+        ;;    (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
+        ;;    (compute-rt-region-16-9) > .rt-region
 
-           {:Target .rt-1 :WindowRegion .rt-region} (GFX.PushView)
-           (Step inner-wire-1)
-           (GFX.PopView)
+        ;;    {:Target .rt-1 :WindowRegion .rt-region} (GFX.PushView)
+        ;;    (Step inner-wire-1)
+        ;;    (GFX.PopView)
 
-           .rt-1 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
+        ;;    .rt-1 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
 
-           (UI.Separator) "Footer" (UI.Label)))
+        ;;    (UI.Separator) "Footer" (UI.Label)))
          ))
 
     (GFX.Render :Steps .render-steps))))

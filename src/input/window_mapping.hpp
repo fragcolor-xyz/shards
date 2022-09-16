@@ -9,8 +9,8 @@ struct Window;
 }
 
 namespace shards::input {
-
-/// A sub-region of the window area
+// A sub-region of the window area
+// Coordinates are in pixel coordinates
 struct WindowSubRegion {
   Rect region;
 

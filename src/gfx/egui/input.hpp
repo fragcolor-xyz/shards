@@ -14,8 +14,11 @@ struct EguiInputTranslatorArgs {
   Window &window;
   double time;
   float deltaTime;
+  // Size of the UI region (in pixels)
   int2 viewportSize;
+  // Mapped window region (in pixels)
   int4 mappedWindowRegion;
+  // Scale to render the UI at, on top of OS scaling factor
   float scalingFactor = 1.0f;
 };
 
@@ -30,7 +33,6 @@ private:
   bool textInputActive{};
   float2 windowToEguiScale;
   int4 mappedWindowRegion;
-  int2 viewportSize;
   std::vector<std::function<void()>> deferQueue;
 
 public:
@@ -38,8 +40,8 @@ public:
   EguiInputTranslator(const EguiInputTranslator &) = delete;
   const EguiInputTranslator &operator=(const EguiInputTranslator &) = delete;
 
-  // Setup input as being received to an entire OS window
-  //  responsible for setting screen rect and conversion of pointer coordinates
+  // Setup input mapping from a window to a specific subregion
+  // all coordinates are pixel coordinates
   void setupWindowInput(Window &window, int4 mappedWindowRegion, int2 viewportSize, float scalingFactor = 1.0f);
 
   // Resets the conversion output
