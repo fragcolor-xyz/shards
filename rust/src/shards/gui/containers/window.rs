@@ -1,14 +1,17 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::Anchor;
 use super::Window;
 use super::WindowFlags;
 use crate::shard::Shard;
+use crate::shards::gui::containers::ANCHOR_TYPES;
 use crate::shards::gui::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::shards::gui::containers::WINDOW_FLAGS_TYPE;
 use crate::shards::gui::util;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
+use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -24,7 +27,6 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
-use crate::types::INT2_OR_NONE_TYPES_SLICE;
 use crate::types::INT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
@@ -41,8 +43,14 @@ lazy_static! {
       .into(),
     (
       cstr!("Position"),
-      cstr!("The (x,y) position of the rendered window."),
-      INT2_OR_NONE_TYPES_SLICE,
+      cstr!("Absolute position; or when anchor is set, relative offset."),
+      FLOAT2_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Anchor"),
+      cstr!("Corner or center of the screen."),
+      &ANCHOR_TYPES[..],
     )
       .into(),
     (
@@ -82,7 +90,8 @@ impl Default for Window {
       instance: ctx,
       requiring: Vec::new(),
       title: ParamVar::new(Var::ephemeral_string("My Window")),
-      position: ParamVar::default(),
+      position: ParamVar::new((0.0, 0.0).into()),
+      anchor: ParamVar::default(),
       width: ParamVar::default(),
       height: ParamVar::default(),
       flags: ParamVar::default(),
@@ -143,10 +152,11 @@ impl Shard for Window {
     match index {
       0 => Ok(self.title.set_param(value)),
       1 => Ok(self.position.set_param(value)),
-      2 => Ok(self.width.set_param(value)),
-      3 => Ok(self.height.set_param(value)),
-      4 => Ok(self.flags.set_param(value)),
-      5 => self.contents.set_param(value),
+      2 => Ok(self.anchor.set_param(value)),
+      3 => Ok(self.width.set_param(value)),
+      4 => Ok(self.height.set_param(value)),
+      5 => Ok(self.flags.set_param(value)),
+      6 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -155,10 +165,11 @@ impl Shard for Window {
     match index {
       0 => self.title.get_param(),
       1 => self.position.get_param(),
-      2 => self.width.get_param(),
-      3 => self.height.get_param(),
-      4 => self.flags.get_param(),
-      5 => self.contents.get_param(),
+      2 => self.anchor.get_param(),
+      3 => self.width.get_param(),
+      4 => self.height.get_param(),
+      5 => self.flags.get_param(),
+      6 => self.contents.get_param(),
       _ => Var::default(),
     }
   }
@@ -173,7 +184,7 @@ impl Shard for Window {
       help: cstr!("The exposed UI context.").into(),
       ..ExposedInfo::default()
     };
-    self.requiring.push(exp_info); 
+    self.requiring.push(exp_info);
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring, &self.parents);
 
@@ -199,6 +210,7 @@ impl Shard for Window {
 
     self.title.warmup(ctx);
     self.position.warmup(ctx);
+    self.anchor.warmup(ctx);
     self.width.warmup(ctx);
     self.height.warmup(ctx);
     self.flags.warmup(ctx);
@@ -216,6 +228,7 @@ impl Shard for Window {
     self.flags.cleanup();
     self.height.cleanup();
     self.width.cleanup();
+    self.anchor.cleanup();
     self.position.cleanup();
     self.title.cleanup();
 
@@ -232,20 +245,36 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       let title: &str = self.title.get().try_into()?;
       let mut window = egui::Window::new(title);
-      let rect = gui_ctx.available_rect();
 
-      let position = self.position.get();
-      if !position.is_none() {
+      window = if self.anchor.get().is_none() {
         // note: in egui the position is relative to the top-left corner of the whole UI
         // but a window is constrained by the available rect of the central panel.
         // Thus, we offset it to make it more intuitive for users.
         // i.e. the position is now relative to the top-left corner of the central panel.
-        let position: (i64, i64) = position.try_into()?;
-        window = window.default_pos(egui::Pos2 {
-          x: position.0 as f32 + rect.min.x,
-          y: position.1 as f32 + rect.min.y,
-        });
-      }
+        let pos: (f32, f32) = self.position.get().try_into()?;
+        let rect = gui_ctx.available_rect();
+        window.default_pos(egui::Pos2 {
+          x: pos.0 + rect.min.x,
+          y: pos.1 + rect.min.y,
+        })
+      } else {
+        let offset: (f32, f32) = self.position.get().try_into()?;
+        window.anchor(
+          Anchor {
+            bits: unsafe {
+              self
+                .anchor
+                .get()
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_3
+                .enumValue
+            },
+          }
+          .try_into()?,
+          offset,
+        )
+      };
 
       let width = self.width.get();
       if !width.is_none() {

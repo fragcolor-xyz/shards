@@ -58,6 +58,7 @@ struct Window {
   requiring: ExposedTypes,
   title: ParamVar,
   position: ParamVar,
+  anchor: ParamVar,
   width: ParamVar,
   height: ParamVar,
   flags: ParamVar,
