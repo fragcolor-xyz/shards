@@ -10,6 +10,7 @@
     (UI
      .ui-draw-queue
      (UI.TopPanel
+       :Contents
       (UI.MenuBar
        :Contents
        (UI.Menu
@@ -19,4 +20,4 @@
     (GFX.Render :Steps .render-steps))))
 (defmesh root)
 (schedule root main-wire)
-(run root 0.1 100)
+(run root 0.1 10)

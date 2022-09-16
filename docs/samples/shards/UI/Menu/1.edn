@@ -10,6 +10,7 @@
     (UI
      .ui-draw-queue
      (UI.TopPanel
+       :Contents
       (UI.MenuBar
        (UI.Menu
         :Title "File"

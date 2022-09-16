@@ -9,6 +9,7 @@ use super::TopPanel;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
+use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
@@ -25,20 +26,48 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use crate::types::FLOAT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use egui::Context as EguiNativeContext;
 
 lazy_static! {
-  static ref PANEL_PARAMETERS: Parameters = vec![(
+  static ref CENTRALPANEL_PARAMETERS: Parameters = vec![(
     cstr!("Contents"),
     cstr!("The UI contents."),
     &SHARDS_OR_NONE_TYPES[..],
   )
     .into(),];
+  static ref SIDEPANEL_PARAMETERS: Parameters = vec![
+    (cstr!("Resizable"), cstr!("TODO"), BOOL_OR_NONE_SLICE,).into(),
+    (
+      cstr!("DefaultSize"),
+      cstr!("The initial size of the panel."),
+      FLOAT_OR_NONE_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("MinSize"),
+      cstr!("The minimum allowable size of the panel."),
+      FLOAT_OR_NONE_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("MaxSize"),
+      cstr!("The maximum allowable size of the panel."),
+      FLOAT_OR_NONE_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Contents"),
+      cstr!("The UI contents."),
+      &SHARDS_OR_NONE_TYPES[..],
+    )
+      .into(),
+  ];
 }
 
 macro_rules! impl_panel {
-  ($name:ident, $name_str:literal, $hash:literal, $egui_func:expr) => {
+  ($name:ident, $default_size:ident, $min_size:ident, $max_size:ident, $name_str:literal, $hash:literal, $egui_func:expr) => {
     impl Default for $name {
       fn default() -> Self {
         let mut ctx = ParamVar::default();
@@ -48,6 +77,10 @@ macro_rules! impl_panel {
         Self {
           instance: ctx,
           requiring: Vec::new(),
+          resizable: ParamVar::default(),
+          $default_size: ParamVar::default(),
+          $min_size: ParamVar::default(),
+          $max_size: ParamVar::default(),
           contents: ShardsVar::default(),
           parents,
           exposing: Vec::new(),
@@ -91,19 +124,27 @@ macro_rules! impl_panel {
       }
 
       fn parameters(&mut self) -> Option<&Parameters> {
-        Some(&PANEL_PARAMETERS)
+        Some(&SIDEPANEL_PARAMETERS)
       }
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => self.contents.set_param(value),
+          0 => Ok(self.resizable.set_param(value)),
+          1 => Ok(self.$default_size.set_param(value)),
+          2 => Ok(self.$min_size.set_param(value)),
+          3 => Ok(self.$max_size.set_param(value)),
+          4 => self.contents.set_param(value),
           _ => Err("Invalid parameter index"),
         }
       }
 
       fn getParam(&mut self, index: i32) -> Var {
         match index {
-          0 => self.contents.get_param(),
+          0 => self.resizable.get_param(),
+          1 => self.$default_size.get_param(),
+          2 => self.$min_size.get_param(),
+          3 => self.$max_size.get_param(),
+          4 => self.contents.get_param(),
           _ => Var::default(),
         }
       }
@@ -152,6 +193,10 @@ macro_rules! impl_panel {
         self.instance.warmup(ctx);
         self.parents.warmup(ctx);
 
+        self.resizable.warmup(ctx);
+        self.$default_size.warmup(ctx);
+        self.$min_size.warmup(ctx);
+        self.$max_size.warmup(ctx);
         if !self.contents.is_empty() {
           self.contents.warmup(ctx)?;
         }
@@ -163,6 +208,10 @@ macro_rules! impl_panel {
         if !self.contents.is_empty() {
           self.contents.cleanup();
         }
+        self.$max_size.cleanup();
+        self.$min_size.cleanup();
+        self.$default_size.cleanup();
+        self.resizable.cleanup();
 
         self.parents.cleanup();
         self.instance.cleanup();
@@ -175,15 +224,33 @@ macro_rules! impl_panel {
           return Ok(*input);
         }
 
+        let mut panel = $egui_func(EguiId::new(self, 0));
+        let resizable = self.resizable.get();
+        if !resizable.is_none() {
+          panel = panel.resizable(resizable.try_into()?);
+        }
+        let $default_size = self.$default_size.get();
+        if !$default_size.is_none() {
+          panel = panel.$default_size($default_size.try_into()?);
+        }
+        let $min_size = self.$min_size.get();
+        if !$min_size.is_none() {
+          panel = panel.$min_size($min_size.try_into()?);
+        }
+        let $max_size = self.$max_size.get();
+        if !$max_size.is_none() {
+          panel = panel.$max_size($max_size.try_into()?);
+        }
+
         if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-          $egui_func(EguiId::new(self, 0))
+          panel
             .show_inside(ui, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
             .inner?;
         } else {
           let gui_ctx = util::get_current_context(&self.instance)?;
-          $egui_func(EguiId::new(self, 0))
+          panel
             .show(gui_ctx, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
@@ -199,24 +266,36 @@ macro_rules! impl_panel {
 
 impl_panel!(
   BottomPanel,
+  default_height,
+  min_height,
+  max_height,
   "UI.BottomPanel",
   "UI.BottomPanel-rust-0x20200101",
   egui::TopBottomPanel::bottom
 );
 impl_panel!(
   LeftPanel,
+  default_width,
+  min_width,
+  max_width,
   "UI.LeftPanel",
   "UI.LeftPanel-rust-0x20200101",
   egui::SidePanel::left
 );
 impl_panel!(
   RightPanel,
+  default_width,
+  min_width,
+  max_width,
   "UI.RightPanel",
   "UI.RightPanel-rust-0x20200101",
   egui::SidePanel::right
 );
 impl_panel!(
   TopPanel,
+  default_height,
+  min_height,
+  max_height,
   "UI.TopPanel",
   "UI.TopPanel-rust-0x20200101",
   egui::TopBottomPanel::top
@@ -274,7 +353,7 @@ impl Shard for CentralPanel {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PANEL_PARAMETERS)
+    Some(&CENTRALPANEL_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {

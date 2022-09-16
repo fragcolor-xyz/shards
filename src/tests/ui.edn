@@ -183,22 +183,27 @@
      (->
       input
       (UI.TopPanel
+       :Contents
        (->
         ;; input pass into
         (Assert.Is input :Abort true)))
       (UI.LeftPanel
+       :Contents
        (->
         ;; input pass into
         (Assert.Is input :Abort true)))
       (UI.RightPanel
+       :Contents
        (->
         ;; input pass into
         (Assert.Is input :Abort true)))
       (UI.BottomPanel
+       :Contents
        (->
         ;; input pass into
         (Assert.Is input :Abort true)))
       (UI.CentralPanel
+       :Contents
        (->
         ;; input pass into
         (Assert.Is input :Abort true)))
