@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 #![allow(improper_ctypes_definitions)]
+#![feature(allocator_api)]
 
 #[macro_use]
 #[cfg(test)]
@@ -514,6 +515,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::chachapoly::registerShards();
   shards::gui::registerShards();
   shards::date::registerShards();
+  shards::onnx::registerShards();
 
   #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
   shards::browse::registerShards();

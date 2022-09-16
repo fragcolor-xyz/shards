@@ -4182,6 +4182,14 @@ lazy_static! {
   pub static ref INT3_TYPES: Vec<Type> = vec![common_type::int3];
   pub static ref INT4_TYPES: Vec<Type> = vec![common_type::int4];
   pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
+  pub static ref SEQ_OF_INT: Type = Type::seq(&INT_TYPES);
+  pub static ref SEQ_OF_INT_TYPES: Vec<Type> = vec![*SEQ_OF_INT];
+  pub static ref SEQ_OF_SEQ_OF_INT: Type = Type::seq(&SEQ_OF_INT_TYPES);
+  pub static ref SEQ_OF_SEQ_OF_INT_TYPES: Vec<Type> = vec![*SEQ_OF_SEQ_OF_INT];
+  pub static ref SEQ_OF_FLOAT: Type = Type::seq(&FLOAT_TYPES);
+  pub static ref SEQ_OF_FLOAT_TYPES: Vec<Type> = vec![*SEQ_OF_FLOAT];
+  pub static ref SEQ_OF_SEQ_OF_FLOAT: Type = Type::seq(&SEQ_OF_FLOAT_TYPES);
+  pub static ref SEQ_OF_SEQ_OF_FLOAT_TYPES: Vec<Type> = vec![*SEQ_OF_SEQ_OF_FLOAT];
   pub static ref FLOAT2_TYPES: Vec<Type> = vec![common_type::float2];
   pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
   pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];
