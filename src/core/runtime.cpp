@@ -2017,7 +2017,7 @@ endOfWire:
   wire->finishedOutput = wire->previousOutput;
   if (context.failed()) {
     wire->finishedError = context.getErrorMessage();
-    if(wire->finishedError.empty()) {
+    if (wire->finishedError.empty()) {
       wire->finishedError = "Generic error";
     }
   }

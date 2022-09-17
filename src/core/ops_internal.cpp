@@ -489,7 +489,8 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
       for (uint32_t i = 0; i < a.seqTypes.len; i++) {
         for (uint32_t j = 0; j < b.seqTypes.len; j++) {
           // consider recursive self a match
-          if (a.seqTypes.elements[i].recursiveSelf == b.seqTypes.elements[j].recursiveSelf)
+          if (a.seqTypes.elements[i].recursiveSelf &&
+              a.seqTypes.elements[i].recursiveSelf == b.seqTypes.elements[j].recursiveSelf)
             goto matched_seq;
           if (a.seqTypes.elements[i] == b.seqTypes.elements[j])
             goto matched_seq;

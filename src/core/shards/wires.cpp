@@ -1562,11 +1562,16 @@ struct ParallelBase : public CapturingSpawners {
           if (cref->mesh) {
             cref->mesh->terminate();
           }
-          for (auto &v : _vars) {
-            // notice, this should be already destroyed by the wire releaseVariable
-            destroyVar(cref->wire->variables[v.variableName()]);
-          }
+
           stop(cref->wire.get());
+
+          if (capturing) {
+            for (auto &v : _vars) {
+              // notice, this should be already destroyed by the wire releaseVariable
+              destroyVar(cref->wire->variables[v.variableName()]);
+            }
+          }
+
           _pool->release(cref);
         }
       }
@@ -1934,6 +1939,52 @@ struct Spawn : public CapturingSpawners {
   SHTypeInfo _inputType{};
 };
 
+struct DoMany : public TryMany {
+  static inline Parameters _params{
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
+  };
+
+  static SHParametersInfo parameters() { return _params; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto len = getLength(input);
+
+    _outputs.resize(len);
+    _wires.resize(len);
+
+    for (uint32_t i = 0; i < len; i++) {
+      auto &cref = _wires[i];
+      if (!cref) {
+        cref = _pool->acquire(_composer);
+        cref->index = i;
+        cref->done = false;
+
+        // Prepare and start if no callc was called
+        if (!cref->wire->coro) {
+          cref->wire->mesh = context->main->mesh;
+
+          // pre-set wire context with our context
+          // this is used to copy wireStack over to the new one
+          cref->wire->context = context;
+
+          // Notice we don't share our flow!
+          // let the wire create one by passing null
+          shards::prepare(cref->wire.get(), nullptr);
+          shards::start(cref->wire.get(), getInput(cref, input));
+        }
+      }
+      // Tick the wire on the flow that this wire created
+      SHDuration now = SHClock::now().time_since_epoch();
+      shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+
+      // this can be anything really...
+      _outputs[i] = cref->wire->previousOutput;
+    }
+
+    return Var(_outputs.data(), len);
+  }
+};
+
 struct Branch {
   enum BranchFailureBehavior { Everything, Known, Ignore };
   static constexpr int32_t FailureCC = 'brcB';
@@ -2126,6 +2177,7 @@ void registerWiresShards() {
   REGISTER_SHARD("Spawn", Spawn);
   REGISTER_SHARD("Expand", Expand);
   REGISTER_SHARD("Branch", Branch);
+  REGISTER_SHARD("DoMany", DoMany);
 }
 }; // namespace shards
 

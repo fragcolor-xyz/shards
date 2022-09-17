@@ -674,9 +674,7 @@ struct SetBase : public VariableBase {
                    // need to check if this was just a any table definition {}
                    !(reference.exposedType.basicType == Table && reference.exposedType.table.types.len == 0) &&
                    data.inputType != reference.exposedType) {
-          throw ComposeError("Set/Ref/Update, variable already set as another "
-                             "type: " +
-                             _name);
+          throw ComposeError("Set/Ref/Update, variable already set as another type: " + _name);
         }
         if (!_isTable && !reference.isMutable) {
           SHLOG_ERROR("Error with variable: {}", _name);
@@ -687,9 +685,7 @@ struct SetBase : public VariableBase {
           throw ComposeError("Set/Ref/Update, attempted to write a protected variable.");
         }
         if (!_isTable && warnIfExists) {
-          SHLOG_INFO("Set - Warning: setting an already exposed variable, use "
-                     "Update to avoid this warning, variable: {}",
-                     _name);
+          SHLOG_INFO("Set - Warning: setting an already exposed variable, use Update to avoid this warning, variable: {}", _name);
         }
         if (reference.isPushTable) {
           SHLOG_ERROR("Error with variable: {}", _name);
@@ -952,11 +948,12 @@ struct Update : public SetBase {
         _tableTypeInfo =
             SHTypeInfo{SHType::Table, {.table = {.keys = {&_tableContentKey, 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
       }
-      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true, true));
+      _exposedInfo =
+          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required table to update."), _tableTypeInfo, true, true));
     } else {
       // just a variable!
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed variable."), SHTypeInfo(data.inputType), true));
+      _exposedInfo = ExposedInfo(
+          ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required variable to update."), SHTypeInfo(data.inputType), true));
     }
 
     return data.inputType;
