@@ -3,6 +3,7 @@
 
 use crate::core::log;
 use crate::core::registerShard;
+use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHType_Bool;
@@ -92,8 +93,8 @@ lazy_static! {
   static ref METADATA_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHTypeInfo_Details_Object {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: 0x7375624D, // 'subM'
+      vendorId: FRAG_CC,
+      typeId: fourCharacterCode(*b"subM"),
     };
     t
   };

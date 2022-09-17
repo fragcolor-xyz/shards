@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use crate::core::registerShard;
+use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shardsc;
 use crate::types::common_type;
@@ -32,14 +33,13 @@ static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
   common_type::none,
 ];
 
-static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, 1701279061); // 'eguU'
+static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguU"));
 static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];
 static EGUI_UI_SEQ_TYPE: Type = Type::seq(EGUI_UI_SLICE);
 
-static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, 1701279043); // 'eguC'
+static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
-static EGUI_CTX_VAR: Type = Type::context_variable(EGUI_CTX_SLICE);
-static EGUI_CTX_VAR_TYPES: &[Type] = &[EGUI_CTX_VAR];
+static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
   static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
@@ -89,9 +89,8 @@ mod context;
 mod layouts;
 mod menus;
 mod reset;
-mod widgets;
-
 mod util;
+mod widgets;
 
 pub fn registerShards() {
   containers::registerShards();

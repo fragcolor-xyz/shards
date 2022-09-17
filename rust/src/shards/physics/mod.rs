@@ -4,6 +4,7 @@
 extern crate crossbeam;
 extern crate rapier3d;
 
+use crate::fourCharacterCode;
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHType_Float4;
 use crate::shardsc::SHType_None;
@@ -31,8 +32,8 @@ lazy_static! {
   static ref SIMULATION_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHTypeInfo_Details_Object {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: 0x70687973, // 'phys'
+      vendorId: FRAG_CC,
+      typeId: fourCharacterCode(*b"phys"),
     };
     t
   };
@@ -48,8 +49,8 @@ lazy_static! {
   static ref SHAPE_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHTypeInfo_Details_Object {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: 0x70687953, // 'phyS'
+      vendorId: FRAG_CC,
+      typeId: fourCharacterCode(*b"phyS"),
     };
     t
   };
@@ -62,8 +63,8 @@ lazy_static! {
   static ref RIGIDBODY_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHTypeInfo_Details_Object {
-      vendorId: FRAG_CC, // 'frag'
-      typeId: 0x70687952, // 'phyR'
+      vendorId: FRAG_CC,
+      typeId: fourCharacterCode(*b"phyR"),
     };
     t
   };

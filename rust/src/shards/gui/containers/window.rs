@@ -244,11 +244,7 @@ impl Shard for Window {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx = {
-      let ctx_ptr: &mut EguiNativeContext =
-        Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
-      &*ctx_ptr
-    };
+    let gui_ctx = util::get_current_context(&self.instance)?;
 
     let mut failed = false;
     if !self.contents.is_empty() {

@@ -200,11 +200,7 @@ macro_rules! impl_panel {
             })
             .inner?;
         } else {
-          let gui_ctx = {
-            let ctx_ptr: &mut EguiNativeContext =
-              Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
-            &*ctx_ptr
-          };
+          let gui_ctx = util::get_current_context(&self.instance)?;
           $egui_func(EguiId::new(self, 0))
             .show(gui_ctx, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
@@ -397,11 +393,7 @@ impl Shard for CentralPanel {
       return Ok(*input);
     }
 
-    let gui_ctx = {
-      let ctx_ptr: &mut EguiNativeContext =
-        Var::from_object_ptr_mut_ref(*self.instance.get(), &EGUI_CTX_TYPE)?;
-      &*ctx_ptr
-    };
+    let gui_ctx = util::get_current_context(&self.instance)?;
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       egui::CentralPanel::default()
