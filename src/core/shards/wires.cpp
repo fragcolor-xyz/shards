@@ -1356,6 +1356,50 @@ struct WireRunner : public BaseLoader<WireRunner> {
   }
 };
 
+struct CapturingSpawners : public WireBase {
+  SHExposedTypesInfo _mergedReqs;
+  IterableExposedInfo _sharedCopy;
+  std::deque<ParamVar> _vars;
+
+  void destroy() { arrayFree(_mergedReqs); }
+
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
+  void compose(const SHInstanceData &data) {
+    // Parallel needs to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+    dataCopy.requiredVariables = &requirements;
+
+    WireBase::compose(dataCopy); // discard the result, we do our thing here
+
+    // build the list of variables to capture and inject into spawned chain
+    _vars.clear();
+    arrayResize(_mergedReqs, 0);
+    for (auto &avail : data.shared) {
+      auto it = requirements.find(avail.name);
+      if (it != requirements.end()) {
+        if (!avail.global) {
+          // Capture if not global as we need to copy it!
+          SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = avail.name;
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
+
+        arrayPush(_mergedReqs, it->second);
+      }
+    }
+
+    // copy shared
+    const IterableExposedInfo shared(data.shared);
+    _sharedCopy = shared;
+  }
+};
+
 enum class WaitUntil {
   FirstSuccess, // will wait until the first success and stop any other
                 // pending operation
@@ -1372,7 +1416,7 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   bool done;
 };
 
-struct ParallelBase : public WireBase {
+struct ParallelBase : public CapturingSpawners {
   typedef EnumInfo<WaitUntil> WaitUntilInfo;
   static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
   static inline Type WaitUntilType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
@@ -1419,22 +1463,19 @@ struct ParallelBase : public WireBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  void compose(const SHInstanceData &data) {
     if (_threads > 1) {
       mode = RunWireMode::Detached;
+      capturing = true;
     } else {
       mode = RunWireMode::Inline;
+      capturing = false;
     }
 
-    WireBase::compose(data); // discard the result, we do our thing here
+    CapturingSpawners::compose(data);
 
+    // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
-
-    const IterableExposedInfo shared(data.shared);
-    // copy shared
-    _sharedCopy = shared;
-
-    return CoreInfo::NoneType; // not complete
   }
 
   struct Composer {
@@ -1464,6 +1505,15 @@ struct ParallelBase : public WireBase {
   } _composer{*this};
 
   void warmup(SHContext *context) {
+    if (capturing) {
+      for (auto &v : _vars) {
+        SHLOG_TRACE("ParallelBase: warming up variable: {}", v.variableName());
+        v.warmup(context);
+      }
+
+      SHLOG_TRACE("ParallelBase: warmed up {} variables", _vars.size());
+    }
+
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
     if (_threads > 1) {
       const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
@@ -1476,6 +1526,12 @@ struct ParallelBase : public WireBase {
   }
 
   void cleanup() {
+    if (capturing) {
+      for (auto &v : _vars) {
+        v.cleanup();
+      }
+    }
+
     for (auto &v : _outputs) {
       destroyVar(v);
     }
@@ -1505,6 +1561,10 @@ struct ParallelBase : public WireBase {
         if (cref) {
           if (cref->mesh) {
             cref->mesh->terminate();
+          }
+          for (auto &v : _vars) {
+            // notice, this should be already destroyed by the wire releaseVariable
+            destroyVar(cref->wire->variables[v.variableName()]);
           }
           stop(cref->wire.get());
           _pool->release(cref);
@@ -1542,9 +1602,11 @@ struct ParallelBase : public WireBase {
             // Prepare and start if no callc was called
             if (!cref->wire->coro) {
               cref->wire->mesh = context->main->mesh;
+
               // pre-set wire context with our context
               // this is used to copy wireStack over to the new one
               cref->wire->context = context;
+
               // Notice we don't share our flow!
               // let the wire create one by passing null
               shards::prepare(cref->wire.get(), nullptr);
@@ -1591,6 +1653,13 @@ struct ParallelBase : public WireBase {
                     cref->mesh = SHMesh::make();
                   }
                   cref->wire->mesh = cref->mesh;
+
+                  // capture variables if needed
+                  for (auto &v : _vars) {
+                    auto &var = v.get();
+                    cloneVar(cref->wire->variables[v.variableName()], var);
+                  }
+
                   // Notice we don't share our flow!
                   // let the wire create one by passing null
                   shards::prepare(cref->wire.get(), nullptr);
@@ -1653,7 +1722,6 @@ struct ParallelBase : public WireBase {
 protected:
   WaitUntil _policy{WaitUntil::AllSuccess};
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
-  IterableExposedInfo _sharedCopy;
   Type _outputSeqType;
   Types _outputTypes;
   SHTypeInfo _inputType{};
@@ -1743,7 +1811,7 @@ struct Expand : public ParallelBase {
   size_t getLength(const SHVar &input) override { return size_t(_width); }
 };
 
-struct Spawn : public WireBase {
+struct Spawn : public CapturingSpawners {
   Spawn() {
     mode = RunWireMode::Detached;
     capturing = true;
@@ -1776,45 +1844,12 @@ struct Spawn : public WireBase {
     }
   }
 
-  SHExposedTypesInfo _mergedReqs;
-  void destroy() { arrayFree(_mergedReqs); }
-  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
-
   SHTypeInfo compose(const SHInstanceData &data) {
-    // Spawn needs to capture all it needs, so we need deeper informations
-    // this is triggered by populating requiredVariables variable
-    auto dataCopy = data;
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
-
-    WireBase::compose(dataCopy); // discard the result, we do our thing here
-
-    // build the list of variables to capture and inject into spawned chain
-    _vars.clear();
-    arrayResize(_mergedReqs, 0);
-    for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
-        if (!avail.global) {
-          // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
-        }
-
-        arrayPush(_mergedReqs, it->second);
-      }
-    }
+    CapturingSpawners::compose(data);
 
     // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
 
-    // copy shared
-    const IterableExposedInfo shared(data.shared);
-    _sharedCopy = shared;
     // copy input type
     _inputType = data.inputType;
 
@@ -1896,9 +1931,7 @@ struct Spawn : public WireBase {
   }
 
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
-  IterableExposedInfo _sharedCopy;
   SHTypeInfo _inputType{};
-  std::deque<ParamVar> _vars;
 };
 
 struct Branch {

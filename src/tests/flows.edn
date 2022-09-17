@@ -124,53 +124,53 @@
   (If (Do logicWire)
       (-> true)
       (-> false))
-  (Assert.Is true false)
+  (Assert.Is true true)
 
   -10
   (If (Do logicWire)
       (-> true)
       (-> false))
-  (Assert.IsNot false false)
+  (Assert.IsNot false true)
 
   11
   (If (Do logicWire)
       (-> true)
       (-> false))
-  (Assert.Is true false)
+  (Assert.Is true true)
 
   11
   (If (Do logicWire)
       (-> true)
       (-> false))
-  (Assert.IsNot false false)
+  (Assert.IsNot false true)
 
   0
   (If (Do logicWire)
       (-> true)
       (-> false))
-  (Assert.Is false false)
+  (Assert.Is false true)
 
   0
   (If (Do logicWire)
       (-> true)
       (-> false))
-  (Assert.IsNot true false)
+  (Assert.IsNot true true)
 
   "Hello world" = .hello-var
 
   (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) .hello-var (Log) "Ok"))
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "Ok"))
   (Assert.Is ["Ok" "Ok" "Ok"] false)
   (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) .hello-var (Log) "A") :Policy WaitUntil.FirstSuccess)
-  (Assert.Is "A" false)
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "A") :Policy WaitUntil.FirstSuccess)
+  (Assert.Is "A" true)
 
   (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) "Ok") :Threads 3)
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "Ok") :Threads 3)
   (Assert.Is ["Ok" "Ok" "Ok"] false)
   (Const ["A" "B" "C"])
-  (TryMany (Wire "print-stuff" (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
-  (Assert.Is "A" false)
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
+  (Assert.Is "A" true)
 
   (Repeat (-> 10
               (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)
@@ -192,13 +192,13 @@
   (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
       (-> true)
       (-> false))
-  (Assert.IsNot false false)
+  (Assert.IsNot false true)
 
   11
   (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
       (-> true)
       (-> false))
-  (Assert.Is true false)
+  (Assert.Is true true)
 
   (Msg "Done")))
 
