@@ -172,20 +172,20 @@
   (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
   (Assert.Is "A" true)
 
-  ;; 3 = .my-adder
-  ;; [0 0 0] >= .my-result
-  ;; (Const [1 22 333])
-  ;; (Repeat
-  ;;  (->
-  ;;   (DoMany
-  ;;    (Wire "keep-state"
-  ;;          (Setup
-  ;;           >= .starting)
-  ;;          .starting (Log) (Math.Add .my-adder) > .starting))
-  ;;   > .my-result)
-  ;;  :Times 3)
-  ;; .my-result
-  ;; (Assert.Is ["Ok" "Ok" "Ok"] true)
+  3 = .my-adder
+  [0 0 0] >= .my-result
+  (Const [1 22 333])
+  (Repeat
+   (->
+    (StepMany
+     (Wire "keep-state"
+           (Setup
+            >= .starting)
+           .starting (Log) (Math.Add .my-adder) > .starting))
+    > .my-result)
+   :Times 3)
+  .my-result
+  (Assert.Is [4 25 336] true)
 
   (Repeat (-> 10
               (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)

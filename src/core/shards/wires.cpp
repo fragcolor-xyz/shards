@@ -1365,12 +1365,13 @@ struct CapturingSpawners : public WireBase {
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
-  void compose(const SHInstanceData &data) {
+  void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     // Parallel needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
     std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
     dataCopy.requiredVariables = &requirements;
+    dataCopy.inputType = inputType;
 
     WireBase::compose(dataCopy); // discard the result, we do our thing here
 
@@ -1382,7 +1383,7 @@ struct CapturingSpawners : public WireBase {
       if (it != requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
           ctxVar.valueType = ContextVar;
           ctxVar.payload.stringValue = avail.name;
@@ -1463,7 +1464,7 @@ struct ParallelBase : public CapturingSpawners {
     }
   }
 
-  void compose(const SHInstanceData &data) {
+  void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     if (_threads > 1) {
       mode = RunWireMode::Detached;
       capturing = true;
@@ -1472,7 +1473,7 @@ struct ParallelBase : public CapturingSpawners {
       capturing = false;
     }
 
-    CapturingSpawners::compose(data);
+    CapturingSpawners::compose(data, inputType);
 
     // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
@@ -1744,8 +1745,6 @@ struct TryMany : public ParallelBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    ParallelBase::compose(data);
-
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
       _inputType = data.inputType.seqTypes.elements[0];
@@ -1753,6 +1752,8 @@ struct TryMany : public ParallelBase {
       // else just mark as generic any
       _inputType = CoreInfo::AnyType;
     }
+
+    ParallelBase::compose(data, _inputType);
 
     if (_policy == WaitUntil::FirstSuccess) {
       // single result
@@ -1800,10 +1801,10 @@ struct Expand : public ParallelBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    ParallelBase::compose(data);
-
     // input
     _inputType = data.inputType;
+
+    ParallelBase::compose(data, _inputType);
 
     // output
     _outputTypes = Types({wire->outputType});
@@ -1850,7 +1851,7 @@ struct Spawn : public CapturingSpawners {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    CapturingSpawners::compose(data);
+    CapturingSpawners::compose(data, data.inputType);
 
     // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
@@ -1939,7 +1940,7 @@ struct Spawn : public CapturingSpawners {
   SHTypeInfo _inputType{};
 };
 
-struct DoMany : public TryMany {
+struct StepMany : public TryMany {
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
   };
@@ -2177,7 +2178,7 @@ void registerWiresShards() {
   REGISTER_SHARD("Spawn", Spawn);
   REGISTER_SHARD("Expand", Expand);
   REGISTER_SHARD("Branch", Branch);
-  REGISTER_SHARD("DoMany", DoMany);
+  REGISTER_SHARD("StepMany", StepMany);
 }
 }; // namespace shards
 
