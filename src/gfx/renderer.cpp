@@ -411,21 +411,29 @@ struct RendererImpl final : public ContextData {
     WGPUBuffer buffer;
     UniformBufferLayout layout;
     size_t overrideSize = ~0;
-    Bindable(WGPUBuffer buffer, UniformBufferLayout layout, size_t overrideSize = ~0)
-        : buffer(buffer), layout(layout), overrideSize(overrideSize) {}
+    size_t offset = 0;
+    Bindable(WGPUBuffer buffer, UniformBufferLayout layout, size_t overrideSize = ~0, size_t offset = 0)
+        : buffer(buffer), layout(layout), overrideSize(overrideSize), offset(offset) {}
+
+    WGPUBindGroupEntry toBindGroupEntry(size_t &bindingCounter) const {
+      WGPUBindGroupEntry entry{};
+      entry.binding = bindingCounter++;
+      entry.buffer = buffer;
+      entry.size = (overrideSize != size_t(~0)) ? overrideSize : layout.size;
+      entry.offset = offset;
+      return entry;
+    }
   };
 
-  WGPUBindGroup createBindGroup(WGPUDevice device, WGPUBindGroupLayout layout, std::vector<Bindable> bindables) {
+  WGPUBindGroup createBindGroup(WGPUDevice device, WGPUBindGroupLayout layout, const std::vector<Bindable> &bindables,
+                                const char *label = nullptr) {
     WGPUBindGroupDescriptor desc = {};
-    desc.label = "view";
+    desc.label = label;
     std::vector<WGPUBindGroupEntry> entries;
 
     size_t counter = 0;
     for (auto &bindable : bindables) {
-      WGPUBindGroupEntry &entry = entries.emplace_back(WGPUBindGroupEntry{});
-      entry.binding = counter++;
-      entry.buffer = bindable.buffer;
-      entry.size = (bindable.overrideSize != size_t(~0)) ? bindable.overrideSize : bindable.layout.size;
+      entries.emplace_back(bindable.toBindGroupEntry(counter));
     }
 
     desc.entries = entries.data();
@@ -438,11 +446,50 @@ struct RendererImpl final : public ContextData {
     return result;
   }
 
+  WGPUBindGroup createBatchBindGroup(CachedPipeline &cachedPipeline, const Bindable &objectBinding,
+                                     const TextureIds &textureIds) {
+    std::vector<WGPUBindGroupEntry> entries;
+
+    size_t bindingIndex = 0;
+
+    entries.emplace_back(objectBinding.toBindGroupEntry(bindingIndex));
+
+    for (auto &id : textureIds.textures) {
+      entries.emplace_back();
+      entries.emplace_back();
+      WGPUBindGroupEntry &textureEntry = entries.data()[entries.size() - 2];
+      textureEntry.binding = bindingIndex++;
+      WGPUBindGroupEntry &samplerEntry = entries.data()[entries.size() - 1];
+      samplerEntry.binding = bindingIndex++;
+
+      TextureContextData *textureData = cachedPipeline.textureIdMap.resolve(id);
+      if (textureData) {
+        textureEntry.textureView = textureData->defaultView;
+        samplerEntry.sampler = textureData->sampler;
+      } else {
+        PlaceholderTextureContextData &data = placeholderTexture->createContextDataConditional(context);
+        textureEntry.textureView = data.textureView;
+        samplerEntry.sampler = data.sampler;
+      }
+    }
+
+    WGPUBindGroupDescriptor textureBindGroupDesc{};
+    textureBindGroupDesc.layout = cachedPipeline.bindGroupLayouts[1];
+    textureBindGroupDesc.entries = entries.data();
+    textureBindGroupDesc.entryCount = entries.size();
+    textureBindGroupDesc.label = "batchShared";
+
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
+    assert(result);
+
+    return result;
+  }
+
   void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
-    size_t alignedObjectBufferSize =
-        alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment);
     size_t numObjects = cachedPipeline.drawablesSorted.size();
-    size_t instanceBufferLength = numObjects * alignedObjectBufferSize;
+    size_t stride = cachedPipeline.objectBufferLayout.getArrayStride();
+
+    size_t instanceBufferLength = numObjects * stride;
     instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst, "objects");
 
     std::vector<uint8_t> drawDataTempBuffer;
@@ -477,7 +524,7 @@ struct RendererImpl final : public ContextData {
         }
       }
 
-      size_t bufferOffset = alignedObjectBufferSize * i;
+      size_t bufferOffset = stride * i;
       size_t remainingBufferLength = instanceBufferLength - bufferOffset;
 
       packDrawData(drawDataTempBuffer.data() + bufferOffset, remainingBufferLength, cachedPipeline.objectBufferLayout,
@@ -605,39 +652,6 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  WGPUBindGroup createTextureBindGroup(CachedPipeline &cachedPipeline, const TextureIds &textureIds) {
-    std::vector<WGPUBindGroupEntry> entries;
-    size_t bindingIndex = 0;
-    for (auto &id : textureIds.textures) {
-      entries.emplace_back();
-      entries.emplace_back();
-      WGPUBindGroupEntry &textureEntry = entries.data()[entries.size() - 2];
-      textureEntry.binding = bindingIndex++;
-      WGPUBindGroupEntry &samplerEntry = entries.data()[entries.size() - 1];
-      samplerEntry.binding = bindingIndex++;
-
-      TextureContextData *textureData = cachedPipeline.textureIdMap.resolve(id);
-      if (textureData) {
-        textureEntry.textureView = textureData->defaultView;
-        samplerEntry.sampler = textureData->sampler;
-      } else {
-        PlaceholderTextureContextData &data = placeholderTexture->createContextDataConditional(context);
-        textureEntry.textureView = data.textureView;
-        samplerEntry.sampler = data.sampler;
-      }
-    }
-
-    WGPUBindGroupDescriptor textureBindGroupDesc{};
-    textureBindGroupDesc.layout = cachedPipeline.bindGroupLayouts[1];
-    textureBindGroupDesc.entries = entries.data();
-    textureBindGroupDesc.entryCount = entries.size();
-
-    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
-    assert(result);
-
-    return result;
-  }
-
   void renderDrawables(RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
@@ -705,28 +719,38 @@ struct RendererImpl final : public ContextData {
       if (cachedPipeline.drawablesSorted.empty())
         continue;
 
-      size_t drawBufferLength =
-          alignToArrayBounds(cachedPipeline.objectBufferLayout.size, cachedPipeline.objectBufferLayout.maxAlignment) *
-          cachedPipeline.drawablesSorted.size();
+      // Bytes between object buffer entries
+      size_t objectBufferStride = cachedPipeline.objectBufferLayout.getArrayStride();
+      size_t objectBufferLength = objectBufferStride * cachedPipeline.drawablesSorted.size();
 
-      DynamicWGPUBuffer &instanceBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(drawBufferLength);
-      fillInstanceBuffer(instanceBuffer, cachedPipeline, view.get());
-
-      auto drawGroups = cachedPipeline.drawGroups;
-      std::vector<Bindable> bindables = {
-          Bindable(viewBuffer, viewBufferLayout),
-          Bindable(instanceBuffer, cachedPipeline.objectBufferLayout, drawBufferLength),
-      };
-      WGPUBindGroup bindGroup = createBindGroup(device, cachedPipeline.bindGroupLayouts[0], bindables);
-      onFrameCleanup([bindGroup]() { wgpuBindGroupRelease(bindGroup); });
+      DynamicWGPUBuffer &objectBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(objectBufferLength);
+      fillInstanceBuffer(objectBuffer, cachedPipeline, view.get());
 
       wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
-      wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, bindGroup, 0, nullptr);
 
+      std::vector<Bindable> pipelineBindings = {
+          Bindable(viewBuffer, viewBufferLayout),
+      };
+
+      auto objectBinding = Bindable(objectBuffer, cachedPipeline.objectBufferLayout, objectBufferLength);
+
+      // Pipeline-shared bind group
+      WGPUBindGroup pipelineBindGroup =
+          createBindGroup(device, cachedPipeline.bindGroupLayouts[0], pipelineBindings, "pipelineShared");
+      onFrameCleanup([pipelineBindGroup]() { wgpuBindGroupRelease(pipelineBindGroup); });
+      wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, pipelineBindGroup, 0, nullptr);
+
+      auto drawGroups = cachedPipeline.drawGroups;
       for (auto &drawGroup : drawGroups) {
-        WGPUBindGroup textureBindGroup = createTextureBindGroup(cachedPipeline, drawGroup.key.textures);
-        wgpuRenderPassEncoderSetBindGroup(passEncoder, 1, textureBindGroup, 0, nullptr);
-        onFrameCleanup([textureBindGroup]() { wgpuBindGroupRelease(textureBindGroup); });
+        // Some platforms don't support instanceOffset, so we bind the object buffer at an offset to render different instances
+        size_t objectBufferOffset = drawGroup.startIndex * objectBufferStride;
+        size_t objectBufferRemainingSize = objectBufferLength - objectBufferOffset;
+        objectBinding.offset = objectBufferOffset;
+        objectBinding.overrideSize = objectBufferRemainingSize;
+
+        WGPUBindGroup batchBindGroup = createBatchBindGroup(cachedPipeline, objectBinding, drawGroup.key.textures);
+        wgpuRenderPassEncoderSetBindGroup(passEncoder, 1, batchBindGroup, 0, nullptr);
+        onFrameCleanup([batchBindGroup]() { wgpuBindGroupRelease(batchBindGroup); });
 
         MeshContextData *meshContextData = drawGroup.key.meshData;
         assert(meshContextData->vertexBuffer);
@@ -738,11 +762,9 @@ struct RendererImpl final : public ContextData {
           wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0,
                                               meshContextData->indexBufferLength);
 
-          wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0,
-                                           drawGroup.startIndex);
+          wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0, 0);
         } else {
-          wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0,
-                                    drawGroup.startIndex);
+          wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0, 0);
         }
       }
     }
@@ -868,7 +890,10 @@ struct RendererImpl final : public ContextData {
       }
     }
 
-    cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
+    auto &layout = cachedPipeline.objectBufferLayout = objectBufferLayoutBuilder.finalize();
+
+    // Align the struct ot storage buffer offset requriements
+    layout.maxAlignment = alignTo(layout.maxAlignment, deviceLimits.limits.minStorageBufferOffsetAlignment);
   }
 
   FeaturePipelineState computePipelineState(const std::vector<const Feature *> &features) {
@@ -879,8 +904,8 @@ struct RendererImpl final : public ContextData {
     return state;
   }
 
-  // Bindgroup 0, the per-batch bound resources
-  WGPUBindGroupLayout createBatchBindGroupLayout() {
+  // Bindgroup 0, shared for the entire pipeline
+  WGPUBindGroupLayout createPipelineBindGroupLayout(CachedPipeline &cachedPipeline) {
     std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 
     WGPUBindGroupLayoutEntry &viewEntry = bindGroupLayoutEntries.emplace_back();
@@ -889,24 +914,27 @@ struct RendererImpl final : public ContextData {
     viewEntry.buffer.type = WGPUBufferBindingType_Uniform;
     viewEntry.buffer.hasDynamicOffset = false;
 
-    WGPUBindGroupLayoutEntry &objectEntry = bindGroupLayoutEntries.emplace_back();
-    objectEntry.binding = 1;
-    objectEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
-    objectEntry.buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
-    objectEntry.buffer.hasDynamicOffset = false;
-
     WGPUBindGroupLayoutDescriptor bindGroupLayoutDesc = {};
-    bindGroupLayoutDesc.label = "batch";
+    bindGroupLayoutDesc.label = "pipelineShared";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
     return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
   }
 
-  // Bindgroup 1, bound textures
-  WGPUBindGroupLayout createTextureBindGroupLayout(CachedPipeline &cachedPipeline) {
+  // Bindgroup 1, per batch constants + textures
+  WGPUBindGroupLayout createBatchBindGroupLayout(CachedPipeline &cachedPipeline) {
     std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 
     size_t bindingIndex = 0;
+
+    // Instance data
+    WGPUBindGroupLayoutEntry &constantsEntry = bindGroupLayoutEntries.emplace_back();
+    constantsEntry.binding = bindingIndex++;
+    constantsEntry.visibility = WGPUShaderStage_Fragment | WGPUShaderStage_Vertex;
+    constantsEntry.buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+    constantsEntry.buffer.hasDynamicOffset = false;
+
+    // Interleaved Texture&Sampler bindings (1 each per texture slot)
     for (auto &desc : cachedPipeline.textureBindingLayout.bindings) {
       (void)desc;
 
@@ -934,8 +962,8 @@ struct RendererImpl final : public ContextData {
     assert(!cachedPipeline.pipelineLayout);
     assert(cachedPipeline.bindGroupLayouts.empty());
 
-    cachedPipeline.bindGroupLayouts.push_back(createBatchBindGroupLayout());
-    cachedPipeline.bindGroupLayouts.push_back(createTextureBindGroupLayout(cachedPipeline));
+    cachedPipeline.bindGroupLayouts.push_back(createPipelineBindGroupLayout(cachedPipeline));
+    cachedPipeline.bindGroupLayouts.push_back(createBatchBindGroupLayout(cachedPipeline));
 
     WGPUPipelineLayoutDescriptor pipelineLayoutDesc = {};
     pipelineLayoutDesc.bindGroupLayouts = cachedPipeline.bindGroupLayouts.data();

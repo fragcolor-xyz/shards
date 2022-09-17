@@ -1,35 +1,13 @@
 #include "gfx_wgpu.hpp"
 #include "stdio.h"
 
+WGPULimits wgpuGetUndefinedLimits();
 WGPULimits wgpuGetDefaultLimits() {
-  return WGPULimits{
-      .maxTextureDimension1D = 0,
-      .maxTextureDimension2D = 0,
-      .maxTextureDimension3D = 0,
-      .maxTextureArrayLayers = 0,
-      .maxBindGroups = 0,
-      .maxDynamicUniformBuffersPerPipelineLayout = 0,
-      .maxDynamicStorageBuffersPerPipelineLayout = 0,
-      .maxSampledTexturesPerShaderStage = 0,
-      .maxSamplersPerShaderStage = 0,
-      .maxStorageBuffersPerShaderStage = 0,
-      .maxStorageTexturesPerShaderStage = 0,
-      .maxUniformBuffersPerShaderStage = 0,
-      .maxUniformBufferBindingSize = 0,
-      .maxStorageBufferBindingSize = 0,
-      .minUniformBufferOffsetAlignment = 0,
-      .minStorageBufferOffsetAlignment = 0,
-      .maxVertexBuffers = 0,
-      .maxVertexAttributes = 0,
-      .maxVertexBufferArrayStride = 0,
-      .maxInterStageShaderComponents = 0,
-      .maxComputeWorkgroupStorageSize = 0,
-      .maxComputeInvocationsPerWorkgroup = 0,
-      .maxComputeWorkgroupSizeX = 0,
-      .maxComputeWorkgroupSizeY = 0,
-      .maxComputeWorkgroupSizeZ = 0,
-      .maxComputeWorkgroupsPerDimension = 0,
-  };
+#if WEBGPU_NATIVE
+  return WGPULimits{}; // 0 = unset/use default
+#else
+  return wgpuGetUndefinedLimits(); // WGPU_LIMIT_UXX_UNDEFINED = unset/use default
+#endif
 }
 
 WGPULimits wgpuGetUndefinedLimits() {

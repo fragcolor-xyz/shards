@@ -78,9 +78,6 @@ inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();
 
-// Limits with all values unset, to be used as a base for required limits
-WGPULimits wgpuGetUndefinedLimits();
-
 // workaround for emscripten not implementing limits
 void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 

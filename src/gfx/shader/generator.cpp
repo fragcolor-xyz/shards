@@ -197,6 +197,10 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
+    // Force alignment on first struct member
+    if (isArray && i == 0) {
+      output += fmt::format("@align({}) ", layout.maxAlignment);
+    }
     output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getFieldWGSLTypeName(layout.items[i].type));
   }
   output += "};\n";
@@ -529,7 +533,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   if (!viewBufferLayout.fieldNames.empty())
     generateBuffer(headerCode, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
   if (!objectBufferLayout.fieldNames.empty())
-    generateBuffer(headerCode, "u_objects", BufferType::Storage, 0, 1, objectBufferLayout, true);
+    generateBuffer(headerCode, "u_objects", BufferType::Storage, 1, 0, objectBufferLayout, true);
 
   std::map<String, BufferDefinition> buffers = {
       {"view", {"u_view", viewBufferLayout}},
@@ -543,7 +547,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
   std::map<String, TextureDefinition> textureDefinitions;
   size_t textureBindGroup = 1;
-  size_t textureBindingCounter = 0;
+  size_t textureBindingCounter = 1;
   for (auto &texture : textureBindingLayout.bindings) {
     TextureDefinition def;
     def.variableName = "t_" + texture.name;

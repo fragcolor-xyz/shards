@@ -142,13 +142,14 @@ struct ContextMainOutput {
   void present() {
     assert(currentView);
 
+    wgpuTextureViewRelease(currentView);
+    currentView = nullptr;
+
     // Web doesn't have a swapchain, it automatically present the current texture when control
     // is returned to the browser
 #ifdef WEBGPU_NATIVE
     wgpuSwapChainPresent(wgpuSwapchain);
 #endif
-
-    currentView = nullptr;
   }
 
   void initSwapchain(WGPUAdapter adapter, WGPUDevice device) {
@@ -182,7 +183,7 @@ struct ContextMainOutput {
     swapchainDesc.format = swapchainFormat;
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
-#if GFX_WINDOWS || GFX_APPLE || GFX_LINUX
+#if GFX_WINDOWS || GFX_OSX || GFX_LINUX
     swapchainDesc.presentMode = WGPUPresentMode_Immediate;
 #else
     swapchainDesc.presentMode = WGPUPresentMode_Fifo;
@@ -441,17 +442,9 @@ void Context::requestDevice() {
 
   state = ContextState::Requesting;
 
-  WGPURequiredLimits requiredLimits{
-      .limits = wgpuGetUndefinedLimits(),
-  };
-
   WGPUDeviceDescriptor deviceDesc = {};
+  WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
   deviceDesc.requiredLimits = &requiredLimits;
-
-#ifdef WEBGPU_NATIVE
-  WGPUDeviceExtras deviceExtras = {};
-  deviceDesc.nextInChain = &deviceExtras.chain;
-#endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
   deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
@@ -519,27 +512,30 @@ void Context::initCommon() {
   assert(!isInitialized());
 
 #ifdef WEBGPU_NATIVE
-  wgpuSetLogCallback([](WGPULogLevel level, const char *msg) {
-    switch (level) {
-    case WGPULogLevel_Error:
-      logger->error("{}", msg);
-      break;
-    case WGPULogLevel_Warn:
-      logger->warn("{}", msg);
-      break;
-    case WGPULogLevel_Info:
-      logger->info("{}", msg);
-      break;
-    case WGPULogLevel_Debug:
-      logger->debug("{}", msg);
-      break;
-    case WGPULogLevel_Trace:
-      logger->trace("{}", msg);
-      break;
-    default:
-      break;
-    }
-  });
+  wgpuSetLogCallback(
+      [](WGPULogLevel level, const char *msg, void *userData) {
+        Context &context = *(Context *)userData;
+        switch (level) {
+        case WGPULogLevel_Error:
+          logger->error("{}", msg);
+          break;
+        case WGPULogLevel_Warn:
+          logger->warn("{}", msg);
+          break;
+        case WGPULogLevel_Info:
+          logger->info("{}", msg);
+          break;
+        case WGPULogLevel_Debug:
+          logger->debug("{}", msg);
+          break;
+        case WGPULogLevel_Trace:
+          logger->trace("{}", msg);
+          break;
+        default:
+          break;
+        }
+      },
+      this);
 
   if (logger->level() <= spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);

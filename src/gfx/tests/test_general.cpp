@@ -12,6 +12,7 @@
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
 #include <spdlog/fmt/fmt.h>
+#include <spdlog/spdlog.h>
 
 using namespace gfx;
 
