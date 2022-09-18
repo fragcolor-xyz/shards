@@ -1537,11 +1537,21 @@ struct ParallelBase : public CapturingSpawners {
       destroyVar(v);
     }
     _outputs.clear();
+
     for (auto &cref : _wires) {
       if (cref->mesh) {
         cref->mesh->terminate();
       }
+
       stop(cref->wire.get());
+
+      if (capturing) {
+        for (auto &v : _vars) {
+          // notice, this should be already destroyed by the wire releaseVariable
+          destroyVar(cref->wire->variables[v.variableName()]);
+        }
+      }
+
       _pool->release(cref);
     }
     _wires.clear();
@@ -1551,12 +1561,26 @@ struct ParallelBase : public CapturingSpawners {
 
   virtual size_t getLength(const SHVar &input) = 0;
 
+  static constexpr size_t MinWiresAdded = 4;
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
     auto len = getLength(input);
+    auto current = _wires.size();
 
-    _outputs.resize(len);
-    _wires.resize(len);
+    // compute the minimum capacity needed
+    size_t minIncrease = len;
+    size_t increase = MinWiresAdded;
+
+    if (minIncrease > increase)
+      increase = minIncrease;
+
+    // increase needed capacity to guarantee O(1) amortized
+    if (increase < 2 * current)
+      increase = 2 * current;
+
+    _outputs.resize(increase);
+    _wires.resize(increase);
     Defer cleanups([this]() {
       for (auto &cref : _wires) {
         if (cref) {
@@ -1579,7 +1603,7 @@ struct ParallelBase : public CapturingSpawners {
       _wires.clear();
     });
 
-    for (uint32_t i = 0; i < len; i++) {
+    for (uint32_t i = 0; i < increase; i++) {
       _wires[i] = _pool->acquire(_composer);
       _wires[i]->index = i;
       _wires[i]->done = false;
@@ -1600,10 +1624,11 @@ struct ParallelBase : public CapturingSpawners {
         if (_threads == 1) {
 #endif
           // advance our wires and check
-          for (auto it = _wires.begin(); it != _wires.end(); ++it) {
-            auto &cref = *it;
-            if (cref->done)
+          for (size_t i = 0; i < len; i++) {
+            auto &cref = _wires[i];
+            if (cref->done) {
               continue;
+            }
 
             // Prepare and start if no callc was called
             if (!cref->wire->coro) {
@@ -1648,10 +1673,11 @@ struct ParallelBase : public CapturingSpawners {
 
           flow.for_each_dynamic(
               _wires.begin(), _wires.end(),
-              [this, input](auto &cref) {
-                // skip if failed or ended
-                if (cref->done)
+              [this, input, len](auto &cref) {
+                // skip if failed, ended or not relevant yet
+                if (cref->done || cref->index >= len) {
                   return;
+                }
 
                 // Prepare and start if no callc was called
                 if (!cref->wire->coro) {
@@ -1682,8 +1708,8 @@ struct ParallelBase : public CapturingSpawners {
 
           _exec->run(flow).get();
 
-          for (auto it = _wires.begin(); it != _wires.end(); ++it) {
-            auto &cref = *it;
+          for (size_t i = 0; i < len; i++) {
+            auto &cref = _wires[i];
             if (!cref->done && !isRunning(cref->wire.get())) {
               if (cref->wire->state == SHWire::State::Ended) {
                 if (_policy == WaitUntil::FirstSuccess) {
@@ -1948,17 +1974,40 @@ struct StepMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    auto current = _wires.size();
     auto len = getLength(input);
 
-    _outputs.resize(len);
-    _wires.resize(len);
+    // compute the minimum capacity needed
+    size_t minIncrease = len;
+    size_t increase = MinWiresAdded;
 
-    for (uint32_t i = 0; i < len; i++) {
+    if (minIncrease > increase)
+      increase = minIncrease;
+
+    // increase needed capacity to guarantee O(1) amortized
+    if (increase < 2 * current)
+      increase = 2 * current;
+
+    _outputs.resize(increase);
+    _wires.resize(increase);
+
+    for (uint32_t i = 0; i < increase; i++) {
       auto &cref = _wires[i];
       if (!cref) {
         cref = _pool->acquire(_composer);
         cref->index = i;
         cref->done = false;
+      }
+
+      // process only the ones we need to
+      if (i < len) {
+        // Allow to re run wires
+        if (shards::hasEnded(cref->wire.get())) {
+          // stop the root
+          if (!shards::stop(cref->wire.get())) {
+            throw ActivationError("Stepped sub-wire did not end normally.");
+          }
+        }
 
         // Prepare and start if no callc was called
         if (!cref->wire->coro) {
@@ -1971,15 +2020,20 @@ struct StepMany : public TryMany {
           // Notice we don't share our flow!
           // let the wire create one by passing null
           shards::prepare(cref->wire.get(), nullptr);
+        }
+
+        // Starting
+        if (!shards::isRunning(cref->wire.get())) {
           shards::start(cref->wire.get(), getInput(cref, input));
         }
-      }
-      // Tick the wire on the flow that this wire created
-      SHDuration now = SHClock::now().time_since_epoch();
-      shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
 
-      // this can be anything really...
-      _outputs[i] = cref->wire->previousOutput;
+        // Tick the wire on the flow that this wire created
+        SHDuration now = SHClock::now().time_since_epoch();
+        shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+
+        // this can be anything really...
+        _outputs[i] = cref->wire->previousOutput;
+      }
     }
 
     return Var(_outputs.data(), len);
