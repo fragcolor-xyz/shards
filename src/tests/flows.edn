@@ -187,6 +187,20 @@
   .my-result
   (Assert.Is [10, 31, 342] true)
 
+  (Const [1 22 333]) > .my-result
+  (Repeat
+   (->
+    .my-result
+    (StepMany
+     (Wire "keep-state2" :Looped
+           (Setup
+            >= .starting)
+           .starting (Log) (Math.Add .my-adder) > .starting))
+    > .my-result)
+   :Times 3)
+  .my-result
+  (Assert.Is [10, 31, 342] true)
+
   (Repeat (-> 10
               (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)
               (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
