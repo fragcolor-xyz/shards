@@ -173,10 +173,10 @@
   (Assert.Is "A" true)
 
   3 = .my-adder
-  [0 0 0] >= .my-result
-  (Const [1 22 333])
+  (Const [1 22 333]) >= .my-result
   (Repeat
    (->
+    .my-result
     (StepMany
      (Wire "keep-state"
            (Setup
@@ -185,7 +185,7 @@
     > .my-result)
    :Times 3)
   .my-result
-  (Assert.Is [4 25 336] true)
+  (Assert.Is [10, 31, 342] true)
 
   (Repeat (-> 10
               (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)
