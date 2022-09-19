@@ -272,6 +272,14 @@ impl Shard for EguiContext {
           return Err(e);
         }
 
+        #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
+        if let Some(url) = &egui_output.platform_output.open_url {
+          webbrowser::open(&url.url).map_err(|e| {
+            shlog_error!("{}", e);
+            "Failed to open URL."
+          })?;
+        }
+
         let queue_var = self.queue.get();
         unsafe {
           let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
