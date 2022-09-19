@@ -12,6 +12,7 @@
   (Wire id :Looped
         (Setup
          0.0 >= .time
+         "<text>" >= .text1
 
          (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
          (Float3 0 0 0) (Math.Translation) >= .transform-0
@@ -29,6 +30,8 @@
          {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
          (GFX.View :View .view-transform) >= .view)
 
+        .view-transform (FreeCamera) > .view-transform
+
         .time (Math.Add timestep) > .time
         (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
 
@@ -41,7 +44,11 @@
             (-> ; UI Content
              (UI.Window
               :Contents
-              (-> "This is UI inside a render target" (UI.Label)))))
+              (->
+               "This is UI inside a render target" (UI.Label)
+               (UI.TextInput :Variable .text1 :Multiline true)
+               ;
+               ))))
 
         ; This renders to the render target that was pushed in the outer wire
         (GFX.Render :Steps .render-steps1 :View .view)))
@@ -64,7 +71,9 @@
   (Setup
    ; UI Setup
    (GFX.DrawQueue) >= .ui-draw-queue
-   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+   (GFX.UIPass .ui-draw-queue) >> .render-steps
+
+   "Something" >= .text)
 
   (GFX.MainWindow
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
@@ -87,7 +96,10 @@
            (Step inner-wire-0)
            (GFX.PopView)
 
-           .rt-0 (GFX.RenderTargetTexture "main") (UI.RenderTarget)))
+           .rt-0 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
+
+           (UI.Separator)
+           (UI.TextInput :Variable .text :Multiline true)))
 
         ;;  (UI.Window
         ;;   :Title "Second Window"
