@@ -95,8 +95,13 @@ Congratulations! You have printed out your first “Hello World” message to th
 ##  Overview ##
 
 1. Use `./build/debug/shards ./scripts/fileName.edn` to run scripts with the debug version of Shards
+```
+./build/debug/shards ./scripts/fileName.edn
+```
 
 2. Use `./build/release/shards ./scripts/fileName.edn` to run scripts with the release version of Shards
-
+```
+./build/release/shards ./scripts/fileName.edn
+```
 
 --8<-- "includes/license.md"

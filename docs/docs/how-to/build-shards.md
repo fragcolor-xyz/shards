@@ -61,14 +61,22 @@ cd $(cygpath -u '(X)')
 
 If your Shards repository is located at `C:\Fragcolor\Shards`, the command used in the MinGW terminal would be `cd $(cygpath -u 'C:\Fragcolor\Shards')`.
 
-![Use the MinGW terminal to navigate to the directory of your Shards repository.](assets/mingw-navigate-to-repo.png)
-
 !!! tip
     A simple way to obtain a folder’s directory is to copy the address as text. 
 
     Navigate into the folder, right-click the folder in the navigation bar, and select “Copy address as text”.
 
     ![Copy the directory’s address as text.](assets/location-shards-repo-copy-address.png)
+
+## Bootstrapping the Project ##
+
+If this is your first time pulling the Shards repository, you will have to run the bootstrap file to set up and build the project.
+
+Enter the command `./bootstrap`.
+
+```
+./bootstrap
+```
 
 ## Creating Build Folders ##
 
@@ -252,16 +260,32 @@ The release version of shards.exe has been built! 😊
 
 
 ## Overview ##
-1. Create a “build” folder with nested “debug” and “release” folders
+1. Bootstrap the project if freshly pulled from the repository.
+```
+./bootstrap
+```
 
-2. Navigate to the debug/release folder with `cd $(cygpath -u 'directoryAddress')`
+2. Create a “build” folder with nested “debug” and “release” folders
 
-3. Use `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..` in the debug folder
-    
-4. Use `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..` in the release folder
-    
-5. Use `ninja shards` in each folder
+3. Navigate to the debug/release folder with `cd $(cygpath -u 'directoryAddress')`
+```
+cd $(cygpath -u 'directoryAddress')
+```
 
+4. Use `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..` in the debug folder
+```
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..
+```
+
+5. Use `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..` in the release folder
+```
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..
+``` 
+
+6. Use `ninja shards` in each folder
+```
+ninja shards
+```
 
 
 --8<-- "includes/license.md"
