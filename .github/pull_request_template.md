@@ -1,3 +1,4 @@
+<!--
 Before submitting your PR, please review the following checklist:
 
 - [ ] **DO NOT** submit a PR without having discussed the change first in a related issue. If none exist, create one first.
@@ -7,6 +8,7 @@ Before submitting your PR, please review the following checklist:
 - [ ] **DO** make sure not to introduce any new compiler warnings.
 - [ ] **AVOID** breaking the continuous integration build.
 - [ ] **AVOID** making significant changes to the overall architecture.
+-->
 
 **Description**
 <!-- A clear and concise description of what the change is. -->
