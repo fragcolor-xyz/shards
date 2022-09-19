@@ -5,6 +5,13 @@
 #include "../gfx/egui/rust_interop.hpp"
 #include "gfx/fwd.hpp"
 
+namespace gfx {
+struct EguiInputTranslator;
+}
+namespace egui {
+struct Input;
+}
+
 extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"

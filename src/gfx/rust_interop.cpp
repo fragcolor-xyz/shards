@@ -1,4 +1,6 @@
 #include "rust_interop.hpp"
+#include "texture.hpp"
+#include "window.hpp"
 
 using namespace gfx;
 extern "C" {

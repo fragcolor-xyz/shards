@@ -234,7 +234,7 @@ struct RendererImpl final : public ContextData {
     initStepRenderTarget(renderTargetData, viewData, step);
 
     renderGraphNode.populateWritesTo();
-    renderGraphNode.setupPass = [=](WGPURenderPassDescriptor &desc) {
+    renderGraphNode.setupPass = [=, this](WGPURenderPassDescriptor &desc) {
       for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
         auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
         double4 clearValue(step.clearValues.color);
@@ -246,7 +246,7 @@ struct RendererImpl final : public ContextData {
         attachment.stencilClearValue = step.clearValues.stencil;
       }
     };
-    renderGraphNode.body = [=](WGPURenderPassEncoder passEncoder) { applyViewport(passEncoder, viewData); };
+    renderGraphNode.body = [=, this](WGPURenderPassEncoder passEncoder) { applyViewport(passEncoder, viewData); };
   }
 
   void appendToRenderGraph(RenderGraph &outGraph, const ViewData &viewData, const RenderFullscreenStep &step) {
@@ -275,7 +275,7 @@ struct RendererImpl final : public ContextData {
     preparePipelineDrawableForRenderGraph(pipelineDrawables, renderGraphNode, SortMode::Queue, viewData);
 
     renderGraphNode.populateWritesTo();
-    renderGraphNode.body = [=](WGPURenderPassEncoder passEncoder) {
+    renderGraphNode.body = [=, this](WGPURenderPassEncoder passEncoder) {
       applyViewport(passEncoder, viewData);
       renderPipelineDrawables(passEncoder, pipelineDrawables, viewData);
     };
@@ -312,7 +312,7 @@ struct RendererImpl final : public ContextData {
     }
 
     renderGraphNode.populateWritesTo();
-    renderGraphNode.body = [=](WGPURenderPassEncoder passEncoder) {
+    renderGraphNode.body = [=, this](WGPURenderPassEncoder passEncoder) {
       applyViewport(passEncoder, viewData);
       for (auto &pair : pipelineDrawableCache->map) {
         renderPipelineDrawables(passEncoder, pair.second, viewData);

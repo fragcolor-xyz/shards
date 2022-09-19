@@ -1,11 +1,13 @@
 #include "rust_interop.hpp"
 #include "gfx/shards_types.hpp"
 #include "gfx.hpp"
+#include <gfx/renderer.cpp>
 #include <foundation.hpp>
 
 using namespace shards::input;
 using shards::Var;
 using namespace gfx;
+using GFXTypes = gfx::Types;
 
 SHTypeInfo *gfx_getMainWindowGlobalsType() {
   static SHTypeInfo type = gfx::MainWindowGlobals::Type;
@@ -15,14 +17,14 @@ SHTypeInfo *gfx_getMainWindowGlobalsType() {
 const char *gfx_getMainWindowGlobalsVarName() { return gfx::Base::mainWindowGlobalsVarName; }
 
 SHTypeInfo *gfx_getQueueType() {
-  static SHTypeInfo type = Types::DrawQueue;
+  static SHTypeInfo type = GFXTypes::DrawQueue;
   return &type;
 }
 
 SHVar gfx_MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals) {
   MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
-  return Var::Object(&globals->shDrawQueue, SHTypeInfo(Types::DrawQueue).object.vendorId,
-                     SHTypeInfo(Types::DrawQueue).object.typeId);
+  return Var::Object(&globals->shDrawQueue, SHTypeInfo(GFXTypes::DrawQueue).object.vendorId,
+                     SHTypeInfo(GFXTypes::DrawQueue).object.typeId);
 }
 Context *gfx_MainWindowGlobals_getContext(const SHVar &mainWindowGlobals) {
   MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
@@ -34,7 +36,7 @@ Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
 }
 
 DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
-  SHDrawQueue *shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, Types::DrawQueue);
+  SHDrawQueue *shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, GFXTypes::DrawQueue);
   return &shDrawQueue->queue;
 }
 
