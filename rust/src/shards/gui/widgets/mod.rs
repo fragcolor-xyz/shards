@@ -113,6 +113,7 @@ struct RadioButton {
 struct Spinner {
   parents: ParamVar,
   requiring: ExposedTypes,
+  size: ParamVar,
 }
 
 struct TextInput {
