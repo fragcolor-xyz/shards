@@ -116,6 +116,8 @@ struct RenderTargetLayout {
     WGPUTextureFormat format;
 
     bool operator==(const DepthTarget &other) const { return format == other.format; }
+    bool operator!=(const DepthTarget &other) const { return !(*this == other); }
+
     template <typename T> void hashStatic(T &hasher) const {
       hasher("<depth>");
       hasher(format);
@@ -127,6 +129,8 @@ struct RenderTargetLayout {
     WGPUTextureFormat format;
 
     bool operator==(const ColorTarget &other) const { return name == other.name && format == other.format; }
+    bool operator!=(const ColorTarget &other) const { return !(*this == other); }
+
     template <typename T> void hashStatic(T &hasher) const {
       hasher(name);
       hasher(format);
@@ -145,6 +149,8 @@ struct RenderTargetLayout {
 
     return true;
   }
+
+  bool operator!=(const RenderTargetLayout &other) const { return !(*this == other); }
 
   template <typename T> void hashStatic(T &hasher) const {
     hasher(depthTarget);
