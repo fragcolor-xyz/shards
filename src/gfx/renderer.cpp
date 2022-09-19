@@ -234,7 +234,7 @@ struct RendererImpl final : public ContextData {
     initStepRenderTarget(renderTargetData, viewData, step);
 
     renderGraphNode.populateWritesTo();
-    renderGraphNode.setupPass = [=, this](WGPURenderPassDescriptor &desc) {
+    renderGraphNode.setupPass = [=](WGPURenderPassDescriptor &desc) {
       for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
         auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
         double4 clearValue(step.clearValues.color);
