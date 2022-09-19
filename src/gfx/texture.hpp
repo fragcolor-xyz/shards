@@ -7,6 +7,7 @@
 #include "linalg.hpp"
 #include <variant>
 #include <optional>
+#include <string>
 
 namespace gfx {
 
