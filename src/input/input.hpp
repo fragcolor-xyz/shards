@@ -3,6 +3,7 @@
 
 #include <SDL_events.h>
 #include <vector>
+#include <algorithm>
 
 namespace shards::input {
 
