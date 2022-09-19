@@ -10,8 +10,15 @@ struct Reset {
   requiring: ExposedTypes,
 }
 
+struct Style {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 mod reset;
+mod style;
 
 pub fn registerShards() {
   registerShard::<Reset>();
+  registerShard::<Style>();
 }
