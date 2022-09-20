@@ -1356,6 +1356,51 @@ struct WireRunner : public BaseLoader<WireRunner> {
   }
 };
 
+struct CapturingSpawners : public WireBase {
+  SHExposedTypesInfo _mergedReqs;
+  IterableExposedInfo _sharedCopy;
+  std::deque<ParamVar> _vars;
+
+  void destroy() { arrayFree(_mergedReqs); }
+
+  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+
+  void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
+    // Parallel needs to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+    dataCopy.requiredVariables = &requirements;
+    dataCopy.inputType = inputType;
+
+    WireBase::compose(dataCopy); // discard the result, we do our thing here
+
+    // build the list of variables to capture and inject into spawned chain
+    _vars.clear();
+    arrayResize(_mergedReqs, 0);
+    for (auto &avail : data.shared) {
+      auto it = requirements.find(avail.name);
+      if (it != requirements.end()) {
+        if (!avail.global) {
+          // Capture if not global as we need to copy it!
+          SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          SHVar ctxVar{};
+          ctxVar.valueType = ContextVar;
+          ctxVar.payload.stringValue = avail.name;
+          auto &p = _vars.emplace_back();
+          p = ctxVar;
+        }
+
+        arrayPush(_mergedReqs, it->second);
+      }
+    }
+
+    // copy shared
+    const IterableExposedInfo shared(data.shared);
+    _sharedCopy = shared;
+  }
+};
+
 enum class WaitUntil {
   FirstSuccess, // will wait until the first success and stop any other
                 // pending operation
@@ -1372,7 +1417,7 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   bool done;
 };
 
-struct ParallelBase : public WireBase {
+struct ParallelBase : public CapturingSpawners {
   typedef EnumInfo<WaitUntil> WaitUntilInfo;
   static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
   static inline Type WaitUntilType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
@@ -1419,22 +1464,19 @@ struct ParallelBase : public WireBase {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     if (_threads > 1) {
       mode = RunWireMode::Detached;
+      capturing = true;
     } else {
       mode = RunWireMode::Inline;
+      capturing = false;
     }
 
-    WireBase::compose(data); // discard the result, we do our thing here
+    CapturingSpawners::compose(data, inputType);
 
+    // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
-
-    const IterableExposedInfo shared(data.shared);
-    // copy shared
-    _sharedCopy = shared;
-
-    return CoreInfo::NoneType; // not complete
   }
 
   struct Composer {
@@ -1464,6 +1506,15 @@ struct ParallelBase : public WireBase {
   } _composer{*this};
 
   void warmup(SHContext *context) {
+    if (capturing) {
+      for (auto &v : _vars) {
+        SHLOG_TRACE("ParallelBase: warming up variable: {}", v.variableName());
+        v.warmup(context);
+      }
+
+      SHLOG_TRACE("ParallelBase: warmed up {} variables", _vars.size());
+    }
+
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
     if (_threads > 1) {
       const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
@@ -1476,15 +1527,31 @@ struct ParallelBase : public WireBase {
   }
 
   void cleanup() {
+    if (capturing) {
+      for (auto &v : _vars) {
+        v.cleanup();
+      }
+    }
+
     for (auto &v : _outputs) {
       destroyVar(v);
     }
     _outputs.clear();
+
     for (auto &cref : _wires) {
       if (cref->mesh) {
         cref->mesh->terminate();
       }
+
       stop(cref->wire.get());
+
+      if (capturing) {
+        for (auto &v : _vars) {
+          // notice, this should be already destroyed by the wire releaseVariable
+          destroyVar(cref->wire->variables[v.variableName()]);
+        }
+      }
+
       _pool->release(cref);
     }
     _wires.clear();
@@ -1494,26 +1561,49 @@ struct ParallelBase : public WireBase {
 
   virtual size_t getLength(const SHVar &input) = 0;
 
+  static constexpr size_t MinWiresAdded = 4;
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
     auto len = getLength(input);
+    auto current = _wires.size();
 
-    _outputs.resize(len);
-    _wires.resize(len);
+    // compute the minimum capacity needed
+    size_t minIncrease = len;
+    size_t increase = MinWiresAdded;
+
+    if (minIncrease > increase)
+      increase = minIncrease;
+
+    // increase needed capacity to guarantee O(1) amortized
+    if (increase < 2 * current)
+      increase = 2 * current;
+
+    _outputs.resize(increase);
+    _wires.resize(increase);
     Defer cleanups([this]() {
       for (auto &cref : _wires) {
         if (cref) {
           if (cref->mesh) {
             cref->mesh->terminate();
           }
+
           stop(cref->wire.get());
+
+          if (capturing) {
+            for (auto &v : _vars) {
+              // notice, this should be already destroyed by the wire releaseVariable
+              destroyVar(cref->wire->variables[v.variableName()]);
+            }
+          }
+
           _pool->release(cref);
         }
       }
       _wires.clear();
     });
 
-    for (uint32_t i = 0; i < len; i++) {
+    for (uint32_t i = 0; i < increase; i++) {
       _wires[i] = _pool->acquire(_composer);
       _wires[i]->index = i;
       _wires[i]->done = false;
@@ -1534,17 +1624,20 @@ struct ParallelBase : public WireBase {
         if (_threads == 1) {
 #endif
           // advance our wires and check
-          for (auto it = _wires.begin(); it != _wires.end(); ++it) {
-            auto &cref = *it;
-            if (cref->done)
+          for (size_t i = 0; i < len; i++) {
+            auto &cref = _wires[i];
+            if (cref->done) {
               continue;
+            }
 
             // Prepare and start if no callc was called
             if (!cref->wire->coro) {
               cref->wire->mesh = context->main->mesh;
+
               // pre-set wire context with our context
               // this is used to copy wireStack over to the new one
               cref->wire->context = context;
+
               // Notice we don't share our flow!
               // let the wire create one by passing null
               shards::prepare(cref->wire.get(), nullptr);
@@ -1580,10 +1673,11 @@ struct ParallelBase : public WireBase {
 
           flow.for_each_dynamic(
               _wires.begin(), _wires.end(),
-              [this, input](auto &cref) {
-                // skip if failed or ended
-                if (cref->done)
+              [this, input, len](auto &cref) {
+                // skip if failed, ended or not relevant yet
+                if (cref->done || cref->index >= len) {
                   return;
+                }
 
                 // Prepare and start if no callc was called
                 if (!cref->wire->coro) {
@@ -1591,6 +1685,13 @@ struct ParallelBase : public WireBase {
                     cref->mesh = SHMesh::make();
                   }
                   cref->wire->mesh = cref->mesh;
+
+                  // capture variables if needed
+                  for (auto &v : _vars) {
+                    auto &var = v.get();
+                    cloneVar(cref->wire->variables[v.variableName()], var);
+                  }
+
                   // Notice we don't share our flow!
                   // let the wire create one by passing null
                   shards::prepare(cref->wire.get(), nullptr);
@@ -1607,8 +1708,8 @@ struct ParallelBase : public WireBase {
 
           _exec->run(flow).get();
 
-          for (auto it = _wires.begin(); it != _wires.end(); ++it) {
-            auto &cref = *it;
+          for (size_t i = 0; i < len; i++) {
+            auto &cref = _wires[i];
             if (!cref->done && !isRunning(cref->wire.get())) {
               if (cref->wire->state == SHWire::State::Ended) {
                 if (_policy == WaitUntil::FirstSuccess) {
@@ -1653,7 +1754,6 @@ struct ParallelBase : public WireBase {
 protected:
   WaitUntil _policy{WaitUntil::AllSuccess};
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
-  IterableExposedInfo _sharedCopy;
   Type _outputSeqType;
   Types _outputTypes;
   SHTypeInfo _inputType{};
@@ -1671,8 +1771,6 @@ struct TryMany : public ParallelBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    ParallelBase::compose(data);
-
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
       _inputType = data.inputType.seqTypes.elements[0];
@@ -1680,6 +1778,8 @@ struct TryMany : public ParallelBase {
       // else just mark as generic any
       _inputType = CoreInfo::AnyType;
     }
+
+    ParallelBase::compose(data, _inputType);
 
     if (_policy == WaitUntil::FirstSuccess) {
       // single result
@@ -1727,10 +1827,10 @@ struct Expand : public ParallelBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    ParallelBase::compose(data);
-
     // input
     _inputType = data.inputType;
+
+    ParallelBase::compose(data, _inputType);
 
     // output
     _outputTypes = Types({wire->outputType});
@@ -1743,7 +1843,7 @@ struct Expand : public ParallelBase {
   size_t getLength(const SHVar &input) override { return size_t(_width); }
 };
 
-struct Spawn : public WireBase {
+struct Spawn : public CapturingSpawners {
   Spawn() {
     mode = RunWireMode::Detached;
     capturing = true;
@@ -1776,45 +1876,12 @@ struct Spawn : public WireBase {
     }
   }
 
-  SHExposedTypesInfo _mergedReqs;
-  void destroy() { arrayFree(_mergedReqs); }
-  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
-
   SHTypeInfo compose(const SHInstanceData &data) {
-    // Spawn needs to capture all it needs, so we need deeper informations
-    // this is triggered by populating requiredVariables variable
-    auto dataCopy = data;
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
-
-    WireBase::compose(dataCopy); // discard the result, we do our thing here
-
-    // build the list of variables to capture and inject into spawned chain
-    _vars.clear();
-    arrayResize(_mergedReqs, 0);
-    for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
-        if (!avail.global) {
-          // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Spawn: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
-        }
-
-        arrayPush(_mergedReqs, it->second);
-      }
-    }
+    CapturingSpawners::compose(data, data.inputType);
 
     // wire should be populated now and such
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
 
-    // copy shared
-    const IterableExposedInfo shared(data.shared);
-    _sharedCopy = shared;
     // copy input type
     _inputType = data.inputType;
 
@@ -1896,9 +1963,81 @@ struct Spawn : public WireBase {
   }
 
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
-  IterableExposedInfo _sharedCopy;
   SHTypeInfo _inputType{};
-  std::deque<ParamVar> _vars;
+};
+
+struct StepMany : public TryMany {
+  static inline Parameters _params{
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
+  };
+
+  static SHParametersInfo parameters() { return _params; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto current = _wires.size();
+    auto len = getLength(input);
+
+    // compute the minimum capacity needed
+    size_t minIncrease = len;
+    size_t increase = MinWiresAdded;
+
+    if (minIncrease > increase)
+      increase = minIncrease;
+
+    // increase needed capacity to guarantee O(1) amortized
+    if (increase < 2 * current)
+      increase = 2 * current;
+
+    _outputs.resize(increase);
+    _wires.resize(increase);
+
+    for (uint32_t i = 0; i < increase; i++) {
+      auto &cref = _wires[i];
+      if (!cref) {
+        cref = _pool->acquire(_composer);
+        cref->index = i;
+        cref->done = false;
+      }
+
+      // process only the ones we need to
+      if (i < len) {
+        // Allow to re run wires
+        if (shards::hasEnded(cref->wire.get())) {
+          // stop the root
+          if (!shards::stop(cref->wire.get())) {
+            throw ActivationError("Stepped sub-wire did not end normally.");
+          }
+        }
+
+        // Prepare and start if no callc was called
+        if (!cref->wire->coro) {
+          cref->wire->mesh = context->main->mesh;
+
+          // pre-set wire context with our context
+          // this is used to copy wireStack over to the new one
+          cref->wire->context = context;
+
+          // Notice we don't share our flow!
+          // let the wire create one by passing null
+          shards::prepare(cref->wire.get(), nullptr);
+        }
+
+        // Starting
+        if (!shards::isRunning(cref->wire.get())) {
+          shards::start(cref->wire.get(), getInput(cref, input));
+        }
+
+        // Tick the wire on the flow that this wire created
+        SHDuration now = SHClock::now().time_since_epoch();
+        shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+
+        // this can be anything really...
+        _outputs[i] = cref->wire->previousOutput;
+      }
+    }
+
+    return Var(_outputs.data(), len);
+  }
 };
 
 struct Branch {
@@ -2093,6 +2232,7 @@ void registerWiresShards() {
   REGISTER_SHARD("Spawn", Spawn);
   REGISTER_SHARD("Expand", Expand);
   REGISTER_SHARD("Branch", Branch);
+  REGISTER_SHARD("StepMany", StepMany);
 }
 }; // namespace shards
 

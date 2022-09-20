@@ -18,6 +18,11 @@
                      .args (Take 0)
                      (Math.Add .adder-y)))
 
+(def adderSeq2 (Wire "adderSeq2"
+                    >= .args (Take 1) >= .adder-y
+                    .args (Take 0)
+                    (Math.Add .adder-y)))
+
 (def! testWire
   (Wire
    "namedWire"
@@ -960,7 +965,7 @@
    (Clear .adder-args)
 
    (Const [2 3 4]) >> .adder-args >> .adder-args
-   .adder-args (Do adderSeq)
+   .adder-args (Do adderSeq2)
    (Log)
    (Assert.Is [4 6 8] true)
 

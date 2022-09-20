@@ -519,11 +519,13 @@ public:
         _shards,
         [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
-            auto msg = "Error during inner wire validation: " + std::string(errorTxt);
+            auto msg = "Error during inner wire validation: " + std::string(errorTxt) +
+                       ", shard: " + std::string(errorShard->name(const_cast<Shard *>(errorShard)));
             SH_CORE::log(msg.c_str());
             throw shards::ComposeError("Failed inner wire validation");
           } else {
-            auto msg = "Warning during inner wire validation: " + std::string(errorTxt);
+            auto msg = "Warning during inner wire validation: " + std::string(errorTxt) +
+                       ", shard: " + std::string(errorShard->name(const_cast<Shard *>(errorShard)));
             SH_CORE::log(msg.c_str());
           }
         },

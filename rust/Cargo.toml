@@ -45,7 +45,6 @@ egui = { version = "0.19.0", optional = true }
 egui-gfx = { path = "../src/gfx/egui", optional = true }
 half = { version = "2.0.0" }
 tract-onnx = { version = "0.17.7", optional = true }
-image = { version = "0.24.1", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
@@ -86,8 +85,7 @@ shards = ["reqwest",
           "chrono",
           "egui",
           "egui-gfx",
-          "tract-onnx",
-          "image"]
+          "tract-onnx"]
 dllshard = ["dlopen"]
 scripting = []
 
