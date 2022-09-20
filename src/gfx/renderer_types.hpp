@@ -284,6 +284,7 @@ struct RenderTargetData {
     Texture *texture;
 
     bool operator==(const DepthTarget &other) const { return texture == other.texture; }
+    bool operator!=(const DepthTarget &other) const { return !(*this == other); }
   };
 
   struct ColorTarget {
@@ -291,6 +292,7 @@ struct RenderTargetData {
     Texture *texture;
 
     bool operator==(const ColorTarget &other) const { return name == other.name && texture == other.texture; }
+    bool operator!=(const ColorTarget &other) const { return !(*this == other); }
   };
 
   std::optional<DepthTarget> depthTarget;
@@ -362,6 +364,8 @@ struct RenderTargetData {
 
     return true;
   }
+
+  bool operator!=(const RenderTargetData &other) const { return !(*this == other); }
 };
 
 struct RenderGraphNode {
