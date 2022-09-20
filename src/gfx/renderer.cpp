@@ -233,7 +233,6 @@ struct RendererImpl final : public ContextData {
     // Build render target references
     initStepRenderTarget(renderTargetData, viewData, step);
 
-    renderGraphNode.populateWritesTo();
     renderGraphNode.setupPass = [=](WGPURenderPassDescriptor &desc) {
       for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
         auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
@@ -274,7 +273,6 @@ struct RendererImpl final : public ContextData {
 
     preparePipelineDrawableForRenderGraph(pipelineDrawables, renderGraphNode, SortMode::Queue, viewData);
 
-    renderGraphNode.populateWritesTo();
     renderGraphNode.body = [=, this](WGPURenderPassEncoder passEncoder) {
       applyViewport(passEncoder, viewData);
       renderPipelineDrawables(passEncoder, pipelineDrawables, viewData);
@@ -311,7 +309,6 @@ struct RendererImpl final : public ContextData {
       preparePipelineDrawableForRenderGraph(pair.second, renderGraphNode, step.sortMode, viewData);
     }
 
-    renderGraphNode.populateWritesTo();
     renderGraphNode.body = [=, this](WGPURenderPassEncoder passEncoder) {
       applyViewport(passEncoder, viewData);
       for (auto &pair : pipelineDrawableCache->map) {

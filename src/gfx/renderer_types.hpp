@@ -373,8 +373,15 @@ struct RenderGraphNode {
   std::vector<Texture *> writesTo;
   std::vector<Texture *> readsFrom;
 
+  // Sets up the render pass
   std::function<void(WGPURenderPassDescriptor &)> setupPass;
+
+  // Writes the render pass
   std::function<void(WGPURenderPassEncoder)> body;
+
+  RenderGraphNode() = default;
+  RenderGraphNode(RenderGraphNode &&) = default;
+  RenderGraphNode &operator=(RenderGraphNode &&) = default;
 
   void populateWritesTo() {
     if (renderTargetData.depthTarget)
@@ -383,28 +390,14 @@ struct RenderGraphNode {
       writesTo.push_back(target.texture);
     }
   }
-
-  RenderGraphNode() = default;
-  RenderGraphNode(RenderGraphNode &&) = default;
-  RenderGraphNode &operator=(RenderGraphNode &&) = default;
 };
 
+// Keeps a list of nodes that contain GPU commands
 struct RenderGraph {
   std::vector<RenderGraphNode> nodes;
-  std::vector<Texture *> writesTo;
-  std::vector<Texture *> readFrom;
-
   void populateEdges() {
-    std::map<Texture *, int32_t> writtenBy;
-    for (size_t nodeIndex = 0; nodeIndex < nodes.size(); nodeIndex++) {
-      auto &node = nodes[nodeIndex];
-      auto &rtd = node.renderTargetData;
-      if (rtd.depthTarget)
-        node.writesTo.push_back(rtd.depthTarget->texture);
-      for (auto &target : rtd.colorTargets) {
-        node.writesTo.push_back(target.texture);
-      }
-    }
+    for (auto &node : nodes)
+      node.populateWritesTo();
   }
 };
 
@@ -417,7 +410,9 @@ struct ViewData {
 
 struct RenderGraphEvaluator {
 private:
+  // Keeps track of texture that have been written to at least once
   std::set<Texture *> writtenTextures;
+
   std::vector<WGPURenderPassColorAttachment> cachedColorAttachments;
   std::optional<WGPURenderPassDepthStencilAttachment> cachedDepthStencilAttachment;
   WGPURenderPassDescriptor cachedRenderPassDescriptor{};
@@ -425,6 +420,7 @@ private:
 public:
   bool isWrittenTo(const TexturePtr &texture) const { return writtenTextures.contains(texture.get()); }
 
+  // Enqueue a clear command on the given color texture
   void clearColorTexture(Context &context, const TexturePtr &texture, WGPUCommandEncoder commandEncoder) {
     RenderTargetData rtd{
         .colorTargets = {RenderTargetData::ColorTarget{
