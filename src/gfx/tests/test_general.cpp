@@ -100,7 +100,7 @@ TEST_CASE("Multiple vertex formats", "[General]") {
   testRenderer.reset();
 }
 
-TEST_CASE("Pipeline states", "[General][!mayfail]") {
+TEST_CASE("Pipeline states", "[General]") {
   auto testRenderer = createTestRenderer(int2(512, 512));
   Renderer &renderer = *testRenderer->renderer.get();
 
