@@ -4,10 +4,10 @@
 use super::Style;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHColor;
-use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -19,7 +19,7 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 
 lazy_static! {
-  static ref INPUT_TYPES: Types = vec![common_type::any_table, common_type::any_table_var];
+  static ref INPUT_TYPES: Types = ANY_TABLE_SLICE.into();
 }
 
 macro_rules! apply_style {

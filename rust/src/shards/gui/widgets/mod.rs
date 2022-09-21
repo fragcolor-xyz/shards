@@ -92,6 +92,7 @@ struct Label {
   parents: ParamVar,
   requiring: ExposedTypes,
   wrap: ParamVar,
+  style: ParamVar,
 }
 
 struct ListBox {
@@ -210,6 +211,7 @@ mod progress_bar;
 mod radio_button;
 mod spinner;
 mod text_input;
+mod text_util;
 mod tooltip;
 
 pub fn registerShards() {
