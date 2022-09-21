@@ -17,7 +17,6 @@ use crate::types::Table;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
-use std::ffi::CString;
 
 lazy_static! {
   static ref INPUT_TYPES: Types = vec![common_type::any_table, common_type::any_table_var];
@@ -25,13 +24,13 @@ lazy_static! {
 
 macro_rules! apply_style {
   ($table:ident, $name:literal, $type:ty, $style_path:expr) => {
-    if let Some(value) = $table.get(&CString::new($name).unwrap_or_default()) {
+    if let Some(value) = $table.get_static(cstr!($name)) {
       let value: $type = value.try_into()?;
       $style_path = value.into();
     }
   };
   ($table:ident, $name:literal, $type:ty, $style_path:expr, $convert:expr) => {
-    if let Some(value) = $table.get(&CString::new($name).unwrap_or_default()) {
+    if let Some(value) = $table.get_static(cstr!($name)) {
       let value: $type = value.try_into()?;
       $style_path = $convert(value).into();
     }
@@ -123,10 +122,9 @@ impl Shard for Style {
         Table,
         style.override_font_id,
         |t: Table| {
-          if let (Some(size), Some(family)) = (
-            t.get(&CString::new("size").unwrap_or_default()),
-            t.get(&CString::new("family").unwrap_or_default()),
-          ) {
+          if let (Some(size), Some(family)) =
+            (t.get_static(cstr!("size")), t.get_static(cstr!("family")))
+          {
             Style::getFontId(
               size.try_into().unwrap_or_default(),
               family.try_into().unwrap_or_default(),
@@ -138,15 +136,15 @@ impl Shard for Style {
       );
 
       // text styles
-      if let Some(text_styles) = table.get(&CString::new("text_styles").unwrap_or_default()) {
+      if let Some(text_styles) = table.get_static(cstr!("text_styles")) {
         let text_styles: Seq = text_styles.try_into()?;
 
         for var in text_styles {
           let text_style: Table = var.as_ref().try_into()?;
           if let (Some(name), Some(size), Some(family)) = (
-            text_style.get(&CString::new("name").unwrap_or_default()),
-            text_style.get(&CString::new("size").unwrap_or_default()),
-            text_style.get(&CString::new("family").unwrap_or_default()),
+            text_style.get_static(cstr!("name")),
+            text_style.get_static(cstr!("size")),
+            text_style.get_static(cstr!("family")),
           ) {
             if let Some(key) = Style::getTextStyle(name.try_into()?) {
               if let Some(fontId) = Style::getFontId(size.try_into()?, family.try_into()?) {
@@ -164,7 +162,7 @@ impl Shard for Style {
       apply_style!(table, "wrap", bool, style.wrap);
 
       // spacing
-      if let Some(spacing) = table.get(&CString::new("spacing").unwrap_or_default()) {
+      if let Some(spacing) = table.get_static(cstr!("spacing")) {
         let spacing: Table = spacing.try_into()?;
 
         apply_style!(
@@ -224,7 +222,7 @@ impl Shard for Style {
       }
 
       // interaction
-      if let Some(interaction) = table.get(&CString::new("interaction").unwrap_or_default()) {
+      if let Some(interaction) = table.get_static(cstr!("interaction")) {
         let interaction: Table = interaction.try_into()?;
 
         apply_style!(
@@ -248,7 +246,7 @@ impl Shard for Style {
       }
 
       // visuals
-      if let Some(visuals) = table.get(&CString::new("visuals").unwrap_or_default()) {
+      if let Some(visuals) = table.get_static(cstr!("visuals")) {
         let visuals: Table = visuals.try_into()?;
 
         apply_style!(visuals, "dark_mode", bool, style.visuals.dark_mode);
@@ -260,21 +258,29 @@ impl Shard for Style {
           Style::getColor
         );
 
-        if let Some(widgets) = visuals.get(&CString::new("widgets").unwrap_or_default()) {
+        if let Some(widgets) = visuals.get_static(cstr!("widgets")) {
           let widgets: Table = widgets.try_into()?;
 
           Style::applyWidgetVisuals(
             &mut style.visuals.widgets.noninteractive,
             &widgets,
-            "noninteractive",
+            cstr!("noninteractive"),
           )?;
-          Style::applyWidgetVisuals(&mut style.visuals.widgets.inactive, &widgets, "inactive")?;
-          Style::applyWidgetVisuals(&mut style.visuals.widgets.hovered, &widgets, "hovered")?;
-          Style::applyWidgetVisuals(&mut style.visuals.widgets.active, &widgets, "active")?;
-          Style::applyWidgetVisuals(&mut style.visuals.widgets.open, &widgets, "open")?;
+          Style::applyWidgetVisuals(
+            &mut style.visuals.widgets.inactive,
+            &widgets,
+            cstr!("inactive"),
+          )?;
+          Style::applyWidgetVisuals(
+            &mut style.visuals.widgets.hovered,
+            &widgets,
+            cstr!("hovered"),
+          )?;
+          Style::applyWidgetVisuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
+          Style::applyWidgetVisuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
         }
 
-        if let Some(selection) = visuals.get(&CString::new("selection").unwrap_or_default()) {
+        if let Some(selection) = visuals.get_static(cstr!("selection")) {
           let selection: Table = selection.try_into()?;
 
           apply_style!(
@@ -392,7 +398,7 @@ impl Shard for Style {
       apply_style!(table, "animation_time", f32, style.animation_time);
 
       // debug
-      if let Some(debug) = table.get(&CString::new("debug").unwrap_or_default()) {
+      if let Some(debug) = table.get_static(cstr!("debug")) {
         let debug: Table = debug.try_into()?;
 
         apply_style!(debug, "debug_on_hover", bool, style.debug.debug_on_hover);
@@ -426,12 +432,12 @@ impl Shard for Style {
 }
 
 impl Style {
-  fn applyWidgetVisuals<'a>(
+  fn applyWidgetVisuals(
     visuals: &mut egui::style::WidgetVisuals,
     widgets: &Table,
-    name: &'a str,
-  ) -> Result<(), &'a str> {
-    if let Some(var) = widgets.get(&CString::new(name).unwrap_or_default()) {
+    name: &'static str,
+  ) -> Result<(), &'static str> {
+    if let Some(var) = widgets.get_static(name) {
       let table: Table = var.try_into()?;
 
       apply_style!(table, "bg_fill", SHColor, visuals.bg_fill, Style::getColor);
@@ -499,8 +505,8 @@ impl Style {
 
   fn getShadow(shadow: Table) -> egui::epaint::Shadow {
     if let (Some(extrusion), Some(color)) = (
-      shadow.get(&CString::new("extrusion").unwrap_or_default()),
-      shadow.get(&CString::new("color").unwrap_or_default()),
+      shadow.get_static(cstr!("extrusion")),
+      shadow.get_static(cstr!("color")),
     ) {
       egui::epaint::Shadow {
         extrusion: extrusion.try_into().unwrap_or_default(),
@@ -513,8 +519,8 @@ impl Style {
 
   fn getStroke(stroke: Table) -> egui::Stroke {
     if let (Some(width), Some(color)) = (
-      stroke.get(&CString::new("width").unwrap_or_default()),
-      stroke.get(&CString::new("color").unwrap_or_default()),
+      stroke.get_static(cstr!("width")),
+      stroke.get_static(cstr!("color")),
     ) {
       egui::Stroke {
         width: width.try_into().unwrap_or_default(),

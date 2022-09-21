@@ -4054,7 +4054,21 @@ impl Table {
     }
   }
 
+  pub fn get_static(&self, k: &'static str) -> Option<&Var> {
+    debug_assert!(k.ends_with('\0'));
+    unsafe {
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
+      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        Some(&*p)
+      } else {
+        None
+      }
+    }
+  }
+
   pub fn get_fast_static(&self, k: &'static str) -> &Var {
+    debug_assert!(k.ends_with('\0'));
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
