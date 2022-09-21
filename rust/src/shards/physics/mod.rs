@@ -37,15 +37,11 @@ lazy_static! {
     };
     t
   };
-
-  static ref EXPOSED_SIMULATION: Vec<ExposedInfo> = vec![
-    ExposedInfo::new_static_with_help(
-      cstr!("Physics.Simulation"),
-      shccstr!("The physics simulation subsystem."),
-      *SIMULATION_TYPE
-    )
-  ];
-
+  static ref EXPOSED_SIMULATION: Vec<ExposedInfo> = vec![ExposedInfo::new_static_with_help(
+    cstr!("Physics.Simulation"),
+    shccstr!("The physics simulation subsystem."),
+    *SIMULATION_TYPE
+  )];
   static ref SHAPE_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHTypeInfo_Details_Object {
@@ -59,7 +55,6 @@ lazy_static! {
   static ref SHAPE_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
   static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
   static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
-
   static ref RIGIDBODY_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHTypeInfo_Details_Object {
@@ -72,7 +67,8 @@ lazy_static! {
   static ref RIGIDBODIES_TYPE: Type = Type::seq(&RIGIDBODY_TYPE_VEC);
   static ref RIGIDBODY_VAR_TYPE: Type = Type::context_variable(&RIGIDBODY_TYPE_VEC);
   static ref RIGIDBODIES_TYPES_SLICE: Vec<Type> = vec![*RIGIDBODY_VAR_TYPE, common_type::none];
-  static ref SHAPES_TYPES_SLICE: Vec<Type> = vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none];
+  static ref SHAPES_TYPES_SLICE: Vec<Type> =
+    vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none];
 }
 
 static POSITIONS_TYPES_SLICE: &[Type] = &[

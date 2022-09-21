@@ -5,8 +5,8 @@ use std::convert::TryInto;
 
 use super::Space;
 use crate::shard::Shard;
-use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::util;
+use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -18,14 +18,12 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 
 lazy_static! {
-    static ref SPACE_PARAMETERS: Parameters = vec![
-      (
-        cstr!("Amount"),
-        cstr!("The amount of space to insert."),
-        FLOAT_VAR_SLICE
-      )
-        .into(),
-    ];
+  static ref SPACE_PARAMETERS: Parameters = vec![(
+    cstr!("Amount"),
+    cstr!("The amount of space to insert."),
+    FLOAT_VAR_SLICE
+  )
+    .into(),];
 }
 
 impl Default for Space {
