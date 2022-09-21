@@ -239,12 +239,12 @@ impl Shard for CodeEditor {
       };
       let code_editor = egui::TextEdit::multiline(text)
         .code_editor()
-        .desired_rows(10)
         .desired_width(f32::INFINITY)
         .layouter(&mut layouter);
       let response = egui::ScrollArea::vertical()
         .id_source(id_source)
-        .show(ui, |ui| ui.add(code_editor))
+        .show(ui, |ui| ui.centered_and_justified(|ui| ui.add(code_editor)))
+        .inner
         .inner;
 
       if response.changed() || response.lost_focus() {
