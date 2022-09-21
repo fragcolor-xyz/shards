@@ -18,6 +18,7 @@ add_executable(test-gfx
   test_shader.cpp
   test_gltf.cpp
   test_gizmos.cpp
+  test_comparison.cpp
 )
 
 set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)

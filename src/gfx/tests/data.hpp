@@ -17,11 +17,17 @@ enum class TestFrameFormat {
   R32F,
 };
 
-struct CompareRejection {
-  int2 position;
-  uint8_t a;
-  uint8_t b;
-  uint8_t component;
+struct Comparison {
+  std::vector<int16_t> delta;
+  size_t totalNegDelta{};
+  size_t totalPosDelta{};
+  size_t numDeltaPixels{};
+
+  // Average difference divided by changed pixels
+  double getDeltaOverChanged() const { return (double)std::max(totalNegDelta, totalPosDelta) / double(numDeltaPixels); }
+
+  // Average difference divided by total pixels
+  double getDeltaOverTotal() const { return (double)std::max(totalNegDelta, totalPosDelta) / double(delta.size()); }
 };
 
 struct TestFrame {
@@ -35,11 +41,13 @@ public:
   TestFrame() = default;
   TestFrame(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip);
   void set(const uint8_t *imageData, int2 size, TestFrameFormat format, uint32_t pitch, bool yflip);
-  bool compare(const TestFrame &other, float tolerance = 0.f, CompareRejection *rejection = nullptr) const;
+  Comparison compare(const TestFrame &other) const;
 
   const std::vector<pixel_t> &getPixels() const { return pixels; }
   int2 getSize() const { return size; }
 };
+
+TestFrame generateComparisonDiffTestFrame(const Comparison &comparison, int2 originalSize);
 
 struct TestData {
 private:
@@ -48,13 +56,17 @@ private:
 
 public:
   TestData(const TestPlatformId &testPlatformId);
-  bool checkFrame(const char *id, const TestFrame &frame, float tolerance = 0.f, CompareRejection *rejection = nullptr);
+  bool checkFrame(const char *id, const TestFrame &frame, float tolerance = 0.f, Comparison *comparison = nullptr);
+
+  TestFrame loadFrame(const char *id);
+  void writeRejectedFrame(const char *id, const TestFrame &frame);
 
 private:
-  bool loadFrame(TestFrame &frame, const char *filePath);
-  void storeFrame(const TestFrame &frame, const char *filePath);
+  bool loadFrameInternal(TestFrame &frame, const char *filePath);
+  void storeFrameInternal(const TestFrame &frame, const char *filePath);
   void writeRejectionDetails(const char *id, const TestFrame &frame, const TestFrame &referenceFrame,
-                             const CompareRejection &rej);
+                             const Comparison &comparison, float tolerance);
+  fs::path getRejectedBasePath(const char *id);
 };
 } // namespace gfx
 

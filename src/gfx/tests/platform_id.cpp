@@ -3,6 +3,8 @@
 #include <SDL_stdinc.h>
 
 namespace gfx {
+TestPlatformId::operator std::string() const { return id; }
+
 TestPlatformId TestPlatformId::get(const Context &context) {
   TestPlatformId id;
 
@@ -10,11 +12,13 @@ TestPlatformId TestPlatformId::get(const Context &context) {
   if (idFromEnv) {
     id.id = idFromEnv;
   } else {
-    id.id = "default";
+    return TestPlatformId::Default;
   }
 
   return id;
 }
 
-TestPlatformId::operator std::string() const { return id; }
+const TestPlatformId TestPlatformId::Default = TestPlatformId{
+    .id = "default",
+};
 } // namespace gfx
