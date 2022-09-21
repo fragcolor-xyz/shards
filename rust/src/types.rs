@@ -4054,7 +4054,21 @@ impl Table {
     }
   }
 
+  pub fn get_static(&self, k: &'static str) -> Option<&Var> {
+    debug_assert!(k.ends_with('\0'));
+    unsafe {
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
+      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        Some(&*p)
+      } else {
+        None
+      }
+    }
+  }
+
   pub fn get_fast_static(&self, k: &'static str) -> &Var {
+    debug_assert!(k.ends_with('\0'));
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
@@ -4230,7 +4244,8 @@ lazy_static! {
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
   pub static ref ENUMS_TYPES: Vec<Type> = vec![*ENUMS_TYPE];
   pub static ref IMAGE_TYPES: Vec<Type> = vec![common_type::image];
-  pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, common_type::shard, common_type::shards];
+  pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> =
+    vec![common_type::none, common_type::shard, common_type::shards];
   pub static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
   pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
 }

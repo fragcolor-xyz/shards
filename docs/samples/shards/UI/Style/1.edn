@@ -1,0 +1,30 @@
+(def style
+  {:override_text_style "MyStyle"
+   :text_styles
+   [{:name "MyStyle"
+     :size (float 36)
+     :family "Monospace"}]
+   :visuals
+   {:override_text_color (color 64 250 0)}})
+
+(defloop main-wire
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      :Contents
+      (->
+       style (UI.Style)
+       "Hello Shards!" (UI.Label))))
+
+    (GFX.Render :Steps .render-steps))))
+(defmesh root)
+(schedule root main-wire)
+(run root 0.1 10)

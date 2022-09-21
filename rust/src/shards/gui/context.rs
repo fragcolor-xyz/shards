@@ -247,12 +247,10 @@ impl Shard for EguiContext {
               seq.push(Var::default());
             })?;
 
-            let wire_state = util::with_object_stack_var(
-              &mut self.instance,
-              ctx,
-              &EGUI_CTX_TYPE,
-              || Ok(self.contents.activate(context, input, &mut output)),
-            )?;
+            let wire_state =
+              util::with_object_stack_var(&mut self.instance, ctx, &EGUI_CTX_TYPE, || {
+                Ok(self.contents.activate(context, input, &mut output))
+              })?;
 
             if wire_state == WireState::Error {
               return Err("Failed to activate UI contents");

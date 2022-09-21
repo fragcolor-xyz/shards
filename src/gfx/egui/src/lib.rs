@@ -67,10 +67,7 @@ impl From<epaint::TextureId> for egui_TextureId {
             epaint::TextureId::Managed(id) => (id, true),
             epaint::TextureId::User(id) => (id, false),
         };
-        Self {
-            id,
-            managed,
-        }
+        Self { id, managed }
     }
 }
 
