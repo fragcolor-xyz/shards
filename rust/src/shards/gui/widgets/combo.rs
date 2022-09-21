@@ -5,6 +5,7 @@ use super::Combo;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc;
@@ -40,6 +41,12 @@ lazy_static! {
       INT_VAR_OR_NONE_SLICE,
     )
       .into(),
+    (
+      cstr!("Width"),
+      cstr!("The width of the button and menu."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
   ];
 }
 
@@ -52,6 +59,7 @@ impl Default for Combo {
       requiring: Vec::new(),
       label: ParamVar::default(),
       index: ParamVar::default(),
+      width: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       tmp: 0,
@@ -102,6 +110,7 @@ impl Shard for Combo {
     match index {
       0 => Ok(self.label.set_param(value)),
       1 => Ok(self.index.set_param(value)),
+      2 => Ok(self.width.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -110,6 +119,7 @@ impl Shard for Combo {
     match index {
       0 => self.label.get_param(),
       1 => self.index.get_param(),
+      2 => self.width.get_param(),
       _ => Var::default(),
     }
   }
@@ -175,6 +185,7 @@ impl Shard for Combo {
 
     self.label.warmup(ctx);
     self.index.warmup(ctx);
+    self.width.warmup(ctx);
 
     if self.should_expose {
       self.index.get_mut().valueType = common_type::int.basicType;
@@ -184,6 +195,7 @@ impl Shard for Combo {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.width.cleanup();
     self.index.cleanup();
     self.label.cleanup();
 
@@ -202,8 +214,15 @@ impl Shard for Combo {
       } else {
         self.tmp
       };
+
+      let mut combo = egui::ComboBox::from_label(label);
+      let width = self.width.get();
+      if !width.is_none() {
+        combo = combo.width(width.try_into()?);
+      }
+
       let seq: Seq = input.try_into()?;
-      let response = egui::ComboBox::from_label(label).show_index(ui, index, seq.len(), |i| {
+      let response = combo.show_index(ui, index, seq.len(), |i| {
         // FIXME type might not be string so we need a way to convert in all cases
         let str: &str = (&seq[i]).try_into().unwrap();
         str.to_owned()

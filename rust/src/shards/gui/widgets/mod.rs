@@ -10,8 +10,6 @@ use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 
-static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
-
 /// Clickable button with a text label.
 struct Button {
   parents: ParamVar,
@@ -45,6 +43,7 @@ struct Combo {
   requiring: ExposedTypes,
   label: ParamVar,
   index: ParamVar,
+  width: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: usize,
@@ -74,6 +73,7 @@ struct ImageButton {
   exposing: ExposedTypes,
   should_expose: bool,
   texture: Option<egui::TextureHandle>,
+  prev_ptr: *mut u8,
 }
 
 /// Displays text.
@@ -96,6 +96,7 @@ struct ProgressBar {
   parents: ParamVar,
   requiring: ExposedTypes,
   overlay: ParamVar,
+  desired_width: ParamVar,
 }
 
 /// Radio button with a text label.
@@ -112,6 +113,7 @@ struct RadioButton {
 struct Spinner {
   parents: ParamVar,
   requiring: ExposedTypes,
+  size: ParamVar,
 }
 
 struct TextInput {

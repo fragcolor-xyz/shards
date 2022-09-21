@@ -2,19 +2,19 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Image;
-use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::widgets::FLOAT2_VAR_SLICE;
+use crate::shards::gui::TextureCC;
+use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shards::gui::TEXTURE_OR_IMAGE_TYPES;
+use crate::shards::gui::TEXTURE_TYPE;
 use crate::shardsc::gfx_TexturePtr;
 use crate::shardsc::gfx_TexturePtr_getResolution_ext;
-use crate::shardsc::linalg_aliases_int2;
 use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
 use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
-use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -24,13 +24,8 @@ use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::FRAG_CC;
-
-const TextureCC: i32 = fourCharacterCode(*b"tex_");
 
 lazy_static! {
-  static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
-  static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
   static ref IMAGE_PARAMETERS: Parameters = vec![(
     cstr!("Scale"),
     cstr!("Scaling to apply to the source image"),
@@ -166,7 +161,11 @@ impl Image {
       let texture = if ptr != self.prev_ptr {
         let image: egui::ColorImage = shimage.into();
         self.prev_ptr = ptr;
-        self.texture.insert(ui.ctx().load_texture(format!("UI.Image: {:p}", shimage.data), image, Default::default()))
+        self.texture.insert(ui.ctx().load_texture(
+          format!("UI.Image: {:p}", shimage.data),
+          image,
+          Default::default(),
+        ))
       } else {
         self.texture.as_ref().unwrap()
       };

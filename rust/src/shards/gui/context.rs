@@ -5,6 +5,7 @@ use super::util;
 use super::EguiContext;
 use super::CONTEXT_NAME;
 use super::EGUI_CTX_TYPE;
+use super::EGUI_UI_SEQ_TYPE;
 use super::GFX_GLOBALS_TYPE;
 use super::GFX_QUEUE_VAR_TYPES;
 use super::PARENTS_UI_NAME;
@@ -143,7 +144,7 @@ impl Shard for EguiContext {
     let mut data = *data;
     // clone shared into a new vector we can append things to
     let mut shared: ExposedTypes = data.shared.into();
-    // append to shared ui vars
+    // expose UI context
     let ctx_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
       name: self.instance.get_name(),
@@ -155,6 +156,18 @@ impl Shard for EguiContext {
       isPushTable: false,
     };
     shared.push(ctx_info);
+    // expose UI parents seq
+    let ui_info = ExposedInfo {
+      exposedType: EGUI_UI_SEQ_TYPE,
+      name: self.parents.get_name(),
+      help: cstr!("The parent UI objects.").into(),
+      isMutable: false,
+      isProtected: true, // don't allow to be used in code/wires
+      isTableEntry: false,
+      global: false,
+      isPushTable: false,
+    };
+    shared.push(ui_info);
     // update shared
     data.shared = (&shared).into();
 
@@ -257,6 +270,14 @@ impl Shard for EguiContext {
 
         if let Some(e) = error {
           return Err(e);
+        }
+
+        #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
+        if let Some(url) = &egui_output.platform_output.open_url {
+          webbrowser::open(&url.url).map_err(|e| {
+            shlog_error!("{}", e);
+            "Failed to open URL."
+          })?;
         }
 
         let queue_var = self.queue.get();

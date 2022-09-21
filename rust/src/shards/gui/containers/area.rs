@@ -9,7 +9,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXT_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
+use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -24,7 +24,6 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
-use crate::types::FLOAT2_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
 use egui::Context as EguiNativeContext;
@@ -34,7 +33,7 @@ lazy_static! {
     (
       cstr!("Position"),
       cstr!("Absolute position; or when anchor is set, relative offset."),
-      FLOAT2_TYPES_SLICE,
+      FLOAT2_VAR_SLICE,
     )
       .into(),
     (
@@ -144,6 +143,8 @@ impl Shard for Area {
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);
+    // Add UI.Parents to the list of required variables
+    util::require_parents(&mut self.requiring, &self.parents);
 
     Some(&self.requiring)
   }
@@ -163,25 +164,6 @@ impl Shard for Area {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    // we need to inject UI variable to the inner shards
-    let mut data = *data;
-    // clone shared into a new vector we can append things to
-    let mut shared: ExposedTypes = data.shared.into();
-    // append to shared ui vars
-    let ui_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      isMutable: false,
-      isProtected: true, // don't allow to be used in code/wires
-      isTableEntry: false,
-      global: false,
-      isPushTable: false,
-    };
-    shared.push(ui_info);
-    // update shared
-    data.shared = (&shared).into();
-
     if !self.contents.is_empty() {
       self.contents.compose(&data)?;
     }

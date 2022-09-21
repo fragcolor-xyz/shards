@@ -4,14 +4,27 @@
 use super::Spinner;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
+use crate::types::Parameters;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+
+lazy_static! {
+  static ref SPINNER_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Size"),
+      cstr!("Overrides the size of the spinner. This sets both the height and width, as the spinner is always square."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
+  ];
+}
 
 impl Default for Spinner {
   fn default() -> Self {
@@ -20,6 +33,7 @@ impl Default for Spinner {
     Self {
       parents,
       requiring: Vec::new(),
+      size: ParamVar::default(),
     }
   }
 }
@@ -63,6 +77,24 @@ impl Shard for Spinner {
     OptionalString(shccstr!("The output of this shard will be its input."))
   }
 
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&SPINNER_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+    match index {
+      0 => Ok(self.size.set_param(value)),
+      _ => Err("Invalid parameter index"),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.size.get_param(),
+      _ => Var::default(),
+    }
+  }
+
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
@@ -75,10 +107,14 @@ impl Shard for Spinner {
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.parents.warmup(context);
 
+    self.size.warmup(context);
+
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.size.cleanup();
+
     self.parents.cleanup();
 
     Ok(())
@@ -86,7 +122,13 @@ impl Shard for Spinner {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let spinner = egui::Spinner::new();
+      let mut spinner = egui::Spinner::new();
+
+      let size = self.size.get();
+      if !size.is_none() {
+        spinner = spinner.size(size.try_into()?);
+      }
+
       ui.add(spinner);
 
       Ok(*input)

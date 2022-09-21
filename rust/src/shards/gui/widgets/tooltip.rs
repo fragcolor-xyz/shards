@@ -127,11 +127,7 @@ impl Shard for Tooltip {
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     self.exposing.clear();
 
-    let mut exposed = false;
-    exposed |= util::expose_contents_variables(&mut self.exposing, &self.contents);
-    exposed |= util::expose_contents_variables(&mut self.exposing, &self.onhover);
-
-    if exposed {
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
       Some(&self.exposing)
     } else {
       None

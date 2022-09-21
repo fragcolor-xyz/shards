@@ -10,20 +10,27 @@
    :Title "Window with Panels"
    :Contents
    (-> (UI.TopPanel
+        :Contents
         (->
          ;; input was passed down the UI hierarchy
          (Assert.Is input_value :Abort true)
          "Top Window Panel" (UI.Label)))
        (UI.BottomPanel
+        :Contents
         (->
          "Bottom Window Panel" (UI.Label)))
        (UI.LeftPanel
+        :Resizable false
+        :Contents
         (->
          "Left Window Panel" (UI.Label)))
        (UI.RightPanel
+        :Resizable false
+        :Contents
         (->
          "Right Window Panel" (UI.Label)))
        (UI.CentralPanel
+        :Contents
         (->
          "Central Window Panel" (UI.Label))))))
 
@@ -43,19 +50,32 @@
      .ui-draw-queue
      (->
       (UI.TopPanel
+       :Contents
        (->
         "Top Panel" (UI.Label)))
       (UI.LeftPanel
+       :Resizable false
+       :MaxSize 120.0
+       :Contents
        (->
         "Left Panel" (UI.Label)
+        (UI.Separator)
         (UI.Button "Click me!" (-> (Msg "Hello World!")))))
       (UI.RightPanel
+       :Resizable true
+       :DefaultSize 180.0
+       :MinSize 120.0
+       :MaxSize 360.0
+       :Contents
        (->
-        "Right Panel" (UI.Label)))
+        "Right Panel" (UI.Label)
+        (UI.Separator)))
       (UI.BottomPanel
+       :Contents
        (->
         "Bottom Panel" (UI.Label)))
       (UI.CentralPanel
+       :Contents
        (->
         "Central Panel" (UI.Label)
         lorem_ipsum (UI.Label)))

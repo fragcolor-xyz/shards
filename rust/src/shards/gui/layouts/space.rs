@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::ProgressBar;
+use std::convert::TryInto;
+
+use super::Space;
 use crate::shard::Shard;
-use crate::shards::gui::util;
 use crate::shards::gui::FLOAT_VAR_SLICE;
+use crate::shards::gui::util;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -13,74 +15,66 @@ use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::FLOAT_TYPES;
-use crate::types::STRING_VAR_OR_NONE_SLICE;
+use crate::types::ANY_TYPES;
 
 lazy_static! {
-  static ref PROGRESSBAR_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Overlay"),
-      cstr!("The text displayed inside the progress bar."),
-      STRING_VAR_OR_NONE_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Width"),
-      cstr!("The desired width of the progress bar. Will use all horizontal space if not set."),
-      FLOAT_VAR_SLICE,
-    )
-      .into(),
-  ];
+    static ref SPACE_PARAMETERS: Parameters = vec![
+      (
+        cstr!("Amount"),
+        cstr!("The amount of space to insert."),
+        FLOAT_VAR_SLICE
+      )
+        .into(),
+    ];
 }
 
-impl Default for ProgressBar {
+impl Default for Space {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
       parents,
       requiring: Vec::new(),
-      overlay: ParamVar::default(),
-      desired_width: ParamVar::default(),
+      amount: ParamVar::default(),
     }
   }
 }
 
-impl Shard for ProgressBar {
+impl Shard for Space {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.ProgressBar")
+    cstr!("UI.Space")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.ProgressBar-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Space-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.ProgressBar"
+    "UI.Space"
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("A progress bar with an optional overlay text."))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
-    &FLOAT_TYPES
-  }
-
-  fn inputHelp(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The progress amount in the [0.0, 1.0] range, where 1 means completed."
+      "Inserts an empty space before the next widget. The direction will depend on the layout."
     ))
   }
 
+  fn inputTypes(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("The value is ignored."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
-    &FLOAT_TYPES
+    &ANY_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -88,21 +82,19 @@ impl Shard for ProgressBar {
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PROGRESSBAR_PARAMETERS)
+    Some(&SPACE_PARAMETERS)
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.overlay.set_param(value)),
-      1 => Ok(self.desired_width.set_param(value)),
+      0 => Ok(self.amount.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.overlay.get_param(),
-      1 => self.desired_width.get_param(),
+      0 => self.amount.get_param(),
       _ => Var::default(),
     }
   }
@@ -118,17 +110,13 @@ impl Shard for ProgressBar {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-
-    self.overlay.warmup(ctx);
-    self.desired_width.warmup(ctx);
+    self.amount.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.desired_width.cleanup();
-    self.overlay.cleanup();
-
+    self.amount.cleanup();
     self.parents.cleanup();
 
     Ok(())
@@ -136,21 +124,7 @@ impl Shard for ProgressBar {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let progress = input.try_into()?;
-      let mut progressBar = egui::ProgressBar::new(progress);
-
-      let overlay = self.overlay.get();
-      if !overlay.is_none() {
-        let text: &str = overlay.try_into()?;
-        progressBar = progressBar.text(text);
-      }
-
-      let desired_width = self.desired_width.get();
-      if !desired_width.is_none() {
-        progressBar = progressBar.desired_width(desired_width.try_into()?);
-      }
-
-      ui.add(progressBar);
+      ui.add_space(self.amount.get().try_into()?);
 
       Ok(*input)
     } else {

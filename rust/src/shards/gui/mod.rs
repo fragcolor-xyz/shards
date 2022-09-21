@@ -23,6 +23,8 @@ static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::color_var,
   common_type::none,
 ];
+static FLOAT_VAR_SLICE: &[Type] = &[common_type::float, common_type::float_var];
+static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
 static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
 static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
@@ -41,12 +43,17 @@ static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
+const TextureCC: i32 = fourCharacterCode(*b"tex_");
+
 lazy_static! {
   static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
   static ref GFX_QUEUE_TYPE: Type = unsafe { *shardsc::gfx_getQueueType() };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
+
+  static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
+  static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
 }
 
 const CONTEXT_NAME: &str = "UI.Context";

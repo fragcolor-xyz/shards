@@ -59,6 +59,7 @@ struct Window {
   requiring: ExposedTypes,
   title: ParamVar,
   position: ParamVar,
+  anchor: ParamVar,
   width: ParamVar,
   height: ParamVar,
   flags: ParamVar,
@@ -87,10 +88,14 @@ shenum_types! {
 }
 
 macro_rules! decl_panel {
-  ($name:ident) => {
+  ($name:ident, $default_size:ident, $min_size:ident, $max_size:ident) => {
     struct $name {
       instance: ParamVar,
       requiring: ExposedTypes,
+      resizable: ParamVar,
+      $default_size: ParamVar,
+      $min_size: ParamVar,
+      $max_size: ParamVar,
       contents: ShardsVar,
       parents: ParamVar,
       exposing: ExposedTypes,
@@ -98,11 +103,18 @@ macro_rules! decl_panel {
   };
 }
 
-decl_panel!(BottomPanel);
-decl_panel!(CentralPanel);
-decl_panel!(LeftPanel);
-decl_panel!(RightPanel);
-decl_panel!(TopPanel);
+decl_panel!(BottomPanel, default_height, min_height, max_height);
+decl_panel!(LeftPanel, default_width, min_width, max_width);
+decl_panel!(RightPanel, default_width, min_width, max_width);
+decl_panel!(TopPanel, default_height, min_height, max_height);
+
+struct CentralPanel {
+  instance: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  parents: ParamVar,
+  exposing: ExposedTypes,
+}
 
 mod area;
 mod panels;
