@@ -1,17 +1,17 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use std::borrow::BorrowMut;
-
 use egui::Sense;
 use egui::Ui;
 use egui::Vec2;
+use std::borrow::BorrowMut;
 
 use super::RenderTarget;
 use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::widgets::FLOAT2_VAR_SLICE;
+use crate::shards::gui::widgets::image_util;
+use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::gfx_TexturePtr;
 use crate::shardsc::gfx_TexturePtr_getResolution_ext;
@@ -35,8 +35,7 @@ use crate::types::FRAG_CC;
 const TextureCC: i32 = fourCharacterCode(*b"tex_");
 
 lazy_static! {
-  static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
-  static ref TEXTURE_TYPES: Vec<Type> = vec![*TEXTURE_TYPE];
+  static ref TEXTURE_TYPES: Vec<Type> = vec![*image_util::TEXTURE_TYPE];
   static ref RENDER_TARGET_PARAMETERS: Parameters = vec![(
     cstr!("Scale"),
     cstr!("Scaling to apply to the source texture"),
@@ -53,8 +52,6 @@ impl Default for RenderTarget {
       parents,
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
-      texture: None,
-      prev_ptr: std::ptr::null_mut(),
     }
   }
 }
@@ -171,21 +168,14 @@ impl RenderTarget {
 
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
-
-      let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
-      let texture_size = {
-        let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
-        egui::vec2(texture_res.x as f32, texture_res.y as f32)
-      };
+      let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
+      let scale = image_util::get_scale(&self.scale, ui)?;
 
       // Manually allocate region to consume input events
-      let scale = Self::get_scale(&self.scale, ui)?;
       let (rect, _response) = ui.allocate_exact_size(texture_size * scale, Sense::click_and_drag());
 
       // Draw texture at this rectangle
-      let textureId = egui::epaint::TextureId::User(ptr);
-      let image = egui::widgets::Image::new(textureId, rect.size());
+      let image = egui::widgets::Image::new(texture_id, rect.size());
       image.paint_at(ui, rect);
 
       Ok(*input)

@@ -10,6 +10,8 @@ use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 
+mod image_util;
+
 /// Clickable button with a text label.
 struct Button {
   parents: ParamVar,
@@ -82,16 +84,13 @@ struct Image {
   parents: ParamVar,
   requiring: ExposedTypes,
   scale: ParamVar,
-  texture: Option<egui::TextureHandle>,
-  prev_ptr: *mut u8,
+  cached_ui_image: image_util::CachedUIImage,
 }
 
 struct RenderTarget {
   parents: ParamVar,
   requiring: ExposedTypes,
   scale: ParamVar,
-  texture: Option<egui::TextureHandle>,
-  prev_ptr: *mut u8,
 }
 
 /// Clickable button with an image.
@@ -103,8 +102,7 @@ struct ImageButton {
   selected: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
-  texture: Option<egui::TextureHandle>,
-  prev_ptr: *mut u8,
+  cached_ui_image: image_util::CachedUIImage,
 }
 
 /// Displays text.
@@ -234,6 +232,7 @@ mod console;
 mod hyperlink;
 mod image;
 mod image_button;
+mod render_target;
 mod label;
 mod link;
 mod listbox;
@@ -241,7 +240,6 @@ mod numeric_input;
 mod numeric_slider;
 mod progress_bar;
 mod radio_button;
-mod render_target;
 mod spinner;
 mod text_input;
 mod text_util;
@@ -254,9 +252,9 @@ pub fn registerShards() {
   registerShard::<Combo>();
   registerShard::<Console>();
   registerShard::<Hyperlink>();
-  registerShard::<RenderTarget>();
   registerShard::<Image>();
   registerShard::<ImageButton>();
+  registerShard::<RenderTarget>();
   registerShard::<Label>();
   registerShard::<Link>();
   registerShard::<ListBox>();

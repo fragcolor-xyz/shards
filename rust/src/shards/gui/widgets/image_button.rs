@@ -1,15 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::image_util;
 use super::ImageButton;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::TextureCC;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
-use crate::shards::gui::TEXTURE_OR_IMAGE_TYPES;
-use crate::shards::gui::TEXTURE_TYPE;
 use crate::shardsc::gfx_TexturePtr;
 use crate::shardsc::gfx_TexturePtr_getResolution_ext;
 use crate::shardsc::SHImage;
@@ -69,8 +67,7 @@ impl Default for ImageButton {
       selected: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
-      texture: None,
-      prev_ptr: std::ptr::null_mut(),
+      cached_ui_image: Default::default(),
     }
   }
 }
@@ -99,7 +96,7 @@ impl Shard for ImageButton {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &TEXTURE_OR_IMAGE_TYPES
+    &image_util::TEXTURE_OR_IMAGE_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -201,7 +198,7 @@ impl Shard for ImageButton {
       SHType_Image => decl_override_activate! {
         data.activate = ImageButton::image_activate;
       },
-      SHType_Object if unsafe { data.inputType.details.object.typeId } == TextureCC => {
+      SHType_Object if unsafe { data.inputType.details.object.typeId } == image_util::TextureCC => {
         decl_override_activate! {
           data.activate = ImageButton::texture_activate;
         }
@@ -247,25 +244,13 @@ impl Shard for ImageButton {
 impl ImageButton {
   fn activateImage(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let shimage: &SHImage = input.try_into()?;
-      let ptr = shimage.data;
-      let texture = if ptr != self.prev_ptr {
-        let image: egui::ColorImage = shimage.into();
-        self.prev_ptr = ptr;
-        self.texture.insert(ui.ctx().load_texture(
-          format!("UI.ImageButton: {:p}", shimage.data),
-          image,
-          Default::default(),
-        ))
-      } else {
-        self.texture.as_ref().unwrap()
+      let (texture_id, texture_size) = {
+        let texture = image_util::ui_image_cached(&mut self.cached_ui_image, input, ui)?;
+        let scale = image_util::get_scale(&self.scale, ui)?;
+        (texture.into(), texture.size_vec2() * scale)
       };
 
-      let scale: (f32, f32) = self.scale.get().try_into()?;
-      let scale: egui::Vec2 = scale.into();
-      let size = scale * texture.size_vec2();
-      let texture_id = texture.into();
-      self.activateCommon(context, input, ui, texture_id, size)
+      self.activateCommon(context, input, ui, texture_id, texture_size)
     } else {
       Err("No UI parent")
     }
@@ -273,17 +258,10 @@ impl ImageButton {
 
   fn activateTexture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
+      let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
+      let scale = image_util::get_scale(&self.scale, ui)?;
 
-      let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
-      let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
-
-      let texture_id = egui::epaint::TextureId::User(ptr);
-
-      let scale: (f32, f32) = self.scale.get().try_into()?;
-      let size =
-        egui::vec2(texture_res.x as f32, texture_res.y as f32) * egui::vec2(scale.0, scale.1);
-      self.activateCommon(context, input, ui, texture_id, size)
+      self.activateCommon(context, input, ui, texture_id, texture_size * scale)
     } else {
       Err("No UI parent")
     }
