@@ -38,7 +38,7 @@ TEST_CASE("glTF sample models", "[glTF]") {
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   auto pipeline = PipelineSteps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = queue,
           .features =
               {

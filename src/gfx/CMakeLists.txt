@@ -25,6 +25,9 @@ add_library(gfx
   shader/blocks.cpp
   shader/types.cpp
   rust_interop.cpp
+  window_mapping.cpp
+  view_stack.cpp
+  render_target.cpp
   # cache_data.cpp
 )
 

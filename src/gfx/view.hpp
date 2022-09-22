@@ -43,7 +43,6 @@ struct ViewOrthographicProjection {
 struct alignas(16) View {
 public:
   float4x4 view;
-  std::optional<Rect> viewport;
   std::variant<std::monostate, ViewPerspectiveProjection, ViewOrthographicProjection, float4x4> proj;
 
 public:

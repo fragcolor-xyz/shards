@@ -94,6 +94,7 @@ mod context;
 mod layouts;
 mod menus;
 mod misc;
+mod properties;
 mod util;
 mod widgets;
 
@@ -216,4 +217,5 @@ pub fn registerShards() {
   menus::registerShards();
   misc::registerShards();
   widgets::registerShards();
+  properties::registerShards();
 }

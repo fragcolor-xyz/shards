@@ -11,6 +11,7 @@
 namespace gfx {
 
 // Container for shader parameters (basic/texture)
+/// <div rustbindgen opaque>
 struct MaterialParameters {
   std::map<std::string, ParamVariant> basic;
   std::map<std::string, TextureParameter> texture;
@@ -27,6 +28,7 @@ struct MaterialParameters {
   }
 };
 
+/// <div rustbindgen opaque>
 struct Material {
 public:
   std::vector<FeaturePtr> features;

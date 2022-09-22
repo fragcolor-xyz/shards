@@ -221,6 +221,8 @@ impl Shard for EguiContext {
       return Ok(*input);
     }
 
+    let mapped_region = unsafe { shardsc::gfx_getEguiMappedRegion(self.main_window_globals.get()) };
+
     let raw_input = unsafe {
       let inputs = shardsc::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,

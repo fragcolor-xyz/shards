@@ -8,7 +8,7 @@
 namespace gfx {
 struct EguiRenderPass {
   static PipelineStepPtr createPipelineStep(DrawQueuePtr queue) {
-    auto drawableStep = makeDrawablePipelineStep(RenderDrawablesStep{
+    auto drawableStep = makePipelineStep(RenderDrawablesStep{
         .drawQueue = queue,
         .features = std::vector<FeaturePtr>{createFeature()},
         .sortMode = SortMode::Queue,

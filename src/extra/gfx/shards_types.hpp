@@ -57,6 +57,10 @@ struct SHMaterial {
   void updateVariables();
 };
 
+struct SHRenderTarget {
+  RenderTargetPtr renderTarget;
+};
+
 struct SHDrawQueue {
   DrawQueuePtr queue;
 };
@@ -83,6 +87,7 @@ struct Container {
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
   OBJECT('tex_', "GFX.Texture", Texture, TexturePtr)
+  OBJECT('rtex', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
   ENUM('_e0', "WindingOrder", WindingOrder, gfx::WindingOrder)
   ENUM('_e1', "ShaderFieldBaseType", ShaderFieldBaseType, gfx::ShaderFieldBaseType)

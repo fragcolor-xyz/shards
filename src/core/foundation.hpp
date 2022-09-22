@@ -1299,6 +1299,18 @@ struct VariableResolver {
     }
   }
 };
+
+template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type &type) {
+  SHTypeInfo typeInfo(type);
+  if (var.valueType != SHType::Object)
+    throw std::logic_error("Invalid type");
+  if (var.payload.objectVendorId != typeInfo.object.vendorId)
+    throw std::logic_error("Invalid object vendor id");
+  if (var.payload.objectTypeId != typeInfo.object.typeId)
+    throw std::logic_error("Invalid object type id");
+  return reinterpret_cast<T *>(var.payload.objectValue);
+}
+
 }; // namespace shards
 
 #endif // SH_CORE_FOUNDATION

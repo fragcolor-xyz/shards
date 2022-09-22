@@ -381,5 +381,79 @@ void CylinderGenerator::generate() {
   }
 }
 
+void QuadGenerator::generateFullscreenTriangle() {
+  float3 size = float3(max - min, 0);
+  float2 uvDelta = uvMax - uvMin;
+
+  float3 f0 = float3(min.x, min.y, 0);
+
+  vertices.resize(3);
+  auto &v0 = vertices[0];
+  v0.setPosition(f0);
+  v0.setTexCoord(uvMin);
+
+  auto &v1 = vertices[1];
+  v1.setPosition(f0 + float3(size.x, 0, 0) * 2);
+  v1.setTexCoord(uvMin + float2(uvDelta.x * 2, 0));
+
+  auto &v2 = vertices[2];
+  v2.setPosition(f0 + float3(0, size.y, 0) * 2);
+  v2.setTexCoord(uvMin + float2(0, uvDelta.y * 2));
+
+  indices = {0, 1, 2};
+}
+
+void QuadGenerator::generateQuad() {
+  float2 size = max - min;
+  float2 uvDelta = uvMax - uvMin;
+
+  auto gridX = 1;
+  auto gridY = 1;
+
+  auto gridX1 = gridX + 1;
+  auto gridY1 = gridY + 1;
+
+  auto segmentSize = size / float2(gridX, gridY);
+
+  for (size_t iy = 0; iy < gridY1; iy++) {
+    auto y = float(iy) * segmentSize.y + min.y;
+    auto uvY = float(iy) * uvDelta.y + uvMin.y;
+
+    for (size_t ix = 0; ix < gridX1; ix++) {
+      auto x = float(ix) * segmentSize.x + min.x;
+      auto uvX = float(ix) * uvDelta.x + uvMin.x;
+
+      VertexPNT &vertex = vertices.emplace_back();
+      vertex.setPosition(float3(x, -y, 0));
+      vertex.setNormal(float3(0, 0, 1));
+      vertex.setTexCoord(float2(uvX, uvY));
+    }
+  }
+
+  for (size_t iy = 0; iy < gridY; iy++) {
+    for (size_t ix = 0; ix < gridX; ix++) {
+      auto a = ix + gridX1 * iy;
+      auto b = ix + gridX1 * (iy + 1);
+      auto c = (ix + 1) + gridX1 * (iy + 1);
+      auto d = (ix + 1) + gridX1 * iy;
+
+      indices.push_back(a);
+      indices.push_back(b);
+      indices.push_back(d);
+      indices.push_back(b);
+      indices.push_back(c);
+      indices.push_back(d);
+    }
+  }
+}
+
+void QuadGenerator::generate() {
+  reset();
+
+  if (optimizeForFullscreen)
+    generateFullscreenTriangle();
+  else
+    generateQuad();
+}
 } // namespace geom
 } // namespace gfx

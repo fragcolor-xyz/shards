@@ -11,6 +11,7 @@ set(extra_SOURCES
   gfx/gltf.cpp
   gfx/camera.cpp
   gfx/texture.cpp
+  gfx/view.cpp
   gui.cpp
   rust_interop.cpp
   gizmos/context.cpp

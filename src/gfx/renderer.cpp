@@ -5,8 +5,10 @@
 #include "hasherxxh128.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
+#include "mesh_utils.hpp"
 #include "params.hpp"
 #include "renderer_types.hpp"
+#include "renderer_cache.hpp"
 #include "shader/blocks.hpp"
 #include "shader/entry_point.hpp"
 #include "shader/fmt.hpp"
@@ -16,203 +18,20 @@
 #include "texture.hpp"
 #include "texture_placeholder.hpp"
 #include "view.hpp"
-#include "view_texture.hpp"
+#include "render_target.hpp"
 #include "log.hpp"
+#include "geom.hpp"
 #include <algorithm>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
+using namespace gfx::detail;
+
+static auto logger = gfx::getLogger();
+
 namespace gfx {
-using shader::FieldType;
-using shader::FieldTypes;
-using shader::TextureBindingLayout;
-using shader::TextureBindingLayoutBuilder;
-using shader::UniformBufferLayout;
-using shader::UniformBufferLayoutBuilder;
-using shader::UniformLayout;
-
-static auto logger = getLogger();
-
-PipelineStepPtr makeDrawablePipelineStep(RenderDrawablesStep &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
-
-typedef uint16_t TextureId;
-
-struct TextureIds {
-  std::vector<TextureId> textures;
-
-  bool operator==(const TextureIds &other) const {
-    return std::equal(textures.begin(), textures.end(), other.textures.begin(), other.textures.end());
-  }
-
-  bool operator!=(const TextureIds &other) const { return !(*this == other); }
-
-  bool operator<(const TextureIds &other) const {
-    if (textures.size() != other.textures.size())
-      return textures.size() < other.textures.size();
-    for (size_t i = 0; i < textures.size(); i++) {
-      if (textures[i] != other.textures[i]) {
-        return textures[i] < other.textures[i];
-      }
-    }
-    return false;
-  }
-};
-
-struct TextureIdMap {
-private:
-  std::map<Texture *, TextureId> mapping;
-  std::vector<std::shared_ptr<TextureContextData>> textureData;
-
-public:
-  TextureId assign(Context &context, Texture *texture) {
-    if (!texture)
-      return ~0;
-
-    auto it = mapping.find(texture);
-    if (it != mapping.end()) {
-      return it->second;
-    } else {
-      texture->createContextDataConditional(context);
-
-      size_t newId = textureData.size();
-      assert(newId <= UINT16_MAX);
-
-      TextureId id = TextureId(newId);
-      textureData.emplace_back(texture->contextData);
-      mapping.insert_or_assign(texture, id);
-      return id;
-    }
-  }
-  TextureContextData *resolve(TextureId id) const {
-    if (id == TextureId(~0))
-      return nullptr;
-    else {
-      return textureData[id].get();
-    }
-  }
-
-  void reset() {
-    mapping.clear();
-    textureData.clear();
-  }
-};
-
-struct SortableDrawable;
-struct DrawGroupKey {
-  MeshContextData *meshData{};
-  TextureIds textures{};
-  std::optional<int4> clipRect{};
-
-  DrawGroupKey() = default;
-  DrawGroupKey(const Drawable &drawable, const TextureIds &textureIds)
-      : meshData(drawable.mesh->contextData.get()), textures(textureIds), clipRect(drawable.clipRect) {}
-
-  bool operator==(const DrawGroupKey &other) const {
-    return meshData == other.meshData && textures == other.textures && clipRect == other.clipRect;
-  }
-
-  bool operator!=(const DrawGroupKey &other) const { return !(*this == other); }
-
-  bool operator<(const DrawGroupKey &other) const {
-    if (meshData != other.meshData) {
-      return size_t(meshData) < size_t(other.meshData);
-    }
-    if (clipRect != other.clipRect) {
-      return clipRect < other.clipRect;
-    }
-    return textures < other.textures;
-  }
-};
-
-struct SortableDrawable {
-  Drawable *drawable{};
-  TextureIds textureIds;
-  DrawGroupKey key;
-  float projectedDepth = 0.0f;
-};
-
-struct CachedPipeline {
-  struct DrawGroup {
-    DrawGroupKey key;
-    size_t startIndex;
-    size_t numInstances;
-    DrawGroup(const DrawGroupKey &key, size_t startIndex, size_t numInstances)
-        : key(key), startIndex(startIndex), numInstances(numInstances) {}
-  };
-
-  MeshFormat meshFormat;
-  std::vector<const Feature *> features;
-  UniformBufferLayout objectBufferLayout;
-  TextureBindingLayout textureBindingLayout;
-  DrawData baseDrawData;
-
-  WGPURenderPipeline pipeline = {};
-  WGPUShaderModule shaderModule = {};
-  WGPUPipelineLayout pipelineLayout = {};
-  std::vector<WGPUBindGroupLayout> bindGroupLayouts;
-
-  std::vector<Drawable *> drawables;
-  std::vector<SortableDrawable> drawablesSorted;
-  std::vector<DrawGroup> drawGroups;
-  TextureIdMap textureIdMap;
-
-  DynamicWGPUBufferPool instanceBufferPool;
-
-  void resetDrawables() {
-    drawables.clear();
-    drawablesSorted.clear();
-    drawGroups.clear();
-    textureIdMap.reset();
-  }
-
-  void resetPools() { instanceBufferPool.reset(); }
-
-  void release() {
-    wgpuPipelineLayoutRelease(pipelineLayout);
-    wgpuShaderModuleRelease(shaderModule);
-    wgpuRenderPipelineRelease(pipeline);
-    for (WGPUBindGroupLayout &layout : bindGroupLayouts) {
-      wgpuBindGroupLayoutRelease(layout);
-    }
-  }
-
-  ~CachedPipeline() { release(); }
-};
-typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
-
-static void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout, const DrawData &drawData) {
-  size_t layoutIndex = 0;
-  for (auto &fieldName : layout.fieldNames) {
-    auto drawDataIt = drawData.data.find(fieldName);
-    if (drawDataIt != drawData.data.end()) {
-      const UniformLayout &itemLayout = layout.items[layoutIndex];
-      FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
-      if (itemLayout.type != drawDataFieldType) {
-        spdlog::warn("WEBGPU: Field type mismatch layout:{} drawData:{}", itemLayout.type, drawDataFieldType);
-        continue;
-      }
-
-      packParamVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
-    }
-    layoutIndex++;
-  }
-}
-
-struct CachedViewData {
-  DynamicWGPUBufferPool viewBuffers;
-  float4x4 projectionMatrix;
-  ~CachedViewData() {}
-
-  void resetPools() { viewBuffers.reset(); }
-};
-typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
-
-struct FrameReferences {
-  std::vector<std::shared_ptr<ContextData>> contextDataReferences;
-  void clear() { contextDataReferences.clear(); }
-};
 
 struct RendererImpl final : public ContextData {
   Context &context;
@@ -220,24 +39,26 @@ struct RendererImpl final : public ContextData {
 
   UniformBufferLayout viewBufferLayout;
 
+  ViewStack viewStack;
+
   Renderer::MainOutput mainOutput;
   bool shouldUpdateMainOutputFromContext = false;
+
+  MeshPtr fullscreenQuad;
 
   Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
   Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
 
   std::unordered_map<const View *, CachedViewDataPtr> viewCache;
-  std::unordered_map<Hash128, CachedPipelinePtr> pipelineCache;
+  PipelineCache pipelineCache;
+
+  RenderGraphEvaluator renderGraphEvaluator;
 
   size_t frameIndex = 0;
   const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
-  // TODO: Replace with render graph https://github.com/fragcolor-xyz/shards/issues/172
-  bool mainOutputWrittenTo = false;
-  bool depthStencilWrittenTo = false;
-
   static constexpr WGPUTextureFormat defaultDepthTextureFormat = WGPUTextureFormat_Depth32Float;
-  std::shared_ptr<ViewTexture> depthTexture = std::make_shared<ViewTexture>(defaultDepthTextureFormat, "Depth Buffer");
+  std::shared_ptr<Texture> depthTexture = Texture::makeRenderAttachment(defaultDepthTextureFormat, "Depth Buffer");
   std::shared_ptr<PlaceholderTexture> placeholderTexture;
 
   RendererImpl(Context &context) : context(context) {
@@ -250,6 +71,11 @@ struct RendererImpl final : public ContextData {
     viewBufferLayout = viewBufferLayoutBuilder.finalize();
 
     placeholderTexture = std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
+
+    geom::QuadGenerator quadGen;
+    quadGen.optimizeForFullscreen = true;
+    quadGen.generate();
+    fullscreenQuad = createMesh(quadGen.vertices, std::vector<uint16_t>{});
   }
 
   ~RendererImpl() { releaseContextDataConditional(); }
@@ -273,9 +99,30 @@ struct RendererImpl final : public ContextData {
   size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
 
   void updateMainOutputFromContext() {
-    mainOutput.format = context.getMainOutputFormat();
-    mainOutput.view = context.getMainOutputTextureView();
-    mainOutput.size = context.getMainOutputSize();
+    if (!mainOutput.texture) {
+      mainOutput.texture = std::make_shared<Texture>();
+    }
+
+    WGPUTextureView view = context.getMainOutputTextureView();
+    int2 resolution = context.getMainOutputSize();
+
+    auto currentDesc = mainOutput.texture->getDesc();
+    bool needUpdate = currentDesc.externalTexture != view || currentDesc.resolution != resolution;
+    if (needUpdate) {
+      mainOutput.texture
+          ->init(TextureDesc{
+              .format =
+                  TextureFormat{
+                      .type = TextureType::D2,
+                      .flags = TextureFormatFlags::RenderAttachment,
+                      .pixelFormat = context.getMainOutputFormat(),
+                  },
+              .resolution = context.getMainOutputSize(),
+              .externalTexture = view,
+          })
+          .initWithLabel("mainOutput");
+      mainOutput.windowMapping = WindowSubRegion::fromEntireWindow(context.getWindow());
+    }
   }
 
   void renderViews(const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
@@ -287,32 +134,37 @@ struct RendererImpl final : public ContextData {
   void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     View *viewPtr = view.get();
 
-    Rect viewport;
-    int2 viewSize;
-    if (viewPtr->viewport) {
-      viewSize = viewPtr->viewport->getSize();
-      viewport = viewPtr->viewport.value();
-    } else {
-      viewSize = mainOutput.size;
-      viewport = Rect(0, 0, viewSize.x, viewSize.y);
+    ViewData viewData{
+        .view = *view.get(),
+    };
+
+    ViewStack::Output viewStackOutput = viewStack.getOutput();
+    viewData.viewport = viewStackOutput.viewport;
+    viewData.renderTarget = viewStackOutput.renderTarget;
+    if (viewData.renderTarget) {
+      viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
     }
+
+    int2 viewSize = viewStackOutput.viewport.getSize();
+    if (viewSize.x == 0 || viewSize.y == 0)
+      return; // Skip rendering
 
     auto it = viewCache.find(viewPtr);
     if (it == viewCache.end()) {
       it = viewCache.insert(std::make_pair(viewPtr, std::make_shared<CachedViewData>())).first;
     }
-    CachedViewData &viewData = *it->second.get();
+    CachedViewData &cachedViewData = *it->second.get();
 
     DrawData viewDrawData;
     viewDrawData.setParam("view", viewPtr->view);
     viewDrawData.setParam("invView", linalg::inverse(viewPtr->view));
-    float4x4 projMatrix = viewData.projectionMatrix = viewPtr->getProjectionMatrix(viewSize);
+    float4x4 projMatrix = cachedViewData.projectionMatrix = viewPtr->getProjectionMatrix(viewData.viewport.getSize());
     viewDrawData.setParam("proj", projMatrix);
     viewDrawData.setParam("invProj", linalg::inverse(projMatrix));
-    viewDrawData.setParam("viewport",
-                          float4(float(viewport.x), float(viewport.y), float(viewport.width), float(viewport.height)));
+    viewDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y),
+                                             float(viewData.viewport.width), float(viewData.viewport.height)));
 
-    DynamicWGPUBuffer &viewBuffer = viewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
+    DynamicWGPUBuffer &viewBuffer = cachedViewData.viewBuffers.allocateBuffer(viewBufferLayout.size);
     viewBuffer.resize(context.wgpuDevice, viewBufferLayout.size, WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
                       "viewUniform");
 
@@ -321,15 +173,214 @@ struct RendererImpl final : public ContextData {
     packDrawData(stagingBuffer.data(), stagingBuffer.size(), viewBufferLayout, viewDrawData);
     wgpuQueueWriteBuffer(context.wgpuQueue, viewBuffer, 0, stagingBuffer.data(), stagingBuffer.size());
 
+    viewData.viewBuffer = viewBuffer;
+
+    RenderGraph renderGraph;
+    buildRenderGraph(renderGraph, viewData, pipelineSteps);
+
+    renderGraphEvaluator.evaluate(renderGraph, context);
+  }
+
+  void buildRenderGraph(RenderGraph &outGraph, const ViewData &viewData, const PipelineSteps &pipelineSteps) {
     for (auto &step : pipelineSteps) {
-      std::visit(
-          [&](auto &&arg) {
-            using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
-              renderDrawables(arg, view, viewport, viewBuffer);
-            }
-          },
-          *step.get());
+      std::visit([&](auto &&arg) { appendToRenderGraph(outGraph, viewData, arg); }, *step.get());
+    }
+
+    outGraph.populateEdges();
+  }
+
+  template <typename T> void initStepRenderTarget(RenderTargetData &renderTargetData, const ViewData &viewData, const T &step) {
+    if (step.renderTarget) {
+      renderTargetData.init(step.renderTarget);
+    } else if (viewData.renderTarget) {
+      renderTargetData.init(viewData.renderTarget);
+    } else {
+      // Default: output to main output
+      renderTargetData.init(mainOutput, depthTexture);
+    }
+  }
+
+  void collectReferencedRenderAttachments(const PipelineDrawables &pipelineDrawables, std::vector<Texture *> &outTextures) {
+    // Find references to render textures
+    pipelineDrawables.textureIdMap.forEachTexture([&](Texture *texture) {
+      if (textureFormatFlagsContains(texture->getFormat().flags, TextureFormatFlags::RenderAttachment)) {
+        outTextures.push_back(texture);
+      }
+    });
+  }
+
+  void preparePipelineDrawableForRenderGraph(PipelineDrawables &pipelineDrawables, RenderGraphNode &renderGraphNode,
+                                             SortMode sortMode, const ViewData &viewData) {
+    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+    if (!cachedPipeline.pipeline) {
+      buildTextureBindingLayout(cachedPipeline);
+      buildPipeline(cachedPipeline);
+    }
+
+    sortAndBatchDrawables(pipelineDrawables, sortMode, viewData);
+    collectReferencedRenderAttachments(pipelineDrawables, renderGraphNode.readsFrom);
+  }
+
+  void applyViewport(WGPURenderPassEncoder passEncoder, const ViewData &viewData) {
+    auto viewport = viewData.viewport;
+    wgpuRenderPassEncoderSetViewport(passEncoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
+                                     (float)viewport.height, 0.0f, 1.0f);
+  }
+
+  void appendToRenderGraph(RenderGraph &outGraph, const ViewData &viewData, const ClearStep &step) {
+    auto &renderGraphNode = outGraph.nodes.emplace_back();
+    auto &renderTargetData = renderGraphNode.renderTargetData;
+
+    // Build render target references
+    initStepRenderTarget(renderTargetData, viewData, step);
+
+    renderGraphNode.populateWritesTo();
+    renderGraphNode.setupPass = [=](WGPURenderPassDescriptor &desc) {
+      for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
+        auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
+        double4 clearValue(step.clearValues.color);
+        memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
+      }
+      if (desc.depthStencilAttachment) {
+        auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
+        attachment.depthClearValue = step.clearValues.depth;
+        attachment.stencilClearValue = step.clearValues.stencil;
+      }
+    };
+    renderGraphNode.body = [=](WGPURenderPassEncoder passEncoder) { applyViewport(passEncoder, viewData); };
+  }
+
+  void appendToRenderGraph(RenderGraph &outGraph, const ViewData &viewData, const RenderFullscreenStep &step) {
+    auto &renderGraphNode = outGraph.nodes.emplace_back();
+    auto &renderTargetData = renderGraphNode.renderTargetData;
+
+    // Build render target references
+    initStepRenderTarget(renderTargetData, viewData, step);
+
+    // Derive format layout
+    RenderTargetLayout renderTargetLayout = renderGraphNode.renderTargetData.getLayout();
+
+    DrawablePtr drawable = std::make_shared<Drawable>(fullscreenQuad);
+    drawable->parameters = step.parameters;
+    onFrameCleanup([drawable = drawable]() mutable { drawable.reset(); });
+
+    DrawableGrouper grouper(renderTargetLayout);
+    Hash128 sharedHash = grouper.generateSharedHash(renderTargetLayout);
+    auto groupedDrawable = grouper.groupByPipeline(pipelineCache, sharedHash, step.features,
+                                                   std::vector<const MaterialParameters *>{&step.parameters}, *drawable.get());
+
+    PipelineDrawables pipelineDrawables;
+    pipelineDrawables.cachedPipeline = groupedDrawable.cachedPipeline;
+    pipelineDrawables.drawables.push_back(drawable.get());
+
+    preparePipelineDrawableForRenderGraph(pipelineDrawables, renderGraphNode, SortMode::Queue, viewData);
+
+    renderGraphNode.populateWritesTo();
+    renderGraphNode.body = [=](WGPURenderPassEncoder passEncoder) {
+      applyViewport(passEncoder, viewData);
+      renderPipelineDrawables(passEncoder, pipelineDrawables, viewData);
+    };
+  }
+
+  void appendToRenderGraph(RenderGraph &outGraph, const ViewData &viewData, const RenderDrawablesStep &step) {
+    if (!step.drawQueue)
+      throw std::runtime_error("No draw queue assigned to drawable step");
+
+    auto &renderGraphNode = outGraph.nodes.emplace_back();
+    auto &renderTargetData = renderGraphNode.renderTargetData;
+
+    // Build render target references
+    initStepRenderTarget(renderTargetData, viewData, step);
+
+    // Derive format layout
+    RenderTargetLayout renderTargetLayout = renderGraphNode.renderTargetData.getLayout();
+
+    const DrawQueue &drawQueue = *step.drawQueue.get();
+
+    // Sort all draw commands into their respective pipeline
+    std::shared_ptr<PipelineDrawableCache> pipelineDrawableCache = std::make_shared<PipelineDrawableCache>();
+
+    // Sort draw commands into pipeline
+    DrawableGrouper grouper(renderTargetLayout);
+    Hash128 sharedHash = grouper.generateSharedHash(renderTargetLayout);
+    static const std::vector<const MaterialParameters *> sharedParameters{}; // empty
+    grouper.groupByPipeline(*pipelineDrawableCache.get(), pipelineCache, sharedHash, step.features, sharedParameters,
+                            drawQueue.getDrawables());
+
+    // Sort draw commands, build pipelines
+    for (auto &pair : pipelineDrawableCache->map) {
+      preparePipelineDrawableForRenderGraph(pair.second, renderGraphNode, step.sortMode, viewData);
+    }
+
+    renderGraphNode.populateWritesTo();
+    renderGraphNode.body = [=](WGPURenderPassEncoder passEncoder) {
+      applyViewport(passEncoder, viewData);
+      for (auto &pair : pipelineDrawableCache->map) {
+        renderPipelineDrawables(passEncoder, pair.second, viewData);
+      }
+    };
+  }
+
+  void renderPipelineDrawables(WGPURenderPassEncoder passEncoder, const PipelineDrawables &pipelineDrawables,
+                               const ViewData &viewData) {
+    CachedPipeline &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+    if (pipelineDrawables.drawablesSorted.empty())
+      return;
+
+    // Bytes between object buffer entries
+    size_t objectBufferStride = cachedPipeline.objectBufferLayout.getArrayStride();
+    size_t objectBufferLength = objectBufferStride * pipelineDrawables.drawablesSorted.size();
+
+    DynamicWGPUBuffer &objectBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(objectBufferLength);
+    fillInstanceBuffer(objectBuffer, pipelineDrawables, viewData.view);
+
+    auto drawGroups = pipelineDrawables.drawGroups;
+
+    wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
+
+    std::vector<Bindable> pipelineBindings = {
+        Bindable(viewData.viewBuffer, viewBufferLayout),
+    };
+
+    auto objectBinding = Bindable(objectBuffer, cachedPipeline.objectBufferLayout, objectBufferLength);
+
+    // Pipeline-shared bind group
+    WGPUBindGroup pipelineBindGroup = createBindGroup(cachedPipeline.bindGroupLayouts[0], pipelineBindings, "pipelineShared");
+    onFrameCleanup([pipelineBindGroup]() { wgpuBindGroupRelease(pipelineBindGroup); });
+    wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, pipelineBindGroup, 0, nullptr);
+
+    for (auto &drawGroup : pipelineDrawables.drawGroups) {
+      // Some platforms don't support instanceOffset, so we bind the object buffer at an offset to render different
+      size_t objectBufferOffset = drawGroup.startIndex * objectBufferStride;
+      size_t objectBufferRemainingSize = objectBufferLength - objectBufferOffset;
+      objectBinding.offset = objectBufferOffset;
+      objectBinding.overrideSize = objectBufferRemainingSize;
+
+      if (drawGroup.key.clipRect) {
+        auto &clipRect = drawGroup.key.clipRect.value();
+        wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, clipRect.z - clipRect.x,
+                                            clipRect.w - clipRect.y);
+      } else {
+        wgpuRenderPassEncoderSetScissorRect(passEncoder, 0, 0, viewData.viewport.width, viewData.viewport.height);
+      }
+
+      WGPUBindGroup batchBindGroup = createBatchBindGroup(pipelineDrawables, objectBinding, drawGroup.key.textures);
+      wgpuRenderPassEncoderSetBindGroup(passEncoder, 1, batchBindGroup, 0, nullptr);
+      onFrameCleanup([batchBindGroup]() { wgpuBindGroupRelease(batchBindGroup); });
+
+      MeshContextData *meshContextData = drawGroup.key.meshData;
+      assert(meshContextData->vertexBuffer);
+      wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, meshContextData->vertexBufferLength);
+
+      if (meshContextData->indexBuffer) {
+        WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
+        wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0,
+                                            meshContextData->indexBufferLength);
+
+        wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0, 0);
+      } else {
+        wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0, 0);
+      }
     }
   }
 
@@ -354,47 +405,46 @@ struct RendererImpl final : public ContextData {
     if (!isBoundToContext())
       initializeContextData();
 
-    mainOutputWrittenTo = false;
-    depthStencilWrittenTo = false;
+    swapBuffers();
 
     if (shouldUpdateMainOutputFromContext) {
       updateMainOutputFromContext();
     }
 
-    swapBuffers();
+    renderGraphEvaluator.reset();
+
+    auto mainOutputResolution = mainOutput.texture->getResolution();
+    viewStack.push(ViewStack::Item{
+        .viewport = Rect(mainOutputResolution),
+        .referenceSize = mainOutputResolution,
+        .windowMapping = mainOutput.windowMapping,
+    });
+
+    resizeMainRenderAttachments(mainOutputResolution);
   }
 
   void endFrame() {
-    // FIXME Add renderer graph to handle clearing
-    if (!mainOutputWrittenTo && !context.isHeadless()) {
-      submitDummyRenderPass();
-    }
+    viewStack.pop(); // Main output
+    viewStack.reset();
+
+    ensureMainOutputCleared();
   }
 
-  WGPUColor clearColor{.r = 0.0f, .g = 0.0f, .b = 0.0f, .a = 0.0f};
+  void resizeMainRenderAttachments(int2 referenceSize) { depthTexture->initWithResolution(referenceSize); }
 
-  void submitDummyRenderPass() {
-    WGPUCommandEncoderDescriptor desc = {};
-    WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
+  void ensureMainOutputCleared() {
+    if (!renderGraphEvaluator.isWrittenTo(mainOutput.texture)) {
+      WGPUCommandEncoderDescriptor desc = {};
+      WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
-    WGPURenderPassDescriptor passDesc = {};
-    passDesc.colorAttachmentCount = 1;
+      // Make sure primary output is cleared if no render steps are present
+      renderGraphEvaluator.clearColorTexture(context, mainOutput.texture, commandEncoder);
 
-    WGPURenderPassColorAttachment mainAttach = {};
-    mainAttach.clearValue = clearColor;
-    mainAttach.view = mainOutput.view;
-    mainAttach.loadOp = WGPULoadOp_Clear;
-    mainAttach.storeOp = WGPUStoreOp_Store;
+      WGPUCommandBufferDescriptor cmdBufDesc{};
+      WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
 
-    passDesc.colorAttachments = &mainAttach;
-    passDesc.colorAttachmentCount = 1;
-    WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
-    wgpuRenderPassEncoderEnd(passEncoder);
-
-    WGPUCommandBufferDescriptor cmdBufDesc{};
-    WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
-
-    context.submit(cmdBuf);
+      context.submit(cmdBuf);
+    }
   }
 
   void swapBuffers() {
@@ -411,31 +461,12 @@ struct RendererImpl final : public ContextData {
       pair.second->resetPools();
     }
 
-    for (auto &pair : pipelineCache) {
+    for (auto &pair : pipelineCache.map) {
       pair.second->resetPools();
     }
   }
 
-  struct Bindable {
-    WGPUBuffer buffer;
-    UniformBufferLayout layout;
-    size_t overrideSize = ~0;
-    size_t offset = 0;
-    Bindable(WGPUBuffer buffer, UniformBufferLayout layout, size_t overrideSize = ~0, size_t offset = 0)
-        : buffer(buffer), layout(layout), overrideSize(overrideSize), offset(offset) {}
-
-    WGPUBindGroupEntry toBindGroupEntry(size_t &bindingCounter) const {
-      WGPUBindGroupEntry entry{};
-      entry.binding = bindingCounter++;
-      entry.buffer = buffer;
-      entry.size = (overrideSize != size_t(~0)) ? overrideSize : layout.size;
-      entry.offset = offset;
-      return entry;
-    }
-  };
-
-  WGPUBindGroup createBindGroup(WGPUDevice device, WGPUBindGroupLayout layout, const std::vector<Bindable> &bindables,
-                                const char *label = nullptr) {
+  WGPUBindGroup createBindGroup(WGPUBindGroupLayout layout, const std::vector<Bindable> &bindables, const char *label = nullptr) {
     WGPUBindGroupDescriptor desc = {};
     desc.label = label;
     std::vector<WGPUBindGroupEntry> entries;
@@ -449,13 +480,13 @@ struct RendererImpl final : public ContextData {
     desc.entryCount = entries.size();
     desc.layout = layout;
 
-    WGPUBindGroup result = wgpuDeviceCreateBindGroup(device, &desc);
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &desc);
     assert(result);
 
     return result;
   }
 
-  WGPUBindGroup createBatchBindGroup(CachedPipeline &cachedPipeline, const Bindable &objectBinding,
+  WGPUBindGroup createBatchBindGroup(const PipelineDrawables &pipelineDrawables, const Bindable &objectBinding,
                                      const TextureIds &textureIds) {
     std::vector<WGPUBindGroupEntry> entries;
 
@@ -471,7 +502,7 @@ struct RendererImpl final : public ContextData {
       WGPUBindGroupEntry &samplerEntry = entries.data()[entries.size() - 1];
       samplerEntry.binding = bindingIndex++;
 
-      TextureContextData *textureData = cachedPipeline.textureIdMap.resolve(id);
+      TextureContextData *textureData = pipelineDrawables.textureIdMap.resolve(id);
       if (textureData) {
         textureEntry.textureView = textureData->defaultView;
         samplerEntry.sampler = textureData->sampler;
@@ -483,7 +514,7 @@ struct RendererImpl final : public ContextData {
     }
 
     WGPUBindGroupDescriptor textureBindGroupDesc{};
-    textureBindGroupDesc.layout = cachedPipeline.bindGroupLayouts[1];
+    textureBindGroupDesc.layout = pipelineDrawables.cachedPipeline->bindGroupLayouts[1];
     textureBindGroupDesc.entries = entries.data();
     textureBindGroupDesc.entryCount = entries.size();
     textureBindGroupDesc.label = "batchShared";
@@ -494,8 +525,9 @@ struct RendererImpl final : public ContextData {
     return result;
   }
 
-  void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, CachedPipeline &cachedPipeline, View *view) {
-    size_t numObjects = cachedPipeline.drawablesSorted.size();
+  void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, const PipelineDrawables &pipelineDrawables, View &view) {
+    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+    size_t numObjects = pipelineDrawables.drawablesSorted.size();
     size_t stride = cachedPipeline.objectBufferLayout.getArrayStride();
 
     size_t instanceBufferLength = numObjects * stride;
@@ -504,7 +536,7 @@ struct RendererImpl final : public ContextData {
     std::vector<uint8_t> drawDataTempBuffer;
     drawDataTempBuffer.resize(instanceBufferLength);
     for (size_t i = 0; i < numObjects; i++) {
-      Drawable *drawable = cachedPipeline.drawablesSorted[i].drawable;
+      const Drawable *drawable = pipelineDrawables.drawablesSorted[i].drawable;
 
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
@@ -525,7 +557,7 @@ struct RendererImpl final : public ContextData {
       }
 
       // Grab draw data from features
-      FeatureCallbackContext callbackContext{context, view, drawable};
+      FeatureCallbackContext callbackContext{context, &view, drawable};
       for (const Feature *feature : cachedPipeline.features) {
         for (const FeatureDrawDataFunction &drawDataGenerator : feature->drawData) {
           // TODO: Catch mismatch errors here
@@ -551,14 +583,14 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void depthSortBackToFront(CachedPipeline &cachedPipeline, const View &view) {
+  void depthSortBackToFront(PipelineDrawables &pipelineDrawables, const View &view) {
     const CachedViewData &viewData = *viewCache[&view].get();
 
     float4x4 viewProjMatrix = linalg::mul(viewData.projectionMatrix, view.view);
 
-    size_t numDrawables = cachedPipeline.drawablesSorted.size();
+    size_t numDrawables = pipelineDrawables.drawablesSorted.size();
     for (size_t i = 0; i < numDrawables; i++) {
-      SortableDrawable &sortable = cachedPipeline.drawablesSorted[i];
+      SortableDrawable &sortable = pipelineDrawables.drawablesSorted[i];
       float4 projected = mul(viewProjMatrix, mul(sortable.drawable->transform, float4(0, 0, 0, 1)));
       sortable.projectedDepth = projected.z;
     }
@@ -566,49 +598,60 @@ struct RendererImpl final : public ContextData {
     auto compareBackToFront = [](const SortableDrawable &left, const SortableDrawable &right) {
       return left.projectedDepth > right.projectedDepth;
     };
-    std::stable_sort(cachedPipeline.drawablesSorted.begin(), cachedPipeline.drawablesSorted.end(), compareBackToFront);
+    std::stable_sort(pipelineDrawables.drawablesSorted.begin(), pipelineDrawables.drawablesSorted.end(), compareBackToFront);
   }
 
-  void generateTextureIds(CachedPipeline &cachedPipeline, SortableDrawable &drawable) {
+  void generateTextureIds(PipelineDrawables &pipelineDrawables, SortableDrawable &drawable) {
+    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+
     std::vector<TextureId> &textureIds = drawable.textureIds.textures;
     textureIds.reserve(cachedPipeline.textureBindingLayout.bindings.size());
 
     for (auto &binding : cachedPipeline.textureBindingLayout.bindings) {
       auto &drawableParams = drawable.drawable->parameters.texture;
 
-      auto it = drawableParams.find(binding.name);
-      if (it != drawableParams.end()) {
-        textureIds.push_back(cachedPipeline.textureIdMap.assign(context, it->second.texture.get()));
+      auto tryAssignTexture = [&](const std::map<std::string, TextureParameter> &params, const std::string &name) -> bool {
+        auto it = params.find(binding.name);
+        if (it != params.end()) {
+          const TexturePtr &texture = it->second.texture;
+          TextureContextData &contextData = texture->createContextDataConditional(context);
+          if (!contextData.defaultView)
+            return false; // Invalid texture
+
+          textureIds.push_back(pipelineDrawables.textureIdMap.assign(texture.get()));
+          return true;
+        }
+        return false;
+      };
+
+      if (tryAssignTexture(drawableParams, binding.name))
         continue;
-      }
 
       if (drawable.drawable->material) {
-        auto &materialParams = drawable.drawable->material->parameters.texture;
-        it = materialParams.find(binding.name);
-        if (it != materialParams.end()) {
-          textureIds.push_back(cachedPipeline.textureIdMap.assign(context, it->second.texture.get()));
+        if (tryAssignTexture(drawable.drawable->material->parameters.texture, binding.name))
           continue;
-        }
       }
 
+      // Mark as unassigned texture
       textureIds.push_back(TextureId(~0));
     }
   }
 
-  SortableDrawable createSortableDrawable(CachedPipeline &cachedPipeline, Drawable &drawable) {
+  SortableDrawable createSortableDrawable(PipelineDrawables &pipelineDrawables, const Drawable &drawable) {
     SortableDrawable sortableDrawable{};
     sortableDrawable.drawable = &drawable;
-    generateTextureIds(cachedPipeline, sortableDrawable);
+    generateTextureIds(pipelineDrawables, sortableDrawable);
     sortableDrawable.key = DrawGroupKey(drawable, sortableDrawable.textureIds);
 
     return sortableDrawable;
   }
 
-  void sortAndBatchDrawables(CachedPipeline &cachedPipeline, const RenderDrawablesStep &step, const View &view) {
-    std::vector<SortableDrawable> &drawablesSorted = cachedPipeline.drawablesSorted;
+  void sortAndBatchDrawables(PipelineDrawables &pipelineDrawables, SortMode sortMode, const ViewData &viewData) {
+    auto &view = viewData.view;
+    std::vector<SortableDrawable> &drawablesSorted = pipelineDrawables.drawablesSorted;
 
     // Sort drawables based on mesh/texture bindings
-    for (auto &drawable : cachedPipeline.drawables) {
+    for (auto &drawable : pipelineDrawables.drawables) {
       drawable->mesh->createContextDataConditional(context);
 
       // Filter out empty meshes here
@@ -617,9 +660,9 @@ struct RendererImpl final : public ContextData {
 
       addFrameReference(drawable->mesh->contextData);
 
-      SortableDrawable sortableDrawable = createSortableDrawable(cachedPipeline, *drawable);
+      SortableDrawable sortableDrawable = createSortableDrawable(pipelineDrawables, *drawable);
 
-      if (step.sortMode == SortMode::Queue) {
+      if (sortMode == SortMode::Queue) {
         drawablesSorted.push_back(sortableDrawable);
       } else {
         auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
@@ -628,8 +671,8 @@ struct RendererImpl final : public ContextData {
       }
     }
 
-    if (step.sortMode == SortMode::BackToFront) {
-      depthSortBackToFront(cachedPipeline, view);
+    if (sortMode == SortMode::BackToFront) {
+      depthSortBackToFront(pipelineDrawables, view);
     }
 
     // Creates draw call ranges based on DrawGroupKey
@@ -640,7 +683,7 @@ struct RendererImpl final : public ContextData {
       auto finishGroup = [&](size_t currentIndex) {
         size_t groupLength = currentIndex - groupStart;
         if (groupLength > 0) {
-          cachedPipeline.drawGroups.emplace_back(currentDrawGroupKey, groupStart, groupLength);
+          pipelineDrawables.drawGroups.emplace_back(currentDrawGroupKey, groupStart, groupLength);
         }
       };
       for (size_t i = 1; i < drawablesSorted.size(); i++) {
@@ -655,198 +698,42 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void resetPipelineCacheDrawables() {
-    for (auto &pair : pipelineCache) {
-      pair.second->resetDrawables();
+  WGPUBindGroup createTextureBindGroup(const PipelineDrawables &pipelineDrawables, const TextureIds &textureIds) {
+    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+
+    std::vector<WGPUBindGroupEntry> entries;
+    size_t bindingIndex = 0;
+    for (auto &id : textureIds.textures) {
+      entries.emplace_back();
+      entries.emplace_back();
+      WGPUBindGroupEntry &textureEntry = entries.data()[entries.size() - 2];
+      textureEntry.binding = bindingIndex++;
+      WGPUBindGroupEntry &samplerEntry = entries.data()[entries.size() - 1];
+      samplerEntry.binding = bindingIndex++;
+
+      TextureContextData *textureData = pipelineDrawables.textureIdMap.resolve(id);
+      if (textureData) {
+        textureEntry.textureView = textureData->defaultView;
+        samplerEntry.sampler = textureData->sampler;
+      } else {
+        PlaceholderTextureContextData &data = placeholderTexture->createContextDataConditional(context);
+        textureEntry.textureView = data.textureView;
+        samplerEntry.sampler = data.sampler;
+      }
     }
+
+    WGPUBindGroupDescriptor textureBindGroupDesc{};
+    textureBindGroupDesc.layout = cachedPipeline.bindGroupLayouts[1];
+    textureBindGroupDesc.entries = entries.data();
+    textureBindGroupDesc.entryCount = entries.size();
+
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &textureBindGroupDesc);
+    assert(result);
+
+    return result;
   }
 
-  void renderDrawables(RenderDrawablesStep &step, ViewPtr view, Rect viewport, WGPUBuffer viewBuffer) {
-    if (!step.drawQueue)
-      throw std::runtime_error("No draw queue assigned to drawable step");
-
-    const DrawQueue &drawQueue = *step.drawQueue.get();
-
-    WGPUDevice device = context.wgpuDevice;
-    WGPUCommandEncoderDescriptor desc = {};
-    WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, &desc);
-
-    WGPURenderPassDescriptor passDesc = {};
-    passDesc.colorAttachmentCount = 1;
-
-    WGPURenderPassColorAttachment mainAttach = {};
-    mainAttach.clearValue = clearColor;
-
-    // FIXME Add renderer graph to handle clearing
-    if (!mainOutputWrittenTo) {
-      mainAttach.loadOp = WGPULoadOp_Clear;
-      mainOutputWrittenTo = true;
-    } else {
-      mainAttach.loadOp = WGPULoadOp_Load;
-    }
-    mainAttach.view = mainOutput.view;
-    mainAttach.storeOp = WGPUStoreOp_Store;
-
-    WGPURenderPassDepthStencilAttachment depthAttach = {};
-    depthAttach.depthClearValue = 1.0f;
-    if (!depthStencilWrittenTo || step.forceDepthClear) {
-      depthAttach.depthLoadOp = WGPULoadOp_Clear;
-      depthAttach.depthStoreOp = WGPUStoreOp_Store;
-      depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
-      depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
-      depthStencilWrittenTo = true;
-    } else {
-      depthAttach.depthLoadOp = WGPULoadOp_Load;
-      depthAttach.depthStoreOp = WGPUStoreOp_Store;
-      depthAttach.stencilLoadOp = WGPULoadOp_Undefined;
-      depthAttach.stencilStoreOp = WGPUStoreOp_Undefined;
-    }
-    depthAttach.view = depthTexture->update(context, viewport.getSize());
-
-    passDesc.colorAttachments = &mainAttach;
-    passDesc.colorAttachmentCount = 1;
-    passDesc.depthStencilAttachment = &depthAttach;
-
-    resetPipelineCacheDrawables();
-    groupByPipeline(step, drawQueue.getDrawables());
-
-    for (auto &pair : pipelineCache) {
-      CachedPipeline &cachedPipeline = *pair.second.get();
-      if (!cachedPipeline.pipeline) {
-        buildPipeline(cachedPipeline);
-      }
-
-      sortAndBatchDrawables(cachedPipeline, step, *view.get());
-    }
-
-    WGPURenderPassEncoder passEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
-    wgpuRenderPassEncoderSetViewport(passEncoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
-                                     (float)viewport.height, 0.0f, 1.0f);
-
-    for (auto &pair : pipelineCache) {
-      CachedPipeline &cachedPipeline = *pair.second.get();
-      if (cachedPipeline.drawablesSorted.empty())
-        continue;
-
-      // Bytes between object buffer entries
-      size_t objectBufferStride = cachedPipeline.objectBufferLayout.getArrayStride();
-      size_t objectBufferLength = objectBufferStride * cachedPipeline.drawablesSorted.size();
-
-      DynamicWGPUBuffer &objectBuffer = cachedPipeline.instanceBufferPool.allocateBuffer(objectBufferLength);
-      fillInstanceBuffer(objectBuffer, cachedPipeline, view.get());
-
-      wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
-
-      std::vector<Bindable> pipelineBindings = {
-          Bindable(viewBuffer, viewBufferLayout),
-      };
-
-      auto objectBinding = Bindable(objectBuffer, cachedPipeline.objectBufferLayout, objectBufferLength);
-
-      // Pipeline-shared bind group
-      WGPUBindGroup pipelineBindGroup =
-          createBindGroup(device, cachedPipeline.bindGroupLayouts[0], pipelineBindings, "pipelineShared");
-      onFrameCleanup([pipelineBindGroup]() { wgpuBindGroupRelease(pipelineBindGroup); });
-      wgpuRenderPassEncoderSetBindGroup(passEncoder, 0, pipelineBindGroup, 0, nullptr);
-
-      auto drawGroups = cachedPipeline.drawGroups;
-      for (auto &drawGroup : drawGroups) {
-        // Some platforms don't support instanceOffset, so we bind the object buffer at an offset to render different instances
-        size_t objectBufferOffset = drawGroup.startIndex * objectBufferStride;
-        size_t objectBufferRemainingSize = objectBufferLength - objectBufferOffset;
-        objectBinding.offset = objectBufferOffset;
-        objectBinding.overrideSize = objectBufferRemainingSize;
-
-        if (drawGroup.key.clipRect) {
-          auto &clipRect = drawGroup.key.clipRect.value();
-          wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, clipRect.z - clipRect.x,
-                                              clipRect.w - clipRect.y);
-        } else {
-          wgpuRenderPassEncoderSetScissorRect(passEncoder, 0, 0, viewport.width, viewport.height);
-        }
-
-        WGPUBindGroup batchBindGroup = createBatchBindGroup(cachedPipeline, objectBinding, drawGroup.key.textures);
-        wgpuRenderPassEncoderSetBindGroup(passEncoder, 1, batchBindGroup, 0, nullptr);
-        onFrameCleanup([batchBindGroup]() { wgpuBindGroupRelease(batchBindGroup); });
-
-        MeshContextData *meshContextData = drawGroup.key.meshData;
-        assert(meshContextData->vertexBuffer);
-        wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0,
-                                             meshContextData->vertexBufferLength);
-
-        if (meshContextData->indexBuffer) {
-          WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
-          wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0,
-                                              meshContextData->indexBufferLength);
-
-          wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0, 0);
-        } else {
-          wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0, 0);
-        }
-      }
-    }
-
-    wgpuRenderPassEncoderEnd(passEncoder);
-
-    WGPUCommandBufferDescriptor cmdBufDesc = {};
-    WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
-
-    context.submit(cmdBuf);
-  }
-
-  void groupByPipeline(RenderDrawablesStep &step, const std::vector<DrawablePtr> &drawables) {
-    // TODO: Paralellize
-    std::vector<const Feature *> features;
-    const std::vector<FeaturePtr> *featureSources[3] = {&step.features, nullptr, nullptr};
-    for (auto &drawable : drawables) {
-      Drawable *drawablePtr = drawable.get();
-      assert(drawablePtr->mesh);
-      const Mesh &mesh = *drawablePtr->mesh.get();
-
-      featureSources[1] = &drawablePtr->features;
-      featureSources[2] = drawablePtr->material ? &drawablePtr->material->features : nullptr;
-
-      features.clear();
-      for (auto &featureSource : featureSources) {
-        if (!featureSource)
-          continue;
-
-        for (auto &feature : *featureSource) {
-          features.push_back(feature.get());
-        }
-      }
-
-      HasherXXH128 featureHasher;
-      for (auto &feature : features) {
-        // NOTE: Hashed by pointer since features are considered immutable & shared/ref-counted
-        featureHasher(feature);
-      }
-      Hash128 featureHash = featureHasher.getDigest();
-
-      HasherXXH128<HashStaticVistor> hasher;
-      hasher(mesh.getFormat());
-      hasher(featureHash);
-      if (const Material *material = drawablePtr->material.get()) {
-        hasher(*material);
-      }
-      Hash128 pipelineHash = hasher.getDigest();
-
-      auto it1 = pipelineCache.find(pipelineHash);
-      if (it1 == pipelineCache.end()) {
-        it1 = pipelineCache.insert(std::make_pair(pipelineHash, std::make_shared<CachedPipeline>())).first;
-        CachedPipeline &cachedPipeline = *it1->second.get();
-        cachedPipeline.meshFormat = mesh.getFormat();
-        cachedPipeline.features = features;
-
-        buildTextureBindingLayout(cachedPipeline, drawablePtr->material.get());
-      }
-
-      CachedPipelinePtr &pipelineGroup = it1->second;
-      pipelineGroup->drawables.push_back(drawablePtr);
-    }
-  }
-
-  void buildTextureBindingLayout(CachedPipeline &cachedPipeline, const Material *material) {
+  void buildTextureBindingLayout(CachedPipeline &cachedPipeline) {
     TextureBindingLayoutBuilder textureBindingLayoutBuilder;
     for (auto &feature : cachedPipeline.features) {
       for (auto &textureParam : feature->textureParams) {
@@ -855,10 +742,8 @@ struct RendererImpl final : public ContextData {
     }
 
     // Update default texture coordinates based on material
-    if (material) {
-      for (auto &pair : material->parameters.texture) {
-        textureBindingLayoutBuilder.tryUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
-      }
+    for (auto &pair : cachedPipeline.materialTextureBindings) {
+      textureBindingLayoutBuilder.tryUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
     }
 
     cachedPipeline.textureBindingLayout = textureBindingLayoutBuilder.finalize();
@@ -921,8 +806,8 @@ struct RendererImpl final : public ContextData {
     return state;
   }
 
-  // Bindgroup 0, shared for the entire pipeline
-  WGPUBindGroupLayout createPipelineBindGroupLayout(CachedPipeline &cachedPipeline) {
+  // Bindgroup 0, the per-batch bound resources
+  WgpuHandle<WGPUBindGroupLayout> createPipelineBindGroupLayout(CachedPipeline &cachedPipeline) {
     std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 
     WGPUBindGroupLayoutEntry &viewEntry = bindGroupLayoutEntries.emplace_back();
@@ -935,11 +820,11 @@ struct RendererImpl final : public ContextData {
     bindGroupLayoutDesc.label = "pipelineShared";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
-    return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
+    return toWgpuHandle(wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc));
   }
 
   // Bindgroup 1, per batch constants + textures
-  WGPUBindGroupLayout createBatchBindGroupLayout(CachedPipeline &cachedPipeline) {
+  WgpuHandle<WGPUBindGroupLayout> createBatchBindGroupLayout(CachedPipeline &cachedPipeline) {
     std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 
     size_t bindingIndex = 0;
@@ -972,7 +857,7 @@ struct RendererImpl final : public ContextData {
     bindGroupLayoutDesc.label = "textures";
     bindGroupLayoutDesc.entries = bindGroupLayoutEntries.data();
     bindGroupLayoutDesc.entryCount = bindGroupLayoutEntries.size();
-    return wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc);
+    return toWgpuHandle(wgpuDeviceCreateBindGroupLayout(context.wgpuDevice, &bindGroupLayoutDesc));
   }
 
   WGPUPipelineLayout createPipelineLayout(CachedPipeline &cachedPipeline) {
@@ -983,39 +868,11 @@ struct RendererImpl final : public ContextData {
     cachedPipeline.bindGroupLayouts.push_back(createBatchBindGroupLayout(cachedPipeline));
 
     WGPUPipelineLayoutDescriptor pipelineLayoutDesc = {};
-    pipelineLayoutDesc.bindGroupLayouts = cachedPipeline.bindGroupLayouts.data();
+    pipelineLayoutDesc.bindGroupLayouts = reinterpret_cast<WGPUBindGroupLayout *>(cachedPipeline.bindGroupLayouts.data());
     pipelineLayoutDesc.bindGroupLayoutCount = cachedPipeline.bindGroupLayouts.size();
-    cachedPipeline.pipelineLayout = wgpuDeviceCreatePipelineLayout(context.wgpuDevice, &pipelineLayoutDesc);
+    cachedPipeline.pipelineLayout.reset(wgpuDeviceCreatePipelineLayout(context.wgpuDevice, &pipelineLayoutDesc));
     return cachedPipeline.pipelineLayout;
   }
-
-  struct VertexStateBuilder {
-    std::vector<WGPUVertexAttribute> attributes;
-    WGPUVertexBufferLayout vertexLayout = {};
-
-    void build(WGPUVertexState &vertex, CachedPipeline &cachedPipeline) {
-      size_t vertexStride = 0;
-      size_t shaderLocationCounter = 0;
-      for (auto &attr : cachedPipeline.meshFormat.vertexAttributes) {
-        WGPUVertexAttribute &wgpuAttribute = attributes.emplace_back();
-        wgpuAttribute.offset = uint64_t(vertexStride);
-        wgpuAttribute.format = getWGPUVertexFormat(attr.type, attr.numComponents);
-        wgpuAttribute.shaderLocation = shaderLocationCounter++;
-        size_t typeSize = getVertexAttributeTypeSize(attr.type);
-        vertexStride += attr.numComponents * typeSize;
-      }
-      vertexLayout.arrayStride = vertexStride;
-      vertexLayout.attributeCount = attributes.size();
-      vertexLayout.attributes = attributes.data();
-      vertexLayout.stepMode = WGPUVertexStepMode::WGPUVertexStepMode_Vertex;
-
-      vertex.bufferCount = 1;
-      vertex.buffers = &vertexLayout;
-      vertex.constantCount = 0;
-      vertex.entryPoint = "vertex_main";
-      vertex.module = cachedPipeline.shaderModule;
-    }
-  };
 
   void buildPipeline(CachedPipeline &cachedPipeline) {
     buildObjectBufferLayout(cachedPipeline);
@@ -1039,7 +896,7 @@ struct RendererImpl final : public ContextData {
     wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
     SPDLOG_LOGGER_DEBUG(logger, "Generated WGSL:\n {}", generatorOutput.wgslSource);
 
-    cachedPipeline.shaderModule = wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc);
+    cachedPipeline.shaderModule.reset(wgpuDeviceCreateShaderModule(context.wgpuDevice, &moduleDesc));
     assert(cachedPipeline.shaderModule);
 
     WGPURenderPipelineDescriptor desc = {};
@@ -1052,26 +909,36 @@ struct RendererImpl final : public ContextData {
     fragmentState.entryPoint = "fragment_main";
     fragmentState.module = cachedPipeline.shaderModule;
 
-    WGPUColorTargetState mainTarget = {};
-    mainTarget.format = mainOutput.format;
-    mainTarget.writeMask = pipelineState.colorWrite.value_or(WGPUColorWriteMask_All);
-
-    WGPUBlendState blendState{};
+    // Shared blend state for all color targets
+    std::optional<WGPUBlendState> blendState{};
     if (pipelineState.blend.has_value()) {
       blendState = pipelineState.blend.value();
-      mainTarget.blend = &blendState;
     }
 
-    WGPUDepthStencilState depthStencilState{};
-    depthStencilState.format = depthTexture->getFormat();
-    depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
-    depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
-    depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
-    depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
-    desc.depthStencil = &depthStencilState;
+    // Color targets
+    std::vector<WGPUColorTargetState> colorTargets;
+    for (auto &target : cachedPipeline.renderTargetLayout.colorTargets) {
+      WGPUColorTargetState &colorTarget = colorTargets.emplace_back();
+      colorTarget.format = target.format;
+      colorTarget.writeMask = pipelineState.colorWrite.value_or(WGPUColorWriteMask_All);
+      colorTarget.blend = blendState.has_value() ? &blendState.value() : nullptr;
+    }
+    fragmentState.targets = colorTargets.data();
+    fragmentState.targetCount = colorTargets.size();
 
-    fragmentState.targets = &mainTarget;
-    fragmentState.targetCount = 1;
+    // Depth target
+    WGPUDepthStencilState depthStencilState{};
+    if (cachedPipeline.renderTargetLayout.depthTarget) {
+      auto &target = cachedPipeline.renderTargetLayout.depthTarget.value();
+
+      depthStencilState.format = target.format;
+      depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
+      depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
+      depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
+      depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
+      desc.depthStencil = &depthStencilState;
+    }
+
     desc.fragment = &fragmentState;
 
     desc.multisample.count = 1;
@@ -1094,7 +961,7 @@ struct RendererImpl final : public ContextData {
       break;
     }
 
-    cachedPipeline.pipeline = wgpuDeviceCreateRenderPipeline(device, &desc);
+    cachedPipeline.pipeline.reset(wgpuDeviceCreateRenderPipeline(device, &desc));
     assert(cachedPipeline.pipeline);
   }
 };
@@ -1115,6 +982,8 @@ void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;
 }
+
+ViewStack &Renderer::getViewStack() { return impl->viewStack; }
 
 void Renderer::beginFrame() { impl->beginFrame(); }
 void Renderer::endFrame() { impl->endFrame(); }

@@ -11,6 +11,7 @@
 #include <gfx/paths.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
+#include <gfx/render_target.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
@@ -142,7 +143,7 @@ TEST_CASE("Pipeline states", "[General]") {
     blendFeature->state.set_blend(state);
 
     PipelineSteps steps{
-        makeDrawablePipelineStep(RenderDrawablesStep{
+        makePipelineStep(RenderDrawablesStep{
             .drawQueue = queue,
             .features =
                 {
@@ -199,7 +200,7 @@ TEST_CASE("Shader parameters", "[General]") {
   queue->add(drawable);
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = queue,
           .features =
               {
@@ -285,7 +286,7 @@ TEST_CASE("Textures", "[General]") {
 
   // Texture with modified sampler (point filtering)
   TexturePtr textureB = textureA->clone();
-  textureB->setSamplerState(SamplerState{
+  textureB->initWithSamplerState(SamplerState{
       .filterMode = WGPUFilterMode_Nearest,
   });
 
@@ -306,7 +307,7 @@ TEST_CASE("Textures", "[General]") {
   });
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = queue,
           .features =
               {
@@ -319,6 +320,93 @@ TEST_CASE("Textures", "[General]") {
 
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
   CHECK(testRenderer->checkFrame("textures", comparisonTolerance));
+
+  testRenderer.reset();
+}
+
+TEST_CASE("RenderTarget", "[General]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+  auto &viewStack = renderer.getViewStack();
+
+  MeshPtr cubeMesh = createCubeMesh();
+
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewPerspectiveProjection{};
+  view->view = linalg::lookat_matrix(float3(1.0f, 1.0f, 1.0f) * 3.0f, float3(0, 0, 0), float3(0, 1, 0));
+
+  ViewPtr subView = std::make_shared<View>();
+
+  DrawQueuePtr queue0 = std::make_shared<DrawQueue>();
+  float4x4 transform;
+  DrawablePtr drawable;
+
+  std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
+  rt->configure("main", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
+  rt->configure("depth", WGPUTextureFormat::WGPUTextureFormat_Depth32Float);
+
+  transform = linalg::identity;
+  drawable = std::make_shared<Drawable>(cubeMesh, transform);
+  drawable->parameters.set("baseColor", float4(1, 0, 1, 1));
+  queue0->add(drawable);
+
+  FeaturePtr blendFeature = std::make_shared<Feature>();
+  blendFeature->state.set_blend(BlendState{
+      .color = BlendComponent::Alpha,
+      .alpha = BlendComponent::Opaque,
+  });
+
+  PipelineSteps stepsRT{
+      makePipelineStep(RenderDrawablesStep{
+          .drawQueue = queue0,
+          .features =
+              {
+                  features::Transform::create(),
+                  features::BaseColor::create(),
+                  blendFeature,
+              },
+          .renderTarget = rt,
+      }),
+  };
+
+  PipelineSteps stepsMain{
+      makePipelineStep(ClearStep{
+          .clearValues{
+              .color = float4(0.2, 0.2, 0.2, 1.0),
+          },
+      }),
+      makePipelineStep(RenderFullscreenStep{
+          .features =
+              {
+                  features::Transform::create(false, false),
+                  []() {
+                    auto baseColor = features::BaseColor::create();
+                    baseColor->state.clear_blend();
+                    return baseColor;
+                  }(),
+              },
+          .parameters{
+              .texture = {{"baseColor", TextureParameter(rt->getAttachment("main"))}},
+          },
+      }),
+  };
+
+  TEST_RENDER_LOOP(testRenderer) {
+    auto outputSize = testRenderer->getOutputSize();
+    rt->resizeConditional(outputSize);
+
+    Rect mainViewport = viewStack.getOutput().viewport;
+    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
+
+    viewStack.push(ViewStack::Item{.renderTarget = rt});
+    renderer.render(view, stepsRT);
+    viewStack.pop();
+
+    viewStack.push(ViewStack::Item{.viewport = subViewport});
+    renderer.render(subView, stepsMain);
+    viewStack.pop();
+  };
+  CHECK(testRenderer->checkFrame("renderTarget", comparisonTolerance));
 
   testRenderer.reset();
 }

@@ -101,7 +101,7 @@ struct App {
     duck = loadGltfFromFile(glbPath.string().c_str());
 
     pipelineSteps = {
-        makeDrawablePipelineStep(RenderDrawablesStep{
+        makePipelineStep(RenderDrawablesStep{
             .drawQueue = queue,
             .features =
                 {
@@ -109,7 +109,7 @@ struct App {
                     features::BaseColor::create(),
                 },
         }),
-        makeDrawablePipelineStep(RenderDrawablesStep{
+        makePipelineStep(RenderDrawablesStep{
             .drawQueue = editorQueue,
             .features =
                 {

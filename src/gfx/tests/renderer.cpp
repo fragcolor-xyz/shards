@@ -1,4 +1,6 @@
 #include "./renderer.hpp"
+#include <gfx/texture.hpp>
+#include <memory>
 
 namespace gfx {
 
@@ -42,10 +44,21 @@ void TestRenderer::createRenderTarget(int2 res) {
   viewDesc.format = textureDesc.format;
   rtView = wgpuTextureCreateView(rtTexture, &viewDesc);
 
+  // Wrap in texture
+  TexturePtr rtTexture = std::make_shared<Texture>();
+  rtTexture->init(TextureDesc{
+      .format =
+          TextureFormat{
+              .type = TextureType::D2,
+              .flags = TextureFormatFlags::RenderAttachment,
+              .pixelFormat = rtFormat,
+          },
+      .resolution = rtSize,
+      .externalTexture = rtView,
+  });
+
   renderer->setMainOutput(Renderer::MainOutput{
-      .view = rtView,
-      .format = rtFormat,
-      .size = rtSize,
+      .texture = rtTexture,
   });
 }
 

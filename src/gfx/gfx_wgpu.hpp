@@ -20,8 +20,8 @@
 #define wgpuRenderPassEncoderRelease(...)
 #define wgpuSwapChainRelease(...)
 #define wgpuQueueRelease(...)
-#define wgpuAdapterRelease(...)
-#define wgpuSurfaceRelease(...)
+#define wgpuAdapterRelease(...) wgpuAdapterDrop(__VA_ARGS__)
+#define wgpuSurfaceRelease(...) wgpuSurfaceDrop(__VA_ARGS__)
 
 extern "C" {
 #include <wgpu.h>

@@ -39,7 +39,7 @@ TEST_CASE("Wireframe", "[Gizmos]") {
   drawable->parameters.set("baseColor", float4(0.2f, 0.2f, 0.2f, 1.0f));
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = queue,
           .features =
               {
@@ -47,7 +47,7 @@ TEST_CASE("Wireframe", "[Gizmos]") {
                   features::BaseColor::create(),
               },
       }),
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = editorQueue,
           .features =
               {
@@ -100,7 +100,7 @@ TEST_CASE("Helper lines", "[Gizmos]") {
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = baseQueue,
           .features =
               {
@@ -108,7 +108,7 @@ TEST_CASE("Helper lines", "[Gizmos]") {
                   features::BaseColor::create(),
               },
       }),
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = editorQueue,
           .features =
               {
@@ -160,7 +160,7 @@ TEST_CASE("Helper circles", "[Gizmos]") {
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = editorQueue,
           .features =
               {
@@ -203,7 +203,7 @@ TEST_CASE("Helper rectangles", "[Gizmos]") {
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = editorQueue,
           .features =
               {
@@ -246,7 +246,7 @@ TEST_CASE("Helper boxes", "[Gizmos]") {
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = editorQueue,
           .features =
               {
@@ -291,7 +291,7 @@ TEST_CASE("Gizmo handles", "[Gizmos]") {
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
 
   PipelineSteps steps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = editorQueue,
           .features =
               {
@@ -309,7 +309,8 @@ TEST_CASE("Gizmo handles", "[Gizmos]") {
   TEST_RENDER_LOOP(testRenderer) {
     editorQueue->clear();
 
-    gr.begin(view, testRenderer->rtSize);
+    int2 viewportSize = renderer.getViewStack().getOutput().viewport.getSize();
+    gr.begin(view, viewportSize);
     float4 colors[3] = {
         float4(1, 0, 0, 1),
         float4(0, 1, 0, 1),

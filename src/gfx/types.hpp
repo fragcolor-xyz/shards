@@ -53,7 +53,9 @@ struct Rect {
 
   Rect() = default;
   Rect(int width, int height) : width(width), height(height) {}
+  Rect(int2 size) : width(size.x), height(size.y) {}
   Rect(int x, int y, int width, int height) : x(x), y(y), width(width), height(height) {}
+  Rect(int2 pos, int2 size) : x(pos.x), y(pos.y), width(size.x), height(size.y) {}
 
   int getX1() const { return x + width; }
   int getY1() const { return x + height; }

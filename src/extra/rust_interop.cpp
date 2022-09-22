@@ -4,51 +4,74 @@
 #include <foundation.hpp>
 
 using shards::Var;
-namespace gfx {
-SHTypeInfo *getMainWindowGlobalsType() {
+using namespace gfx;
+
+SHTypeInfo *gfx_getMainWindowGlobalsType() {
   static SHTypeInfo type = gfx::MainWindowGlobals::Type;
   return &type;
 }
-const char *getMainWindowGlobalsVarName() { return gfx::Base::mainWindowGlobalsVarName; }
-SHTypeInfo *getQueueType() {
+
+const char *gfx_getMainWindowGlobalsVarName() { return gfx::Base::mainWindowGlobalsVarName; }
+
+SHTypeInfo *gfx_getQueueType() {
   static SHTypeInfo type = Types::DrawQueue;
   return &type;
 }
 
-template <typename T> T *castChecked(const SHVar &var, const shards::Type &type) {
-  SHTypeInfo typeInfo(type);
-  if (var.valueType != SHType::Object)
-    throw std::logic_error("Invalid type");
-  if (var.payload.objectVendorId != typeInfo.object.vendorId)
-    throw std::logic_error("Invalid object vendor id");
-  if (var.payload.objectTypeId != typeInfo.object.typeId)
-    throw std::logic_error("Invalid object type id");
-  return reinterpret_cast<T *>(var.payload.objectValue);
-}
-
-SHVar MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+SHVar gfx_MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
   return Var::Object(&globals->shDrawQueue, SHTypeInfo(Types::DrawQueue).object.vendorId,
                      SHTypeInfo(Types::DrawQueue).object.typeId);
 }
-Context *MainWindowGlobals_getContext(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+Context *gfx_MainWindowGlobals_getContext(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
   return globals->context.get();
 }
-Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
   return globals->renderer.get();
 }
 
-DrawQueuePtr *getDrawQueueFromVar(const SHVar &var) {
-  SHDrawQueue *shDrawQueue = castChecked<SHDrawQueue>(var, Types::DrawQueue);
+DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
+  SHDrawQueue *shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, Types::DrawQueue);
   return &shDrawQueue->queue;
 }
 
-const egui::Input *getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
-                                       float scalingFactor) {
-  MainWindowGlobals *globals = castChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
-  return translator->translateFromInputEvents(globals->events, *globals->window.get(), globals->time, globals->deltaTime,
+gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals) {
+  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+
+  auto &viewStack = globals->renderer->getViewStack();
+  ViewStack::Output viewStackOutput = viewStack.getOutput();
+
+  int4 result{};
+  if (viewStackOutput.windowMapping) {
+    auto &windowMapping = viewStackOutput.windowMapping.value();
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, WindowSubRegion>) {
+            Rect &region = arg.region;
+            result = int4(region.x, region.y, region.getX1(), region.getY1());
+          }
+        },
+        windowMapping);
+  }
+  return result;
+}
+
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
+                                           float scalingFactor) {
+  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+
+  auto &viewStack = globals->renderer->getViewStack();
+  ViewStack::Output viewStackOutput = viewStack.getOutput();
+
+  static std::vector<SDL_Event> noEvents{};
+  const std::vector<SDL_Event> *eventsPtr = &noEvents;
+  if (viewStackOutput.windowMapping) {
+    eventsPtr = &globals->events;
+  }
+
+  return translator->translateFromInputEvents(*eventsPtr, *globals->window.get(), globals->time, globals->deltaTime,
                                               scalingFactor);
 }
-} // namespace gfx

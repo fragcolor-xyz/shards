@@ -11,7 +11,7 @@ namespace gfx {
 namespace features {
 
 struct Transform {
-  static inline FeaturePtr create() {
+  static inline FeaturePtr create(bool applyView = true, bool applyProjection = true) {
     using namespace shader;
     using namespace shader::blocks;
 
@@ -22,10 +22,20 @@ struct Transform {
     feature->shaderEntryPoints.emplace_back(
         "initWorldPosition", ProgrammableGraphicsStage::Vertex,
         WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", vec4Pos->clone()));
-    auto &initScreenPosition = feature->shaderEntryPoints.emplace_back(
-        "initScreenPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("screenPosition", FieldTypes::Float4, ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*",
-                    ReadBuffer("view", FieldTypes::Float4x4, "view"), "*", ReadGlobal("worldPosition")));
+
+    auto screenPosition = makeCompoundBlock();
+    if (applyProjection) {
+      screenPosition->append(ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*");
+    }
+    if (applyView) {
+      screenPosition->append(ReadBuffer("view", FieldTypes::Float4x4, "view"), "*");
+    }
+    screenPosition->append(ReadGlobal("worldPosition"));
+
+    auto &initScreenPosition =
+        feature->shaderEntryPoints.emplace_back("initScreenPosition", ProgrammableGraphicsStage::Vertex,
+                                                WriteGlobal("screenPosition", FieldTypes::Float4, std::move(screenPosition)));
+
     initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
     BlockPtr transformNormal = blocks::makeCompoundBlock("normalize((", ReadBuffer("worldInvTrans", FieldTypes::Float4x4), "*",

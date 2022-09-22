@@ -5,16 +5,14 @@
 #include <gfx/math.hpp>
 #include <gfx/mesh.hpp>
 #include <gfx/renderer.hpp>
-#include <gfx/view.hpp>
 #include <gfx/window.hpp>
-#include <linalg_shim.hpp>
+#include <gfx/view.hpp>
 #include <magic_enum.hpp>
 #include <params.hpp>
 
 using namespace shards;
 
 namespace gfx {
-using shards::Mat4;
 
 struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -73,78 +71,12 @@ struct DrawablePassShard {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     Var forceDepthClearVar(_forceDepthClear.get());
-
-    *_step = makeDrawablePipelineStep(RenderDrawablesStep{
+    *_step = makePipelineStep(RenderDrawablesStep{
         .drawQueue = getDrawQueue(),
         .features = collectFeatures(_features),
         .forceDepthClear = forceDepthClearVar.isNone() ? false : bool(forceDepthClearVar),
     });
     return Types::PipelineStepObjectVar.Get(_step);
-  }
-};
-
-void SHView::updateVariables() {
-  if (viewTransformVar.isVariable()) {
-    view->view = shards::Mat4(viewTransformVar.get());
-  }
-}
-
-struct ViewShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::View; }
-
-  static inline Parameters params{
-      {"View", SHCCSTR("The view matrix. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)}},
-  };
-  static SHParametersInfo parameters() { return params; }
-
-  ParamVar _viewTransform;
-  SHView *_view;
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _viewTransform = value;
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _viewTransform;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void cleanup() {
-    if (_view) {
-      Types::ViewObjectVar.Release(_view);
-      _view = nullptr;
-    }
-    _viewTransform.cleanup();
-  }
-
-  void warmup(SHContext *context) {
-    _view = Types::ViewObjectVar.New();
-    _viewTransform.warmup(context);
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    ViewPtr view = _view->view = std::make_shared<View>();
-    if (_viewTransform->valueType != SHType::None) {
-      view->view = shards::Mat4(_viewTransform.get());
-    }
-
-    // TODO: Add projection/viewport override params
-    view->proj = ViewPerspectiveProjection{};
-
-    if (_viewTransform.isVariable()) {
-      _view->viewTransformVar = (SHVar &)_viewTransform;
-      _view->viewTransformVar.warmup(context);
-    }
-    return Types::ViewObjectVar.Get(_view);
   }
 };
 
@@ -304,6 +236,7 @@ extern void registerFeatureShards();
 extern void registerGLTFShards();
 extern void registerCameraShards();
 extern void registerTextureShards();
+extern void registerViewShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
@@ -316,10 +249,10 @@ void registerShards() {
   registerGLTFShards();
   registerCameraShards();
   registerTextureShards();
+  registerViewShards();
   shader::registerTranslatorShards();
 
   REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
-  REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.Render", RenderShard);
 }
 } // namespace gfx

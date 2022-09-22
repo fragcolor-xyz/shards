@@ -5,19 +5,24 @@
 #include "../gfx/egui/rust_interop.hpp"
 #include "gfx/fwd.hpp"
 
-namespace gfx {
+extern "C" {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+
 // gfx::MainWindowGlobals::Type
-SHTypeInfo *getMainWindowGlobalsType();
-const char *getMainWindowGlobalsVarName();
-SHTypeInfo *getQueueType();
+SHTypeInfo *gfx_getMainWindowGlobalsType();
+const char *gfx_getMainWindowGlobalsVarName();
+SHTypeInfo *gfx_getQueueType();
 
-SHVar MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals);
-Context *MainWindowGlobals_getContext(const SHVar &mainWindowGlobals);
-Renderer *MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals);
+SHVar gfx_MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals);
+gfx::Context *gfx_MainWindowGlobals_getContext(const SHVar &mainWindowGlobals);
+gfx::Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals);
 
-DrawQueuePtr *getDrawQueueFromVar(const SHVar &var);
+gfx::DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var);
 
-const egui::Input *getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals, float scalingFactor);
-} // namespace gfx
+gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals);
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
+                                           float scalingFactor);
+}
 
 #endif /* E325D8E3_F64E_413D_965B_DF275CF18AC4 */

@@ -132,4 +132,7 @@ pub fn registerShards() {
   registerShard::<LeftPanel>();
   registerShard::<RightPanel>();
   registerShard::<TopPanel>();
+
+  assert_eq!(AnchorCC, 1701265774);
+  assert_eq!(WindowFlagsCC, 1701271366);
 }
