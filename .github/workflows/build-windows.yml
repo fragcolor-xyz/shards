@@ -75,7 +75,7 @@ jobs:
   #
   Windows:
     name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, ${{ github.event.inputs.bitness || inputs.bitness }})
-    runs-on: windows-2019
+    runs-on: windows-latest
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
@@ -226,7 +226,7 @@ jobs:
     if: ${{ needs.Windows.outputs.run-tests == 'true' && needs.Windows.outputs.binary-type == 'Exe' }}
     needs: Windows
     name: Test
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - name: Setup
         id: setup

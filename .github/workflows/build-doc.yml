@@ -57,7 +57,7 @@ jobs:
   docs-markdown:
     # needs: Windows-64bits-Debug
     name: Generate Markdown
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - name: Checkout shards
         uses: actions/checkout@v3
