@@ -1,7 +1,7 @@
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::types::{
-  ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, SEQ_OF_SEQ_OF_FLOAT_TYPES,
-  STRINGS_TYPES, STRING_TYPES,
+  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
+  SEQ_OF_SEQ_OF_FLOAT_TYPES, STRINGS_TYPES, STRING_TYPES,
 };
 use crate::{
   core::registerShard,
@@ -162,6 +162,7 @@ struct Activate {
   previous_model: Option<Var>,
   model: Option<Rc<ModelWrapper>>,
   output: Seq,
+  reqs: ExposedTypes,
 }
 
 impl Shard for Activate {
@@ -201,6 +202,16 @@ impl Shard for Activate {
       0 => self.model_var.get_param(),
       _ => unreachable!(),
     }
+  }
+
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.reqs.clear();
+    self.reqs.push(ExposedInfo::new_with_help_from_ptr(
+      self.model_var.get_name(),
+      shccstr!("The required ONNX model."),
+      *MODEL_TYPE,
+    ));
+    Some(&self.reqs)
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
