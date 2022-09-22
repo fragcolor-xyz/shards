@@ -6,6 +6,12 @@ on:
       - devel
   pull_request:
   workflow_dispatch:
+    inputs:
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   # cancel-previous-workflows:

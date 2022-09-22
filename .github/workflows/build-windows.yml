@@ -37,6 +37,11 @@ on:
         required: false
         default: false
         type: boolean
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       bitness:
@@ -59,6 +64,10 @@ on:
         required: false
         default: false
         type: boolean
+      rust-cache:
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   #
@@ -66,7 +75,7 @@ jobs:
   #
   Windows:
     name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, ${{ github.event.inputs.bitness || inputs.bitness }})
-    runs-on: windows-2019
+    runs-on: windows-latest
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
@@ -80,6 +89,7 @@ jobs:
           echo "::set-output name=binary-type::${{ github.event.inputs.binary-type || inputs.binary-type }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
           echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
+          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
 
           if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
           then
@@ -134,7 +144,7 @@ jobs:
           choco install -y --force llvm || exit 0
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
       - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
       - name: Set up MSYS2
@@ -216,7 +226,7 @@ jobs:
     if: ${{ needs.Windows.outputs.run-tests == 'true' && needs.Windows.outputs.binary-type == 'Exe' }}
     needs: Windows
     name: Test
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - name: Setup
         id: setup
@@ -250,12 +260,23 @@ jobs:
         with:
           name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
           path: build
-      - name: Set up MSYS2
+      - name: Set up MSYS2 (Release)
+        if: ${{ steps.setup.outputs.build-type == 'Release' }}
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ steps.setup.outputs.msystem }}
           release: false
           path-type: inherit
+      - name: Set up MSYS2 (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ steps.setup.outputs.msystem }}
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-${{ steps.setup.outputs.arch }}-toolchain
       - name: Test
         env:
           RUST_BACKTRACE: 1

@@ -57,7 +57,7 @@ jobs:
   docs-markdown:
     # needs: Windows-64bits-Debug
     name: Generate Markdown
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - name: Checkout shards
         uses: actions/checkout@v3
@@ -75,6 +75,9 @@ jobs:
           msystem: MINGW64
           release: false
           path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-x86_64-toolchain
       - name: Generate markdown
         shell: msys2 {0}
         run: |

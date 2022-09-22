@@ -2,7 +2,18 @@ name: Build (iOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
+    inputs:
+      rust-cache:
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   #
@@ -11,6 +22,10 @@ jobs:
   iOS:
     runs-on: macos-latest
     steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -27,7 +42,7 @@ jobs:
           rustup +nightly target add x86_64-apple-ios
           rustup default nightly
       - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
       - name: Build device
         run: |
           cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos
