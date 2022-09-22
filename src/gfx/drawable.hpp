@@ -18,6 +18,9 @@ struct Drawable {
   MaterialParameters parameters;
   float4x4 transform;
 
+  // Clipping rectangle as (min, max)
+  std::optional<int4> clipRect;
+
   Drawable(MeshPtr mesh, float4x4 transform = linalg::identity, MaterialPtr material = MaterialPtr())
       : mesh(mesh), material(material), transform(transform) {}
 

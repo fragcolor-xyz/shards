@@ -103,15 +103,24 @@ struct SortableDrawable;
 struct DrawGroupKey {
   MeshContextData *meshData{};
   TextureIds textures{};
+  std::optional<int4> clipRect{};
 
   DrawGroupKey() = default;
   DrawGroupKey(const Drawable &drawable, const TextureIds &textureIds)
-      : meshData(drawable.mesh->contextData.get()), textures(textureIds) {}
+      : meshData(drawable.mesh->contextData.get()), textures(textureIds), clipRect(drawable.clipRect) {}
 
-  bool operator!=(const DrawGroupKey &other) const { return meshData != other.meshData || textures != other.textures; }
+  bool operator==(const DrawGroupKey &other) const {
+    return meshData == other.meshData && textures == other.textures && clipRect == other.clipRect;
+  }
+
+  bool operator!=(const DrawGroupKey &other) const { return !(*this == other); }
+
   bool operator<(const DrawGroupKey &other) const {
     if (meshData != other.meshData) {
       return size_t(meshData) < size_t(other.meshData);
+    }
+    if (clipRect != other.clipRect) {
+      return clipRect < other.clipRect;
     }
     return textures < other.textures;
   }
@@ -747,6 +756,14 @@ struct RendererImpl final : public ContextData {
         size_t objectBufferRemainingSize = objectBufferLength - objectBufferOffset;
         objectBinding.offset = objectBufferOffset;
         objectBinding.overrideSize = objectBufferRemainingSize;
+
+        if (drawGroup.key.clipRect) {
+          auto &clipRect = drawGroup.key.clipRect.value();
+          wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, clipRect.z - clipRect.x,
+                                              clipRect.w - clipRect.y);
+        } else {
+          wgpuRenderPassEncoderSetScissorRect(passEncoder, 0, 0, viewport.width, viewport.height);
+        }
 
         WGPUBindGroup batchBindGroup = createBatchBindGroup(cachedPipeline, objectBinding, drawGroup.key.textures);
         wgpuRenderPassEncoderSetBindGroup(passEncoder, 1, batchBindGroup, 0, nullptr);

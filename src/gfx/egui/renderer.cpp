@@ -191,6 +191,9 @@ void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePt
         drawable->parameters.set("flags", uint32_t(0x1));
       }
     }
+
+    drawable->clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
+
     drawQueue->add(drawable);
   }
 

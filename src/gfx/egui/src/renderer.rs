@@ -32,7 +32,7 @@ fn convert_primitive(
     ui_scale: f32,
 ) -> Result<egui_ClippedPrimitive, &'static str> {
     if let epaint::Primitive::Mesh(mesh) = &clipped_primitive.primitive {
-        let startVertex = vertex_mem.len();
+        let start_vertex = vertex_mem.len();
         for vert in &mesh.vertices {
             let vert_native = egui_Vertex {
                 pos: egui_Pos2 {
@@ -44,30 +44,35 @@ fn convert_primitive(
             };
             vertex_mem.push(vert_native);
         }
-        let numVerts = vertex_mem.len() - startVertex;
-        let vertsPtr = if numVerts > 0 {
-            &vertex_mem[startVertex]
+        let num_verts = vertex_mem.len() - start_vertex;
+        let verts_ptr = if num_verts > 0 {
+            &vertex_mem[start_vertex]
         } else {
             ptr::null()
         };
 
-        let startIndex = index_mem.len();
+        let start_index = index_mem.len();
         for ind in &mesh.indices {
             index_mem.push(*ind);
         }
-        let numIndices = index_mem.len() - startIndex;
-        let indicesPtr = if numIndices > 0 {
-            &index_mem[startIndex]
+        let num_indices = index_mem.len() - start_index;
+        let indices_ptr = if num_indices > 0 {
+            &index_mem[start_index]
         } else {
             ptr::null()
         };
 
+        let clip_rect = egui::Rect {
+            min: (clipped_primitive.clip_rect.min.to_vec2() * ui_scale).to_pos2(),
+            max: (clipped_primitive.clip_rect.max.to_vec2() * ui_scale).to_pos2(),
+        };
+
         Ok(egui_ClippedPrimitive {
-            clipRect: clipped_primitive.clip_rect.into(),
-            vertices: vertsPtr,
-            numVertices: numVerts,
-            indices: indicesPtr,
-            numIndices,
+            clipRect: clip_rect.into(),
+            vertices: verts_ptr,
+            numVertices: num_verts,
+            indices: indices_ptr,
+            numIndices: num_indices,
             textureId: mesh.texture_id.into(),
         })
     } else {
