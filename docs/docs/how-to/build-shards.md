@@ -66,6 +66,36 @@ If your Shards repository is located at `C:\Fragcolor\Shards`, the command used 
 
     ![Copy the directory’s address as text.](assets/location-shards-repo-copy-address.png)
 
+## Updating the Repository and Submodules ##
+
+When new changes are made to the Shards repository, you will want to Pull these changes into your local copy of it. 
+
+To do so with Github Desktop, first select the “Fetch origin” button.
+
+![Select the “Fetch origin” button to check for updates.](assets/github-desktop-fetch.png)
+
+If there are changes to pull, the button will change to “Pull origin”. Select it to update your local repository.
+
+![Select the “Pull origin” button to check for updates.](assets/github-desktop-pull.png)
+
+The Shards repository contains repositories of other projects, known as *submodules*. When updating your Shards repository, these submodules are left alone and must be manually updated. You can update them with the following command:
+```
+git submodule update --init --recursive
+```
+
+??? help "git: command not found"
+    This error occurs when WinGW is unable to find where git.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
+
+    Use the command `export PATH=$PATH:$(cygpath -u '(X)')` whereby (X) is the folder directory for git.exe. The default location is at `C:\Program Files\Git\cmd`.
+
+    ```
+    export PATH=$PATH:$(cygpath -u 'C:\Program Files\Git\cmd')
+    ```
+
+??? help "not a git repository"
+	This occurs when you are attempting to run the command outside of a git repository. [Navigate to your Shards repository](#navigating-to-the-shards-repository) before attempting to update the submodules.
+
+
 ## Bootstrapping the Project ##
 
 If this is your first time pulling the Shards repository, you will have to run the bootstrap file to set up and build the project.
@@ -166,6 +196,14 @@ Input the following command to generate the build files:
 
     You can check if the path has been set correctly by using the command `cargo` in the MinGW terminal. If done correctly, a wall of text starting with “Rust’s package manager” will appear. Otherwise, you will get the error “cargo: command not found”.
 
+??? help "Unable to Build Shards"
+	If you are still unable to build Shards, try updating your packages by running:
+	```
+	pacman -Syu --noconfirm
+	```
+	```
+	rustup update
+    ```
 
 Next, input the `ninja` command below to build the .exe file. This might take a few minutes, so feel free to take a coffee break while waiting!
 
