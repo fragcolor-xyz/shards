@@ -260,12 +260,23 @@ jobs:
         with:
           name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
           path: build
-      - name: Set up MSYS2
+      - name: Set up MSYS2 (Release)
+        if: ${{ steps.setup.outputs.build-type == 'Release' }}
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ steps.setup.outputs.msystem }}
           release: false
           path-type: inherit
+      - name: Set up MSYS2 (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ steps.setup.outputs.msystem }}
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-${{ steps.setup.outputs.arch }}-toolchain
       - name: Test
         env:
           RUST_BACKTRACE: 1
