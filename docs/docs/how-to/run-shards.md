@@ -10,8 +10,6 @@ license: CC-BY-SA-4.0
     
     Click [here](#overview) to skip the tutorial and jump to the overview.
 
-How-to run Shards.
-
 Learn how to employ Shards to execute code and bring your works to fruition!
 
 Ensure that you have [Shards built](../how-to/build-shards.md) before attempting to run it.
@@ -29,7 +27,7 @@ Right-click the “scripts” folder and select “New File…”. Name the file
 ![Create the “helloworld.edn” file in the “scripts” folder.](assets/vscode-new-file.png)
 
 ??? ".edn"
-	EDN is a file format used by Clojure, one of the programming languages employed by Shards.
+	EDN is a file format used by other programming languages such as Clojure.
 
 Paste the following code into your new file and save it.
 ```
@@ -54,30 +52,30 @@ Open the MinGW terminal and navigate to your Shards repository with the command 
 cd $(cygpath -u '(X)')
 ```
  
-To run the Debug version of Shards, use the command `./build/debug/shards ./scripts/(X).edn`, whereby (X) is the name of your .edn file.
+To run the Debug version of Shards, use the command `./build/Debug/shards ./scripts/(X).edn`, whereby (X) is the name of your .edn file.
 
 ```
-./build/debug/shards ./scripts/(X).edn
+./build/Debug/shards ./scripts/(X).edn
 ```
 
-To run the Release version of Shards, use the command `./build/release/shards ./scripts/(X).edn`, whereby (X) is the name of your .edn file.
+To run the Release version of Shards, use the command `./build/Release/shards ./scripts/(X).edn`, whereby (X) is the name of your .edn file.
 
 ```
-./build/release/shards ./scripts/(X).edn
+./build/Release/shards ./scripts/(X).edn
 ```
 
-To run our “helloworld.edn” script, we run the command `./build/debug/shards ./scripts/helloworld.edn`.
+To run our “helloworld.edn” script, we run the command `./build/Debug/shards ./scripts/helloworld.edn`.
 
 === "Command"
 
     ```
-    ./build/debug/shards ./scripts/helloworld.edn
+    ./build/Debug/shards ./scripts/helloworld.edn
     ```
 
 === "Output"
 
     ```
-    [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::163] Exe path: C:\Fragcolor\Shards\build\debug
+    [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::163] Exe path: C:\Fragcolor\Shards\build\Debug
     [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::164] Script path: C:\Fragcolor\Shards\scripts
     .
     .
@@ -94,14 +92,14 @@ Congratulations! You have printed out your first “Hello World” message to th
 
 ##  Overview ##
 
-1. Use `./build/debug/shards ./scripts/fileName.edn` to run scripts with the debug version of Shards
+1. Use `./build/Debug/shards ./scripts/fileName.edn` to run scripts with the Debug version of Shards.
 ```
-./build/debug/shards ./scripts/fileName.edn
+./build/Debug/shards ./scripts/fileName.edn
 ```
 
-2. Use `./build/release/shards ./scripts/fileName.edn` to run scripts with the release version of Shards
+2. Use `./build/Release/shards ./scripts/fileName.edn` to run scripts with the Release version of Shards.
 ```
-./build/release/shards ./scripts/fileName.edn
+./build/Release/shards ./scripts/fileName.edn
 ```
 
 --8<-- "includes/license.md"

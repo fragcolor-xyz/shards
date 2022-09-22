@@ -10,8 +10,6 @@ license: CC-BY-SA-4.0
     
     Click [here](#overview) to skip the tutorial and jump to the overview.
 
-How-to build Shards.
-
 Curious about the inner workings of Shards? Build Shards to unlock its hidden magics, and gain access to infinite creative possibilities! ✨ 
 
 Do ensure that you have your [development environment readied](../how-to/start-developing.md) before embarking on the quest to build Shards!
@@ -109,16 +107,16 @@ Next, input `cd build` to navigate into the newly created folder.
 cd build
 ```
 
-Input `mkdir debug` to create a folder named “debug”.
+Input `mkdir Debug` to create a folder named “Debug”.
 
 ```
-mkdir debug
+mkdir Debug
 ```
 
-Input `mkdir release` to create a folder named “release”.
+Input `mkdir Release` to create a folder named “Release”.
 
 ```
-mkdir release
+mkdir Release
 ```
 
 ??? "What happened?"
@@ -129,18 +127,14 @@ mkdir release
 
 ## Building the Shards Executable ##
 
-We will first build the Debug version of Shards. Navigate to the “debug” folder with the command `cd debug`.
+We will first build the Debug version of Shards. 
 
-```
-cd debug
-```
-
-Input the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..` to generate the build files.
+Input the following command to generate the build files:
 
 === "Command"
 
     ```
-    cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..
     ```
 
 === "Output"
@@ -153,7 +147,7 @@ Input the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..` to generate th
     .
     -- Configuring done
     -- Generating done
-    -- Build files have been written to: C:/Fragcolor/Shards/build/debug
+    -- Build files have been written to: C:/Fragcolor/Shards/build/Debug
     ```
 
 
@@ -173,17 +167,18 @@ Input the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..` to generate th
     You can check if the path has been set correctly by using the command `cargo` in the MinGW terminal. If done correctly, a wall of text starting with “Rust’s package manager” will appear. Otherwise, you will get the error “cargo: command not found”.
 
 
-Next, input the command `ninja shards` to build the .exe file. This might take a few minutes, so feel free to take a coffee break while waiting!
+Next, input the `ninja` command below to build the .exe file. This might take a few minutes, so feel free to take a coffee break while waiting!
 
 === "Command"
 
     ```
-    ninja shards
+    ninja -C Debug shards
     ```
 
 === "Output"
 
     ```
+    ninja: Entering directory `Debug'
     [0/2] Re-checking globbed directories...
     [1/876] Creating directories for 'sdl_a'
     .
@@ -199,25 +194,12 @@ The debug version of shards.exe has been built! 🥳
 ![An executable file for the debug version of shards has been created.](assets/location-shards-debug-exe.png)
 
 
-We will now repeat the process to create a Release version of Shards.
-
-Navigate to the release build folder with the command `cd ../release`.
-
-```
-cd ../release
-```
-
-??? "cd .."
-    `cd ..` lets you navigate out of your current folder.
-
-
-
-Enter the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..`.
+We will now repeat the process to create a Release version of Shards. Input the following cmake command:
 
 === "Command"
 
     ```
-    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -B./Release ..
     ```
 
 === "Output"
@@ -230,20 +212,21 @@ Enter the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..`.
     .
     -- Configuring done
     -- Generating done
-    -- Build files have been written to: C:/Fragcolor/Shards/build/release
+    -- Build files have been written to: C:/Fragcolor/Shards/build/Release
     ```
 
-Once again, build the .exe file with the command `ninja shards`. Why not watch a few cat videos while waiting this time?
+Once again, build the .exe file with the `ninja` command below. Why not watch a few cat videos while waiting this time?
 
 === "Command"
 
     ```
-    ninja shards
+    ninja -C Release shards
     ```
 
 === "Output"
 
     ```
+    ninja: Entering directory `Release'
     [0/2] Re-checking globbed directories...
     [1/876] Creating directories for 'sdl_a'
     .
@@ -265,27 +248,22 @@ The release version of shards.exe has been built! 😊
 ./bootstrap
 ```
 
-2. Create a “build” folder with nested “debug” and “release” folders
+2. Create a “build” folder with nested “Debug” and “Release” folders.
 
-3. Navigate to the debug/release folder with `cd $(cygpath -u 'directoryAddress')`
+3. Use `cmake` commands to generate build files for the Debug and Release versions.
 ```
-cd $(cygpath -u 'directoryAddress')
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..
 ```
-
-4. Use `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..` in the debug folder
 ```
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -B./Release ..
 ```
 
-5. Use `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..` in the release folder
+4. Build the executables with the `ninja` commands.
 ```
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ../..
-``` 
-
-6. Use `ninja shards` in each folder
+ninja -C Debug shards
 ```
-ninja shards
 ```
-
+ninja -C Release shards
+```
 
 --8<-- "includes/license.md"

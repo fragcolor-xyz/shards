@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-// TODO: Add guides for Mac and Linux.
+<!-- TODO: Add guides for Mac and Linux. -->
 
 # Start Developing
 
@@ -12,10 +12,7 @@ license: CC-BY-SA-4.0
 
     Click [here](#overview) to skip the tutorial and jump to the overview.
 
-
-How-to start developing.
-
-A guide for setting up the development environment to work with our projects.
+Learn how to set up the development environment to start working with our projects!
 
 ## Code Editor ##
 
@@ -30,9 +27,7 @@ A compiler translates human-readable code into machine code. We will be setting 
 
 First, [download MSYS2](https://www.msys2.org/) and install it with the default settings. MSYS2 helps to set up MinGW-w64, which uses the GCC compiler to create Windows programs.
 
-When the MinGW terminal pops up, enter `pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget`
-
-This will install the Mingw-w64 toolset which includes GCC, and other build tools that will be employed later.
+We will now install the Mingw-w64 toolset which includes GCC, and other build tools that will be employed later. When the MinGW terminal pops up, enter the following command:
 
 ```
 pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
@@ -57,6 +52,8 @@ C:\msys64\mingw64\bin
 
 ![Add the mingw64 bin directory to the environment variables.](assets/set-environment-variable-mingw64-new.png)
 
+Click the “OK” button twice to close the windows and save the changes.
+
 ## Rust ##
 
 Rust is a programming language that we will be using. Install it [here](https://www.rust-lang.org/tools/install). 
@@ -66,21 +63,27 @@ Open up the Command Prompt. You can use the Windows Search Bar to find the Comma
 ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
 
 !!! tip
-    You can check if Rust is properly installed by inputting `cargo –version` in the Command Prompt. 
+    You can check if Rust is properly installed by using `cargo –version` in the Command Prompt. 
 
     If a version number is printed, your installation was successful!
         ```
         cargo –version
         ```
 
-Input `rustup default nightly` to use the nightly version of Rust. The nightly release is updated more frequently compared to the stable and beta versions.
+We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
+    ```
+    rustup toolchain install nightly
+    ```
+    ```
+    rustup +nightly target add x86_64-pc-windows-gnu
+    ```
 	```
-    rustup default nightly
+    rustup default nightly-x86_64-pc-windows-gnu
 	```
 
-Input the command `rustup target add wasm32-unknown-unknown --toolchain nightly` to add support for building to web browsers.
+To add support for building to web browsers, input the following command:
 	```
-    rustup target add wasm32-unknown-unknown --toolchain nightly
+    rustup +nightly target add wasm32-unknown-unknown
 	```
 
 Use the `rustup update` command to update your installation. Since we are using the nightly release, you are encouraged to update often.
@@ -88,6 +91,14 @@ Use the `rustup update` command to update your installation. Since we are using 
     rustup update
 	```
  
+<!-- For Linux / WSL
+
+Only 2 commands are required to set up the Rust nightly build:
+
+rustup install nightly
+rustup default nightly
+
+-->
 
 ##  Git & GitHub ##
 
@@ -97,7 +108,12 @@ Install Git [here](https://git-scm.com/download). The installation settings can 
 
 Although Git is powerful, it can be daunting to use on its own. Instead, we use GitHub, a service which employs Git’s version control with its own to make project collaboration much easier. 
 
-Download GitHub for Desktop [here](https://desktop.github.com/). You can install it with the default settings, and create a GitHub account when prompted if you do not have one.
+We recommend that you use a [Git GUI Client](https://git-scm.com/downloads/guis) to facilitate your work by pruning off the manual input of code and making the version control process more visual.
+
+We will be using [GitHub Desktop](https://desktop.github.com/) for the tutorials. You can install it with the default settings, and create a GitHub account when prompted if you do not have one.
+
+!!! note
+    Even though we recommend GitHub Desktop, feel free to use any GUI client of your choice!
 
 
 ## VS Code Extensions ##
@@ -126,11 +142,11 @@ Search for and install the following extensions:
 
 ## Overview ##
 
-1. Install the [VS Code Editor](https://code.visualstudio.com/download)
+1. Install the [VS Code Editor](https://code.visualstudio.com/download).
 
-2. Install [MSYS2](https://www.msys2.org/)
+2. Install [MSYS2](https://www.msys2.org/).
 
-3. Install the Mingw-w64 toolset with the MinGW terminal
+3. Install the Mingw-w64 toolset with the MinGW terminal.
 ```
 pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
 ```
@@ -140,28 +156,35 @@ pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-
 C:\msys64\mingw64\bin
 ```
 
-5. Install [Rust](https://www.rust-lang.org/tools/install)
+5. Install [Rust](https://www.rust-lang.org/tools/install).
 
-6. Set the Rust default build to nightly
+6. Install and set up the Rust nightly build.
 ```
-rustup default nightly
+rustup toolchain install nightly
+```
+```
+rustup +nightly target add x86_64-pc-windows-gnu
+```
+```
+rustup default nightly-x86_64-pc-windows-gnu
 ```
 
-7. Install the Rust Web Assembly toolchain
+
+7. Install the Rust Web Assembly toolchain.
 ```
-rustup target add wasm32-unknown-unknown --toolchain nightly
+rustup +nightly target add wasm32-unknown-unknown
 ```
 
-8. Update Rust
+8. Update Rust.
 ```
 rustup update
 ```
 
-9. Install [Git](https://git-scm.com/download)
+9. Install [Git](https://git-scm.com/download).
 
-10. Install [GitHub for Desktop](https://desktop.github.com/)
+10. Install [GitHub for Desktop](https://desktop.github.com/) or any other [Git GUI Client](https://git-scm.com/downloads/guis).
 
-11. Install [Extensions for Visual Studio Code](#vs-code-extensions)
+11. Install [Extensions for Visual Studio Code](#vs-code-extensions).
 
 
 --8<-- "includes/license.md"
