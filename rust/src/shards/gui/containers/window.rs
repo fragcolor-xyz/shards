@@ -90,7 +90,7 @@ impl Default for Window {
       instance: ctx,
       requiring: Vec::new(),
       title: ParamVar::new(Var::ephemeral_string("My Window")),
-      position: ParamVar::new((0.0, 0.0).into()),
+      position: ParamVar::default(),
       anchor: ParamVar::default(),
       width: ParamVar::default(),
       height: ParamVar::default(),
@@ -251,14 +251,19 @@ impl Shard for Window {
         // but a window is constrained by the available rect of the central panel.
         // Thus, we offset it to make it more intuitive for users.
         // i.e. the position is now relative to the top-left corner of the central panel.
-        let pos: (f32, f32) = self.position.get().try_into()?;
-        let rect = gui_ctx.available_rect();
-        window.default_pos(egui::Pos2 {
-          x: pos.0 + rect.min.x,
-          y: pos.1 + rect.min.y,
-        })
+        let position = self.position.get();
+        if !position.is_none() {
+          let pos: (f32, f32) = self.position.get().try_into()?;
+          let rect = gui_ctx.available_rect();
+          window.default_pos(egui::Pos2 {
+            x: pos.0 + rect.min.x,
+            y: pos.1 + rect.min.y,
+          })
+        } else {
+          window
+        }
       } else {
-        let offset: (f32, f32) = self.position.get().try_into()?;
+        let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
         window.anchor(
           Anchor {
             bits: unsafe {
