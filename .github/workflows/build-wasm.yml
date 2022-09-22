@@ -16,6 +16,11 @@ on:
         required: false
         default: false
         type: boolean
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       threading:
@@ -25,6 +30,10 @@ on:
       run-tests:
         required: false
         default: false
+        type: boolean
+      rust-cache:
+        required: false
+        default: true
         type: boolean
 
 jobs:
@@ -41,6 +50,7 @@ jobs:
         run: |
           echo "::set-output name=threading::${{ github.event.inputs.threading || inputs.threading }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
+          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -69,7 +79,7 @@ jobs:
         run: |
           rustup +nightly component add rust-src
       - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.threading }}
       - name: Build

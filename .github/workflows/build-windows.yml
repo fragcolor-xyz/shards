@@ -37,6 +37,11 @@ on:
         required: false
         default: false
         type: boolean
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       bitness:
@@ -59,6 +64,10 @@ on:
         required: false
         default: false
         type: boolean
+      rust-cache:
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   #
@@ -80,6 +89,7 @@ jobs:
           echo "::set-output name=binary-type::${{ github.event.inputs.binary-type || inputs.binary-type }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
           echo "::set-output name=runtime-tests::${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}"
+          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
 
           if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
           then
@@ -134,7 +144,7 @@ jobs:
           choco install -y --force llvm || exit 0
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
       - uses: Swatinem/rust-cache@v1
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
       - name: Set up MSYS2
