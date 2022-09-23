@@ -4,6 +4,8 @@
 use super::Button;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::widgets::text_util;
+use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
@@ -43,6 +45,7 @@ lazy_static! {
       BOOL_OR_NONE_SLICE,
     )
       .into(),
+    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -56,6 +59,7 @@ impl Default for Button {
       label: ParamVar::default(),
       action: ShardsVar::default(),
       wrap: ParamVar::default(),
+      style: ParamVar::default(),
     }
   }
 }
@@ -112,6 +116,7 @@ impl Shard for Button {
       0 => Ok(self.label.set_param(value)),
       1 => self.action.set_param(value),
       2 => Ok(self.wrap.set_param(value)),
+      3 => Ok(self.style.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -121,6 +126,7 @@ impl Shard for Button {
       0 => self.label.get_param(),
       1 => self.action.get_param(),
       2 => self.wrap.get_param(),
+      3 => self.style.get_param(),
       _ => Var::default(),
     }
   }
@@ -154,11 +160,13 @@ impl Shard for Button {
       self.action.warmup(ctx)?;
     }
     self.wrap.warmup(ctx);
+    self.style.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.style.cleanup();
     self.wrap.cleanup();
     if !self.action.is_empty() {
       self.action.cleanup();
@@ -173,7 +181,14 @@ impl Shard for Button {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let label: &str = self.label.get().try_into()?;
-      let mut button = egui::Button::new(label);
+      let mut text = egui::RichText::new(label);
+
+      let style = self.style.get();
+      if !style.is_none() {
+        text = text_util::get_styled_text(text, &style.try_into()?)?;
+      }
+
+      let mut button = egui::Button::new(text);
 
       let wrap = self.wrap.get();
       if !wrap.is_none() {

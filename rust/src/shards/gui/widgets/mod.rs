@@ -17,6 +17,7 @@ struct Button {
   label: ParamVar,
   action: ShardsVar,
   wrap: ParamVar,
+  style: ParamVar,
 }
 
 /// Checkbox with a text label.
