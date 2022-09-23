@@ -26,6 +26,7 @@ struct Checkbox {
   requiring: ExposedTypes,
   label: ParamVar,
   variable: ParamVar,
+  style: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
 }
