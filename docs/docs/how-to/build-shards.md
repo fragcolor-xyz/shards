@@ -181,8 +181,14 @@ Input the following command to generate the build files:
     ```
 
 
+??? ".."
+    `..` represents the parent directory and can be used in the command line to navigate one level up.
+
+    In the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..`, cmake is looking for the file `CMakeLists.txt` which exists one folder above the "build" folder where we are running the command from.
+
+
 ??? help "cmake: command not found"
-    This error occurs when WinGW is unable to find where cargo.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
+    This error occurs when MinGW is unable to find where cargo.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
 
     The default location is at `C:\Users\username\.cargo\bin`.
 
