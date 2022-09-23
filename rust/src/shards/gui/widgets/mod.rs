@@ -15,9 +15,9 @@ struct Button {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
+  style: ParamVar,
   action: ShardsVar,
   wrap: ParamVar,
-  style: ParamVar,
 }
 
 /// Checkbox with a text label.
@@ -25,8 +25,8 @@ struct Checkbox {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
-  variable: ParamVar,
   style: ParamVar,
+  variable: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
 }
@@ -120,6 +120,7 @@ struct RadioButton {
   label: ParamVar,
   variable: ParamVar,
   value: Var,
+  style: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
 }
