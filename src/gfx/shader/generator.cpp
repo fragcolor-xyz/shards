@@ -9,174 +9,19 @@
 #include <optional>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+#include "../log.hpp"
 
 namespace gfx {
 namespace shader {
 
-void GeneratorContext::write(const StringView &str) { result += str; }
-void GeneratorContext::writeHeader(const StringView &str) { header += str; }
+static auto logger = getLogger();
 
-void GeneratorContext::readGlobal(const char *name) {
-  auto it = globals.find(name);
-  if (it == globals.end()) {
-    pushError(formatError("Global {} does not exist", name));
-  } else {
-    result += fmt::format("{}.{}", globalsVariableName, name);
-  }
+static std::vector<const EntryPoint *> getEntryPointPtrs(const std::vector<EntryPoint> &_entryPoints) {
+  std::vector<const EntryPoint *> entryPoints;
+  std::transform(_entryPoints.begin(), _entryPoints.end(), std::back_inserter(entryPoints),
+                 [](const EntryPoint &entryPoint) { return &entryPoint; });
+  return entryPoints;
 }
-
-bool GeneratorContext::hasInput(const char *name) { return inputs.find(name) != inputs.end(); }
-
-void GeneratorContext::readInput(const char *name) {
-  auto it = inputs.find(name);
-  const FieldType *fieldType{};
-  if (it != inputs.end()) {
-    fieldType = &it->second;
-  } else {
-    fieldType = getOrCreateDynamicInput(name);
-  }
-
-  if (!fieldType) {
-    pushError(formatError("Input {} does not exist", name));
-    return;
-  }
-
-  result += fmt::format("{}.{}", inputVariableName, name);
-}
-
-const FieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
-  assert(inputs.find(name) == inputs.end());
-
-  FieldType newField;
-  for (auto &h : dynamicHandlers) {
-    if (h->createDynamicInput(name, newField)) {
-      return &inputs.insert_or_assign(name, newField).first->second;
-    }
-  }
-
-  return nullptr;
-}
-
-bool GeneratorContext::hasOutput(const char *name) { return outputs.find(name) != outputs.end(); }
-
-void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
-  auto it = outputs.find(name);
-  const FieldType *outputFieldType{};
-  if (it != outputs.end()) {
-    outputFieldType = &it->second;
-  } else {
-    outputFieldType = getOrCreateDynamicOutput(name, type);
-  }
-
-  if (!outputFieldType) {
-    pushError(formatError("Output {} does not exist", name));
-    return;
-  }
-
-  if (*outputFieldType != type) {
-    pushError(formatError("Output type doesn't match previously expected type"));
-    return;
-  }
-
-  result += fmt::format("{}.{}", outputVariableName, name);
-}
-
-const FieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, FieldType requestedType) {
-  assert(outputs.find(name) == outputs.end());
-
-  for (auto &h : dynamicHandlers) {
-    if (h->createDynamicOutput(name, requestedType)) {
-      return &outputs.insert_or_assign(name, requestedType).first->second;
-    }
-  }
-
-  return nullptr;
-}
-
-bool GeneratorContext::hasTexture(const char *name, bool defaultTexcoordRequired) {
-  auto texture = getTexture(name);
-  if (!texture)
-    return false;
-  if (defaultTexcoordRequired && !hasInput(texture->defaultTexcoordVariableName.c_str()))
-    return false;
-  return true;
-}
-
-const TextureDefinition *GeneratorContext::getTexture(const char *name) {
-  auto it = textures.find(name);
-  if (it == textures.end()) {
-    return nullptr;
-  } else {
-    return &it->second;
-  }
-}
-
-void GeneratorContext::texture(const char *name) {
-  if (const TextureDefinition *texture = getTexture(name)) {
-    result += texture->variableName;
-  } else {
-    pushError(formatError("Texture {} does not exist", name));
-  }
-}
-
-void GeneratorContext::textureDefaultTextureCoordinate(const char *name) {
-  if (const TextureDefinition *texture = getTexture(name)) {
-    if (hasInput(texture->defaultTexcoordVariableName.c_str())) {
-      readInput(texture->defaultTexcoordVariableName.c_str());
-    } else {
-      result += "vec2<f32>(0.0, 0.0)";
-    }
-  }
-}
-
-void GeneratorContext::textureDefaultSampler(const char *name) {
-  if (const TextureDefinition *texture = getTexture(name)) {
-    result += texture->defaultSamplerVariableName;
-  }
-}
-
-void GeneratorContext::readBuffer(const char *fieldName, const FieldType &expectedType, const char *bufferName) {
-  auto bufferIt = buffers.find(bufferName);
-  if (bufferIt == buffers.end()) {
-    pushError(formatError("Buffer \"{}\" is not defined", bufferName));
-    return;
-  }
-
-  const BufferDefinition &buffer = bufferIt->second;
-
-  const UniformLayout *uniform = findUniform(fieldName, buffer);
-  if (!uniform) {
-    pushError(formatError("Field \"{}\" not found in buffer \"{}\"", fieldName, bufferName));
-    return;
-  }
-
-  if (expectedType != uniform->type) {
-    pushError(formatError("Field \"{}\", shader expected type {} but provided was {}", fieldName, expectedType, uniform->type));
-    return;
-  }
-
-  if (buffer.indexedBy) {
-    result += fmt::format("{}.elements[{}].{}", buffer.variableName, *buffer.indexedBy, fieldName);
-  } else {
-    result += fmt::format("{}.{}", buffer.variableName, fieldName);
-  }
-}
-
-const UniformLayout *GeneratorContext::findUniform(const char *fieldName, const BufferDefinition &buffer) {
-  for (size_t i = 0; i < buffer.layout.fieldNames.size(); i++) {
-    if (buffer.layout.fieldNames[i] == fieldName) {
-      return &buffer.layout.items[i];
-    }
-  }
-  return nullptr;
-}
-
-void GeneratorContext::pushError(GeneratorError &&error) { errors.emplace_back(std::move(error)); }
-
-enum class BufferType {
-  Uniform,
-  Storage,
-};
 
 template <typename T>
 static void generateTextureVars(T &output, const TextureDefinition &def, size_t group, size_t binding, size_t samplerBinding) {
@@ -430,13 +275,6 @@ struct Stage {
   }
 };
 
-GeneratorOutput Generator::build(const std::vector<EntryPoint> &_entryPoints) {
-  std::vector<const EntryPoint *> entryPoints;
-  std::transform(_entryPoints.begin(), _entryPoints.end(), std::back_inserter(entryPoints),
-                 [](const EntryPoint &entryPoint) { return &entryPoint; });
-  return build(entryPoints);
-}
-
 struct DynamicVertexInput : public IGeneratorDynamicHandler {
   std::vector<StructField> &inputStruct;
 
@@ -482,6 +320,8 @@ struct DynamicVertexOutput : public IGeneratorDynamicHandler {
     }
   }
 };
+
+GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) { return build(getEntryPointPtrs(entryPoints)); }
 
 GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoints) {
   String vertexInputStructName = "Input";
@@ -530,15 +370,22 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   // Interpolate instance index
   stages[0].mainFunctionHeader += fmt::format("{}.instanceIndex = {};\n", stages[0].outputVariableName, instanceIndexer);
 
-  if (!viewBufferLayout.fieldNames.empty())
-    generateBuffer(headerCode, "u_view", BufferType::Uniform, 0, 0, viewBufferLayout);
-  if (!objectBufferLayout.fieldNames.empty())
-    generateBuffer(headerCode, "u_objects", BufferType::Storage, 1, 0, objectBufferLayout, true);
+  std::map<String, BufferDefinition> buffers;
+  for (auto &binding : bufferBindings) {
+    String variableName = fmt::format("u_{}", binding.name);
 
-  std::map<String, BufferDefinition> buffers = {
-      {"view", {"u_view", viewBufferLayout}},
-      {"object", {"u_objects", objectBufferLayout, instanceIndexer}},
-  };
+    if (!binding.layout.fieldNames.empty()) {
+      bool isArray = binding.indexedPerInstance;
+      generateBuffer(headerCode, variableName, binding.type, binding.bindGroup, binding.binding, binding.layout, isArray);
+    }
+
+    auto &bufferDefinition =
+        buffers.insert(std::make_pair(binding.name, BufferDefinition{.variableName = variableName, .layout = binding.layout}))
+            .first->second;
+    if (binding.indexedPerInstance) {
+      bufferDefinition.indexedBy = instanceIndexer;
+    }
+  }
 
   std::vector<StructField> vertexOutputStructFields;
   std::vector<NamedField> fragmentInputFields;
@@ -546,16 +393,12 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), 0);
 
   std::map<String, TextureDefinition> textureDefinitions;
-  size_t textureBindGroup = 1;
-  size_t textureBindingCounter = 1;
   for (auto &texture : textureBindingLayout.bindings) {
     TextureDefinition def;
     def.variableName = "t_" + texture.name;
     def.defaultSamplerVariableName = "s_" + texture.name;
     def.defaultTexcoordVariableName = fmt::format("texCoord{}", texture.defaultTexcoordBinding);
-    size_t textureBinding = textureBindingCounter++;
-    size_t samplerBinding = textureBindingCounter++;
-    generateTextureVars(headerCode, def, textureBindGroup, textureBinding, samplerBinding);
+    generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
 
@@ -611,6 +454,86 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   return output;
 }
 
+IndexedBindings Generator::indexBindings(const std::vector<EntryPoint> &entryPoints) {
+  return indexBindings(getEntryPointPtrs(entryPoints));
+}
+
+template <typename T> static auto &findOrAddIndex(T &arr, const char *name) {
+  auto it = std::find_if(arr.begin(), arr.end(), [&](auto &element) { return element.name == name; });
+  if (it != arr.end())
+    return *it;
+
+  auto &newElement = arr.emplace_back();
+  newElement.name = name;
+  return newElement;
+}
+
+IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &entryPoints) {
+  struct IndexerContext : public IGeneratorContext {
+    IndexedBindings result;
+    std::map<String, FieldType> inputs;
+    bool recordOutputs = false;
+
+    void write(const StringView &str) {}
+    void writeHeader(const StringView &str) {}
+    void readGlobal(const char *name) {}
+    void beginWriteGlobal(const char *name, const FieldType &type) {}
+    void endWriteGlobal() {}
+
+    bool hasInput(const char *name) { return true; }
+    void readInput(const char *name) {}
+    const std::map<String, FieldType> &getInputs() { return inputs; }
+
+    bool hasOutput(const char *name) { return true; }
+    void writeOutput(const char *name, const FieldType &type) {
+      if (recordOutputs)
+        findOrAddIndex(result.outputs, name).type = type;
+    }
+
+    bool hasTexture(const char *name, bool defaultTexcoordRequired = true) { return true; }
+    const TextureDefinition *getTexture(const char *name) { return nullptr; }
+    void texture(const char *name) { findOrAddIndex(result.textureBindings, name); }
+    void textureDefaultTextureCoordinate(const char *name) { findOrAddIndex(result.textureBindings, name); }
+    void textureDefaultSampler(const char *name) { findOrAddIndex(result.textureBindings, name); }
+
+    void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName) {
+      findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
+    }
+    const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer) { return nullptr; }
+
+    void pushError(GeneratorError &&error) {}
+  } context;
+
+  for (auto &entryPoint : entryPoints) {
+    switch (entryPoint->stage) {
+    case gfx::ProgrammableGraphicsStage::Vertex:
+      context.recordOutputs = false;
+      break;
+    case gfx::ProgrammableGraphicsStage::Fragment:
+      context.recordOutputs = true;
+      break;
+    }
+    entryPoint->code->apply(context);
+  }
+
+  return context.result;
+}
+
+void IndexedBindings::dump() {
+  SPDLOG_LOGGER_DEBUG(logger, "Indexed Bindings:");
+  for (auto &buffer : bufferBindings) {
+    SPDLOG_LOGGER_DEBUG(logger, " buffer[{}]:", buffer.name);
+    for (auto &field : buffer.accessedFields)
+      SPDLOG_LOGGER_DEBUG(logger, " - {} ({})", field.first, field.second);
+  }
+  for (auto &texture : textureBindings) {
+    SPDLOG_LOGGER_DEBUG(logger, " texture[{}]", texture.name);
+  }
+  for (auto &output : outputs) {
+    SPDLOG_LOGGER_DEBUG(logger, " output[{}]: {}", output.name, output.type);
+  }
+}
+
 void GeneratorOutput::dumpErrors(const GeneratorOutput &output) {
   if (!output.errors.empty()) {
     spdlog::error("Failed to generate shader code:");
@@ -619,5 +542,6 @@ void GeneratorOutput::dumpErrors(const GeneratorOutput &output) {
     }
   }
 }
+
 } // namespace shader
 } // namespace gfx

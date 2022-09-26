@@ -116,11 +116,13 @@ TEST_CASE("Shader basic", "[Shader]") {
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
   viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
-  generator.viewBufferLayout = viewLayoutBuilder.finalize();
+  // TODO: Fixme
+  // generator.viewBufferLayout = viewLayoutBuilder.finalize();
 
   UniformBufferLayoutBuilder objectLayoutBuilder;
   objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-  generator.objectBufferLayout = objectLayoutBuilder.finalize();
+  // TODO: Fixme
+  // generator.objectBufferLayout = objectLayoutBuilder.finalize();
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
   auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
@@ -158,11 +160,13 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
 
   UniformBufferLayoutBuilder viewLayoutBuilder;
   viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
-  generator.viewBufferLayout = viewLayoutBuilder.finalize();
+  // TODO: Fix
+  // generator.viewBufferLayout = viewLayoutBuilder.finalize();
 
   UniformBufferLayoutBuilder objectLayoutBuilder;
   objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-  generator.objectBufferLayout = objectLayoutBuilder.finalize();
+  // TODO: Fix
+  // generator.objectBufferLayout = objectLayoutBuilder.finalize();
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
   auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
@@ -211,7 +215,7 @@ TEST_CASE("Shader textures", "[Shader]") {
   TextureBindingLayoutBuilder textureLayoutBuilder;
   textureLayoutBuilder.addOrUpdateSlot("baseColor", 0);
 
-  generator.textureBindingLayout = textureLayoutBuilder.finalize();
+  generator.textureBindingLayout = textureLayoutBuilder.finalize(0);
   generator.outputFields.emplace_back("color", colorFieldType);
 
   std::vector<EntryPoint> entryPoints;

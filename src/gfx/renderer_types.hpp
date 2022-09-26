@@ -10,6 +10,7 @@
 #include "render_target.hpp"
 #include "shader/uniforms.hpp"
 #include "shader/textures.hpp"
+#include "shader/fmt.hpp"
 #include "dynamic_wgpu_buffer.hpp"
 #include "renderer.hpp"
 #include "log.hpp"
@@ -199,22 +200,44 @@ struct DrawGroup {
       : key(key), startIndex(startIndex), numInstances(numInstances) {}
 };
 
+struct BufferBinding {
+  UniformBufferLayout layout;
+  size_t index;
+};
+
+// Keeps track of
+struct InstanceBufferDesc {
+  size_t bufferLength;
+  size_t bufferStride;
+};
+
 struct CachedPipeline {
   MeshFormat meshFormat;
   std::vector<const Feature *> features;
-  UniformBufferLayout objectBufferLayout;
   std::map<std::string, TextureParameter> materialTextureBindings;
   TextureBindingLayout textureBindingLayout;
   RenderTargetLayout renderTargetLayout;
-  DrawData baseDrawData;
 
   WgpuHandle<WGPURenderPipeline> pipeline;
   WgpuHandle<WGPUShaderModule> shaderModule;
   WgpuHandle<WGPUPipelineLayout> pipelineLayout;
   std::vector<WgpuHandle<WGPUBindGroupLayout>> bindGroupLayouts;
 
+  std::vector<BufferBinding> viewBuffersBindings;
+  std::vector<BufferBinding> drawBufferBindings;
+  std::vector<InstanceBufferDesc> drawBufferInstanceDescriptions;
+
+  std::vector<WgpuHandle<WGPUBuffer>> viewBuffers;
+  WgpuHandle<WGPUBindGroup> viewBindGroup;
+
+  std::vector<WGPUBindGroupEntry> drawBindGroupEntries;
+
   // Pool to allocate instance buffers from
   DynamicWGPUBufferPool instanceBufferPool;
+
+  DrawData baseDrawData;
+
+  size_t lastTouched{};
 
   void resetPools() { instanceBufferPool.reset(); }
 };
@@ -247,14 +270,53 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
   }
 }
 
-struct CachedViewData {
+struct CachedView {
   DynamicWGPUBufferPool viewBuffers;
-  float4x4 projectionMatrix;
-  ~CachedViewData() {}
+  float4x4 projectionTransform;
+  float4x4 invProjectionTransform;
+  float4x4 invViewTransform;
+  float4x4 previousViewTransform = linalg::identity;
+  float4x4 currentViewTransform = linalg::identity;
+  float4x4 viewProjectionTransform;
+
+  size_t lastTouched{};
+
+  void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
+    if (frameCounter > lastTouched) {
+      previousViewTransform = currentViewTransform;
+      currentViewTransform = viewTransform;
+      invViewTransform = linalg::inverse(viewTransform);
+
+      this->projectionTransform = projectionTransform;
+      invProjectionTransform = linalg::inverse(projectionTransform);
+
+      viewProjectionTransform = linalg::mul(projectionTransform, currentViewTransform);
+
+      lastTouched = frameCounter;
+    }
+  }
 
   void resetPools() { viewBuffers.reset(); }
 };
-typedef std::shared_ptr<CachedViewData> CachedViewDataPtr;
+typedef std::shared_ptr<CachedView> CachedViewDataPtr;
+
+struct CachedDrawable {
+  float4x4 previousTransform = linalg::identity;
+  float4x4 currentTransform = linalg::identity;
+
+  size_t lastTouched{};
+
+  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
+    if (frameCounter > lastTouched) {
+      previousTransform = currentTransform;
+      currentTransform = transform;
+
+      lastTouched = frameCounter;
+    }
+  }
+};
+
+typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
 
 struct FrameReferences {
   std::vector<std::shared_ptr<ContextData>> contextDataReferences;
@@ -404,6 +466,7 @@ struct RenderGraph {
 
 struct ViewData {
   View &view;
+  CachedView &cachedView;
   Rect viewport;
   WGPUBuffer viewBuffer;
   RenderTargetPtr renderTarget;
