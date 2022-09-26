@@ -19,6 +19,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::FRAG_CC;
+use std::intrinsics::transmute;
 use std::ptr::null_mut;
 
 pub const TextureCC: i32 = fourCharacterCode(*b"tex_");
@@ -68,15 +69,17 @@ pub fn ui_image_cached<'a>(
 }
 
 pub fn ui_image_texture(input: &Var) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
-  let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
-
-  let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
+  let texture_ptr: *mut gfx_TexturePtr =
+    Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
   let texture_size = {
     let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
     egui::vec2(texture_res.x as f32, texture_res.y as f32)
   };
 
-  Ok((egui::epaint::TextureId::User(ptr), texture_size))
+  Ok((
+    egui::epaint::TextureId::User(texture_ptr as u64),
+    texture_size,
+  ))
 }
 
 impl From<&SHImage> for egui::ColorImage {
