@@ -1,12 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use egui::TextureHandle;
-use egui::TextureId;
-use egui::Ui;
-use egui::Vec2;
-use std::ptr::null_mut;
-
 use crate::fourCharacterCode;
 use crate::shardsc::gfx_TexturePtr;
 use crate::shardsc::gfx_TexturePtr_getResolution_ext;
@@ -25,6 +19,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::FRAG_CC;
+use std::ptr::null_mut;
 
 pub const TextureCC: i32 = fourCharacterCode(*b"tex_");
 
@@ -39,7 +34,7 @@ pub fn get_scale(scale_var: &ParamVar) -> Result<egui::Vec2, &'static str> {
 }
 
 pub struct CachedUIImage {
-  texture_handle: Option<TextureHandle>,
+  texture_handle: Option<egui::TextureHandle>,
   prev_ptr: *mut u8,
 }
 
@@ -55,7 +50,7 @@ impl Default for CachedUIImage {
 pub fn ui_image_cached<'a>(
   cached_image: &'a mut CachedUIImage,
   input: &Var,
-  ui: &Ui,
+  ui: &egui::Ui,
 ) -> Result<&'a egui::TextureHandle, &'static str> {
   let shimage: &SHImage = input.try_into()?;
   let ptr = shimage.data;
@@ -72,7 +67,7 @@ pub fn ui_image_cached<'a>(
   })
 }
 
-pub fn ui_image_texture(input: &Var) -> Result<(TextureId, Vec2), &'static str> {
+pub fn ui_image_texture(input: &Var) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
   let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
 
   let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;

@@ -1,9 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use egui::Ui;
-use egui::Vec2;
-
 use super::image_util;
 use super::Image;
 use crate::shard::Shard;

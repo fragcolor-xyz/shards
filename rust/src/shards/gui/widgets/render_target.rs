@@ -1,11 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use egui::Sense;
-use egui::Ui;
-use egui::Vec2;
-use std::borrow::BorrowMut;
-
 use super::RenderTarget;
 use crate::fourCharacterCode;
 use crate::shard::Shard;
@@ -31,6 +26,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::FRAG_CC;
+use std::borrow::BorrowMut;
 
 const TextureCC: i32 = fourCharacterCode(*b"tex_");
 
@@ -167,7 +163,7 @@ impl RenderTarget {
       let scale = image_util::get_scale(&self.scale)? / ui.ctx().pixels_per_point();
 
       // Manually allocate region to consume input events
-      let (rect, _response) = ui.allocate_exact_size(texture_size * scale, Sense::click_and_drag());
+      let (rect, _response) = ui.allocate_exact_size(texture_size * scale, egui::Sense::click_and_drag());
 
       // Draw texture at this rectangle
       let image = egui::widgets::Image::new(texture_id, rect.size());
