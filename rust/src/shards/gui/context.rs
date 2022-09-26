@@ -3,7 +3,7 @@
 
 use super::util;
 use super::EguiContext;
-use super::CONTEXT_NAME;
+use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
 use super::EGUI_UI_SEQ_TYPE;
 use super::GFX_GLOBALS_TYPE;
@@ -50,7 +50,7 @@ lazy_static! {
 impl Default for EguiContext {
   fn default() -> Self {
     let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXT_NAME);
+    ctx.set_name(CONTEXTS_NAME);
 
     let mut mw_globals = ParamVar::default();
     unsafe {

@@ -10,7 +10,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
-use crate::shards::gui::CONTEXT_NAME;
+use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
@@ -71,7 +71,7 @@ macro_rules! impl_panel {
     impl Default for $name {
       fn default() -> Self {
         let mut ctx = ParamVar::default();
-        ctx.set_name(CONTEXT_NAME);
+        ctx.set_name(CONTEXTS_NAME);
         let mut parents = ParamVar::default();
         parents.set_name(PARENTS_UI_NAME);
         Self {
@@ -152,7 +152,7 @@ macro_rules! impl_panel {
       fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
         self.requiring.clear();
 
-        // Add UI.Context to the list of required variables
+        // Add UI.Contexts to the list of required variables
         let exp_info = ExposedInfo {
           exposedType: EGUI_CTX_TYPE,
           name: self.instance.get_name(),
@@ -304,7 +304,7 @@ impl_panel!(
 impl Default for CentralPanel {
   fn default() -> Self {
     let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXT_NAME);
+    ctx.set_name(CONTEXTS_NAME);
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
@@ -373,7 +373,7 @@ impl Shard for CentralPanel {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.Context to the list of required variables
+    // Add UI.Contexts to the list of required variables
     let exp_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
       name: self.instance.get_name(),

@@ -55,7 +55,7 @@ lazy_static! {
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
 }
 
-const CONTEXT_NAME: &str = "UI.Context";
+const CONTEXTS_NAME: &str = "UI.Contexts";
 const PARENTS_UI_NAME: &str = "UI.Parents";
 
 #[derive(Hash)]

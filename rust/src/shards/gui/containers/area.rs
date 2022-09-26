@@ -7,7 +7,7 @@ use crate::shard::Shard;
 use crate::shards::gui::containers::ANCHOR_TYPES;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
-use crate::shards::gui::CONTEXT_NAME;
+use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
@@ -54,7 +54,7 @@ lazy_static! {
 impl Default for Area {
   fn default() -> Self {
     let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXT_NAME);
+    ctx.set_name(CONTEXTS_NAME);
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
@@ -135,7 +135,7 @@ impl Shard for Area {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.Context to the list of required variables
+    // Add UI.Contexts to the list of required variables
     let exp_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
       name: self.instance.get_name(),

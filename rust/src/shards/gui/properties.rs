@@ -7,7 +7,7 @@ use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
-use crate::shards::gui::CONTEXT_NAME;
+use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
@@ -77,7 +77,7 @@ pub struct GetProperty {
 impl Default for GetProperty {
   fn default() -> Self {
     let mut instance = ParamVar::default();
-    instance.set_name(CONTEXT_NAME);
+    instance.set_name(CONTEXTS_NAME);
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
