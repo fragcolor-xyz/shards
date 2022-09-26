@@ -99,6 +99,14 @@ struct Label {
   style: ParamVar,
 }
 
+struct Link {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  label: ParamVar,
+  action: ShardsVar,
+  style: ParamVar,
+}
+
 struct ListBox {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -210,6 +218,7 @@ mod hyperlink;
 mod image;
 mod image_button;
 mod label;
+mod link;
 mod listbox;
 mod numeric_input;
 mod numeric_slider;
@@ -229,6 +238,7 @@ pub fn registerShards() {
   registerShard::<Image>();
   registerShard::<ImageButton>();
   registerShard::<Label>();
+  registerShard::<Link>();
   registerShard::<ListBox>();
   registerShard::<FloatInput>();
   registerShard::<Float2Input>();
