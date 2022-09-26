@@ -48,27 +48,29 @@ impl Default for CachedUIImage {
   }
 }
 
-pub fn ui_image_cached<'a>(
-  cached_image: &'a mut CachedUIImage,
-  input: &Var,
-  ui: &egui::Ui,
-) -> Result<&'a egui::TextureHandle, &'static str> {
-  let shimage: &SHImage = input.try_into()?;
-  let ptr = shimage.data;
-  Ok(if ptr != cached_image.prev_ptr {
-    let image: egui::ColorImage = shimage.into();
-    cached_image.prev_ptr = ptr;
-    cached_image.texture_handle.insert(ui.ctx().load_texture(
-      format!("UI.Image: {:p}", shimage.data),
-      image,
-      Default::default(),
-    ))
-  } else {
-    cached_image.texture_handle.as_ref().unwrap()
-  })
+impl CachedUIImage {
+  pub fn get_egui_texture_from_image<'a>(
+    &'a mut self,
+    input: &Var,
+    ui: &egui::Ui,
+  ) -> Result<&'a egui::TextureHandle, &'static str> {
+    let shimage: &SHImage = input.try_into()?;
+    let ptr = shimage.data;
+    Ok(if ptr != self.prev_ptr {
+      let image: egui::ColorImage = shimage.into();
+      self.prev_ptr = ptr;
+      self.texture_handle.insert(ui.ctx().load_texture(
+        format!("UI.Image: {:p}", shimage.data),
+        image,
+        Default::default(),
+      ))
+    } else {
+      self.texture_handle.as_ref().unwrap()
+    })
+  }
 }
 
-pub fn ui_image_texture(input: &Var) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
+pub fn get_egui_texture_from_gfx(input: &Var) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
   let texture_ptr: *mut gfx_TexturePtr =
     Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
   let texture_size = {

@@ -159,11 +159,12 @@ impl Shard for RenderTarget {
 impl RenderTarget {
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
+      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
       let scale = image_util::get_scale(&self.scale)? / ui.ctx().pixels_per_point();
 
       // Manually allocate region to consume input events
-      let (rect, _response) = ui.allocate_exact_size(texture_size * scale, egui::Sense::click_and_drag());
+      let (rect, _response) =
+        ui.allocate_exact_size(texture_size * scale, egui::Sense::click_and_drag());
 
       // Draw texture at this rectangle
       let image = egui::widgets::Image::new(texture_id, rect.size());

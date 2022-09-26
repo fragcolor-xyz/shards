@@ -153,7 +153,7 @@ impl Shard for Image {
 impl Image {
   fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let texture = image_util::ui_image_cached(&mut self.cached_ui_image, input, ui)?;
+      let texture = self.cached_ui_image.get_egui_texture_from_image(input, ui)?;
 
       let scale = image_util::get_scale(&self.scale)?;
       ui.image(texture, texture.size_vec2() * scale);
@@ -166,7 +166,7 @@ impl Image {
 
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
+      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
 
       let scale = image_util::get_scale(&self.scale)?;
       ui.image(texture_id, texture_size * scale);
