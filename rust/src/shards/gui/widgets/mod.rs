@@ -67,6 +67,7 @@ struct Hyperlink {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
+  style: ParamVar,
 }
 
 struct Image {
