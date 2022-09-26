@@ -246,7 +246,7 @@ impl ImageButton {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let (texture_id, texture_size) = {
         let texture = image_util::ui_image_cached(&mut self.cached_ui_image, input, ui)?;
-        let scale = image_util::get_scale(&self.scale, ui)?;
+        let scale = image_util::get_scale(&self.scale)?;
         (texture.into(), texture.size_vec2() * scale)
       };
 
@@ -259,7 +259,7 @@ impl ImageButton {
   fn activateTexture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
-      let scale = image_util::get_scale(&self.scale, ui)?;
+      let scale = image_util::get_scale(&self.scale)?;
 
       self.activateCommon(context, input, ui, texture_id, texture_size * scale)
     } else {

@@ -33,9 +33,9 @@ lazy_static! {
   pub static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
 }
 
-pub fn get_scale(scale_var: &ParamVar, ui: &Ui) -> Result<egui::Vec2, &'static str> {
+pub fn get_scale(scale_var: &ParamVar) -> Result<egui::Vec2, &'static str> {
   let scale: (f32, f32) = scale_var.get().try_into()?;
-  Ok(egui::vec2(scale.0, scale.1) / ui.ctx().pixels_per_point())
+  Ok(egui::vec2(scale.0, scale.1))
 }
 
 pub struct CachedUIImage {

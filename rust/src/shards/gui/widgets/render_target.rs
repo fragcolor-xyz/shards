@@ -161,15 +161,10 @@ impl Shard for RenderTarget {
 }
 
 impl RenderTarget {
-  fn get_scale(scale_var: &ParamVar, ui: &Ui) -> Result<egui::Vec2, &'static str> {
-    let scale: (f32, f32) = scale_var.get().try_into()?;
-    Ok(egui::vec2(scale.0, scale.1) / ui.ctx().pixels_per_point())
-  }
-
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
-      let scale = image_util::get_scale(&self.scale, ui)?;
+      let scale = image_util::get_scale(&self.scale)? / ui.ctx().pixels_per_point();
 
       // Manually allocate region to consume input events
       let (rect, _response) = ui.allocate_exact_size(texture_size * scale, Sense::click_and_drag());

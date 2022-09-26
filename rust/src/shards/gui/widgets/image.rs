@@ -158,7 +158,7 @@ impl Image {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let texture = image_util::ui_image_cached(&mut self.cached_ui_image, input, ui)?;
 
-      let scale = image_util::get_scale(&self.scale, ui)?;
+      let scale = image_util::get_scale(&self.scale)?;
       ui.image(texture, texture.size_vec2() * scale);
 
       Ok(*input)
@@ -171,7 +171,7 @@ impl Image {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let (texture_id, texture_size) = image_util::ui_image_texture(input)?;
 
-      let scale = image_util::get_scale(&self.scale, ui)?;
+      let scale = image_util::get_scale(&self.scale)?;
       ui.image(texture_id, texture_size * scale);
 
       Ok(*input)
