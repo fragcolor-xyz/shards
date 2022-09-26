@@ -57,6 +57,7 @@ struct Combo {
   label: ParamVar,
   index: ParamVar,
   width: ParamVar,
+  style: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: usize,

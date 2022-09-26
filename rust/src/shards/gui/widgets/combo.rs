@@ -5,6 +5,8 @@ use super::Combo;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::widgets::text_util;
+use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
@@ -47,6 +49,7 @@ lazy_static! {
       FLOAT_VAR_SLICE,
     )
       .into(),
+    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -60,6 +63,7 @@ impl Default for Combo {
       label: ParamVar::default(),
       index: ParamVar::default(),
       width: ParamVar::default(),
+      style: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       tmp: 0,
@@ -111,6 +115,7 @@ impl Shard for Combo {
       0 => Ok(self.label.set_param(value)),
       1 => Ok(self.index.set_param(value)),
       2 => Ok(self.width.set_param(value)),
+      3 => Ok(self.style.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -120,6 +125,7 @@ impl Shard for Combo {
       0 => self.label.get_param(),
       1 => self.index.get_param(),
       2 => self.width.get_param(),
+      3 => self.style.get_param(),
       _ => Var::default(),
     }
   }
@@ -186,6 +192,7 @@ impl Shard for Combo {
     self.label.warmup(ctx);
     self.index.warmup(ctx);
     self.width.warmup(ctx);
+    self.style.warmup(ctx);
 
     if self.should_expose {
       self.index.get_mut().valueType = common_type::int.basicType;
@@ -195,6 +202,7 @@ impl Shard for Combo {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.style.cleanup();
     self.width.cleanup();
     self.index.cleanup();
     self.label.cleanup();
@@ -207,6 +215,18 @@ impl Shard for Combo {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let label: &str = self.label.get().try_into()?;
+      let mut text = egui::RichText::new(label);
+
+      let style = self.style.get();
+      if !style.is_none() {
+        text = text_util::get_styled_text(text, &style.try_into()?)?;
+      }
+
+      let mut combo = egui::ComboBox::from_label(text);
+      let width = self.width.get();
+      if !width.is_none() {
+        combo = combo.width(width.try_into()?);
+      }
 
       let index = &mut if self.index.is_variable() {
         let index: i64 = self.index.get().try_into()?;
@@ -214,12 +234,6 @@ impl Shard for Combo {
       } else {
         self.tmp
       };
-
-      let mut combo = egui::ComboBox::from_label(label);
-      let width = self.width.get();
-      if !width.is_none() {
-        combo = combo.width(width.try_into()?);
-      }
 
       let seq: Seq = input.try_into()?;
       let response = combo.show_index(ui, index, seq.len(), |i| {
