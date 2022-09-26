@@ -219,7 +219,11 @@ impl Renderer {
     ) -> Result<(), &str> {
         unsafe {
             let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
-            gfx_EguiRenderer_renderNoTransform(self.egui_renderer, &native_egui_output.full_output, queue);
+            gfx_EguiRenderer_renderNoTransform(
+                self.egui_renderer,
+                &native_egui_output.full_output,
+                queue,
+            );
             Ok(())
         }
     }

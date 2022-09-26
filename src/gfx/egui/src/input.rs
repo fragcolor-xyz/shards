@@ -301,7 +301,7 @@ impl InputTranslator {
     }
 
     pub fn copy_text(&mut self, text: &String) {
-    unsafe {
+        unsafe {
             if let Ok(c_str) = CString::new(text.to_owned()) {
                 gfx_EguiInputTranslator_copyText(self.egui_translator, c_str.as_ptr());
             }
