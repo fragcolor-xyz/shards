@@ -22,6 +22,12 @@ pub(crate) fn get_styled_text(text: egui::RichText, style: &Table) -> Result<egu
     }
   }
 
+  if let Some(size) = style.get_static(cstr!("size")) {
+    if !size.is_none() {
+      text = text.size(size.try_into()?);
+    }
+  }
+
   if let Some(strikethrough) = style.get_static(cstr!("strikethrough")) {
     if !strikethrough.is_none() && strikethrough.try_into()? {
       text = text.strikethrough();
