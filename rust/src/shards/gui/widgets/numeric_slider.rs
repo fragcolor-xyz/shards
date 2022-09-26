@@ -12,6 +12,8 @@ use super::IntSlider;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::widgets::text_util;
+use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
@@ -47,10 +49,11 @@ macro_rules! impl_ui_slider {
       static ref $parameters: Parameters = vec![
         (
           cstr!("Label"),
-          cstr!("The label for this widget."),
+          cstr!("The text label for this widget."),
           STRING_OR_NONE_SLICE
         )
           .into(),
+        (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
         (
           cstr!("Variable"),
           cstr!("The variable that holds the input value."),
@@ -70,6 +73,7 @@ macro_rules! impl_ui_slider {
           parents,
           requiring: Vec::new(),
           label: ParamVar::default(),
+          style: ParamVar::default(),
           variable: ParamVar::default(),
           min: ParamVar::default(),
           max: ParamVar::default(),
@@ -126,9 +130,10 @@ macro_rules! impl_ui_slider {
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
           0 => Ok(self.label.set_param(value)),
-          1 => Ok(self.variable.set_param(value)),
-          2 => Ok(self.min.set_param(value)),
-          3 => Ok(self.max.set_param(value)),
+          1 => Ok(self.style.set_param(value)),
+          2 => Ok(self.variable.set_param(value)),
+          3 => Ok(self.min.set_param(value)),
+          4 => Ok(self.max.set_param(value)),
           _ => Err("Invalid parameter index"),
         }
       }
@@ -136,9 +141,10 @@ macro_rules! impl_ui_slider {
       fn getParam(&mut self, index: i32) -> Var {
         match index {
           0 => self.label.get_param(),
-          1 => self.variable.get_param(),
-          2 => self.min.get_param(),
-          3 => self.max.get_param(),
+          1 => self.style.get_param(),
+          2 => self.variable.get_param(),
+          3 => self.min.get_param(),
+          4 => self.max.get_param(),
           _ => Var::default(),
         }
       }
@@ -203,6 +209,7 @@ macro_rules! impl_ui_slider {
       fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
         self.parents.warmup(ctx);
         self.label.warmup(ctx);
+        self.style.warmup(ctx);
         self.variable.warmup(ctx);
         self.min.warmup(ctx);
         self.max.warmup(ctx);
@@ -218,6 +225,7 @@ macro_rules! impl_ui_slider {
         self.max.cleanup();
         self.min.cleanup();
         self.variable.cleanup();
+        self.style.cleanup();
         self.label.cleanup();
         self.parents.cleanup();
 
@@ -234,13 +242,24 @@ macro_rules! impl_ui_slider {
           let max = self.max.get().try_into()?;
           let min = self.min.get().try_into()?;
 
-          let mut slider = egui::Slider::new(value, min..=max);
-          if !self.label.get().is_none() {
-            let text: &str = self.label.get().try_into()?;
-            slider = slider.text(text);
-          }
+          ui.horizontal(|ui| {
+            ui.add(egui::Slider::new(value, min..=max));
 
-          ui.add(slider);
+            let label = self.label.get();
+            if !label.is_none() {
+              let label: &str = label.try_into()?;
+              let mut text = egui::RichText::new(label);
+
+              let style = self.style.get();
+              if !style.is_none() {
+                text = text_util::get_styled_text(text, &style.try_into()?)?;
+              }
+              ui.add(egui::Label::new(text).wrap(false));
+            }
+
+            Ok::<(), &str>(())
+          })
+          .inner?;
 
           Ok((*value).into())
         } else {
@@ -287,6 +306,7 @@ macro_rules! impl_ui_n_slider {
           STRING_OR_NONE_SLICE
         )
           .into(),
+        (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
         (
           cstr!("Variable"),
           cstr!("The variable that holds the input value."),
@@ -306,6 +326,7 @@ macro_rules! impl_ui_n_slider {
           parents,
           requiring: Vec::new(),
           label: ParamVar::default(),
+          style: ParamVar::default(),
           variable: ParamVar::default(),
           min: ParamVar::default(),
           max: ParamVar::default(),
@@ -362,9 +383,10 @@ macro_rules! impl_ui_n_slider {
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
           0 => Ok(self.label.set_param(value)),
-          1 => Ok(self.variable.set_param(value)),
-          2 => Ok(self.min.set_param(value)),
-          3 => Ok(self.max.set_param(value)),
+          1 => Ok(self.style.set_param(value)),
+          2 => Ok(self.variable.set_param(value)),
+          3 => Ok(self.min.set_param(value)),
+          4 => Ok(self.max.set_param(value)),
           _ => Err("Invalid parameter index"),
         }
       }
@@ -372,9 +394,10 @@ macro_rules! impl_ui_n_slider {
       fn getParam(&mut self, index: i32) -> Var {
         match index {
           0 => self.label.get_param(),
-          1 => self.variable.get_param(),
-          2 => self.min.get_param(),
-          3 => self.max.get_param(),
+          1 => self.style.get_param(),
+          2 => self.variable.get_param(),
+          3 => self.min.get_param(),
+          4 => self.max.get_param(),
           _ => Var::default(),
         }
       }
@@ -439,6 +462,7 @@ macro_rules! impl_ui_n_slider {
       fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
         self.parents.warmup(ctx);
         self.label.warmup(ctx);
+        self.style.warmup(ctx);
         self.variable.warmup(ctx);
         self.min.warmup(ctx);
         self.max.warmup(ctx);
@@ -454,6 +478,7 @@ macro_rules! impl_ui_n_slider {
         self.max.cleanup();
         self.min.cleanup();
         self.variable.cleanup();
+        self.style.cleanup();
         self.label.cleanup();
         self.parents.cleanup();
 
@@ -475,17 +500,24 @@ macro_rules! impl_ui_n_slider {
               let max = max[i];
               let min = min[i];
 
-              let mut slider = egui::Slider::new(&mut values[i], min..=max);
-              if !self.label.get().is_none() {
-                let text: &str = self.label.get().try_into()?;
-                slider = slider.text(text);
-              }
+              ui.add(egui::Slider::new(&mut values[i], min..=max));
+            }
 
-              ui.add(slider);
+            let label = self.label.get();
+            if !label.is_none() {
+              let label: &str = label.try_into()?;
+              let mut text = egui::RichText::new(label);
+
+              let style = self.style.get();
+              if !style.is_none() {
+                text = text_util::get_styled_text(text, &style.try_into()?)?;
+              }
+              ui.add(egui::Label::new(text).wrap(false));
             }
 
             Ok::<(), &str>(())
-          });
+          })
+          .inner?;
 
           if self.variable.is_variable() {
             let mut var = Var::default();

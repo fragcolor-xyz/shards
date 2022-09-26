@@ -178,6 +178,7 @@ macro_rules! decl_ui_slider {
       parents: ParamVar,
       requiring: ExposedTypes,
       label: ParamVar,
+      style: ParamVar,
       variable: ParamVar,
       min: ParamVar,
       max: ParamVar,
