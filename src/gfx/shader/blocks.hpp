@@ -19,7 +19,7 @@ struct Compound : public Block {
   template <typename... TArgs> void append(TArgs... args) { (..., children.push_back(ConvertToBlock<TArgs>{}(std::move(args)))); }
   template <typename... TArgs> void appendLine(TArgs... args) { append(std::forward<TArgs>(args)..., ";\n"); }
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     for (auto &c : children)
       c->apply(context);
   }
@@ -48,7 +48,7 @@ struct WithInput : public Block {
         innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithInput(WithInput &&other) = default;
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     if (context.hasInput(name.c_str())) {
       inner->apply(context);
     } else if (innerElse) {
@@ -79,7 +79,7 @@ struct WithTexture : public Block {
         innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))), defaultTexcoordRequired(defaultTexcoordRequired) {}
   WithTexture(WithTexture &&other) = default;
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     if (context.hasTexture(name.c_str())) {
       inner->apply(context);
     } else if (innerElse) {
@@ -108,7 +108,7 @@ struct WithOutput : public Block {
         innerElse(ConvertToBlock<T2>{}(std::forward<T2>(innerElse))) {}
   WithOutput(WithOutput &&other) = default;
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     if (context.hasOutput(name.c_str())) {
       inner->apply(context);
     } else if (innerElse) {
@@ -137,7 +137,7 @@ struct WriteOutput : public Block {
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteOutput(WriteOutput &&other) = default;
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     context.writeOutput(name.c_str(), type);
     context.write(" = ");
     inner->apply(context);
@@ -153,7 +153,7 @@ struct ReadInput : public Block {
   ReadInput(const String &name) : name(name) {}
   ReadInput(ReadInput &&other) = default;
 
-  void apply(GeneratorContext &context) const { context.readInput(name.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readInput(name.c_str()); }
 
   BlockPtr clone() { return std::make_unique<ReadInput>(name); }
 };
@@ -171,7 +171,7 @@ struct WriteGlobal : public Block {
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteGlobal(WriteGlobal &&other) = default;
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     context.writeGlobal(name.c_str(), type, [&]() { inner->apply(context); });
   }
 
@@ -184,7 +184,7 @@ struct ReadGlobal : public Block {
   ReadGlobal(const String &name) : name(name) {}
   ReadGlobal(ReadGlobal &&other) = default;
 
-  void apply(GeneratorContext &context) const { context.readGlobal(name.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readGlobal(name.c_str()); }
 
   BlockPtr clone() { return std::make_unique<ReadGlobal>(name); }
 };
@@ -198,7 +198,7 @@ struct ReadBuffer : public Block {
       : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 
-  void apply(GeneratorContext &context) const { context.readBuffer(fieldName.c_str(), type, bufferName.c_str()); }
+  void apply(IGeneratorContext &context) const { context.readBuffer(fieldName.c_str(), type, bufferName.c_str()); }
 
   BlockPtr clone() { return std::make_unique<ReadBuffer>(fieldName, type, bufferName); }
 };
@@ -213,7 +213,7 @@ struct SampleTexture : public Block {
       : name(name), sampleCoordinate(ConvertToBlock<T>{}(std::forward<T>(sampleCoordinate))) {}
   SampleTexture(SampleTexture &&other) = default;
 
-  void apply(GeneratorContext &context) const {
+  void apply(IGeneratorContext &context) const {
     context.write("textureSample(");
     context.texture(name.c_str());
     context.write(", ");
@@ -232,14 +232,14 @@ struct SampleTexture : public Block {
 
 // Runs callback at code generation time
 struct Custom : public Block {
-  typedef std::function<void(GeneratorContext &context)> Callback;
+  typedef std::function<void(IGeneratorContext &context)> Callback;
   Callback callback;
 
   Custom(Callback &&callback) : callback(std::forward<Callback>(callback)) {}
   Custom(Custom &&other) = default;
   Custom(const Custom &other) = default;
 
-  void apply(GeneratorContext &context) const { callback(context); }
+  void apply(IGeneratorContext &context) const { callback(context); }
 
   BlockPtr clone() { return std::make_unique<Custom>(*this); }
 };
@@ -250,7 +250,7 @@ struct DefaultInterpolation : public Block {
   std::vector<String> matchPrefixes;
 
   DefaultInterpolation();
-  void apply(GeneratorContext &context) const;
+  void apply(IGeneratorContext &context) const;
   BlockPtr clone() { return std::make_unique<DefaultInterpolation>(*this); }
 };
 

@@ -11,6 +11,8 @@ namespace shader {
 struct TextureBinding {
   String name;
   size_t defaultTexcoordBinding{};
+  size_t binding{};
+  size_t defaultSamplerBinding{};
 
   TextureBinding() = default;
   TextureBinding(String name, size_t defaultTexcoordBinding = 0) : name(name), defaultTexcoordBinding(defaultTexcoordBinding) {}
@@ -49,7 +51,15 @@ public:
     }
   }
 
-  TextureBindingLayout &&finalize() { return std::move(layout); }
+  TextureBindingLayout &&finalize(size_t startBindingIndex, size_t *outBindingIndex = nullptr) {
+    for (auto &binding : layout.bindings) {
+      binding.binding = startBindingIndex++;
+      binding.defaultSamplerBinding = startBindingIndex++;
+    }
+    if (outBindingIndex)
+      *outBindingIndex = startBindingIndex;
+    return std::move(layout);
+  }
 };
 } // namespace shader
 } // namespace gfx

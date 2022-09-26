@@ -19,25 +19,16 @@ struct PipelineDrawableCache {
 };
 
 template <typename TCache, typename K, typename TInit>
-typename TCache::mapped_type &getCacheEntry(
-    TCache &cache, const K &key, TInit init = [](typename TCache::mapped_type &_) {}) {
+typename TCache::mapped_type &getCacheEntry(TCache &cache, const K &key, TInit &&init) {
   auto it = cache.find(key);
   if (it == cache.end()) {
-    it = cache.insert(std::make_pair(key, typename TCache::mapped_type())).first;
-    init(it->second);
+    it = cache.insert(std::make_pair(key, init(key))).first;
   }
   return it->second;
 }
 
-template <typename TCache, typename K, typename TInit>
-typename TCache::mapped_type &getSharedCacheEntry(
-    TCache &cache, const K &key, TInit init = [](typename TCache::mapped_type::element_type &_) {}) {
-  auto it = cache.find(key);
-  if (it == cache.end()) {
-    it = cache.insert(std::make_pair(key, std::make_shared<typename TCache::mapped_type::element_type>())).first;
-    init(*it->second.get());
-  }
-  return it->second;
+template <typename TElem, typename TCache, typename K> std::shared_ptr<TElem> &getSharedCacheEntry(TCache &cache, const K &key) {
+  return getCacheEntry(cache, key, [](const K &key) { return std::make_shared<TElem>(); });
 }
 
 // Groups drawables into pipeline
@@ -106,7 +97,10 @@ public:
 
     Hash128 pipelineHash = hasher.getDigest();
 
-    auto &cachedPipeline = getSharedCacheEntry(pipelineCache.map, pipelineHash, [&](CachedPipeline &cachedPipeline) {
+    auto &cachedPipeline = getCacheEntry(pipelineCache.map, pipelineHash, [&](const Hash128 &key) {
+      auto result = std::make_shared<CachedPipeline>();
+      auto &cachedPipeline = *result.get();
+
       cachedPipeline.meshFormat = mesh.getFormat();
       cachedPipeline.features = features;
       cachedPipeline.renderTargetLayout = renderTargetLayout;
@@ -123,6 +117,8 @@ public:
       if (material)
         collectMaterialParameters(material->parameters);
       collectMaterialParameters(drawable.parameters);
+
+      return result;
     });
 
     return GroupedDrawable{
@@ -138,9 +134,12 @@ public:
       GroupedDrawable grouped = groupByPipeline(pipelineCache, sharedHash, baseFeatures, baseParameters, *drawable.get());
 
       // Insert the result into the pipelineDrawableCache
-      auto &pipelineDrawables =
-          getCacheEntry(pipelineDrawableCache.map, grouped.pipelineHash,
-                        [&](PipelineDrawables &pipelineDrawables) { pipelineDrawables.cachedPipeline = grouped.cachedPipeline; });
+      auto &pipelineDrawables = getCacheEntry(pipelineDrawableCache.map, grouped.pipelineHash, [&](const Hash128 &key) {
+        return PipelineDrawables {
+          .cachedPipeline = grouped.cachedPipeline,
+        };
+      });
+
       pipelineDrawables.drawables.push_back(drawable.get());
     }
   }

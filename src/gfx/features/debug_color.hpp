@@ -20,11 +20,18 @@ struct DebugColor {
 
     FeaturePtr feature = std::make_shared<Feature>();
 
-    auto writeColor = [fieldName = std::string(fieldName)](GeneratorContext &context) {
+    auto writeColor = [fieldName = std::string(fieldName)](IGeneratorContext &context) {
       context.write("vec4<f32>(");
-      auto &input = context.inputs[fieldName];
+      auto &stageInputs = context.getInputs();
+
+      auto it = stageInputs.find(fieldName);
+      if (it == stageInputs.end()) {
+        context.pushError(formatError("Expected field named {}", fieldName));
+        return;
+      }
+
       context.readInput(fieldName.c_str());
-      switch (input.numComponents) {
+      switch (it->second.numComponents) {
       case 1:
         context.write(", 0.0, 0.0, 1.0");
         break;

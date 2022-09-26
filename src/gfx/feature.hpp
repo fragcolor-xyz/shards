@@ -183,6 +183,8 @@ struct Feature {
   // Shader entry points
   std::vector<shader::EntryPoint> shaderEntryPoints;
 
+  PipelineModifierPtr pipelineModifier;
+
   virtual ~Feature() = default;
 
   template <typename T> void hashStatic(T &hasher) const {

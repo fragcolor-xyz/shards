@@ -17,11 +17,13 @@ struct Transform {
 
     FeaturePtr feature = std::make_shared<Feature>();
 
-    auto vec4Pos = std::make_unique<blocks::Custom>([&](shader::GeneratorContext &ctx) {
+    auto vec4Pos = std::make_unique<blocks::Custom>([&](shader::IGeneratorContext &ctx) {
       ctx.write("vec4<f32>(");
       ctx.readInput("position");
-      auto it = ctx.inputs.find("position");
-      if (it != ctx.inputs.end()) {
+
+      auto &stageInputs = ctx.getInputs();
+      auto it = stageInputs.find("position");
+      if (it != stageInputs.end()) {
         auto &type = it->second;
         switch (type.numComponents) {
         case 2:

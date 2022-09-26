@@ -23,6 +23,9 @@ typedef std::shared_ptr<Mesh> MeshPtr;
 struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
 
+struct IPipelineModifier;
+typedef std::shared_ptr<IPipelineModifier> PipelineModifierPtr;
+
 struct View;
 typedef std::shared_ptr<View> ViewPtr;
 
