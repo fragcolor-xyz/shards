@@ -33,8 +33,6 @@ use crate::types::NONE_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
 use crate::SHType_Enum;
-use egui::Context as EguiNativeContext;
-use egui::Image;
 
 shenum! {
   struct UIProperty {
@@ -61,9 +59,7 @@ lazy_static! {
     &UIPROPERTY_TYPES[..],
   )
     .into(),];
-  static ref TABLE_VALUE_TYPES: Vec<Type> = vec![common_type::float4,];
-  static ref OUTPUT_TABLE: Types = vec![Type::table(FULL_OUTPUT_KEYS, &TABLE_VALUE_TYPES)];
-  static ref OUTPUT_TYPES: Types = vec![common_type::float4, common_type::float2,];
+  static ref OUTPUT_TYPES: Types = vec![common_type::float4,];
 }
 
 pub struct GetProperty {
@@ -198,15 +194,16 @@ impl Shard for GetProperty {
     Ok(())
   }
 
+  fn hasCompose() -> bool {
+    true
+  }
+
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     let prop = self.get_ui_property()?;
     match prop {
       UIProperty::RemainingSpace => Ok(common_type::float4),
       _ => Err("Unknown property"),
     }
-  }
-  fn hasCompose() -> bool {
-    true
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
