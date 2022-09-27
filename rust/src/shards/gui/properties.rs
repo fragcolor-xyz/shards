@@ -6,13 +6,10 @@ use crate::core::registerShard;
 use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
-use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
-use crate::types::common_type::float4;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -20,18 +17,11 @@ use crate::types::InstanceData;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::RawString;
-use crate::types::ShardsVar;
-use crate::types::Table;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::ANY_TYPES;
-use crate::types::FLOAT2_TYPES_SLICE;
 use crate::types::FRAG_CC;
 use crate::types::NONE_TYPES;
-use crate::types::SHARDS_OR_NONE_TYPES;
-use crate::types::STRING_OR_NONE_SLICE;
 use crate::SHType_Enum;
 
 shenum! {
@@ -43,7 +33,7 @@ shenum! {
 
 shenum_types! {
   UIPropertyInfo,
-  const UIPropertyCC = fourCharacterCode(*b"ppty");
+  const UIPROPERTY_CC = fourCharacterCode(*b"ppty");
   static ref UIPropertyEnumInfo;
   static ref UIPROPERTY_TYPE: Type;
   static ref UIPROPERTY_TYPES: Vec<Type>;
@@ -51,7 +41,6 @@ shenum_types! {
   static ref SEQ_OF_UIPROPERTY_TYPES: Vec<Type>;
 }
 
-const FULL_OUTPUT_KEYS: &[RawString] = &[shstr!("ScreenRegion")];
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Property"),
@@ -67,7 +56,6 @@ pub struct GetProperty {
   requiring: ExposedTypes,
   parents: ParamVar,
   property: Var,
-  resultTable: Table,
 }
 
 impl Default for GetProperty {
@@ -81,7 +69,6 @@ impl Default for GetProperty {
       requiring: Vec::new(),
       parents,
       property: Var::default(),
-      resultTable: Table::new(),
     }
   }
 }
@@ -231,6 +218,6 @@ impl Shard for GetProperty {
 }
 
 pub fn registerShards() {
-  registerEnumType(FRAG_CC, UIPropertyCC, UIPropertyEnumInfo.as_ref().into());
+  registerEnumType(FRAG_CC, UIPROPERTY_CC, UIPropertyEnumInfo.as_ref().into());
   registerShard::<GetProperty>();
 }

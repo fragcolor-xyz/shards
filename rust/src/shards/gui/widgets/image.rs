@@ -7,12 +7,8 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
-use crate::shardsc::gfx_TexturePtr;
-use crate::shardsc::gfx_TexturePtr_getResolution_ext;
-use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
-use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -120,7 +116,9 @@ impl Shard for Image {
       SHType_Image => decl_override_activate! {
         data.activate = Image::image_activate;
       },
-      SHType_Object if unsafe { data.inputType.details.object.typeId } == image_util::TextureCC => {
+      SHType_Object
+        if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
+      {
         decl_override_activate! {
           data.activate = Image::texture_activate;
         }
@@ -153,7 +151,9 @@ impl Shard for Image {
 impl Image {
   fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let texture = self.cached_ui_image.get_egui_texture_from_image(input, ui)?;
+      let texture = self
+        .cached_ui_image
+        .get_egui_texture_from_image(input, ui)?;
 
       let scale = image_util::get_scale(&self.scale)?;
       ui.image(texture, texture.size_vec2() * scale);

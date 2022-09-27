@@ -5,27 +5,18 @@ use crate::fourCharacterCode;
 use crate::shardsc::gfx_TexturePtr;
 use crate::shardsc::gfx_TexturePtr_getResolution_ext;
 use crate::shardsc::SHImage;
-use crate::shardsc::SHType_Image;
-use crate::shardsc::SHType_Object;
 use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::types::common_type;
-use crate::types::Context;
-use crate::types::ExposedTypes;
-use crate::types::InstanceData;
-use crate::types::OptionalString;
 use crate::types::ParamVar;
-use crate::types::Parameters;
 use crate::types::Type;
-use crate::types::Types;
 use crate::types::Var;
 use crate::types::FRAG_CC;
-use std::intrinsics::transmute;
 use std::ptr::null_mut;
 
-pub const TextureCC: i32 = fourCharacterCode(*b"tex_");
+pub const TEXTURE_CC: i32 = fourCharacterCode(*b"tex_");
 
 lazy_static! {
-  pub static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
+  pub static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TEXTURE_CC);
   pub static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
 }
 
@@ -70,7 +61,9 @@ impl CachedUIImage {
   }
 }
 
-pub fn get_egui_texture_from_gfx(input: &Var) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
+pub fn get_egui_texture_from_gfx(
+  input: &Var,
+) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
   let texture_ptr: *mut gfx_TexturePtr =
     Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
   let texture_size = {

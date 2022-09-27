@@ -2,20 +2,12 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::RenderTarget;
-use crate::fourCharacterCode;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::image_util;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
-use crate::shardsc::gfx_TexturePtr;
-use crate::shardsc::gfx_TexturePtr_getResolution_ext;
-use crate::shardsc::linalg_aliases_int2;
-use crate::shardsc::SHImage;
-use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
-use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
-use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -25,10 +17,6 @@ use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::FRAG_CC;
-use std::borrow::BorrowMut;
-
-const TextureCC: i32 = fourCharacterCode(*b"tex_");
 
 lazy_static! {
   static ref TEXTURE_TYPES: Vec<Type> = vec![*image_util::TEXTURE_TYPE];
@@ -126,7 +114,9 @@ impl Shard for RenderTarget {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     match data.inputType.basicType {
-      SHType_Object if unsafe { data.inputType.details.object.typeId } == TextureCC => {
+      SHType_Object
+        if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
+      {
         decl_override_activate! {
           data.activate = RenderTarget::texture_activate;
         }

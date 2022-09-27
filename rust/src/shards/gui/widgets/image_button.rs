@@ -8,9 +8,6 @@ use crate::shards::gui::util;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
-use crate::shardsc::gfx_TexturePtr;
-use crate::shardsc::gfx_TexturePtr_getResolution_ext;
-use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Bool;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
@@ -198,7 +195,9 @@ impl Shard for ImageButton {
       SHType_Image => decl_override_activate! {
         data.activate = ImageButton::image_activate;
       },
-      SHType_Object if unsafe { data.inputType.details.object.typeId } == image_util::TextureCC => {
+      SHType_Object
+        if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
+      {
         decl_override_activate! {
           data.activate = ImageButton::texture_activate;
         }
@@ -245,7 +244,9 @@ impl ImageButton {
   fn activateImage(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let (texture_id, texture_size) = {
-        let texture = self.cached_ui_image.get_egui_texture_from_image(input, ui)?;
+        let texture = self
+          .cached_ui_image
+          .get_egui_texture_from_image(input, ui)?;
         let scale = image_util::get_scale(&self.scale)?;
         (texture.into(), texture.size_vec2() * scale)
       };
