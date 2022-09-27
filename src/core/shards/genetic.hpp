@@ -632,16 +632,20 @@ struct Mutant {
       destroyShards();
       _mutations = value;
       if (_mutations.valueType == Seq) {
+        uint64_t idx = 0;
         for (auto &mut : _mutations) {
           if (mut.valueType == ShardRef) {
             auto blk = mut.payload.shardValue;
             blk->owned = true;
+            blk->flowIndex = idx;
           } else if (mut.valueType == Seq) {
             for (auto &bv : mut) {
               auto blk = bv.payload.shardValue;
               blk->owned = true;
+              blk->flowIndex = idx;
             }
           }
+          idx++;
         }
       }
     } break;

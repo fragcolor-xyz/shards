@@ -126,6 +126,7 @@ struct Cond {
               assert(!val.payload.shardValue->owned);
               val.payload.shardValue->owned = true;
               _actions[idx].push_back(val.payload.shardValue);
+              val.payload.shardValue->flowIndex = uint32_t(idx);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == ShardRef);
@@ -133,6 +134,7 @@ struct Cond {
                 assert(!blk->owned);
                 blk->owned = true;
                 _actions[idx].push_back(blk);
+                blk->flowIndex = uint32_t(idx);
               }
             }
 
@@ -142,6 +144,7 @@ struct Cond {
               assert(!val.payload.shardValue->owned);
               val.payload.shardValue->owned = true;
               _conditions[idx].push_back(val.payload.shardValue);
+              val.payload.shardValue->flowIndex = uint32_t(idx);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == ShardRef);
@@ -149,6 +152,7 @@ struct Cond {
                 assert(!blk->owned);
                 blk->owned = true;
                 _conditions[idx].push_back(blk);
+                blk->flowIndex = uint32_t(idx);
               }
             }
           }

@@ -309,6 +309,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     assert(!blk->owned);
     blk->owned = true;
     shards.push_back(blk);
+    blk->flowIndex = uint32_t(shards.size() - 1);
   }
 
   // Also removes ownership of the shard
@@ -317,6 +318,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     if (findIt != shards.end()) {
       shards.erase(findIt);
       blk->owned = false;
+      blk->flowIndex = 0;
     } else {
       throw shards::SHException("removeShard: shard not found!");
     }

@@ -489,12 +489,14 @@ public:
       assert(!_shardsParam.payload.shardValue->owned);
       _shardsParam.payload.shardValue->owned = true;
       _shardsArray.push_back(_shardsParam.payload.shardValue);
+      _shardsParam.payload.shardValue->flowIndex = uint32_t(_shardsArray.size() - 1);
     } else {
       for (uint32_t i = 0; i < _shardsParam.payload.seqValue.len; i++) {
         auto blk = _shardsParam.payload.seqValue.elements[i].payload.shardValue;
         assert(!blk->owned);
         blk->owned = true;
         _shardsArray.push_back(blk);
+        blk->flowIndex = uint32_t(_shardsArray.size() - 1);
       }
     }
 

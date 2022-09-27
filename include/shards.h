@@ -749,6 +749,9 @@ struct Shard {
   // flag to ensure shards are unique when flows/wires
   SHBool owned;
 
+  // The index of this shard in the context (shards, wire, seq etc) using it (if any, and owned is true)
+  uint32_t flowIndex;
+
   // \-- The interface to fill --/
 
   SHNameProc name;             // Returns the name of the shard, do not free the string,
