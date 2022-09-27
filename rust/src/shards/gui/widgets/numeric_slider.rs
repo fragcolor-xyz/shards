@@ -12,7 +12,7 @@ use super::IntSlider;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EGUI_UI_TYPE;
+
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -22,7 +22,7 @@ use crate::types::InstanceData;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
+
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
@@ -256,8 +256,8 @@ impl_ui_slider!(
   "UI.IntSlider",
   "UI.IntSlider-rust-0x20200101",
   INT_VAR_SLICE,
-  int,
-  int_var,
+  INT,
+  INT_VAR,
   i64,
   INT_SLIDER_PARAMETERS,
   INT_TYPES
@@ -268,8 +268,8 @@ impl_ui_slider!(
   "UI.FloatSlider",
   "UI.FloatSlider-rust-0x20200101",
   FLOAT_VAR_SLICE,
-  float,
-  float_var,
+  FLOAT,
+  FLOAT_VAR,
   f64,
   FLOAT_SLIDER_PARAMETERS,
   FLOAT_TYPES
@@ -508,8 +508,8 @@ impl_ui_n_slider!(
   "UI.Float2Slider",
   "UI.Float2Slider-rust-0x20200101",
   FLOAT2_VAR_SLICE,
-  float2,
-  float2_var,
+  FLOAT2,
+  FLOAT2_VAR,
   f64,
   FLOAT2_SLIDER_PARAMETERS,
   FLOAT2_TYPES
@@ -521,8 +521,8 @@ impl_ui_n_slider!(
   "UI.Float3Slider",
   "UI.Float3Slider-rust-0x20200101",
   FLOAT3_VAR_SLICE,
-  float3,
-  float3_var,
+  FLOAT3,
+  FLOAT3_VAR,
   f32,
   FLOAT3_SLIDER_PARAMETERS,
   FLOAT3_TYPES
@@ -534,8 +534,8 @@ impl_ui_n_slider!(
   "UI.Float4Slider",
   "UI.Float4Slider-rust-0x20200101",
   FLOAT4_VAR_SLICE,
-  float4,
-  float4_var,
+  FLOAT4,
+  FLOAT4_VAR,
   f32,
   FLOAT4_SLIDER_PARAMETERS,
   FLOAT4_TYPES
@@ -547,8 +547,8 @@ impl_ui_n_slider!(
   "UI.Int2Slider",
   "UI.Int2Slider-rust-0x20200101",
   INT2_VAR_SLICE,
-  int2,
-  int2_var,
+  INT2,
+  INT2_VAR,
   i64,
   INT2_SLIDER_PARAMETERS,
   INT2_TYPES
@@ -560,8 +560,8 @@ impl_ui_n_slider!(
   "UI.Int3Slider",
   "UI.Int3Slider-rust-0x20200101",
   INT3_VAR_SLICE,
-  int3,
-  int3_var,
+  INT3,
+  INT3_VAR,
   i32,
   INT3_SLIDER_PARAMETERS,
   INT3_TYPES
@@ -573,8 +573,8 @@ impl_ui_n_slider!(
   "UI.Int4Slider",
   "UI.Int4Slider-rust-0x20200101",
   INT4_VAR_SLICE,
-  int4,
-  int4_var,
+  INT4,
+  INT4_VAR,
   i32,
   INT4_SLIDER_PARAMETERS,
   INT4_TYPES

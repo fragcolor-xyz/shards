@@ -3,7 +3,7 @@
 
 use crate::core::registerEnumType;
 use crate::core::registerShard;
-use crate::fourCharacterCode;
+use crate::four_character_code;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
@@ -38,7 +38,7 @@ shenum! {
 
 shenum_types! {
   AnchorInfo,
-  const AnchorCC = fourCharacterCode(*b"egAn");
+  const AnchorCC = four_character_code(*b"egAn");
   static ref AnchorEnumInfo;
   static ref ANCHOR_TYPE: Type;
   static ref ANCHOR_TYPES: Vec<Type>;
@@ -79,7 +79,7 @@ shenum! {
 
 shenum_types! {
   WindowFlagsInfo,
-  const WindowFlagsCC = fourCharacterCode(*b"egWF");
+  const WindowFlagsCC = four_character_code(*b"egWF");
   static ref WindowFlagsEnumInfo;
   static ref WINDOW_FLAGS_TYPE: Type;
   static ref WINDOW_FLAGS_TYPES: Vec<Type>;
@@ -121,7 +121,7 @@ mod panels;
 mod scope;
 mod window;
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Area>();
   registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
   registerShard::<Scope>();

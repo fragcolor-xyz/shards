@@ -1,48 +1,48 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
-use crate::fourCharacterCode;
+use crate::four_character_code;
 use crate::shard::Shard;
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHType_Bool;
 use crate::shardsc::SHType_Bytes;
 use crate::shardsc::SHType_Int;
 use crate::shardsc::SHType_None;
-use crate::shardsc::SHType_Seq;
+
 use crate::shardsc::SHType_String;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
-use crate::types::InstanceData;
+
 use crate::types::OptionalString;
-use crate::types::ParamVar;
+
 use crate::types::Parameters;
 use crate::types::Seq;
-use crate::types::Table;
+
 use crate::types::Type;
 use crate::types::ANYS_TYPES;
 use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BYTES_TYPES;
-use crate::types::ENUMS_TYPE;
+
 use crate::types::ENUMS_TYPES;
 use crate::types::FRAG_CC;
 use crate::types::INT_TYPES_SLICE;
 use crate::types::STRINGS_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
 use crate::types::STRING_TYPES;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
-use core::time::Duration;
-use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
+
+use parity_scale_codec::{Compact, Decode, Encode};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
-use sp_core::storage::StorageKey;
-use sp_core::{blake2_128, ecdsa, ed25519, sr25519, twox_128};
-use std::convert::{TryFrom, TryInto};
-use std::ffi::CStr;
-use std::rc::Rc;
+
+use sp_core::{blake2_128, ecdsa, sr25519, twox_128};
+use std::convert::{TryInto};
+
+
 use std::str::FromStr;
 
 lazy_static! {
@@ -91,10 +91,10 @@ lazy_static! {
   )
     .into()];
   static ref METADATA_TYPE: Type = {
-    let mut t = common_type::object;
+    let mut t = common_type::OBJECT;
     t.details.object = SHTypeInfo_Details_Object {
       vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"subM"),
+      typeId: four_character_code(*b"subM"),
     };
     t
   };
@@ -750,7 +750,7 @@ impl Shard for SHDecode {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<AccountId>();
   registerShard::<SHStorageKey>();
   registerShard::<SHStorageMap>();

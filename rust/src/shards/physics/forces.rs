@@ -4,37 +4,35 @@
 use crate::core::registerShard;
 use crate::shards::physics::RigidBody;
 use crate::shards::physics::Simulation;
-use crate::shards::physics::EXPOSED_SIMULATION;
-use crate::shards::physics::RIGIDBODIES_TYPE;
+
+
 use crate::shards::physics::RIGIDBODIES_TYPES_SLICE;
 use crate::shards::physics::RIGIDBODY_TYPE;
-use crate::shards::physics::RIGIDBODY_VAR_TYPE;
+
 use crate::shards::physics::SIMULATION_TYPE;
-use crate::shardsc::SHPointer;
+
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
+
 use crate::types::Type;
-use crate::types::ANY_TYPES;
+
 use crate::Shard;
 use crate::Types;
 use crate::Var;
-use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
-use rapier3d::geometry::{
-  BroadPhase, ColliderSet, ContactEvent, InteractionGroups, IntersectionEvent, NarrowPhase, Ray,
-};
-use rapier3d::na::{Point3, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
+
+
+use rapier3d::na::{Vector3};
+
 use std::convert::TryInto;
-use std::rc::Rc;
+
 
 lazy_static! {
-  pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::float3];
-  pub static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::float3];
+  pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::FLOAT3];
+  pub static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::FLOAT3];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("RigidBody"),
     shccstr!("The rigidbody to apply the impulse to."),
@@ -153,6 +151,6 @@ impl Shard for Impulse {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Impulse>();
 }

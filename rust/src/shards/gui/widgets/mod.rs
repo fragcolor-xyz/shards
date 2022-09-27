@@ -3,11 +3,11 @@
 
 use crate::core::registerShard;
 use crate::shardsc;
-use crate::types::common_type;
+
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
-use crate::types::Type;
+
 use crate::types::Var;
 
 /// Clickable button with a text label.
@@ -212,7 +212,7 @@ mod spinner;
 mod text_input;
 mod tooltip;
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Button>();
   registerShard::<Checkbox>();
   registerShard::<ColorInput>();

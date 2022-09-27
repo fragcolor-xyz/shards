@@ -1,12 +1,11 @@
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::types::{
-  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
-  SEQ_OF_SEQ_OF_FLOAT_TYPES, STRINGS_TYPES, STRING_TYPES,
+  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, STRING_TYPES,
 };
 use crate::{
   core::registerShard,
   shard::Shard,
-  types::{common_type, Context, Parameters, Type, Types, Var, ANY_TYPES, FRAG_CC},
+  types::{common_type, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
 use std::alloc::Global;
 use std::ffi::CString;
@@ -18,7 +17,7 @@ pub type OnnxModel =
 
 lazy_static! {
   static ref MODEL_TYPE: Type = {
-    let mut t = common_type::object;
+    let mut t = common_type::OBJECT;
     t.details.object = SHTypeInfo_Details_Object {
       vendorId: FRAG_CC, // 'frag'
       typeId: 0x6f6e6e78, // 'onnx'
@@ -288,7 +287,7 @@ impl Shard for Activate {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Load>();
   registerShard::<Activate>();
 }

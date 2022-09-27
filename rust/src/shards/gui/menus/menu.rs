@@ -210,7 +210,7 @@ impl Shard for Menu {
       self.contents.compose(data)?;
     }
 
-    Ok(common_type::bool)
+    Ok(common_type::BOOL)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -354,7 +354,7 @@ impl Shard for MenuBar {
       self.contents.compose(data)?;
     }
 
-    Ok(common_type::bool)
+    Ok(common_type::BOOL)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {

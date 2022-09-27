@@ -1,34 +1,34 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shards::CRYPTO_KEY_TYPES;
-use crate::shardsc::SHType_String;
+
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
-use crate::types::InstanceData;
+
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
 use crate::types::Type;
 use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BYTES_TYPES;
 use crate::types::STRING_TYPES;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
-use core::time::Duration;
+
 use sp_core::crypto::Pair;
 use sp_core::ecdsa;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::ffi::CStr;
 
-static SIGNATURE_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
+use std::convert::TryInto;
+
+
+static SIGNATURE_TYPES: &[Type] = &[common_type::BYTES, common_type::BYTES_VAR];
 
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
@@ -37,7 +37,7 @@ lazy_static! {
     CRYPTO_KEY_TYPES
   )
     .into()];
-  static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
+  static ref PK_TYPES: Vec<Type> = vec![common_type::BYTES, common_type::STRING];
   static ref PK_PARAMETERS: Parameters = vec![(
     cstr!("Compressed"),
     shccstr!("If the output PublicKey should use the compressed format."),
@@ -366,7 +366,7 @@ impl Shard for ECDSARecover {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<ECDSASign>();
   registerShard::<ECDSAPubKey>();
   registerShard::<ECDSAPrivKey>();

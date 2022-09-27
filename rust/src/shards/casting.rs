@@ -1,32 +1,32 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
-use crate::types::ParamVar;
+
 use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
 use crate::types::Type;
 use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BYTES_TYPES;
 use crate::types::INT_TYPES;
 use crate::types::STRING_TYPES;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
-use core::time::Duration;
-use std::convert::TryFrom;
+
+
 use std::convert::TryInto;
-use std::ffi::CStr;
+
 use wasabi_leb128::{ReadLeb128, WriteLeb128};
 
 lazy_static! {
-  pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string,];
+  pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::BYTES, common_type::STRING,];
 }
 
 struct ToBase58 {
@@ -263,7 +263,7 @@ impl Shard for FromLEB128 {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<ToBase58>();
   registerShard::<FromBase58>();
   registerShard::<ToLEB128>();

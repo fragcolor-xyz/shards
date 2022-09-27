@@ -24,7 +24,7 @@ use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::BOOL_TYPES_SLICE;
+
 use crate::types::NONE_TYPES;
 use crate::types::STRING_TYPES;
 use std::cmp::Ordering;
@@ -153,7 +153,7 @@ impl Shard for CodeEditor {
       self.mutable_text = false;
     }
 
-    Ok(common_type::string)
+    Ok(common_type::STRING)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -161,7 +161,7 @@ impl Shard for CodeEditor {
       self.exposing.clear();
 
       let exp_info = ExposedInfo {
-        exposedType: common_type::string,
+        exposedType: common_type::STRING,
         name: self.variable.get_name(),
         help: cstr!("The exposed string variable").into(),
         ..ExposedInfo::default()
@@ -195,7 +195,7 @@ impl Shard for CodeEditor {
     self.language.warmup(ctx);
 
     if self.should_expose {
-      self.variable.get_mut().valueType = common_type::string.basicType;
+      self.variable.get_mut().valueType = common_type::STRING.basicType;
     }
 
     Ok(())

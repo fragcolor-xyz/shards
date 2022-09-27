@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shards::CRYPTO_KEY_TYPES;
@@ -10,19 +10,19 @@ use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
 use crate::types::Type;
 use crate::types::BYTES_TYPES;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
 use chacha20poly1305::aead::{Aead, NewAead};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
-use std::convert::TryInto;
+
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes,];
+  static ref INPUT_TYPES: Vec<Type> = vec![common_type::STRING, common_type::BYTES,];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     shccstr!("The private key to be used to encrypt/decrypt the input payload."),
@@ -229,7 +229,7 @@ impl Shard for Decrypt {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Encrypt>();
   registerShard::<Decrypt>();
 }

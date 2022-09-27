@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shardsc::SHImage;
@@ -10,19 +10,19 @@ use crate::shardsc::SHVarPayload__bindgen_ty_1;
 use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
 use crate::types::common_type;
-use crate::types::ClonedVar;
+
 use crate::types::Context;
-use crate::types::ParamVar;
+
 use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
 use crate::types::Type;
 use crate::types::IMAGE_TYPES;
 use crate::types::INT2_TYPES_SLICE;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
-use core::ptr::null_mut;
+
 use std::convert::TryInto;
 use tiny_skia::Pixmap;
 use usvg::ScreenSize;
@@ -48,7 +48,7 @@ impl From<&mut Pixmap> for Var {
 }
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
+  static ref INPUT_TYPES: Vec<Type> = vec![common_type::STRING, common_type::BYTES];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Size"),
     shccstr!(
@@ -161,6 +161,6 @@ impl Shard for ToImage {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<ToImage>();
 }

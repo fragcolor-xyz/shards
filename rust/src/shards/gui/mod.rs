@@ -3,7 +3,7 @@
 
 use crate::core::cloneVar;
 use crate::core::registerShard;
-use crate::fourCharacterCode;
+use crate::four_character_code;
 use crate::shard::Shard;
 use crate::shardsc;
 use crate::types::common_type;
@@ -15,38 +15,38 @@ use crate::types::Var;
 use crate::types::FRAG_CC;
 use egui::Context as EguiNativeContext;
 use std::ffi::c_void;
-use std::ffi::CStr;
 
-static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
-static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
+
+static ANY_VAR_SLICE: &[Type] = &[common_type::ANY, common_type::ANY_VAR];
+static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::BOOL, common_type::NONE];
 static BOOL_VAR_OR_NONE_SLICE: &[Type] =
-  &[common_type::bool, common_type::bool_var, common_type::none];
+  &[common_type::BOOL, common_type::BOOL_VAR, common_type::NONE];
 static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
-  common_type::color,
-  common_type::color_var,
-  common_type::none,
+  common_type::COLOR,
+  common_type::COLOR_VAR,
+  common_type::NONE,
 ];
-static FLOAT_VAR_SLICE: &[Type] = &[common_type::float, common_type::float_var];
-static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
+static FLOAT_VAR_SLICE: &[Type] = &[common_type::FLOAT, common_type::FLOAT_VAR];
+static FLOAT2_VAR_SLICE: &[Type] = &[common_type::FLOAT2, common_type::FLOAT2_VAR];
 static INT_VAR_OR_NONE_SLICE: &[Type] =
-  &[common_type::int, common_type::int_var, common_type::none];
-static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
+  &[common_type::INT, common_type::INT_VAR, common_type::NONE];
+static STRING_VAR_SLICE: &[Type] = &[common_type::STRING, common_type::STRING_VAR];
 static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
-  common_type::string,
-  common_type::shard,
-  common_type::shards,
-  common_type::none,
+  common_type::STRING,
+  common_type::SHARD,
+  common_type::SHARDS,
+  common_type::NONE,
 ];
 
-static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguU"));
+static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, four_character_code(*b"eguU"));
 static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];
 static EGUI_UI_SEQ_TYPE: Type = Type::seq(EGUI_UI_SLICE);
 
-static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
+static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, four_character_code(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
-const TextureCC: i32 = fourCharacterCode(*b"tex_");
+const TextureCC: i32 = four_character_code(*b"tex_");
 
 lazy_static! {
   static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
@@ -55,7 +55,7 @@ lazy_static! {
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
   static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
-  static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
+  static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::IMAGE, *TEXTURE_TYPE];
 }
 
 const CONTEXT_NAME: &str = "UI.Context";
@@ -208,11 +208,11 @@ impl egui::TextBuffer for MutableVar<'_> {
   }
 }
 
-pub fn registerShards() {
-  containers::registerShards();
+pub fn register_shards() {
+  containers::register_shards();
   registerShard::<EguiContext>();
-  layouts::registerShards();
-  menus::registerShards();
-  misc::registerShards();
-  widgets::registerShards();
+  layouts::register_shards();
+  menus::register_shards();
+  misc::register_shards();
+  widgets::register_shards();
 }

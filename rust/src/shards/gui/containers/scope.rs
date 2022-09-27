@@ -6,7 +6,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
-use crate::types::ExposedInfo;
+
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
 use crate::types::OptionalString;

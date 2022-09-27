@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::core::run_blocking;
 use crate::core::BlockingShard;
 use crate::shard::Shard;
 use crate::types::common_type;
-use crate::types::ClonedVar;
+
 use crate::types::Context;
 use crate::types::ParamVar;
 use crate::types::Parameters;
@@ -20,41 +20,41 @@ use crate::CString;
 use crate::Types;
 use crate::Var;
 use core::time::Duration;
-use reqwest::blocking::Request;
-use reqwest::blocking::RequestBuilder;
+
+
 use reqwest::blocking::Response;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{HeaderName, HeaderValue};
 use std::convert::TryInto;
-use std::ffi::CStr;
+
 
 const FULL_OUTPUT_KEYS: &[RawString] = &[shstr!("status"), shstr!("headers"), shstr!("body")];
 
-static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
+static URL_TYPES: &[Type] = &[common_type::STRING, common_type::STRING_VAR];
 static HEADERS_TYPES: &[Type] = &[
-  common_type::none,
-  common_type::string_table,
-  common_type::string_table_var,
+  common_type::NONE,
+  common_type::STRING_TABLE,
+  common_type::STRING_TABLE_VAR,
 ];
 
 lazy_static! {
-  static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::none, common_type::string_table];
+  static ref GET_INPUT_TYPES: Vec<Type> = vec![common_type::NONE, common_type::STRING_TABLE];
   static ref POST_INPUT_TYPES: Vec<Type> = vec![
-    common_type::none,
-    common_type::string_table,
-    common_type::bytes,
-    common_type::string
+    common_type::NONE,
+    common_type::STRING_TABLE,
+    common_type::BYTES,
+    common_type::STRING
   ];
-  static ref STR_OUTPUT_TYPE: Vec<Type> = vec![common_type::string];
-  static ref BYTES_OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
+  static ref STR_OUTPUT_TYPE: Vec<Type> = vec![common_type::STRING];
+  static ref BYTES_OUTPUT_TYPE: Vec<Type> = vec![common_type::BYTES];
   static ref _STR_FULL_OUTPUT_TYPES: Vec<Type> = vec![
-    common_type::int,
-    common_type::string_table,
-    common_type::string
+    common_type::INT,
+    common_type::STRING_TABLE,
+    common_type::STRING
   ];
   static ref _BYTES_FULL_OUTPUT_TYPES: Vec<Type> = vec![
-    common_type::int,
-    common_type::string_table,
-    common_type::bytes
+    common_type::INT,
+    common_type::STRING_TABLE,
+    common_type::BYTES
   ];
   static ref STR_FULL_OUTPUT_TTYPE: Type = Type::table(FULL_OUTPUT_KEYS, &_STR_FULL_OUTPUT_TYPES);
   static ref BYTES_FULL_OUTPUT_TTYPE: Type =
@@ -445,7 +445,7 @@ post_like!(Put, put, "Http.Put", "Http.Put-rust-0x20200101");
 post_like!(Patch, patch, "Http.Patch", "Http.Patch-rust-0x20200101");
 post_like!(Delete, delete, "Http.Delete", "Http.Delete-rust-0x20200101");
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Get>();
   registerShard::<Head>();
   registerShard::<Post>();

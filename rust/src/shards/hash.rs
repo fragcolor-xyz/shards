@@ -1,42 +1,40 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::types::common_type;
-use crate::types::ClonedVar;
+
 use crate::types::Context;
-use crate::types::ParamVar;
-use crate::types::Parameters;
+
 use crate::types::Seq;
-use crate::types::Table;
+
 use crate::types::Type;
 use crate::types::BYTES_TYPES;
-use crate::CString;
-use crate::Types;
+
 use crate::Var;
-use core::time::Duration;
+
 use sha2::{Digest, Sha256, Sha512};
 use sp_core::twox_128;
 use sp_core::twox_64;
 use sp_core::{blake2_128, blake2_256};
-use std::convert::TryFrom;
+
 use std::convert::TryInto;
-use std::ffi::CStr;
+
 use tiny_keccak::{Hasher, Keccak, Sha3};
 
 lazy_static! {
   pub static ref INPUT_TYPES: Vec<Type> = vec![
-    common_type::bytes,
-    common_type::bytezs,
-    common_type::string,
-    common_type::strings
+    common_type::BYTES,
+    common_type::BYTEZS,
+    common_type::STRING,
+    common_type::STRINGS
   ];
 }
 
 macro_rules! add_hasher {
   ($shard_name:ident, $name_str:literal, $hash:literal, $algo:expr, $size:literal) => {
+    #[allow(non_camel_case_types)]
     struct $shard_name {
       output: Vec<u8>,
     }
@@ -104,6 +102,7 @@ add_hasher!(
   Keccak::v256,
   32
 );
+
 add_hasher!(
   Keccak_512,
   "Hash.Keccak-512",
@@ -111,6 +110,7 @@ add_hasher!(
   Keccak::v512,
   64
 );
+
 add_hasher!(
   SHSha3_256,
   "Hash.Sha3-256",
@@ -118,6 +118,7 @@ add_hasher!(
   Sha3::v256,
   32
 );
+
 add_hasher!(
   SHSha3_512,
   "Hash.Sha3-512",
@@ -202,6 +203,7 @@ add_hasher2!(
 
 macro_rules! add_hasher3 {
   ($shard_name:ident, $name_str:literal, $hash:literal, $algo:expr, $size:literal) => {
+    #[allow(non_camel_case_types)]
     struct $shard_name {
       output: Vec<u8>,
       scratch: Vec<u8>,
@@ -298,7 +300,7 @@ add_hasher3!(
   16
 );
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Keccak_256>();
   registerShard::<Keccak_512>();
   registerShard::<SHSha3_256>();

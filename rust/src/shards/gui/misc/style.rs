@@ -19,7 +19,7 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 
 lazy_static! {
-  static ref INPUT_TYPES: Types = vec![common_type::any_table, common_type::any_table_var];
+  static ref INPUT_TYPES: Types = vec![common_type::ANY_TABLE, common_type::ANY_TABLE_VAR];
 }
 
 macro_rules! apply_style {

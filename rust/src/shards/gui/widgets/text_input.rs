@@ -147,7 +147,7 @@ impl Shard for TextInput {
       self.mutable_text = false;
     }
 
-    Ok(common_type::string)
+    Ok(common_type::STRING)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -155,7 +155,7 @@ impl Shard for TextInput {
       self.exposing.clear();
 
       let exp_info = ExposedInfo {
-        exposedType: common_type::string,
+        exposedType: common_type::STRING,
         name: self.variable.get_name(),
         help: cstr!("The exposed string variable").into(),
         ..ExposedInfo::default()
@@ -183,7 +183,7 @@ impl Shard for TextInput {
     self.multiline.warmup(ctx);
 
     if self.should_expose {
-      self.variable.get_mut().valueType = common_type::string.basicType;
+      self.variable.get_mut().valueType = common_type::STRING.basicType;
     }
 
     Ok(())

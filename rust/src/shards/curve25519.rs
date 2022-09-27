@@ -1,37 +1,37 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::shards::CRYPTO_KEY_TYPES;
-use crate::shardsc::SHType_String;
+
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
-use crate::types::InstanceData;
+
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
 use crate::types::Type;
 use crate::types::BYTES_TYPES;
 use crate::types::STRING_TYPES;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
-use core::time::Duration;
+
 use sp_core::crypto::Pair;
 use sp_core::ed25519;
 use sp_core::sr25519;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::ffi::CStr;
 
-static SIGNATURE_TYPES: &[Type] = &[common_type::bytezs, common_type::bytess_var];
+use std::convert::TryInto;
+
+
+static SIGNATURE_TYPES: &[Type] = &[common_type::BYTEZS, common_type::BYTESS_VAR];
 
 lazy_static! {
-  static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
+  static ref PK_TYPES: Vec<Type> = vec![common_type::BYTES, common_type::STRING];
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Key"),
     shccstr!("The private key to be used to sign the hashed message input."),
@@ -275,7 +275,7 @@ add_priv_key!(
   32
 );
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Sr25519Sign>();
   registerShard::<Ed25519Sign>();
   registerShard::<Sr25519PublicKey>();

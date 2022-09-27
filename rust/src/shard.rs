@@ -2,24 +2,24 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 use crate::core::abortWire;
-use crate::core::Core;
+
 use crate::shardsc::SHContext;
 use crate::shardsc::SHError;
 use crate::shardsc::SHExposedTypesInfo;
 use crate::shardsc::SHInstanceData;
 use crate::shardsc::SHOptionalString;
-use crate::shardsc::SHParameterInfo;
+
 use crate::shardsc::SHParametersInfo;
-use crate::shardsc::SHSeq;
+
 use crate::shardsc::SHShardComposeResult;
-use crate::shardsc::SHString;
+
 use crate::shardsc::SHTable;
 use crate::shardsc::SHTypeInfo;
 use crate::shardsc::SHTypesInfo;
 use crate::shardsc::SHVar;
 use crate::shardsc::SHWire;
 use crate::shardsc::Shard as CShard;
-use crate::shardsc::ShardPtr;
+
 use crate::types::ComposeResult;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -30,13 +30,13 @@ use crate::types::Table;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::Wire;
-use core::convert::TryInto;
+
+
 use core::result::Result;
-use core::slice;
-use std::ffi::CStr;
+
+
 use std::ffi::CString;
-use std::os::raw::c_char;
+
 
 pub trait Shard {
   fn registerName() -> &'static str

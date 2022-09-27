@@ -1,30 +1,30 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
-use crate::types::common_type;
+
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::OptionalString;
-use crate::types::ParamVar;
+
 use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
 use crate::types::Type;
-use crate::types::BOOL_TYPES_SLICE;
+
 use crate::types::INT_TYPES;
-use crate::types::SEQ_OF_STRINGS_TYPES;
+
 use crate::types::STRING_TYPES;
 use crate::types::STRING_TYPES_SLICE;
 use crate::CString;
-use crate::Types;
+
 use crate::Var;
-use chrono::{DateTime, LocalResult, TimeZone, Utc};
-use core::convert::TryFrom;
+use chrono::{LocalResult, TimeZone, Utc};
+
 use core::convert::TryInto;
-use usvg::fontdb::Database;
+
 
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![
@@ -139,6 +139,6 @@ impl Default for CSVWrite {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<DateFormat>();
 }

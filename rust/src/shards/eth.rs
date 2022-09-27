@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::types::common_type;
@@ -10,13 +10,13 @@ use crate::types::Context;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
-use crate::types::Table;
+
 use crate::types::Type;
 use crate::types::BOOL_TYPES_SLICE;
 use crate::types::STRING_OR_NONE_SLICE;
 use crate::types::STRING_VAR_OR_NONE_SLICE;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
 use core::convert::TryFrom;
 use ethabi::Contract;
@@ -26,10 +26,10 @@ use ethereum_types::U256;
 use std::convert::TryInto;
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![common_type::anys];
-  static ref DECODE_INPUT_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
-  static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::bytes];
-  static ref DECODE_OUTPUT_TYPES: Vec<Type> = vec![common_type::anys];
+  static ref INPUT_TYPES: Vec<Type> = vec![common_type::ANYS];
+  static ref DECODE_INPUT_TYPES: Vec<Type> = vec![common_type::BYTES, common_type::STRING];
+  static ref OUTPUT_TYPES: Vec<Type> = vec![common_type::BYTES];
+  static ref DECODE_OUTPUT_TYPES: Vec<Type> = vec![common_type::ANYS];
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("ABI"),
@@ -424,7 +424,7 @@ impl Shard for DecodeCall {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<EncodeCall>();
   registerShard::<DecodeCall>();
 }

@@ -2,7 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::ColorInput;
-use crate::core::cloneVar;
+
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::COLOR_VAR_OR_NONE_SLICE;
@@ -131,7 +131,7 @@ impl Shard for ColorInput {
       }
     }
 
-    Ok(common_type::color)
+    Ok(common_type::COLOR)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -139,7 +139,7 @@ impl Shard for ColorInput {
       self.exposing.clear();
 
       let exp_info = ExposedInfo {
-        exposedType: common_type::color,
+        exposedType: common_type::COLOR,
         name: self.variable.get_name(),
         help: cstr!("The exposed color variable").into(),
         ..ExposedInfo::default()
@@ -167,7 +167,7 @@ impl Shard for ColorInput {
     self.variable.warmup(ctx);
 
     if self.should_expose {
-      self.variable.get_mut().valueType = common_type::color.basicType;
+      self.variable.get_mut().valueType = common_type::COLOR.basicType;
     }
 
     Ok(())

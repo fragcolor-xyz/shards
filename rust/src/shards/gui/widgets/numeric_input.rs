@@ -12,7 +12,7 @@ use super::IntInput;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::EGUI_UI_TYPE;
+
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -22,7 +22,7 @@ use crate::types::InstanceData;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Seq;
+
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
@@ -222,8 +222,8 @@ impl_ui_input!(
   "UI.IntInput",
   "UI.IntInput-rust-0x20200101",
   INT_VAR_SLICE,
-  int,
-  int_var,
+  INT,
+  INT_VAR,
   i64,
   INT_INPUT_PARAMETERS,
   INT_TYPES
@@ -234,8 +234,8 @@ impl_ui_input!(
   "UI.FloatInput",
   "UI.FloatInput-rust-0x20200101",
   FLOAT_VAR_SLICE,
-  float,
-  float_var,
+  FLOAT,
+  FLOAT_VAR,
   f64,
   FLOAT_INPUT_PARAMETERS,
   FLOAT_TYPES
@@ -247,8 +247,8 @@ macro_rules! impl_ui_n_input {
 
     lazy_static! {
       static ref $parameters: Parameters = vec![(
-        cstr!("Variable"),
-        cstr!("The variable that holds the input value."),
+        cstr!("VARIABLE"),
+        cstr!("THE variable that holds the input value."),
         $static,
       )
         .into(),];
@@ -437,8 +437,8 @@ impl_ui_n_input!(
   "UI.Float2Input",
   "UI.Float2Input-rust-0x20200101",
   FLOAT2_VAR_SLICE,
-  float2,
-  float2_var,
+  FLOAT2,
+  FLOAT2_VAR,
   f64,
   FLOAT2_INPUT_PARAMETERS,
   FLOAT2_TYPES
@@ -450,8 +450,8 @@ impl_ui_n_input!(
   "UI.Float3Input",
   "UI.Float3Input-rust-0x20200101",
   FLOAT3_VAR_SLICE,
-  float3,
-  float3_var,
+  FLOAT3,
+  FLOAT3_VAR,
   f32,
   FLOAT3_INPUT_PARAMETERS,
   FLOAT3_TYPES
@@ -463,8 +463,8 @@ impl_ui_n_input!(
   "UI.Float4Input",
   "UI.Float4Input-rust-0x20200101",
   FLOAT4_VAR_SLICE,
-  float4,
-  float4_var,
+  FLOAT4,
+  FLOAT4_VAR,
   f32,
   FLOAT4_INPUT_PARAMETERS,
   FLOAT4_TYPES
@@ -476,8 +476,8 @@ impl_ui_n_input!(
   "UI.Int2Input",
   "UI.Int2Input-rust-0x20200101",
   INT2_VAR_SLICE,
-  int2,
-  int2_var,
+  INT2,
+  INT2_VAR,
   i64,
   INT2_INPUT_PARAMETERS,
   INT2_TYPES
@@ -489,8 +489,8 @@ impl_ui_n_input!(
   "UI.Int3Input",
   "UI.Int3Input-rust-0x20200101",
   INT3_VAR_SLICE,
-  int3,
-  int3_var,
+  INT3,
+  INT3_VAR,
   i32,
   INT3_INPUT_PARAMETERS,
   INT3_TYPES
@@ -502,8 +502,8 @@ impl_ui_n_input!(
   "UI.Int4Input",
   "UI.Int4Input-rust-0x20200101",
   INT4_VAR_SLICE,
-  int4,
-  int4_var,
+  INT4,
+  INT4_VAR,
   i32,
   INT4_INPUT_PARAMETERS,
   INT4_TYPES

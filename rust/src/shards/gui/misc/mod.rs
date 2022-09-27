@@ -18,7 +18,7 @@ struct Style {
 mod reset;
 mod style;
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Reset>();
   registerShard::<Style>();
 }

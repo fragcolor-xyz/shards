@@ -4,19 +4,19 @@
 extern crate crossbeam;
 extern crate rapier3d;
 
-use crate::fourCharacterCode;
+use crate::four_character_code;
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHType_Float4;
-use crate::shardsc::SHType_None;
+
 use crate::types::common_type;
-use crate::types::ClonedVar;
+
 use crate::types::ExposedInfo;
-use crate::types::ExposedTypes;
+
 use crate::types::ParamVar;
 use crate::types::Seq;
 use crate::types::Type;
 use crate::types::FRAG_CC;
-use crate::Var;
+
 use rapier3d::dynamics::{
   CCDSolver, IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet,
 };
@@ -30,10 +30,10 @@ use rapier3d::prelude::IslandManager;
 
 lazy_static! {
   static ref SIMULATION_TYPE: Type = {
-    let mut t = common_type::object;
+    let mut t = common_type::OBJECT;
     t.details.object = SHTypeInfo_Details_Object {
       vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"phys"),
+      typeId: four_character_code(*b"phys"),
     };
     t
   };
@@ -43,10 +43,10 @@ lazy_static! {
     *SIMULATION_TYPE
   )];
   static ref SHAPE_TYPE: Type = {
-    let mut t = common_type::object;
+    let mut t = common_type::OBJECT;
     t.details.object = SHTypeInfo_Details_Object {
       vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"phyS"),
+      typeId: four_character_code(*b"phyS"),
     };
     t
   };
@@ -56,35 +56,35 @@ lazy_static! {
   static ref SHAPES_VAR_TYPE: Type = Type::context_variable(&SHAPE_TYPE_VEC);
   static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
   static ref RIGIDBODY_TYPE: Type = {
-    let mut t = common_type::object;
+    let mut t = common_type::OBJECT;
     t.details.object = SHTypeInfo_Details_Object {
       vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"phyR"),
+      typeId: four_character_code(*b"phyR"),
     };
     t
   };
   static ref RIGIDBODY_TYPE_VEC: Vec<Type> = vec![*RIGIDBODY_TYPE];
   static ref RIGIDBODIES_TYPE: Type = Type::seq(&RIGIDBODY_TYPE_VEC);
   static ref RIGIDBODY_VAR_TYPE: Type = Type::context_variable(&RIGIDBODY_TYPE_VEC);
-  static ref RIGIDBODIES_TYPES_SLICE: Vec<Type> = vec![*RIGIDBODY_VAR_TYPE, common_type::none];
+  static ref RIGIDBODIES_TYPES_SLICE: Vec<Type> = vec![*RIGIDBODY_VAR_TYPE, common_type::NONE];
   static ref SHAPES_TYPES_SLICE: Vec<Type> =
-    vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::none];
+    vec![*SHAPE_VAR_TYPE, *SHAPES_VAR_TYPE, common_type::NONE];
 }
 
 static POSITIONS_TYPES_SLICE: &[Type] = &[
-  common_type::float3,
-  common_type::float3_var,
-  common_type::float3s,
-  common_type::float3s_var,
+  common_type::FLOAT3,
+  common_type::FLOAT3_VAR,
+  common_type::FLOAT3S,
+  common_type::FLOAT3S_VAR,
 ];
 static ROTATIONS_TYPES_SLICE: &[Type] = &[
-  common_type::float4,
-  common_type::float4_var,
-  common_type::float4s,
-  common_type::float4s_var,
+  common_type::FLOAT4,
+  common_type::FLOAT4_VAR,
+  common_type::FLOAT4S,
+  common_type::FLOAT4S_VAR,
 ];
-static POSITION_TYPES_SLICE: &[Type] = &[common_type::float3, common_type::float3_var];
-static ROTATION_TYPES_SLICE: &[Type] = &[common_type::float4, common_type::float4_var];
+static POSITION_TYPES_SLICE: &[Type] = &[common_type::FLOAT3, common_type::FLOAT3_VAR];
+static ROTATION_TYPES_SLICE: &[Type] = &[common_type::FLOAT4, common_type::FLOAT4_VAR];
 
 struct Simulation {
   pipeline: PhysicsPipeline,

@@ -143,7 +143,7 @@ impl Shard for Button {
       self.action.compose(data)?;
     }
 
-    Ok(common_type::bool)
+    Ok(common_type::BOOL)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {

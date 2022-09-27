@@ -4,7 +4,7 @@
 use crate::core::deriveType;
 use crate::core::registerShard;
 use crate::shards::physics::fill_seq_from_mat4;
-use crate::shards::physics::mat4_from_seq;
+
 use crate::shards::physics::BaseShape;
 use crate::shards::physics::RigidBody;
 use crate::shards::physics::Simulation;
@@ -12,14 +12,14 @@ use crate::shards::physics::EXPOSED_SIMULATION;
 use crate::shards::physics::POSITIONS_TYPES_SLICE;
 use crate::shards::physics::RIGIDBODY_TYPE;
 use crate::shards::physics::ROTATIONS_TYPES_SLICE;
-use crate::shards::physics::SHAPES_TYPE;
+
 use crate::shards::physics::SHAPES_TYPES_SLICE;
-use crate::shards::physics::SHAPES_VAR_TYPE;
+
 use crate::shards::physics::SHAPE_TYPE;
-use crate::shards::physics::SHAPE_VAR_TYPE;
+
 use crate::shards::physics::SIMULATION_TYPE;
 use crate::types::common_type;
-use crate::types::ClonedVar;
+
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -30,11 +30,11 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Type;
 use crate::types::ANY_TYPES;
-use crate::types::FLOAT4X2_TYPE;
-use crate::types::FLOAT4X2_TYPES;
+
+
 use crate::types::FLOAT4X4S_TYPE;
 use crate::types::FLOAT4X4_TYPE;
-use crate::types::FLOAT4X4_TYPES;
+
 use crate::types::NONE_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
 use crate::Shard;
@@ -42,23 +42,22 @@ use crate::Types;
 use crate::Var;
 use rapier3d::dynamics::RigidBodyBuilder;
 use rapier3d::dynamics::{
-  IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet, RigidBodyType,
+  RigidBodyHandle, RigidBodyType,
 };
 use rapier3d::geometry::{
-  BroadPhase, ColliderBuilder, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent,
-  NarrowPhase, SharedShape,
+  ColliderBuilder, ColliderHandle,
 };
-use rapier3d::math::Real;
+
 use rapier3d::na::Isometry3;
-use rapier3d::na::Projective3;
-use rapier3d::na::Rotation3;
-use rapier3d::na::Transform3;
+
+
+
 use rapier3d::na::{
-  Matrix, Matrix3, Matrix4, Quaternion, Similarity, Similarity3, Translation, UnitQuaternion,
-  Vector3, U3,
+  Matrix4, Quaternion, Translation, UnitQuaternion,
+  Vector3,
 };
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
-use rapier3d::prelude::Collider;
+
+
 use std::convert::TryInto;
 use std::rc::Rc;
 
@@ -132,9 +131,9 @@ impl RigidBody {
     // we need to derive the position parameter type, because if it's a sequence we should create multiple RigidBodies
     // TODO we should also use input type to determine the output if dynamic
     let pvt = deriveType(&self.position.get_param(), data);
-    if pvt.0 == common_type::float3 {
+    if pvt.0 == common_type::FLOAT3 {
       Ok(*FLOAT4X4_TYPE)
-    } else if pvt.0 == common_type::float3s {
+    } else if pvt.0 == common_type::FLOAT3S {
       Ok(*FLOAT4X4S_TYPE)
     } else {
       Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
@@ -796,7 +795,7 @@ impl Shard for KinematicRigidBody {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<DynamicRigidBody>();
   registerShard::<StaticRigidBody>();
   registerShard::<KinematicRigidBody>();

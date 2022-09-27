@@ -10,27 +10,27 @@ use crate::shards::physics::SIMULATION_TYPE;
 use crate::shardsc::SHPointer;
 use crate::types::common_type;
 use crate::types::Context;
-use crate::types::ExposedInfo;
+
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
-use crate::types::Parameters;
+
 use crate::types::Seq;
 use crate::types::Type;
-use crate::types::ANY_TYPES;
+
 use crate::Shard;
 use crate::Types;
 use crate::Var;
-use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
+
 use rapier3d::geometry::{
-  BroadPhase, ColliderSet, ContactEvent, InteractionGroups, IntersectionEvent, NarrowPhase, Ray,
+  InteractionGroups, Ray,
 };
 use rapier3d::na::{Point3, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
+
 use std::convert::TryInto;
 
 lazy_static! {
   pub static ref RAY_INPUT_TYPE: Type = {
-    let mut t = common_type::float3s;
+    let mut t = common_type::FLOAT3S;
     t.fixedSize = 2;
     t
   };
@@ -120,6 +120,6 @@ impl Shard for CastRay {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<CastRay>();
 }

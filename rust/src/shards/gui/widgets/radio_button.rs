@@ -152,7 +152,7 @@ impl Shard for RadioButton {
       }
     }
 
-    Ok(common_type::any)
+    Ok(common_type::ANY)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {

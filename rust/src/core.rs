@@ -5,7 +5,7 @@
 
 use crate::shard::shard_construct;
 use crate::shard::Shard;
-use crate::shardsc::SHBool;
+
 use crate::shardsc::SHContext;
 use crate::shardsc::SHCore;
 use crate::shardsc::SHEnumInfo;
@@ -13,16 +13,16 @@ use crate::shardsc::SHOptionalString;
 use crate::shardsc::SHString;
 use crate::shardsc::SHStrings;
 use crate::shardsc::SHVar;
-use crate::shardsc::SHWireState;
+
 use crate::shardsc::ShardPtr;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
 use crate::types::ExternalVar;
 use crate::types::InstanceData;
-use crate::types::Mesh;
-use crate::types::ParameterInfo;
-use crate::types::Parameters;
+
+
+
 use crate::types::Var;
 use crate::types::WireRef;
 use crate::types::WireState;

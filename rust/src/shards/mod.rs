@@ -35,8 +35,8 @@ pub mod date;
 pub mod onnx;
 
 static CRYPTO_KEY_TYPES: &[Type] = &[
-  common_type::bytes,
-  common_type::bytes_var,
-  common_type::string,
-  common_type::string_var,
+  common_type::BYTES,
+  common_type::BYTES_VAR,
+  common_type::STRING,
+  common_type::STRING_VAR,
 ];

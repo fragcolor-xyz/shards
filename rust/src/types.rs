@@ -4,12 +4,12 @@
 use crate::core::cloneVar;
 use crate::core::destroyVar;
 use crate::core::Core;
-use crate::fourCharacterCode;
+use crate::four_character_code;
 use crate::shardsc::SHBool;
 use crate::shardsc::SHColor;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
-use crate::shardsc::SHEnumInfo;
+
 use crate::shardsc::SHExposedTypeInfo;
 use crate::shardsc::SHExposedTypesInfo;
 use crate::shardsc::SHImage;
@@ -29,8 +29,8 @@ use crate::shardsc::SHTypeInfo_Details;
 use crate::shardsc::SHTypeInfo_Details_Enum;
 use crate::shardsc::SHTypeInfo_Details_Object;
 use crate::shardsc::SHTypeInfo_Details_Table;
-use crate::shardsc::SHType_Any;
-use crate::shardsc::SHType_Array;
+
+
 use crate::shardsc::SHType_Bool;
 use crate::shardsc::SHType_Bytes;
 use crate::shardsc::SHType_Color;
@@ -42,16 +42,16 @@ use crate::shardsc::SHType_Float3;
 use crate::shardsc::SHType_Float4;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Int;
-use crate::shardsc::SHType_Int16;
+
 use crate::shardsc::SHType_Int2;
 use crate::shardsc::SHType_Int3;
 use crate::shardsc::SHType_Int4;
-use crate::shardsc::SHType_Int8;
+
 use crate::shardsc::SHType_None;
 use crate::shardsc::SHType_Object;
 use crate::shardsc::SHType_Path;
 use crate::shardsc::SHType_Seq;
-use crate::shardsc::SHType_Set;
+
 use crate::shardsc::SHType_ShardRef;
 use crate::shardsc::SHType_String;
 use crate::shardsc::SHType_Table;
@@ -63,7 +63,7 @@ use crate::shardsc::SHVarPayload__bindgen_ty_1;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_1;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_2;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_4;
-use crate::shardsc::SHWire;
+
 use crate::shardsc::SHWireRef;
 use crate::shardsc::SHWireState;
 use crate::shardsc::SHWireState_Continue;
@@ -74,8 +74,8 @@ use crate::shardsc::SHWireState_Stop;
 use crate::shardsc::Shard;
 use crate::shardsc::ShardPtr;
 use crate::shardsc::Shards;
-use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
-use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
+
+
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
 use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
@@ -84,13 +84,13 @@ use core::convert::TryInto;
 use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
-use core::slice;
+
 use serde::ser::{SerializeMap, SerializeSeq};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use std::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::i32::MAX;
+
 use std::rc::Rc;
 
 #[macro_export]
@@ -582,7 +582,7 @@ pub mod common_type {
     }
   }
 
-  pub static none: SHTypeInfo = base_info();
+  pub static NONE: SHTypeInfo = base_info();
 
   macro_rules! shtype {
     ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $names_var:ident, $name_table:ident, $name_table_var:ident) => {
@@ -676,192 +676,192 @@ pub mod common_type {
   shtype!(
     make_any,
     SHType_Any,
-    any,
-    anys,
-    any_var,
-    anys_var,
-    any_table,
-    any_table_var
+    ANY,
+    ANYS,
+    ANY_VAR,
+    ANYS_VAR,
+    ANY_TABLE,
+    ANY_TABLE_VAR
   );
   shtype!(
     make_object,
     SHType_Object,
-    object,
-    objects,
-    object_var,
-    objects_var,
-    object_table,
-    object_table_var
+    OBJECT,
+    OBJECTS,
+    OBJECT_VAR,
+    OBJECTS_VAR,
+    OBJECT_TABLE,
+    OBJECT_TABLE_VAR
   );
   shtype!(
     make_enum,
     SHType_Enum,
-    enumeration,
-    enums,
-    enum_var,
-    enums_var,
-    enum_table,
-    enum_table_var
+    ENUMERATION,
+    ENUMS,
+    ENUM_VAR,
+    ENUMS_VAR,
+    ENUM_TABLE,
+    ENUM_TABLE_VAR
   );
   shtype!(
     make_string,
     SHType_String,
-    string,
-    strings,
-    string_var,
-    strings_var,
-    string_table,
-    string_table_var
+    STRING,
+    STRINGS,
+    STRING_VAR,
+    STRINGS_VAR,
+    STRING_TABLE,
+    STRING_TABLE_VAR
   );
   shtype!(
     make_bytes,
     SHType_Bytes,
-    bytes,
-    bytezs,
-    bytes_var,
-    bytess_var,
-    bytes_table,
-    bytes_table_var
+    BYTES,
+    BYTEZS,
+    BYTES_VAR,
+    BYTESS_VAR,
+    BYTES_TABLE,
+    BYTES_TABLE_VAR
   );
   shtype!(
     make_image,
     SHType_Image,
-    image,
-    images,
-    image_var,
-    images_var,
-    image_table,
-    images_table_var
+    IMAGE,
+    IMAGES,
+    IMAGE_VAR,
+    IMAGES_VAR,
+    IMAGE_TABLE,
+    IMAGES_TABLE_VAR
   );
   shtype!(
     make_int,
     SHType_Int,
-    int,
-    ints,
-    int_var,
-    ints_var,
-    int_table,
-    int_table_var
+    INT,
+    INTS,
+    INT_VAR,
+    INTS_VAR,
+    INT_TABLE,
+    INT_TABLE_VAR
   );
   shtype!(
     make_int2,
     SHType_Int2,
-    int2,
-    int2s,
-    int2_var,
-    int2s_var,
-    int2_table,
-    int2_table_var
+    INT2,
+    INT2S,
+    INT2_VAR,
+    INT2S_VAR,
+    INT2_TABLE,
+    INT2_TABLE_VAR
   );
   shtype!(
     make_int3,
     SHType_Int3,
-    int3,
-    int3s,
-    int3_var,
-    int3s_var,
-    int3_table,
-    int3_table_var
+    INT3,
+    INT3S,
+    INT3_VAR,
+    INT3S_VAR,
+    INT3_TABLE,
+    INT3_TABLE_VAR
   );
   shtype!(
     make_int4,
     SHType_Int4,
-    int4,
-    int4s,
-    int4_var,
-    int4s_var,
-    int4_table,
-    int4_table_var
+    INT4,
+    INT4S,
+    INT4_VAR,
+    INT4S_VAR,
+    INT4_TABLE,
+    INT4_TABLE_VAR
   );
   shtype!(
     make_float,
     SHType_Float,
-    float,
-    floats,
-    float_var,
-    floats_var,
-    float_table,
-    float_table_var
+    FLOAT,
+    FLOATS,
+    FLOAT_VAR,
+    FLOATS_VAR,
+    FLOAT_TABLE,
+    FLOAT_TABLE_VAR
   );
   shtype!(
     make_float2,
     SHType_Float2,
-    float2,
-    float2s,
-    float2_var,
-    float2s_var,
-    float2_table,
-    float2_table_var
+    FLOAT2,
+    FLOAT2S,
+    FLOAT2_VAR,
+    FLOAT2S_VAR,
+    FLOAT2_TABLE,
+    FLOAT2_TABLE_VAR
   );
   shtype!(
     make_float3,
     SHType_Float3,
-    float3,
-    float3s,
-    float3_var,
-    float3s_var,
-    float3_table,
-    float3_table_var
+    FLOAT3,
+    FLOAT3S,
+    FLOAT3_VAR,
+    FLOAT3S_VAR,
+    FLOAT3_TABLE,
+    FLOAT3_TABLE_VAR
   );
   shtype!(
     make_float4,
     SHType_Float4,
-    float4,
-    float4s,
-    float4_var,
-    float4s_var,
-    float4_table,
-    float4_table_var
+    FLOAT4,
+    FLOAT4S,
+    FLOAT4_VAR,
+    FLOAT4S_VAR,
+    FLOAT4_TABLE,
+    FLOAT4_TABLE_VAR
   );
   shtype!(
     make_color,
     SHType_Color,
-    color,
-    colors,
-    color_var,
-    colors_var,
-    color_table,
-    color_table_var
+    COLOR,
+    COLORS,
+    COLOR_VAR,
+    COLORS_VAR,
+    COLOR_TABLE,
+    COLOR_TABLE_VAR
   );
   shtype!(
     make_bool,
     SHType_Bool,
-    bool,
-    bools,
-    bool_var,
-    bools_var,
-    bool_table,
-    bool_table_var
+    BOOL,
+    BOOLS,
+    BOOL_VAR,
+    BOOLS_VAR,
+    BOOL_TABLE,
+    BOOL_TABLE_VAR
   );
   shtype!(
     make_shard,
     SHType_ShardRef,
-    shard,
-    shards,
-    shard_var,
-    shards_var,
-    shard_table,
-    shard_table_var
+    SHARD,
+    SHARDS,
+    SHARD_VAR,
+    SHARDS_VAR,
+    SHARD_TABLE,
+    SHARD_TABLE_VAR
   );
   shtype!(
     make_wire,
     SHType_Wire,
-    wire,
-    wires,
-    wire_var,
-    wires_var,
-    wire_table,
-    wire_table_var
+    WIRE,
+    WIRES,
+    WIRE_VAR,
+    WIRES_VAR,
+    WIRE_TABLE,
+    WIRE_TABLE_VAR
   );
   shtype!(
     make_path,
     SHType_Path,
-    path,
-    paths,
-    path_var,
-    paths_var,
-    path_table,
-    path_table_var
+    PATH,
+    PATHS,
+    PATH_VAR,
+    PATHS_VAR,
+    PATH_TABLE,
+    PATH_TABLE_VAR
   );
 }
 
@@ -3950,18 +3950,6 @@ impl Drop for Table {
   }
 }
 
-unsafe extern "C" fn table_foreach_callback(
-  key: *const ::std::os::raw::c_char,
-  value: *mut SHVar,
-  userData: *mut ::std::os::raw::c_void,
-) -> SHBool {
-  let ptrs = userData as *mut (&mut Vec<&str>, &mut Vec<Var>);
-  let cstr = CStr::from_ptr(key);
-  (*ptrs).0.push(cstr.to_str().unwrap());
-  (*ptrs).1.push(*value);
-  true // false aborts iteration
-}
-
 impl Default for Table {
   fn default() -> Self {
     Self::new()
@@ -4164,39 +4152,39 @@ impl PartialEq for Type {
   }
 }
 
-pub const FRAG_CC: i32 = fourCharacterCode(*b"frag");
+pub const FRAG_CC: i32 = four_character_code(*b"frag");
 
-pub static INT_TYPES_SLICE: &[Type] = &[common_type::int];
-pub static INT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::int, common_type::none];
-pub static INT2_TYPES_SLICE: &[Type] = &[common_type::int2];
-pub static FLOAT_TYPES_SLICE: &[Type] = &[common_type::float];
-pub static FLOAT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::float, common_type::none];
-pub static FLOAT2_TYPES_SLICE: &[Type] = &[common_type::float2];
-pub static FLOAT3_TYPES_SLICE: &[Type] = &[common_type::float3];
-pub static BOOL_TYPES_SLICE: &[Type] = &[common_type::bool];
-pub static STRING_TYPES_SLICE: &[Type] = &[common_type::string];
-pub static STRING_OR_NONE_SLICE: &[Type] = &[common_type::string, common_type::none];
+pub static INT_TYPES_SLICE: &[Type] = &[common_type::INT];
+pub static INT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::INT, common_type::NONE];
+pub static INT2_TYPES_SLICE: &[Type] = &[common_type::INT2];
+pub static FLOAT_TYPES_SLICE: &[Type] = &[common_type::FLOAT];
+pub static FLOAT_OR_NONE_TYPES_SLICE: &[Type] = &[common_type::FLOAT, common_type::NONE];
+pub static FLOAT2_TYPES_SLICE: &[Type] = &[common_type::FLOAT2];
+pub static FLOAT3_TYPES_SLICE: &[Type] = &[common_type::FLOAT3];
+pub static BOOL_TYPES_SLICE: &[Type] = &[common_type::BOOL];
+pub static STRING_TYPES_SLICE: &[Type] = &[common_type::STRING];
+pub static STRING_OR_NONE_SLICE: &[Type] = &[common_type::STRING, common_type::NONE];
 pub static STRING_VAR_OR_NONE_SLICE: &[Type] = &[
-  common_type::string,
-  common_type::string_var,
-  common_type::none,
+  common_type::STRING,
+  common_type::STRING_VAR,
+  common_type::NONE,
 ];
 
 // TODO share those from C++ ones to reduce binary size
 lazy_static! {
-  pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
-  pub static ref ANYS_TYPES: Vec<Type> = vec![common_type::anys];
-  pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
-  pub static ref STRING_TYPES: Vec<Type> = vec![common_type::string];
-  pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
+  pub static ref ANY_TYPES: Vec<Type> = vec![common_type::ANY];
+  pub static ref ANYS_TYPES: Vec<Type> = vec![common_type::ANYS];
+  pub static ref NONE_TYPES: Vec<Type> = vec![common_type::NONE];
+  pub static ref STRING_TYPES: Vec<Type> = vec![common_type::STRING];
+  pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::STRINGS];
   pub static ref SEQ_OF_STRINGS: Type = Type::seq(&STRINGS_TYPES);
   pub static ref SEQ_OF_STRINGS_TYPES: Vec<Type> = vec![*SEQ_OF_STRINGS];
-  pub static ref COLOR_TYPES: Vec<Type> = vec![common_type::color];
-  pub static ref INT_TYPES: Vec<Type> = vec![common_type::int];
-  pub static ref INT2_TYPES: Vec<Type> = vec![common_type::int2];
-  pub static ref INT3_TYPES: Vec<Type> = vec![common_type::int3];
-  pub static ref INT4_TYPES: Vec<Type> = vec![common_type::int4];
-  pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
+  pub static ref COLOR_TYPES: Vec<Type> = vec![common_type::COLOR];
+  pub static ref INT_TYPES: Vec<Type> = vec![common_type::INT];
+  pub static ref INT2_TYPES: Vec<Type> = vec![common_type::INT2];
+  pub static ref INT3_TYPES: Vec<Type> = vec![common_type::INT3];
+  pub static ref INT4_TYPES: Vec<Type> = vec![common_type::INT4];
+  pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::FLOAT];
   pub static ref SEQ_OF_INT: Type = Type::seq(&INT_TYPES);
   pub static ref SEQ_OF_INT_TYPES: Vec<Type> = vec![*SEQ_OF_INT];
   pub static ref SEQ_OF_SEQ_OF_INT: Type = Type::seq(&SEQ_OF_INT_TYPES);
@@ -4205,13 +4193,13 @@ lazy_static! {
   pub static ref SEQ_OF_FLOAT_TYPES: Vec<Type> = vec![*SEQ_OF_FLOAT];
   pub static ref SEQ_OF_SEQ_OF_FLOAT: Type = Type::seq(&SEQ_OF_FLOAT_TYPES);
   pub static ref SEQ_OF_SEQ_OF_FLOAT_TYPES: Vec<Type> = vec![*SEQ_OF_SEQ_OF_FLOAT];
-  pub static ref FLOAT2_TYPES: Vec<Type> = vec![common_type::float2];
-  pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::float3];
-  pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::float4];
-  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
-  pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::bytes];
+  pub static ref FLOAT2_TYPES: Vec<Type> = vec![common_type::FLOAT2];
+  pub static ref FLOAT3_TYPES: Vec<Type> = vec![common_type::FLOAT3];
+  pub static ref FLOAT4_TYPES: Vec<Type> = vec![common_type::FLOAT4];
+  pub static ref BOOL_TYPES: Vec<Type> = vec![common_type::BOOL];
+  pub static ref BYTES_TYPES: Vec<Type> = vec![common_type::BYTES];
   pub static ref FLOAT4X4_TYPE: Type = {
-    let mut t = common_type::float4s;
+    let mut t = common_type::FLOAT4S;
     t.fixedSize = 4;
     t
   };
@@ -4219,37 +4207,38 @@ lazy_static! {
   pub static ref FLOAT4X4S_TYPE: Type = Type::seq(&FLOAT4X4_TYPES);
   pub static ref FLOAT4X4orS_TYPES: Vec<Type> = vec![*FLOAT4X4_TYPE, *FLOAT4X4S_TYPE];
   pub static ref FLOAT3X3_TYPE: Type = {
-    let mut t = common_type::float3s;
+    let mut t = common_type::FLOAT3S;
     t.fixedSize = 3;
     t
   };
   pub static ref FLOAT3X3_TYPES: Vec<Type> = vec![*FLOAT3X3_TYPE];
   pub static ref FLOAT3X3S_TYPE: Type = Type::seq(&FLOAT3X3_TYPES);
   pub static ref FLOAT4X2_TYPE: Type = {
-    let mut t = common_type::float4s;
+    let mut t = common_type::FLOAT4S;
     t.fixedSize = 2;
     t
   };
   pub static ref FLOAT4X2_TYPES: Vec<Type> = vec![*FLOAT4X2_TYPE];
   pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&FLOAT4X2_TYPES);
   pub static ref ENUM_TYPE: Type = {
-    let mut t = common_type::enumeration;
+    let mut t = common_type::ENUMERATION;
     t.details.enumeration = SHTypeInfo_Details_Enum {
       vendorId: FRAG_CC,
-      typeId: fourCharacterCode(*b"type"),
+      typeId: four_character_code(*b"type"),
     };
     t
   };
   pub static ref ENUM_TYPES: Vec<Type> = vec![*ENUM_TYPE];
   pub static ref ENUMS_TYPE: Type = Type::seq(&ENUM_TYPES);
   pub static ref ENUMS_TYPES: Vec<Type> = vec![*ENUMS_TYPE];
-  pub static ref IMAGE_TYPES: Vec<Type> = vec![common_type::image];
+  pub static ref IMAGE_TYPES: Vec<Type> = vec![common_type::IMAGE];
   pub static ref SHARDS_OR_NONE_TYPES: Vec<Type> =
-    vec![common_type::none, common_type::shard, common_type::shards];
+    vec![common_type::NONE, common_type::SHARD, common_type::SHARDS];
   pub static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
   pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
 }
 
+#[cfg(test)]
 macro_rules! test_to_from_vec1 {
   ($type:ty, $value:expr, $msg:literal) => {
     let fromNum: $type = $value;
@@ -4259,6 +4248,7 @@ macro_rules! test_to_from_vec1 {
   };
 }
 
+#[cfg(test)]
 macro_rules! test_to_from_vec2 {
   ($type:ty, $value:expr, $msg:literal) => {
     let fromNum: ($type, $type) = ($value, $value);
@@ -4268,6 +4258,7 @@ macro_rules! test_to_from_vec2 {
   };
 }
 
+#[cfg(test)]
 macro_rules! test_to_from_vec3 {
   ($type:ty, $value:expr, $msg:literal) => {
     let fromNum: ($type, $type, $type) = ($value, $value, $value);
@@ -4277,6 +4268,7 @@ macro_rules! test_to_from_vec3 {
   };
 }
 
+#[cfg(test)]
 macro_rules! test_to_from_vec4 {
   ($type:ty, $value:expr, $msg:literal) => {
     let fromNum: ($type, $type, $type, $type) = ($value, $value, $value, $value);

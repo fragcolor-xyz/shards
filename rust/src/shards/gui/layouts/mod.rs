@@ -107,7 +107,7 @@ mod separator;
 mod space;
 mod vertical;
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<CollapsingHeader>();
   registerShard::<Columns>();
   registerShard::<Disable>();

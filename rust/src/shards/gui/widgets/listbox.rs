@@ -128,7 +128,7 @@ impl Shard for ListBox {
       }
     }
 
-    Ok(common_type::any)
+    Ok(common_type::ANY)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -136,7 +136,7 @@ impl Shard for ListBox {
       self.exposing.clear();
 
       let exp_info = ExposedInfo {
-        exposedType: common_type::int,
+        exposedType: common_type::INT,
         name: self.index.get_name(),
         help: cstr!("The exposed int variable").into(),
         ..ExposedInfo::default()
@@ -164,7 +164,7 @@ impl Shard for ListBox {
     self.index.warmup(ctx);
 
     if self.should_expose {
-      self.index.get_mut().valueType = common_type::int.basicType;
+      self.index.get_mut().valueType = common_type::INT.basicType;
     }
 
     Ok(())

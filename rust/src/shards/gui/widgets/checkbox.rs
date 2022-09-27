@@ -143,7 +143,7 @@ impl Shard for Checkbox {
       }
     }
 
-    Ok(common_type::bool)
+    Ok(common_type::BOOL)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -151,7 +151,7 @@ impl Shard for Checkbox {
       self.exposing.clear();
 
       let exp_info = ExposedInfo {
-        exposedType: common_type::bool,
+        exposedType: common_type::BOOL,
         name: self.variable.get_name(),
         help: cstr!("The exposed bool variable").into(),
         ..ExposedInfo::default()
@@ -180,7 +180,7 @@ impl Shard for Checkbox {
     self.variable.warmup(ctx);
 
     if self.should_expose {
-      self.variable.get_mut().valueType = common_type::bool.basicType;
+      self.variable.get_mut().valueType = common_type::BOOL.basicType;
     }
 
     Ok(())

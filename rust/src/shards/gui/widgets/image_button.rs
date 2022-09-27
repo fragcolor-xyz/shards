@@ -154,7 +154,7 @@ impl Shard for ImageButton {
       self.exposing.clear();
 
       let exp_info = ExposedInfo {
-        exposedType: common_type::bool,
+        exposedType: common_type::BOOL,
         name: self.selected.get_name(),
         help: cstr!("The exposed bool variable").into(),
         ..ExposedInfo::default()
@@ -208,7 +208,7 @@ impl Shard for ImageButton {
       }
       _ => (),
     }
-    Ok(common_type::bool)
+    Ok(common_type::BOOL)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -221,7 +221,7 @@ impl Shard for ImageButton {
     self.selected.warmup(ctx);
 
     if self.should_expose {
-      self.selected.get_mut().valueType = common_type::bool.basicType;
+      self.selected.get_mut().valueType = common_type::BOOL.basicType;
     }
 
     Ok(())

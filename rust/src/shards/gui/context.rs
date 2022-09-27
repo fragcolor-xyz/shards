@@ -18,7 +18,7 @@ use crate::types::InstanceData;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::RawString;
+
 use crate::types::Seq;
 use crate::types::ShardsVar;
 use crate::types::Type;
@@ -27,7 +27,7 @@ use crate::types::WireState;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use egui::Context as EguiNativeContext;
-use egui::RawInput;
+
 use std::ffi::CStr;
 
 lazy_static! {

@@ -24,9 +24,9 @@ use crate::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
   static ref COLOR_VAR_OR_NONE_TYPES: Vec<Type> = vec![
-    common_type::color,
-    common_type::color_var,
-    common_type::none
+    common_type::COLOR,
+    common_type::COLOR_VAR,
+    common_type::NONE
   ];
   static ref FRAME_PARAMETERS: Parameters = vec![
     (

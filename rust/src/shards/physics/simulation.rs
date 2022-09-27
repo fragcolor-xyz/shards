@@ -5,22 +5,22 @@ use crate::core::registerShard;
 use crate::shards::physics::Simulation;
 use crate::shards::physics::EXPOSED_SIMULATION;
 use crate::shards::physics::SIMULATION_TYPE;
-use crate::types::common_type;
+
 use crate::types::Context;
-use crate::types::ExposedInfo;
+
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::Type;
+
 use crate::types::ANY_TYPES;
 use crate::types::FLOAT_TYPES_SLICE;
 use crate::Shard;
 use crate::Types;
 use crate::Var;
 use rapier3d::dynamics::{CCDSolver, IntegrationParameters, JointSet, RigidBodySet};
-use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
+use rapier3d::geometry::{BroadPhase, ColliderSet, NarrowPhase};
 use rapier3d::na::Vector3;
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsHooks, PhysicsPipeline, QueryPipeline};
+use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 use rapier3d::prelude::IslandManager;
 use std::convert::TryInto;
 
@@ -142,6 +142,6 @@ impl Shard for Simulation {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Simulation>();
 }

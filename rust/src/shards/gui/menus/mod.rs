@@ -23,7 +23,7 @@ struct MenuBar {
   contents: ShardsVar,
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<CloseMenu>();
   registerShard::<Menu>();
   registerShard::<MenuBar>();

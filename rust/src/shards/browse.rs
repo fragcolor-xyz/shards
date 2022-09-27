@@ -1,24 +1,24 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use crate::core::log;
+
 use crate::core::registerShard;
 use crate::shard::Shard;
 use crate::types::common_type;
-use crate::types::ClonedVar;
+
 use crate::types::Context;
-use crate::types::ParamVar;
-use crate::types::Parameters;
-use crate::types::Seq;
-use crate::types::Table;
+
+
+
+
 use crate::types::Type;
-use crate::CString;
-use crate::Types;
+
+
 use crate::Var;
 use std::convert::TryInto;
 
 lazy_static! {
-  static ref INPUT_TYPES: Vec<Type> = vec![common_type::string,];
+  static ref INPUT_TYPES: Vec<Type> = vec![common_type::STRING,];
 }
 
 #[derive(Default)]
@@ -49,6 +49,6 @@ impl Shard for Browse {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   registerShard::<Browse>();
 }
