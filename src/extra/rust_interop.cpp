@@ -1,7 +1,7 @@
 #include "rust_interop.hpp"
 #include "gfx/shards_types.hpp"
 #include "gfx.hpp"
-#include <gfx/renderer.cpp>
+#include <gfx/renderer.hpp>
 #include <foundation.hpp>
 
 using namespace shards::input;
