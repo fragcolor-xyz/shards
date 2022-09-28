@@ -133,7 +133,7 @@ struct BufferBinding {
   size_t binding{};
   std::string name;
   UniformBufferLayout layout;
-  BufferType type;
+  BufferType type = BufferType::Uniform;
   bool indexedPerInstance{};
 };
 

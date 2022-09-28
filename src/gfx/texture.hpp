@@ -51,6 +51,7 @@ struct TextureFormat {
 
 struct InputTextureFormat {
   uint8_t pixelSize;
+  size_t numComponents;
 };
 
 /// <div rustbindgen opaque></div>
@@ -93,8 +94,6 @@ private:
   std::string label;
 
 public:
-  static const InputTextureFormat &getInputFormat(WGPUTextureFormat pixelFormat);
-
   Texture() = default;
   Texture(std::string &&label) : label(label) {}
 

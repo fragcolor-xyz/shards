@@ -4,6 +4,7 @@
 #include "shader/textures.hpp"
 #include "shader/generator.hpp"
 #include "shader/blocks.hpp"
+#include "shader/wgsl_mapping.hpp"
 
 using namespace gfx::detail;
 using namespace gfx::shader;
@@ -75,7 +76,8 @@ WGPURenderPipeline PipelineBuilder::build(WGPUDevice device, const WGPULimits &d
   objectBinding.frequency = BindingFrequency::Draw;
   auto &objectLayoutBuilder = objectBinding.layoutBuilder;
   objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-  objectLayoutBuilder.push("worldInvTrans", FieldTypes::Float4x4);
+  objectLayoutBuilder.push("invWorld", FieldTypes::Float4x4);
+  objectLayoutBuilder.push("invTransWorld", FieldTypes::Float4x4);
 
   for (const Feature *feature : cachedPipeline.features) {
     // Object parameters
@@ -258,7 +260,11 @@ shader::GeneratorOutput PipelineBuilder::generateShader() {
   generator.meshFormat = cachedPipeline.meshFormat;
 
   FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
-  generator.outputFields.emplace_back("color", colorFieldType);
+  for (auto &target : cachedPipeline.renderTargetLayout.colorTargets) {
+    auto &formatDesc = getTextureFormatDescription(target.format);
+    FieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+    generator.outputFields.emplace_back(target.name, fieldType);
+  }
 
   return generator.build(shaderEntryPoints);
 }
