@@ -1,0 +1,25 @@
+(defloop main-wire
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      (->
+       "[trace] [2022-01-01 12:00:00.000] [T-1] [log.cpp::1] Trace message.
+[debug] [2022-01-01 12:00:00.100] [T-1] [log.cpp::2] Debug message.
+[error] [2022-01-01 12:00:00.200] [T-1] [log.cpp::3] Error message.
+[warning] [2022-01-01 12:00:00.300] [T-1] [log.cpp::4] Warning message.
+[info] [2022-01-01 12:00:00.400] [T-1] [strings.cpp::123] Info message.
+Normal text."
+       (UI.Console))))
+
+    (GFX.Render :Steps .render-steps))))
+(defmesh root)
+(schedule root main-wire)
+(run root 0.1 10)
