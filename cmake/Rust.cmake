@@ -166,7 +166,7 @@ function(add_rust_library)
     file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}" TMP_SYSROOT)
     list(APPEND EXTRA_CLANG_ARGS "--sysroot=${TMP_SYSROOT}")
   elseif(CMAKE_SYSROOT)
-  file(TO_CMAKE_PATH "${CMAKE_SYSROOT}" TMP_SYSROOT)
+    file(TO_CMAKE_PATH "${CMAKE_SYSROOT}" TMP_SYSROOT)
     list(APPEND EXTRA_CLANG_ARGS "--sysroot=${CMAKE_SYSROOT}")
   endif()
 
@@ -182,6 +182,10 @@ function(add_rust_library)
 
   if(RUST_TARGET_PATH)
     list(APPEND RUST_ENVIRONMENT "CARGO_TARGET_DIR=${RUST_TARGET_PATH}")
+  endif()
+
+  if(ANDROID_TOOLCHAIN_ROOT)
+    list(APPEND RUST_ENVIRONMENT "AR=${ANDROID_TOOLCHAIN_ROOT}/bin/llvm-ar")
   endif()
 
   add_custom_command(
