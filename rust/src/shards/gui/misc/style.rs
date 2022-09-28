@@ -129,18 +129,7 @@ impl Shard for Style {
       "override_font_id",
       Table,
       style.override_font_id,
-      |t: Table| {
-        if let (Some(size), Some(family)) =
-          (t.get_static(cstr!("size")), t.get_static(cstr!("family")))
-        {
-          style_util::get_font_id(
-            size.try_into().unwrap_or_default(),
-            family.try_into().unwrap_or_default(),
-          )
-        } else {
-          None
-        }
-      }
+      style_util::get_font_id
     );
 
     // text styles
@@ -149,13 +138,9 @@ impl Shard for Style {
 
       for var in text_styles {
         let text_style: Table = var.as_ref().try_into()?;
-        if let (Some(name), Some(size), Some(family)) = (
-          text_style.get_static(cstr!("name")),
-          text_style.get_static(cstr!("size")),
-          text_style.get_static(cstr!("family")),
-        ) {
+        if let Some(name) = text_style.get_static(cstr!("name")) {
           if let Some(key) = style_util::get_text_style(name.try_into()?) {
-            if let Some(fontId) = style_util::get_font_id(size.try_into()?, family.try_into()?) {
+            if let Some(fontId) = style_util::get_font_id(text_style) {
               style
                 .text_styles
                 .entry(key)
