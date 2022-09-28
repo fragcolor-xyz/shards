@@ -140,7 +140,6 @@ struct RendererImpl final : public ContextData {
   void setViewData(DrawData &outDrawData, const ViewData &viewData) {
     outDrawData.setParam("view", viewData.view.view);
     outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
-    outDrawData.setParam("previousView", viewData.cachedView.previousViewTransform);
     outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
     outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
     outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y),
@@ -362,7 +361,7 @@ struct RendererImpl final : public ContextData {
     // Update view buffers
     size_t index{};
     for (auto &binding : cachedPipeline.viewBuffersBindings) {
-      fillViewBuffer(cachedPipeline.viewBuffers[index].handle, binding.layout, viewData);
+      fillViewBuffer(cachedPipeline.viewBuffers[index].handle, binding.layout, cachedPipeline, viewData);
       index++;
     }
 
@@ -624,12 +623,21 @@ struct RendererImpl final : public ContextData {
     return result;
   }
 
-  void fillViewBuffer(WGPUBuffer &buffer, const shader::UniformBufferLayout &layout, const ViewData &viewData) {
+  void fillViewBuffer(WGPUBuffer &buffer, const shader::UniformBufferLayout &layout, CachedPipeline &cachedPipeline,
+                      const ViewData &viewData) {
     std::vector<uint8_t> drawDataTempBuffer;
     drawDataTempBuffer.resize(layout.size);
 
     DrawData drawData;
     setViewData(drawData, viewData);
+
+    // Grab draw data from features
+    FeatureCallbackContext callbackContext{.context = context, .view = &viewData.view, .cachedView = &viewData.cachedView};
+    for (const Feature *feature : cachedPipeline.features) {
+      for (const FeatureDrawDataFunction &drawDataGenerator : feature->viewData) {
+        drawDataGenerator(callbackContext, drawData);
+      }
+    }
 
     packDrawData(drawDataTempBuffer.data(), layout.size, layout, drawData);
 
@@ -649,13 +657,15 @@ struct RendererImpl final : public ContextData {
     std::vector<uint8_t> drawDataTempBuffer;
     drawDataTempBuffer.resize(instanceBufferLength);
     for (size_t i = 0; i < numObjects; i++) {
-      const Drawable *drawable = pipelineDrawables.drawablesSorted[i].drawable;
+      const SortableDrawable &sortableDrawable = pipelineDrawables.drawablesSorted[i];
+      const Drawable *drawable = sortableDrawable.drawable;
 
       DrawData objectDrawData = cachedPipeline.baseDrawData;
       objectDrawData.setParam("world", drawable->transform);
 
-      float4x4 worldInvTrans = linalg::transpose(linalg::inverse(drawable->transform));
-      objectDrawData.setParam("worldInvTrans", worldInvTrans);
+      float4x4 worldInverse = linalg::inverse(drawable->transform);
+      objectDrawData.setParam("invWorld", worldInverse);
+      objectDrawData.setParam("invTransWorld", linalg::transpose(worldInverse));
 
       // Grab draw data from material
       if (Material *material = drawable->material.get()) {
@@ -670,7 +680,7 @@ struct RendererImpl final : public ContextData {
       }
 
       // Grab draw data from features
-      FeatureCallbackContext callbackContext{context, &view, drawable};
+      FeatureCallbackContext callbackContext{context, &view, drawable, sortableDrawable.cachedDrawable};
       for (const Feature *feature : cachedPipeline.features) {
         for (const FeatureDrawDataFunction &drawDataGenerator : feature->drawData) {
           // TODO: Catch mismatch errors here
@@ -747,9 +757,11 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  SortableDrawable createSortableDrawable(PipelineDrawables &pipelineDrawables, const Drawable &drawable) {
+  SortableDrawable createSortableDrawable(PipelineDrawables &pipelineDrawables, const Drawable &drawable,
+                                          const CachedDrawable &cachedDrawable) {
     SortableDrawable sortableDrawable{};
     sortableDrawable.drawable = &drawable;
+    sortableDrawable.cachedDrawable = &cachedDrawable;
     generateTextureIds(pipelineDrawables, sortableDrawable);
     sortableDrawable.key = DrawGroupKey(drawable, sortableDrawable.textureIds);
 
@@ -770,7 +782,13 @@ struct RendererImpl final : public ContextData {
 
       addFrameReference(drawable->mesh->contextData);
 
-      SortableDrawable sortableDrawable = createSortableDrawable(pipelineDrawables, *drawable);
+      CachedDrawable &cachedDrawable = getCachedDrawable(drawable);
+      cachedDrawable.touchWithNewTransform(drawable->transform, frameCounter);
+      if (drawable->previousTransform) {
+        cachedDrawable.previousTransform = drawable->previousTransform.value();
+      }
+
+      SortableDrawable sortableDrawable = createSortableDrawable(pipelineDrawables, *drawable, cachedDrawable);
 
       if (sortMode == SortMode::Queue) {
         drawablesSorted.push_back(sortableDrawable);
@@ -779,9 +797,6 @@ struct RendererImpl final : public ContextData {
         auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
         drawablesSorted.insert(it, sortableDrawable);
       }
-
-      CachedDrawable &cachedDrawable = getCachedDrawable(drawable);
-      cachedDrawable.touchWithNewTransform(drawable->transform, frameCounter);
     }
 
     if (sortMode == SortMode::BackToFront) {

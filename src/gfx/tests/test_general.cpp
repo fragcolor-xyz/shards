@@ -6,6 +6,7 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
+#include <gfx/features/velocity.hpp>
 #include <gfx/gizmos/wireframe.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/paths.hpp>
@@ -342,7 +343,7 @@ TEST_CASE("RenderTarget", "[General]") {
   DrawablePtr drawable;
 
   std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
-  rt->configure("main", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
+  rt->configure("color", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
   rt->configure("depth", WGPUTextureFormat::WGPUTextureFormat_Depth32Float);
 
   transform = linalg::identity;
@@ -386,7 +387,7 @@ TEST_CASE("RenderTarget", "[General]") {
                   }(),
               },
           .parameters{
-              .texture = {{"baseColor", TextureParameter(rt->getAttachment("main"))}},
+              .texture = {{"baseColor", TextureParameter(rt->getAttachment("color"))}},
           },
       }),
   };
@@ -407,6 +408,121 @@ TEST_CASE("RenderTarget", "[General]") {
     viewStack.pop();
   };
   CHECK(testRenderer->checkFrame("renderTarget", comparisonTolerance));
+
+  testRenderer.reset();
+}
+
+TEST_CASE("Velocity", "[General]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+  auto &viewStack = renderer.getViewStack();
+
+  MeshPtr cubeMesh = createCubeMesh();
+
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewPerspectiveProjection{};
+  view->view = linalg::lookat_matrix(float3(1.0f, 1.0f, 1.0f) * 3.0f, float3(0, 0, 0), float3(0, 1, 0));
+
+  DrawQueuePtr queue = std::make_shared<DrawQueue>();
+  float4x4 transform;
+  DrawablePtr drawable;
+
+  std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
+  rt->configure("color", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
+  rt->configure("depth", WGPUTextureFormat::WGPUTextureFormat_Depth32Float);
+  rt->configure("velocity", WGPUTextureFormat::WGPUTextureFormat_RG8Snorm);
+
+  transform = linalg::identity;
+  drawable = std::make_shared<Drawable>(cubeMesh, transform);
+
+  auto getTransform = [](double time) {
+    float yWave = std::cos(time / pi2) * 0.5f;
+    float4x4 transMat = linalg::translation_matrix(float3(0, yWave, 0));
+
+    float angle = degToRad(time * 15.0f + std::cos(time / pi2 * 3.0f) * 20.0f);
+    float4 rotQY = linalg::rotation_quat(float3(0, 1, 0), angle);
+    float4x4 rotMat = linalg::rotation_matrix(rotQY);
+    return linalg::mul(transMat, rotMat);
+  };
+
+  queue->add(drawable);
+
+  auto getWaveTransform = [](double time, size_t axis) {
+    float3 t{};
+    t[axis] = std::cos(time / pi2 * 20.0f) * 1.0f;
+    return linalg::mul(linalg::translation_matrix(t), linalg::scaling_matrix(float3(0.25f)));
+  };
+
+  DrawablePtr drawable1 = std::make_shared<Drawable>(cubeMesh, getWaveTransform(0.0f, 0));
+  queue->add(drawable1);
+
+  DrawablePtr drawable2 = std::make_shared<Drawable>(cubeMesh, getWaveTransform(0.0f, 1));
+  queue->add(drawable2);
+
+  PipelineSteps stepsRT{
+      makePipelineStep(RenderDrawablesStep{
+          .drawQueue = queue,
+          .features =
+              {
+                  features::Transform::create(),
+                  features::Velocity::create(),
+              },
+          .renderTarget = rt,
+      }),
+  };
+
+  auto postFeature = []() {
+    using namespace shader;
+    using namespace shader::blocks;
+
+    auto feature = std::make_shared<Feature>();
+    auto code = makeCompoundBlock();
+    code->appendLine("let vel = ", SampleTexture("velocity"), ".xy");
+    code->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(vel.x*0.5+0.5, vel.y*0.5+0.5, 0.0, 1.0)"));
+    feature->shaderEntryPoints.emplace_back("", ProgrammableGraphicsStage::Fragment, std::move(code));
+    feature->textureParams.emplace_back("velocity");
+    return feature;
+  }();
+
+  PipelineSteps stepsMain{
+      makePipelineStep(RenderFullscreenStep{
+          .features = {features::Transform::create(false, false), postFeature},
+          .parameters{
+              .texture = {{"velocity", TextureParameter(rt->getAttachment("velocity"))}},
+          },
+      }),
+  };
+
+  double t = 3.0;
+  double timeStep = 1.0 / 60.0;
+
+  auto renderFrame = [&]() {
+    auto outputSize = testRenderer->getOutputSize();
+    rt->resizeConditional(outputSize);
+
+    Rect mainViewport = viewStack.getOutput().viewport;
+    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
+
+    drawable->transform = getTransform(t);
+    drawable1->transform = getWaveTransform(t, 0);
+    drawable2->transform = getWaveTransform(t, 1);
+
+    viewStack.push(ViewStack::Item{.renderTarget = rt});
+    renderer.render(view, stepsRT);
+    viewStack.pop();
+
+    renderer.render(view, stepsMain);
+
+    t += timeStep;
+  };
+
+  // dummy frame to intialize previous transforms
+  testRenderer->begin();
+  renderFrame();
+  testRenderer->end();
+
+  TEST_RENDER_LOOP(testRenderer) { renderFrame(); };
+  CHECK(testRenderer->checkFrame("velocity", comparisonTolerance));
 
   testRenderer.reset();
 }

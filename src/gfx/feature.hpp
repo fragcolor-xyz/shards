@@ -14,6 +14,11 @@
 #include <vector>
 
 namespace gfx {
+namespace detail {
+struct CachedDrawable;
+struct CachedView;
+} // namespace detail
+
 namespace shader {
 struct EntryPoint;
 }
@@ -164,6 +169,8 @@ struct FeatureCallbackContext {
   Context &context;
   const View *view = nullptr;
   const Drawable *drawable = nullptr;
+  const detail::CachedDrawable *cachedDrawable = nullptr;
+  const detail::CachedView *cachedView = nullptr;
 };
 
 typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
@@ -176,6 +183,8 @@ struct Feature {
   FeaturePipelineState state;
   // Per drawable draw data
   std::vector<FeatureDrawDataFunction> drawData;
+  // Per view draw data
+  std::vector<FeatureDrawDataFunction> viewData;
   // Shader parameters read from per-instance buffer
   std::vector<NamedShaderParam> shaderParams;
   // Texture parameters

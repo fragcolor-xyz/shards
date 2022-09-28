@@ -12,14 +12,14 @@ namespace gfx {
 inline MeshVertexAttribute getAttributeVertexFormat(const SHVar &attribute) {
   switch (attribute.valueType) {
   case SHType::Float2:
-    return MeshVertexAttribute("", 2, VertexAttributeType::Float32);
+    return MeshVertexAttribute("", 2, StorageType::Float32);
   case SHType::Float3:
-    return MeshVertexAttribute("", 3, VertexAttributeType::Float32);
+    return MeshVertexAttribute("", 3, StorageType::Float32);
   case SHType::Float4:
-    return MeshVertexAttribute("", 4, VertexAttributeType::Float32);
+    return MeshVertexAttribute("", 4, StorageType::Float32);
   case SHType::Int4:
   case SHType::Color:
-    return MeshVertexAttribute("", 4, VertexAttributeType::UNorm8);
+    return MeshVertexAttribute("", 4, StorageType::UNorm8);
   default:
     throw formatException("Unsupported vertex attribute type {} {}", magic_enum::enum_name(attribute.valueType),
                           uint8_t(attribute.valueType));
@@ -70,17 +70,17 @@ inline void determineVertexFormat(std::vector<MeshVertexAttribute> &outAttribute
 
     switch (attribute.valueType) {
     case SHType::Float2:
-      outAttributes.emplace_back(MeshVertexAttribute("", 2, VertexAttributeType::Float32));
+      outAttributes.emplace_back(MeshVertexAttribute("", 2, StorageType::Float32));
       break;
     case SHType::Float3:
-      outAttributes.emplace_back(MeshVertexAttribute("", 3, VertexAttributeType::Float32));
+      outAttributes.emplace_back(MeshVertexAttribute("", 3, StorageType::Float32));
       break;
     case SHType::Float4:
-      outAttributes.emplace_back(MeshVertexAttribute("", 4, VertexAttributeType::Float32));
+      outAttributes.emplace_back(MeshVertexAttribute("", 4, StorageType::Float32));
       break;
     case SHType::Int4:
     case SHType::Color:
-      outAttributes.emplace_back(MeshVertexAttribute("", 4, VertexAttributeType::UNorm8));
+      outAttributes.emplace_back(MeshVertexAttribute("", 4, StorageType::UNorm8));
       break;
     default:
       throw formatException("Unsupported vertex attribute {}", magic_enum::enum_name(attribute.valueType));

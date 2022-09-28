@@ -22,7 +22,7 @@ struct VertexP {
 
   static inline std::vector<MeshVertexAttribute> getAttributes() {
     std::vector<MeshVertexAttribute> attribs;
-    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
+    attribs.emplace_back("position", 3, StorageType::Float32);
     return attribs;
   }
 };
@@ -42,8 +42,8 @@ struct VertexPC {
 
   static inline std::vector<MeshVertexAttribute> getAttributes() {
     std::vector<MeshVertexAttribute> attribs;
-    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
-    attribs.emplace_back("color", 4, VertexAttributeType::Float32);
+    attribs.emplace_back("position", 3, StorageType::Float32);
+    attribs.emplace_back("color", 4, StorageType::Float32);
     return attribs;
   }
 };

@@ -18,6 +18,8 @@ struct Drawable {
   MaterialParameters parameters;
   float4x4 transform;
 
+  std::optional<float4x4> previousTransform;
+
   // Clipping rectangle as (min, max)
   std::optional<int4> clipRect;
 

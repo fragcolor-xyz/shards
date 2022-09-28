@@ -40,8 +40,13 @@ struct Transform {
     });
 
     feature->shaderEntryPoints.emplace_back(
-        "initWorldPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", std::move(vec4Pos)));
+        "initLocalPosition", ProgrammableGraphicsStage::Vertex, WriteGlobal("localPosition", FieldTypes::Float4, std::move(vec4Pos)));
+
+    auto &entry = feature->shaderEntryPoints.emplace_back("initWorldPosition", ProgrammableGraphicsStage::Vertex,
+                                                          WriteGlobal("worldPosition", FieldTypes::Float4,
+                                                                      ReadBuffer("world", FieldTypes::Float4x4), "*",
+                                                                      ReadGlobal("localPosition")));
+    entry.dependencies.emplace_back("initLocalPosition");
 
     auto screenPosition = makeCompoundBlock();
     if (applyProjection) {
@@ -58,7 +63,7 @@ struct Transform {
 
     initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
-    BlockPtr transformNormal = blocks::makeCompoundBlock("normalize((", ReadBuffer("worldInvTrans", FieldTypes::Float4x4), "*",
+    BlockPtr transformNormal = blocks::makeCompoundBlock("normalize((", ReadBuffer("invTransWorld", FieldTypes::Float4x4), "*",
                                                          "vec4<f32>(", ReadInput("normal"), ".xyz, 0.0)", ").xyz)");
     feature->shaderEntryPoints.emplace_back(
         "initWorldNormal", ProgrammableGraphicsStage::Vertex,

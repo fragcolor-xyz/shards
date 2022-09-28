@@ -8,10 +8,10 @@ namespace gfx {
 const std::vector<MeshVertexAttribute> &ShapeRenderer::LineVertex::getAttributes() {
   static std::vector<MeshVertexAttribute> attribs = []() {
     std::vector<MeshVertexAttribute> attribs;
-    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
-    attribs.emplace_back("color", 4, VertexAttributeType::Float32);
-    attribs.emplace_back("direction", 3, VertexAttributeType::Float32);
-    attribs.emplace_back("offsetSS", 2, VertexAttributeType::Float32);
+    attribs.emplace_back("position", 3, StorageType::Float32);
+    attribs.emplace_back("color", 4, StorageType::Float32);
+    attribs.emplace_back("direction", 3, StorageType::Float32);
+    attribs.emplace_back("offsetSS", 2, StorageType::Float32);
     return attribs;
   }();
   return attribs;
@@ -20,8 +20,8 @@ const std::vector<MeshVertexAttribute> &ShapeRenderer::LineVertex::getAttributes
 const std::vector<MeshVertexAttribute> &ShapeRenderer::SolidVertex::getAttributes() {
   static std::vector<MeshVertexAttribute> attribs = []() {
     std::vector<MeshVertexAttribute> attribs;
-    attribs.emplace_back("position", 3, VertexAttributeType::Float32);
-    attribs.emplace_back("color", 4, VertexAttributeType::Float32);
+    attribs.emplace_back("position", 3, StorageType::Float32);
+    attribs.emplace_back("color", 4, StorageType::Float32);
     return attribs;
   }();
   return attribs;

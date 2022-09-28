@@ -187,6 +187,7 @@ struct DrawGroupKey {
 
 struct SortableDrawable {
   const Drawable *drawable{};
+  const CachedDrawable* cachedDrawable{};
   TextureIds textureIds;
   DrawGroupKey key;
   float projectedDepth = 0.0f;
@@ -393,7 +394,7 @@ struct RenderTargetData {
 
     references.push_back(mainOutput.texture);
     colorTargets.push_back(ColorTarget{
-        .name = "main",
+        .name = "color",
         .texture = mainOutput.texture.get(),
     });
   }
@@ -488,7 +489,7 @@ public:
   void clearColorTexture(Context &context, const TexturePtr &texture, WGPUCommandEncoder commandEncoder) {
     RenderTargetData rtd{
         .colorTargets = {RenderTargetData::ColorTarget{
-            .name = "main",
+            .name = "color",
             .texture = texture.get(),
         }},
     };
@@ -599,7 +600,7 @@ struct VertexStateBuilder {
       wgpuAttribute.offset = uint64_t(vertexStride);
       wgpuAttribute.format = getWGPUVertexFormat(attr.type, attr.numComponents);
       wgpuAttribute.shaderLocation = shaderLocationCounter++;
-      size_t typeSize = getVertexAttributeTypeSize(attr.type);
+      size_t typeSize = getStorageTypeSize(attr.type);
       vertexStride += attr.numComponents * typeSize;
     }
     vertexLayout.arrayStride = vertexStride;
