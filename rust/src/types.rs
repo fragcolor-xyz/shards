@@ -4186,6 +4186,7 @@ pub static STRING_VAR_OR_NONE_SLICE: &[Type] = &[
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
   pub static ref ANYS_TYPES: Vec<Type> = vec![common_type::anys];
+  pub static ref ANY_TABLE_VAR_TYPES: Vec<Type> = vec![common_type::any_table, common_type::any_table_var];
   pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
   pub static ref STRING_TYPES: Vec<Type> = vec![common_type::string];
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
