@@ -110,6 +110,7 @@ jobs:
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
+          path: shards
       - name: Set up python
         uses: actions/setup-python@v2
         with:
@@ -123,21 +124,31 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs-markdown
-          path: docs/docs/docs/shards
+          path: shards/docs/docs/docs/shards
       - name: Download samples logs
         uses: actions/download-artifact@v3
         with:
           name: samples-logs
-          path: docs/samples
+          path: shards/docs/samples
+      - name: Checkout shards-examples
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards-examples
+          fetch-depth: 1
+          path: shards-examples
+      - name: Link tutorials
+        run: |
+          cd shards/docs/docs/learn
+          ln -s ../../../../shards-examples/tutorials/
       - name: Build website
         if: ${{ steps.setup.outputs.publish != 'true' }}
         run: |
-          cd docs
+          cd shards/docs
           mkdocs build
       - name: Build & publish website
         if: ${{ steps.setup.outputs.publish == 'true' }}
         run: |
-          cd docs
+          cd shards/docs
           git config --global user.name "Fragcolor bot"
           git config --global user.email "bot@fragcolor.xyz"
           mkdocs gh-deploy --force --message "Publish documentation from {sha}
@@ -147,6 +158,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: docs-website
-          path: |
-            docs/site/
+          path: shards/docs/site/
           if-no-files-found: error
