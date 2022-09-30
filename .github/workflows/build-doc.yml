@@ -138,7 +138,10 @@ jobs:
           path: shards-examples
       - name: Link tutorials
         run: |
-          cd shards/docs/docs/learn
+          # note: we link twice because some relative path (esp. include) might be incorrect
+          cd shards/docs
+          ln -s ../../shards-examples/tutorials/
+          cd docs/learn
           ln -s ../../../../shards-examples/tutorials/
       - name: Build website
         if: ${{ steps.setup.outputs.publish != 'true' }}
