@@ -11,6 +11,7 @@ struct Reset {
 }
 
 struct Style {
+  instance: ParamVar,
   parents: ParamVar,
   requiring: ExposedTypes,
 }
