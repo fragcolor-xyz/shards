@@ -92,9 +92,7 @@
            (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
            (compute-rt-region-16-9) > .rt-region
 
-           {:Target .rt-0 :WindowRegion .rt-region} (GFX.PushView)
-           (Step inner-wire-0)
-           (GFX.PopView)
+           {:Target .rt-0 :WindowRegion .rt-region} (GFX.Region (Step inner-wire-0))
 
            .rt-0 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
 
@@ -110,9 +108,8 @@
            (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
            (compute-rt-region-16-9) > .rt-region
 
-           {:Target .rt-1 :WindowRegion .rt-region} (GFX.PushView)
-           (Step inner-wire-1)
-           (GFX.PopView)
+           {:Target .rt-1 :WindowRegion .rt-region} (GFX.Region (->
+                                                                 (Step inner-wire-1)))
 
            .rt-1 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
 

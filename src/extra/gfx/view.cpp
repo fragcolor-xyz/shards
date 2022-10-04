@@ -3,6 +3,7 @@
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
 #include <input/input_stack.hpp>
+#include "params.hpp"
 #include "linalg_shim.hpp"
 #include "shards_utils.hpp"
 
@@ -74,18 +75,25 @@ struct ViewShard {
   }
 };
 
-struct PushViewShard : public BaseConsumer {
+struct RegionShard : public BaseConsumer {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
 
-  static SHParametersInfo parameters() {
-    static Parameters params{};
-    return params;
+  PARAM(ShardsVar, _content, "Content", "The code to run inside this region", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(RegionShard, PARAM_IMPL_FOR(_content));
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseConsumerCleanup();
   }
 
-  void cleanup() { baseConsumerCleanup(); }
+  void warmup(SHContext *context) {
+    baseConsumerWarmup(context);
+    PARAM_WARMUP(context);
+  }
 
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
+  SHTypeInfo compose(SHInstanceData &data) { return _content.compose(data).outputType; }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     ViewStack::Item viewItem{};
@@ -132,36 +140,18 @@ struct PushViewShard : public BaseConsumer {
     viewStack.push(std::move(viewItem));
     inputStack.push(std::move(inputItem));
 
-    return Var::Empty;
-  }
-};
-
-struct PopViewShard : public BaseConsumer {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-
-  static SHParametersInfo parameters() {
-    static Parameters params{};
-    return params;
-  }
-
-  void cleanup() { baseConsumerCleanup(); }
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &mwg = getMainWindowGlobals();
-    ViewStack &viewStack = mwg.renderer->getViewStack();
-    input::InputStack &inputStack = mwg.inputStack;
+    SHVar contentOutput;
+    _content.activate(shContext, SHVar{}, contentOutput);
 
     viewStack.pop();
     inputStack.pop();
 
-    return Var::Empty;
+    return contentOutput;
   }
 };
 
 void registerViewShards() {
   REGISTER_SHARD("GFX.View", ViewShard);
-  REGISTER_SHARD("GFX.PushView", PushViewShard);
-  REGISTER_SHARD("GFX.PopView", PopViewShard);
+  REGISTER_SHARD("GFX.Region", RegionShard);
 }
 } // namespace gfx
