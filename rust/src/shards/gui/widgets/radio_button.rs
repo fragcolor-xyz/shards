@@ -5,6 +5,8 @@ use super::RadioButton;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::widgets::text_util;
+use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::ANY_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
@@ -45,6 +47,7 @@ lazy_static! {
       &ANY_TYPES[..],
     )
       .into(),
+    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -58,6 +61,7 @@ impl Default for RadioButton {
       label: ParamVar::default(),
       variable: ParamVar::default(),
       value: Var::default(),
+      style: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
     }
@@ -116,6 +120,7 @@ impl Shard for RadioButton {
       0 => Ok(self.label.set_param(value)),
       1 => Ok(self.variable.set_param(value)),
       2 => Ok(self.value = *value),
+      3 => Ok(self.style.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -125,6 +130,7 @@ impl Shard for RadioButton {
       0 => self.label.get_param(),
       1 => self.variable.get_param(),
       2 => self.value,
+      3 => self.style.get_param(),
       _ => Var::default(),
     }
   }
@@ -190,6 +196,7 @@ impl Shard for RadioButton {
 
     self.label.warmup(ctx);
     self.variable.warmup(ctx);
+    self.style.warmup(ctx);
 
     if self.should_expose {
       self.variable.get_mut().valueType = self.value.valueType;
@@ -199,6 +206,7 @@ impl Shard for RadioButton {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.style.cleanup();
     self.variable.cleanup();
     self.label.cleanup();
 
@@ -210,11 +218,19 @@ impl Shard for RadioButton {
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       let label: &str = self.label.get().try_into()?;
+      let mut text = egui::RichText::new(label);
+
+      let style = self.style.get();
+      if !style.is_none() {
+        text = text_util::get_styled_text(text, &style.try_into()?)?;
+      }
+
       let variable = self.variable.get();
       if variable.is_none() {
         return Err("Variable cannot be None");
       }
-      let radio = egui::RadioButton::new(*variable == self.value, label);
+
+      let radio = egui::RadioButton::new(*variable == self.value, text);
       let response = ui.add(radio);
       if response.clicked() {
         if self.variable.is_variable() {

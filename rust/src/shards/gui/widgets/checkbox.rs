@@ -4,6 +4,8 @@
 use super::Checkbox;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::widgets::text_util;
+use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc;
@@ -38,6 +40,7 @@ lazy_static! {
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
+    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -50,6 +53,7 @@ impl Default for Checkbox {
       requiring: Vec::new(),
       label: ParamVar::default(),
       variable: ParamVar::default(),
+      style: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
     }
@@ -105,6 +109,7 @@ impl Shard for Checkbox {
     match index {
       0 => Ok(self.label.set_param(value)),
       1 => Ok(self.variable.set_param(value)),
+      2 => Ok(self.style.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -113,6 +118,7 @@ impl Shard for Checkbox {
     match index {
       0 => self.label.get_param(),
       1 => self.variable.get_param(),
+      2 => self.style.get_param(),
       _ => Var::default(),
     }
   }
@@ -178,6 +184,7 @@ impl Shard for Checkbox {
 
     self.label.warmup(ctx);
     self.variable.warmup(ctx);
+    self.style.warmup(ctx);
 
     if self.should_expose {
       self.variable.get_mut().valueType = common_type::bool.basicType;
@@ -187,6 +194,7 @@ impl Shard for Checkbox {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.style.cleanup();
     self.variable.cleanup();
     self.label.cleanup();
 
@@ -197,7 +205,13 @@ impl Shard for Checkbox {
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let text: &str = self.label.get().try_into()?;
+      let label: &str = self.label.get().try_into()?;
+      let mut text = egui::RichText::new(label);
+
+      let style = self.style.get();
+      if !style.is_none() {
+        text = text_util::get_styled_text(text, &style.try_into()?)?;
+      }
 
       if self.variable.is_variable() {
         let checked: &mut bool = self.variable.get_mut().try_into()?;

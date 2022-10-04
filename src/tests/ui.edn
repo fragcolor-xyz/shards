@@ -574,6 +574,7 @@
        (->
         (UI.Button
          "Click me!"
+         :Action
          (->
           (Assert.Is input :Abort true)
           (Msg "Clicked")))

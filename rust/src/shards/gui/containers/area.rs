@@ -60,7 +60,7 @@ impl Default for Area {
     Self {
       instance: ctx,
       requiring: Vec::new(),
-      position: ParamVar::new((0.0, 0.0).into()),
+      position: ParamVar::default(),
       anchor: ParamVar::default(),
       contents: ShardsVar::default(),
       parents,
@@ -205,10 +205,15 @@ impl Shard for Area {
     if !self.contents.is_empty() {
       let area = egui::Area::new(EguiId::new(self, 0));
       let area = if self.anchor.get().is_none() {
-        let pos: (f32, f32) = self.position.get().try_into()?;
-        area.fixed_pos(pos)
+        let position = self.position.get();
+        if !position.is_none() {
+          let pos: (f32, f32) = self.position.get().try_into()?;
+          area.fixed_pos(pos)
+        } else {
+          area.movable(false)
+        }
       } else {
-        let offset: (f32, f32) = self.position.get().try_into()?;
+        let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
         area.anchor(
           Anchor {
             bits: unsafe {

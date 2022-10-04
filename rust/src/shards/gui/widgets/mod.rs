@@ -15,6 +15,7 @@ struct Button {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
+  style: ParamVar,
   action: ShardsVar,
   wrap: ParamVar,
 }
@@ -24,6 +25,7 @@ struct Checkbox {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
+  style: ParamVar,
   variable: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
@@ -55,6 +57,7 @@ struct Combo {
   label: ParamVar,
   index: ParamVar,
   width: ParamVar,
+  style: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: usize,
@@ -64,6 +67,7 @@ struct Hyperlink {
   parents: ParamVar,
   requiring: ExposedTypes,
   label: ParamVar,
+  style: ParamVar,
 }
 
 struct Image {
@@ -92,6 +96,15 @@ struct Label {
   parents: ParamVar,
   requiring: ExposedTypes,
   wrap: ParamVar,
+  style: ParamVar,
+}
+
+struct Link {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  label: ParamVar,
+  action: ShardsVar,
+  style: ParamVar,
 }
 
 struct ListBox {
@@ -117,6 +130,7 @@ struct RadioButton {
   label: ParamVar,
   variable: ParamVar,
   value: Var,
+  style: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
 }
@@ -174,6 +188,7 @@ macro_rules! decl_ui_slider {
       parents: ParamVar,
       requiring: ExposedTypes,
       label: ParamVar,
+      style: ParamVar,
       variable: ParamVar,
       min: ParamVar,
       max: ParamVar,
@@ -203,6 +218,7 @@ mod hyperlink;
 mod image;
 mod image_button;
 mod label;
+mod link;
 mod listbox;
 mod numeric_input;
 mod numeric_slider;
@@ -210,6 +226,7 @@ mod progress_bar;
 mod radio_button;
 mod spinner;
 mod text_input;
+mod text_util;
 mod tooltip;
 
 pub fn registerShards() {
@@ -221,6 +238,7 @@ pub fn registerShards() {
   registerShard::<Image>();
   registerShard::<ImageButton>();
   registerShard::<Label>();
+  registerShard::<Link>();
   registerShard::<ListBox>();
   registerShard::<FloatInput>();
   registerShard::<Float2Input>();
