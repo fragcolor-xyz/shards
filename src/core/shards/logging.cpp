@@ -111,42 +111,41 @@ public:
   explicit custom_ringbuffer_sink(size_t n_items, spdlog::level::level_enum min_level = spdlog::level::debug)
       : q_{n_items}, min_level_(min_level) {}
 
-  std::vector<spdlog::details::log_msg_buffer> last_raw(size_t lim = 0) {
-    std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
-    auto items_available = q_.size();
-    auto n_items = lim > 0 ? (std::min)(lim, items_available) : items_available;
-    std::vector<spdlog::details::log_msg_buffer> ret;
-    ret.reserve(n_items);
-    for (size_t i = (items_available - n_items); i < items_available; i++) {
-      ret.push_back(q_.at(i));
-    }
-    return ret;
-  }
+  inline bool is_dirty() { return _dirty; }
 
-  std::vector<std::string> last_formatted(size_t lim = 0) {
-    std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
-    auto items_available = q_.size();
-    auto n_items = lim > 0 ? (std::min)(lim, items_available) : items_available;
-    std::vector<std::string> ret;
-    ret.reserve(n_items);
-    for (size_t i = (items_available - n_items); i < items_available; i++) {
-      spdlog::memory_buf_t formatted;
-      spdlog::sinks::base_sink<Mutex>::formatter_->format(q_.at(i), formatted);
-      ret.push_back(fmt::to_string(formatted));
+  std::vector<std::string> get_last_formatted() {
+    if (_dirty) {
+      std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
+      _dirty = false;
+
+      auto n_items = q_.size();
+      _formatted_cache.clear();
+      _formatted_cache.reserve(n_items);
+      for (size_t i = 0; i < n_items; i++) {
+        spdlog::memory_buf_t formatted;
+        spdlog::sinks::base_sink<Mutex>::formatter_->format(q_.at(i), formatted);
+        _formatted_cache.push_back(fmt::to_string(formatted));
+      }
     }
-    return ret;
+
+    return _formatted_cache;
   }
 
 protected:
   void sink_it_(const spdlog::details::log_msg &msg) override {
-    if (msg.level >= min_level_)
+    if (msg.level >= min_level_) {
+      _dirty = true;
       q_.push_back(spdlog::details::log_msg_buffer{msg});
+    }
   }
   void flush_() override {}
 
 private:
   spdlog::details::circular_q<spdlog::details::log_msg_buffer> q_;
   spdlog::level::level_enum min_level_;
+
+  bool _dirty;
+  std::vector<std::string> _formatted_cache;
 };
 
 using custom_ringbuffer_sink_mt = custom_ringbuffer_sink<std::mutex>;
@@ -227,12 +226,14 @@ struct CaptureLog {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (_ring) {
-      auto msgs = _ring->last_formatted();
+    if (likely((bool)_ring)) {
+      if (_ring->is_dirty()) {
+        auto msgs = _ring->get_last_formatted();
 
-      _s.clear();
-      for (auto i = msgs.begin(); i != msgs.end(); ++i) {
-        _s += *i;
+        _s.clear();
+        for (auto i = msgs.begin(); i != msgs.end(); ++i) {
+          _s += *i;
+        }
       }
       return Var(_s);
     }
