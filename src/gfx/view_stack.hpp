@@ -26,10 +26,8 @@ struct ViewStack {
     int2 referenceSize;
   };
 
-  typedef CheckedStack<Item>::Marker Marker;
-
 private:
-  CheckedStack<Item> items;
+  std::vector<Item> items;
 
 public:
   ViewStack();
@@ -43,14 +41,7 @@ public:
   /// <div rustbindgen hide></div>
   Output getOutput() const;
 
-  // see CheckedStack
-  Marker getMarker() const { return items.getMarker(); }
-
-  // see CheckedStack
-  void restoreMarkerChecked(Marker marker) { items.restoreMarkerChecked(marker); }
-
-  // see CheckedStack
-  void reset() { items.reset(); }
+  void reset() { ensureEmptyStack(items); }
 };
 } // namespace gfx
 

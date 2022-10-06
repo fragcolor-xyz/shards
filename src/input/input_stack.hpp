@@ -7,7 +7,6 @@
 #include <optional>
 
 namespace shards::input {
-using gfx::CheckedStack;
 struct InputStack {
   /// <div rustbindgen hide></div>
   struct Item {
@@ -15,10 +14,8 @@ struct InputStack {
     std::optional<WindowMapping> windowMapping;
   };
 
-  typedef CheckedStack<Item>::Marker Marker;
-
 private:
-  CheckedStack<Item> items;
+  std::vector<Item> items;
 
 public:
   InputStack();
@@ -32,14 +29,7 @@ public:
   /// <div rustbindgen hide></div>
   const Item &getTop() const;
 
-  // see CheckedStack
-  Marker getMarker() const { return items.getMarker(); }
-
-  // see CheckedStack
-  void restoreMarkerChecked(Marker marker) { items.restoreMarkerChecked(marker); }
-
-  // see CheckedStack
-  void reset() { items.reset(); }
+  void reset() { gfx::ensureEmptyStack(items); }
 };
 } // namespace shards::input
 
