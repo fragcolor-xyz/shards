@@ -260,10 +260,17 @@ shader::GeneratorOutput PipelineBuilder::generateShader() {
   generator.meshFormat = cachedPipeline.meshFormat;
 
   FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
-  for (auto &target : cachedPipeline.renderTargetLayout.colorTargets) {
-    auto &formatDesc = getTextureFormatDescription(target.format);
-    FieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
-    generator.outputFields.emplace_back(target.name, fieldType);
+
+  size_t index = 0;
+  size_t depthIndex = cachedPipeline.renderTargetLayout.depthTargetIndex.value_or(~0);
+  for (auto &target : cachedPipeline.renderTargetLayout.targets) {
+    // Ignore depth target, it's implicitly bound to z depth
+    if (index != depthIndex) {
+      auto &formatDesc = getTextureFormatDescription(target.format);
+      FieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+      generator.outputFields.emplace_back(target.name, fieldType);
+    }
+    index++;
   }
 
   return generator.build(shaderEntryPoints);
@@ -308,27 +315,30 @@ WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
 
   // Color targets
   std::vector<WGPUColorTargetState> colorTargets;
-  for (auto &target : cachedPipeline.renderTargetLayout.colorTargets) {
-    WGPUColorTargetState &colorTarget = colorTargets.emplace_back();
-    colorTarget.format = target.format;
-    colorTarget.writeMask = pipelineState.colorWrite.value_or(WGPUColorWriteMask_All);
-    colorTarget.blend = blendState.has_value() ? &blendState.value() : nullptr;
+  WGPUDepthStencilState depthStencilState{};
+
+  size_t depthIndex = cachedPipeline.renderTargetLayout.depthTargetIndex.value_or(~0);
+  for (size_t index = 0; index < cachedPipeline.renderTargetLayout.targets.size(); index++) {
+    auto &target = cachedPipeline.renderTargetLayout.targets[index];
+    if (index == depthIndex) {
+      // Depth target
+      depthStencilState.format = target.format;
+      depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
+      depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
+      depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
+      depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
+      desc.depthStencil = &depthStencilState;
+    } else {
+      // Color target
+      WGPUColorTargetState &colorTarget = colorTargets.emplace_back();
+      colorTarget.format = target.format;
+      colorTarget.writeMask = pipelineState.colorWrite.value_or(WGPUColorWriteMask_All);
+      colorTarget.blend = blendState.has_value() ? &blendState.value() : nullptr;
+    }
   }
+
   fragmentState.targets = colorTargets.data();
   fragmentState.targetCount = colorTargets.size();
-
-  // Depth target
-  WGPUDepthStencilState depthStencilState{};
-  if (cachedPipeline.renderTargetLayout.depthTarget) {
-    auto &target = cachedPipeline.renderTargetLayout.depthTarget.value();
-
-    depthStencilState.format = target.format;
-    depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
-    depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
-    depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
-    depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
-    desc.depthStencil = &depthStencilState;
-  }
 
   desc.fragment = &fragmentState;
 
