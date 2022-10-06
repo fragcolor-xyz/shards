@@ -3,4 +3,4 @@
  :Size 24
  :MinLevel "info"
  :Pattern "%^[%l]%$ [%Y-%m-%d %T.%e] %v")
-(ExpectString)
+(ExpectStringSeq)

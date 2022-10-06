@@ -14,11 +14,10 @@
        (->
         (UI.Button "Say Hello" (Msg "Hello!"))
         (CaptureLog
-         .logs
          :Size 24
          :MinLevel "info"
          :Pattern "%^[%l]%$ [%Y-%m-%d %T.%e] %v")
-        .logs (String.Join)
+        (String.Join)
         (UI.Console)))))
 
     (GFX.Render :Steps .render-steps))))
