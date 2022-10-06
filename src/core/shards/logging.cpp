@@ -152,25 +152,24 @@ using custom_ringbuffer_sink_mt = custom_ringbuffer_sink<std::mutex>;
 using custom_ringbuffer_sink_st = custom_ringbuffer_sink<spdlog::details::null_mutex>;
 
 struct CaptureLog {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  static SHTypesInfo outputTypes() {
-    // FIXME
-    return CoreInfo::StringType;
-    // return CoreInfo::StringSeqType;
-  }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() { return _params; }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _n_items = size_t(value.payload.intValue);
+      _variable = value;
       break;
     case 1:
-      _min_level = value.payload.stringValue;
+      _n_items = size_t(value.payload.intValue);
       break;
     case 2:
+      _min_level = value.payload.stringValue;
+      break;
+    case 3:
       _pattern = value.payload.stringValue;
       break;
     default:
@@ -179,24 +178,73 @@ struct CaptureLog {
   }
 
   SHVar getParam(int index) {
-    auto res = SHVar();
     switch (index) {
     case 0:
-      res.valueType = Int;
-      res.payload.intValue = _n_items;
-      break;
-    case 1:
-      res.valueType = String;
-      res.payload.stringValue = _min_level.c_str();
-      break;
-    case 2:
-      res.valueType = String;
-      res.payload.stringValue = _pattern.c_str();
-      break;
-    default:
-      break;
+      return _variable;
+    case 1: {
+      auto n_items = SHVar();
+      n_items.valueType = Int;
+      n_items.payload.intValue = _n_items;
+      return n_items;
     }
-    return res;
+    case 2: {
+      auto min_level = SHVar();
+      min_level.valueType = String;
+      min_level.payload.stringValue = _min_level.c_str();
+      return min_level;
+    }
+    case 3: {
+      auto pattern = SHVar();
+      pattern.valueType = String;
+      pattern.payload.stringValue = _pattern.c_str();
+      return pattern;
+    }
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (_variable.isVariable()) {
+      _exposing = true; // assume we expose a new variable
+      // search for a possible existing variable and ensure it's the right type
+      for (auto &var : data.shared) {
+        if (strcmp(var.name, _variable.variableName()) == 0) {
+          // we found a variable, make sure it's the right type and mark
+          // exposing off
+          _exposing = false;
+          if (var.exposedType.basicType != SHType::String) {
+            throw SHException("CaptureLog - Variable: Existing variable type not matching the input.");
+          }
+          // also make sure it's mutable!
+          if (!var.isMutable) {
+            throw SHException("CaptureLog - Variable: Existing variable is not mutable.");
+          }
+          break;
+        }
+      }
+    }
+    return data.inputType;
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (_variable.isVariable() && !_exposing) {
+      _expInfo = ExposedInfo(
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required variable."), SHTypeInfo(CoreInfo::StringType)));
+      return SHExposedTypesInfo(_expInfo);
+    } else {
+      return {};
+    }
+  }
+
+  SHExposedTypesInfo exposedVariables() {
+    if (_variable.isVariable() > 0 && _exposing) {
+      _expInfo = ExposedInfo(ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The exposed variable."),
+                                                   SHTypeInfo(CoreInfo::StringType), true));
+      return SHExposedTypesInfo(_expInfo);
+    } else {
+      return {};
+    }
   }
 
   void warmup(SHContext *context) {
@@ -211,9 +259,18 @@ struct CaptureLog {
           std::unique_ptr<spdlog::formatter>(new spdlog::pattern_formatter(_pattern, spdlog::pattern_time_type::local)));
       dist_sink->add_sink(_ring);
     }
+
+    _variable.warmup(context);
+
+    if (_exposing) {
+      auto &var = _variable.get();
+      var.valueType = SHType::String;
+    }
   }
 
   void cleanup() {
+    _variable.cleanup();
+
     auto logger = spdlog::default_logger();
     assert(logger);
     auto sink = logger->sinks().at(0);
@@ -234,24 +291,32 @@ struct CaptureLog {
         for (auto i = msgs.begin(); i != msgs.end(); ++i) {
           _s += *i;
         }
+
+        auto &var = _variable.get();
+        var.payload.stringValue = _s.data();
+        var.payload.stringLen = uint32_t(_s.length());
       }
-      return Var(_s);
     }
-    return Var("");
+    return input;
   }
 
 private:
   static inline Parameters _params{
+      {"Variable", SHCCSTR("The variable to hold the captured logs."), {CoreInfo::StringVarType}},
       {"Size", SHCCSTR("The maximum number of logs to retain."), {CoreInfo::IntType}},
       {"MinLevel", SHCCSTR("The minimum level of logs to capture."), {CoreInfo::StringType}},
       {"Pattern", SHCCSTR("The pattern used to format the logs."), {CoreInfo::StringType}},
   };
 
+  std::string _s{};
+  ParamVar _variable{};
+  ExposedInfo _expInfo{};
+  bool _exposing = false;
+
   size_t _n_items{8};
   std::string _min_level{"debug"};
   std::string _pattern{"%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v"};
   std::shared_ptr<custom_ringbuffer_sink_mt> _ring;
-  std::string _s{};
 };
 
 void registerLoggingShards() {

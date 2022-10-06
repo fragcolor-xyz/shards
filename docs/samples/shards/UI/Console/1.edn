@@ -14,9 +14,11 @@
        (->
         (UI.Button "Say Hello" (Msg "Hello!"))
         (CaptureLog
+         .log
          :Size 24
          :MinLevel "info"
          :Pattern "%^[%l]%$ [%Y-%m-%d %T.%e] %v")
+        .log
         (UI.Console)))))
 
     (GFX.Render :Steps .render-steps))))
