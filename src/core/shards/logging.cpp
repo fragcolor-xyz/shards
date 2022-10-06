@@ -213,8 +213,14 @@ struct CaptureLog {
           // we found a variable, make sure it's the right type and mark
           // exposing off
           _exposing = false;
-          if (var.exposedType.basicType != SHType::String) {
-            throw SHException("CaptureLog - Variable: Existing variable type not matching the input.");
+          if (var.exposedType.basicType != SHType::Seq) {
+            throw SHException("CaptureLog - Variable: Existing variable type not a sequence.");
+          }
+          if (var.exposedType.seqTypes.len != 1) {
+            throw SHException("CaptureLog - Variable: Existing variable is not a single type Seq.");
+          }
+          if (var.exposedType.seqTypes.elements[0].basicType != SHType::String) {
+            throw SHException("CaptureLog - Variable: Existing variable type not a sequence of strings.");
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
@@ -229,8 +235,8 @@ struct CaptureLog {
 
   SHExposedTypesInfo requiredVariables() {
     if (_variable.isVariable() && !_exposing) {
-      _expInfo = ExposedInfo(
-          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required variable."), SHTypeInfo(CoreInfo::StringType)));
+      _expInfo = ExposedInfo(ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The required variable."),
+                                                   SHTypeInfo(CoreInfo::StringSeqType)));
       return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -240,7 +246,7 @@ struct CaptureLog {
   SHExposedTypesInfo exposedVariables() {
     if (_variable.isVariable() > 0 && _exposing) {
       _expInfo = ExposedInfo(ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The exposed variable."),
-                                                   SHTypeInfo(CoreInfo::StringType), true));
+                                                   SHTypeInfo(CoreInfo::StringSeqType), true));
       return SHExposedTypesInfo(_expInfo);
     } else {
       return {};
@@ -264,7 +270,7 @@ struct CaptureLog {
 
     if (_exposing) {
       auto &var = _variable.get();
-      var.valueType = SHType::String;
+      var.valueType = SHType::Seq;
     }
   }
 
@@ -286,15 +292,15 @@ struct CaptureLog {
     if (likely((bool)_ring)) {
       if (_ring->is_dirty()) {
         auto msgs = _ring->get_last_formatted();
-
-        _s.clear();
-        for (auto i = msgs.begin(); i != msgs.end(); ++i) {
-          _s += *i;
+        auto size = msgs.size();
+        _pool.resize(size);
+        _seq.resize(size);
+        for (size_t i = 0; i < size; i++) {
+          _pool[i].assign(msgs[i]);
+          _seq[i] = Var(_pool[i]);
         }
-
         auto &var = _variable.get();
-        var.payload.stringValue = _s.data();
-        var.payload.stringLen = uint32_t(_s.length());
+        var.payload.seqValue = SHSeq(_seq);
       }
     }
     return input;
@@ -308,7 +314,8 @@ private:
       {"Pattern", SHCCSTR("The pattern used to format the logs."), {CoreInfo::StringType}},
   };
 
-  std::string _s{};
+  std::vector<std::string> _pool;
+  IterableSeq _seq;
   ParamVar _variable{};
   ExposedInfo _expInfo{};
   bool _exposing = false;
