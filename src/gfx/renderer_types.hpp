@@ -23,11 +23,8 @@
 
 namespace gfx::detail {
 using shader::FieldType;
-using shader::FieldTypes;
 using shader::TextureBindingLayout;
-using shader::TextureBindingLayoutBuilder;
 using shader::UniformBufferLayout;
-using shader::UniformBufferLayoutBuilder;
 using shader::UniformLayout;
 
 inline auto getLogger() {
@@ -112,53 +109,6 @@ public:
   }
 };
 
-struct RenderTargetLayout {
-  struct DepthTarget {
-    WGPUTextureFormat format;
-
-    bool operator==(const DepthTarget &other) const { return format == other.format; }
-    bool operator!=(const DepthTarget &other) const { return !(*this == other); }
-
-    template <typename T> void hashStatic(T &hasher) const {
-      hasher("<depth>");
-      hasher(format);
-    }
-  };
-
-  struct ColorTarget {
-    std::string name;
-    WGPUTextureFormat format;
-
-    bool operator==(const ColorTarget &other) const { return name == other.name && format == other.format; }
-    bool operator!=(const ColorTarget &other) const { return !(*this == other); }
-
-    template <typename T> void hashStatic(T &hasher) const {
-      hasher(name);
-      hasher(format);
-    }
-  };
-
-  std::optional<DepthTarget> depthTarget;
-  std::vector<ColorTarget> colorTargets;
-
-  bool operator==(const RenderTargetLayout &other) const {
-    if (!std::equal(colorTargets.begin(), colorTargets.end(), other.colorTargets.begin(), other.colorTargets.end()))
-      return false;
-
-    if (depthTarget != other.depthTarget)
-      return false;
-
-    return true;
-  }
-
-  bool operator!=(const RenderTargetLayout &other) const { return !(*this == other); }
-
-  template <typename T> void hashStatic(T &hasher) const {
-    hasher(depthTarget);
-    hasher(colorTargets);
-  }
-};
-
 struct SortableDrawable;
 struct DrawGroupKey {
   MeshContextData *meshData{};
@@ -187,7 +137,7 @@ struct DrawGroupKey {
 
 struct SortableDrawable {
   const Drawable *drawable{};
-  const CachedDrawable* cachedDrawable{};
+  const CachedDrawable *cachedDrawable{};
   TextureIds textureIds;
   DrawGroupKey key;
   float projectedDepth = 0.0f;
@@ -210,6 +160,40 @@ struct BufferBinding {
 struct InstanceBufferDesc {
   size_t bufferLength;
   size_t bufferStride;
+};
+
+struct RenderTargetLayout {
+  struct Target {
+    std::string name;
+    WGPUTextureFormat format;
+
+    std::strong_ordering operator<=>(const Target &other) const = default;
+
+    template <typename T> void hashStatic(T &hasher) const {
+      hasher(name);
+      hasher(format);
+    }
+  };
+
+  std::vector<Target> targets;
+  std::optional<size_t> depthTargetIndex;
+
+  bool operator==(const RenderTargetLayout &other) const {
+    if (!std::equal(targets.begin(), targets.end(), other.targets.begin(), other.targets.end()))
+      return false;
+
+    if (depthTargetIndex != other.depthTargetIndex)
+      return false;
+
+    return true;
+  }
+
+  bool operator!=(const RenderTargetLayout &other) const { return !(*this == other); }
+
+  template <typename T> void hashStatic(T &hasher) const {
+    hasher(targets);
+    hasher(depthTargetIndex);
+  }
 };
 
 struct CachedPipeline {
@@ -324,268 +308,12 @@ struct FrameReferences {
   void clear() { contextDataReferences.clear(); }
 };
 
-struct Bindable {
-  WGPUBuffer buffer;
-  UniformBufferLayout layout;
-  size_t overrideSize = ~0;
-  size_t offset = 0;
-  Bindable(WGPUBuffer buffer, UniformBufferLayout layout, size_t overrideSize = ~0, size_t offset = 0)
-      : buffer(buffer), layout(layout), overrideSize(overrideSize), offset(offset) {}
-
-  WGPUBindGroupEntry toBindGroupEntry(size_t &bindingCounter) const {
-    WGPUBindGroupEntry entry{};
-    entry.binding = bindingCounter++;
-    entry.buffer = buffer;
-    entry.size = (overrideSize != size_t(~0)) ? overrideSize : layout.size;
-    entry.offset = offset;
-    return entry;
-  }
-};
-
-struct RenderTargetData {
-  struct DepthTarget {
-    Texture *texture;
-
-    bool operator==(const DepthTarget &other) const { return texture == other.texture; }
-    bool operator!=(const DepthTarget &other) const { return !(*this == other); }
-  };
-
-  struct ColorTarget {
-    std::string name;
-    Texture *texture;
-
-    bool operator==(const ColorTarget &other) const { return name == other.name && texture == other.texture; }
-    bool operator!=(const ColorTarget &other) const { return !(*this == other); }
-  };
-
-  std::optional<DepthTarget> depthTarget;
-  std::vector<ColorTarget> colorTargets;
-  std::vector<TexturePtr> references;
-
-  // Use managed render target with size adjusted to reference size
-  void init(RenderTargetPtr renderTarget) {
-    for (auto &pair : renderTarget->attachments) {
-      auto &attachment = pair.second;
-      auto &key = pair.first;
-      if (key == "depth") {
-        depthTarget = DepthTarget{
-            .texture = attachment.get(),
-        };
-      } else {
-        colorTargets.push_back(ColorTarget{
-            .name = key,
-            .texture = attachment.get(),
-        });
-      }
-
-      references.push_back(attachment);
-    }
-
-    std::sort(colorTargets.begin(), colorTargets.end(),
-              [](const ColorTarget &a, const ColorTarget &b) { return a.name < b.name; });
-  }
-
-  // Use a device's main output with managed depth buffer
-  void init(const Renderer::MainOutput &mainOutput, TexturePtr depthStencilBuffer) {
-    references.push_back(depthStencilBuffer);
-    depthTarget = DepthTarget{
-        .texture = depthStencilBuffer.get(),
-    };
-
-    references.push_back(mainOutput.texture);
-    colorTargets.push_back(ColorTarget{
-        .name = "color",
-        .texture = mainOutput.texture.get(),
-    });
-  }
-
-  // Resolve layout info without the actual bindings
-  RenderTargetLayout getLayout() const {
-    RenderTargetLayout result;
-    if (depthTarget) {
-      result.depthTarget = RenderTargetLayout::DepthTarget{
-          .format = depthTarget->texture->getFormat().pixelFormat,
-      };
-    }
-
-    for (auto &colorTarget : colorTargets) {
-      result.colorTargets.push_back(RenderTargetLayout::ColorTarget{
-          .name = colorTarget.name,
-          .format = colorTarget.texture->getFormat().pixelFormat,
-      });
-    }
-
-    return result;
-  }
-
-  bool operator==(const RenderTargetData &other) const {
-    if (!std::equal(colorTargets.begin(), colorTargets.end(), other.colorTargets.begin(), other.colorTargets.end()))
-      return false;
-
-    if (depthTarget != other.depthTarget)
-      return false;
-
-    return true;
-  }
-
-  bool operator!=(const RenderTargetData &other) const { return !(*this == other); }
-};
-
-struct RenderGraphNode {
-  RenderTargetData renderTargetData;
-  bool forceDepthClear{};
-  std::vector<Texture *> writesTo;
-  std::vector<Texture *> readsFrom;
-
-  // Sets up the render pass
-  std::function<void(WGPURenderPassDescriptor &)> setupPass;
-
-  // Writes the render pass
-  std::function<void(WGPURenderPassEncoder)> body;
-
-  RenderGraphNode() = default;
-  RenderGraphNode(RenderGraphNode &&) = default;
-  RenderGraphNode &operator=(RenderGraphNode &&) = default;
-
-  void populateWritesTo() {
-    if (renderTargetData.depthTarget)
-      writesTo.push_back(renderTargetData.depthTarget->texture);
-    for (auto &target : renderTargetData.colorTargets) {
-      writesTo.push_back(target.texture);
-    }
-  }
-};
-
-// Keeps a list of nodes that contain GPU commands
-struct RenderGraph {
-  std::vector<RenderGraphNode> nodes;
-  void populateEdges() {
-    for (auto &node : nodes)
-      node.populateWritesTo();
-  }
-};
-
 struct ViewData {
   View &view;
   CachedView &cachedView;
   Rect viewport;
   WGPUBuffer viewBuffer;
   RenderTargetPtr renderTarget;
-};
-
-struct RenderGraphEvaluator {
-private:
-  // Keeps track of texture that have been written to at least once
-  std::set<Texture *> writtenTextures;
-
-  std::vector<WGPURenderPassColorAttachment> cachedColorAttachments;
-  std::optional<WGPURenderPassDepthStencilAttachment> cachedDepthStencilAttachment;
-  WGPURenderPassDescriptor cachedRenderPassDescriptor{};
-
-public:
-  bool isWrittenTo(const TexturePtr &texture) const { return writtenTextures.contains(texture.get()); }
-
-  // Enqueue a clear command on the given color texture
-  void clearColorTexture(Context &context, const TexturePtr &texture, WGPUCommandEncoder commandEncoder) {
-    RenderTargetData rtd{
-        .colorTargets = {RenderTargetData::ColorTarget{
-            .name = "color",
-            .texture = texture.get(),
-        }},
-    };
-
-    auto &passDesc = createRenderPassDescriptor(context, rtd);
-    auto &attachment = const_cast<WGPURenderPassColorAttachment &>(passDesc.colorAttachments[0]);
-    attachment.loadOp = WGPULoadOp_Clear;
-
-    WGPURenderPassEncoder clearPass = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
-    wgpuRenderPassEncoderEnd(clearPass);
-  }
-
-  // Describes a render pass so that targets are cleared to their default value or loaded
-  // based on if they were already written to previously
-  WGPURenderPassDescriptor &createRenderPassDescriptor(Context &context, const RenderTargetData &renderTargetData,
-                                                       bool forceDepthClear = false) {
-    cachedColorAttachments.clear();
-    cachedDepthStencilAttachment.reset();
-
-    memset(&cachedRenderPassDescriptor, 0, sizeof(cachedRenderPassDescriptor));
-
-    for (auto target : renderTargetData.colorTargets) {
-      auto &textureData = target.texture->createContextDataConditional(context);
-      auto &attachment = cachedColorAttachments.emplace_back(WGPURenderPassColorAttachment{
-          .view = textureData.defaultView,
-          .clearValue = WGPUColor{0.0, 0.0, 0.0, 0.0},
-      });
-
-      bool previouslyWrittenTo = writtenTextures.contains(target.texture);
-      if (previouslyWrittenTo) {
-        attachment.loadOp = WGPULoadOp_Load;
-      } else {
-        attachment.loadOp = WGPULoadOp_Clear;
-      }
-      attachment.storeOp = WGPUStoreOp_Store;
-
-      writtenTextures.insert(target.texture);
-    }
-
-    if (renderTargetData.depthTarget) {
-      auto &target = renderTargetData.depthTarget.value();
-      auto &textureData = target.texture->createContextDataConditional(context);
-      cachedDepthStencilAttachment = WGPURenderPassDepthStencilAttachment{
-          .view = textureData.defaultView,
-          .depthClearValue = 1.0f,
-          .stencilClearValue = 0,
-      };
-      auto &attachment = cachedDepthStencilAttachment.value();
-
-      bool previouslyWrittenTo = writtenTextures.contains(target.texture);
-      if (previouslyWrittenTo && !forceDepthClear) {
-        attachment.depthLoadOp = WGPULoadOp_Load;
-      } else {
-        attachment.depthLoadOp = WGPULoadOp_Clear;
-      }
-      attachment.depthStoreOp = WGPUStoreOp_Store;
-      attachment.stencilLoadOp = WGPULoadOp_Undefined;
-      attachment.stencilStoreOp = WGPUStoreOp_Undefined;
-
-      writtenTextures.insert(target.texture);
-    }
-
-    cachedRenderPassDescriptor.colorAttachments = cachedColorAttachments.data();
-    cachedRenderPassDescriptor.colorAttachmentCount = cachedColorAttachments.size();
-    cachedRenderPassDescriptor.depthStencilAttachment =
-        cachedDepthStencilAttachment ? &cachedDepthStencilAttachment.value() : nullptr;
-
-    return cachedRenderPassDescriptor;
-  }
-
-  // Reset all render texture write state
-  void reset() { writtenTextures.clear(); }
-
-  void evaluate(const RenderGraph &graph, Context &context) {
-    // Evaluate all render steps in the order they are defined
-    // potential optimizations:
-    // - evaluate steps without dependencies in parralel
-    // - group multiple steps into single render passes
-
-    WGPUCommandEncoderDescriptor desc = {};
-    WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
-
-    for (const auto &node : graph.nodes) {
-      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(context, node.renderTargetData, node.forceDepthClear);
-      if (node.setupPass)
-        node.setupPass(renderPassDesc);
-      WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
-      node.body(renderPassEncoder);
-      wgpuRenderPassEncoderEnd(renderPassEncoder);
-    }
-
-    WGPUCommandBufferDescriptor cmdBufDesc{};
-    WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
-
-    context.submit(cmdBuf);
-  }
 };
 
 struct VertexStateBuilder {

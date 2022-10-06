@@ -11,6 +11,7 @@
 #include <gfx/paths.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/render_target.hpp>
+#include <gfx/steps/effect.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
@@ -59,7 +60,8 @@ TEST_CASE("RenderTarget", "[RenderGraph]") {
                   features::BaseColor::create(),
                   blendFeature,
               },
-          .renderTarget = rt,
+          // TODO(stepIO)
+          // .renderTarget = rt,
       }),
   };
 
@@ -160,7 +162,8 @@ TEST_CASE("Velocity", "[RenderGraph]") {
                   features::Transform::create(),
                   features::Velocity::create(),
               },
-          .renderTarget = rt,
+          // TODO(stepIO)
+          // .renderTarget = rt,
       }),
   };
 
@@ -216,6 +219,97 @@ TEST_CASE("Velocity", "[RenderGraph]") {
 
   TEST_RENDER_LOOP(testRenderer) { renderFrame(); };
   CHECK(testRenderer->checkFrame("velocity", comparisonTolerance));
+
+  testRenderer.reset();
+}
+
+TEST_CASE("Automatic Render Target", "[RenderGraph]") {
+  auto testRenderer = createTestRenderer();
+  Renderer &renderer = *testRenderer->renderer.get();
+
+  MeshPtr cubeMesh = createCubeMesh();
+
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewPerspectiveProjection{};
+  view->view = linalg::lookat_matrix(float3(1.0f, 1.0f, 1.0f) * 3.0f, float3(0, 0, 0), float3(0, 1, 0));
+
+  auto &proj = std::get<ViewPerspectiveProjection>(view->proj);
+
+  DrawQueuePtr queue = std::make_shared<DrawQueue>();
+
+  auto transform = linalg::identity;
+  auto drawable = std::make_shared<Drawable>(cubeMesh, transform);
+  drawable->parameters.set("baseColor", float4(0, 1, 0, 1));
+  queue->add(drawable);
+
+  auto makeEffectShader = [&]() {
+    using namespace shader;
+    using namespace shader::blocks;
+
+    auto feature = std::make_shared<Feature>();
+    auto code = makeCompoundBlock();
+    code->appendLine("let depth = ", SampleTexture("depth"), ".x");
+    code->appendLine("let color = ", SampleTexture("color"), ".xyzw");
+    code->appendLine(fmt::format("let near = {:0.2}; let far = {:0.2}; let dr = far-near", proj.near, proj.far));
+    code->appendLine("let ldepth = -near*far/(dr*depth-far)");
+    code->appendLine(WriteOutput("color", FieldTypes::Float4, "vec4<f32>(color.xyz * (1.0 - (ldepth - 2.5)/4.0), 1.0)"));
+    return code;
+  };
+
+  PipelineSteps steps{
+      makePipelineStep(RenderDrawablesStep{
+          .drawQueue = queue,
+          .features =
+              {
+                  features::Transform::create(),
+                  features::Velocity::create(),
+                  features::BaseColor::create(),
+              },
+          .io =
+              RenderStepIO{
+                  .inputs = {},
+                  .outputs = {RenderStepIO::NamedOutput{"color"},
+                              RenderStepIO::NamedOutput{
+                                  .name = "velocity",
+                                  .format = WGPUTextureFormat_RG8Snorm,
+                              },
+                              RenderStepIO::NamedOutput{
+                                  .name = "depth",
+                                  .format = WGPUTextureFormat_Depth32Float,
+                              }},
+              },
+      }),
+      steps::Effect::create(
+          RenderStepIO{
+              .inputs = {"color", "depth", "velocity"},
+              .outputs =
+                  {
+                      RenderStepIO::NamedOutput{
+                          .name = "color",
+                          .format = WGPUTextureFormat_BGRA8UnormSrgb,
+                      },
+                  },
+          },
+          makeEffectShader()),
+      steps::Copy::create("color", WGPUTextureFormat_BGRA8UnormSrgb),
+  };
+
+  double t = 3.0;
+  double timeStep = 1.0 / 60.0;
+
+  auto renderFrame = [&]() {
+    renderer.render(view, steps);
+
+    t += timeStep;
+  };
+
+  // dummy frame to intialize previous transforms
+  testRenderer->begin();
+  renderFrame();
+  testRenderer->end();
+
+  TEST_RENDER_LOOP(testRenderer) { renderFrame(); };
+  CHECK(testRenderer->checkFrame("rendergraph", comparisonTolerance));
 
   testRenderer.reset();
 }

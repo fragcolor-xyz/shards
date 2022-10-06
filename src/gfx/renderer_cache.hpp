@@ -16,6 +16,8 @@ struct PipelineCache {
 // TODO: Find a better name
 struct PipelineDrawableCache {
   std::unordered_map<Hash128, PipelineDrawables> map;
+
+  void clear() { map.clear(); }
 };
 
 template <typename TCache, typename K, typename TInit>
@@ -36,13 +38,13 @@ struct DrawableGrouper {
 private:
   // Cache variable
   std::vector<const Feature *> features;
-  RenderTargetLayout &renderTargetLayout;
+  const RenderTargetLayout &renderTargetLayout;
 
 public:
-  DrawableGrouper(RenderTargetLayout &renderTargetLayout) : renderTargetLayout(renderTargetLayout) {}
+  DrawableGrouper(const RenderTargetLayout &renderTargetLayout) : renderTargetLayout(renderTargetLayout) {}
 
   // Generate hash for the part of the render step that is shared across all drawables
-  Hash128 generateSharedHash(const RenderTargetLayout &renderTargetLayout) {
+  Hash128 generateSharedHash() {
     HasherXXH128<HashStaticVistor> sharedHasher;
     sharedHasher(renderTargetLayout);
     return sharedHasher.getDigest();
@@ -135,8 +137,8 @@ public:
 
       // Insert the result into the pipelineDrawableCache
       auto &pipelineDrawables = getCacheEntry(pipelineDrawableCache.map, grouped.pipelineHash, [&](const Hash128 &key) {
-        return PipelineDrawables {
-          .cachedPipeline = grouped.cachedPipeline,
+        return PipelineDrawables{
+            .cachedPipeline = grouped.cachedPipeline,
         };
       });
 
@@ -144,6 +146,11 @@ public:
     }
   }
 };
+
+template <typename T> void touchCacheItem(T &item, size_t frameCounter) { item.lastTouched = frameCounter; }
+template <typename T> void touchCacheItemPtr(std::shared_ptr<T> &item, size_t frameCounter) {
+  touchCacheItem(*item.get(), frameCounter);
+}
 
 } // namespace gfx::detail
 

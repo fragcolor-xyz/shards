@@ -146,13 +146,13 @@ TEST_CASE("Pipeline states", "[General]") {
     PipelineSteps steps{
         makePipelineStep(RenderDrawablesStep{
             .drawQueue = queue,
+            .sortMode = SortMode::BackToFront,
             .features =
                 {
                     features::Transform::create(),
                     features::BaseColor::create(),
                     blendFeature,
                 },
-            .sortMode = SortMode::BackToFront,
         }),
     };
     TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };

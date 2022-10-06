@@ -3,11 +3,17 @@
 
 #include "fwd.hpp"
 #include "material.hpp"
+#include "gfx_wgpu.hpp"
 #include <variant>
 #include <vector>
 #include <memory>
 
 namespace gfx {
+
+namespace detail {
+struct RenderGraphBuilder;
+struct PipelineStepContext;
+} // namespace detail
 
 enum class SortMode {
   // Keep queue ordering,
@@ -24,28 +30,62 @@ struct ClearValues {
   uint32_t stencil = 0;
 };
 
+// Describes texture/render target connections between render steps
+struct RenderStepIO {
+  enum class Mode {
+    // Load buffer from previous steps
+    Load,
+    // Clear buffer
+    Clear,
+  };
+
+  // A managed named render frame
+  struct NamedOutput {
+    std::string name;
+    // The desired format
+    WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb;
+    Mode mode = Mode::Load;
+  };
+
+  // A preallocator texture to output to
+  struct TextureOutput {
+    std::string name;
+    TexturePtr handle;
+    Mode mode = Mode::Load;
+  };
+
+  typedef std::variant<NamedOutput, TextureOutput> OutputVariant;
+
+  std::vector<std::string> inputs;
+  std::vector<OutputVariant> outputs;
+
+  // When set, will automatically scale outputes relative to main output
+  // Reused buffers loaded from previous steps are upscaled/downscaled
+  // Example:
+  //  (0.5, 0.5) would render at half the output resolution
+  //  (2.0, 2.0) would render at double the output resolution
+  std::optional<float2> outputSizeScale = float2(1, 1);
+};
+
+// Explicitly clear render targets
 struct ClearStep {
-  // (optional) Render target to render to
-  RenderTargetPtr renderTarget;
   ClearValues clearValues;
+  std::vector<RenderStepIO::OutputVariant> outputs;
 };
 
 // Renders all drawables in the queue to the output region
 struct RenderDrawablesStep {
   DrawQueuePtr drawQueue;
-  std::vector<FeaturePtr> features;
   SortMode sortMode = SortMode::Batch;
-  bool forceDepthClear = false;
-  // (optional) Render target to render to
-  RenderTargetPtr renderTarget;
+  std::vector<FeaturePtr> features;
+  RenderStepIO io;
 };
 
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
   std::vector<FeaturePtr> features;
-  // (optional) Render target to render to
-  RenderTargetPtr renderTarget;
   MaterialParameters parameters;
+  RenderStepIO io;
 };
 
 typedef std::variant<ClearStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;

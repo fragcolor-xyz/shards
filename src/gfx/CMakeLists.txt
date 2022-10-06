@@ -29,7 +29,6 @@ add_library(gfx
   view_stack.cpp
   render_target.cpp
   pipeline_builder.cpp
-  # cache_data.cpp
 )
 
 target_compile_features(gfx PUBLIC cxx_std_20)

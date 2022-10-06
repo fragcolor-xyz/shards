@@ -144,6 +144,10 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       wgpuDesc.usage |= WGPUTextureUsage_RenderAttachment;
     }
 
+    if (!textureFormatFlagsContains(desc.format.flags, TextureFormatFlags::NoTextureBinding)) {
+      wgpuDesc.usage |= WGPUTextureUsage_TextureBinding;
+    }
+
     switch (desc.format.type) {
     case TextureType::D1:
       wgpuDesc.dimension = WGPUTextureDimension_1D;
