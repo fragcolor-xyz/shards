@@ -169,6 +169,9 @@ struct CaptureLog {
     case 2:
       _pattern = value.payload.stringValue;
       break;
+    case 3:
+      _suspend = value.payload.stringValue;
+      break;
     default:
       break;
     }
@@ -176,24 +179,14 @@ struct CaptureLog {
 
   SHVar getParam(int index) {
     switch (index) {
-    case 0: {
-      auto n_items = SHVar();
-      n_items.valueType = Int;
-      n_items.payload.intValue = _n_items;
-      return n_items;
-    }
-    case 1: {
-      auto min_level = SHVar();
-      min_level.valueType = String;
-      min_level.payload.stringValue = _min_level.c_str();
-      return min_level;
-    }
-    case 2: {
-      auto pattern = SHVar();
-      pattern.valueType = String;
-      pattern.payload.stringValue = _pattern.c_str();
-      return pattern;
-    }
+    case 0:
+      return Var(int64_t(_n_items));
+    case 1:
+      return Var(_min_level);
+    case 2:
+      return Var(_pattern);
+    case 3:
+      return Var(_suspend);
     default:
       return Var::Empty;
     }
@@ -227,6 +220,10 @@ struct CaptureLog {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (likely((bool)_ring)) {
+      while (_suspend && !_ring->is_dirty()) {
+        SH_SUSPEND(context, 0);
+      }
+
       if (_ring->is_dirty()) {
         auto msgs = _ring->get_last_formatted();
         auto size = msgs.size();
@@ -246,6 +243,7 @@ private:
       {"Size", SHCCSTR("The maximum number of logs to retain."), {CoreInfo::IntType}},
       {"MinLevel", SHCCSTR("The minimum level of logs to capture."), {CoreInfo::StringType}},
       {"Pattern", SHCCSTR("The pattern used to format the logs."), {CoreInfo::StringType}},
+      {"Suspend", SHCCSTR("TODO."), {CoreInfo::BoolType}},
   };
 
   std::vector<std::string> _pool;
@@ -255,6 +253,7 @@ private:
   std::string _min_level{"debug"};
   std::string _pattern{"%^[%l]%$ [%Y-%m-%d %T.%e] [T-%t] [%s::%#] %v"};
   std::shared_ptr<custom_ringbuffer_sink_mt> _ring;
+  bool _suspend{false};
 };
 
 void registerLoggingShards() {
