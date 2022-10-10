@@ -34,7 +34,7 @@
        (->
         (UI.Button "Say Hello" (Msg "Hello!"))
         (Get .logs :Global true)
-        (UI.Console)))))
+        (UI.Console :ShowFilters true)))))
 
     (GFX.Render :Steps .render-steps))))
 (defmesh root)

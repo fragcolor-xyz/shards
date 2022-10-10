@@ -19,15 +19,24 @@ use crate::types::Table;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TABLE_VAR_TYPES;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::STRING_TYPES;
 
 lazy_static! {
-  static ref CONSOLE_PARAMETERS: Parameters = vec![(
-    cstr!("Style"),
-    cstr!("The console style."),
-    &ANY_TABLE_VAR_TYPES[..],
-  )
-    .into(),];
+  static ref CONSOLE_PARAMETERS: Parameters = vec![
+    (
+      cstr!("ShowFilters"),
+      cstr!("Whether to display filter controls."),
+      BOOL_TYPES_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Style"),
+      cstr!("The console style."),
+      &ANY_TABLE_VAR_TYPES[..],
+    )
+      .into(),
+  ];
 }
 
 impl Default for Console {
@@ -37,7 +46,9 @@ impl Default for Console {
     Self {
       parents,
       requiring: Vec::new(),
+      show_filters: ParamVar::new(false.into()),
       style: ParamVar::default(),
+      filters: (true, true, true, true, true),
     }
   }
 }
@@ -87,14 +98,16 @@ impl Shard for Console {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.style.set_param(value)),
+      0 => Ok(self.show_filters.set_param(value)),
+      1 => Ok(self.style.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.style.get_param(),
+      0 => self.show_filters.get_param(),
+      1 => self.style.get_param(),
       _ => Var::default(),
     }
   }
@@ -116,6 +129,7 @@ impl Shard for Console {
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.parents.warmup(context);
+    self.show_filters.warmup(context);
     self.style.warmup(context);
 
     Ok(())
@@ -123,6 +137,7 @@ impl Shard for Console {
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.style.cleanup();
+    self.show_filters.cleanup();
     self.parents.cleanup();
 
     Ok(())
@@ -166,8 +181,21 @@ impl Shard for Console {
         }
       }
 
+      if self.show_filters.get().try_into()? {
+        ui.horizontal(|ui| {
+          if cfg!(debug_assertions) {
+            ui.checkbox(&mut self.filters.0, "trace");
+          }
+          ui.checkbox(&mut self.filters.1, "debug");
+          ui.checkbox(&mut self.filters.2, "error");
+          ui.checkbox(&mut self.filters.3, "warning");
+          ui.checkbox(&mut self.filters.4, "info");
+        });
+      }
+
+      let filters = self.filters.clone();
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
-        let mut layout_job = Console::highlight(ui.ctx(), &theme, string);
+        let mut layout_job = Console::highlight(ui.ctx(), &theme, string, filters);
         layout_job.wrap.max_width = wrap_width;
         ui.fonts().layout_job(layout_job)
       };
@@ -194,10 +222,23 @@ impl Shard for Console {
 
 impl Console {
   /// Memoized console highlighting
-  fn highlight(ctx: &egui::Context, theme: &LogTheme, code: &str) -> egui::text::LayoutJob {
-    impl egui::util::cache::ComputerMut<(&LogTheme, &str), egui::text::LayoutJob> for Highlighter {
-      fn compute(&mut self, (theme, code): (&LogTheme, &str)) -> egui::text::LayoutJob {
-        self.highlight(theme, code)
+  fn highlight(
+    ctx: &egui::Context,
+    theme: &LogTheme,
+    code: &str,
+    filters: (bool, bool, bool, bool, bool),
+  ) -> egui::text::LayoutJob {
+    impl
+      egui::util::cache::ComputerMut<
+        (&LogTheme, &str, (bool, bool, bool, bool, bool)),
+        egui::text::LayoutJob,
+      > for Highlighter
+    {
+      fn compute(
+        &mut self,
+        (theme, code, filters): (&LogTheme, &str, (bool, bool, bool, bool, bool)),
+      ) -> egui::text::LayoutJob {
+        self.highlight(theme, code, filters)
       }
     }
 
@@ -205,7 +246,7 @@ impl Console {
 
     let mut memory = ctx.memory();
     let highlight_cache = memory.caches.cache::<HighlightCache>();
-    highlight_cache.get((theme, code))
+    highlight_cache.get((theme, code, filters))
   }
 }
 
@@ -213,39 +254,61 @@ impl Console {
 struct Highlighter {}
 
 impl Highlighter {
-  fn highlight(&self, theme: &LogTheme, mut text: &str) -> egui::text::LayoutJob {
+  fn highlight(
+    &self,
+    theme: &LogTheme,
+    mut text: &str,
+    filters: (bool, bool, bool, bool, bool),
+  ) -> egui::text::LayoutJob {
     // Extremely simple syntax highlighter for when we compile without syntect
 
     let mut job = egui::text::LayoutJob::default();
 
     while !text.is_empty() {
+      let mut end;
       if text.starts_with("[trace]") {
-        let end = text.find('\n').unwrap_or(text.len());
-        job.append(&text[..end], 0.0, theme.formats[LogLevel::Trace].clone());
-        text = &text[end..];
+        end = text.find('\n').unwrap_or(text.len());
+        if filters.0 {
+          job.append(&text[..end], 0.0, theme.formats[LogLevel::Trace].clone());
+        } else {
+          end += 1;
+        }
       } else if text.starts_with("[debug]") {
-        let end = text.find('\n').unwrap_or(text.len());
-        job.append(&text[..end], 0.0, theme.formats[LogLevel::Debug].clone());
-        text = &text[end..];
+        end = text.find('\n').unwrap_or(text.len());
+        if filters.1 {
+          job.append(&text[..end], 0.0, theme.formats[LogLevel::Debug].clone());
+        } else {
+          end += 1;
+        }
       } else if text.starts_with("[error]") {
-        let end = text.find('\n').unwrap_or(text.len());
-        job.append(&text[..end], 0.0, theme.formats[LogLevel::Error].clone());
-        text = &text[end..];
+        end = text.find('\n').unwrap_or(text.len());
+        if filters.2 {
+          job.append(&text[..end], 0.0, theme.formats[LogLevel::Error].clone());
+        } else {
+          end += 1;
+        }
       } else if text.starts_with("[warning]") {
-        let end = text.find('\n').unwrap_or(text.len());
-        job.append(&text[..end], 0.0, theme.formats[LogLevel::Warning].clone());
-        text = &text[end..];
+        end = text.find('\n').unwrap_or(text.len());
+        if filters.3 {
+          job.append(&text[..end], 0.0, theme.formats[LogLevel::Warning].clone());
+        } else {
+          end += 1;
+        }
       } else if text.starts_with("[info]") {
-        let end = text.find('\n').unwrap_or(text.len());
-        job.append(&text[..end], 0.0, theme.formats[LogLevel::Info].clone());
-        text = &text[end..];
+        end = text.find('\n').unwrap_or(text.len());
+        if filters.4 {
+          job.append(&text[..end], 0.0, theme.formats[LogLevel::Info].clone());
+        } else {
+          end += 1;
+        }
       } else {
         let mut it = text.char_indices();
         it.next();
-        let end = it.next().map_or(text.len(), |(idx, _chr)| idx);
+        end = it.next().map_or(text.len(), |(idx, _chr)| idx);
         job.append(&text[..end], 0.0, theme.formats[LogLevel::Text].clone());
-        text = &text[end..];
       }
+      end = std::cmp::min(end, text.len());
+      text = &text[end..];
     }
 
     job

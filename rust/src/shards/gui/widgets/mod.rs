@@ -66,7 +66,9 @@ struct Combo {
 struct Console {
   parents: ParamVar,
   requiring: ExposedTypes,
+  show_filters: ParamVar,
   style: ParamVar,
+  filters: (bool, bool, bool, bool, bool)
 }
 
 struct Hyperlink {
