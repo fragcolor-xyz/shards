@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "shared.hpp"
+#include <atomic>
 #include <numeric>
 #include <string>
 #include <log/log.hpp>
@@ -111,10 +112,10 @@ public:
   explicit custom_ringbuffer_sink(size_t n_items, spdlog::level::level_enum min_level = spdlog::level::debug)
       : q_{n_items}, min_level_(min_level) {}
 
-  inline bool is_dirty() { return _dirty; }
+  inline bool is_dirty() const noexcept { return _dirty.load(); }
 
   std::vector<std::string> get_last_formatted() {
-    if (_dirty) {
+    if (is_dirty()) {
       std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
       _dirty = false;
 
@@ -144,7 +145,7 @@ private:
   spdlog::details::circular_q<spdlog::details::log_msg_buffer> q_;
   spdlog::level::level_enum min_level_;
 
-  bool _dirty;
+  std::atomic<bool> _dirty{false};
   std::vector<std::string> _formatted_cache;
 };
 
@@ -218,27 +219,46 @@ struct CaptureLog {
     }
   }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (_suspend) {
+      OVERRIDE_ACTIVATE(data, activateWithSuspend);
+    }
+
+    return CoreInfo::StringSeqType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (likely((bool)_ring)) {
-      while (_suspend && !_ring->is_dirty()) {
-        SH_SUSPEND(context, 0);
-      }
-
       if (_ring->is_dirty()) {
-        auto msgs = _ring->get_last_formatted();
-        auto size = msgs.size();
-        _pool.resize(size);
-        _seq.resize(size);
-        for (size_t i = 0; i < size; i++) {
-          _pool[i].assign(msgs[i]);
-          _seq[i] = Var(_pool[i]);
-        }
+        updateSeq();
       }
     }
     return Var(SHSeq(_seq));
   }
 
+  SHVar activateWithSuspend(SHContext *context, const SHVar &input) {
+    if (likely((bool)_ring)) {
+      while (!_ring->is_dirty()) {
+        SH_SUSPEND(context, 0);
+      }
+
+      updateSeq();
+    }
+    return Var(SHSeq(_seq));
+  }
+
 private:
+  void updateSeq() {
+    auto msgs = _ring->get_last_formatted();
+    auto size = msgs.size();
+    _pool.resize(size);
+    _seq.resize(size);
+    for (size_t i = 0; i < size; i++) {
+      _pool[i].assign(msgs[i]);
+      _seq[i] = Var(_pool[i]);
+    }
+  }
+
   static inline Parameters _params{
       {"Size", SHCCSTR("The maximum number of logs to retain."), {CoreInfo::IntType}},
       {"MinLevel", SHCCSTR("The minimum level of logs to capture."), {CoreInfo::StringType}},
