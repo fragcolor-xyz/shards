@@ -114,7 +114,7 @@ jobs:
           cp shards-mt.js shards/
           cp shards-mt.worker.js shards/
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: shards-wasm ${{ steps.setup.outputs.threading }}
           path: |

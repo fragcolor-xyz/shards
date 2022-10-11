@@ -87,7 +87,7 @@ jobs:
           cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           ninja shards
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: shards-linux ${{ steps.setup.outputs.build-type }}
           path: build/shards
@@ -234,7 +234,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
       - name: Upload coverage
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: shards-linux-coverage
           path: coverage
@@ -298,7 +298,7 @@ jobs:
           genhtml coverage/coverage.f.info --output-directory coverage/output
           bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
       - name: Upload coverage
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: shards-linux-coverage-extra
           path: coverage

@@ -95,7 +95,7 @@ jobs:
           ninja test-runtime
           ./test-runtime
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: shards-macos ${{ steps.setup.outputs.build-type }}
           path: build/shards
