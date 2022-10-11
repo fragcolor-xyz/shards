@@ -78,7 +78,7 @@ jobs:
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'mt' }}
         run: |
           rustup +nightly component add rust-src
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.threading }}

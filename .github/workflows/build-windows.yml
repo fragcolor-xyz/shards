@@ -143,7 +143,7 @@ jobs:
           # choco exit with code 1 after successful install
           choco install -y --force llvm || exit 0
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}

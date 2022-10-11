@@ -76,7 +76,7 @@ jobs:
           ./bootstrap
           rustup toolchain install nightly
           rustup default nightly
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
