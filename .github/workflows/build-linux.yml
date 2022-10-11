@@ -140,7 +140,7 @@ jobs:
           ninja shards
       - name: Download artifact (Release)
         if: ${{ steps.setup.outputs.build-type == 'Release' }}
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: shards-linux ${{ steps.setup.outputs.build-type }}
           path: build
