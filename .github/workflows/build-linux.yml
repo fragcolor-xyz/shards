@@ -106,6 +106,7 @@ jobs:
         id: setup
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
 
           if [ "${{ github.event.inputs.build-type || inputs.build-type }}" == "Debug" ]
           then
@@ -128,7 +129,7 @@ jobs:
           rustup toolchain install nightly
           rustup default nightly
       - uses: Swatinem/rust-cache@v2
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
       - name: Build (Debug)
@@ -249,6 +250,10 @@ jobs:
     name: Extra Tests
     runs-on: ubuntu-latest
     steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
@@ -269,9 +274,9 @@ jobs:
           rustup toolchain install nightly
           rustup default nightly
       - uses: Swatinem/rust-cache@v2
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
-          key: ${{ steps.setup.outputs.build-type }}
+          key: Debug
       - name: Build
         run: |
           cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1
