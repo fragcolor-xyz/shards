@@ -3,6 +3,7 @@
 
 use super::Style;
 use crate::shard::Shard;
+use crate::shards::gui::misc::style_util;
 use crate::shards::gui::util;
 use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::CONTEXT_NAME;
@@ -17,11 +18,8 @@ use crate::types::Seq;
 use crate::types::Table;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::ANY_TABLE_VAR_TYPES;
 use crate::types::ANY_TYPES;
-
-lazy_static! {
-  static ref INPUT_TYPES: Types = ANY_TABLE_SLICE.into();
-}
 
 macro_rules! apply_style {
   ($table:ident, $name:literal, $type:ty, $style_path:expr) => {
@@ -72,7 +70,7 @@ impl Shard for Style {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &INPUT_TYPES
+    &ANY_TABLE_VAR_TYPES
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -124,25 +122,14 @@ impl Shard for Style {
       "override_text_style",
       &str,
       style.override_text_style,
-      Style::getTextStyle
+      style_util::get_text_style
     );
     apply_style!(
       table,
       "override_font_id",
       Table,
       style.override_font_id,
-      |t: Table| {
-        if let (Some(size), Some(family)) =
-          (t.get_static(cstr!("size")), t.get_static(cstr!("family")))
-        {
-          Style::getFontId(
-            size.try_into().unwrap_or_default(),
-            family.try_into().unwrap_or_default(),
-          )
-        } else {
-          None
-        }
-      }
+      style_util::get_font_id
     );
 
     // text styles
@@ -151,13 +138,9 @@ impl Shard for Style {
 
       for var in text_styles {
         let text_style: Table = var.as_ref().try_into()?;
-        if let (Some(name), Some(size), Some(family)) = (
-          text_style.get_static(cstr!("name")),
-          text_style.get_static(cstr!("size")),
-          text_style.get_static(cstr!("family")),
-        ) {
-          if let Some(key) = Style::getTextStyle(name.try_into()?) {
-            if let Some(fontId) = Style::getFontId(size.try_into()?, family.try_into()?) {
+        if let Some(name) = text_style.get_static(cstr!("name")) {
+          if let Some(key) = style_util::get_text_style(name.try_into()?) {
+            if let Some(fontId) = style_util::get_font_id(text_style) {
               style
                 .text_styles
                 .entry(key)
@@ -186,7 +169,7 @@ impl Shard for Style {
         "window_margin",
         (f32, f32, f32, f32),
         style.spacing.window_margin,
-        Style::getMargin
+        style_util::get_margin
       );
       apply_style!(
         spacing,
@@ -265,29 +248,29 @@ impl Shard for Style {
         "override_text_color",
         SHColor,
         style.visuals.override_text_color,
-        Style::getColor
+        style_util::get_color
       );
 
       if let Some(widgets) = visuals.get_static(cstr!("widgets")) {
         let widgets: Table = widgets.try_into()?;
 
-        Style::applyWidgetVisuals(
+        Style::apply_widget_visuals(
           &mut style.visuals.widgets.noninteractive,
           &widgets,
           cstr!("noninteractive"),
         )?;
-        Style::applyWidgetVisuals(
+        Style::apply_widget_visuals(
           &mut style.visuals.widgets.inactive,
           &widgets,
           cstr!("inactive"),
         )?;
-        Style::applyWidgetVisuals(
+        Style::apply_widget_visuals(
           &mut style.visuals.widgets.hovered,
           &widgets,
           cstr!("hovered"),
         )?;
-        Style::applyWidgetVisuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
-        Style::applyWidgetVisuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
+        Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
+        Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
       }
 
       if let Some(selection) = visuals.get_static(cstr!("selection")) {
@@ -298,14 +281,14 @@ impl Shard for Style {
           "bg_fill",
           SHColor,
           style.visuals.selection.bg_fill,
-          Style::getColor
+          style_util::get_color
         );
         apply_style!(
           selection,
           "stroke",
           Table,
           style.visuals.selection.stroke,
-          Style::getStroke
+          style_util::get_stroke
         );
       }
 
@@ -314,63 +297,63 @@ impl Shard for Style {
         "hyperlink_color",
         SHColor,
         style.visuals.hyperlink_color,
-        Style::getColor
+        style_util::get_color
       );
       apply_style!(
         visuals,
         "faint_bg_color",
         SHColor,
         style.visuals.faint_bg_color,
-        Style::getColor
+        style_util::get_color
       );
       apply_style!(
         visuals,
         "extreme_bg_color",
         SHColor,
         style.visuals.extreme_bg_color,
-        Style::getColor
+        style_util::get_color
       );
       apply_style!(
         visuals,
         "code_bg_color",
         SHColor,
         style.visuals.code_bg_color,
-        Style::getColor
+        style_util::get_color
       );
       apply_style!(
         visuals,
         "warn_fg_color",
         SHColor,
         style.visuals.warn_fg_color,
-        Style::getColor
+        style_util::get_color
       );
       apply_style!(
         visuals,
         "error_fg_color",
         SHColor,
         style.visuals.error_fg_color,
-        Style::getColor
+        style_util::get_color
       );
       apply_style!(
         visuals,
         "window_rounding",
         (f32, f32, f32, f32),
         style.visuals.window_rounding,
-        Style::getRounding
+        style_util::get_rounding
       );
       apply_style!(
         visuals,
         "window_shadow",
         Table,
         style.visuals.window_shadow,
-        Style::getShadow
+        style_util::get_shadow
       );
       apply_style!(
         visuals,
         "popup_shadow",
         Table,
         style.visuals.popup_shadow,
-        Style::getShadow
+        style_util::get_shadow
       );
       apply_style!(
         visuals,
@@ -446,7 +429,7 @@ impl Shard for Style {
 }
 
 impl Style {
-  fn applyWidgetVisuals(
+  fn apply_widget_visuals(
     visuals: &mut egui::style::WidgetVisuals,
     widgets: &Table,
     name: &'static str,
@@ -454,106 +437,37 @@ impl Style {
     if let Some(var) = widgets.get_static(name) {
       let table: Table = var.try_into()?;
 
-      apply_style!(table, "bg_fill", SHColor, visuals.bg_fill, Style::getColor);
+      apply_style!(
+        table,
+        "bg_fill",
+        SHColor,
+        visuals.bg_fill,
+        style_util::get_color
+      );
       apply_style!(
         table,
         "bg_stroke",
         Table,
         visuals.bg_stroke,
-        Style::getStroke
+        style_util::get_stroke
       );
       apply_style!(
         table,
         "rounding",
         (f32, f32, f32, f32),
         visuals.rounding,
-        Style::getRounding
+        style_util::get_rounding
       );
       apply_style!(
         table,
         "fg_stroke",
         Table,
         visuals.fg_stroke,
-        Style::getStroke
+        style_util::get_stroke
       );
       apply_style!(table, "expansion", f32, visuals.expansion);
     }
 
     Ok(())
-  }
-
-  fn getColor(color: SHColor) -> egui::Color32 {
-    egui::Color32::from_rgba_unmultiplied(color.r, color.g, color.b, color.a)
-  }
-
-  fn getFontFamily(family: &str) -> Option<egui::FontFamily> {
-    match family {
-      "Proportional" => Some(egui::FontFamily::Proportional),
-      "Monospace" => Some(egui::FontFamily::Monospace),
-      "" => None,
-      name => Some(egui::FontFamily::Name(name.into())),
-    }
-  }
-
-  fn getFontId(size: f32, family: &str) -> Option<egui::FontId> {
-    Style::getFontFamily(family).map(|family| egui::FontId { family, size })
-  }
-
-  fn getMargin(margin: (f32, f32, f32, f32)) -> egui::style::Margin {
-    egui::style::Margin {
-      left: margin.0,
-      right: margin.1,
-      top: margin.2,
-      bottom: margin.3,
-    }
-  }
-
-  fn getRounding(rounding: (f32, f32, f32, f32)) -> egui::Rounding {
-    egui::Rounding {
-      nw: rounding.0,
-      ne: rounding.1,
-      sw: rounding.2,
-      se: rounding.3,
-    }
-  }
-
-  fn getShadow(shadow: Table) -> egui::epaint::Shadow {
-    if let (Some(extrusion), Some(color)) = (
-      shadow.get_static(cstr!("extrusion")),
-      shadow.get_static(cstr!("color")),
-    ) {
-      egui::epaint::Shadow {
-        extrusion: extrusion.try_into().unwrap_or_default(),
-        color: Style::getColor(color.try_into().unwrap_or_default()),
-      }
-    } else {
-      Default::default()
-    }
-  }
-
-  fn getStroke(stroke: Table) -> egui::Stroke {
-    if let (Some(width), Some(color)) = (
-      stroke.get_static(cstr!("width")),
-      stroke.get_static(cstr!("color")),
-    ) {
-      egui::Stroke {
-        width: width.try_into().unwrap_or_default(),
-        color: Style::getColor(color.try_into().unwrap_or_default()),
-      }
-    } else {
-      Default::default()
-    }
-  }
-
-  fn getTextStyle(name: &str) -> Option<egui::TextStyle> {
-    match name {
-      "Small" => Some(egui::TextStyle::Small),
-      "Body" => Some(egui::TextStyle::Body),
-      "Monospace" => Some(egui::TextStyle::Monospace),
-      "Button" => Some(egui::TextStyle::Button),
-      "Heading" => Some(egui::TextStyle::Heading),
-      "" => None,
-      name => Some(egui::TextStyle::Name(name.into())),
-    }
   }
 }

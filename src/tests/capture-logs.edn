@@ -1,0 +1,27 @@
+(defmesh root)
+
+(defloop inline-capture
+  (CaptureLog
+   :Size 8
+   :MinLevel "trace"
+   :Pattern "%^[%l]%$ [%Y-%m-%d %T.%e] %v")
+  (ExpectStringSeq)
+  (Msg "Hello shards!"))
+
+(schedule root inline-capture)
+(run root 0.05 16)
+
+(defloop capture
+  (CaptureLog
+   :Size 8
+   :MinLevel "trace"
+   :Pattern "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
+   :Suspend true)
+  (ExpectStringSeq))
+(defloop detach-capture
+  (Setup
+   (Detach capture))
+  (Msg "Hello shards!"))
+
+(schedule root detach-capture)
+(run root 0.05 16)

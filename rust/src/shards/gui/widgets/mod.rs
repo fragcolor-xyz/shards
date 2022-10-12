@@ -63,6 +63,14 @@ struct Combo {
   tmp: usize,
 }
 
+struct Console {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  show_filters: ParamVar,
+  style: ParamVar,
+  filters: (bool, bool, bool, bool, bool)
+}
+
 struct Hyperlink {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -214,6 +222,7 @@ mod checkbox;
 mod code_editor;
 mod color_input;
 mod combo;
+mod console;
 mod hyperlink;
 mod image;
 mod image_button;
@@ -234,6 +243,7 @@ pub fn registerShards() {
   registerShard::<Checkbox>();
   registerShard::<ColorInput>();
   registerShard::<Combo>();
+  registerShard::<Console>();
   registerShard::<Hyperlink>();
   registerShard::<Image>();
   registerShard::<ImageButton>();
