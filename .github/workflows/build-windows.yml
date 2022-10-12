@@ -143,7 +143,7 @@ jobs:
           # choco exit with code 1 after successful install
           choco install -y --force llvm || exit 0
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
@@ -207,7 +207,7 @@ jobs:
           ninja test-gfx
           GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test-gfx
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
           path: ${{ steps.setup.outputs.artifact-path }}
@@ -256,7 +256,7 @@ jobs:
           fetch-depth: 1
           submodules: false
       - name: Download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
           path: build

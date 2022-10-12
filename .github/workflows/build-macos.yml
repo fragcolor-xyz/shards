@@ -76,7 +76,7 @@ jobs:
           ./bootstrap
           rustup toolchain install nightly
           rustup default nightly
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
@@ -95,7 +95,7 @@ jobs:
           ninja test-runtime
           ./test-runtime
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: shards-macos ${{ steps.setup.outputs.build-type }}
           path: build/shards
@@ -121,7 +121,7 @@ jobs:
           fetch-depth: 1
           submodules: false
       - name: Download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: shards-macos ${{ steps.setup.outputs.build-type }}
           path: build

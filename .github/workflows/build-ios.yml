@@ -41,7 +41,7 @@ jobs:
           rustup +nightly target add aarch64-apple-ios
           rustup +nightly target add x86_64-apple-ios
           rustup default nightly
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
       - name: Build device
         run: |

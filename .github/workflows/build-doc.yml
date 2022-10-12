@@ -23,7 +23,7 @@ jobs:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
       - name: Download shards
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: shards-win64 Release
           path: docs/samples
@@ -45,7 +45,7 @@ jobs:
             ./shards.exe run-sample.edn --file "$i" > >(tee "$i.log");
           done
       - name: Upload samples logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: samples-logs
           path: docs/samples/**/*.log
@@ -65,7 +65,7 @@ jobs:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
       - name: Download shards
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: shards-win64 Debug
           path: ./
@@ -84,7 +84,7 @@ jobs:
           ./shards.exe src/tests/infos-docs.edn
           mv docs/docs/shards/General/UI.md docs/docs/shards/UI/index.md
       - name: Upload markdown
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docs-markdown
           path: |
@@ -119,12 +119,12 @@ jobs:
           pip install mkdocs-awesome-pages-plugin
           pip install mkdocs-macros-plugin
       - name: Download markdown
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: docs-markdown
           path: docs/docs/shards
       - name: Download samples logs
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: samples-logs
           path: docs/samples
@@ -143,7 +143,7 @@ jobs:
 
           Using MkDocs {version}."
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docs-website
           path: |
