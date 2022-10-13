@@ -12,7 +12,7 @@ license: CC-BY-SA-4.0
 
 Learn how to employ Shards to execute code and bring your works to fruition!
 
-Ensure that you have [Shards built](./building-shards.md) before attempting to run it.
+Ensure that you have [Shards built](./build-shards.md) before attempting to run it.
 
 ## Preparing the Script ##
 

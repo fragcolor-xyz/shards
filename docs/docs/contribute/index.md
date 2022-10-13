@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Introduction
+# Contribute
 
 Fragcolor has a number of interesting [projects](https://github.com/fragcolor-xyz) open to community contributions.
 

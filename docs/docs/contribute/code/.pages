@@ -1,4 +1,4 @@
 nav:
   - index.md
-  - building-shards.md
-  - running-shards.md
+  - build-shards.md
+  - run-shards.md

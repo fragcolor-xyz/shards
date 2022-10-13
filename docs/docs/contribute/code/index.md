@@ -11,9 +11,9 @@ The Fragcolor ecosystem has a few primary components.
 - [Hasten](https://github.com/fragcolor-xyz/hasten) creativity engine (to build apps, games, and open worlds)
 - [Clamor](https://github.com/fragcolor-xyz/clamor) protocol and networking stack
 
-To contribute code to any of the above projects, you will need to [ready your development environment](../introduction/getting-started.md). 
+To contribute code to any of the above projects, you will need to [ready your development environment](../getting-started.md). 
 
-Once done, you can check out the guides on [how to build](./building-shards.md) and [run Shards](./running-shards.md).
+Once done, you can check out the guides on [how to build](./build-shards.md) and [run Shards](./run-shards.md).
 
 
 --8<-- "includes/license.md"

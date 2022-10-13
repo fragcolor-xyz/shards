@@ -2,3 +2,6 @@ nav:
   - index.md
   - getting-started.md
   - contributing-changes.md
+  - code
+  - docs
+  - wiki

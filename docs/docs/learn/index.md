@@ -3,8 +3,8 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Introduction
+# Learn
 
-Learn the basics of Shards with our [primer](./shards/index.md) and reinforce the concepts learned with our [examples](https://learn.fragcolor.xyz/).
+Learn the basics of Shards with our [primer](./shards/) and reinforce the concepts learned with our [tutorials](./tutorials/).
 
 --8<-- "includes/license.md"

@@ -1,4 +1,9 @@
-# Introduction
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+# Shards
 
 This document is a step-by-step guide for the beginning Shards developer. It explains the basic concepts underlying the language and will get you started with writing Shards code.
 
