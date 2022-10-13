@@ -6,6 +6,7 @@
 #include "../features/transform.hpp"
 #include "../shader/blocks.hpp"
 #include "../shader/types.hpp"
+#include "defaults.hpp"
 
 namespace gfx::steps {
 using namespace shader::blocks;
@@ -17,7 +18,7 @@ struct Effect {
     feature->shaderEntryPoints.emplace_back("effect_main", ProgrammableGraphicsStage::Fragment, std::move(shader));
 
     return makePipelineStep(RenderFullscreenStep{
-        .features = {features::Transform::create(false, false), feature},
+        .features = withDefaultFullscreenFeatures(feature),
         .io = std::move(io),
     });
   }

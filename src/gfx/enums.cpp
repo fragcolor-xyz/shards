@@ -10,9 +10,12 @@ namespace gfx {
 
 typedef std::map<WGPUTextureFormat, TextureFormatDesc> TextureFormatMap;
 
-TextureFormatDesc::TextureFormatDesc(StorageType storageType, size_t numComponents)
-    : storageType(storageType), numComponents(numComponents) {
-  pixelSize = getStorageTypeSize(storageType) * numComponents;
+TextureFormatDesc::TextureFormatDesc(StorageType storageType, size_t numComponents, TextureFormatUsage usage)
+    : storageType(storageType), numComponents(numComponents), usage(usage) {
+  if (storageType == StorageType::Invalid)
+    pixelSize = 0;
+  else
+    pixelSize = getStorageTypeSize(storageType) * numComponents;
 }
 
 static const TextureFormatMap &getTextureFormatMap() {
@@ -60,6 +63,15 @@ static const TextureFormatMap &getTextureFormatMap() {
         {WGPUTextureFormat_RGBA32Float, {StorageType::UInt32, 4}},
         {WGPUTextureFormat_RGBA32Uint, {StorageType::Int32, 4}},
         {WGPUTextureFormat_RGBA32Sint, {StorageType::Float32, 4}},
+        // Depth(+stencil) formats
+        {WGPUTextureFormat_Depth32Float, {StorageType::Invalid, 0, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Depth24Plus, {StorageType::Invalid, 0, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Depth16Unorm, {StorageType::UNorm16, 2, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Stencil8, {StorageType::UInt8, 1, TextureFormatUsage::Stencil}},
+        {WGPUTextureFormat_Depth32FloatStencil8,
+         {StorageType::Invalid, 0, TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
+        {WGPUTextureFormat_Depth24PlusStencil8,
+         {StorageType::Invalid, 0, TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
     };
   }();
   return instance;

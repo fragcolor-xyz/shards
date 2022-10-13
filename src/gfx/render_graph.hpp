@@ -193,8 +193,18 @@ struct EvaluateNodeContext {
 typedef size_t FrameIndex;
 
 struct RenderGraphNode {
+  struct Attachment {
+    FrameIndex frameIndex;
+    std::optional<ClearValues> clearValues;
+
+    Attachment(FrameIndex frameIndex) : frameIndex(frameIndex) {}
+    Attachment(FrameIndex frameIndex, const ClearValues &clearValues) : frameIndex(frameIndex), clearValues(clearValues) {}
+
+    operator FrameIndex() const { return frameIndex; }
+  };
+
   RenderTargetLayout renderTargetLayout;
-  std::vector<FrameIndex> writesTo;
+  std::vector<Attachment> writesTo;
   std::vector<FrameIndex> readsFrom;
 
   // Sets up the render pass
@@ -216,31 +226,6 @@ struct RenderGraph {
     WGPUTextureFormat format;
     std::optional<size_t> outputIndex;
     TexturePtr textureOverride;
-
-    // Frame(const RenderStepIO::OutputVariant &output, int2 size) : output(output), size(size) {}
-
-    // const std::string &getName() const {
-    //   const std::string *namePtr{};
-    //   std::visit([&](auto &arg) { namePtr = &arg.name; }, output);
-    //   assert(namePtr);
-    //   return *namePtr;
-    // }
-
-    // WGPUTextureFormat getFormat() const {
-    //   WGPUTextureFormat format{};
-    //   std::visit(
-    //       [&](auto &arg) {
-    //         using T = std::decay_t<decltype(arg)>;
-    //         if constexpr (std::is_same_v<T, RenderStepIO::NamedOutput>) {
-    //           format = arg.format;
-    //         } else if constexpr (std::is_same_v<T, RenderStepIO::TextureOutput>) {
-    //           TexturePtr handle = arg.handle;
-    //           format = handle->getFormat().pixelFormat;
-    //         }
-    //       },
-    //       output);
-    //   return format;
-    // }
   };
 
   struct Output {
@@ -333,6 +318,17 @@ struct RenderGraphBuilder {
     }
   }
 
+  // Updates nodes that write to given frame to write to the new frame instead
+  void replaceFrame(FrameIndex index, FrameIndex newIndex) {
+    for (size_t i = 0; i < nodes.size(); i++) {
+      auto &node = nodes[i];
+      for (auto &attachment : node.writesTo) {
+        if (attachment.frameIndex == index)
+          attachment.frameIndex = newIndex;
+      }
+    }
+  }
+
   void attachOutput(const std::string &name, TexturePtr texture) {
     WGPUTextureFormat outputTextureFormat = texture->getFormat().pixelFormat;
 
@@ -340,8 +336,8 @@ struct RenderGraphBuilder {
     for (size_t ir = 0; ir < nodes.size(); ir++) {
       size_t i = nodes.size() - 1 - ir;
       auto &node = nodes[i];
-      for (auto &frameIndex : node.writesTo) {
-        auto &frame = frames[frameIndex];
+      for (auto &attachment : node.writesTo) {
+        auto &frame = frames[attachment.frameIndex];
         if (frame.name == name) {
           FrameIndex outputFrameIndex = frames.size();
           size_t outputIndex = outputs.size();
@@ -350,7 +346,7 @@ struct RenderGraphBuilder {
               .frameIndex = outputFrameIndex,
           });
 
-          FrameIndex prevFrameIndex = frameIndex;
+          FrameIndex prevFrameIndex = attachment.frameIndex;
           frames.emplace_back(RenderGraph::Frame{
               .name = name,
               .size = frame.size,
@@ -358,12 +354,11 @@ struct RenderGraphBuilder {
               .outputIndex = outputIndex,
           });
 
-          // Update output frame index
-          frameIndex = outputFrameIndex;
-
           // Make sure no node after this references this as an input anymore
           // TODO: support this case by forcing a copy from intermediate texture to output
           checkNoReadFrom(i + 1, prevFrameIndex);
+
+          replaceFrame(prevFrameIndex, outputFrameIndex);
 
           return;
         }
@@ -384,7 +379,21 @@ struct RenderGraphBuilder {
     }
   }
 
-  void allocateOutputs(size_t nodeIndex, const RenderStepIO &io) {
+  bool isWrittenTo(FrameIndex frameIndex, size_t beforeNodeIndex) {
+    for (size_t i = 0; i < beforeNodeIndex; i++) {
+      for (auto &attachment : nodes[i].writesTo) {
+        if (attachment.frameIndex == frameIndex)
+          return true;
+      }
+    }
+    return false;
+  }
+
+  // When setting forceOverwrite, ignores clear value, marks this attachment as being completely overwritten
+  // e.g. fullscreen effect passes
+  void allocateOutputs(size_t nodeIndex, const RenderStepIO &io, bool forceOverwrite = false) {
+    static auto logger = gfx::getLogger();
+
     nodes.resize(std::max(nodes.size(), nodeIndex + 1));
     RenderGraphNode &node = nodes[nodeIndex];
 
@@ -393,24 +402,37 @@ struct RenderGraphBuilder {
 
       FrameIndex frameIndex = assignFrame(output, targetSize);
 
-      auto targetFormat = std::visit(
+      WGPUTextureFormat targetFormat{};
+      std::optional<ClearValues> clearValues{};
+      std::visit(
           [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
+            clearValues = arg.clearValues;
             if constexpr (std::is_same_v<T, RenderStepIO::NamedOutput>) {
-              return arg.format;
+              targetFormat = arg.format;
             } else if constexpr (std::is_same_v<T, RenderStepIO::TextureOutput>) {
-              return arg.handle->getFormat().pixelFormat;
+              targetFormat = arg.handle->getFormat().pixelFormat;
+            } else {
+              throw std::logic_error("");
             }
-            throw std::logic_error("");
           },
           output);
 
       bool sizeMismatch = frames[frameIndex].size != targetSize;
       bool formatMismatch = frames[frameIndex].format != targetFormat;
 
+      bool loadRequired = !clearValues.has_value();
+      if (forceOverwrite) {
+        loadRequired = false;
+      }
+
       // Check if the same frame is being read from
       auto it = std::find(node.readsFrom.begin(), node.readsFrom.end(), frameIndex);
       if (sizeMismatch || formatMismatch || it != node.readsFrom.end()) {
+        // TODO: Implement copy into loaded attachment from previous step
+        if (loadRequired)
+          throw std::logic_error("Copy required, not implemented");
+
         // Just duplicate the frame for now
         size_t newFrameIndex = frames.size();
         auto &frame = frames.emplace_back(RenderGraph::Frame{
@@ -422,7 +444,32 @@ struct RenderGraphBuilder {
         frameIndex = newFrameIndex;
       }
 
-      node.writesTo.push_back(frameIndex);
+      // Check if written, force clear with default values if not
+      bool needsClearValue = false;
+      if (forceOverwrite)
+        needsClearValue = true;
+      else if (loadRequired && !isWrittenTo(frameIndex, nodeIndex)) {
+        SPDLOG_LOGGER_WARN(logger,
+                           "Forcing clear with default values for frame {} accessed by node {}, since it's not written to before",
+                           frameIndex, nodeIndex);
+        needsClearValue = true;
+      }
+
+      // Set default clear value based on format
+      if (needsClearValue) {
+        auto &formatDesc = getTextureFormatDescription(targetFormat);
+        if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil)) {
+          clearValues = ClearValues::getDefaultDepthStencil();
+        } else {
+          clearValues = ClearValues::getDefaultColor();
+        }
+      }
+
+      if (clearValues.has_value())
+        node.writesTo.emplace_back(frameIndex, clearValues.value());
+      else {
+        node.writesTo.emplace_back(frameIndex);
+      }
     }
   }
 
@@ -462,6 +509,7 @@ struct RenderGraphBuilder {
     RenderGraph graph{
         .nodes = std::move(nodes),
         .frames = std::move(frames),
+        .outputs = std::move(outputs),
     };
     return graph;
   }
@@ -483,24 +531,6 @@ private:
 public:
   bool isWrittenTo(const TexturePtr &texture) const { return writtenTextures.contains(texture.get()); }
 
-  // Enqueue a clear command on the given color texture
-  void clearColorTexture(Context &context, const TexturePtr &texture, WGPUCommandEncoder commandEncoder) {
-    RenderTargetData rtd{
-        .colorTargets = {RenderTargetData::ColorTarget{
-            .name = "color",
-            .texture = texture.get(),
-        }},
-    };
-
-    // TODO
-    /* auto &passDesc = createRenderPassDescriptor(context, rtd);
-    auto &attachment = const_cast<WGPURenderPassColorAttachment &>(passDesc.colorAttachments[0]);
-    attachment.loadOp = WGPULoadOp_Clear;
-
-    WGPURenderPassEncoder clearPass = wgpuCommandEncoderBeginRenderPass(commandEncoder, &passDesc);
-    wgpuRenderPassEncoderEnd(clearPass); */
-  }
-
   const TexturePtr &getTexture(FrameIndex frameIndex) {
     if (frameIndex >= frameTextures.size())
       throw std::out_of_range("frameIndex");
@@ -517,39 +547,43 @@ public:
 
     size_t depthIndex = node.renderTargetLayout.depthTargetIndex.value_or(~0);
     for (size_t i = 0; i < node.writesTo.size(); i++) {
-      size_t frameIndex = node.writesTo[i];
-      TexturePtr &texture = frameTextures[frameIndex];
+      const RenderGraphNode::Attachment &nodeAttachment = node.writesTo[i];
+      TexturePtr &texture = frameTextures[nodeAttachment.frameIndex];
 
       auto &textureData = texture->createContextDataConditional(context);
-      bool previouslyWrittenTo = writtenTextures.contains(texture.get());
 
       if (i == depthIndex) {
         auto &textureData = texture->createContextDataConditional(context);
         cachedDepthStencilAttachment = WGPURenderPassDepthStencilAttachment{
             .view = textureData.defaultView,
-            .depthClearValue = 1.0f,
-            .stencilClearValue = 0,
         };
         auto &attachment = cachedDepthStencilAttachment.value();
 
-        if (previouslyWrittenTo) {
-          attachment.depthLoadOp = WGPULoadOp_Load;
-        } else {
+        if (nodeAttachment.clearValues) {
+          auto &clearDepth = nodeAttachment.clearValues.value().depth;
           attachment.depthLoadOp = WGPULoadOp_Clear;
+          attachment.depthClearValue = clearDepth;
+        } else {
+          attachment.depthLoadOp = WGPULoadOp_Load;
         }
         attachment.depthStoreOp = WGPUStoreOp_Store;
+
+        // TODO: Stencil
+        uint32_t clearStencil = 0;
+        attachment.stencilClearValue = clearStencil;
         attachment.stencilLoadOp = WGPULoadOp_Undefined;
         attachment.stencilStoreOp = WGPUStoreOp_Undefined;
       } else {
         auto &attachment = cachedColorAttachments.emplace_back(WGPURenderPassColorAttachment{
             .view = textureData.defaultView,
-            .clearValue = WGPUColor{0.0, 0.0, 0.0, 0.0},
         });
 
-        if (previouslyWrittenTo) {
-          attachment.loadOp = WGPULoadOp_Load;
-        } else {
+        if (nodeAttachment.clearValues) {
+          auto &clearColor = nodeAttachment.clearValues.value().color;
           attachment.loadOp = WGPULoadOp_Clear;
+          attachment.clearValue = WGPUColor{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
+        } else {
+          attachment.loadOp = WGPULoadOp_Load;
         }
         attachment.storeOp = WGPUStoreOp_Store;
       }
@@ -574,6 +608,7 @@ public:
 
   void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::vector<TexturePtr> &outputs,
                         const RenderGraph &graph, size_t frameCounter) {
+    outFrameTextures.clear();
     outFrameTextures.reserve(graph.frames.size());
     for (auto &frame : graph.frames) {
       if (frame.outputIndex.has_value()) {
@@ -615,7 +650,8 @@ public:
           .graph = graph,
           .node = node,
       };
-      node.body(ctx);
+      if (node.body)
+        node.body(ctx);
       wgpuRenderPassEncoderEnd(renderPassEncoder);
     }
 

@@ -247,24 +247,19 @@ struct RendererImpl final : public ContextData {
     builder.allocateOutputs(index, io);
   }
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const ClearStep &step) {
-    // TODO
-    // auto &renderGraphNode = outGraph.nodes.emplace_back();
-    // auto &renderTargetData = renderGraphNode.renderTargetData;
-    // // Build render target references
-    // initStepRenderTarget(renderTargetData, viewData, step.outputs);
-    // renderGraphNode.setupPass = [=](WGPURenderPassDescriptor &desc) {
-    //   for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
-    //     auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
-    //     double4 clearValue(step.clearValues.color);
-    //     memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
-    //   }
-    //   if (desc.depthStencilAttachment) {
-    //     auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
-    //     attachment.depthClearValue = step.clearValues.depth;
-    //     attachment.stencilClearValue = step.clearValues.stencil;
-    //   }
-    // };
-    // renderGraphNode.body = [=, this](WGPURenderPassEncoder passEncoder) { applyViewport(passEncoder, viewData); };
+    auto &node = out.getNode(index);
+    node.setupPass = [=](WGPURenderPassDescriptor &desc) {
+      for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
+        auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
+        double4 clearValue(step.clearValues.color);
+        memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
+      }
+      if (desc.depthStencilAttachment) {
+        auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
+        attachment.depthClearValue = step.clearValues.depth;
+        attachment.stencilClearValue = step.clearValues.stencil;
+      }
+    };
   }
 
   void allocateNodeOutputs(detail::RenderGraphBuilder &builder, size_t index, const RenderDrawablesStep &step) {
@@ -305,7 +300,9 @@ struct RendererImpl final : public ContextData {
 
   void allocateNodeOutputs(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
     builder.allocateInputs(index, step.io);
-    builder.allocateOutputs(index, step.io);
+
+    bool overwriteTargets = step.overlay ? false : true;
+    builder.allocateOutputs(index, step.io, overwriteTargets);
   }
 
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
