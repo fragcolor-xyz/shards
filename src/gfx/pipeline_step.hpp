@@ -24,10 +24,23 @@ enum class SortMode {
   BackToFront,
 };
 
-struct ClearValues {
-  float4 color = float4(0, 0, 0, 0);
-  float depth = 1.0f;
-  uint32_t stencil = 0;
+union ClearValues {
+  float4 color;
+  struct {
+    float depth;
+    uint32_t stencil;
+  };
+
+  static constexpr ClearValues getColorValue(float4 color) { return ClearValues{.color = color}; }
+  static constexpr ClearValues getDepthStencilValue(float depth, uint32_t stencil = 0) {
+    return ClearValues{.depth = depth, .stencil = stencil};
+  }
+
+  // All zero color value
+  static constexpr ClearValues getDefaultColor() { return getColorValue(float4(0.0)); }
+
+  // Depth=1.0 and stencil=0
+  static constexpr ClearValues getDefaultDepthStencil() { return getDepthStencilValue(1.0f, 0); }
 };
 
 // Describes texture/render target connections between render steps
@@ -42,16 +55,22 @@ struct RenderStepIO {
   // A managed named render frame
   struct NamedOutput {
     std::string name;
+
     // The desired format
     WGPUTextureFormat format = WGPUTextureFormat_RGBA8UnormSrgb;
-    Mode mode = Mode::Load;
+
+    // When set, clear buffer with these values (based on format)
+    std::optional<ClearValues> clearValues;
   };
 
   // A preallocator texture to output to
   struct TextureOutput {
     std::string name;
+
     TexturePtr handle;
-    Mode mode = Mode::Load;
+
+    // When set, clear buffer with these values (based on format)
+    std::optional<ClearValues> clearValues;
   };
 
   typedef std::variant<NamedOutput, TextureOutput> OutputVariant;
@@ -86,6 +105,10 @@ struct RenderFullscreenStep {
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
   RenderStepIO io;
+
+  // used to indicate this pass does not cover the entire output
+  // e.g. some blending pass / sub-section of the output
+  bool overlay{};
 };
 
 typedef std::variant<ClearStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;

@@ -19,7 +19,7 @@ using namespace gfx;
 
 static constexpr float comparisonTolerance = 0.05f;
 
-TEST_CASE("RenderTarget", "[RenderGraph]") {
+TEST_CASE("Viewport render target", "[RenderGraph]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
   auto &viewStack = renderer.getViewStack();
@@ -60,8 +60,7 @@ TEST_CASE("RenderTarget", "[RenderGraph]") {
                   features::BaseColor::create(),
                   blendFeature,
               },
-          // TODO(stepIO)
-          // .renderTarget = rt,
+          .io = steps::getDefaultDrawPassIO(),
       }),
   };
 
@@ -70,6 +69,7 @@ TEST_CASE("RenderTarget", "[RenderGraph]") {
           .clearValues{
               .color = float4(0.2, 0.2, 0.2, 1.0),
           },
+          .outputs = {steps::getDefaultColorOutput()},
       }),
       makePipelineStep(RenderFullscreenStep{
           .features =
@@ -84,6 +84,8 @@ TEST_CASE("RenderTarget", "[RenderGraph]") {
           .parameters{
               .texture = {{"baseColor", TextureParameter(rt->getAttachment("color"))}},
           },
+          .io = {.outputs = {steps::getDefaultColorOutput()}},
+          .overlay = true,
       }),
   };
 
@@ -102,7 +104,7 @@ TEST_CASE("RenderTarget", "[RenderGraph]") {
     renderer.render(subView, stepsMain);
     viewStack.pop();
   };
-  CHECK(testRenderer->checkFrame("renderTarget", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("rendergraph_viewport", comparisonTolerance));
 
   testRenderer.reset();
 }
@@ -123,8 +125,6 @@ TEST_CASE("Velocity", "[RenderGraph]") {
   DrawablePtr drawable;
 
   std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
-  rt->configure("color", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
-  rt->configure("depth", WGPUTextureFormat::WGPUTextureFormat_Depth32Float);
   rt->configure("velocity", WGPUTextureFormat::WGPUTextureFormat_RG8Snorm);
 
   transform = linalg::identity;
@@ -162,8 +162,15 @@ TEST_CASE("Velocity", "[RenderGraph]") {
                   features::Transform::create(),
                   features::Velocity::create(),
               },
-          // TODO(stepIO)
-          // .renderTarget = rt,
+          .io =
+              []() {
+                auto io = steps::getDefaultDrawPassIO();
+                io.outputs.emplace_back(RenderStepIO::NamedOutput{
+                    .name = "velocity",
+                    .format = WGPUTextureFormat_RG16Float,
+                });
+                return io;
+              }(),
       }),
   };
 
@@ -182,10 +189,14 @@ TEST_CASE("Velocity", "[RenderGraph]") {
 
   PipelineSteps stepsMain{
       makePipelineStep(RenderFullscreenStep{
-          .features = {features::Transform::create(false, false), postFeature},
+          .features = steps::withDefaultFullscreenFeatures(postFeature),
           .parameters{
               .texture = {{"velocity", TextureParameter(rt->getAttachment("velocity"))}},
           },
+          .io =
+              RenderStepIO{
+                  .outputs = {steps::getDefaultColorOutput()},
+              },
       }),
   };
 
@@ -218,12 +229,12 @@ TEST_CASE("Velocity", "[RenderGraph]") {
   testRenderer->end();
 
   TEST_RENDER_LOOP(testRenderer) { renderFrame(); };
-  CHECK(testRenderer->checkFrame("velocity", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("rendergraph_velocity", comparisonTolerance));
 
   testRenderer.reset();
 }
 
-TEST_CASE("Automatic Render Target", "[RenderGraph]") {
+TEST_CASE("Multiple IO", "[RenderGraph]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -262,54 +273,23 @@ TEST_CASE("Automatic Render Target", "[RenderGraph]") {
           .features =
               {
                   features::Transform::create(),
-                  features::Velocity::create(),
                   features::BaseColor::create(),
               },
-          .io =
-              RenderStepIO{
-                  .inputs = {},
-                  .outputs = {RenderStepIO::NamedOutput{"color"},
-                              RenderStepIO::NamedOutput{
-                                  .name = "velocity",
-                                  .format = WGPUTextureFormat_RG8Snorm,
-                              },
-                              RenderStepIO::NamedOutput{
-                                  .name = "depth",
-                                  .format = WGPUTextureFormat_Depth32Float,
-                              }},
-              },
+          .io = steps::getDefaultDrawPassIO(),
       }),
       steps::Effect::create(
           RenderStepIO{
               .inputs = {"color", "depth", "velocity"},
               .outputs =
                   {
-                      RenderStepIO::NamedOutput{
-                          .name = "color",
-                          .format = WGPUTextureFormat_BGRA8UnormSrgb,
-                      },
+                      RenderStepIO::NamedOutput{.name = "color", .format = WGPUTextureFormat_RGBA16Float},
                   },
           },
           makeEffectShader()),
-      steps::Copy::create("color", WGPUTextureFormat_BGRA8UnormSrgb),
   };
 
-  double t = 3.0;
-  double timeStep = 1.0 / 60.0;
-
-  auto renderFrame = [&]() {
-    renderer.render(view, steps);
-
-    t += timeStep;
-  };
-
-  // dummy frame to intialize previous transforms
-  testRenderer->begin();
-  renderFrame();
-  testRenderer->end();
-
-  TEST_RENDER_LOOP(testRenderer) { renderFrame(); };
-  CHECK(testRenderer->checkFrame("rendergraph", comparisonTolerance));
+  TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
+  CHECK(testRenderer->checkFrame("rendergraph_multiple_io", comparisonTolerance));
 
   testRenderer.reset();
 }
