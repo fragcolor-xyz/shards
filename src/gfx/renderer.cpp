@@ -190,7 +190,7 @@ struct RendererImpl final : public ContextData {
 
     size_t index{};
     for (auto &step : pipelineSteps) {
-      std::visit([&](auto &&arg) { allocateNodeOutputs(builder, index++, arg); }, *step.get());
+      std::visit([&](auto &&arg) { allocateNodeEdges(builder, index++, arg); }, *step.get());
     }
 
     // Attach outputs
@@ -240,7 +240,7 @@ struct RendererImpl final : public ContextData {
     return cachedRenderGraph->renderGraph;
   }
 
-  void allocateNodeOutputs(detail::RenderGraphBuilder &builder, size_t index, const ClearStep &step) {
+  void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const ClearStep &step) {
     RenderStepIO io{
         .outputs = step.outputs,
     };
@@ -262,7 +262,7 @@ struct RendererImpl final : public ContextData {
     };
   }
 
-  void allocateNodeOutputs(detail::RenderGraphBuilder &builder, size_t index, const RenderDrawablesStep &step) {
+  void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderDrawablesStep &step) {
     builder.allocateOutputs(index, step.io);
   }
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderDrawablesStep &step) {
@@ -298,13 +298,12 @@ struct RendererImpl final : public ContextData {
     };
   }
 
-  void allocateNodeOutputs(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
+  void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
     builder.allocateInputs(index, step.io);
 
     bool overwriteTargets = step.overlay ? false : true;
     builder.allocateOutputs(index, step.io, overwriteTargets);
   }
-
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
     RenderGraphNode &node = out.getNode(index);
 
