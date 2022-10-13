@@ -1,0 +1,35 @@
+(defmesh main)
+
+(defshards TestShard []
+  10 >= .TestInt
+  (Math.Add 1)
+  > .TestInt
+  (Log "TestShard1:"))
+
+
+(defshards TestShard2 []
+  5 >= .TestInt2
+  (Math.Add 1)
+  > .TestInt2
+  (Log "TestShard2:"))
+
+
+(defloop test
+  (Msg "Hello World"))
+
+
+(defloop test2
+  (Msg "Hello Hello World"))
+
+(defloop test3
+  (TestShard)
+  (Start "test4")
+  )
+
+(defloop test4
+  (TestShard2)
+  (Resume "test3"))
+;; (schedule main test)
+;; (schedule main test2)
+(schedule main test3)
+(run main 1 4)

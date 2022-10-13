@@ -1,0 +1,5 @@
+(defmesh main)
+(defloop test
+  (Msg "Hello World"))
+(schedule main test)
+(run main 1 1)
