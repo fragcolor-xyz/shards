@@ -3,431 +3,311 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Building Shards
-
-This guide explains how to build [Shards](https://github.com/fragcolor-xyz/shards) from the sources, for Windows and Ubuntu (on WSL).
-
-Before you start, ensure you've [set up your development environment](../getting-started/#development-environment).
-
-## Requirements
+# Build Shards
 
 !!! note
-    We use GCC and Clang a lot; MSVC might work, but it's uncharted territory.
+    This guide is for new users unfamiliar with the Shards building process. 
+    
+    Click [here](#overview) to skip the tutorial and jump to the overview.
 
-### For Windows
+Curious about the inner workings of Shards? Build Shards to unlock its hidden magics, and gain access to infinite creative possibilities! ✨ 
 
-Ensure your system environment PATH variable includess the MinGW bin location. This value can be set from: Settings > Edit environment variables for your account > User variables for 'user' > Path > Edit. This allows you to run MinGW from Powershell, VS Code, etc. The value of this PATH is usually `C:\msys64\mingw64\bin`.
+Do ensure that you have your [development environment readied](../introduction/getting-started.md) before embarking on the quest to build Shards!
 
-![Add mingw64 bin to user's PATH](assets/build-sh_acc-env-var.png)
 
-### Clone the Shards repo
-You'd normally clone the Shards repository locally (`git clone ...`), checkout the branch you want to work with (`git checkout ...`), and pull the latest changes to your machine (`git pull`).
+## Cloning the Shards Repository ##
 
-But since the Shards repository contains [submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) (links to external repositories), you also have to pull the latest changes for these submodules (including nested submodules).
+Go to the [Shard’s repository on Github](https://github.com/fragcolor-xyz/shards). If you have GitHub for Desktop installed, select the “Code” button, and “Open with GitHub Desktop” to clone the repository. 
 
-This can be done with the following command (to be run every time you want to build the project).
+![Select “Open with GitHub Desktop” to clone the repository.](assets/github-clone-desktop.png)
 
+??? help ""Open with GitHub Desktop" Error"
+    If “Open with GitHub Desktop” does not work, you can instead copy the HTTPS link. 
+
+    ![Copy the HTTPS link of the repository.](assets/github-clone-https-copy.png)
+
+    In GitHub Desktop, select the option to “Clone a Repository” (Ctrl+Shift+O). 
+    
+    Click on the “URL” tab, paste the HTTPS link and select “Clone”. 
+
+    ![Paste the URL into the empty field and select “Clone”..](assets/github-clone-https-enter.png)
+
+The repository is now cloned to your computer! Take note of where it has been cloned to, as we will be using it in the following step…
+
+
+## Navigating to the Shards Repository ##
+
+Launch the MinGW terminal (ming64.exe). The .exe file can be found in the msys64 folder, usually located in your C drive.
+
+![Find and select the ming64.exe](assets/location-mingw.png)
+
+Navigate to where your Shards repository is located using the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder.
+
+```
+cd $(cygpath -u '(X)')
+```
+
+??? "cd"
+	The `cd` command is used for navigating to different directories within the MinGW terminal.
+
+??? "cygpath"
+    The MinGW terminal requires you to convert the backslashes(\\) in your directory address to forward slashes(/). You will also have to remove the colon(:) after the drive alphabet. 
+    
+    This is the Unix form of an address, and can be done automatically by using the cygpath program.
+
+    e.g. `cygpath -u 'C:\Fragcolor\Shards'` will output `/c/Fragcolor/Shards`
+
+If your Shards repository is located at `C:\Fragcolor\Shards`, the command used in the MinGW terminal would be `cd $(cygpath -u 'C:\Fragcolor\Shards')`.
+
+!!! tip
+    A simple way to obtain a folder’s directory is to copy the address as text. 
+
+    Navigate into the folder, right-click the folder in the navigation bar, and select “Copy address as text”.
+
+    ![Copy the directory’s address as text.](assets/location-shards-repo-copy-address.png)
+
+## Updating the Repository and Submodules ##
+
+When new changes are made to the Shards repository, you will want to Pull these changes into your local copy of it. 
+
+To do so with Github Desktop, first select the “Fetch origin” button.
+
+![Select the “Fetch origin” button to check for updates.](assets/github-desktop-fetch.png)
+
+If there are changes to pull, the button will change to “Pull origin”. Select it to update your local repository.
+
+![Select the “Pull origin” button to check for updates.](assets/github-desktop-pull.png)
+
+The Shards repository contains repositories of other projects, known as *submodules*. When updating your Shards repository, these submodules are left alone and must be manually updated. You can update them with the following command:
 ```
 git submodule update --init --recursive
 ```
-### Set up the RUST toolchain
 
-Install and switch to the Rust GNU toolchain with the following rustup commands (from any terminal).
+??? help "git: command not found"
+    This error occurs when WinGW is unable to find where git.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
 
-=== "Command"
-
-    ```
-    # Windows
-    rustup toolchain install nightly
-    rustup default nightly-x86_64-pc-windows-gnu
-
-    # Ubuntu (WSL)
-    rustup install nightly
-    rustup default nightly
-    ```
-
-=== "Output"
+    Use the command `export PATH=$PATH:$(cygpath -u '(X)')` whereby (X) is the folder directory for git.exe. The default location is at `C:\Program Files\Git\cmd`.
 
     ```
-    C:\Users\saten>rustup default nightly-x86_64-pc-windows-gnu
-    info: syncing channel updates for 'nightly-x86_64-pc-windows-gnu'
-    info: latest update on 2022-01-20, rust version 1.58.1 (db9d1b20b 2022-01-20)
-    info: downloading component 'cargo'
-    info: downloading component 'clippy'
-    info: downloading component 'rust-docs'
-     18.8 MiB /  18.8 MiB (100 %)  9.4 MiB/s in  2s ETA:  0s
-    .
-    .
-    .
-    info: installing component 'rustfmt'
-    info: default toolchain set to 'nightly-x86_64-pc-windows-gnu'
-     nightly-x86_64-pc-windows-gnu installed - rust 1.58.1 (db9d1b20b 2022-01-20)
-
-    C:\Users\saten>
+    export PATH=$PATH:$(cygpath -u 'C:\Program Files\Git\cmd')
     ```
 
-When adding rust targets, ensure they're installed for nightly toolchain. For example to add the target `x86_64-pc-windows-gnu` run the following command.
+??? help "not a git repository"
+	This occurs when you are attempting to run the command outside of a git repository. [Navigate to your Shards repository](#navigating-to-the-shards-repository) before attempting to update the submodules.
 
-=== "Command"
 
-    ```
-    # Windows 
-    rustup +nightly target add x86_64-pc-windows-gnu
+## Bootstrapping the Project ##
 
-    # Ubuntu (WSL)
-    rustup target add wasm32-unknown-unknown --toolchain nightly
-    ```
+If this is your first time pulling the Shards repository, you will have to run the bootstrap file to set up and build the project.
 
-=== "Output"
-
-    ```
-    info: downloading component 'rust-std' for 'x86_64-pc-windows-gnu'
-    info: installing component 'rust-std' for 'x86_64-pc-windows-gnu'
-        24.5 MiB /  24.5 MiB (100 %)   6.0 MiB/s in  4s ETA:  0s
-    ```
-
-## Update system packages
-
-You should update your system packages frequently and preferably every time you want to build the project.
-
-### Windows 
-
-You'll need to run these commands in a MinGW terminal. To get to this terminal go to the Windows start menu, search for 'MSYS2 MinGW' and click the version appropriate for your machine (x86 or x64).
-
-Update the Rust packages with `rustup` (works with Windows, Mac, and Linux).
+Enter the command `./bootstrap`.
 
 ```
-rustup update
+./bootstrap
 ```
 
-Next, update other packages with `pacman`.
+## Creating Build Folders ##
 
-!!! note
-    `pacman` comes preinstalled as part of `MSYS2` on Windows. For Mac you can get it [here](https://github.com/kladd/pacman-osx) or use the pre-installed package manager, [Homebrew](https://formulae.brew.sh/).
+We will next create build folders in the Shards repository - one for the Debug version of Shards, and another for the Release version.
 
-Sync, refresh, and update all local packages that have a newer version available.
+??? "Debug or Release?"
+    Debug builds are used when your code is still being tested and you wish to see detailed logs of what happens when your code is run. Release builds are used when you simply want the finished product without excessive logs.
 
-=== "Command"
-
-    ```
-    pacman -Syu --noconfirm
-    ```
-
-=== "Output"
-
-    ```
-    $ pacman -Syu
-    :: Synchronizing package databases...
-    mingw32                        805.0 KiB
-    mingw32.sig                    438.0   B
-    mingw64                        807.9 KiB
-    mingw64.sig                    438.0   B
-    msys                           289.3 KiB
-    msys.sig                       438.0   B
-    :: Starting core system upgrade...
-    .
-    .
-    .
-    ```
-
-Restart the MinGW terminal (if needed) and install the required build dependencies with this command (replace the `w64-x86_64` as appropriate for your target OS/machine).
-
-=== "Command"
-
-    ```
-    pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
-    ```
-
-=== "Output"
-
-    ```
-    :: Synchronizing package databases...
-    warning: base-devel-2022.01-1 is up to date -- skipping
-    warning: mingw-w64-x86_64-binutils-2.37-4 is up to date -- skipping
-    warning: mingw-w64-x86_64-crt-git-9.0.0.6373.5be8fcd83-1 is up to date -- skipping
-    .
-    .
-    .
-    (13/15) upgrading mingw-w64-x86_64-clang           [#####################] 100%
-    (14/15) upgrading mingw-w64-x86_64-lld             [#####################] 100%
-    (15/15) upgrading wget                             [#####################] 100%
-    :: Running post-transaction hooks...
-    (1/1) Updating the info directory file...
-    ```
-
-### Ubuntu (WSL) 
-
-Update the Rust packages with `rustup` (works with Windows, Mac, and Linux).
-
-```
-rustup update
-```
-
-Next, update packages and install dependencies.
-
-=== "Command"
-
-    ```
-    sudo apt update
-    sudo apt install -y build-essential git cmake g++ wget clang ninja-build valgrind xorg-dev libdbus-1-dev libssl-dev lcov ca-certificates
-    ```
-
-## Build & run the project
-
-### Bootstrap the project
-
-Continuing with the MinGW terminal (or any terminal on Linux), navigate to Shards root directory, and run the `bootstrap` shell script (to be run only once, when you build the project for the first time).
-
-=== "Windows"
-
-    ```
-    ./bootstrap
-    ```
-
-=== "Mac/Linux"
+    Debug Build:
     
-    ```
-    bash bootstrap # or ./bootstrap
-    ```
+    ![Debug builds contain detailed logs.](assets/mingw-debug-build.png)
 
-=== "Output"
+    Release Build:
 
-    ```
-    Using SHARDS_ROOT=/c/Users/saten/Desktop/code/shards
-    /c/Users/saten/Desktop/code/shards/deps /c/Users/saten/Desktop/code/shards
-    Setting up dependencies
-    /c/Users/saten/Desktop/code/shards
-    Setting up tools
-    /c/Users/saten/Desktop/code/shards/src/tools /c/Users/saten/Desktop/code/shards
-    -- Build spdlog: 1.8.5
-    -- Build type: Release
-    -- Configuring done
-    -- Generating done
-    -- Build files have been written to: C:/Users/saten/Desktop/code/shards/src/tools/build
-    [1/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/stdout_sinks.cpp.obj
-    [2/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/color_sinks.cpp.obj
-    [3/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/fmt.cpp.obj
-    [4/6] Building CXX object deps/spdlog/CMakeFiles/spdlog.dir/src/spdlog.cpp.obj
-    [5/6] Linking CXX static library deps\spdlog\libspdlog.a
-    [6/6] Linking CXX executable bin\bin2c.exe
-    /c/Users/saten/Desktop/code/shards
-    ```
+    ![Release builds hide the detailed logs.](assets/mingw-release-build.png)
 
-### Build the project
-
-Go to Shards root and create a build directory (if it doesn't already exist) and navigate into it.
+First input `mkdir build` in the MinGW terminal to create a folder named “build”. 
 
 ```
 mkdir build
+```
+
+??? "mkdir"
+    The `mkdir` command is used to create new folders.
+
+
+Next, input `cd build` to navigate into the newly created folder.
+
+```
 cd build
 ```
-You need to run the following two commands every time you want to build the project.
 
-Configure the build with `cmake`,
-
-```
-# Windows and Linux (WSL)
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+Input `mkdir Debug` to create a folder named “Debug”.
 
 ```
-
-??? note "Release mode build"
-    In case you need less verbose script execution logs, build Shards in release mode (instead of the debug mode) by using the option `-DCMAKE_BUILD_TYPE=Release ..`
-
-then build the target with `ninja`
-
-```
-ninja shards
+mkdir Debug
 ```
 
-??? note "Build with formatting (useful for pull requests)"
-    Formatting the source is required when raising a PR (for contributing a change). You can do it simply by running 
-```    
-ninja format; ninja shards
-```
-
-The build ends with a successful linking of the Shards executable (shards.exe).
-
-??? note "Fix build errors"
-    If your build fails due to target/file errors navigate out of the build folder, run `cargo clean`, then `cd build`, followed by `ninja clean`, and/or delete the `target` folder and then rebuild. The build can also fail if your software packages or repository submodules (`/shards/deps/`) are out-of-date. To resolve this update the specific software package as given [here](#update-system-packages) and pull the submodules again via `git submodule update --init --recursive`.
-
-??? note
-    When generating the Rust bindings during compilation, the file `rust/src/shardsc.rs` might be updated automatically. These changes should not be pushed upstream unless you're modifying certain core files for build-target architecture changes (which is very rare). Hence, use the git command `git update-index --skip-worktree rust/src/shardsc.rs` to let git ignore changes to this file.
-
-### Verify build and run
-
-To verify your build was successful create an empty script file (*.edn) in the `/build` folder, populate it with the **Script code**, and execute the **Run command** from the `/build` folder.
-
-=== "Script code"
-
-    ```
-    (defmesh main)
-    (defloop test
-        (Msg "Hello World"))
-    (schedule main test)
-    (run main 1 1)
-    ```
-
-=== "Run command"
-
-    ```
-    ./shards <script-filename.edn>
-    ```
-
-=== "Script result"
-
-    ```
-    [info] [2022-05-24 06:09:39.293] [T-3196] [logging.cpp::98] [test] Hello World
-    ```
-
-If you see `Hello World` printed on your screen (the **Script result**) your build was successful.
-
-You can also configure the `Run Code` button on VS Code (arrow/triangle on the top right-hand corner of the code-editor) to run Shards scripts.
-
-1. Install the VS Code [code-runner](https://marketplace.visualstudio.com/items?itemName=formulahendry.code-runner) extension
-2. Locate the `code-runner.executorMap` parameter to open in `settings.json` (VS Code > File > Preferences > Settings > search for code-runner.executorMap > click 'Edit in settings.json')
-3. In the `settings.json` file set the value of the code-runner.excutorMap to point to `build\\shards.exe` for `clojure`. You can also add a second entry setting `code-runner.runInTerminal` to `true` if you want the script output displayed in the **Terminal** tab of your terminal (instead of in the **Output** tab, which is the default).
-```
-    "code-runner.executorMap": {
-     	"clojure": "build\\shards.exe"
-        "code-runner.runInTerminal": true
-    },
-```
-
-Now open your Shards script file and click the `Run Code` button. The script will be executed and you should see the script's result in your terminal.
-
-## Build for Web Assembly
-
-To create a Web Assembly (WASM) build, first clone the Emscripten SDK repo.
+Input `mkdir Release` to create a folder named “Release”.
 
 ```
-git clone https://github.com/emscripten-core/emsdk.git
+mkdir Release
 ```
 
-Use a `mingw64.exe` terminal to navigate to the emsdk directory,
+??? "What happened?"
+	Look into your Shards repository, you should see the new folders created with the command line!
 
-```
-cd emsdk
-```
+    ![Build folders created with the command line.](assets/shards-repo-build-folders.png)
+    
 
-and then do a git pull to get the latest tools from GitHub (not required the first time you clone the git repository).
+## Building the Shards Executable ##
 
-```
-git pull
-```
+We will first build the Debug version of Shards. 
 
-Update the SDK tools to the latest version.
+Input the following command to generate the build files:
 
-=== "Windows"
+=== "Command"
 
     ```
-    emsdk install latest
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..
     ```
 
-=== "Mac/Linux"
+=== "Output"
 
     ```
-    ./emsdk install latest
-    ```
-
-Activate the latest SDK for the current user.
-
-=== "Windows"
-
-    ```
-    emsdk activate latest
-    ```
-
-=== "Mac/Linux"
-
-    ```
-    ./emsdk activate latest
-    ```
-
-Activate the PATH/ environment variables for the current terminal session.
-
-=== "Windows"
-
-    ```
-    emsdk_env.bat
-    ```
-
-=== "Mac/Linux"
-
-    ```
-    source emsdk_env.sh
+    -- SHARDS_DIR = C:/Fragcolor/Shards
+    -- clang-format found: C:/msys64/mingw64/bin/clang-format.exe
+    .
+    .
+    .
+    -- Configuring done
+    -- Generating done
+    -- Build files have been written to: C:/Fragcolor/Shards/build/Debug
     ```
 
 
-Open a Windows or VS Code terminal and navigate to the Shards directory. Run the following commands in sequence to create and link the Web Assembly build.
+??? ".."
+    `..` represents the parent directory and can be used in the command line to navigate one level up.
 
+    In the command `cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..`, cmake is looking for the file `CMakeLists.txt` which exists one folder above the "build" folder where we are running the command from.
+
+
+??? help "cmake: command not found"
+    This error occurs when MinGW is unable to find where cargo.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
+
+    The default location is at `C:\Users\username\.cargo\bin`.
+
+    Use the command `export PATH=$PATH:$(cygpath -u '(X)')` whereby (X) is the folder directory for cargo.exe.
+
+    ```
+    export PATH=$PATH:$(cygpath -u '(X)')
+    ```
+
+    For the user ‘john’, the command used would be `export PATH=$PATH:$(cygpath -u 'C:\Users\john\.cargo\bin')`.
+
+    You can check if the path has been set correctly by using the command `cargo` in the MinGW terminal. If done correctly, a wall of text starting with “Rust’s package manager” will appear. Otherwise, you will get the error “cargo: command not found”.
+
+??? help "Unable to Build Shards"
+	If you are still unable to build Shards, try updating your packages by running:
+	```
+	pacman -Syu --noconfirm
+	```
+	```
+	rustup update
+    ```
+
+Next, input the `ninja` command below to build the .exe file. This might take a few minutes, so feel free to take a coffee break while waiting!
+
+=== "Command"
+
+    ```
+    ninja -C Debug shards
+    ```
+
+=== "Output"
+
+    ```
+    ninja: Entering directory `Debug'
+    [0/2] Re-checking globbed directories...
+    [1/876] Creating directories for 'sdl_a'
+    .
+    .
+    .
+    [874/876] Linking CXX static library lib\libshards-extra.a
+    [875/876] Linking CXX static library lib\libshards-core-static.a
+    [876/876] Linking CXX executable shards.exe
+    ```
+
+The debug version of shards.exe has been built! 🥳
+
+![An executable file for the debug version of shards has been created.](assets/location-shards-debug-exe.png)
+
+
+We will now repeat the process to create a Release version of Shards. Input the following cmake command:
+
+=== "Command"
+
+    ```
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -B./Release ..
+    ```
+
+=== "Output"
+
+    ```
+    -- The C compiler identification is GNU 12.2.0
+    -- The CXX compiler identification is GNU 12.2.0
+    .
+    .
+    .
+    -- Configuring done
+    -- Generating done
+    -- Build files have been written to: C:/Fragcolor/Shards/build/Release
+    ```
+
+Once again, build the .exe file with the `ninja` command below. Why not watch a few cat videos while waiting this time?
+
+=== "Command"
+
+    ```
+    ninja -C Release shards
+    ```
+
+=== "Output"
+
+    ```
+    ninja: Entering directory `Release'
+    [0/2] Re-checking globbed directories...
+    [1/876] Creating directories for 'sdl_a'
+    .
+    .
+    .
+    [874/876] Linking CXX static library lib\libshards-extra.a
+    [875/876] Linking CXX static library lib\libshards-core-static.a
+    [876/876] Linking CXX executable shards.exe
+    ```
+
+The release version of shards.exe has been built! 😊
+
+![An executable file for the release version of shards has been created.](assets/location-shards-release-exe.png)
+
+
+## Overview ##
+1. Bootstrap the project if freshly pulled from the repository.
 ```
-mkdir build-wasm
+./bootstrap
 ```
 
-```
-cd build-wasm
-```
+2. Create a “build” folder with nested “Debug” and “Release” folders.
 
+3. Use `cmake` commands to generate build files for the Debug and Release versions.
 ```
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake ..
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..
 ```
-
 ```
-ninja format; ninja shards
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -B./Release ..
 ```
 
-Refer to the official Emscripten SDK [documentation](https://emscripten.org/docs/getting_started/downloads.html) for more details on building for Web Assembly.
-
-## Appendix A - Valid cmake targets
-
-You may also build for targets other than `shards`.
-
-This section gives the complete list of supported `cmake` targets.
-
-### Build Targets
-
-`shards` - Builds shards. the runtime + lisp interpreter.
-
-`shards-dll` - Builds shards as a dynamic library.
-
-`shards-static` - Builds shards as a static library.
-
-`shards-core-shared` - Builds the shards runtime as a dynamic library.
-
-`shards-core-static` - Builds the shards runtime as a static library.
-
-`shards-extra` - Builds the shards-extra library containing the shards inside src/extra.
-
-`cargo-shards-rust` - Builds the rust project inside the rust folder.
-
-### Formatting targets
-
-`format` - Runs clang-format on a list of files defined in cmake/Tidy.cmake.
-
-`tidy` - Runs clang-tidy on a list of files defined in cmake/Tidy.cmake.
-
-### Test targets
-
-These contain tests written in c++ for shards (separate from the edn scripts).
-
-`test_extra` - C++ Tests for extra shards.
-
-`test_gfx` - C++ Tests for graphics/rendering.
-
-`test_runtime` - C++ Tests for the shards runtime.
-
-### Graphics targets
-
-`gfx` - The graphics library.
-
-`gfx-sandbox` - Graphics test environment.
-
-`gfx_imgui` - ImGui backend library.
-
-`gfx_texture_file` - Texture loading utilities.
-
-`cargo-wgpu-native` - Builds the rust project inside src/gfx/wgpu-native.
-
+4. Build the executables with the `ninja` commands.
+```
+ninja -C Debug shards
+```
+```
+ninja -C Release shards
+```
 
 --8<-- "includes/license.md"

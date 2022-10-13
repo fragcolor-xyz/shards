@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 <!-- TODO: Add guides for Mac and Linux. -->
 
-# Start Developing
+# Getting Started
 
 !!! note
     This guide is for new users unfamiliar with the installation process. 

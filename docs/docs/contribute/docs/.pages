@@ -1,5 +1,4 @@
 nav:
-  - getting-started.md
-  - contributing-changes.md
-  - documenting-the-api.md
+  - index.md
+  - start-documenting.md
   - ...

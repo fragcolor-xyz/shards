@@ -1,5 +1,7 @@
 nav:
-  - Homepage: https://fragcolor.xyz
+
   - index.md
-  - ...
+  - docs
+  - learn
   - contribute
+  - About Us: https://fragcolor.xyz

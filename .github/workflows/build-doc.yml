@@ -82,14 +82,15 @@ jobs:
         shell: msys2 {0}
         run: |
           ./shards.exe src/tests/infos-docs.edn
-          mv docs/docs/shards/General/UI.md docs/docs/shards/UI/index.md
+          mv docs/docs/docs/shards/General/UI.md docs/docs/docs/shards/UI/index.md
       - name: Upload markdown
         uses: actions/upload-artifact@v3
         with:
           name: docs-markdown
           path: |
-            docs/docs/shards/**/*.md
-            !docs/docs/shards/index.md
+            docs/docs/docs/shards/**/*.md
+            !docs/docs/docs/shards/index.md
+            !docs/docs/docs/shards/types.md
           if-no-files-found: error
 
   #
@@ -122,7 +123,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs-markdown
-          path: docs/docs/shards
+          path: docs/docs/docs/shards
       - name: Download samples logs
         uses: actions/download-artifact@v3
         with:

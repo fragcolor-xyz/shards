@@ -11,4 +11,6 @@ license: CC-BY-SA-4.0
 ./src/build/shards src/tests/infos-docs.edn
 ```
 
+If you wish to contribute, you can check out our guide on [how to start documenting](./start-documenting.md).
+
 --8<-- "includes/license.md"

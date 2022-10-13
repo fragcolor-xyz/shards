@@ -12,7 +12,7 @@ license: CC-BY-SA-4.0
 
 Learn how to employ Shards to execute code and bring your works to fruition!
 
-Ensure that you have [Shards built](../how-to/build-shards.md) before attempting to run it.
+Ensure that you have [Shards built](./building-shards.md) before attempting to run it.
 
 ## Preparing the Script ##
 
@@ -40,7 +40,7 @@ Paste the following code into your new file and save it.
 ??? "What does the code mean?"
     Even without in-depth knowledge, the Shards language is visual enough for you to make a guess at what it does. You define a mesh called “main” and create a wire called “helloworld” that sends out a “Hello World” message. We then schedule the wire on the mesh and run it. The code is therefore about sending out a “Hello World” message.
 
-    To better understand the intricacies of the code used, do give the [Shards primer](../how-to/shards-primer.md) a read!
+    To better understand the intricacies of the code used, do give the [Shards primer](../../learn/shards/index.md) a read!
 
 Now that we have created a .edn file, the final step is to use shards.exe to execute the code in it.
 

@@ -5,7 +5,7 @@
 
 ;; path definitions
 (def basePath "../../docs/")
-(def shardsPath "docs/shards/")
+(def shardsPath "docs/docs/shards/")
 (def detailsPath "details/shards/")
 (def samplePath "samples/shards/")
 
