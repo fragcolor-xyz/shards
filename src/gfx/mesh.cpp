@@ -71,7 +71,7 @@ void Mesh::initContextData(Context &context, MeshContextData &contextData) {
 }
 
 void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
-  if (!updateData)
+  if (contextData.vertexBufferLength != 0 && !updateData)
     return;
   updateData = false;
 
