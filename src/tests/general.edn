@@ -986,10 +986,14 @@
    (Log)
    (Assert.Is [112 114 97 99] true)
 
+   {:a 1 :b 2 :c 3} >= .table-abc
+   (Erase ["a" "c"] .table-abc)
+   .table-abc (Assert.Is {:b 2} true)
+
    (DropFront .seq-a)
   ;; this also tests that we fixup input as well
   ;; (Get .seq-a)
-   (Assert.Is [114 97 99] true)
+   .seq-a (Assert.Is [114 97 99] true)
 
    (PopFront .seq-a)
    (Assert.Is 114 true)
