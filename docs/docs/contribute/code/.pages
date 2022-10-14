@@ -1,4 +1,4 @@
 nav:
-  - getting-started.md
-  - building-shards.md
-  - ...
+  - index.md
+  - build-shards.md
+  - run-shards.md

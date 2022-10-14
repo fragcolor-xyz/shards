@@ -82,14 +82,15 @@ jobs:
         shell: msys2 {0}
         run: |
           ./shards.exe src/tests/infos-docs.edn
-          mv docs/docs/shards/General/UI.md docs/docs/shards/UI/index.md
+          mv docs/docs/docs/shards/General/UI.md docs/docs/docs/shards/UI/index.md
       - name: Upload markdown
         uses: actions/upload-artifact@v3
         with:
           name: docs-markdown
           path: |
-            docs/docs/shards/**/*.md
-            !docs/docs/shards/index.md
+            docs/docs/docs/shards/**/*.md
+            !docs/docs/docs/shards/index.md
+            !docs/docs/docs/shards/types.md
           if-no-files-found: error
 
   #
@@ -109,6 +110,7 @@ jobs:
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
+          path: shards
       - name: Set up python
         uses: actions/setup-python@v2
         with:
@@ -122,21 +124,34 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs-markdown
-          path: docs/docs/shards
+          path: shards/docs/docs/docs/shards
       - name: Download samples logs
         uses: actions/download-artifact@v3
         with:
           name: samples-logs
-          path: docs/samples
+          path: shards/docs/samples
+      - name: Checkout shards-examples
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards-examples
+          fetch-depth: 1
+          path: shards-examples
+      - name: Link tutorials
+        run: |
+          # note: we link twice because some relative path (esp. include) might be incorrect
+          cd shards/docs
+          ln -s ../../shards-examples/tutorials/
+          cd docs/learn
+          ln -s ../../../../shards-examples/tutorials/
       - name: Build website
         if: ${{ steps.setup.outputs.publish != 'true' }}
         run: |
-          cd docs
+          cd shards/docs
           mkdocs build
       - name: Build & publish website
         if: ${{ steps.setup.outputs.publish == 'true' }}
         run: |
-          cd docs
+          cd shards/docs
           git config --global user.name "Fragcolor bot"
           git config --global user.email "bot@fragcolor.xyz"
           mkdocs gh-deploy --force --message "Publish documentation from {sha}
@@ -146,6 +161,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: docs-website
-          path: |
-            docs/site/
+          path: shards/docs/site/
           if-no-files-found: error

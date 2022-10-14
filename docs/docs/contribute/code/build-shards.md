@@ -12,7 +12,7 @@ license: CC-BY-SA-4.0
 
 Curious about the inner workings of Shards? Build Shards to unlock its hidden magics, and gain access to infinite creative possibilities! ✨ 
 
-Do ensure that you have your [development environment readied](../how-to/start-developing.md) before embarking on the quest to build Shards!
+Do ensure that you have your [development environment readied](../getting-started.md) before embarking on the quest to build Shards!
 
 
 ## Cloning the Shards Repository ##

@@ -43,7 +43,7 @@ theme:
   custom_dir: overrides
   favicon: assets/images/favicon.svg
   features:
-    # - navigation.indexes # disabled: looks like there are some bugs.
+    - navigation.indexes
     - navigation.instant
     - navigation.tabs
     - navigation.tabs.sticky

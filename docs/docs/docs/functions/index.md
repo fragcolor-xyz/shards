@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# About built-in functions
+# Built-in Functions
 
 * [Collections](collections.md)
 * [Macros](macros.md)

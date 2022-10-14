@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Welcome
+# Home
 
 Welcome to Fragcolor documentation!
 
@@ -11,8 +11,8 @@ These documents will help you understand, use, and contribute to Fragcolor techn
 
 You can start from a high-level topic below or use the navigation links at the top.
 
-- [Shards](./shards/)
-- [Built-in functions](./functions/)
+- [Shards](./learn/shards/)
+- [Built-in functions](./docs/functions/)
 - [Contributions guides](./contribute/)
 
 *Use the search box if you're looking for something specific.*
