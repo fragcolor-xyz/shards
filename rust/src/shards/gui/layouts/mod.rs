@@ -45,6 +45,17 @@ struct Frame {
   exposing: ExposedTypes,
 }
 
+struct Grid {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  striped: ParamVar,
+  min_width: ParamVar,
+  max_width: ParamVar,
+  spacing: ParamVar,
+  exposing: ExposedTypes,
+}
+
 struct Group {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -65,6 +76,11 @@ struct Indent {
   requiring: ExposedTypes,
   contents: ShardsVar,
   exposing: ExposedTypes,
+}
+
+struct NextRow {
+  parents: ParamVar,
+  requiring: ExposedTypes,
 }
 
 struct ScrollArea {
@@ -99,6 +115,7 @@ mod collapsing_header;
 mod columns;
 mod disable;
 mod frame;
+mod grid;
 mod group;
 mod horizontal;
 mod indent;
@@ -112,9 +129,11 @@ pub fn registerShards() {
   registerShard::<Columns>();
   registerShard::<Disable>();
   registerShard::<Frame>();
+  registerShard::<Grid>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
   registerShard::<Indent>();
+  registerShard::<NextRow>();
   registerShard::<ScrollArea>();
   registerShard::<Separator>();
   registerShard::<Space>();
