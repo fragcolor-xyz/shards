@@ -912,11 +912,11 @@ struct Erase : SeqUser {
       }
     }
 
-    if(!info) {
+    if (!info) {
       throw ComposeError("Erase: Could not find reference to sequence or table.");
     }
 
-    if(info->exposedType.basicType != SHType::Seq && info->exposedType.basicType != SHType::Table) {
+    if (info->exposedType.basicType != SHType::Seq && info->exposedType.basicType != SHType::Table) {
       throw ComposeError("Erase: Reference to sequence or table was not a sequence or table.");
     }
 
@@ -979,11 +979,8 @@ struct Erase : SeqUser {
         const auto index = indices.payload.intValue;
         arrayDel(_target->payload.seqValue, index);
       } else {
-        // ensure we delete from highest index
-        // so to keep indices always valid
-        IterableSeq sindices(indices);
-        pdqsort(sindices.begin(), sindices.end(), [](SHVar a, SHVar b) { return a > b; });
-        for (auto &idx : sindices) {
+        _sorter.insertSort(indices.payload.seqValue.elements, indices.payload.seqValue.len, _sorter.sortDesc, _sorter.noopKeyFn);
+        for (auto &idx : indices) {
           const auto index = idx.payload.intValue;
           arrayDel(_target->payload.seqValue, index);
         }
@@ -993,6 +990,7 @@ struct Erase : SeqUser {
   }
 
 private:
+  Sort _sorter{};
   ParamVar _indices{};
   static inline Parameters _params = {
       {"Indices", SHCCSTR("One or multiple indices to filter from a sequence."), CoreInfo::TakeTypes},
