@@ -244,14 +244,12 @@ TEST_CASE("Reference tracking", "[General]") {
     renderer.render(view, createTestPipelineSteps(queue));
     renderer.endFrame();
     context.endFrame();
+    queue->clear();
   }
 
-  CHECK(meshWeak.expired());
-  CHECK(drawableWeak.expired());
-  CHECK(!meshContextData.expired());
-
+  // Simulate empty frames
   context.sync();
-  for (size_t i = 0; i < 2; i++) {
+  for (size_t i = 0; i < 16; i++) {
     context.beginFrame();
     renderer.beginFrame();
     renderer.endFrame();
@@ -260,6 +258,8 @@ TEST_CASE("Reference tracking", "[General]") {
   context.sync();
 
   // Should be released now
+  CHECK(meshWeak.expired());
+  CHECK(drawableWeak.expired());
   CHECK(meshContextData.expired());
 
   testRenderer.reset();

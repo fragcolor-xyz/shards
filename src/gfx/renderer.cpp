@@ -17,6 +17,7 @@
 #include "shader/generator.hpp"
 #include "shader/textures.hpp"
 #include "shader/uniforms.hpp"
+#include "steps/defaults.hpp"
 #include "texture.hpp"
 #include "texture_placeholder.hpp"
 #include "view.hpp"
@@ -31,9 +32,11 @@
 
 using namespace gfx::detail;
 
+namespace gfx {
+
 static auto logger = gfx::getLogger();
 
-namespace gfx {
+static auto defaultRenderStepOutput = steps::getDefaultRenderStepOutput();
 
 static MeshPtr fullscreenQuad = []() {
   geom::QuadGenerator quadGen;
@@ -241,10 +244,7 @@ struct RendererImpl final : public ContextData {
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const ClearStep &step) {
-    RenderStepIO io{
-        .outputs = step.outputs,
-    };
-    builder.allocateOutputs(index, io);
+    builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput);
   }
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const ClearStep &step) {
     auto &node = out.getNode(index);
@@ -263,7 +263,7 @@ struct RendererImpl final : public ContextData {
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderDrawablesStep &step) {
-    builder.allocateOutputs(index, step.io);
+    builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput);
   }
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderDrawablesStep &step) {
     auto &node = out.getNode(index);
@@ -295,14 +295,17 @@ struct RendererImpl final : public ContextData {
       for (auto &pair : pipelineDrawableCache->map) {
         renderPipelineDrawables(ctx.encoder, pair.second, viewData);
       }
+
+      // Release references
+      pipelineDrawableCache->clear();
     };
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
-    builder.allocateInputs(index, step.io);
+    builder.allocateInputs(index, step.inputs);
 
     bool overwriteTargets = step.overlay ? false : true;
-    builder.allocateOutputs(index, step.io, overwriteTargets);
+    builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput, overwriteTargets);
   }
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
     RenderGraphNode &node = out.getNode(index);
@@ -604,17 +607,14 @@ struct RendererImpl final : public ContextData {
 
   void ensureMainOutputCleared() {
     if (!renderGraphEvaluator.isWrittenTo(mainOutput.texture)) {
-      WGPUCommandEncoderDescriptor desc = {};
-      WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
+      RenderGraphBuilder builder;
+      builder.nodes.resize(1);
+      builder.allocateOutputs(0, steps::makeRenderStepOutput(RenderStepOutput::Texture{
+                                     .handle = mainOutput.texture,
+                                 }));
+      auto graph = builder.finalize();
 
-      // Make sure primary output is cleared if no render steps are present
-      // TODO
-      // renderGraphEvaluator.clearColorTexture(context, mainOutput.texture, commandEncoder);
-
-      WGPUCommandBufferDescriptor cmdBufDesc{};
-      WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
-
-      context.submit(cmdBuf);
+      renderGraphEvaluator.evaluate(graph, std::vector<TexturePtr>{}, context, frameCounter);
     }
   }
 

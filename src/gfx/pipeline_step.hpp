@@ -44,16 +44,9 @@ union ClearValues {
 };
 
 // Describes texture/render target connections between render steps
-struct RenderStepIO {
-  enum class Mode {
-    // Load buffer from previous steps
-    Load,
-    // Clear buffer
-    Clear,
-  };
-
+struct RenderStepOutput {
   // A managed named render frame
-  struct NamedOutput {
+  struct Named {
     std::string name;
 
     // The desired format
@@ -64,7 +57,7 @@ struct RenderStepIO {
   };
 
   // A preallocator texture to output to
-  struct TextureOutput {
+  struct Texture {
     std::string name;
 
     TexturePtr handle;
@@ -73,23 +66,23 @@ struct RenderStepIO {
     std::optional<ClearValues> clearValues;
   };
 
-  typedef std::variant<NamedOutput, TextureOutput> OutputVariant;
+  typedef std::variant<Named, Texture> OutputVariant;
 
-  std::vector<std::string> inputs;
-  std::vector<OutputVariant> outputs;
+  std::vector<OutputVariant> attachments;
 
   // When set, will automatically scale outputes relative to main output
   // Reused buffers loaded from previous steps are upscaled/downscaled
   // Example:
   //  (0.5, 0.5) would render at half the output resolution
   //  (2.0, 2.0) would render at double the output resolution
-  std::optional<float2> outputSizeScale = float2(1, 1);
+  std::optional<float2> sizeScale = float2(1, 1);
 };
 
 // Explicitly clear render targets
 struct ClearStep {
   ClearValues clearValues;
-  std::vector<RenderStepIO::OutputVariant> outputs;
+
+  std::optional<RenderStepOutput> output;
 };
 
 // Renders all drawables in the queue to the output region
@@ -97,14 +90,19 @@ struct RenderDrawablesStep {
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
   std::vector<FeaturePtr> features;
-  RenderStepIO io;
+
+  std::optional<RenderStepOutput> output;
 };
+
+typedef std::vector<std::string> RenderStepInputs;
 
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
-  RenderStepIO io;
+
+  RenderStepInputs inputs;
+  std::optional<RenderStepOutput> output;
 
   // used to indicate this pass does not cover the entire output
   // e.g. some blending pass / sub-section of the output

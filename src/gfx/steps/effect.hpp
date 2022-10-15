@@ -13,31 +13,26 @@ using namespace shader::blocks;
 using shader::FieldTypes;
 
 struct Effect {
-  static PipelineStepPtr create(RenderStepIO &&io, BlockPtr &&shader) {
+  static PipelineStepPtr create(std::vector<std::string> &&inputs, RenderStepOutput &&output, BlockPtr &&shader) {
     FeaturePtr feature = std::make_shared<Feature>();
     feature->shaderEntryPoints.emplace_back("effect_main", ProgrammableGraphicsStage::Fragment, std::move(shader));
 
     return makePipelineStep(RenderFullscreenStep{
         .features = withDefaultFullscreenFeatures(feature),
-        .io = std::move(io),
+        .inputs = std::move(inputs),
+        .output = std::move(output),
     });
   }
 };
 
 struct Copy {
   static PipelineStepPtr create(const std::string &fieldName, WGPUTextureFormat dstFormat) {
-    RenderStepIO io{
-        .inputs = {fieldName},
-        .outputs =
-            {
-                RenderStepIO::NamedOutput{
-                    .name = fieldName,
-                    .format = dstFormat,
-                },
-            },
-    };
-    auto step =
-        Effect::create(std::move(io), makeCompoundBlock(WriteOutput(fieldName, FieldTypes::Float4, SampleTexture(fieldName))));
+    auto step = Effect::create(std::vector<std::string>{fieldName},
+                               makeRenderStepOutput(RenderStepOutput::Named{
+                                   .name = fieldName,
+                                   .format = dstFormat,
+                               }),
+                               makeCompoundBlock(WriteOutput(fieldName, FieldTypes::Float4, SampleTexture(fieldName))));
     return step;
   }
 };
