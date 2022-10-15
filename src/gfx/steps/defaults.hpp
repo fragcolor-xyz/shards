@@ -13,8 +13,8 @@ template <typename... TFeatures> inline std::vector<FeaturePtr> withDefaultFulls
 }
 
 // Color output WITHOUT clear
-inline RenderStepIO::NamedOutput getDefaultColorOutput(std::optional<float4> clearColor = std::nullopt) {
-  return RenderStepIO::NamedOutput{
+inline RenderStepOutput::Named getDefaultColorOutput(std::optional<float4> clearColor = std::nullopt) {
+  return RenderStepOutput::Named{
       .name = "color",
       .format = WGPUTextureFormat_BGRA8UnormSrgb,
       .clearValues = clearColor ? std::make_optional(ClearValues::getColorValue(clearColor.value())) : std::nullopt,
@@ -22,8 +22,8 @@ inline RenderStepIO::NamedOutput getDefaultColorOutput(std::optional<float4> cle
 }
 
 // Depth output with clear
-inline RenderStepIO::NamedOutput getDefaultDepthOutput(bool clearDepth = true) {
-  return RenderStepIO::NamedOutput{
+inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = true) {
+  return RenderStepOutput::Named{
       .name = "depth",
       .format = WGPUTextureFormat_Depth32Float,
       .clearValues = clearDepth ? std::make_optional(ClearValues::getDefaultDepthStencil()) : std::nullopt,
@@ -31,13 +31,20 @@ inline RenderStepIO::NamedOutput getDefaultDepthOutput(bool clearDepth = true) {
 }
 
 // Default output color+depth with clear
-inline RenderStepIO getDefaultDrawPassIO(bool clearDepth = true, std::optional<float4> clearColor = float4(0, 0, 0, 0)) {
-  return RenderStepIO{
-      .outputs =
+inline RenderStepOutput getDefaultRenderStepOutput(bool clearDepth = true,
+                                                   std::optional<float4> clearColor = float4(0, 0, 0, 0)) {
+  return RenderStepOutput{
+      .attachments =
           {
               getDefaultColorOutput(clearColor),
               getDefaultDepthOutput(clearDepth),
           },
+  };
+}
+
+template <typename... TArgs> inline RenderStepOutput makeRenderStepOutput(TArgs... args) {
+  return RenderStepOutput{
+      .attachments = {args...},
   };
 }
 } // namespace gfx::steps

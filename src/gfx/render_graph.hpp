@@ -259,13 +259,13 @@ struct RenderGraphBuilder {
     return true;
   }
 
-  FrameIndex assignFrame(const RenderStepIO::OutputVariant &output, int2 targetSize) {
+  FrameIndex assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize) {
     FrameIndex frameIndex = ~0;
     std::visit(
         [&](auto &&arg) {
           using T = std::decay_t<decltype(arg)>;
 
-          if constexpr (std::is_same_v<T, RenderStepIO::TextureOutput>) {
+          if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
             auto it0 = handleLookup.find(arg.handle);
             if (it0 == handleLookup.end()) {
               frameIndex = frames.size();
@@ -295,11 +295,11 @@ struct RenderGraphBuilder {
           [&](auto &&arg) {
             frame.name = arg.name;
             using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, RenderStepIO::TextureOutput>) {
+            if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
               assert(arg.handle);
               frame.textureOverride = arg.handle;
               frame.format = frame.textureOverride->getFormat().pixelFormat;
-            } else if constexpr (std::is_same_v<T, RenderStepIO::NamedOutput>) {
+            } else if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
               frame.format = arg.format;
             }
           },
@@ -367,11 +367,11 @@ struct RenderGraphBuilder {
   }
 
   // Call before allocating a node's outputs
-  void allocateInputs(size_t nodeIndex, const RenderStepIO &io) {
+  void allocateInputs(size_t nodeIndex, const std::vector<std::string> &inputs) {
     nodes.resize(std::max(nodes.size(), nodeIndex + 1));
     RenderGraphNode &node = nodes[nodeIndex];
 
-    for (auto &inputName : io.inputs) {
+    for (auto &inputName : inputs) {
       FrameIndex frameIndex{};
       if (findFrameIndex(inputName, frameIndex)) {
         node.readsFrom.push_back(frameIndex);
@@ -391,16 +391,16 @@ struct RenderGraphBuilder {
 
   // When setting forceOverwrite, ignores clear value, marks this attachment as being completely overwritten
   // e.g. fullscreen effect passes
-  void allocateOutputs(size_t nodeIndex, const RenderStepIO &io, bool forceOverwrite = false) {
+  void allocateOutputs(size_t nodeIndex, const RenderStepOutput &output, bool forceOverwrite = false) {
     static auto logger = gfx::getLogger();
 
     nodes.resize(std::max(nodes.size(), nodeIndex + 1));
     RenderGraphNode &node = nodes[nodeIndex];
 
-    for (auto &output : io.outputs) {
-      int2 targetSize = int2(linalg::floor(referenceOutputSize * io.outputSizeScale.value_or(float2(1.0f))));
+    for (auto &attachment : output.attachments) {
+      int2 targetSize = int2(linalg::floor(referenceOutputSize * output.sizeScale.value_or(float2(1.0f))));
 
-      FrameIndex frameIndex = assignFrame(output, targetSize);
+      FrameIndex frameIndex = assignFrame(attachment, targetSize);
 
       WGPUTextureFormat targetFormat{};
       std::optional<ClearValues> clearValues{};
@@ -408,15 +408,15 @@ struct RenderGraphBuilder {
           [&](auto &&arg) {
             using T = std::decay_t<decltype(arg)>;
             clearValues = arg.clearValues;
-            if constexpr (std::is_same_v<T, RenderStepIO::NamedOutput>) {
+            if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
               targetFormat = arg.format;
-            } else if constexpr (std::is_same_v<T, RenderStepIO::TextureOutput>) {
+            } else if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
               targetFormat = arg.handle->getFormat().pixelFormat;
             } else {
               throw std::logic_error("");
             }
           },
-          output);
+          attachment);
 
       bool sizeMismatch = frames[frameIndex].size != targetSize;
       bool formatMismatch = frames[frameIndex].format != targetFormat;
@@ -505,7 +505,20 @@ struct RenderGraphBuilder {
     return layout;
   }
 
+  void validateNodes() {
+    static auto logger = gfx::getLogger();
+
+    for (size_t nodeIndex = 0; nodeIndex < nodes.size(); nodeIndex++) {
+      auto &node = nodes[nodeIndex];
+      if (node.writesTo.size() == 0) {
+        throw std::runtime_error(fmt::format("Node {} does not write to any outputs", nodeIndex));
+      }
+    }
+  }
+
   RenderGraph finalize() {
+    validateNodes();
+
     RenderGraph graph{
         .nodes = std::move(nodes),
         .frames = std::move(frames),
@@ -664,6 +677,7 @@ public:
 
 struct CachedRenderGraph {
   RenderGraph renderGraph;
+
   RenderGraphNode &getNode(size_t index) { return renderGraph.nodes[index]; }
 };
 typedef std::shared_ptr<CachedRenderGraph> CachedRenderGraphPtr;

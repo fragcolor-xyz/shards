@@ -9,10 +9,12 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
+#include <gfx/steps/defaults.hpp>
 #include <gfx/gizmos/shapes.hpp>
 #include <gfx/gizmos/wireframe.hpp>
 
 using namespace gfx;
+using namespace gfx::steps;
 
 static constexpr float comparisonTolerance = 0.05f;
 
@@ -54,6 +56,7 @@ TEST_CASE("Wireframe", "[Gizmos]") {
                   features::Transform::create(),
                   features::BaseColor::create(),
               },
+          .output = getDefaultRenderStepOutput(false, std::nullopt),
       }),
   };
 
@@ -114,6 +117,7 @@ TEST_CASE("Helper lines", "[Gizmos]") {
               {
                   features::BaseColor::create(),
               },
+          .output = getDefaultRenderStepOutput(false, std::nullopt),
       }),
   };
 

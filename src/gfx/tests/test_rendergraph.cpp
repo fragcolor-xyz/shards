@@ -16,6 +16,7 @@
 #include <spdlog/spdlog.h>
 
 using namespace gfx;
+using namespace gfx::steps;
 
 static constexpr float comparisonTolerance = 0.05f;
 
@@ -60,7 +61,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
                   features::BaseColor::create(),
                   blendFeature,
               },
-          .io = steps::getDefaultDrawPassIO(),
+          .output = steps::getDefaultRenderStepOutput(),
       }),
   };
 
@@ -69,7 +70,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
           .clearValues{
               .color = float4(0.2, 0.2, 0.2, 1.0),
           },
-          .outputs = {steps::getDefaultColorOutput()},
+          .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
       }),
       makePipelineStep(RenderFullscreenStep{
           .features =
@@ -84,7 +85,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
           .parameters{
               .texture = {{"baseColor", TextureParameter(rt->getAttachment("color"))}},
           },
-          .io = {.outputs = {steps::getDefaultColorOutput()}},
+          .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
           .overlay = true,
       }),
   };
@@ -162,14 +163,14 @@ TEST_CASE("Velocity", "[RenderGraph]") {
                   features::Transform::create(),
                   features::Velocity::create(),
               },
-          .io =
+          .output =
               []() {
-                auto io = steps::getDefaultDrawPassIO();
-                io.outputs.emplace_back(RenderStepIO::NamedOutput{
+                auto output = steps::getDefaultRenderStepOutput();
+                output.attachments.emplace_back(RenderStepOutput::Named{
                     .name = "velocity",
                     .format = WGPUTextureFormat_RG16Float,
                 });
-                return io;
+                return output;
               }(),
       }),
   };
@@ -193,10 +194,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
           .parameters{
               .texture = {{"velocity", TextureParameter(rt->getAttachment("velocity"))}},
           },
-          .io =
-              RenderStepIO{
-                  .outputs = {steps::getDefaultColorOutput()},
-              },
+          .output = makeRenderStepOutput(getDefaultColorOutput()),
       }),
   };
 
@@ -275,16 +273,11 @@ TEST_CASE("Multiple IO", "[RenderGraph]") {
                   features::Transform::create(),
                   features::BaseColor::create(),
               },
-          .io = steps::getDefaultDrawPassIO(),
+          .output = steps::getDefaultRenderStepOutput(),
       }),
       steps::Effect::create(
-          RenderStepIO{
-              .inputs = {"color", "depth", "velocity"},
-              .outputs =
-                  {
-                      RenderStepIO::NamedOutput{.name = "color", .format = WGPUTextureFormat_RGBA16Float},
-                  },
-          },
+          RenderStepInputs{"color", "depth", "velocity"},
+          makeRenderStepOutput(RenderStepOutput::Named{.name = "color", .format = WGPUTextureFormat_RGBA16Float}),
           makeEffectShader()),
   };
 
