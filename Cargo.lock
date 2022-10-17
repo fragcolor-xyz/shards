@@ -923,6 +923,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_memory_editor"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "016307c9b3727f1751d39d0208e006a73525cf91f5c395bb677a109b0a7ff720"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "either"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3261,6 +3270,7 @@ dependencies = [
  "dlopen",
  "egui",
  "egui-gfx",
+ "egui_memory_editor",
  "enum-map",
  "ethabi",
  "ethereum-types",
