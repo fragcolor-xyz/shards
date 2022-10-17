@@ -1,7 +1,5 @@
 nav:
   - index.md
-  - whats-code.md
-  - whats-shards.md
-  - anatomy-shard.md
-  - manipulate-data.md
-  - control-flow.md
+  - what-is-shards.md
+  - the-flow.md
+  - working-with-data.md

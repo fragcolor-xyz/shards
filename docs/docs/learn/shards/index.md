@@ -5,13 +5,8 @@ license: CC-BY-SA-4.0
 
 # Shards
 
-This document is a step-by-step guide for the beginning Shards developer. It explains the basic concepts underlying the language and will get you started with writing Shards code.
+Looking to step into the world of Shards? Look no further! In this primer, you will learn the basics of Shards and why you should use it.
 
-Shards has a very visual code syntax so prior programming experience is not mandatory to start coding in Shards. Also, we shall cover any required programming concepts as we go along.
-
-Once you're done with this primer you may want to check out our [tutorials](https://learn.fragcolor.xyz/) and [code examples](https://learn.fragcolor.xyz/code-examples) (coming soon).
-
-For language reference documentation, head over to the [shards](../../docs/shards/index.md) documentation.
-
+Shards has a very visual syntax which makes it intuitive and easy to learn, even for those new to programming.
 
 --8<-- "includes/license.md"
