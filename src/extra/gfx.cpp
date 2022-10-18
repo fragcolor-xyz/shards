@@ -15,76 +15,6 @@ using namespace shards;
 
 namespace gfx {
 
-struct DrawablePassShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
-
-  PARAM_PARAMVAR(_features, "Features", "Features to use.", {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq});
-  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (optional). Uses the default queue if not specified",
-                 {Type::VariableOf(Types::DrawQueue)});
-  PARAM_PARAMVAR(_forceDepthClear, "ForceDepthClear", "When true, forces a depth clear before rendering",
-                 {CoreInfo::BoolType, shards::Type::VariableOf(CoreInfo::BoolType)});
-  PARAM_IMPL(DrawablePassShard, PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_forceDepthClear));
-
-  PipelineStepPtr *_step{};
-
-  std::vector<FeaturePtr> _collectedFeatures;
-  std::vector<Var> _featureVars;
-
-  void cleanup() {
-    if (_step) {
-      Types::PipelineStepObjectVar.Release(_step);
-      _step = nullptr;
-    }
-    PARAM_CLEANUP();
-  }
-
-  void warmup(SHContext *context) {
-    _step = Types::PipelineStepObjectVar.New();
-    PARAM_WARMUP(context);
-  }
-
-  std::vector<FeaturePtr> collectFeatures(const SHVar &input) {
-    _collectedFeatures.clear();
-
-    Var featuresVar(_features.get());
-    featuresVar.intoVector(_featureVars);
-
-    for (auto &featureVar : _featureVars) {
-      if (featureVar.payload.objectValue) {
-        _collectedFeatures.push_back(*reinterpret_cast<FeaturePtr *>(featureVar.payload.objectValue));
-      }
-    }
-
-    _featureVars.clear();
-
-    return _collectedFeatures;
-  }
-
-  DrawQueuePtr getDrawQueue() {
-    SHVar queueVar = _queue.get();
-    if (queueVar.payload.objectValue) {
-      return (reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue;
-    } else {
-      return DrawQueuePtr();
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    Var forceDepthClearVar(_forceDepthClear.get());
-
-    RenderStepOutput output =
-        steps::getDefaultRenderStepOutput(forceDepthClearVar.isNone() ? false : bool(forceDepthClearVar), std::nullopt);
-
-    *_step = makePipelineStep(RenderDrawablesStep{
-        .drawQueue = getDrawQueue(),
-        .features = collectFeatures(_features),
-        .output = output,
-    });
-    return Types::PipelineStepObjectVar.Get(_step);
-  }
-};
-
 struct RenderShard : public BaseConsumer {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
@@ -242,6 +172,7 @@ extern void registerGLTFShards();
 extern void registerCameraShards();
 extern void registerTextureShards();
 extern void registerViewShards();
+extern void registerRenderStepShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
@@ -255,9 +186,8 @@ void registerShards() {
   registerCameraShards();
   registerTextureShards();
   registerViewShards();
+  registerRenderStepShards();
   shader::registerTranslatorShards();
-
-  REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
   REGISTER_SHARD("GFX.Render", RenderShard);
 }
 } // namespace gfx
