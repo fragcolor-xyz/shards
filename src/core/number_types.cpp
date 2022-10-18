@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <type_traits>
+#include <stdexcept>
 
 namespace shards {
 
@@ -22,6 +23,23 @@ std::map<SHType, NumberType> getSHTypeToNumberTypeMap() {
   };
   // clang-format on
 };
+
+const Type &getCompatibleUnitType(NumberType numberType) {
+  switch (numberType) {
+  default:
+    throw std::logic_error("Invalid number type");
+  case NumberType::UInt8:
+  case NumberType::Int8:
+  case NumberType::Int16:
+  case NumberType::Int32:
+  case NumberType::Int64:
+    return CoreInfo::IntType;
+    break;
+  case NumberType::Float32:
+  case NumberType::Float64:
+    return CoreInfo::FloatType;
+  }
+}
 
 template <typename TIn, typename TOut> struct TNumberConversion : NumberConversion {
   TNumberConversion() {

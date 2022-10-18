@@ -584,6 +584,16 @@ void registerCastingShards() {
   REGISTER_SHARD("ToFloat3", ToNumber<Float3>);
   REGISTER_SHARD("ToFloat4", ToNumber<Float4>);
 
+  REGISTER_SHARD("MakeInt2", MakeVector<Int2>);
+  REGISTER_SHARD("MakeInt3", MakeVector<Int3>);
+  REGISTER_SHARD("MakeInt4", MakeVector<Int4>);
+  REGISTER_SHARD("MakeInt8", MakeVector<Int8>);
+  REGISTER_SHARD("MakeInt16", MakeVector<Int16>);
+  REGISTER_SHARD("MakeColor", MakeVector<Color>);
+  REGISTER_SHARD("MakeFloat2", MakeVector<Float2>);
+  REGISTER_SHARD("MakeFloat3", MakeVector<Float3>);
+  REGISTER_SHARD("MakeFloat4", MakeVector<Float4>);
+
   REGISTER_CORE_SHARD(ToString);
   REGISTER_CORE_SHARD(ToHex);
 
