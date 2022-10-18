@@ -556,6 +556,8 @@ pub mod common_type {
   use crate::shardsc::SHType_Int2;
   use crate::shardsc::SHType_Int3;
   use crate::shardsc::SHType_Int4;
+  use crate::shardsc::SHType_Int8;
+  use crate::shardsc::SHType_Int16;
   use crate::shardsc::SHType_None;
   use crate::shardsc::SHType_Object;
   use crate::shardsc::SHType_Path;
@@ -772,6 +774,26 @@ pub mod common_type {
     int4s_var,
     int4_table,
     int4_table_var
+  );
+  shtype!(
+    make_int8,
+    SHType_Int8,
+    int8,
+    int8s,
+    int8_var,
+    int8s_var,
+    int8_table,
+    int8_table_var
+  );
+  shtype!(
+    make_int16,
+    SHType_Int16,
+    int16,
+    int16s,
+    int16_var,
+    int16s_var,
+    int16_table,
+    int16_table_var
   );
   shtype!(
     make_float,
