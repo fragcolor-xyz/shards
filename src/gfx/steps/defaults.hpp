@@ -22,7 +22,7 @@ inline RenderStepOutput::Named getDefaultColorOutput(std::optional<float4> clear
 }
 
 // Depth output with clear
-inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = true) {
+inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = false) {
   return RenderStepOutput::Named{
       .name = "depth",
       .format = WGPUTextureFormat_Depth32Float,
@@ -31,8 +31,7 @@ inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = true) {
 }
 
 // Default output color+depth with clear
-inline RenderStepOutput getDefaultRenderStepOutput(bool clearDepth = true,
-                                                   std::optional<float4> clearColor = float4(0, 0, 0, 0)) {
+inline RenderStepOutput getDefaultRenderStepOutput(bool clearDepth = false, std::optional<float4> clearColor = std::nullopt) {
   return RenderStepOutput{
       .attachments =
           {
