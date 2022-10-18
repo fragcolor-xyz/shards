@@ -67,9 +67,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
 
   PipelineSteps stepsMain{
       makePipelineStep(ClearStep{
-          .clearValues{
-              .color = float4(0.2, 0.2, 0.2, 1.0),
-          },
+          .clearValues = ClearValues::getColorValue(float4(0.2, 0.2, 0.2, 1.0)),
           .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
       }),
       makePipelineStep(RenderFullscreenStep{
