@@ -55,6 +55,11 @@
    ; title
    "# " >> .o name >> .o "\r\n\r\n" >> .o
 
+   ; deprecated warning
+   (When
+    (-> (Get .properties "deprecated" :Default false))
+    (-> "--8<-- \"includes/deprecated.md\"\r\n\r\n" >> .o))
+
    ; experimental warning
    (When
     (-> (Get .properties "experimental" :Default false))
