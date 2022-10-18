@@ -71,6 +71,12 @@ struct Console {
   filters: (bool, bool, bool, bool, bool)
 }
 
+#[cfg(feature = "hex_viewer")]
+struct HexViewer {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 struct Hyperlink {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -223,6 +229,8 @@ mod code_editor;
 mod color_input;
 mod combo;
 mod console;
+#[cfg(feature = "hex_viewer")]
+mod hex_viewer;
 mod hyperlink;
 mod image;
 mod image_button;
@@ -275,6 +283,10 @@ pub fn registerShards() {
   if cfg!(feature = "code_editor") {
     registerCodeEditor();
   }
+
+  if cfg!(feature = "hex_viewer") {
+    registerHexViewer();
+  }
 }
 
 #[cfg(feature = "code_editor")]
@@ -286,3 +298,13 @@ pub fn registerCodeEditor() {
 #[cfg(not(feature = "code_editor"))]
 #[inline(always)]
 pub fn registerCodeEditor() {}
+
+#[cfg(feature = "hex_viewer")]
+#[inline(always)]
+pub fn registerHexViewer() {
+  registerShard::<HexViewer>();
+}
+
+#[cfg(not(feature = "hex_viewer"))]
+#[inline(always)]
+pub fn registerHexViewer() {}
