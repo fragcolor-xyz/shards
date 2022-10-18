@@ -10,6 +10,9 @@ use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 
+#[cfg(feature = "hex_viewer")]
+use egui_memory_editor::option_data::MemoryEditorOptions;
+
 /// Clickable button with a text label.
 struct Button {
   parents: ParamVar,
@@ -75,6 +78,7 @@ struct Console {
 struct HexViewer {
   parents: ParamVar,
   requiring: ExposedTypes,
+  editor_options: Option<MemoryEditorOptions>
 }
 
 struct Hyperlink {

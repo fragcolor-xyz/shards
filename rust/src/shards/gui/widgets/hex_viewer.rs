@@ -27,6 +27,7 @@ impl Default for HexViewer {
     Self {
       parents,
       requiring: Vec::new(),
+      editor_options: None,
     }
   }
 }
@@ -88,7 +89,6 @@ impl Shard for HexViewer {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    use egui_memory_editor::option_data::MemoryEditorOptions;
     use egui_memory_editor::MemoryEditor;
 
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
@@ -108,7 +108,12 @@ impl Shard for HexViewer {
       };
 
       let mut mem_editor = MemoryEditor::new().with_address_range("All", 0..mem.len());
+
+      if let Some(options) = &self.editor_options {
+        mem_editor = mem_editor.with_options(options.clone());
+      }
       mem_editor.draw_editor_contents_read_only(ui, mem, |mem, address| mem[address].into());
+      self.editor_options = Some(mem_editor.options.clone());
 
       Ok(*input)
     } else {
