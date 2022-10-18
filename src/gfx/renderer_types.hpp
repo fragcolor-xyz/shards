@@ -370,6 +370,7 @@ struct RenderTargetData {
 
 struct RenderGraphNode {
   RenderTargetData renderTargetData;
+  bool forceDepthClear{};
   std::vector<Texture *> writesTo;
   std::vector<Texture *> readsFrom;
 
@@ -439,7 +440,8 @@ public:
 
   // Describes a render pass so that targets are cleared to their default value or loaded
   // based on if they were already written to previously
-  WGPURenderPassDescriptor &createRenderPassDescriptor(Context &context, const RenderTargetData &renderTargetData) {
+  WGPURenderPassDescriptor &createRenderPassDescriptor(Context &context, const RenderTargetData &renderTargetData,
+                                                       bool forceDepthClear = false) {
     cachedColorAttachments.clear();
     cachedDepthStencilAttachment.reset();
 
@@ -474,7 +476,7 @@ public:
       auto &attachment = cachedDepthStencilAttachment.value();
 
       bool previouslyWrittenTo = writtenTextures.contains(target.texture);
-      if (previouslyWrittenTo) {
+      if (previouslyWrittenTo && !forceDepthClear) {
         attachment.depthLoadOp = WGPULoadOp_Load;
       } else {
         attachment.depthLoadOp = WGPULoadOp_Clear;
@@ -507,7 +509,7 @@ public:
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
     for (const auto &node : graph.nodes) {
-      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(context, node.renderTargetData);
+      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(context, node.renderTargetData, node.forceDepthClear);
       if (node.setupPass)
         node.setupPass(renderPassDesc);
       WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);

@@ -286,6 +286,8 @@ struct RendererImpl final : public ContextData {
     auto &renderGraphNode = outGraph.nodes.emplace_back();
     auto &renderTargetData = renderGraphNode.renderTargetData;
 
+    renderGraphNode.forceDepthClear = step.forceDepthClear;
+
     // Build render target references
     initStepRenderTarget(renderTargetData, viewData, step);
 
