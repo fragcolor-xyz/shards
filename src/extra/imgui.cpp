@@ -12,6 +12,8 @@ namespace shards {
 namespace ImGui {
 using namespace shards;
 
+static TableVar deprecated{{"deprecated", Var(true)}};
+
 struct Base {
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(gfx::Base::requiredInfo); }
 
@@ -20,6 +22,8 @@ struct Base {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
+
+  static const SHTable *properties() { return &deprecated.payload.tableValue; }
 };
 
 struct IDContext {
