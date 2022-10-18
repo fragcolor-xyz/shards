@@ -19,6 +19,7 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#include <compare>
 #include <spdlog/spdlog.h>
 
 namespace gfx::detail {

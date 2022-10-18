@@ -2,6 +2,7 @@
 #define FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 
 #include "renderer_types.hpp"
+#include <compare>
 
 namespace gfx::detail {
 
