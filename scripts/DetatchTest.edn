@@ -1,6 +1,6 @@
 (defmesh Root)
 
-(defloop wire-two
+(defwire wire-two
   .capturedVariable
   (Math.Add 3)
   (Log "Wire-two Captured Variable")
