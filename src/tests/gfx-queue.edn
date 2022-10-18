@@ -33,9 +33,9 @@
    (GFX.Feature) >> .features
 
    ;; Red cube should be draw on top of cyan cube
-   (GFX.DrawablePass :Features .features :Queue .queue-1) >> .render-steps
-   (GFX.DrawablePass :Features .features :Queue .queue-0) >> .render-steps
-   (GFX.DrawablePass :Features .features :Queue .non-existing-variable) >> .render-steps ; Test default/none variable on :Queue
+   {:Features .features :Queue .queue-1} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue-0} (GFX.DrawablePass) >> .render-steps
+   {:Features .features} (GFX.DrawablePass) >> .render-steps ; Test default case with global queue
 
     ;; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
