@@ -137,6 +137,8 @@ public:
   ITranslationHandler *resolve(Shard *shard);
 };
 
+void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input);
+
 } // namespace shader
 } // namespace gfx
 
