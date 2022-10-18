@@ -17,6 +17,25 @@ namespace gfx {
 namespace shader {
 using shards::CoreInfo;
 
+static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
+
+static constexpr ShaderFieldBaseType getShaderBaseType(shards::NumberType numberType) {
+  using shards::NumberType;
+  switch (numberType) {
+  case NumberType::Float32:
+  case NumberType::Float64:
+    return ShaderFieldBaseType::Float32;
+  case NumberType::Int64:
+  case NumberType::Int32:
+  case NumberType::Int16:
+  case NumberType::Int8:
+  case NumberType::UInt8:
+    return ShaderFieldBaseType::Int32;
+  default:
+    throw std::out_of_range(std::string(NAMEOF_TYPE(shards::NumberType)));
+  }
+}
+
 struct ConstTranslator {
   static void translate(shards::Const *shard, TranslationContext &context) {
     context.wgslTop = translateConst(shard->_value, context);
@@ -57,13 +76,7 @@ struct GetTranslator {
   static void translateByName(const char *varName, TranslationContext &context) {
     SPDLOG_LOGGER_INFO(&context.logger, "gen(get)> {}", varName);
 
-    auto globalIt = context.globals.find(varName);
-    if (globalIt == context.globals.end()) {
-      throw ShaderComposeError(fmt::format("Can not get/ref: global does not exist in this scope"));
-    }
-
-    FieldType fieldType = globalIt->second;
-    context.setWGSLTop<WGSLBlock>(fieldType, blocks::makeBlock<blocks::ReadGlobal>(varName));
+    context.setWGSLTop<WGSLBlock>(context.reference(varName));
   }
 
   static void translate(shards::Get *shard, TranslationContext &context) {
@@ -104,12 +117,45 @@ struct UpdateTranslator {
 
 // Generates vector swizzles
 struct TakeTranslator {
+  static std::string generateSwizzle(shards::Take *shard) {
+    std::string result;
+
+    if (shard->_indices.valueType == SHType::Int) {
+      result = componentNames[shard->_indices.payload.intValue];
+    } else if (shard->_indices.valueType == SHType::Seq) {
+      SHSeq indices = shard->_indices.payload.seqValue;
+      for (size_t i = 0; i < indices.len; i++) {
+        auto &elem = indices.elements[i];
+        if (elem.valueType != SHType::Int)
+          throw ShaderComposeError("Take indices should be integers");
+        int index = elem.payload.intValue;
+        result += componentNames[index];
+      }
+    } else {
+      throw ShaderComposeError("Take index should be an integer or sequence of integers");
+    }
+
+    return result;
+  }
+
   static void translate(shards::Take *shard, TranslationContext &context) {
     if (!shard->_vectorInputType || !shard->_vectorOutputType)
       throw ShaderComposeError(fmt::format("Take: only supports vector types inside shaders"));
 
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(take)>");
-    throw ShaderComposeError("not implemented");
+    if (!context.wgslTop)
+      throw ShaderComposeError(fmt::format("Can not update: no value to set"));
+
+    std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
+
+    std::string swizzle = generateSwizzle(shard);
+
+    auto &outVectorType = *shard->_vectorOutputType;
+    FieldType outFieldType = getShaderBaseType(outVectorType.numberType);
+    outFieldType.numComponents = outVectorType.dimension;
+
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(take)> {}", swizzle);
+
+    context.setWGSLTop<WGSLBlock>(outFieldType, blocks::makeCompoundBlock("(", wgslValue->toBlock(), ")." + swizzle));
   }
 };
 
@@ -305,26 +351,68 @@ template <typename TShard> struct Write : public IOBase {
   }
 };
 
-template <typename TShard> struct ToNumberTranslator {
-  static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
+struct SampleTexture {
+  static inline shards::Parameters params{
+      {"Name", SHCCSTR("Name of the texture"), {CoreInfo::StringOrStringVar}},
+  };
 
-  static ShaderFieldBaseType getShaderBaseType(shards::NumberType numberType) {
-    using shards::NumberType;
-    switch (numberType) {
-    case NumberType::Float32:
-    case NumberType::Float64:
-      return ShaderFieldBaseType::Float32;
-    case NumberType::Int64:
-    case NumberType::Int32:
-    case NumberType::Int16:
-    case NumberType::Int8:
-    case NumberType::UInt8:
-      return ShaderFieldBaseType::Int32;
-    default:
-      throw std::out_of_range(std::string(NAMEOF_TYPE(shards::NumberType)));
-    }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString help() { return SHCCSTR("Samples a named texture with default texture coordinates"); }
+  SHParametersInfo parameters() { return params; };
+
+  shards::Var _name;
+
+  void setParam(int index, const SHVar &value) { _name = value; }
+  SHVar getParam(int index) { return _name; }
+
+  void warmup(SHContext *shContext) {}
+  void cleanup() {}
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
+
+  void translate(TranslationContext &context) {
+    const SHString &textureName = _name.payload.stringValue;
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(sample)> {}", textureName);
+
+    context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
   }
+};
 
+struct SampleTextureUV : public SampleTexture {
+  static inline shards::Types uvTypes{CoreInfo::Float4Type, CoreInfo::Float3Type, CoreInfo::Float2Type, CoreInfo::FloatType};
+
+  static SHTypesInfo inputTypes() { return uvTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+
+  static SHOptionalString help() { return SHCCSTR("Samples a named texture with the passed in texture coordinates"); }
+
+  SHParametersInfo parameters() { return SampleTexture::params; };
+
+  void translate(TranslationContext &context) {
+    const SHString &textureName = _name.payload.stringValue;
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(sample/uv)> {}", textureName);
+
+    if (!context.wgslTop)
+      throw ShaderComposeError(fmt::format("Can not sample texture: coordinate is required"));
+
+    std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
+    FieldType fieldType = wgslValue->getType();
+
+    auto block = blocks::makeCompoundBlock();
+    const std::string &varName = context.getTempVariableName();
+    if (fieldType.numComponents < 2) {
+      block->appendLine(fmt::format("let {} = vec2<f32>(", varName), wgslValue->toBlock(), ", 0.0)");
+    } else {
+      block->appendLine(fmt::format("let {} = (", varName), wgslValue->toBlock(), ").xy");
+    }
+
+    context.addNew(std::move(block));
+    context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName, varName));
+  }
+};
+
+template <typename TShard> struct ToNumberTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
     using shards::NumberTypeLookup;
     using shards::NumberTypeTraits;
@@ -399,6 +487,57 @@ template <typename TShard> struct ToNumberTranslator {
     }
 
     context.setWGSLTop<WGSLBlock>(fieldType, std::move(result));
+  }
+};
+
+template <typename TShard> struct MakeVectorTranslator {
+  static void translate(TShard *shard, TranslationContext &context) {
+    using shards::NumberTypeLookup;
+    using shards::NumberTypeTraits;
+    using shards::VectorTypeLookup;
+    using shards::VectorTypeTraits;
+
+    // Already validated by shard compose
+    const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
+    const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
+
+    FieldType fieldType = getShaderBaseType(outputNumberType->type);
+    fieldType.numComponents = outputVectorType->dimension;
+
+    FieldType unitFieldType = fieldType;
+    unitFieldType.numComponents = 1;
+
+    SPDLOG_LOGGER_INFO(&context.logger, "gen(make/{})> ", outputVectorType->name);
+
+    std::vector<shards::ParamVar> &params = shard->params;
+    std::unique_ptr<blocks::Compound> sourceComponentList;
+
+    // Convert list of casted components
+    // Generates dstType(x, y, z), etc.
+    //  - vec4<f32>(input.x, input.y, input.z)
+    sourceComponentList = blocks::makeCompoundBlock();
+    for (size_t i = 0; i < params.size(); i++) {
+      bool isLast = i == (params.size() - 1);
+      BlockPtr block;
+      if (params[i].isVariable()) {
+        auto wgslBlock = context.reference(params[i].variableName());
+        if (wgslBlock.fieldType != unitFieldType)
+          throw ShaderComposeError(fmt::format("Invalid parameter {} to MakeVector", i));
+        block = std::move(wgslBlock.block);
+      } else {
+        block = translateConst(params[i], context)->toBlock();
+      }
+
+      sourceComponentList->append(std::move(block));
+      if (!isLast)
+        sourceComponentList->append(", ");
+    }
+
+    // Generate constructor for target type
+    std::string prefix = fmt::format("{}(", getFieldWGSLTypeName(fieldType));
+    blocks::BlockPtr result = blocks::makeCompoundBlock(std::move(prefix), std::move(sourceComponentList), ")");
+
+    context.setWGSLTopVar(fieldType, std::move(result));
   }
 };
 
