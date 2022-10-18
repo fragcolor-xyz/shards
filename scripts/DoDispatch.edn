@@ -1,0 +1,23 @@
+(defmesh main)
+
+(defwire AddHealth
+  (Math.Add 2)
+  (Log "ValueFrom AddHealth"))
+
+(defshards AddHealth2 []
+  (Math.Add 2)
+  (Log "ValueFrom AddHealth"))
+
+(defwire main-wire
+  (Setup 10 >= .health)
+  .health
+  (Log "ValueBefore")
+  (Do AddHealth) ;; uncomment this line for Do Passthrough is false, therefore output after Math.Add will get assigned to .health in the next line
+  ;;(Dispatch AddHealth) ;;uncomment this line for Dispatch Passthrough is true, therefore output after Math.Add will not get assigned to .health in the next line and it will retain its original value
+  ;;(Do AddHealth)
+  ;; >= .health
+  (Log "Value After AddHealth")
+  )
+
+(schedule main main-wire)
+(run main 1 1)

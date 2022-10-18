@@ -1,0 +1,18 @@
+(defmesh main)
+
+(defshards AddHealth []
+  .health
+  (Math.Add 2)
+  >= .health
+  (Log "Health during Shards"))
+
+(defwire main-wire
+  10 >= .health
+  (Log "Health Before Add")
+  (AddHealth)
+  (Log "Health After Add")
+  (AddHealth)
+  )
+
+(schedule main main-wire)
+(run main 1 1)

@@ -1,0 +1,16 @@
+(defmesh Root)
+
+(defwire one
+  (Msg "one-one")
+  (Msg "one-two")
+  (Resume "two")
+  (Msg "one-three")
+  (Resume "two"))
+
+(defwire two
+  (Msg "two-one")
+  (Resume "one")
+  (Msg "two-two"))
+
+(schedule Root one)
+(run Root 1)
