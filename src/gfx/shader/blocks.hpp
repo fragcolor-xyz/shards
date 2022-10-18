@@ -208,9 +208,12 @@ struct SampleTexture : public Block {
   BlockPtr sampleCoordinate;
 
   SampleTexture(const String &name) : name(name) {}
+  SampleTexture(const String &name, BlockPtr&& sampleCoordinate) : name(name), sampleCoordinate(std::move(sampleCoordinate)) {}
+
   template <typename T>
   SampleTexture(const String &name, T &&sampleCoordinate)
       : name(name), sampleCoordinate(ConvertToBlock<T>{}(std::forward<T>(sampleCoordinate))) {}
+
   SampleTexture(SampleTexture &&other) = default;
 
   void apply(IGeneratorContext &context) const {

@@ -74,6 +74,11 @@ struct TranslationContext {
   // The value wgsl source generated from the last shards block
   std::unique_ptr<IWGSLGenerated> wgslTop;
 
+private:
+  size_t counter{};
+  std::string tempVariableName;
+
+public:
   TranslationContext();
   TranslationContext(const TranslationContext &) = delete;
   TranslationContext &operator=(const TranslationContext &) = delete;
@@ -107,9 +112,24 @@ struct TranslationContext {
   // Enter a shard and translate it recursively
   void processShard(ShardPtr shard);
 
+  // Assign a block to a temporary variable and return it's name
+  template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr) {
+    const std::string &varName = getTempVariableName();
+    addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), std::move(ptr), ";\n"));
+    return varName;
+  }
+
   // Set the intermediate wgsl source generated from the last shard that was translated
   template <typename T, typename... TArgs> void setWGSLTop(TArgs... args) {
     wgslTop = std::make_unique<T>(std::forward<TArgs>(args)...);
+  }
+
+  // Set the intermediate wgsl source but reference it as a single variable
+  // use to avoide duplicating function calls when setting the result as a stack value
+  template <typename T> const std::string &setWGSLTopVar(FieldType type, std::unique_ptr<T> &&ptr) {
+    const std::string &varName = assignTempVar(std::move(ptr));
+    setWGSLTop<WGSLSource>(type, varName);
+    return varName;
   }
 
   void clearWGSLTop() { wgslTop.reset(); }
@@ -118,6 +138,22 @@ struct TranslationContext {
     std::unique_ptr<IWGSLGenerated> result;
     wgslTop.swap(result);
     return result;
+  }
+
+  const std::string &getTempVariableName() {
+    tempVariableName.clear();
+    fmt::format_to(std::back_inserter(tempVariableName), "_tmp{}", counter++);
+    return tempVariableName;
+  }
+
+  WGSLBlock reference(const std::string &varName) {
+      auto globalIt = globals.find(varName);
+    if (globalIt == globals.end()) {
+      throw ShaderComposeError(fmt::format("Can not get/ref: global does not exist in this scope"));
+    }
+
+    FieldType fieldType = globalIt->second;
+    return WGSLBlock(fieldType, blocks::makeBlock<blocks::ReadGlobal>(varName));
   }
 };
 
