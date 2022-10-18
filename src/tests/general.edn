@@ -4,24 +4,24 @@
 (def! Root (Mesh))
 
 (def! inner1 (Wire "inner"
-                    (Assert.Is "My input" true)
-                    "My input 2"))
+                   (Assert.Is "My input" true)
+                   "My input 2"))
 
 (def adder (Wire "adder"
-                  >= .adder-x
-                  (Pop) >= .adder-y
-                  .adder-x
-                  (Math.Add .adder-y)))
+                 >= .adder-x
+                 (Pop) >= .adder-y
+                 .adder-x
+                 (Math.Add .adder-y)))
 
 (def adderSeq (Wire "adderSeq"
-                     >= .args (Take 1) >= .adder-y
-                     .args (Take 0)
-                     (Math.Add .adder-y)))
-
-(def adderSeq2 (Wire "adderSeq2"
                     >= .args (Take 1) >= .adder-y
                     .args (Take 0)
                     (Math.Add .adder-y)))
+
+(def adderSeq2 (Wire "adderSeq2"
+                     >= .args (Take 1) >= .adder-y
+                     .args (Take 0)
+                     (Math.Add .adder-y)))
 
 (def! testWire
   (Wire
@@ -981,15 +981,28 @@
    (Math.Pow 2.0)
    (Assert.Is 64.0 true)
 
+   .seq-a (Log "before erase")
    (Erase [2 0] .seq-a)
    (Get .seq-a)
    (Log)
    (Assert.Is [112 114 97 99] true)
 
+   {:a 1 :b 2 :c 3} >= .table-abc
+   (Erase ["a" "c"] .table-abc)
+   .table-abc (Assert.Is {:b 2} true)
+
+   [10 20 30 40 50] >= .seq-check2
+   (Erase [1 2 3] .seq-check2) ;; indices sorted in ascending order => error
+   .seq-check2 (Assert.Is [10 50] true)
+
+   [10 20 30 40 50] >= .seq-check3
+   (Erase [3 1 2] .seq-check3) ;; indices sequence randomly sorted
+   .seq-check3 (Assert.Is [10 50] true)
+
    (DropFront .seq-a)
   ;; this also tests that we fixup input as well
   ;; (Get .seq-a)
-   (Assert.Is [114 97 99] true)
+   .seq-a (Assert.Is [114 97 99] true)
 
    (PopFront .seq-a)
    (Assert.Is 114 true)
@@ -1155,17 +1168,17 @@
 (prn "Doing LoopedWire")
 
 (def loopedWire (Wire "LoopedWire" :Looped
-                        10 (Push "loopVar1")
-                        11 (Push "loopVar1")
-                        12 (Push "loopVar1")
-                        (Count "loopVar1")
-                        (Assert.Is 3 true)))
+                      10 (Push "loopVar1")
+                      11 (Push "loopVar1")
+                      12 (Push "loopVar1")
+                      (Count "loopVar1")
+                      (Assert.Is 3 true)))
 
 (def loopedWire2 (Wire "LoopedWire" :Looped
-                         10 (Push "loopVar2" :Clear false)
-                         11 (Push "loopVar2")
-                         12 (Push "loopVar2")
-                         (Count "loopVar2")))
+                       10 (Push "loopVar2" :Clear false)
+                       11 (Push "loopVar2")
+                       12 (Push "loopVar2")
+                       (Count "loopVar2")))
 
 (prepare loopedWire)
 (start loopedWire)
@@ -1182,12 +1195,12 @@
 (if (not (= (stop loopedWire2) (Int 9))) (throw "Seq :Clear test failed"))
 
 (def fileReader (Wire "readFile"
-                       (Repeat (->
-                                (ReadFile "test.bin")
-                                (ExpectString)
-                                (Log)
-                                (Assert.Is "Hello file append..." true))
-                               2)))
+                      (Repeat (->
+                               (ReadFile "test.bin")
+                               (ExpectString)
+                               (Log)
+                               (Assert.Is "Hello file append..." true))
+                              2)))
 
 (schedule Root fileReader)
 (if (run Root 0.1) nil (throw "Root tick failed"))

@@ -861,7 +861,7 @@ private:
 
 struct Erase : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Deletes identfied element(s) from a sequence or key-value pair(s) from a table.");
+    return SHCCSTR("Deletes identified element(s) from a sequence or key-value pair(s) from a table.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -902,29 +902,48 @@ struct Erase : SeqUser {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     bool valid = false;
-    _isTable = data.inputType.basicType == Table;
+
+    std::optional<SHExposedTypeInfo> info;
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      auto &reference = data.shared.elements[i];
+      if (strcmp(reference.name, _name.c_str()) == 0) {
+        info = reference;
+        break;
+      }
+    }
+
+    if (!info) {
+      throw ComposeError("Erase: Could not find reference to sequence or table.");
+    }
+
+    if (info->exposedType.basicType != SHType::Seq && info->exposedType.basicType != SHType::Table) {
+      throw ComposeError("Erase: Reference to sequence or table was not a sequence or table.");
+    }
+
+    auto isTable = info->exposedType.basicType == SHType::Table;
+
     // Figure if we output a sequence or not
     if (_indices->valueType == Seq) {
       if (_indices->payload.seqValue.len > 0) {
-        if ((_indices->payload.seqValue.elements[0].valueType == Int && !_isTable) ||
-            (_indices->payload.seqValue.elements[0].valueType == String && _isTable)) {
+        if ((_indices->payload.seqValue.elements[0].valueType == Int && !isTable) ||
+            (_indices->payload.seqValue.elements[0].valueType == String && isTable)) {
           valid = true;
         }
       }
-    } else if ((!_isTable && _indices->valueType == Int) || (_isTable && _indices->valueType == String)) {
+    } else if ((!isTable && _indices->valueType == Int) || (isTable && _indices->valueType == String)) {
       valid = true;
     } else { // ContextVar
       for (auto &info : data.shared) {
         if (strcmp(info.name, _indices->payload.stringValue) == 0) {
           if (info.exposedType.basicType == Seq && info.exposedType.seqTypes.len == 1 &&
-              ((info.exposedType.seqTypes.elements[0].basicType == Int && !_isTable) ||
-               (info.exposedType.seqTypes.elements[0].basicType == String && _isTable))) {
+              ((info.exposedType.seqTypes.elements[0].basicType == Int && !isTable) ||
+               (info.exposedType.seqTypes.elements[0].basicType == String && isTable))) {
             valid = true;
             break;
-          } else if (info.exposedType.basicType == Int && !_isTable) {
+          } else if (info.exposedType.basicType == Int && !isTable) {
             valid = true;
             break;
-          } else if (info.exposedType.basicType == String && _isTable) {
+          } else if (info.exposedType.basicType == String && isTable) {
             valid = true;
             break;
           } else {
@@ -942,7 +961,7 @@ struct Erase : SeqUser {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &indices = _indices.get();
-    if (unlikely(_isTable && _target->valueType == Table)) {
+    if (unlikely(_target->valueType == Table)) {
       if (indices.valueType == String) {
         // single key
         const auto key = indices.payload.stringValue;
@@ -960,11 +979,8 @@ struct Erase : SeqUser {
         const auto index = indices.payload.intValue;
         arrayDel(_target->payload.seqValue, index);
       } else {
-        // ensure we delete from highest index
-        // so to keep indices always valid
-        IterableSeq sindices(indices);
-        pdqsort(sindices.begin(), sindices.end(), [](SHVar a, SHVar b) { return a > b; });
-        for (auto &idx : sindices) {
+        _sorter.insertSort(indices.payload.seqValue.elements, indices.payload.seqValue.len, _sorter.sortDesc, _sorter.noopKeyFn);
+        for (auto &idx : indices) {
           const auto index = idx.payload.intValue;
           arrayDel(_target->payload.seqValue, index);
         }
@@ -974,6 +990,7 @@ struct Erase : SeqUser {
   }
 
 private:
+  Sort _sorter{};
   ParamVar _indices{};
   static inline Parameters _params = {
       {"Indices", SHCCSTR("One or multiple indices to filter from a sequence."), CoreInfo::TakeTypes},
