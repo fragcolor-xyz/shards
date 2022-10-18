@@ -302,10 +302,17 @@ struct RendererImpl final : public ContextData {
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
+    static auto defaultFullscreenOutput = RenderStepOutput{
+        .attachments =
+            {
+                steps::getDefaultColorOutput(),
+            },
+    };
+
     builder.allocateInputs(index, step.inputs);
 
     bool overwriteTargets = step.overlay ? false : true;
-    builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput, overwriteTargets);
+    builder.allocateOutputs(index, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);
   }
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
     RenderGraphNode &node = out.getNode(index);
