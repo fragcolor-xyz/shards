@@ -2,6 +2,7 @@
 #define FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 
 #include "renderer_types.hpp"
+#include "fmt.hpp"
 #include <compare>
 
 namespace gfx::detail {
@@ -431,8 +432,14 @@ struct RenderGraphBuilder {
       auto it = std::find(node.readsFrom.begin(), node.readsFrom.end(), frameIndex);
       if (sizeMismatch || formatMismatch || it != node.readsFrom.end()) {
         // TODO: Implement copy into loaded attachment from previous step
-        if (loadRequired)
-          throw std::logic_error("Copy required, not implemented");
+        if (loadRequired) {
+          std::string err = "Copy required, not implemented";
+          if (sizeMismatch)
+            err += fmt::format(" (size {}=>{})", frames[frameIndex].size, targetSize);
+          if (formatMismatch)
+            err += fmt::format(" (fmt {}=>{})", magic_enum::enum_name(frames[frameIndex].format), magic_enum::enum_name(targetFormat));
+          throw std::logic_error(err);
+        }
 
         // Just duplicate the frame for now
         size_t newFrameIndex = frames.size();
