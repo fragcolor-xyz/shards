@@ -31,10 +31,12 @@ union ClearValues {
     uint32_t stencil;
   };
 
-  static constexpr ClearValues getColorValue(float4 color) { return ClearValues{.color = color}; }
-  static constexpr ClearValues getDepthStencilValue(float depth, uint32_t stencil = 0) {
-    return ClearValues{.depth = depth, .stencil = stencil};
-  }
+  constexpr ClearValues() : color(0.0f) {};
+  constexpr ClearValues(float4 color) : color(color) {}
+  constexpr ClearValues(float depth, uint32_t stencil) : depth(depth), stencil(stencil) {}
+
+  static constexpr ClearValues getColorValue(float4 color) { return ClearValues(color); }
+  static constexpr ClearValues getDepthStencilValue(float depth, uint32_t stencil = 0) { return ClearValues(depth, stencil); }
 
   // All zero color value
   static constexpr ClearValues getDefaultColor() { return getColorValue(float4(0.0)); }
