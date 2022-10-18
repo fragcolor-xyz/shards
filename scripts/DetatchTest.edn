@@ -1,0 +1,33 @@
+(defmesh Root)
+
+(defwire wire-two
+  .capturedVariable
+  (Math.Add 3)
+  (Log "Wire-two Captured Variable")
+  (Msg "two-one")
+  (Msg "two-two")
+  (Msg "two-three")
+  (Msg "two-four"))
+
+(defloop wire-one
+  (Setup
+   10 >= .capturedVariable
+   )
+  .capturedVariable
+  (Math.Add 2)
+  >= .capturedVariable 
+  (Detach "wire-two") ;; Detaching wire-two here will capture the value 15 as it snapshots the value of .capturedVariable at this point.
+  (Log "Original Captured Variable")
+  (Msg "one-one")
+  (Msg "one-two") 
+  (Math.Add 2)
+  >= .capturedVariable
+  (Log "Original Captured Variable After Add 2")
+  ;; (Detach "wire-two") ;; Detaching wire-two here will capture the value 17 as it snapshots the value of .capturedVariable at this point.
+  (Msg "one-three")
+  (Msg "one-four"))
+
+
+
+(schedule Root wire-one)
+(run Root 1 2)

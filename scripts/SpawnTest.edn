@@ -1,0 +1,28 @@
+(defmesh Root)
+
+(defwire wire-one
+  (Msg "one-one")
+  (Msg "one-two")
+  (Msg "one-three")
+  (Msg "one-four")
+  (Detach "Wire-two"))
+
+(defwire wire-two
+  (Msg "two-one")
+  (Msg "two-two")
+  (Msg "two-three")
+  (Msg "two-four")
+  (Detach "Wire-three"))
+
+(defwire wire-three
+  (Msg "three-one")
+  (Msg "three-two")
+  (Msg "three-three")
+  (Msg "three-four"))
+
+(defloop main-wire
+  (Step wire-one)
+)
+
+(schedule Root main-wire)
+(run Root 1 1)

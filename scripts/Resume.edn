@@ -1,0 +1,30 @@
+(def Root (Mesh))
+
+;; Notice, if running with valgrind:
+;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
+;; To run this properly or valgrind will complain
+
+(def wire1
+  (Wire
+   "one"
+   (Msg "one - 1")
+   (Resume "two")
+   (Msg "one - 2")
+   (Msg "one - 3")
+   (Resume "two")
+   (Msg "one - Done")
+   (Resume "two")))
+
+(def wire2
+  (Wire
+   "two"
+   (Msg "two - 1")
+   (Resume "one")
+   (Msg "two - 2")
+   (Msg "two - 3")
+   (Resume "one")
+   (Msg "two - 4")
+   (Msg "two - Done")))
+
+(schedule Root wire1)
+(run Root 1)
