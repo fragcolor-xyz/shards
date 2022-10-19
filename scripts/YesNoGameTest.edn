@@ -1,0 +1,177 @@
+;; How to play - click on the randomise button to randomise the images. If the Images shown are the same, click on the "Same!" button to get a point.Get as many points as possible before the time runs out
+
+(defshards initialize [] ;; initializes all the values that only needs to be initialized once. Wrapped up in a Setup shard
+  (LoadImage "Images/coin.png") = .image
+  (LoadImage "Images/egg.png") = .image2
+  (LoadImage "Images/gem.png") = .image3
+  (LoadImage "Images/item.png") = .image4
+  (LoadImage "Images/sun.png") = .image5
+  (LoadImage "Images/sword.png") = .image6
+  (LoadImage "Images/moon.png") = .image7
+  (LoadImage "Images/WhiteBackground.png") = .background_White
+  [.image .image2 .image3 .image4 .image5 .image6 .image7] >= .imageArray1
+  [.image .image2 .image3 .image4 .image5 .image6 .image7] >= .imageArray2
+  0 >= .array1_imageToShow
+  0 >= .array1_imageToShow2
+  0 >= .RandomisedNumberMax
+  0 >= .RandomisedNumberMax2
+  0 >= .Score
+  30 >= .Timer
+  "GameOver" = .GameOverString
+  true >= .ButtonLock
+  false >= .GameOver)
+
+(defshards AddPoint[] ;;if image shown on left is image shown on right, add 1 point
+  .array1_imageToShow
+  (When :Predicate (Is .array1_imageToShow2)
+        :Action (->
+                 .Score (Math.Add 1)
+                 >= .Score
+                 ))
+  )
+
+(defloop Countdown ;; Countsdown timer. Wrapped up in a step
+  .Timer
+  (When :Predicate (IsMore 0)
+        :Action (->
+                 .Timer (Math.Subtract 1)
+                 > .Timer
+                 (Log "Time: ")
+                 (Pause 1.0))))
+
+(defshards GameOverScreen [] ;; when timer is 0, game ends
+  .Timer
+  (When :Predicate (Is 0)
+        :Action (->
+                 true > .GameOver))
+  )
+
+(defshards RandomiseImage [] ;; Randomises Image by counting the number of items in an array and randomising the array Image ID
+  (Count .imageArray1)
+  > .RandomisedNumberMax
+  (RandomInt :Max .RandomisedNumberMax)
+  > .array1_imageToShow
+
+  (Count .imageArray2)
+  > .RandomisedNumberMax2
+  (RandomInt :Max .RandomisedNumberMax2)
+  > .array1_imageToShow2
+  )
+
+(defshards ResetGame[] ;; Resets Game when Reset Game Button is pressed.
+  false > .GameOver
+  30 > .Timer
+  0 > .Score)
+
+(defloop main-game-ui
+  (UI
+   .ui-draw-queue
+   (->
+    (UI.Area ;; draws the white background
+     :Position (float2 0.0 0.0)
+     :Anchor Anchor.TopLeft
+     :Contents
+     (->
+      .background_White (UI.Image :Scale (float2 1))))
+
+    (UI.Area ;; draws image 1
+     :Position (float2 350.0 200.0)
+     :Anchor Anchor.TopLeft
+     :Contents
+     (->
+      .imageArray1 (Take .array1_imageToShow) (UI.Image :Scale (float2 0.4))))
+
+    (UI.Area ;;draws image 2
+     :Position (float2 -350.0 200.0)
+     :Anchor Anchor.TopRight
+     :Contents
+     (->
+      .imageArray1 (Take .array1_imageToShow2) (UI.Image :Scale (float2 0.4))))
+
+    (UI.Area ;; draws the score
+     :Position (float2 0.0 0.0)
+     :Anchor Anchor.TopRight
+     :Contents
+     (->
+      .Score (ToString) (UI.Label)))
+
+    (UI.Area ;; draws the timer
+     :Position (float2 0.0 0.0)
+     :Anchor Anchor.TopLeft
+     :Contents
+     (->
+      .Timer (ToString) (UI.Label)))
+
+
+    (UI.Area ;; draws button to randomise image
+     :Position (float2 0.0 0.0)
+     :Anchor Anchor.Bottom
+     :Contents
+     (->
+      (UI.Button
+       :Label "Randomise"
+       :Action (->
+                (RandomiseImage)
+                true >= .ButtonLock))
+
+      (UI.Button ;; draws button that adds point if image is the same then randomises image
+       :Label "Same!"
+       :Action (->
+                .Timer
+                (When :Predicate (IsMore 0)
+                      :Action (->
+                               .array1_imageToShow
+                               (When :Predicate (Is .array1_imageToShow2)
+                                     :Action (->
+                                              (AddPoint)
+                                              .Score
+                                              (Log)
+                                              (RandomiseImage)
+                                              false >= .ButtonLock)))))))))))
+
+(defloop gameover-ui
+  (UI
+   .ui-draw-queue
+   (->
+    (UI.Area
+     :Position (float2 0.0 0.0)
+     :Anchor Anchor.Center
+     :Contents
+     (->
+      "Score" (UI.Label)
+      .Score (ToString)(UI.Label)
+      .GameOverString (UI.Label)
+      (UI.Button
+       :Label "Click me!"
+       :Action (->
+                (ResetGame))))))))
+
+(defloop main-wire
+
+  (Setup
+   (initialize)) ;; initializes all the variables
+  (Step Countdown) ;; countdown timer
+  (GameOverScreen) ;; when timer = 0 Gameover = true
+
+  (GFX.MainWindow
+   :Title "TestWindow" :Width 1920 :Height 1080
+   :Contents (-> (Setup
+                  (GFX.DrawQueue) >= .ui-draw-queue
+                  (GFX.UIPass .ui-draw-queue) >> .render-steps)
+                 .ui-draw-queue (GFX.ClearQueue)
+
+                 .GameOver
+                 (If :Predicate (Is false) ;; if game over is false draw main game UI. If true draw game over
+                     :Then (->
+                            (Step main-game-ui))
+                     :Else (->
+                            (Step gameover-ui)))
+
+
+
+
+                 (GFX.Render :Steps .render-steps))))
+
+(defmesh root)
+(schedule root main-wire)
+(run root (/ 1.0 60))

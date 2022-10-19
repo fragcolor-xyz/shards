@@ -1,0 +1,21 @@
+(defmesh Root)
+
+(defwire Countdown
+  .Counter
+  (When :Predicate (IsMore 0)
+        :Action (->
+                 .Counter (Math.Subtract 1)
+                 > .Counter
+                 (Log "Countdown"))))
+
+(defloop main-wire 
+  (Setup
+     30 >= .Counter)
+  (Once :Action (->
+                 (Step; 
+                  :Wire "Countdown"))
+        :Every 1.0)
+  )
+
+(schedule Root main-wire)
+(run Root (/ 1.0 60))
