@@ -27,7 +27,7 @@ static inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, T
   {                                                                                                    \
     FieldType fieldType(_type, _dim);                                                                  \
     std::string resultStr = fmt::format("{}(" _fmt ")", getFieldWGSLTypeName(fieldType), __VA_ARGS__); \
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(const)> {}", resultStr);                                  \
+    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                  \
     result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                            \
   }
 

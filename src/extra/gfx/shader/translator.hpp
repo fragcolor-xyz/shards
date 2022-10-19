@@ -2,6 +2,8 @@
 #define SH_EXTRA_GFX_SHADER_TRANSLATOR
 #include "wgsl.hpp"
 #include <gfx/shader/blocks.hpp>
+#include <gfx/shader/temp_variable.hpp>
+#include <log/log.hpp>
 #include <map>
 #include <shards.hpp>
 #include <spdlog/spdlog.h>
@@ -63,7 +65,7 @@ struct TranslationRegistry;
 struct TranslationContext {
   TranslationRegistry &translationRegistry;
 
-  spdlog::logger logger;
+  shards::logging::Logger logger;
 
   // Generated dynamically
   std::map<std::string, FieldType> globals;
@@ -75,8 +77,7 @@ struct TranslationContext {
   std::unique_ptr<IWGSLGenerated> wgslTop;
 
 private:
-  size_t counter{};
-  std::string tempVariableName;
+  TempVariableAllocator tempVariableAllocator{"_tsl"};
 
 public:
   TranslationContext();
@@ -140,14 +141,10 @@ public:
     return result;
   }
 
-  const std::string &getTempVariableName() {
-    tempVariableName.clear();
-    fmt::format_to(std::back_inserter(tempVariableName), "_tmp{}", counter++);
-    return tempVariableName;
-  }
+  const std::string &getTempVariableName() { return tempVariableAllocator.get(); }
 
   WGSLBlock reference(const std::string &varName) {
-      auto globalIt = globals.find(varName);
+    auto globalIt = globals.find(varName);
     if (globalIt == globals.end()) {
       throw ShaderComposeError(fmt::format("Can not get/ref: global does not exist in this scope"));
     }

@@ -23,7 +23,7 @@ SH_HAS_MEMBER_TEST(postfixOp);
 
 template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(bop)>");
+    SPDLOG_LOGGER_INFO(context.logger, "gen(bop)>");
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not apply binary operator without input"));
@@ -56,7 +56,8 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
           resultType, blocks::makeCompoundBlock(TOp::call, "(", operandA->toBlock(), ", ", operandB->toBlock(), ")"));
     } else if constexpr (has_op<TOp>::value) {
       // generate `A op B`
-      context.setWGSLTop<WGSLBlock>(resultType, blocks::makeCompoundBlock(operandA->toBlock(), TOp::op, operandB->toBlock()));
+      // store in temp var to avoid precedence issues
+      context.setWGSLTopVar(resultType, blocks::makeCompoundBlock(operandA->toBlock(), TOp::op, operandB->toBlock()));
     } else {
       throw std::logic_error("Operator implementation needs to be a call or an operator");
     }
@@ -65,7 +66,7 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
 
 template <typename TShard, typename TOp> struct UnaryOperatorTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(unop)>");
+    SPDLOG_LOGGER_INFO(context.logger, "gen(unop)>");
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not apply unary operator without input"));

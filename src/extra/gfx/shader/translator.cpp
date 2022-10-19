@@ -6,6 +6,7 @@
 #include "spdlog/spdlog.h"
 #include <common_types.hpp>
 #include <foundation.hpp>
+#include <gfx/shader/log.hpp>
 #include <gfx/shader/generator.hpp>
 
 using namespace gfx::shader;
@@ -17,8 +18,8 @@ static TranslationRegistry &getTranslationRegistry() {
   return instance;
 }
 
-TranslationContext::TranslationContext() : translationRegistry(getTranslationRegistry()), logger("ShaderTranslator") {
-  logger.sinks() = spdlog::default_logger()->sinks();
+TranslationContext::TranslationContext() : translationRegistry(getTranslationRegistry()) {
+  logger = shader::getLogger();
 
   root = std::make_unique<blocks::Compound>();
   stack.push_back(TranslationBlockRef::make(root));
@@ -119,6 +120,7 @@ void registerTranslatorShards() {
   REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::Write<blocks::WriteOutput>);
   REGISTER_SHADER_SHARD("Shader.SampleTexture", gfx::shader::SampleTexture);
   REGISTER_SHADER_SHARD("Shader.SampleTextureUV", gfx::shader::SampleTextureUV);
+  REGISTER_SHADER_SHARD("Shader.LinearizeDepth", gfx::shader::LinearizeDepth);
 
   // Math blocks
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Add", shards::Math::Add, OperatorAdd);

@@ -5,6 +5,7 @@
 #include "shader/generator.hpp"
 #include "shader/blocks.hpp"
 #include "shader/wgsl_mapping.hpp"
+#include "shader/log.hpp"
 
 using namespace gfx::detail;
 using namespace gfx::shader;
@@ -292,7 +293,7 @@ WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
 
   wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
   wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
-  SPDLOG_LOGGER_DEBUG(logger, "Generated WGSL:\n {}", generatorOutput.wgslSource);
+  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n {}", generatorOutput.wgslSource);
 
   cachedPipeline.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
   assert(cachedPipeline.shaderModule);

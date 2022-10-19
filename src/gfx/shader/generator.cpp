@@ -502,6 +502,11 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer) { return nullptr; }
 
     void pushError(GeneratorError &&error) {}
+
+    const std::string &generateTempVariable() {
+      static std::string dummy;
+      return dummy;
+    }
   } context;
 
   for (auto &entryPoint : entryPoints) {

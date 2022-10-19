@@ -208,7 +208,7 @@ struct SampleTexture : public Block {
   BlockPtr sampleCoordinate;
 
   SampleTexture(const String &name) : name(name) {}
-  SampleTexture(const String &name, BlockPtr&& sampleCoordinate) : name(name), sampleCoordinate(std::move(sampleCoordinate)) {}
+  SampleTexture(const String &name, BlockPtr &&sampleCoordinate) : name(name), sampleCoordinate(std::move(sampleCoordinate)) {}
 
   template <typename T>
   SampleTexture(const String &name, T &&sampleCoordinate)
@@ -231,6 +231,37 @@ struct SampleTexture : public Block {
   }
 
   BlockPtr clone() { return std::make_unique<SampleTexture>(name, sampleCoordinate); }
+};
+
+struct LinearizeDepth : public Block {
+  BlockPtr input;
+
+  LinearizeDepth(BlockPtr &&input) : input(std::move(input)) {}
+
+  void apply(IGeneratorContext &context) const {
+    // Based on the linalg::frustum_matrix definition with
+    // forward = neg_z & range = zero_to_one
+    //
+    // range = far - near
+    // a = -far / range
+    // b = -near * far / range
+    // clip_depth = -a - b / z
+    auto funcName = context.generateTempVariable();
+    context.writeHeader(fmt::format("fn {}(proj: mat4x4<f32>, clip_depth: f32) -> f32", funcName) + R"({
+  let a = proj[2][2];
+  let b = proj[3][2];
+  return b / (clip_depth + a);
+}
+)");
+
+    context.write(fmt::format("{}(", funcName));
+    context.readBuffer("proj", FieldTypes::Float4x4, "view");
+    context.write(", ");
+    input->apply(context);
+    context.write(")");
+  }
+
+  BlockPtr clone() { return std::make_unique<LinearizeDepth>(input->clone()); }
 };
 
 // Runs callback at code generation time

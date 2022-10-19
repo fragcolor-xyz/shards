@@ -1,0 +1,28 @@
+#ifndef ABF29E23_C6D2_4C90_9125_E5A84B399530
+#define ABF29E23_C6D2_4C90_9125_E5A84B399530
+
+#include <string>
+#include <spdlog/fmt/fmt.h>
+
+namespace gfx::shader {
+struct TempVariableAllocator {
+private:
+  size_t counter{};
+  std::string tempVariableName;
+  std::string baseId;
+
+public:
+  TempVariableAllocator(std::string &&baseId = "_tmp") : baseId(std::move(baseId)) {}
+  TempVariableAllocator(const char *baseId) : baseId(baseId) {}
+
+  void reset() { counter = 0; }
+
+  const std::string &get() {
+    tempVariableName.clear();
+    fmt::format_to(std::back_inserter(tempVariableName), "{}{}", baseId, counter++);
+    return tempVariableName;
+  }
+};
+} // namespace gfx::shader
+
+#endif /* ABF29E23_C6D2_4C90_9125_E5A84B399530 */
