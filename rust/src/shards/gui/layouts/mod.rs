@@ -104,6 +104,18 @@ struct Space {
   amount: ParamVar,
 }
 
+struct Table {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  rows: ParamVar,
+  columns: ParamVar,
+  striped: ParamVar,
+  resizable: ParamVar,
+  row_index: ParamVar,
+  shards: Vec<ShardsVar>,
+  exposing: ExposedTypes,
+}
+
 struct Vertical {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -122,6 +134,7 @@ mod indent;
 mod scroll_area;
 mod separator;
 mod space;
+mod table;
 mod vertical;
 
 pub fn registerShards() {
@@ -137,5 +150,6 @@ pub fn registerShards() {
   registerShard::<ScrollArea>();
   registerShard::<Separator>();
   registerShard::<Space>();
+  registerShard::<Table>();
   registerShard::<Vertical>();
 }
