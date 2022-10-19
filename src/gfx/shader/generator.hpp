@@ -6,6 +6,7 @@
 #include "textures.hpp"
 #include "types.hpp"
 #include "uniforms.hpp"
+#include "temp_variable.hpp"
 #include <gfx/mesh.hpp>
 #include <gfx/params.hpp>
 #include <map>
@@ -72,6 +73,8 @@ struct IGeneratorContext {
   virtual const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer) = 0;
 
   virtual void pushError(GeneratorError &&error) = 0;
+
+  virtual const std::string& generateTempVariable() = 0;
 };
 
 struct GeneratorContext : public IGeneratorContext {
@@ -90,6 +93,8 @@ struct GeneratorContext : public IGeneratorContext {
   std::vector<GeneratorError> errors;
 
   std::vector<IGeneratorDynamicHandler *> dynamicHandlers;
+
+  TempVariableAllocator tempVariableAllocator;
 
   void write(const StringView &str);
 
@@ -119,6 +124,8 @@ struct GeneratorContext : public IGeneratorContext {
   const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer);
 
   void pushError(GeneratorError &&error);
+
+  const std::string& generateTempVariable() { return tempVariableAllocator.get(); }
 };
 
 struct GeneratorOutput {

@@ -46,7 +46,7 @@ struct ConstTranslator {
 struct SetTranslator {
   static void translate(shards::Set *shard, TranslationContext &context) {
     auto varName = convertVariableName(shard->_name);
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(set)> {}", varName);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(set)> {}", varName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not set: no value to set"));
@@ -74,7 +74,7 @@ struct SetTranslator {
 
 struct GetTranslator {
   static void translateByName(const char *varName, TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(get)> {}", varName);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(get)> {}", varName);
 
     context.setWGSLTop<WGSLBlock>(context.reference(varName));
   }
@@ -88,7 +88,7 @@ struct GetTranslator {
 struct UpdateTranslator {
   static void translate(shards::Update *shard, TranslationContext &context) {
     auto varName = convertVariableName(shard->_name);
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(upd)> {}", varName);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(upd)> {}", varName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not update: no value to set"));
@@ -153,7 +153,7 @@ struct TakeTranslator {
     FieldType outFieldType = getShaderBaseType(outVectorType.numberType);
     outFieldType.numComponents = outVectorType.dimension;
 
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(take)> {}", swizzle);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(take)> {}", swizzle);
 
     context.setWGSLTop<WGSLBlock>(outFieldType, blocks::makeCompoundBlock("(", wgslValue->toBlock(), ")." + swizzle));
   }
@@ -181,7 +181,7 @@ struct Literal {
 
   void translate(TranslationContext &context) {
     const SHString &source = _value.get().payload.stringValue;
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(direct)> {}", source);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(direct)> {}", source);
 
     context.addNew(blocks::makeBlock<blocks::Direct>(source));
     context.clearWGSLTop();
@@ -282,7 +282,7 @@ template <typename TShard> struct Read final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), _name);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}", NAMEOF_TYPE(TShard), _name);
 
     context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<TShard>(_name));
   }
@@ -328,7 +328,7 @@ struct ReadBuffer final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, _name);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, _name);
 
     context.setWGSLTop<WGSLBlock>(_fieldType, blocks::makeBlock<blocks::ReadBuffer>(_name, _fieldType, _bufferName));
   }
@@ -339,7 +339,7 @@ template <typename TShard> struct Write : public IOBase {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), _name);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), _name);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not write: value is required"));
@@ -373,7 +373,7 @@ struct SampleTexture {
 
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue;
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(sample)> {}", textureName);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(sample)> {}", textureName);
 
     context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
   }
@@ -391,7 +391,7 @@ struct SampleTextureUV : public SampleTexture {
 
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue;
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(sample/uv)> {}", textureName);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(sample/uv)> {}", textureName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not sample texture: coordinate is required"));
@@ -412,7 +412,27 @@ struct SampleTextureUV : public SampleTexture {
   }
 };
 
-template <typename TShard> struct ToNumberTranslator {
+struct LinearizeDepth {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  void warmup(SHContext *shContext) {}
+  void cleanup() {}
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
+
+  void translate(TranslationContext &context) {
+    if (!context.wgslTop)
+      throw ShaderComposeError(fmt::format("Depth input required"));
+
+    std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
+
+    context.setWGSLTopVar(FieldTypes::Float, blocks::makeBlock<blocks::LinearizeDepth>(wgslValue->toBlock()));
+  }
+};
+
+template <typename TShard>
+struct ToNumberTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
     using shards::NumberTypeLookup;
     using shards::NumberTypeTraits;
@@ -429,7 +449,7 @@ template <typename TShard> struct ToNumberTranslator {
     FieldType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(cast/{})> ", outputVectorType->name);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(cast/{})> ", outputVectorType->name);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Cast requires a value"));
@@ -507,7 +527,7 @@ template <typename TShard> struct MakeVectorTranslator {
     FieldType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
-    SPDLOG_LOGGER_INFO(&context.logger, "gen(make/{})> ", outputVectorType->name);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(make/{})> ", outputVectorType->name);
 
     std::vector<shards::ParamVar> &params = shard->params;
     std::unique_ptr<blocks::Compound> sourceComponentList;
