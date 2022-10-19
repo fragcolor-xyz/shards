@@ -10,7 +10,7 @@
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 #![allow(improper_ctypes_definitions)]
-#![feature(allocator_api)]
+// #![feature(allocator_api)]
 
 #[macro_use]
 #[cfg(test)]

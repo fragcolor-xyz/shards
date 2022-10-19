@@ -69,15 +69,16 @@ endif()
 
 if(EMSCRIPTEN_PTHREADS)
   list(APPEND RUST_FLAGS -Ctarget-feature=+atomics,+bulk-memory)
-  list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std=panic_abort,std)
-  set(RUST_NIGHTLY TRUE)
+  # list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std=panic_abort,std)
+  # set(RUST_NIGHTLY ON)
 endif()
 
 # Currently required for --crate-type argument
-set(RUST_NIGHTLY TRUE)
+set(RUST_NIGHTLY OFF)
 if(RUST_NIGHTLY)
   list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zunstable-options)
   set(RUST_CARGO_TOOLCHAIN "+nightly")
+  message(STATUS "Using rust nightly")
 endif()
 
 macro(ADD_RUST_FEATURE VAR FEATURE)

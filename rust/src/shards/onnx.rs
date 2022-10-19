@@ -8,13 +8,12 @@ use crate::{
   shard::Shard,
   types::{common_type, Context, Parameters, Type, Types, Var, ANY_TYPES, FRAG_CC},
 };
-use std::alloc::Global;
 use std::ffi::CString;
 use std::rc::Rc;
 use tract_onnx::prelude::*;
 
 pub type OnnxModel =
-  SimplePlan<TypedFact, Box<dyn TypedOp, Global>, Graph<TypedFact, Box<dyn TypedOp, Global>>>;
+  SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>;
 
 lazy_static! {
   static ref MODEL_TYPE: Type = {
