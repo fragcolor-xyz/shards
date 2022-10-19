@@ -264,7 +264,17 @@ struct EffectPassShard {
     PARAM_WARMUP(context);
   }
 
-  void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {}
+  void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
+    checkType(input.valueType, SHType::Seq, ":Inputs");
+
+    step.inputs.clear();
+    for (size_t i = 0; i < input.payload.seqValue.len; i++) {
+      auto &elem = input.payload.seqValue.elements[i];
+      checkType(elem.valueType, SHType::String, "Input");
+
+      step.inputs.emplace_back(elem.payload.stringValue);
+    }
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());

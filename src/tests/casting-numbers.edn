@@ -31,6 +31,7 @@
 
        1.0 >= .x
        4.0 = .y
-       (MakeFloat2 .x .y) (Assert.Is (Float2 1.0 4.0)) (Log "MakeFloat2 (variables)")
+       (Float2 0.0 0.0)
+       (Float2 .x .y) (Assert.Is (Float2 1.0 4.0)) (Log "MakeFloat2 (variables)")
        (MakeFloat4 .x .y .y .x) (Assert.Is (Float4 1.0 4.0 4.0 1.0)) (Log "MakeFloat4 (variables)")))
 (tick Root)

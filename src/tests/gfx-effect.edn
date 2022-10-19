@@ -18,15 +18,19 @@
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features
    {:Features .features} (GFX.DrawablePass) >> .render-steps1
-   {:EntryPoint (-> ; Begin shader
+   {
+    :Inputs ["color" "depth"]
+    :EntryPoint (-> ; Begin shader
                  (Shader.ReadInput "texCoord0" :Dimension 2) >= .uv
                  .uv (Take [0]) >= .u
                  .uv (Take [1]) >= .v
                  .v (Math.Multiply 300.0) (Math.Cos) (Math.Multiply 0.01) (Math.Add .u) > .u
-                 (MakeFloat2 .u .v)
+                 (MakeFloat2 .u .v) > .uv
+                 (Math.Multiply 2.0) (Math.FMod (Float2 1.0 1.0))
                  (Shader.SampleTextureUV "color")
-                 (ToFloat4) (Math.Add (Float4 0.2 0.2 0.2 0.0))
-                ;;  (Float4 1 1 1 1)
+                 (ToFloat4) (Math.Add (Float4 0.2 0.2 0.2 0.0)) >= .tmp
+                 .uv (Shader.SampleTextureUV "depth") (Take [0]) >= .depth
+                 (MakeFloat4 0.0 .depth 0.0 1.0)
                  (Shader.WriteOutput "color")
                  ; End shader
                  )}(GFX.EffectPass) >> .render-steps1
