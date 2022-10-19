@@ -48,7 +48,7 @@ Shards has a number of features that make it highly suitable for live on-the-fly
 
 ### Intuitive
 * Supports **visual editing** without the associated spaghetti and spider webs
-* Versatile textual representation (for now backed by a derived **Clojure/Lisp**). Read more about it [here](https://docs.fragcolor.xyz/blocks/).
+* Versatile textual representation (for now backed by a derived **Clojure/Lisp**). Read more about it [here](https://docs.fragcolor.xyz/docs/shards/).
   
 ### Developer friendly
 * Clear data flow
@@ -118,7 +118,7 @@ Shards has a number of features that make it highly suitable for live on-the-fly
 
 ## Installation
 
-To start developing with Shards, you'll need to [set up your environment](https://docs.fragcolor.xyz/contribute/code/getting-started/) and then [build Shards](https://docs.fragcolor.xyz/contribute/code/building-shards/).
+To start developing with Shards, you'll need to [set up your environment](https://docs.fragcolor.xyz/contribute/getting-started/) and then [build Shards](https://docs.fragcolor.xyz/contribute/code/build-shards/).
 
 ## Usage
 
@@ -128,7 +128,7 @@ Shards files end with extension `.edn` and can be directly run from the console 
 ./shards <filename.edn>
 ```
 
-Shards language API and features are documented [here](https://docs.fragcolor.xyz/) while example codes and tutorials can be found [here](https://learn.fragcolor.xyz/).
+Shards language API and features are documented [here](https://docs.fragcolor.xyz/docs/) while example codes and tutorials can be found [here](https://learn.fragcolor.xyz/).
 
 ## License
 
