@@ -19,10 +19,9 @@
          {:Header "B"}
          {:Header "A xor B"}]
         :Rows
-        [(-> (ExpectInt2) (Take 0) (ToString) (UI.Label))
-         (-> (ExpectInt2) (Take 1) (ToString) (UI.Label))
-         (-> (ExpectInt2)
-             (| (Take 0) >= .a)
+        [(-> (Take 0) (ToString) (UI.Label))
+         (-> (Take 1) (ToString) (UI.Label))
+         (-> (| (Take 0) >= .a)
              (| (Take 1) >= .b)
              .a (Math.Xor .b) (ToString) (UI.Label))]))))
 

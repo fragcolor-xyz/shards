@@ -177,11 +177,12 @@ impl Shard for Table {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     let mut data = *data;
+    let mut shared: ExposedTypes;
 
     // we need to inject the row index to the inner shards
     if self.row_index.is_variable() {
       // clone shared into a new vector we can append things to
-      let mut shared: ExposedTypes = data.shared.into();
+      shared = data.shared.into();
       let mut should_expose = true;
       for var in &shared {
         let (a, b) = unsafe {
@@ -217,12 +218,24 @@ impl Shard for Table {
       }
     }
 
+    let input_type = data.inputType;
+    let slice = unsafe {
+      let ptr = input_type.details.seqTypes.elements;
+      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+    };
+    let element_type = if !slice.is_empty() {
+      slice[0]
+    } else {
+      common_type::any
+    };
+
     for s in &mut self.shards {
+      data.inputType = element_type;
       s.compose(&data)?;
     }
 
     // Always passthrough the input
-    Ok(data.inputType)
+    Ok(input_type)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {

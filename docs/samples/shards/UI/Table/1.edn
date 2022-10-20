@@ -27,9 +27,8 @@
           :Initial (float 80) :AtLeast (float 60) :AtMost (float 160)}]
         :Rows
         [(-> .index (ToString) (UI.Label))
-         (-> (ExpectTable) (Take "Surname") (ToString) (UI.Label))
-         (-> (ExpectTable)
-             (Take "Name") (ToString) (UI.Label))]))))
+         (-> (Take "Surname") (UI.Label))
+         (-> (Take "Name") (UI.Label))]))))
 
     (GFX.Render :Steps .render-steps))))
 (defmesh root)
