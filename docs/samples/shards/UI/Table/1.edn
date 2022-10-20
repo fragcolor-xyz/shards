@@ -1,0 +1,37 @@
+(defloop main-wire
+  (GFX.MainWindow
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (UI.CentralPanel
+      :Contents
+      (->
+       [{:Name "Doe" :Surname "John"}
+        {:Name "Dough" :Surname "Jane"}
+        {:Name "Smith" :Surname "Dick"}]
+       (UI.Table
+        :Resizable true
+        :Striped true
+        :RowIndex .index
+        :Columns
+        [{:Initial (float 20)}
+         {:Header "Surname"
+          :Initial (float 100) :AtLeast (float 60) :AtMost (float 160)}
+         {:Header "Name"
+          :Initial (float 80) :AtLeast (float 60) :AtMost (float 160)}]
+        :Rows
+        [(-> .index (ToString) (UI.Label))
+         (-> (ExpectTable) (Take "Surname") (ToString) (UI.Label))
+         (-> (ExpectTable)
+             (Take "Name") (ToString) (UI.Label))]))))
+
+    (GFX.Render :Steps .render-steps))))
+(defmesh root)
+(schedule root main-wire)
+(run root 0.1 10)
