@@ -113,6 +113,7 @@ struct Table {
   resizable: ParamVar,
   row_index: ParamVar,
   shards: Vec<ShardsVar>,
+  header_shards: Vec<Option<ShardsVar>>,
   exposing: ExposedTypes,
 }
 

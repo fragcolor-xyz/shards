@@ -9,6 +9,9 @@ use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHType_Int;
+use crate::shardsc::SHType_Seq;
+use crate::shardsc::SHType_ShardRef;
+use crate::shardsc::SHType_String;
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -28,6 +31,9 @@ use std::cmp::Ordering;
 use std::ffi::CStr;
 
 lazy_static! {
+  static ref ANY_TABLE_TYPES: Vec<Type> = vec![common_type::any_table];
+  static ref SEQ_OF_ANY_TABLE: Type = Type::seq(&ANY_TABLE_TYPES);
+  static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE];
   static ref TABLE_PARAMETERS: Parameters = vec![
     (
       cstr!("Rows"),
@@ -38,7 +44,7 @@ lazy_static! {
     (
       cstr!("Columns"),
       cstr!("Configuration of the columns."),
-      &ANYS_TYPES[..]
+      &SEQ_OF_ANY_TABLE_TYPES[..]
     )
       .into(),
     (
@@ -77,6 +83,7 @@ impl Default for Table {
       resizable: ParamVar::default(),
       row_index,
       shards: Vec::new(),
+      header_shards: Vec::new(),
       exposing: Vec::new(),
     }
   }
@@ -128,7 +135,28 @@ impl Shard for Table {
         }
         Ok(self.rows.set_param(value))
       }
-      1 => Ok(self.columns.set_param(value)),
+      1 => {
+        let columns = Seq::try_from(value)?;
+        for column in columns.iter() {
+          let column: crate::types::Table = column.as_ref().try_into()?;
+          if let Some(header) = column.get_static(cstr!("Header")) {
+            match header.valueType {
+              SHType_String => {
+                self.header_shards.push(None);
+              }
+              SHType_ShardRef | SHType_Seq => {
+                let mut s = ShardsVar::default();
+                s.set_param(&header).unwrap();
+                self.header_shards.push(Some(s));
+              }
+              _ => unreachable!(),
+            }
+          } else {
+            self.header_shards.push(None);
+          }
+        }
+        Ok(self.columns.set_param(value))
+      }
       2 => Ok(self.striped.set_param(value)),
       3 => Ok(self.resizable.set_param(value)),
       4 => Ok(self.row_index.set_param(value)),
@@ -254,11 +282,21 @@ impl Shard for Table {
     for s in &mut self.shards {
       s.warmup(ctx)?;
     }
+    for s in &mut self.header_shards {
+      if let Some(s) = s {
+        s.warmup(ctx)?;
+      }
+    }
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    for s in &mut self.header_shards {
+      if let Some(s) = s {
+        s.cleanup();
+      }
+    }
     for s in &mut self.shards {
       s.cleanup();
     }
@@ -315,16 +353,35 @@ impl Shard for Table {
           }
           // column headers
           builder.header(20.0, |mut header_row| {
-            for column in columns.iter() {
-              if let Ok(column) = column.as_ref().try_into() as Result<crate::types::Table, _> {
-                let header = if let Some(header) = column.get_static(cstr!("Header")) {
-                  header.try_into().unwrap_or("")
-                } else {
-                  ""
-                };
-                header_row.col(|ui| {
-                  ui.heading(header);
-                });
+            for i in 0..columns.len() {
+              let column: crate::types::Table = columns[i].as_ref().try_into().unwrap();
+              if let Some(header) = column.get_static(cstr!("Header")) {
+                match header.valueType {
+                  SHType_String => {
+                    header_row.col(|ui| {
+                      let text: &str = header.try_into().unwrap_or("");
+                      ui.heading(text);
+                    });
+                  }
+                  SHType_ShardRef | SHType_Seq => {
+                    if let Some(header_shard) = &mut self.header_shards[i] {
+                      header_row.col(|ui| {
+                        let _ = util::activate_ui_contents(
+                          context,
+                          input,
+                          ui,
+                          &mut self.parents,
+                          header_shard,
+                        );
+                      });
+                    } else {
+                      header_row.col(|_| {});
+                    }
+                  }
+                  _ => unreachable!(),
+                }
+              } else {
+                header_row.col(|_| {});
               }
             }
           })
