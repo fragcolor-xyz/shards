@@ -190,8 +190,14 @@ struct ContextMainOutput {
 
     WGPUSwapChainDescriptor swapchainDesc = {};
     swapchainDesc.format = swapchainFormat;
+
+    // Canvas size should't be set when configuring, instead resize the element
+    // https://github.com/emscripten-core/emscripten/issues/17416
+#if !GFX_EMSCRIPTEN
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
+#endif
+
 #if GFX_WINDOWS || GFX_OSX || GFX_LINUX
     swapchainDesc.presentMode = WGPUPresentMode_Immediate;
 #else
@@ -473,8 +479,12 @@ void Context::requestDevice() {
   state = ContextState::Requesting;
 
   WGPUDeviceDescriptor deviceDesc = {};
+
+  // Passed to force full feature set to be enabled
+#if WEBGPU_NATIVE
   WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
   deviceDesc.requiredLimits = &requiredLimits;
+#endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
   deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
