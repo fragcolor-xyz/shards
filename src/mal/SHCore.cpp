@@ -1882,6 +1882,73 @@ BUILTIN("color") {
   return malValuePtr(new malSHVar(var, false));
 }
 
+template <size_t VectorSize, SHType Type>
+malValuePtr makeVector(const MalString &name, malValueIter argsBegin, malValueIter argsEnd, const char *shardName) {
+  size_t numArgs = std::distance(argsBegin, argsEnd);
+  bool broadcast = false;
+  if (numArgs == 1) {
+    broadcast = true;
+  } else {
+    if (numArgs != VectorSize)
+      throw STRF("Vector requires {} arguments", VectorSize);
+  }
+  size_t inputSize = broadcast ? 1 : VectorSize;
+
+  bool containsVariables = false;
+  auto it = argsBegin;
+  for (size_t i = 0; i < inputSize; ++i, ++it) {
+    if (malNumber *number = dynamic_cast<malNumber *>(it->ptr())) {
+      // ignore
+    } else if (malSHVar *number = dynamic_cast<malSHVar *>(it->ptr())) {
+      containsVariables = true;
+    } else {
+      throw STRF("vector constructor expects a number or a symbol");
+    }
+  }
+
+  if (containsVariables) {
+    auto b = shards::createShard(shardName);
+    b->setup(b);
+
+    auto it = argsBegin;
+    for (size_t i = 0; i < inputSize; ++i, ++it) {
+      SHVar var{};
+      if (malNumber *number = dynamic_cast<malNumber *>(it->ptr())) {
+        var.valueType = SHType::Float;
+        var.payload.floatValue = number->value();
+      } else if (malSHVar *inVar = dynamic_cast<malSHVar *>(it->ptr())) {
+        var = inVar->value();
+      } else {
+        throw STRF("vector constructor expects a number or a symbol");
+      }
+      b->setParam(b, i, &var);
+    }
+
+    auto blk = new malShard(b);
+    return blk;
+  } else {
+    typedef typename std::conditional<VectorSize <= 2, double, float>::type ValueType;
+
+    SHVar var{};
+    var.valueType = Type;
+    ValueType *out = (ValueType *)&var.payload.floatValue;
+
+    it = argsBegin;
+    for (size_t i = 0; i < inputSize; ++i, ++it) {
+      auto v = VALUE_CAST(malNumber, it->ptr());
+      out[i] = (ValueType)v->value();
+    }
+
+    if (broadcast) {
+      for (size_t i = 1; i < VectorSize; ++i, ++it) {
+        out[i] = out[0];
+      }
+    }
+
+    return malValuePtr(new malSHVar(var, false));
+  }
+}
+
 BUILTIN("float") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
@@ -1891,62 +1958,11 @@ BUILTIN("float") {
   return malValuePtr(new malSHVar(var, false));
 }
 
-BUILTIN("float2") {
-  CHECK_ARGS_BETWEEN(1, 2);
-  ARG(malNumber, value0);
-  SHVar var{};
-  var.valueType = Float2;
-  var.payload.float2Value[0] = value0->value();
-  if (argsBegin != argsEnd) {
-    CHECK_ARGS_IS(1);
-    ARG(malNumber, value1);
-    var.payload.float2Value[1] = value1->value();
-  } else {
-    var.payload.float2Value[1] = value0->value();
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
+BUILTIN("float2") { return makeVector<2, SHType::Float2>(name, argsBegin, argsEnd, "MakeFloat2"); }
 
-BUILTIN("float3") {
-  CHECK_ARGS_BETWEEN(1, 3);
-  ARG(malNumber, value0);
-  SHVar var{};
-  var.valueType = Float3;
-  var.payload.float3Value[0] = value0->value();
-  if (argsBegin != argsEnd) {
-    CHECK_ARGS_IS(2);
-    ARG(malNumber, value1);
-    ARG(malNumber, value2);
-    var.payload.float3Value[1] = value1->value();
-    var.payload.float3Value[2] = value2->value();
-  } else {
-    var.payload.float3Value[1] = value0->value();
-    var.payload.float3Value[2] = value0->value();
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
+BUILTIN("float3") { return makeVector<3, SHType::Float3>(name, argsBegin, argsEnd, "MakeFloat3"); }
 
-BUILTIN("float4") {
-  CHECK_ARGS_BETWEEN(1, 4);
-  ARG(malNumber, value0);
-  SHVar var{};
-  var.valueType = Float4;
-  var.payload.float4Value[0] = value0->value();
-  if (argsBegin != argsEnd) {
-    CHECK_ARGS_IS(3);
-    ARG(malNumber, value1);
-    ARG(malNumber, value2);
-    ARG(malNumber, value3);
-    var.payload.float4Value[1] = value1->value();
-    var.payload.float4Value[2] = value2->value();
-    var.payload.float4Value[3] = value3->value();
-  } else {
-    var.payload.float4Value[1] = value0->value();
-    var.payload.float4Value[2] = value0->value();
-    var.payload.float4Value[3] = value0->value();
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
+BUILTIN("float4") { return makeVector<4, SHType::Float4>(name, argsBegin, argsEnd, "MakeFloat4"); }
 
 BUILTIN("import") {
   CHECK_ARGS_IS(1);
