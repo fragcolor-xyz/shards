@@ -165,6 +165,9 @@ struct RendererImpl final : public ContextData {
   WorkerMemory &getWorkerMemoryForCurrentFrame() { return workerMemory; }
 
   void initializeContextData() {
+    SPDLOG_INFO("Renderer initializeContextData");
+
+    assert(context.isReady());
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
     bindToContext(context);
   }
@@ -214,7 +217,7 @@ struct RendererImpl final : public ContextData {
                       .flags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding,
                       .pixelFormat = context.getMainOutputFormat(),
                   },
-              .resolution = context.getMainOutputSize(),
+              .resolution = resolution,
               .externalTexture = view,
           })
           .initWithLabel("mainOutput");
@@ -799,7 +802,9 @@ Renderer::Renderer(Context &context) {
   if (!context.isHeadless()) {
     impl->shouldUpdateMainOutputFromContext = true;
   }
-  impl->initializeContextData();
+
+  if (context.isReady())
+    impl->initializeContextData();
 }
 
 Context &Renderer::getContext() { return impl->context; }
