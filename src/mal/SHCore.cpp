@@ -276,6 +276,9 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! defloop (fn* [name & shards] `(def! ~(symbol (str name)) "
       "(Wire ~(str name) :Looped (wireify (vector ~@shards))))))",
       env);
+  rep("(defmacro! defpure (fn* [name & shards] `(def! ~(symbol (str name)) "
+      "(Wire ~(str name) :Pure (wireify (vector ~@shards))))))",
+      env);
   rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
   rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
   rep("(defmacro! |# (fn* [& shards] `(Hashed (wireify (vector ~@shards)))))", env);
@@ -1337,6 +1340,8 @@ BUILTIN("Wire") {
         wire->stackSize = 4 * 1024 * 1024;  // 4mb
       } else if (v->value() == ":SStack") { // default is 128kb
         wire->stackSize = 32 * 1024;        // 32kb
+      } else if (v->value() == ":Pure") {
+        wire->pure = true;
       }
     } else {
       auto blks = wireify(pbegin, argsEnd);

@@ -550,8 +550,9 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
     auto rit = ctx->wireStack.rbegin();
     for (; rit != ctx->wireStack.rend(); ++rit) {
       // prioritize local variables
-      auto it = (*rit)->variables.find(name);
-      if (it != (*rit)->variables.end()) {
+      auto wire = *rit;
+      auto it = wire->variables.find(name);
+      if (it != wire->variables.end()) {
         // found, lets get out here
         SHVar &cv = it->second;
         cv.refcount++;
@@ -559,45 +560,52 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
         return &cv;
       }
       // try external variables
-      auto pit = (*rit)->externalVariables.find(name);
-      if (pit != (*rit)->externalVariables.end()) {
+      auto pit = wire->externalVariables.find(name);
+      if (pit != wire->externalVariables.end()) {
         // found, lets get out here
         SHVar &cv = *pit->second;
         assert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
         return &cv;
       }
+      // if this wire is pure we break here and do not look further
+      if (wire->pure) {
+        goto create;
+      }
     }
   }
 
   // try using mesh
-  auto mesh = ctx->main->mesh.lock();
-  assert(mesh);
-
-  // Was not in wires.. find in mesh
   {
-    auto it = mesh->variables.find(name);
-    if (it != mesh->variables.end()) {
-      // found, lets get out here
-      SHVar &cv = it->second;
-      cv.refcount++;
-      cv.flags |= SHVAR_FLAGS_REF_COUNTED;
-      return &cv;
+    auto mesh = ctx->main->mesh.lock();
+    assert(mesh);
+
+    // Was not in wires.. find in mesh
+    {
+      auto it = mesh->variables.find(name);
+      if (it != mesh->variables.end()) {
+        // found, lets get out here
+        SHVar &cv = it->second;
+        cv.refcount++;
+        cv.flags |= SHVAR_FLAGS_REF_COUNTED;
+        return &cv;
+      }
+    }
+
+    // Was not in mesh directly.. try find in meshs refs
+    {
+      auto it = mesh->refs.find(name);
+      if (it != mesh->refs.end()) {
+        SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
+        // found, lets get out here
+        SHVar *cv = it->second;
+        cv->refcount++;
+        cv->flags |= SHVAR_FLAGS_REF_COUNTED;
+        return cv;
+      }
     }
   }
 
-  // Was not in mesh directly.. try find in meshs refs
-  {
-    auto it = mesh->refs.find(name);
-    if (it != mesh->refs.end()) {
-      SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-      // found, lets get out here
-      SHVar *cv = it->second;
-      cv->refcount++;
-      cv->flags |= SHVAR_FLAGS_REF_COUNTED;
-      return cv;
-    }
-  }
-
+create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
   SHVar &cv = ctx->wireStack.back()->variables[name];
@@ -1016,10 +1024,12 @@ void validateConnection(ValidationContext &ctx) {
         shards::arrayPush(data.shared, type);
       }
     }
-    // and inherited
-    for (auto &info : ctx.inherited) {
-      for (auto &type : info.second) {
-        shards::arrayPush(data.shared, type);
+    if (!ctx.wire->pure) {
+      // and inherited
+      for (auto &info : ctx.inherited) {
+        for (auto &type : info.second) {
+          shards::arrayPush(data.shared, type);
+        }
       }
     }
     DEFER(shards::arrayFree(data.shared));
