@@ -204,6 +204,14 @@ impl Shard for Table {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    // compose header shards
+    for header_shard in &mut self.header_shards {
+      if let Some(header_shard) = header_shard {
+        header_shard.compose(data)?;
+      }
+    }
+
+    // compose row shards
     let mut data = *data;
     let mut shared: ExposedTypes;
 
