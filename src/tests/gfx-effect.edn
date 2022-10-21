@@ -49,4 +49,4 @@
 (schedule root (Wire "test-wire" :Looped :LStack
                      (GFX.MainWindow :Title "SDL Window" :Width 1280 :Height 720 :Debug false :Contents
                                      (Step gfx))))
-(run root timestep)
+(run root timestep 100)
