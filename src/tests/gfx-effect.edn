@@ -25,11 +25,11 @@
                  .uv (Take 0) >= .u
                  .uv (Take 1) >= .v
                  .v (Math.Multiply 300.0) (Math.Cos) (Math.Multiply 0.001) (Math.Add .u) > .u
-                 (MakeFloat2 .u .v) (Math.Multiply 2.0) (Math.FMod (Float2 1.0 1.0)) > .uv
+                 (Float2 .u .v) (Math.Multiply 2.0) (Math.FMod (Float2 1.0 1.0)) > .uv
                  .uv (Shader.SampleTextureUV "color") (ToFloat4) >= .color
                  .uv (Shader.SampleTextureUV "depth") (Take [0]) 
                  (Shader.LinearizeDepth) (Math.Subtract 6.0) (Math.Divide 4.0) >= .depth
-                 (MakeFloat4 .depth .depth 1.0 1.0) (Math.Multiply .color)
+                 (Float4 .depth .depth 1.0 1.0) (Math.Multiply .color)
                  (Shader.WriteOutput "color")
                  ; End shader
                  )}(GFX.EffectPass) >> .render-steps1
