@@ -1024,7 +1024,7 @@ void validateConnection(ValidationContext &ctx) {
         shards::arrayPush(data.shared, type);
       }
     }
-    if (!ctx.wire->pure) {
+    if (!ctx.wire || !ctx.wire->pure) {
       // and inherited
       for (auto &info : ctx.inherited) {
         for (auto &type : info.second) {
