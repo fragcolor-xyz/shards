@@ -183,6 +183,7 @@ jobs:
           ./shards ../src/tests/take.edn
           ./shards ../src/tests/casting-numbers.edn
           ./shards ../src/tests/edn.edn
+          ./shards ../src/tests/pure.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

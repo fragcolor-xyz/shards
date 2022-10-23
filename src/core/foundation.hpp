@@ -325,6 +325,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   // Attributes
   bool looped{false};
   bool unsafe{false};
+  bool pure{false};
 
   std::string name;
 

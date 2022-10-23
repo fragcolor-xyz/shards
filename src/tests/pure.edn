@@ -1,0 +1,15 @@
+(defpure upload-proto
+  (ExpectBytes)
+  "Hello" = .proto-data
+  "Namaste")
+
+(defwire main
+  "Proto-Indo-European" = .proto-data
+  .proto-data (ToBytes) (Do upload-proto) (Log)
+  .proto-data (Log)
+  (Assert.Is "Proto-Indo-European" true))
+
+(defmesh root)
+
+(schedule root main)
+(run root 0.1)
