@@ -52,7 +52,7 @@ impl Default for HexViewer {
     Self {
       parents,
       requiring: Vec::new(),
-      editor_options: None,
+      editor: None,
     }
   }
 }
@@ -176,13 +176,15 @@ impl Shard for HexViewer {
         std::slice::from_raw_parts_mut(data, len)
       };
 
-      let mut mem_editor = MemoryEditor::new().with_address_range("All", 0..mem.len());
-
-      if let Some(options) = &self.editor_options {
-        mem_editor = mem_editor.with_options(options.clone());
+      let (mem_editor, range) = self
+        .editor
+        .get_or_insert_with(|| (MemoryEditor::new(), 0..0));
+      let mem_range = 0..mem.len();
+      if *range != mem_range {
+        *range = mem_range.clone();
+        *mem_editor = mem_editor.clone().with_address_range("All", mem_range);
       }
       mem_editor.draw_editor_contents_read_only(ui, mem, |mem, address| mem[address].into());
-      self.editor_options = Some(mem_editor.options.clone());
 
       Ok(*input)
     } else {
