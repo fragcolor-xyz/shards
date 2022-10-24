@@ -197,13 +197,21 @@ template <SHType ToType> struct ToNumber {
   }
 };
 
+template <SHType Type> struct DefaultValues {};
+template <> struct DefaultValues<SHType::Color> {
+  static constexpr uint8_t get(size_t index) { return index == 3 ? 255 : 0; }
+};
+
 template <SHType ToType> struct MakeVector {
+  static constexpr bool AllowDefaultComponents = ToType == SHType::Color;
+
   const VectorTypeTraits *_outputVectorType{nullptr};
   const NumberTypeTraits *_outputNumberType{nullptr};
   const NumberConversion *_componentConversion{nullptr};
 
   std::vector<ParamVar> params;
   bool isBroadcast{};
+  size_t inputSize;
 
   MakeVector() {
     auto vectorType = VectorTypeLookup::getInstance().get(ToType);
@@ -268,12 +276,29 @@ template <SHType ToType> struct MakeVector {
     NumberType componentNumberType = _outputNumberType->isInteger ? NumberType::Int64 : NumberType::Float64;
     _componentConversion = numberTypeLookup.getConversion(componentNumberType, _outputNumberType->type);
 
+    // Check amount of set paramters
+    inputSize = 0;
+    for (size_t i = 0; i < params.size(); i++) {
+      if (params[i]->valueType == SHType::None) {
+        break;
+      }
+      ++inputSize;
+    }
+
+    // Check for gaps in parameter list
+    for (size_t i = inputSize; i < params.size(); i++) {
+      if (params[i]->valueType != SHType::None)
+        throw ComposeError(fmt::format("Vector component {} was not set", inputSize));
+    }
+
+    // Check valid amount of parameters
     isBroadcast = false;
-    if (params[1]->valueType == SHType::None) {
-      for (size_t i = 2; i < params.size(); i++)
-        if (params[i]->valueType != SHType::None)
-          throw ComposeError("Vector broadcast intializer requires only 1 value to be given");
+    if (inputSize == 1)
       isBroadcast = true;
+    else if constexpr (!AllowDefaultComponents) {
+      if (inputSize != params.size()) {
+        throw ComposeError(fmt::format("Not enough vector components: {}, expected: {}", inputSize, params.size()));
+      }
     }
 
     return _outputVectorType->type;
@@ -295,19 +320,27 @@ template <SHType ToType> struct MakeVector {
     SHVar output{};
     output.valueType = _outputVectorType->shType;
 
-    size_t inSize = isBroadcast ? 1 : params.size();
-
-    uint8_t *dstData = (uint8_t *)&output.payload.floatValue;
-    for (size_t i = 0; i < inSize; i++) {
+    // Convert inputs to vector components
+    uint8_t *dstData = reinterpret_cast<uint8_t *>(&output.payload.floatValue);
+    for (size_t i = 0; i < inputSize; i++) {
       auto &param = params[i].get();
       _componentConversion->convertOne(&param.payload.floatValue, dstData);
       dstData += _componentConversion->outStride;
     }
 
+    // Apply broadcat be copying first element to remaining elements
     if (isBroadcast) {
       uint8_t *broadcastSrc = dstData - _componentConversion->outStride;
       for (size_t i = 1; i < params.size(); i++) {
         memcpy(dstData, broadcastSrc, _componentConversion->outStride);
+        dstData += _componentConversion->outStride;
+      }
+    } else if constexpr (AllowDefaultComponents) {
+      // Apply default components by filling in the unset components with the default value
+      // returned by DefaultValues<ToType>::get(index)
+      for (size_t i = inputSize; i < params.size(); i++) {
+        auto v = DefaultValues<ToType>::get(i);
+        memcpy(dstData, &v, _componentConversion->outStride);
         dstData += _componentConversion->outStride;
       }
     }
