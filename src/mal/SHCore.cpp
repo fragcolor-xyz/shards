@@ -302,6 +302,8 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(def! Int2 int2)", env);
   rep("(def! Int3 int3)", env);
   rep("(def! Int4 int4)", env);
+  rep("(def! Int8 int8)", env);
+  rep("(def! Int16 int16)", env);
   rep("(def! Path path)", env);
   rep("(def! String string)", env);
 }
@@ -1797,102 +1799,43 @@ BUILTIN("context-var") {
   return malValuePtr(mvar);
 }
 
-BUILTIN("int") {
-  CHECK_ARGS_IS(1);
-  ARG(malNumber, value);
-  SHVar var{};
-  var.valueType = Int;
-  var.payload.intValue = value->value();
-  return malValuePtr(new malSHVar(var, false));
-}
+template <SHType T> struct GetComponentType {};
+template <> struct GetComponentType<SHType::Float2> { typedef double Type; };
+template <> struct GetComponentType<SHType::Float3> { typedef float Type; };
+template <> struct GetComponentType<SHType::Float4> { typedef float Type; };
+template <> struct GetComponentType<SHType::Int2> { typedef int64_t Type; };
+template <> struct GetComponentType<SHType::Int3> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int4> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int8> { typedef int16_t Type; };
+template <> struct GetComponentType<SHType::Int16> { typedef int8_t Type; };
+template <> struct GetComponentType<SHType::Color> {
+  typedef uint8_t Type;
+  static constexpr uint8_t getDefaultValue(size_t index) { return index == 3 ? 255 : 0; }
+};
 
-BUILTIN("int2") {
-  CHECK_ARGS_BETWEEN(1, 2);
-  ARG(malNumber, value0);
-  SHVar var{};
-  var.valueType = Int2;
-  var.payload.int2Value[0] = value0->value();
-  if (argsBegin != argsEnd) {
-    CHECK_ARGS_IS(1);
-    ARG(malNumber, value1);
-    var.payload.int2Value[1] = value1->value();
-  } else {
-    var.payload.int2Value[1] = value0->value();
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
-
-BUILTIN("int3") {
-  CHECK_ARGS_BETWEEN(1, 3);
-  ARG(malNumber, value0);
-  SHVar var{};
-  var.valueType = Int3;
-  var.payload.int3Value[0] = value0->value();
-  if (argsBegin != argsEnd) {
-    CHECK_ARGS_IS(2);
-    ARG(malNumber, value1);
-    ARG(malNumber, value2);
-    var.payload.int3Value[1] = value1->value();
-    var.payload.int3Value[2] = value2->value();
-  } else {
-    var.payload.int3Value[1] = value0->value();
-    var.payload.int3Value[2] = value0->value();
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
-
-BUILTIN("int4") {
-  CHECK_ARGS_BETWEEN(1, 4);
-  ARG(malNumber, value0);
-  SHVar var{};
-  var.valueType = Int4;
-  var.payload.int4Value[0] = value0->value();
-  if (argsBegin != argsEnd) {
-    CHECK_ARGS_IS(3);
-    ARG(malNumber, value1);
-    ARG(malNumber, value2);
-    ARG(malNumber, value3);
-    var.payload.int4Value[1] = value1->value();
-    var.payload.int4Value[2] = value2->value();
-    var.payload.int4Value[3] = value3->value();
-  } else {
-    var.payload.int4Value[1] = value0->value();
-    var.payload.int4Value[2] = value0->value();
-    var.payload.int4Value[3] = value0->value();
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
-
-BUILTIN("color") {
-  CHECK_ARGS_BETWEEN(3, 4);
-  ARG(malNumber, value0);
-  ARG(malNumber, value1);
-  ARG(malNumber, value2);
-  SHVar var{};
-  var.valueType = Color;
-  var.payload.colorValue.r = static_cast<uint8_t>(value0->value());
-  var.payload.colorValue.g = static_cast<uint8_t>(value1->value());
-  var.payload.colorValue.b = static_cast<uint8_t>(value2->value());
-  if (argsBegin != argsEnd) {
-    ARG(malNumber, value3);
-    var.payload.colorValue.a = static_cast<uint8_t>(value3->value());
-  } else {
-    var.payload.colorValue.a = 255;
-  }
-  return malValuePtr(new malSHVar(var, false));
-}
-
-template <size_t VectorSize, SHType Type>
+// Generates a vector constant or generating shards
+//  passing a single argument broadcasts it to all the components
+//  Setting AllowDefaultComponents will allow any number of arguments and fill in the remainder from the default value (0 0 0 1)
+template <size_t VectorSize, SHType Type, bool AllowDefaultComponents = false>
 malValuePtr makeVector(const MalString &name, malValueIter argsBegin, malValueIter argsEnd, const char *shardName) {
+  typedef typename GetComponentType<Type>::Type ValueType;
+  constexpr bool IsFloat = std::is_floating_point_v<ValueType>;
+
   size_t numArgs = std::distance(argsBegin, argsEnd);
   bool broadcast = false;
   if (numArgs == 1) {
     broadcast = true;
   } else {
-    if (numArgs != VectorSize)
-      throw STRF("Vector requires {} arguments", VectorSize);
+    if constexpr (AllowDefaultComponents) {
+      if (numArgs > VectorSize) {
+        throw STRF("Too many arguments to vector constructor: {}, {} required", numArgs, VectorSize);
+      }
+    } else {
+      if (numArgs != VectorSize)
+        throw STRF("Not enough arguments to vector constructor: {}, {} required", numArgs, VectorSize);
+    }
   }
-  size_t inputSize = broadcast ? 1 : VectorSize;
+  size_t inputSize = broadcast ? 1 : numArgs;
 
   bool containsVariables = false;
   auto it = argsBegin;
@@ -1914,8 +1857,13 @@ malValuePtr makeVector(const MalString &name, malValueIter argsBegin, malValueIt
     for (size_t i = 0; i < inputSize; ++i, ++it) {
       SHVar var{};
       if (malNumber *number = dynamic_cast<malNumber *>(it->ptr())) {
-        var.valueType = SHType::Float;
-        var.payload.floatValue = number->value();
+        if constexpr (IsFloat) {
+          var.valueType = SHType::Float;
+          var.payload.floatValue = SHFloat(number->value());
+        } else {
+          var.valueType = SHType::Int;
+          var.payload.intValue = SHInt(number->value());
+        }
       } else if (malSHVar *inVar = dynamic_cast<malSHVar *>(it->ptr())) {
         var = inVar->value();
       } else {
@@ -1927,27 +1875,53 @@ malValuePtr makeVector(const MalString &name, malValueIter argsBegin, malValueIt
     auto blk = new malShard(b);
     return blk;
   } else {
-    typedef typename std::conditional<VectorSize <= 2, double, float>::type ValueType;
 
     SHVar var{};
     var.valueType = Type;
-    ValueType *out = (ValueType *)&var.payload.floatValue;
+    ValueType *out = reinterpret_cast<ValueType *>(&var.payload.floatValue);
 
     it = argsBegin;
     for (size_t i = 0; i < inputSize; ++i, ++it) {
       auto v = VALUE_CAST(malNumber, it->ptr());
-      out[i] = (ValueType)v->value();
+      out[i] = ValueType(v->value());
     }
 
     if (broadcast) {
       for (size_t i = 1; i < VectorSize; ++i) {
         out[i] = out[0];
       }
+    } else {
+      if constexpr (AllowDefaultComponents) {
+        for (size_t i = inputSize; i < VectorSize; ++i) {
+          out[i] = GetComponentType<Type>::getDefaultValue(i);
+        }
+      }
     }
 
     return malValuePtr(new malSHVar(var, false));
   }
 }
+
+BUILTIN("int") {
+  CHECK_ARGS_IS(1);
+  ARG(malNumber, value);
+  SHVar var{};
+  var.valueType = Int;
+  var.payload.intValue = value->value();
+  return malValuePtr(new malSHVar(var, false));
+}
+
+BUILTIN("int2") { return makeVector<2, SHType::Int2>(name, argsBegin, argsEnd, "MakeInt2"); }
+
+BUILTIN("int3") { return makeVector<3, SHType::Int3>(name, argsBegin, argsEnd, "MakeInt3"); }
+
+BUILTIN("int4") { return makeVector<4, SHType::Int4>(name, argsBegin, argsEnd, "MakeInt4"); }
+
+BUILTIN("int8") { return makeVector<8, SHType::Int8>(name, argsBegin, argsEnd, "MakeInt8"); }
+
+BUILTIN("int16") { return makeVector<16, SHType::Int16>(name, argsBegin, argsEnd, "MakeInt16"); }
+
+BUILTIN("color") { return makeVector<4, SHType::Color, true>(name, argsBegin, argsEnd, "MakeColor"); }
 
 BUILTIN("float") {
   CHECK_ARGS_IS(1);
