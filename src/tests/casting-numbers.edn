@@ -68,7 +68,5 @@
        (Color 255 255 255) (Assert.Is (Color 255 255 255 255)) (Log "MakeColor (extended)")
        (Color 0) (Assert.Is (Color 0 0 0 0)) (Log "MakeColor (broadcast)")
        (Color .i2 255 100) (Assert.Is (Color 2 255 100 255)) (Log "MakeColor (variable/mixed/extended)")
-       (Color .i2) (Assert.Is (Color 2 2 2 2)) (Log "MakeColor (variable/broadcast)")
-       ;
-       ))
+       (Color .i2) (Assert.Is (Color 2 2 2 2)) (Log "MakeColor (variable/broadcast)")))
 (tick Root)
