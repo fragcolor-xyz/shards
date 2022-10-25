@@ -174,6 +174,7 @@ macro_rules! decl_ui_input {
       parents: ParamVar,
       requiring: ExposedTypes,
       variable: ParamVar,
+      prefix: ParamVar,
       exposing: ExposedTypes,
       should_expose: bool,
       tmp: $tmp_type,
@@ -231,6 +232,7 @@ mod link;
 mod listbox;
 mod numeric_input;
 mod numeric_slider;
+mod plots;
 mod progress_bar;
 mod radio_button;
 mod spinner;
@@ -266,6 +268,7 @@ pub fn registerShards() {
   registerShard::<Int2Slider>();
   registerShard::<Int3Slider>();
   registerShard::<Int4Slider>();
+  plots::registerShards();
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<Spinner>();

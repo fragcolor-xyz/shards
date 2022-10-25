@@ -28,6 +28,7 @@ static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::none,
 ];
 static FLOAT_VAR_SLICE: &[Type] = &[common_type::float, common_type::float_var];
+static FLOAT_VAR_OR_NONE_SLICE: &[Type] = &[common_type::float, common_type::float_var, common_type::none];
 static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
 static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
