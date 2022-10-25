@@ -30,6 +30,15 @@ struct Plot {
   exposing: ExposedTypes,
 }
 
+struct PlotBar {
+  plot_ui: ParamVar,
+  requiring: ExposedTypes,
+  color: ParamVar,
+  bar_width: ParamVar,
+  horizontal: ParamVar,
+  name: ParamVar,
+}
+
 struct PlotLine {
   plot_ui: ParamVar,
   requiring: ExposedTypes,
@@ -38,9 +47,11 @@ struct PlotLine {
 }
 
 mod plot;
+mod plot_bar;
 mod plot_line;
 
 pub fn registerShards() {
   registerShard::<Plot>();
+  registerShard::<PlotBar>();
   registerShard::<PlotLine>();
 }
