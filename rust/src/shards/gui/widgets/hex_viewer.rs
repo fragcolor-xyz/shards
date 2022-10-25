@@ -182,7 +182,7 @@ impl Shard for HexViewer {
       let mem_range = 0..mem.len();
       if *range != mem_range {
         *range = mem_range.clone();
-        *mem_editor = mem_editor.clone().with_address_range("All", mem_range);
+        mem_editor.set_address_range("All", mem_range);
       }
       mem_editor.draw_editor_contents_read_only(ui, mem, |mem, address| mem[address].into());
 
