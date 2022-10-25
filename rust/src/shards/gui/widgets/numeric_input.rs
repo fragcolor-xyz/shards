@@ -35,6 +35,7 @@ use crate::types::INT3_TYPES;
 use crate::types::INT4_TYPES;
 use crate::types::INT_TYPES;
 use crate::types::NONE_TYPES;
+use crate::types::STRING_OR_NONE_SLICE;
 use std::cmp::Ordering;
 use std::ffi::CStr;
 
@@ -43,12 +44,20 @@ macro_rules! impl_ui_input {
     static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
-      static ref $parameters: Parameters = vec![(
-        cstr!("Variable"),
-        cstr!("The variable that holds the input value."),
-        $static,
-      )
-        .into(),];
+      static ref $parameters: Parameters = vec![
+        (
+          cstr!("Variable"),
+          cstr!("The variable that holds the input value."),
+          $static,
+        )
+          .into(),
+        (
+          cstr!("Prefix"),
+          cstr!("Display a prefix before the number."),
+          STRING_OR_NONE_SLICE,
+        )
+          .into(),
+      ];
     }
 
     impl Default for $shard_name {
@@ -59,6 +68,7 @@ macro_rules! impl_ui_input {
           parents,
           requiring: Vec::new(),
           variable: ParamVar::default(),
+          prefix: ParamVar::default(),
           exposing: Vec::new(),
           should_expose: false,
           tmp: Default::default(),
@@ -112,6 +122,7 @@ macro_rules! impl_ui_input {
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
           0 => Ok(self.variable.set_param(value)),
+          1 => Ok(self.prefix.set_param(value)),
           _ => Err("Invalid parameter index"),
         }
       }
@@ -119,6 +130,7 @@ macro_rules! impl_ui_input {
       fn getParam(&mut self, index: i32) -> Var {
         match index {
           0 => self.variable.get_param(),
+          1 => self.prefix.get_param(),
           _ => Var::default(),
         }
       }
@@ -183,6 +195,7 @@ macro_rules! impl_ui_input {
       fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
         self.parents.warmup(ctx);
         self.variable.warmup(ctx);
+        self.prefix.warmup(ctx);
 
         if self.should_expose {
           self.variable.get_mut().valueType = common_type::$common_type.basicType;
@@ -192,6 +205,7 @@ macro_rules! impl_ui_input {
       }
 
       fn cleanup(&mut self) -> Result<(), &str> {
+        self.prefix.cleanup();
         self.variable.cleanup();
         self.parents.cleanup();
 
@@ -206,7 +220,14 @@ macro_rules! impl_ui_input {
             &mut self.tmp
           };
 
-          ui.add(egui::DragValue::new(value));
+          let mut drag_value = egui::DragValue::new(value);
+          let prefix = self.prefix.get();
+          if !prefix.is_none() {
+            let prefix: &str = prefix.try_into()?;
+            drag_value = drag_value.prefix(prefix);
+          }
+
+          ui.add(drag_value);
 
           Ok((*value).into())
         } else {
@@ -246,12 +267,20 @@ macro_rules! impl_ui_n_input {
     static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
-      static ref $parameters: Parameters = vec![(
-        cstr!("Variable"),
-        cstr!("The variable that holds the input value."),
-        $static,
-      )
-        .into(),];
+      static ref $parameters: Parameters = vec![
+        (
+          cstr!("Variable"),
+          cstr!("The variable that holds the input value."),
+          $static,
+        )
+          .into(),
+        (
+          cstr!("Prefix"),
+          cstr!("Display a prefix before the number."),
+          STRING_OR_NONE_SLICE,
+        )
+          .into(),
+      ];
     }
 
     impl Default for $shard_name {
@@ -262,6 +291,7 @@ macro_rules! impl_ui_n_input {
           parents,
           requiring: Vec::new(),
           variable: ParamVar::default(),
+          prefix: ParamVar::default(),
           exposing: Vec::new(),
           should_expose: false,
           tmp: Default::default(),
