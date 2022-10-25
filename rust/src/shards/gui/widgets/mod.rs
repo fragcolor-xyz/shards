@@ -9,6 +9,10 @@ use crate::types::ParamVar;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
+use std::ops::Range;
+
+#[cfg(feature = "hex_viewer")]
+use egui_memory_editor::MemoryEditor;
 
 /// Clickable button with a text label.
 struct Button {
@@ -69,6 +73,13 @@ struct Console {
   show_filters: ParamVar,
   style: ParamVar,
   filters: (bool, bool, bool, bool, bool)
+}
+
+#[cfg(feature = "hex_viewer")]
+struct HexViewer {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  editor: Option<(MemoryEditor, Range<usize>)>,
 }
 
 struct Hyperlink {
@@ -223,6 +234,8 @@ mod code_editor;
 mod color_input;
 mod combo;
 mod console;
+#[cfg(feature = "hex_viewer")]
+mod hex_viewer;
 mod hyperlink;
 mod image;
 mod image_button;
@@ -275,6 +288,10 @@ pub fn registerShards() {
   if cfg!(feature = "code_editor") {
     registerCodeEditor();
   }
+
+  if cfg!(feature = "hex_viewer") {
+    registerHexViewer();
+  }
 }
 
 #[cfg(feature = "code_editor")]
@@ -286,3 +303,13 @@ pub fn registerCodeEditor() {
 #[cfg(not(feature = "code_editor"))]
 #[inline(always)]
 pub fn registerCodeEditor() {}
+
+#[cfg(feature = "hex_viewer")]
+#[inline(always)]
+pub fn registerHexViewer() {
+  registerShard::<HexViewer>();
+}
+
+#[cfg(not(feature = "hex_viewer"))]
+#[inline(always)]
+pub fn registerHexViewer() {}
