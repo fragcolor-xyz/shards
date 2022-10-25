@@ -76,7 +76,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           echo "Running graphics library tests"
-          GFX_TEST_PLATFORM_ID="github-linux" build/test-gfx -r JUnit --out test-gfx.xml
+          build/test-gfx -r JUnit --out test-gfx.xml
 
           echo "\n"
           echo "Running graphics test scripts"
@@ -135,5 +135,5 @@ jobs:
         if: failure()
         with:
           name: shards-linux-gpu rejected test data
-          path: src/gfx/tests/data/github-linux/rejected
+          path: src/gfx/tests/data/default/rejected
           if-no-files-found: ignore
