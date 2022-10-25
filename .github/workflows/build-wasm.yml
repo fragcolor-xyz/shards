@@ -82,6 +82,9 @@ jobs:
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.threading }}
+          workspaces: |
+            . -> build/target
+            src/gfx/rust/gfx -> ../../../../build/target
       - name: Build
         run: |
           source emsdk/emsdk_env.sh

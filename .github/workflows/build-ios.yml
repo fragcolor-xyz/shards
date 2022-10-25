@@ -43,6 +43,10 @@ jobs:
           rustup default nightly
       - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
+        with:
+          workspaces: |
+            . -> build/target
+            src/gfx/rust/gfx -> ../../../../build/target
       - name: Build device
         run: |
           cmake -Bbuild_arm64 -GXcode -DCMAKE_BUILD_TYPE=Debug -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_SYSTEM_PROCESSOR=arm64 -DXCODE_SDK=iphoneos

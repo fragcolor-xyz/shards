@@ -80,6 +80,9 @@ jobs:
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
+          workspaces: |
+            . -> build/target
+            src/gfx/rust/gfx -> ../../../../build/target
       - name: Build
         run: |
           mkdir build

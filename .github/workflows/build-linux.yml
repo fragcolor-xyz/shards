@@ -80,6 +80,9 @@ jobs:
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
+          workspaces: |
+            . -> build/target
+            src/gfx/rust/gfx -> ../../../../build/target
       - name: Build
         run: |
           mkdir build
@@ -132,6 +135,9 @@ jobs:
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
+          workspaces: |
+            . -> build/target
+            src/gfx/rust/gfx -> ../../../../build/target
       - name: Build (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
@@ -278,6 +284,9 @@ jobs:
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: Debug
+          workspaces: |
+            . -> build/target
+            src/gfx/rust/gfx -> ../../../../build/target
       - name: Build
         run: |
           cmake -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1
