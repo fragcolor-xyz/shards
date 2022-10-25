@@ -46,12 +46,21 @@ struct PlotLine {
   name: ParamVar,
 }
 
+struct PlotPoints {
+  plot_ui: ParamVar,
+  requiring: ExposedTypes,
+  color: ParamVar,
+  name: ParamVar,
+}
+
 mod plot;
 mod plot_bar;
 mod plot_line;
+mod plot_points;
 
 pub fn registerShards() {
   registerShard::<Plot>();
   registerShard::<PlotBar>();
   registerShard::<PlotLine>();
+  registerShard::<PlotPoints>();
 }
