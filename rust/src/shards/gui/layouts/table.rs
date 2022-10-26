@@ -1,0 +1,429 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright © 2022 Fragcolor Pte. Ltd. */
+
+use super::Table;
+use crate::shard::Shard;
+use crate::shards::gui::util;
+use crate::shards::gui::EguiId;
+use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
+use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
+use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shardsc::SHType_Int;
+use crate::shardsc::SHType_Seq;
+use crate::shardsc::SHType_ShardRef;
+use crate::shardsc::SHType_String;
+use crate::types::common_type;
+use crate::types::Context;
+use crate::types::ExposedInfo;
+use crate::types::ExposedTypes;
+use crate::types::InstanceData;
+use crate::types::OptionalString;
+use crate::types::ParamVar;
+use crate::types::Parameters;
+use crate::types::Seq;
+use crate::types::ShardsVar;
+use crate::types::Type;
+use crate::types::Types;
+use crate::types::Var;
+use crate::types::ANYS_TYPES;
+use crate::types::SEQ_OF_SHARDS_TYPES;
+use std::cmp::Ordering;
+use std::ffi::CStr;
+
+lazy_static! {
+  static ref ANY_TABLE_TYPES: Vec<Type> = vec![common_type::any_table];
+  static ref SEQ_OF_ANY_TABLE: Type = Type::seq(&ANY_TABLE_TYPES);
+  static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE];
+  static ref TABLE_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Rows"),
+      cstr!("Sequence of shards to build the rows."),
+      &SEQ_OF_SHARDS_TYPES[..]
+    )
+      .into(),
+    (
+      cstr!("Columns"),
+      cstr!("Configuration of the columns."),
+      &SEQ_OF_ANY_TABLE_TYPES[..]
+    )
+      .into(),
+    (
+      cstr!("Striped"),
+      cstr!("Whether to alternate a subtle background color to every other row."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Resizable"),
+      cstr!("Whether columns can be resized within their specified range."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("RowIndex"),
+      cstr!("Variable to hold the row index, to be used within Rows."),
+      INT_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+  ];
+}
+
+impl Default for Table {
+  fn default() -> Self {
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
+    let mut row_index = ParamVar::default();
+    row_index.set_name("Table.RowIndex");
+    Self {
+      parents,
+      requiring: Vec::new(),
+      rows: ParamVar::default(),
+      columns: ParamVar::default(),
+      striped: ParamVar::default(),
+      resizable: ParamVar::default(),
+      row_index,
+      shards: Vec::new(),
+      header_shards: Vec::new(),
+      exposing: Vec::new(),
+    }
+  }
+}
+
+impl Shard for Table {
+  fn registerName() -> &'static str
+  where
+    Self: Sized,
+  {
+    cstr!("UI.Table")
+  }
+
+  fn hash() -> u32
+  where
+    Self: Sized,
+  {
+    compile_time_crc32::crc32!("UI.Table-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "UI.Table"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Table layout."))
+  }
+
+  fn inputTypes(&mut self) -> &Types {
+    &ANYS_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &Types {
+    &ANYS_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&TABLE_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+    match index {
+      0 => {
+        let seq = Seq::try_from(value)?;
+        for shard in seq.iter() {
+          let mut s = ShardsVar::default();
+          s.set_param(&shard).unwrap();
+          self.shards.push(s);
+        }
+        Ok(self.rows.set_param(value))
+      }
+      1 => {
+        let columns = Seq::try_from(value)?;
+        for column in columns.iter() {
+          let column: crate::types::Table = column.as_ref().try_into()?;
+          if let Some(header) = column.get_static(cstr!("Header")) {
+            match header.valueType {
+              SHType_String => {
+                self.header_shards.push(None);
+              }
+              SHType_ShardRef | SHType_Seq => {
+                let mut s = ShardsVar::default();
+                s.set_param(&header).unwrap();
+                self.header_shards.push(Some(s));
+              }
+              _ => unreachable!(),
+            }
+          } else {
+            self.header_shards.push(None);
+          }
+        }
+        Ok(self.columns.set_param(value))
+      }
+      2 => Ok(self.striped.set_param(value)),
+      3 => Ok(self.resizable.set_param(value)),
+      4 => Ok(self.row_index.set_param(value)),
+      _ => Err("Invalid parameter index"),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.rows.get_param(),
+      1 => self.columns.get_param(),
+      2 => self.striped.get_param(),
+      3 => self.resizable.get_param(),
+      4 => self.row_index.get_param(),
+      _ => Var::default(),
+    }
+  }
+
+  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+    self.requiring.clear();
+
+    // Add UI.Parents to the list of required variables
+    util::require_parents(&mut self.requiring, &self.parents);
+
+    Some(&self.requiring)
+  }
+
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    let mut exposed = false;
+    for s in &self.shards {
+      exposed |= util::expose_contents_variables(&mut self.exposing, s);
+    }
+
+    if exposed {
+      Some(&self.exposing)
+    } else {
+      None
+    }
+  }
+
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    // compose header shards
+    for header_shard in &mut self.header_shards {
+      if let Some(header_shard) = header_shard {
+        header_shard.compose(data)?;
+      }
+    }
+
+    // compose row shards
+    let mut data = *data;
+    let mut shared: ExposedTypes;
+
+    // we need to inject the row index to the inner shards
+    if self.row_index.is_variable() {
+      // clone shared into a new vector we can append things to
+      shared = data.shared.into();
+      let mut should_expose = true;
+      for var in &shared {
+        let (a, b) = unsafe {
+          (
+            CStr::from_ptr(var.name),
+            CStr::from_ptr(self.row_index.get_name()),
+          )
+        };
+        if CStr::cmp(a, b) == Ordering::Equal {
+          should_expose = false;
+          if var.exposedType.basicType != SHType_Int {
+            return Err("Table: int variable required.");
+          }
+          break;
+        }
+      }
+
+      if should_expose {
+        // expose row index
+        let index_info = ExposedInfo {
+          exposedType: common_type::int,
+          name: self.row_index.get_name(),
+          help: cstr!("The row index.").into(),
+          isMutable: false,
+          isProtected: false,
+          isTableEntry: false,
+          global: false,
+          isPushTable: false,
+        };
+        shared.push(index_info);
+        // update shared
+        data.shared = (&shared).into();
+      }
+    }
+
+    let input_type = data.inputType;
+    let slice = unsafe {
+      let ptr = input_type.details.seqTypes.elements;
+      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+    };
+    let element_type = if !slice.is_empty() {
+      slice[0]
+    } else {
+      common_type::any
+    };
+
+    for s in &mut self.shards {
+      data.inputType = element_type;
+      s.compose(&data)?;
+    }
+
+    // Always passthrough the input
+    Ok(input_type)
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.parents.warmup(ctx);
+
+    self.rows.warmup(ctx);
+    self.columns.warmup(ctx);
+    self.striped.warmup(ctx);
+    self.resizable.warmup(ctx);
+    self.row_index.warmup(ctx);
+
+    if self.row_index.is_variable() {
+      self.row_index.get_mut().valueType = common_type::int.basicType;
+    }
+
+    for s in &mut self.shards {
+      s.warmup(ctx)?;
+    }
+    for s in &mut self.header_shards {
+      if let Some(s) = s {
+        s.warmup(ctx)?;
+      }
+    }
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    for s in &mut self.header_shards {
+      if let Some(s) = s {
+        s.cleanup();
+      }
+    }
+    for s in &mut self.shards {
+      s.cleanup();
+    }
+    self.row_index.cleanup();
+    self.resizable.cleanup();
+    self.striped.cleanup();
+    self.columns.cleanup();
+    self.rows.cleanup();
+
+    self.parents.cleanup();
+    Ok(())
+  }
+
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+      ui.push_id(EguiId::new(self, 0), |ui| {
+        use egui_extras::{Size, TableBuilder};
+
+        let seq = Seq::try_from(input)?;
+        let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
+        // start building a table
+        let mut builder =
+          TableBuilder::new(ui).cell_layout(egui::Layout::left_to_right(egui::Align::Center));
+        let striped = self.striped.get();
+        if !striped.is_none() {
+          builder = builder.striped(striped.try_into()?);
+        }
+        let resizable = self.resizable.get();
+        if !resizable.is_none() {
+          builder = builder.resizable(resizable.try_into()?);
+        }
+        // configure columns
+        let columns = self.columns.get();
+        let table = if !columns.is_none() {
+          let columns: Seq = columns.try_into()?;
+          for column in columns.iter() {
+            let column: crate::types::Table = column.as_ref().try_into()?;
+            let mut size = if let Some(initial) = column.get_static(cstr!("Initial")) {
+              Size::initial(initial.try_into()?)
+            } else {
+              Size::remainder()
+            };
+            if let Some(at_least) = column.get_static(cstr!("AtLeast")) {
+              size = size.at_least(at_least.try_into()?);
+            }
+            if let Some(at_most) = column.get_static(cstr!("AtMost")) {
+              size = size.at_most(at_most.try_into()?);
+            }
+            builder = builder.column(size);
+          }
+          // add unconfigured columns
+          for _ in columns.len()..self.shards.len() {
+            builder = builder.column(Size::remainder());
+          }
+          // column headers
+          builder.header(20.0, |mut header_row| {
+            for i in 0..columns.len() {
+              let column: crate::types::Table = columns[i].as_ref().try_into().unwrap();
+              if let Some(header) = column.get_static(cstr!("Header")) {
+                match header.valueType {
+                  SHType_String => {
+                    header_row.col(|ui| {
+                      let text: &str = header.try_into().unwrap_or("");
+                      ui.heading(text);
+                    });
+                  }
+                  SHType_ShardRef | SHType_Seq => {
+                    if let Some(header_shard) = &mut self.header_shards[i] {
+                      header_row.col(|ui| {
+                        let _ = util::activate_ui_contents(
+                          context,
+                          input,
+                          ui,
+                          &mut self.parents,
+                          header_shard,
+                        );
+                      });
+                    } else {
+                      header_row.col(|_| {});
+                    }
+                  }
+                  _ => unreachable!(),
+                }
+              } else {
+                header_row.col(|_| {});
+              }
+            }
+          })
+        } else {
+          // fallback to default columns with no header
+          for _ in 0..seq.len() {
+            builder = builder.column(Size::remainder());
+          }
+          builder.header(0.0, |_| {})
+        };
+        // populate rows
+        table.body(|body| {
+          body.rows(text_height, seq.len(), |row_index, mut row| {
+            if self.row_index.is_variable() {
+              let var: &mut i64 = self.row_index.get_mut().try_into().unwrap();
+              *var = row_index as i64;
+            }
+            for s in &mut self.shards {
+              row.col(|ui| {
+                let _ =
+                  util::activate_ui_contents(context, &seq[row_index], ui, &mut self.parents, s);
+              });
+            }
+          })
+        });
+
+        Ok::<(), &str>(())
+      })
+      .inner?;
+
+      // Always passthrough the input
+      Ok(*input)
+    } else {
+      Err("No UI parent")
+    }
+  }
+}

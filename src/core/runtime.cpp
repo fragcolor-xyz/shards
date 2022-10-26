@@ -835,7 +835,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
         for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
           for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
             if (receiverType.seqTypes.elements[j].basicType == SHType::Any ||
-                inputType.seqTypes.elements[i] == receiverType.seqTypes.elements[j])
+                matchTypes(inputType.seqTypes.elements[i], receiverType.seqTypes.elements[j], isParameter, strict))
               goto matched;
           }
           return false;
