@@ -4,9 +4,6 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/shards-lang/json.git
-[submodule "deps/imgui_club"]
-	path = deps/imgui_club
-	url = https://github.com/shards-lang/imgui_club.git
 [submodule "kcp"]
 	path = deps/kcp
 	url = https://github.com/shards-lang/kcp.git
@@ -28,9 +25,6 @@
 [submodule "deps/SDL"]
 	path = deps/SDL
 	url = https://github.com/shards-lang/SDL-org.git
-[submodule "deps/implot"]
-	path = deps/implot
-	url = https://github.com/shards-lang/implot.git
 [submodule "deps/filesystem"]
 	path = deps/filesystem
 	url = https://github.com/shards-lang/filesystem.git
@@ -67,9 +61,6 @@
 [submodule "deps/pareto"]
 	path = deps/pareto
 	url = https://github.com/shards-lang/pareto.git
-[submodule "deps/imguizmo"]
-	path = deps/imguizmo
-	url = https://github.com/shards-lang/ImGuizmo.git
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/shards-lang/brotli.git
@@ -79,9 +70,6 @@
 [submodule "src/gfx/wgpu-native"]
 	path = src/gfx/rust/wgpu-native
 	url = https://github.com/shards-lang/wgpu-native.git
-[submodule "deps/imgui"]
-	path = deps/imgui
-	url = https://github.com/ocornut/imgui.git
 [submodule "cmake/android-cmake"]
 	path = cmake/android-cmake
 	url = https://github.com/guusw/android-cmake.git

@@ -11,7 +11,6 @@
 #include <shards.hpp>
 
 namespace gfx {
-struct ImGuiRenderer;
 struct Window;
 struct Renderer;
 
@@ -22,7 +21,6 @@ struct MainWindowGlobals {
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
   std::shared_ptr<Renderer> renderer;
-  std::shared_ptr<ImGuiRenderer> imgui;
   std::vector<SDL_Event> events;
   shards::input::InputStack inputStack;
 

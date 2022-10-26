@@ -16,7 +16,6 @@
 #include <gfx/gltf/gltf.hpp>
 #include <gfx/gizmos/shapes.hpp>
 #include <gfx/gizmos/translation_gizmo.hpp>
-#include <gfx/imgui/imgui.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/mesh.hpp>
@@ -60,7 +59,6 @@ struct App {
 
   ViewPtr view;
   std::shared_ptr<Renderer> renderer;
-  std::shared_ptr<ImGuiRenderer> imgui;
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
@@ -85,14 +83,6 @@ struct App {
     context.init(window, contextOptions);
 
     renderer = std::make_shared<Renderer>(context);
-    imgui = std::make_shared<ImGuiRenderer>(context);
-    {
-      auto &io = ImGui::GetIO();
-      io.Fonts->Clear();
-      ImFontConfig config{};
-      config.SizePixels = std::floor(13.0f * 1.5f);
-      io.Fonts->AddFontDefault(&config);
-    }
 
     view = std::make_shared<View>();
     view->view = linalg::lookat_matrix(float3(3.0f, 3.0f, 3.0f), float3(0, 0, 0), float3(0, 1, 0));
@@ -182,34 +172,8 @@ struct App {
     renderer->render(view, pipelineSteps);
   }
 
-  void renderDebugInfoWindow() {
-    if (ImGui::Begin("Debug Info")) {
-      static MovingAverage ma(16);
-      ma.add(deltaTime);
-      ImGui::LabelText("FPS", "%.2f", 1.0f / ma.getAverage());
-
-      int2 outputSize = context.getMainOutputSize();
-      ImGui::LabelText("Main Output Size", "%d x %d", outputSize.x, outputSize.y);
-      ImGui::LabelText("Main Output Format", "%s", magic_enum::enum_name(context.getMainOutputFormat()).data());
-
-      auto &io = ImGui::GetIO();
-      ImGui::LabelText("io.MouseDelta", "(%.2f, %.2f)", io.MouseDelta.x, io.MouseDelta.x);
-      ImGui::LabelText("io.MousePos", "(%.2f, %.2f)", io.MousePos.x, io.MousePos.x);
-      ImGui::LabelText("io.MouseDown", "%d %d %d %d %d", io.MouseDown[0], io.MouseDown[1], io.MouseDown[2], io.MouseDown[3],
-                       io.MouseDown[4]);
-    }
-    ImGui::End();
-  }
-
   void layoutUI() {
-    renderDebugInfoWindow();
-
-    ImGuiIO &io = ImGui::GetIO();
     ConsumeEventFilter consumeEvents = ConsumeEventFilter::None;
-    if (io.WantCaptureMouse)
-      consumeEvents = consumeEvents | ConsumeEventFilter::PointerDown;
-    if (io.WantCaptureKeyboard)
-      consumeEvents = consumeEvents | ConsumeEventFilter::Keyboard | ConsumeEventFilter::Controller;
     inputBuffer.consumeEvents(consumeEvents);
   }
 

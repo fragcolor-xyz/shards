@@ -220,12 +220,6 @@ jobs:
         with:
           working-directory: ./build
           run: ./shards ../src/tests/gfx-materials.edn
-      - name: Test Headless (imgui_demo)
-        uses: shards-lang/xvfb-action@master
-        if: ${{ false }} # Failed to create vulkan backend on github runner
-        with:
-          working-directory: ./build
-          run: ./shards ../src/tests/imgui-demo.edn
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
