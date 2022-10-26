@@ -87,7 +87,7 @@ public:                                                         \
                                                                 \
 public:                                                         \
   void set_##_name(const _type &_name) { this->_name = _name; } \
-  void clear_##_name(const _type &_name) { this->_name.reset(); }
+  void clear_##_name() { this->_name.reset(); }
 #include "pipeline_states.def"
 
 public:
@@ -162,8 +162,8 @@ struct NamedTextureParam {
 
 struct FeatureCallbackContext {
   Context &context;
-  View *view = nullptr;
-  Drawable *drawable = nullptr;
+  const View *view = nullptr;
+  const Drawable *drawable = nullptr;
 };
 
 typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;

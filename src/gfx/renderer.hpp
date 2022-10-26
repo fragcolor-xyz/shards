@@ -5,35 +5,49 @@
 #include "gfx_wgpu.hpp"
 #include "linalg.hpp"
 #include "pipeline_step.hpp"
+#include "view_stack.hpp"
 #include <functional>
 #include <memory>
 
 namespace gfx {
 
-// Instance that caches render pipelines
 struct RendererImpl;
+
+/// Instance that caches render pipelines
+/// <div rustbindgen opaque></div>
 struct Renderer {
   std::shared_ptr<RendererImpl> impl;
 
+  /// <div rustbindgen hide></div>
   struct MainOutput {
-    WGPUTextureView view;
-    WGPUTextureFormat format;
-    int2 size;
+    TexturePtr texture;
   };
 
 public:
+  /// <div rustbindgen hide></div>
   Renderer(Context &context);
 
   Context &getContext();
 
+  /// <div rustbindgen hide></div>
   void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps);
+
+  /// <div rustbindgen hide></div>
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);
+
+  /// <div rustbindgen hide></div>
   void setMainOutput(const MainOutput &output);
 
+  ViewStack &getViewStack();
+
+  /// <div rustbindgen hide></div>
   void beginFrame();
+
+  /// <div rustbindgen hide></div>
   void endFrame();
 
-  // Flushes rendering and cleans up all cached data kept by the renderer
+  /// Flushes rendering and cleans up all cached data kept by the renderer
+  /// <div rustbindgen hide></div>
   void cleanup();
 };
 

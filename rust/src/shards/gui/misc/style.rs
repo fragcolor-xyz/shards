@@ -6,7 +6,7 @@ use crate::shard::Shard;
 use crate::shards::gui::misc::style_util;
 use crate::shards::gui::util;
 use crate::shards::gui::ANY_TABLE_SLICE;
-use crate::shards::gui::CONTEXT_NAME;
+use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHColor;
@@ -39,7 +39,7 @@ macro_rules! apply_style {
 impl Default for Style {
   fn default() -> Self {
     let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXT_NAME);
+    ctx.set_name(CONTEXTS_NAME);
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {

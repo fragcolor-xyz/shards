@@ -17,7 +17,7 @@ struct Graph {
   std::vector<Node> nodes;
 };
 
-bool topologicalSort(const Graph &graph, std::vector<std::set<size_t>> &incomingEdgesPerNode,
+inline bool topologicalSort(const Graph &graph, std::vector<std::set<size_t>> &incomingEdgesPerNode,
                      std::vector<std::set<size_t>> &outgoingEdgesPerNode, std::vector<size_t> &sorted) {
   // Implement Kahn's algorithm
   size_t numNodes = graph.nodes.size();
@@ -63,7 +63,7 @@ bool topologicalSort(const Graph &graph, std::vector<std::set<size_t>> &incoming
 }
 
 // returns true if able to sort the graph, false if the graph contains cycles
-bool topologicalSort(const Graph &graph, std::vector<size_t> &sorted) {
+inline bool topologicalSort(const Graph &graph, std::vector<size_t> &sorted) {
   size_t numNodes = graph.nodes.size();
   std::vector<std::set<size_t>> incomingEdgesPerNode;
   std::vector<std::set<size_t>> outgoingEdgesPerNode;

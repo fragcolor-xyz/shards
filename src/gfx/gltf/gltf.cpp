@@ -353,14 +353,18 @@ struct Loader {
       TexturePtr &texture = textureMap[i];
       texture = std::make_shared<Texture>();
 
-      TextureFormat format = convertTextureFormat(gltfImage);
       SamplerState samplerState{};
       if (gltfTexture.sampler >= 0) {
-        convertSampler(model.samplers[gltfTexture.sampler]);
+        samplerState = convertSampler(model.samplers[gltfTexture.sampler]);
       }
 
       int2 resolution(gltfImage.width, gltfImage.height);
-      texture->init(format, resolution, samplerState, ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()));
+      texture->init(TextureDesc{
+          .format = convertTextureFormat(gltfImage),
+          .resolution = resolution,
+          .samplerState = samplerState,
+          .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+      });
     }
   }
 

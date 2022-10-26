@@ -1,6 +1,7 @@
 #include "../gfx.hpp"
 #include <gfx/texture.hpp>
 #include <gfx/error_utils.hpp>
+#include <gfx/render_target.hpp>
 #include <params.hpp>
 #include <stdexcept>
 
@@ -49,13 +50,10 @@ struct TextureShard {
 
     auto &image = input.payload.imageValue;
 
-    if (!texture)
+    if (!texture) {
       texture = std::make_shared<Texture>();
-
-    textureVar.valueType = SHType::Object;
-    textureVar.payload.objectTypeId = Types::TextureTypeId;
-    textureVar.payload.objectVendorId = gfx::VendorId;
-    textureVar.payload.objectValue = &texture;
+      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+    }
 
     ComponentType componentType;
     TextureType asType;
@@ -166,11 +164,91 @@ struct TextureShard {
 
     // Copy the data since we can't keep a reference to the image variable
     ImmutableSharedBuffer isb(image.data, imageSize);
-    texture->init(format, int2(image.width, image.height), SamplerState(), std::move(isb));
+    texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
 
     return textureVar;
   }
 };
 
-void registerTextureShards() { REGISTER_SHARD("GFX.Texture", TextureShard); }
+struct RenderTargetShard {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::RenderTarget; }
+  static SHOptionalString help() {
+    return SHCCSTR("Defines a new default render target with \"main\" (color) and \"depth\" attachments");
+  }
+
+  SHRenderTarget renderTarget;
+  OwnedVar renderTargetVar{};
+
+  RenderTargetShard() {}
+
+  PARAM_IMPL(RenderTargetShard);
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    bool isInitialized = renderTargetVar.valueType == SHType::Object;
+    if (!isInitialized) {
+      static std::atomic<uint32_t> counter;
+      std::string id = fmt::format("shardsRenderTarget{}", counter++);
+      auto &vt = renderTarget.renderTarget = std::make_shared<RenderTarget>(id.c_str());
+      vt->configure("main", WGPUTextureFormat_RGBA8Unorm);
+      vt->configure("depth", WGPUTextureFormat_Depth32Float);
+
+      renderTargetVar = Var::Object(&renderTarget, gfx::VendorId, Types::RenderTargetTypeId);
+    }
+
+    return renderTargetVar;
+  }
+};
+
+struct RenderTargetTextureShard {
+  static SHTypesInfo inputTypes() { return Types::RenderTarget; }
+  static SHTypesInfo outputTypes() { return Types::Texture; }
+  static SHOptionalString help() { return SHCCSTR("Retrieve a named attachment from a render target"); }
+
+  PARAM_PARAMVAR(_nameVar, "Name", "Name of the attachment to retrieve", {CoreInfo::StringOrNone})
+  PARAM_IMPL(RenderTargetTextureShard, PARAM_IMPL_FOR(_nameVar));
+
+  TexturePtr texture;
+  OwnedVar textureVar;
+
+  std::string _name;
+  bool isNameStatic = false;
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    isNameStatic = !_nameVar.isVariable();
+    if (isNameStatic) {
+      if (_nameVar->valueType == SHType::String) {
+        _name = (const char *)Var(_nameVar.get());
+      } else {
+        _name = "main";
+      }
+    }
+  }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &renderTarget = *varAsObjectChecked<RenderTargetPtr>(input, Types::RenderTarget);
+
+    if (!isNameStatic) {
+      _name = (const char *)(Var(_nameVar.get()));
+    }
+
+    texture = renderTarget->getAttachment(_name);
+    textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+
+    return textureVar;
+  }
+};
+
+void registerTextureShards() {
+  REGISTER_SHARD("GFX.Texture", TextureShard);
+  REGISTER_SHARD("GFX.RenderTarget", RenderTargetShard);
+  REGISTER_SHARD("GFX.RenderTargetTexture", RenderTargetTextureShard);
+}
 } // namespace gfx

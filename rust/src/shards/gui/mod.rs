@@ -47,19 +47,15 @@ static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
-const TextureCC: i32 = fourCharacterCode(*b"tex_");
-
 lazy_static! {
   static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
   static ref GFX_QUEUE_TYPE: Type = unsafe { *shardsc::gfx_getQueueType() };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
-  static ref TEXTURE_TYPE: Type = Type::object(FRAG_CC, TextureCC);
-  static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
 }
 
-const CONTEXT_NAME: &str = "UI.Context";
+const CONTEXTS_NAME: &str = "UI.Contexts";
 const PARENTS_UI_NAME: &str = "UI.Parents";
 
 #[derive(Hash)]
@@ -94,6 +90,7 @@ mod context;
 mod layouts;
 mod menus;
 mod misc;
+mod properties;
 mod util;
 mod widgets;
 
@@ -216,4 +213,5 @@ pub fn registerShards() {
   menus::registerShards();
   misc::registerShards();
   widgets::registerShards();
+  properties::registerShards();
 }

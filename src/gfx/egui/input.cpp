@@ -65,143 +65,161 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
   };
 }
 
-const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vector<SDL_Event> &sdlEvents, Window &window,
-                                                                 double time, float deltaTime, float scalingFactor) {
-  using egui::InputEvent;
-  using egui::InputEventType;
-
-  reset();
-
+void EguiInputTranslator::setupWindowInput(Window &window, int4 mappedWindowRegion, int2 viewportSize, float scalingFactor) {
+  // UI Points per pixel
   float eguiDrawScale = EguiRenderer::getDrawScale(window) * scalingFactor;
+
+  // Drawable/Window scale
   float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
-  float2 windowToEguiScale = drawableScale / eguiDrawScale;
-  float2 eguiScreenSize = window.getDrawableSize() / eguiDrawScale;
+  windowToEguiScale = drawableScale / eguiDrawScale;
+
+  // Convert from pixel to window coordinates
+  this->mappedWindowRegion = int4(float4(mappedWindowRegion) / float4(drawableScale.x, drawableScale.y, drawableScale.x, drawableScale.y));
+
+  // Take viewport size and scale it by the draw scale
+  float2 viewportSizeFloat = float2(float(viewportSize.x), float(viewportSize.y));
+  float2 eguiScreenSize = viewportSizeFloat / eguiDrawScale;
 
   input.screenRect = egui::Rect{
       .min = egui::Pos2{0, 0},
       .max = egui::Pos2{eguiScreenSize.x, eguiScreenSize.y},
   };
   input.pixelsPerPoint = eguiDrawScale;
+}
 
-  auto newEvent = [&](egui::InputEventType type) -> InputEvent & {
-    InputEvent &event = events.emplace_back();
-    event.common.type = type;
-    return event;
-  };
+void EguiInputTranslator::begin(double time, float deltaTime) {
+  reset();
 
   egui::ModifierKeys modifierKeys = translateModifierKeys(SDL_GetModState());
 
+  input.time = time;
+  input.predictedDeltaTime = deltaTime;
+  input.modifierKeys = modifierKeys;
+}
+
+bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
+  using egui::InputEvent;
+  using egui::InputEventType;
+
+  bool handled = false;
+  auto newEvent = [&](egui::InputEventType type) -> InputEvent & {
+    InputEvent &event = events.emplace_back();
+    event.common.type = type;
+    handled = true;
+    return event;
+  };
+
   auto updateCursorPosition = [&](int32_t x, int32_t y) -> const egui::Pos2 & {
-    float2 cursorPosition = float2(x, y) * windowToEguiScale;
+    float2 cursorPosition = float2(x, y);
     return lastCursorPosition = egui::Pos2{.x = cursorPosition.x, .y = cursorPosition.y};
   };
 
-  std::vector<std::function<void()>> deferQueue;
-  for (auto &sdlEvent : sdlEvents) {
-    switch (sdlEvent.type) {
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP: {
-      auto &ievent = sdlEvent.button;
-      auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
-      switch (ievent.button) {
-      case SDL_BUTTON_LEFT:
-        oevent.button = egui::PointerButton::Primary;
-        break;
-      case SDL_BUTTON_MIDDLE:
-        oevent.button = egui::PointerButton::Middle;
-        break;
-      case SDL_BUTTON_RIGHT:
-        oevent.button = egui::PointerButton::Secondary;
-        break;
-      default:
-        // ignore this button
-        events.pop_back();
-        continue;
-        break;
-      }
-      oevent.pressed = ievent.type == SDL_MOUSEBUTTONDOWN;
-      oevent.modifiers = modifierKeys;
-      oevent.pos = updateCursorPosition(ievent.x, ievent.y);
-    }
-    case SDL_MOUSEMOTION: {
-      auto &ievent = sdlEvent.motion;
-      auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
-      oevent.pos = updateCursorPosition(ievent.x, ievent.y);
+  switch (sdlEvent.type) {
+  case SDL_MOUSEBUTTONDOWN:
+  case SDL_MOUSEBUTTONUP: {
+    auto &ievent = sdlEvent.button;
+    auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
+    switch (ievent.button) {
+    case SDL_BUTTON_LEFT:
+      oevent.button = egui::PointerButton::Primary;
+      break;
+    case SDL_BUTTON_MIDDLE:
+      oevent.button = egui::PointerButton::Middle;
+      break;
+    case SDL_BUTTON_RIGHT:
+      oevent.button = egui::PointerButton::Secondary;
+      break;
+    default:
+      // ignore this button
+      events.pop_back();
       break;
     }
-    case SDL_MOUSEWHEEL: {
-      auto &ievent = sdlEvent.wheel;
-      auto &oevent = newEvent(InputEventType::Scroll).scroll;
-      oevent.delta = egui::Pos2{
-          .x = float(ievent.preciseX),
-          .y = float(ievent.preciseY),
-      };
-      break;
+    oevent.pressed = ievent.type == SDL_MOUSEBUTTONDOWN;
+    oevent.modifiers = input.modifierKeys;
+    oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
+    break;
+  }
+  case SDL_MOUSEMOTION: {
+    auto &ievent = sdlEvent.motion;
+    auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
+    oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
+    break;
+  }
+  case SDL_MOUSEWHEEL: {
+    auto &ievent = sdlEvent.wheel;
+    auto &oevent = newEvent(InputEventType::Scroll).scroll;
+    oevent.delta = egui::Pos2{
+        .x = float(ievent.preciseX),
+        .y = float(ievent.preciseY),
+    };
+    break;
+  }
+  case SDL_TEXTEDITING: {
+    auto &ievent = sdlEvent.edit;
+
+    std::string editingText = ievent.text;
+    if (!imeComposing) {
+      imeComposing = true;
+      newEvent(InputEventType::CompositionStart);
     }
-    case SDL_TEXTEDITING: {
-      auto &ievent = sdlEvent.edit;
 
-      std::string editingText = ievent.text;
-      if (!imeComposing) {
-        imeComposing = true;
-        newEvent(InputEventType::CompositionStart);
-      }
+    newEvent(InputEventType::CompositionUpdate);
+    strings.emplace_back(ievent.text);
+    deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
+      events[eventIdx].compositionUpdate.text = strings[stringIdx].c_str();
+    });
+    break;
+  }
+  case SDL_TEXTINPUT: {
+    auto &ievent = sdlEvent.text;
 
-      newEvent(InputEventType::CompositionUpdate);
+    if (imeComposing) {
+      newEvent(InputEventType::CompositionEnd);
       strings.emplace_back(ievent.text);
       deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-        events[eventIdx].compositionUpdate.text = strings[stringIdx].c_str();
+        events[eventIdx].compositionEnd.text = strings[stringIdx].c_str();
       });
-      break;
-    }
-    case SDL_TEXTINPUT: {
-      auto &ievent = sdlEvent.text;
+      imeComposing = false;
+    } else {
+      newEvent(InputEventType::Text);
+      strings.emplace_back(ievent.text);
 
-      if (imeComposing) {
-        newEvent(InputEventType::CompositionEnd);
-        strings.emplace_back(ievent.text);
-        deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-          events[eventIdx].compositionEnd.text = strings[stringIdx].c_str();
-        });
-        imeComposing = false;
-      } else {
-        newEvent(InputEventType::Text);
-        strings.emplace_back(ievent.text);
-
-        deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-          events[eventIdx].text.text = strings[stringIdx].c_str();
-        });
-      }
-      break;
+      deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
+        events[eventIdx].text.text = strings[stringIdx].c_str();
+      });
     }
-    case SDL_KEYDOWN:
-    case SDL_KEYUP: {
-      auto &ievent = sdlEvent.key;
-      auto &oevent = newEvent(InputEventType::Key).key;
-      oevent.key = SDL_KeyCode(ievent.keysym.sym);
-      oevent.pressed = ievent.type == SDL_KEYDOWN;
-      oevent.modifiers = translateModifierKeys(SDL_Keymod(ievent.keysym.mod));
-
-      // Translate cut/copy/paste using the standard keys combos
-      if (ievent.type == SDL_KEYDOWN) {
-        if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_c) {
-          newEvent(InputEventType::Copy);
-        } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_v) {
-          newEvent(InputEventType::Paste);
-
-          strings.emplace_back(SDL_GetClipboardText());
-          deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-            events[eventIdx].paste.str = strings[stringIdx].c_str();
-          });
-        } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_x) {
-          newEvent(InputEventType::Cut);
-        }
-      }
-      break;
-    }
-    }
+    break;
   }
+  case SDL_KEYDOWN:
+  case SDL_KEYUP: {
+    auto &ievent = sdlEvent.key;
+    auto &oevent = newEvent(InputEventType::Key).key;
+    oevent.key = SDL_KeyCode(ievent.keysym.sym);
+    oevent.pressed = ievent.type == SDL_KEYDOWN;
+    oevent.modifiers = translateModifierKeys(SDL_Keymod(ievent.keysym.mod));
 
+    // Translate cut/copy/paste using the standard keys combos
+    if (ievent.type == SDL_KEYDOWN) {
+      if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_c) {
+        newEvent(InputEventType::Copy);
+      } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_v) {
+        newEvent(InputEventType::Paste);
+
+        strings.emplace_back(SDL_GetClipboardText());
+        deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
+          events[eventIdx].paste.str = strings[stringIdx].c_str();
+        });
+      } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_x) {
+        newEvent(InputEventType::Cut);
+      }
+    }
+    break;
+  }
+  }
+  return handled;
+}
+
+void EguiInputTranslator::end() {
   for (auto &deferred : deferQueue) {
     deferred();
   }
@@ -211,12 +229,24 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const std::vect
 
   input.numDroppedFiles = 0;
   input.numHoveredFiles = 0;
+}
 
-  input.time = time;
-  input.predictedDeltaTime = deltaTime;
-  input.modifierKeys = modifierKeys;
+const egui::Input *EguiInputTranslator::translateFromInputEvents(const EguiInputTranslatorArgs &args) {
+  setupWindowInput(args.window, args.mappedWindowRegion, args.viewportSize, args.scalingFactor);
+  begin(args.time, args.deltaTime);
+  for (const auto &event : args.events)
+    translateEvent(event);
+  end();
+  return getOutput();
+}
 
-  return &input;
+const egui::Input *EguiInputTranslator::getOutput() { return &input; }
+
+egui::Pos2 EguiInputTranslator::translatePointerPos(const egui::Pos2 &pos) {
+  return egui::Pos2{
+      (pos.x - mappedWindowRegion.x) * windowToEguiScale.x,
+      (pos.y - mappedWindowRegion.y) * windowToEguiScale.y,
+  };
 }
 
 void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::Pos2 *pos) {
@@ -257,6 +287,7 @@ void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
 void EguiInputTranslator::reset() {
   strings.clear();
   events.clear();
+  deferQueue.clear();
 }
 
 EguiInputTranslator *EguiInputTranslator::create() { return new EguiInputTranslator(); }

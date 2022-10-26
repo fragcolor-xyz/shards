@@ -29,6 +29,12 @@ struct TestRenderer {
   void createRenderTarget(int2 res = int2(1280, 720));
   void cleanupRenderTarget();
 
+  int2 getOutputSize() const {
+    if (!context->isHeadless())
+      return context->getMainOutputSize();
+    return rtSize;
+  }
+
   TestFrame getTestFrame();
 
   TestData getTestData() { return TestData(TestPlatformId::get(*context.get())); }

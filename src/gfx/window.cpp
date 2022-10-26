@@ -62,10 +62,12 @@ void Window::cleanup() {
 void Window::pollEvents(std::vector<SDL_Event> &events) {
   events.clear();
   SDL_Event event;
-  while (SDL_PollEvent(&event)) {
+  while (pollEvent(event)) {
     events.push_back(event);
   }
 }
+
+bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 
 void *Window::getNativeWindowHandle() {
 #if GFX_APPLE

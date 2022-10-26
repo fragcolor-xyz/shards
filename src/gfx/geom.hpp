@@ -82,6 +82,23 @@ struct CylinderGenerator : public GeneratorBase {
   void generate();
 };
 
+struct QuadGenerator : public GeneratorBase {
+  float2 min = float2(-1, -1);
+  float2 max = float2(1, 1);
+  float2 uvMin = float2(0, 1);
+  float2 uvMax = float2(1, 0);
+
+  // Generate a single triangle
+  // that when clipped will match a fullscreen quad with the same parameters
+  bool optimizeForFullscreen = false;
+
+  void generate();
+
+private:
+  void generateFullscreenTriangle();
+  void generateQuad();
+};
+
 } // namespace geom
 } // namespace gfx
 

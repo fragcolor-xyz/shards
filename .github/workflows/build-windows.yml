@@ -205,7 +205,7 @@ jobs:
         run: |
           cd build
           ninja test-gfx
-          GFX_BACKEND=D3D12 GFX_TEST_PLATFORM_ID="github-windows" ./test-gfx
+          GFX_BACKEND=D3D12 ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -216,7 +216,7 @@ jobs:
         if: failure()
         with:
           name: ${{ steps.setup.outputs.artifact }} rejected test data
-          path: src/gfx/tests/data/github-windows/rejected
+          path: src/gfx/tests/data/default/rejected
           if-no-files-found: ignore
 
   #

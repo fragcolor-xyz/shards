@@ -11,21 +11,49 @@ namespace gfx {
 namespace features {
 
 struct Transform {
-  static inline FeaturePtr create() {
+  static inline FeaturePtr create(bool applyView = true, bool applyProjection = true) {
     using namespace shader;
     using namespace shader::blocks;
 
     FeaturePtr feature = std::make_shared<Feature>();
 
-    auto vec4Pos = makeCompoundBlock("vec4<f32>(", ReadInput("position"), ".xyz, 1.0)");
+    auto vec4Pos = std::make_unique<blocks::Custom>([&](shader::GeneratorContext &ctx) {
+      ctx.write("vec4<f32>(");
+      ctx.readInput("position");
+      auto it = ctx.inputs.find("position");
+      if (it != ctx.inputs.end()) {
+        auto &type = it->second;
+        switch (type.numComponents) {
+        case 2:
+          ctx.write(".xy, 0.0, 1.0)");
+          break;
+        case 3:
+          ctx.write(".xyz, 1.0)");
+          break;
+        default:
+          ctx.pushError(formatError("Unsupported position type"));
+          break;
+        }
+      }
+    });
 
     feature->shaderEntryPoints.emplace_back(
         "initWorldPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", vec4Pos->clone()));
-    auto &initScreenPosition = feature->shaderEntryPoints.emplace_back(
-        "initScreenPosition", ProgrammableGraphicsStage::Vertex,
-        WriteGlobal("screenPosition", FieldTypes::Float4, ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*",
-                    ReadBuffer("view", FieldTypes::Float4x4, "view"), "*", ReadGlobal("worldPosition")));
+        WriteGlobal("worldPosition", FieldTypes::Float4, ReadBuffer("world", FieldTypes::Float4x4), "*", std::move(vec4Pos)));
+
+    auto screenPosition = makeCompoundBlock();
+    if (applyProjection) {
+      screenPosition->append(ReadBuffer("proj", FieldTypes::Float4x4, "view"), "*");
+    }
+    if (applyView) {
+      screenPosition->append(ReadBuffer("view", FieldTypes::Float4x4, "view"), "*");
+    }
+    screenPosition->append(ReadGlobal("worldPosition"));
+
+    auto &initScreenPosition =
+        feature->shaderEntryPoints.emplace_back("initScreenPosition", ProgrammableGraphicsStage::Vertex,
+                                                WriteGlobal("screenPosition", FieldTypes::Float4, std::move(screenPosition)));
+
     initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
     BlockPtr transformNormal = blocks::makeCompoundBlock("normalize((", ReadBuffer("worldInvTrans", FieldTypes::Float4x4), "*",

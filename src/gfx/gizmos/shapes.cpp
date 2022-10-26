@@ -347,7 +347,7 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
   drawables.push_back(cap);
 }
 
-void GizmoRenderer::begin(ViewPtr view, int2 viewportSize) {
+void GizmoRenderer::begin(ViewPtr view, float2 viewportSize) {
   this->view = view;
   this->viewportSize = viewportSize;
   shapeRenderer.begin();

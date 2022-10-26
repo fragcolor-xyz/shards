@@ -129,7 +129,12 @@ struct TextureManager {
       imageCopy(fmt.pixelFormat, srcFormat, imageData.data(), set.pixels, size.x * size.y);
     }
 
-    texture->init(fmt, size, sampler, std::move(imageData));
+    texture->init(TextureDesc{
+        .format = fmt,
+        .resolution = size,
+        .samplerState = sampler,
+        .data = std::move(imageData),
+    });
   }
 
   void free(egui::TextureId id) { textures.erase(id.id); }
@@ -163,7 +168,8 @@ struct EguiRendererImpl {
 };
 
 EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
-void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {
+
+void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue) {
   impl->meshPool.reset();
   impl->processPendingTextureFrees();
 
@@ -184,6 +190,7 @@ void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePt
                  prim.numIndices * sizeof(uint32_t));
 
     DrawablePtr drawable = std::make_shared<Drawable>(mesh);
+    drawable->transform = rootTransform;
     TexturePtr texture = impl->textures.get(prim.textureId);
     if (texture) {
       drawable->parameters.set("color", texture);
@@ -203,6 +210,10 @@ void EguiRenderer::render(const egui::FullOutput &output, const gfx::DrawQueuePt
     auto &id = textureUpdates.frees[i];
     impl->addPendingTextureFree(id);
   }
+}
+
+void EguiRenderer::renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {
+  render(output, linalg::identity, drawQueue);
 }
 
 EguiRenderer *EguiRenderer::create() { return new EguiRenderer(); }

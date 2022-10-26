@@ -32,6 +32,12 @@ typedef std::shared_ptr<Material> MaterialPtr;
 struct Texture;
 typedef std::shared_ptr<Texture> TexturePtr;
 
+struct RenderTargetAttachment;
+typedef std::shared_ptr<RenderTargetAttachment> RenderTargetAttachmentPtr;
+
+struct RenderTarget;
+typedef std::shared_ptr<RenderTarget> RenderTargetPtr;
+
 } // namespace gfx
 
 #endif // GFX_FWD

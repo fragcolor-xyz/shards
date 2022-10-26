@@ -28,6 +28,7 @@
 #include <gfx/view.hpp>
 #include <gfx/window.hpp>
 #include <gfx/moving_average.hpp>
+#include <input/input.hpp>
 #include <magic_enum.hpp>
 #include <memory>
 #include <random>
@@ -36,6 +37,8 @@
 #include <log/log.hpp>
 
 using namespace gfx;
+using shards::input::ConsumeEventFilter;
+using shards::input::InputBuffer;
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -70,6 +73,7 @@ struct App {
   gizmos::TranslationGizmo translationGizmo1;
 
   DrawableHierarchyPtr duck;
+  InputBuffer inputBuffer;
 
   App() {}
 
@@ -101,7 +105,7 @@ struct App {
     duck = loadGltfFromFile(glbPath.string().c_str());
 
     pipelineSteps = {
-        makeDrawablePipelineStep(RenderDrawablesStep{
+        makePipelineStep(RenderDrawablesStep{
             .drawQueue = queue,
             .features =
                 {
@@ -109,13 +113,14 @@ struct App {
                     features::BaseColor::create(),
                 },
         }),
-        makeDrawablePipelineStep(RenderDrawablesStep{
+        makePipelineStep(RenderDrawablesStep{
             .drawQueue = editorQueue,
             .features =
                 {
                     features::Transform::create(),
                     features::BaseColor::create(),
                 },
+            .forceDepthClear = false,
         }),
     };
 
@@ -129,10 +134,29 @@ struct App {
     translationGizmo1.transform = linalg::mul(linalg::translation_matrix(float3(1, 0, 0)), translationGizmo1.transform);
   }
 
-  void renderFrame(float time, float deltaTime) {
-    renderer->beginFrame();
+  int2 mousePos{};
+  uint32_t mouseButtonState{};
+  void updateGizmoInput() {
+    for (auto &event : inputBuffer) {
+      if (event.type == SDL_MOUSEMOTION) {
+        mousePos.x = event.motion.x;
+        mousePos.y = event.motion.y;
+      } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+        mousePos.x = event.button.x;
+        mousePos.y = event.button.y;
+        if (event.button.state == SDL_PRESSED)
+          mouseButtonState |= SDL_BUTTON(event.button.button);
+        else
+          mouseButtonState &= ~SDL_BUTTON(event.button.button);
+      }
+    }
 
-    // queue->add(duck);
+    gizmoInputState.pressed = (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+    gizmoInputState.cursorPosition = float2(mousePos);
+    gizmoInputState.viewSize = float2(window.getSize());
+  }
+
+  void renderFrame(float time, float deltaTime) {
     const float3 p = float3(0, 3, 3);
 
     float4 q = linalg::rotation_quat(float3(0, 1, 0), time * 0.1f);
@@ -140,9 +164,11 @@ struct App {
 
     view->view = linalg::lookat_matrix(p1, float3(0, 0, 0), float3(0, 1, 0));
 
+    updateGizmoInput();
+
     gizmoContext.begin(gizmoInputState, view);
 
-    // gizmoContext.updateGizmo(translationGizmo0);
+    gizmoContext.updateGizmo(translationGizmo0);
     gizmoContext.updateGizmo(translationGizmo1);
 
     // Axis lines
@@ -154,7 +180,6 @@ struct App {
     gizmoContext.end(editorQueue);
 
     renderer->render(view, pipelineSteps);
-    renderer->endFrame();
   }
 
   void renderDebugInfoWindow() {
@@ -176,60 +201,52 @@ struct App {
     ImGui::End();
   }
 
-  void renderUI(const std::vector<SDL_Event> &events) {
-    imgui->beginFrame(events);
+  void layoutUI() {
     renderDebugInfoWindow();
 
-    imgui->endFrame();
+    ImGuiIO &io = ImGui::GetIO();
+    ConsumeEventFilter consumeEvents = ConsumeEventFilter::None;
+    if (io.WantCaptureMouse)
+      consumeEvents = consumeEvents | ConsumeEventFilter::PointerDown;
+    if (io.WantCaptureKeyboard)
+      consumeEvents = consumeEvents | ConsumeEventFilter::Keyboard | ConsumeEventFilter::Controller;
+    inputBuffer.consumeEvents(consumeEvents);
   }
 
   void runMainLoop() {
     bool quit = false;
-    int2 mousePos{};
-    uint32_t mouseButtonState{};
 
     while (!quit) {
       if (loop.beginFrame(1.0f / 120.0f, deltaTime)) {
-        std::vector<SDL_Event> events;
-        window.pollEvents(events);
-        for (auto &event : events) {
+        inputBuffer.clear();
+        window.pollEventsForEach([&](auto evt) { inputBuffer.push_back(evt); });
+        for (auto &event : inputBuffer) {
           if (event.type == SDL_WINDOWEVENT) {
             if (event.window.type == SDL_WINDOWEVENT_SIZE_CHANGED) {
             }
           }
           if (event.type == SDL_QUIT)
             quit = true;
-
-          if (event.type == SDL_MOUSEMOTION) {
-            mousePos.x = event.motion.x;
-            mousePos.y = event.motion.y;
-          } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
-            mousePos.x = event.button.x;
-            mousePos.y = event.button.y;
-            if (event.button.state == SDL_PRESSED)
-              mouseButtonState |= SDL_BUTTON(event.button.button);
-            else
-              mouseButtonState &= ~SDL_BUTTON(event.button.button);
-          }
         }
 
         context.resizeMainOutputConditional(window.getDrawableSize());
 
-        gizmoInputState.pressed = (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
-        gizmoInputState.cursorPosition = float2(mousePos);
-        gizmoInputState.viewSize = window.getSize();
-
         if (context.beginFrame()) {
           renderer->beginFrame();
+          imgui->beginFrame(inputBuffer);
 
           queue->clear();
           editorQueue->clear();
+
+          // Process UI input before scene
+          layoutUI();
 
           renderFrame(loop.getAbsoluteTime(), deltaTime);
 
           renderer->endFrame();
 
-          renderUI(events);
+          // Render UI after main render
+          imgui->endFrame();
 
           context.endFrame();
 
@@ -256,5 +273,3 @@ int main() {
   instance.runMainLoop();
   return 0;
 }
-
-#include "imgui/imgui_demo.cpp"

@@ -6,14 +6,18 @@
 #include "isb.hpp"
 #include "linalg.hpp"
 #include <variant>
+#include <optional>
+#include <string>
 
 namespace gfx {
 
 enum class TextureFormatFlags : uint8_t {
   None = 0x0,
   AutoGenerateMips = 0x01,
+  RenderAttachment = 0x02,
 };
-inline bool TextureFormatFlagsContains(TextureFormatFlags left, TextureFormatFlags right) {
+
+inline bool textureFormatFlagsContains(TextureFormatFlags left, TextureFormatFlags right) {
   return ((uint8_t &)left & (uint8_t &)right) != 0;
 }
 
@@ -42,7 +46,7 @@ struct TextureFormat {
   TextureFormatFlags flags = TextureFormatFlags::AutoGenerateMips;
   WGPUTextureFormat pixelFormat = WGPUTextureFormat::WGPUTextureFormat_Undefined;
 
-  bool hasMips() { return TextureFormatFlagsContains(flags, TextureFormatFlags::AutoGenerateMips); }
+  bool hasMips() { return textureFormatFlagsContains(flags, TextureFormatFlags::AutoGenerateMips); }
 };
 
 struct InputTextureFormat {
@@ -52,42 +56,67 @@ struct InputTextureFormat {
 /// <div rustbindgen opaque></div>
 struct TextureContextData : public ContextData {
   TextureFormat format;
-  WGPUTexture texture = nullptr;
-  WGPUTextureView defaultView = nullptr;
-  WGPUSampler sampler;
-
+  WGPUTexture texture{};
+  WGPUTextureView defaultView{};
+  bool isExternalView = false;
+  WGPUSampler sampler{};
   WGPUExtent3D size{};
 
   ~TextureContextData() { releaseContextDataConditional(); }
+
   void releaseContextData() override {
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
-    WGPU_SAFE_RELEASE(wgpuTextureViewRelease, defaultView);
     WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);
+    if (!isExternalView)
+      WGPU_SAFE_RELEASE(wgpuTextureViewRelease, defaultView);
   }
+};
+
+/// <div rustbindgen opaque></div>
+struct TextureDesc {
+  TextureFormat format;
+  int2 resolution;
+  SamplerState samplerState;
+  ImmutableSharedBuffer data;
+
+  // Can wrap an already existing texture if this is passed
+  // it will not be released when the texture object is destroyed
+  std::optional<WGPUTextureView> externalTexture;
+
+  static TextureDesc getDefault();
 };
 
 /// <div rustbindgen opaque></div>
 struct Texture final : public TWithContextData<TextureContextData> {
 private:
-  TextureFormat format;
-  ImmutableSharedBuffer data;
-  SamplerState samplerState;
-  int2 resolution{};
+  TextureDesc desc = TextureDesc::getDefault();
+  std::string label;
 
 public:
-  const TextureFormat &getFormat() const { return format; }
-
   static const InputTextureFormat &getInputFormat(WGPUTextureFormat pixelFormat);
 
-  // Creates a texture
-  void init(const TextureFormat &format, int2 resolution, const SamplerState &samplerState = SamplerState(),
-            const ImmutableSharedBuffer &data = ImmutableSharedBuffer());
+  Texture() = default;
+  Texture(std::string &&label) : label(label) {}
 
-  void setSamplerState(const SamplerState &samplerState);
-  ImmutableSharedBuffer getData() { return data; }
-  int2 getResolution() const { return resolution; }
+  // Creates a texture
+  Texture &init(const TextureDesc &desc);
+  Texture &initWithSamplerState(const SamplerState &samplerState);
+  Texture &initWithResolution(int2 resolution);
+  Texture &initWithFlags(TextureFormatFlags formatFlags);
+  Texture &initWithPixelFormat(WGPUTextureFormat format);
+  /// <div rustbindgen hide></div>
+  Texture &initWithLabel(std::string &&label);
+
+  const std::string &getLabel() const { return label; }
+  const TextureDesc &getDesc() const { return desc; }
+  ImmutableSharedBuffer getData() const { return desc.data; }
+  const TextureFormat &getFormat() const { return desc.format; }
+  int2 getResolution() const { return desc.resolution; }
 
   std::shared_ptr<Texture> clone();
+
+  /// <div rustbindgen hide></div>
+  static std::shared_ptr<Texture> makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
 
 protected:
   void initContextData(Context &context, TextureContextData &contextData);

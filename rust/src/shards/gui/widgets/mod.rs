@@ -14,6 +14,8 @@ use std::ops::Range;
 #[cfg(feature = "hex_viewer")]
 use egui_memory_editor::MemoryEditor;
 
+mod image_util;
+
 /// Clickable button with a text label.
 struct Button {
   parents: ParamVar,
@@ -93,8 +95,13 @@ struct Image {
   parents: ParamVar,
   requiring: ExposedTypes,
   scale: ParamVar,
-  texture: Option<egui::TextureHandle>,
-  prev_ptr: *mut u8,
+  cached_ui_image: image_util::CachedUIImage,
+}
+
+struct RenderTarget {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  scale: ParamVar,
 }
 
 /// Clickable button with an image.
@@ -106,8 +113,7 @@ struct ImageButton {
   selected: ParamVar,
   exposing: ExposedTypes,
   should_expose: bool,
-  texture: Option<egui::TextureHandle>,
-  prev_ptr: *mut u8,
+  cached_ui_image: image_util::CachedUIImage,
 }
 
 /// Displays text.
@@ -246,6 +252,7 @@ mod numeric_input;
 mod numeric_slider;
 mod progress_bar;
 mod radio_button;
+mod render_target;
 mod spinner;
 mod text_input;
 mod text_util;
@@ -260,6 +267,7 @@ pub fn registerShards() {
   registerShard::<Hyperlink>();
   registerShard::<Image>();
   registerShard::<ImageButton>();
+  registerShard::<RenderTarget>();
   registerShard::<Label>();
   registerShard::<Link>();
   registerShard::<ListBox>();

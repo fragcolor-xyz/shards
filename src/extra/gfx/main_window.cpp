@@ -197,6 +197,13 @@ struct MainWindow : public Base {
       }
     }
 
+    // Push root input region
+    auto &inputStack = globals->inputStack;
+    inputStack.reset();
+    inputStack.push(input::InputStack::Item{
+        .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
+    });
+
     float deltaTime = 0.0;
     if (loop.beginFrame(0.0f, deltaTime)) {
       if (context->beginFrame()) {
@@ -217,6 +224,8 @@ struct MainWindow : public Base {
         context->endFrame();
       }
     }
+
+    inputStack.pop();
 
     // Clear context
     contextUserData->shardsContext = nullptr;

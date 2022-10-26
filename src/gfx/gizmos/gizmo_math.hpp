@@ -17,7 +17,7 @@ inline float3 projectOntoAxis(float3 point, float3 axisPoint, float3 axisForward
 // this is used for draging along axis handles
 inline float3 hitOnPlane(float3 eyeLocation, float3 rayDirection, float3 axisPoint, float3 axisForward) {
   float3 planeT0 = axisForward;
-  float3 planeNormal = axisPoint - eyeLocation;
+  float3 planeNormal = eyeLocation - axisPoint;
   planeNormal -= linalg::dot(planeNormal, planeT0) * planeT0;
   planeNormal = linalg::normalize(planeNormal);
 

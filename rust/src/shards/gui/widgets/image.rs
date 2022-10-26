@@ -1,20 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::image_util;
 use super::Image;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::TextureCC;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
-use crate::shards::gui::TEXTURE_OR_IMAGE_TYPES;
-use crate::shards::gui::TEXTURE_TYPE;
-use crate::shardsc::gfx_TexturePtr;
-use crate::shardsc::gfx_TexturePtr_getResolution_ext;
-use crate::shardsc::SHImage;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
-use crate::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -42,8 +36,7 @@ impl Default for Image {
       parents,
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
-      texture: None,
-      prev_ptr: std::ptr::null_mut(),
+      cached_ui_image: Default::default(),
     }
   }
 }
@@ -72,7 +65,7 @@ impl Shard for Image {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &TEXTURE_OR_IMAGE_TYPES
+    &image_util::TEXTURE_OR_IMAGE_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -80,7 +73,7 @@ impl Shard for Image {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &TEXTURE_OR_IMAGE_TYPES
+    &image_util::TEXTURE_OR_IMAGE_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -123,7 +116,9 @@ impl Shard for Image {
       SHType_Image => decl_override_activate! {
         data.activate = Image::image_activate;
       },
-      SHType_Object if unsafe { data.inputType.details.object.typeId } == TextureCC => {
+      SHType_Object
+        if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
+      {
         decl_override_activate! {
           data.activate = Image::texture_activate;
         }
@@ -156,23 +151,12 @@ impl Shard for Image {
 impl Image {
   fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let shimage: &SHImage = input.try_into()?;
-      let ptr = shimage.data;
-      let texture = if ptr != self.prev_ptr {
-        let image: egui::ColorImage = shimage.into();
-        self.prev_ptr = ptr;
-        self.texture.insert(ui.ctx().load_texture(
-          format!("UI.Image: {:p}", shimage.data),
-          image,
-          Default::default(),
-        ))
-      } else {
-        self.texture.as_ref().unwrap()
-      };
+      let texture = self
+        .cached_ui_image
+        .get_egui_texture_from_image(input, ui)?;
 
-      let scale: (f32, f32) = self.scale.get().try_into()?;
-      let scale: egui::Vec2 = scale.into();
-      ui.image(texture, scale * texture.size_vec2());
+      let scale = image_util::get_scale(&self.scale)?;
+      ui.image(texture, texture.size_vec2() * scale);
 
       Ok(*input)
     } else {
@@ -182,17 +166,10 @@ impl Image {
 
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      let ptr = unsafe { input.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u64 };
+      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
 
-      let texture_ptr = Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
-      let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
-
-      let textureId = egui::epaint::TextureId::User(ptr);
-
-      let scale: (f32, f32) = self.scale.get().try_into()?;
-      let size =
-        egui::vec2(texture_res.x as f32, texture_res.y as f32) * egui::vec2(scale.0, scale.1);
-      ui.image(textureId, size);
+      let scale = image_util::get_scale(&self.scale)?;
+      ui.image(texture_id, texture_size * scale);
 
       Ok(*input)
     } else {
@@ -209,32 +186,6 @@ impl Image {
   impl_override_activate! {
     extern "C" fn texture_activate() -> Var {
       Image::activateTexture()
-    }
-  }
-}
-
-impl From<&SHImage> for egui::ColorImage {
-  fn from(image: &SHImage) -> egui::ColorImage {
-    assert_eq!(image.channels, 4);
-
-    let size = [image.width as _, image.height as _];
-    let rgba = unsafe {
-      core::slice::from_raw_parts(
-        image.data,
-        image.width as usize * image.channels as usize * image.height as usize,
-      )
-    };
-
-    if image.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA as u8
-      == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA as u8
-    {
-      let pixels = rgba
-        .chunks_exact(4)
-        .map(|p| egui::Color32::from_rgba_premultiplied(p[0], p[1], p[2], p[3]))
-        .collect();
-      Self { size, pixels }
-    } else {
-      egui::ColorImage::from_rgba_unmultiplied(size, rgba)
     }
   }
 }

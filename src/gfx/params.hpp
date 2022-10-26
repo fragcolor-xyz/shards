@@ -12,8 +12,13 @@
 
 namespace gfx {
 
+/// <div rustbindgen opaque></div>
 typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> ParamVariant;
 
+/// <div rustbindgen opaque></div>
+typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> TextureVariant;
+
+/// <div rustbindgen hide></div>
 struct TextureParameter {
   TexturePtr texture;
   uint8_t defaultTexcoordBinding = 0;
@@ -22,9 +27,13 @@ struct TextureParameter {
       : texture(texture), defaultTexcoordBinding(defaultTexcoordBinding) {}
 };
 
+/// <div rustbindgen hide></div>
 size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &variant);
+
+/// <div rustbindgen hide></div>
 gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
 
+/// <div rustbindgen hide></div>
 struct IDrawDataCollector {
   virtual void setParam(const std::string &name, ParamVariant &&value) = 0;
   void setParam(const std::string &name, const ParamVariant &value) { setParam(name, ParamVariant(value)); }
@@ -33,6 +42,7 @@ struct IDrawDataCollector {
   void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name, TextureParameter(value)); }
 };
 
+/// <div rustbindgen hide></div>
 struct DrawData : public IDrawDataCollector {
   std::unordered_map<std::string, ParamVariant> data;
   std::unordered_map<std::string, TextureParameter> textures;

@@ -85,7 +85,7 @@ inline ViewPtr createTestProjectionView() {
 
 inline PipelineSteps createTestPipelineSteps(DrawQueuePtr queue) {
   return PipelineSteps{
-      makeDrawablePipelineStep(RenderDrawablesStep{
+      makePipelineStep(RenderDrawablesStep{
           .drawQueue = queue,
           .features =
               {

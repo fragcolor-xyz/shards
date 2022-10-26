@@ -56,6 +56,23 @@ static const InputTextureFormatMap &getInputTextureFormatMap() {
   return instance;
 }
 
+TextureDesc TextureDesc::getDefault() {
+  return TextureDesc{.format = {.pixelFormat = WGPUTextureFormat_RGBA8Unorm}, .resolution = int2(512, 512)};
+}
+
+std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format, std::string &&label) {
+  TextureDesc desc{
+      .format =
+          {
+              .flags = TextureFormatFlags::RenderAttachment,
+              .pixelFormat = format,
+          },
+  };
+  auto texture = std::make_shared<Texture>(std::move(label));
+  texture->init(desc);
+  return texture;
+}
+
 const InputTextureFormat &Texture::getInputFormat(WGPUTextureFormat pixelFormat) {
   auto &inputTextureFormatMap = getInputTextureFormatMap();
   auto it = inputTextureFormatMap.find(pixelFormat);
@@ -65,18 +82,46 @@ const InputTextureFormat &Texture::getInputFormat(WGPUTextureFormat pixelFormat)
   return it->second;
 }
 
-void Texture::init(const TextureFormat &format, int2 resolution, const SamplerState &samplerState,
-                   const ImmutableSharedBuffer &data) {
+Texture &Texture::init(const TextureDesc &desc) {
   contextData.reset();
-  this->format = format;
-  this->data = data;
-  this->samplerState = samplerState;
-  this->resolution = resolution;
+  this->desc = desc;
+  return *this;
 }
 
-void Texture::setSamplerState(const SamplerState &samplerState) {
+Texture &Texture::initWithSamplerState(const SamplerState &samplerState) {
+  desc.samplerState = samplerState;
   contextData.reset();
-  this->samplerState = samplerState;
+  return *this;
+}
+
+Texture &Texture::initWithResolution(int2 resolution) {
+  if (desc.resolution != resolution) {
+    desc.resolution = resolution;
+    contextData.reset();
+  }
+  return *this;
+}
+
+Texture &Texture::initWithFlags(TextureFormatFlags flags) {
+  if (desc.format.flags != flags) {
+    desc.format.flags = flags;
+    contextData.reset();
+  }
+  return *this;
+}
+
+Texture &Texture::initWithPixelFormat(WGPUTextureFormat format) {
+  if (desc.format.pixelFormat != format) {
+    desc.format.pixelFormat = format;
+    contextData.reset();
+  }
+  return *this;
+}
+
+Texture &Texture::initWithLabel(std::string &&label) {
+  this->label = std::move(label);
+  contextData.reset();
+  return *this;
 }
 
 std::shared_ptr<Texture> Texture::clone() {
@@ -137,46 +182,62 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   WGPUDevice device = context.wgpuDevice;
   assert(device);
 
-  contextData.size.width = resolution.x;
-  contextData.size.height = resolution.y;
+  contextData.size.width = desc.resolution.x;
+  contextData.size.height = desc.resolution.y;
   contextData.size.depthOrArrayLayers = 1;
-  contextData.format = format;
+  contextData.format = desc.format;
 
-  WGPUTextureDescriptor desc = {};
-  desc.usage = WGPUTextureUsage_TextureBinding;
-  if (data) {
-    desc.usage |= WGPUTextureUsage_CopyDst;
+  if (contextData.size.width == 0 || contextData.size.height == 0)
+    return;
+
+  if (desc.externalTexture) {
+    contextData.defaultView = desc.externalTexture.value();
+    contextData.isExternalView = true;
+  } else {
+    WGPUTextureDescriptor wgpuDesc = {};
+    wgpuDesc.usage = WGPUTextureUsage_TextureBinding;
+    if (desc.data) {
+      wgpuDesc.usage |= WGPUTextureUsage_CopyDst;
+    }
+
+    if (textureFormatFlagsContains(desc.format.flags, TextureFormatFlags::RenderAttachment)) {
+      wgpuDesc.usage |= WGPUTextureUsage_RenderAttachment;
+    }
+
+    switch (desc.format.type) {
+    case TextureType::D1:
+      wgpuDesc.dimension = WGPUTextureDimension_1D;
+      contextData.size.height = 1;
+      break;
+    case TextureType::D2:
+      wgpuDesc.dimension = WGPUTextureDimension_2D;
+      break;
+    case TextureType::Cube:
+      wgpuDesc.dimension = WGPUTextureDimension_2D;
+      contextData.size.depthOrArrayLayers = 8;
+      break;
+    default:
+      assert(false);
+    }
+
+    wgpuDesc.size = contextData.size;
+    wgpuDesc.format = desc.format.pixelFormat;
+    wgpuDesc.sampleCount = 1;
+    wgpuDesc.mipLevelCount = 1;
+    wgpuDesc.label = label.empty() ? "unknown" : label.c_str();
+
+    contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc);
+    assert(contextData.texture);
+
+    if (desc.data)
+      writeTextureData(context, desc.format, desc.resolution, contextData.texture, desc.data);
+
+    contextData.defaultView = createView(desc.format, contextData.texture);
+    assert(contextData.defaultView);
   }
 
-  switch (format.type) {
-  case TextureType::D1:
-    desc.dimension = WGPUTextureDimension_1D;
-    contextData.size.height = 1;
-    break;
-  case TextureType::D2:
-    desc.dimension = WGPUTextureDimension_2D;
-    break;
-  case TextureType::Cube:
-    desc.dimension = WGPUTextureDimension_2D;
-    contextData.size.depthOrArrayLayers = 8;
-    break;
-  default:
-    assert(false);
-  }
-
-  desc.size = contextData.size;
-  desc.format = format.pixelFormat;
-  desc.sampleCount = 1;
-  desc.mipLevelCount = 1;
-
-  contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &desc);
-  assert(contextData.texture);
-
-  if (data)
-    writeTextureData(context, format, resolution, contextData.texture, data);
-
-  contextData.defaultView = createView(format, contextData.texture);
-  contextData.sampler = createSampler(context, samplerState, false);
+  contextData.sampler = createSampler(context, desc.samplerState, false);
+  assert(contextData.sampler);
 }
 
 void Texture::updateContextData(Context &context, TextureContextData &contextData) {}

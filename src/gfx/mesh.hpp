@@ -5,6 +5,7 @@
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
 #include "linalg/linalg.h"
+#include "fwd.hpp"
 #include <string>
 #include <vector>
 #include <optional>
@@ -97,7 +98,6 @@ protected:
   void initContextData(Context &context, MeshContextData &contextData);
   void updateContextData(Context &context, MeshContextData &contextData);
 };
-
 } // namespace gfx
 
 #endif // GFX_MESH

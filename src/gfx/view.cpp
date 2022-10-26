@@ -5,7 +5,7 @@
 namespace gfx {
 View::View() : view(linalg::identity), proj(linalg::identity) {}
 
-float4x4 View::getProjectionMatrix(const int2 &viewSize) const {
+float4x4 View::getProjectionMatrix(const float2 &viewSize) const {
   return std::visit(
       [&](auto &&arg) -> float4x4 {
         float aspectRatio = float(viewSize.x) / float(viewSize.y);
@@ -20,7 +20,7 @@ float4x4 View::getProjectionMatrix(const int2 &viewSize) const {
           }
           return linalg::perspective_matrix(fovY, aspectRatio, arg.near, arg.far, linalg::neg_z, linalg::zero_to_one);
         } else if constexpr (std::is_same_v<T, ViewOrthographicProjection>) {
-          float2 orthoSize = float2(viewSize);
+          float2 orthoSize = viewSize;
           if (arg.sizeType == OrthographicSizeType::Vertical) {
             orthoSize.x = arg.size * aspectRatio;
             orthoSize.y = arg.size;

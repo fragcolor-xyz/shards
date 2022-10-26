@@ -40,6 +40,7 @@ struct FieldType {
   size_t getWGSLAlignment() const;
 };
 
+/// <div rustbindgen hide></div>
 struct FieldTypes {
   static inline FieldType Float{ShaderFieldBaseType::Float32};
   static inline FieldType Float2{ShaderFieldBaseType::Float32, 2};

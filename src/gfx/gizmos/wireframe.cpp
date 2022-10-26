@@ -28,7 +28,7 @@ MeshPtr WireframeMeshGenerator::generate() {
 
   size_t stride = format.getVertexSize();
 
-  if (positionOffset == ~0)
+  if (positionOffset == size_t(~0))
     throw std::runtime_error("Mesh has no vertex positions");
 
   size_t numIndices = mesh->getNumIndices();

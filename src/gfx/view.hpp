@@ -43,14 +43,13 @@ struct ViewOrthographicProjection {
 struct alignas(16) View {
 public:
   float4x4 view;
-  std::optional<Rect> viewport;
   std::variant<std::monostate, ViewPerspectiveProjection, ViewOrthographicProjection, float4x4> proj;
 
 public:
   View();
   View(const View &) = delete;
 
-  float4x4 getProjectionMatrix(const int2 &viewSize) const;
+  float4x4 getProjectionMatrix(const float2 &viewSize) const;
 };
 
 } // namespace gfx

@@ -69,7 +69,7 @@ public:
 struct GizmoRenderer {
 private:
   ViewPtr view;
-  int2 viewportSize;
+  float2 viewportSize;
 
   MeshPtr handleBodyMesh;
   MeshPtr arrowMesh;
@@ -95,7 +95,7 @@ public:
 
   void addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType, float4 capColor);
 
-  void begin(ViewPtr view, int2 viewportSize);
+  void begin(ViewPtr view, float2 viewportSize);
   void end(DrawQueuePtr queue);
 
   struct HandleGeometry {

@@ -2,11 +2,11 @@
 #define GFX_WINDOW
 
 #include "linalg.hpp"
+#include <SDL_events.h>
 #include <string>
 #include <vector>
 
 struct SDL_Window;
-typedef union SDL_Event SDL_Event;
 namespace gfx {
 /// <div rustbindgen opaque></div>
 struct WindowCreationOptions {
@@ -21,7 +21,17 @@ struct Window {
 
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();
+
+  template <typename T> void pollEventsForEach(T &&callback) {
+    SDL_Event event;
+    while (pollEvent(event)) {
+      callback(event);
+    }
+  }
+
   void pollEvents(std::vector<SDL_Event> &events);
+  bool pollEvent(SDL_Event &outEvent);
+
   void *getNativeWindowHandle();
 
   // draw surface size
