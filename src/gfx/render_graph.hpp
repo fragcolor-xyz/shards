@@ -241,15 +241,12 @@ struct RenderGraph {
 };
 
 struct RenderGraphBuilder {
+  std::vector<RenderGraphNode> nodes;
   std::vector<RenderGraph::Frame> frames;
   std::vector<RenderGraph::Output> outputs;
   std::map<std::string, FrameIndex> nameLookup;
   std::map<TexturePtr, FrameIndex> handleLookup;
   float2 referenceOutputSize;
-
-  std::vector<RenderGraphNode> nodes;
-
-  void reset() { nodes.clear(); }
 
   void setReferenceOutputSize(int2 size) { referenceOutputSize = float2(size); }
 

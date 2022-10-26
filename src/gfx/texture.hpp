@@ -17,8 +17,8 @@ enum class TextureFormatFlags : uint8_t {
   AutoGenerateMips = 0x01,
   // Allow this texture to be rendered to
   RenderAttachment = 0x02,
-  // Indicate that this texture can not be bound as a texture
-  // only useful for render attachments that don't have to be read from
+  // Indicate that this texture can not be sampled
+  // Used to mark render attachments that can't be read from
   NoTextureBinding = 0x04,
 };
 

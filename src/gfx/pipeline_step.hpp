@@ -58,7 +58,7 @@ struct RenderStepOutput {
     std::optional<ClearValues> clearValues;
   };
 
-  // A preallocator texture to output to
+  // A preallocated texture to output to
   struct Texture {
     std::string name;
 

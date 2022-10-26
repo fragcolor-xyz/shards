@@ -71,7 +71,7 @@ struct RendererImpl final : public ContextData {
 
   const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
-  // Withing the range [0, maxBufferedFrames)
+  // Within the range [0, maxBufferedFrames)
   size_t frameIndex = 0;
 
   // Increments forever
@@ -187,7 +187,7 @@ struct RendererImpl final : public ContextData {
   void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
                         CachedRenderGraph &out) {
 
-    RenderGraphBuilder builder; // TODO: cache
+    RenderGraphBuilder builder;
 
     builder.setReferenceOutputSize(referenceOutputSize);
 
@@ -571,8 +571,6 @@ struct RendererImpl final : public ContextData {
         .viewport = Rect(mainOutputResolution),
         .referenceSize = mainOutputResolution,
     });
-
-    // resizeMainRenderAttachments(mainOutputResolution);
   }
 
   void endFrame() {
@@ -602,8 +600,6 @@ struct RendererImpl final : public ContextData {
     clearOldCacheItemsIn(viewCache, 4);
     clearOldCacheItemsIn(drawableCache, 4);
   }
-
-  // void resizeMainRenderAttachments(int2 referenceSize) { depthTexture->initWithResolution(referenceSize); }
 
   void ensureMainOutputCleared() {
     if (!renderGraphEvaluator.isWrittenTo(mainOutput.texture)) {

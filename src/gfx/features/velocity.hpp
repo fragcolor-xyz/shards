@@ -11,10 +11,11 @@
 namespace gfx {
 namespace features {
 
+// Outputs per-object screen-space velocity into the 'velocity' output and global
 struct Velocity {
   // Scaling factor for velocity values stored in the framebuffer
-  // soe w
-  static constexpr double precision = 32.0;
+  // output = (screen pixels/s) * scaling factor
+  static constexpr double scalingFactor = 32.0;
 
   static inline FeaturePtr create(bool applyView = true, bool applyProjection = true) {
     using namespace shader;
@@ -74,7 +75,7 @@ struct Velocity {
 
       // Apply scale to fit in output precision
       code->appendLine(WithOutput(
-          "velocity", WriteOutput("velocity", FieldTypes::Float2, ReadGlobal("velocity"), fmt::format(" * {:0.2}", 32.0))));
+          "velocity", WriteOutput("velocity", FieldTypes::Float2, ReadGlobal("velocity"), fmt::format(" * {:0.2}", scalingFactor))));
 
       feature->shaderEntryPoints.emplace_back("initVelocity", ProgrammableGraphicsStage::Fragment, std::move(code));
     }
