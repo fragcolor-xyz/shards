@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::MarkerShape;
 use super::PlotPoints;
 use super::EGUI_PLOT_UI_TYPE;
 use super::PLOT_UI_NAME;
 use super::SEQ_OF_FLOAT2_TYPES;
 use crate::shard::Shard;
+use crate::shards::gui::widgets::plots::MARKER_SHAPE_TYPES;
 use crate::shards::gui::COLOR_VAR_OR_NONE_SLICE;
 use crate::shardsc::SHColor;
 use crate::types::Context;
@@ -13,23 +15,36 @@ use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::Parameters;
-use crate::types::STRING_OR_NONE_SLICE;
 use crate::types::Seq;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::FLOAT_TYPES_SLICE;
+use crate::types::STRING_OR_NONE_SLICE;
 
 lazy_static! {
   static ref POINTS_PARAMETERS: Parameters = vec![
     (
+      cstr!("Name"),
+      cstr!("Name of this chart, displayed in the plot legend."),
+      STRING_OR_NONE_SLICE,
+    )
+      .into(),
+    (
       cstr!("Color"),
-      cstr!("Stroke color"),
+      cstr!("Stroke color."),
       COLOR_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
-      cstr!("Name"),
-      cstr!("Name of this chart, displayed in the plot legend."),
-      STRING_OR_NONE_SLICE,
+      cstr!("Shape"),
+      cstr!("Shape of the marker."),
+      &MARKER_SHAPE_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("Radius"),
+      cstr!("Radius of the marker."),
+      FLOAT_TYPES_SLICE,
     )
       .into(),
   ];
@@ -42,8 +57,10 @@ impl Default for PlotPoints {
     Self {
       plot_ui,
       requiring: Vec::new(),
-      color: ParamVar::default(),
       name: ParamVar::default(),
+      color: ParamVar::default(),
+      shape: ParamVar::default(),
+      radius: ParamVar::default(),
     }
   }
 }
@@ -81,16 +98,20 @@ impl Shard for PlotPoints {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.color.set_param(value)),
-      1 => Ok(self.name.set_param(value)),
+      0 => Ok(self.name.set_param(value)),
+      1 => Ok(self.color.set_param(value)),
+      2 => Ok(self.shape.set_param(value)),
+      3 => Ok(self.radius.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.color.get_param(),
-      1 => self.name.get_param(),
+      0 => self.name.get_param(),
+      1 => self.color.get_param(),
+      2 => self.shape.get_param(),
+      3 => self.radius.get_param(),
       _ => Var::default(),
     }
   }
@@ -112,15 +133,21 @@ impl Shard for PlotPoints {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.plot_ui.warmup(ctx);
-    self.color.warmup(ctx);
+
     self.name.warmup(ctx);
+    self.color.warmup(ctx);
+    self.shape.warmup(ctx);
+    self.radius.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.name.cleanup();
+    self.radius.cleanup();
+    self.shape.cleanup();
     self.color.cleanup();
+    self.name.cleanup();
+
     self.plot_ui.cleanup();
 
     Ok(())
@@ -137,6 +164,12 @@ impl Shard for PlotPoints {
     });
     let mut chart = egui::plot::Points::new(egui::plot::PlotPoints::from_iter(points));
 
+    let name = self.name.get();
+    if !name.is_none() {
+      let name: &str = name.try_into()?;
+      chart = chart.name(name);
+    }
+
     let color = self.color.get();
     if !color.is_none() {
       let color: SHColor = color.try_into()?;
@@ -145,14 +178,43 @@ impl Shard for PlotPoints {
       ));
     }
 
-    let name = self.name.get();
-    if !name.is_none() {
-      let name: &str = name.try_into()?;
-      chart = chart.name(name);
+    let shape = self.shape.get();
+    if !shape.is_none() {
+      chart = chart.shape(
+        MarkerShape {
+          bits: unsafe { shape.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue },
+        }
+        .into(),
+      );
+    }
+
+    let radius = self.radius.get();
+    if !radius.is_none() {
+      let radius: f32 = radius.try_into()?;
+      chart = chart.radius(radius);
     }
 
     plot_ui.points(chart);
 
     Ok(*input)
+  }
+}
+
+impl From<MarkerShape> for egui::plot::MarkerShape {
+  fn from(value: MarkerShape) -> Self {
+    match value {
+      MarkerShape::Circle => egui::plot::MarkerShape::Circle,
+      MarkerShape::Diamond => egui::plot::MarkerShape::Diamond,
+      MarkerShape::Square => egui::plot::MarkerShape::Square,
+      MarkerShape::Cross => egui::plot::MarkerShape::Cross,
+      MarkerShape::Plus => egui::plot::MarkerShape::Plus,
+      MarkerShape::Up => egui::plot::MarkerShape::Up,
+      MarkerShape::Down => egui::plot::MarkerShape::Down,
+      MarkerShape::Left => egui::plot::MarkerShape::Left,
+      MarkerShape::Right => egui::plot::MarkerShape::Right,
+      MarkerShape::Asterisk => egui::plot::MarkerShape::Asterisk,
+      // default
+      _ => egui::plot::MarkerShape::Circle,
+    }
   }
 }

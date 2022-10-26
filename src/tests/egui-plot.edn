@@ -36,15 +36,17 @@
 
     [] >= .circle
     (ForRange
-     0 256
+     0 64
      (->
       (ToFloat)
-      (Math.Divide (float 128)) (Math.Multiply pi)
+      (Math.Divide (float 32)) (Math.Multiply pi)
       (| (Math.Cos) (Math.Multiply .circle-radius) (Math.Add .circle-center-x) >= .x)
       (| (Math.Sin) (Math.Multiply .circle-radius) (Math.Add .circle-center-y) >= .y)
       [.x .y] (ToFloat2) >> .circle))
     .circle (ExpectLike [(float2 0)])
-    (UI.PlotPoints :Color (color 100 200 100) :Name "circle"))))
+    (UI.PlotPoints
+     :Name "circle"
+     :Color (color 100 200 100) :Shape MarkerShape.Plus :Radius 3.0))))
 
 (defloop lines-wire
   (UI.Window
