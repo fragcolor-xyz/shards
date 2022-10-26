@@ -361,6 +361,8 @@ jobs:
           ./shards ../src/tests/ui.edn
           echo "Running test: egui_demo"
           ./shards ../src/tests/egui-demo.edn
+          echo "Running test: egui-plot"
+          ./shards ../src/tests/egui-plot.edn
           echo "Running test: imgui_demo"
           ./shards ../src/tests/imgui-demo.edn
       - name: Test (64bits)

@@ -95,6 +95,9 @@ jobs:
           echo "Running egui demo"
           build/shards src/tests/egui-demo.edn
 
+          echo "Running egui plot"
+          build/shards src/tests/egui-plot.edn
+
           echo "Running imgui demo"
           build/shards src/tests/imgui-demo.edn
 
