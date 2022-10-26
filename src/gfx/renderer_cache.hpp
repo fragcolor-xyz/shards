@@ -13,7 +13,6 @@ struct PipelineCache {
 };
 
 // Associates drawables with the render pipeline they belong to
-// TODO: Find a better name
 struct PipelineDrawableCache {
   std::unordered_map<Hash128, PipelineDrawables> map;
 

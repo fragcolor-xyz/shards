@@ -130,8 +130,6 @@ public:
 
 enum class ShaderParamFlags {
   None = 0,
-  // TODO(guus)
-  // Optional = 1 << 0,
 };
 
 struct NamedShaderParam {
