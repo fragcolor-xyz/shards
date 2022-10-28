@@ -59,6 +59,10 @@ jobs:
     secrets: inherit
     with:
       build-type: Debug
+  Codecov:
+    needs: [Linux-Debug, Linux-GPU]
+    uses: ./.github/workflows/codecov.yml
+    secrets: inherit
 
   #
   # Build shards and publish docker image

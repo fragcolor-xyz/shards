@@ -1,0 +1,58 @@
+name: Codecov
+
+on:
+  workflow_call:
+    inputs:
+      html-report:
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  #
+  # Upload coverage to codecov
+  #
+  Codecov:
+    name: Codecov
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "::set-output name=html-report::${{ github.event.inputs.html-report || inputs.html-report }}"
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 2
+          submodules: false
+      - name: Download Linux coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: shards-linux-coverage
+          path: coverage
+      - name: Download Linux GPU coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: shards-linux-gpu-coverage
+          path: coverage
+      - uses: codecov/codecov-action@v3
+        with:
+          directory: ./coverage/
+          env_vars: OS
+          fail_ci_if_error: true
+      - name: Generate HTML report
+        if: ${{ steps.setup.outputs.html-report == 'true' }}
+        run: |
+          genhtml \
+            coverage/coverage.linux.info \
+            coverage/coverage.linux-gpu.info \
+            --output-directory coverage/output
+      - name: Upload report
+        if: ${{ steps.setup.outputs.html-report == 'true' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: shards-linux-coverage-report
+          path: |
+            coverage/output
+          if-no-files-found: error

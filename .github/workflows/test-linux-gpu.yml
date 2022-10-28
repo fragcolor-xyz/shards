@@ -118,19 +118,29 @@ jobs:
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
           mkdir coverage
-          lcov --capture --directory build/src --output-file coverage/coverage.info
-          lcov --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" --output-file coverage/coverage.f.info
-          genhtml coverage/coverage.f.info --output-directory coverage/output
-          bash <(curl -s https://codecov.io/bash) -f coverage/coverage.f.info || echo "Codecov did not collect coverage reports"
+          lcov \
+            --capture \
+            --directory build/src \
+            --output-file coverage/coverage.info
+          lcov \
+            --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" \
+            --output-file coverage/coverage.linux-gpu.info
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v3
         with:
           name: shards-linux-gpu-coverage
           path: |
-            coverage
-            test-gfx.xml
+            coverage/coverage.linux-gpu.info
           if-no-files-found: error
+      # - name: Test results (Debug)
+      #   if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: shards-linux-test-gfx
+      #     path: |
+      #       test-gfx.xml
+      #     if-no-files-found: error
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
