@@ -1,0 +1,33 @@
+name: Run codecov
+
+on:
+  workflow_dispatch:
+    inputs:
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
+      html-report:
+        description: Generate an HTML report for the coverage
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  Linux-Debug:
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
+    with:
+      build-type: Debug
+      run-tests: true
+      run-extra-tests: true
+  Linux-GPU:
+    uses: ./.github/workflows/test-linux-gpu.yml
+    secrets: inherit
+    with:
+      build-type: Debug
+  Codecov:
+    needs: [Linux-Debug, Linux-GPU]
+    uses: ./.github/workflows/codecov.yml
+    secrets: inherit
