@@ -51,6 +51,7 @@ jobs:
           genhtml \
             coverage/coverage.linux.info \
             coverage/coverage.linux-gpu.info \
+            --ignore-errors source \
             --output-directory coverage/output
       - name: Upload report
         if: ${{ steps.setup.outputs.html-report == 'true' }}
