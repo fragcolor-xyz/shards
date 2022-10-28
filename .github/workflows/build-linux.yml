@@ -16,11 +16,6 @@ on:
         required: false
         default: false
         type: boolean
-      run-extra-tests:
-        description: Run the extra tests (Debug only)?
-        required: false
-        default: false
-        type: boolean
       rust-cache:
         description: Use existing rust cache?
         required: false
@@ -33,10 +28,6 @@ on:
         default: Debug
         type: string
       run-tests:
-        required: false
-        default: false
-        type: boolean
-      run-extra-tests:
         required: false
         default: false
         type: boolean
@@ -55,7 +46,6 @@ jobs:
     outputs:
       build-type: ${{ steps.setup.outputs.build-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
-      run-extra-tests: ${{ steps.setup.outputs.run-extra-tests }}
       rust-cache: ${{ steps.setup.outputs.rust-cache }}
     steps:
       - name: Setup
@@ -63,7 +53,6 @@ jobs:
         run: |
           echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
           echo "::set-output name=run-tests::${{ github.event.inputs.run-tests || inputs.run-tests }}"
-          echo "::set-output name=run-extra-tests::${{ github.event.inputs.run-extra-tests || inputs.run-extra-tests }}"
           echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
       - name: Checkout shards
         uses: actions/checkout@v3
@@ -99,7 +88,7 @@ jobs:
   # Test and coverage on linux
   #
   Linux-test:
-    if: ${{ needs.Linux.outputs.run-tests == 'true' || needs.Linux.outputs.run-extra-tests == 'true' }}
+    if: ${{ needs.Linux.outputs.run-tests == 'true' }}
     needs: Linux
     name: Test
     runs-on: ubuntu-latest
@@ -148,14 +137,8 @@ jobs:
 
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1 ..
 
-          if [ "${{ needs.Linux.outputs.run-tests }}" == "true" ]
-          then
-            ninja shards
-          fi
-          if [ "${{ needs.Linux.outputs.run-extra-tests }}" == "true" ]
-          then
-            ninja test-runtime
-          fi
+          ninja shards
+          ninja test-runtime
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -214,7 +197,7 @@ jobs:
             ../../build/shards run-sample.edn --file "$i";
           done
       - name: Test runtime (Debug)
-        if: ${{ needs.Linux.outputs.run-extra-tests == 'true' && needs.Linux.outputs.build-type == 'Debug' }}
+        if: ${{ needs.Linux.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
         run: |
@@ -231,7 +214,7 @@ jobs:
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" \
             --output-file coverage/coverage.linux.info
-      - name: Upload coverage
+      - name: Upload coverage (Debug)
         if: ${{ needs.Linux.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v3
         with:

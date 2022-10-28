@@ -47,7 +47,6 @@ jobs:
     with:
       build-type: Debug
       run-tests: true
-      run-extra-tests: true
   Linux-Release:
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit

@@ -21,7 +21,6 @@ jobs:
     with:
       build-type: Debug
       run-tests: true
-      run-extra-tests: true
   Linux-GPU:
     uses: ./.github/workflows/test-linux-gpu.yml
     secrets: inherit
