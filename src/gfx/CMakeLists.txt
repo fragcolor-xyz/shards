@@ -50,16 +50,6 @@ target_link_libraries(gfx-texture-file gfx)
 add_library(gfx-gltf gltf/gltf.cpp)
 target_link_libraries(gfx-gltf gfx tinygltf)
 
-add_library(gfx-imgui
-  imgui/imgui.cpp
-  imgui/imgui_impl_wgpu.cpp
-  imgui/imgui_impl_sdl.cpp
-)
-target_link_libraries(gfx-imgui
-  gfx
-  imgui imgui-club implot imguizmo
-)
-
 add_subdirectory(egui)
 
 option(GFX_USE_DATA_PATH "Uses build tree paths to find data (dev only)" ON)

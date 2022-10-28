@@ -88,22 +88,30 @@ Shards has a number of features that make it highly suitable for live on-the-fly
    :Width 400 :Height 200
    :Contents
    (->
-    (GUI.Window
-     "My GUI Window"
-     :Width 400 :Height 200
-     :Pos (Int2 0 0)
-     :Contents
-     (->
-      "Hello world"   (GUI.Text)
-      "Hello world 2" (GUI.Text)
-      "Hello world 3" (GUI.Text)
-      "Hello world 4" (GUI.SameLine) (GUI.Text)
-      (GUI.Button "Push me!" (->
-                              (Msg "Action!")
-                              (Detach action)))
-      (GUI.Checkbox)
-      (When (Is true) (->
-                       "Hello optional world" (GUI.Text))))))))
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    (UI
+     .ui-draw-queue
+     (UI.Window
+      :Title "My UI Window"
+      :Contents
+      (->       
+       "Hello world"   (UI.Label)
+       "Hello world 2" (UI.Label)
+       "Hello world 3" (UI.Label)
+       (UI.Button
+        "Push me!"
+        (-> (Msg "Action!")
+            (Detach action)))
+       (UI.Checkbox "" .checked)
+       .checked
+       (When (Is true)
+             (-> "Hello optional world" (UI.Label))))))
+
+    (GFX.Render :Steps .render-steps))))
 
 (schedule main main-loop)
 (run main 0.02)

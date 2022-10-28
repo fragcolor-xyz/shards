@@ -1,6 +1,5 @@
 #include "../gfx.hpp"
 #include <gfx/context.hpp>
-#include <gfx/imgui/imgui.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
@@ -139,7 +138,6 @@ struct MainWindow : public Base {
     globals->context->userData.set(contextUserData.get());
 
     globals->renderer = std::make_shared<Renderer>(*globals->context.get());
-    globals->imgui = std::make_shared<ImGuiRenderer>(*globals->context.get());
 
     globals->shDrawQueue = SHDrawQueue{
         .queue = std::make_shared<DrawQueue>(),
@@ -173,7 +171,6 @@ struct MainWindow : public Base {
     auto &context = globals->context;
     auto &window = globals->window;
     auto &events = globals->events;
-    auto &imgui = globals->imgui;
 
     // Store shards context for current activation in user data
     // this is used by callback chains that need to resolve variables, etc.
@@ -210,7 +207,6 @@ struct MainWindow : public Base {
         globals->time = loop.getAbsoluteTime();
         globals->deltaTime = deltaTime;
 
-        imgui->beginFrame(events);
         renderer->beginFrame();
 
         frameBegan();
@@ -219,7 +215,6 @@ struct MainWindow : public Base {
         _shards.activate(shContext, input, _shardsOutput);
 
         renderer->endFrame();
-        imgui->endFrame();
 
         context->endFrame();
       }

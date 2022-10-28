@@ -22,10 +22,6 @@ namespace Inputs {
 extern void registerShards();
 }
 
-namespace ImGui {
-extern void registerShards();
-}
-
 namespace Snappy {
 extern void registerShards();
 }
@@ -59,7 +55,6 @@ void shInitExtras() {
   Brotli::registerShards();
 
   gfx::registerShards();
-  shards::ImGui::registerShards();
   Gizmos::registerShards();
   Inputs::registerShards();
   Audio::registerShards();

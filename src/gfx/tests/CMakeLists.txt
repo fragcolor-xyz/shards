@@ -4,9 +4,6 @@ if(EMSCRIPTEN)
 	set(CMAKE_EXECUTABLE_SUFFIX ".html")
 endif()
 
-add_executable(gfx-sandbox sandbox.cpp)
-target_link_libraries(gfx-sandbox gfx gfx-texture-file gfx-imgui gfx-gltf shards-logging input)
-
 add_executable(test-gfx
   main.cpp
   test_general.cpp
