@@ -109,7 +109,7 @@ struct GizmosContextShard {
 
     gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
     gfx::Window &window = _graphicsContext->getWindow();
-    int2 outputSize = _graphicsContext->context->getMainOutputSize();
+    int2 outputSize = _graphicsContext->context->getMainOutput().lock()->getSize();
 
     handleGizmoInputEvents(_inputContext->events);
 

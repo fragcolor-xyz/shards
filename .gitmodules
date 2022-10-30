@@ -93,3 +93,6 @@
 	path = deps/sqlite/cr-sqlite
 	url = https://github.com/shards-lang/cr-sqlite.git
 	branch = shards
+[submodule "deps/Vulkan-Headers"]
+	path = deps/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git

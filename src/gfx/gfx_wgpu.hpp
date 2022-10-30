@@ -18,7 +18,7 @@
 #define wgpuRenderBundleRelease(...) wgpuRenderBundleDrop(__VA_ARGS__)
 #define wgpuComputePipelineRelease(...) wgpuComputePipelineDrop(__VA_ARGS__)
 #define wgpuRenderPassEncoderRelease(...)
-#define wgpuSwapChainRelease(...)
+#define wgpuSwapChainRelease(...) wgpuSwapChainDrop(__VA_ARGS__)
 #define wgpuQueueRelease(...)
 #define wgpuAdapterRelease(...) wgpuAdapterDrop(__VA_ARGS__)
 #define wgpuSurfaceRelease(...) wgpuSurfaceDrop(__VA_ARGS__)

@@ -61,6 +61,7 @@ target_link_libraries(gfx
   magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container
   shards-logging
+  Vulkan::Headers
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 target_link_libraries(gfx Tracy::TracyClient)

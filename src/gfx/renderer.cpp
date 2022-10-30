@@ -122,11 +122,13 @@ struct RendererImpl final : public ContextData {
       mainOutput.texture = std::make_shared<Texture>();
     }
 
-    WGPUTextureView view = context.getMainOutputTextureView();
-    int2 resolution = context.getMainOutputSize();
+    std::shared_ptr<IContextMainOutput> contextMainOutput = context.getMainOutput().lock();
+    WGPUTextureView view = contextMainOutput->getCurrentFrame();
+    WGPUTextureFormat format = contextMainOutput->getFormat();
+    int2 resolution = contextMainOutput->getSize();
 
     auto currentDesc = mainOutput.texture->getDesc();
-    bool needUpdate = !mainOutputRenderTarget || currentDesc.externalTexture != view || currentDesc.resolution != resolution;
+    bool needUpdate = !mainOutputRenderTarget || currentDesc.externalTexture != view || currentDesc.resolution != resolution || currentDesc.format.pixelFormat != format;
     if (needUpdate) {
       mainOutput.texture
           ->init(TextureDesc{
@@ -134,7 +136,7 @@ struct RendererImpl final : public ContextData {
                   TextureFormat{
                       .dimension = TextureDimension::D2,
                       .flags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding,
-                      .pixelFormat = context.getMainOutputFormat(),
+                      .pixelFormat = format,
                   },
               .resolution = resolution,
               .externalTexture = view,
