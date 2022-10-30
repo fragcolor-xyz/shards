@@ -1,12 +1,12 @@
 use ash::vk;
 use log;
-use std::ffi::{c_char, c_void, CStr, CString};
-use std::ptr::{null, null_mut};
+use std::ffi::{CStr, CString};
+use std::ptr::null_mut;
 use std::sync::Arc;
 use wgpu_core as wgc;
-use wgpu_hal::vulkan;
+use wgpu_hal::{vulkan, OpenDevice};
 use wgpu_hal::{InstanceError, InstanceFlags};
-use wgpu_native::{make_context_handle, Context};
+use wgpu_native::{make_context_handle, unwrap_context_handle, Context};
 use wgpu_types as wgt;
 
 use crate::native;
@@ -189,6 +189,25 @@ pub unsafe fn create_instance(
     }
 }
 
+pub fn get_instance_properties(
+    instance: wgpu_native::native::WGPUInstance,
+    out: &mut native::WGPUInstancePropertiesVK,
+) {
+    use ash::vk::Handle;
+    unsafe {
+        let instance = instance.as_ref().expect("invalid instance");
+        let hal_instance = instance
+            .context
+            .instance_as_hal::<wgpu_hal::vulkan::Api>()
+            .expect("invalid vulkan instance");
+        let shared = hal_instance.shared_instance();
+        let entry = shared.entry();
+        out.getInstanceProcAddr =
+            entry.static_fn().get_instance_proc_addr as *const std::ffi::c_void;
+        out.instance = shared.raw_instance().handle().as_raw() as *const std::ffi::c_void;
+    }
+}
+
 pub unsafe fn create_adapter(
     instance: wgpu_native::native::WGPUInstance,
     options: &native::WGPURequestAdapterOptionsVK,
@@ -209,21 +228,94 @@ pub unsafe fn create_adapter(
     make_context_handle(&instance.context, adapter)
 }
 
-pub fn get_instance_properties(
-    instance: wgpu_native::native::WGPUInstance,
-    out: &mut native::WGPUInstancePropertiesVK,
-) {
-    use ash::vk::Handle;
+fn create_device_with_hal_adapter(
+    adapter: &vulkan::Adapter,
+    descriptor: &wgt::DeviceDescriptor<wgc::Label>,
+    descriptor_vk: &native::WGPUDeviceDescriptorVK,
+) -> Option<wgpu_hal::OpenDevice<vulkan::Api>> {
+    let caps = adapter.physical_device_capabilities();
+
+    let phd_limits = caps.properties().limits;
+    let uab_types = wgpu_hal::UpdateAfterBindTypes::from_limits(&descriptor.limits, &phd_limits);
+
+    let mut extensions = adapter.required_device_extensions(descriptor.features);
+    let mut enabled_phd_features =
+        adapter.physical_device_features(&extensions, descriptor.features, uab_types);
+
+    // Add extensions from descriptor
+    let extra_extensions = unsafe {
+        std::slice::from_raw_parts(
+            descriptor_vk.requiredExtensions,
+            descriptor_vk.requiredExtensionCount as usize,
+        )
+        .into_iter()
+        .map(|v| CStr::from_ptr(*v))
+    };
+    for ext in extra_extensions {
+        extensions.push(ext);
+    }
+
+    let family_index = 0; //TODO
+    let family_info = vk::DeviceQueueCreateInfo::builder()
+        .queue_family_index(family_index)
+        .queue_priorities(&[1.0])
+        .build();
+    let family_infos = [family_info];
+
+    let str_pointers = extensions
+        .iter()
+        .map(|&s| {
+            // Safe because `enabled_extensions` entries have static lifetime.
+            s.as_ptr()
+        })
+        .collect::<Vec<_>>();
+
+    let pre_info = vk::DeviceCreateInfo::builder()
+        .queue_create_infos(&family_infos)
+        .enabled_extension_names(&str_pointers);
+    let info = enabled_phd_features
+        .add_to_device_create_builder(pre_info)
+        .build();
+
     unsafe {
-        let instance = instance.as_ref().expect("invalid instance");
-        let hal_instance = instance
-            .context
-            .instance_as_hal::<wgpu_hal::vulkan::Api>()
-            .expect("invalid vulkan instance");
-        let shared = hal_instance.shared_instance();
-        let entry = shared.entry();
-        out.getInstanceProcAddr =
-            entry.static_fn().get_instance_proc_addr as *const std::ffi::c_void;
-        out.instance = shared.raw_instance().handle().as_raw() as *const std::ffi::c_void;
+        let vk_instance = adapter.shared_instance().raw_instance();
+        let vk_physical_device = adapter.raw_physical_device();
+        match vk_instance.create_device(vk_physical_device, &info, None) {
+            Ok(raw_device) => {
+                let hal_device = adapter
+                    .device_from_raw(
+                        raw_device,
+                        true,
+                        &extensions,
+                        descriptor.features,
+                        uab_types,
+                        family_info.queue_family_index,
+                        0,
+                    )
+                    .unwrap();
+                Some(hal_device)
+            }
+            Err(_) => None,
+        }
+    }
+}
+
+pub fn create_device(
+    context: &wgpu_native::Context,
+    adapter_id: wgc::id::AdapterId,
+    descriptor: &wgt::DeviceDescriptor<wgc::Label>,
+    descriptor_vk: &native::WGPUDeviceDescriptorVK,
+) -> Option<wgpu_hal::OpenDevice<vulkan::Api>> {
+    unsafe {
+        context.adapter_as_hal::<vulkan::Api, _, _>(
+            adapter_id,
+            |adapter| {
+                create_device_with_hal_adapter(
+                    adapter.expect("invalid adapter"),
+                    &descriptor,
+                    &descriptor_vk,
+                )
+            },
+        )
     }
 }

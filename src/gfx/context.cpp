@@ -61,7 +61,7 @@ struct AdapterRequest {
   static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
     auto result = std::make_shared<Self>();
     wgpuInstanceRequestAdapterEx(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
-                               new std::shared_ptr<Self>(result));
+                                 new std::shared_ptr<Self>(result));
     return result;
   };
 
@@ -85,8 +85,8 @@ struct DeviceRequest {
 
   static std::shared_ptr<Self> create(WGPUAdapter wgpuAdapter, const WGPUDeviceDescriptor &deviceDesc) {
     auto result = std::make_shared<Self>();
-    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPURequestDeviceCallback)&Self::callback,
-                             new std::shared_ptr<Self>(result));
+    wgpuAdapterRequestDeviceEx(wgpuAdapter, &deviceDesc, (WGPURequestDeviceCallback)&Self::callback,
+                               new std::shared_ptr<Self>(result));
     return result;
   };
 
@@ -170,7 +170,17 @@ struct VulkanOpenXRBackend : public IBackend {
   }
 
   std::shared_ptr<DeviceRequest> requestDevice() {
+    std::vector<const char *> requiredExtensions = {};
+
+    WGPUDeviceDescriptorVK deviceDescVk{
+        .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_DeviceDescriptorVK)},
+        .requiredExtensions = requiredExtensions.data(),
+        .requiredExtensionCount = (uint32_t)requiredExtensions.size(),
+    };
+
     WGPUDeviceDescriptor deviceDesc = {};
+    deviceDesc.nextInChain = &deviceDescVk.chain;
+
     WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
     deviceDesc.requiredLimits = &requiredLimits;
 
