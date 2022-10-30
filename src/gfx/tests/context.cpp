@@ -62,7 +62,6 @@ bool TestContext::tick() {
       if (event.type == SDL_QUIT)
         return false;
     }
-    resizeMainOutputConditional(window->getDrawableSize());
   }
   return true;
 }

@@ -34,25 +34,47 @@ enum class ContextFrameState {
 
 struct Window;
 struct ContextData;
-struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
+struct IContextBackend;
+
+struct IContextMainOutput {
+  virtual ~IContextMainOutput() = default;
+
+  // Current output image size
+  virtual const int2 &getSize() const = 0;
+  // Return the texture format of the images
+  virtual WGPUTextureFormat getFormat() const = 0;
+  // Requests a new swapchain image to render to
+  virtual WGPUTextureView requestFrame() = 0;
+  // Returns the currently request frame's texture view
+  virtual WGPUTextureView getCurrentFrame() const = 0;
+  // Return the previously requested swapchain image to the chain and allow it to be displayed
+  virtual void present() = 0;
+};
 
 /// <div rustbindgen opaque></div>
 struct Context {
 private:
+  // Temporary async requests
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
-  std::shared_ptr<ContextMainOutput> mainOutput;
+
+  std::shared_ptr<IContextMainOutput> mainOutput;
+  std::shared_ptr<IContextBackend> backend;
+
   ContextState state = ContextState::Uninitialized;
   ContextFrameState frameState = ContextFrameState::Ok;
   bool suspended = false;
 
 public:
-  WGPUInstance wgpuInstance = nullptr;
-  WGPUAdapter wgpuAdapter = nullptr;
-  WGPUDevice wgpuDevice = nullptr;
-  WGPUQueue wgpuQueue = nullptr;
+  Window *window{};
+
+  WGPUInstance wgpuInstance{};
+  WGPUAdapter wgpuAdapter{};
+  WGPUDevice wgpuDevice{};
+  WGPUQueue wgpuQueue{};
+  WGPUSurface wgpuSurface{};
   ContextCreationOptions options;
 
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
@@ -78,11 +100,12 @@ public:
   void tickRequesting();
 
   Window &getWindow();
-  void resizeMainOutputConditional(const int2 &newSize);
-  int2 getMainOutputSize() const;
-  WGPUTextureView getMainOutputTextureView();
-  WGPUTextureFormat getMainOutputFormat() const;
+
+  // true if this context doesn't have a main output
   bool isHeadless() const;
+
+  // The main output, only valid if isHeadless() == false
+  std::weak_ptr<IContextMainOutput> getMainOutput() const;
 
   // Returns when a frame can be rendered
   // Returns false while device is lost an can not be rerequestd
@@ -111,8 +134,6 @@ private:
 
   void requestDevice();
   void releaseDevice();
-
-  WGPUSurface getOrCreateSurface();
 
   void initCommon();
 

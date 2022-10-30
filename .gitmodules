@@ -80,3 +80,6 @@
 [submodule "src/gfx/rust/naga"]
 	path = src/gfx/rust/naga
 	url = https://github.com/shards-lang/naga
+[submodule "deps/Vulkan-Headers"]
+	path = deps/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
