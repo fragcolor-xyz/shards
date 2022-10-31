@@ -25,7 +25,7 @@ jobs:
       - name: Setup
         id: setup
         run: |
-          echo "::set-output name=rust-cache::${{ github.event.inputs.rust-cache || inputs.rust-cache }}"
+          echo "rust-cache=${{ github.event.inputs.rust-cache || inputs.rust-cache }}" >> $GITHUB_OUTPUT
       - name: Checkout shards
         uses: actions/checkout@v3
         with:

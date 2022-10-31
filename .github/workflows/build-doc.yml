@@ -104,7 +104,7 @@ jobs:
       - name: Setup
         id: setup
         run: |
-          echo "::set-output name=publish::${{ github.event.inputs.publish || inputs.publish }}"
+          echo "publish=${{ github.event.inputs.publish || inputs.publish }}" >> $GITHUB_OUTPUT
       - name: Checkout shards
         uses: actions/checkout@v3
         with:

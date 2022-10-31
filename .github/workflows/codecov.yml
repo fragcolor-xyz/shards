@@ -19,7 +19,7 @@ jobs:
       - name: Setup
         id: setup
         run: |
-          echo "::set-output name=html-report::${{ github.event.inputs.html-report || inputs.html-report }}"
+          echo "html-report=${{ github.event.inputs.html-report || inputs.html-report }}" >> $GITHUB_OUTPUT
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
