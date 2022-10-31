@@ -38,7 +38,7 @@ jobs:
       - name: Setup
         id: setup
         run: |
-          echo "::set-output name=build-type::${{ github.event.inputs.build-type || inputs.build-type }}"
+          echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
       - name: Clean workspace
         if: ${{ github.event.inputs.clean-workspace == 'true' || inputs.clean-workspace == 'true' }}
         run: |
