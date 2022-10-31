@@ -118,13 +118,17 @@ jobs:
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
           mkdir coverage
+          # capture
           lcov \
             --capture \
             --directory build/src \
             --output-file coverage/coverage.info
+          # remove external dependencies
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" \
             --output-file coverage/coverage.linux-gpu.info
+          # convert absolute path to relative path
+          sed -i s/${PWD////\\/}/./g coverage/coverage.linux-gpu.info
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v3
@@ -133,17 +137,11 @@ jobs:
           path: |
             coverage/coverage.linux-gpu.info
           if-no-files-found: error
-      # - name: Test results (Debug)
-      #   if: ${{ steps.setup.outputs.build-type == 'Debug' }}
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: shards-linux-test-gfx
-      #     path: |
-      #       test-gfx.xml
-      #     if-no-files-found: error
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: shards-linux-gpu rejected test data
-          path: src/gfx/tests/data/default/rejected
+          path: |
+            test-gfx.xml
+            src/gfx/tests/data/default/rejected
           if-no-files-found: ignore

@@ -207,13 +207,17 @@ jobs:
         if: ${{ needs.Linux.outputs.build-type == 'Debug' }}
         run: |
           mkdir coverage
+          # capture
           lcov \
             --capture \
             --directory build/src \
             --output-file coverage/coverage.info
+          # remove external dependencies
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/mal/*" \
             --output-file coverage/coverage.linux.info
+          # convert absolute path to relative path
+          sed -i s/${PWD////\\/}/./g coverage/coverage.linux.info
       - name: Upload coverage (Debug)
         if: ${{ needs.Linux.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v3
