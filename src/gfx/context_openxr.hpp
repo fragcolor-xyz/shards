@@ -7,6 +7,24 @@
 
 namespace gfx {
 
+struct VulkanOpenXRSwapchain : public IContextMainOutput {
+  int2 currentSize;
+  WGPUTextureFormat currentFormat = WGPUTextureFormat_Undefined;
+  WGPUTextureView currentView{};
+
+  VulkanOpenXRSwapchain(Window &window) {}
+
+  const int2 &getSize() const override { return currentSize; }
+
+  WGPUTextureFormat getFormat() const override { return currentFormat; }
+
+  WGPUTextureView requestFrame() override { return nullptr; }
+
+  WGPUTextureView getCurrentFrame() const override { return currentView; }
+
+  void present() override {}
+};
+
 // NOTE: Prototype OpenXR binding code
 // the openxr vulkan extensions requires the following:
 // - Specific extensions on instance creation

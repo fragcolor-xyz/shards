@@ -41,14 +41,10 @@ struct IContextBackend;
 struct IContextMainOutput {
   virtual ~IContextMainOutput() = default;
 
-  // Is this output resizable
-  virtual bool isResizable() const = 0;
   // Current output image size
   virtual const int2 &getSize() const = 0;
   // Return the texture format of the images
   virtual WGPUTextureFormat getFormat() const = 0;
-  // Resize the output
-  virtual void resize(const int2 &newSize) = 0;
   // Requests a new swapchain image to render to
   virtual WGPUTextureView requestFrame() = 0;
   // Returns the currently request frame's texture view

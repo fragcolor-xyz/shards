@@ -3,6 +3,7 @@
 
 #include "context_internal.hpp"
 #include "window.hpp"
+#include "fmt.hpp"
 #include <magic_enum.hpp>
 
 namespace gfx {
@@ -31,13 +32,13 @@ struct ContextWindowOutput : public IContextMainOutput {
 
   ~ContextWindowOutput() { releaseSwapchain(); }
 
-  bool isResizable() const override { return true; }
   const int2 &getSize() const override { return currentSize; }
   WGPUTextureFormat getFormat() const override { return swapchainFormat; }
 
   WGPUTextureView requestFrame() override {
     int2 targetSize = window.getDrawableSize();
     if (targetSize != getSize()) {
+      SPDLOG_LOGGER_INFO(logger, "Resizing swapchain, window resized ({} => {})", getSize(), targetSize);
       resize(targetSize);
     }
 
@@ -67,7 +68,7 @@ struct ContextWindowOutput : public IContextMainOutput {
     currentView = nullptr;
   }
 
-  void resize(const int2 &newSize) override {
+  void resize(const int2 &newSize) {
     assert(adapter);
     assert(device);
     assert(surface);
