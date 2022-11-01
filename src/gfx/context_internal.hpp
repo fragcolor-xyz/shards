@@ -8,9 +8,6 @@
 #include <spdlog/spdlog.h>
 #include <gfx_rust.h>
 
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_raii.hpp>
-
 namespace gfx {
 static auto logger = gfx::getLogger();
 

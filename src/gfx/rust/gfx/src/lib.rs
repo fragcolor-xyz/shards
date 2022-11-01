@@ -1,4 +1,4 @@
-use wgpu_native::{make_context_handle, unwrap_context_handle};
+use wgpu_native::native::{IntoHandleWithContext, UnwrapId};
 
 #[cfg(feature = "wgpu")]
 extern crate wgpu_native;
@@ -88,20 +88,6 @@ pub unsafe extern "C" fn wgpuCreateInstanceEx(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuInstanceGetPropertiesEx(
-    instance: wgpu_native::native::WGPUInstance,
-    props: *mut native::WGPUInstanceProperties,
-) {
-    expand_chain!(props.as_mut().unwrap(),
-        native::WGPUNativeSTypeEx_InstancePropertiesVK => let mut vulkan: native::WGPUInstancePropertiesVK
-    );
-
-    if let Some(vulkan) = &mut vulkan {
-        vulkan::get_instance_properties(instance, vulkan);
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapterEx(
     instance: wgpu_native::native::WGPUInstance,
     options: &wgpu_native::native::WGPURequestAdapterOptions,
@@ -138,7 +124,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDeviceEx(
         native::WGPUNativeSTypeEx_DeviceDescriptorVK => let vulkan: native::WGPUDeviceDescriptorVK
     );
 
-    let (adapter_id, context) = unwrap_context_handle(adapter);
+    let (adapter_id, context) = adapter.unwrap_handle();
 
     let (desc, trace_str) = wgpu_native::conv::map_device_descriptor(descriptor, extras);
     let trace_path = trace_str.as_ref().map(std::path::Path::new);
@@ -150,7 +136,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDeviceEx(
             Some(device) => {
                 let (device_id, _err) =
                     context.create_device_from_hal(adapter_id, device, &desc, trace_path, ());
-                let handle = make_context_handle(&context, device_id);
+                let handle = device_id.into_handle_with_context(&context);
 
                 (callback.unwrap())(
                     wgpu_native::native::WGPURequestDeviceStatus_Success,
@@ -171,5 +157,54 @@ pub unsafe extern "C" fn wgpuAdapterRequestDeviceEx(
         };
     } else {
         wgpu_native::device::wgpuAdapterRequestDevice(adapter, &descriptor, callback, userdata);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceGetPropertiesEx(
+    instance: wgpu_native::native::WGPUInstance,
+    props: *mut native::WGPUInstanceProperties,
+) {
+    expand_chain!(props.as_mut().unwrap(),
+        native::WGPUNativeSTypeEx_InstancePropertiesVK => let mut vulkan: native::WGPUInstancePropertiesVK
+    );
+
+    if let Some(vulkan) = &mut vulkan {
+        vulkan::get_instance_properties(instance, vulkan);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetPropertiesEx(
+    device: wgpu_native::native::WGPUDevice,
+    props: *mut native::WGPUDeviceProperties,
+) {
+    expand_chain!(props.as_mut().unwrap(),
+        native::WGPUNativeSTypeEx_DevicePropertiesVK => let mut vulkan: native::WGPUDevicePropertiesVK
+    );
+
+    if let Some(vulkan) = &mut vulkan {
+        vulkan::get_device_properties(device, vulkan);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCreateExternalTextureView(
+    device: wgpu_native::native::WGPUDevice,
+    texture_desc: *const wgpu_native::native::WGPUTextureDescriptor,
+    view_desc: *const wgpu_native::native::WGPUTextureViewDescriptor,
+    descriptor: *const native::WGPUExternalTextureDescriptor,
+) -> wgpu_native::native::WGPUTextureView {
+    let texture_desc = texture_desc.as_ref().expect("invalid texture descriptor");
+    let view_desc = view_desc.as_ref().expect("invalid view descriptor");
+
+    expand_chain!(descriptor.as_ref().unwrap(),
+        native::WGPUNativeSTypeEx_ExternalTextureDescriptorVK => let vulkan: native::WGPUTextureViewDescriptorVK
+    );
+
+    if let Some(vulkan) = vulkan {
+        vulkan::create_external_texture_view(device, texture_desc, view_desc, vulkan)
+    } else {
+        panic!("can not create external texture view without platform descriptor");
     }
 }

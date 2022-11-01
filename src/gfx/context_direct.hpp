@@ -110,6 +110,80 @@ struct ContextWindowOutput : public IContextMainOutput {
   void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
 };
 
+// struct DirectBackend : public IContextBackend {
+//   WGPUInstance wgpuInstance{};
+//   WGPUAdapter wgpuAdapter{};
+//   WGPUDevice wgpuDevice{};
+//   WGPUQueue wgpuQueue{};
+//   WGPUSurface wgpuSurface{};
+
+//   WGPUInstance createInstance() override {
+//     // Create instance
+//     WGPUInstanceDescriptor desc{};
+
+//     wgpuInstance = wgpuCreateInstanceEx(&desc);
+//     if (!wgpuInstance)
+//       throw std::runtime_error("Failed to create WGPUInstance");
+
+//     return wgpuInstance;
+//   }
+
+//   WGPUSurface createSurface(Window &window, void *overrideNativeWindowHandle) override {
+//     void *surfaceHandle = overrideNativeWindowHandle;
+
+// #if GFX_APPLE
+//     if (!surfaceHandle) {
+//       metalViewContainer = std::make_unique<MetalViewContainer>(window->window);
+//       surfaceHandle = metalViewContainer->layer;
+//     }
+// #endif
+
+//     WGPUPlatformSurfaceDescriptor surfDesc(window.window, surfaceHandle);
+//     wgpuSurface = wgpuInstanceCreateSurface(wgpuInstance, &surfDesc);
+
+//     return wgpuSurface;
+//   }
+
+//   std::shared_ptr<AdapterRequest> requestAdapter() override {
+//     WGPURequestAdapterOptionsVK optionsVk{
+//         .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_RequestAdapterOptionsVK)},
+//         .physicalDevice = physicalDeviceToUse,
+//     };
+
+//     WGPURequestAdapterOptions options{};
+//     options.powerPreference = WGPUPowerPreference_HighPerformance;
+//     options.compatibleSurface = wgpuSurface;
+//     options.forceFallbackAdapter = false;
+//     options.nextInChain = &optionsVk.chain;
+
+//     auto cb = [&](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char *msg) { wgpuAdapter = adapter; };
+//     return AdapterRequest::create(wgpuInstance, options, AdapterRequest::Callbacks{cb});
+//   }
+
+//   std::shared_ptr<DeviceRequest> requestDevice() override {
+//     std::vector<const char *> requiredExtensions = {};
+
+//     WGPUDeviceDescriptorVK deviceDescVk{
+//         .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_DeviceDescriptorVK)},
+//         .requiredExtensions = requiredExtensions.data(),
+//         .requiredExtensionCount = (uint32_t)requiredExtensions.size(),
+//     };
+
+//     WGPUDeviceDescriptor deviceDesc = {};
+//     deviceDesc.nextInChain = &deviceDescVk.chain;
+
+//     WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
+//     deviceDesc.requiredLimits = &requiredLimits;
+
+//     auto cb = [&](WGPURequestDeviceStatus status, WGPUDevice device, const char *msg) { wgpuDevice = device; };
+//     return DeviceRequest::create(wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
+//   }
+
+//   std::shared_ptr<IContextMainOutput> createMainOutput(Window &window) override {
+//     return std::make_shared<VulkanOpenXRSwapchain>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
+//   }
+// };
+
 } // namespace gfx
 
 #endif /* D95C878A_97DA_4201_8B0C_4234299AA49D */

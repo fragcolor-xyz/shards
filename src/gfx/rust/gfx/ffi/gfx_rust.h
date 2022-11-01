@@ -13,6 +13,8 @@ typedef enum WGPUNativeSTypeEx {
   WGPUNativeSTypeEx_InstancePropertiesVK = 0x70000002,
   WGPUNativeSTypeEx_RequestAdapterOptionsVK = 0x70000003,
   WGPUNativeSTypeEx_DeviceDescriptorVK = 0x70000004,
+  WGPUNativeSTypeEx_DevicePropertiesVK = 0x70000005,
+  WGPUNativeSTypeEx_ExternalTextureDescriptorVK = 0x70000006,
   WGPUNativeSTypeEx_Force32 = 0x7FFFFFFF
 } WGPUNativeSTypeEx;
 
@@ -46,12 +48,53 @@ typedef struct WGPUDeviceDescriptorVK {
   uint32_t requiredExtensionCount;
 } WGPUDeviceDescriptorVK;
 
+typedef struct WGPUDeviceProperties {
+  WGPUChainedStructOut *nextInChain;
+} WGPUDeviceProperties;
+
+typedef struct WGPUDevicePropertiesVK {
+  WGPUChainedStructOut chain;
+  const void *device;
+  const void *queue;
+  uint32_t queueIndex;
+  uint32_t queueFamilyIndex;
+} WGPUDevicePropertiesVK;
+
+typedef struct WGPUTextureViewDescriptorVK {
+  WGPUChainedStruct chain;
+  void *handle;
+  WGPUExtent3D size;
+  uint32_t sampleCount;
+  WGPUTextureUsageFlags usage;
+} WGPUTextureViewDescriptorVK;
+
+typedef struct WGPUExternalTextureDescriptor {
+  WGPUChainedStruct *nextInChain;
+} WGPUExternalTextureDescriptor;
+
+typedef struct WGPUExternalTextureDescriptorVK {
+  WGPUChainedStruct chain;
+  void *image;
+} WGPUExternalTextureDescriptorVK;
 
 WGPUInstance wgpuCreateInstanceEx(WGPUInstanceDescriptor const *descriptor);
-void wgpuInstanceGetPropertiesEx(WGPUInstance instance, WGPUInstanceProperties *properties);
+void wgpuInstanceRequestAdapterEx(WGPUInstance instance, WGPURequestAdapterOptions const *options,
+                                  WGPURequestAdapterCallback callback, void *userdata);
+void wgpuAdapterRequestDeviceEx(WGPUAdapter adapter, WGPUDeviceDescriptor const *descriptor, WGPURequestDeviceCallback callback,
+                                void *userdata);
 
-void wgpuInstanceRequestAdapterEx(WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata);
-void wgpuAdapterRequestDeviceEx(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata);
+void wgpuInstanceGetPropertiesEx(WGPUInstance instance, WGPUInstanceProperties *properties);
+void wgpuDeviceGetPropertiesEx(WGPUDevice device, WGPUDeviceProperties *properties);
+
+WGPUTextureView wgpuCreateExternalTextureView(WGPUDevice device, WGPUTextureDescriptor const *textureDescriptor,
+                                              WGPUTextureViewDescriptor const *viewDescriptor,
+                                              WGPUExternalTextureDescriptor const *externalTexture);
+
+typedef struct WGPUExternalPresentVK {
+  void *waitSemaphore;
+} WGPUExternalPresentVK;
+
+void wgpuPrepareExternalPresentVK(WGPUQueue queue, WGPUExternalPresentVK *present);
 
 #ifdef __cplusplus
 }
