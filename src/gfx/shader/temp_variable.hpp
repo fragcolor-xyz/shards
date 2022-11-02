@@ -17,9 +17,13 @@ public:
 
   void reset() { counter = 0; }
 
-  const std::string &get() {
+  const std::string &get(const std::string_view& hint = std::string_view()) {
     tempVariableName.clear();
-    fmt::format_to(std::back_inserter(tempVariableName), "{}{}", baseId, counter++);
+    if (!hint.empty()) {
+      fmt::format_to(std::back_inserter(tempVariableName), "{}_{}{}", baseId, hint, counter++);
+    } else {
+      fmt::format_to(std::back_inserter(tempVariableName), "{}{}", baseId, counter++);
+    }
     return tempVariableName;
   }
 };
