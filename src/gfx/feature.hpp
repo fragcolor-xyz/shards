@@ -6,6 +6,7 @@
 #include "linalg.hpp"
 #include "params.hpp"
 #include "shader/types.hpp"
+#include "uuid.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -177,6 +178,9 @@ struct IDrawDataCollector;
 typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)> FeatureDrawDataFunction;
 
 struct Feature {
+  // Used to identify this feature for caching purposes
+  const UUID uuid = generateUUID();
+
   // Pipeline state flags
   FeaturePipelineState state;
   // Per drawable draw data
@@ -193,13 +197,6 @@ struct Feature {
   PipelineModifierPtr pipelineModifier;
 
   virtual ~Feature() = default;
-
-  template <typename T> void hashStatic(T &hasher) const {
-    hasher(state);
-    hasher(shaderParams);
-    hasher(shaderEntryPoints);
-    hasher(textureParams);
-  }
 };
 typedef std::shared_ptr<Feature> FeaturePtr;
 

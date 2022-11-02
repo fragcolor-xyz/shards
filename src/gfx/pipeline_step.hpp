@@ -4,6 +4,7 @@
 #include "fwd.hpp"
 #include "material.hpp"
 #include "gfx_wgpu.hpp"
+#include "uuid.hpp"
 #include <variant>
 #include <vector>
 #include <memory>
@@ -82,6 +83,9 @@ struct RenderStepOutput {
 
 // Explicitly clear render targets
 struct ClearStep {
+  // Used to identify this feature for caching purposes
+  const UUID uuid = generateUUID();
+
   ClearValues clearValues;
 
   std::optional<RenderStepOutput> output;
@@ -89,6 +93,9 @@ struct ClearStep {
 
 // Renders all drawables in the queue to the output region
 struct RenderDrawablesStep {
+  // Used to identify this feature for caching purposes
+  const UUID uuid = generateUUID();
+
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
   std::vector<FeaturePtr> features;
@@ -100,6 +107,9 @@ typedef std::vector<std::string> RenderStepInputs;
 
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
+  // Used to identify this feature for caching purposes
+  const UUID uuid = generateUUID();
+
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
 

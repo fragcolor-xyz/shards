@@ -37,14 +37,21 @@ if(NOT EMSCRIPTEN)
   set_property(GLOBAL PROPERTY OPENSSL_SOURCE_DIR ${libressl_SOURCE_DIR})
 endif()
 
-message(STATUS "Fetching boost")
-FetchContent_Declare(
-  boost
-  URL      https://github.com/shards-lang/boost/releases/download/boost-f74a225c09/output.7z
-  URL_HASH SHA256=EB73BDD6B5B78C6A09A8F45B50AE8FAF5C44A6C741487313E978F0AF3073DA7A
-)
-FetchContent_MakeAvailable(boost)
-message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
+set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will download the sources automatically")
+if(BOOST_DIR)
+  message(STATUS "Using boost from BOOST_DIR=${BOOST_DIR}")
+  add_subdirectory(${BOOST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/boost)
+  message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
+else()
+  message(STATUS "Fetching boost")
+  FetchContent_Declare(
+    boost
+    URL      https://github.com/shards-lang/boost/releases/download/boost-f74a225c09-2/output.7z
+    URL_HASH SHA256=7C876AC31F7D1A80C9B4671FD960399F86CF24DC9DA83AFF7F1CBC8984424080
+  )
+  FetchContent_MakeAvailable(boost)
+  message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
+endif()
 
 if(NOT EMSCRIPTEN)
   if(NOT ANDROID AND EXTERNAL_BUILD_TYPE MATCHES "Debug")

@@ -219,9 +219,9 @@ struct RendererImpl final : public ContextData {
                                            int2 referenceOutputSize) {
     HasherXXH128<HashStaticVistor> hasher;
     for (auto &step : pipelineSteps) {
-      // NOTE: Hashed by pointer since steps are considered immutable & shared/ref-counted
-      hasher(step.get());
+      std::visit([&](auto &step) { hasher(step.uuid); }, *step.get());
     }
+
     hasher(referenceOutputSize);
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments) {
