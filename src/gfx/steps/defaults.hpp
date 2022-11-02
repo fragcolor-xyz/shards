@@ -12,7 +12,7 @@ template <typename... TFeatures> inline std::vector<FeaturePtr> withDefaultFulls
   };
 }
 
-// Color output WITHOUT clear
+// Color output with optional clear color
 inline RenderStepOutput::Named getDefaultColorOutput(std::optional<float4> clearColor = std::nullopt) {
   return RenderStepOutput::Named{
       .name = "color",
@@ -21,7 +21,7 @@ inline RenderStepOutput::Named getDefaultColorOutput(std::optional<float4> clear
   };
 }
 
-// Depth output with clear
+// Depth output with optional clear
 inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = false) {
   return RenderStepOutput::Named{
       .name = "depth",
@@ -30,7 +30,7 @@ inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = false) {
   };
 }
 
-// Default output color+depth with clear
+// Default output color+depth with optional clear
 inline RenderStepOutput getDefaultRenderStepOutput(bool clearDepth = false, std::optional<float4> clearColor = std::nullopt) {
   return RenderStepOutput{
       .attachments =
