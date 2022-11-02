@@ -225,7 +225,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
   testRenderer->end();
 
   TEST_RENDER_LOOP(testRenderer) { renderFrame(); };
-  CHECK(testRenderer->checkFrame("rendergraph_velocity", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("rendergraph_velocity", 1.5f));
 
   testRenderer.reset();
 }
