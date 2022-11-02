@@ -6,8 +6,11 @@
 
    {:EntryPoint (->
                  (Shader.ReadInput "texCoord0" :Dimension 2) >= .uv
-                 .uv (Take 0) >= .u
-                 (Float4 .u 1.0 0.0 1.0)
+                 .uv (Take 0) >== .global
+                 .uv (Take 1) >= .local
+                 .global = .u
+                 .local = .v
+                 (Float4 .u .v 0.0 1.0)
                  (Shader.WriteOutput "color") ; End shader
                  )}(GFX.EffectPass) >> .render-steps)
 

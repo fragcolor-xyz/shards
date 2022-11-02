@@ -43,32 +43,19 @@ struct ConstTranslator {
 };
 
 // Generates global variables
+template<typename TShard>
 struct SetTranslator {
-  static void translate(shards::Set *shard, TranslationContext &context) {
-    auto varName = convertVariableName(shard->_name);
-    SPDLOG_LOGGER_INFO(context.logger, "gen(set)> {}", varName);
+  static void translate(TShard *shard, TranslationContext &context) {
+    auto& varName = shard->_name;
+    SPDLOG_LOGGER_INFO(context.logger, "gen(set/ref)> {}", varName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not set: no value to set"));
 
-    std::unique_ptr<IWGSLGenerated> wgslValue;
-    std::swap(wgslValue, context.wgslTop);
+    std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
-    FieldType fieldType = wgslValue->getType();
-
-    // Store global variable type info
-    auto globalIt = context.globals.find(varName);
-    if (globalIt == context.globals.end()) {
-      context.globals.insert_or_assign(varName, fieldType);
-    } else {
-      throw ShaderComposeError(fmt::format("Can not set: value already set"));
-    }
-
-    // Generate a shader source block containing the assignment
-    context.addNew(blocks::makeBlock<blocks::WriteGlobal>(varName, fieldType, wgslValue->toBlock()));
-
-    // Push reference to assigned value
-    context.setWGSLTop<WGSLBlock>(fieldType, blocks::makeBlock<blocks::ReadGlobal>(varName));
+    WGSLBlock reference = context.assignVariable(varName, shard->_global, false, std::move(wgslValue));
+    context.setWGSLTop<WGSLBlock>(std::move(reference));
   }
 };
 
@@ -80,38 +67,22 @@ struct GetTranslator {
   }
 
   static void translate(shards::Get *shard, TranslationContext &context) {
-    auto varName = convertVariableName(shard->_name);
-    translateByName(varName.c_str(), context);
+    translateByName(shard->_name.c_str(), context);
   }
 };
 
 struct UpdateTranslator {
   static void translate(shards::Update *shard, TranslationContext &context) {
-    auto varName = convertVariableName(shard->_name);
+    auto& varName = shard->_name;
     SPDLOG_LOGGER_INFO(context.logger, "gen(upd)> {}", varName);
 
     if (!context.wgslTop)
       throw ShaderComposeError(fmt::format("Can not update: no value to set"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    FieldType fieldType = wgslValue->getType();
 
-    // Store global variable type info
-    auto globalIt = context.globals.find(varName);
-    if (globalIt == context.globals.end()) {
-      throw ShaderComposeError(fmt::format("Can not update: global does not exist in this scope"));
-    }
-
-    if (fieldType != globalIt->second) {
-      throw ShaderComposeError(fmt::format("Can not update: Type mismatch assigning {} to global of {}",
-                                           getFieldWGSLTypeName(fieldType), getFieldWGSLTypeName(globalIt->second)));
-    }
-
-    // Generate a shader source block containing the assignment
-    context.addNew(blocks::makeBlock<blocks::WriteGlobal>(varName, fieldType, wgslValue->toBlock()));
-
-    // Push reference to assigned value
-    context.setWGSLTop<WGSLBlock>(fieldType, blocks::makeBlock<blocks::ReadGlobal>(varName));
+    WGSLBlock reference = context.assignVariable(varName, shard->_global, true, std::move(wgslValue));
+    context.setWGSLTop<WGSLBlock>(std::move(reference));
   }
 };
 
@@ -400,7 +371,7 @@ struct SampleTextureUV : public SampleTexture {
     FieldType fieldType = wgslValue->getType();
 
     auto block = blocks::makeCompoundBlock();
-    const std::string &varName = context.getTempVariableName();
+    const std::string &varName = context.getUniqueVariableName();
     if (fieldType.numComponents < 2) {
       block->appendLine(fmt::format("let {} = vec2<f32>(", varName), wgslValue->toBlock(), ", 0.0)");
     } else {
@@ -431,8 +402,7 @@ struct LinearizeDepth {
   }
 };
 
-template <typename TShard>
-struct ToNumberTranslator {
+template <typename TShard> struct ToNumberTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
     using shards::NumberTypeLookup;
     using shards::NumberTypeTraits;

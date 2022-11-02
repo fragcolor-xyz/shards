@@ -7,20 +7,8 @@
 
 namespace gfx {
 namespace shader {
-static inline std::string convertVariableName(std::string_view varName) {
-  std::string result;
-  result.reserve(varName.size());
-  for (size_t i = 0; i < varName.size(); i++) {
-    char c = varName[i];
-    if (c == '-') {
-      c = '_';
-    }
-    result.push_back(c);
-  }
-  return result;
-}
 
-static inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context) {
+inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context) {
   std::unique_ptr<IWGSLGenerated> result;
 
 #define OUTPUT_VEC(_type, _dim, _fmt, ...)                                                             \
@@ -69,15 +57,6 @@ static inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, T
 #undef OUTPUT_VEC
   return result;
 };
-
-static inline std::unique_ptr<IWGSLGenerated> referenceGlobal(const char *inVarName, TranslationContext &context) {
-  auto varName = convertVariableName(inVarName);
-  auto it = context.globals.find(varName);
-  if (it == context.globals.end()) {
-    throw ShaderComposeError(fmt::format("Global value {} not defined", varName));
-  }
-  return std::make_unique<WGSLBlock>(it->second, blocks::makeBlock<blocks::ReadGlobal>(varName));
-}
 
 } // namespace shader
 } // namespace gfx

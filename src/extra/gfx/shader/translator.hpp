@@ -41,10 +41,48 @@ template <> struct Appender<blocks::Compound> : public IAppender {
   }
 };
 
+typedef std::map<std::string, FieldType> VariableTypeMap;
+
+// Filters invalid characters out of variable names
+inline std::string filterVariableName(std::string_view varName) {
+  std::string result;
+  result.reserve(varName.size());
+  for (size_t i = 0; i < varName.size(); i++) {
+    char c = varName[i];
+    if (c == '-') {
+      c = '_';
+    }
+    result.push_back(c);
+  }
+  return result;
+}
+
+struct VariableStorage {
+  // Stores type assignment
+  VariableTypeMap types;
+
+  // Maps variable names to globally unique variable names
+  std::map<std::string, std::string> uniqueVariableNames;
+
+  // Maps a variable name to a unique variable name
+  const std::string& mapUniqueVariableName(const std::string &varName, const std::string &uniqueName) {
+    return uniqueVariableNames.insert_or_assign(varName, uniqueName).first->second;
+  }
+
+  // Retrieves globally unique variable name from a regular variable name
+  const std::string &resolveUniqueVariableName(const std::string &varName) const {
+    auto it = uniqueVariableNames.find(varName);
+    if (it == uniqueVariableNames.end())
+      throw std::logic_error("Variable does not exist in this scope"); // Should not happen here, catch externally
+    return it->second;
+  }
+};
+
 // References a shader block together with a strategy for appending children into it
 struct TranslationBlockRef {
   blocks::Block *block{};
   IAppender *appender{};
+  VariableStorage variables;
 
   TranslationBlockRef(blocks::Block *block, IAppender *appender) : block(block), appender(appender) {}
 
@@ -67,8 +105,7 @@ struct TranslationContext {
 
   shards::logging::Logger logger;
 
-  // Generated dynamically
-  std::map<std::string, FieldType> globals;
+  VariableStorage globals;
 
   UniquePtr<blocks::Compound> root;
   std::vector<TranslationBlockRef> stack;
@@ -115,7 +152,7 @@ public:
 
   // Assign a block to a temporary variable and return it's name
   template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr) {
-    const std::string &varName = getTempVariableName();
+    const std::string &varName = getUniqueVariableName();
     addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", varName), std::move(ptr), ";\n"));
     return varName;
   }
@@ -141,17 +178,27 @@ public:
     return result;
   }
 
-  const std::string &getTempVariableName() { return tempVariableAllocator.get(); }
-
-  WGSLBlock reference(const std::string &varName) {
-    auto globalIt = globals.find(varName);
-    if (globalIt == globals.end()) {
-      throw ShaderComposeError(fmt::format("Can not get/ref: global does not exist in this scope"));
+  const std::string &getUniqueVariableName(const std::string_view &hint = std::string_view()) {
+    if (!hint.empty()) {
+      return tempVariableAllocator.get(filterVariableName(hint));
     }
-
-    FieldType fieldType = globalIt->second;
-    return WGSLBlock(fieldType, blocks::makeBlock<blocks::ReadGlobal>(varName));
+    return tempVariableAllocator.get();
   }
+
+  // Tries to find a global variable
+  bool findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const;
+
+  // Tries to find a variable in all scopes & globally
+  // outParent will be null in case of global variables
+  bool findVariable(const std::string &varName, const FieldType *&outFieldType, const TranslationBlockRef *&outParent) const;
+
+  // Assigns or updates a variable
+  // returns a reference to the variable in the same format as `reference` does
+  WGSLBlock assignVariable(const std::string &varName, bool global, bool allowUpdate, std::unique_ptr<IWGSLGenerated> &&value);
+
+  // Returns a shader block that references a variable by name
+  // the variable can either be defined in the current, parent or global scope
+  WGSLBlock reference(const std::string &varName);
 };
 
 // Handles translating shards C++ blocks to shader blocks
