@@ -76,8 +76,7 @@ public:
 
     HasherXXH128 featureHasher;
     for (auto &feature : features) {
-      // NOTE: Hashed by pointer since features are considered immutable & shared/ref-counted
-      featureHasher(feature);
+      featureHasher(feature->uuid);
     }
     Hash128 featureHash = featureHasher.getDigest();
 

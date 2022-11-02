@@ -29,6 +29,7 @@ add_library(gfx
   view_stack.cpp
   render_target.cpp
   pipeline_builder.cpp
+  uuid.cpp
 )
 
 target_compile_features(gfx PUBLIC cxx_std_20)
@@ -40,7 +41,7 @@ target_include_directories(gfx
 target_link_libraries(gfx
   tinygltf
   magic_enum nameof linalg
-  spdlog stb xxHash Boost::algorithm Boost::filesystem
+  spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::uuid
   shards-logging
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
