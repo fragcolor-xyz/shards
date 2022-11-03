@@ -9,33 +9,13 @@
 #include "translator.hpp"
 #include "translator_utils.hpp"
 #include "composition.hpp"
-
-#include "shards/casting.hpp"
-#include "shards/core.hpp"
 #include <nameof.hpp>
+
+#include "shards/core.hpp"
 
 namespace gfx {
 namespace shader {
 using shards::CoreInfo;
-
-static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
-
-static constexpr ShaderFieldBaseType getShaderBaseType(shards::NumberType numberType) {
-  using shards::NumberType;
-  switch (numberType) {
-  case NumberType::Float32:
-  case NumberType::Float64:
-    return ShaderFieldBaseType::Float32;
-  case NumberType::Int64:
-  case NumberType::Int32:
-  case NumberType::Int16:
-  case NumberType::Int8:
-  case NumberType::UInt8:
-    return ShaderFieldBaseType::Int32;
-  default:
-    throw std::out_of_range(std::string(NAMEOF_TYPE(shards::NumberType)));
-  }
-}
 
 struct ConstTranslator {
   static void translate(shards::Const *shard, TranslationContext &context) {
@@ -281,7 +261,7 @@ struct ReadBuffer final : public IOBase {
   }
 
   void setParam(int index, const SHVar &value) {
-    if (index == 3) {
+    if (index == 1) {
       _bufferName = value.payload.stringValue;
     }
     IOBase::setParam(index, value);
@@ -289,7 +269,7 @@ struct ReadBuffer final : public IOBase {
 
   SHVar getParam(int index) {
     using shards::Var;
-    if (index == 3) {
+    if (index == 1) {
       return Var(_bufferName);
     }
     return IOBase::getParam(index);
@@ -396,135 +376,6 @@ struct LinearizeDepth {
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
     context.setWGSLTopVar(FieldTypes::Float, blocks::makeBlock<blocks::LinearizeDepth>(wgslValue->toBlock()));
-  }
-};
-
-template <typename TShard> struct ToNumberTranslator {
-  static void translate(TShard *shard, TranslationContext &context) {
-    using shards::NumberTypeLookup;
-    using shards::NumberTypeTraits;
-    using shards::VectorTypeLookup;
-    using shards::VectorTypeTraits;
-
-    // Already validated by shard compose
-    const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
-    const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
-
-    FieldType fieldType = getShaderBaseType(outputNumberType->type);
-    fieldType.numComponents = outputVectorType->dimension;
-
-    FieldType unitFieldType = fieldType;
-    unitFieldType.numComponents = 1;
-
-    SPDLOG_LOGGER_INFO(context.logger, "gen(cast/{})> ", outputVectorType->name);
-
-    if (!context.wgslTop)
-      throw ShaderComposeError(fmt::format("Cast requires a value"));
-
-    std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    FieldType sourceFieldType = wgslValue->getType();
-
-    blocks::BlockPtr sourceBlock = wgslValue->toBlock();
-    std::unique_ptr<blocks::Compound> sourceComponentList;
-
-    size_t numComponentsToCopy = std::min(fieldType.numComponents, sourceFieldType.numComponents);
-
-    // Convert list of casted components
-    // Generates dstType(x, y, z), etc.
-    //  - vec4<f32>(input.x, input.y, input.z)
-    sourceComponentList = blocks::makeCompoundBlock();
-    for (size_t i = 0; i < numComponentsToCopy; i++) {
-      bool isLast = i >= (numComponentsToCopy - 1);
-      blocks::BlockPtr inner = isLast ? std::move(sourceBlock) : sourceBlock->clone();
-
-      std::string prefix = fmt::format("{}((", getFieldWGSLTypeName(unitFieldType));
-      std::string suffix = fmt::format((isLast ? ").{})" : ").{}), "), componentNames[i]);
-      sourceComponentList->children.emplace_back(
-          blocks::makeCompoundBlock(std::move(prefix), std::move(inner), std::move(suffix)));
-    }
-
-    blocks::BlockPtr result;
-    if (fieldType.numComponents == 1) {
-      result = std::move(sourceComponentList);
-    } else {
-      // Generate constructor for target type
-      std::string prefix = fmt::format("{}(", getFieldWGSLTypeName(fieldType));
-      std::unique_ptr<blocks::Compound> compound = blocks::makeCompoundBlock(std::move(prefix), std::move(sourceComponentList));
-
-      // Append zeros to fill vector type
-      for (size_t i = sourceFieldType.numComponents; i < fieldType.numComponents; i++) {
-        bool isLast = i >= (fieldType.numComponents - 1);
-        std::string fmt;
-        fmt.reserve(16);
-
-        // Additional seperator for between original components
-        if (i == sourceFieldType.numComponents)
-          fmt += std::string(", ");
-
-        fmt += isFloatType(fieldType.baseType) ? "{:f}" : "{}";
-        if (!isLast)
-          fmt += ", ";
-
-        compound->children.emplace_back(blocks::makeBlock<blocks::Direct>(fmt::format(fmt, 0.)));
-      }
-
-      compound->children.emplace_back(blocks::makeBlock<blocks::Direct>(")"));
-
-      result = std::move(compound);
-    }
-
-    context.setWGSLTop<WGSLBlock>(fieldType, std::move(result));
-  }
-};
-
-template <typename TShard> struct MakeVectorTranslator {
-  static void translate(TShard *shard, TranslationContext &context) {
-    using shards::NumberTypeLookup;
-    using shards::NumberTypeTraits;
-    using shards::VectorTypeLookup;
-    using shards::VectorTypeTraits;
-
-    // Already validated by shard compose
-    const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
-    const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
-
-    FieldType fieldType = getShaderBaseType(outputNumberType->type);
-    fieldType.numComponents = outputVectorType->dimension;
-
-    FieldType unitFieldType = fieldType;
-    unitFieldType.numComponents = 1;
-
-    SPDLOG_LOGGER_INFO(context.logger, "gen(make/{})> ", outputVectorType->name);
-
-    std::vector<shards::ParamVar> &params = shard->params;
-    std::unique_ptr<blocks::Compound> sourceComponentList;
-
-    // Convert list of casted components
-    // Generates dstType(x, y, z), etc.
-    //  - vec4<f32>(input.x, input.y, input.z)
-    sourceComponentList = blocks::makeCompoundBlock();
-    for (size_t i = 0; i < params.size(); i++) {
-      bool isLast = i == (params.size() - 1);
-      BlockPtr block;
-      if (params[i].isVariable()) {
-        auto wgslBlock = context.reference(params[i].variableName());
-        if (wgslBlock.fieldType != unitFieldType)
-          throw ShaderComposeError(fmt::format("Invalid parameter {} to MakeVector", i));
-        block = std::move(wgslBlock.block);
-      } else {
-        block = translateConst(params[i], context)->toBlock();
-      }
-
-      sourceComponentList->append(std::move(block));
-      if (!isLast)
-        sourceComponentList->append(", ");
-    }
-
-    // Generate constructor for target type
-    std::string prefix = fmt::format("{}(", getFieldWGSLTypeName(fieldType));
-    blocks::BlockPtr result = blocks::makeCompoundBlock(std::move(prefix), std::move(sourceComponentList), ")");
-
-    context.setWGSLTopVar(fieldType, std::move(result));
   }
 };
 

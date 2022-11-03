@@ -96,6 +96,19 @@ template <typename TShard, typename TOp> struct UnaryOperatorTranslator {
   }
 };
 
+inline FieldType validateTypesVectorBroadcast(FieldType a, FieldType b) {
+  if (a.baseType == b.baseType) {
+    if (a.numComponents == 1 || b.numComponents == 1) {
+      FieldType vecType = a.numComponents == 1 ? b : a;
+      return vecType;
+    } else if (a.numComponents == b.numComponents) {
+      return a;
+    }
+  }
+
+  throw ShaderComposeError(fmt::format("Operand mismatch lhs != rhs, left:{}, right:{}", a, b));
+}
+
 struct OperatorAdd {
   static inline const char *op = "+";
 };
@@ -106,22 +119,12 @@ struct OperatorSubtract {
 
 struct OperatorMultiply {
   static inline const char *op = "*";
-  static FieldType validateTypes(FieldType a, FieldType b) {
-    if (a.baseType == b.baseType) {
-      if (a.numComponents == 1 || b.numComponents == 1) {
-        FieldType vecType = a.numComponents == 1 ? b : a;
-        return vecType;
-      } else if (a.numComponents == b.numComponents) {
-        return a;
-      }
-    }
-
-    throw ShaderComposeError(fmt::format("Operand mismatch lhs != rhs, left:{}, right:{}", a, b));
-  }
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorDivide {
   static inline const char *op = "/";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorMod {

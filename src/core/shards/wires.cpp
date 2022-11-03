@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "foundation.hpp"
-#include "shared.hpp"
+#include "wires.hpp"
 #include <chrono>
 #include <memory>
 #include <set>
@@ -11,254 +10,197 @@
 #endif
 
 namespace shards {
-enum RunWireMode { Inline, Detached, Stepped };
 
-struct WireBase {
-  typedef EnumInfo<RunWireMode> RunWireModeInfo;
-  static inline RunWireModeInfo runWireModeInfo{"RunWireMode", CoreCC, 'runC'};
-  static inline Type ModeType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'runC'}}}};
-
-  static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::StringType, CoreInfo::NoneType}};
-
-  static inline Types WireVarTypes{WireTypes, {CoreInfo::WireVarType}};
-
-  static inline Parameters waitParamsInfo{
-      {"Wire", SHCCSTR("The wire to wait."), {WireVarTypes}},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}},
-      {"Timeout",
-       SHCCSTR("The optional amount of time in seconds to wait for the wire to complete, if the time elapses the wire will be "
-               "stopped and the flow will fail with a timeout error."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
-
-  static inline Parameters stopWireParamsInfo{
-      {"Wire", SHCCSTR("The wire to stop."), {WireVarTypes}},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
-
-  static inline Parameters runWireParamsInfo{{"Wire", SHCCSTR("The wire to run."), {WireTypes}}};
-
-  ParamVar wireref{};
-  std::shared_ptr<SHWire> wire;
-  bool passthrough{false};
-  bool capturing{false};
-  RunWireMode mode{RunWireMode::Inline};
-  IterableExposedInfo exposedInfo{};
-
-  void resetComposition() {
-    if (wire) {
-      if (wire->composeResult) {
-        shards::arrayFree(wire->composeResult->requiredInfo);
-        shards::arrayFree(wire->composeResult->exposedInfo);
-        wire->composeResult.reset();
-      }
+void WireBase::resetComposition() {
+  if (wire) {
+    if (wire->composeResult) {
+      shards::arrayFree(wire->composeResult->requiredInfo);
+      shards::arrayFree(wire->composeResult->exposedInfo);
+      wire->composeResult.reset();
     }
   }
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  std::unordered_set<const SHWire *> &gatheringWires() {
+}
+std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 #ifdef WIN32
-    // TODO FIX THIS
-    // we have to leak.. or windows tls emulation will crash at process end
-    thread_local std::unordered_set<const SHWire *> *wires = new std::unordered_set<const SHWire *>();
-    return *wires;
+  // TODO FIX THIS
+  // we have to leak.. or windows tls emulation will crash at process end
+  thread_local std::unordered_set<const SHWire *> *wires = new std::unordered_set<const SHWire *>();
+  return *wires;
 #else
-    thread_local std::unordered_set<const SHWire *> wires;
-    return wires;
+  thread_local std::unordered_set<const SHWire *> wires;
+  return wires;
 #endif
+}
+
+void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
+  // verify input type
+  if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
+    SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
+    throw ComposeError("Attempted to call an already composed wire with a "
+                       "different input type! wire: " +
+                       wire->name);
   }
 
-  void verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
-    // verify input type
-    if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
-      SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
-      throw ComposeError("Attempted to call an already composed wire with a "
-                         "different input type! wire: " +
-                         wire->name);
+  // ensure requirements match our input data
+  for (auto &req : wire->composeResult->requiredInfo) {
+    // find each in shared
+    auto name = req.name;
+    auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
+      std::string_view xNameView(x.name);
+      return name == xNameView;
+    });
+    if (res == shared.end()) {
+      SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
+      throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
     }
 
-    // ensure requirements match our input data
-    for (auto &req : wire->composeResult->requiredInfo) {
-      // find each in shared
-      auto name = req.name;
-      auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
-        std::string_view xNameView(x.name);
-        return name == xNameView;
-      });
-      if (res == shared.end()) {
-        SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
-        throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
-      }
+    if (data.requiredVariables) {
+      // in this case we should also add to required variables as compose won't do it for us
+      auto requirements = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
+      requirements->emplace(name, req);
+    }
+  }
+}
 
-      if (data.requiredVariables) {
-        // in this case we should also add to required variables as compose won't do it for us
-        auto requirements = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
-        requirements->emplace(name, req);
-      }
+SHTypeInfo WireBase::compose(const SHInstanceData &data) {
+  // Actualize the wire here, if we are deserialized
+  // wire might already be populated!
+  if (!wire) {
+    if (wireref->valueType == SHType::Wire) {
+      wire = SHWire::sharedFromRef(wireref->payload.wireValue);
+    } else if (wireref->valueType == String) {
+      SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
+      wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
+    } else {
+      wire = nullptr;
+      SHLOG_DEBUG("WireBase::compose on a null wire");
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    // Actualize the wire here, if we are deserialized
-    // wire might already be populated!
-    if (!wire) {
-      if (wireref->valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(wireref->payload.wireValue);
-      } else if (wireref->valueType == String) {
-        SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
-        wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
-      } else {
-        wire = nullptr;
-        SHLOG_DEBUG("WireBase::compose on a null wire");
-      }
-    }
+  // Easy case, no wire...
+  if (!wire)
+    return data.inputType;
 
-    // Easy case, no wire...
-    if (!wire)
-      return data.inputType;
+  assert(data.wire);
 
-    assert(data.wire);
+  if (wire.get() == data.wire) {
+    SHLOG_DEBUG("WireBase::compose early return, data.wire == wire, name: {}", wire->name);
+    return data.inputType; // we don't know yet...
+  }
 
-    if (wire.get() == data.wire) {
-      SHLOG_DEBUG("WireBase::compose early return, data.wire == wire, name: {}", wire->name);
-      return data.inputType; // we don't know yet...
-    }
+  wire->mesh = data.wire->mesh;
 
-    wire->mesh = data.wire->mesh;
+  auto mesh = data.wire->mesh.lock();
+  assert(mesh);
 
-    auto mesh = data.wire->mesh.lock();
-    assert(mesh);
-
-    // TODO FIXME, wireloader/wire runner might access this from threads
-    if (mesh->visitedWires.count(wire.get())) {
-      // but visited does not mean composed...
-      if (wire->composeResult) {
-        IterableExposedInfo shared(data.shared);
-        verifyAlreadyComposed(data, shared);
-      }
-      return mesh->visitedWires[wire.get()];
-    }
-
-    // avoid stack-overflow
-    if (wire->isRoot || gatheringWires().count(wire.get())) {
-      SHLOG_DEBUG("WireBase::compose early return, wire is being visited, name: {}", wire->name);
-      return data.inputType; // we don't know yet...
-    }
-
-    SHLOG_TRACE("WireBase::compose, source: {} composing: {} inputType: {}", data.wire->name, wire->name, data.inputType);
-
-    // we can add early in this case!
-    // useful for Resume/Start
-    if (passthrough) {
-      auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
-      if (done) {
-        SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
-      }
-    } else if (mode == Stepped) {
-      auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
-      if (done) {
-        SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
-      }
-    }
-
-    // and the subject here
-    gatheringWires().insert(wire.get());
-    DEFER(gatheringWires().erase(wire.get()));
-
-    auto dataCopy = data;
-    dataCopy.wire = wire.get();
-    IterableExposedInfo shared(data.shared);
-    IterableExposedInfo sharedCopy;
-    if (mode == RunWireMode::Detached && !capturing) {
-      // keep only globals
-      auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
-      sharedCopy = IterableExposedInfo(shared.begin(), end);
-    } else {
-      // we allow Detached but they need to be referenced during warmup
-      sharedCopy = shared;
-    }
-
-    dataCopy.shared = sharedCopy;
-
-    SHTypeInfo wireOutput;
-    // make sure to compose only once...
-    if (!wire->composeResult) {
-      SHLOG_TRACE("Running {} compose", wire->name);
-
-      wire->composeResult = composeWire(
-          wire.get(),
-          [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
-              throw ComposeError("RunWire: failed inner wire validation");
-            } else {
-              SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
-            }
-          },
-          this, dataCopy);
-
-      wireOutput = wire->composeResult->outputType;
-
-      IterableExposedInfo exposing(wire->composeResult->exposedInfo);
-      // keep only globals
-      exposedInfo = IterableExposedInfo(
-          exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
-
-      // Notice we DON'T need here to merge the required info here even if we had data.requiredVariables non null
-
-      SHLOG_TRACE("Wire {} composed", wire->name);
-    } else {
-      SHLOG_TRACE("Skipping {} compose", wire->name);
-
+  // TODO FIXME, wireloader/wire runner might access this from threads
+  if (mesh->visitedWires.count(wire.get())) {
+    // but visited does not mean composed...
+    if (wire->composeResult) {
+      IterableExposedInfo shared(data.shared);
       verifyAlreadyComposed(data, shared);
-
-      // write output type
-      wireOutput = wire->outputType;
     }
-
-    auto outputType = data.inputType;
-
-    if (!passthrough) {
-      if (mode == Inline)
-        outputType = wireOutput;
-      else if (mode == Stepped)
-        outputType = CoreInfo::AnyType; // unpredictable
-      else
-        outputType = data.inputType;
-    }
-
-    if (!passthrough && mode != Stepped) {
-      auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
-      if (done) {
-        SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
-                    *wire->inputType, wire->outputType);
-      }
-    }
-
-    return outputType;
+    return mesh->visitedWires[wire.get()];
   }
 
-  void cleanup() { wireref.cleanup(); }
+  // avoid stack-overflow
+  if (wire->isRoot || gatheringWires().count(wire.get())) {
+    SHLOG_DEBUG("WireBase::compose early return, wire is being visited, name: {}", wire->name);
+    return data.inputType; // we don't know yet...
+  }
 
-  void warmup(SHContext *ctx) { wireref.warmup(ctx); }
+  SHLOG_TRACE("WireBase::compose, source: {} composing: {} inputType: {}", data.wire->name, wire->name, data.inputType);
 
-  // Use state to mark the dependency for serialization as well!
-
-  SHVar getState() {
-    if (wire) {
-      return Var(wire);
-    } else {
-      SHLOG_TRACE("getState no wire was avail");
-      return Var::Empty;
+  // we can add early in this case!
+  // useful for Resume/Start
+  if (passthrough) {
+    auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
+    if (done) {
+      SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
+    }
+  } else if (mode == Stepped) {
+    auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
+    if (done) {
+      SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
   }
 
-  void setState(SHVar state) {
-    if (state.valueType == SHType::Wire) {
-      wire = SHWire::sharedFromRef(state.payload.wireValue);
+  // and the subject here
+  gatheringWires().insert(wire.get());
+  DEFER(gatheringWires().erase(wire.get()));
+
+  auto dataCopy = data;
+  dataCopy.wire = wire.get();
+  IterableExposedInfo shared(data.shared);
+  IterableExposedInfo sharedCopy;
+  if (mode == RunWireMode::Detached && !capturing) {
+    // keep only globals
+    auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
+    sharedCopy = IterableExposedInfo(shared.begin(), end);
+  } else {
+    // we allow Detached but they need to be referenced during warmup
+    sharedCopy = shared;
+  }
+
+  dataCopy.shared = sharedCopy;
+
+  SHTypeInfo wireOutput;
+  // make sure to compose only once...
+  if (!wire->composeResult) {
+    SHLOG_TRACE("Running {} compose", wire->name);
+
+    wire->composeResult = composeWire(
+        wire.get(),
+        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          if (!nonfatalWarning) {
+            SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
+            throw ComposeError("RunWire: failed inner wire validation");
+          } else {
+            SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
+          }
+        },
+        this, dataCopy);
+
+    wireOutput = wire->composeResult->outputType;
+
+    IterableExposedInfo exposing(wire->composeResult->exposedInfo);
+    // keep only globals
+    exposedInfo = IterableExposedInfo(
+        exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
+
+    // Notice we DON'T need here to merge the required info here even if we had data.requiredVariables non null
+
+    SHLOG_TRACE("Wire {} composed", wire->name);
+  } else {
+    SHLOG_TRACE("Skipping {} compose", wire->name);
+
+    verifyAlreadyComposed(data, shared);
+
+    // write output type
+    wireOutput = wire->outputType;
+  }
+
+  auto outputType = data.inputType;
+
+  if (!passthrough) {
+    if (mode == Inline)
+      outputType = wireOutput;
+    else if (mode == Stepped)
+      outputType = CoreInfo::AnyType; // unpredictable
+    else
+      outputType = data.inputType;
+  }
+
+  if (!passthrough && mode != Stepped) {
+    auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
+    if (done) {
+      SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
+                  *wire->inputType, wire->outputType);
     }
   }
-};
+
+  return outputType;
+}
 
 struct Wait : public WireBase {
   SHOptionalString help() {

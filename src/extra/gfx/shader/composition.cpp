@@ -40,7 +40,14 @@ struct DynamicBlockFromShards : public blocks::Block {
       throw formatException("Failed to compose shader shards: {} ({})", errorTxt, shardName);
     };
 
+    std::shared_ptr<SHMesh> tempMesh = SHMesh::make();
+    shards::Wire tempWire("<shader wire>");
+    tempWire->mesh = tempMesh;
+    tempWire->isRoot = true;
+
     SHInstanceData instanceData{};
+    instanceData.wire = tempWire.get();
+
     std::vector<SHExposedTypeInfo> exposedTypes;
     for (auto &v : definitions.globals) {
       auto &entry = exposedTypes.emplace_back();
@@ -49,6 +56,7 @@ struct DynamicBlockFromShards : public blocks::Block {
       entry.exposedType = Type{fieldTypeToShardsType(v.second)};
       entry.isMutable = true;
     }
+
     instanceData.shared = SHExposedTypesInfo{
         .elements = exposedTypes.data(),
         .len = uint32_t(exposedTypes.size()),

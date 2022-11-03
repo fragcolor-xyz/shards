@@ -90,6 +90,26 @@ inline shards::Type fieldTypeToShardsType(const FieldType &type) {
     }
   }
 }
+
+static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
+
+inline constexpr ShaderFieldBaseType getShaderBaseType(shards::NumberType numberType) {
+  using shards::NumberType;
+  switch (numberType) {
+  case NumberType::Float32:
+  case NumberType::Float64:
+    return ShaderFieldBaseType::Float32;
+  case NumberType::Int64:
+  case NumberType::Int32:
+  case NumberType::Int16:
+  case NumberType::Int8:
+  case NumberType::UInt8:
+    return ShaderFieldBaseType::Int32;
+  default:
+    throw std::out_of_range(std::string(NAMEOF_TYPE(shards::NumberType)));
+  }
+}
+
 } // namespace shader
 } // namespace gfx
 
