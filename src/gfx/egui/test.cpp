@@ -53,7 +53,6 @@ int main() {
       queue->clear();
       render_egui_test_frame(rustAppState, ctx, queue, events, loop.getAbsoluteTime(), deltaTime);
 
-      ctx.resizeMainOutputConditional(wnd.getDrawableSize());
       ctx.beginFrame();
       renderer.beginFrame();
       renderer.render(view, pipelineSteps);

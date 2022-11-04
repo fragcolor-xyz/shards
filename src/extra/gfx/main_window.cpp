@@ -185,7 +185,6 @@ struct MainWindow : public Base {
           throw ActivationError("Window closed, aborting wire.");
         } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           gfx::int2 newSize = window->getDrawableSize();
-          context->resizeMainOutputConditional(newSize);
         }
       } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
         context->suspend();
