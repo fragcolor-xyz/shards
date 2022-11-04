@@ -196,3 +196,5 @@ target_include_directories(utf8.h INTERFACE utf8.h)
 
 add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
+
+add_subdirectory(Vulkan-Headers)

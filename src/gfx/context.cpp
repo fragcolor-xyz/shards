@@ -10,6 +10,10 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <SDL_stdinc.h>
+#include <gfx_rust.h>
+
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -56,7 +60,7 @@ struct AdapterRequest {
 
   static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
     auto result = std::make_shared<Self>();
-    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
+    wgpuInstanceRequestAdapterEx(wgpuInstance, &options, (WGPURequestAdapterCallback)&Self::callback,
                                new std::shared_ptr<Self>(result));
     return result;
   };
@@ -94,6 +98,87 @@ struct DeviceRequest {
     (*handle)->finished = true;
     delete handle;
   };
+};
+
+struct VulkanOpenXRBackend : public IBackend {
+  WGPUInstance wgpuInstance{};
+  WGPUAdapter wgpuAdapter{};
+  WGPUDevice wgpuDevice{};
+  WGPUQueue wgpuQueue{};
+
+  vk::DispatchLoaderDynamic loader;
+  vk::Instance instance;
+
+  VkPhysicalDevice physicalDeviceToUse{};
+
+  WGPUInstance createInstance() {
+    // Create instance
+    WGPUInstanceDescriptor desc{};
+    WGPUInstanceDescriptorVK descVk{};
+    if (getDefaultWgpuBackendType() == WGPUBackendType_Vulkan) {
+      std::vector<const char *> requiredExtensions = {};
+
+      descVk = {
+          .chain{.sType = (WGPUSType)WGPUNativeSTypeEx_InstanceDescriptorVK},
+          .requiredExtensions = requiredExtensions.data(),
+          .requiredExtensionCount = (uint32_t)requiredExtensions.size(),
+      };
+      desc.nextInChain = &descVk.chain;
+    }
+
+    wgpuInstance = wgpuCreateInstanceEx(&desc);
+    if (!wgpuInstance)
+      throw std::runtime_error("Failed to create WGPUInstance");
+
+    WGPUInstanceProperties props{};
+    WGPUInstancePropertiesVK propsVk{
+        .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_InstancePropertiesVK)},
+    };
+    if (getDefaultWgpuBackendType() == WGPUBackendType_Vulkan) {
+      props.nextInChain = &propsVk.chain;
+    }
+    wgpuInstanceGetPropertiesEx(wgpuInstance, &props);
+
+    loader = vk::DispatchLoaderDynamic(PFN_vkGetInstanceProcAddr(propsVk.getInstanceProcAddr));
+
+    instance = vk::Instance(VkInstance(propsVk.instance));
+    loader.init(instance);
+
+    auto devices = instance.enumeratePhysicalDevices(loader);
+    for (auto &device : devices) {
+      auto properties = device.getProperties(loader);
+      auto name = std::string(properties.deviceName.begin(), properties.deviceName.end());
+      SPDLOG_INFO("vulkan physical device: {}", name);
+      physicalDeviceToUse = device;
+      break;
+    }
+    assert(physicalDeviceToUse);
+
+    return wgpuInstance;
+  }
+
+  std::shared_ptr<AdapterRequest> requestAdapter() {
+    WGPURequestAdapterOptionsVK optionsVk{
+        .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_RequestAdapterOptionsVK)},
+        .physicalDevice = physicalDeviceToUse,
+    };
+
+    WGPURequestAdapterOptions options{};
+    options.nextInChain = &optionsVk.chain;
+
+    return AdapterRequest::create(wgpuInstance, options);
+  }
+
+  std::shared_ptr<DeviceRequest> requestDevice() {
+    WGPUDeviceDescriptor deviceDesc = {};
+    WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
+    deviceDesc.requiredLimits = &requiredLimits;
+
+    return DeviceRequest::create(wgpuAdapter, deviceDesc);
+  }
+
+  virtual void setAdapter(WGPUAdapter adapter) { wgpuAdapter = adapter; }
+  virtual void setDevice(WGPUDevice device) { wgpuDevice = device; }
 };
 
 struct ContextMainOutput {
@@ -142,14 +227,14 @@ struct ContextMainOutput {
   void present() {
     assert(currentView);
 
-    wgpuTextureViewRelease(currentView);
-    currentView = nullptr;
-
     // Web doesn't have a swapchain, it automatically present the current texture when control
     // is returned to the browser
 #ifdef WEBGPU_NATIVE
     wgpuSwapChainPresent(wgpuSwapchain);
 #endif
+
+    wgpuTextureViewRelease(currentView);
+    currentView = nullptr;
   }
 
   void initSwapchain(WGPUAdapter adapter, WGPUDevice device) {
@@ -221,6 +306,8 @@ void Context::release() {
 
   releaseAdapter();
   mainOutput.reset();
+
+  WGPU_SAFE_RELEASE(wgpuInstanceDrop, wgpuInstance);
 }
 
 Window &Context::getWindow() {
@@ -380,6 +467,7 @@ void Context::tickRequesting() {
 
         wgpuAdapter = adapterRequest->adapter;
         adapterRequest.reset();
+        backend->setAdapter(wgpuAdapter);
 
         // Immediately request a device from the adapter
         requestDevice();
@@ -392,8 +480,11 @@ void Context::tickRequesting() {
           throw formatException("Failed to create device: {} {}", magic_enum::enum_name(deviceRequest->status),
                                 deviceRequest->message);
         }
+
         wgpuDevice = deviceRequest->device;
         deviceRequest.reset();
+        backend->setDevice(wgpuDevice);
+
         deviceObtained();
       }
     }
@@ -442,12 +533,8 @@ void Context::requestDevice() {
 
   state = ContextState::Requesting;
 
-  WGPUDeviceDescriptor deviceDesc = {};
-  WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
-  deviceDesc.requiredLimits = &requiredLimits;
-
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
-  deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);
+  deviceRequest = backend->requestDevice();
 }
 
 void Context::releaseDevice() {
@@ -472,33 +559,33 @@ void Context::requestAdapter() {
 
   state = ContextState::Requesting;
 
-  WGPURequestAdapterOptions requestAdapter = {};
-  requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
-  requestAdapter.compatibleSurface = getOrCreateSurface();
-  requestAdapter.forceFallbackAdapter = false;
+  //   WGPURequestAdapterOptions requestAdapter = {};
+  //   requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
+  //   requestAdapter.compatibleSurface = getOrCreateSurface();
+  //   requestAdapter.forceFallbackAdapter = false;
 
-#ifdef WEBGPU_NATIVE
-  WGPUAdapterExtras adapterExtras = {};
-  requestAdapter.nextInChain = &adapterExtras.chain;
-  adapterExtras.chain.sType = (WGPUSType)WGPUSType_AdapterExtras;
+  // #ifdef WEBGPU_NATIVE
+  //   WGPUAdapterExtras adapterExtras = {};
+  //   requestAdapter.nextInChain = &adapterExtras.chain;
+  //   adapterExtras.chain.sType = (WGPUSType)WGPUSType_AdapterExtras;
 
-  adapterExtras.backend = WGPUBackendType_Null;
-  if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
-    std::string typeStr = std::string("WGPUBackendType_") + backendStr;
-    auto foundValue = magic_enum::enum_cast<WGPUBackendType>(typeStr);
-    if (foundValue) {
-      adapterExtras.backend = foundValue.value();
-    }
-  }
+  //   adapterExtras.backend = WGPUBackendType_Null;
+  //   if (const char *backendStr = SDL_getenv("GFX_BACKEND")) {
+  //     std::string typeStr = std::string("WGPUBackendType_") + backendStr;
+  //     auto foundValue = magic_enum::enum_cast<WGPUBackendType>(typeStr);
+  //     if (foundValue) {
+  //       adapterExtras.backend = foundValue.value();
+  //     }
+  //   }
 
-  if (adapterExtras.backend == WGPUBackendType_Null)
-    adapterExtras.backend = getDefaultWgpuBackendType();
+  //   if (adapterExtras.backend == WGPUBackendType_Null)
+  //     adapterExtras.backend = getDefaultWgpuBackendType();
 
-  SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(adapterExtras.backend));
-#endif
+  //   SPDLOG_LOGGER_INFO(logger, "Using backend {}", magic_enum::enum_name(adapterExtras.backend));
+  // #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
-  adapterRequest = AdapterRequest::create(wgpuInstance, requestAdapter);
+  adapterRequest = backend->requestAdapter();
 }
 
 void Context::releaseAdapter() {
@@ -544,7 +631,63 @@ void Context::initCommon() {
   }
 #endif
 
+  backend = std::make_shared<VulkanOpenXRBackend>();
+  wgpuInstance = backend->createInstance();
+
   requestDevice();
+}
+
+void Context::createInstance() {
+  assert(!wgpuInstance);
+
+  // NOTE: Prototype OpenXR binding code
+  // the openxr vulkan extensions requires the following:
+  // - Specific extensions on instance creation
+  // - Specific physical device as returned by OpenXR
+  // - Specific extensions on device creation
+  // - Need to retrieve the created instance, device handles and queue indices
+
+  // Create instance
+  WGPUInstanceDescriptor desc{};
+  WGPUInstanceDescriptorVK descVk{};
+  if (getDefaultWgpuBackendType() == WGPUBackendType_Vulkan) {
+    std::vector<const char *> requiredExtensions = {};
+
+    descVk = {
+        .chain{.sType = (WGPUSType)WGPUNativeSTypeEx_InstanceDescriptorVK},
+        .requiredExtensions = requiredExtensions.data(),
+        .requiredExtensionCount = (uint32_t)requiredExtensions.size(),
+    };
+    desc.nextInChain = &descVk.chain;
+  }
+
+  wgpuInstance = wgpuCreateInstanceEx(&desc);
+  if (!wgpuInstance)
+    throw std::runtime_error("Failed to create WGPUInstance");
+
+  WGPUInstanceProperties props{};
+  WGPUInstancePropertiesVK propsVk{
+      .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_InstancePropertiesVK)},
+  };
+  if (getDefaultWgpuBackendType() == WGPUBackendType_Vulkan) {
+    props.nextInChain = &propsVk.chain;
+  }
+  wgpuInstanceGetPropertiesEx(wgpuInstance, &props);
+
+  vk::DispatchLoaderDynamic loader(PFN_vkGetInstanceProcAddr(propsVk.getInstanceProcAddr));
+  vk::Instance instance(VkInstance(propsVk.instance));
+  loader.init(instance);
+
+  VkPhysicalDevice physicalDeviceToUse{};
+  auto devices = instance.enumeratePhysicalDevices(loader);
+  for (auto &device : devices) {
+    auto properties = device.getProperties(loader);
+    auto name = std::string(properties.deviceName.begin(), properties.deviceName.end());
+    SPDLOG_INFO("vulkan physical device: {}", name);
+    physicalDeviceToUse = device;
+    break;
+  }
+  assert(physicalDeviceToUse);
 }
 
 void Context::present() {

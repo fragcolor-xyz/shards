@@ -38,12 +38,25 @@ struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
 
+// OpenXR prototype instance/adapter/device abstraction
+struct IBackend {
+  virtual ~IBackend() = default;
+  virtual WGPUInstance createInstance() = 0;
+
+  virtual std::shared_ptr<AdapterRequest> requestAdapter() = 0;
+  virtual void setAdapter(WGPUAdapter adapter) = 0;
+
+  virtual std::shared_ptr<DeviceRequest> requestDevice() = 0;
+  virtual void setDevice(WGPUDevice device) = 0;
+};
+
 /// <div rustbindgen opaque></div>
 struct Context {
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
   std::shared_ptr<ContextMainOutput> mainOutput;
+  std::shared_ptr<IBackend> backend;
   ContextState state = ContextState::Uninitialized;
   ContextFrameState frameState = ContextFrameState::Ok;
   bool suspended = false;
@@ -115,6 +128,7 @@ private:
   WGPUSurface getOrCreateSurface();
 
   void initCommon();
+  void createInstance();
 
   void present();
 
