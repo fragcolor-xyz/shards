@@ -78,13 +78,26 @@ struct VariableStorage {
   }
 };
 
+// Keeps track of pushes into sequences
+// used to resolve them as matrix types
+struct VirtualSeq {
+  FieldType elementType;
+  std::vector<std::unique_ptr<IWGSLGenerated>> elements;
+
+  VirtualSeq() = default;
+  VirtualSeq(VirtualSeq&& other) = default;
+};
+
 // References a shader block together with a strategy for appending children into it
 struct TranslationBlockRef {
   blocks::Block *block{};
   IAppender *appender{};
   VariableStorage variables;
 
+  std::map<std::string, VirtualSeq> virtualSequences;
+
   TranslationBlockRef(blocks::Block *block, IAppender *appender) : block(block), appender(appender) {}
+  TranslationBlockRef(TranslationBlockRef&& other) = default;
 
   template <typename T> static TranslationBlockRef make(blocks::Block *block) {
     return TranslationBlockRef(block, Appender<T>::getInstance());
@@ -97,6 +110,12 @@ struct TranslationBlockRef {
 
 struct TranslationRegistry;
 
+struct TranslatedWire {
+  std::string functionName;
+  std::optional<FieldType> outputType;
+  std::optional<FieldType> inputType;
+};
+
 // Context used during shader translations
 // inputs C++ shards blocks
 // outputs a shader block hierarchy defining a shader function
@@ -106,6 +125,9 @@ struct TranslationContext {
   shards::logging::Logger logger;
 
   VariableStorage globals;
+
+  // Keeps track of which wires have been translated info functions
+  std::map<SHWire *, TranslatedWire> translatedWires;
 
   UniquePtr<blocks::Compound> root;
   std::vector<TranslationBlockRef> stack;
@@ -150,6 +172,9 @@ public:
   // Enter a shard and translate it recursively
   void processShard(ShardPtr shard);
 
+  // Translates a wire
+  const TranslatedWire& processWire(const std::shared_ptr<SHWire>& wire, const std::optional<FieldType>& inputType);
+
   // Assign a block to a temporary variable and return it's name
   template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr) {
     const std::string &varName = getUniqueVariableName();
@@ -191,6 +216,10 @@ public:
   // Tries to find a variable in all scopes & globally
   // outParent will be null in case of global variables
   bool findVariable(const std::string &varName, const FieldType *&outFieldType, const TranslationBlockRef *&outParent) const;
+
+  // Tries to expand sequences in the current scope into their respective matrix types
+  // returns true if it did so, the variable can be acessed using findVariable
+  bool tryExpandIntoVariable(const std::string &varName);
 
   // Assigns or updates a variable
   // returns a reference to the variable in the same format as `reference` does

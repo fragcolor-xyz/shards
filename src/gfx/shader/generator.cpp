@@ -345,8 +345,10 @@ struct Stage {
       break;
     }
 
+    context.pushHeaderScope();
     context.write(fmt::format("var<private> {}: {};\n", inputVariableName, inputStructName));
     context.write(fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName));
+    context.popHeaderScope();
 
     std::vector<String> functionNamesToCall;
     size_t index = 0;
@@ -387,8 +389,14 @@ struct Stage {
       globalsHeader += fmt::format("var<private> {}: {};\n", globalsVariableName, globalsStructName);
     }
 
+    std::string outSource = std::move(globalsHeader);
+    for (auto &header : context.headers) {
+      outSource += std::move(header);
+    }
+    outSource += std::move(context.result);
+
     return StageOutput{
-        globalsHeader + std::move(context.header) + std::move(context.result),
+        std::move(outSource),
         std::move(context.errors),
     };
   }
@@ -508,7 +516,9 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     std::vector<IGeneratorDynamicHandler *> dynamicHandlers;
 
     void write(const StringView &str) {}
-    void writeHeader(const StringView &str) {}
+
+    void pushHeaderScope() {}
+    void popHeaderScope() {}
 
     void readGlobal(const char *name) {}
     void beginWriteGlobal(const char *name, const FieldType &type) { definitions.globals.insert_or_assign(name, type); }

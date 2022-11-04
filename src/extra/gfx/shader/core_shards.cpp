@@ -1,7 +1,38 @@
 #include "core_shards.hpp"
 #include "translate_wrapper.hpp"
+#include <gfx/shader/fmt.hpp>
 
+using namespace shards;
 namespace gfx::shader {
+
+struct PushTranslator {
+  static void translate(Push *shard, TranslationContext &context) {
+    auto &ref = context.getTop();
+
+    auto value = context.takeWGSLTop();
+    if (!value)
+      throw std::runtime_error("Missing value to push");
+
+    auto elementType = value->getType();
+
+    auto it = ref.virtualSequences.find(shard->_name);
+    if (it == ref.virtualSequences.end()) {
+      it = ref.virtualSequences.emplace(std::make_pair(shard->_name, VirtualSeq())).first;
+      it->second.elementType = elementType;
+    } else {
+      if (it->second.elementType != elementType)
+        throw std::runtime_error(
+            fmt::format("Sequence value type mismatch {} (old) != {} (new)", it->second.elementType, elementType));
+    }
+
+    auto &virtualSeq = it->second;
+    virtualSeq.elements.emplace_back(std::make_unique<WGSLBlock>(elementType, value->toBlock()));
+
+    // Restore / passthrough
+    context.wgslTop = std::move(value);
+  }
+};
+
 void registerCoreShards() {
   // Literal copy-paste into shader code
   REGISTER_SHADER_SHARD("Shader.Literal", Literal);
@@ -21,5 +52,7 @@ void registerCoreShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(GetTranslator, "Get", shards::Get);
   REGISTER_EXTERNAL_SHADER_SHARD(UpdateTranslator, "Update", shards::Update);
   REGISTER_EXTERNAL_SHADER_SHARD(TakeTranslator, "Take", shards::Take);
+
+  REGISTER_EXTERNAL_SHADER_SHARD(PushTranslator, "Push", shards::Push);
 }
 } // namespace gfx::shader

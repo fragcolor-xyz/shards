@@ -51,8 +51,11 @@ struct GeneratorDefinitions {
 struct IGeneratorContext {
   // Write directly to output stream
   virtual void write(const StringView &str) = 0;
-  // Writes into a separate buffer that is prepended to the combined output of write and all other generated code
-  virtual void writeHeader(const StringView &str) = 0;
+
+  // Push / pop for defining code outside of the current function
+  // any context writes in between these calls will be written to a header location before the current function being written
+  virtual void pushHeaderScope() = 0;
+  virtual void popHeaderScope() = 0;
 
   virtual void readGlobal(const char *name) = 0;
   virtual void beginWriteGlobal(const char *name, const FieldType &type) = 0;
@@ -88,7 +91,10 @@ struct IGeneratorContext {
 
 struct GeneratorContext : public IGeneratorContext {
   String result;
-  String header;
+
+  std::vector<std::string> headers;
+  std::vector<size_t> headerStack;
+
   String inputVariableName;
   String outputVariableName;
   String globalsVariableName;
@@ -100,7 +106,12 @@ struct GeneratorContext : public IGeneratorContext {
 
   TempVariableAllocator tempVariableAllocator;
 
+  std::string& getOutput();
+
   void write(const StringView &str);
+
+  void pushHeaderScope();
+  void popHeaderScope();
 
   // Writes into a separate buffer that is prepended to the combined output of write and all other generated code
   void writeHeader(const StringView &str);

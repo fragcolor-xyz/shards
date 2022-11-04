@@ -247,12 +247,14 @@ struct LinearizeDepth : public Block {
     // b = -near * far / range
     // clip_depth = -a - b / z
     auto funcName = context.generateTempVariable();
-    context.writeHeader(fmt::format("fn {}(proj: mat4x4<f32>, clip_depth: f32) -> f32", funcName) + R"({
+    context.pushHeaderScope();
+    context.write(fmt::format("fn {}(proj: mat4x4<f32>, clip_depth: f32) -> f32", funcName) + R"({
   let a = proj[2][2];
   let b = proj[3][2];
   return b / (clip_depth + a);
 }
 )");
+    context.popHeaderScope();
 
     context.write(fmt::format("{}(", funcName));
     context.readBuffer("proj", FieldTypes::Float4x4, "view");

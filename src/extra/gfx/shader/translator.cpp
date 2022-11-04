@@ -32,6 +32,77 @@ void TranslationContext::processShard(ShardPtr shard) {
   handler->translate(shard, *this);
 }
 
+const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWire> &wire,
+                                                      const std::optional<FieldType> &inputType) {
+  SHWire *wirePtr = wire.get();
+  auto it = translatedWires.find(wirePtr);
+  if (it != translatedWires.end())
+    return it->second;
+
+  TranslatedWire translated;
+  translated.functionName = getUniqueVariableName(wire->name);
+
+  SPDLOG_LOGGER_INFO(logger, "Generating shader function for wire {} => {}", wire->name, translated.functionName);
+
+  if (wire->inputType->basicType != SHType::None) {
+    assert(inputType.has_value());
+    translated.inputType = inputType;
+  }
+
+  std::string inputVarName;
+  std::string argsDecl;
+  std::string returnDecl;
+
+  auto functionBody = blocks::makeCompoundBlock();
+
+  // Allocate header signature
+  auto functionHeaderBlock = blocks::makeCompoundBlock();
+  auto &functionHeader = *functionHeaderBlock.get();
+  functionBody->children.emplace_back(std::move(functionHeaderBlock));
+
+  // Setup input
+  if (translated.inputType) {
+    inputVarName = getUniqueVariableName("arg");
+    argsDecl = fmt::format("{} : {}", inputVarName, getFieldWGSLTypeName(translated.inputType.value()));
+
+    // Set the stack value from input
+    setWGSLTop<WGSLBlock>(translated.inputType.value(), blocks::makeBlock<blocks::Direct>(inputVarName));
+  }
+
+  // Process wire/function contents
+  stack.emplace_back(TranslationBlockRef::make(functionBody));
+  for (auto shard : wire->shards) {
+    processShard(shard);
+  }
+  stack.pop_back();
+
+  // Grab return value
+  auto returnValue = takeWGSLTop();
+  if (wire->outputType.basicType != SHType::None) {
+    assert(returnValue);
+    translated.outputType = returnValue->getType();
+
+    functionBody->appendLine("return ", returnValue->toBlock());
+
+    returnDecl = fmt::format("-> {}", getFieldWGSLTypeName(translated.outputType.value()));
+  }
+
+  // Close function body
+  functionBody->appendLine("}");
+
+  // Finalize function signature
+  std::string signature = fmt::format("fn {}({}) {}", translated.functionName, argsDecl, returnDecl);
+  functionHeader.appendLine(signature + "{");
+
+  SPDLOG_LOGGER_INFO(logger, "gen(wire)> {}", signature);
+
+  // Add the definition
+  // the Header block will insert it's generate code outside & before the current function
+  addNew(std::make_unique<blocks::Header>(std::move(functionBody)));
+
+  return translatedWires.insert_or_assign(wirePtr, translated).first->second;
+}
+
 bool TranslationContext::findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const {
   auto globalIt = globals.types.find(varName);
   if (globalIt != globals.types.end()) {
@@ -88,7 +159,7 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
 
   if (global) {
     // Store global variable type info & check update
-    const std::string& uniqueVariableName = updateStorage(globals, varName, valueType);
+    const std::string &uniqueVariableName = updateStorage(globals, varName, valueType);
 
     // Generate a shader source block containing the assignment
     addNew(blocks::makeBlock<blocks::WriteGlobal>(uniqueVariableName, valueType, value->toBlock()));
@@ -99,7 +170,7 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     TranslationBlockRef &parent = getTop();
 
     // Store local variable type info & check update
-    const std::string& uniqueVariableName = updateStorage(parent.variables, varName, valueType);
+    const std::string &uniqueVariableName = updateStorage(parent.variables, varName, valueType);
 
     // Generate a shader source block containing the assignment
     addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", uniqueVariableName), value->toBlock(), ";\n"));
@@ -109,7 +180,35 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
   }
 }
 
+bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
+  auto &top = getTop();
+  auto it = top.virtualSequences.find(varName);
+  if (it != top.virtualSequences.end()) {
+    auto &virtualSeq = it->second;
+    FieldType type = virtualSeq.elementType;
+    type.matrixDimension = virtualSeq.elements.size();
+
+    auto constructor = blocks::makeCompoundBlock();
+    constructor->append(fmt::format("{}(", getFieldWGSLTypeName(type)));
+    for (size_t i = 0; i < type.matrixDimension; i++) {
+      if (i > 0)
+        constructor->append(", ");
+      constructor->append(virtualSeq.elements[i]->toBlock());
+    }
+    constructor->append(")");
+
+    assignVariable(varName, false, false, std::make_unique<WGSLBlock>(type, std::move(constructor)));
+
+    it = top.virtualSequences.erase(it);
+    return true;
+  }
+
+  return false;
+}
+
 WGSLBlock TranslationContext::reference(const std::string &varName) {
+  tryExpandIntoVariable(varName);
+
   const FieldType *fieldType{};
   const TranslationBlockRef *parent{};
   if (!findVariable(varName, fieldType, parent)) {
@@ -137,10 +236,12 @@ ITranslationHandler *TranslationRegistry::resolve(ShardPtr shard) {
 void registerCoreShards();
 void registerMathShards();
 void registerLinalgShards();
+void registerWireShards();
 void registerTranslatorShards() {
   registerCoreShards();
   registerMathShards();
   registerLinalgShards();
+  registerWireShards();
 }
 
 } // namespace shader

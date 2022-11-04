@@ -69,26 +69,31 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
   default:
     throw std::out_of_range(NAMEOF(FieldType::baseType).str());
   }
-  const char *vecType = nullptr;
-  switch (type.numComponents) {
-  case 1:
-    break;
-  case 2:
-    vecType = "vec2";
-    break;
-  case 3:
-    vecType = "vec3";
-    break;
-  case 4:
-    vecType = "vec4";
-    break;
-  case 16:
-    vecType = "mat4x4";
-    break;
-  default:
-    throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+
+  if (type.matrixDimension > 1) {
+    // Check, can not create mat1x1 types
+    if (type.numComponents <= 1)
+      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+    return fmt::format("mat{}x{}<{}>", type.numComponents, type.matrixDimension, baseType);
+  } else {
+    const char *vecType = nullptr;
+    switch (type.numComponents) {
+    case 1:
+      break;
+    case 2:
+      vecType = "vec2";
+      break;
+    case 3:
+      vecType = "vec3";
+      break;
+    case 4:
+      vecType = "vec4";
+      break;
+    default:
+      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+    }
+    return vecType ? fmt::format("{}<{}>", vecType, baseType) : baseType;
   }
-  return vecType ? fmt::format("{}<{}>", vecType, baseType) : baseType;
 }
 
 } // namespace shader

@@ -3,15 +3,33 @@
 
 namespace gfx::shader {
 
-void GeneratorContext::write(const StringView &str) { result += str; }
-void GeneratorContext::writeHeader(const StringView &str) { header += str; }
+void GeneratorContext::write(const StringView &str) { getOutput() += str; }
+
+void GeneratorContext::pushHeaderScope() {
+  size_t headerIndex = headers.size();
+  headers.emplace_back();
+  headerStack.push_back(headerIndex);
+}
+
+void GeneratorContext::popHeaderScope() {
+  assert(headerStack.size() > 0);
+  headerStack.pop_back();
+}
+
+std::string &GeneratorContext::getOutput() {
+  if (!headerStack.empty()) {
+    return headers[headerStack.back()];
+  } else {
+    return result;
+  }
+}
 
 void GeneratorContext::readGlobal(const char *name) {
   auto it = definitions.globals.find(name);
   if (it == definitions.globals.end()) {
     pushError(formatError("Global {} does not exist", name));
   } else {
-    result += fmt::format("{}.{}", globalsVariableName, name);
+    getOutput() += fmt::format("{}.{}", globalsVariableName, name);
   }
 }
 void GeneratorContext::beginWriteGlobal(const char *name, const FieldType &type) {
@@ -23,9 +41,9 @@ void GeneratorContext::beginWriteGlobal(const char *name, const FieldType &type)
       pushError(formatError("Global type doesn't match previously expected type"));
     }
   }
-  result += fmt::format("{}.{} = ", globalsVariableName, name);
+  getOutput() += fmt::format("{}.{} = ", globalsVariableName, name);
 }
-void GeneratorContext::endWriteGlobal() { result += ";\n"; }
+void GeneratorContext::endWriteGlobal() { getOutput() += ";\n"; }
 
 bool GeneratorContext::hasInput(const char *name) { return definitions.inputs.find(name) != definitions.inputs.end(); }
 
@@ -43,7 +61,7 @@ void GeneratorContext::readInput(const char *name) {
     return;
   }
 
-  result += fmt::format("{}.{}", inputVariableName, name);
+  getOutput() += fmt::format("{}.{}", inputVariableName, name);
 }
 
 const FieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
@@ -80,7 +98,7 @@ void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
     return;
   }
 
-  result += fmt::format("{}.{}", outputVariableName, name);
+  getOutput() += fmt::format("{}.{}", outputVariableName, name);
 }
 
 const FieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, FieldType requestedType) {
@@ -115,7 +133,7 @@ const TextureDefinition *GeneratorContext::getTexture(const char *name) {
 
 void GeneratorContext::texture(const char *name) {
   if (const TextureDefinition *texture = getTexture(name)) {
-    result += texture->variableName;
+    getOutput() += texture->variableName;
   } else {
     pushError(formatError("Texture {} does not exist", name));
   }
@@ -126,14 +144,14 @@ void GeneratorContext::textureDefaultTextureCoordinate(const char *name) {
     if (hasInput(texture->defaultTexcoordVariableName.c_str())) {
       readInput(texture->defaultTexcoordVariableName.c_str());
     } else {
-      result += "vec2<f32>(0.0, 0.0)";
+      getOutput() += "vec2<f32>(0.0, 0.0)";
     }
   }
 }
 
 void GeneratorContext::textureDefaultSampler(const char *name) {
   if (const TextureDefinition *texture = getTexture(name)) {
-    result += texture->defaultSamplerVariableName;
+    getOutput() += texture->defaultSamplerVariableName;
   }
 }
 
@@ -158,9 +176,9 @@ void GeneratorContext::readBuffer(const char *fieldName, const FieldType &expect
   }
 
   if (buffer.indexedBy) {
-    result += fmt::format("{}.elements[{}].{}", buffer.variableName, *buffer.indexedBy, fieldName);
+    getOutput() += fmt::format("{}.elements[{}].{}", buffer.variableName, *buffer.indexedBy, fieldName);
   } else {
-    result += fmt::format("{}.{}", buffer.variableName, fieldName);
+    getOutput() += fmt::format("{}.{}", buffer.variableName, fieldName);
   }
 }
 

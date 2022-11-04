@@ -61,21 +61,33 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
 inline shards::Type fieldTypeToShardsType(const FieldType &type) {
   using shards::CoreInfo;
   if (type.baseType == ShaderFieldBaseType::Float32) {
-    switch (type.numComponents) {
-    case 1:
-      return CoreInfo::FloatType;
-    case 2:
-      return CoreInfo::Float2Type;
-    case 3:
-      return CoreInfo::Float3Type;
-    case 4:
-      return CoreInfo::Float4Type;
-    case FieldType::Float4x4Components:
-      return CoreInfo::Float4x4Type;
-    default:
-      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+    if (type.matrixDimension > 1) {
+      if (type.numComponents == type.matrixDimension && type.matrixDimension == 4) {
+        return CoreInfo::Float4x4Type;
+      } else if (type.numComponents == type.matrixDimension && type.matrixDimension == 3) {
+        return CoreInfo::Float3x3Type;
+      } else if (type.numComponents == type.matrixDimension && type.matrixDimension == 2) {
+        return CoreInfo::Float2x2Type;
+      }
+      throw std::out_of_range("Unsupported matrix dimensions");
+    } else {
+      switch (type.numComponents) {
+      case 1:
+        return CoreInfo::FloatType;
+      case 2:
+        return CoreInfo::Float2Type;
+      case 3:
+        return CoreInfo::Float3Type;
+      case 4:
+        return CoreInfo::Float4Type;
+      default:
+        throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+      }
     }
   } else {
+    if (type.matrixDimension > 1)
+      throw std::out_of_range("Integer matrix unsupported");
+
     switch (type.numComponents) {
     case 1:
       return CoreInfo::IntType;

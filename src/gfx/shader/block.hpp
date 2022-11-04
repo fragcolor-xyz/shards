@@ -29,17 +29,6 @@ struct Direct : public Block {
   BlockPtr clone() { return std::make_unique<Direct>(code); }
 };
 
-// Source block applied outside of the function body
-struct Header : public Block {
-  String code;
-
-  Header(const char *code) : code(code) {}
-  Header(const String &code) : code(code) {}
-  Header(String &&code) : code(code) {}
-  void apply(IGeneratorContext &context) const;
-  BlockPtr clone() { return std::make_unique<Direct>(code); }
-};
-
 struct ConvertibleToBlock {
   UniquePtr<Block> block;
   ConvertibleToBlock(const char *str) { block = std::make_unique<Direct>(str); }
@@ -56,6 +45,18 @@ template <typename T> struct ConvertToBlock<T, typename std::enable_if<std::is_b
 template <typename T> struct ConvertToBlock<T, typename std::enable_if<!std::is_base_of_v<Block, T>>::type> {
   UniquePtr<Block> operator()(T &&arg) { return ConvertibleToBlock(std::move(arg))(); }
 };
+
+// Block applied outside of the function body
+struct Header : public Block {
+  BlockPtr inner;
+
+  template <typename T>
+  Header(T &&inner) : inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+
+  void apply(IGeneratorContext &context) const;
+  BlockPtr clone() { return std::make_unique<Header>(inner->clone()); }
+};
+
 } // namespace blocks
 } // namespace shader
 } // namespace gfx
