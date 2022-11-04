@@ -3069,7 +3069,18 @@ struct ForRangeShard {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 
+  static inline Parameters _params = {
+      {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"Action",
+       SHCCSTR("The action to perform at each iteration. The current iteration "
+               "value will be passed as input."),
+       {CoreInfo::ShardsOrNone}}};
   static SHParametersInfo parameters() { return _params; }
+
+  ParamVar _from{Var(0)};
+  ParamVar _to{Var(1)};
+  ShardsVar _shards{};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -3145,19 +3156,6 @@ struct ForRangeShard {
 
     return input;
   }
-
-private:
-  static inline Parameters _params = {
-      {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"Action",
-       SHCCSTR("The action to perform at each iteration. The current iteration "
-               "value will be passed as input."),
-       {CoreInfo::ShardsOrNone}}};
-
-  ParamVar _from{Var(0)};
-  ParamVar _to{Var(1)};
-  ShardsVar _shards{};
 };
 
 struct Repeat {

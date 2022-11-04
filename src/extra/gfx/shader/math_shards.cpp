@@ -113,17 +113,12 @@ template <typename TShard> struct MakeVectorTranslator {
     sourceComponentList = blocks::makeCompoundBlock();
     for (size_t i = 0; i < params.size(); i++) {
       bool isLast = i == (params.size() - 1);
-      BlockPtr block;
-      if (params[i].isVariable()) {
-        auto wgslBlock = context.reference(params[i].variableName());
-        if (wgslBlock.fieldType != unitFieldType)
-          throw ShaderComposeError(fmt::format("Invalid parameter {} to MakeVector", i));
-        block = std::move(wgslBlock.block);
-      } else {
-        block = translateConst(params[i], context)->toBlock();
-      }
 
-      sourceComponentList->append(std::move(block));
+      auto value = translateParamVar(params[i], context);
+      if (value->getType() != unitFieldType)
+        throw ShaderComposeError(fmt::format("Invalid parameter {} to MakeVector", i));
+
+      sourceComponentList->append(value->toBlock());
       if (!isLast)
         sourceComponentList->append(", ");
     }

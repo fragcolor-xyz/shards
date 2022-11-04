@@ -288,9 +288,9 @@ public:
 
   const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
 
-  bool isVariable() { return _v.valueType == ContextVar; }
+  bool isVariable() const { return _v.valueType == ContextVar; }
 
-  const char *variableName() {
+  const char *variableName() const {
     if (isVariable())
       return _v.payload.stringValue;
     else

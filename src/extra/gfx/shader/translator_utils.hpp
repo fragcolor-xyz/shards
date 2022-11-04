@@ -122,6 +122,14 @@ inline constexpr ShaderFieldBaseType getShaderBaseType(shards::NumberType number
   }
 }
 
+inline std::unique_ptr<IWGSLGenerated> translateParamVar(const shards::ParamVar &var, TranslationContext &context) {
+  if (var.isVariable()) {
+    return std::make_unique<WGSLBlock>(context.reference(var.variableName()));
+  } else {
+    return translateConst(var, context);
+  }
+}
+
 } // namespace shader
 } // namespace gfx
 
