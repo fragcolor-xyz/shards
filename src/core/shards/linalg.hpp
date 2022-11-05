@@ -7,220 +7,192 @@
 namespace shards {
 namespace Math {
 namespace LinAlg {
-struct VectorUnaryBase : public UnaryBase {
+template <typename TOp> struct UnaryOperation : public Math::UnaryOperation<TOp> {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
-
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
-
-  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
-
-  template <class Operation> SHVar doActivate(SHContext *context, const SHVar &input, Operation operate) {
-    if (input.valueType == Seq) {
-      _result.valueType = Seq;
-      shards::arrayResize(_result.payload.seqValue, 0);
-      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        SHVar scratch;
-        operate(scratch, input);
-        shards::arrayPush(_result.payload.seqValue, scratch);
-      }
-      return _result;
-    } else {
-      SHVar scratch;
-      operate(scratch, input);
-      return scratch;
-    }
-  }
 };
 
-struct VectorBinaryBase : public BinaryBase {
+template <typename TOp> struct BinaryOperation : public Math::BinaryOperation<TOp> {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectors; }
-
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectors; }
 
   static inline ParamsInfo paramsInfo =
       ParamsInfo(ParamsInfo::Param("Operand", SHCCSTR("The operand."), CoreInfo::FloatVectorsOrVar));
 
   static SHParametersInfo parameters() { return SHParametersInfo(paramsInfo); }
+};
 
-  template <class Operation> SHVar doActivate(SHContext *context, const SHVar &input, Operation operate) {
-    auto &operand = _operand.get();
-    if (_opType == Normal) {
-      SHVar scratch;
-      operate(scratch, input, operand);
-      return scratch;
-    } else if (_opType == Seq1) {
-      _result.valueType = Seq;
-      shards::arrayResize(_result.payload.seqValue, 0);
-      for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-        SHVar scratch;
-        operate(scratch, input.payload.seqValue.elements[i], operand);
-        shards::arrayPush(_result.payload.seqValue, scratch);
-      }
-      return _result;
-    } else {
-      _result.valueType = Seq;
-      shards::arrayResize(_result.payload.seqValue, 0);
-      for (uint32_t i = 0; i < input.payload.seqValue.len && i < operand.payload.seqValue.len; i++) {
-        SHVar scratch;
-        operate(scratch, input.payload.seqValue.elements[i], operand.payload.seqValue.elements[i]);
-        shards::arrayPush(_result.payload.seqValue, scratch);
-      }
-      return _result;
+SH_HAS_MEMBER_TEST(validateTypes);
+
+template <typename TOp> struct VectorBinaryOperation {
+  TOp op{};
+  const VectorTypeTraits *_lhsVecType{};
+  const VectorTypeTraits *_rhsVecType{};
+
+  OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+    OpType opType = OpType::Invalid;
+
+    if constexpr (has_validateTypes<TOp>::value) {
+      opType = op.validateTypes(lhs, rhs, resultType);
+      if (opType != OpType::Invalid)
+        return opType;
     }
-  }
-};
 
-struct Cross : public VectorBinaryBase {
-  struct Operation {
-    void operator()(SHVar &output, const SHVar &input, const SHVar &operand);
-  };
-
-  SHVar activate(SHContext *context, const SHVar &input);
-};
-
-struct Dot : public VectorBinaryBase {
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    VectorBinaryBase::compose(data);
-    return CoreInfo::FloatType;
-  }
-
-  struct Operation {
-    void operator()(SHVar &output, const SHVar &input, const SHVar &operand);
-  };
-
-  SHVar activate(SHContext *context, const SHVar &input);
-};
-
-struct LengthSquared : public VectorUnaryBase {
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    VectorUnaryBase::compose(data);
-    return CoreInfo::FloatType;
-  }
-
-  struct Operation {
-    Dot::Operation dotOp;
-    void operator()(SHVar &output, const SHVar &input) { dotOp(output, input, input); }
-  };
-  SHVar activate(SHContext *context, const SHVar &input) {
-    const Operation op;
-    return doActivate(context, input, op);
-  }
-};
-
-struct Length : public VectorUnaryBase {
-  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    VectorUnaryBase::compose(data);
-    return CoreInfo::FloatType;
-  }
-
-  struct Operation {
-    LengthSquared::Operation lenOp;
-    void operator()(SHVar &output, const SHVar &input) {
-      lenOp(output, input);
-      output.payload.floatValue = __builtin_sqrt(output.payload.floatValue);
+    if (rhs != Seq && lhs.basicType != Seq) {
+      opType = OpType::Direct;
+      resultType = lhs;
     }
-  };
-  SHVar activate(SHContext *context, const SHVar &input) {
-    const Operation op;
-    return doActivate(context, input, op);
+
+    return opType;
+  }
+
+  void operateDirect(SHVar &output, const SHVar &a, const SHVar &b) { op.apply(output, a, b); }
+
+  void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
+    throw std::logic_error("broadcast not allowed on vector operations");
   }
 };
 
-struct Normalize : public VectorUnaryBase {
-  std::vector<SHVar> _output;
-  bool _positiveOnly{false};
+template <typename TOp> struct VectorUnaryOperation {
+  TOp op{};
+  OpType validateTypes(const SHTypeInfo &a, SHTypeInfo &resultType) {
+    OpType opType = OpType::Invalid;
 
+    if constexpr (has_validateTypes<TOp>::value) {
+      opType = op.validateTypes(a, resultType);
+      if (opType != OpType::Invalid)
+        return opType;
+    }
+
+    if (a.basicType != Seq) {
+      opType = OpType::Direct;
+      resultType = a;
+    }
+
+    return opType;
+  }
+
+  void operateDirect(SHVar &output, const SHVar &a) { op.apply(output, a); }
+};
+
+struct CrossOp {
+  void apply(SHVar &output, const SHVar &input, const SHVar &operand);
+};
+using Cross = BinaryOperation<VectorBinaryOperation<CrossOp>>;
+
+struct DotOp {
+  OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+    if (lhs.innerType != SHType::Seq && rhs != SHType::Seq) {
+      resultType = CoreInfo::FloatType;
+      return OpType::Direct;
+    }
+    return OpType::Invalid;
+  }
+
+  void apply(SHVar &output, const SHVar &input, const SHVar &operand);
+};
+struct Dot : public BinaryOperation<VectorBinaryOperation<DotOp>> {
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+};
+
+struct LengthSquaredOp {
+  DotOp dotOp;
+  void apply(SHVar &output, const SHVar &input) { dotOp.apply(output, input, input); }
+};
+struct LengthSquared : UnaryOperation<VectorUnaryOperation<LengthSquaredOp>> {
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+};
+
+struct LengthOp {
+  LengthSquaredOp lenOp;
+  void apply(SHVar &output, const SHVar &input) {
+    lenOp.apply(output, input);
+    output.payload.floatValue = __builtin_sqrt(output.payload.floatValue);
+  }
+};
+struct Length : public UnaryOperation<VectorUnaryOperation<LengthOp>> {
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+};
+
+struct NormalizeOp {
+  bool positiveOnly{false};
+  LengthOp lenOp;
+  void apply(SHVar &output, const SHVar &input);
+};
+
+struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
   // Normalize also supports Float seqs
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1 &&
-        data.inputType.seqTypes.elements[0].basicType == Float) {
-      OVERRIDE_ACTIVATE(data, activateFloatSeq);
-    } else {
-      OVERRIDE_ACTIVATE(data, activate);
-    }
-    return data.inputType;
-  }
-
   static inline Parameters Params{
       {"Positive", SHCCSTR("If the output should be in the range 0.0~1.0 instead of -1.0~1.0."), {CoreInfo::BoolType}}};
-
   SHParametersInfo parameters() { return Params; }
 
-  void setParam(int index, const SHVar &value) { _positiveOnly = value.payload.boolValue; }
-
-  SHVar getParam(int index) { return Var(_positiveOnly); }
-
-  struct Operation {
-    bool positiveOnly;
-    Length::Operation lenOp;
-
-    void operator()(SHVar &output, const SHVar &input);
-  };
-
-  SHVar activate(SHContext *context, const SHVar &input);
-  SHVar activateFloatSeq(SHContext *context, const SHVar &input);
+  void setParam(int index, const SHVar &value) { op.op.positiveOnly = value.payload.boolValue; }
+  SHVar getParam(int index) { return Var(op.op.positiveOnly); }
 };
 
-struct MatMul : public VectorBinaryBase {
-  // MatMul is special...
-  // Mat @ Mat = Mat
-  // Mat @ Vec = Vec
-  // If ever becomes a bottle neck, valgrind and optimize
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    BinaryBase::compose(data);
-    if (_opType == SeqSeq) {
-      return data.inputType;
+// MatMul is special...
+// Mat @ Mat = Mat
+// Mat @ Vec = Vec
+// If ever becomes a bottle neck, valgrind and optimize
+struct MatMul : public BinaryBase {
+  OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+    if (lhs.basicType == SHType::Seq && rhs == SHType::Seq) {
+      resultType = lhs;
+      return OpType::SeqSeq;
     } else {
-      if (data.inputType.seqTypes.len != 1) {
+      if (lhs.seqTypes.len != 1) {
         throw SHException("MatMul expected a unique Seq inner type.");
       }
-      return data.inputType.seqTypes.elements[0];
+      resultType = lhs.seqTypes.elements[0];
+      return OpType::Seq1;
     }
+
+    return OpType::Invalid;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input);
-};
-
-struct Transpose : public VectorUnaryBase {
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType != Seq) {
-      throw ComposeError("Transpose expected a Seq matrix array as input.");
-    }
-    return data.inputType;
+    return this->genericCompose(*this, data);
   }
 
   SHVar activate(SHContext *context, const SHVar &input);
 };
 
-struct Orthographic : VectorUnaryBase {
+struct Transpose : public UnaryBase {
+  OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
+    if (lhs.basicType == SHType::Seq) {
+      resultType = lhs;
+      return OpType::Seq1;
+    }
+    return OpType::Invalid;
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    SHTypeInfo resultType = data.inputType;
+    _opType = validateTypes(data.inputType, resultType);
+
+    if (_opType == Invalid) {
+      throw ComposeError("Incompatible type for Transpose");
+    }
+
+    return resultType;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input);
+};
+
+struct Orthographic {
   double _width = 1280;
   double _height = 720;
   double _near = 0.0;
   double _far = 1000.0;
 
-  void setup() {
-    _result.valueType = Seq;
-    shards::arrayResize(_result.payload.seqValue, 4);
-    for (auto i = 0; i < 4; i++) {
-      _result.payload.seqValue.elements[i] = Var::Empty;
-      _result.payload.seqValue.elements[i].valueType = Float4;
-    }
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float4SeqType; }
+  Mat4 _output{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::Float4SeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
 
   // left, right, bottom, top, near, far
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Width", SHCCSTR("Width size."), CoreInfo::IntOrFloat),
@@ -270,14 +242,14 @@ struct Orthographic : VectorUnaryBase {
     auto top = 0.5 * _height;
     auto bottom = -top;
     auto zrange = 1.0 / (_far - _near);
-    _result.payload.seqValue.elements[0].payload.float4Value[0] = 2.0 / (right - left);
-    _result.payload.seqValue.elements[1].payload.float4Value[1] = 2.0 / (top - bottom);
-    _result.payload.seqValue.elements[2].payload.float4Value[2] = -zrange;
-    _result.payload.seqValue.elements[3].payload.float4Value[0] = (left + right) / (left - right);
-    _result.payload.seqValue.elements[3].payload.float4Value[1] = (top + bottom) / (bottom - top);
-    _result.payload.seqValue.elements[3].payload.float4Value[2] = -_near * zrange;
-    _result.payload.seqValue.elements[3].payload.float4Value[3] = 1.0;
-    return _result;
+    _output[0][0] = 2.0 / (right - left);
+    _output[1][1] = 2.0 / (top - bottom);
+    _output[2][2] = -zrange;
+    _output[3][0] = (left + right) / (left - right);
+    _output[3][1] = (top + bottom) / (bottom - top);
+    _output[3][2] = -_near * zrange;
+    _output[3][3] = 1.0;
+    return _output;
   }
 };
 

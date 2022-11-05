@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+#include "foundation.hpp"
 #include "math.h"
+#include "shards.h"
 #include "shared.hpp"
+#include <deque>
+#include <stdexcept>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <stdexcept>
 
 using namespace boost::multiprecision;
 
@@ -18,14 +23,16 @@ inline Var to_var(const cpp_int &bi, std::vector<uint8_t> &buffer) {
   return Var(&buffer.front(), buffer.size());
 }
 
-inline cpp_int from_var(const SHVar &op) {
+inline cpp_int from_var_payload(const SHVarPayload &payload) {
   cpp_int bib;
-  import_bits(bib, op.payload.bytesValue + 1, op.payload.bytesValue + op.payload.bytesSize);
-  auto negative = bool(op.payload.bytesValue[0]);
+  import_bits(bib, payload.bytesValue + 1, payload.bytesValue + payload.bytesSize);
+  auto negative = bool(payload.bytesValue[0]);
   if (negative)
     bib *= -1;
   return bib;
 }
+
+inline cpp_int from_var(const SHVar &op) { return from_var_payload(op.payload); }
 
 struct ToBigInt {
   std::vector<uint8_t> _buffer;
@@ -58,12 +65,68 @@ struct ToBigInt {
   }
 };
 
-template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOperation<T> {
+struct BigIntOutputBuffer {
+  struct Output {
+    std::vector<uint8_t> data;
+    SHVar var;
+  };
+
+  std::deque<Output> _outputs;
+  size_t _index{0};
+
+  void reset() { _index = 0; }
+
+  Output &getOutput() {
+    if (_index >= _outputs.size())
+      _outputs.emplace_back();
+    auto &output = _outputs[_index];
+    _index++;
+    return output;
+  }
+
+  const SHVar &getLastOutputVar() const {
+    if (_index == 0)
+      throw std::out_of_range("No outputs");
+    return _outputs[_index - 1].var;
+  }
+};
+
+template <typename TOp> struct BigIntBinaryOperation {
+  TOp op;
+  BigIntOutputBuffer _outputs;
+
+  Math::OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+    Math::OpType opType = Math::OpType::Invalid;
+    if (lhs.basicType == SHType::Bytes && rhs == SHType::Bytes) {
+      opType = Math::OpType::Direct;
+      resultType = CoreInfo::BytesType;
+    }
+    return opType;
+  }
+
+  void operateDirect(SHVar &outputVar, const SHVar &a, const SHVar &b) {
+    cpp_int bia = from_var(a);
+    cpp_int bib = from_var(b);
+
+    cpp_int bres = op.template apply(bia, bib);
+
+    auto &output = _outputs.getOutput();
+    outputVar = output.var = to_var(bres, output.data);
+  }
+
+  void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
+    throw std::logic_error("invalid broadcast on bigint types");
+  }
+
+  void reset() { _outputs.reset(); }
+};
+
+// TOp follows the same interface as the base BinaryOperation accepts
+// with the addition of reset() to recycle the output buffers
+template <typename TOp> struct BinaryOperation : public ::shards::Math::BinaryOperation<TOp> {
   using Math::BinaryBase::_operand;
   using Math::BinaryBase::_opType;
-
-  std::deque<std::vector<uint8_t>> _buffers;
-  size_t _offset{0};
+  using Math::BinaryOperation<TOp>::op;
 
   static inline Types BigIntInputTypes{{CoreInfo::BytesType, CoreInfo::BytesSeqType}};
 
@@ -80,59 +143,11 @@ template <typename T> struct BigIntBinaryOp : public ::shards::Math::BinaryOpera
     return params;
   }
 
-  void validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
-    if (lhs.basicType == SHType::Bytes && rhs == SHType::Bytes) {
-      _opType = Math::BinaryBase::OpType::Normal;
-      resultType = CoreInfo::BytesType;
-    } else {
-      Math::BinaryBase::validateTypes(lhs, rhs, resultType);
-    }
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    SHTypeInfo resultType = data.inputType;
-    SHVar operandSpec = _operand;
-    if (operandSpec.valueType == ContextVar) {
-      for (uint32_t i = 0; i < data.shared.len; i++) {
-        if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
-          validateTypes(data.inputType, data.shared.elements[i].exposedType.basicType, resultType);
-          break;
-        }
-      }
-    } else {
-      validateTypes(data.inputType, operandSpec.valueType, resultType);
-    }
-
-    if (_opType == Math::BinaryBase::OpType::Invalid) {
-      throw ComposeError("Math operand variable not found: " + std::string(operandSpec.payload.stringValue));
-    }
-
-    return resultType;
-  }
-
   SHVar activate(SHContext *context, const SHVar &input) {
-    _offset = 0;
-    return ::shards::Math::BinaryOperation<T>::activate(context, input);
+    op.reset();
+    return Math::BinaryOperation<TOp>::activate(context, input);
   }
 };
-
-#define BIGINT_MATH_OP(__NAME__, __OP__)                                                    \
-  struct __NAME__ : public BigIntBinaryOp<__NAME__> {                                       \
-    void operator()(SHVar &output, const SHVar &input, const SHVar &operand, void *pself) { \
-      auto self = reinterpret_cast<__NAME__ *>(pself);                                      \
-      std::vector<uint8_t> *buffer = nullptr;                                               \
-      if (self->_buffers.size() <= _offset) {                                               \
-        buffer = &self->_buffers.emplace_back();                                            \
-      } else {                                                                              \
-        buffer = &self->_buffers[_offset];                                                  \
-      }                                                                                     \
-      cpp_int bia = from_var(input);                                                        \
-      cpp_int bib = from_var(operand);                                                      \
-      cpp_int bres = bia __OP__ bib;                                                        \
-      output = to_var(bres, *buffer);                                                       \
-      _offset++;                                                                            \
-    }                                                                                       \
-  };
 
 struct BigOperandBase {
   std::vector<uint8_t> _buffer;
@@ -199,14 +214,14 @@ struct RegOperandBase {
   }
 };
 
-BIGINT_MATH_OP(Add, +);
-BIGINT_MATH_OP(Subtract, -);
-BIGINT_MATH_OP(Multiply, *);
-BIGINT_MATH_OP(Divide, /);
-BIGINT_MATH_OP(Xor, ^);
-BIGINT_MATH_OP(And, &);
-BIGINT_MATH_OP(Or, |);
-BIGINT_MATH_OP(Mod, %);
+using Add = BigInt::BinaryOperation<BigIntBinaryOperation<Math::AddOp>>;
+using Subtract = BigInt::BinaryOperation<BigIntBinaryOperation<Math::SubtractOp>>;
+using Multiply = BigInt::BinaryOperation<BigIntBinaryOperation<Math::MultiplyOp>>;
+using Divide = BigInt::BinaryOperation<BigIntBinaryOperation<Math::DivideOp>>;
+using Xor = BigInt::BinaryOperation<BigIntBinaryOperation<Math::XorOp>>;
+using And = BigInt::BinaryOperation<BigIntBinaryOperation<Math::AndOp>>;
+using Or = BigInt::BinaryOperation<BigIntBinaryOperation<Math::OrOp>>;
+using Mod = BigInt::BinaryOperation<BigIntBinaryOperation<Math::ModOp>>;
 
 #define BIGINT_LOGIC_OP(__NAME__, __OP__)                                                                                      \
   struct __NAME__ : public BigOperandBase {                                                                                    \
@@ -229,26 +244,16 @@ BIGINT_LOGIC_OP(IsLess, <);
 BIGINT_LOGIC_OP(IsMoreEqual, >=);
 BIGINT_LOGIC_OP(IsLessEqual, <=);
 
-#define BIGINT_BINARY_OP(__NAME__, __OP__)                                                  \
-  struct __NAME__ : public BigIntBinaryOp<__NAME__> {                                       \
-    void operator()(SHVar &output, const SHVar &input, const SHVar &operand, void *pself) { \
-      auto self = reinterpret_cast<__NAME__ *>(pself);                                      \
-      std::vector<uint8_t> *buffer = nullptr;                                               \
-      if (self->_buffers.size() <= _offset) {                                               \
-        buffer = &self->_buffers.emplace_back();                                            \
-      } else {                                                                              \
-        buffer = &self->_buffers[_offset];                                                  \
-      }                                                                                     \
-      cpp_int bia = from_var(input);                                                        \
-      cpp_int bib = from_var(operand);                                                      \
-      cpp_int bres = __OP__(bia, bib);                                                      \
-      output = to_var(bres, *buffer);                                                       \
-      _offset++;                                                                            \
-    }                                                                                       \
-  };
+struct MinOp final {
+  template <typename T> T apply(const T &a, const T &b) { return std::min(a, b); }
+};
 
-BIGINT_BINARY_OP(Min, std::min);
-BIGINT_BINARY_OP(Max, std::max);
+struct MaxOp final {
+  template <typename T> T apply(const T &a, const T &b) { return std::max(a, b); }
+};
+
+using Min = BigInt::BinaryOperation<BigIntBinaryOperation<MinOp>>;
+using Max = BigInt::BinaryOperation<BigIntBinaryOperation<MaxOp>>;
 
 #define BIGINT_REG_BINARY_OP(__NAME__, __OP__)                 \
   struct __NAME__ : public RegOperandBase {                    \
@@ -501,33 +506,33 @@ private:
 };
 
 void registerShards() {
-  REGISTER_SHARD("BigInt", ToBigInt);
-  REGISTER_SHARD("BigInt.Add", Add);
-  REGISTER_SHARD("BigInt.Subtract", Subtract);
-  REGISTER_SHARD("BigInt.Multiply", Multiply);
-  REGISTER_SHARD("BigInt.Divide", Divide);
-  REGISTER_SHARD("BigInt.Xor", Xor);
-  REGISTER_SHARD("BigInt.And", And);
-  REGISTER_SHARD("BigInt.Or", Or);
-  REGISTER_SHARD("BigInt.Mod", Mod);
-  REGISTER_SHARD("BigInt.Shift", Shift);
-  REGISTER_SHARD("BigInt.ToFloat", ToFloat);
-  REGISTER_SHARD("BigInt.ToInt", ToInt);
-  REGISTER_SHARD("BigInt.FromFloat", FromFloat);
-  REGISTER_SHARD("BigInt.ToString", ToString);
-  REGISTER_SHARD("BigInt.ToBytes", ToBytes);
-  REGISTER_SHARD("BigInt.ToHex", ToHex);
-  REGISTER_SHARD("BigInt.Is", Is);
-  REGISTER_SHARD("BigInt.IsNot", IsNot);
-  REGISTER_SHARD("BigInt.IsMore", IsMore);
-  REGISTER_SHARD("BigInt.IsLess", IsLess);
-  REGISTER_SHARD("BigInt.IsMoreEqual", IsMoreEqual);
-  REGISTER_SHARD("BigInt.IsLessEqual", IsLessEqual);
-  REGISTER_SHARD("BigInt.Min", Min);
-  REGISTER_SHARD("BigInt.Max", Max);
-  REGISTER_SHARD("BigInt.Pow", Pow);
-  REGISTER_SHARD("BigInt.Abs", Abs);
-  REGISTER_SHARD("BigInt.Sqrt", Sqrt);
+  REGISTER_SHARD("BigInt", BigInt::ToBigInt);
+  REGISTER_SHARD("BigInt.Add", BigInt::Add);
+  REGISTER_SHARD("BigInt.Subtract", BigInt::Subtract);
+  REGISTER_SHARD("BigInt.Multiply", BigInt::Multiply);
+  REGISTER_SHARD("BigInt.Divide", BigInt::Divide);
+  REGISTER_SHARD("BigInt.Xor", BigInt::Xor);
+  REGISTER_SHARD("BigInt.And", BigInt::And);
+  REGISTER_SHARD("BigInt.Or", BigInt::Or);
+  REGISTER_SHARD("BigInt.Mod", BigInt::Mod);
+  REGISTER_SHARD("BigInt.Shift", BigInt::Shift);
+  REGISTER_SHARD("BigInt.ToFloat", BigInt::ToFloat);
+  REGISTER_SHARD("BigInt.ToInt", BigInt::ToInt);
+  REGISTER_SHARD("BigInt.FromFloat", BigInt::FromFloat);
+  REGISTER_SHARD("BigInt.ToString", BigInt::ToString);
+  REGISTER_SHARD("BigInt.ToBytes", BigInt::ToBytes);
+  REGISTER_SHARD("BigInt.ToHex", BigInt::ToHex);
+  REGISTER_SHARD("BigInt.Is", BigInt::Is);
+  REGISTER_SHARD("BigInt.IsNot", BigInt::IsNot);
+  REGISTER_SHARD("BigInt.IsMore", BigInt::IsMore);
+  REGISTER_SHARD("BigInt.IsLess", BigInt::IsLess);
+  REGISTER_SHARD("BigInt.IsMoreEqual", BigInt::IsMoreEqual);
+  REGISTER_SHARD("BigInt.IsLessEqual", BigInt::IsLessEqual);
+  REGISTER_SHARD("BigInt.Min", BigInt::Min);
+  REGISTER_SHARD("BigInt.Max", BigInt::Max);
+  REGISTER_SHARD("BigInt.Pow", BigInt::Pow);
+  REGISTER_SHARD("BigInt.Abs", BigInt::Abs);
+  REGISTER_SHARD("BigInt.Sqrt", BigInt::Sqrt);
 }
 } // namespace BigInt
 } // namespace shards

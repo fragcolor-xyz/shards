@@ -7,7 +7,7 @@ namespace shards {
 namespace Math {
 namespace LinAlg {
 
-void Cross::Operation::operator()(SHVar &output, const SHVar &input, const SHVar &operand) {
+void CrossOp::apply(SHVar &output, const SHVar &input, const SHVar &operand) {
   if (operand.valueType != Float3)
     throw ActivationError("LinAlg.Cross works only with Float3 types.");
 
@@ -27,12 +27,7 @@ void Cross::Operation::operator()(SHVar &output, const SHVar &input, const SHVar
   }
 }
 
-SHVar Cross::activate(SHContext *context, const SHVar &input) {
-  const Operation op;
-  return doActivate(context, input, op);
-}
-
-void Dot::Operation::operator()(SHVar &output, const SHVar &input, const SHVar &operand) {
+void DotOp::apply(SHVar &output, const SHVar &input, const SHVar &operand) {
   if (operand.valueType != input.valueType)
     throw ActivationError("LinAlg.Dot works only with same input and operand types.");
 
@@ -60,14 +55,9 @@ void Dot::Operation::operator()(SHVar &output, const SHVar &input, const SHVar &
   }
 }
 
-SHVar Dot::activate(SHContext *context, const SHVar &input) {
-  const Operation op;
-  return doActivate(context, input, op);
-}
-
-void Normalize::Operation::operator()(SHVar &output, const SHVar &input) {
+void NormalizeOp::apply(SHVar &output, const SHVar &input) {
   SHVar len{};
-  lenOp(len, input);
+  lenOp.apply(len, input);
 
   switch (input.valueType) {
   case Float2: {
@@ -112,39 +102,6 @@ void Normalize::Operation::operator()(SHVar &output, const SHVar &input) {
   } break;
   default:
     break;
-  }
-}
-
-SHVar Normalize::activate(SHContext *context, const SHVar &input) {
-  const Operation op{_positiveOnly};
-  return doActivate(context, input, op);
-}
-
-SHVar Normalize::activateFloatSeq(SHContext *context, const SHVar &input) {
-  const auto len = input.payload.seqValue.len;
-  _output.resize(len, SHVar{.valueType = SHType::Float});
-  float vlen = 0.0;
-  for (uint32_t i = 0; i < len; i++) {
-    const auto f = input.payload.seqValue.elements[i].payload.floatValue;
-    vlen += f * f;
-  }
-  vlen = __builtin_sqrt(vlen);
-  if (vlen > 0 || !_positiveOnly) {
-    // better branching here
-    if (!_positiveOnly) {
-      for (uint32_t i = 0; i < len; i++) {
-        const auto f = input.payload.seqValue.elements[i].payload.floatValue;
-        _output[i].payload.floatValue = f / vlen;
-      }
-    } else {
-      for (uint32_t i = 0; i < len; i++) {
-        const auto f = input.payload.seqValue.elements[i].payload.floatValue;
-        _output[i].payload.floatValue = ((f / vlen) + 1.0) / 2.0;
-      }
-    }
-    return Var(_output);
-  } else {
-    return input;
   }
 }
 
@@ -309,6 +266,7 @@ SHVar Transpose::activate(SHContext *context, const SHVar &input) {
       break;
     }
   }
+
   return _result;
 }
 

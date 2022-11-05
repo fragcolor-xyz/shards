@@ -226,13 +226,13 @@ template <SHType ToType> struct MakeVector {
   }
 
   void setParam(int index, const SHVar &value) {
-    if (index >= params.size())
+    if (index >= (int)params.size())
       return;
     params[index] = value;
   }
 
   SHVar getParam(int index) {
-    if (index >= params.size())
+    if (index >= (int)params.size())
       return Var::Empty;
     return params[index];
   }
