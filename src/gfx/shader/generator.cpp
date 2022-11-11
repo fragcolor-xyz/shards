@@ -1,5 +1,6 @@
 #include "generator.hpp"
 #include "fmt.hpp"
+#include "shader/uniforms.hpp"
 #include "wgsl_mapping.hpp"
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
@@ -35,6 +36,17 @@ static void generateTextureVars(T &output, const TextureDefinition &def, size_t 
   output += fmt::format("var {}: sampler;\n", def.defaultSamplerVariableName);
 }
 
+// Pads a struct to array stride inside an array body
+template <typename T> static void generatePaddingForArrayStruct(T &output, const UniformBufferLayout &layout) {
+  size_t alignedSize = layout.getArrayStride();
+  assert(alignTo<4>(alignedSize) == alignedSize); // Check multiple of 4
+  size_t size4ToPad = (alignedSize - layout.size) / 4;
+  if (size4ToPad > 0) {
+    output += fmt::format("\t_array_padding_: array<f32, {}>,\n", size4ToPad);
+  }
+}
+
+// Generate buffer struct and binding definitions in shader source
 template <typename T>
 static void generateBuffer(T &output, const String &name, BufferType type, size_t group, size_t binding,
                            const UniformBufferLayout &layout, bool isArray = false) {
@@ -42,12 +54,9 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
   for (size_t i = 0; i < layout.fieldNames.size(); i++) {
-    // Force alignment on first struct member
-    if (isArray && i == 0) {
-      output += fmt::format("@align({}) ", layout.maxAlignment);
-    }
     output += fmt::format("\t{}: {},\n", layout.fieldNames[i], getFieldWGSLTypeName(layout.items[i].type));
   }
+  generatePaddingForArrayStruct(output, layout);
   output += "};\n";
 
   // array struct wrapper

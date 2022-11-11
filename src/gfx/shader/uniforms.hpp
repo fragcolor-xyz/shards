@@ -69,10 +69,7 @@ public:
     // Collect name & type pairs to keep
     for (auto it = mapping.begin(); it != mapping.end(); it++) {
       const std::string &name = bufferLayout.fieldNames[it->second];
-      UniformLayout &layout = bufferLayout.items[it->second];
-
-      // Update layout
-      layout = generateNext(layout.type);
+      const UniformLayout &layout = bufferLayout.items[it->second];
 
       if (filter(name, layout)) {
         auto &element = queue.emplace_back();
