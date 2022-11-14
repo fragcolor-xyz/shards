@@ -105,6 +105,48 @@ void NormalizeOp::apply(SHVar &output, const SHVar &input) {
   }
 }
 
+SHVar Normalize::activateFloatSeq(SHContext *context, const SHVar &input) {
+  const bool positiveOnly = op.op.positiveOnly;
+  auto &inputSeq = input.payload.seqValue;
+  const auto len = inputSeq.len;
+
+  if (_result.valueType != SHType::Seq)
+    destroyVar(_result);
+
+  auto &outputSeq = _result.payload.seqValue;
+  if (_result.valueType != SHType::Seq || outputSeq.len != len) {
+    _result.valueType = SHType::Seq;
+    shards::arrayResize(outputSeq, len);
+    for (uint32_t i = 0; i < len; i++) {
+      outputSeq.elements[i].valueType = SHType::Float;
+    }
+  }
+
+  float vlen = 0.0;
+  for (uint32_t i = 0; i < len; i++) {
+    const auto f = inputSeq.elements[i].payload.floatValue;
+    vlen += f * f;
+  }
+  vlen = __builtin_sqrt(vlen);
+  if (vlen > 0 || !positiveOnly) {
+    // better branching here
+    if (!positiveOnly) {
+      for (uint32_t i = 0; i < len; i++) {
+        const auto f = inputSeq.elements[i].payload.floatValue;
+        outputSeq.elements[i].payload.floatValue = f / vlen;
+      }
+    } else {
+      for (uint32_t i = 0; i < len; i++) {
+        const auto f = inputSeq.elements[i].payload.floatValue;
+        outputSeq.elements[i].payload.floatValue = ((f / vlen) + 1.0) / 2.0;
+      }
+    }
+    return Var(_result);
+  } else {
+    return input;
+  }
+}
+
 SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   auto &operand = _operand.get();
   // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec

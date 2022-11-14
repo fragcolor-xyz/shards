@@ -131,6 +131,18 @@ struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
 
   void setParam(int index, const SHVar &value) { op.op.positiveOnly = value.payload.boolValue; }
   SHVar getParam(int index) { return Var(op.op.positiveOnly); }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1 &&
+        data.inputType.seqTypes.elements[0].basicType == Float) {
+      OVERRIDE_ACTIVATE(data, activateFloatSeq);
+      return data.inputType;
+    } else {
+      return UnaryOperation::compose(data);
+    }
+  }
+
+  SHVar activateFloatSeq(SHContext *context, const SHVar &input);
 };
 
 // MatMul is special...
@@ -153,9 +165,7 @@ struct MatMul : public BinaryBase {
     return OpType::Invalid;
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    return this->genericCompose(*this, data);
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return this->genericCompose(*this, data); }
 
   SHVar activate(SHContext *context, const SHVar &input);
 };
