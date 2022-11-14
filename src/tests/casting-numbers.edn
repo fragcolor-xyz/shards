@@ -26,11 +26,28 @@
        5 >> .vec3seqVariable
        .vec3seqVariable (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (variable)")
 
-       (MakeFloat3 0.0 1.0 2.0) (Assert.Is (Float3 0.0 1.0 2.0)) (Log "MakeFloat3")
-       (MakeFloat2 2.0 3.0) (Assert.Is (Float2 2.0 3.0)) (Log "MakeFloat2")
+       (Float3 0.0 1.0 2.0) (Assert.Is (Float3 0.0 1.0 2.0)) (Log "MakeFloat3")
+       (Float2 2.0 3.0) (Assert.Is (Float2 2.0 3.0)) (Log "MakeFloat2")
 
        1.0 >= .x
        4.0 = .y
-       (MakeFloat2 .x .y) (Assert.Is (Float2 1.0 4.0)) (Log "MakeFloat2 (variables)")
-       (MakeFloat4 .x .y .y .x) (Assert.Is (Float4 1.0 4.0 4.0 1.0)) (Log "MakeFloat4 (variables)")))
+       3.0 = .z
+       (Float 4.0) (Assert.Is 4.0) (Log "Float (reference)")
+
+       (Float2 .x .y) (Assert.Is (Float2 1.0 4.0)) (Log "MakeFloat2 (variables)")
+       (Float3 .x .y .z) (Assert.Is (Float3 1.0 4.0 3.0)) (Log "MakeFloat3 (variables)")
+       (Float4 .x .y .z .x) (Assert.Is (Float4 1.0 4.0 3.0 1.0)) (Log "MakeFloat4 (variables)")
+
+       (Float2 -1.0 .y) (Assert.Is (Float2 -1.0 4.0)) (Log "MakeFloat2 (variables/mixed)")
+       (Float3 .x .y -1.0) (Assert.Is (Float3 1.0 4.0 -1.0)) (Log "MakeFloat3 (variables/mixed)")
+       (Float4 .x -1.0 .z .x) (Assert.Is (Float4 1.0 -1.0 3.0 1.0)) (Log "MakeFloat4 (variables/mixed)")
+       
+       (Float2 -1.0) (Assert.Is (Float2 -1.0 -1.0)) (Log "MakeFloat2 (broadcast)")
+       (Float3 -1.0) (Assert.Is (Float3 -1.0 -1.0 -1.0)) (Log "MakeFloat3 (broadcast)")
+       (Float4 -1.0) (Assert.Is (Float4 -1.0 -1.0 -1.0 -1.0)) (Log "MakeFloat4 (broadcast)")
+       
+       (Float2 .x) (Assert.Is (Float2 1.0 1.0)) (Log "MakeFloat2 (variable/broadcast)")
+       (Float3 .x) (Assert.Is (Float3 1.0 1.0 1.0)) (Log "MakeFloat3 (variable/broadcast)")
+       (Float4 .x) (Assert.Is (Float4 1.0 1.0 1.0 1.0)) (Log "MakeFloat4 (variable/broadcast)")
+       ))
 (tick Root)
