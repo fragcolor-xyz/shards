@@ -1828,11 +1828,11 @@ malValuePtr makeVector(const MalString &name, malValueIter argsBegin, malValueIt
   } else {
     if constexpr (AllowDefaultComponents) {
       if (numArgs > VectorSize) {
-        throw STRF("Too many arguments to vector constructor: {}, {} required", numArgs, VectorSize);
+        throw STRF("Too many arguments to vector constructor: %zu, %zu required", numArgs, VectorSize);
       }
     } else {
       if (numArgs != VectorSize)
-        throw STRF("Not enough arguments to vector constructor: {}, {} required", numArgs, VectorSize);
+        throw STRF("Not enough arguments to vector constructor: %zu, %zu required", numArgs, VectorSize);
     }
   }
   size_t inputSize = broadcast ? 1 : numArgs;

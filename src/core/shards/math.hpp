@@ -190,8 +190,7 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
           throw ComposeError("Unsupported type to Math.Multiply");
 
         bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
-        // Don't check number type here because we have to convert Float64 -> Float32 for broadcasting
-        if (!_lhsVecType->isInteger && !sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
+        if (!sameDimension && (_lhsVecType->dimension == 1 || _rhsVecType->dimension == 1)) {
           opType = Broadcast;
           // Result is the vector type
           if (_rhsVecType->dimension == 1) {
@@ -511,45 +510,45 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
-#define MATH_UNARY_OPERATION(NAME, FUNC, FUNCF)                                         \
+#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                         \
   struct NAME##Op final {                                                               \
     template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                   \
   };                                                                                    \
   using NAME = UnaryOperation<BasicUnaryOperation<NAME##Op, DispatchType::FloatTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 
-MATH_UNARY_OPERATION(Abs, __builtin_fabs, __builtin_fabsf);
-MATH_UNARY_OPERATION(Exp, __builtin_exp, __builtin_expf);
-MATH_UNARY_OPERATION(Exp2, __builtin_exp2, __builtin_exp2f);
-MATH_UNARY_OPERATION(Expm1, __builtin_expm1, __builtin_expm1f);
-MATH_UNARY_OPERATION(Log, __builtin_log, __builtin_logf);
-MATH_UNARY_OPERATION(Log10, __builtin_log10, __builtin_log10f);
-MATH_UNARY_OPERATION(Log2, __builtin_log2, __builtin_log2f);
-MATH_UNARY_OPERATION(Log1p, __builtin_log1p, __builtin_log1pf);
-MATH_UNARY_OPERATION(Sqrt, __builtin_sqrt, __builtin_sqrtf);
-MATH_UNARY_OPERATION(FastSqrt, fastSqrtNR2, fastSqrtNR2);
-MATH_UNARY_OPERATION(FastInvSqrt, fastRcpSqrtNR2, fastRcpSqrtNR2);
-MATH_UNARY_OPERATION(Cbrt, __builtin_cbrt, __builtin_cbrt);
-MATH_UNARY_OPERATION(Sin, __builtin_sin, __builtin_sinf);
-MATH_UNARY_OPERATION(Cos, __builtin_cos, __builtin_cosf);
-MATH_UNARY_OPERATION(Tan, __builtin_tan, __builtin_tanf);
-MATH_UNARY_OPERATION(Asin, __builtin_asin, __builtin_asinf);
-MATH_UNARY_OPERATION(Acos, __builtin_acos, __builtin_acosf);
-MATH_UNARY_OPERATION(Atan, __builtin_atan, __builtin_atanf);
-MATH_UNARY_OPERATION(Sinh, __builtin_sinh, __builtin_sinhf);
-MATH_UNARY_OPERATION(Cosh, __builtin_cosh, __builtin_coshf);
-MATH_UNARY_OPERATION(Tanh, __builtin_tanh, __builtin_tanhf);
-MATH_UNARY_OPERATION(Asinh, __builtin_asinh, __builtin_asinhf);
-MATH_UNARY_OPERATION(Acosh, __builtin_acosh, __builtin_acoshf);
-MATH_UNARY_OPERATION(Atanh, __builtin_atanh, __builtin_atanhf);
-MATH_UNARY_OPERATION(Erf, __builtin_erf, __builtin_erff);
-MATH_UNARY_OPERATION(Erfc, __builtin_erfc, __builtin_erfcf);
-MATH_UNARY_OPERATION(TGamma, __builtin_tgamma, __builtin_tgammaf);
-MATH_UNARY_OPERATION(LGamma, __builtin_lgamma, __builtin_lgammaf);
-MATH_UNARY_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf);
-MATH_UNARY_OPERATION(Floor, __builtin_floor, __builtin_floorf);
-MATH_UNARY_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
-MATH_UNARY_OPERATION(Round, __builtin_round, __builtin_roundf);
+MATH_UNARY_FLOAT_OPERATION(Abs, __builtin_fabs, __builtin_fabsf);
+MATH_UNARY_FLOAT_OPERATION(Exp, __builtin_exp, __builtin_expf);
+MATH_UNARY_FLOAT_OPERATION(Exp2, __builtin_exp2, __builtin_exp2f);
+MATH_UNARY_FLOAT_OPERATION(Expm1, __builtin_expm1, __builtin_expm1f);
+MATH_UNARY_FLOAT_OPERATION(Log, __builtin_log, __builtin_logf);
+MATH_UNARY_FLOAT_OPERATION(Log10, __builtin_log10, __builtin_log10f);
+MATH_UNARY_FLOAT_OPERATION(Log2, __builtin_log2, __builtin_log2f);
+MATH_UNARY_FLOAT_OPERATION(Log1p, __builtin_log1p, __builtin_log1pf);
+MATH_UNARY_FLOAT_OPERATION(Sqrt, __builtin_sqrt, __builtin_sqrtf);
+MATH_UNARY_FLOAT_OPERATION(FastSqrt, fastSqrtNR2, fastSqrtNR2);
+MATH_UNARY_FLOAT_OPERATION(FastInvSqrt, fastRcpSqrtNR2, fastRcpSqrtNR2);
+MATH_UNARY_FLOAT_OPERATION(Cbrt, __builtin_cbrt, __builtin_cbrt);
+MATH_UNARY_FLOAT_OPERATION(Sin, __builtin_sin, __builtin_sinf);
+MATH_UNARY_FLOAT_OPERATION(Cos, __builtin_cos, __builtin_cosf);
+MATH_UNARY_FLOAT_OPERATION(Tan, __builtin_tan, __builtin_tanf);
+MATH_UNARY_FLOAT_OPERATION(Asin, __builtin_asin, __builtin_asinf);
+MATH_UNARY_FLOAT_OPERATION(Acos, __builtin_acos, __builtin_acosf);
+MATH_UNARY_FLOAT_OPERATION(Atan, __builtin_atan, __builtin_atanf);
+MATH_UNARY_FLOAT_OPERATION(Sinh, __builtin_sinh, __builtin_sinhf);
+MATH_UNARY_FLOAT_OPERATION(Cosh, __builtin_cosh, __builtin_coshf);
+MATH_UNARY_FLOAT_OPERATION(Tanh, __builtin_tanh, __builtin_tanhf);
+MATH_UNARY_FLOAT_OPERATION(Asinh, __builtin_asinh, __builtin_asinhf);
+MATH_UNARY_FLOAT_OPERATION(Acosh, __builtin_acosh, __builtin_acoshf);
+MATH_UNARY_FLOAT_OPERATION(Atanh, __builtin_atanh, __builtin_atanhf);
+MATH_UNARY_FLOAT_OPERATION(Erf, __builtin_erf, __builtin_erff);
+MATH_UNARY_FLOAT_OPERATION(Erfc, __builtin_erfc, __builtin_erfcf);
+MATH_UNARY_FLOAT_OPERATION(TGamma, __builtin_tgamma, __builtin_tgammaf);
+MATH_UNARY_FLOAT_OPERATION(LGamma, __builtin_lgamma, __builtin_lgammaf);
+MATH_UNARY_FLOAT_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf);
+MATH_UNARY_FLOAT_OPERATION(Floor, __builtin_floor, __builtin_floorf);
+MATH_UNARY_FLOAT_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
+MATH_UNARY_FLOAT_OPERATION(Round, __builtin_round, __builtin_roundf);
 
 struct Mean {
   struct ArithMean {
@@ -642,6 +641,11 @@ struct DecOp final {
 };
 using Dec = UnaryVarOperation<BasicUnaryOperation<DecOp>>;
 
+struct NegateOp final {
+  template <typename T> T apply(const T &a) { return -a; }
+};
+using Negate = UnaryOperation<BasicUnaryOperation<NegateOp>>;
+
 struct MaxOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::max(lhs, rhs); }
 };
@@ -710,6 +714,7 @@ inline void registerShards() {
   REGISTER_SHARD("Math.Mean", Mean);
   REGISTER_SHARD("Math.Inc", Inc);
   REGISTER_SHARD("Math.Dec", Dec);
+  REGISTER_SHARD("Math.Negate", Negate);
 
   REGISTER_SHARD("Max", Max);
   REGISTER_SHARD("Min", Min);

@@ -38,6 +38,33 @@
 
    "4e2" (HexToBytes) (BigInt) (BigInt.ToString) (Assert.Is "1250" true) (Log "Returned")
 
+   ; Comparisons
+   .500x1e18 (BigInt.Is .500x1e18) (Assert.Is true)
+   .1000x1e18 (BigInt.Is .500x1e18) (Assert.Is false)
+
+   .500x1e18 (BigInt.IsNot .500x1e18) (Assert.Is false)
+   .1000x1e18 (BigInt.IsNot .500x1e18) (Assert.Is true)
+
+   .1000x1e18 (BigInt.IsMore .500x1e18) (Assert.Is true)
+   .500x1e18 (BigInt.IsMore .1000x1e18) (Assert.Is false)
+   .500x1e18 (BigInt.IsMore .500x1e18) (Assert.Is false)
+
+   .1000x1e18 (BigInt.IsLess .500x1e18) (Assert.Is false)
+   .500x1e18 (BigInt.IsLess .1000x1e18) (Assert.Is true)
+   .500x1e18 (BigInt.IsLess .500x1e18) (Assert.Is false)
+
+   .1000x1e18 (BigInt.IsMoreEqual .500x1e18) (Assert.Is true)
+   .500x1e18 (BigInt.IsMoreEqual .1000x1e18) (Assert.Is false)
+   .500x1e18 (BigInt.IsMoreEqual .500x1e18) (Assert.Is true)
+
+   .1000x1e18 (BigInt.IsLessEqual .500x1e18) (Assert.Is false)
+   .500x1e18 (BigInt.IsLessEqual .1000x1e18) (Assert.Is true)
+   .500x1e18 (BigInt.IsLessEqual .500x1e18) (Assert.Is true)
+
+   100 (BigInt) (BigInt.Pow 20) (Log "100^20")
+   (| (BigInt.ToString) (Assert.Is "10000000000000000000000000000000000000000" true) (Log "Result"))
+   (| (BigInt.Sqrt) (BigInt.ToString) (Assert.Is "100000000000000000000" true) (Log "Sqrt"))
+
    ;
    ))
 

@@ -198,6 +198,19 @@
    .v-2 (Min .f) (Assert.Is (Float2 0.5 0.5) true) (Log "Min Float2 broadcast")
    .v-2 (Max .f) (Assert.Is (Float2 2.0 1.0) true) (Log "Max Float2 broadcast")
 
+   (Int2 1 2) (Math.Multiply 2) (Log "Int2 Multiply") (Assert.Is (Int2 2 4))
+   (Math.Divide 2) (Assert.Is (Int2 1 2))
+   (Int3 1 2 3) (Math.Multiply 2) (Log "Int3 Multiply") (Assert.Is (Int3 2 4 6))
+   (Math.Divide 2) (Assert.Is (Int3 1 2 3))
+   (Int4 1 2 3 4) (Math.Multiply 2) (Log "Int4 Multiply") (Assert.Is (Int4 2 4 6 8))
+   (Math.Divide 2) (Assert.Is (Int4 1 2 3 4))
+   (Int8 1 2 3 4 4 3 2 1) (Math.Multiply 2) (Log "Int8 Multiply") (Assert.Is (Int8 2 4 6 8 8 6 4 2))
+   (Math.Divide 2) (Assert.Is (Int8 1 2 3 4 4 3 2 1))
+   (Int16 1 2 3 4 4 3 2 1 4 3 2 1 1 2 3 4) (Math.Multiply 2) (Log "Int16 Multiply") (Assert.Is (Int16 2 4 6 8 8 6 4 2 8 6 4 2 2 4 6 8))
+   (Math.Divide 2) (Assert.Is (Int16 1 2 3 4 4 3 2 1 4 3 2 1 1 2 3 4))
+
+   (Int4 3 8 9 11) (Math.Mod 4) (Assert.Is (Int4 3 0 1 3))
+   
    (Float4 4 4 4 4)
    (Math.FastSqrt)
    (| (ToString)
@@ -325,9 +338,19 @@
    (Get "x")
    (Log)
 
-   (Color 2 2 2 255)
+   (Color 2 2 2 255) >= .color
    (Log)
 
+   .color (Math.Add (Color 1 1 1 0)) (Log "color") (Assert.Is (Color 3 3 3 255))
+
+   (Color 1 2 3 4) > .color
+   (Math.Inc .color) 
+   .color (Log) (Assert.Is (Color 2 3 4 5))
+
+   .color (Math.Multiply 2) (Log) (Assert.Is (Color 4 6 8 10))
+
+    9.0 (Math.FMod 4.0) (Log) (Assert.Is 1.0)
+   
    [(Float 1) (Float 2) (Float 3) (Float 4)]
    (Math.Multiply (Float 2.0))
    (Log)

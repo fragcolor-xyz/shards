@@ -68,7 +68,6 @@ struct ToBigInt {
 struct BigIntOutputBuffer {
   struct Output {
     std::vector<uint8_t> data;
-    SHVar var;
   };
 
   std::deque<Output> _outputs;
@@ -82,12 +81,6 @@ struct BigIntOutputBuffer {
     auto &output = _outputs[_index];
     _index++;
     return output;
-  }
-
-  const SHVar &getLastOutputVar() const {
-    if (_index == 0)
-      throw std::out_of_range("No outputs");
-    return _outputs[_index - 1].var;
   }
 };
 
@@ -111,7 +104,7 @@ template <typename TOp> struct BigIntBinaryOperation {
     cpp_int bres = op.template apply(bia, bib);
 
     auto &output = _outputs.getOutput();
-    outputVar = output.var = to_var(bres, output.data);
+    outputVar = to_var(bres, output.data);
   }
 
   void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {

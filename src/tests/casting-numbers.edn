@@ -69,6 +69,12 @@
        (Color 0) (Assert.Is (Color 0 0 0 0)) (Log "MakeColor (broadcast)")
        (Color .i2 255 100) (Assert.Is (Color 2 255 100 255)) (Log "MakeColor (variable/mixed/extended)")
        (Color .i2) (Assert.Is (Color 2 2 2 2)) (Log "MakeColor (variable/broadcast)")
+
+       ; Enum conversion
+       Type.None (ToInt) (Assert.Is 0)
+       Type.Any (ToInt) (Assert.Is 1)
+       Type.Float (ToInt) (Assert.Is 9)
+
        ;
        ))
 (tick Root)
