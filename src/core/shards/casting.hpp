@@ -328,7 +328,7 @@ template <SHType ToType> struct MakeVector {
       dstData += _componentConversion->outStride;
     }
 
-    // Apply broadcat be copying first element to remaining elements
+    // Apply broadcast by copying the first element to remaining elements
     if (isBroadcast) {
       uint8_t *broadcastSrc = dstData - _componentConversion->outStride;
       for (size_t i = 1; i < params.size(); i++) {
