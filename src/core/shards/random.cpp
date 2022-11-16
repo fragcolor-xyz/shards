@@ -26,6 +26,16 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
 
   void warmup(SHContext *context) { _max.warmup(context); }
 
+  SHExposedTypesInfo requiredVariables() {
+    SHVar variable = _max;
+    if (variable.valueType == ContextVar) {
+      _requiredInfo = ExposedInfo(
+          ExposedInfo::Variable(variable.payload.stringValue, SHCCSTR("The required variable."), OUTTYPE));
+      return SHExposedTypesInfo(_requiredInfo);
+    }
+    return {};
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar res{};
     res.valueType = SHTYPE;
@@ -50,6 +60,7 @@ private:
                                     SHCCSTR("The maximum (if integer, not including) value to output."),
                                     {CoreInfo::NoneType, OUTTYPE, Type::VariableOf(OUTTYPE)}}};
   ParamVar _max{};
+  ExposedInfo _requiredInfo{};
 };
 
 using RandomInt = Rand<CoreInfo::IntType, SHType::Int>;
