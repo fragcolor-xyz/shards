@@ -116,6 +116,8 @@ template <typename T> void visitTestVertexFormats(T visitor) {
 }
 
 TEST_CASE("Vertex storage formats", "[General]") {
+  const float comparisonTolerance = 1.0f;
+
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -203,6 +205,8 @@ TEST_CASE("Vertex storage formats", "[General]") {
 }
 
 TEST_CASE("Pipeline states", "[General]") {
+  const float comparisonTolerance = 1.0f;
+
   auto testRenderer = createTestRenderer(int2(512, 512));
   Renderer &renderer = *testRenderer->renderer.get();
 
