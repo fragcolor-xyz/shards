@@ -5,6 +5,7 @@ on:
     branches:
       - devel
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       rust-cache:
@@ -14,6 +15,12 @@ on:
         type: boolean
 
 jobs:
+  Setup:
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 0
+
   # cancel-previous-workflows:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -26,12 +33,14 @@ jobs:
   # Build shards for emscripten
   #
   wasm32-emscripten-st:
+    needs: Setup
     uses: ./.github/workflows/build-wasm.yml
     secrets: inherit
     with:
       threading: st
       run-tests: true
   wasm32-emscripten-mt:
+    needs: Setup
     uses: ./.github/workflows/build-wasm.yml
     secrets: inherit
     with:
@@ -42,18 +51,21 @@ jobs:
   # Build shards for linux
   #
   Linux-Debug:
+    needs: Setup
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
     with:
       build-type: Debug
       run-tests: true
   Linux-Release:
+    needs: Setup
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
     with:
       build-type: Release
       run-tests: true
   Linux-GPU:
+    needs: Setup
     uses: ./.github/workflows/test-linux-gpu.yml
     secrets: inherit
     with:
@@ -67,6 +79,7 @@ jobs:
   # Build shards and publish docker image
   #
   Linux-docker:
+    needs: Setup
     uses: ./.github/workflows/build-linux-docker.yml
     secrets: inherit
 
@@ -74,6 +87,7 @@ jobs:
   # Build shards and run valgrind on Linux
   #
   Linux-valgrind:
+    needs: Setup
     uses: ./.github/workflows/build-linux-valgrind.yml
     secrets: inherit
 
@@ -81,6 +95,7 @@ jobs:
   # Build shards for Windows
   #
   Windows-64bits-Debug:
+    needs: Setup
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
@@ -89,6 +104,7 @@ jobs:
       runtime-tests: true
       run-tests: true
   Windows-64bits-Release:
+    needs: Setup
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
@@ -96,6 +112,7 @@ jobs:
       build-type: Release
       run-tests: true
   Windows-32bits-Debug:
+    needs: Setup
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
@@ -104,6 +121,7 @@ jobs:
       runtime-tests: true
       run-tests: true
   Windows-32bits-Release:
+    needs: Setup
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
@@ -125,6 +143,7 @@ jobs:
   # Build shards for macOS
   #
   macOS-Debug:
+    needs: Setup
     uses: ./.github/workflows/build-macos.yml
     secrets: inherit
     with:
@@ -132,6 +151,7 @@ jobs:
       runtime-tests: true
       run-tests: true
   macOS-Release:
+    needs: Setup
     uses: ./.github/workflows/build-macos.yml
     secrets: inherit
     with:
@@ -143,5 +163,6 @@ jobs:
   # Build shards for iOS
   #
   iOS:
+    needs: Setup
     uses: ./.github/workflows/build-ios.yml
     secrets: inherit
