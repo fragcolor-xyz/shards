@@ -9,7 +9,7 @@ namespace gfx {
 namespace shader {
 
 inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context) {
-  std::unique_ptr<IWGSLGenerated> result;
+  std::unique_ptr<IWGSLGenerated> result{};
 
 #define OUTPUT_VEC(_type, _dim, _fmt, ...)                                                             \
   {                                                                                                    \
@@ -51,10 +51,14 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
     OUTPUT_VEC(ShaderFieldBaseType::Float32, 4, "{:f}, {:f}, {:f}, {:f}", (float)pl.float4Value[0], (float)pl.float4Value[1],
                (float)pl.float4Value[2], (float)pl.float4Value[3]);
     break;
+  case SHType::None:
+    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> nil");
+    break;
   default:
     throw ShaderComposeError(fmt::format("Unsupported SHType constant inside shader: {}", magic_enum::enum_name(valueType)));
   }
 #undef OUTPUT_VEC
+
   return result;
 };
 

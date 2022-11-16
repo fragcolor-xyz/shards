@@ -41,11 +41,11 @@ struct ForRangeTranslator {
     std::string indexVarName = context.getUniqueVariableName("index");
 
     context.enterNew(blocks::makeCompoundBlock());
-    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("for(int {} = ", indexVarName)));
+    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("for(var {} = ", indexVarName)));
     context.addNew(from->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("; {} < ", indexVarName)));
     context.addNew(to->toBlock());
-    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("; {}++) {", indexVarName)));
+    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("; {}++) {{", indexVarName)));
 
     // Pass index as input
     context.setWGSLTop<WGSLBlock>(FieldTypes::Int32, blocks::makeBlock<blocks::Direct>(indexVarName));

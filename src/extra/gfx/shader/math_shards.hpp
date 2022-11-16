@@ -111,10 +111,12 @@ inline FieldType validateTypesVectorBroadcast(FieldType a, FieldType b) {
 
 struct OperatorAdd {
   static inline const char *op = "+";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorSubtract {
   static inline const char *op = "-";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorMultiply {
@@ -129,6 +131,7 @@ struct OperatorDivide {
 
 struct OperatorMod {
   static inline const char *op = "%";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesVectorBroadcast(a, b); }
 };
 
 struct OperatorCos {

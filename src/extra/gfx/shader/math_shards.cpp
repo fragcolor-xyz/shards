@@ -37,6 +37,8 @@ template <typename TShard> struct ToNumberTranslator {
 
     size_t numComponentsToCopy = std::min(fieldType.numComponents, sourceFieldType.numComponents);
 
+    bool requireSourceSwizzle = sourceFieldType.numComponents > 1;
+
     // Convert list of casted components
     // Generates dstType(x, y, z), etc.
     //  - vec4<f32>(input.x, input.y, input.z)
@@ -46,7 +48,12 @@ template <typename TShard> struct ToNumberTranslator {
       blocks::BlockPtr inner = isLast ? std::move(sourceBlock) : sourceBlock->clone();
 
       std::string prefix = fmt::format("{}((", getFieldWGSLTypeName(unitFieldType));
-      std::string suffix = fmt::format((isLast ? ").{})" : ").{}), "), componentNames[i]);
+      std::string suffix{};
+      if (requireSourceSwizzle)
+        suffix = fmt::format((isLast ? ").{})" : ").{}), "), componentNames[i]);
+      else
+        suffix = fmt::format((isLast ? "))" : ")), "));
+
       sourceComponentList->children.emplace_back(
           blocks::makeCompoundBlock(std::move(prefix), std::move(inner), std::move(suffix)));
     }
