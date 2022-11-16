@@ -3,27 +3,78 @@
 (schedule
  Root
  (Wire "test"
-        (Float3 1 2 3) >= .vec3
-        (Float 2.0) >= .flt
+       (Float3 1 2 3) >= .vec3
+       (Float 2.0) >= .flt
 
-        .vec3 (ToFloat2) (Assert.Is (Float2 1 2) true) (Log "Float2")
-        .vec3 (ToFloat4) (Assert.Is (Float4 1 2 3 0) true) (Log "Float4")
-        .vec3 (ToFloat) (Assert.Is (Float 1) true) (Log "Float")
-        .vec3 (ToInt) (Assert.Is (Int 1) true) (Log "Int")
-        .vec3 (ToInt4) (Assert.Is (Int4 1 2 3 0) true) (Log "Int4")
+       .vec3 (ToFloat2) (Assert.Is (Float2 1 2) true) (Log "Float2")
+       .vec3 (ToFloat4) (Assert.Is (Float4 1 2 3 0) true) (Log "Float4")
+       .vec3 (ToFloat) (Assert.Is (Float 1) true) (Log "Float")
+       .vec3 (ToInt) (Assert.Is (Int 1) true) (Log "Int")
+       .vec3 (ToInt4) (Assert.Is (Int4 1 2 3 0) true) (Log "Int4")
 
-        .vec3 (ToString) >= .vec3str (Log "Float3 to string")
-        .vec3str (ToFloat3) (Assert.Is (Float3 1 2 3) true) (Log "Float3 from string")
+       .vec3 (ToString) >= .vec3str (Log "Float3 to string")
+       .vec3str (ToFloat3) (Assert.Is (Float3 1 2 3) true) (Log "Float3 from string")
 
-        .vec3 (ToInt3) (ToString) >= .int3Str (Log "Int3 to string")
-        .int3Str (ToInt3) (Assert.Is (Int3 1 2 3) true) (Log "Int3 from string")
-        
-        [3.0 4.0 5.0] >= .vec3seqFixed (Log "Float3 seq (fixed)")
-        .vec3seqFixed (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (fixed)")
-        
-        3.0 >> .vec3seqVariable
-        4 >> .vec3seqVariable
-        5 >> .vec3seqVariable
-        .vec3seqVariable (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (variable)")
-        ))
+       .vec3 (ToInt3) (ToString) >= .int3Str (Log "Int3 to string")
+       .int3Str (ToInt3) (Assert.Is (Int3 1 2 3) true) (Log "Int3 from string")
+
+       [3.0 4.0 5.0] >= .vec3seqFixed (Log "Float3 seq (fixed)")
+       .vec3seqFixed (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (fixed)")
+
+       3.0 >> .vec3seqVariable
+       4 >> .vec3seqVariable
+       5 >> .vec3seqVariable
+       .vec3seqVariable (ToFloat3) (Assert.Is (Float3 3 4 5) true) (Log "Float3 from seq (variable)")
+
+       (Float3 0.0 1.0 2.0) (Assert.Is (Float3 0.0 1.0 2.0)) (Log "MakeFloat3")
+       (Float2 2.0 3.0) (Assert.Is (Float2 2.0 3.0)) (Log "MakeFloat2")
+
+       1.0 >= .x
+       4.0 = .y
+       3.0 = .z
+       (Float 4.0) (Assert.Is 4.0) (Log "Float (reference)")
+
+       (Float2 .x .y) (Assert.Is (Float2 1.0 4.0)) (Log "MakeFloat2 (variables)")
+       (Float3 .x .y .z) (Assert.Is (Float3 1.0 4.0 3.0)) (Log "MakeFloat3 (variables)")
+       (Float4 .x .y .z .x) (Assert.Is (Float4 1.0 4.0 3.0 1.0)) (Log "MakeFloat4 (variables)")
+
+       (Float2 -1.0 .y) (Assert.Is (Float2 -1.0 4.0)) (Log "MakeFloat2 (variables/mixed)")
+       (Float3 .x .y -1.0) (Assert.Is (Float3 1.0 4.0 -1.0)) (Log "MakeFloat3 (variables/mixed)")
+       (Float4 .x -1.0 .z .x) (Assert.Is (Float4 1.0 -1.0 3.0 1.0)) (Log "MakeFloat4 (variables/mixed)")
+
+       (Float2 -1.0) (Assert.Is (Float2 -1.0 -1.0)) (Log "MakeFloat2 (broadcast)")
+       (Float3 -1.0) (Assert.Is (Float3 -1.0 -1.0 -1.0)) (Log "MakeFloat3 (broadcast)")
+       (Float4 -1.0) (Assert.Is (Float4 -1.0 -1.0 -1.0 -1.0)) (Log "MakeFloat4 (broadcast)")
+
+       (Float2 .x) (Assert.Is (Float2 1.0 1.0)) (Log "MakeFloat2 (variable/broadcast)")
+       (Float3 .x) (Assert.Is (Float3 1.0 1.0 1.0)) (Log "MakeFloat3 (variable/broadcast)")
+       (Float4 .x) (Assert.Is (Float4 1.0 1.0 1.0 1.0)) (Log "MakeFloat4 (variable/broadcast)")
+
+       2 >= .i2
+       (Int2 .i2 .i2) (Assert.Is (Int2 2 2)) (Log "MakeInt2 (variable)")
+       (Int3 .i2 .i2 .i2) (Assert.Is (Int3 2 2 2)) (Log "MakeInt3 (variable)")
+       (Int4 .i2 .i2 .i2 .i2) (Assert.Is (Int4 2 2 2 2)) (Log "MakeInt4 (variable)")
+       (Int8 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2) (Assert.Is (Int8 2 2 2 2 2 2 2 2)) (Log "MakeInt8 (variable)")
+       (Int16 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2 .i2) (Assert.Is (Int16 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2)) (Log "MakeInt16 (variable)")
+
+       (Int2 .i2 1) (Assert.Is (Int2 2 1)) (Log "MakeInt2 (variable/mixed)")
+       (Int3 .i2 1 .i2) (Assert.Is (Int3 2 1 2)) (Log "MakeInt3 (variable/mixed)")
+       (Int4 .i2 1 .i2 .i2) (Assert.Is (Int4 2 1 2 2)) (Log "MakeInt4 (variable/mixed)")
+
+       (Int2 .i2) (Assert.Is (Int2 2 2)) (Log "MakeInt2 (variable/broadcast)")
+       (Int3 .i2) (Assert.Is (Int3 2 2 2)) (Log "MakeInt3 (variable/broadcast)")
+       (Int4 .i2) (Assert.Is (Int4 2 2 2 2)) (Log "MakeInt4 (variable/broadcast)")
+
+       (Color 255 255 255) (Assert.Is (Color 255 255 255 255)) (Log "MakeColor (extended)")
+       (Color 0) (Assert.Is (Color 0 0 0 0)) (Log "MakeColor (broadcast)")
+       (Color .i2 255 100) (Assert.Is (Color 2 255 100 255)) (Log "MakeColor (variable/mixed/extended)")
+       (Color .i2) (Assert.Is (Color 2 2 2 2)) (Log "MakeColor (variable/broadcast)")
+
+       ; Enum conversion
+       Type.None (ToInt) (Assert.Is 0)
+       Type.Any (ToInt) (Assert.Is 1)
+       Type.Float (ToInt) (Assert.Is 9)
+
+       ;
+       ))
 (tick Root)

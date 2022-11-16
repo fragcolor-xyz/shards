@@ -2,6 +2,8 @@
 #define SH_CORE_BLOCKS_CASTING
 
 #include "number_types.hpp"
+#include "shards.h"
+#include "shards.hpp"
 #include "shared.hpp"
 
 namespace shards {
@@ -194,5 +196,158 @@ template <SHType ToType> struct ToNumber {
     return output;
   }
 };
+
+template <SHType Type> struct DefaultValues {};
+template <> struct DefaultValues<SHType::Color> {
+  static constexpr uint8_t get(size_t index) { return index == 3 ? 255 : 0; }
+};
+
+template <SHType ToType> struct MakeVector {
+  static constexpr bool AllowDefaultComponents = ToType == SHType::Color;
+
+  const VectorTypeTraits *_outputVectorType{nullptr};
+  const NumberTypeTraits *_outputNumberType{nullptr};
+  const NumberConversion *_componentConversion{nullptr};
+
+  std::vector<ParamVar> params;
+  bool isBroadcast{};
+  size_t inputSize;
+
+  MakeVector() {
+    auto vectorType = VectorTypeLookup::getInstance().get(ToType);
+    params.resize(vectorType->dimension);
+  }
+
+  SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  SHTypesInfo outputTypes() {
+    if (!_outputVectorType)
+      return CoreInfo::AnyType;
+    return _outputVectorType->type;
+  }
+
+  void setParam(int index, const SHVar &value) {
+    if (index >= (int)params.size())
+      return;
+    params[index] = value;
+  }
+
+  SHVar getParam(int index) {
+    if (index >= (int)params.size())
+      return Var::Empty;
+    return params[index];
+  }
+
+  static inline std::vector<std::string> componentNames = []() {
+    std::vector<std::string> result;
+    for (size_t i = 0; i < 16; i++) {
+      result.push_back(fmt::format("{}", i));
+    }
+    return result;
+  }();
+
+  static SHParametersInfo parameters() {
+    static Parameters params = []() {
+      Parameters params;
+      auto vectorType = VectorTypeLookup::getInstance().get(ToType);
+      auto paramType = getCompatibleUnitType(vectorType->numberType);
+
+      for (size_t i = 0; i < vectorType->dimension; i++) {
+        params._infos.emplace_back(componentNames[i].c_str(), Types({Type::VariableOf(paramType), paramType}));
+      }
+
+      for (auto &param : params._infos)
+        params._pinfos.emplace_back(param);
+
+      return params;
+    }();
+
+    return params;
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
+    if (!_outputVectorType) {
+      throw ComposeError("Conversion not implemented for this type");
+    }
+
+    auto &numberTypeLookup = NumberTypeLookup::getInstance();
+    _outputNumberType = numberTypeLookup.get(_outputVectorType->numberType);
+
+    NumberType componentNumberType = _outputNumberType->isInteger ? NumberType::Int64 : NumberType::Float64;
+    _componentConversion = numberTypeLookup.getConversion(componentNumberType, _outputNumberType->type);
+
+    // Check amount of set paramters
+    inputSize = 0;
+    for (size_t i = 0; i < params.size(); i++) {
+      if (params[i]->valueType == SHType::None) {
+        break;
+      }
+      ++inputSize;
+    }
+
+    // Check for gaps in parameter list
+    for (size_t i = inputSize; i < params.size(); i++) {
+      if (params[i]->valueType != SHType::None)
+        throw ComposeError(fmt::format("Vector component {} was not set", inputSize));
+    }
+
+    // Check valid amount of parameters
+    isBroadcast = false;
+    if (inputSize == 1)
+      isBroadcast = true;
+    else if constexpr (!AllowDefaultComponents) {
+      if (inputSize != params.size()) {
+        throw ComposeError(fmt::format("Not enough vector components: {}, expected: {}", inputSize, params.size()));
+      }
+    }
+
+    return _outputVectorType->type;
+  }
+
+  void warmup(SHContext *context) {
+    for (auto &param : params)
+      param.warmup(context);
+  }
+
+  void cleanup() {
+    for (auto &param : params)
+      param.cleanup();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    shassert(_outputVectorType);
+
+    SHVar output{};
+    output.valueType = _outputVectorType->shType;
+
+    // Convert inputs to vector components
+    uint8_t *dstData = reinterpret_cast<uint8_t *>(&output.payload.floatValue);
+    for (size_t i = 0; i < inputSize; i++) {
+      auto &param = params[i].get();
+      _componentConversion->convertOne(&param.payload.floatValue, dstData);
+      dstData += _componentConversion->outStride;
+    }
+
+    // Apply broadcast by copying the first element to remaining elements
+    if (isBroadcast) {
+      uint8_t *broadcastSrc = dstData - _componentConversion->outStride;
+      for (size_t i = 1; i < params.size(); i++) {
+        memcpy(dstData, broadcastSrc, _componentConversion->outStride);
+        dstData += _componentConversion->outStride;
+      }
+    } else if constexpr (AllowDefaultComponents) {
+      // Apply default components by filling in the unset components with the default value
+      // returned by DefaultValues<ToType>::get(index)
+      for (size_t i = inputSize; i < params.size(); i++) {
+        auto v = DefaultValues<ToType>::get(i);
+        memcpy(dstData, &v, _componentConversion->outStride);
+        dstData += _componentConversion->outStride;
+      }
+    }
+
+    return output;
+  }
+};
+
 } // namespace shards
 #endif // SH_CORE_BLOCKS_CASTING
