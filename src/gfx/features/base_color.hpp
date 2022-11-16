@@ -1,6 +1,7 @@
 #ifndef GFX_FEATURES_BASE_COLOR
 #define GFX_FEATURES_BASE_COLOR
 
+#include <gfx/shader/wgsl_mapping.hpp>
 #include <gfx/enums.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/params.hpp>
@@ -9,6 +10,25 @@
 
 namespace gfx {
 namespace features {
+
+inline size_t getShaderFieldMaxValue(ShaderFieldBaseType baseType) {
+  switch (baseType) {
+  case ShaderFieldBaseType::UInt8:
+    return std::numeric_limits<uint8_t>::max();
+  case ShaderFieldBaseType::Int8:
+    return std::numeric_limits<int8_t>::max();
+  case ShaderFieldBaseType::UInt16:
+    return std::numeric_limits<uint16_t>::max();
+  case ShaderFieldBaseType::Int16:
+    return std::numeric_limits<int16_t>::max();
+  case ShaderFieldBaseType::UInt32:
+    return std::numeric_limits<uint32_t>::max();
+  case ShaderFieldBaseType::Int32:
+    return std::numeric_limits<int32_t>::max();
+  default:
+    throw std::logic_error("Unexpected shader field type");
+  }
+}
 
 struct BaseColor {
   static inline FeaturePtr create() {
@@ -28,25 +48,41 @@ struct BaseColor {
         .alpha = BlendComponent::Opaque,
     });
 
-    const char *defaultColor = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
+    const char defaultColor[] = "vec4<f32>(1.0, 1.0, 1.0, 1.0)";
+    const std::string colorAttributeName = "color";
 
-    auto readColorParam = makeCompoundBlock(ReadBuffer("baseColor", FieldTypes::Float4));
+    auto initColor = makeBlock<Custom>([=](IGeneratorContext &context) {
+      context.beginWriteGlobal("color", colorFieldType);
 
-    feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex,
-                                            WriteGlobal("color", colorFieldType,
-                                                        WithInput("color", ReadInput("color"), defaultColor), "*",
-                                                        std::move(readColorParam)));
+      auto &inputs = context.getInputs();
+      if (context.hasInput(colorAttributeName.c_str())) {
+        auto it = inputs.find(colorAttributeName);
+        auto colorInputType = it != inputs.end() ? it->second : FieldTypes::Float4;
+
+        // Convert value to color or use float type directly
+        if (isFloatType(colorInputType.baseType)) {
+          context.readInput("color");
+        } else {
+          uint64_t maxValue = getShaderFieldMaxValue(colorInputType.baseType);
+          auto colorFieldTypeName = getFieldWGSLTypeName(FieldType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
+          context.write(fmt::format("({}(", colorFieldTypeName));
+          context.readInput("color");
+          context.write(fmt::format(") / {}(f32({:e}))", colorFieldTypeName, double(maxValue)));
+          context.write(")");
+        }
+      } else {
+        context.write(defaultColor);
+      }
+
+      context.write(" * ");
+      context.readBuffer("baseColor", FieldTypes::Float4, "object");
+      context.endWriteGlobal();
+    });
+    feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex, std::move(initColor));
+
     auto &writeColor = feature->shaderEntryPoints.emplace_back("writeColor", ProgrammableGraphicsStage::Vertex,
                                                                WriteOutput("color", colorFieldType, ReadGlobal("color")));
     writeColor.dependencies.emplace_back("initColor");
-
-    // Apply vertex color
-    EntryPoint &applyVertexColor = feature->shaderEntryPoints.emplace_back(
-        "applyVertexColor", ProgrammableGraphicsStage::Vertex,
-        WithInput("color",
-                  WriteGlobal("color", colorFieldType, makeCompoundBlock(ReadGlobal("color"), "*", ReadInput("color"), ";"))));
-    applyVertexColor.dependencies.emplace_back("initColor", DependencyType::After);
-    applyVertexColor.dependencies.emplace_back("writeColor", DependencyType::Before);
 
     // Read vertex color from vertex
     feature->shaderEntryPoints.emplace_back(
