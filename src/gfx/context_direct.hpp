@@ -6,6 +6,8 @@
 #include "fmt.hpp"
 #include <magic_enum.hpp>
 
+#include "context_xr_gfx_data.hpp"
+
 namespace gfx {
 
 struct ContextWindowOutput : public IContextMainOutput {
@@ -35,7 +37,7 @@ struct ContextWindowOutput : public IContextMainOutput {
   const int2 &getSize() const override { return currentSize; }
   WGPUTextureFormat getFormat() const override { return swapchainFormat; }
 
-  WGPUTextureView requestFrame() override {
+  std::vector<WGPUTextureView> requestFrame() override {
     int2 targetSize = window.getDrawableSize();
     if (targetSize != getSize()) {
       SPDLOG_LOGGER_INFO(logger, "Resizing swapchain, window resized ({} => {})", getSize(), targetSize);
@@ -49,11 +51,16 @@ struct ContextWindowOutput : public IContextMainOutput {
       resize(getSize());
       currentView = wgpuSwapChainGetCurrentTextureView(wgpuSwapchain);
     }
-
-    return currentView;
+    std::vector<WGPUTextureView> views = {currentView};
+    return views;
   }
 
-  WGPUTextureView getCurrentFrame() const override { return currentView; }
+  std::vector<IContextCurrentFramePayload> getCurrentFrame() const override { 
+    IContextCurrentFramePayload payload;
+    payload.wgpuTextureView = currentView;
+    std::vector<IContextCurrentFramePayload> payloads = {payload};
+    return payloads;
+  }
 
   void present() override {
     assert(currentView);
@@ -180,7 +187,7 @@ struct ContextWindowOutput : public IContextMainOutput {
 //   }
 
 //   std::shared_ptr<IContextMainOutput> createMainOutput(Window &window) override {
-//     return std::make_shared<VulkanOpenXRSwapchain>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
+//     return std::make_shared<OpenXRMirrorView>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
 //   }
 // };
 

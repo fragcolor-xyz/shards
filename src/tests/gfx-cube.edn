@@ -53,4 +53,5 @@
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)
-(run Root timestep 100)
+;(run Root timestep 100)
+(run Root timestep 999999999)

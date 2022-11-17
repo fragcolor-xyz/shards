@@ -266,7 +266,7 @@ struct CachedView {
   float4x4 viewProjectionTransform;
 
   size_t lastTouched{};
-
+  //view matrix, projection matrix
   void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
     if (frameCounter > lastTouched) {
       previousViewTransform = currentViewTransform;
