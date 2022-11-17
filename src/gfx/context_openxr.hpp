@@ -17,12 +17,12 @@
 
 namespace gfx {
 
-struct WGPUVulkanShared {
+struct VulkanShared {
   vk::DispatchLoaderDynamic loader;
-  vk::PhysicalDevice physicalDevice;//VkPhysicalDevice
-  vk::Instance instance;//VkInstance
-  vk::Device device;//VkDevice
-  vk::Queue queue;//VkQueue, draw queue. The present queue is wgpuPresent afaiks
+  vk::PhysicalDevice physicalDevice;
+  vk::Instance instance;
+  vk::Device device;
+  vk::Queue queue;
 
   uint32_t queueIndex;
   uint32_t queueFamilyIndex;
@@ -33,11 +33,10 @@ struct WGPUVulkanShared {
   WGPUQueue wgpuQueue{};
 };
 
-struct VulkanOpenXRSwapchain : public IContextMainOutput 
-{
+struct VulkanOpenXRSwapchain : public IContextMainOutput {
   Window &window;
 
-  std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared;
+  std::shared_ptr<VulkanShared> vulkanShared;
 
   // Temporary mirror surface on the window
   vk::SurfaceKHR mirrorSurface;
@@ -52,22 +51,22 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
   WGPUTextureFormat currentFormat = WGPUTextureFormat_Undefined;
   WGPUTextureView currentView{};
 
-  VulkanOpenXRSwapchain(std::shared_ptr<WGPUVulkanShared> &wgpuVulkanShared, Window &window)
-      : window(window), wgpuVulkanShared(wgpuVulkanShared) {
+  VulkanOpenXRSwapchain(std::shared_ptr<VulkanShared> &vulkanShared, Window &window)
+      : window(window), vulkanShared(vulkanShared) {
     createMirrorSurface();
     createMirrorSwapchain();
 
-    fence = wgpuVulkanShared->device.createFence(vk::FenceCreateInfo(), nullptr, wgpuVulkanShared->loader);
+    fence = vulkanShared->device.createFence(vk::FenceCreateInfo(), nullptr, vulkanShared->loader);
   }
 
   void createMirrorSwapchain(VkSwapchainKHR oldSwapchain = nullptr) {
     assert(mirrorSurface);
 
-    auto &loader = wgpuVulkanShared->loader;
+    auto &loader = vulkanShared->loader;
 
     currentSize = window.getDrawableSize();
 
-    auto surfaceFormats = wgpuVulkanShared->physicalDevice.getSurfaceFormatsKHR(mirrorSurface, loader);
+    auto surfaceFormats = vulkanShared->physicalDevice.getSurfaceFormatsKHR(mirrorSurface, loader);
     std::optional<vk::SurfaceFormatKHR> selectedFormatOption;
     for (auto &format : surfaceFormats) {
       if (format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -103,15 +102,15 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     scInfo.setPresentMode(vk::PresentModeKHR::eImmediate);
     scInfo.setClipped(true);
     scInfo.setOldSwapchain(oldSwapchain);
-    mirrorSwapchain = wgpuVulkanShared->device.createSwapchainKHR(scInfo, nullptr, loader);
+    mirrorSwapchain = vulkanShared->device.createSwapchainKHR(scInfo, nullptr, loader);
 
     if (oldSwapchain)
-      wgpuVulkanShared->device.destroySwapchainKHR(oldSwapchain, nullptr, loader);
+      vulkanShared->device.destroySwapchainKHR(oldSwapchain, nullptr, loader);
 
     if (!mirrorSwapchain)
       throw std::runtime_error("Failed to create swapchain");
 
-    mirrorSwapchainImages = wgpuVulkanShared->device.getSwapchainImagesKHR(mirrorSwapchain, loader); 
+    mirrorSwapchainImages = vulkanShared->device.getSwapchainImagesKHR(mirrorSwapchain, loader);
 
     mirrorTextureViews.clear();
     for (auto &image : mirrorSwapchainImages) {
@@ -143,7 +142,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
           .nextInChain = &extDescVk.chain,
       };
 
-      WGPUTextureView textureView = wgpuCreateExternalTextureView(wgpuVulkanShared->wgpuDevice, &textureDesc, &viewDesc, &extDesc);
+      WGPUTextureView textureView = wgpuCreateExternalTextureView(vulkanShared->wgpuDevice, &textureDesc, &viewDesc, &extDesc);
       assert(textureView);
       mirrorTextureViews.emplace_back(toWgpuHandle(textureView));
     }
@@ -153,7 +152,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
 #if GFX_WINDOWS
     vk::Win32SurfaceCreateInfoKHR surfInfo;
     surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));
-    mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);
+    mirrorSurface = vulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, vulkanShared->loader);
     if (!mirrorSurface)
       throw std::runtime_error("Failed to create surface");
 #else
@@ -161,7 +160,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
 #endif
 
     auto result =
-        wgpuVulkanShared->physicalDevice.getSurfaceSupportKHR(wgpuVulkanShared->queueFamilyIndex, mirrorSurface, wgpuVulkanShared->loader);
+        vulkanShared->physicalDevice.getSurfaceSupportKHR(vulkanShared->queueFamilyIndex, mirrorSurface, vulkanShared->loader);
     if (!result)
       throw std::runtime_error("Unsupported surface");
   }
@@ -174,14 +173,14 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     assert(!currentView);
 
     vk::ResultValue<uint32_t> result =
-        wgpuVulkanShared->device.acquireNextImageKHR(mirrorSwapchain, UINT64_MAX, {}, fence, wgpuVulkanShared->loader);
+        vulkanShared->device.acquireNextImageKHR(mirrorSwapchain, UINT64_MAX, {}, fence, vulkanShared->loader);
     if (result.result == vk::Result::eSuccess) {
-      vk::Result waitResult = wgpuVulkanShared->device.waitForFences(fence, true, UINT64_MAX, wgpuVulkanShared->loader);
+      vk::Result waitResult = vulkanShared->device.waitForFences(fence, true, UINT64_MAX, vulkanShared->loader);
       assert(waitResult == vk::Result::eSuccess);
 
-      wgpuVulkanShared->device.resetFences(fence, wgpuVulkanShared->loader);
+      vulkanShared->device.resetFences(fence, vulkanShared->loader);
 
-      currentImageIndex = result.value; 
+      currentImageIndex = result.value;
       currentView = mirrorTextureViews[currentImageIndex];
       return currentView;
     } else {
@@ -196,7 +195,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
 
   void present() override {
     WGPUExternalPresentVK wgpuPresent{};
-    wgpuPrepareExternalPresentVK(wgpuVulkanShared->wgpuQueue, &wgpuPresent);
+    wgpuPrepareExternalPresentVK(vulkanShared->wgpuQueue, &wgpuPresent);
 
     vk::Semaphore waitSemaphore = wgpuPresent.waitSemaphore ? VkSemaphore(wgpuPresent.waitSemaphore) : nullptr;
 
@@ -208,7 +207,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     presentInfo.setWaitSemaphoreCount(1);
 
     // presentInfo.setWaitSemaphores(const vk::ArrayProxyNoTemporaries<const vk::Semaphore> &waitSemaphores_)
-    vk::Result result = wgpuVulkanShared->queue.presentKHR(&presentInfo, wgpuVulkanShared->loader);
+    vk::Result result = vulkanShared->queue.presentKHR(&presentInfo, vulkanShared->loader);
     assert(result == vk::Result::eSuccess);
 
     // Increment image
@@ -216,21 +215,20 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
   }
 };
 
-// NOTE: Prototype OpenXR binding code. Just for vulkan and wgpu binding, so gfx only. This is not actually touching openXR.
-// The openxr vulkan extensions requires the following:
+// NOTE: Prototype OpenXR binding code
+// the openxr vulkan extensions requires the following:
 // - Specific extensions on instance creation
 // - Specific physical device as returned by OpenXR
 // - Specific extensions on device creation
 // - Need to retrieve the created instance, device handles and queue indices
-struct ContextXrGfxBackend : public IContextBackend { 
+struct VulkanOpenXRBackend : public IContextBackend {
   WGPUSurface wgpuSurface{};
 
-  std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
+  std::shared_ptr<VulkanShared> vulkanShared = std::make_shared<VulkanShared>();
 
-  WGPUInstance wgpuVkCreateInstance() override 
-  {
-    // Create gpu instance
-    WGPUInstanceDescriptor desc{}; 
+  WGPUInstance createInstance() override {
+    // Create instance
+    WGPUInstanceDescriptor desc{};
     WGPUInstanceDescriptorVK descVk{};
     if (getDefaultWgpuBackendType() == WGPUBackendType_Vulkan) {
       std::vector<const char *> requiredExtensions = {};
@@ -243,8 +241,8 @@ struct ContextXrGfxBackend : public IContextBackend {
       desc.nextInChain = &descVk.chain;
     }
 
-    wgpuVulkanShared->wgpuInstance = wgpuCreateInstanceEx(&desc);
-    if (!wgpuVulkanShared->wgpuInstance) 
+    vulkanShared->wgpuInstance = wgpuCreateInstanceEx(&desc);
+    if (!vulkanShared->wgpuInstance)
       throw std::runtime_error("Failed to create WGPUInstance");
 
     WGPUInstanceProperties props{};
@@ -254,28 +252,27 @@ struct ContextXrGfxBackend : public IContextBackend {
     if (getDefaultWgpuBackendType() == WGPUBackendType_Vulkan) {
       props.nextInChain = &propsVk.chain;
     }
-    wgpuInstanceGetPropertiesEx(wgpuVulkanShared->wgpuInstance, &props); 
+    wgpuInstanceGetPropertiesEx(vulkanShared->wgpuInstance, &props);
 
-    wgpuVulkanShared->loader = vk::DispatchLoaderDynamic(PFN_vkGetInstanceProcAddr(propsVk.getInstanceProcAddr));
+    vulkanShared->loader = vk::DispatchLoaderDynamic(PFN_vkGetInstanceProcAddr(propsVk.getInstanceProcAddr));
 
-    wgpuVulkanShared->instance = vk::Instance(VkInstance(propsVk.instance));
-    wgpuVulkanShared->loader.init(wgpuVulkanShared->instance);
+    vulkanShared->instance = vk::Instance(VkInstance(propsVk.instance));
+    vulkanShared->loader.init(vulkanShared->instance);
 
-    auto devices = wgpuVulkanShared->instance.enumeratePhysicalDevices(wgpuVulkanShared->loader);
+    auto devices = vulkanShared->instance.enumeratePhysicalDevices(vulkanShared->loader);
     for (auto &device : devices) {
-      auto properties = device.getProperties(wgpuVulkanShared->loader);
+      auto properties = device.getProperties(vulkanShared->loader);
       auto name = std::string(properties.deviceName.begin(), properties.deviceName.end());
       SPDLOG_INFO("vulkan physical device: {}", name);
-      wgpuVulkanShared->physicalDevice = device;
+      vulkanShared->physicalDevice = device;
       break;
     }
-    assert(wgpuVulkanShared->physicalDevice);
+    assert(vulkanShared->physicalDevice);
 
-    return wgpuVulkanShared->wgpuInstance;
+    return vulkanShared->wgpuInstance;
   }
 
-  WGPUSurface createSurface(Window &window, void *overrideNativeWindowHandle) override
-  {
+  WGPUSurface createSurface(Window &window, void *overrideNativeWindowHandle) override {
     void *surfaceHandle = overrideNativeWindowHandle;
 
 #if GFX_APPLE
@@ -286,7 +283,7 @@ struct ContextXrGfxBackend : public IContextBackend {
 #endif
 
     WGPUPlatformSurfaceDescriptor surfDesc(window.window, surfaceHandle);
-    wgpuSurface = wgpuInstanceCreateSurface(wgpuVulkanShared->wgpuInstance, &surfDesc);
+    wgpuSurface = wgpuInstanceCreateSurface(vulkanShared->wgpuInstance, &surfDesc);
 
     return wgpuSurface;
   }
@@ -303,24 +300,24 @@ struct ContextXrGfxBackend : public IContextBackend {
     options.forceFallbackAdapter = false;
     options.nextInChain = &optionsVk.chain;
 
-    auto cb = [&](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char *msg) { wgpuVulkanShared->wgpuAdapter = adapter; };
-    return AdapterRequest::create(wgpuVulkanShared->wgpuInstance, options, AdapterRequest::Callbacks{cb});
+    auto cb = [&](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char *msg) { vulkanShared->wgpuAdapter = adapter; };
+    return AdapterRequest::create(vulkanShared->wgpuInstance, options, AdapterRequest::Callbacks{cb});
   }
 
   void deviceCreated(WGPUDevice inDevice) {
-    wgpuVulkanShared->wgpuDevice = inDevice;
-    wgpuVulkanShared->wgpuQueue = wgpuDeviceGetQueue(wgpuVulkanShared->wgpuDevice);
+    vulkanShared->wgpuDevice = inDevice;
+    vulkanShared->wgpuQueue = wgpuDeviceGetQueue(vulkanShared->wgpuDevice);
 
     WGPUDevicePropertiesVK propsVk{
         .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_DevicePropertiesVK)},
     };
     WGPUDeviceProperties props{.nextInChain = &propsVk.chain};
-    wgpuDeviceGetPropertiesEx(wgpuVulkanShared->wgpuDevice, &props);
+    wgpuDeviceGetPropertiesEx(vulkanShared->wgpuDevice, &props);
 
-    wgpuVulkanShared->device = vk::Device(VkDevice(propsVk.device)); 
-    wgpuVulkanShared->queue = vk::Queue(VkQueue(propsVk.queue));
-    wgpuVulkanShared->queueIndex = propsVk.queueIndex;
-    wgpuVulkanShared->queueFamilyIndex = propsVk.queueFamilyIndex;
+    vulkanShared->device = vk::Device(VkDevice(propsVk.device));
+    vulkanShared->queue = vk::Queue(VkQueue(propsVk.queue));
+    vulkanShared->queueIndex = propsVk.queueIndex;
+    vulkanShared->queueFamilyIndex = propsVk.queueFamilyIndex;
   }
 
   std::shared_ptr<DeviceRequest> requestDevice() override {
@@ -339,20 +336,13 @@ struct ContextXrGfxBackend : public IContextBackend {
     deviceDesc.requiredLimits = &requiredLimits;
 
     auto cb = [&](WGPURequestDeviceStatus status, WGPUDevice device, const char *msg) { deviceCreated(device); };
-    return DeviceRequest::create(wgpuVulkanShared->wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
-  }
-
-  std::shared_ptr<WGPUVulkanShared> getWgpuVulkanShared() const {
-    
-    return wgpuVulkanShared; 
+    return DeviceRequest::create(vulkanShared->wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
   }
 
   std::shared_ptr<IContextMainOutput> createMainOutput(Window &window) override {
     // return std::make_shared<ContextWindowOutput>(wgpuInstance, wgpuAdapter, wgpuDevice, wgpuSurface, window);
-    return std::make_shared<VulkanOpenXRSwapchain>(wgpuVulkanShared, window);
+    return std::make_shared<VulkanOpenXRSwapchain>(vulkanShared, window);
   }
-
-
 };
 } // namespace gfx
 
