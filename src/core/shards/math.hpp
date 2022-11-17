@@ -397,7 +397,7 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     validateTypes(data.inputType, resultType);
-    return data.inputType;
+    return resultType;
   }
 
   static SHOptionalString help() {

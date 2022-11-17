@@ -80,13 +80,21 @@ struct CrossOp {
 };
 using Cross = BinaryOperation<VectorBinaryOperation<CrossOp>>;
 
+inline OpType validateTypesVectorToFloat(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
+  if (lhs.basicType != SHType::Seq && rhs != SHType::Seq) {
+    resultType = CoreInfo::FloatType;
+    return OpType::Direct;
+  }
+  return OpType::Invalid;
+}
+
+inline OpType validateTypesVectorToFloat(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
+  return validateTypesVectorToFloat(lhs, lhs.basicType, resultType);
+}
+
 struct DotOp {
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
-    if (lhs.innerType != SHType::Seq && rhs != SHType::Seq) {
-      resultType = CoreInfo::FloatType;
-      return OpType::Direct;
-    }
-    return OpType::Invalid;
+    return validateTypesVectorToFloat(lhs, rhs, resultType);
   }
 
   void apply(SHVar &output, const SHVar &input, const SHVar &operand);
@@ -97,6 +105,9 @@ struct Dot : public BinaryOperation<VectorBinaryOperation<DotOp>> {
 
 struct LengthSquaredOp {
   DotOp dotOp;
+
+  OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) { return validateTypesVectorToFloat(lhs, resultType); }
+
   void apply(SHVar &output, const SHVar &input) { dotOp.apply(output, input, input); }
 };
 struct LengthSquared : UnaryOperation<VectorUnaryOperation<LengthSquaredOp>> {
@@ -105,6 +116,9 @@ struct LengthSquared : UnaryOperation<VectorUnaryOperation<LengthSquaredOp>> {
 
 struct LengthOp {
   LengthSquaredOp lenOp;
+
+  OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) { return validateTypesVectorToFloat(lhs, resultType); }
+
   void apply(SHVar &output, const SHVar &input) {
     lenOp.apply(output, input);
     output.payload.floatValue = __builtin_sqrt(output.payload.floatValue);
