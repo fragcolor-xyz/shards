@@ -109,7 +109,7 @@ struct DeviceRequest {
 // OpenXR prototype instance/adapter/device abstraction
 struct IContextBackend {
   virtual ~IContextBackend() = default;
-  virtual WGPUInstance createInstance() = 0;
+  virtual WGPUInstance wgpuVkCreateInstance() = 0;
 
   virtual WGPUSurface createSurface(Window &window, void *overrideNativeWindowHandle) = 0;
 

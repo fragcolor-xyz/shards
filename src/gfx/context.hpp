@@ -14,6 +14,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "context_xr_gfx.hpp"
+
 namespace gfx {
 struct ContextCreationOptions {
   bool debug = false;
@@ -61,7 +63,7 @@ private:
   std::shared_ptr<AdapterRequest> adapterRequest;
 
   std::shared_ptr<IContextMainOutput> mainOutput;
-  std::shared_ptr<IContextBackend> backend;
+  std::shared_ptr<IContextBackend> backendXrGfx;
 
   ContextState state = ContextState::Uninitialized;
   ContextFrameState frameState = ContextFrameState::Ok;
@@ -123,6 +125,8 @@ public:
   // start tracking an object implementing WithContextData so it's data is released with this context
   void addContextDataInternal(const std::weak_ptr<ContextData> &ptr);
   void removeContextDataInternal(ContextData *ptr);
+
+  WGPUVulkanShared getContextXrGfxBackend ();
 
 private:
   void deviceLost();

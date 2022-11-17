@@ -10,7 +10,7 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <SDL_stdinc.h>
-#include "context_openxr.hpp"
+#include "context_xr_gfx.hpp"
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -240,7 +240,7 @@ void Context::deviceObtained() {
   wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
 
   if (window) {
-    mainOutput = backend->createMainOutput(getWindow());
+    mainOutput = backendXrGfx->createMainOutput(getWindow());
   }
 
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
@@ -264,7 +264,7 @@ void Context::requestDevice() {
   state = ContextState::Requesting;
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
-  deviceRequest = backend->requestDevice();
+  deviceRequest = backendXrGfx->requestDevice();
 }
 
 void Context::releaseDevice() {
@@ -309,7 +309,7 @@ void Context::requestAdapter() {
   // #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
-  adapterRequest = backend->requestAdapter();
+  adapterRequest = backendXrGfx->requestAdapter();
 }
 
 void Context::releaseAdapter() {
@@ -359,16 +359,27 @@ void Context::initCommon() {
   }
 #endif
 
-  backend = std::make_shared<VulkanOpenXRBackend>();
-  wgpuInstance = backend->createInstance();
+  //[t] I'm not sure I'm liking this combination of 2 different contexts (this context, and the openxr context)
+  //[t] because the opexr version is really different to this one, hard to pretend they're the same context. 
+  //[t] And actually we need a 3rd Context.cpp that creates xr devices and instances.
+  //[t] for example getXrInstance, getXrSystemId, getXrViewType.
+  //[t] So we have this gfx context that contains the ContextXrGfxBackend which will actually be sent 
+  //[t] along with Context_XR.cpp to the headset, because there's a lot more to do to create an open xr instance...
+  backendXrGfx = std::make_shared<ContextXrGfxBackend>();  
+  wgpuInstance = backendXrGfx->wgpuVkCreateInstance();
 
   // Setup surface
-  if (window) {
+  if (window) { 
     assert(!wgpuSurface);
-    wgpuSurface = backend->createSurface(getWindow(), options.overrideNativeWindowHandle);
+    wgpuSurface = backendXrGfx->createSurface(getWindow(), options.overrideNativeWindowHandle);
   }
 
-  requestDevice();
+  requestDevice(); 
+}
+
+//[t] called by openXRMain in OpenXRMain.cpp.
+ContextXrGfxBackend Context::getContextXrGfxBackend () {
+  return backendXrGfx; 
 }
 
 void Context::present() {
