@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 #include <shared_mutex>
+#include <optional>
 
 namespace gfx {
 struct ContextCreationOptions {
@@ -42,6 +43,13 @@ struct GraphicsExecutor;
 }
 struct IContextBackend;
 
+struct IContextCurrentFramePayload {
+  WGPUTextureView wgpuTextureView;
+  std::optional<bool> useMatrix = false;
+  std::optional<linalg::aliases::float4x4> eyeViewMatrix;
+  std::optional<linalg::aliases::float4x4> eyeProjectionMatrix;
+};
+
 struct IContextMainOutput {
   virtual ~IContextMainOutput() = default;
 
@@ -49,10 +57,10 @@ struct IContextMainOutput {
   virtual const int2 &getSize() const = 0;
   // Return the texture format of the images
   virtual WGPUTextureFormat getFormat() const = 0;
-  // Requests a new swapchain image to render to
-  virtual WGPUTextureView requestFrame() = 0;
+  // Requests a new swapchain image to render to. Is an array because can contain e.g. multiple xr eyes
+  virtual std::vector<WGPUTextureView> requestFrame() = 0;
   // Returns the currently request frame's texture view
-  virtual WGPUTextureView getCurrentFrame() const = 0;
+  virtual std::vector<IContextCurrentFramePayload> getCurrentFrame() const = 0;
   // Return the previously requested swapchain image to the chain and allow it to be displayed
   virtual void present() = 0;
 };
@@ -60,17 +68,16 @@ struct IContextMainOutput {
 /// <div rustbindgen opaque></div>
 struct Context {
 public:
-  WGPUInstance wgpuInstance = nullptr;
-  WGPUAdapter wgpuAdapter = nullptr;
-  WGPUDevice wgpuDevice = nullptr;
-  WGPUQueue wgpuQueue = nullptr;
+  // tmp
+  WGPUSurface wgpuSurface{};
 
 private:
   // Temporary async requests
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
 
-  std::shared_ptr<IContextMainOutput> mainOutput;
+  //[t] mainOutput is array because if it comes from VR it has headset, and mirror view.
+  std::vector<std::shared_ptr<IContextMainOutput>> mainOutput;
   std::shared_ptr<IContextBackend> backend;
 
   ContextState state = ContextState::Uninitialized;
@@ -83,7 +90,7 @@ private:
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
   std::shared_mutex contextDataLock;
 
-  Window* window{};
+  Window *window{};
 
 public:
   Context();
@@ -110,7 +117,7 @@ public:
   bool isHeadless() const;
 
   // The main output, only valid if isHeadless() == false
-  std::weak_ptr<IContextMainOutput> getMainOutput() const;
+  std::vector<std::weak_ptr<IContextMainOutput>> getMainOutput() const;
 
   // Returns when a frame can be rendered
   // Returns false while device is lost an can not be rerequestd

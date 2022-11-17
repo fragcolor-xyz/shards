@@ -257,3 +257,10 @@ set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
 add_subdirectory(tracy)
 
 add_subdirectory(Vulkan-Headers)
+
+set(BUILD_WITH_SYSTEM_JSONCPP OFF CACHE BOOL "Force-set by shards for openxr" FORCE)
+set(DYNAMIC_LOADER OFF CACHE BOOL "Force-set by shards for openxr" FORCE)
+add_subdirectory(openxrsdk)
+#add_library(openxrsdk INTERFACE)
+#target_include_directories(openxrsdk INTERFACE openxrsdk)
+#target_link_libraries(gfx openxr_loader)

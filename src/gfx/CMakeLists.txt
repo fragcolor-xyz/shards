@@ -38,6 +38,11 @@ add_library(gfx
   pipeline_step.cpp
   pipeline_hashes.cpp
   unique_id.cpp
+  openxr-integration/Context_XR.cpp
+  openxr-integration/Headset.cpp
+  openxr-integration/OpenXRSystem.cpp
+  openxr-integration/RenderTarget.cpp
+  openxr-integration/Util.cpp
 )
 
 # Always optimize files with hot-paths
@@ -62,6 +67,7 @@ target_link_libraries(gfx
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container
   shards-logging
   Vulkan::Headers
+  openxr_loader
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 target_link_libraries(gfx Tracy::TracyClient)

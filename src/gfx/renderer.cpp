@@ -2,6 +2,7 @@
 #include "boost/container/stable_vector.hpp"
 #include "context.hpp"
 #include "drawable.hpp"
+#include "enums.hpp"
 #include "feature.hpp"
 #include "fwd.hpp"
 #include "material.hpp"
@@ -47,6 +48,8 @@
 #include <span>
 #include <type_traits>
 
+#include "context_xr_gfx_data.hpp"
+
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 using namespace gfx::detail;
@@ -70,8 +73,7 @@ struct RendererImpl final : public ContextData {
 
   ViewStack viewStack;
 
-  Renderer::MainOutput mainOutput;
-  RenderTargetPtr mainOutputRenderTarget;
+  std::vector<Renderer::MainOutput> mainOutput;
   bool shouldUpdateMainOutputFromContext = false;
 
   bool ignoreCompilationErrors = false;
@@ -115,33 +117,55 @@ struct RendererImpl final : public ContextData {
     }
   }
 
+  //[t] so now we hace 2 mainOutputs (a vector of mainOutputs) (xr headset, xr mirror view), and some of them have more than one (a vector of) WGPUTextureView's (xr eyes)
   void updateMainOutputFromContext() {
-    ZoneScoped;
+    std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput();
+    for(size_t i=0; i<contextMainOutputArr.size(); i++)
+    {
+      std::shared_ptr<IContextMainOutput> contextMainOutput = contextMainOutputArr.at(i).lock();
+      std::vector<IContextCurrentFramePayload> contextMainOutputs = contextMainOutput->getCurrentFrame();
 
-    if (!mainOutput.texture) {
-      mainOutput.texture = std::make_shared<Texture>();
-    }
+      if (mainOutput.at(i).payload.size() <1) {
+        mainOutput.at(i).payload.resize(contextMainOutputs.size());
+      }
+      for(size_t t = 0; t<mainOutput.size(); t++){
+        if(!mainOutput.at(i).payload.at(t).texture){
+          mainOutput.at(i).payload.at(t).texture = std::make_shared<Texture>();
+          if(contextMainOutputs.at(i).useMatrix){
+            mainOutput.at(i).payload.at(t).useMatrix = contextMainOutputs.at(i).useMatrix;
+            mainOutput.at(i).payload.at(t).eyeViewMatrix = contextMainOutputs.at(i).eyeViewMatrix;
+            mainOutput.at(i).payload.at(t).eyeProjectionMatrix = contextMainOutputs.at(i).eyeProjectionMatrix;
+            printf("[updateMainOutputFromContext] assigning matrixes");
+          }
+        }
+      }
 
-    std::shared_ptr<IContextMainOutput> contextMainOutput = context.getMainOutput().lock();
-    WGPUTextureView view = contextMainOutput->getCurrentFrame();
-    WGPUTextureFormat format = contextMainOutput->getFormat();
-    int2 resolution = contextMainOutput->getSize();
-
-    auto currentDesc = mainOutput.texture->getDesc();
-    bool needUpdate = !mainOutputRenderTarget || currentDesc.externalTexture != view || currentDesc.resolution != resolution || currentDesc.format.pixelFormat != format;
-    if (needUpdate) {
-      mainOutput.texture
-          ->init(TextureDesc{
-              .format =
-                  TextureFormat{
-                      .dimension = TextureDimension::D2,
-                      .flags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding,
-                      .pixelFormat = format,
-                  },
-              .resolution = resolution,
-              .externalTexture = view,
-          })
-          .initWithLabel("mainOutput");
+      for(size_t j = 0; j<contextMainOutputs.size(); j++)
+      {
+        WGPUTextureView view = contextMainOutputs.at(j).wgpuTextureView;//[t] made this an array
+        WGPUTextureFormat format = contextMainOutput->getFormat();
+        int2 resolution = contextMainOutput->getSize();
+        printf("[updateMainOutputFromContext] contextMainOutput->getSize(): ");
+        printf("%d",resolution[0]);//god I hate printing in c. Like, it's not the 80's any more...
+        printf("%d",resolution[1]);
+    
+        auto currentDesc = mainOutput.at(i).payload.at(j).texture->getDesc();//[t] made this an array
+        bool needUpdate = currentDesc.externalTexture != view || currentDesc.resolution != resolution || currentDesc.format.pixelFormat != format;
+        if (needUpdate) {
+          mainOutput.at(i).payload.at(j).texture//[t] made this an array
+              ->init(TextureDesc{
+                  .format =
+                      TextureFormat{
+                        .dimension = TextureDimension::D2,
+                          .flags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding,
+                          .pixelFormat = format,
+                      },
+                  .resolution = resolution,
+                  .externalTexture = view,
+              })
+              .initWithLabel("mainOutput");
+        }
+      }
     }
   }
 
@@ -228,10 +252,11 @@ struct RendererImpl final : public ContextData {
     }
 
     // Update main render target
-    if (!mainOutputRenderTarget)
-      mainOutputRenderTarget = std::make_shared<RenderTarget>("mainOutput");
-    mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
-    mainOutputRenderTarget->resizeFixed(mainOutput.texture->getResolution());
+    // TODO
+    // if (!mainOutputRenderTarget)
+    //   mainOutputRenderTarget = std::make_shared<RenderTarget>("mainOutput");
+    // mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
+    // mainOutputRenderTarget->resizeFixed(mainOutput.texture->getResolution());
 
     storage.frameStats.reset();
 
@@ -239,12 +264,13 @@ struct RendererImpl final : public ContextData {
 
     resetWorkerMemory();
 
-    auto mainOutputResolution = mainOutput.texture->getResolution();
-    pushView(ViewStack::Item{
-        .viewport = Rect(mainOutputResolution),
-        .referenceSize = mainOutputResolution,
-        .renderTarget = mainOutputRenderTarget,
-    });
+    for(size_t mo=0; mo<mainOutput.size(); mo++){//[t] TODO: guus / to verify: does viewStack support multiple mainOutput's at once per frame like this?
+      auto mainOutputResolution = mainOutput.at(mo).payload.at(0).texture->getResolution();
+      viewStack.push(ViewStack::Item{
+          .viewport = Rect(mainOutputResolution),
+          .referenceSize = mainOutputResolution,
+      });
+    }
   }
 
   void resetWorkerMemory() { storage.workerMemory.reset(); }
@@ -298,7 +324,7 @@ Context &Renderer::getContext() { return impl->context; }
 void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate) {
   impl->render(view, pipelineSteps, immediate);
 }
-void Renderer::setMainOutput(const MainOutput &output) {
+void Renderer::setMainOutput(const std::vector<MainOutput> &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;
 }

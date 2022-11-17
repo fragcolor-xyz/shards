@@ -1,7 +1,7 @@
 #ifndef GFX_LINALG
 #define GFX_LINALG
 
-#include <linalg.h>
+#include <linalg/linalg.h>
 #include <cstring>
 #include "math.hpp"
 

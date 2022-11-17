@@ -236,6 +236,7 @@ struct CachedView {
     return false;
   }
 
+  //view matrix, projection matrix
   void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
     // Update history (but only at most once per frame)
     if (frameCounter > lastTouched) {

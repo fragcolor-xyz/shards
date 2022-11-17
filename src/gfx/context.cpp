@@ -10,11 +10,15 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <SDL_stdinc.h>
-#include "context_openxr.hpp"
+#include "context_xr_gfx.hpp"
+//#include <openxr-integration/OpenXRSystem.h>
+
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
 #endif
+
+#include "spdlog/spdlog.h"
 
 namespace gfx {
 Context::Context() {}
@@ -37,8 +41,13 @@ void Context::release() {
   SPDLOG_LOGGER_DEBUG(logger, "release");
   state = ContextState::Uninitialized;
 
-  releaseAdapter();
-  mainOutput.reset();
+  releaseAdapter(); 
+  for(size_t i=0; i< mainOutput.size(); i++){
+    mainOutput.at(i).reset();
+  }
+
+  WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface);
+  WGPU_SAFE_RELEASE(wgpuInstanceRelease, wgpuInstance);
 }
 
 Window &Context::getWindow() {
@@ -46,9 +55,18 @@ Window &Context::getWindow() {
   return *window;
 }
 
-bool Context::isHeadless() const { return !mainOutput; }
+bool Context::isHeadless() const { 
+  return !mainOutput.at(0); 
+}
 
-std::weak_ptr<IContextMainOutput> Context::getMainOutput() const { return mainOutput; }
+std::vector<std::weak_ptr<IContextMainOutput>> Context::getMainOutput() const {
+  std::vector<std::weak_ptr<IContextMainOutput>> mainOutputwk;
+  mainOutputwk.resize(mainOutput.size());
+  for(size_t i=0; i< mainOutput.size(); i++){
+    mainOutputwk.at(i) = mainOutput.at(i); 
+  }
+  return mainOutputwk;
+}
 
 void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
   ZoneScoped;
@@ -108,16 +126,38 @@ bool Context::beginFrame() {
 
   collectContextData();
   if (!isHeadless()) {
-    const int maxAttempts = 2;
-    WGPUTextureView textureView{};
+    //[t] mainOutput is array because if it comes from VR it has headset, and mirror view.
+    for(size_t i=0; i< mainOutput.size(); i++){
+      const int maxAttempts = 2;
+      std::vector<WGPUTextureView> textureViewArr;
 
-    // Try to request the swapchain texture, automatically recreate swapchain on failure
-    for (size_t i = 0; !textureView && i < maxAttempts; i++) {
-      textureView = mainOutput->requestFrame();
+      // Try to request the swapchain texture, automatically recreate swapchain on failure
+      /*
+      for (size_t i = 0; !textureViewArr && i < maxAttempts; i++) {
+        textureViewArr = mainOutput.at(i)->requestFrame();
+      } */
+      size_t t = 0;
+      bool internalsNull = true;
+      do{
+        textureViewArr = mainOutput.at(i)->requestFrame(); 
+        internalsNull = true;
+        //[t] check if all the textures exist
+        for(size_t a=0; a< textureViewArr.size(); a++){
+          if(!textureViewArr.at(a)){
+            internalsNull = true;
+            break;
+          }
+          else{
+            internalsNull = false;
+          }
+        }
+        t++;
+      }while(internalsNull && t < maxAttempts);
+
+      //if (!textureView)
+      if(internalsNull)
+        return false;
     }
-
-    if (!textureView)
-      return false;
   }
 
   frameState = ContextFrameState::WaitingForEnd;
@@ -260,7 +300,9 @@ void Context::releaseDevice() {
   ZoneScoped;
   releaseAllContextData();
 
-  mainOutput.reset();
+  for(size_t i=0; i< mainOutput.size(); i++){
+    mainOutput.at(i).reset();
+  }
 
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
   WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
@@ -318,7 +360,7 @@ void Context::initCommon() {
 
   assert(!isInitialized());
 
-#ifdef WEBGPU_NATIVE
+  #ifdef WEBGPU_NATIVE
   wgpuSetLogCallback(
       [](WGPULogLevel level, const char *msg, void *userData) {
         (void)userData;
@@ -344,29 +386,45 @@ void Context::initCommon() {
       },
       this);
 
+  //[t] TODO: what does each level control exactly? What is the usage of this?
   if (logger->level() <= spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);
   } else {
     wgpuSetLogLevel(WGPULogLevel_Info);
   }
-#endif
+  #endif
+  
+  spdlog::info("[log][t] Context::initCommon: Creating backend: ContextXrGfxBackend.");
+  //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
 
-  backend = std::make_shared<VulkanOpenXRBackend>();
-  wgpuInstance = backend->createInstance();
-
-  // Setup surface
-  // if (window) {
-  //   assert(!wgpuSurface);
-  //   wgpuSurface = backend->createSurface(getWindow(), options.overrideNativeWindowHandle);
-  // }
-
-  requestDevice();
+  backend = std::make_shared<ContextXrGfxBackend>();   
+  wgpuInstance = backend->createInstance(); 
+  
+  
+  spdlog::info("[log][t] Context::initCommon: Creating window/surface.");
+  //[t] create mirror view with the context_xr_gfx.cpp
+  //[t] and check if MirrorView was successful at CreateMirrorSurface()
+  //[t] Setup surface
+  if (window) { 
+    assert(!wgpuSurface);
+    wgpuSurface = backend->createSurface(getWindow(), options.overrideNativeWindowHandle);
+  }
+  
+  requestDevice(); 
+  //openXRSystem.createHeadset() moved into ContextXrGfxBackend's createMainOutput()
+  spdlog::info("[log][t] Context::initCommon: End.");
 }
 
-void Context::present() {
+
+
+void Context::present() { 
   ZoneScoped;
   assert(mainOutput);
-  mainOutput->present();
+  for(size_t i=0; i< mainOutput.size(); i++)
+  {
+    assert(mainOutput.at(i));
+    mainOutput.at(i)->present();
+  }
 }
 
 } // namespace gfx

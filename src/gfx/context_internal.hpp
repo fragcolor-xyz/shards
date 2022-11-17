@@ -8,6 +8,8 @@
 #include <spdlog/spdlog.h>
 #include <gfx_rust.h>
 
+#include "context_xr_gfx_data.hpp"
+
 namespace gfx {
 static auto logger = gfx::getLogger();
 static auto wgpuLogger = getWgpuLogger();
@@ -119,7 +121,7 @@ struct IContextBackend {
   virtual std::shared_ptr<DeviceRequest> requestDevice() = 0;
 
   // Requires a prior call to createSurface
-  virtual std::shared_ptr<IContextMainOutput> createMainOutput(Window &window) = 0;
+  virtual std::vector<std::shared_ptr<IContextMainOutput>> createMainOutput(Window &window) = 0;
 };
 
 } // namespace gfx

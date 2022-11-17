@@ -109,7 +109,8 @@ struct GizmosContextShard {
 
     gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
     gfx::Window &window = _graphicsContext->getWindow();
-    int2 outputSize = _graphicsContext->context->getMainOutput().lock()->getSize();
+    std::shared_ptr<IContextMainOutput> contextMainOutput = _graphicsContext->context->getMainOutput().at(0).lock();
+    int2 outputSize = contextMainOutput->getSize();// outputSize = resolution
 
     handleGizmoInputEvents(_inputContext->events);
 
