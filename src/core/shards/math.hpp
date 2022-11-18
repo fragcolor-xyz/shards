@@ -510,7 +510,7 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
-#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                         \
+#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                   \
   struct NAME##Op final {                                                               \
     template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                   \
   };                                                                                    \

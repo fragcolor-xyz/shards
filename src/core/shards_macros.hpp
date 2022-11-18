@@ -23,7 +23,7 @@
     result->destroy = static_cast<SHDestroyProc>([](Shard *shard) {                                                      \
       auto blk = (_name_##Runtime *)shard;                                                                               \
       blk->_name_##Runtime::~_name_##Runtime();                                                                          \
-      ::operator delete ((_name_##Runtime *)shard, std::align_val_t{16});                                                \
+      ::operator delete((_name_##Runtime *)shard, std::align_val_t{16});                                                 \
     });                                                                                                                  \
     result->inputTypes = static_cast<SHInputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                      \
     result->outputTypes = static_cast<SHOutputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                    \
@@ -58,7 +58,7 @@
     result->destroy = static_cast<SHDestroyProc>([](Shard *shard) {                                                      \
       auto blk = (_name_##Runtime *)shard;                                                                               \
       blk->_name_##Runtime::~_name_##Runtime();                                                                          \
-      ::operator delete ((_name_##Runtime *)shard, std::align_val_t{16});                                                \
+      ::operator delete((_name_##Runtime *)shard, std::align_val_t{16});                                                 \
     });                                                                                                                  \
     result->inputTypes = static_cast<SHInputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                      \
     result->outputTypes = static_cast<SHOutputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                    \
@@ -95,7 +95,7 @@
     result->destroy = static_cast<SHDestroyProc>([](Shard *shard) {                                                      \
       auto blk = (_name_##Runtime *)shard;                                                                               \
       blk->_name_##Runtime::~_name_##Runtime();                                                                          \
-      ::operator delete ((_name_##Runtime *)shard, std::align_val_t{16});                                                \
+      ::operator delete((_name_##Runtime *)shard, std::align_val_t{16});                                                 \
     });                                                                                                                  \
     result->inputTypes = static_cast<SHInputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                      \
     result->outputTypes = static_cast<SHOutputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                    \
@@ -131,7 +131,7 @@
     result->destroy = static_cast<SHDestroyProc>([](Shard *shard) {                                                      \
       auto blk = (_name_##Runtime *)shard;                                                                               \
       blk->_name_##Runtime::~_name_##Runtime();                                                                          \
-      ::operator delete ((_name_##Runtime *)shard, std::align_val_t{16});                                                \
+      ::operator delete((_name_##Runtime *)shard, std::align_val_t{16});                                                 \
     });                                                                                                                  \
     result->inputTypes = static_cast<SHInputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                      \
     result->outputTypes = static_cast<SHOutputTypesProc>([](Shard *shard) { return SHTypesInfo(); });                    \
@@ -165,12 +165,12 @@
 
 #define RUNTIME_SHARD_setup(_name_) \
   result->setup = static_cast<SHSetupProc>([](Shard *shard) { reinterpret_cast<_name_##Runtime *>(shard)->core.setup(); });
-#define RUNTIME_SHARD_destroy(_name_)                                   \
-  result->destroy = static_cast<SHDestroyProc>([](Shard *shard) {       \
-    auto blk = (_name_##Runtime *)shard;                                \
-    reinterpret_cast<_name_##Runtime *>(shard)->core.destroy();         \
-    blk->_name_##Runtime::~_name_##Runtime();                           \
-    ::operator delete ((_name_##Runtime *)shard, std::align_val_t{16}); \
+#define RUNTIME_SHARD_destroy(_name_)                                  \
+  result->destroy = static_cast<SHDestroyProc>([](Shard *shard) {      \
+    auto blk = (_name_##Runtime *)shard;                               \
+    reinterpret_cast<_name_##Runtime *>(shard)->core.destroy();        \
+    blk->_name_##Runtime::~_name_##Runtime();                          \
+    ::operator delete((_name_##Runtime *)shard, std::align_val_t{16}); \
   });
 
 #define RUNTIME_SHARD_inputTypes(_name_) \

@@ -553,11 +553,11 @@ pub mod common_type {
   use crate::shardsc::SHType_Float4;
   use crate::shardsc::SHType_Image;
   use crate::shardsc::SHType_Int;
+  use crate::shardsc::SHType_Int16;
   use crate::shardsc::SHType_Int2;
   use crate::shardsc::SHType_Int3;
   use crate::shardsc::SHType_Int4;
   use crate::shardsc::SHType_Int8;
-  use crate::shardsc::SHType_Int16;
   use crate::shardsc::SHType_None;
   use crate::shardsc::SHType_Object;
   use crate::shardsc::SHType_Path;
@@ -4208,7 +4208,8 @@ pub static STRING_VAR_OR_NONE_SLICE: &[Type] = &[
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
   pub static ref ANYS_TYPES: Vec<Type> = vec![common_type::anys];
-  pub static ref ANY_TABLE_VAR_TYPES: Vec<Type> = vec![common_type::any_table, common_type::any_table_var];
+  pub static ref ANY_TABLE_VAR_TYPES: Vec<Type> =
+    vec![common_type::any_table, common_type::any_table_var];
   pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
   pub static ref STRING_TYPES: Vec<Type> = vec![common_type::string];
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];
