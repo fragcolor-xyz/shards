@@ -18,7 +18,7 @@ struct Graph {
 };
 
 inline bool topologicalSort(const Graph &graph, std::vector<std::set<size_t>> &incomingEdgesPerNode,
-                     std::vector<std::set<size_t>> &outgoingEdgesPerNode, std::vector<size_t> &sorted) {
+                            std::vector<std::set<size_t>> &outgoingEdgesPerNode, std::vector<size_t> &sorted) {
   // Implement Kahn's algorithm
   size_t numNodes = graph.nodes.size();
 

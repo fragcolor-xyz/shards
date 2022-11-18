@@ -56,7 +56,9 @@ constexpr uint32_t crc32(std::string_view str) {
   return crc ^ 0xffffffff;
 }
 
-template <auto V> struct constant { constexpr static decltype(V) value = V; };
+template <auto V> struct constant {
+  constexpr static decltype(V) value = V;
+};
 
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 
