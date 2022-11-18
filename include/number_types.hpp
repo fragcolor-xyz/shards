@@ -26,7 +26,7 @@ enum class NumberType {
 std::map<SHType, NumberType> getSHTypeToNumberTypeMap();
 const std::vector<NumberType> &getSHTypeToNumberTypeArrayMap();
 
-const Type& getCompatibleUnitType(NumberType numberType);
+const Type &getCompatibleUnitType(NumberType numberType);
 
 inline NumberType shTypeToNumberType(SHType type) {
   auto &mapping = getSHTypeToNumberTypeArrayMap();

@@ -21,7 +21,7 @@
 
 #if defined(TARGET_IPHONE_SIMULATOR) || defined(TARGET_OS_IPHONE)
 #define GFX_IOS 1
-#else 
+#else
 #define GFX_OSX 1
 #endif
 
@@ -38,7 +38,6 @@
 #ifndef GFX_APPLE
 #define GFX_APPLE 0
 #endif
-
 
 #ifndef GFX_OSX
 #define GFX_OSX 0

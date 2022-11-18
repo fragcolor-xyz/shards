@@ -14,7 +14,7 @@ function FormatFolderRecursiveAsync() {
     fi
 
     while read file; do
-        if [[ $file == src/gfx/wgpu-native* ]]; then
+        if [[ $file == src/gfx/rust/wgpu-native* ]]; then
             echo "Ignoring $file"
             continue
         fi

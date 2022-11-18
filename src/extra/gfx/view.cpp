@@ -20,7 +20,9 @@ struct ViewShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::View; }
 
-  static SHOptionalString help() { return SHCCSTR("Defines a viewer (or camera) for a rendered frame based on a view transform matrix"); }
+  static SHOptionalString help() {
+    return SHCCSTR("Defines a viewer (or camera) for a rendered frame based on a view transform matrix");
+  }
 
   static inline Parameters params{
       {"View", SHCCSTR("The view matrix. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)}},

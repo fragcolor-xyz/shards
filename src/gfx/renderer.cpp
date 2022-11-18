@@ -359,7 +359,8 @@ struct RendererImpl final : public ContextData {
         wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, clipRect.z - clipRect.x,
                                             clipRect.w - clipRect.y);
       } else {
-        wgpuRenderPassEncoderSetScissorRect(passEncoder, viewData.viewport.x, viewData.viewport.y, viewData.viewport.width, viewData.viewport.height);
+        wgpuRenderPassEncoderSetScissorRect(passEncoder, viewData.viewport.x, viewData.viewport.y, viewData.viewport.width,
+                                            viewData.viewport.height);
       }
 
       WGPUBindGroup batchBindGroup = createBatchBindGroup(pipelineDrawables, objectBinding, drawGroup.key.textures);
