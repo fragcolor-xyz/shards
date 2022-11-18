@@ -453,23 +453,14 @@ struct Maybe : public BaseSubFlow {
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output = input;
     if (likely(_shards)) {
+      auto prev_level = spdlog::get_level();
       if (_silent) {
         spdlog::set_level(spdlog::level::off);
       }
-      DEFER({
-        if (_silent) {
-#ifdef NDEBUG
-#if (SPDLOG_ACTIVE_LEVEL == SPDLOG_LEVEL_DEBUG)
-          spdlog::set_level(spdlog::level::debug);
-#else
-          spdlog::set_level(spdlog::level::info);
-#endif
-#else
-          spdlog::set_level(spdlog::level::trace);
-#endif
-        }
-      });
       auto state = _shards.activate(context, input, output);
+      if (_silent) {
+        spdlog::set_level(prev_level);
+      }
       if (state == SHWireState::Error) {
         if (likely(!context->onLastResume)) {
           if (!_silent) {
