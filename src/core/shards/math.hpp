@@ -122,13 +122,17 @@ struct BinaryBase : public Base {
     SHTypeInfo resultType = data.inputType;
     SHVar operandSpec = _operand;
     if (operandSpec.valueType == ContextVar) {
+      bool variableFound = false;
       for (uint32_t i = 0; i < data.shared.len; i++) {
         // normal variable
         if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
           _opType = validator.validateTypes(data.inputType, data.shared.elements[i].exposedType.basicType, resultType);
+          variableFound = true;
           break;
         }
       }
+      if (!variableFound)
+        throw ComposeError(fmt::format("Operand variable {} not found", operandSpec.payload.stringValue));
     } else {
       _opType = validator.validateTypes(data.inputType, operandSpec.valueType, resultType);
     }
@@ -393,7 +397,7 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     validateTypes(data.inputType, resultType);
-    return data.inputType;
+    return resultType;
   }
 
   static SHOptionalString help() {
@@ -469,7 +473,7 @@ template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp>
       }
     }
 
-    throw ComposeError("Math.Inc/Dec variable not found");
+    throw ComposeError(fmt::format("Math.Inc/Dec variable {} not found", _value->payload.stringValue));
   }
 
   SHExposedTypesInfo requiredVariables() {
@@ -510,7 +514,7 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
-#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                         \
+#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                   \
   struct NAME##Op final {                                                               \
     template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                   \
   };                                                                                    \

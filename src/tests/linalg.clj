@@ -42,17 +42,17 @@
   (Assert.Is [(Float3 -2 4 -2) (Float3 -3 9 -6)] true)
 
   (Float3 1 2 3)
-  (Math.Dot (Float3 1 5 7))
+  (Math.Dot (Float3 1 5 7)) (ExpectFloat)
   (Log)
   (Assert.Is (Float 32) true)
 
   (Float3 1 2 3)
-  (Math.LengthSquared)
+  (Math.LengthSquared) (ExpectFloat)
   (Log)
   (Assert.Is 14.0 true)
 
   (Float3 1 1 2)
-  (Math.Length)
+  (Math.Length) (ExpectFloat)
   (Log)
   (ToString) ; truncate hack
   (Assert.Is "2.44949" true)
