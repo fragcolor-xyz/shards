@@ -74,7 +74,7 @@ struct Console {
   requiring: ExposedTypes,
   show_filters: ParamVar,
   style: ParamVar,
-  filters: (bool, bool, bool, bool, bool)
+  filters: (bool, bool, bool, bool, bool),
 }
 
 #[cfg(feature = "hex_viewer")]

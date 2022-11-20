@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "shared.hpp"
+#include "logging.hpp"
 #include <atomic>
 #include <numeric>
 #include <string>
@@ -15,23 +15,24 @@ struct LoggingBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 };
 
+#define SHLOG_LEVEL(_level_, ...) \
+  { SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::level_enum(_level_), __VA_ARGS__); }
+
 struct Log : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Prefix", SHCCSTR("The message to prefix to the logged output."), CoreInfo::StringType));
-
-  std::string msg;
-
-  static SHParametersInfo parameters() { return SHParametersInfo(msgParamsInfo); }
-
   static SHOptionalString help() {
     return SHCCSTR(
         "Logs the output of a shard or the value of a variable to the console (along with an optional prefix string).");
   }
 
+  static SHParametersInfo parameters() { return _params; }
+
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
     case 0:
-      msg = inValue.payload.stringValue;
+      _prefix = inValue.payload.stringValue;
+      break;
+    case 1:
+      _level = Enums::LogLevel(inValue.payload.enumValue);
       break;
     default:
       break;
@@ -39,45 +40,48 @@ struct Log : public LoggingBase {
   }
 
   SHVar getParam(int index) {
-    auto res = SHVar();
     switch (index) {
     case 0:
-      res.valueType = String;
-      res.payload.stringValue = msg.c_str();
-      break;
+      return Var(_prefix);
+    case 1:
+      return Var::Enum(_level, CoreCC, Enums::LogLevelCC);
     default:
-      break;
+      return Var::Empty;
     }
-    return res;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
-    if (msg.size() > 0) {
-      SHLOG_INFO("[{}] {}: {}", current->name, msg, input);
+    if (_prefix.size() > 0) {
+      SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _prefix, input);
     } else {
-      SHLOG_INFO("[{}] {}", current->name, input);
+      SHLOG_LEVEL((int)_level, "[{}] {}", current->name, input);
     }
     return input;
   }
+
+private:
+  static inline Parameters _params = {{"Prefix", SHCCSTR("The message to prefix to the logged output."), {CoreInfo::StringType}},
+                                      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelType}}};
+
+  std::string _prefix;
+  Enums::LogLevel _level{Enums::LogLevel::Info};
 };
 
 struct Msg : public LoggingBase {
-  static inline ParamsInfo msgParamsInfo = ParamsInfo(
-      ParamsInfo::Param("Message", SHCCSTR("The message to display on the user's screen or console."), CoreInfo::StringType));
-
-  std::string msg;
-
-  static SHParametersInfo parameters() { return SHParametersInfo(msgParamsInfo); }
-
   static SHOptionalString help() {
     return SHCCSTR("Displays the passed message string or the passed variable's value to the user via standard output.");
   }
 
+  static SHParametersInfo parameters() { return _params; }
+
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
     case 0:
-      msg = inValue.payload.stringValue;
+      _msg = inValue.payload.stringValue;
+      break;
+    case 1:
+      _level = Enums::LogLevel(inValue.payload.enumValue);
       break;
     default:
       break;
@@ -85,23 +89,29 @@ struct Msg : public LoggingBase {
   }
 
   SHVar getParam(int index) {
-    auto res = SHVar();
     switch (index) {
     case 0:
-      res.valueType = String;
-      res.payload.stringValue = msg.c_str();
-      break;
+      return Var(_msg);
+    case 1:
+      return Var::Enum(_level, CoreCC, Enums::LogLevelCC);
     default:
-      break;
+      return Var::Empty;
     }
-    return res;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
-    SHLOG_INFO("[{}] {}", current->name, msg);
+    SHLOG_LEVEL((int)_level, "[{}] {}", current->name, _msg);
     return input;
   }
+
+private:
+  static inline Parameters _params = {
+      {"Message", SHCCSTR("The message to display on the user's screen or console."), {CoreInfo::StringType}},
+      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelType}}};
+
+  std::string _msg;
+  Enums::LogLevel _level{Enums::LogLevel::Info};
 };
 
 /*

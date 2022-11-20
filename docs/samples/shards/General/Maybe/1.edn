@@ -6,3 +6,4 @@
  (Take 0)
  ;:Silent
  true)
+(Log "result")
