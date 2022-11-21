@@ -219,7 +219,7 @@ struct RendererImpl final : public ContextData {
                                            int2 referenceOutputSize) {
     HasherXXH128<HashStaticVistor> hasher;
     for (auto &step : pipelineSteps) {
-      std::visit([&](auto &step) { hasher(step.uuid); }, *step.get());
+      std::visit([&](auto &step) { hasher(step.id); }, *step.get());
     }
 
     hasher(referenceOutputSize);

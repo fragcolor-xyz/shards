@@ -6,7 +6,7 @@
 #include "linalg.hpp"
 #include "params.hpp"
 #include "shader/types.hpp"
-#include "uuid.hpp"
+#include "unique_id.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -177,9 +177,10 @@ typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallbac
 struct IDrawDataCollector;
 typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)> FeatureDrawDataFunction;
 
+extern UniqueIdGenerator featureIdGenerator;
 struct Feature {
   // Used to identify this feature for caching purposes
-  const UUID uuid = generateUUID();
+  const UniqueId id = featureIdGenerator.getNext();
 
   // Pipeline state flags
   FeaturePipelineState state;

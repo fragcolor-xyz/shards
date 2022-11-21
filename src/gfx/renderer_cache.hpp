@@ -76,7 +76,7 @@ public:
 
     HasherXXH128 featureHasher;
     for (auto &feature : features) {
-      featureHasher(feature->uuid);
+      featureHasher(feature->id);
     }
     Hash128 featureHash = featureHasher.getDigest();
 

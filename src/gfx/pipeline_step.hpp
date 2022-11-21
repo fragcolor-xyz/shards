@@ -1,10 +1,10 @@
-#ifndef GFX_PIPELINE_STEP
-#define GFX_PIPELINE_STEP
+#ifndef D251FF97_80A2_4ACD_856B_0D3A776BB7A7
+#define D251FF97_80A2_4ACD_856B_0D3A776BB7A7
 
 #include "fwd.hpp"
 #include "material.hpp"
 #include "gfx_wgpu.hpp"
-#include "uuid.hpp"
+#include "unique_id.hpp"
 #include <variant>
 #include <vector>
 #include <memory>
@@ -32,7 +32,7 @@ union ClearValues {
     uint32_t stencil;
   };
 
-  constexpr ClearValues() : color(0.0f) {};
+  constexpr ClearValues() : color(0.0f){};
   constexpr ClearValues(float4 color) : color(color) {}
   constexpr ClearValues(float depth, uint32_t stencil) : depth(depth), stencil(stencil) {}
 
@@ -81,10 +81,12 @@ struct RenderStepOutput {
   std::optional<float2> sizeScale = float2(1, 1);
 };
 
+extern UniqueIdGenerator renderStepIdGenerator;
+
 // Explicitly clear render targets
 struct ClearStep {
   // Used to identify this feature for caching purposes
-  const UUID uuid = generateUUID();
+  const UniqueId id = renderStepIdGenerator.getNext();
 
   ClearValues clearValues;
 
@@ -94,7 +96,7 @@ struct ClearStep {
 // Renders all drawables in the queue to the output region
 struct RenderDrawablesStep {
   // Used to identify this feature for caching purposes
-  const UUID uuid = generateUUID();
+  const UniqueId id = renderStepIdGenerator.getNext();
 
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
@@ -108,7 +110,7 @@ typedef std::vector<std::string> RenderStepInputs;
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
   // Used to identify this feature for caching purposes
-  const UUID uuid = generateUUID();
+  const UniqueId id = renderStepIdGenerator.getNext();
 
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
@@ -128,4 +130,4 @@ typedef std::vector<PipelineStepPtr> PipelineSteps;
 template <typename T> PipelineStepPtr makePipelineStep(T &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
 } // namespace gfx
 
-#endif // GFX_PIPELINE_STEP
+#endif /* D251FF97_80A2_4ACD_856B_0D3A776BB7A7 */
