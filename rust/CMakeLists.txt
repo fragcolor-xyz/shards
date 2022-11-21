@@ -15,7 +15,7 @@ if(ANDROID OR LINUX)
 endif()
 
 if(NEED_OPENSSL_SYS)
-  # Check if we need to link against locally build SSL
+  # If we build libressl, explicitly specify the library & include paths
   get_property(libressl_SOURCE_DIR GLOBAL PROPERTY libressl_SOURCE_DIR)
   if(libressl_SOURCE_DIR)
     set(SSL_ENV OPENSSL_DIR=${SSL_DIR} OPENSSL_INCLUDE_DIR=${SSL_DIR}/include OPENSSL_LIBS=$<TARGET_FILE_BASE_NAME:ssl> OPENSSL_LIB_DIR=$<TARGET_FILE_DIR:ssl> OPENSSL_STATIC=1)
@@ -37,10 +37,5 @@ if(WIN32)
 endif()
 
 if(NEED_OPENSSL_SYS)
-  add_dependencies(cargo-shards-rust OpenSSL)
-endif()
-
-if(NOT (APPLE OR EMSCRIPTEN OR WIN32))
-  # Required by openssl-sys
   target_link_libraries(shards-rust INTERFACE OpenSSL)
 endif()
