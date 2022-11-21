@@ -17,12 +17,17 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
 if(NOT EMSCRIPTEN)
+  if(CMAKE_GENERATOR STREQUAL Xcode)
+    # Required to fix linking against empty libraries with object library dependencies from xcode
+    set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
+  endif()
+
   message(STATUS "Fetching libressl")
   FetchContent_Declare(
     libressl
     URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
     URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
-    PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch
+    ${LIBRESSL_PATCH_COMMAND}
   )
   FetchContent_MakeAvailable(libressl)
   message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
