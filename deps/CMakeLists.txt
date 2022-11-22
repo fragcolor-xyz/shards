@@ -16,30 +16,43 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
-if(NOT EMSCRIPTEN)
-  if(CMAKE_GENERATOR STREQUAL Xcode)
-    # Required to fix linking against empty libraries with object library dependencies from xcode
-    set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
-  endif()
-
-  message(STATUS "Fetching libressl")
-  FetchContent_Declare(
-    libressl
-    URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-    URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
-    ${LIBRESSL_PATCH_COMMAND}
-  )
-  FetchContent_MakeAvailable(libressl)
-  message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
-
-  # NOTE: External project doesn't work with Xcode here
-  #  since ssl/cypto builds into object library referenced by static library
+if(LINUX)
+  find_package(OpenSSL REQUIRED)
   add_library(OpenSSL INTERFACE)
-  target_link_libraries(OpenSSL INTERFACE ssl)
-  target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
+  target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
+  target_include_directories(OpenSSL INTERFACE ${OPENSSL_INCLUDE_DIR})
 
-  # Set source dir property used later by rust openssl-sys
-  set_property(GLOBAL PROPERTY OPENSSL_SOURCE_DIR ${libressl_SOURCE_DIR})
+  message(STATUS "Using system OpenSSL: ${OPENSSL_SSL_LIBRARY}, ${OPENSSL_INCLUDE_DIR}")
+else()
+  if(NOT EMSCRIPTEN)
+    # Force default config path to system's /etc/ssl
+    # Otherwise libressl will use the install prefix
+    set(OPENSSLDIR "/etc/ssl" CACHE PATH "" FORCE)
+
+    if(CMAKE_GENERATOR STREQUAL Xcode)
+      # Required to fix linking against empty libraries with object library dependencies from xcode
+      set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
+    endif()
+
+    message(STATUS "Fetching libressl")
+    FetchContent_Declare(
+      libressl
+      URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+      URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
+      ${LIBRESSL_PATCH_COMMAND}
+    )
+    FetchContent_MakeAvailable(libressl)
+    message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
+
+    # NOTE: External project doesn't work with Xcode here
+    #  since ssl/cypto builds into object library referenced by static library
+    add_library(OpenSSL INTERFACE)
+    target_link_libraries(OpenSSL INTERFACE ssl)
+    target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
+
+    # Set source dir property used later by rust openssl-sys
+    set_property(GLOBAL PROPERTY libressl_SOURCE_DIR ${libressl_SOURCE_DIR})
+  endif()
 endif()
 
 message(STATUS "Fetching boost")
