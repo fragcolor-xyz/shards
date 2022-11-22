@@ -71,24 +71,19 @@ jobs:
         if: ${{ steps.setup.outputs.rust-cache == 'true'}}
         with:
           key: ${{ steps.setup.outputs.build-type }}
-      - name: Build (Debug)
-        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+      - name: Build
         run: |
           mkdir -p build
           cd build
 
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_BUILD_TESTS=1 ..
+          if [ "${{ steps.setup.outputs.build-type }}" == "Debug" ]; then
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 ..
+          else
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+          fi
 
           ninja shards
           ninja test-runtime
-      - name: Build (Release)
-        if: ${{ steps.setup.outputs.build-type == 'Release' }}
-        run: |
-          mkdir -p build
-          cd build
-
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
-          ninja shards
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -146,8 +141,7 @@ jobs:
             echo "Running sample $i";
             ../../build/shards run-sample.edn --file "$i";
           done
-      - name: Test runtime (Debug)
-        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+      - name: Test runtime
         env:
           RUST_BACKTRACE: 1
         run: |
