@@ -41,7 +41,7 @@
 
   (default-window))
 (schedule root test-static)
-(run root timestep 100)
+(if (run root timestep 100) nil (throw "Root tick failed"))
 
 (defloop test-file
   (Setup
@@ -51,7 +51,7 @@
 
   (default-window))
 (schedule root test-file)
-(run root timestep 100)
+(if (run root timestep 100) nil (throw "Root tick failed"))
 
 (defloop test-binary
   (Setup
@@ -61,7 +61,7 @@
 
   (default-window))
 (schedule root test-binary)
-(run root timestep 100)
+(if (run root timestep 100) nil (throw "Root tick failed"))
 
 (defloop test-transforms
   (Setup
@@ -85,7 +85,7 @@
     .drawables (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 (schedule root test-transforms)
-(run root timestep 100)
+(if (run root timestep 100) nil (throw "Root tick failed"))
 
 (defloop test-copy
   (Setup
@@ -98,4 +98,4 @@
 
   (default-window))
 (schedule root test-copy)
-(run root timestep 100)
+(if (run root timestep 100) nil (throw "Root tick failed"))

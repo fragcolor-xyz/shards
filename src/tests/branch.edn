@@ -16,4 +16,4 @@
   (Msg "And Universe"))
 
 (schedule main c)
-(run main 0.2 50)
+(if (run main 0.2 50) nil (throw "Root tick failed"))

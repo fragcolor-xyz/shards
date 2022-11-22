@@ -47,4 +47,4 @@
   )
 
 (schedule main uglify)
-(run main)
+(if (run main) nil (throw "Root tick failed"))

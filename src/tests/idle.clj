@@ -11,4 +11,4 @@
    (Log)))
 
 (schedule Root detect)
-(run Root 1.0)
+(if (run Root 1.0) nil (throw "Root tick failed"))

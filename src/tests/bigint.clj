@@ -70,4 +70,4 @@
 
 
 (schedule Root test)
-(run Root 0.1 10)
+(if (run Root 0.1 10) nil (throw "Root tick failed"))

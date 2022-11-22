@@ -26,4 +26,4 @@
 
 ;; (Loop 5)
 
-(run n 0.1)
+(if (run n 0.1) nil (throw "Root tick failed"))

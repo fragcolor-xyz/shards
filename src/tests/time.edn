@@ -25,4 +25,4 @@
 
 (schedule main producer)
 (schedule main consumer)
-(run main 0.1 100)
+(if (run main 0.1 100) nil (throw "Root tick failed"))

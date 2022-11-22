@@ -72,4 +72,4 @@
   (Log)
   (Assert.Is [[7, 2], [[5, 4], [[2, 3], [], []], [[4, 7], [], []]], [[9, 6], [[8, 1], [], []], []]] true)
   ))
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))

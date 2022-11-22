@@ -87,4 +87,4 @@
   (Log "Decoded"))
 
 (schedule Main test)
-(run Main)
+(if (run Main) nil (throw "Root tick failed"))

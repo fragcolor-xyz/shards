@@ -11,4 +11,4 @@
    "World" .20} (Take "Hello") (Assert.Is 10 true))
 
 (schedule Main test)
-(run Main 0.2 10)
+(if (run Main 0.2 10) nil (throw "Root tick failed"))

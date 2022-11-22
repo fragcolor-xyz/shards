@@ -3,4 +3,4 @@
   (Msg "Tick")
   (Pause 1.0))
 (schedule root-mesh main)
-(run root-mesh (/ 1.0 120))
+(if (run root-mesh (/ 1.0 120)) nil (throw "Root tick failed"))

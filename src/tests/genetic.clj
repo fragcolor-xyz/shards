@@ -38,7 +38,7 @@
    ))
 
 (schedule Root evolveme)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 (def Root nil)
 (def evolveme nil)
 (def fitness nil)
@@ -105,7 +105,7 @@
    ))
 
 (schedule Root evolveme)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 (def Root nil)
 (def evolveme nil)
 (def fitness nil)
@@ -148,5 +148,5 @@
    (Log)))
 
 (schedule Root evolveme)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 (prn "Done 3")

@@ -27,7 +27,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main context-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; window
 (defloop window-test
@@ -53,7 +53,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main window-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; scope
 (defloop scope-test
@@ -82,7 +82,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main scope-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; area
 (defloop area-test
@@ -166,7 +166,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main area-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; panels
 (defloop panels-test
@@ -212,7 +212,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main panels-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; collapsing header
 (defloop collapsing-header-test
@@ -243,7 +243,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main collapsing-header-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; columns
 (defloop columns-header-test
@@ -274,7 +274,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main columns-header-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; disable
 (defloop disable-test
@@ -304,7 +304,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main disable-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; frame
 (defloop frame-test
@@ -336,7 +336,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main frame-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; group
 (defloop group-test
@@ -365,7 +365,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main group-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; indent
 (defloop indent-test
@@ -394,7 +394,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main indent-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; horizontal layout
 (defloop horizontal-test
@@ -423,7 +423,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main horizontal-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; scroll area
 (defloop scroll-area-test
@@ -454,7 +454,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main scroll-area-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; vertical layout
 (defloop vertical-test
@@ -483,7 +483,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main vertical-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; separator
 (defloop separator-test
@@ -508,7 +508,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main separator-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; menu bar
 (defloop menubar-test
@@ -530,7 +530,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main menubar-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; menu
 (defloop menu-test
@@ -553,7 +553,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main menu-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; button
 (defloop button-test
@@ -582,7 +582,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main button-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; checkbox
 (defloop checkbox-test
@@ -606,7 +606,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main checkbox-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; color-input
 (defloop color-input-test
@@ -629,7 +629,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main color-input-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; combo
 (defloop combo-test
@@ -652,7 +652,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main combo-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; hyperlink
 (defloop hyperlink-test
@@ -675,7 +675,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main hyperlink-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; image
 (defloop image-test
@@ -701,7 +701,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main image-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; image button
 (defloop image-button-test
@@ -727,7 +727,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main image-button-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; label
 (defloop label-test
@@ -750,7 +750,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main label-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; listbox
 (defloop listbox-test
@@ -773,7 +773,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main listbox-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; numeric input
 (defloop numeric-input-test
@@ -802,7 +802,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main numeric-input-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; numeric slider
 (defloop numeric-slider-test
@@ -831,7 +831,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main numeric-slider-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; progress bar
 (defloop progress-bar-test
@@ -857,7 +857,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main progress-bar-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; radio button
 (defloop radio-button-test
@@ -882,7 +882,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main radio-button-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; spinner
 (defloop spinner-test
@@ -907,7 +907,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main spinner-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; text input
 (defloop text-input-test
@@ -931,7 +931,7 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main text-input-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 ;; tooltip
 (defloop tooltip-test
@@ -968,4 +968,4 @@
 
     (GFX.Render :Steps .render-steps))))
 (schedule main tooltip-test)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))

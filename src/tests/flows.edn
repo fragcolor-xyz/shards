@@ -30,7 +30,7 @@
    (Msg "two - Done")))
 
 (schedule Root wire1)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 (def recursive
   (Wire
@@ -231,7 +231,7 @@
 
   (Msg "Done")))
 
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 (def test-case-step
   (Wire
@@ -256,7 +256,7 @@
   (Msg "Done")
   (Stop)))
 
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 (if (hasShard? "Http.Post")
   (do
@@ -288,7 +288,7 @@
       "Hello world" (Do upload-to-ipfs) (Log "ipfs hash"))
 
     (schedule Root test-ipfs)
-    (run Root 0.1)))
+    (if (run Root 0.1) nil (throw "Root tick failed"))))
 
 (defwire hashed
   10
@@ -303,7 +303,7 @@
   (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x05aba6cb2312a0d0c90b6a5c22b81c6a94") (Log)))
 
 (schedule Root hashed)
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (defloop wire-loop-inline
   (Setup 0 >= .count)
@@ -315,7 +315,7 @@
   (Msg "Ok done looping..."))
 
 (schedule Root wire-loop-inline-parent)
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (defwire depth-wire-indirect
   ["This is a " .consumed-variable]
@@ -343,7 +343,7 @@
   (Assert.Is 3 true))
 
 (schedule Root test-capture)
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (defwire detached-wire
   .consumed-variable
@@ -362,7 +362,7 @@
   (Assert.Is 3 true))
 
 (schedule Root test-capture)
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (defwire depth-wire-deeper-do
   ["This is a " .consumed-variable]
@@ -398,7 +398,7 @@
   (Assert.Is 3 true))
 
 (schedule Root test-capture)
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (defwire depth-wire-deeper-do
   ["This is a " .consumed-variable]
@@ -438,7 +438,7 @@
   (Assert.Is 3 true))
 
 (schedule Root test-capture)
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (defloop inner-loop
   .root-variable
@@ -453,7 +453,7 @@
   (Branch [fire-starter]))
 
 (schedule Root main)
-(run Root 0.1 100)
+(if (run Root 0.1 100) nil (throw "Root tick failed"))
 
 (defloop test-worker-1
   10
@@ -473,4 +473,4 @@
 
 (schedule Root test-worker-1)
 (schedule Root test-worker-2)
-(run Root 0.1 20)
+(if (run Root 0.1 20) nil (throw "Root tick failed"))

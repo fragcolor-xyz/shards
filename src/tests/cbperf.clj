@@ -15,4 +15,4 @@
       (Update "idx")
     ) .nfloats)
     ))))
-(run Root 0.01)
+(if (run Root 0.01) nil (throw "Root tick failed"))

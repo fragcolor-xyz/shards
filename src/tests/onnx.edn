@@ -7,4 +7,4 @@
   (|| .image (ONNX.Activate :Model .model) (Log)))
 
 (schedule main onnx-test)
-(run main)
+(if (run main) nil (throw "Root tick failed"))

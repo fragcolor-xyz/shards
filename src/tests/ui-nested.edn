@@ -31,4 +31,4 @@
     (GFX.Render :Steps .render-steps))))
 (defmesh root)
 (schedule root main-wire)
-(run root 0.01 200)
+(if (run root 0.01 200) nil (throw "Root tick failed"))

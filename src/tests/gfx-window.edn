@@ -6,4 +6,4 @@
     :Title "SDL Window" :Width 1280 :Height 720 :Debug false))
 
 (schedule Root test-wire)
-(run Root timestep 100)
+(if (run Root timestep 100) nil (throw "Root tick failed"))

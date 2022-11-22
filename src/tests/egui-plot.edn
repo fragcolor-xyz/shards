@@ -229,7 +229,7 @@
 
 (defmesh main)
 (schedule main ui-wire)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))
 
 (schedule main ui-wire)
-(run main timestep duration)
+(if (run main timestep duration) nil (throw "Root tick failed"))

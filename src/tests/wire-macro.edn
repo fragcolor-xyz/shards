@@ -23,4 +23,4 @@
 (def Root (Mesh))
 (schedule Root x)
 (schedule Root y)
-(run Root 0.1 50)
+(if (run Root 0.1 50) nil (throw "Root tick failed"))
