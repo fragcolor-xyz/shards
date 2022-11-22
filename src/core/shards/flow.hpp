@@ -574,7 +574,18 @@ template <bool COND> struct When {
     }
   }
 
+  static inline Parameters _params{
+      {"Predicate", SHCCSTR("The predicate to evaluate in order to trigger Action."), {CoreInfo::ShardsOrNone}},
+      {"Action",
+       SHCCSTR("The shards to activate on when Predicate is true for When and "
+               "false for WhenNot."),
+       {CoreInfo::ShardsOrNone}},
+      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return _params; }
+
+  ShardsVar _cond{};
+  ShardsVar _action{};
+  bool _passth = true;
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
@@ -637,36 +648,12 @@ template <bool COND> struct When {
       if (!_passth)
         return output;
     }
+
     return input;
   }
-
-private:
-  static inline Parameters _params{
-      {"Predicate", SHCCSTR("The predicate to evaluate in order to trigger Action."), {CoreInfo::ShardsOrNone}},
-      {"Action",
-       SHCCSTR("The shards to activate on when Predicate is true for When and "
-               "false for WhenNot."),
-       {CoreInfo::ShardsOrNone}},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
-  ShardsVar _cond{};
-  ShardsVar _action{};
-  bool _passth = true;
 };
 
 struct IfBlock {
-  static inline Parameters _params{
-      {"Predicate",
-       SHCCSTR("The predicate to evaluate in order to trigger `Then` (when "
-               "`true`) or `Else` (when `false`)."),
-       {CoreInfo::ShardsOrNone}},
-      {"Then", SHCCSTR("The shards to activate when `Predicate` is `true`."), CoreInfo::ShardsOrNone},
-      {"Else", SHCCSTR("The shards to activate when `Predicate` is `false`."), CoreInfo::ShardsOrNone},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
-  ShardsVar _cond{};
-  ShardsVar _then{};
-  ShardsVar _else{};
-  bool _passth = false;
-
   static SHOptionalString help() { return SHCCSTR("Evaluates a predicate and executes an action."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -678,7 +665,20 @@ struct IfBlock {
                    "output of the action that was performed (i.e. `Then` or `Else`).");
   }
 
+  static inline Parameters _params{
+      {"Predicate",
+       SHCCSTR("The predicate to evaluate in order to trigger `Then` (when "
+               "`true`) or `Else` (when `false`)."),
+       {CoreInfo::ShardsOrNone}},
+      {"Then", SHCCSTR("The shards to activate when `Predicate` is `true`."), CoreInfo::ShardsOrNone},
+      {"Else", SHCCSTR("The shards to activate when `Predicate` is `false`."), CoreInfo::ShardsOrNone},
+      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return _params; }
+
+  ShardsVar _cond{};
+  ShardsVar _then{};
+  ShardsVar _else{};
+  bool _passth = false;
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
@@ -778,6 +778,14 @@ struct Match {
                "`false` allows the matched shard's output to appear as `Match` shard's output."),
        {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return params; }
+
+  VariableResolver resolver;
+  std::vector<OwnedVar> _cases;
+  std::vector<OwnedVar> _pcases;
+  std::vector<ShardsVar> _actions;
+  std::vector<SHVar> _full;
+  int _ncases = 0;
+  bool _pass = true;
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -896,14 +904,6 @@ struct Match {
     }
     return _pass ? input : finalOutput;
   }
-
-  VariableResolver resolver;
-  std::vector<OwnedVar> _cases;
-  std::vector<OwnedVar> _pcases;
-  std::vector<ShardsVar> _actions;
-  std::vector<SHVar> _full;
-  int _ncases = 0;
-  bool _pass = true;
 };
 
 struct Sub {
