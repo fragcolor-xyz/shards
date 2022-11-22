@@ -53,18 +53,18 @@
    (Assert.Is "application/json; charset=utf-8" true)))
 
 (schedule Root test)
-(run Root 0.1 50)
+(if (run Root 0.1 50) nil (throw "Root tick failed"))
 
 ; test reusing sockets/streams
 (schedule Root test)
-(run Root 0.1 50)
+(if (run Root 0.1 50) nil (throw "Root tick failed"))
 
 (schedule Root
           (Wire
            "Download"
            nil (Http.Get "https://ipfs.io/ipfs/QmSsba3SLnAEVGFaEcnpUeRuAb2vrJE2wpLpmRonf6aRrm" :Bytes true) = .avocado
            "avocado.glb" (FS.Write .avocado :Overwrite true)))
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 ;; (def server-handler
 ;;   (Wire
