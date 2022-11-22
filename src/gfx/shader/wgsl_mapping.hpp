@@ -1,6 +1,7 @@
 #ifndef GFX_SHADER_WGSL_MAPPING
 #define GFX_SHADER_WGSL_MAPPING
 
+#include "../enums.hpp"
 #include "../params.hpp"
 #include "types.hpp"
 #include <cassert>
@@ -65,6 +66,9 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
     break;
   case ShaderFieldBaseType::Float32:
     baseType = "f32";
+    break;
+  case gfx::ShaderFieldBaseType::Bool:
+    baseType = "bool";
     break;
   default:
     throw std::out_of_range(NAMEOF(FieldType::baseType).str());

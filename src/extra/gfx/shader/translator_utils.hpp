@@ -160,6 +160,44 @@ inline void processShardsVar(shards::ShardsVar &shards, TranslationContext &cont
   }
 }
 
+inline std::unique_ptr<IWGSLGenerated> generateFunctionCall(const TranslatedFunction &function,
+                                                            const std::unique_ptr<IWGSLGenerated> &input,
+                                                            TranslationContext &context) {
+  BlockPtr inputCallArg;
+
+  if (function.inputType) {
+    assert(input);
+    inputCallArg = input->toBlock();
+  }
+
+  // Build function call argument list
+  auto callBlock = blocks::makeCompoundBlock();
+  callBlock->append(fmt::format("{}(", function.functionName));
+
+  bool addSeparator{};
+
+  // Pass input as first argument
+  if (inputCallArg) {
+    callBlock->append(std::move(inputCallArg));
+    addSeparator = true;
+  }
+
+  // Pass captured variables
+  if (!function.arguments.empty()) {
+    for (auto &arg : function.arguments) {
+      if (addSeparator)
+        callBlock->append(", ");
+      callBlock->append(context.reference(arg.shardsName).toBlock());
+      addSeparator = true;
+    }
+  }
+
+  callBlock->append(")");
+
+  FieldType outputType = function.outputType ? function.outputType.value() : FieldType();
+  return std::make_unique<WGSLBlock>(outputType, std::move(callBlock));
+}
+
 } // namespace shader
 } // namespace gfx
 

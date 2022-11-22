@@ -17,13 +17,12 @@ struct SubTranslator {
 
 struct IfTranslator {
   static void translate(IfBlock *shard, TranslationContext &context) {
-    auto &input = context.wgslTop;
-    FieldType inputType = input->getType();
-    BlockPtr inputBlock = input->toBlock();
+    FieldType inputType = context.wgslTop->getType();
+    BlockPtr inputBlock = context.wgslTop->toBlock();
 
-    // Evaluate condition
-    processShardsVar(shard->_cond, context);
-    auto cmp = context.takeWGSLTop();
+    // NOTE: Evaluate condition as a function to support (And) & (Or) flow control mechanisms
+    auto func = context.processShards(shard->_cond.shards(), shard->_cond.composeResult(), inputType, "condition");
+    auto cmp = generateFunctionCall(func, context.wgslTop, context);
 
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
     context.addNew(cmp->toBlock());
@@ -79,9 +78,33 @@ struct ForRangeTranslator {
   }
 };
 
+// Usage of this shard in shaders assume the shards are wrapped inside a function call returning bool
+struct LogicOrTranslator {
+  static void translate(shards::Or *shard, TranslationContext &context) {
+    assert(context.wgslTop);
+    assert(context.wgslTop->getType() == FieldTypes::Bool);
+    context.addNew(blocks::makeBlock<blocks::Direct>("if("));
+    context.addNew(context.wgslTop->toBlock());
+    context.addNew(blocks::makeBlock<blocks::Direct>(") { return true; }"));
+  }
+};
+
+struct LogicAndTranslator {
+  static void translate(shards::And *shard, TranslationContext &context) {
+    assert(context.wgslTop);
+    assert(context.wgslTop->getType() == FieldTypes::Bool);
+    context.addNew(blocks::makeBlock<blocks::Direct>("if(!("));
+    context.addNew(context.wgslTop->toBlock());
+    context.addNew(blocks::makeBlock<blocks::Direct>(")) { return false; }"));
+  }
+};
+
 void registerFlowShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(SubTranslator, "Sub", shards::Sub);
   REGISTER_EXTERNAL_SHADER_SHARD(IfTranslator, "If", shards::IfBlock);
   REGISTER_EXTERNAL_SHADER_SHARD(ForRangeTranslator, "ForRange", shards::ForRangeShard);
+
+  REGISTER_EXTERNAL_SHADER_SHARD(LogicOrTranslator, "Or", shards::Or);
+  REGISTER_EXTERNAL_SHADER_SHARD(LogicAndTranslator, "And", shards::And);
 }
 } // namespace gfx::shader

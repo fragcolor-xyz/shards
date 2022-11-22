@@ -141,14 +141,14 @@ struct TranslatedFunctionArgument {
   std::string shardsName;
 };
 
-struct TranslatedWire {
+struct TranslatedFunction {
   std::string functionName;
   std::optional<FieldType> outputType;
   std::optional<FieldType> inputType;
   std::vector<TranslatedFunctionArgument> arguments;
 
-  TranslatedWire() = default;
-  TranslatedWire(TranslatedWire &&) = default;
+  TranslatedFunction() = default;
+  TranslatedFunction(TranslatedFunction &&) = default;
 };
 
 // Context used during shader translations
@@ -162,7 +162,7 @@ struct TranslationContext {
   VariableStorage globals;
 
   // Keeps track of which wires have been translated info functions
-  std::map<SHWire *, TranslatedWire> translatedWires;
+  std::map<SHWire *, TranslatedFunction> translatedWires;
 
   UniquePtr<blocks::Compound> root;
   std::vector<TranslationBlockRef> stack;
@@ -207,8 +207,19 @@ public:
   // Enter a shard and translate it recursively
   void processShard(ShardPtr shard);
 
-  // Translates a wire
-  const TranslatedWire &processWire(const std::shared_ptr<SHWire> &wire, const std::optional<FieldType> &inputType);
+  // Translates a wire into a function
+  const TranslatedFunction &processWire(const std::shared_ptr<SHWire> &wire, const std::optional<FieldType> &inputType);
+
+  // Translates shards into a function
+  TranslatedFunction processShards(const std::vector<ShardPtr> &shards, const SHComposeResult &composeResult,
+                                   const std::optional<FieldType> &inputType, const std::string &name = "anonymous");
+  TranslatedFunction processShards(const Shards &shardsSeq, const SHComposeResult &composeResult,
+                                   const std::optional<FieldType> &inputType, const std::string &name = "anonymous") {
+    std::vector<ShardPtr> shards;
+    for (size_t i = 0; i < shardsSeq.len; i++)
+      shards.push_back(shardsSeq.elements[i]);
+    return processShards(shards, composeResult, inputType, name);
+  }
 
   // Assign a block to a temporary variable and return it's name
   template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr) {

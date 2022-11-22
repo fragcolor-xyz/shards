@@ -29,9 +29,10 @@
 
                  .v (Math.Multiply 20.0) (Math.Floor) (ToInt) >= .i
                  .i (If (Is 10)
-                        (-> 1.0 > .f-0 > .f-1 > .f-2))
-                 .i (If (IsMore 15)
-                        (If (IsNot 18) (-> 0.0 > .f-0 > .f-1 > .f-2)))
+                        (-> 1.0 > .f-0 > .f-1 > .f-2)
+                        )
+                 
+                 .i (If (-> .i (IsMore 15) (And) .i (IsNot 18)) (-> 0.0 > .f-0 > .f-1 > .f-2))
 
                  (Float4 .f-0 .f-1 .f-2 1.0)
                  (Shader.WriteOutput "color") ; End shader

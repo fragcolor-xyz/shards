@@ -32,22 +32,32 @@ void TranslationContext::processShard(ShardPtr shard) {
   handler->translate(shard, *this);
 }
 
-const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWire> &wire,
-                                                      const std::optional<FieldType> &inputType) {
+const TranslatedFunction &TranslationContext::processWire(const std::shared_ptr<SHWire> &wire,
+                                                          const std::optional<FieldType> &inputType) {
   SHWire *wirePtr = wire.get();
   auto it = translatedWires.find(wirePtr);
   if (it != translatedWires.end())
     return it->second;
 
-  TranslatedWire translated;
-  translated.functionName = getUniqueVariableName(wire->name);
+  TranslatedFunction translated = processShards(wire->shards, wire->composeResult.value(), inputType, wire->name);
 
-  SPDLOG_LOGGER_INFO(logger, "Generating shader function for wire {} => {}", wire->name, translated.functionName);
+  return translatedWires.emplace(std::make_pair(wirePtr, std::move(translated))).first->second;
+}
 
-  if (wire->inputType->basicType != SHType::None) {
+TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr> &shards, const SHComposeResult &composeResult,
+                                                     const std::optional<FieldType> &inputType, const std::string &name) {
+  TranslatedFunction translated;
+  translated.functionName = getUniqueVariableName(name);
+  SPDLOG_LOGGER_INFO(logger, "Generating shader function for shards {} => {}", name, translated.functionName);
+
+  if (inputType) {
     assert(inputType.has_value());
     translated.inputType = inputType;
   }
+
+  // Save input value
+  std::unique_ptr<IWGSLGenerated> savedWgslTop =
+      wgslTop ? std::make_unique<WGSLBlock>(wgslTop->getType(), wgslTop->toBlock()) : nullptr;
 
   std::string inputVarName;
   std::string argsDecl;
@@ -73,10 +83,8 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
   TranslationBlockRef functionScope = TranslationBlockRef::make(functionBody);
 
   // Setup required variable
-  if (!wire->pure) {
-
-    auto &compositionResult = wire->composeResult.value();
-    for (auto &req : compositionResult.requiredInfo) {
+  if (composeResult.requiredInfo.len > 0) {
+    for (auto &req : composeResult.requiredInfo) {
       tryExpandIntoVariable(req.name);
 
       const FieldType *fieldType{};
@@ -101,7 +109,7 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
   std::swap(savedStack, stack);
   stack.emplace_back(std::move(functionScope));
 
-  for (auto shard : wire->shards) {
+  for (ShardPtr shard : shards) {
     processShard(shard);
   }
   stack.pop_back();
@@ -111,7 +119,7 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
 
   // Grab return value
   auto returnValue = takeWGSLTop();
-  if (wire->outputType.basicType != SHType::None) {
+  if (composeResult.outputType.basicType != SHType::None) {
     assert(returnValue);
     translated.outputType = returnValue->getType();
 
@@ -120,6 +128,9 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
     returnDecl = fmt::format("-> {}", getFieldWGSLTypeName(translated.outputType.value()));
   }
 
+  // Restore input value
+  wgslTop = std::move(savedWgslTop);
+
   // Close function body
   functionBody->appendLine("}");
 
@@ -127,13 +138,13 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
   std::string signature = fmt::format("fn {}({}) {}", translated.functionName, argsDecl, returnDecl);
   functionHeader.appendLine(signature + "{");
 
-  SPDLOG_LOGGER_INFO(logger, "gen(wire)> {}", signature);
+  SPDLOG_LOGGER_INFO(logger, "gen(function)> {}", signature);
 
   // Insert function definition into root so it will be processed first
   // the Header block will insert it's generate code outside & before the shader entry point
   root->children.emplace_back(std::make_unique<blocks::Header>(std::move(functionBody)));
 
-  return translatedWires.emplace(std::make_pair(wirePtr, std::move(translated))).first->second;
+  return translated;
 }
 
 bool TranslationContext::findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const {
