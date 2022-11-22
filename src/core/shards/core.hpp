@@ -11,6 +11,7 @@
 #include "shards.hpp"
 #include "common_types.hpp"
 #include "number_types.hpp"
+#include "variables.hpp"
 #include <cassert>
 #include <cmath>
 #include <sstream>
@@ -85,12 +86,19 @@ static shards::ParamsInfo compareParamsInfo =
 
 struct BaseOpsBin {
   ParamVar _operand{shards::Var(0)};
+  ExposedInfo _requiredVariables;
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
+
+  SHExposedTypesInfo requiredVariables() {
+    _requiredVariables.clear();
+    mergeIntoRequiredVariables(_requiredVariables, _operand, CoreInfo::AnyType);
+    return SHExposedTypesInfo(_requiredVariables);
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -237,6 +245,7 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
   RUNTIME_SHARD_setParam(NAME);     \
   RUNTIME_SHARD_getParam(NAME);     \
   RUNTIME_SHARD_activate(NAME);     \
+  RUNTIME_SHARD_requiredVariables(NAME);     \
   RUNTIME_SHARD_END(NAME);
 
 struct Input {

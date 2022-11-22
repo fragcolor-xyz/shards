@@ -554,6 +554,7 @@ public:
   operator bool() const { return _shardsArray.size() > 0; }
 
   const Shards &shards() const { return _shards; }
+  const SHComposeResult &composeResult() const { return _wireValidation; }
 };
 
 template <class SH_CORE> struct TOwnedVar : public SHVar {
