@@ -67,7 +67,7 @@
    .b))
 
 (schedule Root (Wire "run" (Profile (-> 34 (Do fib4))) (Log "result")))
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
 
 (def fib1 nil)
 (def fib2 nil)

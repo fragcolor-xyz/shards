@@ -31,7 +31,7 @@
 (schedule Root producer)
 (schedule Root consumer1)
 (schedule Root consumer2)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 (def producer
   (Wire
@@ -63,6 +63,6 @@
 (schedule Root (consumers 1))
 (schedule Root (consumers 2))
 (schedule Root consumer33)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 (prn "Done")

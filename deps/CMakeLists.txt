@@ -16,15 +16,15 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
-if(LINUX)
-  find_package(OpenSSL REQUIRED)
-  add_library(OpenSSL INTERFACE)
-  target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
-  target_include_directories(OpenSSL INTERFACE ${OPENSSL_INCLUDE_DIR})
+if(NOT EMSCRIPTEN)
+  if(LINUX)
+    find_package(OpenSSL REQUIRED)
+    add_library(OpenSSL INTERFACE)
+    target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)
+    target_include_directories(OpenSSL INTERFACE ${OPENSSL_INCLUDE_DIR})
 
-  message(STATUS "Using system OpenSSL: ${OPENSSL_SSL_LIBRARY}, ${OPENSSL_INCLUDE_DIR}")
-else()
-  if(NOT EMSCRIPTEN)
+    message(STATUS "Using system OpenSSL: ${OPENSSL_SSL_LIBRARY}, ${OPENSSL_INCLUDE_DIR}")
+  else()
     # Force default config path to system's /etc/ssl
     # Otherwise libressl will use the install prefix
     set(OPENSSLDIR "/etc/ssl" CACHE PATH "" FORCE)

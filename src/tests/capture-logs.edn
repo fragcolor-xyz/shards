@@ -9,7 +9,7 @@
   (Msg "Hello shards!"))
 
 (schedule root inline-capture)
-(run root 0.05 16)
+(if (run root 0.05 16) nil (throw "Root tick failed"))
 
 (defloop capture
   (CaptureLog
@@ -24,4 +24,4 @@
   (Msg "Hello shards!"))
 
 (schedule root detach-capture)
-(run root 0.05 16)
+(if (run root 0.05 16) nil (throw "Root tick failed"))

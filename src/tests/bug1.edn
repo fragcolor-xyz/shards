@@ -12,4 +12,4 @@
 
 (defmesh root)
 (schedule root main-wire)
-(run root)
+(if (run root) nil (throw "Root tick failed"))

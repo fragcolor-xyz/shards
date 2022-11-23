@@ -256,7 +256,7 @@
 (def mutating-ext-var (set-var external-var-test "external-variable-2" " World"))
 
 (schedule main external-var-test)
-(run main)
+(if (run main) nil (throw "Root tick failed"))
 
 ; another property is that we can read back those variables!
 (println (read-var mutating-ext-var))

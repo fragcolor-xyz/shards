@@ -8,9 +8,9 @@
   (Log))
 
 (schedule main play-files)
-(run main)
+(if (run main) nil (throw "Root tick failed"))
 (schedule main play-files)
-(run main)
+(if (run main) nil (throw "Root tick failed"))
 
 (defloop play-file-fft
   (Audio.ReadFile "./data/Ode_to_Joy.ogg" :Channels 1 :From 5.0 :To 6.0)
@@ -24,7 +24,7 @@
   (Log))
 
 (schedule main play-file-fft)
-(run main)
+(if (run main) nil (throw "Root tick failed"))
 
 ;; (defloop play-file-dwt
 ;;   (Audio.ReadFile "./data/Ode_to_Joy.ogg" :Channels 1 :From 5.0 :To 6.0)
@@ -40,7 +40,7 @@
   (Audio.Channel :Shards (-> (Input))))
 
 (schedule main device-test)
-(run main 0.1 25)
+(if (run main 0.1 25) nil (throw "Root tick failed"))
 
 (defloop device-test
   (Audio.Device)
@@ -49,32 +49,32 @@
                                              :From 4.0 :To 6.0))))
 
 (schedule main device-test)
-(run main)
+(if (run main) nil (throw "Root tick failed"))
 
 (defloop device-test
   (Audio.Device)
   (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator))))
 
 (schedule main device-test)
-(run main 0.1 25)
+(if (run main 0.1 25) nil (throw "Root tick failed"))
 
 (defloop device-test
   (Audio.Device)
   (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator Waveform.Triangle))))
 
 (schedule main device-test)
-(run main 0.1 25)
+(if (run main 0.1 25) nil (throw "Root tick failed"))
 
 (defloop device-test
   (Audio.Device)
   (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator Waveform.Square))))
 
 (schedule main device-test)
-(run main 0.1 25)
+(if (run main 0.1 25) nil (throw "Root tick failed"))
 
 (defloop device-test
   (Audio.Device)
   (Audio.Channel :Shards (-> 440.0 (Audio.Oscillator Waveform.Sawtooth))))
 
 (schedule main device-test)
-(run main 0.1 25)
+(if (run main 0.1 25) nil (throw "Root tick failed"))

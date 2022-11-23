@@ -13,4 +13,4 @@
 
 (schedule main table-test-1)
 (schedule main table-test-2)
-(run main)
+(if (run main) nil (throw "Root tick failed"))

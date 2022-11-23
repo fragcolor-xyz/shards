@@ -38,4 +38,4 @@
   (LoadImage) (ImageToBytes) (ExpectBytes) ;
   ))
 
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))

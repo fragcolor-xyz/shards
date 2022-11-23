@@ -132,4 +132,4 @@
   ;
   )
 (schedule root main)
-(run root)
+(if (run root) nil (throw "Root tick failed"))

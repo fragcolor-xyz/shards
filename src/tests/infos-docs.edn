@@ -163,4 +163,4 @@
  (fn* [name] (schedule root (dump name)))
  (shards))
 ;; (schedule root (dump "Assoc"))
-(run root)
+(if (run root) nil (throw "Root tick failed"))

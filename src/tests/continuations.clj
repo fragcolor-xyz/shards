@@ -37,7 +37,7 @@
   (Step "main")
   (Msg "Root returned")))
 
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 ;; Root started
 ;;  Main started ; started by step

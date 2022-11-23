@@ -10,7 +10,7 @@
    (Await (-> false (Assert.Is true)))))
 
 (schedule Root a)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 ; fail during http resolver, uses await(...)
 (def c
@@ -19,16 +19,17 @@
    (Http.Get "abc.abcdefg")))
 
 (schedule Root c)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 ; fail during cleanup, we cannot use pauses
+; NOTE: Does not generate an error in `run`
 (def c
   (Wire
    "test-3"
    (OnCleanup (-> (Pause 10.0)))))
 
 (schedule Root c)
-(run Root 0.1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
 
 ; out of range
 (def c
@@ -39,7 +40,7 @@
    (Log)))
 
 (schedule Root c)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 ; wrong type
 (def c
@@ -51,7 +52,7 @@
    (Log)))
 
 (schedule Root c)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 ; wrong type
 (def c
@@ -64,7 +65,7 @@
    (Log)))
 
 (schedule Root c)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 ; fail the root wire propagated from Wait
 (def d
@@ -75,7 +76,7 @@
    (Assert.Is true false)))
 
 (schedule Root d)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 
 ; fail the root wire propagated from Wait
@@ -85,7 +86,7 @@
    "4qjwieouqjweiouqweoi\") exit" (ParseFloat) (Log)))
 
 (schedule Root d)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 (defwire table-push-mix
   {:k [1 2 3]} >= .table
@@ -98,7 +99,7 @@
   (WireRunner .bad-loaded-wire))
 
 (schedule Root wrap)
-(run Root 0.1)
+(if (run Root 0.1) (throw "Failure expected") nil)
 
 (defmesh main)
 
@@ -118,7 +119,7 @@
   (Msg "And Universe"))
 
 (schedule Root c)
-(run Root 0.2 25)
+(if (run Root 0.2 25) (throw "Failure expected") nil)
 
 (defloop c
   "Hello" = .msg1
@@ -127,7 +128,7 @@
   (Msg "And Universe"))
 
 (schedule Root c)
-(run Root 0.2 25)
+(if (run Root 0.2 25) nil (throw "Branch failure should be ignored"))
 
 (defwire too-long-wire
   (Pause 120))
@@ -137,4 +138,4 @@
   (Wait too-long-wire :Timeout 1.0))
 
 (schedule Root short-wire)
-(run Root 0.2 25)
+(if (run Root 0.2 25) (throw "Failure expected") nil)

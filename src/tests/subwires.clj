@@ -195,7 +195,7 @@
 
 (schedule root main)
 
-(run root)
+(if (run root) nil (throw "Root tick failed"))
 
 (schedule
  root
@@ -205,7 +205,7 @@
   (WriteFile "subwires.wire")
   (Msg "Serialized!")))
 
-(run root)
+(if (run root) nil (throw "Root tick failed"))
 
 (schedule
  root
@@ -218,6 +218,6 @@
   (WireRunner .wire :Mode RunWireMode.Detached)
   (Wait .wire)))
 
-(run root)
+(if (run root) nil (throw "Root tick failed"))
 
 (prn "DONE")

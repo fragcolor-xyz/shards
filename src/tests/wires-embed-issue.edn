@@ -19,7 +19,7 @@
                .res)
         code (do
                (schedule mesh wire)
-               (run mesh 0.1)
+(if (run mesh 0.1) nil (throw "Root tick failed"))
                     ; stop returns the text code
                (stop wire))
         res (read-var code)]

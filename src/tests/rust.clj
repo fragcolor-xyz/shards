@@ -93,4 +93,4 @@
   1500000000 (Date.Format) (Log "Date formatted")
   (Assert.Is "Fri Jul 14 02:40:00 2017" true)))
 
-(run Root)
+(if (run Root) nil (throw "Root tick failed"))
