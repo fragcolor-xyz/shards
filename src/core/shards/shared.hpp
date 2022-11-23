@@ -6,5 +6,6 @@
 
 #include "../shards_macros.hpp"
 #include "../runtime.hpp"
+#include "common_types.hpp"
 
 #endif // SH_CORE_SHARDS_SHARED

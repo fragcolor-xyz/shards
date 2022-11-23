@@ -2,12 +2,12 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "foundation.hpp"
-#include "math.h"
 #include "shards.h"
 #include "shared.hpp"
+#include "math.hpp"
+#include <math.h>
 #include <deque>
 #include <stdexcept>
-
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <stdexcept>

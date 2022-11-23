@@ -3,6 +3,7 @@
 
 #include "foundation.hpp"
 #include "shared.hpp"
+#include "common_types.hpp"
 #include <memory>
 #include <deque>
 

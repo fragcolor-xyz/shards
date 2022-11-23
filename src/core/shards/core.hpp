@@ -5,13 +5,15 @@
 #define SH_CORE_SHARDS_CORE
 
 #include "../shards_macros.hpp"
-// circular warning this is self inclusive on purpose
 #include "../foundation.hpp"
+#include "inlined.hpp"
 #include "shards.h"
 #include "shards.hpp"
 #include "common_types.hpp"
 #include "number_types.hpp"
 #include "variables.hpp"
+#include "common_types.hpp"
+#include "inlined.hpp"
 #include <cassert>
 #include <cmath>
 #include <sstream>
@@ -57,10 +59,10 @@ struct Const {
     _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
     if (!_dependencies.empty()) {
       _clone = _value;
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::NotInline;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::NotInline;
     } else {
       _clone = shards::Var::Empty;
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::CoreConst;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreConst;
     }
     return _innerInfo;
   }
@@ -812,13 +814,13 @@ struct Ref : public SetBase {
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, false, true));
 
       // properly link the right call
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::CoreRefTable;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefTable;
     } else {
       // just a variable!
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed variable."), SHTypeInfo(data.inputType), false));
 
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::CoreRefRegular;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefRegular;
     }
     return data.inputType;
   }
@@ -1141,7 +1143,7 @@ struct Get : public VariableBase {
   void cleanup() {
     // reset shard id
     if (_shard) {
-      _shard->inlineShardId = SHInlineShards::NotInline;
+      _shard->inlineShardId = InlineShard::NotInline;
     }
     VariableBase::cleanup();
   }
@@ -1167,7 +1169,7 @@ struct Get : public VariableBase {
               if (!_key.isVariable()) {
                 _cell = vptr;
                 // override shard internal id
-                _shard->inlineShardId = SHInlineShards::CoreGet;
+                _shard->inlineShardId = InlineShard::CoreGet;
               }
               return *vptr;
             }
@@ -1194,7 +1196,7 @@ struct Get : public VariableBase {
           // Pin fast cell
           _cell = _target;
           // override shard internal id
-          _shard->inlineShardId = SHInlineShards::CoreGet;
+          _shard->inlineShardId = InlineShard::CoreGet;
           return value;
         }
       }
@@ -3314,7 +3316,7 @@ struct Once {
     _blks.cleanup();
     _done = false;
     if (self)
-      self->inlineShardId = NotInline;
+      self->inlineShardId = InlineShard::NotInline;
   }
 
   void warmup(SHContext *ctx) {
@@ -3389,7 +3391,7 @@ struct Once {
       _blks.activate(context, input, output);
       if (!_repeat) {
         // let's cheat in this case and stop triggering this call
-        self->inlineShardId = NoopShard;
+        self->inlineShardId = InlineShard::NoopShard;
       } else {
         next = next + dsleep;
       }

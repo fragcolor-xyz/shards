@@ -17,6 +17,8 @@
 #include "shards_macros.hpp"
 #include "foundation.hpp"
 
+#include "shards/inlined.hpp"
+
 #include <chrono>
 #include <iostream>
 #include <list>
@@ -153,70 +155,15 @@ namespace shards {
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 } // namespace shards
 
-#include "shards/core.hpp"
-#include "shards/math.hpp"
-
 namespace shards {
 
 void installSignalHandlers();
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
-  switch (blk->inlineShardId) {
-  case NoopShard:
-    return input;
-  case CoreConst: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Const> *>(blk);
-    return shard->shard._value;
-  }
-  case CoreAnd: {
-    auto shard = reinterpret_cast<shards::AndRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreOr: {
-    auto shard = reinterpret_cast<shards::OrRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreNot: {
-    auto shard = reinterpret_cast<shards::NotRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreInput: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Input> *>(blk);
-    return shard->shard.activate(context, input);
-  }
-  case CorePush: {
-    auto shard = reinterpret_cast<shards::PushRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreGet: {
-    auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
-    return *shard->core._cell;
-  }
-  case CoreSet: {
-    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreRefTable: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    return shard->core.activateTable(context, input);
-  }
-  case CoreRefRegular: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    return shard->core.activateRegular(context, input);
-  }
-  case CoreUpdate: {
-    auto shard = reinterpret_cast<shards::UpdateRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreSwap: {
-    auto shard = reinterpret_cast<shards::SwapRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  default: {
-    // NotInline
-    return blk->activate(blk, context, &input);
-  }
-  }
+  SHVar output;
+  if (!activateShardInline(blk, context, input, output))
+    output = blk->activate(blk, context, &input);
+  return output;
 }
 
 SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput);

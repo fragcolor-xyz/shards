@@ -2,6 +2,7 @@
 #define SH_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
 
 #include "shards/shared.hpp"
+#include "number_types.hpp"
 #include "translator.hpp"
 #include <gfx/shader/wgsl_mapping.hpp>
 

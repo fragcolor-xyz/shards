@@ -10,6 +10,7 @@ set(core_SOURCES
   shards/seqs.cpp
   shards/casting.cpp
   shards/core.cpp
+  shards/math.cpp
   shards/linalg.cpp
   shards/serialization.cpp
   shards/json.cpp
@@ -42,6 +43,9 @@ if(SHARDS_NO_BIGINT_SHARDS)
 else()
   target_sources(shards-core-static PRIVATE shards/bigint.cpp)
 endif()
+
+# TODO: Inline switch
+target_sources(shards-core-static PRIVATE shards/inlined.cpp)
 
 if(APPLE)
   target_link_libraries(shards-core-static

@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "../runtime.hpp"
+#include "core.hpp"
 #include "pdqsort.h"
 #include "utility.hpp"
 #include <boost/algorithm/string.hpp>
@@ -1205,9 +1206,9 @@ struct Replace {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_patterns->valueType == None) {
-      data.shard->inlineShardId = NoopShard;
+      data.shard->inlineShardId = InlineShard::NoopShard;
     } else {
-      data.shard->inlineShardId = NotInline;
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
 
     if (data.inputType.basicType == String) {

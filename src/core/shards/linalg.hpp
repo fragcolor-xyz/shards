@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shared.hpp"
+#include "math.hpp"
 #include <linalg_shim.hpp>
 #include <math.h>
 
