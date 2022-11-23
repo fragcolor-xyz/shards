@@ -24,13 +24,19 @@ struct IfTranslator {
     auto func = context.processShards(shard->_cond.shards(), shard->_cond.composeResult(), inputType, "condition");
     auto cmp = generateFunctionCall(func, context.wgslTop, context);
 
+    // This is a weird case where the type depends on whether the branch is taken or not
+    // Mainly when the :Else parameter is not set
+    // ignore for now
+    if (!shard->_passth) {
+      throw ShaderComposeError("Non-passthrough on If is not supported in shaders");
+    }
+
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
     context.addNew(cmp->toBlock());
     context.addNew(blocks::makeBlock<blocks::Direct>(") {\n"));
 
     // Then block
     context.enterNew(blocks::makeCompoundBlock());
-    context.setWGSLTop<WGSLBlock>(inputType, inputBlock->clone());
     processShardsVar(shard->_then, context);
     context.leave();
 
@@ -50,6 +56,41 @@ struct IfTranslator {
     } else {
       context.setWGSLTop<WGSLBlock>(cmp->getType(), cmp->toBlock());
     }
+  }
+};
+
+template <typename TShard> struct ExtractTemplateBool {};
+template <template <bool B> class C, bool B> struct ExtractTemplateBool<C<B>> {
+  static constexpr bool Cond = B;
+};
+
+template <typename TShard> struct WhenTranslator {
+  static void translate(TShard *shard, TranslationContext &context) {
+    bool cond = ExtractTemplateBool<TShard>::Cond;
+
+    // This is a weird case where the type depends on whether the branch is taken or not, ignore for now
+    if (!shard->_passth) {
+      throw ShaderComposeError("Non-passthrough on When is not supported in shaders");
+    }
+
+    FieldType inputType = context.wgslTop->getType();
+    BlockPtr inputBlock = context.wgslTop->toBlock();
+
+    // NOTE: Evaluate condition as a function to support (And) & (Or) flow control mechanisms
+    auto func = context.processShards(shard->_cond.shards(), shard->_cond.composeResult(), inputType, "whenCondition");
+    auto cmp = generateFunctionCall(func, context.wgslTop, context);
+    if (cond) {
+      context.addNew(blocks::makeBlock<blocks::Direct>("if(("));
+    } else {
+      context.addNew(blocks::makeBlock<blocks::Direct>("if(!("));
+    }
+    context.addNew(cmp->toBlock());
+
+    context.addNew(blocks::makeBlock<blocks::Direct>(")) {\n"));
+    processShardsVar(shard->_action, context);
+    context.addNew(blocks::makeBlock<blocks::Direct>("}\n"));
+
+    context.setWGSLTop<WGSLBlock>(inputType, std::move(inputBlock));
   }
 };
 
@@ -102,6 +143,8 @@ struct LogicAndTranslator {
 void registerFlowShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(SubTranslator, "Sub", shards::Sub);
   REGISTER_EXTERNAL_SHADER_SHARD(IfTranslator, "If", shards::IfBlock);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "When", shards::When<true>);
+  REGISTER_EXTERNAL_SHADER_SHARD_T1(WhenTranslator, "WhenNot", shards::When<false>);
   REGISTER_EXTERNAL_SHADER_SHARD(ForRangeTranslator, "ForRange", shards::ForRangeShard);
 
   REGISTER_EXTERNAL_SHADER_SHARD(LogicOrTranslator, "Or", shards::Or);
