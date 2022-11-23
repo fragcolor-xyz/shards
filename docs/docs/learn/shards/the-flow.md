@@ -6,20 +6,20 @@ To gain better control of the flow in your Shards program, you can employ some o
 
 
 ## Do / Dispatch ##
-[`Do`](../../docs/shards/General/Do) and [`Dispatch`](../../docs/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
+[`Do`](../../../docs/shards/General/Do) and [`Dispatch`](../../../docs/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
 
 
 ??? "`Do` or `Dispatch`?"
     `Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`. 
     
-    To learn more about passthrough, see the segment [here](./working-with-data.md/#passthrough).
+    To learn more about passthrough, see the segment [here](../working-with-data/#passthrough).
 
 ??? "Why not `defn`?"
-    Since [`defn`](../../docs/functions/macros/#defn) is used for creating functions in Shards, you might be wondering why is it not used instead. 
+    Since [`defn`](../../../docs/functions/macros/#defn) is used for creating functions in Shards, you might be wondering why is it not used instead. 
     
     This is due to how a Wire's state persists, unlike a function. A Wire will remember what happened when it was last called, while a function's only role is to take an input, execute its code, and produce an output.
 
-    For the example below, note that we used a Wire so that the number of apples can be tracked within the Wire. You can also check out [this](./what-is-shards/#to-wire-or-not) segment in the chapter before for another example.
+    For the example below, note that we used a Wire so that the number of apples can be tracked within the Wire. You can also check out [this](../what-is-shards/#to-wire-or-not) segment in the chapter before for another example.
 
 
 === "Command"
@@ -45,14 +45,14 @@ To gain better control of the flow in your Shards program, you can employ some o
     (run main) ;; (8)
     ```
 
-    1. [`defmesh`](https://docs.fragcolor.xyz/docs/functions/macros/#defmesh) is used to define a Mesh.
-    2. [`defwire`](https://docs.fragcolor.xyz/docs/functions/macros/#defwire) is used to define a Wire.
-    3. The [`Setup`](https://docs.fragcolor.xyz/docs/shards/General/Once/) shard will only be executed once, even within a Looped Wire. This makes it ideal to hold code that is only used once to ready the game.
-    4. [`Math.Dec`](https://docs.fragcolor.xyz/docs/shards/Math/Dec/) decreases the value passed in by 1.
-    5. ['Log'](https://docs.fragcolor.xyz/docs/shards/General/Log/) displays a value to the user's console. You can pass in a prefix that will be placed before the value.
-    6. [`Msg`](https://docs.fragcolor.xyz/docs/shards/General/Msg/) prints out the string passed into it.
-    7. [`schedule`](https://docs.fragcolor.xyz/docs/functions/misc/#schedule) queues a Wire on the Mesh.
-    8. [`run`](https://docs.fragcolor.xyz/docs/functions/misc/#run) executes Wires on the Mesh.
+    1. [`defmesh`](../../../docs/functions/macros/#defmesh) is used to define a Mesh.
+    2. [`defwire`](../../../docs/functions/macros/#defwire) is used to define a Wire.
+    3. The [`Setup`](../../../docs/shards/General/Once/) shard will only be executed once, even within a Looped Wire. This makes it ideal to hold code that is only used once to ready the game.
+    4. [`Math.Dec`](../../../docs/shards/Math/Dec/) decreases the value passed in by 1.
+    5. ['Log'](../../../docs/shards/General/Log/) displays a value to the user's console. You can pass in a prefix that will be placed before the value.
+    6. [`Msg`](../../../docs/shards/General/Msg/) prints out the string passed into it.
+    7. [`schedule`](../../../docs/functions/misc/#schedule) queues a Wire on the Mesh.
+    8. [`run`](../../../docs/functions/misc/#run) executes Wires on the Mesh.
 
 === "Output"
 
@@ -65,7 +65,7 @@ To gain better control of the flow in your Shards program, you can employ some o
 
 
 ## Detach / Spawn ##
-[`Detach`](../../docs/shards/General/Detach) and [`Spawn`](../../docs/shards/General/Spawn) schedules a Wire to run on the same Mesh. 
+[`Detach`](../../../docs/shards/General/Detach) and [`Spawn`](../../../docs/shards/General/Spawn) schedules a Wire to run on the same Mesh. 
 
 The difference between `Detach` and `Spawn` is that `Detach` schedules the original Wire itself, while `Spawn` schedules clones of the Wire. This means that there can only be one instance of the detached Wire running, while you can have many instances of the spawned Wire.
 
@@ -214,9 +214,9 @@ If you added `(Spawn bake-apple)` for Lucy, you will notice that Lucy starts to 
 Use cases would include spawning multiple same projectiles (such as bullets fired from a gun), or spawning monster mobs with many instances of one monster type.
 
 ## Start / Resume ##
-[`Start`](../../docs/shards/General/Start) schedules a Wire to run on the same Mesh, in place of the current Wire.
+[`Start`](../../../docs/shards/General/Start) schedules a Wire to run on the same Mesh, in place of the current Wire.
 
-[`Resume`](../../docs/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
+[`Resume`](../../../docs/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
 
 !!! note
     If `Resume` is used on a Wire that has not been scheduled yet, it will behave as `Start` would and schedule the Wire on the Mesh before starting it.
@@ -285,7 +285,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
 
 ## Stop ##
 
-[`Stop`](../../docs/shards/General/Stop) is used to end Wires. It is very useful for managing Wires created with `Detach` or `Spawn`.
+[`Stop`](../../../docs/shards/General/Stop) is used to end Wires. It is very useful for managing Wires created with `Detach` or `Spawn`.
 For example, if you have spawned multiple monsters, you could set them to `Stop` running once their health reaches 0.
 
 !!! note
@@ -348,7 +348,7 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
 
 - Returns an array of the output from all the copies 
 
-[`Expand`](../../docs/shards/General/Expand) is useful when you need to run code in bulk. The results produced can then be evaluated, which is useful in Machine Learning for example.
+[`Expand`](../../../docs/shards/General/Expand) is useful when you need to run code in bulk. The results produced can then be evaluated, which is useful in Machine Learning for example.
 
 ??? "Multithreading with `Expand`"
     Simple programs are usually run on a single thread. You can think of a thread as a thought process. For a Computer to be able to "multitask", they require multiple threads. 
@@ -378,7 +378,7 @@ In our example below, we will be using `Expand` to teach John about multiplicati
 
     1. Creates and runs 100 copies of the Wire `zero-multiplication`.
     2. Generates a random number from 0 to 99 and multiplies it with 0.
-    3. `Expand` outputs an array of the results. We use [`ForEach`](https://docs.fragcolor.xyz/docs/shards/General/ForEach/) to check if each result [`Is`](https://docs.fragcolor.xyz/docs/shards/General/Is/) 0.
+    3. `Expand` outputs an array of the results. We use [`ForEach`](../../../docs/shards/General/ForEach/) to check if each result [`Is`](../../../docs/shards/General/Is/) 0.
 
 === "Output"
 
