@@ -358,7 +358,8 @@ jobs:
           echo "Running test: gfx_materials"
           ./shards ../src/tests/gfx-materials.edn
           echo "Running test: ui"
-          ./shards ../src/tests/ui.edn
+          ./shards ../src/tests/ui-0.edn
+          ./shards ../src/tests/ui-1.edn
           echo "Running test: egui_demo"
           ./shards ../src/tests/egui-demo.edn
           echo "Running test: egui-plot"
