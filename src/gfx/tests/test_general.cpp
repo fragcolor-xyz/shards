@@ -352,6 +352,8 @@ TEST_CASE("Reference tracking", "[General]") {
   }
 
   // Simulate empty frames
+  // Needs to run for at least the amount of frames specified in RendererImpl::clearOldCacheItems()
+  // so that the references are freed
   context.sync();
   for (size_t i = 0; i < 16; i++) {
     context.beginFrame();

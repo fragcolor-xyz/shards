@@ -12,6 +12,8 @@ private:
 
 public:
   UniqueId getNext() {
+    // No ordering, just needs to be atomic
+    // https://en.cppreference.com/w/cpp/atomic/memory_order#Relaxed_ordering
     return counter.fetch_add(1, std::memory_order_relaxed);
   }
 };
