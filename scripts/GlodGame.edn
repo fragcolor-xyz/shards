@@ -1,0 +1,30 @@
+(defshards Initialize []
+  (LoadImage "GlodImages/Character1.png") = .image
+  0.0 >= .char
+  )
+
+(defloop main-wire
+  (Setup
+   (Initialize))
+  (GFX.MainWindow
+   :Title "TestWindow" :Width 1920 :Height 1080
+   :Contents (-> (Setup
+                  (GFX.DrawQueue) >= .ui-draw-queue
+                  (GFX.UIPass .ui-draw-queue) >> .render-steps)
+                 .ui-draw-queue (GFX.ClearQueue)
+
+                 (UI
+                  .ui-draw-queue
+                  (->
+                   (UI.Area
+                    :Position (float2 .characterX .characterY)
+                    :Anchor Anchor.Bottom
+                    :Contents
+                    (->
+                     .image(UI.Image :Scale (float2 0.2))))))
+
+                   (GFX.Render :Steps .render-steps))))
+
+(defmesh main)
+(schedule main main-wire)
+(run main (/ 1.0 60))
