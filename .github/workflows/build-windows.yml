@@ -254,7 +254,7 @@ jobs:
         with:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
-          submodules: false
+          submodules: true
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
