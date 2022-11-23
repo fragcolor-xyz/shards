@@ -21,27 +21,6 @@
   true >= .ButtonLock
   false >= .GameOver)
 
-<<<<<<< Updated upstream
-=======
-(def style
-  {:override_text_style "MyStyle"
-   :text_styles
-   [{:name "MyStyle"
-     :size (float 46)
-     :family "Monospace"}]
-   :visuals
-   {:override_text_color (color 0 0 0)}})
-
-(def style2
-  {:override_text_style "MyStyle2"
-   :text_styles
-   [{:name "MyStyle2"
-     :size (float 24)
-     :family "Monospace"}]
-   :visuals
-   {:override_text_color (color 255 255 255)}})
-
->>>>>>> Stashed changes
 (defshards AddPoint[] ;;if image shown on left is image shown on right, add 1 point
   .array1_imageToShow
   (When :Predicate (Is .array1_imageToShow2)
