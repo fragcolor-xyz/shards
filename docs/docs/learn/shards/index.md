@@ -9,6 +9,6 @@ Looking to step into the world of Shards? Look no further! In this primer, you w
 
 Shards has a very visual syntax which makes it intuitive and easy to learn, even for those new to programming.
 
-It is also designed to be highly performant and promotes the creation of sharable and resuable code.
+It is also designed to be highly performant and promotes the creation of sharable and reusable code.
 
 --8<-- "includes/license.md"
