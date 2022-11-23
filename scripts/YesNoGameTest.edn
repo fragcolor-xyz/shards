@@ -121,6 +121,7 @@
      :Contents
      (->
       style (UI.Style)
+>>>>>>> Stashed changes
       .Timer (ToString) (UI.Label)))
 
 
@@ -130,6 +131,7 @@
      :Contents
      (->
       style2 (UI.Style)
+>>>>>>> Stashed changes
       (UI.Button
        :Label "Randomise"
        :Action (->
