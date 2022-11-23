@@ -21,27 +21,6 @@
   true >= .ButtonLock
   false >= .GameOver)
 
-<<<<<<< Updated upstream
-=======
-(def style
-  {:override_text_style "MyStyle"
-   :text_styles
-   [{:name "MyStyle"
-     :size (float 46)
-     :family "Monospace"}]
-   :visuals
-   {:override_text_color (color 0 0 0)}})
-
-(def style2
-  {:override_text_style "MyStyle2"
-   :text_styles
-   [{:name "MyStyle2"
-     :size (float 24)
-     :family "Monospace"}]
-   :visuals
-   {:override_text_color (color 255 255 255)}})
-
->>>>>>> Stashed changes
 (defshards AddPoint[] ;;if image shown on left is image shown on right, add 1 point
   .array1_imageToShow
   (When :Predicate (Is .array1_imageToShow2)
@@ -102,11 +81,26 @@
    :visuals
    {:override_text_color (color 0 0 0)}})
 
+(def style
+  {:override_text_style "MyStyle"
+   :text_styles
+   [{:name "MyStyle"
+     :size (float 46)
+     :family "Monospace"}]
+   :visuals
+   {:override_text_color (color 0 0 0)}})
+
+(def style2
+  {:override_text_style "MyStyle"
+   :text_styles
+   [{:name "MyStyle"
+     :size (float 26)
+     :family "Monospace"}]
+   :visuals
+   {:override_text_color (color 0 0 0)}})
+
 (defloop main-game-ui
-<<<<<<< Updated upstream
-=======
   
->>>>>>> Stashed changes
   (UI
    .ui-draw-queue
    (->
@@ -132,15 +126,15 @@
       .imageArray1 (Take .array1_imageToShow2) (UI.Image :Scale (float2 0.4))))
 
     (UI.Area ;; draws the score
-     :Position (float2 -20 10)
+<<<<<<< Updated upstream
+     :Position (float2 0.0 0.0)
      :Anchor Anchor.TopRight
      :Contents
      (->
-      style (UI.Style)
       .Score (ToString) (UI.Label)))
 
     (UI.Area ;; draws the timer
-     :Position (float2 20 10)
+     :Position (float2 0.0 0.0)
      :Anchor Anchor.TopLeft
      :Contents
      (->
@@ -158,7 +152,6 @@
      :Contents
      (->
       style (UI.Style)
->>>>>>> Stashed changes
       .Timer (ToString) (UI.Label)))
 
 
@@ -168,19 +161,21 @@
      :Anchor Anchor.Bottom
      :Contents
      (->
+=======
+     :Position (float2 0.0 -20)
+     :Anchor Anchor.Bottom
+     :Contents
+     (->
       style2 (UI.Style)
       (UI.Button
        :Label "Randomise"
        :Action (->
                 (RandomiseImage)
                 true >= .ButtonLock))
-<<<<<<< Updated upstream
-=======
       
       (UI.Checkbox
        :Label "Test"
        :Variable .Check)
->>>>>>> Stashed changes
 
       (UI.Button ;; draws button that adds point if image is the same then randomises image
        :Label "Same!"
