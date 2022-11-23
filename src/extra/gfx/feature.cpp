@@ -21,14 +21,13 @@ using shards::Mat4;
 struct BuiltinFeatureShard {
   enum class Id { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
 
-  static constexpr uint32_t IdTypeId = 'feid';
-  static inline Type IdType = Type::Enum(VendorId, IdTypeId);
-  static inline EnumInfo<Id> IdEnumInfo{"BuiltinFeatureId", VendorId, IdTypeId};
+  DECL_ENUM_INFO(Id, BuiltinFeatureId, 'feid');
+  REGISTER_ENUM(BuiltinFeatureIdEnumInfo);
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
-  static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {IdType}}};
+  static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {BuiltinFeatureIdEnumInfo::Type}}};
   static SHParametersInfo parameters() { return params; }
 
   Id _id{};
@@ -45,7 +44,7 @@ struct BuiltinFeatureShard {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var::Enum(_id, VendorId, IdTypeId);
+      return Var::Enum(_id, VendorId, BuiltinFeatureIdEnumInfo::TypeId);
     default:
       return Var::Empty;
     }
@@ -172,7 +171,7 @@ struct FeatureShard {
 
     SHVar depthCompareVar;
     if (getFromTable(context, inputTable, "DepthCompare", depthCompareVar)) {
-      checkEnumType(depthCompareVar, Types::CompareFunction, ":Shaders DepthCompare");
+      checkEnumType(depthCompareVar, Types::CompareFunctionEnumInfo::Type, ":Shaders DepthCompare");
       state.set_depthCompare(WGPUCompareFunction(depthCompareVar.payload.enumValue));
     }
 
@@ -185,7 +184,7 @@ struct FeatureShard {
     if (getFromTable(context, inputTable, "ColorWrite", colorWriteVar)) {
       WGPUColorWriteMask mask{};
       auto apply = [&mask](SHVar &var) {
-        checkEnumType(var, Types::ColorMask, ":ColorWrite");
+        checkEnumType(var, Types::ColorMaskEnumInfo::Type, ":ColorWrite");
         (uint8_t &)mask |= WGPUColorWriteMask(var.payload.enumValue);
       };
 
@@ -254,7 +253,7 @@ struct FeatureShard {
 
     SHVar stageVar;
     if (getFromTable(context, inputTable, "Stage", stageVar)) {
-      checkEnumType(stageVar, Types::ProgrammableGraphicsStage, ":Shaders Stage");
+      checkEnumType(stageVar, Types::ProgrammableGraphicsStageEnumInfo::Type, ":Shaders Stage");
       entryPoint.stage = ProgrammableGraphicsStage(stageVar.payload.enumValue);
     } else
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
@@ -384,7 +383,7 @@ struct FeatureShard {
   void applyShaderFieldType(SHContext *context, shader::FieldType &fieldType, const SHTable &inputTable) {
     SHVar typeVar;
     if (getFromTable(context, inputTable, "Type", typeVar)) {
-      checkEnumType(typeVar, Types::ShaderFieldBaseType, ":Type");
+      checkEnumType(typeVar, Types::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
       fieldType.baseType = ShaderFieldBaseType(typeVar.payload.enumValue);
     } else {
       // Default type if not specified:

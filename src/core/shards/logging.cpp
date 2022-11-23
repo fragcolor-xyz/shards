@@ -9,6 +9,8 @@
 #include <spdlog/sinks/dist_sink.h>
 
 namespace shards {
+REGISTER_ENUM(Enums::LogLevelEnumInfo);
+
 struct LoggingBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -44,7 +46,7 @@ struct Log : public LoggingBase {
     case 0:
       return Var(_prefix);
     case 1:
-      return Var::Enum(_level, CoreCC, Enums::LogLevelCC);
+      return Var::Enum(_level, CoreCC, Enums::LogLevelEnumInfo::TypeId);
     default:
       return Var::Empty;
     }
@@ -62,7 +64,7 @@ struct Log : public LoggingBase {
 
 private:
   static inline Parameters _params = {{"Prefix", SHCCSTR("The message to prefix to the logged output."), {CoreInfo::StringType}},
-                                      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelType}}};
+                                      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
 
   std::string _prefix;
   Enums::LogLevel _level{Enums::LogLevel::Info};
@@ -93,7 +95,7 @@ struct Msg : public LoggingBase {
     case 0:
       return Var(_msg);
     case 1:
-      return Var::Enum(_level, CoreCC, Enums::LogLevelCC);
+      return Var::Enum(_level, CoreCC, Enums::LogLevelEnumInfo::TypeId);
     default:
       return Var::Empty;
     }
@@ -108,7 +110,7 @@ struct Msg : public LoggingBase {
 private:
   static inline Parameters _params = {
       {"Message", SHCCSTR("The message to display on the user's screen or console."), {CoreInfo::StringType}},
-      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelType}}};
+      {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
 
   std::string _msg;
   Enums::LogLevel _level{Enums::LogLevel::Info};

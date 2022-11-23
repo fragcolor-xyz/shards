@@ -9,7 +9,7 @@
 namespace shards {
 struct Enums {
   enum class LogLevel { Trace, Debug, Info, Warning, Error };
-  REGISTER_ENUM(LogLevel, 'logL'); // FourCC = 0x6C6F674C
+  DECL_ENUM_INFO(LogLevel, LogLevel, 'logL');
 };
 }; // namespace shards
 

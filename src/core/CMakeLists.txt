@@ -47,6 +47,8 @@ endif()
 # TODO: Inline switch
 target_sources(shards-core-static PRIVATE shards/inlined.cpp)
 
+target_precompile_headers(shards-core-static PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+
 if(APPLE)
   target_link_libraries(shards-core-static
     "-framework Foundation"

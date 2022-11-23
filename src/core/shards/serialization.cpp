@@ -252,14 +252,14 @@ struct FromBytes {
 
 struct LoadImage : public FileBase {
   enum class BPP { u8, u16, f32 };
-  static inline EnumInfo<BPP> BPPEnum{"BPP", CoreCC, 'ibpp'};
-  static inline Type BPPEnumInfo{{SHType::Enum, {.enumeration = {CoreCC, 'ibpp'}}}};
+  DECL_ENUM_INFO(BPP, BPP, 'ibpp');
+  REGISTER_ENUM(BPPEnumInfo);
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters params{FileBase::params,
-                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo}}}};
+                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -276,7 +276,7 @@ struct LoadImage : public FileBase {
   SHVar getParam(int index) {
     switch (index) {
     case 1:
-      return Var::Enum(_bpp, CoreCC, 'ibpp');
+      return Var::Enum(_bpp, CoreCC, BPPEnumInfo::TypeId);
     default:
       return FileBase::getParam(index);
     }

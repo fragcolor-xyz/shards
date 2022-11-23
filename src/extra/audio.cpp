@@ -487,9 +487,8 @@ struct Channel {
 
 struct Oscillator {
   enum class Waveform { Sine, Square, Triangle, Sawtooth };
-  static constexpr uint32_t WaveformCC = 'wave';
-  static inline EnumInfo<Waveform> WaveformEnumInfo{"Waveform", CoreCC, WaveformCC};
-  static inline Type WaveformType = Type::Enum(CoreCC, WaveformCC);
+  DECL_ENUM_INFO(Waveform, Waveform, 'wave');
+  REGISTER_ENUM(WaveformEnumInfo);
 
   ma_waveform _wave;
 
@@ -511,7 +510,7 @@ struct Oscillator {
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   static inline Parameters params{
-      {"Type", SHCCSTR("The waveform type to oscillate."), {WaveformType}},
+      {"Type", SHCCSTR("The waveform type to oscillate."), {WaveformEnumInfo::Type}},
       {"Amplitude", SHCCSTR("The waveform amplitude."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
       {"Channels", SHCCSTR("The number of desired output audio channels."), {CoreInfo::IntType}},
       {"SampleRate",
@@ -550,7 +549,7 @@ struct Oscillator {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var::Enum(_type, CoreCC, WaveformCC);
+      return Var::Enum(_type, CoreCC, WaveformEnumInfo::TypeId);
     case 1:
       return _amplitude;
     case 2:

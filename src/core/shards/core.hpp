@@ -20,11 +20,9 @@
 
 namespace shards {
 struct CoreInfo2 {
-  // 'type' == 0x74797065 or 1954115685
-  static inline EnumInfo<BasicTypes> BasicTypesEnum{"Type", CoreCC, 'type'};
-  static inline Type BasicTypesType{{SHType::Enum, {.enumeration = {CoreCC, 'type'}}}};
-  static inline Type BasicTypesSeqType{{SHType::Seq, {.seqTypes = BasicTypesType}}};
-  static inline Types BasicTypesTypes{{BasicTypesType, BasicTypesSeqType}, true};
+  DECL_ENUM_INFO(BasicTypes, Type, 'type');
+  static inline Type BasicTypesSeqType{{SHType::Seq, {.seqTypes = TypeEnumInfo::Type}}};
+  static inline Types BasicTypesTypes{{TypeEnumInfo::Type, BasicTypesSeqType}, true};
 };
 
 struct Const {
@@ -237,17 +235,17 @@ LOGIC_ALL_SEQ_OP(AllMoreEqual, >=);
 LOGIC_ANY_SEQ_OP(AnyLessEqual, <=);
 LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
 
-#define LOGIC_OP_DESC(NAME)         \
-  RUNTIME_CORE_SHARD_FACTORY(NAME); \
-  RUNTIME_SHARD_cleanup(NAME);      \
-  RUNTIME_SHARD_warmup(NAME);       \
-  RUNTIME_SHARD_inputTypes(NAME);   \
-  RUNTIME_SHARD_outputTypes(NAME);  \
-  RUNTIME_SHARD_parameters(NAME);   \
-  RUNTIME_SHARD_setParam(NAME);     \
-  RUNTIME_SHARD_getParam(NAME);     \
-  RUNTIME_SHARD_activate(NAME);     \
-  RUNTIME_SHARD_requiredVariables(NAME);     \
+#define LOGIC_OP_DESC(NAME)              \
+  RUNTIME_CORE_SHARD_FACTORY(NAME);      \
+  RUNTIME_SHARD_cleanup(NAME);           \
+  RUNTIME_SHARD_warmup(NAME);            \
+  RUNTIME_SHARD_inputTypes(NAME);        \
+  RUNTIME_SHARD_outputTypes(NAME);       \
+  RUNTIME_SHARD_parameters(NAME);        \
+  RUNTIME_SHARD_setParam(NAME);          \
+  RUNTIME_SHARD_getParam(NAME);          \
+  RUNTIME_SHARD_activate(NAME);          \
+  RUNTIME_SHARD_requiredVariables(NAME); \
   RUNTIME_SHARD_END(NAME);
 
 struct Input {

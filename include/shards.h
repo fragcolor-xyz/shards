@@ -1110,7 +1110,7 @@ SHARDS_API SHCore *__cdecl shardsInterface(uint32_t abi_version);
   }
 
 #define SH_CAT_IMPL(s1, s2) s1##s2
-#define SH_CAT(s1, s2) CAT_IMPL(s1, s2)
+#define SH_CAT(s1, s2) SH_CAT_IMPL(s1, s2)
 
 #ifdef __COUNTER__
 #define SH_GENSYM(str) SH_CAT(str, __COUNTER__)

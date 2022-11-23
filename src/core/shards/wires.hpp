@@ -12,9 +12,7 @@ namespace shards {
 enum RunWireMode { Inline, Detached, Stepped };
 
 struct WireBase {
-  typedef EnumInfo<RunWireMode> RunWireModeInfo;
-  static inline RunWireModeInfo runWireModeInfo{"RunWireMode", CoreCC, 'runC'};
-  static inline Type ModeType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'runC'}}}};
+  DECL_ENUM_INFO(RunWireMode, RunWireMode, 'runc');
 
   static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::StringType, CoreInfo::NoneType}};
 

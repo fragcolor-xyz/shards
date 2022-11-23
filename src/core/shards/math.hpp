@@ -9,7 +9,8 @@
 #include "foundation.hpp"
 #include "shards.h"
 #include "shards.hpp"
-#include "core.hpp"
+#include "common_types.hpp"
+#include "number_types.hpp"
 #include <sstream>
 #include <stdexcept>
 #include <variant>
@@ -593,7 +594,7 @@ struct Mean {
   };
 
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
-  static inline EnumInfo<MeanKind> _meanEnum{"Mean", CoreCC, 'mean'};
+  DECL_ENUM_INFO(MeanKind, Mean, 'mean');
 
   static SHOptionalString help() { return SHCCSTR("Calculates the mean of a sequence of floating point numbers."); }
 
@@ -604,14 +605,13 @@ struct Mean {
   static SHOptionalString outputHelp() { return SHCCSTR("The calculated mean."); }
 
   static SHParametersInfo parameters() {
-    static Type kind{{SHType::Enum, {.enumeration = {CoreCC, 'mean'}}}};
-    static Parameters params{{"Kind", SHCCSTR("The kind of Pythagorean means."), {kind}}};
+    static Parameters params{{"Kind", SHCCSTR("The kind of Pythagorean means."), {MeanEnumInfo::Type}}};
     return params;
   }
 
   void setParam(int index, const SHVar &value) { mean = MeanKind(value.payload.enumValue); }
 
-  SHVar getParam(int index) { return shards::Var::Enum(mean, CoreCC, 'mean'); }
+  SHVar getParam(int index) { return shards::Var::Enum(mean, CoreCC, MeanEnumInfo::TypeId); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     switch (mean) {

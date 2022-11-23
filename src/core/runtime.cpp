@@ -5,6 +5,7 @@
 #include "shards/shared.hpp"
 #include "utility.hpp"
 #include "shards/inlined.hpp"
+#include "async.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>

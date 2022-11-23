@@ -968,25 +968,22 @@ typedef TParamVar<InternalCore> ParamVar;
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
-template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E, false> {
-public:
-  EnumInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<InternalCore, E, false>(name, vendorId, enumId) {}
-};
+#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
+  static inline const char _NAME_##Name[] = #_NAME_;                 \
+  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
 
-template <typename E> class FlagsInfo : public TEnumInfo<InternalCore, E, true> {
-public:
-  FlagsInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<InternalCore, E, true>(name, vendorId, enumId) {}
-};
+#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
+  static inline const char _NAME_##Name[] = #_NAME_;                       \
+  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
 
-#define REGISTER_ENUM(_NAME_, _CC_)                                             \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                  \
-  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC, _NAME_##CC}; \
-  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
+#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
 
-#define REGISTER_FLAGS(_NAME_, _CC_)                                             \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                   \
-  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC, _NAME_##CC}; \
-  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+#define SH_CONCAT1(_a_, _b_) _a_##_b_
+#define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)
+#define REGISTER_ENUM(_ENUM_INFO_) \
+  static inline shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
+
 
 template <typename E> static E getFlags(SHVar var) {
   E flags{};
@@ -1120,7 +1117,7 @@ struct ExposedInfo {
     }
   }
 
-  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo& first, Types... types) {
+  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo &first, Types... types) {
     std::vector<SHExposedTypeInfo> vec = {first, types...};
     for (auto pi : vec) {
       push_back(pi);
@@ -1147,13 +1144,9 @@ struct ExposedInfo {
 
   ~ExposedInfo() { shards::arrayFree(_innerInfo); }
 
-  void push_back(const SHExposedTypeInfo &info) {
-    shards::arrayPush(_innerInfo, info);
-  }
+  void push_back(const SHExposedTypeInfo &info) { shards::arrayPush(_innerInfo, info); }
 
-  void clear() {
-    shards::arrayResize(_innerInfo, 0);
-  }
+  void clear() { shards::arrayResize(_innerInfo, 0); }
 
   explicit operator SHExposedTypesInfo() const { return _innerInfo; }
 

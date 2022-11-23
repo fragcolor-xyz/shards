@@ -61,7 +61,7 @@ Shard *createShard(std::string_view name);
 struct Type {
   Type() : _type({SHType::None}) {}
 
-  Type(SHTypeInfo type) : _type(type) {}
+  constexpr Type(SHTypeInfo type) : _type(type) {}
 
   Type(const Type &obj) { _type = obj._type; }
 

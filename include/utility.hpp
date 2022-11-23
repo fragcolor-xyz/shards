@@ -298,49 +298,70 @@ public:
   }
 };
 
-template <class SH_CORE, typename E, bool isFlag = false> class TEnumInfo {
-private:
+template <class SH_CORE_, typename E_, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+struct TEnumInfo {
+  using Enum = E_;
+  using SHCore = SH_CORE_;
+  static constexpr bool IsFlags = IsFlags_;
+  static constexpr Type Type{{SHType::Enum, {.enumeration = {.vendorId = VendorId_, .typeId = TypeId_}}}};
+  static inline const char *Name = Name_;
+  static constexpr int32_t VendorId = VendorId_;
+  static constexpr int32_t TypeId = TypeId_;
+};
+
+template <typename E, bool IsFlags = false> struct TEnumInfoImpl {
   static constexpr auto enum_names() {
-    if constexpr (isFlag) {
+    if constexpr (IsFlags) {
       return magic_enum::flags::enum_names<E>();
     } else {
       return magic_enum::enum_names<E>();
     }
   }
+
   static constexpr auto enum_values() {
-    if constexpr (isFlag) {
+    if constexpr (IsFlags) {
       return magic_enum::flags::enum_values<E>();
     } else {
       return magic_enum::enum_values<E>();
     }
   }
+
   static constexpr auto eseq = enum_names();
   static constexpr auto vseq = enum_values();
+};
+
+struct EnumRegisterImpl {
   SHEnumInfo info;
   std::vector<std::string> labels;
   std::vector<SHString> clabels;
   std::vector<SHEnum> values;
 
-public:
-  TEnumInfo(const char *name, int32_t vendorId, int32_t enumId) {
-    info.name = name;
-    for (auto &view : eseq) {
-      labels.emplace_back(view);
-    }
-    for (auto &s : labels) {
-      clabels.emplace_back(s.c_str());
-    }
-    info.labels.elements = &clabels[0];
-    info.labels.len = uint32_t(labels.size());
+  template <typename TEnumInfo> static inline EnumRegisterImpl registerEnum() {
+    using Impl = TEnumInfoImpl<typename TEnumInfo::Enum, TEnumInfo::IsFlags>;
 
-    for (auto &v : vseq) {
-      values.emplace_back(SHEnum(v));
+    EnumRegisterImpl result{};
+    result.info.name = TEnumInfo::Name;
+    for (auto &view : Impl::eseq) {
+      result.labels.emplace_back(view);
     }
-    info.values.elements = &values[0];
-    info.values.len = uint32_t(values.size());
+    for (auto &s : result.labels) {
+      result.clabels.emplace_back(s.c_str());
+    }
+    result.info.labels.elements = &result.clabels[0];
+    result.info.labels.len = uint32_t(result.labels.size());
 
-    assert(info.values.len == info.labels.len);
-    SH_CORE::registerEnumType(vendorId, enumId, info);
+    for (auto &v : Impl::vseq) {
+      result.values.emplace_back(SHEnum(v));
+    }
+    result.info.values.elements = &result.values[0];
+    result.info.values.len = uint32_t(result.values.size());
+
+    assert(result.info.values.len == result.info.labels.len);
+
+    SHTypeInfo shType = TEnumInfo::Type;
+    TEnumInfo::SHCore::registerEnumType(shType.enumeration.vendorId, shType.enumeration.typeId, result.info);
+
+    return result;
   }
 };
 

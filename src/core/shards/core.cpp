@@ -9,6 +9,8 @@
 #include <chrono>
 
 namespace shards {
+REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
+
 struct JointOp {
   std::vector<SHVar *> _multiSortColumns;
 
