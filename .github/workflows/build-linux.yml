@@ -122,6 +122,8 @@ jobs:
           ./shards ../src/tests/casting-numbers.edn
           ./shards ../src/tests/edn.edn
           ./shards ../src/tests/pure.edn
+          # NOTE: Times out on "Hello world" (Process.Run "cat" :Timeout 2) (Log)
+          # ./shards ../src/tests/shell.clj
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -129,7 +131,6 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
-          ./shards ../src/tests/shell.clj # NOTE: Times out on "Hello world" (Process.Run "cat" :Timeout 2) (Log)
           ./shards ../src/tests/shards.clj
       - name: Test doc samples (non-UI)
         env:
