@@ -109,7 +109,6 @@ jobs:
           ./shards ../src/tests/snappy.clj
           ./shards ../src/tests/failures.clj
           ./shards ../src/tests/wasm.clj
-          ./shards ../src/tests/shell.clj
           ./shards ../src/tests/rust.clj
           ./shards ../src/tests/crypto.edn
           ./shards ../src/tests/wire-macro.edn
@@ -130,6 +129,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
+          ./shards ../src/tests/shell.clj # NOTE: Times out on "Hello world" (Process.Run "cat" :Timeout 2) (Log)
           ./shards ../src/tests/shards.clj
       - name: Test doc samples (non-UI)
         env:
