@@ -63,11 +63,11 @@ Open up the Command Prompt. You can use the Windows Search Bar to find the Comma
 ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
 
 !!! tip
-    You can check if Rust is properly installed by using `cargo –version` in the Command Prompt. 
+    You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
 
     If a version number is printed, your installation was successful!
         ```
-        cargo –version
+        cargo --version
         ```
 
 We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
