@@ -10,7 +10,7 @@ list(APPEND EXTRA_SOURCES ${SHARDS_DIR}/src/extra/rust_interop.hpp ${SHARDS_DIR}
 # egui integration sources
 file(GLOB_RECURSE EXTRA_SOURCES "${SHARDS_DIR}/src/gfx/egui/src/*.rs")
 
-if(ANDROID OR LINUX)
+if(ANDROID OR DESKTOP_LINUX)
   set(NEED_OPENSSL_SYS ON)
 endif()
 
@@ -18,7 +18,7 @@ if(NEED_OPENSSL_SYS)
   # If we build libressl, explicitly specify the library & include paths
   get_property(libressl_SOURCE_DIR GLOBAL PROPERTY libressl_SOURCE_DIR)
   if(libressl_SOURCE_DIR)
-    set(SSL_ENV OPENSSL_DIR=${SSL_DIR} OPENSSL_INCLUDE_DIR=${SSL_DIR}/include OPENSSL_LIBS=$<TARGET_FILE_BASE_NAME:ssl> OPENSSL_LIB_DIR=$<TARGET_FILE_DIR:ssl> OPENSSL_STATIC=1)
+    set(SSL_ENV OPENSSL_DIR=${libressl_SOURCE_DIR} OPENSSL_INCLUDE_DIR=${libressl_SOURCE_DIR}/include OPENSSL_LIBS=$<TARGET_FILE_BASE_NAME:ssl> OPENSSL_LIB_DIR=$<TARGET_FILE_DIR:ssl> OPENSSL_STATIC=1)
   endif()
 endif()
 

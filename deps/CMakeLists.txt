@@ -17,7 +17,7 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
 if(NOT EMSCRIPTEN)
-  if(LINUX)
+  if(DESKTOP_LINUX)
     find_package(OpenSSL REQUIRED)
     add_library(OpenSSL INTERFACE)
     target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL)

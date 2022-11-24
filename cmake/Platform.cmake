@@ -1,12 +1,12 @@
 if(UNIX AND NOT (APPLE OR ANDROID OR EMSCRIPTEN))
-  set(LINUX TRUE)
+  set(DESKTOP_LINUX TRUE)
 endif()
 
 if(APPLE AND NOT IOS)
   set(MACOSX TRUE)
 endif()
 
-if(WIN32 OR MACOSX OR LINUX)
+if(NOT EMSCRIPTEN AND (WIN32 OR MACOSX OR DESKTOP_LINUX))
   set(DESKTOP TRUE)
 endif()
 
@@ -123,7 +123,7 @@ if((WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug") OR FORCE_USE_LLD)
   SET(CMAKE_RANLIB llvm-ranlib)
 endif()
 
-if(LINUX)
+if(DESKTOP_LINUX)
   add_link_options(-export-dynamic)
   if(USE_VALGRIND)
     add_compile_definitions(BOOST_USE_VALGRIND SHARDS_NO_BIGINT_SHARDS)
@@ -142,7 +142,7 @@ if(PROFILE_GPROF)
 endif()
 
 option(USE_UBSAN "Use undefined behaviour sanitizer" ON)
-set(UBSAN_SUPPORTED LINUX)
+set(UBSAN_SUPPORTED DESKTOP_LINUX)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(${UBSAN_SUPPORTED} AND USE_UBSAN)
     add_compile_options(-fsanitize=undefined)
