@@ -6,6 +6,7 @@
 #include <gfx/context.hpp>
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
+#include <gfx/features/velocity.hpp>
 #include <gfx/gizmos/wireframe.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/paths.hpp>
@@ -14,6 +15,7 @@
 #include <gfx/render_target.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+#include <type_traits>
 
 using namespace gfx;
 
@@ -67,41 +69,144 @@ TEST_CASE("Renderer capture", "[General]") {
   testRenderer.reset();
 }
 
-TEST_CASE("Multiple vertex formats", "[General]") {
+template <StorageType ST, typename T, typename T2 = void> struct TestVertexFormat {};
+
+template <StorageType ST, typename T>
+struct TestVertexFormat<ST, T, typename std::enable_if<!std::is_floating_point_v<T>>::type> {
+  using ValueType = T;
+  StorageType storageType = ST;
+  ValueType value;
+  ValueType max = std::numeric_limits<T>::max();
+  ValueType zero = 0;
+  TestVertexFormat(ValueType value = std::numeric_limits<T>::max() / 2) : value(value) {}
+};
+
+template <StorageType ST, typename T> struct TestVertexFormat<ST, T, typename std::enable_if<std::is_floating_point_v<T>>::type> {
+  using ValueType = T;
+  StorageType storageType = ST;
+  ValueType value;
+  ValueType max = 1.0;
+  ValueType zero = 0.0;
+  TestVertexFormat(ValueType value = 0.5) : value(value) {}
+};
+
+struct TestVertexFormatHalf {
+  using ValueType = uint16_t;
+  StorageType storageType = StorageType::Float16;
+  // == 0.5
+  // https://evanw.github.io/float-toy/
+  ValueType value = 0x3800;
+  ValueType max = 0x3C00;
+  ValueType zero = 0;
+};
+
+template <typename T> void visitTestVertexFormats(T visitor) {
+  visitor(TestVertexFormat<StorageType::UInt8, uint8_t>());
+  visitor(TestVertexFormat<StorageType::Int8, int8_t>());
+  visitor(TestVertexFormat<StorageType::UNorm8, uint8_t>());
+  visitor(TestVertexFormat<StorageType::SNorm8, int8_t>());
+  visitor(TestVertexFormat<StorageType::UInt16, uint16_t>());
+  visitor(TestVertexFormat<StorageType::Int16, int16_t>());
+  visitor(TestVertexFormat<StorageType::UNorm16, uint16_t>());
+  visitor(TestVertexFormat<StorageType::SNorm16, int16_t>());
+  visitor(TestVertexFormat<StorageType::UInt32, uint32_t>());
+  visitor(TestVertexFormat<StorageType::Int32, int32_t>());
+  visitor(TestVertexFormatHalf());
+  visitor(TestVertexFormat<StorageType::Float32, float>());
+}
+
+TEST_CASE("Vertex storage formats", "[General]") {
+  const float comparisonTolerance = 1.0f;
+
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
 
-  std::vector<MeshPtr> meshes;
-
   geom::SphereGenerator sphere;
   sphere.generate();
-  meshes.push_back(createMesh(sphere.vertices, sphere.indices));
-  meshes.push_back(createMesh(convertVertices<VertexP>(sphere.vertices), sphere.indices));
-  auto coloredVertices = convertVertices<VertexPC>(sphere.vertices);
-  for (auto &vert : coloredVertices)
-    vert.setColor(float4(0, 1, 0, 1));
-  meshes.push_back(createMesh(coloredVertices, sphere.indices));
 
-  ViewPtr view = createTestProjectionView();
+  struct BaseVert {
+    float position[3];
+    BaseVert(const geom::VertexPNT &other) { memcpy(position, other.position, sizeof(position)); }
+  };
+
+  std::vector<MeshVertexAttribute> baseAttributes{MeshVertexAttribute("position", 3)};
+  std::vector<BaseVert> positions;
+  for (auto &vert : sphere.vertices) {
+    positions.emplace_back(vert);
+  }
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
 
-  float offset = -2.0f;
-  for (auto &mesh : meshes) {
-    float4x4 transform = linalg::translation_matrix(float3(offset, 0.0f, 0.0f));
+  const int startX = 0;
+  const int endX = 3;
+  const float spacing = 2.25f;
+  int X = 0;
+  int Y = 0;
+  auto appendMesh = [&](const MeshPtr &mesh) {
+    float4x4 transform = linalg::translation_matrix(float3(spacing * (float(X) - 1.5f), spacing * (float(Y) - 1.0f), 0.0f));
     DrawablePtr drawable = std::make_shared<Drawable>(mesh, transform);
     queue->add(drawable);
-    offset += 2.0f;
-  }
+
+    X += 1;
+    if (X > endX) {
+      X = startX;
+      Y++;
+    }
+  };
+
+  ViewPtr view = std::make_shared<View>();
+  view->proj = ViewOrthographicProjection{
+      .size = spacing * 3.0f + 0.2f,
+      .sizeType = OrthographicSizeType::Vertical,
+      .near = -4.0f,
+      .far = 4.0f,
+  };
+
+  visitTestVertexFormats([&](auto &&desc) {
+    using Type = std::decay_t<decltype(desc)>;
+    using ValueType = typename Type::ValueType;
+    std::vector<uint8_t> buffer;
+
+    static_assert(std::is_same_v<geom::SphereGenerator::index_t, uint16_t>);
+    MeshFormat format{
+        .indexFormat = IndexFormat::UInt16,
+        .vertexAttributes = baseAttributes,
+    };
+    std::vector<MeshVertexAttribute> &attributes = format.vertexAttributes;
+    attributes.emplace_back("color", 4, desc.storageType);
+
+    buffer.resize((sizeof(BaseVert) + sizeof(ValueType) * 4) * positions.size());
+    uint8_t *ptr = buffer.data();
+    for (size_t i = 0; i < positions.size(); i++) {
+      memcpy(ptr, &positions[i], sizeof(BaseVert));
+      ptr += sizeof(BaseVert);
+      for (size_t i = 0; i < 4; i++) {
+        if (i == 1)
+          memcpy(ptr, &desc.zero, sizeof(ValueType));
+        else if (i < 3)
+          memcpy(ptr, &desc.value, sizeof(ValueType));
+        else
+          memcpy(ptr, &desc.max, sizeof(ValueType));
+        ptr += sizeof(ValueType);
+      }
+    }
+
+    auto mesh = std::make_shared<Mesh>();
+    mesh->update(format, buffer.data(), buffer.size(), (uint8_t *)sphere.indices.data(),
+                 sphere.indices.size() * sizeof(geom::SphereGenerator::index_t));
+    appendMesh(mesh);
+  });
 
   PipelineSteps steps = createTestPipelineSteps(queue);
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
-  CHECK(testRenderer->checkFrame("vertexFormats", comparisonTolerance));
+  CHECK(testRenderer->checkFrame("vertexStorageFormats", comparisonTolerance));
 
   testRenderer.reset();
 }
 
 TEST_CASE("Pipeline states", "[General]") {
+  const float comparisonTolerance = 1.0f;
+
   auto testRenderer = createTestRenderer(int2(512, 512));
   Renderer &renderer = *testRenderer->renderer.get();
 
@@ -145,13 +250,13 @@ TEST_CASE("Pipeline states", "[General]") {
     PipelineSteps steps{
         makePipelineStep(RenderDrawablesStep{
             .drawQueue = queue,
+            .sortMode = SortMode::BackToFront,
             .features =
                 {
                     features::Transform::create(),
                     features::BaseColor::create(),
                     blendFeature,
                 },
-            .sortMode = SortMode::BackToFront,
         }),
     };
     TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
@@ -243,14 +348,14 @@ TEST_CASE("Reference tracking", "[General]") {
     renderer.render(view, createTestPipelineSteps(queue));
     renderer.endFrame();
     context.endFrame();
+    queue->clear();
   }
 
-  CHECK(meshWeak.expired());
-  CHECK(drawableWeak.expired());
-  CHECK(!meshContextData.expired());
-
+  // Simulate empty frames
+  // Needs to run for at least the amount of frames specified in RendererImpl::clearOldCacheItems()
+  // so that the references are freed
   context.sync();
-  for (size_t i = 0; i < 2; i++) {
+  for (size_t i = 0; i < 16; i++) {
     context.beginFrame();
     renderer.beginFrame();
     renderer.endFrame();
@@ -259,6 +364,8 @@ TEST_CASE("Reference tracking", "[General]") {
   context.sync();
 
   // Should be released now
+  CHECK(meshWeak.expired());
+  CHECK(drawableWeak.expired());
   CHECK(meshContextData.expired());
 
   testRenderer.reset();
@@ -320,93 +427,6 @@ TEST_CASE("Textures", "[General]") {
 
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };
   CHECK(testRenderer->checkFrame("textures", comparisonTolerance));
-
-  testRenderer.reset();
-}
-
-TEST_CASE("RenderTarget", "[General]") {
-  auto testRenderer = createTestRenderer();
-  Renderer &renderer = *testRenderer->renderer.get();
-  auto &viewStack = renderer.getViewStack();
-
-  MeshPtr cubeMesh = createCubeMesh();
-
-  ViewPtr view = std::make_shared<View>();
-  view->proj = ViewPerspectiveProjection{};
-  view->view = linalg::lookat_matrix(float3(1.0f, 1.0f, 1.0f) * 3.0f, float3(0, 0, 0), float3(0, 1, 0));
-
-  ViewPtr subView = std::make_shared<View>();
-
-  DrawQueuePtr queue0 = std::make_shared<DrawQueue>();
-  float4x4 transform;
-  DrawablePtr drawable;
-
-  std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
-  rt->configure("main", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
-  rt->configure("depth", WGPUTextureFormat::WGPUTextureFormat_Depth32Float);
-
-  transform = linalg::identity;
-  drawable = std::make_shared<Drawable>(cubeMesh, transform);
-  drawable->parameters.set("baseColor", float4(1, 0, 1, 1));
-  queue0->add(drawable);
-
-  FeaturePtr blendFeature = std::make_shared<Feature>();
-  blendFeature->state.set_blend(BlendState{
-      .color = BlendComponent::Alpha,
-      .alpha = BlendComponent::Opaque,
-  });
-
-  PipelineSteps stepsRT{
-      makePipelineStep(RenderDrawablesStep{
-          .drawQueue = queue0,
-          .features =
-              {
-                  features::Transform::create(),
-                  features::BaseColor::create(),
-                  blendFeature,
-              },
-          .renderTarget = rt,
-      }),
-  };
-
-  PipelineSteps stepsMain{
-      makePipelineStep(ClearStep{
-          .clearValues{
-              .color = float4(0.2, 0.2, 0.2, 1.0),
-          },
-      }),
-      makePipelineStep(RenderFullscreenStep{
-          .features =
-              {
-                  features::Transform::create(false, false),
-                  []() {
-                    auto baseColor = features::BaseColor::create();
-                    baseColor->state.clear_blend();
-                    return baseColor;
-                  }(),
-              },
-          .parameters{
-              .texture = {{"baseColor", TextureParameter(rt->getAttachment("main"))}},
-          },
-      }),
-  };
-
-  TEST_RENDER_LOOP(testRenderer) {
-    auto outputSize = testRenderer->getOutputSize();
-    rt->resizeConditional(outputSize);
-
-    Rect mainViewport = viewStack.getOutput().viewport;
-    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
-
-    viewStack.push(ViewStack::Item{.renderTarget = rt});
-    renderer.render(view, stepsRT);
-    viewStack.pop();
-
-    viewStack.push(ViewStack::Item{.viewport = subViewport});
-    renderer.render(subView, stepsMain);
-    viewStack.pop();
-  };
-  CHECK(testRenderer->checkFrame("renderTarget", comparisonTolerance));
 
   testRenderer.reset();
 }

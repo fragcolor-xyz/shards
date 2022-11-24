@@ -103,6 +103,30 @@ static bool validateShaderModule(Context &context, const String &code) {
   return module != nullptr;
 }
 
+void setupDefaultBindings(shader::Generator &generator) {
+  {
+    UniformBufferLayoutBuilder objectLayoutBuilder;
+    objectLayoutBuilder.push("world", FieldTypes::Float4x4);
+    auto &binding = generator.bufferBindings.emplace_back();
+    binding.bindGroup = 0;
+    binding.binding = 0;
+    binding.name = "object";
+    binding.layout = objectLayoutBuilder.finalize();
+    binding.type = BufferType::Storage;
+  }
+
+  {
+    UniformBufferLayoutBuilder viewLayoutBuilder;
+    viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
+    auto &binding = generator.bufferBindings.emplace_back();
+    binding.bindGroup = 1;
+    binding.binding = 0;
+    binding.name = "view";
+    binding.layout = viewLayoutBuilder.finalize();
+    binding.type = BufferType::Uniform;
+  }
+}
+
 TEST_CASE("Shader basic", "[Shader]") {
   Generator generator;
   generator.meshFormat.vertexAttributes = {
@@ -114,18 +138,12 @@ TEST_CASE("Shader basic", "[Shader]") {
 
   std::shared_ptr<TestContext> context = createTestContext();
 
-  UniformBufferLayoutBuilder viewLayoutBuilder;
-  viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
-  generator.viewBufferLayout = viewLayoutBuilder.finalize();
-
-  UniformBufferLayoutBuilder objectLayoutBuilder;
-  objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-  generator.objectBufferLayout = objectLayoutBuilder.finalize();
+  setupDefaultBindings(generator);
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
   auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
 
-  generator.outputFields.emplace_back("color", FieldType(ShaderFieldBaseType::Float32, 4));
+  generator.outputFields.emplace_back("color", colorFieldType);
 
   std::vector<EntryPoint> entryPoints;
   auto vec4Pos = blocks::makeCompoundBlock("vec4<f32>(", blocks::ReadInput("position"), ".xyz, 1.0)");
@@ -156,13 +174,7 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
 
   std::shared_ptr<TestContext> context = createTestContext();
 
-  UniformBufferLayoutBuilder viewLayoutBuilder;
-  viewLayoutBuilder.push("viewProj", FieldTypes::Float4x4);
-  generator.viewBufferLayout = viewLayoutBuilder.finalize();
-
-  UniformBufferLayoutBuilder objectLayoutBuilder;
-  objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-  generator.objectBufferLayout = objectLayoutBuilder.finalize();
+  setupDefaultBindings(generator);
 
   auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
   auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
@@ -211,7 +223,7 @@ TEST_CASE("Shader textures", "[Shader]") {
   TextureBindingLayoutBuilder textureLayoutBuilder;
   textureLayoutBuilder.addOrUpdateSlot("baseColor", 0);
 
-  generator.textureBindingLayout = textureLayoutBuilder.finalize();
+  generator.textureBindingLayout = textureLayoutBuilder.finalize(0);
   generator.outputFields.emplace_back("color", colorFieldType);
 
   std::vector<EntryPoint> entryPoints;

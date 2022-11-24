@@ -6,14 +6,14 @@
 
 namespace gfx {
 namespace shader {
-struct GeneratorContext;
+struct IGeneratorContext;
 namespace blocks {
 using String = std::string;
 template <typename T> using UniquePtr = std::unique_ptr<T>;
 
 struct Block {
   virtual ~Block() = default;
-  virtual void apply(GeneratorContext &context) const = 0;
+  virtual void apply(IGeneratorContext &context) const = 0;
   virtual std::unique_ptr<Block> clone() = 0;
 };
 using BlockPtr = UniquePtr<Block>;
@@ -25,7 +25,7 @@ struct Direct : public Block {
   Direct(const char *code) : code(code) {}
   Direct(const String &code) : code(code) {}
   Direct(String &&code) : code(code) {}
-  void apply(GeneratorContext &context) const;
+  void apply(IGeneratorContext &context) const;
   BlockPtr clone() { return std::make_unique<Direct>(code); }
 };
 
@@ -36,7 +36,7 @@ struct Header : public Block {
   Header(const char *code) : code(code) {}
   Header(const String &code) : code(code) {}
   Header(String &&code) : code(code) {}
-  void apply(GeneratorContext &context) const;
+  void apply(IGeneratorContext &context) const;
   BlockPtr clone() { return std::make_unique<Direct>(code); }
 };
 

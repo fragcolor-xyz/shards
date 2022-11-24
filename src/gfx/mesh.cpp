@@ -10,7 +10,7 @@ namespace gfx {
 size_t MeshFormat::getVertexSize() const {
   size_t vertexSize = 0;
   for (const auto &attr : vertexAttributes) {
-    size_t typeSize = getVertexAttributeTypeSize(attr.type);
+    size_t typeSize = getStorageTypeSize(attr.type);
     vertexSize += attr.numComponents * typeSize;
   }
   return vertexSize;
@@ -71,7 +71,7 @@ void Mesh::initContextData(Context &context, MeshContextData &contextData) {
 }
 
 void Mesh::updateContextData(Context &context, MeshContextData &contextData) {
-  if (!updateData)
+  if (contextData.vertexBufferLength != 0 && !updateData)
     return;
   updateData = false;
 

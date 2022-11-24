@@ -45,8 +45,12 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
   }
 
   void operator()(const void *data, size_t length) { XXH3_128bits_update(&state, data, length); }
+
   void operator()(const Hash128 &v) { (*this)(&v, sizeof(Hash128)); }
+
   template <typename T> void operator()(const linalg::vec<T, 4> &v) { (*this)(&v.x, sizeof(T) * 4); }
+  template <typename T> void operator()(const linalg::vec<T, 2> &v) { (*this)(&v.x, sizeof(T) * 2); }
+
   template <typename TVal> void operator()(const std::optional<TVal> &v) {
     bool has_value = v.has_value();
     (*this)(has_value);
@@ -62,12 +66,15 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
       (*this)(&val, sizeof(val));
     }
   }
+
   void operator()(const std::string &str) { (*this)(str.data(), str.size()); }
+
   template <typename TVal> void operator()(const std::vector<TVal> &vec) {
     for (auto &item : vec) {
       (*this)(item);
     }
   }
+
   template <typename TVal> void operator()(const std::unordered_map<std::string, TVal> &map) {
     for (auto &pair : map) {
       (*this)(pair.first);

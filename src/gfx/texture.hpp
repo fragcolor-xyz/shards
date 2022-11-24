@@ -13,9 +13,18 @@ namespace gfx {
 
 enum class TextureFormatFlags : uint8_t {
   None = 0x0,
+  // Automatically generate mip-maps for this texture
   AutoGenerateMips = 0x01,
+  // Allow this texture to be rendered to
   RenderAttachment = 0x02,
+  // Indicate that this texture can not be sampled
+  // Used to mark render attachments that can't be read from
+  NoTextureBinding = 0x04,
 };
+
+inline TextureFormatFlags operator|(const TextureFormatFlags &a, const TextureFormatFlags &b) {
+  return TextureFormatFlags(uint8_t(a) | uint8_t(b));
+}
 
 inline bool textureFormatFlagsContains(TextureFormatFlags left, TextureFormatFlags right) {
   return ((uint8_t &)left & (uint8_t &)right) != 0;
@@ -51,6 +60,7 @@ struct TextureFormat {
 
 struct InputTextureFormat {
   uint8_t pixelSize;
+  size_t numComponents;
 };
 
 /// <div rustbindgen opaque></div>
@@ -93,8 +103,6 @@ private:
   std::string label;
 
 public:
-  static const InputTextureFormat &getInputFormat(WGPUTextureFormat pixelFormat);
-
   Texture() = default;
   Texture(std::string &&label) : label(label) {}
 

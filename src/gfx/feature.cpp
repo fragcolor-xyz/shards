@@ -4,6 +4,7 @@
 namespace gfx {
 using shader::FieldType;
 
+UniqueIdGenerator featureIdGenerator;
 BlendComponent BlendComponent::Opaque = BlendComponent{
     .operation = WGPUBlendOperation_Max,
     .srcFactor = WGPUBlendFactor::WGPUBlendFactor_One,

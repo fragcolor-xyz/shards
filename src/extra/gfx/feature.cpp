@@ -8,6 +8,7 @@
 #include <gfx/features/debug_color.hpp>
 #include <gfx/features/transform.hpp>
 #include <gfx/features/wireframe.hpp>
+#include <gfx/features/velocity.hpp>
 #include <linalg_shim.hpp>
 #include <magic_enum.hpp>
 #include <shards/shared.hpp>
@@ -18,12 +19,7 @@ namespace gfx {
 using shards::Mat4;
 
 struct BuiltinFeatureShard {
-  enum class Id {
-    Transform,
-    BaseColor,
-    VertexColorFromNormal,
-    Wireframe,
-  };
+  enum class Id { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
 
   static constexpr uint32_t IdTypeId = 'feid';
   static inline Type IdType = Type::Enum(VendorId, IdTypeId);
@@ -76,6 +72,9 @@ struct BuiltinFeatureShard {
       break;
     case Id::Wireframe:
       *_feature = features::Wireframe::create();
+      break;
+    case Id::Velocity:
+      *_feature = features::Velocity::create();
       break;
     }
   }

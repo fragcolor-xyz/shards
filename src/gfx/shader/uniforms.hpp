@@ -15,6 +15,8 @@ struct UniformLayout {
   size_t offset{};
   size_t size{};
   FieldType type{};
+
+  bool isEqualIgnoreOffset(const UniformLayout &other) const { return size == other.size && type == other.type; }
 };
 
 struct UniformBufferLayout {
@@ -56,6 +58,38 @@ public:
     return pushInternal(name, generateNext(paramType));
   }
 
+  // Removes fields that do not pass the filter(name, UniformLayout)
+  template <typename T> void optimize(T &&filter) {
+    struct QueueItem {
+      std::string name;
+      FieldType fieldType;
+    };
+    std::vector<QueueItem> queue;
+
+    // Collect name & type pairs to keep
+    for (auto it = mapping.begin(); it != mapping.end(); it++) {
+      const std::string &name = bufferLayout.fieldNames[it->second];
+      UniformLayout &layout = bufferLayout.items[it->second];
+
+      // Update layout
+      layout = generateNext(layout.type);
+
+      if (filter(name, layout)) {
+        auto &element = queue.emplace_back();
+        element.name = name;
+        element.fieldType = layout.type;
+      }
+    }
+
+    // Rebuild the layout
+    offset = 0;
+    mapping.clear();
+    bufferLayout = UniformBufferLayout{};
+    for (auto &queueItem : queue) {
+      push(queueItem.name, queueItem.fieldType);
+    }
+  }
+
   UniformBufferLayout &&finalize() {
     bufferLayout.size = offset;
     return std::move(bufferLayout);
@@ -65,7 +99,12 @@ private:
   UniformLayout &pushInternal(const String &name, UniformLayout &&layout) {
     auto itExisting = mapping.find(name);
     if (itExisting != mapping.end()) {
-      throw formatException("Uniform layout has duplicate field {}", name);
+      auto &existingLayout = bufferLayout.items[itExisting->second];
+      if (existingLayout.isEqualIgnoreOffset(layout)) {
+        return existingLayout;
+      }
+
+      throw formatException("Uniform layout has duplicate field {} with a different type", name);
     }
 
     size_t index = mapping.size();
@@ -75,14 +114,18 @@ private:
 
     UniformLayout &result = bufferLayout.items.back();
 
-    offset = std::max(offset, result.offset + result.size);
-    size_t fieldAlignment = result.type.getWGSLAlignment();
+    updateOffsetAndMaxAlign(result);
+
+    return result;
+  }
+
+  void updateOffsetAndMaxAlign(const UniformLayout &pushedElement) {
+    offset = std::max(offset, pushedElement.offset + pushedElement.size);
+    size_t fieldAlignment = pushedElement.type.getWGSLAlignment();
 
     // Update struct alignment to the max of it's members
     // https://www.w3.org/TR/WGSL/#alignment-and-size
     bufferLayout.maxAlignment = std::max(bufferLayout.maxAlignment, fieldAlignment);
-
-    return result;
   }
 };
 

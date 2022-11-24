@@ -7,6 +7,7 @@
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
 #include <gfx/view.hpp>
+#include <gfx/steps/defaults.hpp>
 #include <magic_enum.hpp>
 #include <params.hpp>
 
@@ -71,10 +72,14 @@ struct DrawablePassShard {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     Var forceDepthClearVar(_forceDepthClear.get());
+
+    RenderStepOutput output =
+        steps::getDefaultRenderStepOutput(forceDepthClearVar.isNone() ? false : bool(forceDepthClearVar), std::nullopt);
+
     *_step = makePipelineStep(RenderDrawablesStep{
         .drawQueue = getDrawQueue(),
         .features = collectFeatures(_features),
-        .forceDepthClear = forceDepthClearVar.isNone() ? false : bool(forceDepthClearVar),
+        .output = output,
     });
     return Types::PipelineStepObjectVar.Get(_step);
   }

@@ -22,12 +22,14 @@ add_library(gfx
   gizmos/gizmo_input.cpp
   gizmos/gizmos.cpp
   shader/generator.cpp
+  shader/generator_context.cpp
   shader/blocks.cpp
   shader/types.cpp
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp
-  # cache_data.cpp
+  pipeline_builder.cpp
+  pipeline_step.cpp
 )
 
 target_compile_features(gfx PUBLIC cxx_std_20)

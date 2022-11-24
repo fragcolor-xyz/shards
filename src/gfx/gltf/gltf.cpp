@@ -163,7 +163,7 @@ struct Loader {
       for (size_t i = 0; i < format.vertexAttributes.size(); i++) {
         auto &attrib = format.vertexAttributes[i];
         offsets[i] = offset;
-        offset += getVertexAttributeTypeSize(attrib.type) * attrib.numComponents;
+        offset += getStorageTypeSize(attrib.type) * attrib.numComponents;
       }
     }
   }
@@ -183,25 +183,25 @@ struct Loader {
       attrib.numComponents = tinygltf::GetNumComponentsInType(gltfAccessor.type);
       switch (gltfAccessor.componentType) {
       case TINYGLTF_COMPONENT_TYPE_BYTE:
-        attrib.type = VertexAttributeType::Int8;
+        attrib.type = StorageType::Int8;
         break;
       case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-        attrib.type = VertexAttributeType::UInt8;
+        attrib.type = StorageType::UInt8;
         break;
       case TINYGLTF_COMPONENT_TYPE_SHORT:
-        attrib.type = VertexAttributeType::Int16;
+        attrib.type = StorageType::Int16;
         break;
       case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-        attrib.type = VertexAttributeType::UInt16;
+        attrib.type = StorageType::UInt16;
         break;
       case TINYGLTF_COMPONENT_TYPE_INT:
-        attrib.type = VertexAttributeType::Int32;
+        attrib.type = StorageType::Int32;
         break;
       case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-        attrib.type = VertexAttributeType::UInt32;
+        attrib.type = StorageType::UInt32;
         break;
       case TINYGLTF_COMPONENT_TYPE_FLOAT:
-        attrib.type = VertexAttributeType::Float32;
+        attrib.type = StorageType::Float32;
         break;
       case TINYGLTF_COMPONENT_TYPE_DOUBLE:
         throw formatException("Accessor {}: double component type is not supported", gltfAttrib.second);
@@ -209,7 +209,7 @@ struct Loader {
       }
       accessors.push_back(&gltfAccessor);
       offsets.push_back(vertexStride);
-      vertexStride += getVertexAttributeTypeSize(attrib.type) * attrib.numComponents;
+      vertexStride += getStorageTypeSize(attrib.type) * attrib.numComponents;
 
       if (numVertices == 0) {
         numVertices = gltfAccessor.count;
@@ -229,7 +229,7 @@ struct Loader {
       const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
       const MeshVertexAttribute &attrib = format.vertexAttributes[attribIndex];
 
-      size_t elementSize = getVertexAttributeTypeSize(attrib.type) * attrib.numComponents;
+      size_t elementSize = getStorageTypeSize(attrib.type) * attrib.numComponents;
       int srcStride = accessor.ByteStride(bufferView);
 
       const uint8_t *srcPtr = buffer.data.data() + bufferView.byteOffset + accessor.byteOffset;

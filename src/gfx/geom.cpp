@@ -29,9 +29,9 @@ namespace geom {
 
 std::vector<MeshVertexAttribute> VertexPNT::getAttributes() {
   std::vector<MeshVertexAttribute> attribs;
-  attribs.emplace_back("position", 3, VertexAttributeType::Float32);
-  attribs.emplace_back("normal", 3, VertexAttributeType::Float32);
-  attribs.emplace_back("texCoord0", 2, VertexAttributeType::Float32);
+  attribs.emplace_back("position", 3, StorageType::Float32);
+  attribs.emplace_back("normal", 3, StorageType::Float32);
+  attribs.emplace_back("texCoord0", 2, StorageType::Float32);
   return attribs;
 }
 

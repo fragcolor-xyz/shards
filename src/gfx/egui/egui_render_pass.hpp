@@ -11,11 +11,11 @@ struct EguiRenderPass {
   static PipelineStepPtr createPipelineStep(DrawQueuePtr queue) {
     auto drawableStep = makePipelineStep(RenderDrawablesStep{
         .drawQueue = queue,
+        .sortMode = SortMode::Queue,
         .features =
             std::vector<FeaturePtr>{
                 createFeature(true),
             },
-        .sortMode = SortMode::Queue,
     });
     return drawableStep;
   }

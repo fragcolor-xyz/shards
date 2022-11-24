@@ -16,10 +16,10 @@ namespace gfx {
 struct MeshVertexAttribute {
   std::string name;
   uint8_t numComponents;
-  VertexAttributeType type;
+  StorageType type;
 
   MeshVertexAttribute() = default;
-  MeshVertexAttribute(const char *name, uint8_t numComponents, VertexAttributeType type = VertexAttributeType::Float32)
+  MeshVertexAttribute(const char *name, uint8_t numComponents, StorageType type = StorageType::Float32)
       : name(name), numComponents(numComponents), type(type) {}
 
   // Compares everthing except for the name

@@ -10,28 +10,28 @@
 namespace gfx {
 namespace shader {
 
-inline ShaderFieldBaseType getCompatibleShaderFieldBaseType(VertexAttributeType type) {
+inline ShaderFieldBaseType getCompatibleShaderFieldBaseType(StorageType type) {
   switch (type) {
-  case VertexAttributeType::UInt8:
+  case StorageType::UInt8:
     return ShaderFieldBaseType::UInt8;
-  case VertexAttributeType::Int8:
+  case StorageType::Int8:
     return ShaderFieldBaseType::Int8;
-  case VertexAttributeType::UInt16:
+  case StorageType::UInt16:
     return ShaderFieldBaseType::UInt16;
-  case VertexAttributeType::Int16:
+  case StorageType::Int16:
     return ShaderFieldBaseType::Int16;
-  case VertexAttributeType::UNorm8:
-  case VertexAttributeType::SNorm8:
-  case VertexAttributeType::UNorm16:
-  case VertexAttributeType::SNorm16:
+  case StorageType::UNorm8:
+  case StorageType::SNorm8:
+  case StorageType::UNorm16:
+  case StorageType::SNorm16:
     return ShaderFieldBaseType::Float32;
-  case VertexAttributeType::UInt32:
+  case StorageType::UInt32:
     return ShaderFieldBaseType::UInt32;
-  case VertexAttributeType::Int32:
+  case StorageType::Int32:
     return ShaderFieldBaseType::Int32;
-  case VertexAttributeType::Float16:
+  case StorageType::Float16:
     return ShaderFieldBaseType::Float16;
-  case VertexAttributeType::Float32:
+  case StorageType::Float32:
     return ShaderFieldBaseType::Float32;
   default:
     assert(false);
@@ -90,6 +90,7 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
   }
   return vecType ? fmt::format("{}<{}>", vecType, baseType) : baseType;
 }
+
 } // namespace shader
 } // namespace gfx
 

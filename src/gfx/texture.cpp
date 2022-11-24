@@ -5,57 +5,6 @@
 #include <map>
 
 namespace gfx {
-typedef std::map<WGPUTextureFormat, InputTextureFormat> InputTextureFormatMap;
-static const InputTextureFormatMap &getInputTextureFormatMap() {
-  static InputTextureFormatMap instance = []() {
-    return InputTextureFormatMap{
-        {WGPUTextureFormat::WGPUTextureFormat_R8Unorm, {1}},
-        // u8x1
-        {WGPUTextureFormat_R8Snorm, {1}},
-        {WGPUTextureFormat_R8Uint, {1}},
-        {WGPUTextureFormat_R8Sint, {1}},
-        // u8x2
-        {WGPUTextureFormat_RG8Unorm, {2}},
-        {WGPUTextureFormat_RG8Snorm, {2}},
-        {WGPUTextureFormat_RG8Uint, {2}},
-        {WGPUTextureFormat_RG8Sint, {2}},
-        // u8x4
-        {WGPUTextureFormat_RGBA8Unorm, {4}},
-        {WGPUTextureFormat_RGBA8UnormSrgb, {4}},
-        {WGPUTextureFormat_RGBA8Snorm, {4}},
-        {WGPUTextureFormat_RGBA8Uint, {4}},
-        {WGPUTextureFormat_RGBA8Sint, {4}},
-        {WGPUTextureFormat_BGRA8Unorm, {4}},
-        {WGPUTextureFormat_BGRA8UnormSrgb, {4}},
-        // u16x1
-        {WGPUTextureFormat_R16Uint, {2}},
-        {WGPUTextureFormat_R16Sint, {2}},
-        {WGPUTextureFormat_R16Float, {2}},
-        // u16x2
-        {WGPUTextureFormat_RG16Uint, {4}},
-        {WGPUTextureFormat_RG16Sint, {4}},
-        {WGPUTextureFormat_RG16Float, {4}},
-        // u16x4
-        {WGPUTextureFormat_RGBA16Uint, {8}},
-        {WGPUTextureFormat_RGBA16Sint, {8}},
-        {WGPUTextureFormat_RGBA16Float, {8}},
-        // u32x1
-        {WGPUTextureFormat_R32Float, {4}},
-        {WGPUTextureFormat_R32Uint, {4}},
-        {WGPUTextureFormat_R32Sint, {4}},
-        // u32x2
-        {WGPUTextureFormat_RG32Float, {8}},
-        {WGPUTextureFormat_RG32Uint, {8}},
-        {WGPUTextureFormat_RG32Sint, {8}},
-        // u32x4
-        {WGPUTextureFormat_RGBA32Float, {16}},
-        {WGPUTextureFormat_RGBA32Uint, {16}},
-        {WGPUTextureFormat_RGBA32Sint, {16}},
-    };
-  }();
-  return instance;
-}
-
 TextureDesc TextureDesc::getDefault() {
   return TextureDesc{.format = {.pixelFormat = WGPUTextureFormat_RGBA8Unorm}, .resolution = int2(512, 512)};
 }
@@ -71,15 +20,6 @@ std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format,
   auto texture = std::make_shared<Texture>(std::move(label));
   texture->init(desc);
   return texture;
-}
-
-const InputTextureFormat &Texture::getInputFormat(WGPUTextureFormat pixelFormat) {
-  auto &inputTextureFormatMap = getInputTextureFormatMap();
-  auto it = inputTextureFormatMap.find(pixelFormat);
-  if (it == inputTextureFormatMap.end()) {
-    throw formatException("Unsupported texture input format", magic_enum::enum_name(pixelFormat));
-  }
-  return it->second;
 }
 
 Texture &Texture::init(const TextureDesc &desc) {
@@ -158,7 +98,7 @@ static WGPUTextureView createView(const TextureFormat &format, WGPUTexture textu
 
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
-  const InputTextureFormat &inputFormat = Texture::getInputFormat(format.pixelFormat);
+  const TextureFormatDesc &inputFormat = getTextureFormatDescription(format.pixelFormat);
   uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
 
   WGPUImageCopyTexture dst{
@@ -202,6 +142,10 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
 
     if (textureFormatFlagsContains(desc.format.flags, TextureFormatFlags::RenderAttachment)) {
       wgpuDesc.usage |= WGPUTextureUsage_RenderAttachment;
+    }
+
+    if (!textureFormatFlagsContains(desc.format.flags, TextureFormatFlags::NoTextureBinding)) {
+      wgpuDesc.usage |= WGPUTextureUsage_TextureBinding;
     }
 
     switch (desc.format.type) {

@@ -36,13 +36,18 @@ on:
         default: true
         type: boolean
 
+# Required for <compare> and <=> support
+env:
+  CC: gcc-11
+  CXX: g++-11
+
 jobs:
   #
   # Build shards for linux
   #
   Linux:
     name: Build (${{ github.event.inputs.build-type || inputs.build-type }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       build-type: ${{ steps.setup.outputs.build-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}

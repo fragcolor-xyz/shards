@@ -5,16 +5,17 @@
 namespace gfx {
 namespace shader {
 namespace blocks {
-void Direct::apply(GeneratorContext &context) const { context.write(code); }
-void Header::apply(GeneratorContext &context) const { context.writeHeader(code); }
+void Direct::apply(IGeneratorContext &context) const { context.write(code); }
+void Header::apply(IGeneratorContext &context) const { context.writeHeader(code); }
 
 DefaultInterpolation::DefaultInterpolation() {
   matchPrefixes = {
       "texCoord",
   };
 }
-void DefaultInterpolation::apply(GeneratorContext &context) const {
-  for (auto &input : context.inputs) {
+
+void DefaultInterpolation::apply(IGeneratorContext &context) const {
+  for (auto &input : context.getInputs()) {
     const std::string &name = input.first;
     if (!context.hasOutput(name.c_str())) {
       for (auto &prefix : matchPrefixes) {
@@ -29,6 +30,7 @@ void DefaultInterpolation::apply(GeneratorContext &context) const {
     }
   }
 }
+
 } // namespace blocks
 } // namespace shader
 } // namespace gfx

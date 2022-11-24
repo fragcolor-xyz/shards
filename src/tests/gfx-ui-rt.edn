@@ -94,7 +94,7 @@
 
            {:Target .rt-0 :WindowRegion .rt-region} (GFX.Region (Step inner-wire-0))
 
-           .rt-0 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
+           .rt-0 (GFX.RenderTargetTexture "color") (UI.RenderTarget)
 
            (UI.Separator)
            (UI.TextInput :Variable .text :Multiline true)))
@@ -111,9 +111,10 @@
            {:Target .rt-1 :WindowRegion .rt-region} (GFX.Region (->
                                                                  (Step inner-wire-1)))
 
-           .rt-1 (GFX.RenderTargetTexture "main") (UI.RenderTarget)
+           .rt-1 (GFX.RenderTargetTexture "color") (UI.RenderTarget)
 
-           (UI.Separator) "Footer" (UI.Label)))))
+           (UI.Separator) "Footer" (UI.Label)))
+         ))
 
     (GFX.Render :Steps .render-steps))))
 

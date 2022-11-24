@@ -159,7 +159,7 @@ struct TextureShard {
     if (format.pixelFormat == WGPUTextureFormat_Undefined)
       throw TextureFormatException(componentType, asType);
 
-    auto &inputFormat = Texture::getInputFormat(format.pixelFormat);
+    auto &inputFormat = getTextureFormatDescription(format.pixelFormat);
     size_t imageSize = inputFormat.pixelSize * image.width * image.height;
 
     // Copy the data since we can't keep a reference to the image variable
@@ -193,7 +193,7 @@ struct RenderTargetShard {
       static std::atomic<uint32_t> counter;
       std::string id = fmt::format("shardsRenderTarget{}", counter++);
       auto &vt = renderTarget.renderTarget = std::make_shared<RenderTarget>(id.c_str());
-      vt->configure("main", WGPUTextureFormat_RGBA8Unorm);
+      vt->configure("color", WGPUTextureFormat_RGBA8Unorm);
       vt->configure("depth", WGPUTextureFormat_Depth32Float);
 
       renderTargetVar = Var::Object(&renderTarget, gfx::VendorId, Types::RenderTargetTypeId);
@@ -225,7 +225,7 @@ struct RenderTargetTextureShard {
       if (_nameVar->valueType == SHType::String) {
         _name = (const char *)Var(_nameVar.get());
       } else {
-        _name = "main";
+        _name = "color";
       }
     }
   }
