@@ -90,7 +90,7 @@ if(WIN32)
   # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
   # 0x0A00 = Windows 10
   target_compile_definitions(shards-core-static PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
-elseif(LINUX)
+elseif(DESKTOP_LINUX)
   target_link_libraries(shards-core-static Boost::stacktrace_addr2line)
 else()
   target_link_libraries(shards-core-static Boost::stacktrace_basic)
@@ -119,7 +119,7 @@ endif()
 
 if(WIN32)
   target_link_libraries(shards-core-static ws2_32 mswsock Secur32 Crypt32 NCrypt)
-elseif(LINUX)
+elseif(DESKTOP_LINUX)
   target_link_libraries(shards-core-static pthread dl rt)
 endif()
 
