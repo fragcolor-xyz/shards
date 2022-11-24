@@ -70,11 +70,44 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
   }
 
   // Process wire/function contents
-  stack.emplace_back(TranslationBlockRef::make(functionBody));
+  TranslationBlockRef functionScope = TranslationBlockRef::make(functionBody);
+
+  // Setup required variable
+  if (!wire->pure) {
+
+    auto &compositionResult = wire->composeResult.value();
+    for (auto &req : compositionResult.requiredInfo) {
+      tryExpandIntoVariable(req.name);
+
+      const FieldType *fieldType{};
+      const TranslationBlockRef *parent{};
+      if (!findVariable(req.name, fieldType, parent)) {
+        throw ShaderComposeError(fmt::format("Can not compose shader wire: Requred variable {} does not exist", req.name));
+      }
+
+      if (!argsDecl.empty())
+        argsDecl += ", ";
+      std::string wgslVarName = getUniqueVariableName(req.name);
+      argsDecl += fmt::format("{}: {}", wgslVarName, getFieldWGSLTypeName(*fieldType));
+      translated.arguments.emplace_back(TranslatedFunctionArgument{*fieldType, wgslVarName, req.name});
+
+      functionScope.variables.mapUniqueVariableName(req.name, wgslVarName);
+      functionScope.variables.types.insert_or_assign(req.name, *fieldType);
+    }
+  }
+
+  // swap stack becasue variable in a different function can not be accessed
+  decltype(stack) savedStack;
+  std::swap(savedStack, stack);
+  stack.emplace_back(std::move(functionScope));
+
   for (auto shard : wire->shards) {
     processShard(shard);
   }
   stack.pop_back();
+
+  // Restore stack
+  std::swap(savedStack, stack);
 
   // Grab return value
   auto returnValue = takeWGSLTop();
@@ -100,7 +133,7 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
   // the Header block will insert it's generate code outside & before the current function
   addNew(std::make_unique<blocks::Header>(std::move(functionBody)));
 
-  return translatedWires.insert_or_assign(wirePtr, translated).first->second;
+  return translatedWires.emplace(std::make_pair(wirePtr, std::move(translated))).first->second;
 }
 
 bool TranslationContext::findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const {
@@ -237,11 +270,13 @@ void registerCoreShards();
 void registerMathShards();
 void registerLinalgShards();
 void registerWireShards();
+void registerFlowShards();
 void registerTranslatorShards() {
   registerCoreShards();
   registerMathShards();
   registerLinalgShards();
   registerWireShards();
+  registerFlowShards();
 }
 
 } // namespace shader

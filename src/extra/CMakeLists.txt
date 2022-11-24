@@ -13,6 +13,7 @@ set(extra_SOURCES
   gfx/shader/math_shards.cpp
   gfx/shader/core_shards.cpp
   gfx/shader/wire_shards.cpp
+  gfx/shader/flow_shards.cpp
   gfx/gltf.cpp
   gfx/camera.cpp
   gfx/texture.cpp

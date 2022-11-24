@@ -7,7 +7,7 @@ namespace gfx::shader {
 
 struct PushTranslator {
   static void translate(Push *shard, TranslationContext &context) {
-    auto &ref = context.getTop();
+    auto &scope = context.getTop();
 
     auto value = context.takeWGSLTop();
     if (!value)
@@ -15,9 +15,9 @@ struct PushTranslator {
 
     auto elementType = value->getType();
 
-    auto it = ref.virtualSequences.find(shard->_name);
-    if (it == ref.virtualSequences.end()) {
-      it = ref.virtualSequences.emplace(std::make_pair(shard->_name, VirtualSeq())).first;
+    auto it = scope.virtualSequences.find(shard->_name);
+    if (it == scope.virtualSequences.end()) {
+      it = scope.virtualSequences.emplace(std::make_pair(shard->_name, VirtualSeq())).first;
       it->second.elementType = elementType;
     } else {
       if (it->second.elementType != elementType)

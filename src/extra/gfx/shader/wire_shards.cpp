@@ -15,18 +15,37 @@ struct BaseRunnerTranslator {
     auto wire = shard->wire;
     auto &translatedWire = context.processWire(wire, inputType);
 
-    BlockPtr callArgs;
+    for (auto &req : shard->requiredVariables()) {
+      SPDLOG_LOGGER_INFO(context.logger, "- Required variable: {}", req.name);
+      auto arg = context.reference(req.name);
+    }
+
+    BlockPtr inputCallArg;
 
     if (translatedWire.inputType) {
       assert(input);
-      callArgs = input->toBlock();
+      inputCallArg = input->toBlock();
     }
 
+    // Build function call argument list
     auto callBlock = blocks::makeCompoundBlock();
-
     callBlock->append(fmt::format("{}(", translatedWire.functionName));
-    if (callArgs)
-      callBlock->append(std::move(callArgs));
+
+    // Pass input as first argument
+    if (inputCallArg)
+      callBlock->append(std::move(inputCallArg));
+
+    // Pass captured variables
+    if (!translatedWire.arguments.empty()) {
+      bool addSeparator = (bool)inputCallArg;
+      for (auto &arg : translatedWire.arguments) {
+        if (addSeparator)
+          callBlock->append(", ");
+        callBlock->append(context.reference(arg.shardsName).toBlock());
+        addSeparator = true;
+      }
+    }
+
     callBlock->append(")");
 
     if (translatedWire.outputType) {

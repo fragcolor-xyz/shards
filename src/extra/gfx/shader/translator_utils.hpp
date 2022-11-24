@@ -8,6 +8,21 @@
 namespace gfx {
 namespace shader {
 
+inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context);
+inline std::unique_ptr<IWGSLGenerated> translateTable(const SHVar &var, TranslationContext &context) {
+  VirtualTable vt;
+  shards::ForEach(var.payload.tableValue, [&](const std::string &key, const SHVar &value) {
+    std::unique_ptr<IWGSLGenerated> generatedValue;
+    if (value.valueType == SHType::ContextVar)
+      generatedValue = std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue));
+    else
+      generatedValue = translateConst(value, context);
+    vt.elements.emplace(std::make_pair(key, std::move(generatedValue)));
+  });
+
+  return std::make_unique<VirtualTableOnStack>(std::move(vt));
+}
+
 inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context) {
   std::unique_ptr<IWGSLGenerated> result{};
 
@@ -50,6 +65,9 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
   case SHType::Float4:
     OUTPUT_VEC(ShaderFieldBaseType::Float32, 4, "{:f}, {:f}, {:f}, {:f}", (float)pl.float4Value[0], (float)pl.float4Value[1],
                (float)pl.float4Value[2], (float)pl.float4Value[3]);
+    break;
+  case SHType::Table:
+    translateTable(var, context);
     break;
   case SHType::None:
     SPDLOG_LOGGER_INFO(context.logger, "gen(const)> nil");

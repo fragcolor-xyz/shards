@@ -65,7 +65,7 @@ struct VariableStorage {
   std::map<std::string, std::string> uniqueVariableNames;
 
   // Maps a variable name to a unique variable name
-  const std::string& mapUniqueVariableName(const std::string &varName, const std::string &uniqueName) {
+  const std::string &mapUniqueVariableName(const std::string &varName, const std::string &uniqueName) {
     return uniqueVariableNames.insert_or_assign(varName, uniqueName).first->second;
   }
 
@@ -85,7 +85,23 @@ struct VirtualSeq {
   std::vector<std::unique_ptr<IWGSLGenerated>> elements;
 
   VirtualSeq() = default;
-  VirtualSeq(VirtualSeq&& other) = default;
+  VirtualSeq(VirtualSeq &&other) = default;
+};
+
+struct VirtualTable {
+  std::map<std::string, std::unique_ptr<IWGSLGenerated>> elements;
+
+  VirtualTable() = default;
+  VirtualTable(VirtualTable &&other) = default;
+};
+
+// Virtual table that can be passed around as stack value
+struct VirtualTableOnStack : public IWGSLGenerated {
+  VirtualTable table;
+
+  VirtualTableOnStack(VirtualTable &&table) : table(std::move(table)) {}
+  const FieldType &getType() const { throw std::logic_error("Can not generate table in wgsl"); }
+  blocks::BlockPtr toBlock() const { throw std::logic_error("Can not generate table in wgsl"); }
 };
 
 // References a shader block together with a strategy for appending children into it
@@ -95,9 +111,10 @@ struct TranslationBlockRef {
   VariableStorage variables;
 
   std::map<std::string, VirtualSeq> virtualSequences;
+  std::map<std::string, VirtualSeq> virtualTables;
 
   TranslationBlockRef(blocks::Block *block, IAppender *appender) : block(block), appender(appender) {}
-  TranslationBlockRef(TranslationBlockRef&& other) = default;
+  TranslationBlockRef(TranslationBlockRef &&other) = default;
 
   template <typename T> static TranslationBlockRef make(blocks::Block *block) {
     return TranslationBlockRef(block, Appender<T>::getInstance());
@@ -110,10 +127,20 @@ struct TranslationBlockRef {
 
 struct TranslationRegistry;
 
+struct TranslatedFunctionArgument {
+  FieldType type;
+  std::string wgslName;
+  std::string shardsName;
+};
+
 struct TranslatedWire {
   std::string functionName;
   std::optional<FieldType> outputType;
   std::optional<FieldType> inputType;
+  std::vector<TranslatedFunctionArgument> arguments;
+
+  TranslatedWire() = default;
+  TranslatedWire(TranslatedWire&&) = default;
 };
 
 // Context used during shader translations
@@ -173,7 +200,7 @@ public:
   void processShard(ShardPtr shard);
 
   // Translates a wire
-  const TranslatedWire& processWire(const std::shared_ptr<SHWire>& wire, const std::optional<FieldType>& inputType);
+  const TranslatedWire &processWire(const std::shared_ptr<SHWire> &wire, const std::optional<FieldType> &inputType);
 
   // Assign a block to a temporary variable and return it's name
   template <typename T> const std::string &assignTempVar(std::unique_ptr<T> &&ptr) {
