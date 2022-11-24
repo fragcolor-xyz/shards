@@ -4,6 +4,7 @@
 #include "math.hpp"
 #include <linalg_shim.hpp>
 #include <math.h>
+#include <cmath>
 
 namespace shards {
 namespace Math {
@@ -356,9 +357,17 @@ struct LookAt {
 
     assert(position.valueType == SHType::Float3 && target.valueType == SHType::Float3);
 
-    auto eye = reinterpret_cast<const Vec3 *>(&position);
-    auto center = reinterpret_cast<const Vec3 *>(&target);
-    _output = linalg::lookat_matrix(*eye, *center, {0.0, 1.0, 0.0});
+    using namespace linalg::aliases;
+    auto eye = reinterpret_cast<const float3 *>(&position);
+    auto center = reinterpret_cast<const float3 *>(&target);
+    float3 up = float3(0.0, 1.0, 0.0);
+    float3 delta = linalg::normalize(*eye - *center);
+    float adot = std::abs(linalg::dot(up, delta));
+    const float threshold = 0.01f;
+    if (adot > (1.0f - threshold)) {
+      up = float3(delta.x, delta.z, -delta.y);
+    }
+    _output = linalg::lookat_matrix(*eye, *center, up);
     return _output;
   }
 
