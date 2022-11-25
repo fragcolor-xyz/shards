@@ -1,0 +1,66 @@
+(def cube-layout ["position", "color"])
+(def cube
+  ;;  V4--------V5
+  ;; / |        /|
+  ; /  |       / |
+  ;V0--------V1  |
+  ;|   V6-----|--V7
+  ;|  /       | /
+  ;| /        |/
+  ;V2--------V3
+  {"Vertices"
+   [(Float3 -0.5  0.5  0.5) (Color 0x00 0x00 0x00 0xff) ;;V0 Front-Top-Left
+    (Float3  0.5  0.5  0.5) (Color 0xff 0x00 0x00 0xff) ;;V1 Front-Top-Right
+    (Float3 -0.5 -0.5  0.5) (Color 0x00 0xff 0x00 0xff) ;;V2 Front-Bottom-Right
+    (Float3  0.5 -0.5  0.5) (Color 0x00 0x00 0x00 0xff) ;;V3 Front-Bottom-Left
+    (Float3 -0.5  0.5 -0.5) (Color 0xff 0x00 0x00 0xff) ;;V4 Back-Top-Left 
+    (Float3  0.5  0.5 -0.5) (Color 0xff 0x00 0xff 0xff) ;;V5 Back-Top-Right
+    (Float3 -0.5 -0.5 -0.5) (Color 0xff 0xff 0x00 0xff) ;;V6 Back-Bottom-Right
+    (Float3  0.5 -0.5 -0.5) (Color 0xff 0xff 0xff 0xff)];;V7 Back-Bottom-Left 
+   "Indices"
+   [0 1 2 ;;front-face
+    1 3 2 ;;front-face
+    4 6 5 ;;back-face
+    5 6 7 ;;back-face
+    0 2 4 ;;left-face
+    4 2 6 ;;left face
+    1 5 3 ;;right face
+    5 7 3 ;;right face
+    0 4 1 ;;top-face
+    4 5 1 ;;top-face
+    2 3 6 ;; bottom-face
+    6 3 7 ;; bottom-face
+    ]
+   })
+
+(def timestep (/ 1.0 120.0))
+(defmesh Root)
+(defloop test-wire
+  (Setup
+   0.0 >= .time
+   cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
+   (Float3 0 0 0) (Math.Translation) >= .transform
+   {:Transform .transform :Mesh .mesh} (GFX.Drawable :Transform .transform) >= .drawable
+
+    ; Create render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   (GFX.DrawablePass :Features .features) >> .render-steps
+
+    ; Create view
+   {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    ;; .time (Math.Add timestep) > .time
+    ;; .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+    ;; .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+    ;; .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+    ;; .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) > .transform
+    .drawable (GFX.Draw)
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule Root test-wire)
+(run Root timestep (/ 1.0 60))

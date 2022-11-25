@@ -1,5 +1,13 @@
 (def cube-layout ["position", "color"])
 (def cube
+  ;;  V6--------V5
+  ;; / |        /|
+  ; /  |       / |
+  ;V1--------V0  |
+  ;|   V7-----|--V4
+  ;|  /       | /
+  ;| /        |/
+  ;V2--------V3
   {"Vertices"
    [(Float3 -1.0  1.0  1.0) (Color 0x00 0x00 0x00 0xff)
     (Float3  1.0  1.0  1.0) (Color 0x00 0x00 0xff 0xff)
