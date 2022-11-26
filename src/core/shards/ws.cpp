@@ -154,8 +154,7 @@ struct Client {
               // add custom certs if we need
               auto certVar = certificate.get();
               if (certVar.valueType != SHType::None) {
-                auto cert = certVar.payload.stringValue;
-                auto certPath = SHSTRVIEW(certificate.get());
+                auto certPath = SHSTRVIEW(certVar);
                 std::string certStr(certPath.begin(), certPath.end());
                 ws->secureCtx.load_verify_file(certStr);
               }
