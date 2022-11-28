@@ -454,7 +454,7 @@ struct RenderGraphBuilder {
       if (forceOverwrite)
         needsClearValue = true;
       else if (loadRequired && !isWrittenTo(frameIndex, nodeIndex)) {
-        SPDLOG_LOGGER_WARN(logger,
+        SPDLOG_LOGGER_DEBUG(logger,
                            "Forcing clear with default values for frame {} accessed by node {}, since it's not written to before",
                            frameIndex, nodeIndex);
         needsClearValue = true;

@@ -224,25 +224,14 @@ struct FeatureShard {
     }
   }
 
-  void applyShaderDependency(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input) {
+  void applyShaderDependency(SHContext *context, shader::EntryPoint &entryPoint, shader::DependencyType type,
+                             const SHVar &input) {
+    checkType(input.valueType, SHType::String, "Shader dependency");
+    const SHString &inputString = input.payload.stringValue;
+
     shader::NamedDependency &dep = entryPoint.dependencies.emplace_back();
-
-    checkType(input.valueType, SHType::Table, ":Shaders table");
-    const SHTable &inputTable = input.payload.tableValue;
-
-    SHVar nameVar;
-    if (getFromTable(context, inputTable, "Name", nameVar)) {
-      checkType(nameVar.valueType, SHType::String, ":Shaders dependency name");
-      dep.name = nameVar.payload.stringValue;
-    } else {
-      throw formatException(":Shaders dependencies require a :Name parameter");
-    }
-
-    SHVar typeVar;
-    if (getFromTable(context, inputTable, "Type", nameVar)) {
-      checkType(nameVar.valueType, SHType::String, ":Shaders dependency name");
-      dep.type = shader::DependencyType(typeVar.payload.enumValue);
-    }
+    dep.name = inputString;
+    dep.type = type;
   }
 
   void applyShader(SHContext *context, Feature &feature, const SHVar &input) {
@@ -259,11 +248,18 @@ struct FeatureShard {
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
 
     SHVar depsVar;
-    if (getFromTable(context, inputTable, "Dependencies", depsVar)) {
-      checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies");
+    if (getFromTable(context, inputTable, "Before", depsVar)) {
+      checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies (Before)");
       const SHSeq &seq = depsVar.payload.seqValue;
       for (size_t i = 0; i < seq.len; i++) {
-        applyShaderDependency(context, entryPoint, seq.elements[i]);
+        applyShaderDependency(context, entryPoint, shader::DependencyType::Before, seq.elements[i]);
+      }
+    }
+    if (getFromTable(context, inputTable, "After", depsVar)) {
+      checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies (After)");
+      const SHSeq &seq = depsVar.payload.seqValue;
+      for (size_t i = 0; i < seq.len; i++) {
+        applyShaderDependency(context, entryPoint, shader::DependencyType::After, seq.elements[i]);
       }
     }
 
