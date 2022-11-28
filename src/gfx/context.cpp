@@ -326,12 +326,7 @@ void Context::initCommon() {
   }
 #endif
 
-  //[t] I'm not sure I'm liking this combination of 2 different contexts (this context, and the openxr context)
-  //[t] because the opexr version is really different to this one, hard to pretend they're the same context. 
-  //[t] And actually we need a 3rd Context.cpp that creates xr devices and instances.
-  //[t] for example getXrInstance, getXrSystemId, getXrViewType.
-  //[t] So we have this gfx context that contains the ContextXrGfxBackend which will actually be sent 
-  //[t] along with Context_XR.cpp to the headset, because there's a lot more to do to create an open xr instance...
+  //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
   backendXrGfx = std::make_shared<ContextXrGfxBackend>();  
   wgpuInstance = backendXrGfx->wgpuVkCreateInstance();
 

@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #define XR_USE_GRAPHICS_API_VULKAN
-#include <openxr/openxr.h>
+#include <external/openxr/include/openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
 #include <glm/mat4x4.hpp>
@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "context_xr_gfx.hpp"
-#include "context.hpp"
+#include "context_xr.h"
 
 
 class RenderTarget;
@@ -63,7 +63,7 @@ private:
   std::vector<XrView> eyePoses;
   std::vector<XrCompositionLayerProjectionView> eyeRenderInfos;
 
-  XrSwapchain swapchain = nullptr;
+  std::vector<XrSwapchain*> swapchainArr;// = nullptr;
   std::vector<RenderTarget*> swapchainRenderTargets;
 
   VkRenderPass renderPass = nullptr;

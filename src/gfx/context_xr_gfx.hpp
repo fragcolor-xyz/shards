@@ -15,14 +15,16 @@
 
 #include <gfx_rust.h>
 
+#include "Headset.h"
+
 namespace gfx {
 
 struct WGPUVulkanShared {
   vk::DispatchLoaderDynamic loader;
-  vk::PhysicalDevice physicalDevice;//VkPhysicalDevice
-  vk::Instance instance;//VkInstance
-  vk::Device device;//VkDevice
-  vk::Queue queue;//VkQueue, draw queue. The present queue is wgpuPresent afaiks
+  vk::PhysicalDevice physicalDevice;//[t] VkPhysicalDevice
+  vk::Instance instance;//[t] VkInstance
+  vk::Device device;//[t] VkDevice
+  vk::Queue queue;//[t] VkQueue, draw queue. The present queue is wgpuPresent afaiks
 
   uint32_t queueIndex;
   uint32_t queueFamilyIndex;
@@ -103,6 +105,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     scInfo.setPresentMode(vk::PresentModeKHR::eImmediate);
     scInfo.setClipped(true);
     scInfo.setOldSwapchain(oldSwapchain);
+    // [t] ReCreate Swapchain
     mirrorSwapchain = wgpuVulkanShared->device.createSwapchainKHR(scInfo, nullptr, loader);
 
     if (oldSwapchain)
@@ -111,6 +114,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     if (!mirrorSwapchain)
       throw std::runtime_error("Failed to create swapchain");
 
+    // [t] Retrieve the new swapchain images
     mirrorSwapchainImages = wgpuVulkanShared->device.getSwapchainImagesKHR(mirrorSwapchain, loader); 
 
     mirrorTextureViews.clear();
@@ -141,7 +145,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
       };
       WGPUExternalTextureDescriptor extDesc{
           .nextInChain = &extDescVk.chain,
-      };
+      }; 
 
       WGPUTextureView textureView = wgpuCreateExternalTextureView(wgpuVulkanShared->wgpuDevice, &textureDesc, &viewDesc, &extDesc);
       assert(textureView);
@@ -194,6 +198,34 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     return currentView;
   }
 
+  void render(Headset headset, uint32_t eyeIndex, uint32_t swapchainImageIndex){
+    const VkCommandBuffer commandBuffer = renderer->getCurrentCommandBuffer();//[t] TODO: but we want wgpu command buffer, right?
+    
+    const VkImage sourceImage = headset->getRenderTarget(swapchainImageIndex)->getImage();
+    const VkImage destinationImage = mirrorSwapchainImages.at(currentImageIndex); // [t] we have these from createMirrorSwapchain()
+    const VkExtent2D eyeResolution = headset->getEyeResolution(eyeIndex);
+
+    // [t] For vulkan, the steps should be smth like this:
+    /*
+      Convert source image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+        vkCmdPipelineBarrier with command buffer
+
+      Convert destination image from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+        vkCmdPipelineBarrier with command buffer
+
+      match source image eye aspect ratio to window / crop
+
+      VkImageBlit vkCmdBlitImage the source image to destination image
+
+      Convert source image from VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+
+      Convert destination image from VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+
+      present()
+
+    */
+  }
+
   void present() override {
     WGPUExternalPresentVK wgpuPresent{};
     wgpuPrepareExternalPresentVK(wgpuVulkanShared->wgpuQueue, &wgpuPresent);
@@ -216,7 +248,8 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
   }
 };
 
-// NOTE: Prototype OpenXR binding code. Just for vulkan and wgpu binding, so gfx only. This is not actually touching openXR.
+// NOTE: Prototype OpenXR binding code. Just for vulkan and wgpu binding, so gfx only. 
+// Does not touch openXR. Needed to create OpenXR swapchains etc. for the xr Headset.cpp.
 // The openxr vulkan extensions requires the following:
 // - Specific extensions on instance creation
 // - Specific physical device as returned by OpenXR
@@ -227,6 +260,7 @@ struct ContextXrGfxBackend : public IContextBackend {
 
   std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
 
+  //[T] Called by context.cpp 
   WGPUInstance wgpuVkCreateInstance() override 
   {
     // Create gpu instance
@@ -278,12 +312,12 @@ struct ContextXrGfxBackend : public IContextBackend {
   {
     void *surfaceHandle = overrideNativeWindowHandle;
 
-#if GFX_APPLE
+  #if GFX_APPLE
     if (!surfaceHandle) {
       metalViewContainer = std::make_unique<MetalViewContainer>(window->window);
       surfaceHandle = metalViewContainer->layer;
     }
-#endif
+  #endif
 
     WGPUPlatformSurfaceDescriptor surfDesc(window.window, surfaceHandle);
     wgpuSurface = wgpuInstanceCreateSurface(wgpuVulkanShared->wgpuInstance, &surfDesc);
@@ -294,7 +328,7 @@ struct ContextXrGfxBackend : public IContextBackend {
   std::shared_ptr<AdapterRequest> requestAdapter() override {
     WGPURequestAdapterOptionsVK optionsVk{
         .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_RequestAdapterOptionsVK)},
-        .physicalDevice = vulkanShared->physicalDevice,
+        .physicalDevice = wgpuVulkanShared->physicalDevice,
     };
 
     WGPURequestAdapterOptions options{};
