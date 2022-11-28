@@ -1,5 +1,6 @@
 // This file contains the shard defintions that will be inlined in release builds
-// In debug this file is compiled separately
+// When SHARDS_INLINED is disabled, this file is compiled separately
+// Check the core CMakeLists
 
 #include "inlined.hpp"
 #include <cinttypes>
@@ -9,7 +10,7 @@
 
 namespace shards {
 
-SHARDS_CONDITIONAL_INLINE void setInlineShardId(Shard *shard, std::string_view name) {
+SHARDS_CONDITIONAL_INLINE FLATTEN void setInlineShardId(Shard *shard, std::string_view name) {
   // Hook inline shards to override activation in runWire
   if (name == "Const") {
     shard->inlineShardId = InlineShard::CoreConst;
@@ -79,7 +80,7 @@ SHARDS_CONDITIONAL_INLINE void setInlineShardId(Shard *shard, std::string_view n
   // Unary math is dealt inside math.hpp compose
 }
 
-SHARDS_CONDITIONAL_INLINE bool activateShardInline(Shard *blk, SHContext *context, const SHVar &input, SHVar &output) {
+SHARDS_CONDITIONAL_INLINE FLATTEN bool activateShardInline(Shard *blk, SHContext *context, const SHVar &input, SHVar &output) {
   switch (blk->inlineShardId) {
   case InlineShard::NoopShard:
     output = input;

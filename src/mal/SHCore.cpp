@@ -600,7 +600,7 @@ struct WireFileWatcher {
 
 #if !(defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__))
       // sleep some, don't run callbacks here tho!
-      shards::sleep(2.0, false);
+      shards::sleep(0.2, false);
 #endif
     } catch (malEmptyInputException &) {
       WireLoadResult result = {true, "empty input exception", nullptr};
