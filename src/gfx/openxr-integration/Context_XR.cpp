@@ -15,11 +15,14 @@
 
 //[t] TODO: glfw should also be removed, no?
 
+/*
 namespace
 {
 constexpr XrViewConfigurationType viewType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 constexpr XrEnvironmentBlendMode environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+constexpr XrFormFactor xrFormFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 } // namespace
+*/
 
 Context_XR::Context_XR()
 {
@@ -207,80 +210,10 @@ Context_XR::Context_XR()
   }
 #endif
 
-  // Get the system ID
-  XrSystemGetInfo systemGetInfo{ XR_TYPE_SYSTEM_GET_INFO };
-  systemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-  XrResult result = xrGetSystem(xrInstance, &systemGetInfo, &systemId);
-  if (XR_FAILED(result))
-  {
-    util::error(Error::HeadsetNotConnected);
-    valid = false;
-    return;
-  }
 
-  // Check the supported environment blend modes
-  {
-    uint32_t environmentBlendModeCount;
-    result = xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, 0u, &environmentBlendModeCount, nullptr);
-    if (XR_FAILED(result))
-    {
-      util::error(Error::GenericOpenXR);
-      valid = false;
-      return;
-    }
+//[t] TODO: TODO:
 
-    std::vector<XrEnvironmentBlendMode> supportedEnvironmentBlendModes(environmentBlendModeCount);
-    result = xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, environmentBlendModeCount,
-                                              &environmentBlendModeCount, supportedEnvironmentBlendModes.data());
-    if (XR_FAILED(result))
-    {
-      util::error(Error::GenericOpenXR);
-      valid = false;
-      return;
-    }
-
-    bool modeFound = false;
-    for (const XrEnvironmentBlendMode& mode : supportedEnvironmentBlendModes)
-    {
-      if (mode == environmentBlendMode)
-      {
-        modeFound = true;
-        break;
-      }
-    }
-
-    if (!modeFound)
-    {
-      util::error(Error::FeatureNotSupported, "Environment blend mode");
-      valid = false;
-      return;
-    }
-  }
-
-  //[t] The folloing are extension checks for vulkan instancefrom system and from openxr
-  //[t] TODO: Guus, are we doing the same checks in context_xr_gfx.hpp in CreateInstance()?
-
-  // Get all supported Vulkan instance extensions
-  std::vector<VkExtensionProperties> supportedVulkanInstanceExtensions;
-  {
-    uint32_t instanceExtensionCount;
-    if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr) != VK_SUCCESS)
-    {
-      util::error(Error::GenericVulkan);
-      valid = false;
-      return;
-    }
-
-    supportedVulkanInstanceExtensions.resize(instanceExtensionCount);
-    if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount,
-                                               supportedVulkanInstanceExtensions.data()) != VK_SUCCESS)
-    {
-      util::error(Error::GenericVulkan);
-      valid = false;
-      return;
-    }
-  }
-
+  
   //[t] we don't need this
   /*
   // Get the required Vulkan instance extensions from GLFW
@@ -301,64 +234,10 @@ Context_XR::Context_XR()
     }
   }*/
 
-  // Get the required Vulkan instance extensions from OpenXR and add them
-  {
-    uint32_t count;
-    result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
-    if (XR_FAILED(result))
-    {
-      util::error(Error::GenericOpenXR);
-      valid = false;
-      return;
-    }
+ 
 
-    std::string buffer;
-    buffer.resize(count);
-    result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, count, &count, buffer.data());
-    if (XR_FAILED(result))
-    {
-      util::error(Error::GenericOpenXR);
-      valid = false;
-      return;
-    }
 
-    const std::vector<const char*> instanceExtensions = util::unpackExtensionString(buffer);
-    for (const char* extension : instanceExtensions)
-    {
-      vulkanInstanceExtensions.push_back(extension);
-    }
-  }
-
-  #ifdef DEBUG
-  // Add the Vulkan debug instance extension
-  vulkanInstanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-  #endif
-
-  // Check that all required Vulkan instance extensions are supported
-  for (const char* extension : vulkanInstanceExtensions)
-  {
-    bool extensionSupported = false;
-
-    for (const VkExtensionProperties& supportedExtension : supportedVulkanInstanceExtensions)
-    {
-      if (strcmp(extension, supportedExtension.extensionName) == 0)
-      {
-        extensionSupported = true;
-        break;
-      }
-    }
-
-    if (!extensionSupported)
-    {
-      std::stringstream s;
-      s << "Vulkan instance extension \"" << extension << "\"";
-      util::error(Error::FeatureNotSupported, s.str());
-      valid = false;
-      return;
-    }
-  }
-
-  //[t] this is boilerplate for gfx vk instance, which we should have in context_xr_gfx.hpp
+  //[t] boilerplate for gfx vk instance, which we should (already) have in context_xr_gfx.hpp
   /*
   // Create a Vulkan instance with all required extensions
   {
@@ -489,6 +368,154 @@ Context_XR::Context_XR()
   */
 }
 
+void Context_XR::checkXRDeviceReady(
+                                    XrViewConfigurationType viewType,
+                                    XrEnvironmentBlendMode environmentBlendMode,
+                                    XrFormFactor xrFormFactor
+                                  )
+{
+  // what we probably want:
+  // XrViewConfigurationType viewType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+  // XrEnvironmentBlendMode environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+  // XrFormFactor xrFormFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+
+  // Get the system ID
+  XrSystemGetInfo systemGetInfo{ XR_TYPE_SYSTEM_GET_INFO };
+  systemGetInfo.formFactor = xrFormFactor;
+  XrResult result = xrGetSystem(xrInstance, &systemGetInfo, &systemId);
+  if (XR_FAILED(result))
+  {
+    util::error(Error::HeadsetNotConnected);
+    //[t] TODO: Perhaps here instead of throwing error, do something else? Wait for headset to be plugged in?
+    valid = false;
+    return;
+  }
+
+  // Check the supported environment blend modes
+  {
+    uint32_t environmentBlendModeCount;
+    result = xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, 0u, &environmentBlendModeCount, nullptr);
+    if (XR_FAILED(result))
+    {
+      util::error(Error::GenericOpenXR);
+      valid = false;
+      return;
+    }
+
+    std::vector<XrEnvironmentBlendMode> supportedEnvironmentBlendModes(environmentBlendModeCount);
+    result = xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, environmentBlendModeCount,
+                                              &environmentBlendModeCount, supportedEnvironmentBlendModes.data());
+    if (XR_FAILED(result))
+    {
+      util::error(Error::GenericOpenXR);
+      valid = false;
+      return;
+    }
+
+    bool modeFound = false;
+    for (const XrEnvironmentBlendMode& mode : supportedEnvironmentBlendModes)
+    {
+      if (mode == environmentBlendMode)
+      {
+        modeFound = true;
+        break;
+      }
+    }
+
+    if (!modeFound)
+    {
+      util::error(Error::FeatureNotSupported, "Environment blend mode");
+      valid = false;
+      return;
+    }
+  }
+
+}
+
+void Context_XR::getVulkanExtensionsFromOpenXRInstance()
+{
+  
+  //[t] The folloing are extension checks for vulkan instance from system and from openxr
+  // Get all supported Vulkan instance extensions
+  std::vector<VkExtensionProperties> supportedVulkanInstanceExtensions;
+  {
+    uint32_t instanceExtensionCount;
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr) != VK_SUCCESS)
+    {
+      util::error(Error::GenericVulkan);
+      valid = false;
+      return;
+    }
+
+    supportedVulkanInstanceExtensions.resize(instanceExtensionCount);
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount,
+                                               supportedVulkanInstanceExtensions.data()) != VK_SUCCESS)
+    {
+      util::error(Error::GenericVulkan);
+      valid = false;
+      return;
+    }
+  }
+
+  
+  // Get the required Vulkan instance extensions from OpenXR and add them
+  {
+    uint32_t count;
+    result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
+    if (XR_FAILED(result))
+    {
+      util::error(Error::GenericOpenXR);
+      valid = false;
+      return;
+    }
+
+    std::string buffer;
+    buffer.resize(count);
+    result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, count, &count, buffer.data());
+    if (XR_FAILED(result))
+    {
+      util::error(Error::GenericOpenXR);
+      valid = false;
+      return;
+    }
+
+    const std::vector<const char*> instanceExtensions = util::unpackExtensionString(buffer);
+    for (const char* extension : instanceExtensions)
+    {
+      vulkanInstanceExtensions.push_back(extension);
+    }
+  }
+
+  #ifdef DEBUG
+  // Add the Vulkan debug instance extension
+  vulkanInstanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  #endif
+
+  // Check that all required Vulkan instance extensions are supported
+  for (const char* extension : vulkanInstanceExtensions)
+  {
+    bool extensionSupported = false;
+
+    for (const VkExtensionProperties& supportedExtension : supportedVulkanInstanceExtensions)
+    {
+      if (strcmp(extension, supportedExtension.extensionName) == 0)
+      {
+        extensionSupported = true;
+        break;
+      }
+    }
+
+    if (!extensionSupported)
+    {
+      std::stringstream s;
+      s << "Vulkan instance extension \"" << extension << "\"";
+      util::error(Error::FeatureNotSupported, s.str());
+      valid = false;
+      return;
+    }
+  }
+}
+
 Context_XR::~Context_XR()
 {
   // Clean up OpenXR
@@ -514,7 +541,8 @@ Context_XR::~Context_XR()
 }
 
 //[t] we're not using this, we use the device data in WGPUVulkanShared instead. But it's good reference!
-bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface only used to check compatibility
+// especially for multiview
+bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface to check compatibility
 {
   // Retrieve the physical device from OpenXR
   XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice);
@@ -676,7 +704,7 @@ bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface only us
     }
   }
 
-  // Create a device
+  // Create a vulkan physical device
   {
     // Verify that the required physical device features are supported
     VkPhysicalDeviceFeatures physicalDeviceFeatures;
@@ -688,19 +716,19 @@ bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface only us
     }
 
     VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
-    VkPhysicalDeviceMultiviewFeatures physicalDeviceMultiviewFeatures{
+    VkPhysicalDeviceMultiviewFeatures physicalDeviceMultiviewFeatures{//[t] TODO: Guus, we'll need this for multiview
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
     };
     physicalDeviceFeatures2.pNext = &physicalDeviceMultiviewFeatures;
     vkGetPhysicalDeviceFeatures2(physicalDevice, &physicalDeviceFeatures2);
-    if (!physicalDeviceMultiviewFeatures.multiview)//[t] TODO: Guus, we'll need this for multiview
+    if (!physicalDeviceMultiviewFeatures.multiview)
     {
       util::error(Error::FeatureNotSupported, "Vulkan physical device feature \"multiview\"");
       return false;
     }
 
     physicalDeviceFeatures.shaderStorageImageMultisample = VK_TRUE; // Needed for some OpenXR implementations
-    physicalDeviceMultiviewFeatures.multiview = VK_TRUE;            // Needed for stereo rendering
+    physicalDeviceMultiviewFeatures.multiview = VK_TRUE;            //[t] TODO: Guus, we also need this for stereo rendering
 
     constexpr float queuePriority = 1.0f;
 

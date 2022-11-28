@@ -13,6 +13,12 @@ public:
   Context_XR();
   ~Context_XR();
 
+  void checkXRDeviceReady(
+                            XrViewConfigurationType viewType,
+                            XrEnvironmentBlendMode environmentBlendMode,
+                            XrFormFactor xrFormFactor
+                          );
+  void getVulkanExtensionsFromOpenXRInstance();
   bool createDevice(VkSurfaceKHR mirrorSurface);
   void sync() const;
 
