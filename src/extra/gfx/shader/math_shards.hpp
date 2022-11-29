@@ -183,6 +183,9 @@ struct OperatorNegate {
   static inline const char *op = "-";
 };
 
+struct OperatorAbs {
+  static inline const char *call = "abs";
+};
 
 } // namespace shader
 } // namespace gfx
