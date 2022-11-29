@@ -41,7 +41,15 @@ template <> struct Appender<blocks::Compound> : public IAppender {
   }
 };
 
-typedef std::map<std::string, FieldType> VariableTypeMap;
+struct VariableInfo {
+  FieldType type;
+  bool isReadOnly = false;
+
+  VariableInfo() = default;
+  VariableInfo(FieldType type, bool isReadOnly = false) : type(type), isReadOnly(isReadOnly) {}
+};
+
+typedef std::map<std::string, VariableInfo> VariableInfoMap;
 
 // Filters invalid characters out of variable names
 inline std::string filterVariableName(std::string_view varName) {
@@ -59,7 +67,7 @@ inline std::string filterVariableName(std::string_view varName) {
 
 struct VariableStorage {
   // Stores type assignment
-  VariableTypeMap types;
+  VariableInfoMap variables;
 
   // Maps variable names to globally unique variable names
   std::map<std::string, std::string> uniqueVariableNames;
@@ -140,7 +148,7 @@ struct TranslatedWire {
   std::vector<TranslatedFunctionArgument> arguments;
 
   TranslatedWire() = default;
-  TranslatedWire(TranslatedWire&&) = default;
+  TranslatedWire(TranslatedWire &&) = default;
 };
 
 // Context used during shader translations

@@ -92,7 +92,7 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
       translated.arguments.emplace_back(TranslatedFunctionArgument{*fieldType, wgslVarName, req.name});
 
       functionScope.variables.mapUniqueVariableName(req.name, wgslVarName);
-      functionScope.variables.types.insert_or_assign(req.name, *fieldType);
+      functionScope.variables.variables.insert_or_assign(req.name, VariableInfo(*fieldType, true));
     }
   }
 
@@ -129,17 +129,17 @@ const TranslatedWire &TranslationContext::processWire(const std::shared_ptr<SHWi
 
   SPDLOG_LOGGER_INFO(logger, "gen(wire)> {}", signature);
 
-  // Add the definition
-  // the Header block will insert it's generate code outside & before the current function
-  addNew(std::make_unique<blocks::Header>(std::move(functionBody)));
+  // Insert function definition into root so it will be processed first
+  // the Header block will insert it's generate code outside & before the shader entry point
+  root->children.emplace_back(std::make_unique<blocks::Header>(std::move(functionBody)));
 
   return translatedWires.emplace(std::make_pair(wirePtr, std::move(translated))).first->second;
 }
 
 bool TranslationContext::findVariableGlobal(const std::string &varName, const FieldType *&outFieldType) const {
-  auto globalIt = globals.types.find(varName);
-  if (globalIt != globals.types.end()) {
-    outFieldType = &globalIt->second;
+  auto globalIt = globals.variables.find(varName);
+  if (globalIt != globals.variables.end()) {
+    outFieldType = &globalIt->second.type;
     return true;
   }
   return false;
@@ -149,9 +149,9 @@ bool TranslationContext::findVariable(const std::string &varName, const FieldTyp
                                       const TranslationBlockRef *&outParent) const {
   for (auto it = stack.crbegin(); it != stack.crend(); ++it) {
     auto &variables = it->variables;
-    auto it1 = variables.types.find(varName);
-    if (it1 != variables.types.end()) {
-      outFieldType = &it1->second;
+    auto it1 = variables.variables.find(varName);
+    if (it1 != variables.variables.end()) {
+      outFieldType = &it1->second.type;
       outParent = &*it;
       return true;
     }
@@ -165,22 +165,24 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
                                              std::unique_ptr<IWGSLGenerated> &&value) {
   FieldType valueType = value->getType();
 
-  auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const FieldType &fieldType) {
+  auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const FieldType &fieldType,
+                           bool forceNewVariable = false) {
     const std::string *outVariableName{};
 
-    auto &types = storage.types;
-    auto it = types.find(varName);
-    if (it == types.end()) {
-      types.insert_or_assign(varName, fieldType);
+    auto &variables = storage.variables;
+    auto it = variables.find(varName);
+    if (forceNewVariable || it == variables.end()) {
+      variables.insert_or_assign(varName, fieldType);
 
       auto tmpName = getUniqueVariableName(varName);
       outVariableName = &storage.mapUniqueVariableName(varName, tmpName);
     } else {
       if (allowUpdate) {
-        if (it->second != value->getType()) {
+        if (it->second.type != value->getType()) {
           throw ShaderComposeError(
-              fmt::format("Can not update \"{}\". Expected: {}, got {} instead", varName, it->second, fieldType));
+              fmt::format("Can not update \"{}\". Expected: {}, got {} instead", varName, it->second.type, fieldType));
         }
+
         outVariableName = &storage.resolveUniqueVariableName(varName);
       } else {
         throw ShaderComposeError(fmt::format("Can not set \"{}\", it's already set", varName));
@@ -200,13 +202,34 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     // Push reference to assigned value
     return WGSLBlock(valueType, blocks::makeBlock<blocks::ReadGlobal>(uniqueVariableName));
   } else {
-    TranslationBlockRef &parent = getTop();
+    const FieldType *foundFieldType{};
+    TranslationBlockRef *parent{};
+    bool isNewVariable = true;
+    if (allowUpdate) {
+      const TranslationBlockRef *foundParent{};
+      if (findVariable(varName, foundFieldType, foundParent)) {
+        parent = const_cast<decltype(parent)>(foundParent);
+        isNewVariable = false;
+
+        // In case of function parameters, show the variables, since they cannot be assigned otherwise
+        auto it = parent->variables.variables.find(varName);
+        if (it->second.isReadOnly) {
+          isNewVariable = true;
+          it->second.isReadOnly = false;
+        }
+      }
+    } else {
+      parent = &getTop();
+    }
 
     // Store local variable type info & check update
-    const std::string &uniqueVariableName = updateStorage(parent.variables, varName, valueType);
+    const std::string &uniqueVariableName = updateStorage(parent->variables, varName, valueType, isNewVariable);
 
     // Generate a shader source block containing the assignment
-    addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", uniqueVariableName), value->toBlock(), ";\n"));
+    if (isNewVariable)
+      addNew(blocks::makeCompoundBlock(fmt::format("var {} = ", uniqueVariableName), value->toBlock(), ";\n"));
+    else
+      addNew(blocks::makeCompoundBlock(fmt::format("{} = ", uniqueVariableName), value->toBlock(), ";\n"));
 
     // Push reference to assigned value
     return WGSLBlock(valueType, blocks::makeCompoundBlock(uniqueVariableName));

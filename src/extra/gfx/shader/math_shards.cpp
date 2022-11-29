@@ -114,12 +114,16 @@ template <typename TShard> struct MakeVectorTranslator {
     std::vector<shards::ParamVar> &params = shard->params;
     std::unique_ptr<blocks::Compound> sourceComponentList;
 
+    if (!shard->isBroadcast && shard->inputSize != params.size())
+      throw ShaderComposeError(
+          fmt::format("Unsupported vector constructor, {} from {} components", outputVectorType->name, shard->inputSize));
+
     // Convert list of casted components
     // Generates dstType(x, y, z), etc.
     //  - vec4<f32>(input.x, input.y, input.z)
     sourceComponentList = blocks::makeCompoundBlock();
-    for (size_t i = 0; i < params.size(); i++) {
-      bool isLast = i == (params.size() - 1);
+    for (size_t i = 0; i < shard->inputSize; i++) {
+      bool isLast = i == (shard->inputSize - 1);
 
       auto value = translateParamVar(params[i], context);
       if (value->getType() != unitFieldType)
@@ -161,6 +165,7 @@ void registerMathShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Floor", shards::Math::Floor, OperatorFloor);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Ceil", shards::Math::Ceil, OperatorCeil);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Round", shards::Math::Round, OperatorRound);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Negate", shards::Math::Negate, OperatorNegate);
 
   // Casting blocks
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToInt", ToNumber<SHType::Int>);

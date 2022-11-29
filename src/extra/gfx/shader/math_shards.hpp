@@ -178,6 +178,12 @@ struct OperatorRound {
   static inline const char *call = "round";
 };
 
+struct OperatorNegate {
+  static inline bool prefixOp = true;
+  static inline const char *op = "-";
+};
+
+
 } // namespace shader
 } // namespace gfx
 
