@@ -43,10 +43,9 @@ struct ConstTranslator {
 };
 
 // Generates global variables
-template<typename TShard>
-struct SetTranslator {
+template <typename TShard> struct SetTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
-    auto& varName = shard->_name;
+    auto &varName = shard->_name;
     SPDLOG_LOGGER_INFO(context.logger, "gen(set/ref)> {}", varName);
 
     if (!context.wgslTop)
@@ -66,14 +65,12 @@ struct GetTranslator {
     context.setWGSLTop<WGSLBlock>(context.reference(varName));
   }
 
-  static void translate(shards::Get *shard, TranslationContext &context) {
-    translateByName(shard->_name.c_str(), context);
-  }
+  static void translate(shards::Get *shard, TranslationContext &context) { translateByName(shard->_name.c_str(), context); }
 };
 
 struct UpdateTranslator {
   static void translate(shards::Update *shard, TranslationContext &context) {
-    auto& varName = shard->_name;
+    auto &varName = shard->_name;
     SPDLOG_LOGGER_INFO(context.logger, "gen(upd)> {}", varName);
 
     if (!context.wgslTop)
@@ -88,11 +85,18 @@ struct UpdateTranslator {
 
 // Generates vector swizzles
 struct TakeTranslator {
+  static char getComponentName(SHInt index) {
+    static constexpr auto numComponents = std::size(componentNames);
+    if (index < 0 || index >= numComponents)
+      throw std::out_of_range("Take component index");
+    return componentNames[index];
+  }
+
   static std::string generateSwizzle(shards::Take *shard) {
     std::string result;
 
     if (shard->_indices.valueType == SHType::Int) {
-      result = componentNames[shard->_indices.payload.intValue];
+      result = getComponentName(shard->_indices.payload.intValue);
     } else if (shard->_indices.valueType == SHType::Seq) {
       SHSeq indices = shard->_indices.payload.seqValue;
       for (size_t i = 0; i < indices.len; i++) {
@@ -100,7 +104,7 @@ struct TakeTranslator {
         if (elem.valueType != SHType::Int)
           throw ShaderComposeError("Take indices should be integers");
         int index = elem.payload.intValue;
-        result += componentNames[index];
+        result += getComponentName(index);
       }
     } else {
       throw ShaderComposeError("Take index should be an integer or sequence of integers");
