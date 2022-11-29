@@ -54,7 +54,7 @@ struct BaseColor {
     auto initColor = makeBlock<Custom>([=](IGeneratorContext &context) {
       context.beginWriteGlobal("color", colorFieldType);
 
-      auto &inputs = context.getInputs();
+      auto &inputs = context.getDefinitions().inputs;
       if (context.hasInput(colorAttributeName.c_str())) {
         auto it = inputs.find(colorAttributeName);
         auto colorInputType = it != inputs.end() ? it->second : FieldTypes::Float4;

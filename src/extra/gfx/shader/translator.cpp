@@ -10,7 +10,6 @@
 #include <gfx/shader/log.hpp>
 #include <gfx/shader/generator.hpp>
 
-using namespace gfx::shader;
 using namespace shards;
 namespace gfx {
 namespace shader {
@@ -270,35 +269,6 @@ void registerTranslatorShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(GetTranslator, "Get", shards::Get);
   REGISTER_EXTERNAL_SHADER_SHARD(UpdateTranslator, "Update", shards::Update);
   REGISTER_EXTERNAL_SHADER_SHARD(TakeTranslator, "Take", shards::Take);
-}
-
-void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input) {
-  checkType(input.valueType, SHType::Seq, ":Shaders EntryPoint");
-
-  // Check input type is a shard sequence
-  std::vector<ShardPtr> wire;
-  for (SHVar &shardVar : IterableSeq(input)) {
-    checkType(shardVar.valueType, SHType::ShardRef, ":Shaders EntryPoint");
-    wire.push_back(shardVar.payload.shardValue);
-  }
-
-  // Compose the shards
-  auto composeCallback = [](const struct Shard *errorShard, SHString errorTxt, SHBool nonfatalWarning, void *userData) {
-    auto shardName = errorShard->name(const_cast<Shard *>(errorShard));
-    throw formatException("Failed to compose shader shards: {} ({})", errorTxt, shardName);
-  };
-  SHInstanceData instanceData{};
-  SHComposeResult result = composeWire(wire, composeCallback, nullptr, instanceData);
-  if (result.failed)
-    throw formatException("Failed to compose shader shards");
-
-  // Process shards by translator
-  shader::TranslationContext shaderCtx;
-  for (ShardPtr shard : wire) {
-    shaderCtx.processShard(shard);
-  }
-
-  entryPoint.code = std::move(shaderCtx.root);
 }
 
 } // namespace shader

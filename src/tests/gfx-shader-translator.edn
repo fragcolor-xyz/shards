@@ -5,7 +5,7 @@
    0.0 >= .time
 
    {:EntryPoint (->
-                 (Shader.ReadInput "texCoord0" :Dimension 2) >= .uv
+                 (Shader.ReadInput "texCoord0") >= .uv
                  .uv (Take 0) >== .global
                  .uv (Take 1) >= .local
                  .global = .u

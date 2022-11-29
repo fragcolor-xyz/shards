@@ -47,8 +47,14 @@ private:
   void collectTextureBindings();
   void buildBufferBindingLayouts();
   void buildPipelineLayout(WGPUDevice device, const WGPULimits &deviceLimits);
-  // WGPUPipelineLayout createPipelineLayout(WGPUDevice device);
+
+  // Setup buffer/texture definitions in the shader generator
+  void setupShaderDefinitions(const WGPULimits &deviceLimits, bool final);
+
+  void setupShaderOutputFields();
+
   shader::GeneratorOutput generateShader();
+
   WGPURenderPipeline finalize(WGPUDevice device);
 
   // Strip unused fields from bindings

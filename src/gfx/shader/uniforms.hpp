@@ -87,6 +87,14 @@ public:
     }
   }
 
+  // Returns the layout as it is currently
+  const UniformBufferLayout &getCurrentFinalLayout() {
+    bufferLayout.size = offset;
+    return bufferLayout;
+  }
+
+  // Finalizes the layout and moves out the result.
+  // WARNING: do not reuse this builder after calling finalize
   UniformBufferLayout &&finalize() {
     bufferLayout.size = offset;
     return std::move(bufferLayout);
@@ -130,6 +138,15 @@ struct BufferDefinition {
   String variableName;
   UniformBufferLayout layout;
   std::optional<String> indexedBy;
+
+  inline const UniformLayout *findField(const char *fieldName) const {
+    for (size_t i = 0; i < layout.fieldNames.size(); i++) {
+      if (layout.fieldNames[i] == fieldName) {
+        return &layout.items[i];
+      }
+    }
+    return nullptr;
+  }
 };
 
 struct TextureDefinition {

@@ -15,7 +15,7 @@ DefaultInterpolation::DefaultInterpolation() {
 }
 
 void DefaultInterpolation::apply(IGeneratorContext &context) const {
-  for (auto &input : context.getInputs()) {
+  for (auto &input : context.getDefinitions().inputs) {
     const std::string &name = input.first;
     if (!context.hasOutput(name.c_str())) {
       for (auto &prefix : matchPrefixes) {

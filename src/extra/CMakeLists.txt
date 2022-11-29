@@ -8,6 +8,7 @@ set(extra_SOURCES
   gfx/feature.cpp
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
+  gfx/shader/composition.cpp
   gfx/gltf.cpp
   gfx/camera.cpp
   gfx/texture.cpp

@@ -26,18 +26,18 @@
    {:Shaders [{:Name "lighting"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
-                            (Shader.ReadInput :Dimension 3 :Name "worldNormal") >= .normal
-                            (Shader.ReadBuffer :Dimension 3 :Name "lightDirection") >= .light-dir
+                            (Shader.ReadInput :Name "worldNormal") >= .normal
+                            (Shader.ReadBuffer :Name "lightDirection") >= .light-dir
                             (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
                             .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
-                            (Shader.ReadBuffer :Dimension 3 :Name "lightColor") (Math.Multiply .n-dot-l)
+                            (Shader.ReadBuffer :Name "lightColor") (Math.Multiply .n-dot-l)
                             (Shader.WriteGlobal "lighting"))}
               {:Name "mainColor"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
                             (Shader.ReadBuffer :Name "time") >= .time
                             .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
-                            (Shader.ReadGlobal :Dimension 3 :Name "lighting") (ToFloat4) >= .lighting-4
+                            (Shader.ReadGlobal :Name "lighting") (ToFloat4) >= .lighting-4
                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
                             (Shader.WriteOutput "color"))}]
     :Params [{:Name "lightDirection" :Default .light-direction}

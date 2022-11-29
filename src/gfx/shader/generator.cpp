@@ -132,157 +132,57 @@ struct StageOutput {
   std::vector<GeneratorError> errors;
 };
 
-struct Stage {
-  ProgrammableGraphicsStage stage;
-  std::vector<const EntryPoint *> entryPoints;
-  std::vector<String> extraEntryPointParameters;
-  String mainFunctionHeader;
-  String inputStructName;
-  String inputVariableName;
-  String outputStructName;
-  String outputVariableName;
-  String globalsStructName;
-  String globalsVariableName;
-
-  Stage(ProgrammableGraphicsStage stage, const String &inputStructName, const String &outputStructName)
-      : stage(stage), inputStructName((inputStructName)), outputStructName((outputStructName)) {
-    inputVariableName = fmt::format("p_{}_input", magic_enum::enum_name(stage));
-    outputVariableName = fmt::format("p_{}_output", magic_enum::enum_name(stage));
-
-    globalsStructName = fmt::format("{}_globals_t", magic_enum::enum_name(stage));
-    globalsVariableName = fmt::format("p_{}_globals", magic_enum::enum_name(stage));
+static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool ignoreMissingDependencies = true) {
+  std::unordered_map<std::string, size_t> nodeNames;
+  for (size_t i = 0; i < entryPoints.size(); i++) {
+    const EntryPoint &entryPoint = *entryPoints[i];
+    if (!entryPoint.name.empty())
+      nodeNames.insert_or_assign(entryPoint.name, i);
   }
 
-  bool sort(bool ignoreMissingDependencies = true) {
-    std::unordered_map<std::string, size_t> nodeNames;
-    for (size_t i = 0; i < entryPoints.size(); i++) {
-      const EntryPoint &entryPoint = *entryPoints[i];
-      if (!entryPoint.name.empty())
-        nodeNames.insert_or_assign(entryPoint.name, i);
-    }
+  auto resolveNodeIndex = [&](const std::string &name) -> const size_t * {
+    auto it = nodeNames.find(name);
+    if (it != nodeNames.end())
+      return &it->second;
+    return nullptr;
+  };
 
-    auto resolveNodeIndex = [&](const std::string &name) -> const size_t * {
-      auto it = nodeNames.find(name);
-      if (it != nodeNames.end())
-        return &it->second;
-      return nullptr;
-    };
-
-    std::set<std::string> missingDependencies;
-    graph::Graph graph;
-    graph.nodes.resize(entryPoints.size());
-    for (size_t i = 0; i < entryPoints.size(); i++) {
-      const EntryPoint &entryPoint = *entryPoints[i];
-      for (auto &dep : entryPoint.dependencies) {
-        if (dep.type == DependencyType::Before) {
-          if (const size_t *depIndex = resolveNodeIndex(dep.name)) {
-            graph.nodes[*depIndex].dependencies.push_back(i);
-          } else if (!ignoreMissingDependencies) {
-            missingDependencies.insert(dep.name);
-          }
-        } else {
-          if (const size_t *depIndex = resolveNodeIndex(dep.name)) {
-            graph.nodes[i].dependencies.push_back(*depIndex);
-          } else if (!ignoreMissingDependencies) {
-            missingDependencies.insert(dep.name);
-          }
+  std::set<std::string> missingDependencies;
+  graph::Graph graph;
+  graph.nodes.resize(entryPoints.size());
+  for (size_t i = 0; i < entryPoints.size(); i++) {
+    const EntryPoint &entryPoint = *entryPoints[i];
+    for (auto &dep : entryPoint.dependencies) {
+      if (dep.type == DependencyType::Before) {
+        if (const size_t *depIndex = resolveNodeIndex(dep.name)) {
+          graph.nodes[*depIndex].dependencies.push_back(i);
+        } else if (!ignoreMissingDependencies) {
+          missingDependencies.insert(dep.name);
+        }
+      } else {
+        if (const size_t *depIndex = resolveNodeIndex(dep.name)) {
+          graph.nodes[i].dependencies.push_back(*depIndex);
+        } else if (!ignoreMissingDependencies) {
+          missingDependencies.insert(dep.name);
         }
       }
     }
-
-    if (!ignoreMissingDependencies && missingDependencies.size() > 0) {
-      return false;
-    }
-
-    std::vector<size_t> sortedIndices;
-    if (!graph::topologicalSort(graph, sortedIndices))
-      return false;
-
-    auto unsortedEntryPoints = std::move(entryPoints);
-    for (size_t i = 0; i < sortedIndices.size(); i++) {
-      entryPoints.push_back(unsortedEntryPoints[sortedIndices[i]]);
-    }
-    return true;
   }
 
-  StageOutput process(const std::vector<NamedField> &inputs, const std::vector<NamedField> &outputs,
-                      const std::map<String, BufferDefinition> &buffers,
-                      const std::map<String, TextureDefinition> &textureDefinitions,
-                      const std::vector<IGeneratorDynamicHandler *> &dynamicHandlers) {
-    GeneratorContext context;
-    context.buffers = buffers;
-    context.inputVariableName = inputVariableName;
-    context.outputVariableName = outputVariableName;
-    context.globalsVariableName = globalsVariableName;
-    context.textures = textureDefinitions;
-    context.dynamicHandlers = dynamicHandlers;
-
-    for (auto &input : inputs) {
-      context.inputs.insert_or_assign(input.name, input.type);
-    }
-
-    for (auto &outputField : outputs) {
-      context.outputs.insert_or_assign(outputField.name, outputField.type);
-    }
-
-    const char *wgslStageName{};
-    switch (stage) {
-    case ProgrammableGraphicsStage::Vertex:
-      wgslStageName = "vertex";
-      break;
-    case ProgrammableGraphicsStage::Fragment:
-      wgslStageName = "fragment";
-      break;
-    }
-
-    context.write(fmt::format("var<private> {}: {};\n", inputVariableName, inputStructName));
-    context.write(fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName));
-
-    std::vector<String> functionNamesToCall;
-    size_t index = 0;
-    for (const EntryPoint *entryPoint : entryPoints) {
-      String entryPointFunctionName = fmt::format("entryPoint_{}_{}", wgslStageName, index++);
-      functionNamesToCall.push_back(entryPointFunctionName);
-
-      context.write(fmt::format("fn {}() {{\n", entryPointFunctionName));
-      entryPoint->code->apply(context);
-      context.write("}\n");
-    }
-
-    String entryPointParams = fmt::format("in: {}", inputStructName);
-    if (!extraEntryPointParameters.empty()) {
-      entryPointParams += ", " + boost::algorithm::join(extraEntryPointParameters, ", ");
-    }
-
-    context.write(
-        fmt::format("@{}\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
-    context.write(fmt::format("\t{} = in;\n", inputVariableName));
-
-    context.write("\t" + mainFunctionHeader + "\n");
-
-    for (auto &functionName : functionNamesToCall) {
-      context.write(fmt::format("\t{}();\n", functionName));
-    }
-
-    context.write(fmt::format("\treturn {};\n", outputVariableName));
-    context.write("}\n");
-
-    String globalsHeader;
-    if (!context.globals.empty()) {
-      std::vector<StructField> globalsStructFields;
-      for (auto &field : context.globals) {
-        globalsStructFields.emplace_back(NamedField(field.first, field.second));
-      }
-      generateStruct(globalsHeader, globalsStructName, globalsStructFields, false);
-      globalsHeader += fmt::format("var<private> {}: {};\n", globalsVariableName, globalsStructName);
-    }
-
-    return StageOutput{
-        globalsHeader + std::move(context.header) + std::move(context.result),
-        std::move(context.errors),
-    };
+  if (!ignoreMissingDependencies && missingDependencies.size() > 0) {
+    return false;
   }
-};
+
+  std::vector<size_t> sortedIndices;
+  if (!graph::topologicalSort(graph, sortedIndices))
+    return false;
+
+  auto unsortedEntryPoints = std::move(entryPoints);
+  for (size_t i = 0; i < sortedIndices.size(); i++) {
+    entryPoints.push_back(unsortedEntryPoints[sortedIndices[i]]);
+  }
+  return true;
+}
 
 struct DynamicVertexInput : public IGeneratorDynamicHandler {
   std::vector<StructField> &inputStruct;
@@ -330,6 +230,170 @@ struct DynamicVertexOutput : public IGeneratorDynamicHandler {
   }
 };
 
+struct StageIO {
+  const std::vector<NamedField> &outputFields;
+
+  std::vector<NamedField> vertexInputFields;
+  std::vector<StructField> vertexInputStructFields;
+  std::vector<StructField> fragmentOutputStructFields;
+  std::vector<StructField> vertexOutputStructFields;
+  std::vector<NamedField> fragmentInputFields;
+
+  std::optional<DynamicVertexInput> dynamicVertexInputHandler;
+  std::optional<DynamicVertexOutput> dynamicVertexOutputHandler;
+
+  StageIO(const MeshFormat &meshFormat, const std::vector<NamedField> &outputFields) : outputFields(outputFields) {
+    for (auto &attr : meshFormat.vertexAttributes) {
+      vertexInputFields.emplace_back(attr.name, FieldType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
+    }
+
+    for (size_t i = 0; i < vertexInputFields.size(); i++) {
+      vertexInputStructFields.emplace_back(vertexInputFields[i], i);
+    }
+
+    for (size_t i = 0; i < outputFields.size(); i++) {
+      fragmentOutputStructFields.emplace_back(outputFields[i], i);
+    }
+
+    vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), 0);
+
+    dynamicVertexInputHandler.emplace(vertexInputStructFields);
+    dynamicVertexOutputHandler.emplace(vertexOutputStructFields);
+  }
+
+  void setupDefinitions(GeneratorDefinitions &outDefinitions, std::vector<IGeneratorDynamicHandler *> &outDynamics,
+                        ProgrammableGraphicsStage stage) {
+    static std::vector<NamedField> emptyStruct;
+    const std::vector<NamedField> *inputs{};
+    const std::vector<NamedField> *outputs{};
+
+    outDynamics.clear();
+
+    switch (stage) {
+    case gfx::ProgrammableGraphicsStage::Vertex:
+      inputs = &vertexInputFields;
+      outputs = &emptyStruct;
+      outDynamics.push_back(&dynamicVertexInputHandler.value());
+      outDynamics.push_back(&dynamicVertexOutputHandler.value());
+      break;
+    case gfx::ProgrammableGraphicsStage::Fragment:
+      inputs = &fragmentInputFields;
+      outputs = &outputFields;
+      break;
+    }
+
+    outDefinitions.inputs.clear();
+    for (auto &input : *inputs) {
+      outDefinitions.inputs.insert_or_assign(input.name, input.type);
+    }
+
+    outDefinitions.outputs.clear();
+    for (auto &outputField : *outputs) {
+      outDefinitions.outputs.insert_or_assign(outputField.name, outputField.type);
+    }
+  }
+
+  void interpolateVertexOutputs() {
+    for (auto &outputField : vertexOutputStructFields)
+      fragmentInputFields.emplace_back(outputField.base);
+  }
+};
+
+static const size_t NumGraphicsStages = 2;
+struct Stage {
+  ProgrammableGraphicsStage stage;
+  std::vector<const EntryPoint *> entryPoints;
+  std::vector<String> extraEntryPointParameters;
+  String mainFunctionHeader;
+  String inputStructName;
+  String inputVariableName;
+  String outputStructName;
+  String outputVariableName;
+  String globalsStructName;
+  String globalsVariableName;
+
+  Stage(ProgrammableGraphicsStage stage, const String &inputStructName, const String &outputStructName)
+      : stage(stage), inputStructName((inputStructName)), outputStructName((outputStructName)) {
+    inputVariableName = fmt::format("p_{}_input", magic_enum::enum_name(stage));
+    outputVariableName = fmt::format("p_{}_output", magic_enum::enum_name(stage));
+
+    globalsStructName = fmt::format("{}_globals_t", magic_enum::enum_name(stage));
+    globalsVariableName = fmt::format("p_{}_globals", magic_enum::enum_name(stage));
+  }
+
+  bool sort(bool ignoreMissingDependencies = true) { return sortEntryPoints(entryPoints, ignoreMissingDependencies); }
+
+  StageOutput process(StageIO &stageIO, const std::map<String, BufferDefinition> &buffers,
+                      const std::map<String, TextureDefinition> &textureDefinitions) {
+    GeneratorContext context;
+    context.inputVariableName = inputVariableName;
+    context.outputVariableName = outputVariableName;
+    context.globalsVariableName = globalsVariableName;
+
+    context.definitions.buffers = buffers;
+    context.definitions.textures = textureDefinitions;
+
+    stageIO.setupDefinitions(context.definitions, context.dynamicHandlers, stage);
+
+    const char *wgslStageName{};
+    switch (stage) {
+    case ProgrammableGraphicsStage::Vertex:
+      wgslStageName = "vertex";
+      break;
+    case ProgrammableGraphicsStage::Fragment:
+      wgslStageName = "fragment";
+      break;
+    }
+
+    context.write(fmt::format("var<private> {}: {};\n", inputVariableName, inputStructName));
+    context.write(fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName));
+
+    std::vector<String> functionNamesToCall;
+    size_t index = 0;
+    for (const EntryPoint *entryPoint : entryPoints) {
+      String entryPointFunctionName = fmt::format("entryPoint_{}_{}", wgslStageName, index++);
+      functionNamesToCall.push_back(entryPointFunctionName);
+
+      context.write(fmt::format("fn {}() {{\n", entryPointFunctionName));
+      entryPoint->code->apply(context);
+      context.write("}\n");
+    }
+
+    String entryPointParams = fmt::format("in: {}", inputStructName);
+    if (!extraEntryPointParameters.empty()) {
+      entryPointParams += ", " + boost::algorithm::join(extraEntryPointParameters, ", ");
+    }
+
+    context.write(
+        fmt::format("@{}\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
+    context.write(fmt::format("\t{} = in;\n", inputVariableName));
+
+    context.write("\t" + mainFunctionHeader + "\n");
+
+    for (auto &functionName : functionNamesToCall) {
+      context.write(fmt::format("\t{}();\n", functionName));
+    }
+
+    context.write(fmt::format("\treturn {};\n", outputVariableName));
+    context.write("}\n");
+
+    String globalsHeader;
+    if (!context.definitions.globals.empty()) {
+      std::vector<StructField> globalsStructFields;
+      for (auto &field : context.definitions.globals) {
+        globalsStructFields.emplace_back(NamedField(field.first, field.second));
+      }
+      generateStruct(globalsHeader, globalsStructName, globalsStructFields, false);
+      globalsHeader += fmt::format("var<private> {}: {};\n", globalsVariableName, globalsStructName);
+    }
+
+    return StageOutput{
+        globalsHeader + std::move(context.header) + std::move(context.result),
+        std::move(context.errors),
+    };
+  }
+};
+
 GeneratorOutput Generator::build(const std::vector<EntryPoint> &entryPoints) { return build(getEntryPointPtrs(entryPoints)); }
 
 GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoints) {
@@ -338,8 +402,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   String fragmentInputStructName = "FragInput";
   String fragmentOutputStructName = "Output";
 
-  const size_t numStages = 2;
-  Stage stages[2] = {
+  Stage stages[NumGraphicsStages] = {
       Stage(ProgrammableGraphicsStage::Vertex, vertexInputStructName, vertexOutputStructName),
       Stage(ProgrammableGraphicsStage::Fragment, fragmentInputStructName, fragmentOutputStructName),
   };
@@ -356,21 +419,6 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
   const char *instanceIndexer = "u_instanceIndex";
   headerCode += fmt::format("var<private> {}: u32;\n", instanceIndexer);
-
-  std::vector<NamedField> vertexInputFields;
-  for (auto &attr : meshFormat.vertexAttributes) {
-    vertexInputFields.emplace_back(attr.name, FieldType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
-  }
-
-  std::vector<StructField> vertexInputStructFields;
-  for (size_t i = 0; i < vertexInputFields.size(); i++) {
-    vertexInputStructFields.emplace_back(vertexInputFields[i], i);
-  }
-
-  std::vector<StructField> fragmentOutputStructFields;
-  for (size_t i = 0; i < outputFields.size(); i++) {
-    fragmentOutputStructFields.emplace_back(outputFields[i], i);
-  }
 
   stages[0].extraEntryPointParameters.push_back("@builtin(instance_index) _instanceIndex: u32");
   stages[0].mainFunctionHeader += fmt::format("{} = _instanceIndex;\n", instanceIndexer);
@@ -396,11 +444,6 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     }
   }
 
-  std::vector<StructField> vertexOutputStructFields;
-  std::vector<NamedField> fragmentInputFields;
-
-  vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), 0);
-
   std::map<String, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
     TextureDefinition def;
@@ -411,35 +454,17 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     textureDefinitions.insert_or_assign(texture.name, def);
   }
 
-  DynamicVertexInput dynamicVertexInputHandler(vertexInputStructFields);
-  DynamicVertexOutput dynamicVertexOutputHandler(vertexOutputStructFields);
+  StageIO stageIO(meshFormat, outputFields);
 
   String stagesCode;
   stagesCode.reserve(2 << 12);
-  for (size_t i = 0; i < numStages; i++) {
+  for (size_t i = 0; i < NumGraphicsStages; i++) {
     auto &stage = stages[i];
 
     bool sorted = stage.sort();
     assert(sorted);
 
-    static std::vector<NamedField> emptyStruct;
-    std::vector<NamedField> *inputs{};
-    std::vector<NamedField> *outputs{};
-    std::vector<IGeneratorDynamicHandler *> dynamics;
-    switch (stage.stage) {
-    case gfx::ProgrammableGraphicsStage::Vertex:
-      inputs = &vertexInputFields;
-      outputs = &emptyStruct;
-      dynamics.push_back(&dynamicVertexInputHandler);
-      dynamics.push_back(&dynamicVertexOutputHandler);
-      break;
-    case gfx::ProgrammableGraphicsStage::Fragment:
-      inputs = &fragmentInputFields;
-      outputs = &outputFields;
-      break;
-    }
-
-    StageOutput stageOutput = stage.process(*inputs, *outputs, buffers, textureDefinitions, dynamics);
+    StageOutput stageOutput = stage.process(stageIO, buffers, textureDefinitions);
     for (auto &error : stageOutput.errors)
       output.errors.emplace_back(error);
 
@@ -447,16 +472,15 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
     // Copy interpolated fields from vertex to fragment
     if (&stage == &vertexStage) {
-      for (auto &outputField : vertexOutputStructFields)
-        fragmentInputFields.emplace_back(outputField.base);
+      stageIO.interpolateVertexOutputs();
     }
   }
 
   // Generate input/output structs here since they depend on shader code
-  generateStruct(headerCode, vertexInputStructName, vertexInputStructFields, false);
-  generateStruct(headerCode, vertexOutputStructName, vertexOutputStructFields);
-  generateStruct(headerCode, fragmentInputStructName, vertexOutputStructFields);
-  generateStruct(headerCode, fragmentOutputStructName, fragmentOutputStructFields, false);
+  generateStruct(headerCode, vertexInputStructName, stageIO.vertexInputStructFields, false);
+  generateStruct(headerCode, vertexOutputStructName, stageIO.vertexOutputStructFields);
+  generateStruct(headerCode, fragmentInputStructName, stageIO.vertexOutputStructFields);
+  generateStruct(headerCode, fragmentOutputStructName, stageIO.fragmentOutputStructFields, false);
 
   output.wgslSource = headerCode + stagesCode;
 
@@ -480,23 +504,47 @@ template <typename T> static auto &findOrAddIndex(T &arr, const char *name) {
 IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &entryPoints) {
   struct IndexerContext : public IGeneratorContext {
     IndexedBindings result;
-    std::map<String, FieldType> inputs;
-    bool recordOutputs = false;
+    GeneratorDefinitions definitions;
+    std::vector<IGeneratorDynamicHandler *> dynamicHandlers;
 
     void write(const StringView &str) {}
     void writeHeader(const StringView &str) {}
+
     void readGlobal(const char *name) {}
-    void beginWriteGlobal(const char *name, const FieldType &type) {}
+    void beginWriteGlobal(const char *name, const FieldType &type) { definitions.globals.insert_or_assign(name, type); }
     void endWriteGlobal() {}
 
-    bool hasInput(const char *name) { return true; }
-    void readInput(const char *name) {}
-    const std::map<String, FieldType> &getInputs() { return inputs; }
+    bool hasInput(const char *name) {
+      auto it = definitions.inputs.find(name);
+      return it != definitions.inputs.end();
+    }
 
-    bool hasOutput(const char *name) { return true; }
+    void readInput(const char *name) {}
+    const FieldType *getOrCreateDynamicInput(const char *name) {
+      FieldType newField;
+      for (auto &h : dynamicHandlers) {
+        if (h->createDynamicInput(name, newField)) {
+          return &definitions.inputs.insert_or_assign(name, newField).first->second;
+        }
+      }
+
+      return nullptr;
+    }
+
+    bool hasOutput(const char *name) {
+      auto it = definitions.outputs.find(name);
+      return it != definitions.outputs.end();
+    }
+
     void writeOutput(const char *name, const FieldType &type) {
-      if (recordOutputs)
-        findOrAddIndex(result.outputs, name).type = type;
+      auto it = definitions.outputs.find(name);
+      if (it == definitions.outputs.end()) {
+        definitions.outputs.insert_or_assign(name, type);
+        for (auto &h : dynamicHandlers) {
+          if (h->createDynamicOutput(name, type))
+            break;
+        }
+      }
     }
 
     bool hasTexture(const char *name, bool defaultTexcoordRequired = true) { return true; }
@@ -508,9 +556,10 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName) {
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
     }
-    const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer) { return nullptr; }
 
     void pushError(GeneratorError &&error) {}
+
+    const GeneratorDefinitions &getDefinitions() const { return definitions; }
 
     const std::string &generateTempVariable() {
       static std::string dummy;
@@ -518,16 +567,48 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     }
   } context;
 
-  for (auto &entryPoint : entryPoints) {
-    switch (entryPoint->stage) {
-    case gfx::ProgrammableGraphicsStage::Vertex:
-      context.recordOutputs = false;
-      break;
-    case gfx::ProgrammableGraphicsStage::Fragment:
-      context.recordOutputs = true;
-      break;
+  StageIO stageIO(meshFormat, outputFields);
+
+  struct Stage {
+    std::vector<const EntryPoint *> entryPoints;
+  } stages[2];
+
+  for (const auto &entryPoint : entryPoints) {
+    stages[size_t(entryPoint->stage)].entryPoints.push_back(entryPoint);
+  }
+
+  for (auto &buffer : bufferBindings) {
+    context.definitions.buffers.insert_or_assign(buffer.name, BufferDefinition{.layout = buffer.layout});
+  }
+
+  for (auto &texture : textureBindingLayout.bindings) {
+    context.definitions.textures.insert_or_assign(texture.name, TextureDefinition{});
+  }
+
+  for (size_t i = 0; i < NumGraphicsStages; i++) {
+    auto stageType = gfx::ProgrammableGraphicsStage(i);
+    auto &stage = stages[i];
+
+    bool sorted = sortEntryPoints(stage.entryPoints);
+    assert(sorted);
+
+    stageIO.setupDefinitions(context.definitions, context.dynamicHandlers, stageType);
+
+    for (auto &entryPoint : stage.entryPoints) {
+      entryPoint->code->apply(context);
     }
-    entryPoint->code->apply(context);
+
+    // Copy interpolated fields from vertex to fragment
+    if (stageType == ProgrammableGraphicsStage::Vertex) {
+      stageIO.interpolateVertexOutputs();
+    } else {
+      for (auto &fragOutput : context.definitions.outputs) {
+        context.result.outputs.emplace_back(IndexedOutput{
+            .name = fragOutput.first,
+            .type = fragOutput.second,
+        });
+      }
+    }
   }
 
   return context.result;

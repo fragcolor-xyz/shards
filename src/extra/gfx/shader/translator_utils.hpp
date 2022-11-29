@@ -15,7 +15,7 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
   {                                                                                                    \
     FieldType fieldType(_type, _dim);                                                                  \
     std::string resultStr = fmt::format("{}(" _fmt ")", getFieldWGSLTypeName(fieldType), __VA_ARGS__); \
-    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                  \
+    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                   \
     result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                            \
   }
 
@@ -58,6 +58,38 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
   return result;
 };
 
+inline shards::Type fieldTypeToShardsType(const FieldType &type) {
+  using shards::CoreInfo;
+  if (type.baseType == ShaderFieldBaseType::Float32) {
+    switch (type.numComponents) {
+    case 1:
+      return CoreInfo::FloatType;
+    case 2:
+      return CoreInfo::Float2Type;
+    case 3:
+      return CoreInfo::Float3Type;
+    case 4:
+      return CoreInfo::Float4Type;
+    case FieldType::Float4x4Components:
+      return CoreInfo::Float4x4Type;
+    default:
+      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+    }
+  } else {
+    switch (type.numComponents) {
+    case 1:
+      return CoreInfo::IntType;
+    case 2:
+      return CoreInfo::Int2Type;
+    case 3:
+      return CoreInfo::Int3Type;
+    case 4:
+      return CoreInfo::Int4Type;
+    default:
+      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+    }
+  }
+}
 } // namespace shader
 } // namespace gfx
 
