@@ -1,4 +1,4 @@
-(defshards Initialize_Character []
+(defshards Initialize []
   ;; Jumping Sprites
   (LoadImage "GlodImages/Character1_Jumping.png") = .image_jumping
   (LoadImage "GlodImages/Character1_Jumping_Left.png") = .image_jumping_Left
@@ -22,7 +22,7 @@
   (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") = .image_idle_Left_6
   (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") = .image_idle_Left_7
   [.image_idle_Left_1 .image_idle_Left_2 .image_idle_Left_3 .image_idle_Left_4 .image_idle_Left_5 .image_idle_Left_6 .image_idle_Left_7] >= .idle_Left_image_array
-  (Count .idle_image_array)(Math.Subtract 1) >= .idle_image_index_max
+  (Count .idle_image_array) (Math.Subtract 1) >= .idle_image_index_max
   0 >= .idle_image_index
   0.08 >=  .Idle_Animation_Speed ;; Reduce number to increase animation speed
 
@@ -68,31 +68,6 @@
   false >= .RunKeyDown ;;To check if the run button is being pressed 
   )
 
-(defshards Initialize_Coin []
-  (LoadImage "GlodImages/Coin/Coin_1.png") = .Coin_1
-  (LoadImage "GlodImages/Coin/Coin_2.png") = .Coin_2
-  (LoadImage "GlodImages/Coin/Coin_3.png") = .Coin_3
-  (LoadImage "GlodImages/Coin/Coin_4.png") = .Coin_4
-  (LoadImage "GlodImages/Coin/Coin_5.png") = .Coin_5
-  (LoadImage "GlodImages/Coin/Coin_6.png") = .Coin_6
-  (LoadImage "GlodImages/Coin/Coin_7.png") = .Coin_7
-  [.Coin_1 .Coin_2 .Coin_3 .Coin_4 .Coin_5 .Coin_6 .Coin_7] >= .Coin_Image_array
-  (Count .Coin_Image_array) (Math.Subtract 1) >= .coin_image_index_max
-  0 >= .coin_image_index
-  0.1 >= .coin_Animation_Speed ;; Reduce number to increase animation speed
-  
-  0.0 >= .coinX
-  0.0 >= .coinY
-  (float2 .coinX .coinY) >= .coin_Position
-  
-  1.0 >= .coin_Velocity
-  0.5 >= .coin_Acceleration
-  25.0 >= .coin_Velocity_Max
-  )
-
-(defshards Initialize_OtherElements []
-  0 >= .Score)
-
 ;;Idle Animation Function
 (defloop Idle_Animation 
   .idle_image_index (Math.Add 1)
@@ -109,14 +84,6 @@
   (When :Predicate (IsMore .walking_image_index_max)
         :Action (-> 0 > .walking_image_index))
   (Pause .Walking_Animation_Speed))
-
-(defloop Coin_Animation
-  .coin_image_index (Math.Add 1)
-  > .coin_image_index
-  (When :Predicate (IsMore .coin_image_index_max)
-        :Action (-> 0 > .coin_image_index))
-  
-  (Pause .coin_Animation_Speed))
 
 
 ;; When up button is pressed, character jumps
@@ -166,7 +133,8 @@
                 :Then (->
                        true > .isRunning)
                 :Else (->
-                       false > .isRunning))))
+                       false > .isRunning))
+            ))
 
   ;;when key is up go back into idle mode
   (Inputs.KeyUp
@@ -194,37 +162,7 @@
   .Character_Velocity_y (Math.Add .Character_Acceleration_y)
   > .Character_Velocity_y
   .Y
-  (Float2 .X .Y) > .CharacterPosition
-  )
-
-(defshards Coin_Gravity []
-  .coinY (Math.Add .coin_Velocity)
-  > .coinY
-  .coin_Velocity (Math.Add .coin_Acceleration)
-  > .coin_Velocity
-  (If :Predicate (IsMore .coin_Velocity_Max)
-      :Then (->
-             .coin_Velocity_Max > .coin_Velocity))
-  (Float2 .Random_Coin_X .coinY) > .coin_Position
-  )
-
-(defloop Coin
-  ;;RandomX
-  0.0 >= .Random_Coin_X
-  (RandomFloat :Max 600.0)
-  > .Random_Coin_X
-  .Random_Coin_X 
-  
-  (Log "CoinX: ")
-  0.0 > .coinY
-  (float2 .Random_Coin_X .coinY) > .coin_Position
-  
-  (Coin_Gravity)
-  .coinY
-  (When :Predicate (IsMore 50.0)
-        :Action (->
-                 (Stop)))
-  (Pause 1.5)
+  > (Float2 .X .Y) >= .CharacterPosition
   )
 
 ;;ensures that the character is bound by the confines of the screen and does not walk off screen nor does it fall through the floor
@@ -275,9 +213,7 @@
 
 (defloop main-wire
   (Setup
-   (Initialize_Character)
-   (Initialize_Coin)
-   (Initialize_OtherElements)) 
+   (Initialize)) 
   
   (Animation_Limiters)
   (WindowBorders)
@@ -305,7 +241,7 @@
                                     :Then (->
                                            .image_jumping (UI.Image :Scale .CharacterScale))
                                     :Else (->
-                                           .image_jumping_Left (UI.Image :Scale .CharacterScale)))))
+                                         .image_jumping_Left (UI.Image :Scale .CharacterScale)))))
 
                      .isRunning
                      (If :Predicate (Is true)
@@ -327,27 +263,12 @@
                                     :Then (->
                                            .idle_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale))
                                     :Else (->
-                                           .idle_Left_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale)))))))
-
-                   (UI.Area :Position .coin_Position
-                            :Anchor Anchor.Top
-                            :Contents (->
-                                       .Coin_Image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
-                   
-                   (UI.Area :Position (float2 0)
-                            :Anchor Anchor.TopRight
-                            :Contents (->
-                                       .Score(ToString)(UI.Label)))
-                   
-                   (Step Coin)
-                   (Step Coin_Animation)))
+                                           .idle_Left_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale)))))))))
 
                  (Jump)
                  (Gravity)
                  (Run)
                  (Friction)
-                 
-                 (Coin_Gravity)
 
                  (GFX.Render :Steps .render-steps))))
 
