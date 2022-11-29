@@ -63,6 +63,8 @@ The type column shows the expected types for an input, output or parameter:
 
 Multiple different types in a row indicate that any of the types listed are accepted.
 
+<<<<<<< HEAD
+<<<<<<< HEAD:docs/docs/reference/shards/index.md
 When placed within `[ square brackets ]`, this means that a [Sequence](./types/#sequence) of those types is accepted.
 
 When placed within `{ curly brackets }`, this means that a [Table](./types/#table) of those types as values is accepted.
@@ -72,5 +74,23 @@ When a value is prefixed with an `&ampersand`, this means that a variable / [Con
 ## Further reading
 
 See the [Types](./types) page for more information about types.
+=======
+When placed within `[ square brackets ]` this means that a [Sequence](./types/#sequence) of those types is accepted
+=======
+When placed within `[ square brackets ]`, this means that a [Sequence](./types/#sequence) of those types is accepted.
+>>>>>>> 24c5c485c (Apply suggestions from code review)
+
+When placed within `{ curly brackets }`, this means that a [Table](./types/#table) of those types as values is accepted.
+
+When a value is prefixed with an `&ampersand`, this means that a variable / [ContextVar](./types/#contextvar) of that type is accepted.
+
+## Further reading
+
+<<<<<<< HEAD
+See the [Types](./types) page for more information about types
+>>>>>>> be450028f (Link types and shards meta doc page. Unify naming):docs/docs/docs/shards/index.md
+=======
+See the [Types](./types) page for more information about types.
+>>>>>>> 24c5c485c (Apply suggestions from code review)
 
 --8<-- "includes/license.md"
