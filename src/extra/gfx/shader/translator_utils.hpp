@@ -152,6 +152,14 @@ inline std::unique_ptr<IWGSLGenerated> translateParamVar(const shards::ParamVar 
   }
 }
 
+inline void processShardsVar(shards::ShardsVar &shards, TranslationContext &context) {
+  auto &shardsSeq = shards.shards();
+  for (size_t i = 0; i < shardsSeq.len; i++) {
+    ShardPtr shard = shardsSeq.elements[i];
+    context.processShard(shard);
+  }
+}
+
 } // namespace shader
 } // namespace gfx
 

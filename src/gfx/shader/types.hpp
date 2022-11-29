@@ -9,7 +9,7 @@ namespace gfx {
 
 // TODO: Rename to BaseType
 // TODO: Move to shader namespace
-enum class ShaderFieldBaseType { UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
+enum class ShaderFieldBaseType { Bool, UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
 bool isIntegerType(const ShaderFieldBaseType &type);
 bool isFloatType(const ShaderFieldBaseType &type);
 size_t getByteSize(const ShaderFieldBaseType &type);
@@ -59,6 +59,7 @@ struct FieldTypes {
   static inline FieldType Float4x4{ShaderFieldBaseType::Float32, 4, 4};
   static inline FieldType UInt32{ShaderFieldBaseType::UInt32, 1};
   static inline FieldType Int32{ShaderFieldBaseType::Int32, 1};
+  static inline FieldType Bool{ShaderFieldBaseType::Bool, 1};
 };
 
 struct NamedField {

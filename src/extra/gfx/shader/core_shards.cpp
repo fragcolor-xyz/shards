@@ -33,34 +33,6 @@ struct PushTranslator {
   }
 };
 
-struct ForRangeTranslator {
-  static void translate(ForRangeShard *shard, TranslationContext &context) {
-    auto from = translateParamVar(shard->_from, context);
-    auto to = translateParamVar(shard->_to, context);
-
-    std::string indexVarName = context.getUniqueVariableName("index");
-
-    context.enterNew(blocks::makeCompoundBlock());
-    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("for(var {} = ", indexVarName)));
-    context.addNew(from->toBlock());
-    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("; {} < ", indexVarName)));
-    context.addNew(to->toBlock());
-    context.addNew(blocks::makeBlock<blocks::Direct>(fmt::format("; {}++) {{", indexVarName)));
-
-    // Pass index as input
-    context.setWGSLTop<WGSLBlock>(FieldTypes::Int32, blocks::makeBlock<blocks::Direct>(indexVarName));
-
-    // Loop body
-    auto &shards = shard->_shards.shards();
-    for (size_t i = 0; i < shards.len; i++) {
-      context.processShard(shards.elements[i]);
-    }
-
-    context.addNew(blocks::makeBlock<blocks::Direct>("}"));
-    context.leave();
-  }
-};
-
 void registerCoreShards() {
   // Literal copy-paste into shader code
   REGISTER_SHADER_SHARD("Shader.Literal", Literal);
@@ -81,7 +53,5 @@ void registerCoreShards() {
   REGISTER_EXTERNAL_SHADER_SHARD(TakeTranslator, "Take", shards::Take);
 
   REGISTER_EXTERNAL_SHADER_SHARD(PushTranslator, "Push", shards::Push);
-
-  REGISTER_EXTERNAL_SHADER_SHARD(ForRangeTranslator, "ForRange", shards::ForRangeShard);
 }
 } // namespace gfx::shader

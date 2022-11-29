@@ -654,6 +654,19 @@ private:
 };
 
 struct IfBlock {
+  static inline Parameters _params{
+      {"Predicate",
+       SHCCSTR("The predicate to evaluate in order to trigger `Then` (when "
+               "`true`) or `Else` (when `false`)."),
+       {CoreInfo::ShardsOrNone}},
+      {"Then", SHCCSTR("The shards to activate when `Predicate` is `true`."), CoreInfo::ShardsOrNone},
+      {"Else", SHCCSTR("The shards to activate when `Predicate` is `false`."), CoreInfo::ShardsOrNone},
+      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
+  ShardsVar _cond{};
+  ShardsVar _then{};
+  ShardsVar _else{};
+  bool _passth = false;
+
   static SHOptionalString help() { return SHCCSTR("Evaluates a predicate and executes an action."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -741,20 +754,6 @@ struct IfBlock {
     else
       return input;
   }
-
-private:
-  static inline Parameters _params{
-      {"Predicate",
-       SHCCSTR("The predicate to evaluate in order to trigger `Then` (when "
-               "`true`) or `Else` (when `false`)."),
-       {CoreInfo::ShardsOrNone}},
-      {"Then", SHCCSTR("The shards to activate when `Predicate` is `true`."), CoreInfo::ShardsOrNone},
-      {"Else", SHCCSTR("The shards to activate when `Predicate` is `false`."), CoreInfo::ShardsOrNone},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
-  ShardsVar _cond{};
-  ShardsVar _then{};
-  ShardsVar _else{};
-  bool _passth = false;
 };
 
 struct Match {

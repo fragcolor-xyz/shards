@@ -168,6 +168,14 @@ void registerMathShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Negate", shards::Math::Negate, OperatorNegate);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Abs", shards::Math::Abs, OperatorAbs);
 
+  // Logic operators
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Is", shards::Is, OperatorIs);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "IsNot", shards::IsNot, OperatorIsNot);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "IsMore", shards::IsMore, OperatorIsMore);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "IsLess", shards::IsLess, OperatorIsLess);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "IsMoreEqual", shards::IsMoreEqual, OperatorIsMoreEqual);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "IsLessEqual", shards::IsLessEqual, OperatorIsLessEqual);
+
   // Casting blocks
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToInt", ToNumber<SHType::Int>);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(ToNumberTranslator, "ToInt2", ToNumber<SHType::Int2>);

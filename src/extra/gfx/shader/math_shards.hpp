@@ -187,6 +187,42 @@ struct OperatorAbs {
   static inline const char *call = "abs";
 };
 
+inline FieldType validateTypesComparison(FieldType a, FieldType b) {
+  if (a != b)
+    throw ShaderComposeError(fmt::format("Invalid types to compare: {} & {}", a, b));
+  return FieldTypes::Bool;
+}
+
+struct OperatorIs {
+  static inline const char *op = "==";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesComparison(a, b); }
+};
+
+struct OperatorIsNot {
+  static inline const char *op = "!=";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesComparison(a, b); }
+};
+
+struct OperatorIsMore {
+  static inline const char *op = ">";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesComparison(a, b); }
+};
+
+struct OperatorIsLess {
+  static inline const char *op = "<";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesComparison(a, b); }
+};
+
+struct OperatorIsMoreEqual {
+  static inline const char *op = ">=";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesComparison(a, b); }
+};
+
+struct OperatorIsLessEqual {
+  static inline const char *op = "<=";
+  static inline FieldType validateTypes(FieldType a, FieldType b) { return validateTypesComparison(a, b); }
+};
+
 } // namespace shader
 } // namespace gfx
 
