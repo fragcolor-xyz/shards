@@ -170,8 +170,11 @@ struct Types {
   }
 
   operator SHTypesInfo() {
-    SHTypesInfo res{&_types[0], (uint32_t)_types.size(), 0};
-    return res;
+    if (_types.size() > 0) {
+      return SHTypesInfo{&_types[0], (uint32_t)_types.size(), 0};
+    } else {
+      return SHTypesInfo{nullptr, 0, 0};
+    }
   }
 };
 
