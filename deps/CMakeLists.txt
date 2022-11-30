@@ -199,6 +199,6 @@ target_include_directories(pdqsort INTERFACE pdqsort)
 
 add_subdirectory(Vulkan-Headers)
 
-add_subdirectory(openxr)
-
 add_subdirectory(glm)
+
+add_subdirectory(openxrsdk)

@@ -30,6 +30,7 @@ add_library(gfx
   render_target.cpp
   pipeline_builder.cpp
   uuid.cpp
+  context_xr_gfx.hpp
   openxr-integration/Buffer.cpp
   openxr-integration/Buffer.h
   openxr-integration/Context_XR.h
@@ -47,7 +48,7 @@ add_library(gfx
   openxr-integration/shaders/Basic.vert
   openxr-integration/shaders/Cube.frag
   openxr-integration/shaders/Grid.frag
-  context_xr_gfx.hpp
+  
 )
 
 target_compile_features(gfx PUBLIC cxx_std_20)

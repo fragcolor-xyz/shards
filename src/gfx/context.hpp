@@ -14,8 +14,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "context_xr_gfx.hpp"
-
 namespace gfx {
 struct ContextCreationOptions {
   bool debug = false;
@@ -126,7 +124,6 @@ public:
   void addContextDataInternal(const std::weak_ptr<ContextData> &ptr);
   void removeContextDataInternal(ContextData *ptr);
 
-  gfx::WGPUVulkanShared getWGPUVulkanShared ();
 
 private:
   void deviceLost();

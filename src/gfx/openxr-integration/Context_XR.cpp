@@ -2,7 +2,6 @@
 
 #include "Util.h"
 
-#include <external/glfw/glfw3.h>
 
 #include <sstream>
 
@@ -11,9 +10,6 @@
   #include <iostream>
 #endif
 
-
-
-//[t] TODO: glfw should also be removed, no?
 
 /*
 namespace
@@ -26,21 +22,7 @@ constexpr XrFormFactor xrFormFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
 Context_XR::Context_XR()
 {
-  // Initialize GLFW
-  if (!glfwInit())
-  {
-    util::error(Error::GenericGLFW);
-    valid = false;
-    return;
-  }
-
   
-  if (!glfwVulkanSupported())
-  {
-    util::error(Error::VulkanNotSupported);
-    valid = false;
-    return;
-  }
 
   // Get all supported OpenXR instance extensions
   std::vector<XrExtensionProperties> supportedOpenXRInstanceExtensions;
@@ -379,6 +361,8 @@ void Context_XR::checkXRDeviceReady(
   // XrEnvironmentBlendMode environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
   // XrFormFactor xrFormFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
+  viewType = viewType;
+
   // Get the system ID
   XrSystemGetInfo systemGetInfo{ XR_TYPE_SYSTEM_GET_INFO };
   systemGetInfo.formFactor = xrFormFactor;
@@ -440,6 +424,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
   std::vector<VkExtensionProperties> supportedVulkanInstanceExtensions;
   {
     uint32_t instanceExtensionCount;
+    
     if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr) != VK_SUCCESS)
     {
       util::error(Error::GenericVulkan);
@@ -461,7 +446,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
   // Get the required Vulkan instance extensions from OpenXR and add them
   {
     uint32_t count;
-    result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
+    XrResult result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
     if (XR_FAILED(result))
     {
       util::error(Error::GenericOpenXR);
