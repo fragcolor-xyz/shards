@@ -63,7 +63,7 @@ private:
   std::shared_ptr<AdapterRequest> adapterRequest;
 
   std::shared_ptr<IContextMainOutput> mainOutput;
-  std::shared_ptr<IContextBackend> backendXrGfx;
+  std::shared_ptr<IContextBackend> backend;
 
   ContextState state = ContextState::Uninitialized;
   ContextFrameState frameState = ContextFrameState::Ok;
@@ -126,7 +126,7 @@ public:
   void addContextDataInternal(const std::weak_ptr<ContextData> &ptr);
   void removeContextDataInternal(ContextData *ptr);
 
-  WGPUVulkanShared getContextXrGfxBackend ();
+  gfx::WGPUVulkanShared getWGPUVulkanShared ();
 
 private:
   void deviceLost();

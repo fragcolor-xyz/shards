@@ -175,7 +175,8 @@ struct MainWindow : public Base {
     // Store shards context for current activation in user data
     // this is used by callback chains that need to resolve variables, etc.
     contextUserData->shardsContext = shContext;
-
+    
+    // [t] all event here
     window->pollEvents(events);
     for (auto &event : events) {
       if (event.type == SDL_QUIT) {

@@ -3,14 +3,14 @@
 #include <vulkan/vulkan.h>
 
 #define XR_USE_GRAPHICS_API_VULKAN
-#include <external/openxr/include/openxr/openxr.h>
-#include <openxr/openxr_platform.h>
+#include <openxr/include/openxr/openxr.h>
+#include <openxr/include/openxr/openxr_platform.h>
 
-#include <glm/mat4x4.hpp>
+#include <glm/include/glm/mat4x4.hpp>
 
 #include <vector>
 
-#include "context_xr_gfx.hpp"
+#include "../context_xr_gfx.hpp"
 #include "context_xr.h"
 
 
@@ -19,7 +19,7 @@ class RenderTarget;
 class Headset final
 {
 public:
-  Headset(const gfx::Context* context);
+  Headset(const Context_XR* xrContext, gfx::Context gfxContext, bool isMultipass);
   ~Headset();
 
   enum class BeginFrameResult
@@ -29,7 +29,9 @@ public:
     SkipRender,  // Skip rendering the frame but end it
     SkipFully    // Skip processing this frame entirely without ending it
   };
-  BeginFrameResult beginFrame(uint32_t& swapchainImageIndex);
+  BeginFrameResult beginFrame();
+  BeginFrameResult acquireSwapchainForFrame(uint32_t eyeIndex, uint32_t& swapchainImageIndex);
+  void releaseSwapchain(uint32_t eyeIndex) const;
   void endFrame() const;
 
   bool isValid() const;
@@ -45,7 +47,7 @@ private:
   bool valid = true;
   bool exitRequested = false;
 
-  const Context* xrContext = nullptr;
+  const Context_XR* xrContext = nullptr;
   const gfx::ContextXrGfxBackend* gfxWgpuVulkanContext = nullptr;
   const gfx::WGPUVulkanShared* gfxWgpuVulkanShared = nullptr;
 
