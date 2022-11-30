@@ -3,8 +3,8 @@
 #include <vulkan/vulkan.h>
 
 #define XR_USE_GRAPHICS_API_VULKAN
-#include <openxr/include/openxr/openxr.h>
-#include <openxr/include/openxr/openxr_platform.h>
+#include <openxrsdk/include/openxr/openxr.h>
+#include <openxrsdk/include/openxr/openxr_platform.h>
 
 
 class Context_XR final
@@ -46,6 +46,8 @@ private:
 
   XrInstance xrInstance = nullptr;
   XrSystemId systemId = 0u;
+
+  XrViewConfigurationType viewType;
 
   VkInstance vkInstance = nullptr;
   VkPhysicalDevice physicalDevice = nullptr;

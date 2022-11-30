@@ -232,6 +232,6 @@ add_subdirectory(tracy)
 
 add_subdirectory(Vulkan-Headers)
 
-add_subdirectory(openxr)
-
 add_subdirectory(glm)
+
+add_subdirectory(openxrsdk)

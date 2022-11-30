@@ -36,7 +36,7 @@ struct WGPUVulkanShared {
   WGPUQueue wgpuQueue{};
 };
 
-struct VulkanOpenXRSwapchain:public IContextMainOutput 
+struct VulkanOpenXRSwapchain:public IContextMainOutput
 {
   Window &window;
 
@@ -385,8 +385,9 @@ struct ContextXrGfxBackend : public IContextBackend {
   std::shared_ptr<IContextMainOutput> createMainOutput(Window &window) override {
     // return std::make_shared<ContextWindowOutput>(wgpuInstance, wgpuAdapter, wgpuDevice, wgpuSurface, window);
     // return std::make_shared<VulkanOpenXRSwapchain>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
-    return std::make_shared<VulkanOpenXRSwapchain>(wgpuVulkanShared.wgpuInstance, wgpuVulkanShared.wgpuAdapter, wgpuVulkanShared.wgpuDevice, window);
-  }
+    //return std::make_shared<VulkanOpenXRSwapchain>(wgpuVulkanShared.wgpuInstance, wgpuVulkanShared.wgpuAdapter, wgpuVulkanShared.wgpuDevice, window);
+    return std::make_shared<VulkanOpenXRSwapchain>(wgpuVulkanShared, window);
+  } 
 
 };
 } // namespace gfx

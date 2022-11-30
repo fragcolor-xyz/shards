@@ -42,10 +42,10 @@ constexpr VkFormat colorFormat = VK_FORMAT_R8G8B8A8_SRGB;
 constexpr VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 } // namespace
 
-Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isMultipass) 
+Headset::Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxWgpuVulkanShared, bool isMultipass) 
 {
-  gfxWgpuVulkanContext = gfxContext->getContextXrGfxBackend();
-  gfxWgpuVulkanShared = gfxWgpuVulkanContext->getWGPUVulkanShared();
+  //gfxWgpuVulkanContext = gfxContext->getContextBackend();
+  gfxWgpuVulkanShared = gfxWgpuVulkanShared;//((ContextXrGfxBackend)gfxWgpuVulkanContext)->getWgpuVulkanShared();
   const VkDevice device = gfxWgpuVulkanShared->device;
 
   // Create a render pass
@@ -53,24 +53,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
     constexpr uint32_t viewMask = 0b00000011;
     constexpr uint32_t correlationMask = 0b00000011;
 
-    // [t] For multiview
-    // [t] When you connect VkRenderPassMultiviewCreateInfo to VkRenderPassCreateInfo 
-    // [t] you are telling Vulkan to execute your pipeline TWICE 
-    // [t] (or more, depending on the number of view masks set in VkRenderPassMultiviewCreateInfo)
-    // [t] The only difference between single and multiview executions is:
-    //  with: 
-    //    #extension GL_EXT_multiview : enable
-    //  you get:
-    //    gl_ViewIndex 0 or 1: gl_Position = ubo.viewProjection[gl_ViewIndex] * pos;
-    // [t] each result goes to layer 0 or layer 1
-    VkRenderPassMultiviewCreateInfo renderPassMultiviewCreateInfo{
-      VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO 
-    }; 
-    renderPassMultiviewCreateInfo.subpassCount = 1u;
-    renderPassMultiviewCreateInfo.pViewMasks = &viewMask;
-    renderPassMultiviewCreateInfo.correlationMaskCount = 1u;
-    renderPassMultiviewCreateInfo.pCorrelationMasks = &correlationMask;
-
+    
     VkAttachmentDescription colorAttachmentDescription{};
     colorAttachmentDescription.format = colorFormat;
     colorAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -108,11 +91,32 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
     const std::array attachments = { colorAttachmentDescription, depthAttachmentDescription };
 
     VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-    renderPassCreateInfo.pNext = &renderPassMultiviewCreateInfo;
+    if(isMultipass)
+    {
+      // [t] For multiview
+      // [t] When you connect VkRenderPassMultiviewCreateInfo to VkRenderPassCreateInfo 
+      // [t] you are telling Vulkan to execute your pipeline TWICE 
+      // [t] (or more, depending on the number of view masks set in VkRenderPassMultiviewCreateInfo)
+      // [t] The only difference between single and multiview executions is:
+      //  with: 
+      //    #extension GL_EXT_multiview : enable
+      //  you get:
+      //    gl_ViewIndex 0 or 1: gl_Position = ubo.viewProjection[gl_ViewIndex] * pos;
+      // [t] each result goes to layer 0 or layer 1
+      VkRenderPassMultiviewCreateInfo renderPassMultiviewCreateInfo{
+        VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO 
+      }; 
+      renderPassMultiviewCreateInfo.subpassCount = 1u;
+      renderPassMultiviewCreateInfo.pViewMasks = &viewMask;
+      renderPassMultiviewCreateInfo.correlationMaskCount = 1u;
+      renderPassMultiviewCreateInfo.pCorrelationMasks = &correlationMask;
+
+      renderPassCreateInfo.pNext = &renderPassMultiviewCreateInfo;
+    }
     renderPassCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     renderPassCreateInfo.pAttachments = attachments.data();
     renderPassCreateInfo.subpassCount = 1u;
-    renderPassCreateInfo.pSubpasses = &subpassDescription;
+    renderPassCreateInfo.pSubpasses = &subpassDescription; 
     if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
     {
       util::error(Error::GenericVulkan);
@@ -398,7 +402,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
       //[t] because the graphicsBinding vk instance is set to our already set up gfxWgpuVulkanShared->instance
 
       XrSwapchainImageBaseHeader* data = reinterpret_cast<XrSwapchainImageBaseHeader*>(swapchainImages.data());
-      result = xrEnumerateSwapchainImages(swapchainArr.at(i), static_cast<uint32_t>(swapchainImages.size()), &swapchainImageCount, data);
+      result = xrEnumerateSwapchainImages(*(swapchainArr.at(i)), static_cast<uint32_t>(swapchainImages.size()), &swapchainImageCount, data);
       if (XR_FAILED(result))
       {
         util::error(Error::GenericOpenXR);

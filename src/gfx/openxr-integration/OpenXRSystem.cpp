@@ -5,7 +5,8 @@
 
 
 //[t] TODO: figure out where to call this from. Not sure how the general flow is outside of context.cpp
-int openXRMain(gfx::Context gfxContext)
+//getWgpuVulkanShared()
+int openXRMain(gfx::WGPUVulkanShared* wgpuVulkanShared)
 {
   Context_XR context;
   if (!context.isValid())
@@ -32,7 +33,7 @@ int openXRMain(gfx::Context gfxContext)
 
   bool isMultipass = true;
 
-  Headset headset(&context, &gfxContext, isMultipass);
+  Headset headset(&context, &wgpuVulkanShared, isMultipass);
   if (!headset.isValid())
   {
     return EXIT_FAILURE;

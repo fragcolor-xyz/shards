@@ -3,23 +3,24 @@
 #include <vulkan/vulkan.h>
 
 #define XR_USE_GRAPHICS_API_VULKAN
-#include <openxr/include/openxr/openxr.h>
-#include <openxr/include/openxr/openxr_platform.h>
+#include <openxrsdk/include/openxr/openxr.h>
+#include <openxrsdk/include/openxr/openxr_platform.h>
 
 #include <glm/include/glm/mat4x4.hpp>
 
 #include <vector>
 
+#include "../context.hpp"
 #include "../context_xr_gfx.hpp"
 #include "context_xr.h"
 
 
 class RenderTarget;
 
-class Headset final
+class Headset
 {
 public:
-  Headset(const Context_XR* xrContext, gfx::Context gfxContext, bool isMultipass);
+  Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxContext, bool isMultipass);
   ~Headset();
 
   enum class BeginFrameResult
@@ -48,7 +49,7 @@ private:
   bool exitRequested = false;
 
   const Context_XR* xrContext = nullptr;
-  const gfx::ContextXrGfxBackend* gfxWgpuVulkanContext = nullptr;
+  const gfx::Context* gfxWgpuVulkanContext = nullptr;
   const gfx::WGPUVulkanShared* gfxWgpuVulkanShared = nullptr;
 
   size_t eyeCount = 0u;

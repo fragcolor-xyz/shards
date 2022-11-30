@@ -5,8 +5,8 @@
 #include <vulkan/vulkan.h>
 
 #define XR_USE_GRAPHICS_API_VULKAN
-#include <openxr/include/openxr/openxr.h>
-#include <openxr/include/openxr/openxr_platform.h>
+#include <openxrsdk/include/openxr/openxr.h>
+#include <openxrsdk/include/openxr/openxr_platform.h>
 
 #include <string>
 #include <vector>

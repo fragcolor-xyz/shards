@@ -372,10 +372,7 @@ void Context::initCommon() {
   requestDevice(); 
 }
 
-//[t] called by openXRMain in OpenXRMain.cpp.
-ContextXrGfxBackend Context::getContextXrGfxBackend () {
-  return backend; 
-}
+
 
 void Context::present() {
   ZoneScoped;
