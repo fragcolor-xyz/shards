@@ -83,3 +83,6 @@
 [submodule "deps/Vulkan-Headers"]
 	path = deps/Vulkan-Headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "deps/openxrsdk"]
+	path = deps/openxrsdk
+	url = https://github.com/KhronosGroup/OpenXR-SDK.git

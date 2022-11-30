@@ -1,0 +1,3 @@
+src = https://github.com/g-truc/glm
+
+win = 0.9.9.8
