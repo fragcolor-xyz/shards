@@ -1,6 +1,7 @@
 #ifndef A44AEEB5_7CD7_4AAC_A2DE_988863BD5160
 #define A44AEEB5_7CD7_4AAC_A2DE_988863BD5160
 
+#include "context.hpp"
 #include "context_internal.hpp"
 #include "context_direct.hpp"
 #include "platform_surface.hpp"
@@ -15,7 +16,7 @@
 
 #include <gfx_rust.h>
 
-#include "Headset.h"
+#include "openxr-integration/Headset.h"
 
 namespace gfx {
 
@@ -35,7 +36,7 @@ struct WGPUVulkanShared {
   WGPUQueue wgpuQueue{};
 };
 
-struct VulkanOpenXRSwapchain : public IContextMainOutput 
+struct VulkanOpenXRSwapchain:public IContextMainOutput 
 {
   Window &window;
 
@@ -52,7 +53,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
   uint32_t currentImageIndex{};
   int2 currentSize;
   WGPUTextureFormat currentFormat = WGPUTextureFormat_Undefined;
-  WGPUTextureView currentView{};
+  WGPUTextureView currentView{};               
 
   VulkanOpenXRSwapchain(std::shared_ptr<WGPUVulkanShared> &wgpuVulkanShared, Window &window)
       : window(window), wgpuVulkanShared(wgpuVulkanShared) {
@@ -198,12 +199,12 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
     return currentView;
   }
 
-  void render(Headset headset, uint32_t eyeIndex, uint32_t swapchainImageIndex){
-    const VkCommandBuffer commandBuffer = renderer->getCurrentCommandBuffer();//[t] TODO: but we want wgpu command buffer, right?
-    
-    const VkImage sourceImage = headset->getRenderTarget(swapchainImageIndex)->getImage();
-    const VkImage destinationImage = mirrorSwapchainImages.at(currentImageIndex); // [t] we have these from createMirrorSwapchain()
-    const VkExtent2D eyeResolution = headset->getEyeResolution(eyeIndex);
+  //void render(Headset headset, uint32_t eyeIndex, uint32_t swapchainImageIndex){
+  //  const VkCommandBuffer commandBuffer = renderer->getCurrentCommandBuffer();//[t] TODO: but we want wgpu command buffer, right?
+  //  
+  //  const VkImage sourceImage = headset->getRenderTarget(swapchainImageIndex)->getImage();
+  //  const VkImage destinationImage = mirrorSwapchainImages.at(currentImageIndex); // [t] we have these from createMirrorSwapchain()
+  //  const VkExtent2D eyeResolution = headset->getEyeResolution(eyeIndex);
 
     // [t] For vulkan, the steps should be smth like this:
     /*
@@ -224,7 +225,7 @@ struct VulkanOpenXRSwapchain : public IContextMainOutput
       present()
 
     */
-  }
+  //}
 
   void present() override {
     WGPUExternalPresentVK wgpuPresent{};
@@ -383,9 +384,9 @@ struct ContextXrGfxBackend : public IContextBackend {
 
   std::shared_ptr<IContextMainOutput> createMainOutput(Window &window) override {
     // return std::make_shared<ContextWindowOutput>(wgpuInstance, wgpuAdapter, wgpuDevice, wgpuSurface, window);
-    return std::make_shared<VulkanOpenXRSwapchain>(wgpuVulkanShared, window);
+    // return std::make_shared<VulkanOpenXRSwapchain>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
+    return std::make_shared<VulkanOpenXRSwapchain>(wgpuVulkanShared.wgpuInstance, wgpuVulkanShared.wgpuAdapter, wgpuVulkanShared.wgpuDevice, window);
   }
-
 
 };
 } // namespace gfx

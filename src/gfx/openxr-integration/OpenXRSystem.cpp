@@ -1,8 +1,7 @@
 #include "context.hpp"
 #include "Context_XR.h"
 #include "Headset.h"
-#include "MirrorView.h"
-#include "Renderer.h"
+
 
 
 //[t] TODO: figure out where to call this from. Not sure how the general flow is outside of context.cpp
@@ -20,6 +19,7 @@ int openXRMain(gfx::Context gfxContext)
                             XR_ENVIRONMENT_BLEND_MODE_OPAQUE, 
                             XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY);
   
+  // maybe move some of this to gfx
   context.getVulkanExtensionsFromOpenXRInstance();
   //[t] TODO: Our WGPUVulkanShared for the purposes of using XR, doesn't need to be created unless the ^above XR specific setup succeeds.
   
@@ -44,6 +44,12 @@ int openXRMain(gfx::Context gfxContext)
   {
 
     //[t] Guus: process main window events? -- I assume we already do this, where?
+    /*
+      struct MainWindow : public Base {
+      window->pollEvents(events);
+      // openxr events here
+    */
+
 
     //[t] If we run in isMultipass (render twice), then we have 2 swapchains.
     //[t] If we run in single pass (multiview), then we have 1 swapchain with 2 layers
@@ -51,7 +57,9 @@ int openXRMain(gfx::Context gfxContext)
     //[t] So each time you acquireSwapchainForFrame, you get back the swapchainImageIndex for the swapchain you're working with.
     uint32_t swapchainImageIndex;
     
-    const Headset::BeginFrameResult frameResult = headset.beginFrame();
+    Headset::BeginFrameResult frameResult = headset.beginFrame();
+    //mirrorView WGPUTextureView requestFrame() 
+    
     if (frameResult == Headset::BeginFrameResult::Error)
     {
       return EXIT_FAILURE;
@@ -89,7 +97,10 @@ int openXRMain(gfx::Context gfxContext)
             renderPassBeginInfo.pClearValues = clearValues.data();
         */
         //renderer.render(i, swapchainImageIndex);
-        
+          // eye data
+          // swapchains
+          // also the mirror view
+
 
         // Render Mirror View
         // if we want to render this eye,

@@ -42,7 +42,7 @@ constexpr VkFormat colorFormat = VK_FORMAT_R8G8B8A8_SRGB;
 constexpr VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 } // namespace
 
-Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isMultipass) : context(context)
+Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isMultipass) 
 {
   gfxWgpuVulkanContext = gfxContext->getContextXrGfxBackend();
   gfxWgpuVulkanShared = gfxWgpuVulkanContext->getWGPUVulkanShared();
@@ -125,7 +125,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
   const XrInstance xrInstance = xrContext->getXrInstance(); 
   const XrSystemId xrSystemId = xrContext->getXrSystemId();
   const VkPhysicalDevice vkPhysicalDevice = gfxWgpuVulkanShared->physicalDevice;
-  const uint32_t vkDrawQueueFamilyIndex = gfxWgpuVulkanShared->queue;
+  const uint32_t vkDrawQueueFamilyIndex = gfxWgpuVulkanShared->queueFamilyIndex;
 
   // Create a session with Vulkan graphics binding
   XrGraphicsBindingVulkanKHR graphicsBinding{ XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR };
@@ -133,7 +133,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
   graphicsBinding.instance = gfxWgpuVulkanShared->instance;
   graphicsBinding.physicalDevice = vkPhysicalDevice;
   graphicsBinding.queueFamilyIndex = vkDrawQueueFamilyIndex;
-  graphicsBinding.queueIndex = 0u;
+  graphicsBinding.queueIndex = gfxWgpuVulkanShared->queueIndex;//0u;
 
   XrSessionCreateInfo sessionCreateInfo{ XR_TYPE_SESSION_CREATE_INFO };
   sessionCreateInfo.next = &graphicsBinding;
@@ -333,7 +333,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
   // Create xr swapchains and render targets 
   // [t] Either creates one swapchain with 2 layers / swapchain images, or two swapchains with one image each.
   // [t] Either way it's 2 render targets.
-  { 
+  {
     uint32_t swapchainNumber = 1u;
     uint32_t swapchainImageCount = static_cast<uint32_t>(eyeCount);//2u
     if(isMultipass){
@@ -341,7 +341,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
       swapchainImageCount = 1u;
     }
 
-    swapchainArr = swapchainArr.resize(swapchainNumber);
+    swapchainArr.resize(swapchainNumber);
 
     for(size_t i=0; i< swapchainNumber; i++)
     {
@@ -361,7 +361,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
       swapchainCreateInfo.faceCount = 1u;
       swapchainCreateInfo.mipCount = 1u;
 
-      result = xrCreateSwapchain(session, &swapchainCreateInfo, &swapchainArr.at(i)); // [t] &swapchain.handle?
+      result = xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i)); // [t] &swapchain.handle?
       if (XR_FAILED(result)) 
       { 
         util::error(Error::GenericOpenXR);
@@ -376,7 +376,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
       // [t] But we need to use this xrEnumerateSwapchainImages magic to create 2 swapchainImages,
       // [t] one swapchain image for each multiview image layer
       uint32_t swapchainImageCount; 
-      result = xrEnumerateSwapchainImages(swapchainArr.at(i), 0u, &swapchainImageCount, nullptr);
+      result = xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainImageCount, nullptr);
       if (XR_FAILED(result))
       {
         util::error(Error::GenericOpenXR);
@@ -440,9 +440,9 @@ Headset::Headset(const Context_XR* xrContext, gfx::Context* gfxContext, bool isM
     // Associate this eye with the swapchain
     const XrViewConfigurationView& eyeImageInfo = eyeImageInfos.at(eyeIndex);
     if(swapchainArr.size() == 1)
-      eyeRenderInfo.subImage.swapchain = swapchainArr.at(0);//multiview, 1 swapchain, 2 swapchainImages
+      eyeRenderInfo.subImage.swapchain = *(swapchainArr.at(eyeIndex));//multiview, 1 swapchain, 2 swapchainImages
     else
-      eyeRenderInfo.subImage.swapchain = swapchainArr.at(eyeIndex);//multipass, 2 swapchains
+      eyeRenderInfo.subImage.swapchain = *(swapchainArr.at(eyeIndex));//multipass, 2 swapchains
     eyeRenderInfo.subImage.imageArrayIndex = static_cast<uint32_t>(eyeIndex);
     eyeRenderInfo.subImage.imageRect.offset = { 0, 0 };
     eyeRenderInfo.subImage.imageRect.extent = { static_cast<int32_t>(eyeImageInfo.recommendedImageRectWidth),
@@ -459,7 +459,7 @@ Headset::~Headset()
   // Clean up OpenXR
   xrEndSession(session);
   for(size_t i=0; i< swapchainArr.size(); i++)
-    xrDestroySwapchain(swapchainArr.at(i));
+    xrDestroySwapchain(*(swapchainArr.at(i)));
 
   for (const RenderTarget* renderTarget : swapchainRenderTargets)
   {
@@ -470,7 +470,7 @@ Headset::~Headset()
   xrDestroySession(session);
 
   // Clean up Vulkan
-  const VkDevice vkDevice = gfxWgpuVulkanShared->device);
+  const VkDevice vkDevice = gfxWgpuVulkanShared->device;
   vkDestroyImageView(vkDevice, depthImageView, nullptr);
   vkFreeMemory(vkDevice, depthMemory, nullptr);
   vkDestroyImage(vkDevice, depthImage, nullptr);
@@ -481,7 +481,7 @@ Headset::~Headset()
 //[t] this is common setup for each frame. Followed by acquireSwapchainForFrame, render, releaseSwapchain, and endFrame
 Headset::BeginFrameResult Headset::beginFrame()                                   
 { 
-  const XrInstance instance = xrContext->instance;
+  const XrInstance instance = xrContext->getXrInstance();
 
   // Poll OpenXR events
   XrEventDataBuffer buffer;
@@ -607,7 +607,7 @@ Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, u
 
   //[t] Acquire the multiview swapchain image, or one of the 2 multipass swapchains
   XrSwapchainImageAcquireInfo swapchainImageAcquireInfo{ XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO };
-  result = xrAcquireSwapchainImage(swapchainArr.at(eyeIndex), &swapchainImageAcquireInfo, &swapchainImageIndex); 
+  XrResult result = xrAcquireSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageAcquireInfo, &swapchainImageIndex); 
   if (XR_FAILED(result))
   {
     util::error(Error::GenericOpenXR);
@@ -617,7 +617,7 @@ Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, u
   // Wait for the swapchain image
   XrSwapchainImageWaitInfo swapchainImageWaitInfo{ XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
   swapchainImageWaitInfo.timeout = XR_INFINITE_DURATION;
-  result = xrWaitSwapchainImage(swapchainArr.at(eyeIndex), &swapchainImageWaitInfo);
+  result = xrWaitSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageWaitInfo);
   if (XR_FAILED(result))
   {
     util::error(Error::GenericOpenXR);
@@ -632,7 +632,7 @@ void Headset::releaseSwapchain(uint32_t eyeIndex) const
 {
   // Release the swapchain image
   XrSwapchainImageReleaseInfo swapchainImageReleaseInfo{ XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
-  XrResult result = xrReleaseSwapchainImage(swapchainArr.at(eyeIndex), &swapchainImageReleaseInfo);
+  XrResult result = xrReleaseSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageReleaseInfo);
   if (XR_FAILED(result))
   {
     return;
@@ -662,7 +662,7 @@ void Headset::endFrame() const
   frameEndInfo.layerCount = static_cast<uint32_t>(layers.size());
   frameEndInfo.layers = layers.data();
   frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-  result = xrEndFrame(session, &frameEndInfo);
+  XrResult result = xrEndFrame(session, &frameEndInfo);
   if (XR_FAILED(result))
   {
     return;

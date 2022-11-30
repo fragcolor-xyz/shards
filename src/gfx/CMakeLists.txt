@@ -44,6 +44,7 @@ target_link_libraries(gfx
   spdlog stb xxHash Boost::algorithm Boost::filesystem
   shards-logging
   Vulkan::Headers
+  openxrsdk
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 target_link_libraries(gfx Tracy::TracyClient)

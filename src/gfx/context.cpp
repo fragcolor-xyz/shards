@@ -240,7 +240,7 @@ void Context::deviceObtained() {
   wgpuQueue = wgpuDeviceGetQueue(wgpuDevice);
 
   if (window) {
-    mainOutput = backendXrGfx->createMainOutput(getWindow());
+    mainOutput = backend->createMainOutput(getWindow());
   }
 
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
@@ -264,7 +264,7 @@ void Context::requestDevice() {
   state = ContextState::Requesting;
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
-  deviceRequest = backendXrGfx->requestDevice();
+  deviceRequest = backend->requestDevice();
 }
 
 void Context::releaseDevice() {
@@ -309,7 +309,7 @@ void Context::requestAdapter() {
   // #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu adapter");
-  adapterRequest = backendXrGfx->requestAdapter();
+  adapterRequest = backend->requestAdapter();
 }
 
 void Context::releaseAdapter() {
@@ -360,13 +360,13 @@ void Context::initCommon() {
 #endif
 
   //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
-  backendXrGfx = std::make_shared<ContextXrGfxBackend>();  
-  wgpuInstance = backendXrGfx->wgpuVkCreateInstance();
+  backend = std::make_shared<ContextXrGfxBackend>();  
+  wgpuInstance = backend->wgpuVkCreateInstance();
 
   // Setup surface
   if (window) { 
     assert(!wgpuSurface);
-    wgpuSurface = backendXrGfx->createSurface(getWindow(), options.overrideNativeWindowHandle);
+    wgpuSurface = backend->createSurface(getWindow(), options.overrideNativeWindowHandle);
   }
 
   requestDevice(); 
@@ -374,7 +374,7 @@ void Context::initCommon() {
 
 //[t] called by openXRMain in OpenXRMain.cpp.
 ContextXrGfxBackend Context::getContextXrGfxBackend () {
-  return backendXrGfx; 
+  return backend; 
 }
 
 void Context::present() {
