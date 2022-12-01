@@ -205,7 +205,6 @@
   (If :Predicate (IsMore .coin_Velocity_Max)
       :Then (->
              .coin_Velocity_Max > .coin_Velocity))
-  (Float2 .Random_Coin_X .coinY) > .coin_Position
   )
 
 (defloop Coin
@@ -219,7 +218,8 @@
   0.0 >= .ThisCoinY
 
   (float2 .Random_Coin_X .ThisCoinY) > .coin_Position
-  (Log "CoinPosition: "))
+  (Log "CoinPosition: ")
+  (Pause 1.5))
 
 ;;ensures that the character is bound by the confines of the screen and does not walk off screen nor does it fall through the floor
 (defshards WindowBorders []
@@ -333,10 +333,7 @@
                             :Contents (->
                                        .Score(ToString)(UI.Label)))
                    
-                   (Inputs.KeyDown 
-                    :Key "space"
-                    :Action (->
-                             (Spawn Coin)))
+                   (Step Coin)
                    (Step Coin_Animation)))
 
                  (Jump)
