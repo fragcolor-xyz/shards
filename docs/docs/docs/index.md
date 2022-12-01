@@ -7,6 +7,7 @@ license: CC-BY-SA-4.0
 
 Technical documentation for a more in-depth understanding of the Shards language.
 
+- [Shards introduction](./introduction.md)
 - [Built-in functions](./functions/)
 - [Shards](./shards/)
 - [Enums](./enums/)
