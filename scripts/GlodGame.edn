@@ -211,21 +211,15 @@
 (defloop Coin
   ;;RandomX
   0.0 >= .Random_Coin_X
-  (RandomFloat :Max 600.0)
+  (RandomFloat :Max 1200.0)
   > .Random_Coin_X
-  .Random_Coin_X 
-  
-  (Log "CoinX: ")
-  0.0 > .coinY
-  (float2 .Random_Coin_X .coinY) > .coin_Position
-  
-  (Coin_Gravity)
-  .coinY
-  (When :Predicate (IsMore 50.0)
-        :Action (->
-                 (Stop)))
-  (Pause 1.5)
-  )
+  (Math.Subtract 600.0)
+  > .Random_Coin_X
+
+  0.0 >= .ThisCoinY
+
+  (float2 .Random_Coin_X .ThisCoinY) > .coin_Position
+  (Log "CoinPosition: "))
 
 ;;ensures that the character is bound by the confines of the screen and does not walk off screen nor does it fall through the floor
 (defshards WindowBorders []
@@ -338,15 +332,16 @@
                             :Contents (->
                                        .Score(ToString)(UI.Label)))
                    
-                   (Step Coin)
+                   (Inputs.KeyDown 
+                    :Key "space"
+                    :Action (->
+                             (Spawn Coin)))
                    (Step Coin_Animation)))
 
                  (Jump)
                  (Gravity)
                  (Run)
                  (Friction)
-                 
-                 (Coin_Gravity)
 
                  (GFX.Render :Steps .render-steps))))
 
