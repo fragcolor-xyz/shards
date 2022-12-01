@@ -32,10 +32,22 @@ struct PackParamVisitor {
     memcpy(outData, &arg.x, len);
     return len;
   }
-  size_t operator()(const float4x4 &arg) {
-    size_t len = sizeof(float) * 16;
+  size_t operator()(const float2x2 &arg) {
+    size_t len = getPackedMatrixSize(arg);
     assert(len <= outLength);
-    packFloat4x4(arg, (float *)outData);
+    packMatrix(arg, (float *)outData);
+    return len;
+  }
+  size_t operator()(const float3x3 &arg) {
+    size_t len = getPackedMatrixSize(arg);
+    assert(len <= outLength);
+    packMatrix(arg, (float *)outData);
+    return len;
+  }
+  size_t operator()(const float4x4 &arg) {
+    size_t len = getPackedMatrixSize(arg);
+    assert(len <= outLength);
+    packMatrix(arg, (float *)outData);
     return len;
   }
 
@@ -55,6 +67,7 @@ size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &
 }
 
 using shader::FieldType;
+using shader::FieldTypes;
 FieldType getParamVariantType(const ParamVariant &variant) {
   FieldType result = {};
   std::visit(
@@ -62,17 +75,17 @@ FieldType getParamVariantType(const ParamVariant &variant) {
         using T = std::decay_t<decltype(arg)>;
 
         if constexpr (std::is_same_v<T, float>) {
-          result = FieldType(ShaderFieldBaseType::Float32);
+          result = FieldTypes::Float;
         } else if constexpr (std::is_same_v<T, float2>) {
-          result = FieldType(ShaderFieldBaseType::Float32, 2);
+          result = FieldTypes::Float2;
         } else if constexpr (std::is_same_v<T, float3>) {
-          result = FieldType(ShaderFieldBaseType::Float32, 3);
+          result = FieldTypes::Float3;
         } else if constexpr (std::is_same_v<T, float4>) {
-          result = FieldType(ShaderFieldBaseType::Float32, 4);
+          result = FieldTypes::Float4;
         } else if constexpr (std::is_same_v<T, float4x4>) {
-          result = FieldType(ShaderFieldBaseType::Float32, FieldType::Float4x4Components);
+          result = FieldTypes::Float4x4;
         } else if constexpr (std::is_same_v<T, uint32_t>) {
-          result = FieldType(ShaderFieldBaseType::UInt32, 1);
+          result = FieldTypes::UInt32;
         } else if constexpr (std::is_same_v<T, uint16_t>) {
           result = FieldType(ShaderFieldBaseType::UInt16, 1);
         } else if constexpr (std::is_same_v<T, uint8_t>) {

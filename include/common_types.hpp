@@ -82,6 +82,9 @@ struct CoreInfo {
   static inline Type Float3x3Type{{SHType::Seq, {.seqTypes = Float3Type}, 3}};
   static inline Type Float3x3SeqType = Type::SeqOf(Float3x3Type);
   static inline Types Float3x3Types{{Float3x3Type, Float3x3SeqType}};
+  static inline Type Float2x2Type{{SHType::Seq, {.seqTypes = Float2Type}, 2}};
+  static inline Type Float2x2SeqType = Type::SeqOf(Float2x2Type);
+  static inline Types Float2x2Types{{Float2x2Type, Float2x2SeqType}};
 
   static inline Types IntOrFloat{{IntType, FloatType}};
 

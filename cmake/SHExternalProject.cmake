@@ -39,7 +39,11 @@ if(CMAKE_GENERATOR STREQUAL Xcode)
   endif()
 
   list(APPEND XCODE_ARGS -sdk ${XCODE_SDK} -arch ${CMAKE_SYSTEM_PROCESSOR})
-  set(XCODE_CONFIG_BINARY_DIR "${EXTERNAL_BUILD_TYPE}-${XCODE_SDK}") # Debug-iphone, Release-iphonesimulator etc.
+  if(XCODE_SDK MATCHES "macosx")
+    set(XCODE_CONFIG_BINARY_DIR "${EXTERNAL_BUILD_TYPE}") # Debug-iphone, Release-iphonesimulator etc.
+  else()
+    set(XCODE_CONFIG_BINARY_DIR "${EXTERNAL_BUILD_TYPE}-${XCODE_SDK}") # Debug-iphone, Release-iphonesimulator etc.
+  endif()
   set(XCODE TRUE)
 endif()
 

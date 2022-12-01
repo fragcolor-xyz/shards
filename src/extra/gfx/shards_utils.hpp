@@ -3,6 +3,7 @@
 
 #include <foundation.hpp>
 #include <gfx/error_utils.hpp>
+#include <gfx/linalg.hpp>
 #include <magic_enum.hpp>
 #include <shards.hpp>
 
@@ -38,6 +39,39 @@ inline void checkEnumType(const SHVar &var, const shards::Type &expectedType, co
                           typeInfoA.enumeration.typeId, typeInfoB.enumeration.vendorId, typeInfoB.enumeration.typeId);
   }
 }
+
+template <typename T> struct VectorConversion {};
+template <> struct VectorConversion<float> {
+  static auto convert(const SHVar &value) {
+    if (value.valueType != SHType::Float)
+      throw std::runtime_error("Invalid vector type");
+    return value.payload.floatValue;
+  }
+};
+template <> struct VectorConversion<float2> {
+  static auto convert(const SHVar &value) {
+    if (value.valueType != SHType::Float2)
+      throw std::runtime_error("Invalid vector type");
+    return float2(value.payload.float2Value[0], value.payload.float2Value[1]);
+  }
+};
+template <> struct VectorConversion<float3> {
+  static auto convert(const SHVar &value) {
+    if (value.valueType != SHType::Float3)
+      throw std::runtime_error("Invalid vector type");
+    return float3(value.payload.float3Value[0], value.payload.float3Value[1], value.payload.float3Value[2]);
+  }
+};
+template <> struct VectorConversion<float4> {
+  static auto convert(const SHVar &value) {
+    if (value.valueType != SHType::Float4)
+      throw std::runtime_error("Invalid vector type");
+    return float4(value.payload.float4Value[0], value.payload.float4Value[1], value.payload.float4Value[2], value.payload.float4Value[3]);
+  }
+};
+
+template <typename TVec> inline auto toVec(const SHVar &value) { return VectorConversion<TVec>::convert(value); }
+
 } // namespace gfx
 
 #endif // EXTRA_GFX_SHARDS_UTILS

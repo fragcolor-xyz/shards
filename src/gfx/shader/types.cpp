@@ -1,4 +1,5 @@
 #include "types.hpp"
+#include "../math.hpp"
 #include <nameof.hpp>
 #include <stdexcept>
 
@@ -59,7 +60,18 @@ size_t getWGSLAlignment(const ShaderFieldBaseType &type) {
 }
 
 namespace shader {
-size_t FieldType::getByteSize() const { return gfx::getByteSize(baseType) * numComponents; }
+size_t FieldType::getByteSize() const {
+  size_t vecSize = gfx::getByteSize(baseType) * numComponents;
+
+  if (matrixDimension > 1) {
+    // Matrix size is based on array of vector elements
+    // https://www.w3.org/TR/WGSL/#alignment-and-size
+    size_t vecAlignment = FieldType(baseType, numComponents).getWGSLAlignment();
+    return matrixDimension * alignToPOT(vecSize, vecAlignment);
+  } else {
+    return vecSize;
+  }
+}
 size_t FieldType::getWGSLAlignment() const {
   // https://www.w3.org/TR/WGSL/#alignment-and-size
   size_t componentAlignment = gfx::getWGSLAlignment(baseType);
@@ -71,7 +83,6 @@ size_t FieldType::getWGSLAlignment() const {
   case 3:
     return componentAlignment * 4;
   case 4:
-  case FieldType::Float4x4Components:
     return componentAlignment * 4;
   default:
     throw std::logic_error("Not a valid host-sharable type");

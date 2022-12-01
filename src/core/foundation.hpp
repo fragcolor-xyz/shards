@@ -1086,44 +1086,44 @@ struct ExposedInfo {
 
   ExposedInfo(const ExposedInfo &other) {
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      shards::arrayPush(_innerInfo, other._innerInfo.elements[i]);
+      push_back(other._innerInfo.elements[i]);
     }
   }
 
   ExposedInfo &operator=(const ExposedInfo &other) {
     shards::arrayResize(_innerInfo, 0);
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      shards::arrayPush(_innerInfo, other._innerInfo.elements[i]);
+      push_back(other._innerInfo.elements[i]);
     }
     return *this;
   }
 
   template <typename... Types> explicit ExposedInfo(const ExposedInfo &other, Types... types) {
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      shards::arrayPush(_innerInfo, other._innerInfo.elements[i]);
+      push_back(other._innerInfo.elements[i]);
     }
 
     std::vector<SHExposedTypeInfo> vec = {types...};
     for (auto pi : vec) {
-      shards::arrayPush(_innerInfo, pi);
+      push_back(pi);
     }
   }
 
   template <typename... Types> explicit ExposedInfo(const SHExposedTypesInfo other, Types... types) {
     for (uint32_t i = 0; i < other.len; i++) {
-      shards::arrayPush(_innerInfo, other.elements[i]);
+      push_back(other.elements[i]);
     }
 
     std::vector<SHExposedTypeInfo> vec = {types...};
     for (auto pi : vec) {
-      shards::arrayPush(_innerInfo, pi);
+      push_back(pi);
     }
   }
 
-  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo first, Types... types) {
+  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo& first, Types... types) {
     std::vector<SHExposedTypeInfo> vec = {first, types...};
     for (auto pi : vec) {
-      shards::arrayPush(_innerInfo, pi);
+      push_back(pi);
     }
   }
 
@@ -1146,6 +1146,14 @@ struct ExposedInfo {
   }
 
   ~ExposedInfo() { shards::arrayFree(_innerInfo); }
+
+  void push_back(const SHExposedTypeInfo &info) {
+    shards::arrayPush(_innerInfo, info);
+  }
+
+  void clear() {
+    shards::arrayResize(_innerInfo, 0);
+  }
 
   explicit operator SHExposedTypesInfo() const { return _innerInfo; }
 

@@ -22,7 +22,7 @@ struct DebugColor {
 
     auto writeColor = [fieldName = std::string(fieldName)](IGeneratorContext &context) {
       context.write("vec4<f32>(");
-      auto &stageInputs = context.getInputs();
+      auto &stageInputs = context.getDefinitions().inputs;
 
       auto it = stageInputs.find(fieldName);
       if (it == stageInputs.end()) {
