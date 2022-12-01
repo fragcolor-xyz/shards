@@ -23,18 +23,17 @@ The first thing you will see on every shard page is this table.
 
 The first two entries in the table describe what inputs a shard will accept and what kind of values it will output.
 
-### <input>
+### &lt;input&gt;
 
 In this case the `String.Join` shard accepts a sequence of `Strings` as an input, written as `[ String ]`, the square brackets meaning sequence.
 
-### <output>
+### &lt;output&gt;
 
 The output will be a single `String`
 
 ### Parameters
 
 After the input and output of the shard, the parameters are listed. The `String.Join` shard requires a `Separator` parameter and it has to be a `String`, the default value when not specified will be `""`
-
 
 ## Optional parameters
 
@@ -64,16 +63,14 @@ The type column shows the expected types for a input/output/parameter
 
 Multiple different types in a row indicate that any of the types listed are accepted.
 
-When placed within `[ square brackets ]` this means that a sequence of those types is accepted
+When placed within `[ square brackets ]` this means that a [Sequence](./types/#sequence) of those types is accepted
 
-When placed within `{ curly brackets }` this means that a table of those types as values accepted
+When placed within `{ curly brackets }` this means that a [Table](./types/#table) of those types as values accepted
 
-When a value is prefixed with an `&ampersand` this means that a variable of that type is accepted
+When a value is prefixed with an `&ampersand` this means that a variable / [ContextVar](./types/#contextvar) of that type is accepted
 
-### Special cases
+## Further reading
 
-When the type `Any` is specified this means that any type is accepted, or the shard has more complex rules about the valid types. Check the relevant shard documentation for more info.
-
-When the type `Shard [ Shards ]` is specified this means that the shard accepts other shards for that parameter. More specifically it accepts a single shard `:ParameterName (Shard ...)` or sequence of shards `:ParameterName (-> (Shard1 ...) (Shard2 ...))`
+See the [Types](./types) page for more information about types
 
 --8<-- "includes/license.md"
