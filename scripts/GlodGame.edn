@@ -690,17 +690,67 @@
         (GFX.UIPass .ui-draw-queue) >> .render-steps)
        .ui-draw-queue (GFX.ClearQueue)
 
-       (UI
-        .ui-draw-queue
-        (->
-         .gameOver
-         (Match [0 (-> (Step mainGame-ui))
-                 1 (-> (Step gameOver-ui))]
-                :Passthrough false)))
+                 (UI
+                  .ui-draw-queue
+                  (->
+                   (UI.Area
+                    :Position .CharacterPosition
+                    :Anchor Anchor.Bottom
+                    :Contents
+                    (->
+                     .isJumping
+                     (If :Predicate (Is true)
+                         :Then (->
+                                .CharacterDirection
+                                (If :Predicate (Is 1)
+                                    :Then (->
+                                           .image_jumping (UI.Image :Scale .CharacterScale))
+                                    :Else (->
+                                           .image_jumping_Left (UI.Image :Scale .CharacterScale)))))
 
-       (button-inputs)
+                     .isRunning
+                     (If :Predicate (Is true)
+                         :Then (->
+                                (Step Walking_Animation)
+                                .CharacterDirection
+                                (If :Predicate (Is 1)
+                                    :Then (->
+                                           .walking_image_array (Take .walking_image_index) (UI.Image :Scale .CharacterScale))
+                                    :Else (->
+                                           .walking_Left_image_array (Take .walking_image_index) (UI.Image :Scale .CharacterScale)))))
 
-       (GFX.Render :Steps .render-steps))))
+                     .isIdle
+                     (If :Predicate (Is true)
+                         :Then (->
+                                (Step Idle_Animation)
+                                .CharacterDirection
+                                (If :Predicate (Is 1)
+                                    :Then (->
+                                           .idle_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale))
+                                    :Else (->
+                                           .idle_Left_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale)))))))
+
+                   (UI.Area :Position .coin_Position
+                            :Anchor Anchor.Top
+                            :Contents (->
+                                       .Coin_Image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
+                   
+                   (UI.Area :Position (float2 0)
+                            :Anchor Anchor.TopRight
+                            :Contents (->
+                                       .Score(ToString)(UI.Label)))
+                   
+                   (Step Coin)
+                   (Step Coin_Animation)))
+
+                 (Jump)
+                 (Gravity)
+                 (Run)
+                 (Friction)
+                 
+                 (Coin_Gravity)
+
+                 (GFX.Render :Steps .render-steps))))
 
 
 (defmesh main)
