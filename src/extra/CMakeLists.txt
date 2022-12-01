@@ -8,6 +8,12 @@ set(extra_SOURCES
   gfx/feature.cpp
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
+  gfx/shader/composition.cpp
+  gfx/shader/linalg_shards.cpp
+  gfx/shader/math_shards.cpp
+  gfx/shader/core_shards.cpp
+  gfx/shader/wire_shards.cpp
+  gfx/shader/flow_shards.cpp
   gfx/gltf.cpp
   gfx/camera.cpp
   gfx/texture.cpp

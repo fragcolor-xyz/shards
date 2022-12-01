@@ -288,9 +288,9 @@ public:
 
   const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
 
-  bool isVariable() { return _v.valueType == ContextVar; }
+  bool isVariable() const { return _v.valueType == ContextVar; }
 
-  const char *variableName() {
+  const char *variableName() const {
     if (isVariable())
       return _v.payload.stringValue;
     else
@@ -554,6 +554,7 @@ public:
   operator bool() const { return _shardsArray.size() > 0; }
 
   const Shards &shards() const { return _shards; }
+  const SHComposeResult &composeResult() const { return _wireValidation; }
 };
 
 template <class SH_CORE> struct TOwnedVar : public SHVar {

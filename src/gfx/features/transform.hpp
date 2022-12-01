@@ -21,7 +21,7 @@ struct Transform {
       ctx.write("vec4<f32>(");
       ctx.readInput("position");
 
-      auto &stageInputs = ctx.getInputs();
+      auto &stageInputs = ctx.getDefinitions().inputs;
       auto it = stageInputs.find("position");
       if (it != stageInputs.end()) {
         auto &type = it->second;

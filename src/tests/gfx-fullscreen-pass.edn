@@ -5,7 +5,7 @@
    0.0 >= .time
 
    {:EntryPoint (->
-                 (Shader.ReadInput "texCoord0" :Dimension 2) (ToFloat4) (Math.Add (Float4 0 0 0 1))
+                 (Shader.ReadInput "texCoord0") (ToFloat4) (Math.Add (Float4 0 0 0 1))
                  (Shader.WriteOutput "color") ; End shader
                  )}(GFX.EffectPass) >> .render-steps)
 

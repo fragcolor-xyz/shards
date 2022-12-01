@@ -28,7 +28,7 @@
     :Inputs ["color" "depth"]
     :EntryPoint (-> ; Begin shader
                  ; Texture coordinates are named texCoord0/1/2/etc. by convention
-                 (Shader.ReadInput "texCoord0" :Dimension 2) >= .uv
+                 (Shader.ReadInput "texCoord0") >= .uv
                  .uv (Take 0) >= .u
                  .uv (Take 1) >= .v
 

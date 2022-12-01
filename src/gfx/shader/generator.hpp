@@ -40,11 +40,22 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
   return GeneratorError{fmt::format(format, args...)};
 }
 
+struct GeneratorDefinitions {
+  std::map<String, BufferDefinition> buffers;
+  std::map<String, TextureDefinition> textures;
+  std::map<String, FieldType> inputs;
+  std::map<String, FieldType> globals;
+  std::map<String, FieldType> outputs;
+};
+
 struct IGeneratorContext {
   // Write directly to output stream
   virtual void write(const StringView &str) = 0;
-  // Writes into a separate buffer that is prepended to the combined output of write and all other generated code
-  virtual void writeHeader(const StringView &str) = 0;
+
+  // Push / pop for defining code outside of the current function
+  // any context writes in between these calls will be written to a header location before the current function being written
+  virtual void pushHeaderScope() = 0;
+  virtual void popHeaderScope() = 0;
 
   virtual void readGlobal(const char *name) = 0;
   virtual void beginWriteGlobal(const char *name, const FieldType &type) = 0;
@@ -58,7 +69,7 @@ struct IGeneratorContext {
 
   virtual bool hasInput(const char *name) = 0;
   virtual void readInput(const char *name) = 0;
-  virtual const std::map<String, FieldType> &getInputs() = 0;
+  virtual const FieldType *getOrCreateDynamicInput(const char *name) = 0;
 
   virtual bool hasOutput(const char *name) = 0;
   virtual void writeOutput(const char *name, const FieldType &type) = 0;
@@ -70,25 +81,24 @@ struct IGeneratorContext {
   virtual void textureDefaultSampler(const char *name) = 0;
 
   virtual void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName) = 0;
-  virtual const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer) = 0;
 
   virtual void pushError(GeneratorError &&error) = 0;
 
-  virtual const std::string& generateTempVariable() = 0;
+  virtual const GeneratorDefinitions &getDefinitions() const = 0;
+
+  virtual const std::string &generateTempVariable() = 0;
 };
 
 struct GeneratorContext : public IGeneratorContext {
   String result;
-  String header;
+
+  std::vector<std::string> headers;
+  std::vector<size_t> headerStack;
+
   String inputVariableName;
   String outputVariableName;
   String globalsVariableName;
-  std::map<String, BufferDefinition> buffers;
-  std::map<String, TextureDefinition> textures;
-  std::map<String, FieldType> inputs;
-  std::map<String, FieldType> globals;
-  std::map<String, FieldType> outputs;
-  std::map<String, size_t> sampleTextures;
+  GeneratorDefinitions definitions;
   bool canAddOutputs = false;
   std::vector<GeneratorError> errors;
 
@@ -96,7 +106,12 @@ struct GeneratorContext : public IGeneratorContext {
 
   TempVariableAllocator tempVariableAllocator;
 
+  std::string& getOutput();
+
   void write(const StringView &str);
+
+  void pushHeaderScope();
+  void popHeaderScope();
 
   // Writes into a separate buffer that is prepended to the combined output of write and all other generated code
   void writeHeader(const StringView &str);
@@ -107,7 +122,6 @@ struct GeneratorContext : public IGeneratorContext {
 
   bool hasInput(const char *name);
   void readInput(const char *name);
-  const std::map<String, FieldType> &getInputs() { return inputs; }
   const FieldType *getOrCreateDynamicInput(const char *name);
 
   bool hasOutput(const char *name);
@@ -121,11 +135,12 @@ struct GeneratorContext : public IGeneratorContext {
   void textureDefaultSampler(const char *name);
 
   void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName);
-  const UniformLayout *findUniform(const char *fieldName, const BufferDefinition &buffer);
 
   void pushError(GeneratorError &&error);
 
-  const std::string& generateTempVariable() { return tempVariableAllocator.get(); }
+  const GeneratorDefinitions &getDefinitions() const { return definitions; }
+
+  const std::string &generateTempVariable() { return tempVariableAllocator.get(); }
 };
 
 struct GeneratorOutput {

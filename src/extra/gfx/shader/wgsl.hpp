@@ -7,6 +7,7 @@
 #include <nameof.hpp>
 #include <stdexcept>
 #include <stdint.h>
+#include <vector>
 
 namespace gfx {
 namespace shader {

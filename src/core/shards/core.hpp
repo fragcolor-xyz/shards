@@ -11,6 +11,7 @@
 #include "shards.hpp"
 #include "common_types.hpp"
 #include "number_types.hpp"
+#include "variables.hpp"
 #include <cassert>
 #include <cmath>
 #include <sstream>
@@ -84,17 +85,8 @@ static shards::ParamsInfo compareParamsInfo =
     shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType));
 
 struct BaseOpsBin {
-  SHVar _value{};
-  SHVar *_target = nullptr;
-
-  void destroy() { destroyVar(_value); }
-
-  void cleanup() {
-    if (_target && _value.valueType == ContextVar) {
-      releaseVariable(_target);
-    }
-    _target = nullptr;
-  }
+  ParamVar _operand{shards::Var(0)};
+  ExposedInfo _requiredVariables;
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -102,11 +94,16 @@ struct BaseOpsBin {
 
   SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
 
+  SHExposedTypesInfo requiredVariables() {
+    _requiredVariables.clear();
+    mergeIntoRequiredVariables(_requiredVariables, _operand, CoreInfo::AnyType);
+    return SHExposedTypesInfo(_requiredVariables);
+  }
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      cloneVar(_value, value);
-      cleanup();
+      _operand = value;
       break;
     default:
       break;
@@ -116,22 +113,20 @@ struct BaseOpsBin {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _value;
+      return _operand;
     default:
       return shards::Var::Empty;
     }
   }
 
-  void warmup(SHContext *context) {
-    // TODO deep resolve variables like const
-    _target = _value.valueType == ContextVar ? referenceVariable(context, _value.payload.stringValue) : &_value;
-  }
+  void warmup(SHContext *context) { _operand.warmup(context); }
+  void cleanup() { _operand.cleanup(); }
 };
 
 #define LOGIC_OP(NAME, OP)                                                         \
   struct NAME : public BaseOpsBin {                                                \
     FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { \
-      const auto &value = *_target;                                                \
+      const auto &value = _operand.get();                                          \
       if (input OP value) {                                                        \
         return shards::Var::True;                                                  \
       }                                                                            \
@@ -150,7 +145,7 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ANY_SEQ_OP(NAME, OP)                                                        \
   struct NAME : public BaseOpsBin {                                                       \
     SHVar activate(SHContext *context, const SHVar &input) {                              \
-      const auto &value = *_target;                                                       \
+      const auto &value = _operand.get();                                                 \
       if (input.valueType == Seq && value.valueType == Seq) {                             \
         auto vlen = value.payload.seqValue.len;                                           \
         auto ilen = input.payload.seqValue.len;                                           \
@@ -190,7 +185,7 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ALL_SEQ_OP(NAME, OP)                                                           \
   struct NAME : public BaseOpsBin {                                                          \
     SHVar activate(SHContext *context, const SHVar &input) {                                 \
-      const auto &value = *_target;                                                          \
+      const auto &value = _operand.get();                                                    \
       if (input.valueType == Seq && value.valueType == Seq) {                                \
         auto vlen = value.payload.seqValue.len;                                              \
         auto ilen = input.payload.seqValue.len;                                              \
@@ -242,7 +237,6 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
 
 #define LOGIC_OP_DESC(NAME)         \
   RUNTIME_CORE_SHARD_FACTORY(NAME); \
-  RUNTIME_SHARD_destroy(NAME);      \
   RUNTIME_SHARD_cleanup(NAME);      \
   RUNTIME_SHARD_warmup(NAME);       \
   RUNTIME_SHARD_inputTypes(NAME);   \
@@ -251,6 +245,7 @@ LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
   RUNTIME_SHARD_setParam(NAME);     \
   RUNTIME_SHARD_getParam(NAME);     \
   RUNTIME_SHARD_activate(NAME);     \
+  RUNTIME_SHARD_requiredVariables(NAME);     \
   RUNTIME_SHARD_END(NAME);
 
 struct Input {
@@ -3069,7 +3064,18 @@ struct ForRangeShard {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 
+  static inline Parameters _params = {
+      {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"Action",
+       SHCCSTR("The action to perform at each iteration. The current iteration "
+               "value will be passed as input."),
+       {CoreInfo::ShardsOrNone}}};
   static SHParametersInfo parameters() { return _params; }
+
+  ParamVar _from{Var(0)};
+  ParamVar _to{Var(1)};
+  ShardsVar _shards{};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -3145,19 +3151,6 @@ struct ForRangeShard {
 
     return input;
   }
-
-private:
-  static inline Parameters _params = {
-      {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"Action",
-       SHCCSTR("The action to perform at each iteration. The current iteration "
-               "value will be passed as input."),
-       {CoreInfo::ShardsOrNone}}};
-
-  ParamVar _from{Var(0)};
-  ParamVar _to{Var(1)};
-  ShardsVar _shards{};
 };
 
 struct Repeat {

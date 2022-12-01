@@ -51,14 +51,26 @@ public:
     }
   }
 
+  const TextureBindingLayout &getCurrentFinalLayout(size_t startBindingIndex, size_t *outBindingIndex = nullptr) {
+    prepareFinalLayout(startBindingIndex, outBindingIndex);
+    return layout;
+  }
+
+  // Finishes and moves out the resulting layout.
+  // WARNING: Do not reuse this builder after calling finalize
   TextureBindingLayout &&finalize(size_t startBindingIndex, size_t *outBindingIndex = nullptr) {
+    prepareFinalLayout(startBindingIndex, outBindingIndex);
+    return std::move(layout);
+  }
+
+private:
+  void prepareFinalLayout(size_t startBindingIndex, size_t *outBindingIndex = nullptr) {
     for (auto &binding : layout.bindings) {
       binding.binding = startBindingIndex++;
       binding.defaultSamplerBinding = startBindingIndex++;
     }
     if (outBindingIndex)
       *outBindingIndex = startBindingIndex;
-    return std::move(layout);
   }
 };
 } // namespace shader

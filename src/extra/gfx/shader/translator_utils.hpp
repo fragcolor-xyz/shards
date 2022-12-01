@@ -8,14 +8,29 @@
 namespace gfx {
 namespace shader {
 
+inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context);
+inline std::unique_ptr<IWGSLGenerated> translateTable(const SHVar &var, TranslationContext &context) {
+  VirtualTable vt;
+  shards::ForEach(var.payload.tableValue, [&](const std::string &key, const SHVar &value) {
+    std::unique_ptr<IWGSLGenerated> generatedValue;
+    if (value.valueType == SHType::ContextVar)
+      generatedValue = std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue));
+    else
+      generatedValue = translateConst(value, context);
+    vt.elements.emplace(std::make_pair(key, std::move(generatedValue)));
+  });
+
+  return std::make_unique<VirtualTableOnStack>(std::move(vt));
+}
+
 inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context) {
-  std::unique_ptr<IWGSLGenerated> result;
+  std::unique_ptr<IWGSLGenerated> result{};
 
 #define OUTPUT_VEC(_type, _dim, _fmt, ...)                                                             \
   {                                                                                                    \
     FieldType fieldType(_type, _dim);                                                                  \
     std::string resultStr = fmt::format("{}(" _fmt ")", getFieldWGSLTypeName(fieldType), __VA_ARGS__); \
-    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                  \
+    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                   \
     result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                            \
   }
 
@@ -51,12 +66,137 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
     OUTPUT_VEC(ShaderFieldBaseType::Float32, 4, "{:f}, {:f}, {:f}, {:f}", (float)pl.float4Value[0], (float)pl.float4Value[1],
                (float)pl.float4Value[2], (float)pl.float4Value[3]);
     break;
+  case SHType::Table:
+    translateTable(var, context);
+    break;
+  case SHType::None:
+    SPDLOG_LOGGER_INFO(context.logger, "gen(const)> nil");
+    break;
   default:
     throw ShaderComposeError(fmt::format("Unsupported SHType constant inside shader: {}", magic_enum::enum_name(valueType)));
   }
 #undef OUTPUT_VEC
+
   return result;
 };
+
+inline shards::Type fieldTypeToShardsType(const FieldType &type) {
+  using shards::CoreInfo;
+  if (type.baseType == ShaderFieldBaseType::Float32) {
+    if (type.matrixDimension > 1) {
+      if (type.numComponents == type.matrixDimension && type.matrixDimension == 4) {
+        return CoreInfo::Float4x4Type;
+      } else if (type.numComponents == type.matrixDimension && type.matrixDimension == 3) {
+        return CoreInfo::Float3x3Type;
+      } else if (type.numComponents == type.matrixDimension && type.matrixDimension == 2) {
+        return CoreInfo::Float2x2Type;
+      }
+      throw std::out_of_range("Unsupported matrix dimensions");
+    } else {
+      switch (type.numComponents) {
+      case 1:
+        return CoreInfo::FloatType;
+      case 2:
+        return CoreInfo::Float2Type;
+      case 3:
+        return CoreInfo::Float3Type;
+      case 4:
+        return CoreInfo::Float4Type;
+      default:
+        throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+      }
+    }
+  } else {
+    if (type.matrixDimension > 1)
+      throw std::out_of_range("Integer matrix unsupported");
+
+    switch (type.numComponents) {
+    case 1:
+      return CoreInfo::IntType;
+    case 2:
+      return CoreInfo::Int2Type;
+    case 3:
+      return CoreInfo::Int3Type;
+    case 4:
+      return CoreInfo::Int4Type;
+    default:
+      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+    }
+  }
+}
+
+static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
+
+inline constexpr ShaderFieldBaseType getShaderBaseType(shards::NumberType numberType) {
+  using shards::NumberType;
+  switch (numberType) {
+  case NumberType::Float32:
+  case NumberType::Float64:
+    return ShaderFieldBaseType::Float32;
+  case NumberType::Int64:
+  case NumberType::Int32:
+  case NumberType::Int16:
+  case NumberType::Int8:
+  case NumberType::UInt8:
+    return ShaderFieldBaseType::Int32;
+  default:
+    throw std::out_of_range(std::string(NAMEOF_TYPE(shards::NumberType)));
+  }
+}
+
+inline std::unique_ptr<IWGSLGenerated> translateParamVar(const shards::ParamVar &var, TranslationContext &context) {
+  if (var.isVariable()) {
+    return std::make_unique<WGSLBlock>(context.reference(var.variableName()));
+  } else {
+    return translateConst(var, context);
+  }
+}
+
+inline void processShardsVar(shards::ShardsVar &shards, TranslationContext &context) {
+  auto &shardsSeq = shards.shards();
+  for (size_t i = 0; i < shardsSeq.len; i++) {
+    ShardPtr shard = shardsSeq.elements[i];
+    context.processShard(shard);
+  }
+}
+
+inline std::unique_ptr<IWGSLGenerated> generateFunctionCall(const TranslatedFunction &function,
+                                                            const std::unique_ptr<IWGSLGenerated> &input,
+                                                            TranslationContext &context) {
+  BlockPtr inputCallArg;
+
+  if (function.inputType) {
+    assert(input);
+    inputCallArg = input->toBlock();
+  }
+
+  // Build function call argument list
+  auto callBlock = blocks::makeCompoundBlock();
+  callBlock->append(fmt::format("{}(", function.functionName));
+
+  bool addSeparator{};
+
+  // Pass input as first argument
+  if (inputCallArg) {
+    callBlock->append(std::move(inputCallArg));
+    addSeparator = true;
+  }
+
+  // Pass captured variables
+  if (!function.arguments.empty()) {
+    for (auto &arg : function.arguments) {
+      if (addSeparator)
+        callBlock->append(", ");
+      callBlock->append(context.reference(arg.shardsName).toBlock());
+      addSeparator = true;
+    }
+  }
+
+  callBlock->append(")");
+
+  FieldType outputType = function.outputType ? function.outputType.value() : FieldType();
+  return std::make_unique<WGSLBlock>(outputType, std::move(callBlock));
+}
 
 } // namespace shader
 } // namespace gfx
