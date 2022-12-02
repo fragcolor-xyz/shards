@@ -263,6 +263,7 @@
   (When :Predicate (IsMore .DamageEffect_Array_Index_Max)
         :Action (-> 0 > .DamageEffect_Index
                     false > .Damage_Effect_Play))
+        :Action (-> 0 > .DamageEffect_Index))
   (Pause .DamageEffect_Speed))
 
 ;; ----------- Score Effect Animation -------------
@@ -508,6 +509,20 @@
                 true > .Damage_Effect_Play
                 true > .Damaged)))
 
+  Random_SpikeBall_X
+  (If :Predicate (-> (IsLess .ScoringUpper_X_Limit)
+                     (And)
+                     Random_SpikeBall_X (IsMore .ScoringLower_X_Limit)
+                     (And)
+                     SpikeBall_Y (IsLess .ScoringUpper_Y_Limit)
+                     (And)
+                     SpikeBall_Y (IsMore .ScoringLower_Y_Limit)
+                     (And)
+                     .Damaged (Is false))
+      :Then (-> .Score (Math.Subtract 1)
+                > .Score
+                true > .Damaged)))
+
 ;;-------Scoring--------
 
 (defshards Scoring []
@@ -526,10 +541,11 @@
 
   (Scoring_If .Random_Coin_X_2 .CoinY_2)
 
-  (Scoring_If .Random_Coin_X_3 .CoinY_3))
+  (Scoring_If .Random_Coin_X_3 .CoinY_3)
 
 
   ;; ------------ Damage ----------------
+  (SpikeBall_If .SpikeBall_X_1 .SpikeBall_Y_1))
 
   (defshards Damage []
       ;; ---------- Damage ------------
@@ -600,58 +616,9 @@
            :Contents (->
                       .BG_Image (UI.Image :Scale (float2 0.7))))
 
-  (UI.Area
-   :Position .CharacterPosition
-   :Anchor Anchor.Top
-   :Contents
-   (->
-    .isJumping
-    (If :Predicate (Is true)
-        :Then (->
-               .CharacterDirection
-               (If :Predicate (Is 1)
-                   :Then (->
-                          .image_jumping (UI.Image :Scale .CharacterScale))
-                   :Else (->
-                          .image_jumping_Left (UI.Image :Scale .CharacterScale)))))
 
-    .isRunning
-    (If :Predicate (Is true)
-        :Then (->
-               (Step Walking_Animation)
-               .CharacterDirection
-               (If :Predicate (Is 1)
-                   :Then (->
-                          .walking_image_array (Take .walking_image_index) (UI.Image :Scale .CharacterScale))
-                   :Else (->
-                          .walking_Left_image_array (Take .walking_image_index) (UI.Image :Scale .CharacterScale)))))
-
-    .isIdle
-    (If :Predicate (Is true)
-        :Then (->
-               (Step Idle_Animation)
-               .CharacterDirection
-               (If :Predicate (Is 1)
-                   :Then (->
-                          .idle_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale))
-                   :Else (->
-                          .idle_Left_image_array (Take .idle_image_index) (UI.Image :Scale .CharacterScale)))))))
-
-  (UI.Area :Position .Coin_Position_1
-           :Anchor Anchor.Top
-           :Contents (->
-                      .Coin_Image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
-
-  (UI.Area :Position .Coin_Position_2
-           :Anchor Anchor.Top
-           :Contents (->
-                      .Coin_Image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
-
-  (UI.Area :Position .Coin_Position_3
-           :Anchor Anchor.Top
-           :Contents (->
-                      .Coin_Image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
-
+  (UI.Area :Position (float2 0 0)
+                      .BG_Image (UI.Image :Scale (float2 1))))
   (UI.Area :Position .SpikeBall_Position_1
            :Anchor Anchor.Top
            :Contents (->
@@ -663,6 +630,11 @@
                       .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
   
   (UI.Area :Position .SpikeBall_Position_3
+           :Anchor Anchor.Top
+           :Contents (->
+                      .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
+
+  (UI.Area :Position .SpikeBall_Position_1
            :Anchor Anchor.Top
            :Contents (->
                       .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
@@ -693,6 +665,10 @@
                             :Action (-> (Step DamageEffect_Animation)))))
   
   ;; --------- UI -----------
+  (UI.Area :Position (float2 0 0)
+           :Anchor Anchor.TopRight
+           :Contents (->
+                      .DamageEffect_Array (Take .DamageEffect_Index) (UI.Image :Scale (float2 1))))
 
   (UI.Area :Position (float2 -30 20)
            :Anchor Anchor.TopRight
@@ -725,6 +701,10 @@
   ;;---------- Damage_Effect --------------
   ;; (If :Predicate (-> .Damage_Effect_Play (Is true))
   ;;       :Then (-> (Step DamageEffect_Animation)))
+
+  (Step SpikeBall_1)
+  (SpikeBall_Gravity .SpikeBall_Y_1 .SpikeBall_Velocity_1 .SpikeBall_Position_1 .SpikeBall_X_1)
+  (Step SpikeBall_Animation)
 
   (Step Timer_Countdown))
 
@@ -784,6 +764,9 @@
                  .Damaged
                  (If :Predicate (Is true)
                      :Then (-> (Step ResetDamaged)))
+                ;;  .Damaged
+                ;;  (If :Predicate (Is true)
+                ;;      :Then (-> (Step ResetDamaged)))
 
 
 
