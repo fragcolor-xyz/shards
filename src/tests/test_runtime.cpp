@@ -5,6 +5,7 @@
 
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
+#include "../../include/common_types.hpp"
 #include "../core/runtime.hpp"
 #include <linalg_shim.hpp>
 
@@ -1093,16 +1094,14 @@ struct GamePadTable : public TableVar {
 };
 
 struct HandTable : public GamePadTable {
-  static constexpr uint32_t HandednessCC = 'xrha';
-  static inline Type HandEnumType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
-  static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
+  DECL_ENUM_INFO(XRHand, XrHand, 'xrha');
 
   HandTable()
       : GamePadTable(),                      //
         handedness((*this)["handedness"]),   //
         transform(get<SeqVar>("transform")), //
         inverseTransform(get<SeqVar>("inverseTransform")) {
-    handedness = Var::Enum(XRHand::Left, CoreCC, HandednessCC);
+    handedness = Var::Enum(XRHand::Left, XrHandEnumInfo::VendorId, XrHandEnumInfo::TypeId);
   }
 
   SHVar &handedness;
