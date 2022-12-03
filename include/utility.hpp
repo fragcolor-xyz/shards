@@ -303,7 +303,7 @@ struct TEnumInfo {
   using Enum = E_;
   using SHCore = SH_CORE_;
   static constexpr bool IsFlags = IsFlags_;
-  static constexpr Type Type{{SHType::Enum, {.enumeration = {.vendorId = VendorId_, .typeId = TypeId_}}}};
+  static constexpr shards::Type Type{{SHType::Enum, {.enumeration = {.vendorId = VendorId_, .typeId = TypeId_}}}};
   static inline const char *Name = Name_;
   static constexpr int32_t VendorId = VendorId_;
   static constexpr int32_t TypeId = TypeId_;
