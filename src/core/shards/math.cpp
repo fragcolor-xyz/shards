@@ -1,7 +1,8 @@
 #include "math.hpp"
 namespace shards::Math {
-REGISTER_ENUM(Mean::MeanEnumInfo);
 void registerShards() {
+  REGISTER_ENUM(Mean::MeanEnumInfo);
+
   REGISTER_SHARD("Math.Add", Add);
   REGISTER_SHARD("Math.Subtract", Subtract);
   REGISTER_SHARD("Math.Multiply", Multiply);

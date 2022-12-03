@@ -488,7 +488,6 @@ struct Channel {
 struct Oscillator {
   enum class Waveform { Sine, Square, Triangle, Sawtooth };
   DECL_ENUM_INFO(Waveform, Waveform, 'wave');
-  REGISTER_ENUM(WaveformEnumInfo);
 
   ma_waveform _wave;
 
@@ -919,6 +918,8 @@ struct WriteFile {
 };
 
 void registerShards() {
+  REGISTER_ENUM(Oscillator::WaveformEnumInfo);
+
   REGISTER_SHARD("Audio.Device", Device);
   REGISTER_SHARD("Audio.Channel", Channel);
   REGISTER_SHARD("Audio.Oscillator", Oscillator);

@@ -112,7 +112,6 @@ struct BuiltinMeshShard {
   };
 
   DECL_ENUM_INFO(Type, BuiltinMeshType, 'bmid');
-  REGISTER_ENUM(BuiltinMeshTypeEnumInfo);
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Mesh; }
@@ -151,6 +150,8 @@ struct BuiltinMeshShard {
 };
 
 void registerMeshShards() {
+  REGISTER_ENUM(BuiltinMeshShard::BuiltinMeshTypeEnumInfo);
+
   REGISTER_SHARD("GFX.Mesh", MeshShard);
   REGISTER_SHARD("GFX.BuiltinMesh", BuiltinMeshShard);
 }

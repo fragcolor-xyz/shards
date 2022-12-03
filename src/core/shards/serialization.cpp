@@ -253,7 +253,6 @@ struct FromBytes {
 struct LoadImage : public FileBase {
   enum class BPP { u8, u16, f32 };
   DECL_ENUM_INFO(BPP, BPP, 'ibpp');
-  REGISTER_ENUM(BPPEnumInfo);
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
@@ -472,6 +471,8 @@ struct WritePNG : public FileBase {
 };
 
 void registerSerializationShards() {
+  REGISTER_ENUM(LoadImage::BPPEnumInfo);
+
   REGISTER_SHARD("WriteFile", WriteFile);
   REGISTER_SHARD("ReadFile", ReadFile);
   REGISTER_SHARD("LoadImage", LoadImage);

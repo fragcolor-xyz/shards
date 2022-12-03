@@ -9,7 +9,6 @@
 #include <chrono>
 
 namespace shards {
-REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 
 struct JointOp {
   std::vector<SHVar *> _multiSortColumns;
@@ -1869,6 +1868,8 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 #endif
 
 void registerShardsCoreShards() {
+  REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
+
   REGISTER_SHARD("Const", Const);
   REGISTER_CORE_SHARD(Set);
   REGISTER_CORE_SHARD(Ref);

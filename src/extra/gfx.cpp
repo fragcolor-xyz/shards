@@ -14,16 +14,6 @@
 using namespace shards;
 
 namespace gfx {
-REGISTER_ENUM(Types::WindingOrderEnumInfo);
-REGISTER_ENUM(Types::ShaderFieldBaseTypeEnumInfo);
-REGISTER_ENUM(Types::ProgrammableGraphicsStageEnumInfo);
-REGISTER_ENUM(Types::DependencyTypeEnumInfo);
-REGISTER_ENUM(Types::BlendFactorEnumInfo);
-REGISTER_ENUM(Types::BlendOperationEnumInfo);
-REGISTER_ENUM(Types::FilterModeEnumInfo);
-REGISTER_ENUM(Types::CompareFunctionEnumInfo);
-REGISTER_ENUM(Types::ColorMaskEnumInfo);
-REGISTER_ENUM(Types::TextureTypeEnumInfo);
 
 struct RenderShard : public BaseConsumer {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -187,6 +177,17 @@ namespace shader {
 extern void registerTranslatorShards();
 }
 void registerShards() {
+  REGISTER_ENUM(Types::WindingOrderEnumInfo);
+  REGISTER_ENUM(Types::ShaderFieldBaseTypeEnumInfo);
+  REGISTER_ENUM(Types::ProgrammableGraphicsStageEnumInfo);
+  REGISTER_ENUM(Types::DependencyTypeEnumInfo);
+  REGISTER_ENUM(Types::BlendFactorEnumInfo);
+  REGISTER_ENUM(Types::BlendOperationEnumInfo);
+  REGISTER_ENUM(Types::FilterModeEnumInfo);
+  REGISTER_ENUM(Types::CompareFunctionEnumInfo);
+  REGISTER_ENUM(Types::ColorMaskEnumInfo);
+  REGISTER_ENUM(Types::TextureTypeEnumInfo);
+
   registerMainWindowShards();
   registerMeshShards();
   registerDrawableShards();

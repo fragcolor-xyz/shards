@@ -982,7 +982,7 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define SH_CONCAT1(_a_, _b_) _a_##_b_
 #define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)
 #define REGISTER_ENUM(_ENUM_INFO_) \
-  static inline shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
+  static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
 
 template <typename E> static E getFlags(SHVar var) {

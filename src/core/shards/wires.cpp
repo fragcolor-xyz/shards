@@ -11,8 +11,6 @@
 #endif
 
 namespace shards {
-REGISTER_ENUM(WireBase::RunWireModeEnumInfo);
-
 void WireBase::resetComposition() {
   if (wire) {
     if (wire->composeResult) {
@@ -1106,7 +1104,6 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
 
 struct ParallelBase : public CapturingSpawners {
   DECL_ENUM_INFO(WaitUntil, WaitUntil, 'tryM');
-  REGISTER_ENUM(WaitUntilEnumInfo);
 
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
@@ -1729,7 +1726,6 @@ struct StepMany : public TryMany {
 struct Branch {
   enum BranchFailureBehavior { Everything, Known, Ignore };
   DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
-  REGISTER_ENUM(BranchFailureEnumInfo);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -1897,6 +1893,10 @@ private:
 };
 
 void registerWiresShards() {
+  REGISTER_ENUM(WireBase::RunWireModeEnumInfo);
+  REGISTER_ENUM(ParallelBase::WaitUntilEnumInfo);
+  REGISTER_ENUM(Branch::BranchFailureEnumInfo);
+
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
   using RunWireDispatch = RunWire<true, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Detached>;

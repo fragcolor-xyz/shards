@@ -328,7 +328,6 @@ struct Write {
 struct Copy {
   enum class IfExists { Fail, Skip, Overwrite, Update };
   DECL_ENUM_INFO(IfExists, IfExists, 'fsow');
-  REGISTER_ENUM(IfExistsEnumInfo);
 
   ParamVar _destination{};
   IfExists _overwrite{IfExists::Fail};
@@ -336,10 +335,10 @@ struct Copy {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params =
-      ParamsInfo(ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
-                                   CoreInfo::StringStringVarOrNone),
-                 ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
+                        CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
@@ -415,6 +414,8 @@ struct Copy {
 }; // namespace FS
 
 void registerFSShards() {
+  REGISTER_ENUM(FS::Copy::IfExistsEnumInfo);
+
   REGISTER_SHARD("FS.Iterate", FS::Iterate);
   REGISTER_SHARD("FS.Extension", FS::Extension);
   REGISTER_SHARD("FS.Filename", FS::Filename);

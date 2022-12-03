@@ -22,7 +22,6 @@ struct BuiltinFeatureShard {
   enum class Id { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
 
   DECL_ENUM_INFO(Id, BuiltinFeatureId, 'feid');
-  REGISTER_ENUM(BuiltinFeatureIdEnumInfo);
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
@@ -461,6 +460,8 @@ struct FeatureShard {
 };
 
 void registerFeatureShards() {
+  REGISTER_ENUM(BuiltinFeatureShard::BuiltinFeatureIdEnumInfo);
+
   REGISTER_SHARD("GFX.BuiltinFeature", BuiltinFeatureShard);
   REGISTER_SHARD("GFX.Feature", FeatureShard);
 }
