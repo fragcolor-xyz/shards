@@ -139,3 +139,12 @@
 
 (schedule Root short-wire)
 (if (run Root 0.2 25) (throw "Failure expected") nil)
+
+; Failure from Do should propagate to main wire
+(defwire do-inner
+  "Intentional fail" (Fail))
+(defwire do-outer
+  (Do do-inner)
+  true (Assert.Is false))
+(schedule Root do-outer)
+(if (run Root 0.2 25) (throw "Failure expected from Do") nil)

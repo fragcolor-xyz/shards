@@ -306,13 +306,12 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       } else {
         return wire->previousOutput;
       }
-    } else {
+    } else if constexpr (WIRE_MODE == RunWireMode::Inline) {
       // Run within the root flow
       auto runRes = runSubWire(wire.get(), context, input);
       if (unlikely(runRes.state == Failed)) {
-        // meaning there was an exception while
-        // running the sub wire, stop the parent too
-        context->stopFlow(runRes.output);
+        // When an error happens during inline execution, propagate the error to the parent wire
+        context->cancelFlow("Wire failed");
         return runRes.output;
       } else {
         // we don't want to propagate a (Return)
@@ -326,6 +325,8 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
           return runRes.output;
         }
       }
+    } else {
+      throw std::logic_error("invalid path");
     }
   }
 };
