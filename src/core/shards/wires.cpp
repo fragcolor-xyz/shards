@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "wires.hpp"
+#include "async.hpp"
 #include <chrono>
 #include <memory>
 #include <set>
@@ -10,7 +11,6 @@
 #endif
 
 namespace shards {
-
 void WireBase::resetComposition() {
   if (wire) {
     if (wire->composeResult) {
@@ -807,7 +807,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
                                            "Stepped: the wire will run as a child, the root will tick the "
                                            "wire every activation of this shard and so a child pause "
                                            "won't pause the root."),
-                                   {ModeType}},
+                                   {RunWireModeEnumInfo::Type}},
                                   {"OnReload",
                                    SHCCSTR("Shards to execute when the wire is reloaded, the input of "
                                            "this flow will be the reloaded wire."),
@@ -940,7 +940,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
                                            "Stepped: the wire will run as a child, the root will tick the "
                                            "wire every activation of this shard and so a child pause "
                                            "won't pause the root."),
-                                   {ModeType}}};
+                                   {RunWireModeEnumInfo::Type}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -1103,13 +1103,11 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
 };
 
 struct ParallelBase : public CapturingSpawners {
-  typedef EnumInfo<WaitUntil> WaitUntilInfo;
-  static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
-  static inline Type WaitUntilType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
+  DECL_ENUM_INFO(WaitUntil, WaitUntil, 'tryM');
 
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
-      {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilType}},
+      {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilEnumInfo::Type}},
       {"Threads", SHCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}},
       {"Coroutines", SHCCSTR("The number of coroutines to run on each thread."), {CoreInfo::IntType}}};
 
@@ -1727,10 +1725,7 @@ struct StepMany : public TryMany {
 
 struct Branch {
   enum BranchFailureBehavior { Everything, Known, Ignore };
-  static constexpr int32_t FailureCC = 'brcB';
-  typedef EnumInfo<BranchFailureBehavior> BranchFailureBehaviorInfo;
-  static inline BranchFailureBehaviorInfo runWireModeInfo{"BranchFailure", CoreCC, 'brcB'};
-  static inline Type BehaviorType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'brcB'}}}};
+  DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -1741,7 +1736,7 @@ struct Branch {
                               {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}},
                              {"FailureBehavior",
                               SHCCSTR("The behavior to take when some of the wires running on this branch mesh fail."),
-                              {BehaviorType}}};
+                              {BranchFailureEnumInfo::Type}}};
     return params;
   }
 
@@ -1763,7 +1758,7 @@ struct Branch {
     case 0:
       return _wires;
     case 1:
-      return Var::Enum(_failureBehavior, CoreCC, FailureCC);
+      return Var::Enum(_failureBehavior, BranchFailureEnumInfo::VendorId, BranchFailureEnumInfo::TypeId);
     default:
       return Var::Empty;
     }
@@ -1898,6 +1893,10 @@ private:
 };
 
 void registerWiresShards() {
+  REGISTER_ENUM(WireBase::RunWireModeEnumInfo);
+  REGISTER_ENUM(ParallelBase::WaitUntilEnumInfo);
+  REGISTER_ENUM(Branch::BranchFailureEnumInfo);
+
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
   using RunWireDispatch = RunWire<true, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Detached>;

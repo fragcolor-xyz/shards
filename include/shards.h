@@ -56,85 +56,13 @@ enum SHWireState : uint8_t {
   Error,    // Stop the flow execution and raise an error
 };
 
-// These shards run fully inline in the wire threaded execution engine
-enum SHInlineShards : uint32_t {
-  // regular shards
-  NotInline,
-  // special flag that will optimize and skip activate calls
-  NoopShard,
-  // internal "quick" inlined shards
-  CoreConst,
-  CoreSleep,
-  CoreInput,
-  CoreForRange,
-  CoreRepeat,
-  CoreOnce,
-  CoreGet,
-  CoreSet,
-  CoreRefRegular,
-  CoreRefTable,
-  CoreUpdate,
-  CoreSwap,
-  CorePush,
-  CoreIs,
-  CoreIsNot,
-  CoreAnd,
-  CoreOr,
-  CoreNot,
-  CoreIsMore,
-  CoreIsLess,
-  CoreIsMoreEqual,
-  CoreIsLessEqual,
-
-  MathAdd,
-  MathSubtract,
-  MathMultiply,
-  MathDivide,
-  MathXor,
-  MathAnd,
-  MathOr,
-  MathMod,
-  MathLShift,
-  MathRShift,
-
-  MathAbs,
-  MathExp,
-  MathExp2,
-  MathExpm1,
-  MathLog,
-  MathLog10,
-  MathLog2,
-  MathLog1p,
-  MathSqrt,
-  MathFastSqrt,
-  MathFastInvSqrt,
-  MathCbrt,
-  MathSin,
-  MathCos,
-  MathTan,
-  MathAsin,
-  MathAcos,
-  MathAtan,
-  MathSinh,
-  MathCosh,
-  MathTanh,
-  MathAsinh,
-  MathAcosh,
-  MathAtanh,
-  MathErf,
-  MathErfc,
-  MathTGamma,
-  MathLGamma,
-  MathCeil,
-  MathFloor,
-  MathTrunc,
-  MathRound,
-};
 #else
 typedef uint8_t SHType;
 typedef uint8_t SHWireState;
-typedef uint32_t SHInlineShards;
 #endif
+
+// Enum defined in shards/inlined.hpp
+typedef uint32_t SHInlineShards;
 
 typedef void *SHArray;
 
@@ -739,12 +667,7 @@ typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
-
-#if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  enum SHInlineShards inlineShardId;
-#else
   SHInlineShards inlineShardId;
-#endif
 
   // flag to ensure shards are unique when flows/wires
   SHBool owned;
@@ -1187,7 +1110,7 @@ SHARDS_API SHCore *__cdecl shardsInterface(uint32_t abi_version);
   }
 
 #define SH_CAT_IMPL(s1, s2) s1##s2
-#define SH_CAT(s1, s2) CAT_IMPL(s1, s2)
+#define SH_CAT(s1, s2) SH_CAT_IMPL(s1, s2)
 
 #ifdef __COUNTER__
 #define SH_GENSYM(str) SH_CAT(str, __COUNTER__)

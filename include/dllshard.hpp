@@ -18,6 +18,7 @@ At runtime just dlopen the dll, that's it!
 #include <cassert>
 #include <functional>
 
+#include "utility.hpp"
 #include "shardwrapper.hpp"
 #include "common_types.hpp"
 
@@ -329,9 +330,11 @@ using IterableSeq = IterableArray<SHSeq, SHVar, &Core::seqResize, &Core::seqFree
 using IterableExposedInfo =
     IterableArray<SHExposedTypesInfo, SHExposedTypeInfo, &Core::expTypesResize, &Core::expTypesFree, &Core::expTypesPush>;
 
-template <typename E> class EnumInfo : public TEnumInfo<Core, E> {
+template <typename E, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+class EnumInfo : public TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_> {
 public:
-  EnumInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<Core, E>(name, vendorId, enumId) {}
+  EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
+      : TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_>(name, vendorId, enumId) {}
 };
 
 template <typename E> class ObjectVar : public TObjectVar<Core, E> {

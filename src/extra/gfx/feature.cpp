@@ -21,14 +21,12 @@ using shards::Mat4;
 struct BuiltinFeatureShard {
   enum class Id { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
 
-  static constexpr uint32_t IdTypeId = 'feid';
-  static inline Type IdType = Type::Enum(VendorId, IdTypeId);
-  static inline EnumInfo<Id> IdEnumInfo{"BuiltinFeatureId", VendorId, IdTypeId};
+  DECL_ENUM_INFO(Id, BuiltinFeatureId, 'feid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
-  static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {IdType}}};
+  static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {BuiltinFeatureIdEnumInfo::Type}}};
   static SHParametersInfo parameters() { return params; }
 
   Id _id{};
@@ -45,7 +43,7 @@ struct BuiltinFeatureShard {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var::Enum(_id, VendorId, IdTypeId);
+      return Var::Enum(_id, VendorId, BuiltinFeatureIdEnumInfo::TypeId);
     default:
       return Var::Empty;
     }
@@ -172,7 +170,7 @@ struct FeatureShard {
 
     SHVar depthCompareVar;
     if (getFromTable(context, inputTable, "DepthCompare", depthCompareVar)) {
-      checkEnumType(depthCompareVar, Types::CompareFunction, ":Shaders DepthCompare");
+      checkEnumType(depthCompareVar, Types::CompareFunctionEnumInfo::Type, ":Shaders DepthCompare");
       state.set_depthCompare(WGPUCompareFunction(depthCompareVar.payload.enumValue));
     }
 
@@ -185,7 +183,7 @@ struct FeatureShard {
     if (getFromTable(context, inputTable, "ColorWrite", colorWriteVar)) {
       WGPUColorWriteMask mask{};
       auto apply = [&mask](SHVar &var) {
-        checkEnumType(var, Types::ColorMask, ":ColorWrite");
+        checkEnumType(var, Types::ColorMaskEnumInfo::Type, ":ColorWrite");
         (uint8_t &)mask |= WGPUColorWriteMask(var.payload.enumValue);
       };
 
@@ -225,25 +223,14 @@ struct FeatureShard {
     }
   }
 
-  void applyShaderDependency(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input) {
+  void applyShaderDependency(SHContext *context, shader::EntryPoint &entryPoint, shader::DependencyType type,
+                             const SHVar &input) {
+    checkType(input.valueType, SHType::String, "Shader dependency");
+    const SHString &inputString = input.payload.stringValue;
+
     shader::NamedDependency &dep = entryPoint.dependencies.emplace_back();
-
-    checkType(input.valueType, SHType::Table, ":Shaders table");
-    const SHTable &inputTable = input.payload.tableValue;
-
-    SHVar nameVar;
-    if (getFromTable(context, inputTable, "Name", nameVar)) {
-      checkType(nameVar.valueType, SHType::String, ":Shaders dependency name");
-      dep.name = nameVar.payload.stringValue;
-    } else {
-      throw formatException(":Shaders dependencies require a :Name parameter");
-    }
-
-    SHVar typeVar;
-    if (getFromTable(context, inputTable, "Type", nameVar)) {
-      checkType(nameVar.valueType, SHType::String, ":Shaders dependency name");
-      dep.type = shader::DependencyType(typeVar.payload.enumValue);
-    }
+    dep.name = inputString;
+    dep.type = type;
   }
 
   void applyShader(SHContext *context, Feature &feature, const SHVar &input) {
@@ -254,17 +241,24 @@ struct FeatureShard {
 
     SHVar stageVar;
     if (getFromTable(context, inputTable, "Stage", stageVar)) {
-      checkEnumType(stageVar, Types::ProgrammableGraphicsStage, ":Shaders Stage");
+      checkEnumType(stageVar, Types::ProgrammableGraphicsStageEnumInfo::Type, ":Shaders Stage");
       entryPoint.stage = ProgrammableGraphicsStage(stageVar.payload.enumValue);
     } else
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
 
     SHVar depsVar;
-    if (getFromTable(context, inputTable, "Dependencies", depsVar)) {
-      checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies");
+    if (getFromTable(context, inputTable, "Before", depsVar)) {
+      checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies (Before)");
       const SHSeq &seq = depsVar.payload.seqValue;
       for (size_t i = 0; i < seq.len; i++) {
-        applyShaderDependency(context, entryPoint, seq.elements[i]);
+        applyShaderDependency(context, entryPoint, shader::DependencyType::Before, seq.elements[i]);
+      }
+    }
+    if (getFromTable(context, inputTable, "After", depsVar)) {
+      checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies (After)");
+      const SHSeq &seq = depsVar.payload.seqValue;
+      for (size_t i = 0; i < seq.len; i++) {
+        applyShaderDependency(context, entryPoint, shader::DependencyType::After, seq.elements[i]);
       }
     }
 
@@ -384,7 +378,7 @@ struct FeatureShard {
   void applyShaderFieldType(SHContext *context, shader::FieldType &fieldType, const SHTable &inputTable) {
     SHVar typeVar;
     if (getFromTable(context, inputTable, "Type", typeVar)) {
-      checkEnumType(typeVar, Types::ShaderFieldBaseType, ":Type");
+      checkEnumType(typeVar, Types::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
       fieldType.baseType = ShaderFieldBaseType(typeVar.payload.enumValue);
     } else {
       // Default type if not specified:
@@ -466,6 +460,8 @@ struct FeatureShard {
 };
 
 void registerFeatureShards() {
+  REGISTER_ENUM(BuiltinFeatureShard::BuiltinFeatureIdEnumInfo);
+
   REGISTER_SHARD("GFX.BuiltinFeature", BuiltinFeatureShard);
   REGISTER_SHARD("GFX.Feature", FeatureShard);
 }

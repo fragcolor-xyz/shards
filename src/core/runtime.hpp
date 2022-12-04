@@ -9,13 +9,12 @@
 #include <winsock2.h>
 #endif
 
-#include <boost/asio/post.hpp>
-#include <boost/asio/thread_pool.hpp>
-
 #include <string.h> // memset
 
 #include "shards_macros.hpp"
 #include "foundation.hpp"
+
+#include "shards/inlined.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -153,70 +152,15 @@ namespace shards {
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 } // namespace shards
 
-#include "shards/core.hpp"
-#include "shards/math.hpp"
-
 namespace shards {
 
 void installSignalHandlers();
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
-  switch (blk->inlineShardId) {
-  case NoopShard:
-    return input;
-  case CoreConst: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Const> *>(blk);
-    return shard->shard._value;
-  }
-  case CoreAnd: {
-    auto shard = reinterpret_cast<shards::AndRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreOr: {
-    auto shard = reinterpret_cast<shards::OrRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreNot: {
-    auto shard = reinterpret_cast<shards::NotRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreInput: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Input> *>(blk);
-    return shard->shard.activate(context, input);
-  }
-  case CorePush: {
-    auto shard = reinterpret_cast<shards::PushRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreGet: {
-    auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
-    return *shard->core._cell;
-  }
-  case CoreSet: {
-    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreRefTable: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    return shard->core.activateTable(context, input);
-  }
-  case CoreRefRegular: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    return shard->core.activateRegular(context, input);
-  }
-  case CoreUpdate: {
-    auto shard = reinterpret_cast<shards::UpdateRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreSwap: {
-    auto shard = reinterpret_cast<shards::SwapRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  default: {
-    // NotInline
-    return blk->activate(blk, context, &input);
-  }
-  }
+  SHVar output;
+  if (!activateShardInline(blk, context, input, output))
+    output = blk->activate(blk, context, &input);
+  return output;
 }
 
 SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput);
@@ -1347,105 +1291,6 @@ template <typename T> inline T emscripten_wait(SHContext *context, emscripten::v
   return fut["result"].as<T>();
 }
 #endif
-
-#ifdef __EMSCRIPTEN__
-// limit to 4 under emscripten
-struct SharedThreadPoolConcurrency {
-  static int get() { return 4; }
-};
-#else
-struct SharedThreadPoolConcurrency {
-  static int get() {
-    const auto sys = std::thread::hardware_concurrency();
-    return sys > 4 ? sys * 2 : 4;
-  }
-};
-#endif
-extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool;
-
-template <typename FUNC, typename CANCELLATION>
-inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  return func();
-#else
-  std::exception_ptr exp = nullptr;
-  SHVar res{};
-  std::atomic_bool complete = false;
-
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Awaitne: starting {}", reinterpret_cast<void *>(&func));
-      res = func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  // SHLOG_TRACE("Awaitne: waiting for completion {}", reinterpret_cast<void *>(&func));
-
-  while (!complete && context->shouldContinue()) {
-    if (shards::suspend(context, 0) != SHWireState::Continue)
-      break;
-  }
-
-  if (unlikely(!complete)) {
-    cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
-  }
-
-  if (exp) {
-    try {
-      std::rethrow_exception(exp);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
-  }
-
-  return res;
-#endif
-}
-
-template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  func();
-#else
-  std::exception_ptr exp = nullptr;
-  std::atomic_bool complete = false;
-
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Await: starting {}", reinterpret_cast<void *>(&func));
-      func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  // SHLOG_TRACE("Await: waiting for completion {}", reinterpret_cast<void *>(&func));
-
-  while (!complete && context->shouldContinue()) {
-    if (shards::suspend(context, 0) != SHWireState::Continue)
-      break;
-  }
-
-  if (unlikely(!complete)) {
-    cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
-  }
-
-  if (exp) {
-    std::rethrow_exception(exp);
-  }
-#endif
-}
 } // namespace shards
 
 #endif // SH_CORE_RUNTIME

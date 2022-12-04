@@ -2,12 +2,14 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "../runtime.hpp"
+#include "core.hpp"
 #include "pdqsort.h"
 #include "utility.hpp"
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 
 namespace shards {
+
 struct JointOp {
   std::vector<SHVar *> _multiSortColumns;
 
@@ -1205,9 +1207,9 @@ struct Replace {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_patterns->valueType == None) {
-      data.shard->inlineShardId = NoopShard;
+      data.shard->inlineShardId = InlineShard::NoopShard;
     } else {
-      data.shard->inlineShardId = NotInline;
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
 
     if (data.inputType.basicType == String) {
@@ -1866,6 +1868,8 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 #endif
 
 void registerShardsCoreShards() {
+  REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
+
   REGISTER_SHARD("Const", Const);
   REGISTER_CORE_SHARD(Set);
   REGISTER_CORE_SHARD(Ref);

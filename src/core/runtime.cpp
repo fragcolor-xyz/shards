@@ -4,6 +4,8 @@
 #include "runtime.hpp"
 #include "shards/shared.hpp"
 #include "utility.hpp"
+#include "shards/inlined.hpp"
+#include "async.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
@@ -331,78 +333,11 @@ Shard *createShard(std::string_view name) {
     return nullptr;
   }
 
-  auto blkp = it->second();
+  auto shard = it->second();
 
-  // Hook inline shards to override activation in runWire
-  if (name == "Const") {
-    blkp->inlineShardId = SHInlineShards::CoreConst;
-  } else if (name == "Pass") {
-    blkp->inlineShardId = SHInlineShards::NoopShard;
-  } else if (name == "OnCleanup") {
-    blkp->inlineShardId = SHInlineShards::NoopShard;
-  } else if (name == "Comment") {
-    blkp->inlineShardId = SHInlineShards::NoopShard;
-  } else if (name == "Input") {
-    blkp->inlineShardId = SHInlineShards::CoreInput;
-  } else if (name == "Pause") {
-    blkp->inlineShardId = SHInlineShards::CoreSleep;
-  } else if (name == "ForRange") {
-    blkp->inlineShardId = SHInlineShards::CoreForRange;
-  } else if (name == "Repeat") {
-    blkp->inlineShardId = SHInlineShards::CoreRepeat;
-  } else if (name == "Once") {
-    blkp->inlineShardId = SHInlineShards::CoreOnce;
-  } else if (name == "Set") {
-    blkp->inlineShardId = SHInlineShards::CoreSet;
-  } else if (name == "Update") {
-    blkp->inlineShardId = SHInlineShards::CoreUpdate;
-  } else if (name == "Swap") {
-    blkp->inlineShardId = SHInlineShards::CoreSwap;
-  } else if (name == "Push") {
-    blkp->inlineShardId = SHInlineShards::CorePush;
-  } else if (name == "Is") {
-    blkp->inlineShardId = SHInlineShards::CoreIs;
-  } else if (name == "IsNot") {
-    blkp->inlineShardId = SHInlineShards::CoreIsNot;
-  } else if (name == "IsMore") {
-    blkp->inlineShardId = SHInlineShards::CoreIsMore;
-  } else if (name == "IsLess") {
-    blkp->inlineShardId = SHInlineShards::CoreIsLess;
-  } else if (name == "IsMoreEqual") {
-    blkp->inlineShardId = SHInlineShards::CoreIsMoreEqual;
-  } else if (name == "IsLessEqual") {
-    blkp->inlineShardId = SHInlineShards::CoreIsLessEqual;
-  } else if (name == "And") {
-    blkp->inlineShardId = SHInlineShards::CoreAnd;
-  } else if (name == "Or") {
-    blkp->inlineShardId = SHInlineShards::CoreOr;
-  } else if (name == "Not") {
-    blkp->inlineShardId = SHInlineShards::CoreNot;
-  } else if (name == "Math.Add") {
-    blkp->inlineShardId = SHInlineShards::MathAdd;
-  } else if (name == "Math.Subtract") {
-    blkp->inlineShardId = SHInlineShards::MathSubtract;
-  } else if (name == "Math.Multiply") {
-    blkp->inlineShardId = SHInlineShards::MathMultiply;
-  } else if (name == "Math.Divide") {
-    blkp->inlineShardId = SHInlineShards::MathDivide;
-  } else if (name == "Math.Xor") {
-    blkp->inlineShardId = SHInlineShards::MathXor;
-  } else if (name == "Math.And") {
-    blkp->inlineShardId = SHInlineShards::MathAnd;
-  } else if (name == "Math.Or") {
-    blkp->inlineShardId = SHInlineShards::MathOr;
-  } else if (name == "Math.Mod") {
-    blkp->inlineShardId = SHInlineShards::MathMod;
-  } else if (name == "Math.LShift") {
-    blkp->inlineShardId = SHInlineShards::MathLShift;
-  } else if (name == "Math.RShift") {
-    blkp->inlineShardId = SHInlineShards::MathRShift;
-  }
+  shards::setInlineShardId(shard, name);
 
-  // Unary math is dealt inside math.hpp compose
-
-  return blkp;
+  return shard;
 }
 
 inline void setupRegisterLogging() {

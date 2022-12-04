@@ -6,6 +6,7 @@
 #endif
 
 #include "shared.hpp"
+#include "async.hpp"
 
 // workaround for a boost bug..
 #ifndef __kernel_entry

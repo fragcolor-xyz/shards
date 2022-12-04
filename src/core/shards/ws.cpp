@@ -5,7 +5,7 @@
 #define BOOST_ERROR_CODE_HEADER_ONLY
 
 #include "shared.hpp"
-
+#include "async.hpp"
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>

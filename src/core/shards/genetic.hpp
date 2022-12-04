@@ -8,6 +8,7 @@
 #include "shards.h"
 #include "shards.hpp"
 #include "shared.hpp"
+#include "async.hpp"
 #include <limits>
 #include <pdqsort.h>
 #include <random>

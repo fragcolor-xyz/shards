@@ -61,6 +61,8 @@ else()
   target_sources(shards-extra PRIVATE audio.cpp)
 endif()
 
+target_precompile_headers(shards-extra PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+
 option(SHARDS_EXTRA_BUILD_SHARED OFF "Build shards extra as dynamic library")
 
 if(SHARDS_WITH_RUST_SHARDS)

@@ -9,7 +9,8 @@
 #include "foundation.hpp"
 #include "shards.h"
 #include "shards.hpp"
-#include "core.hpp"
+#include "common_types.hpp"
+#include "number_types.hpp"
 #include <sstream>
 #include <stdexcept>
 #include <variant>
@@ -593,7 +594,7 @@ struct Mean {
   };
 
   enum class MeanKind { Arithmetic, Geometric, Harmonic };
-  static inline EnumInfo<MeanKind> _meanEnum{"Mean", CoreCC, 'mean'};
+  DECL_ENUM_INFO(MeanKind, Mean, 'mean');
 
   static SHOptionalString help() { return SHCCSTR("Calculates the mean of a sequence of floating point numbers."); }
 
@@ -604,14 +605,13 @@ struct Mean {
   static SHOptionalString outputHelp() { return SHCCSTR("The calculated mean."); }
 
   static SHParametersInfo parameters() {
-    static Type kind{{SHType::Enum, {.enumeration = {CoreCC, 'mean'}}}};
-    static Parameters params{{"Kind", SHCCSTR("The kind of Pythagorean means."), {kind}}};
+    static Parameters params{{"Kind", SHCCSTR("The kind of Pythagorean means."), {MeanEnumInfo::Type}}};
     return params;
   }
 
   void setParam(int index, const SHVar &value) { mean = MeanKind(value.payload.enumValue); }
 
-  SHVar getParam(int index) { return shards::Var::Enum(mean, CoreCC, 'mean'); }
+  SHVar getParam(int index) { return shards::Var::Enum(mean, CoreCC, MeanEnumInfo::TypeId); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     switch (mean) {
@@ -669,63 +669,6 @@ struct FModOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::fmod(lhs, rhs); }
 };
 using FMod = BinaryOperation<BasicBinaryOperation<FModOp>>;
-
-inline void registerShards() {
-  REGISTER_SHARD("Math.Add", Add);
-  REGISTER_SHARD("Math.Subtract", Subtract);
-  REGISTER_SHARD("Math.Multiply", Multiply);
-  REGISTER_SHARD("Math.Divide", Divide);
-  REGISTER_SHARD("Math.Xor", Xor);
-  REGISTER_SHARD("Math.And", And);
-  REGISTER_SHARD("Math.Or", Or);
-  REGISTER_SHARD("Math.Mod", Mod);
-  REGISTER_SHARD("Math.LShift", LShift);
-  REGISTER_SHARD("Math.RShift", RShift);
-
-  REGISTER_SHARD("Math.Abs", Abs);
-  REGISTER_SHARD("Math.Exp", Exp);
-  REGISTER_SHARD("Math.Exp2", Exp2);
-  REGISTER_SHARD("Math.Expm1", Expm1);
-  REGISTER_SHARD("Math.Log", Log);
-  REGISTER_SHARD("Math.Log10", Log10);
-  REGISTER_SHARD("Math.Log2", Log2);
-  REGISTER_SHARD("Math.Log1p", Log1p);
-  REGISTER_SHARD("Math.Sqrt", Sqrt);
-  REGISTER_SHARD("Math.FastSqrt", FastSqrt);
-  REGISTER_SHARD("Math.FastInvSqrt", FastInvSqrt);
-  REGISTER_SHARD("Math.Cbrt", Cbrt);
-  REGISTER_SHARD("Math.Sin", Sin);
-  REGISTER_SHARD("Math.Cos", Cos);
-  REGISTER_SHARD("Math.Tan", Tan);
-  REGISTER_SHARD("Math.Asin", Asin);
-  REGISTER_SHARD("Math.Acos", Acos);
-  REGISTER_SHARD("Math.Atan", Atan);
-  REGISTER_SHARD("Math.Sinh", Sinh);
-  REGISTER_SHARD("Math.Cosh", Cosh);
-  REGISTER_SHARD("Math.Tanh", Tanh);
-  REGISTER_SHARD("Math.Asinh", Asinh);
-  REGISTER_SHARD("Math.Acosh", Acosh);
-  REGISTER_SHARD("Math.Atanh", Atanh);
-  REGISTER_SHARD("Math.Erf", Erf);
-  REGISTER_SHARD("Math.Erfc", Erfc);
-  REGISTER_SHARD("Math.TGamma", TGamma);
-  REGISTER_SHARD("Math.LGamma", LGamma);
-  REGISTER_SHARD("Math.Ceil", Ceil);
-  REGISTER_SHARD("Math.Floor", Floor);
-  REGISTER_SHARD("Math.Trunc", Trunc);
-  REGISTER_SHARD("Math.Round", Round);
-
-  REGISTER_SHARD("Math.Mean", Mean);
-  REGISTER_SHARD("Math.Inc", Inc);
-  REGISTER_SHARD("Math.Dec", Dec);
-  REGISTER_SHARD("Math.Negate", Negate);
-
-  REGISTER_SHARD("Max", Max);
-  REGISTER_SHARD("Min", Min);
-  REGISTER_SHARD("Math.Pow", Pow);
-  REGISTER_SHARD("Math.FMod", FMod);
-}
-
 }; // namespace Math
 }; // namespace shards
 

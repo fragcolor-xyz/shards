@@ -326,20 +326,19 @@ struct Write {
 };
 
 struct Copy {
-  enum class OverBehavior { Fail, Skip, Overwrite, Update };
-  static inline EnumInfo<OverBehavior> OverWEnum{"IfExists", CoreCC, 'fsow'};
-  static inline Type OverWEnumType{{SHType::Enum, {.enumeration = {CoreCC, 'fsow'}}}};
+  enum class IfExists { Fail, Skip, Overwrite, Update };
+  DECL_ENUM_INFO(IfExists, IfExists, 'fsow');
 
   ParamVar _destination{};
-  OverBehavior _overwrite{OverBehavior::Fail};
+  IfExists _overwrite{IfExists::Fail};
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params =
-      ParamsInfo(ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
-                                   CoreInfo::StringStringVarOrNone),
-                 ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), OverWEnumType));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
+                        CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
@@ -348,7 +347,7 @@ struct Copy {
       _destination = value;
       break;
     case 1:
-      _overwrite = OverBehavior(value.payload.enumValue);
+      _overwrite = IfExists(value.payload.enumValue);
       break;
     }
   }
@@ -358,7 +357,7 @@ struct Copy {
     case 0:
       return _destination;
     case 1:
-      return Var::Enum(_overwrite, CoreCC, 'fsow');
+      return Var::Enum(_overwrite, CoreCC, IfExistsEnumInfo::TypeId);
     default:
       return Var::Empty;
     }
@@ -375,15 +374,15 @@ struct Copy {
     fs::copy_options options{};
 
     switch (_overwrite) {
-    case OverBehavior::Fail:
+    case IfExists::Fail:
       break;
-    case OverBehavior::Skip:
+    case IfExists::Skip:
       options |= fs::copy_options::skip_existing;
       break;
-    case OverBehavior::Overwrite:
+    case IfExists::Overwrite:
       options |= fs::copy_options::overwrite_existing;
       break;
-    case OverBehavior::Update:
+    case IfExists::Update:
       options |= fs::copy_options::update_existing;
       break;
     }
@@ -415,6 +414,8 @@ struct Copy {
 }; // namespace FS
 
 void registerFSShards() {
+  REGISTER_ENUM(FS::Copy::IfExistsEnumInfo);
+
   REGISTER_SHARD("FS.Iterate", FS::Iterate);
   REGISTER_SHARD("FS.Extension", FS::Extension);
   REGISTER_SHARD("FS.Filename", FS::Filename);

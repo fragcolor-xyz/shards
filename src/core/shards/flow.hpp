@@ -5,6 +5,7 @@
 #include "shards.h"
 #include "foundation.hpp"
 #include "shared.hpp"
+#include "async.hpp"
 
 namespace shards {
 static inline Type condShardSeqs = Type::SeqOf(CoreInfo::ShardsOrNone);
