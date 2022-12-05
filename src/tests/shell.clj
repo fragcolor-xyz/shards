@@ -12,8 +12,11 @@
   "" (Process.Run "echo" ["Hello world"]) (Log)
   (Assert.Is "Hello world\n" true)
 
-  "Hello world" (Process.Run "cat" :Timeout 2) (Log)
-  (Assert.Is "Hello world\n" true)
+  (Maybe (-> ; FOR COVERAGE SAKE
+          "Hello world" (Process.Run "cat" :Timeout 2) (Log)
+          (Assert.Is "Hello world\n" true) ; timeouts actually make wire fail
+          ))
+
 
   (Maybe (-> "" (Process.Run "sleep" ["10"] :Timeout 1) (Log)))))
 

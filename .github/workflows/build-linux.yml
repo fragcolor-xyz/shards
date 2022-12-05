@@ -127,8 +127,7 @@ jobs:
           ./shards ../src/tests/casting-numbers.edn
           ./shards ../src/tests/edn.edn
           ./shards ../src/tests/pure.edn
-          # NOTE: Times out on "Hello world" (Process.Run "cat" :Timeout 2) (Log)
-          # ./shards ../src/tests/shell.clj
+          ./shards ../src/tests/shell.clj
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
