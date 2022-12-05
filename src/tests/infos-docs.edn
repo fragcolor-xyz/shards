@@ -204,12 +204,12 @@
 ;; execution
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
-;; (map
-;;  (fn* [name] (schedule root (dump-shard name)))
-;;  (shards))
-;; (map
-;;  (fn* [name] (schedule root (dump-enum name)))
-;;  (enums))
-(schedule root (dump-shard "GFX.Render"))
+(map
+ (fn* [name] (schedule root (dump-shard name)))
+ (shards))
+(map
+ (fn* [name] (schedule root (dump-enum name)))
+ (enums))
+;; (schedule root (dump-shard "GFX.Render"))
 
 (if (run root) nil (throw "Root tick failed"))

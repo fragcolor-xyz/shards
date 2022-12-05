@@ -323,12 +323,12 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' ! -path '*UI*');
+          for i in $(find shards -name '*.edn' ! -path '*UI*' ! -path '*GFX*');
           do
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --file "$i";
           done
-      - name: Test doc samples (UI)
+      - name: Test doc samples (GFX)
         # NOTE: Graphics backend doesn't run on 32bits
         if: ${{ steps.setup.outputs.bitness == '64bits' }}
         env:
@@ -337,7 +337,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' -path '*UI*');
+          for i in $(find shards -name '*.edn' -path '*UI*' -or -path '*GFX*');
           do
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --file "$i";
