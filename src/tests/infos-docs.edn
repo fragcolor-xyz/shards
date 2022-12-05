@@ -126,28 +126,33 @@
            (-> (| = .sample-script)
                (| (FS.Filename :NoExtension true) = .sample-filename)
                [name "/" .sample-filename ".edn"] (String.Join) = .sample-script-fn
-               [name "/" .sample-filename ".log"] (String.Join) = .sample-log-fn
-               [name "/" .sample-filename ".log.md"] (String.Join) = .sample-log-md-fn
+               [name "/" .sample-filename ".edn.log"] (String.Join) = .sample-log-fn
+               [name "/" .sample-filename ".out.md"] (String.Join) = .sample-out-md-fn
 
                .sample-script-fn (getFilename shardsSamplePath "" true) (Log "Script")
                .sample-log-fn (getFilename shardsSamplePath "" true) (Log "Log")
-               .sample-log-md-fn (getFilename shardsSamplePath "" true) (Log "Log.md")
+               .sample-out-md-fn (getFilename shardsSamplePath "" true) (Log "Log.md")
+               .sample-log-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-log
+               .sample-out-md-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-out-md
 
                "=== \"Code\"\r\n\r\n" >> .o
                "    ```clojure linenums=\"1\"\r\n" >> .o
                "    --8<-- \"" >> .o .sample-script-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
                "    ```\r\n\r\n" >> .o
 
-               "=== \"Output\"\r\n\r\n" >> .o
-               .sample-log-fn (getFilename (str basePath shardsSamplePath) "" true) (When (FS.IsFile) (->
-                                                                                                       "    ```\r\n" >> .o
-                                                                                                       "    --8<-- \"" >> .o
-                                                                                                       .sample-log-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
-                                                                                                       "    ```\r\n" >> .o))
-               .sample-log-md-fn (getFilename (str basePath shardsSamplePath) "" true) (When (FS.IsFile) (->
-                                                                                                          "    --8<-- \"" >> .o
-                                                                                                          .sample-log-md-fn (getFilename shardsSamplePath "" true) >> .o
-                                                                                                          "\"\r\n\r\n" >> .o))
+               (When (-> .sample-have-log (Or) .sample-have-out-md)
+                     (->
+                      "=== \"Output\"\r\n\r\n" >> .o
+                      .sample-have-out-md (When (Is true) (->
+                                                           "    --8<-- \"" >> .o
+                                                           .sample-out-md-fn (getFilename shardsSamplePath "" true) >> .o
+                                                           "\"\r\n\r\n" >> .o))
+                      .sample-have-log (When (Is true) (->
+                                                        "    ```\r\n" >> .o
+                                                        "    --8<-- \"" >> .o
+                                                        .sample-log-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
+                                                        "    ```\r\n" >> .o))))
+
                "\r\n" >> .o))))))
 
    "--8<-- \"includes/license.md\"\r\n" >> .o
@@ -204,12 +209,12 @@
 ;; execution
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
-(map
- (fn* [name] (schedule root (dump-shard name)))
- (shards))
-(map
- (fn* [name] (schedule root (dump-enum name)))
- (enums))
-;; (schedule root (dump-shard "GFX.Render"))
+;; (map
+;;  (fn* [name] (schedule root (dump-shard name)))
+;;  (shards))
+;; (map
+;;  (fn* [name] (schedule root (dump-enum name)))
+;;  (enums))
+(schedule root (dump-shard "And"))
 
 (if (run root) nil (throw "Root tick failed"))
