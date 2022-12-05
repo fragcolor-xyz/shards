@@ -1,0 +1,111 @@
+(defshards Innitialize_Character []
+  (LoadImage "GlodImages/Character1.png") = .Character_Image
+  (LoadImage "GlodImages/Character1_Left.png") = .Character_Left
+  (LoadImage "GlodImages/Character1_Right.png") = .Character_Right
+  (LoadImage "GlodImages/Character1_Jumping.png") = .Character_Jumping
+  
+  true >= .CharacterIdle
+  false >= .Character_Jump
+  false >= .Character_Walking_Left
+  false >= .Character_Walking_Right)
+
+(defshards Button_Inputs []
+  (Inputs.KeyDown 
+   :Key "left"
+   :Action (->
+            (Msg "left")
+            true > .Character_Walking_Left
+            false > .Character_Walking_Right
+            false > .CharacterIdle
+            false > .Character_Jump))
+  
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            (Msg "right")
+            false > .Character_Walking_Left
+            true > .Character_Walking_Right
+            false > .CharacterIdle
+            false > .Character_Jump))
+  
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            (Msg "up")
+            false > .Character_Walking_Left
+            false > .Character_Walking_Right
+            false > .CharacterIdle
+            true > .Character_Jump)))
+
+(defloop main-wire 
+  (Setup
+   (Innitialize_Character))
+  
+   
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents (-> (Setup
+                  (GFX.DrawQueue) >= .ui-draw-queue
+                  (GFX.UIPass .ui-draw-queue) >> .render-steps)
+                 .ui-draw-queue (GFX.ClearQueue)
+                 
+                 (UI
+                  .ui-draw-queue
+                  (->
+                   (UI.Area :Position .Score_Effect_Position
+                              :Anchor Anchor.Center
+                              :Contents (->
+                                         
+                                         .CharacterIdle
+                                         (If :Predicate (->  (Is true)
+                                                            (And)
+                                                            .Character_Walking_Left (Is false)
+                                                            (And)
+                                                            .Character_Walking_Right (Is false)
+                                                            (And)
+                                                            .Character_Jump (Is false))
+                                             :Then (-> .Character_Image (UI.Image :Scale (float2 0.2))))
+                                         
+                                         .CharacterIdle
+                                         (If :Predicate (->  (Is false)
+                                                            (And)
+                                                            .Character_Walking_Left (Is true)
+                                                            (And)
+                                                            .Character_Walking_Right (Is false)
+                                                            (And)
+                                                            .Character_Jump (Is false))
+                                             :Then (-> .Character_Left (UI.Image :Scale (float2 0.2))))
+                                         
+                                         .CharacterIdle
+                                         (If :Predicate (->  (Is false)
+                                                            (And)
+                                                            .Character_Walking_Left (Is false)
+                                                            (And)
+                                                            .Character_Walking_Right (Is true)
+                                                            (And)
+                                                            .Character_Jump (Is false))
+                                             :Then (-> .Character_Right (UI.Image :Scale (float2 0.2))))
+                                         
+                                         .CharacterIdle
+                                         (If :Predicate (->  (Is false)
+                                                            (And)
+                                                            .Character_Walking_Left (Is false)
+                                                            (And)
+                                                            .Character_Walking_Right (Is false)
+                                                            (And)
+                                                            .Character_Jump (Is true))
+                                             :Then (-> .Character_Jumping (UI.Image :Scale (float2 0.2))))
+                                         ))))
+                 
+                 (GFX.Render :Steps .render-steps)
+                 
+                 (Button_Inputs)
+                 
+                 )))
+  
+
+(defmesh main)
+(schedule main main-wire)
+(run main (/ 1.0 60))
+
+

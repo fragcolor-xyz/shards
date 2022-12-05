@@ -108,6 +108,8 @@
   0.5 >= .coin_Acceleration
   25.0 >= .coin_Velocity_Max)
 
+;; ----------- SpikeBall ------------
+
 (defshards Initialize_SpikeBall []
   (LoadImage "GlodImages/SpikeBall/SpikeBall1.png") = .SpikeBall_1
   (LoadImage "GlodImages/SpikeBall/SpikeBall2.png") = .SpikeBall_2
@@ -129,10 +131,24 @@
   0 >= .SpikeBall_Index
   0.06 >= .SpikeBall_Animation_Speed
 
+  ;; ---------- SpikeBall_1 -------------
   1.0 >= .SpikeBall_Velocity_1
   0.0 >= .SpikeBall_Y_1
   0.0 >= .SpikeBall_X_1
   (float2 .SpikeBall_X_1 .SpikeBall_Y_1) >= .SpikeBall_Position_1
+
+  ;; ---------- SpikeBall_2 -------------
+  1.0 >= .SpikeBall_Velocity_2
+  0.0 >= .SpikeBall_Y_2
+  0.0 >= .SpikeBall_X_2
+  (float2 .SpikeBall_X_2 .SpikeBall_Y_2) >= .SpikeBall_Position_2
+
+  ;; ---------- SpikeBall_3 -------------
+  1.0 >= .SpikeBall_Velocity_3
+  0.0 >= .SpikeBall_Y_3
+  0.0 >= .SpikeBall_X_3
+  (float2 .SpikeBall_X_3 .SpikeBall_Y_3) >= .SpikeBall_Position_3
+
   0.5 >= .SpikeBall_Acceleration
   25.0 >= .SpikeBall_Velocity_Max
   false >= .Damaged
@@ -149,9 +165,10 @@
   (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_10.png") = .Damage_Effect_10
   [.Damage_Effect_1 .Damage_Effect_2 .Damage_Effect_3 .Damage_Effect_4 .Damage_Effect_5
    .Damage_Effect_6 .Damage_Effect_7 .Damage_Effect_8 .Damage_Effect_9 .Damage_Effect_10] >= .DamageEffect_Array
-  (Count .DamageEffect_Array) (Math.Subtract 1) >= .DamageEffect_Array_Index_Max
+  ;;(Count .DamageEffect_Array) (Math.Subtract 1) >= .DamageEffect_Array_Index_Max
+  .Coin_Effect_Array_Index_max >= .DamageEffect_Array_Index_Max
   0 >= .DamageEffect_Index
-  0.04 >= .DamageEffect_Speed)
+  0.02 >= .DamageEffect_Speed)
 
 (defshards Initialize_OtherElements []
   (LoadImage "GlodImages/BG.png") = .BG_Image
@@ -171,9 +188,10 @@
   0.02 >=  .Coin_Effect_Animation_Speed ;; Reduce number to increase animation speed
   false >= .Score_Effect_Play
 
-  0 >= .Score
+  
 
-  ;;Scoring
+  ;; ---------- Scoring ------------
+  0 >= .Score
   .X (Math.Add 5.0)
   >= .ScoringUpper_X_Limit
   .X (Math.Subtract 5.0)
@@ -188,7 +206,20 @@
   0.0 >= .Score_Effect_Position_X
   0.0 >= .Score_Effect_Position_Y
   (float2 .Score_Effect_Position_X .Score_Effect_Position_Y) >= .Score_Effect_Position
-
+  
+  ;; ---------- Damage ------------
+  .X (Math.Add 50.0)
+  >= .DamageUpper_X_Limit
+  .X (Math.Subtract 50.0)
+  >= .DamageUpper_X_Limit
+  
+  .Y (Math.Add 5.0)
+  >= .DamageUpper_Y_Limit
+  .Y (Math.Subtract 5.0)
+  >= .DamageUpper_Y_Limit
+  
+  false >= .Damage_Effect_Play
+  
   60 >= .Timer
   false >= .GameOver)
 
@@ -232,7 +263,8 @@
   .DamageEffect_Index (Math.Add 1)
   > .DamageEffect_Index
   (When :Predicate (IsMore .DamageEffect_Array_Index_Max)
-        :Action (-> 0 > .DamageEffect_Index))
+        :Action (-> 0 > .DamageEffect_Index
+                    false > .Damage_Effect_Play))
   (Pause .DamageEffect_Speed))
 
 ;; ----------- Score Effect Animation -------------
@@ -392,12 +424,24 @@
   0.0 > SpikeBall_Y
   0.0 > SpikeBall_Velocity
   (float2 Random_SpikeBall_X SpikeBall_Y) > SpikeBall_Position
+  .SpikeBall_X_1
+  (Log ".SpikeBall_X_1 : ")
   (Pause PauseFloat))
 
 ;; -------------- SpikeBall_1 --------------
 
 (defloop SpikeBall_1
   (SpikeBall .SpikeBall_X_1 .SpikeBall_Y_1 .SpikeBall_Velocity_1 .SpikeBall_Position_1 2.5))
+
+;; -------------- SpikeBall_2 --------------
+
+(defloop SpikeBall_2
+  (SpikeBall .SpikeBall_X_2 .SpikeBall_Y_2 .SpikeBall_Velocity_2 .SpikeBall_Position_2 4.5))
+
+;; -------------- SpikeBall_2 --------------
+
+(defloop SpikeBall_3
+  (SpikeBall .SpikeBall_X_3 .SpikeBall_Y_3 .SpikeBall_Velocity_3 .SpikeBall_Position_3 6.5))
 
 ;; ------------ Windows Borders -----------
 ;;ensures that the character is bound by the confines of the screen and does not walk off screen nor does it fall through the floor
@@ -452,18 +496,19 @@
 
 ;; ------------- SpikeBall_If ----------------
 (defshards SpikeBall_If [Random_SpikeBall_X SpikeBall_Y]
-  Random_SpikeBall_X
-  (If :Predicate (-> (IsLess .ScoringUpper_X_Limit)
+  Random_SpikeBall_X 
+  (If :Predicate (-> (IsLess .DamageUpper_X_Limit)
                      (And)
-                     Random_SpikeBall_X (IsMore .ScoringLower_X_Limit)
+                     Random_SpikeBall_X (IsMore .DamageLower_X_Limit)
                      (And)
-                     SpikeBall_Y (IsLess .ScoringUpper_Y_Limit)
+                     SpikeBall_Y (IsLess .DamageUpper_Y_Limit)
                      (And)
-                     SpikeBall_Y (IsMore .ScoringLower_Y_Limit)
+                     SpikeBall_Y (IsMore .DamageLower_Y_Limit)
                      (And)
                      .Damaged (Is false))
       :Then (-> .Score (Math.Subtract 1)
                 > .Score
+                true > .Damage_Effect_Play
                 true > .Damaged)))
 
 ;;-------Scoring--------
@@ -484,9 +529,28 @@
 
   (Scoring_If .Random_Coin_X_2 .CoinY_2)
 
-  (Scoring_If .Random_Coin_X_3 .CoinY_3)
+  (Scoring_If .Random_Coin_X_3 .CoinY_3))
 
-  (SpikeBall_If .SpikeBall_X_1 .SpikeBall_Y_1))
+
+  ;; ------------ Damage ----------------
+
+  (defshards Damage []
+      ;; ---------- Damage ------------
+    .X (Math.Add 120.0)
+    >= .DamageUpper_X_Limit
+    .X (Math.Subtract 120.0)
+    >= .DamageLower_X_Limit
+
+    .Y (Math.Add 15.0)
+    >= .DamageUpper_Y_Limit
+    .Y (Math.Subtract 15.0)
+    >= .DamageLower_Y_Limit
+    
+    (SpikeBall_If .SpikeBall_X_1 .SpikeBall_Y_1)
+    (SpikeBall_If .SpikeBall_X_2 .SpikeBall_Y_2)
+    (SpikeBall_If .SpikeBall_X_3 .SpikeBall_Y_3))
+
+ 
 
 ;; ------------ Timer -----------
 
@@ -535,9 +599,9 @@
 (defloop Main_Game_UI
 
   (UI.Area :Position (float2 0 0)
-           :Anchor Anchor.TopRight
+           :Anchor Anchor.TopLeft
            :Contents (->
-                      .BG_Image (UI.Image :Scale (float2 1))))
+                      .BG_Image (UI.Image :Scale (float2 0.7))))
 
   (UI.Area
    :Position .CharacterPosition
@@ -596,6 +660,16 @@
            :Contents (->
                       .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
 
+  (UI.Area :Position .SpikeBall_Position_2
+           :Anchor Anchor.Top
+           :Contents (->
+                      .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
+  
+  (UI.Area :Position .SpikeBall_Position_3
+           :Anchor Anchor.Top
+           :Contents (->
+                      .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
+
                    ;; -------- Score Effect ---------
   .Y (Math.Add -25.0)
   > .Score_Effect_Position_Y
@@ -615,9 +689,13 @@
 
   ;; ----------- Damaged_Effect ------------
   (UI.Area :Position (float2 0 0)
-           :Anchor Anchor.TopRight
+           :Anchor Anchor.TopLeft
            :Contents (->
-                      .DamageEffect_Array (Take .DamageEffect_Index) (UI.Image :Scale (float2 1))))
+                      .Coin_Effect_Array (Take .DamageEffect_Index) (UI.Image :Scale (float2 1))
+                      (When :Predicate (-> .Damage_Effect_Play (Is true))
+                            :Action (-> (Step DamageEffect_Animation)))))
+  
+  ;; --------- UI -----------
 
   (UI.Area :Position (float2 -30 20)
            :Anchor Anchor.TopRight
@@ -639,9 +717,17 @@
   (CoinGravity .CoinY_3 .Coin_Velocity_3 .Coin_Position_3 .Random_Coin_X_3)
   (Step Coin_Animation)
 
-  (Step SpikeBall_1)
+  (Step SpikeBall_1) 
   (SpikeBall_Gravity .SpikeBall_Y_1 .SpikeBall_Velocity_1 .SpikeBall_Position_1 .SpikeBall_X_1)
+  (Step SpikeBall_2)
+  (SpikeBall_Gravity .SpikeBall_Y_2 .SpikeBall_Velocity_2 .SpikeBall_Position_2 .SpikeBall_X_2)
+  (Step SpikeBall_3)
+  (SpikeBall_Gravity .SpikeBall_Y_3 .SpikeBall_Velocity_3 .SpikeBall_Position_3 .SpikeBall_X_3)
   (Step SpikeBall_Animation)
+  
+  ;;---------- Damage_Effect --------------
+  ;; (If :Predicate (-> .Damage_Effect_Play (Is true))
+  ;;       :Then (-> (Step DamageEffect_Animation)))
 
   (Step Timer_Countdown))
 
@@ -670,7 +756,7 @@
   (WindowBorders)
 
   (GFX.MainWindow
-   :Title "TestWindow" :Width 1920 :Height 1080
+   :Title "MainWindow" :Width 1920 :Height 1080
    :Contents (-> (Setup
                   (GFX.DrawQueue) >= .ui-draw-queue
                   (GFX.UIPass .ui-draw-queue) >> .render-steps)
@@ -689,6 +775,7 @@
                  (Run)
                  (Friction)
                  (Scoring)
+                 (Damage)
 
                  .Scored
                  (If :Predicate (Is true)
@@ -697,9 +784,9 @@
                 ;;  .Damaged
                 ;;  (When :Predicate (-> .Damaged (Is true))
                 ;;        :Action (-> (Step DamageEffect_Animation)))
-                ;;  .Damaged
-                ;;  (If :Predicate (Is true)
-                ;;      :Then (-> (Step ResetDamaged)))
+                 .Damaged
+                 (If :Predicate (Is true)
+                     :Then (-> (Step ResetDamaged)))
 
 
 
