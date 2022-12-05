@@ -5,10 +5,10 @@
 
 ;; path definitions
 (def basePath "../../docs/")
-(def shardsPath "docs/docs/shards/")
-(def detailsPath "details/shards/")
-(def samplePath "samples/shards/")
-(def enumsPath "docs/docs/enums/")
+(def shardsPath "docs/reference/shards/")
+(def enumsPath "docs/reference/enums/")
+(def shardsDetailsPath "details/shards/")
+(def shardsSamplePath "samples/shards/")
 
 ;; computes the filename from the shard name
 (defn getFilename [path extension fallback-general]
@@ -108,29 +108,29 @@
 
    ;; details (optional)
    (When
-    (-> name (getFilename (str basePath detailsPath) ".md" true) (FS.IsFile))
+    (-> name (getFilename (str basePath shardsDetailsPath) ".md" true) (FS.IsFile))
     (-> "## Details\r\n\r\n" >> .o
-        "--8<-- \"" >> .o name (getFilename detailsPath ".md" true) >> .o "\"\r\n" >> .o
+        "--8<-- \"" >> .o name (getFilename shardsDetailsPath ".md" true) >> .o "\"\r\n" >> .o
         "\r\n\r\n" >> .o))
 
    ;; examples (optional)
    (When
-    (-> name (getFilename (str basePath samplePath) "" true) (FS.IsDirectory))
+    (-> name (getFilename (str basePath shardsSamplePath) "" true) (FS.IsDirectory))
     (->
      "## Examples\r\n\r\n" >> .o
 
-     name (getFilename (str basePath samplePath) "" true) (FS.Iterate)
+     name (getFilename (str basePath shardsSamplePath) "" true) (FS.Iterate)
      (ForEach
       (-> (When
            (-> (FS.Extension) (Is ".edn"))
            (-> (| "=== \"Code\"\r\n\r\n" >> .o
                   "    ```clojure linenums=\"1\"\r\n" >> .o
-                  "    --8<-- \"" >> .o name (getFilename samplePath "/" true) >> .o)
+                  "    --8<-- \"" >> .o name (getFilename shardsSamplePath "/" true) >> .o)
                (| (FS.Filename) >> .o "\"\r\n" >> .o)
                (| "    ```\r\n\r\n" >> .o
                   "=== \"Output\"\r\n\r\n" >> .o
                   "    ```\r\n" >> .o
-                  "    --8<-- \"" >> .o name (getFilename samplePath "/" true) >> .o)
+                  "    --8<-- \"" >> .o name (getFilename shardsSamplePath "/" true) >> .o)
                (| (FS.Filename) >> .o ".log\"\r\n" >> .o
                   "    ```\r\n" >> .o
                   "&nbsp;\r\n\r\n" >> .o)))))))
