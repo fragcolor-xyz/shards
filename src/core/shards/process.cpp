@@ -76,7 +76,7 @@ struct Run {
     if (_arguments.isVariable()) {
       _requiring[0].name = _arguments.variableName();
       _requiring[0].help = SHCCSTR("The required variable containing the arguments for the command to run.");
-      _requiring[0].exposedType = CoreInfo::StringType;
+      _requiring[0].exposedType = CoreInfo::StringSeqType;
       return {_requiring.data(), 1, 0};
     } else {
       return {};
