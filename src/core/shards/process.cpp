@@ -142,13 +142,18 @@ struct Run {
 
           SHLOG_TRACE("Process started");
 
-          ios.run_for(std::chrono::seconds(_timeout));
+
+          auto timeout = std::chrono::seconds(_timeout);
+          auto endTime = std::chrono::system_clock::now() + timeout;
+          ios.run_for(timeout);
 
           SHLOG_TRACE("Process finished");
 
           if (cmd.running()) {
+            SHLOG_TRACE("Process still running, terminating");
             cmd.terminate();
-            throw ActivationError("Process timed out");
+            if(std::chrono::system_clock::now() > endTime)
+              throw ActivationError("Process timed out");
           }
 
           // we still need to wait termination
