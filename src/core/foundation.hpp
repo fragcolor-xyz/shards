@@ -971,11 +971,11 @@ template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
 #define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
-  static inline const char _NAME_##Name[] = #_NAME_;                 \
+  static inline const char _NAME_##Name[] = #_NAME_;                  \
   using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
 
 #define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
-  static inline const char _NAME_##Name[] = #_NAME_;                       \
+  static inline const char _NAME_##Name[] = #_NAME_;                        \
   using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
 
 #define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
@@ -986,6 +986,12 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define REGISTER_ENUM(_ENUM_INFO_) \
   static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
+  namespace shards {                              \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
+    static inline SHOptionalString help = _STR_;  \
+  };                                              \
+  }
 
 template <typename E> static E getFlags(SHVar var) {
   E flags{};

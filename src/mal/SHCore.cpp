@@ -2072,6 +2072,16 @@ BUILTIN("shards") {
   return mal::list(items);
 }
 
+BUILTIN("enums") {
+  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
+  malValueVec v;
+  for (auto [_, ti] : shards::GetGlobals().EnumTypesRegister) {
+    v.emplace_back(mal::string(std::string(ti.name)));
+  }
+  malValueVec *items = new malValueVec(v);
+  return mal::list(items);
+}
+
 static DocsFriendlyFormatter docsFormatter{.ignoreNone = true};
 
 static bool containsNone(const SHTypesInfo &types) {
@@ -2082,7 +2092,7 @@ static bool containsNone(const SHTypesInfo &types) {
   return false;
 }
 
-BUILTIN("info") {
+BUILTIN("shard-info") {
   CHECK_ARGS_IS(1);
   ARG(malString, blkname);
   const auto blkIt = builtIns.find(blkname->ref());
@@ -2151,6 +2161,39 @@ BUILTIN("info") {
 
     return mal::hash(map);
   }
+}
+
+static SHEnumInfo *findEnumByName(const std::string &name) {
+  for (auto &it : GetGlobals().EnumTypesRegister) {
+    if (it.second.name == name)
+      return &it.second;
+  }
+  return nullptr;
+}
+
+BUILTIN("enum-info") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, enumName);
+
+  SHEnumInfo *enumInfo = findEnumByName(enumName->value());
+  assert(enumInfo);
+
+  malHash::Map map;
+  map[":name"] = mal::string(enumInfo->name);
+
+  malValueVec values;
+  assert(enumInfo->descriptions.len == enumInfo->labels.len);
+  for (size_t i = 0; i < enumInfo->labels.len; i++) {
+    malHash::Map elemMap;
+    SHString label = enumInfo->labels.elements[i];
+    SHOptionalString description = enumInfo->descriptions.elements[i];
+    elemMap[":label"] = mal::string(label);
+    elemMap[":description"] = mal::string(description.string ? description.string : getString(description.crc));
+    values.emplace_back(mal::hash(elemMap));
+  }
+  map[":values"] = mal::list(values.begin(), values.end());
+
+  return mal::hash(map);
 }
 
 #ifndef SH_COMPRESSED_STRINGS

@@ -144,6 +144,7 @@ typedef struct _SHOptionalString {
   SHString string;
   uint32_t crc;
 } SHOptionalString;
+SH_ARRAY_DECL(SHOptionalStrings, SHOptionalString);
 
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
@@ -413,6 +414,7 @@ struct SHEnumInfo {
   SHString name;
   SHStrings labels;
   SHEnums values;
+  SHOptionalStrings descriptions;
 };
 
 struct SHParameterInfo {

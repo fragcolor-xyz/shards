@@ -8,9 +8,10 @@
 (def shardsPath "docs/docs/shards/")
 (def detailsPath "details/shards/")
 (def samplePath "samples/shards/")
+(def enumsPath "docs/docs/enums/")
 
 ;; computes the filename from the shard name
-(defn getFilename [path extension]
+(defn getFilename [path extension fallback-general]
   (Maybe
    (->
     (Regex.Match #"(\w+)\.(.*)")
@@ -24,17 +25,17 @@
     .f (ToString))
    (->
     >= .f
-    (str path "General/") (PrependTo .f)
+    (str path (if fallback-general "General/" "")) (PrependTo .f)
     extension (AppendTo .f)
     .f (ToString))
    true))
 
 ;; dumps the generated content to the final file
-(defn dump [name]
+(defn dump-shard [name]
   (Wire
-   (str "dump-" name)
+   (str "dump-shard-" name)
    (Setup
-    (info name) = .record
+    (shard-info name) = .record
     (Get .record "help") = .help
     (Get .record "inputTypes") = .inputTypes
     (Get .record "inputHelp") = .inputHelp
@@ -42,7 +43,7 @@
     (Get .record "outputHelp") = .outputHelp
     (Get .record "properties" :Default {}) = .properties
     (Get .record "parameters") = .parameters
-    name (getFilename (str basePath shardsPath) ".md") = .filename
+    name (getFilename (str basePath shardsPath) ".md" true) = .filename
     [""] >= .o)
 
    ; metadata (front matter)
@@ -107,32 +108,77 @@
 
    ;; details (optional)
    (When
-    (-> name (getFilename (str basePath detailsPath) ".md") (FS.IsFile))
+    (-> name (getFilename (str basePath detailsPath) ".md" true) (FS.IsFile))
     (-> "## Details\r\n\r\n" >> .o
-        "--8<-- \"" >> .o name (getFilename detailsPath ".md") >> .o "\"\r\n" >> .o
+        "--8<-- \"" >> .o name (getFilename detailsPath ".md" true) >> .o "\"\r\n" >> .o
         "\r\n\r\n" >> .o))
 
    ;; examples (optional)
    (When
-    (-> name (getFilename (str basePath samplePath) "") (FS.IsDirectory))
+    (-> name (getFilename (str basePath samplePath) "" true) (FS.IsDirectory))
     (->
      "## Examples\r\n\r\n" >> .o
 
-     name (getFilename (str basePath samplePath) "") (FS.Iterate)
+     name (getFilename (str basePath samplePath) "" true) (FS.Iterate)
      (ForEach
       (-> (When
            (-> (FS.Extension) (Is ".edn"))
            (-> (| "=== \"Code\"\r\n\r\n" >> .o
                   "    ```clojure linenums=\"1\"\r\n" >> .o
-                  "    --8<-- \"" >> .o name (getFilename samplePath "/") >> .o)
+                  "    --8<-- \"" >> .o name (getFilename samplePath "/" true) >> .o)
                (| (FS.Filename) >> .o "\"\r\n" >> .o)
                (| "    ```\r\n\r\n" >> .o
                   "=== \"Output\"\r\n\r\n" >> .o
                   "    ```\r\n" >> .o
-                  "    --8<-- \"" >> .o name (getFilename samplePath "/") >> .o)
+                  "    --8<-- \"" >> .o name (getFilename samplePath "/" true) >> .o)
                (| (FS.Filename) >> .o ".log\"\r\n" >> .o
                   "    ```\r\n" >> .o
                   "&nbsp;\r\n\r\n" >> .o)))))))
+
+   "--8<-- \"includes/license.md\"\r\n" >> .o
+
+   .o (String.Join) = .content
+   .filename (FS.Write .content :Overwrite true)
+   (Msg "done.")))
+
+(defn dump-enum [name]
+  (Wire
+   (str "dump-enum-" name)
+   (Setup
+    (enum-info name) = .record
+    name (getFilename (str basePath enumsPath) ".md" false) = .filename
+    (Get .record "values") = .values
+    [""] >= .o)
+
+   ; metadata (front matter)
+   "---\r\n" >> .o
+   "authors: Fragcolor & contributors\r\n" >> .o
+   "license: CC-BY-SA-4.0\r\n" >> .o
+   "---\r\n" >> .o
+   "\r\n\r\n" >> .o
+
+   ; title
+   "# " >> .o name >> .o "\r\n\r\n" >> .o
+
+   ;; Table showing the valid enum values
+   "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> .o
+   "| Value  | Description |\r\n" >> .o
+   "|------|---------------------|\r\n" >> .o
+
+   (When
+    (-> (Count .values) (IsMore 0))
+    (->
+     .values
+     (ForEach
+      (-> (ExpectTable) 
+          (| (Take "label") >= .label)
+          (| (Take "description") >= .description)
+          "| `" >> .o .label >> .o
+          "` | " >> .o .description >> .o
+          " |\r\n" >> .o))))
+
+   "\r\n</div>\r\n" >> .o
+   "\r\n" >> .o
 
    "--8<-- \"includes/license.md\"\r\n" >> .o
 
@@ -144,7 +190,9 @@
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
 (map
- (fn* [name] (schedule root (dump name)))
+ (fn* [name] (schedule root (dump-shard name)))
  (shards))
-;; (schedule root (dump "Assoc"))
+(map
+ (fn* [name] (schedule root (dump-enum name)))
+ (enums))
 (if (run root) nil (throw "Root tick failed"))
