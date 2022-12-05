@@ -129,9 +129,6 @@
                [name "/" .sample-filename ".edn.log"] (String.Join) = .sample-log-fn
                [name "/" .sample-filename ".out.md"] (String.Join) = .sample-out-md-fn
 
-               .sample-script-fn (getFilename shardsSamplePath "" true) (Log "Script")
-               .sample-log-fn (getFilename shardsSamplePath "" true) (Log "Log")
-               .sample-out-md-fn (getFilename shardsSamplePath "" true) (Log "Log.md")
                .sample-log-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-log
                .sample-out-md-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-out-md
 
@@ -209,12 +206,12 @@
 ;; execution
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
-;; (map
-;;  (fn* [name] (schedule root (dump-shard name)))
-;;  (shards))
-;; (map
-;;  (fn* [name] (schedule root (dump-enum name)))
-;;  (enums))
-(schedule root (dump-shard "And"))
+(map
+ (fn* [name] (schedule root (dump-shard name)))
+ (shards))
+(map
+ (fn* [name] (schedule root (dump-enum name)))
+ (enums))
+;; (schedule root (dump-shard "And"))
 
 (if (run root) nil (throw "Root tick failed"))
