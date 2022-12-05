@@ -263,7 +263,6 @@
   (When :Predicate (IsMore .DamageEffect_Array_Index_Max)
         :Action (-> 0 > .DamageEffect_Index
                     false > .Damage_Effect_Play))
-        :Action (-> 0 > .DamageEffect_Index))
   (Pause .DamageEffect_Speed))
 
 ;; ----------- Score Effect Animation -------------
@@ -509,18 +508,17 @@
                 true > .Damage_Effect_Play
                 true > .Damaged)))
 
-  Random_SpikeBall_X
-  (If :Predicate (-> (IsLess .ScoringUpper_X_Limit)
                      (And)
-                     Random_SpikeBall_X (IsMore .ScoringLower_X_Limit)
+                     Random_SpikeBall_X (IsMore .DamageLower_X_Limit)
                      (And)
-                     SpikeBall_Y (IsLess .ScoringUpper_Y_Limit)
+                     SpikeBall_Y (IsLess .DamageUpper_Y_Limit)
                      (And)
-                     SpikeBall_Y (IsMore .ScoringLower_Y_Limit)
+                     SpikeBall_Y (IsMore .DamageLower_Y_Limit)
                      (And)
                      .Damaged (Is false))
       :Then (-> .Score (Math.Subtract 1)
                 > .Score
+                true > .Damage_Effect_Play
                 true > .Damaged)))
 
 ;;-------Scoring--------
@@ -541,11 +539,10 @@
 
   (Scoring_If .Random_Coin_X_2 .CoinY_2)
 
-  (Scoring_If .Random_Coin_X_3 .CoinY_3)
+  (Scoring_If .Random_Coin_X_3 .CoinY_3))
 
 
   ;; ------------ Damage ----------------
-  (SpikeBall_If .SpikeBall_X_1 .SpikeBall_Y_1))
 
   (defshards Damage []
       ;; ---------- Damage ------------
@@ -666,9 +663,7 @@
   
   ;; --------- UI -----------
   (UI.Area :Position (float2 0 0)
-           :Anchor Anchor.TopRight
            :Contents (->
-                      .DamageEffect_Array (Take .DamageEffect_Index) (UI.Image :Scale (float2 1))))
 
   (UI.Area :Position (float2 -30 20)
            :Anchor Anchor.TopRight
@@ -702,7 +697,6 @@
   ;; (If :Predicate (-> .Damage_Effect_Play (Is true))
   ;;       :Then (-> (Step DamageEffect_Animation)))
 
-  (Step SpikeBall_1)
   (SpikeBall_Gravity .SpikeBall_Y_1 .SpikeBall_Velocity_1 .SpikeBall_Position_1 .SpikeBall_X_1)
   (Step SpikeBall_Animation)
 
@@ -764,9 +758,6 @@
                  .Damaged
                  (If :Predicate (Is true)
                      :Then (-> (Step ResetDamaged)))
-                ;;  .Damaged
-                ;;  (If :Predicate (Is true)
-                ;;      :Then (-> (Step ResetDamaged)))
 
 
 
