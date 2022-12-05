@@ -15,13 +15,4 @@
   ["10"] = .args
   (Maybe (-> "" (Process.Run "sleep" .args :Timeout 1) (Log)))))
 
-;; (def! dec (fn* [a] (- a 1)))
-;; (def! Loop (fn* [count] (do
-;;   (if (tick n) nil (throw "tick failed"))
-;;   (sleep 0.5)
-;;   (if (> count 0) (Loop (dec count)) nil)
-;; )))
-
-;; (Loop 5)
-
 (if (run n 0.1) nil (throw "Root tick failed"))

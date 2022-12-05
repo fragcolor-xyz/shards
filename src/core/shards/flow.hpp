@@ -463,10 +463,10 @@ struct Maybe : public BaseSubFlow {
         spdlog::set_level(prev_level);
       }
       if (state == SHWireState::Error) {
+        if (!_silent) {
+          SHLOG_WARNING("Maybe shard Ignored an error: {}", context->getErrorMessage());
+        }
         if (likely(!context->onLastResume)) {
-          if (!_silent) {
-            SHLOG_WARNING("Maybe shard Ignored an error: {}", context->getErrorMessage());
-          }
           context->continueFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
