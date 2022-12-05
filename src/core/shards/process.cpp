@@ -28,6 +28,7 @@ namespace Process {
 struct Run {
   std::string _moduleName;
   ParamVar _arguments{};
+  std::array<SHExposedTypeInfo, 1> _requiring;
   std::string _outBuf;
   std::string _errBuf;
   int64_t _timeout{30};
@@ -68,6 +69,17 @@ struct Run {
       return Var(_timeout);
     default:
       throw SHException("getParam out of range");
+    }
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (_arguments.isVariable()) {
+      _requiring[0].name = _arguments.variableName();
+      _requiring[0].help = SHCCSTR("The required variable containing the arguments for the command to run.");
+      _requiring[0].exposedType = CoreInfo::StringSeqType;
+      return {_requiring.data(), 1, 0};
+    } else {
+      return {};
     }
   }
 
@@ -130,13 +142,23 @@ struct Run {
 
           SHLOG_TRACE("Process started");
 
-          ios.run_for(std::chrono::seconds(_timeout));
+          auto timeout = std::chrono::seconds(_timeout);
+          auto endTime = std::chrono::system_clock::now() + timeout;
+          ios.run_for(timeout);
 
           SHLOG_TRACE("Process finished");
 
           if (cmd.running()) {
-            cmd.terminate();
-            throw ActivationError("Process timed out");
+            SHLOG_TRACE("Process still running after service wait");
+            if (std::chrono::system_clock::now() > endTime) {
+              cmd.terminate();
+              throw ActivationError("Process timed out");
+            } else {
+              // give a further 1 second to terminate
+              if (!cmd.wait_for(std::chrono::seconds(1))) {
+                cmd.terminate();
+              }
+            }
           }
 
           // we still need to wait termination

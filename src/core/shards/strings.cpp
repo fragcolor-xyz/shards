@@ -121,6 +121,18 @@ struct Replace : public Common {
     }
   }
 
+  std::array<SHExposedTypeInfo, 1> _requiring;
+  SHExposedTypesInfo requiredVariables() {
+    if (_replacement.isVariable()) {
+      _requiring[0].name = _replacement.variableName();
+      _requiring[0].help = SHCCSTR("The required variable containing the replacement.");
+      _requiring[0].exposedType = CoreInfo::StringType;
+      return {_requiring.data(), 1, 0};
+    } else {
+      return {};
+    }
+  }
+
   void warmup(SHContext *context) { _replacement.warmup(context); }
 
   void cleanup() { _replacement.cleanup(); }
@@ -237,6 +249,64 @@ struct Trim {
   }
 };
 
+struct Contains {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  ParamVar _check{Var("")};
+
+  static inline Parameters params{{{"String",
+                                    SHCCSTR("The string that needs to be contained by the input string to output true."),
+                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _check = value;
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _check;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  std::array<SHExposedTypeInfo, 1> _requiring;
+  SHExposedTypesInfo requiredVariables() {
+    if (_check.isVariable()) {
+      _requiring[0].name = _check.variableName();
+      _requiring[0].help = SHCCSTR("The required variable containing the replacement.");
+      _requiring[0].exposedType = CoreInfo::StringType;
+      return {_requiring.data(), 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  void warmup(SHContext *context) { _check.warmup(context); }
+  void cleanup() { _check.cleanup(); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sv = SHSTRVIEW(input);
+    auto check = _check.get();
+    auto checkSv = SHSTRVIEW(check);
+    if (sv.find(checkSv) != std::string_view::npos) {
+      return Var(true);
+    } else {
+      return Var(false);
+    }
+  }
+};
+
 struct Parser {
   std::string _cache;
 };
@@ -315,6 +385,7 @@ void registerShards() {
   REGISTER_SHARD("ParseInt", ParseInt);
   REGISTER_SHARD("ParseFloat", ParseFloat);
   REGISTER_SHARD("String.Trim", Trim);
+  REGISTER_SHARD("String.Contains", Contains);
 }
 } // namespace Regex
 } // namespace shards
