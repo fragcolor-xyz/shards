@@ -28,6 +28,7 @@ namespace Process {
 struct Run {
   std::string _moduleName;
   ParamVar _arguments{};
+  std::array<SHExposedTypeInfo, 1> _requiring;
   std::string _outBuf;
   std::string _errBuf;
   int64_t _timeout{30};
@@ -68,6 +69,17 @@ struct Run {
       return Var(_timeout);
     default:
       throw SHException("getParam out of range");
+    }
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (_arguments.isVariable()) {
+      _requiring[0].name = _arguments.variableName();
+      _requiring[0].help = SHCCSTR("The required variable containing the arguments for the command to run.");
+      _requiring[0].exposedType = CoreInfo::StringType;
+      return {_requiring.data(), 1, 0};
+    } else {
+      return {};
     }
   }
 
