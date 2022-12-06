@@ -38,15 +38,15 @@ markdown_extensions:
       permalink: true
 plugins:
   - search:
-      separator: '[\s\-\.]'
+      separator: '[\s\-\.\`]'
   - awesome-pages:
       strict: false
   - macros
 extra_css:
   - style_overrides.css
 theme:
+  name: material
   custom_dir: overrides
-  favicon: assets/images/favicon.svg
   features:
     - navigation.indexes
     - navigation.instant
@@ -57,9 +57,9 @@ theme:
   font:
     code: Fira Code
     text: Montserrat
-  language: en
+  language: custom
   logo: assets/images/logo.svg
-  name: material
+  favicon: assets/images/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
