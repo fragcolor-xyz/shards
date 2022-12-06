@@ -1,0 +1,29 @@
+.sh-parameters table {
+    padding: 0.1em !important;
+}
+.sh-parameters th {
+    padding: 0.3em 0.4em !important;
+}
+.sh-parameters td {
+    padding: 0.1em 0.4em !important;
+}
+
+.sh-parameters code {
+    font-size: 1em !important;
+    background-color: inherit !important;
+}
+
+#sh-flags-row {
+    min-width: 1rem !important;
+}
+body .md-tabs {
+    margin-top: -1.5em !important;
+}
+
+article h1 {
+    margin-bottom: 0.6em !important;
+}
+
+article h2 {
+    margin-top: 0.5em !important;
+}

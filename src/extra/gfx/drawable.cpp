@@ -33,6 +33,8 @@ void SHDrawableHierarchy::updateVariables() {
 struct DrawableShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
+  static inline Type TexturesTable = Type::TableOf(Types::TextureTypes);
+  static inline Type ShaderParamTable = Type::TableOf(Types::ShaderParamTypes);
 
   static inline std::map<std::string, Type> InputTableTypes = {
       std::make_pair("Transform", CoreInfo::Float4x4Type), std::make_pair("Mesh", Types::Mesh),
@@ -42,13 +44,14 @@ struct DrawableShard {
 
   PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use (Optional)", {CoreInfo::NoneType, TransformVarType});
   PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
-                 {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
-                  Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))});
+                 {CoreInfo::NoneType, ShaderParamTable,
+                  Type::VariableOf(ShaderParamTable)});
   PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
-                 {CoreInfo::NoneType, Type::TableOf(Types::TextureTypes),
-                  Type::VariableOf(Type::TableOf(Types::TextureVarTypes))});
+                 {CoreInfo::NoneType, TexturesTable,
+                  Type::VariableOf(TexturesTable)});
   PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_paramsVar), PARAM_IMPL_FOR(_texturesVar));
 
+  static SHOptionalString help() { return SHCCSTR(R"(Drawable help text)"); }
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
   SHDrawable *_returnVar{};

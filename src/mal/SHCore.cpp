@@ -2072,6 +2072,16 @@ BUILTIN("shards") {
   return mal::list(items);
 }
 
+static DocsFriendlyFormatter docsFormatter{.ignoreNone = true};
+
+static bool containsNone(const SHTypesInfo &types) {
+  for (size_t i = 0; i < types.len; i++) {
+    if (types.elements[i].basicType == SHType::None)
+      return true;
+  }
+  return false;
+}
+
 BUILTIN("info") {
   CHECK_ARGS_IS(1);
   ARG(malString, blkname);
@@ -2098,8 +2108,9 @@ BUILTIN("info") {
       else
         pmap[":help"] = mal::string(getString(params.elements[i].help.crc));
       std::stringstream ss;
-      ss << params.elements[i].valueTypes;
+      docsFormatter.format(ss, params.elements[i].valueTypes);
       pmap[":types"] = mal::string(ss.str());
+      pmap[":optional"] = mal::boolean(containsNone(params.elements[i].valueTypes));
       {
         std::ostringstream ss;
         auto param = shard->getParam(shard, (int)i);

@@ -103,7 +103,7 @@ struct Container {
     Constant = WGPUBlendFactor_Constant,
     OneMinusConstant = WGPUBlendFactor_OneMinusConstant,
   };
-  DECL_ENUM_INFO( BlendFactor_, BlendFactor, '_e4');
+  DECL_ENUM_INFO(BlendFactor_, BlendFactor, '_e4');
 
   enum class BlendOperation_ {
     Add = WGPUBlendOperation_Add,
@@ -112,13 +112,13 @@ struct Container {
     Min = WGPUBlendOperation_Min,
     Max = WGPUBlendOperation_Max,
   };
-  DECL_ENUM_INFO( BlendOperation_, BlendOperation, '_e5');
+  DECL_ENUM_INFO(BlendOperation_, BlendOperation, '_e5');
 
   enum class FilterMode_ {
     Nearest = WGPUFilterMode_Nearest,
     Linear = WGPUFilterMode_Linear,
   };
-  DECL_ENUM_INFO( FilterMode_, FilterMode, '_e6');
+  DECL_ENUM_INFO(FilterMode_, FilterMode, '_e6');
 
   enum class CompareFunction_ {
     Undefined = WGPUCompareFunction_Undefined,
@@ -131,7 +131,7 @@ struct Container {
     NotEqual = WGPUCompareFunction_NotEqual,
     Always = WGPUCompareFunction_Always,
   };
-  DECL_ENUM_INFO( CompareFunction_, CompareFunction, '_e7');
+  DECL_ENUM_INFO(CompareFunction_, CompareFunction, '_e7');
 
   enum class ColorMask_ {
     None = WGPUColorWriteMask_None,
@@ -141,7 +141,7 @@ struct Container {
     Alpha = WGPUColorWriteMask_Alpha,
     All = WGPUColorWriteMask_All,
   };
-  DECL_ENUM_INFO( ColorMask_, ColorMask, '_e8');
+  DECL_ENUM_INFO(ColorMask_, ColorMask, '_e8');
 
   enum class TextureType_ {
     Default = 0,
@@ -152,7 +152,7 @@ struct Container {
     SNorm,
     Float,
   };
-  DECL_ENUM_INFO( TextureType_, TextureType, '_e9');
+  DECL_ENUM_INFO(TextureType_, TextureType, '_e9');
 
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
 
@@ -184,11 +184,11 @@ struct Container {
   static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
 
   static inline Types TextureTypes = {{
-      TextureTypeEnumInfo::Type,
+      Texture,
   }};
 
   static inline Types TextureVarTypes = {{
-      Type::VariableOf(TextureTypeEnumInfo::Type),
+      Type::VariableOf(Texture),
   }};
 
   // Valid types for shader :Textures

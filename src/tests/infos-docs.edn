@@ -55,71 +55,55 @@
    ; title
    "# " >> .o name >> .o "\r\n\r\n" >> .o
 
-   ; deprecated warning
+   ;; Combined table showing the input/outpus and parameters
+   "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> .o
+   "| Name | - {: #sh-flags-row} | Description | Default | Type |\r\n" >> .o
+   "|------|---------------------|-------------|---------|------|\r\n" >> .o
+
+   "| `<input>` ||" >> .o
+   .inputHelp >> .o " | " >> .o "| `" >> .o
+   .inputTypes >> .o "` |\r\n" >> .o
+
+   "| `<output>` ||" >> .o
+   .outputHelp >> .o " | " >> .o "| `" >> .o
+   .outputTypes >> .o "` |\r\n" >> .o
+
+   (When
+    (-> (Count .parameters) (IsMore 0))
+    (->
+     .parameters
+     (ForEach
+      (-> (ExpectTable)
+          (| (Take "name") >= .p_name)
+          (| (Take "types") >= .p_types)
+          (| (Take "help") >= .p_help)
+          (| (Take "default") >= .p_default)
+          (| (Take "optional") (ExpectBool) >= .p_optional)
+          "| `" >> .o .p_name >> .o
+          .p_optional (If (Is true)
+                          (-> "` | :fontawesome-solid-circle-plus:{title=\"Optional\"} " >> .o)
+                          (-> "` | " >> .o))
+          " | " >> .o .p_help >> .o
+          " | `" >> .o .p_default >> .o
+          "` | `" >> .o .p_types >> .o
+          "` |\r\n" >> .o))))
+
+   "\r\n</div>\r\n" >> .o
+   "\r\n" >> .o
+
+
+   ;; deprecated warning
    (When
     (-> (Get .properties "deprecated" :Default false))
     (-> "--8<-- \"includes/deprecated.md\"\r\n\r\n" >> .o))
 
-   ; experimental warning
+   ;; experimental warning
    (When
     (-> (Get .properties "experimental" :Default false))
     (-> "--8<-- \"includes/experimental.md\"\r\n\r\n" >> .o))
 
-   ; basic syntax
-   "```clojure\r\n" >> .o
-   "(" >> .o name >> .o
-   (When
-    (-> (Count .parameters) (IsMore 0))
-    (-> "\r\n" >> .o
-        .parameters
-        (ForEach
-         (-> (ExpectTable)
-             (| (Take "name") >= .p_name)
-             (| (Take "types") >= .p_types)
-             "  :" >> .o .p_name >> .o " " >> .o .p_types >> .o "\r\n" >> .o))))
-   ")\r\n" >> .o
-   "```\r\n" >> .o
-
-   "\r\n\r\n" >> .o
-
-   "## Definition\r\n\r\n" >> .o
-   .help  >> .o "\r\n" >> .o
-
-   "\r\n\r\n" >> .o
-
-   (When
-    (-> (Count .parameters) (IsMore 0))
-    (-> "## Parameters\r\n\r\n" >> .o
-        "| Name | Type | Default | Description |\r\n" >> .o
-        "|------|------|---------|-------------|\r\n" >> .o
-
-        .parameters
-        (ForEach
-         (-> (ExpectTable)
-             (| (Take "name") >= .p_name)
-             (| (Take "types") >= .p_types)
-             (| (Take "help") >= .p_help)
-             (| (Take "default") >= .p_default)
-             "| " >> .o .p_name >> .o
-             " | `" >> .o .p_types >> .o
-             "` | `" >> .o .p_default >> .o
-             "` | " >> .o .p_help >> .o
-             " |\r\n" >> .o))
-        "\r\n\r\n" >> .o))
-
-   "## Input\r\n\r\n" >> .o
-   "| Type | Description |\r\n" >> .o
-   "|------|-------------|\r\n" >> .o
-   "| `" >> .o .inputTypes >> .o "` | " >> .o .inputHelp >> .o " |\r\n" >> .o
-
-   "\r\n\r\n" >> .o
-
-   "## Output\r\n\r\n" >> .o
-   "| Type | Description |\r\n" >> .o
-   "|------|-------------|\r\n" >> .o
-   "| `" >> .o .outputTypes >> .o "` | " >> .o .outputHelp >> .o " |\r\n" >> .o
-
-   "\r\n\r\n" >> .o
+   ;; Help text
+   .help  >> .o "\r\n\r\n" >> .o
 
    ;; details (optional)
    (When

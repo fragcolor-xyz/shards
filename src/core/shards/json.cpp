@@ -526,16 +526,14 @@ void from_json(const json &j, SHVar &var) {
     var.payload.objectVendorId = SHEnum(j.at("vendorId").get<int32_t>());
     var.payload.objectTypeId = SHEnum(j.at("typeId").get<int32_t>());
     var.payload.objectValue = nullptr;
-    int64_t id = (int64_t)var.payload.objectVendorId << 32 | var.payload.objectTypeId;
-    auto it = shards::GetGlobals().ObjectTypesRegister.find(id);
-    if (it != shards::GetGlobals().ObjectTypesRegister.end()) {
-      auto &info = it->second;
+    SHObjectInfo* objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
+    if (objectInfo) {
       auto data = j.at("data").get<std::vector<uint8_t>>();
-      var.payload.objectValue = info.deserialize(&data.front(), data.size());
+      var.payload.objectValue = objectInfo->deserialize(&data.front(), data.size());
       var.flags |= SHVAR_FLAGS_USES_OBJINFO;
-      var.objectInfo = &info;
-      if (info.reference)
-        info.reference(var.payload.objectValue);
+      var.objectInfo = objectInfo;
+      if (objectInfo->reference)
+        objectInfo->reference(var.payload.objectValue);
     } else {
       throw shards::ActivationError("Failed to find object type in registry.");
     }

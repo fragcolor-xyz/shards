@@ -150,6 +150,8 @@ void registerCoreShards();
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName = std::string_view());
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info);
+SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId);
+SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId);
 void registerRunLoopCallback(std::string_view eventName, SHCallback callback);
 void unregisterRunLoopCallback(std::string_view eventName);
 void registerExitCallback(std::string_view eventName, SHCallback callback);

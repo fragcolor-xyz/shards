@@ -23,6 +23,7 @@ extra:
       name: Company profile on LinkedIn
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.details
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
@@ -32,13 +33,17 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - md_in_html
   - toc:
       permalink: true
 plugins:
-  - search
+  - search:
+      separator: '[\s\-\.]'
   - awesome-pages:
       strict: false
   - macros
+extra_css:
+  - style_overrides.css
 theme:
   custom_dir: overrides
   favicon: assets/images/favicon.svg
