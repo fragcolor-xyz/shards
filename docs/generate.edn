@@ -4,7 +4,7 @@
 (defmesh root)
 
 ;; path definitions
-(def basePath "../../docs/")
+(def basePath "./")
 (def shardsPath "docs/reference/shards/")
 (def enumsPath "docs/reference/enums/")
 (def shardsDetailsPath "details/shards/")
