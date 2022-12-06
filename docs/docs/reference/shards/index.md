@@ -49,7 +49,7 @@ When a variable is not optional and its default value is not `None`, you should 
 
 ## Type descriptions
 
-The type column shows the expected types for an input/output/parameter:
+The type column shows the expected types for an input, output or parameter:
 
 <div class="sh-parameters" markdown="1">
 | Name | Type |
