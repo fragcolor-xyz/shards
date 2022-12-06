@@ -153,20 +153,18 @@
   25.0 >= .SpikeBall_Velocity_Max
   false >= .Damaged
 
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_1.png") = .Damage_Effect_1
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2.png") = .Damage_Effect_2
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_3.png") = .Damage_Effect_3
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_4.png") = .Damage_Effect_4
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_5.png") = .Damage_Effect_5
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_6.png") = .Damage_Effect_6
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_7.png") = .Damage_Effect_7
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_8.png") = .Damage_Effect_8
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_9.png") = .Damage_Effect_9
-  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_10.png") = .Damage_Effect_10
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_1.png") = .Damage_Effect_1
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_2.png") = .Damage_Effect_2
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_3.png") = .Damage_Effect_3
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_4.png") = .Damage_Effect_4
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_5.png") = .Damage_Effect_5
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_6.png") = .Damage_Effect_6
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_7.png") = .Damage_Effect_7
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2_8.png") = .Damage_Effect_8
   [.Damage_Effect_1 .Damage_Effect_2 .Damage_Effect_3 .Damage_Effect_4 .Damage_Effect_5
-   .Damage_Effect_6 .Damage_Effect_7 .Damage_Effect_8 .Damage_Effect_9 .Damage_Effect_10] >= .DamageEffect_Array
-  ;;(Count .DamageEffect_Array) (Math.Subtract 1) >= .DamageEffect_Array_Index_Max
-  .Coin_Effect_Array_Index_max >= .DamageEffect_Array_Index_Max
+   .Damage_Effect_6 .Damage_Effect_7 .Damage_Effect_8] >= .DamageEffect_Array
+  (Count .DamageEffect_Array) (Math.Subtract 1) >= .DamageEffect_Array_Index_Max
+  ;;.Coin_Effect_Array_Index_max >= .DamageEffect_Array_Index_Max
   0 >= .DamageEffect_Index
   0.02 >= .DamageEffect_Speed)
 
@@ -691,10 +689,10 @@
                             :Action (-> (Step Score_Effect_Animation)))))
 
   ;; ----------- Damaged_Effect ------------
-  (UI.Area :Position (float2 0 0)
-           :Anchor Anchor.TopLeft
+  (UI.Area :Position .Score_Effect_Position
+           :Anchor Anchor.Top
            :Contents (->
-                      .Coin_Effect_Array (Take .DamageEffect_Index) (UI.Image :Scale (float2 1))
+                      .DamageEffect_Array (Take .DamageEffect_Index) (UI.Image :Scale (float2 1))
                       (When :Predicate (-> .Damage_Effect_Play (Is true))
                             :Action (-> (Step DamageEffect_Animation)))))
   
