@@ -110,7 +110,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           cd docs/samples
-          for i in $(find shards -name '*.edn' -path '*UI*' -or -path '*GFX*');
+          for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*'\));
           do
             echo "Running sample $i";
             ../../build/shards run-sample.edn --file "$i";

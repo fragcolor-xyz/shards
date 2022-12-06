@@ -323,7 +323,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' ! -path '*UI*' ! -path '*GFX*');
+          for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' \));
           do
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --file "$i";
@@ -337,7 +337,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' -path '*UI*' -or -path '*GFX*');
+          for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
           do
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --file "$i";
