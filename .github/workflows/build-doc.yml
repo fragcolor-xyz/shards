@@ -81,7 +81,7 @@ jobs:
       - name: Generate markdown
         shell: msys2 {0}
         run: |
-          ./shards.exe src/tests/infos-docs.edn
+          ./shards.exe docs/generate.edn
       - name: Upload markdown
         uses: actions/upload-artifact@v3
         with:
