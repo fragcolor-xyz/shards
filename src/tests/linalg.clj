@@ -138,6 +138,14 @@
   [20.0 30.0] (Math.Normalize :Positive false) (Log)
   (Float2 20.0 30.0) (Math.Normalize :Positive true) (Log)
   [20.0 30.0] (Math.Normalize :Positive true) (Log)
+  
+  (Float3 0.0 1.0 2.0) >= .first-3
+  (Float3 4.0 -1.0 0.0) >= .second-3
+  0.5 (Math.Lerp .first-3 .second-3) (Assert.Is (Float3 2 0 1) true) (Log "Lerped value")
+  
+  (Color 0x10 0x20 0x40 0xff) >= .first-c
+  (Color 0x25 0xff 0x20 0xff) >= .second-c
+  0.5 (Math.Lerp .first-c .second-c) (Assert.Is (Color 0x1a 0x8f 0x30 0xff) true) (Log "Lerped color")
 
   (Msg "Done!")
 ))

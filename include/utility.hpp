@@ -5,6 +5,7 @@
 #define SH_UTILITY_HPP
 
 #include "shards.hpp"
+#include <spdlog/fmt/fmt.h>
 #include <cassert>
 #include <future>
 #include <magic_enum.hpp>
@@ -729,6 +730,22 @@ inline size_t getPixelSize(const SHVar &input) {
     pixsize = 4;
   return pixsize;
 }
+
+template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  for (const auto &share : data.shared) {
+    if (!strcmp(share.name, var->payload.stringValue)) {
+      return &share;
+    }
+  }
+  return nullptr;
+}
+template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
+  const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
+  if (!ti)
+    throw ComposeError(fmt::format("Parameter {} not found", var->payload.stringValue));
+  return *ti;
+}
+
 }; // namespace shards
 
 #endif
