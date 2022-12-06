@@ -146,6 +146,9 @@
   (Color 0x10 0x20 0x40 0xff) >= .first-c
   (Color 0x25 0xff 0x20 0xff) >= .second-c
   0.5 (Math.Lerp .first-c .second-c) (Assert.Is (Color 0x1a 0x8f 0x30 0xff) true) (Log "Lerped color")
+  
+  0.5 (Math.Lerp 0.0 4.0) (Assert.Is 2.0 true) (Log "Lerped Float Value")
+  0.5 (Math.Lerp 0x00 0xff) (Assert.Is 0x7f true) (Log "Lerped Int Value")
 
   (Msg "Done!")
 ))
