@@ -35,6 +35,7 @@ struct DrawableShard {
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
   static inline Type TexturesTable = Type::TableOf(Types::TextureTypes);
   static inline Type ShaderParamTable = Type::TableOf(Types::ShaderParamTypes);
+  static inline Type ShaderParamVarTable = Type::TableOf(Types::ShaderParamVarTypes);
 
   static inline std::map<std::string, Type> InputTableTypes = {
       std::make_pair("Transform", CoreInfo::Float4x4Type), std::make_pair("Mesh", Types::Mesh),
@@ -44,8 +45,8 @@ struct DrawableShard {
 
   PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use (Optional)", {CoreInfo::NoneType, TransformVarType});
   PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
-                 {CoreInfo::NoneType, ShaderParamTable,
-                  Type::VariableOf(ShaderParamTable)});
+                 {CoreInfo::NoneType, ShaderParamVarTable,
+                  Type::VariableOf(ShaderParamVarTable)});
   PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
                  {CoreInfo::NoneType, TexturesTable,
                   Type::VariableOf(TexturesTable)});
