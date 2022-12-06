@@ -150,7 +150,7 @@
                                                         .sample-log-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
                                                         "    ```\r\n" >> .o))))
 
-               "\r\n" >> .o))))))
+               "&nbsp;\r\n" >> .o))))))
 
    "--8<-- \"includes/license.md\"\r\n" >> .o
 
