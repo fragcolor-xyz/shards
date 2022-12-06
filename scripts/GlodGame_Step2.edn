@@ -3,7 +3,18 @@
   (LoadImage "GlodImages/Character1_Left.png") = .Character_Left
   (LoadImage "GlodImages/Character1_Right.png") = .Character_Right
   (LoadImage "GlodImages/Character1_Jumping.png") = .Character_Jumping
-  
+
+  ;; --------- Idle Sprites (Facing Left) -------------
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") = .image_idle_Left_1
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png") = .image_idle_Left_2
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png") = .image_idle_Left_3
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png") = .image_idle_Left_4
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png") = .image_idle_Left_5
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") = .image_idle_Left_6
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") = .image_idle_Left_7
+  [.image_idle_Left_1 .image_idle_Left_2 .image_idle_Left_3 .image_idle_Left_4 .image_idle_Left_5 
+   .image_idle_Left_6 .image_idle_Left_7] >= .idle_Left_image_array
+
   true >= .CharacterIdle
   false >= .Character_Jump
   false >= .Character_Walking_Left
