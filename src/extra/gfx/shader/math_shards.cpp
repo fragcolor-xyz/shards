@@ -142,6 +142,23 @@ template <typename TShard> struct MakeVectorTranslator {
   }
 };
 
+struct LerpTranslator {
+  static void translate(shards::Math::Lerp *shard, TranslationContext &context) {
+    auto expr = blocks::makeCompoundBlock();
+    expr->append("mix(");
+
+    auto first = translateParamVar(shard->_first, context);
+    expr->append(first->toBlock(), ", ");
+    auto second = translateParamVar(shard->_second, context);
+    expr->append(second->toBlock(), ", ");
+
+    auto input = context.takeWGSLTop();
+    expr->append(input->toBlock(), ")");
+
+    context.setWGSLTopVar(first->getType(), std::move(expr));
+  }
+};
+
 template <SHType ToType> using ToNumber = shards::ToNumber<ToType>;
 template <SHType ToType> using MakeVector = shards::MakeVector<ToType>;
 
@@ -167,6 +184,8 @@ void registerMathShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Round", shards::Math::Round, OperatorRound);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Negate", shards::Math::Negate, OperatorNegate);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Abs", shards::Math::Abs, OperatorAbs);
+
+  REGISTER_EXTERNAL_SHADER_SHARD(LerpTranslator, "Math.Lerp", shards::Math::Lerp);
 
   // Logic operators
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Is", shards::Is, OperatorIs);
