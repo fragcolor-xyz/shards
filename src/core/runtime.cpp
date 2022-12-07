@@ -978,12 +978,10 @@ void validateConnection(ValidationContext &ctx) {
         shards::arrayPush(data.shared, type);
       }
     }
-    if (!ctx.wire || !ctx.wire->pure) {
-      // and inherited
-      for (auto &info : ctx.inherited) {
-        for (auto &type : info.second) {
-          shards::arrayPush(data.shared, type);
-        }
+    // and inherited
+    for (auto &info : ctx.inherited) {
+      for (auto &type : info.second) {
+        shards::arrayPush(data.shared, type);
       }
     }
     DEFER(shards::arrayFree(data.shared));
