@@ -31,14 +31,6 @@ WGPUTextureFormat getAttachmentFormat(const std::string &name, const SHVar &form
   throw std::runtime_error("Output :Format required");
 }
 
-template <typename T> void applyFeatures(SHContext *context, T &step, const SHVar &input) {
-  checkType(input.valueType, SHType::Seq, ":Features");
-  for (size_t i = 0; i < input.payload.seqValue.len; i++) {
-    auto &elem = input.payload.seqValue.elements[i];
-    step.features.push_back(*varAsObjectChecked<FeaturePtr>(elem, Types::Feature));
-  }
-}
-
 template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar &input) {
   checkType(input.valueType, SHType::Seq, "Outputs sequence");
 
@@ -161,7 +153,7 @@ template <typename T> void applyAll(SHContext *context, T &step, const SHTable &
   step.features.clear();
   SHVar featuresVar;
   if (getFromTable(context, inputTable, "Features", featuresVar))
-    shared::applyFeatures(context, step, featuresVar);
+    applyFeatures(context, step.features, featuresVar);
 }
 
 } // namespace shared

@@ -2,7 +2,7 @@
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include "linalg_shim.hpp"
-#include "material_utils.hpp"
+#include "drawable_utils.hpp"
 #include <gfx/material.hpp>
 #include <params.hpp>
 
