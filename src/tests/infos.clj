@@ -3,4 +3,5 @@
 
 ; strings are compressed by default, need to unpack if we use info
 (decompress-strings)
-(prn (map (fn* [name] [name (info name)]) (shards)))
+(prn (map (fn* [name] [name (shard-info name)]) (shards)))
+(prn (map (fn* [name] [name (enum-info name)]) (enums)))

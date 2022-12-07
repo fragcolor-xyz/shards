@@ -82,7 +82,6 @@ jobs:
         shell: msys2 {0}
         run: |
           ./shards.exe src/tests/infos-docs.edn
-          mv docs/reference/docs/shards/General/UI.md docs/reference/docs/shards/UI/index.md
       - name: Upload markdown
         uses: actions/upload-artifact@v3
         with:
