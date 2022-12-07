@@ -1,6 +1,6 @@
 #include "../gfx.hpp"
 #include "buffer_vars.hpp"
-#include "material_utils.hpp"
+#include "drawable_utils.hpp"
 #include "shader/translator.hpp"
 #include "shards_utils.hpp"
 #include <gfx/context.hpp>
@@ -124,7 +124,7 @@ struct FeatureShard {
     const IterableExposedInfo _hack(data.shared);
     _sharedCopy = _hack;
 
-    return CoreInfo::NoneType; // not complete
+    return Types::Feature;
   }
 
   void applyBlendComponent(SHContext *context, BlendComponent &blendComponent, const SHVar &input) {

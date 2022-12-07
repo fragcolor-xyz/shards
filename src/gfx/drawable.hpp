@@ -39,6 +39,13 @@ struct DrawableHierarchy {
   std::string label;
 
   Ptr clone() const;
+
+  template <typename T> static inline void foreach (Ptr &item, T && callback) {
+    callback(item);
+    for (auto &child : item->children) {
+      foreach (child, callback);
+    }
+  }
 };
 
 struct DrawQueue {

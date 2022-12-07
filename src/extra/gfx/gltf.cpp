@@ -1,5 +1,6 @@
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
+#include "drawable_utils.hpp"
 #include <shards_macros.hpp>
 #include <foundation.hpp>
 #include <gfx/gltf/gltf.hpp>
@@ -38,6 +39,7 @@ struct GLTFShard {
   DrawableHierarchyPtr _staticModel;
   bool _hasConstTransform{};
   SHDrawableHierarchy *_returnVar{};
+  std::vector<FeaturePtr> _features;
 
   void releaseReturnVar() {
     if (_returnVar)
@@ -51,12 +53,13 @@ struct GLTFShard {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto &tableType = data.inputType.table;
+    auto &inputTableType = data.inputType.table;
+    size_t inputTableLen = inputTableType.keys.len;
 
     auto findInputTableType = [&](const std::string &key) -> const SHTypeInfo * {
-      for (size_t i = 0; i < tableType.keys.len; i++) {
-        if (key == tableType.keys.elements[i]) {
-          return &tableType.types.elements[i];
+      for (size_t i = 0; i < inputTableLen; i++) {
+        if (key == inputTableType.keys.elements[i]) {
+          return &inputTableType.types.elements[i];
         }
       }
       return nullptr;
@@ -90,6 +93,14 @@ struct GLTFShard {
       throw ComposeError("glTF Binary or file path required when not loading a static model");
     }
 
+    for (size_t i = 0; i < inputTableLen; i++) {
+      std::string_view key = inputTableType.keys.elements[i];
+      SHTypeInfo &type = inputTableType.types.elements[i];
+      if (key != "Path" && key != "Bytes" && key != "Copy") {
+        validateDrawableInputTableEntry(inputTableType.keys.elements[i], type);
+      }
+    }
+
     const SHTypeInfo *transformType = findInputTableType("Transform");
     _hasConstTransform = transformType != nullptr;
     if (_hasConstTransform) {
@@ -121,10 +132,12 @@ struct GLTFShard {
 
   // Set & link transform
   void initModel(SHContext *context, SHDrawableHierarchy &shDrawable, const SHVar &input) {
+    const SHTable &inputTable = input.payload.tableValue;
+
     // Set constant transform
     if (_hasConstTransform) {
       SHVar transformVar;
-      getFromTable(context, input.payload.tableValue, "Transform", transformVar);
+      getFromTable(context, inputTable, "Transform", transformVar);
       float4x4 transform = shards::Mat4(transformVar);
 
       shDrawable.drawableHierarchy->transform = transform;
@@ -134,6 +147,17 @@ struct GLTFShard {
     if (_transformVar.isVariable()) {
       shDrawable.transformVar = (SHVar &)_transformVar;
       shDrawable.transformVar.warmup(context);
+    }
+
+    _features.clear();
+    SHVar featuresVar;
+    if (getFromTable(context, inputTable, "Features", featuresVar)) {
+      applyFeatures(context, _features, featuresVar);
+      DrawableHierarchy::foreach (shDrawable.drawableHierarchy, [&](DrawableHierarchyPtr item) {
+        for (auto &drawable : item->drawables) {
+          drawable->features = _features;
+        }
+      });
     }
   }
 

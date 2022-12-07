@@ -1,5 +1,5 @@
 #include "../gfx.hpp"
-#include "material_utils.hpp"
+#include "drawable_utils.hpp"
 #include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
@@ -37,12 +37,6 @@ struct DrawableShard {
   static inline Type ShaderParamTable = Type::TableOf(Types::ShaderParamTypes);
   static inline Type ShaderParamVarTable = Type::TableOf(Types::ShaderParamVarTypes);
 
-  static inline std::map<std::string, Type> InputTableTypes = {
-      std::make_pair("Transform", CoreInfo::Float4x4Type), std::make_pair("Mesh", Types::Mesh),
-      std::make_pair("Params", Types::ShaderParamTable),   std::make_pair("Textures", Types::TexturesTable),
-      std::make_pair("Material", Types::Material),
-  };
-
   PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use (Optional)", {CoreInfo::NoneType, TransformVarType});
   PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
                  {CoreInfo::NoneType, ShaderParamVarTable,
@@ -55,6 +49,7 @@ struct DrawableShard {
   static SHOptionalString help() { return SHCCSTR(R"(Drawable help text)"); }
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
+
   SHDrawable *_returnVar{};
 
   void releaseReturnVar() {
@@ -75,43 +70,8 @@ struct DrawableShard {
     releaseReturnVar();
   }
 
-  void validateTexturesInputType(SHTypeInfo &type) {
-    if (type.basicType != SHType::Table)
-      throw ComposeError("Textures should be a table");
-
-    auto &tableTypes = type.table.types;
-    for (auto &type : tableTypes) {
-      if (type != Types::Texture)
-        throw ComposeError("Unexpected type in Textures table");
-    }
-  }
-
-  void validateInputTableType(SHTypeInfo &type) {
-    auto &inputTable = type.table;
-    size_t inputTableLen = inputTable.keys.len;
-    for (size_t i = 0; i < inputTableLen; i++) {
-      const char *key = inputTable.keys.elements[i];
-      SHTypeInfo &type = inputTable.types.elements[i];
-
-      if (strcmp(key, "Params") == 0) {
-        validateShaderParamsType(type);
-      } else if (strcmp(key, "Textures") == 0) {
-        validateTexturesInputType(type);
-      } else {
-        auto expectedTypeIt = InputTableTypes.find(key);
-        if (expectedTypeIt == InputTableTypes.end()) {
-          throw ComposeError(fmt::format("Unexpected input table key: {}", key));
-        }
-
-        if (expectedTypeIt->second != type) {
-          throw ComposeError(fmt::format("Unexpected input type for key: {}", key));
-        }
-      }
-    }
-  }
-
   SHTypeInfo compose(SHInstanceData &data) {
-    validateInputTableType(data.inputType);
+    validateDrawableInputTableType(data.inputType);
     return Types::Drawable;
   }
 
@@ -153,6 +113,12 @@ struct DrawableShard {
     if (_transformVar.isVariable()) {
       _returnVar->transformVar = (SHVar &)_transformVar;
       _returnVar->transformVar.warmup(shContext);
+    }
+
+    SHVar featuresVar;
+    _returnVar->drawable->features.clear();
+    if (getFromTable(shContext, inputTable, "Features", featuresVar)) {
+      applyFeatures(shContext, _returnVar->drawable->features, featuresVar);
     }
 
     return Types::DrawableObjectVar.Get(_returnVar);

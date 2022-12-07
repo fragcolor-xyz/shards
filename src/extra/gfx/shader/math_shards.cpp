@@ -177,6 +177,11 @@ void registerMathShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Max", shards::Math::Max, OperatorMax);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Min", shards::Math::Min, OperatorMin);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Pow", shards::Math::Pow, OperatorPow);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.RShift", shards::Math::RShift, OperatorRShift);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.LShift", shards::Math::RShift, OperatorLShift);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Xor", shards::Math::RShift, OperatorXor);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.And", shards::Math::RShift, OperatorAnd);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(BinaryOperatorTranslator, "Math.Or", shards::Math::RShift, OperatorOr);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Log", shards::Math::Log, OperatorLog);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Exp", shards::Math::Exp, OperatorExp);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Floor", shards::Math::Floor, OperatorFloor);

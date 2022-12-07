@@ -155,6 +155,7 @@ struct Container {
   DECL_ENUM_INFO(TextureType_, TextureType, '_e9');
 
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
+  static inline Type FeatureSeq = Type::SeqOf(Feature);
 
   OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
   static inline Type PipelineStepSeq = Type::SeqOf(PipelineStep);
@@ -193,6 +194,12 @@ struct Container {
 
   // Valid types for shader :Textures
   static inline Type TexturesTable = Type::TableOf(TextureTypes);
+
+  static inline std::map<std::string, Type> DrawableInputTableTypes = {
+      std::make_pair("Transform", CoreInfo::Float4x4Type), std::make_pair("Mesh", Mesh),
+      std::make_pair("Params", ShaderParamTable),   std::make_pair("Textures", TexturesTable),
+      std::make_pair("Material", Material), std::make_pair("Features", FeatureSeq),
+  };
 
 #undef ENUM
 #undef OBJECT

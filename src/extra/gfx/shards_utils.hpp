@@ -1,11 +1,13 @@
-#ifndef EXTRA_GFX_SHARDS_UTILS
-#define EXTRA_GFX_SHARDS_UTILS
+#ifndef AD2CA4AE_4D00_49A0_8DD6_323B82813690
+#define AD2CA4AE_4D00_49A0_8DD6_323B82813690
 
 #include <foundation.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/linalg.hpp>
+#include <gfx/fwd.hpp>
 #include <magic_enum.hpp>
 #include <shards.hpp>
+#include "shards_types.hpp"
 
 namespace gfx {
 // Retrieves a value directly or from a context variable from a table by name
@@ -66,12 +68,21 @@ template <> struct VectorConversion<float4> {
   static auto convert(const SHVar &value) {
     if (value.valueType != SHType::Float4)
       throw std::runtime_error("Invalid vector type");
-    return float4(value.payload.float4Value[0], value.payload.float4Value[1], value.payload.float4Value[2], value.payload.float4Value[3]);
+    return float4(value.payload.float4Value[0], value.payload.float4Value[1], value.payload.float4Value[2],
+                  value.payload.float4Value[3]);
   }
 };
 
 template <typename TVec> inline auto toVec(const SHVar &value) { return VectorConversion<TVec>::convert(value); }
 
+inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatures, const SHVar &input) {
+  checkType(input.valueType, SHType::Seq, ":Features");
+  for (size_t i = 0; i < input.payload.seqValue.len; i++) {
+    auto &elem = input.payload.seqValue.elements[i];
+    outFeatures.push_back(*varAsObjectChecked<FeaturePtr>(elem, Types::Feature));
+  }
+}
+
 } // namespace gfx
 
-#endif // EXTRA_GFX_SHARDS_UTILS
+#endif /* AD2CA4AE_4D00_49A0_8DD6_323B82813690 */
