@@ -133,13 +133,15 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   dataCopy.wire = wire.get();
   IterableExposedInfo shared(data.shared);
   IterableExposedInfo sharedCopy;
-  if (mode == RunWireMode::Detached && !capturing) {
-    // keep only globals
-    auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
-    sharedCopy = IterableExposedInfo(shared.begin(), end);
-  } else {
-    // we allow Detached but they need to be referenced during warmup
-    sharedCopy = shared;
+  if (!wire->pure) {
+    if (mode == RunWireMode::Detached && !capturing) {
+      // keep only globals
+      auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
+      sharedCopy = IterableExposedInfo(shared.begin(), end);
+    } else {
+      // we allow Detached but they need to be referenced during warmup
+      sharedCopy = shared;
+    }
   }
 
   dataCopy.shared = sharedCopy;
