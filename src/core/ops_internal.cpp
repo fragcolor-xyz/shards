@@ -24,7 +24,8 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     if (objectInfo) {
       os << objectInfo->name;
     } else {
-      os << "Object";
+      os << "Object: 0x" << std::hex << var.payload.objectValue << " vendor: 0x" << var.payload.objectVendorId << " type: 0x"
+         << var.payload.objectTypeId << std::dec;
     }
     break;
   }
@@ -43,10 +44,20 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
        << var.payload.arrayValue.len << " of: " << type2Name(var.innerType);
     break;
-  case SHType::Enum:
-    os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
-       << var.payload.enumTypeId << std::dec;
+  case SHType::Enum: {
+    SHEnumInfo *enumInfo = findEnumInfo(var.payload.enumVendorId, var.payload.enumTypeId);
+    if (enumInfo) {
+      const char *label = "<invalid>";
+      if (var.payload.enumValue >= 0 && var.payload.enumValue < enumInfo->labels.len) {
+        label = enumInfo->labels.elements[var.payload.enumValue];
+      }
+      os << enumInfo->name << "." << label;
+    } else {
+      os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
+         << var.payload.enumTypeId << std::dec;
+    }
     break;
+  }
   case SHType::Bool:
     os << (var.payload.boolValue ? "true" : "false");
     break;
