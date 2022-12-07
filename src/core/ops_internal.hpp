@@ -36,7 +36,7 @@ template <typename T> struct StringStreamFormatter {
   template <typename FormatContext> auto format(const T &v, FormatContext &ctx) -> decltype(ctx.out()) {
     std::stringstream ss;
     ss << v;
-    return format_to(ctx.out(), "{}", ss.str());
+    return fmt::format_to(ctx.out(), "{}", ss.str());
   }
 };
 
