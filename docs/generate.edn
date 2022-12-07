@@ -129,7 +129,6 @@
                [name "/" .sample-filename ".edn.log"] (String.Join) = .sample-log-fn
                [name "/" .sample-filename ".out.md"] (String.Join) = .sample-out-md-fn
 
-               .sample-log-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-log
                .sample-out-md-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-out-md
 
                "=== \"Code\"\r\n\r\n" >> .o
@@ -137,18 +136,19 @@
                "    --8<-- \"" >> .o .sample-script-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
                "    ```\r\n\r\n" >> .o
 
-               (When (-> .sample-have-log (Or) .sample-have-out-md)
+               "=== \"Output\"\r\n\r\n" >> .o
+               ; Optionally include the .out.md file next to the sample log
+               .sample-have-out-md
+               (When (Is true)
                      (->
-                      "=== \"Output\"\r\n\r\n" >> .o
-                      .sample-have-out-md (When (Is true) (->
-                                                           "    --8<-- \"" >> .o
-                                                           .sample-out-md-fn (getFilename shardsSamplePath "" true) >> .o
-                                                           "\"\r\n\r\n" >> .o))
-                      .sample-have-log (When (Is true) (->
-                                                        "    ```\r\n" >> .o
-                                                        "    --8<-- \"" >> .o
-                                                        .sample-log-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
-                                                        "    ```\r\n" >> .o))))
+                      "    --8<-- \"" >> .o
+                      .sample-out-md-fn (getFilename shardsSamplePath "" true) >> .o
+                      "\"\r\n\r\n" >> .o))
+
+               "    ```\r\n" >> .o
+               "    --8<-- \"" >> .o
+               .sample-log-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
+               "    ```\r\n" >> .o
 
                "&nbsp;\r\n" >> .o))))))
 
