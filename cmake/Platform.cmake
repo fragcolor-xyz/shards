@@ -38,6 +38,11 @@ if(USE_FPIC)
   list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSDL_STATIC_PIC=ON)
 endif()
 
+# Force ninja to use response files on windows when command line might be too long otherwise
+if(CMAKE_HOST_WIN32)
+  SET(CMAKE_NINJA_FORCE_RESPONSE_FILE ON CACHE INTERNAL "" FORCE)
+endif()
+
 if(EMSCRIPTEN)
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     add_compile_options(-g1 -Os)
