@@ -87,9 +87,11 @@ jobs:
         with:
           name: docs-markdown
           path: |
-            docs/reference/docs/shards/**/*.md
-            !docs/reference/docs/shards/index.md
-            !docs/reference/docs/shards/types.md
+            docs/docs/reference/shards/**/*.md
+            docs/docs/reference/enums/**/*.md
+            !docs/docs/reference/enums/index.md
+            !docs/docs/reference/shards/index.md
+            !docs/docs/reference/shards/types.md
           if-no-files-found: error
 
   #
@@ -123,7 +125,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs-markdown
-          path: shards/docs/reference/docs/shards
+          path: shards/docs/docs/reference
       - name: Download samples logs
         uses: actions/download-artifact@v3
         with:
