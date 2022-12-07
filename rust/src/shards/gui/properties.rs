@@ -8,6 +8,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -44,7 +45,7 @@ shenum_types! {
 lazy_static! {
   static ref PARAMETERS: Parameters = vec![(
     cstr!("Property"),
-    shccstr!("Which property to read from the UI"),
+    shccstr!("Which property to read from the UI."),
     &UIPROPERTY_TYPES[..],
   )
     .into(),];
@@ -121,7 +122,7 @@ impl Shard for GetProperty {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    *HELP_VALUE_IGNORED
   }
 
   fn outputTypes(&mut self) -> &Types {

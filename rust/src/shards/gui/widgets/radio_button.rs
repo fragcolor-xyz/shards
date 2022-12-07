@@ -8,6 +8,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::widgets::text_util;
 use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::ANY_VAR_SLICE;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -31,23 +32,23 @@ lazy_static! {
   static ref RADIOBUTTON_PARAMETERS: Parameters = vec![
     (
       cstr!("Label"),
-      cstr!("The text label of this radio button."),
+      shccstr!("The text label of this radio button."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Variable"),
-      cstr!("The variable that holds the input value."),
+      shccstr!("The variable that holds the input value."),
       ANY_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Value"),
-      cstr!("The value to compare with."),
+      shccstr!("The value to compare with."),
       &ANY_TYPES[..],
     )
       .into(),
-    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+    (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -98,7 +99,7 @@ impl Shard for RadioButton {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    *HELP_VALUE_IGNORED
   }
 
   fn outputTypes(&mut self) -> &Types {

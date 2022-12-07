@@ -13,6 +13,7 @@ use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EGUI_UI_TYPE;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -47,13 +48,13 @@ macro_rules! impl_ui_input {
       static ref $parameters: Parameters = vec![
         (
           cstr!("Variable"),
-          cstr!("The variable that holds the input value."),
+          shccstr!("The variable that holds the input value."),
           $static,
         )
           .into(),
         (
           cstr!("Prefix"),
-          cstr!("Display a prefix before the number."),
+          shccstr!("Display a prefix before the number."),
           STRING_OR_NONE_SLICE,
         )
           .into(),
@@ -104,7 +105,7 @@ macro_rules! impl_ui_input {
       }
 
       fn inputHelp(&mut self) -> OptionalString {
-        OptionalString(shccstr!("The value is ignored."))
+        *HELP_VALUE_IGNORED
       }
 
       fn outputTypes(&mut self) -> &Types {
@@ -270,13 +271,13 @@ macro_rules! impl_ui_n_input {
       static ref $parameters: Parameters = vec![
         (
           cstr!("Variable"),
-          cstr!("The variable that holds the input value."),
+          shccstr!("The variable that holds the input value."),
           $static,
         )
           .into(),
         (
           cstr!("Prefix"),
-          cstr!("Display a prefix before the number."),
+          shccstr!("Display a prefix before the number."),
           STRING_OR_NONE_SLICE,
         )
           .into(),
@@ -327,7 +328,7 @@ macro_rules! impl_ui_n_input {
       }
 
       fn inputHelp(&mut self) -> OptionalString {
-        OptionalString(shccstr!("The value is ignored."))
+        *HELP_VALUE_IGNORED
       }
 
       fn outputTypes(&mut self) -> &Types {

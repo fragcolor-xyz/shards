@@ -6,6 +6,7 @@ use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::COLOR_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc;
 use crate::types::common_type;
@@ -27,7 +28,7 @@ use std::ffi::CStr;
 lazy_static! {
   static ref COLORINPUT_PARAMETERS: Parameters = vec![(
     cstr!("Variable"),
-    cstr!("The variable that holds the input value."),
+    shccstr!("The variable that holds the input value."),
     COLOR_VAR_OR_NONE_SLICE,
   )
     .into(),];
@@ -76,7 +77,7 @@ impl Shard for ColorInput {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    *HELP_VALUE_IGNORED
   }
 
   fn outputTypes(&mut self) -> &Types {

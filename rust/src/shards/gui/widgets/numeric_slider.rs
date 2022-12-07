@@ -15,6 +15,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::widgets::text_util;
 use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::EGUI_UI_TYPE;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -49,19 +50,19 @@ macro_rules! impl_ui_slider {
       static ref $parameters: Parameters = vec![
         (
           cstr!("Label"),
-          cstr!("The text label for this widget."),
+          shccstr!("The text label for this widget."),
           STRING_OR_NONE_SLICE
         )
           .into(),
-        (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+        (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
         (
           cstr!("Variable"),
-          cstr!("The variable that holds the input value."),
+          shccstr!("The variable that holds the input value."),
           $static,
         )
           .into(),
-        (cstr!("Min"), cstr!("The minimum value."), $static,).into(),
-        (cstr!("Max"), cstr!("The maximum value."), $static,).into(),
+        (cstr!("Min"), shccstr!("The minimum value."), $static,).into(),
+        (cstr!("Max"), shccstr!("The maximum value."), $static,).into(),
       ];
     }
 
@@ -112,7 +113,7 @@ macro_rules! impl_ui_slider {
       }
 
       fn inputHelp(&mut self) -> OptionalString {
-        OptionalString(shccstr!("The value is ignored."))
+        *HELP_VALUE_IGNORED
       }
 
       fn outputTypes(&mut self) -> &Types {
@@ -302,19 +303,19 @@ macro_rules! impl_ui_n_slider {
       static ref $parameters: Parameters = vec![
         (
           cstr!("Label"),
-          cstr!("The label for this widget."),
+          shccstr!("The label for this widget."),
           STRING_OR_NONE_SLICE
         )
           .into(),
-        (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+        (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
         (
           cstr!("Variable"),
-          cstr!("The variable that holds the input value."),
+          shccstr!("The variable that holds the input value."),
           $static,
         )
           .into(),
-        (cstr!("Min"), cstr!("The minimum value."), $static,).into(),
-        (cstr!("Max"), cstr!("The maximum value."), $static,).into(),
+        (cstr!("Min"), shccstr!("The minimum value."), $static,).into(),
+        (cstr!("Max"), shccstr!("The maximum value."), $static,).into(),
       ];
     }
 
@@ -365,7 +366,7 @@ macro_rules! impl_ui_n_slider {
       }
 
       fn inputHelp(&mut self) -> OptionalString {
-        OptionalString(shccstr!("The value is ignored."))
+        *HELP_VALUE_IGNORED
       }
 
       fn outputTypes(&mut self) -> &Types {

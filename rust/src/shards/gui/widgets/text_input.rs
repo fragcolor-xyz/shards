@@ -6,6 +6,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::ImmutableVar;
 use crate::shards::gui::MutableVar;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_VAR_SLICE;
 use crate::shardsc;
@@ -30,13 +31,13 @@ lazy_static! {
   static ref TEXTINPUT_PARAMETERS: Parameters = vec![
     (
       cstr!("Variable"),
-      cstr!("The variable that holds the input value."),
+      shccstr!("The variable that holds the input value."),
       STRING_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Multiline"),
-      cstr!("Support multiple lines."),
+      shccstr!("Support multiple lines."),
       BOOL_TYPES_SLICE,
     )
       .into(),
@@ -87,7 +88,7 @@ impl Shard for TextInput {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    *HELP_VALUE_IGNORED
   }
 
   fn outputTypes(&mut self) -> &Types {

@@ -7,6 +7,7 @@ use crate::shards::gui::misc::style_util;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHColor;
 use crate::types::Context;
@@ -26,13 +27,13 @@ lazy_static! {
   static ref CONSOLE_PARAMETERS: Parameters = vec![
     (
       cstr!("ShowFilters"),
-      cstr!("Whether to display filter controls."),
+      shccstr!("Whether to display filter controls."),
       BOOL_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("Style"),
-      cstr!("The console style."),
+      shccstr!("The console style."),
       &ANY_TABLE_VAR_TYPES[..],
     )
       .into(),
@@ -89,7 +90,7 @@ impl Shard for Console {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

@@ -9,6 +9,8 @@ use crate::shards::gui::EguiId;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::FLOAT_VAR_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -27,31 +29,31 @@ lazy_static! {
   static ref GRID_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Striped"),
-      cstr!("Whether to alternate a subtle background color to every other row."),
+      shccstr!("Whether to alternate a subtle background color to every other row."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("MinWidth"),
-      cstr!("Minimum column width."),
+      shccstr!("Minimum column width."),
       FLOAT_VAR_SLICE,
     )
       .into(),
     (
       cstr!("MaxWidth"),
-      cstr!("Maximum column width."),
+      shccstr!("Maximum column width."),
       FLOAT_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Spacing"),
-      cstr!("Spacing between columns/rows."),
+      shccstr!("Spacing between columns/rows."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
@@ -113,7 +115,7 @@ impl Shard for Grid {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -276,12 +278,24 @@ impl Shard for NextRow {
     "UI.NextRow"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Moves to the next row in a grid layout."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    *HELP_VALUE_IGNORED
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {

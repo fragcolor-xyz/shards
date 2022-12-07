@@ -6,6 +6,7 @@ use super::Image;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
@@ -22,7 +23,7 @@ use crate::types::Var;
 lazy_static! {
   static ref IMAGE_PARAMETERS: Parameters = vec![(
     cstr!("Scale"),
-    cstr!("Scaling to apply to the source image"),
+    shccstr!("Scaling to apply to the source image"),
     FLOAT2_VAR_SLICE,
   )
     .into(),];
@@ -69,7 +70,7 @@ impl Shard for Image {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The image to display"))
+    OptionalString(shccstr!("The image to display."))
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -77,7 +78,7 @@ impl Shard for Image {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

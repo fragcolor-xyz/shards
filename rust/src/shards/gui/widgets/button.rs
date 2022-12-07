@@ -29,23 +29,23 @@ lazy_static! {
   static ref BUTTON_PARAMETERS: Parameters = vec![
     (
       cstr!("Label"),
-      cstr!("The text label of this button."),
+      shccstr!("The text label of this button."),
       &STRING_TYPES[..],
     )
       .into(),
     (
       cstr!("Action"),
-      cstr!("The shards to execute when the button is pressed."),
+      shccstr!("The shards to execute when the button is pressed."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Wrap"),
-      cstr!("Wrap the text depending on the layout."),
+      shccstr!("Wrap the text depending on the layout."),
       BOOL_OR_NONE_SLICE,
     )
       .into(),
-    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+    (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 

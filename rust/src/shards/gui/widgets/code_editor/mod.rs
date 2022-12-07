@@ -10,6 +10,7 @@ use crate::shards::gui::EguiId;
 use crate::shards::gui::ImmutableVar;
 use crate::shards::gui::MutableVar;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_VAR_SLICE;
 use crate::shardsc;
@@ -36,13 +37,13 @@ lazy_static! {
   static ref CODEEDITOR_PARAMETERS: Parameters = vec![
     (
       cstr!("Variable"),
-      cstr!("The variable that holds the input value."),
+      shccstr!("The variable that holds the input value."),
       STRING_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Language"),
-      cstr!("The name of the programming language for syntax highlighting."),
+      shccstr!("The name of the programming language for syntax highlighting."),
       STRING_VAR_SLICE,
     )
       .into(),
@@ -93,7 +94,7 @@ impl Shard for CodeEditor {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    *HELP_VALUE_IGNORED
   }
 
   fn outputTypes(&mut self) -> &Types {

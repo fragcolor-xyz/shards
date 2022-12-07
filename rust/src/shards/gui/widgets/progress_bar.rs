@@ -5,6 +5,7 @@ use super::ProgressBar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::FLOAT_VAR_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -20,13 +21,13 @@ lazy_static! {
   static ref PROGRESSBAR_PARAMETERS: Parameters = vec![
     (
       cstr!("Overlay"),
-      cstr!("The text displayed inside the progress bar."),
+      shccstr!("The text displayed inside the progress bar."),
       STRING_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Width"),
-      cstr!("The desired width of the progress bar. Will use all horizontal space if not set."),
+      shccstr!("The desired width of the progress bar. Will use all horizontal space if not set."),
       FLOAT_VAR_SLICE,
     )
       .into(),
@@ -84,7 +85,7 @@ impl Shard for ProgressBar {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

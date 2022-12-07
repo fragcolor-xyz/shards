@@ -33,19 +33,19 @@ lazy_static! {
   static ref IMAGEBUTTON_PARAMETERS: Parameters = vec![
     (
       cstr!("Action"),
-      cstr!("The shards to execute when the button is pressed."),
+      shccstr!("The shards to execute when the button is pressed."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Scale"),
-      cstr!("Scaling to apply to the source image"),
+      shccstr!("Scaling to apply to the source image"),
       FLOAT2_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Selected"),
-      cstr!("Indicates whether the button is selected."),
+      shccstr!("Indicates whether the button is selected."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),

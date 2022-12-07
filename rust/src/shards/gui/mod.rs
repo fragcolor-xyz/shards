@@ -8,6 +8,7 @@ use crate::shard::Shard;
 use crate::shardsc;
 use crate::types::common_type;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 use crate::types::Type;
@@ -58,6 +59,12 @@ lazy_static! {
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
+}
+
+lazy_static! {
+  static ref HELP_OUTPUT_EQUAL_INPUT: OptionalString =
+    OptionalString(shccstr!("The output of this shard will be its input."));
+  static ref HELP_VALUE_IGNORED: OptionalString = OptionalString(shccstr!("The value is ignored."));
 }
 
 const CONTEXTS_NAME: &str = "UI.Contexts";

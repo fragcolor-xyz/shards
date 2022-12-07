@@ -6,6 +6,8 @@ use super::Menu;
 use super::MenuBar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
 use crate::types::Context;
@@ -27,20 +29,20 @@ lazy_static! {
   static ref MENU_PARAMETERS: Parameters = vec![
     (
       cstr!("Title"),
-      cstr!("The title of the menu."),
+      shccstr!("The title of the menu."),
       &STRING_TYPES[..],
     )
       .into(),
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
   ];
   static ref MENUBAR_PARAMETERS: Parameters = vec![(
     cstr!("Contents"),
-    cstr!("The UI contents."),
+    shccstr!("The UI contents."),
     &SHARDS_OR_NONE_TYPES[..],
   )
     .into(),];
@@ -76,12 +78,24 @@ impl Shard for CloseMenu {
     "UI.CloseMenu"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Closes the currently opened menu."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    *HELP_VALUE_IGNORED
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
@@ -147,8 +161,8 @@ impl Shard for Menu {
 
   fn help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "Creates a menu button that when clicked will show the given menu. \r\n
-      If called from within a menu this will instead create a button for a sub-menu."
+      "Creates a menu button that when clicked will show the given menu.\r\n
+If called from within a menu this will instead create a button for a sub-menu."
     ))
   }
 

@@ -5,6 +5,7 @@ use super::CollapsingHeader;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shards::gui::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
 use crate::types::common_type;
@@ -26,19 +27,19 @@ lazy_static! {
   static ref COLLAPSING_PARAMETERS: Parameters = vec![
     (
       cstr!("Heading"),
-      cstr!("The heading text or widgets for this collapsing header."),
+      shccstr!("The heading text or widgets for this collapsing header."),
       STRING_OR_SHARDS_OR_NONE_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("DefaultOpen"),
-      cstr!("Whether the collapsing header is opened by default."),
+      shccstr!("Whether the collapsing header is opened by default."),
       BOOL_TYPES_SLICE,
     )
       .into(),
@@ -101,7 +102,7 @@ impl Shard for CollapsingHeader {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
