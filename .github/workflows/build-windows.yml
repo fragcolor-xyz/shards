@@ -177,7 +177,9 @@ jobs:
           ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DUSE_LIBBACKTRACE=${{ steps.setup.outputs.bitness == '64bits' }} ..
+          # Some commits hang the linking step during one of the following targets
+          # Passing -DUSE_LLD=OFF will use the default mingw ld linker which doesn't have this issue
+          cmake -G Ninja -DUSE_LLD=OFF -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DUSE_LIBBACKTRACE=${{ steps.setup.outputs.bitness == '64bits' }} ..
           ninja ${{ steps.setup.outputs.build-target }}
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
