@@ -13,7 +13,12 @@ add_executable(test-gfx
   test_gizmos.cpp
   test_comparison.cpp
   test_rendergraph.cpp
+  test_multithreaded.cpp
 )
+
+if(EMSCRIPTEN)
+  target_link_options(test-gfx PRIVATE --emrun)
+endif()
 
 set(GFX_TEST_DATA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/data)
 

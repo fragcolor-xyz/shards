@@ -47,6 +47,16 @@ target_link_libraries(gfx
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 target_link_libraries(gfx Tracy::TracyClient)
 
+if(HAVE_THREADS)
+  set(GFX_THREADING_DEFAULT ON)
+endif()
+option(GFX_THREADING "Support multithreaded rendering" ${GFX_THREADING_DEFAULT})
+if(GFX_THREADING)
+  target_compile_definitions(gfx PUBLIC GFX_THREADING_SUPPORT=1)
+endif()
+
+target_link_libraries(gfx Taskflow)
+
 add_library(gfx-texture-file texture_file/texture_file.cpp)
 target_link_libraries(gfx-texture-file gfx)
 
