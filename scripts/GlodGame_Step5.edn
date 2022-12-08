@@ -51,9 +51,9 @@
   (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_5.png") = .image_walking_Left_5
   (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_6.png") = .image_walking_Left_6
   (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_7.png") = .image_walking_Left_7
-  [.image_walking_Left_1 .image_walking_Left_2 .image_walking_Left_3 .image_walking_Left_4 
+  [.image_walking_Left_1 .image_walking_Left_2 .image_walking_Left_3 .image_walking_Left_4
    .image_walking_Left_5 .image_walking_Left_6 .image_walking_Left_7] >= .walking_Left_image_array
-  
+
   (Count .walking_Left_image_array) (Math.Subtract 1) >= .walking_image_index_max
   0 >= .walking_image_index
   0.08 >= .Walking_Animation_Speed ;; Reduce number to increase animation speed
@@ -64,67 +64,77 @@
   false >= .Character_Walking_Left
   false >= .Character_Walking_Right
   1 >= .Character_Direction
-  
+
+  false >= .IsMoving
+  false >= .IsJumping
+
   0.0 >= .X
-  620 >= .Y 
-  (float2 .X .Y) >= .Character_Position)
+  620.0 >= .Y
+  (float2 .X .Y) >= .Character_Position
+
+  0.0 >= .Character_X_Velocity
+  0.0 >= .Character_Y_Velocity
+  0.0 >= .Character_Y_Acceleration)
 
 (defshards Button_Inputs []
+
+  ;; ----------- Left Right Inputs for Walking ------------
   (Inputs.KeyDown
    :Key "left"
    :Action (->
-            (Msg "left")
             -1 > .Character_Direction
             true > .Character_Walking_Left
             false > .Character_Walking_Right
             false > .CharacterIdle
-            false > .Character_Jump))
+            false > .Character_Jump
+            true > .IsMoving
+            -5.0 > .Character_X_Velocity))
 
   (Inputs.KeyDown
    :Key "right"
    :Action (->
-            (Msg "right")
             1 > .Character_Direction
             false > .Character_Walking_Left
             true > .Character_Walking_Right
             false > .CharacterIdle
-            false > .Character_Jump))
-
-  (Inputs.KeyDown
-   :Key "up"
-   :Action (->
-            (Msg "up")
-            false > .Character_Walking_Left
-            false > .Character_Walking_Right
-            false > .CharacterIdle
-            true > .Character_Jump))
+            false > .Character_Jump
+            true > .IsMoving
+            5.0 > .Character_X_Velocity))
 
   (Inputs.KeyUp
    :Key "left"
    :Action (->
-            (Msg "left")
             false > .Character_Walking_Left
             false > .Character_Walking_Right
             true > .CharacterIdle
-            false > .Character_Jump))
+            false > .Character_Jump
+            false > .IsMoving
+            0.0 > .Character_X_Velocity))
 
   (Inputs.KeyUp
    :Key "right"
    :Action (->
-            (Msg "right")
             false > .Character_Walking_Left
             false > .Character_Walking_Right
             true > .CharacterIdle
-            false > .Character_Jump))
+            false > .Character_Jump
+            false > .IsMoving
+            0.0 > .Character_X_Velocity))
 
-  (Inputs.KeyUp
+  ;; ------------------- Up Input for Jumping ---------------
+  (Inputs.KeyDown
    :Key "up"
    :Action (->
-            (Msg "up")
-            false > .Character_Walking_Left
-            false > .Character_Walking_Right
-            true > .CharacterIdle
-            false > .Character_Jump)))
+            .IsJumping
+            (If :Predicate (Is false)
+                :Then (->
+                       false > .Character_Walking_Left
+                       false > .Character_Walking_Right
+                       false > .CharacterIdle
+                       true > .Character_Jump
+                       -20.0 > .Character_Y_Velocity
+                       1.0 >  .Character_Y_Acceleration
+                       true > .IsJumping)))))
 
 ;; ----------- Idle_Animation ------------
 
@@ -142,12 +152,223 @@
         :Action (-> 0 > .walking_image_index))
   (Pause .Walking_Animation_Speed))
 
+;; ----------- Running Logic ---------------
+(defshards Run_Logic []
+  .X (Math.Add .Character_X_Velocity)
+  > .X
+
+  (float2 .X .Y) > .Character_Position)
+
+;; ------------ Gravity Logic ---------------
+(defshards Gravity_Logic []
+  .Y (Math.Add .Character_Y_Velocity)
+  > .Y
+
+  .Character_Y_Velocity (Math.Add .Character_Y_Acceleration)
+  > .Character_Y_Velocity
+
+  (float2 .X .Y) > .Character_Position)
+
+;; ---------- Character_Boundary ------------
+
+(defshards Character_Boundary []
+  .X
+  (When :Predicate (IsMore 600.0)
+        :Action (->
+                 600.0 > .X))
+
+  .X
+  (When :Predicate (IsLess -600.0)
+        :Action (->
+                 -600.0 > .X))
+  .Y
+  (When :Predicate (IsMore 620.0)
+        :Action (-> 620.0 > .Y
+                    0.0 > .Character_Y_Velocity
+                    0.0 > .Character_Y_Acceleration
+                    false > .IsJumping
+
+                    .IsMoving
+                    (If :Predicate (Is false)
+                        :Then (->
+                               false > .Character_Walking_Left
+                               false > .Character_Walking_Right
+                               true > .CharacterIdle
+                               false > .Character_Jump))
+                    .IsMoving
+                    (If :Predicate (-> (Is true)
+                                       (And)
+                                       .Character_Direction (Is 1))
+                        :Then (->
+                               false > .Character_Walking_Left
+                               true > .Character_Walking_Right
+                               false > .CharacterIdle
+                               false > .Character_Jump))
+
+                    .IsMoving
+                    (If :Predicate (-> (Is true)
+                                       (And)
+                                       .Character_Direction (Is -1))
+                        :Then (->
+                               true > .Character_Walking_Left
+                               false > .Character_Walking_Right
+                               false > .CharacterIdle
+                               false > .Character_Jump)))))
+
+;; ------------ Coins ------------------
+;; -------------------------------------
+;; ------------ Innitialize_Coin ---------------
+(defshards Innitialize_Coin []
+  (LoadImage "GlodImages/Coin/Coin_1.png") = .Coin_1
+  (LoadImage "GlodImages/Coin/Coin_2.png") = .Coin_2
+  (LoadImage "GlodImages/Coin/Coin_3.png") = .Coin_3
+  (LoadImage "GlodImages/Coin/Coin_4.png") = .Coin_4
+  (LoadImage "GlodImages/Coin/Coin_5.png") = .Coin_5
+  (LoadImage "GlodImages/Coin/Coin_6.png") = .Coin_6
+  (LoadImage "GlodImages/Coin/Coin_7.png") = .Coin_7
+  [.Coin_1 .Coin_2 .Coin_3 .Coin_4 .Coin_5 .Coin_6 .Coin_7] >= .coin_image_array
+  (Count .coin_image_array) (Math.Subtract 1) >= .coin_image_index_max
+  0 >= .coin_image_index
+  0.1 >= .coin_Animation_Speed
+
+  ;; ----- Coin 1----
+  0.0 >= .coinX_1
+  0.0 >= .coinY_1
+  (float2 .coinX_1 .coinY_1) >= .coin_position_1
+  0.0 >= .coin_velocity_1
+
+  ;; ----- Coin 2 ----
+  0.0 >= .coinX_2
+  0.0 >= .coinY_2
+  (float2 .coinX_2 .coinY_2) >= .coin_position_2
+  0.0 >= .coin_velocity_2
+
+  0.5 >= .coin_acceleration)
+;; -------------- Coin Animation ------------------
+(defloop Coin_Animation
+  .coin_image_index (Math.Add 1)
+  > .coin_image_index
+  (When :Predicate (IsMore .coin_image_index_max)
+        :Action (-> 0 > .coin_image_index))
+
+  (Pause .coin_Animation_Speed))
+
+;; ------------- Coin Gravity ------------------
+(defshards Coin_Gravity_Logic [coinY coinX coin_Velocity coin_Position]
+
+  coinY (Math.Add coin_Velocity)
+  > coinY
+
+  coin_Velocity (Math.Add .coin_acceleration)
+  > coin_Velocity
+
+  (float2 coinX coinY) > coin_Position)
+
+;; ------------- Random_Coin ------------------
+(defloop Random_Coin  
+  .coinX_1
+  (RandomFloat :Max 1200.0)
+  > .coinX_1
+  (Math.Subtract 600.0)
+  > .coinX_1
+
+  0.0 > .coinY_1
+  0.0 > .coin_velocity_1
+  (float2 .coinX_1 .coinY_1) > .coin_position_1
+  (Pause 1))
+
+;; ------------ Game Elements ------------------
+;; -------------------------------------
+;; ------------ Innitialize_GameElements---------------
+
+(defshards Innitialize_GameElements []
+  0 >= .Score
+  
+  .X (Math.Add 50.0)
+  >= .ScoringUpper_X_Limit
+  .X (Math.Subtract 50.0)
+  >= .ScoringLower_X_Limit
+
+  .Y (Math.Add 0.0)
+  >= .ScoringUpper_Y_Limit
+  .Y (Math.Subtract 0.0)
+  >= .ScoringLower_Y_Limit
+  
+  false >= .Scored)
+
+;; ------------ Scoring ------------------
+;; -------------------------------------
+;; ------------ Score_Collision_Box ---------------
+(defshards Score_Collision []
+  .coinX_1 
+  (When :Predicate (->
+                    (IsLess .ScoringUpper_X_Limit)
+                    (And)
+                    .coinX_1 (IsMore .ScoringLower_X_Limit)
+                    (And)
+                    .coinY_1 (IsLess .ScoringUpper_Y_Limit)
+                    (And)
+                    .coinY_1 (IsMore .ScoringLower_Y_Limit))
+        :Action (->
+                 .Scored
+                 (When :Predicate (Is false)
+                       :Action (->
+                                true > .Scored
+                                (Log "Scored: ")
+                                )))))
+
+(defshards Scoring []
+  .X (Math.Add 50.0)
+  > .ScoringUpper_X_Limit
+  .X (Math.Subtract 50.0)
+  > .ScoringLower_X_Limit
+
+  .Y (Math.Add 30.0)
+  > .ScoringUpper_Y_Limit
+  .Y (Math.Subtract 30.0)
+  > .ScoringLower_Y_Limit 
+  
+  (Score_Collision)
+  
+  .Scored
+  (When :Predicate (Is true)
+        :Action (->
+                 .Score (Math.Add 1)
+                 > .Score
+                 false > .Scored
+                 (Log "Scored: "))))
+
+;; ------ UI Style --------
+(def style
+  {:override_text_style "MyStyle"
+   :text_styles
+   [{:name "MyStyle"
+     :size (float 46)
+     :family "Monospace"}]
+   :visuals
+   {:override_text_color (color 250 250 250)}})
+
+;; ----------- Main-Wire -----------
+
 (defloop main-wire
   (Setup
-   (Innitialize_Character))
+   (Innitialize_Character)
+   (Innitialize_Coin)
+   (Innitialize_GameElements))
+
+  (Run_Logic)
+  (Gravity_Logic)
+  (Character_Boundary)
+  
+  (Coin_Gravity_Logic .coinY_1 .coinX_1 .coin_velocity_1 .coin_position_1)
+  (Coin_Gravity_Logic .coinY_2 .coinX_2 .coin_velocity_2 .coin_position_2)
+  (Step  Random_Coin)
+  
+  (Scoring)
 
   (Step Walking_Animation)
   (Step Idle_Animation_Left)
+  (Step Coin_Animation)
 
   (GFX.MainWindow
    :Title "MainWindow" :Width 1920 :Height 1080
@@ -159,7 +380,7 @@
                  (UI
                   .ui-draw-queue
                   (->
-                   (UI.Area :Position (Float2 0 0)
+                   (UI.Area :Position .Character_Position
                             :Anchor Anchor.Top
                             :Contents (->
 
@@ -172,9 +393,12 @@
                                                            .Character_Walking_Right (Is false)
                                                            (And)
                                                            .Character_Jump (Is false)
-                                                           .Character_Direction (Is 1))
+                                                           (And)
+                                                           .Character_Direction (Is 1)
+                                                           (And)
+                                                           .IsJumping (Is false))
                                            :Then (-> .idle_Right_image_array (Take .idle_image_index) (UI.Image :Scale (float2 0.2))))
-                                       
+
                                        .CharacterIdle
                                        (If :Predicate (->  (Is true)
                                                            (And)
@@ -183,9 +407,11 @@
                                                            .Character_Walking_Right (Is false)
                                                            (And)
                                                            .Character_Jump (Is false)
-                                                           .Character_Direction (Is -1))
+                                                           (And)
+                                                           .Character_Direction (Is -1)
+                                                           .IsJumping (Is false))
                                            :Then (-> .idle_Left_image_array (Take .idle_image_index) (UI.Image :Scale (float2 0.2))))
-                                       
+
 
                                          ;; ------------- Draw Character Walking ---------------- 
                                        .CharacterIdle
@@ -195,7 +421,9 @@
                                                            (And)
                                                            .Character_Walking_Right (Is false)
                                                            (And)
-                                                           .Character_Jump (Is false))
+                                                           .Character_Jump (Is false)
+                                                           (And)
+                                                           .IsJumping (Is false))
                                            :Then (-> .walking_Left_image_array (Take .walking_image_index) (UI.Image :Scale (float2 0.2))))
 
 
@@ -206,41 +434,46 @@
                                                            (And)
                                                            .Character_Walking_Right (Is true)
                                                            (And)
-                                                           .Character_Jump (Is false))
+                                                           .Character_Jump (Is false)
+                                                           (And)
+                                                           .IsJumping (Is false))
                                            :Then (-> .walking_Right_image_array (Take .walking_image_index) (UI.Image :Scale (float2 0.2))))
 
                                          ;; ------------- Draw Character Jumping ---------------- 
-                                       .CharacterIdle
-                                       (If :Predicate (->  (Is false)
+                                       .IsJumping
+                                       (If :Predicate (->  (Is true)
                                                            (And)
-                                                           .Character_Walking_Left (Is false)
-                                                           (And)
-                                                           .Character_Walking_Right (Is false)
-                                                           (And)
-                                                           .Character_Jump (Is true)
                                                            .Character_Direction (Is 1))
                                            :Then (-> .Character_Jumping_Right (UI.Image :Scale (float2 0.2))))
-                                       
-                                       .CharacterIdle
-                                       (If :Predicate (->  (Is false)
+
+                                       .IsJumping
+                                       (If :Predicate (->  (Is true)
                                                            (And)
-                                                           .Character_Walking_Left (Is false)
-                                                           (And)
-                                                           .Character_Walking_Right (Is false)
-                                                           (And)
-                                                           .Character_Jump (Is true)
                                                            .Character_Direction (Is -1))
-                                           :Then (-> .Character_Jumping_Left (UI.Image :Scale (float2 0.2))))
-                                       
-                                       ))))
+                                           :Then (-> .Character_Jumping_Left (UI.Image :Scale (float2 0.2))))))
+
+                   (UI.Area :Position .coin_position_1
+                            :Anchor Anchor.Top
+                            :Contents (->
+                                       .coin_image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
+                   
+                   (UI.Area :Position .coin_position_2
+                            :Anchor Anchor.Top
+                            :Contents (->
+                                       .coin_image_array (Take .coin_image_index) (UI.Image :Scale (float2 0.2))))
+                   
+                   
+                   (UI.Area :Position (float2 -40 20)
+                            :Anchor Anchor.TopRight
+                            :Contents (->
+                                       style (UI.Style)
+                                       .Score (ToString)(UI.Label)))))
 
                  (GFX.Render :Steps .render-steps)
 
                  (Button_Inputs))))
-  
+
 
 (defmesh main)
 (schedule main main-wire)
 (run main (/ 1.0 60))
-
-
