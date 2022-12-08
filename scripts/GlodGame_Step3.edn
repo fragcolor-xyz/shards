@@ -63,7 +63,11 @@
   false >= .Character_Jump
   false >= .Character_Walking_Left
   false >= .Character_Walking_Right
-  1 >= .Character_Direction)
+  1 >= .Character_Direction
+  
+  0.0 >= .X
+  620 >= .Y 
+  (float2 .X .Y) >= .Character_Position)
 
 (defshards Button_Inputs []
   (Inputs.KeyDown
@@ -155,8 +159,8 @@
                  (UI
                   .ui-draw-queue
                   (->
-                   (UI.Area :Position .Score_Effect_Position
-                            :Anchor Anchor.Center
+                   (UI.Area :Position (Float2 0 0)
+                            :Anchor Anchor.Top
                             :Contents (->
 
                                          ;; ------------ Draw Character Idle --------------- 

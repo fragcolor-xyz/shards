@@ -462,49 +462,6 @@
 
 ;; ------------ Scoring ------------------
 ;; -------------------------------------
-;; ------------- Innitialize_Effects -------------
-(defshards Innitialize_Effects []
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_1.png") = .Score_Effect_1
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_2.png") = .Score_Effect_2
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_3.png") = .Score_Effect_3
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_4.png") = .Score_Effect_4
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_5.png") = .Score_Effect_5
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_6.png") = .Score_Effect_6
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_7.png") = .Score_Effect_7
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_8.png") = .Score_Effect_8
-  [.Score_Effect_1 .Score_Effect_2 .Score_Effect_3 .Score_Effect_4 .Score_Effect_5 .Score_Effect_6
-   .Score_Effect_7 .Score_Effect_8] >= .Score_Effect_Array
-  (Count .Score_Effect_Array) (Math.Subtract 1) >= .Score_Effect_Array_Index_max
-  0 >= .Score_Effect_Array_Index
-  0.02 >=  .Score_Effect_Animation_Speed ;; Reduce number to increase animation speed
-  false >= .Score_Effect_Play
-
-  0.0 >= .Score_Effect_Position_X
-  0.0 >= .Score_Effect_Position_Y
-  (float2 .Score_Effect_Position_X .Score_Effect_Position_Y) >= .Score_Effect_Position)
-
-;; ------------ ScoreEffect_Animation_Position ------------
-(defshards ScoreEffect_Animation_Position []
-  .Y (Math.Add -25.0)
-  > .Score_Effect_Position_Y
-
-  .X
-  > .Score_Effect_Position_X
-
-  (float2 .Score_Effect_Position_X .Score_Effect_Position_Y)
-  > .Score_Effect_Position)
-
-;; ------------ ScoreEffect_Animation ------------
-(defloop ScoreEffect_Animation
-  .Score_Effect_Array_Index (Math.Add 1)
-  > .Scoren_Effect_Array_Index
-  (When :Predicate (IsMore .Score_Effect_Array_Index_max)
-        :Action (->
-                 0 > .Score_Effect_Array_Index
-                 false > .Score_Effect_Play))
-  
-  (Pause .Coin_Effect_Animation_Speed))
-
 ;; ------------ Score_Collision_Box ---------------
 (defshards Score_Collision [coinX coinY]
   coinX
@@ -546,7 +503,6 @@
         :Action (->
                  .Score (Math.Add 1)
                  > .Score
-                 true > .Score_Effect_Play
                  false > .Scored
                  (Log "Scored: "))))
 
@@ -568,8 +524,7 @@
    (Innitialize_Character)
    (Innitialize_Coin)
    (Innitialize_GameElements)
-   (Innitialize_Spiked_CanonBalls)
-   (Innitialize_Effects))
+   (Innitialize_Spiked_CanonBalls))
 
   (Run_Logic)
   (Gravity_Logic)
@@ -593,9 +548,6 @@
   
   (Scoring)
   (SpikeBall_Damage_Logic)
-  
-  (ScoreEffect_Animation_Position)
-  (Step ScoreEffect_Animation)
   
   
 
@@ -723,12 +675,6 @@
                             :Anchor Anchor.Top
                             :Contents (->
                                        .SpikeBall_Array (Take .SpikeBall_Index) (UI.Image :Scale (float2 0.15))))
-                   
-                   ;; ----------------- Visual Effects  -------------------
-                   (UI.Area :Position .Score_Effect_Position
-                            :Anchor Anchor.Top
-                            :Contents (->
-                                       .Score_Effect_Array (Take 1) (UI.Image :Scale (float2 0.15))))
 
                    ;; ---------- Game UI -------------
                    (UI.Area :Position (float2 -40 20)
