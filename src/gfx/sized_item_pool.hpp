@@ -3,20 +3,24 @@
 
 #include <vector>
 
-namespace gfx {
+namespace gfx::detail {
 
-template <typename T> struct ResizableItemOps {
+template <typename T> struct SizedItemOps {
   size_t getCapacity(T &item) const { return item.getCapacity(); }
-  void init(T &item) {}
+  void init(T &item, size_t size) {}
 };
 
 // Keeps a pool of resizable objects
 // When an item with a specific size is requested
 // it will try to return the smallest pooled item first
-template <typename T, typename TOps = ResizableItemOps<T>> struct ResizableItemPool {
-  static inline TOps ops;
+template <typename T, typename TOps = SizedItemOps<T>> struct SizedItemPool {
+  TOps ops;
   std::vector<T> buffers;
   std::vector<size_t> freeList;
+
+  template <typename... TArgs> SizedItemPool(TArgs... args) : ops(std::forward<TArgs>(args)...) {}
+  SizedItemPool(SizedItemPool &&) = default;
+  SizedItemPool &operator=(SizedItemPool &&) = default;
 
   void reset() {
     freeList.clear();
@@ -25,20 +29,10 @@ template <typename T, typename TOps = ResizableItemOps<T>> struct ResizableItemP
     }
   }
 
-  T &allocateBufferNew() {
+  T &allocateBufferNew(size_t size) {
     T &item = buffers.emplace_back();
-    ops.init(item);
+    ops.init(item, size);
     return item;
-  }
-
-  T &allocateBufferAny() {
-    if (freeList.size() > 0) {
-      size_t bufferIndex = freeList.back();
-      freeList.pop_back();
-      return buffers[bufferIndex];
-    } else {
-      return allocateBufferNew();
-    }
   }
 
   T &allocateBuffer(size_t size) {
@@ -61,10 +55,10 @@ template <typename T, typename TOps = ResizableItemOps<T>> struct ResizableItemP
       freeList.erase(targetFreeListIt);
       return buffers[bufferIndex];
     } else {
-      return allocateBufferNew();
+      return allocateBufferNew(size);
     }
   }
 };
-} // namespace gfx
+} // namespace gfx::detail
 
 #endif /* B32DBC90_5468_49DD_AFEA_C1D0865FED52 */

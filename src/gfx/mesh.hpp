@@ -6,11 +6,16 @@
 #include "gfx_wgpu.hpp"
 #include "linalg/linalg.h"
 #include "fwd.hpp"
+#include "unique_id.hpp"
 #include <string>
 #include <vector>
 #include <optional>
 
 namespace gfx {
+
+namespace detail {
+struct PipelineHashCollector;
+}
 
 /// <div rustbindgen opaque></div>
 struct MeshVertexAttribute {
@@ -27,7 +32,7 @@ struct MeshVertexAttribute {
     return numComponents == other.numComponents && type == other.type;
   }
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
     hasher(numComponents);
     hasher(type);
@@ -43,7 +48,7 @@ struct MeshFormat {
 
   size_t getVertexSize() const;
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(primitiveType);
     hasher(windingOrder);
     hasher(indexFormat);
@@ -71,12 +76,15 @@ struct MeshContextData : public ContextData {
 /// <div rustbindgen opaque></div>
 struct Mesh final : public TWithContextData<MeshContextData> {
 private:
+  UniqueId id = getNextId();
   MeshFormat format;
   size_t numVertices = 0;
   size_t numIndices = 0;
   std::vector<uint8_t> vertexData;
   std::vector<uint8_t> indexData;
   bool updateData{};
+
+  friend struct gfx::UpdateUniqueId<Mesh>;
 
 public:
   const MeshFormat &getFormat() const { return format; }
@@ -92,11 +100,18 @@ public:
   void update(const MeshFormat &format, std::vector<uint8_t> &&vertexData,
               std::vector<uint8_t> &&indexData = std::vector<uint8_t>());
 
+  UniqueId getId() const { return id; }
+  MeshPtr clone() const;
+
+  void pipelineHashCollect(detail::PipelineHashCollector&) const;
+
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);
   void update();
   void initContextData(Context &context, MeshContextData &contextData);
   void updateContextData(Context &context, MeshContextData &contextData);
+
+  static UniqueId getNextId();
 };
 } // namespace gfx
 

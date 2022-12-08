@@ -68,7 +68,7 @@
 
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Params [{:Name "time"}]
+   {:Params [{:Name "time" :Type ShaderFieldBaseType.Float32}]
     :DrawData (-> {:time .time})
     :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
                :After ["readColor"]

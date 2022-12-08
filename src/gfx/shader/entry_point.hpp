@@ -18,7 +18,7 @@ struct NamedDependency {
   NamedDependency() = default;
   NamedDependency(std::string name, DependencyType type = DependencyType::After) : name(name), type(type) {}
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
     hasher(type);
   }
@@ -39,7 +39,7 @@ struct EntryPoint {
   EntryPoint(EntryPoint &&other) = default;
   EntryPoint &operator=(EntryPoint &&other) = default;
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(stage);
     hasher(name);
     hasher(code);

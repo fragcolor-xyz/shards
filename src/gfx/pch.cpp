@@ -9,3 +9,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#include "gfx_wgpu.hpp"
+#include "platform.hpp"

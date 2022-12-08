@@ -7,7 +7,7 @@
 #include "renderer_utils.hpp"
 #include <catch2/catch_all.hpp>
 #include <gfx/context.hpp>
-#include <gfx/drawable.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/features/wireframe.hpp>
 #include <gfx/steps/defaults.hpp>
 #include <gfx/gizmos/shapes.hpp>
@@ -34,10 +34,10 @@ TEST_CASE("Wireframe", "[Gizmos]") {
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   DrawQueuePtr editorQueue = std::make_shared<DrawQueue>();
   float4x4 transform;
-  DrawablePtr drawable;
+  MeshDrawable::Ptr drawable;
 
   transform = linalg::translation_matrix(float3(0.0f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(cubeMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(cubeMesh, transform);
   drawable->parameters.set("baseColor", float4(0.2f, 0.2f, 0.2f, 1.0f));
 
   PipelineSteps steps{
@@ -68,7 +68,7 @@ TEST_CASE("Wireframe", "[Gizmos]") {
     editorQueue->clear();
 
     queue->add(drawable);
-    wr.overlayWireframe(*editorQueue.get(), drawable);
+    wr.overlayWireframe(*editorQueue.get(), *drawable.get());
 
     renderer.render(view, steps);
   };
@@ -93,10 +93,10 @@ TEST_CASE("Helper lines", "[Gizmos]") {
 
   MeshPtr cubeMesh = createCubeMesh();
   float4x4 transform;
-  DrawablePtr cubeDrawable;
+  MeshDrawable::Ptr cubeDrawable;
 
   transform = linalg::translation_matrix(float3(0.0f, 0.0f, 0.0f));
-  cubeDrawable = std::make_shared<Drawable>(cubeMesh, transform);
+  cubeDrawable = std::make_shared<MeshDrawable>(cubeMesh, transform);
   cubeDrawable->parameters.set("baseColor", float4(0.2f, 0.2f, 0.2f, 1.0f));
 
   DrawQueuePtr baseQueue = std::make_shared<DrawQueue>();

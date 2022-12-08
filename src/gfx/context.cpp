@@ -151,8 +151,13 @@ struct ContextMainOutput {
     return wgpuWindowSurface;
   }
 
-  bool requestFrame() {
+  bool requestFrame(WGPUDevice device, WGPUAdapter adapter) {
     assert(!currentView);
+
+    int2 drawableSize = window->getDrawableSize();
+    if (drawableSize != currentSize)
+      resizeSwapchain(device, adapter, drawableSize);
+
     currentView = wgpuSwapChainGetCurrentTextureView(wgpuSwapchain);
 
     return currentView;
@@ -173,7 +178,7 @@ struct ContextMainOutput {
     FrameMark;
   }
 
-  void initSwapchain(WGPUAdapter adapter, WGPUDevice device) {
+  void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
     swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
     int2 mainOutputSize = window->getDrawableSize();
     resizeSwapchain(device, adapter, mainOutputSize);
@@ -285,13 +290,18 @@ void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();
   if (sharedPtr) {
+    std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
     contextDatas.insert_or_assign(sharedPtr.get(), ptr);
   }
 }
 
-void Context::removeContextDataInternal(ContextData *ptr) { contextDatas.erase(ptr); }
+void Context::removeContextDataInternal(ContextData *ptr) {
+  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
+  contextDatas.erase(ptr);
+}
 
 void Context::collectContextData() {
+  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
   for (auto it = contextDatas.begin(); it != contextDatas.end();) {
     if (it->second.expired()) {
       it = contextDatas.erase(it);
@@ -302,7 +312,9 @@ void Context::collectContextData() {
 }
 
 void Context::releaseAllContextData() {
+  contextDataLock.lock();
   auto contextDatas = std::move(this->contextDatas);
+  contextDataLock.unlock();
   for (auto &obj : contextDatas) {
     if (!obj.second.expired()) {
       obj.first->releaseContextDataConditional();
@@ -335,10 +347,10 @@ bool Context::beginFrame() {
 
     // Try to request the swapchain texture, automatically recreate swapchain on failure
     for (size_t i = 0; !success && i < maxAttempts; i++) {
-      success = mainOutput->requestFrame();
+      success = mainOutput->requestFrame(wgpuDevice, wgpuAdapter);
       if (!success) {
         SPDLOG_LOGGER_INFO(logger, "Failed to get current swapchain texture, forcing recreate");
-        mainOutput->resizeSwapchain(wgpuDevice, wgpuAdapter, mainOutput->currentSize);
+        mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
       }
     }
 
@@ -361,10 +373,12 @@ void Context::endFrame() {
   frameState = ContextFrameState::Ok;
 }
 
-void Context::sync() {
+void Context::poll(bool wait) {
   ZoneScoped;
 #ifdef WEBGPU_NATIVE
-  wgpuDevicePoll(wgpuDevice, true, nullptr);
+  wgpuDevicePoll(wgpuDevice, wait, nullptr);
+#else
+  emscripten_sleep(0);
 #endif
 }
 
@@ -452,7 +466,7 @@ void Context::deviceObtained() {
 
   if (mainOutput) {
     getOrCreateSurface();
-    mainOutput->initSwapchain(wgpuAdapter, wgpuDevice);
+    mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
   }
 
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {

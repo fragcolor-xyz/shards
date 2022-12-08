@@ -65,8 +65,8 @@ Texture &Texture::initWithLabel(std::string &&label) {
   return *this;
 }
 
-std::shared_ptr<Texture> Texture::clone() {
-  std::shared_ptr<Texture> result = std::make_shared<Texture>(*this);
+std::shared_ptr<Texture> Texture::clone() const {
+  auto result = cloneSelfWithId(this, getNextId());
   result->contextData.reset();
   return result;
 }
@@ -190,5 +190,10 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
 }
 
 void Texture::updateContextData(Context &context, TextureContextData &contextData) {}
+
+UniqueId Texture::getNextId() {
+  static UniqueIdGenerator gen(UniqueIdTag::Texture);
+  return gen.getNext();
+}
 
 } // namespace gfx

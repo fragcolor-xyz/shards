@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <memory>
+#include <mutex>
 
 namespace gfx {
 
@@ -16,6 +17,8 @@ private:
   Context *context = nullptr;
 
 public:
+  static std::recursive_mutex globalMutex;
+
   ContextData() = default;
   virtual ~ContextData() = default;
 
@@ -40,6 +43,8 @@ template <typename T> struct TWithContextData {
   std::shared_ptr<T> contextData;
 
   T &createContextDataConditional(Context &context) {
+    ContextData::globalMutex.lock();
+
     // Create or reinitialize context data
     if (!contextData || !contextData->context) {
       contextData = std::make_shared<T>();
@@ -49,6 +54,8 @@ template <typename T> struct TWithContextData {
       assert(&contextData->getContext() == &context);
     }
     updateContextData(context, *contextData.get());
+
+    ContextData::globalMutex.unlock();
 
     return *contextData.get();
   }

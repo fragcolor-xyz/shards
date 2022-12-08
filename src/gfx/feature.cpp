@@ -4,7 +4,8 @@
 namespace gfx {
 using shader::FieldType;
 
-UniqueIdGenerator featureIdGenerator;
+UniqueIdGenerator featureIdGenerator(UniqueIdTag::Feature);
+
 BlendComponent BlendComponent::Opaque = BlendComponent{
     .operation = WGPUBlendOperation_Max,
     .srcFactor = WGPUBlendFactor::WGPUBlendFactor_One,
@@ -30,5 +31,6 @@ NamedShaderParam::NamedShaderParam(std::string name, const FieldType &type, Para
     : type(type), name(name), defaultValue(defaultValue) {}
 NamedShaderParam::NamedShaderParam(std::string name, ParamVariant defaultValue)
     : type(getParamVariantType(defaultValue)), name(name), defaultValue(defaultValue) {}
+
 
 } // namespace gfx

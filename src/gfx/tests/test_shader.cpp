@@ -96,7 +96,7 @@ static bool validateShaderModule(Context &context, const String &code) {
   WGPUShaderModuleWGSLDescriptor wgslDesc{};
   desc.nextInChain = &wgslDesc.chain;
   wgslDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgslDesc.code = code.c_str();
+  wgpuShaderModuleWGSLDescriptorSetCode(wgslDesc, code.c_str());
   WGPUShaderModule module = wgpuDeviceCreateShaderModule(context.wgpuDevice, &desc);
   if (module)
     wgpuShaderModuleRelease(module);

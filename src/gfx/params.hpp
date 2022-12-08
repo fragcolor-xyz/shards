@@ -7,7 +7,7 @@
 #include <memory>
 #include <stdint.h>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <variant>
 
 namespace gfx {
@@ -34,29 +34,12 @@ size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &
 gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
-struct IDrawDataCollector {
-  virtual void setParam(const std::string &name, ParamVariant &&value) = 0;
-  void setParam(const std::string &name, const ParamVariant &value) { setParam(name, ParamVariant(value)); }
+struct IParameterCollector {
+  virtual void setParam(const char *name, ParamVariant &&value) = 0;
+  virtual void setTexture(const char *name, TextureParameter &&value) = 0;
 
-  virtual void setTexture(const std::string &name, TextureParameter &&value) = 0;
-  void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name, TextureParameter(value)); }
-};
-
-/// <div rustbindgen hide></div>
-struct DrawData : public IDrawDataCollector {
-  std::unordered_map<std::string, ParamVariant> data;
-  std::unordered_map<std::string, TextureParameter> textures;
-
-  using IDrawDataCollector::setParam;
-  using IDrawDataCollector::setTexture;
-  void setParam(const std::string &name, ParamVariant &&value) { data.insert_or_assign(name, std::move(value)); }
-  void setTexture(const std::string &name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
-
-  void append(const DrawData &other) {
-    for (auto &it : other.data) {
-      data.insert_or_assign(it.first, it.second);
-    }
-  }
+  void setParam(const std::string &name, const ParamVariant &value) { setParam(name.c_str(), ParamVariant(value)); }
+  void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name.c_str(), TextureParameter(value)); }
 };
 
 } // namespace gfx

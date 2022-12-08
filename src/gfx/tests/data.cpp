@@ -240,7 +240,7 @@ void TestData::storeFrameInternal(const TestFrame &frame, const char *filePath) 
   stbi_write_png(filePath, size.x, size.y, 4, pixels.data(), sizeof(TestFrame::pixel_t) * size.x);
 
 #ifdef __EMSCRIPTEN__
-  emrun_copyFileToOutput(filePath);
+  // emrun_copyFileToOutput(filePath);
 #endif
 }
 

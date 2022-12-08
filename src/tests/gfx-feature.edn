@@ -42,7 +42,7 @@
                             (Shader.WriteOutput "color"))}]
     :Params [{:Name "lightDirection" :Default .light-direction}
              {:Name "lightColor" :Default (Float3 1 1 1)}
-             {:Name "time"}]
+             {:Name "time" :Default 0.0}]
     :DrawData (-> {:time .time})
     :State {:DepthCompare CompareFunction.Less
             :Blend {:Color BlendAlpha :Alpha BlendOne}}}

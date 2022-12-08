@@ -178,6 +178,10 @@ function(add_rust_library)
     list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
   endif()
 
+  if(IOS)
+    list(APPEND EXTRA_CLANG_ARGS "-mios-version-min=10.0")
+  endif()
+
   if(EXTRA_CLANG_ARGS)
     set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
   endif()

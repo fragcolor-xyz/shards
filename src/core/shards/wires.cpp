@@ -6,7 +6,12 @@
 #include <chrono>
 #include <memory>
 #include <set>
+
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+// Remove define from winspool.h
+#ifdef MAX_PRIORITY
+#undef MAX_PRIORITY
+#endif
 #include <taskflow/taskflow.hpp>
 #endif
 
@@ -1354,7 +1359,7 @@ struct ParallelBase : public CapturingSpawners {
           // multithreaded
           tf::Taskflow flow;
 
-          flow.for_each_dynamic(
+          flow.for_each(
               _wires.begin(), _wires.end(),
               [this, input, len](auto &cref) {
                 // skip if failed, ended or not relevant yet
@@ -1386,8 +1391,7 @@ struct ParallelBase : public CapturingSpawners {
                 shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
                 // also tick the mesh
                 cref->mesh->tick();
-              },
-              _coros);
+              });
 
           _exec->run(flow).get();
 
