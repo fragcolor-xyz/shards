@@ -401,7 +401,6 @@
   (Coin .Random_Coin_X_3 .CoinY_3 .Coin_Velocity_3 .Coin_Position_3 3.5))
 
 ;; ------------- SpikeBall_Gravity -------------
-
 (defshards SpikeBall_Gravity [SpikeBall_Y SpikeBall_Velocity SpikeBall_Position SpikeBall_X]
   SpikeBall_Y (Math.Add SpikeBall_Velocity)
   > SpikeBall_Y
