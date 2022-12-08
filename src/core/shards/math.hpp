@@ -669,7 +669,94 @@ struct FModOp final {
   template <typename T> T apply(const T &lhs, const T &rhs) { return std::fmod(lhs, rhs); }
 };
 using FMod = BinaryOperation<BasicBinaryOperation<FModOp>>;
-}; // namespace Math
-}; // namespace shards
+
+struct LerpOp final {
+  template <typename T> T apply(const T &lhs, const T &rhs, double t) { return T((double)lhs + (double(rhs) - double(lhs)) * t); }
+};
+
+struct ApplyLerp final {
+  template <SHType ValueType> void apply(SHVarPayload &out, const SHVarPayload &a, const SHVarPayload &b, const SHFloat t) {
+    typename PayloadTraits<ValueType>::ApplyBinary binary{};
+    binary.template apply<LerpOp>(getPayloadContents<ValueType>(out), getPayloadContents<ValueType>(a),
+                                  getPayloadContents<ValueType>(b), t);
+  }
+};
+
+struct Lerp final {
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return Base::MathTypes; }
+
+  static SHOptionalString help() { return SHCCSTR("Linearly interpolate between two values based on input"); }
+
+  static SHParametersInfo parameters() {
+    static Parameters params{
+        {"First", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
+        {"Second", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
+    };
+    return params;
+  }
+
+  ParamVar _first;
+  ParamVar _second;
+  Var _result;
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _first = value;
+      break;
+    case 1:
+      _second = value;
+      break;
+    default:
+      throw std::out_of_range("index");
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _first;
+    case 1:
+      return _second;
+    default:
+      throw std::out_of_range("index");
+    }
+  }
+
+  void warmup(SHContext *context) {
+    _first.warmup(context);
+    _second.warmup(context);
+  }
+
+  void cleanup() {
+    _first.cleanup();
+    _second.cleanup();
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    SHType firstType{};
+    SHType secondType{};
+    firstType = _first.isVariable() ? findParamVarExposedTypeChecked(data, _first).exposedType.basicType : _first->valueType;
+    secondType = _second.isVariable() ? findParamVarExposedTypeChecked(data, _second).exposedType.basicType : _second->valueType;
+
+    if (firstType != secondType)
+      throw ComposeError("Types should match");
+
+    return SHTypeInfo{.basicType = firstType};
+  }
+
+  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+    SHVar a = _first.get();
+    SHVar b = _second.get();
+    SHVar result{.valueType = a.valueType};
+    dispatchType<DispatchType::NumberTypes>(a.valueType, ApplyLerp{}, result.payload, a.payload, b.payload,
+                                           input.payload.floatValue);
+    return result;
+  }
+};
+
+} // namespace Math
+} // namespace shards
 
 #endif // SH_CORE_SHARDS_MATH

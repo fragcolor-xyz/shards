@@ -10,54 +10,54 @@
 namespace shards::Math {
 
 template <size_t Length> struct ApplyUnaryVector {
-  template <typename TOp, typename T> void apply(T &out, const T &a) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
 
     for (size_t i = 0; i < Length; i++)
-      out[i] = op.template apply(a[i]);
+      out[i] = op.template apply(a[i], args...);
   }
 };
 
 template <> struct ApplyUnaryVector<1> {
-  template <typename TOp, typename T> void apply(T &out, const T &a) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
-    out = op.template apply(a);
+    out = op.template apply(a, args...);
   }
 };
 
 struct ApplyUnaryColor {
-  template <typename TOp, typename T> void apply(T &out, const T &a) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
-    out.r = op.template apply(a.r);
-    out.g = op.template apply(a.g);
-    out.b = op.template apply(a.b);
-    out.a = op.template apply(a.a);
+    out.r = op.template apply(a.r, args...);
+    out.g = op.template apply(a.g, args...);
+    out.b = op.template apply(a.b, args...);
+    out.a = op.template apply(a.a, args...);
   }
 };
 
 template <size_t Length> struct ApplyBinaryVector {
-  template <typename TOp, typename T> void apply(T &out, const T &a, const T &b) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
 
     for (size_t i = 0; i < Length; i++)
-      out[i] = op.template apply(a[i], b[i]);
+      out[i] = op.template apply(a[i], b[i], args...);
   }
 };
 
 template <> struct ApplyBinaryVector<1> {
-  template <typename TOp, typename T> void apply(T &out, const T &a, const T &b) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
-    out = op.template apply(a, b);
+    out = op.template apply(a, b, args...);
   }
 };
 
 struct ApplyBinaryColor {
-  template <typename TOp, typename T> void apply(T &out, const T &a, const T &b) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
-    out.r = op.template apply(a.r, b.r);
-    out.g = op.template apply(a.g, b.g);
-    out.b = op.template apply(a.b, b.b);
-    out.a = op.template apply(a.a, b.a);
+    out.r = op.template apply(a.r, b.r, args...);
+    out.g = op.template apply(a.g, b.g, args...);
+    out.b = op.template apply(a.b, b.b, args...);
+    out.a = op.template apply(a.a, b.a, args...);
   }
 };
 
