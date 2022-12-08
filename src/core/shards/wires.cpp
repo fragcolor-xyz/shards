@@ -1085,16 +1085,14 @@ struct CapturingSpawners : public WireBase {
     _sharedCopy = shared;
   }
 };
+enum class WaitUntil { FirstSuccess, AllSuccess, SomeSuccess };
+} // namespace shards
 
-enum class WaitUntil {
-  FirstSuccess, // will wait until the first success and stop any other
-                // pending operation
-  AllSuccess,   // will wait until all complete, will stop and fail on any
-                // failure
-  SomeSuccess   // will wait until all complete but won't fail if some of the
-                // wires failed
-};
+ENUM_HELP(WaitUntil, WaitUntil::FirstSuccess, SHCCSTR("Will wait until the first success and stop any other pending operation"));
+ENUM_HELP(WaitUntil, WaitUntil::AllSuccess, SHCCSTR("Will wait until all complete, will stop and fail on any failure"));
+ENUM_HELP(WaitUntil, WaitUntil::SomeSuccess, SHCCSTR("Will wait until all complete but won't fail if some of the wires failed"));
 
+namespace shards{
 struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   uint32_t index;
   std::shared_ptr<SHWire> wire;

@@ -1,0 +1,217 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+(defmesh root)
+
+;; path definitions
+(def basePath "./")
+(def shardsPath "docs/reference/shards/")
+(def enumsPath "docs/reference/enums/")
+(def shardsDetailsPath "details/shards/")
+(def shardsSamplePath "samples/shards/")
+
+;; computes the filename from the shard name
+(defn getFilename [path extension fallback-general]
+  (Maybe
+   (->
+    (Regex.Match #"(\w+)\.(.*)")
+    (| (Take 1) = .first)
+    (| (Take 2) = .second)
+    path >= .f
+    .first (AppendTo .f)
+    "/" (AppendTo .f)
+    .second (AppendTo .f)
+    extension (AppendTo .f)
+    .f (ToString))
+   (->
+    >= .f
+    (str path (if fallback-general "General/" "")) (PrependTo .f)
+    extension (AppendTo .f)
+    .f (ToString))
+   true))
+
+;; dumps the generated content to the final file
+(defn dump-shard [name]
+  (Wire
+   (str "dump-shard-" name)
+   (Setup
+    (shard-info name) = .record
+    (Get .record "help") = .help
+    (Get .record "inputTypes") = .inputTypes
+    (Get .record "inputHelp") = .inputHelp
+    (Get .record "outputTypes") = .outputTypes
+    (Get .record "outputHelp") = .outputHelp
+    (Get .record "properties" :Default {}) = .properties
+    (Get .record "parameters") = .parameters
+    name (getFilename (str basePath shardsPath) ".md" true) = .filename
+    [""] >= .o)
+
+   ; metadata (front matter)
+   "---\r\n" >> .o
+   "authors: Fragcolor & contributors\r\n" >> .o
+   "license: CC-BY-SA-4.0\r\n" >> .o
+   "---\r\n" >> .o
+   "\r\n\r\n" >> .o
+
+   ; title
+   "# " >> .o name >> .o "\r\n\r\n" >> .o
+
+   ;; Combined table showing the input/outpus and parameters
+   "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> .o
+   "| Name | - {: #sh-flags-row} | Description | Default | Type |\r\n" >> .o
+   "|------|---------------------|-------------|---------|------|\r\n" >> .o
+
+   "| `<input>` ||" >> .o
+   .inputHelp >> .o " | " >> .o "| `" >> .o
+   .inputTypes >> .o "` |\r\n" >> .o
+
+   "| `<output>` ||" >> .o
+   .outputHelp >> .o " | " >> .o "| `" >> .o
+   .outputTypes >> .o "` |\r\n" >> .o
+
+   (When
+    (-> (Count .parameters) (IsMore 0))
+    (->
+     .parameters
+     (ForEach
+      (-> (ExpectTable)
+          (| (Take "name") >= .p_name)
+          (| (Take "types") >= .p_types)
+          (| (Take "help") >= .p_help)
+          (| (Take "default") >= .p_default)
+          (| (Take "optional") (ExpectBool) >= .p_optional)
+          "| `" >> .o .p_name >> .o
+          .p_optional (If (Is true)
+                          (-> "` | :fontawesome-solid-circle-plus:{title=\"Optional\"} " >> .o)
+                          (-> "` | " >> .o))
+          " | " >> .o .p_help >> .o
+          " | `" >> .o .p_default >> .o
+          "` | `" >> .o .p_types >> .o
+          "` |\r\n" >> .o))))
+
+   "\r\n</div>\r\n" >> .o
+   "\r\n" >> .o
+
+
+   ;; deprecated warning
+   (When
+    (-> (Get .properties "deprecated" :Default false))
+    (-> "--8<-- \"includes/deprecated.md\"\r\n\r\n" >> .o))
+
+   ;; experimental warning
+   (When
+    (-> (Get .properties "experimental" :Default false))
+    (-> "--8<-- \"includes/experimental.md\"\r\n\r\n" >> .o))
+
+   ;; Help text
+   .help  >> .o "\r\n\r\n" >> .o
+
+   ;; details (optional)
+   (When
+    (-> name (getFilename (str basePath shardsDetailsPath) ".md" true) (FS.IsFile))
+    (-> "## Details\r\n\r\n" >> .o
+        "--8<-- \"" >> .o name (getFilename shardsDetailsPath ".md" true) >> .o "\"\r\n" >> .o
+        "\r\n\r\n" >> .o))
+
+   ;; examples (optional)
+   (When
+    (-> name (getFilename (str basePath shardsSamplePath) "" true) (FS.IsDirectory))
+    (->
+     "## Examples\r\n\r\n" >> .o
+
+     name (getFilename (str basePath shardsSamplePath) "" true) (FS.Iterate)
+     (ForEach
+      (-> (When
+           (-> (FS.Extension) (Is ".edn"))
+           (-> (| = .sample-script)
+               (| (FS.Filename :NoExtension true) = .sample-filename)
+               [name "/" .sample-filename ".edn"] (String.Join) = .sample-script-fn
+               [name "/" .sample-filename ".edn.log"] (String.Join) = .sample-log-fn
+               [name "/" .sample-filename ".out.md"] (String.Join) = .sample-out-md-fn
+
+               .sample-out-md-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-out-md
+
+               "=== \"Code\"\r\n\r\n" >> .o
+               "    ```clojure linenums=\"1\"\r\n" >> .o
+               "    --8<-- \"" >> .o .sample-script-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
+               "    ```\r\n\r\n" >> .o
+
+               "=== \"Output\"\r\n\r\n" >> .o
+               ; Optionally include the .out.md file next to the sample log
+               .sample-have-out-md
+               (When (Is true)
+                     (->
+                      "    --8<-- \"" >> .o
+                      .sample-out-md-fn (getFilename shardsSamplePath "" true) >> .o
+                      "\"\r\n\r\n" >> .o))
+
+               "    ```\r\n" >> .o
+               "    --8<-- \"" >> .o
+               .sample-log-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
+               "    ```\r\n" >> .o
+
+               "&nbsp;\r\n" >> .o))))))
+
+   "--8<-- \"includes/license.md\"\r\n" >> .o
+
+   .o (String.Join) = .content
+   .filename (FS.Write .content :Overwrite true)
+   (Msg "done.")))
+
+(defn dump-enum [name]
+  (Wire
+   (str "dump-enum-" name)
+   (Setup
+    (enum-info name) = .record
+    name (getFilename (str basePath enumsPath) ".md" false) = .filename
+    (Get .record "values") = .values
+    [""] >= .o)
+
+   ; metadata (front matter)
+   "---\r\n" >> .o
+   "authors: Fragcolor & contributors\r\n" >> .o
+   "license: CC-BY-SA-4.0\r\n" >> .o
+   "---\r\n" >> .o
+   "\r\n\r\n" >> .o
+
+   ; title
+   "# " >> .o name >> .o "\r\n\r\n" >> .o
+
+   ;; Table showing the valid enum values
+   "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> .o
+   "| Value  | Description |\r\n" >> .o
+   "|------|---------------------|\r\n" >> .o
+
+   (When
+    (-> (Count .values) (IsMore 0))
+    (->
+     .values
+     (ForEach
+      (-> (ExpectTable)
+          (| (Take "label") >= .label)
+          (| (Take "description") >= .description)
+          "| `" >> .o .label >> .o
+          "` | " >> .o .description >> .o
+          " |\r\n" >> .o))))
+
+   "\r\n</div>\r\n" >> .o
+   "\r\n" >> .o
+
+   "--8<-- \"includes/license.md\"\r\n" >> .o
+
+   .o (String.Join) = .content
+   .filename (FS.Write .content :Overwrite true)
+   (Msg "done.")))
+
+;; execution
+; strings are compressed by default, need to unpack if we use info
+(decompress-strings)
+(map
+ (fn* [name] (schedule root (dump-shard name)))
+ (shards))
+(map
+ (fn* [name] (schedule root (dump-enum name)))
+ (enums))
+;; (schedule root (dump-shard "And"))
+
+(if (run root) nil (throw "Root tick failed"))

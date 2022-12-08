@@ -101,7 +101,7 @@ jobs:
 
           echo "Running onnx test"
           build/shards src/tests/onnx.edn
-      - name: Test doc samples (UI)
+      - name: Test doc samples (GFX)
         env:
           RUST_BACKTRACE: 1
         run: |
@@ -110,7 +110,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           cd docs/samples
-          for i in $(find shards -name '*.edn' -path '*UI*');
+          for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*'\));
           do
             echo "Running sample $i";
             ../../build/shards run-sample.edn --file "$i";

@@ -61,10 +61,12 @@ else()
 endif()
 message(STATUS "RUST_BUILD_SUBDIR = ${RUST_BUILD_SUBDIR}")
 
-set(RUST_FLAGS ${RUST_FLAGS} -Ctarget-cpu=${ARCH})
+if(ARCH)
+  list(APPEND RUST_FLAGS -Ctarget-cpu=${ARCH})
+endif()
 
 if(RUST_USE_LTO)
-  set(RUST_FLAGS ${RUST_FLAGS} -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
+list(APPEND RUST_FLAGS -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
 endif()
 
 if(EMSCRIPTEN_PTHREADS)

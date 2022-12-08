@@ -12,7 +12,7 @@ These documents will help you understand, use, and contribute to Fragcolor techn
 You can start from a high-level topic below or use the navigation links at the top.
 
 - [Shards](./learn/shards/)
-- [Built-in functions](./docs/functions/)
+- [Reference](./reference/)
 - [Contributions guides](./contribute/)
 
 *Use the search box if you're looking for something specific.*

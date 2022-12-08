@@ -298,6 +298,12 @@ public:
   }
 };
 
+// Contains help text for a specific enum member
+// Implement a specialization to add custom help text
+template <typename E, E Value> struct TEnumHelp {
+  static inline SHOptionalString help = SHOptionalString{""};
+};
+
 template <class SH_CORE_, typename E_, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
 struct TEnumInfo {
   using Enum = E_;
@@ -310,21 +316,8 @@ struct TEnumInfo {
 };
 
 template <typename E, bool IsFlags = false> struct TEnumInfoImpl {
-  static constexpr auto enum_names() {
-    if constexpr (IsFlags) {
-      return magic_enum::flags::enum_names<E>();
-    } else {
-      return magic_enum::enum_names<E>();
-    }
-  }
-
-  static constexpr auto enum_values() {
-    if constexpr (IsFlags) {
-      return magic_enum::flags::enum_values<E>();
-    } else {
-      return magic_enum::enum_values<E>();
-    }
-  }
+  static constexpr auto enum_names() { return magic_enum::enum_names<E>(); }
+  static constexpr auto enum_values() { return magic_enum::enum_values<E>(); }
 
   static constexpr auto eseq = enum_names();
   static constexpr auto vseq = enum_values();
@@ -334,32 +327,37 @@ struct EnumRegisterImpl {
   SHEnumInfo info;
   std::vector<std::string> labels;
   std::vector<SHString> clabels;
+  std::vector<SHOptionalString> cdescriptions;
   std::vector<SHEnum> values;
 
   template <typename TEnumInfo> static inline EnumRegisterImpl registerEnum() {
     using Impl = TEnumInfoImpl<typename TEnumInfo::Enum, TEnumInfo::IsFlags>;
 
     EnumRegisterImpl result{};
-    result.info.name = TEnumInfo::Name;
+    auto &info = result.info;
+    info.name = TEnumInfo::Name;
     for (auto &view : Impl::eseq) {
       result.labels.emplace_back(view);
     }
     for (auto &s : result.labels) {
       result.clabels.emplace_back(s.c_str());
     }
-    result.info.labels.elements = &result.clabels[0];
-    result.info.labels.len = uint32_t(result.labels.size());
+    info.labels.elements = &result.clabels[0];
+    info.labels.len = uint32_t(result.labels.size());
 
     for (auto &v : Impl::vseq) {
       result.values.emplace_back(SHEnum(v));
     }
-    result.info.values.elements = &result.values[0];
-    result.info.values.len = uint32_t(result.values.size());
+    info.values.elements = &result.values[0];
+    info.values.len = uint32_t(result.values.size());
+    assert(info.values.len == info.labels.len);
 
-    assert(result.info.values.len == result.info.labels.len);
+    magic_enum::enum_for_each<typename TEnumInfo::Enum>([&](auto Value) { result.cdescriptions.emplace_back(TEnumHelp<typename TEnumInfo::Enum, Value>::help); });
+    info.descriptions.elements = &result.cdescriptions[0];
+    info.descriptions.len = uint32_t(result.cdescriptions.size());
 
     SHTypeInfo shType = TEnumInfo::Type;
-    TEnumInfo::SHCore::registerEnumType(shType.enumeration.vendorId, shType.enumeration.typeId, result.info);
+    TEnumInfo::SHCore::registerEnumType(shType.enumeration.vendorId, shType.enumeration.typeId, info);
 
     return result;
   }

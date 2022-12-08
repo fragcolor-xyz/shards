@@ -26,6 +26,8 @@ void SHMaterial::updateVariables() { shaderParameters.updateVariables(material->
 struct MaterialShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
+  static inline Type TexturesTable = Type::TableOf(Types::TextureTypes);
+  static inline Type ShaderParamVarTable = Type::TableOf(Types::ShaderParamVarTypes);
 
   static inline std::map<std::string, Type> InputTableTypes{};
 
@@ -33,11 +35,9 @@ struct MaterialShard {
   static SHTypesInfo outputTypes() { return Types::Material; }
 
   PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
-                 {CoreInfo::NoneType, Type::TableOf(Types::ShaderParamVarTypes),
-                  Type::VariableOf(Type::TableOf(Types::ShaderParamVarTypes))});
+                 {CoreInfo::NoneType, ShaderParamVarTable, Type::VariableOf(ShaderParamVarTable)});
   PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
-                 {CoreInfo::NoneType, Type::TableOf(Types::TextureTypes),
-                  Type::VariableOf(Type::TableOf(Types::TextureVarTypes))});
+                 {CoreInfo::NoneType, TexturesTable, Type::VariableOf(TexturesTable)});
   PARAM_IMPL(MaterialShard, PARAM_IMPL_FOR(_paramsVar), PARAM_IMPL_FOR(_texturesVar));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }

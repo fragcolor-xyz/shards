@@ -16,7 +16,7 @@ The execution of Shards scripts is meant to be fast: the scripting language is j
 The runtime itself is completely detached.
 
 ??? note "Running code samples"
-    Many shard code samples (like for the shard [Take](/General/Take)) do not include the wire/mesh context they need to run. To run these samples you need to navigate to `../shards/docs/samples/`and use the following command to provide the necessary boilerplate code to these samples.
+    Many shard code samples (like for the shard [Take](./shards/General/Take)) do not include the wire/mesh context they need to run. To run these samples you need to navigate to `../shards/docs/samples/`and use the following command to provide the necessary boilerplate code to these samples.
 
     ```
         cd docs/samples

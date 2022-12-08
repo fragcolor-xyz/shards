@@ -412,6 +412,25 @@ void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
   }
 }
 
+SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId) {
+  int64_t id = (int64_t)vendorId << 32 | typeId;
+  auto it = shards::GetGlobals().ObjectTypesRegister.find(id);
+  if (it != shards::GetGlobals().ObjectTypesRegister.end()) {
+    return &it->second;
+  }
+  return nullptr;
+}
+
+SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId) {
+  int64_t id = (int64_t)vendorId << 32 | typeId;
+  auto it = shards::GetGlobals().EnumTypesRegister.find(id);
+  if (it != shards::GetGlobals().EnumTypesRegister.end()) {
+    return &it->second;
+  }
+  return nullptr;
+}
+
+
 void registerRunLoopCallback(std::string_view eventName, SHCallback callback) {
   shards::GetGlobals().RunLoopHooks[eventName] = callback;
 }

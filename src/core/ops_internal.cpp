@@ -6,7 +6,8 @@
 #include "runtime.hpp"
 #include <unordered_set>
 
-std::ostream &operator<<(std::ostream &os, const SHVar &var) {
+namespace shards {
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) {
   switch (var.valueType) {
   case SHType::EndOfBlittableTypes:
     break;
@@ -16,31 +17,47 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   case SHType::Any:
     os << "Any";
     break;
-  case SHType::Object:
-    os << "Object: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
-       << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId << std::dec;
+  case SHType::Object: {
+    SHObjectInfo *objectInfo = var.objectInfo;
+    if (!objectInfo)
+      objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
+    if (objectInfo) {
+      os << objectInfo->name;
+    } else {
+      os << "Object: 0x" << std::hex << var.payload.objectValue << " vendor: 0x" << var.payload.objectVendorId << " type: 0x"
+         << var.payload.objectTypeId << std::dec;
+    }
     break;
+  }
   case SHType::Wire: {
     if (var.payload.wireValue) {
       auto wire = SHWire::sharedFromRef(var.payload.wireValue);
-      os << "Wire: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.wireValue) << std::dec;
-      os << " name: " << wire->name;
+      os << "<Wire: " << wire->name << ">";
     } else {
-      os << "Wire: 0x0";
+      os << "<Wire: None>";
     }
   } break;
   case SHType::Bytes:
-    os << "Bytes: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.bytesValue) << " size: " << std::dec
-       << var.payload.bytesSize;
+    os << "<" << var.payload.bytesSize << " Bytes>" << std::dec;
     break;
   case SHType::Array:
     os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
        << var.payload.arrayValue.len << " of: " << type2Name(var.innerType);
     break;
-  case SHType::Enum:
-    os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
-       << var.payload.enumTypeId << std::dec;
+  case SHType::Enum: {
+    SHEnumInfo *enumInfo = findEnumInfo(var.payload.enumVendorId, var.payload.enumTypeId);
+    if (enumInfo) {
+      const char *label = "<invalid>";
+      if (var.payload.enumValue >= 0 && var.payload.enumValue < enumInfo->labels.len) {
+        label = enumInfo->labels.elements[var.payload.enumValue];
+      }
+      os << enumInfo->name << "." << label;
+    } else {
+      os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
+         << var.payload.enumTypeId << std::dec;
+    }
     break;
+  }
   case SHType::Bool:
     os << (var.payload.boolValue ? "true" : "false");
     break;
@@ -210,91 +227,116 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   }
   return os;
 }
-
-std::ostream &operator<<(std::ostream &os, const SHTypeInfo &t) {
-  os << type2Name(t.basicType);
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &t) {
+  // This code outputs non-breaking spaces for cleaner wrapping on the documentation page
   if (t.basicType == SHType::Seq) {
-    os << " [";
+    os << "[ ";
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
-      // avoid recursive types
       if (t.seqTypes.elements[i].recursiveSelf) {
-        os << "(Self)";
+        os << "Self";
       } else {
-        os << "(" << t.seqTypes.elements[i] << ")";
+        os << t.seqTypes.elements[i];
       }
       if (i < (t.seqTypes.len - 1)) {
         os << " ";
       }
     }
-    os << "]";
+    os << " ]";
   } else if (t.basicType == SHType::Set) {
-    os << " [";
+    os << "< ";
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
       // avoid recursive types
       if (t.setTypes.elements[i].recursiveSelf) {
-        os << "(Self)";
+        os << "Self";
       } else {
-        os << "(" << t.setTypes.elements[i] << ")";
+        os << t.setTypes.elements[i];
       }
       if (i < (t.setTypes.len - 1)) {
         os << " ";
       }
     }
-    os << "]";
+    os << " >";
   } else if (t.basicType == SHType::Table) {
     if (t.table.types.len == t.table.keys.len) {
-      os << " {";
+      os << "{ ";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
-        os << "\"" << t.table.keys.elements[i] << "\" ";
-        os << "(" << t.table.types.elements[i] << ")";
+        os << ":" << t.table.keys.elements[i] << " ";
+        os << t.table.types.elements[i];
         if (i < (t.table.types.len - 1)) {
           os << " ";
         }
       }
-      os << "}";
+      os << " }";
     } else {
-      os << " [";
+      os << "{ ";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         if (t.table.types.elements[i].recursiveSelf) {
-          os << "(Self)";
+          os << "Self";
         } else {
-          os << "(" << t.table.types.elements[i] << ")";
+          os << t.table.types.elements[i];
         }
         if (i < (t.table.types.len - 1)) {
           os << " ";
         }
       }
-      os << "]";
+      os << " }";
     }
   } else if (t.basicType == SHType::ContextVar) {
-    os << " [";
+    bool braced = false;
+    if (t.contextVarTypes.len > 1)
+      braced = true;
+
+    os << "&";
+    if (braced)
+      os << "( ";
+
     for (uint32_t i = 0; i < t.contextVarTypes.len; i++) {
       // avoid recursive types
       if (t.contextVarTypes.elements[i].recursiveSelf) {
-        os << "(Self)";
+        os << "Self";
       } else {
-        os << "(" << t.contextVarTypes.elements[i] << ")";
+        os << t.contextVarTypes.elements[i];
       }
       if (i < (t.contextVarTypes.len - 1)) {
         os << " ";
       }
     }
-    os << "]";
+
+    if (braced)
+      os << " )";
+  } else if (t.basicType == SHType::Object) {
+    SHObjectInfo *objectInfo = findObjectInfo(t.object.vendorId, t.object.typeId);
+    if (objectInfo) {
+      os << objectInfo->name;
+    } else {
+      os << "Object";
+      SHLOG_WARNING("No object info found for object: vendor: {}, type: {}", t.object.vendorId, t.object.typeId);
+    }
+  } else if (t.basicType == SHType::Enum) {
+    SHEnumInfo *enumInfo = findEnumInfo(t.enumeration.vendorId, t.enumeration.typeId);
+    if (enumInfo) {
+      os << enumInfo->name;
+    } else {
+      os << "Enum";
+      SHLOG_WARNING("No object info found for enum: vendor: {}, type: {}", t.enumeration.vendorId, t.enumeration.typeId);
+    }
+  } else {
+    os << type2Name(t.basicType);
   }
   return os;
 }
-
-std::ostream &operator<<(std::ostream &os, const SHTypesInfo &ts) {
-  os << "[";
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypesInfo &ts) {
   for (uint32_t i = 0; i < ts.len; i++) {
-    os << "(" << ts.elements[i] << ")";
+    if (ignoreNone && ts.elements[i].basicType == SHType::None)
+      continue;
+    os << ts.elements[i];
     if (i < (ts.len - 1)) {
       os << " ";
     }
   }
-  os << "]";
   return os;
 }
+} // namespace shards
 
 bool _seqEq(const SHVar &a, const SHVar &b) {
   if (a.payload.seqValue.elements == b.payload.seqValue.elements)

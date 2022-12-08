@@ -187,7 +187,15 @@ enum class DispatchType : uint8_t {
   IntTypes = 0x2,
   NumberTypes = FloatTypes | IntTypes,
 };
+} // namespace shards::Math
 
+namespace magic_enum::customize {
+template <> struct enum_range<shards::Math::DispatchType> {
+  static constexpr bool is_flags = true;
+};
+} // namespace magic_enum::customize
+
+namespace shards::Math {
 constexpr bool hasDispatchType(DispatchType a, DispatchType b) { return (uint8_t(a) & uint8_t(b)) != 0; }
 
 template <DispatchType DispatchType, typename T, typename... TArgs> void dispatchType(SHType type, T v, TArgs &&...args) {
@@ -236,8 +244,7 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
       break;
     }
   }
-  throw std::out_of_range(
-      fmt::format("dispatchType<{}>({})", magic_enum::flags::enum_name(DispatchType), magic_enum::enum_name(type)));
+  throw std::out_of_range(fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));
 }
 
 #define MATH_BINARY_OPERATION(__name, __op)                                            \

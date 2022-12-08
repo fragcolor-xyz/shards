@@ -16,6 +16,7 @@ use crate::shardsc::SHImage;
 use crate::shardsc::SHInstanceData;
 use crate::shardsc::SHMeshRef;
 use crate::shardsc::SHOptionalString;
+use crate::shardsc::SHOptionalStrings;
 use crate::shardsc::SHParameterInfo;
 use crate::shardsc::SHParametersInfo;
 use crate::shardsc::SHPointer;
@@ -3473,6 +3474,7 @@ macro_rules! shenum {
       name: &'static str,
       labels: $crate::types::Strings,
       values: Vec<i32>,
+      descriptions: $crate::types::OptionalStrings,
     }
 
     __impl_shenuminfo! {
@@ -3553,10 +3555,18 @@ macro_rules! __impl_shenuminfo {
           labels.push($SHEnumInfo::$EnumValue);
         )*
 
+        let mut descriptions = $crate::types::OptionalStrings::new();
+        for _ in 0..labels.len() {
+          descriptions.push($crate::types::OptionalString(shccstr!("")));
+        }
+        // $(
+        // )*
+
         Self {
           name: cstr!(std::stringify!($SHEnum)),
           labels,
           values: vec![$($value,)*],
+          descriptions,
         }
       }
     }
@@ -3577,6 +3587,7 @@ macro_rules! __impl_shenuminfo {
             len: info.values.len() as u32,
             cap: 0
           },
+          descriptions: (&info.descriptions).into(),
         }
       }
     }
@@ -3706,6 +3717,18 @@ impl AsRef<Strings> for Strings {
   #[inline(always)]
   fn as_ref(&self) -> &Strings {
     self
+  }
+}
+
+pub type OptionalStrings = Vec<OptionalString>;
+
+impl From<&OptionalStrings> for SHOptionalStrings {
+  fn from(vec: &OptionalStrings) -> Self {
+    SHOptionalStrings {
+      elements: vec.as_ptr() as *mut SHOptionalString,
+      len: vec.len() as u32,
+      cap: 0,
+    }
   }
 }
 
