@@ -8,20 +8,6 @@ To gain better control of the flow in your Shards program, you can employ some o
 ## Do / Dispatch ##
 [`Do`](../../../reference/shards/General/Do) and [`Dispatch`](../../../reference/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
 
-
-??? "`Do` or `Dispatch`?"
-    `Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`.
-
-    To learn more about passthrough, see the segment [here](../working-with-data/#passthrough).
-
-??? "Why not `defn`?"
-    Since [`defn`](../../../reference/functions/macros/#defn) is used for creating functions in Shards, you might be wondering why is it not used instead.
-
-    This is due to how a Wire's state persists, unlike a function. A Wire will remember what happened when it was last called, while a function's only role is to take an input, execute its code, and produce an output.
-
-    For the example below, note that we used a Wire so that the number of apples can be tracked within the Wire. You can also check out [this](../what-is-shards/#to-wire-or-not) segment in the chapter before for another example.
-
-
 === "Command"
 
     ```{.clojure .annotate linenums="1"}
@@ -62,7 +48,50 @@ To gain better control of the flow in your Shards program, you can employ some o
     [lucy] Taking an apple!
     [take-an-apple] Apples Remaining: 8
     ```
+`Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`.
 
+In the example below, John starts with five apples. He takes one, counts how many apples he has, and then takes another. We define two Wires - `add-apple` and `count-apples` to carry out these tasks.
+
+=== "Command"
+
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main) ;; (1)
+    
+    (defwire add-apple ;; (2)
+      (Msg "Adding an apple...") ;; (3)
+      (Math.Add 1)) ;; (4)
+
+    (defwire count-apples
+      (ToString) >= .count ;; (5)
+      ["I have " .count " apples!"] (String.Join) >= .message (Log)) ;; (6)(7)
+
+    (defwire john
+      5 >= .apples
+      (Dispatch count-apples)
+      (Do add-apple)
+      (Dispatch count-apples))
+
+    (schedule main john) ;; (8)
+    (run main) ;; (9)
+    ```
+
+    1. [`defmesh`](https://docs.fragcolor.xyz/docs/functions/macros/#defmesh) is used to define a Mesh.
+    2. [`defwire`](https://docs.fragcolor.xyz/docs/functions/macros/#defwire) is used to define a Wire.
+    3. [`Msg`](https://docs.fragcolor.xyz/docs/shards/General/Msg/) prints out the string passed into it.
+    4. [`Math.Add`](https://docs.fragcolor.xyz/docs/shards/Math/Add/) takes in a value and increments it by the number specified.
+    5. [`ToString`](https://docs.fragcolor.xyz/docs/shards/General/ToString/) converts a value into a string.
+    6. [`String.Join`](https://docs.fragcolor.xyz/docs/shards/String/Join/) joins a sequence of strings together to form a single string.
+    7. ['Log'](https://docs.fragcolor.xyz/docs/shards/General/Log/) displays a value to the user's console. You can pass in a prefix that will be placed before the value.
+    8. [`schedule`](https://docs.fragcolor.xyz/docs/functions/misc/#schedule) queues a Wire on the Mesh.
+    9. [`run`](https://docs.fragcolor.xyz/docs/functions/misc/#run) executes Wires on the Mesh.
+
+=== "Output"
+
+    ```
+    [count-apples] I have 5 apples!
+    [add-apple] Adding an apple...
+    [count-apples] I have 6 apples!
+    ```
 
 ## Detach / Spawn ##
 [`Detach`](../../../reference/shards/General/Detach) and [`Spawn`](../../../reference/shards/General/Spawn) schedules a Wire to run on the same Mesh.
