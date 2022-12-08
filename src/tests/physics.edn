@@ -1,0 +1,66 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+(def timestep (/ 1.0 120.0))
+(def duration 600)
+(def box-count 50)
+
+(defloop main-wire
+  (Setup
+   ; define a cube
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) = .cube
+
+   ; instantiate n cubes
+   (map
+    (fn* [n]
+         (-> (Float3 0 n 0) (Math.Translation)
+             >= (ContextVar (str "transform-" n))
+
+             {:Mesh .cube
+              :Params
+              {:baseColor (Float4 (* (- 1.0 (/ 1.0 n)) 2.0) (* (/ 1.0 n) 2.0) 0 1)}}
+             (GFX.Drawable :Transform (ContextVar (str "transform-" n)))
+             >> (ContextVar (str "drawable-" n))))
+    (range 1 box-count))
+
+   ; define some physics shapes
+   (Physics.Cuboid :HalfExtents (float3 0.5)) = .cube-pshape
+   (Physics.Cuboid :HalfExtents (float3 100 0.5 100)) = .ground-pshape
+
+   ; define rendering features
+   (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features} (GFX.DrawablePass) >> .render-steps
+
+   ; define a view
+   {:Position (Float3 50 10 10) :Target (Float3 0 0 0)} (Math.LookAt) = .view-transform
+   (GFX.View :View .view-transform) = .view)
+  (GFX.MainWindow
+   :Title "Physics" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    ; physics simulation
+    (Physics.Simulation)
+    (Physics.KinematicBody .ground-pshape (float3 0 -4 0))
+
+    ; associate a physics body to each cube
+    (map
+     (fn* [n]
+          (-> (Physics.DynamicBody
+               :Position (Float3 0 n 0)
+               :Shapes .cube-pshape
+               :Name (str "rb" n)) > (ContextVar (str "transform-" n))))
+     (range 1 box-count))
+
+    ; draw the cubes
+    (map
+     (fn* [n]
+          (-> (ContextVar (str "drawable-" n)) (GFX.Draw)))
+     (range 1 box-count))
+
+    ; final render
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(defmesh root)
+(schedule root main-wire)
+(run root timestep duration)
