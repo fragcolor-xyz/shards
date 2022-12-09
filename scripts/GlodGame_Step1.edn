@@ -23,6 +23,22 @@
    :Key "up"
    :Action (Msg "up")))
 
+(defshards Button_Inputs []
+  (Inputs.KeyDown
+   :Key "left"
+   :Action (->
+            (Msg "left")))
+
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            (Msg "right")))
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            (Msg "up"))))
+
 (defloop main-wire
   (Setup
    (innitialize-character))
