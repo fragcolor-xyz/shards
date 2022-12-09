@@ -32,4 +32,6 @@ NamedShaderParam::NamedShaderParam(std::string name, const FieldType &type, Para
 NamedShaderParam::NamedShaderParam(std::string name, ParamVariant defaultValue)
     : type(getParamVariantType(defaultValue)), name(name), defaultValue(defaultValue) {}
 
+void Feature::pipelineHashCollect(PipelineHashCollector &collector) const { collector(id); }
+
 } // namespace gfx

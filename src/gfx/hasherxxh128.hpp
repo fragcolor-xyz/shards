@@ -11,29 +11,12 @@
 #include <vector>
 
 namespace gfx {
-
 struct HasherDefaultVisitor {
   template <typename T, typename H> static constexpr auto applies(...) -> decltype(std::declval<T>().hash(*(H *)0), bool()) {
     return true;
   }
 
   template <typename T, typename THasher> void operator()(const T &value, THasher &&hasher) { value.hash(hasher); }
-};
-
-// Specialize this for custom types
-template <typename T, typename H, typename = void> struct PipelineHash {
-  static constexpr bool applies() { return false; }
-};
-
-template <typename T, typename H>
-struct PipelineHash<T, H, std::void_t<decltype(std::declval<T>().getPipelineHash(*(H *)0), bool())>> {
-  static constexpr bool applies() { return true; }
-  static void apply(const T &val, H &hasher) { val.getPipelineHash(hasher); }
-};
-
-struct PipelineHashVisitor {
-  template <typename T, typename H> static constexpr auto applies(...) { return PipelineHash<T, H>::applies(); }
-  template <typename T, typename H> void operator()(const T &val, H &hasher) { PipelineHash<T, H>::apply(val, hasher); }
 };
 
 template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
@@ -93,17 +76,6 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
     return TVisitor::template applies<TVal, HasherXXH128>(0);
   }
   template <typename TVal> static constexpr auto canVisit(char) -> bool { return false; }
-};
-
-template <typename H>
-struct PipelineHash<float4x4, H> {
-  static constexpr bool applies() { return true; }
-  static void apply(const float4x4 &val, H &hasher) {
-    hasher(val.x);
-    hasher(val.y);
-    hasher(val.z);
-    hasher(val.w);
-  }
 };
 
 } // namespace gfx

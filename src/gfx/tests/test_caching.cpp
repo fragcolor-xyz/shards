@@ -150,18 +150,20 @@ TEST_CASE("Drawable caching", "[Caching]") {
     CHECK(hash0 == hash1);
   }
 
-  SECTION("Changing references doesn't change hashes") {
+  SECTION("Changing references to similar objects doesn't change hashes") {
     collector1.reset();
     drawables[1]->mesh = meshes[1];
     drawables[1]->pipelineHashCollect(collector1);
     hash1 = collector1.hasher.getDigest();
     CHECK(hash0 == hash1);
+  }
 
+  SECTION("Add reference to changed object changes hashes") {
     collector1.reset();
     drawables[1]->features.push_back(features[1]);
     drawables[1]->pipelineHashCollect(collector1);
     hash1 = collector1.hasher.getDigest();
-    CHECK(hash0 == hash1);
+    CHECK(hash0 != hash1);
   }
 }
 
@@ -180,32 +182,43 @@ TEST_CASE("Pipeline cache evictions", "[Caching]") {
       make_shared<Mesh>(),
   };
 
+  meshes[0]->update(
+      MeshFormat{
+          .indexFormat = IndexFormat::UInt16,
+          .vertexAttributes = {MeshVertexAttribute("a", 1, StorageType::UInt8)},
+      },
+      std::vector<uint8_t>{0});
+  meshes[1]->update(
+      MeshFormat{
+          .indexFormat = IndexFormat::UInt32,
+          .vertexAttributes = {MeshVertexAttribute("b", 1, StorageType::UInt8)},
+      },
+      std::vector<uint8_t>{0});
+
   MeshDrawable::Ptr drawables[] = {
       make_shared<MeshDrawable>(meshes[0]),
       make_shared<MeshDrawable>(meshes[0]),
   };
 
-  detail::PipelineCache1 cache;
-  detail::PipelineCacheUpdate update;
+  detail::PipelineHashCache cache;
 
-  cache.update(*drawables[0].get(), update);
-  CHECK(update.evictedEntries.empty());
+  Hash128 hash0 = cache.update(*drawables[0].get());
   CHECK(cache.find(drawables[0]->getId()) != nullptr);
+  CHECK(*cache.find(drawables[0]->getId()) == hash0);
 
-  cache.update(*drawables[1].get(), update);
-  CHECK(update.evictedEntries.empty());
+  Hash128 hash1 = cache.update(*drawables[1].get());
   CHECK(cache.find(drawables[1]->getId()) != nullptr);
+  CHECK(*cache.find(drawables[1]->getId()) == hash1);
 
-  // Since mesh is not in the cache, this should evict both drawables
-  cache.update(*meshes[0].get(), update);
-  CHECK(update.evictedEntries.contains(drawables[0]->getId()));
-  CHECK(update.evictedEntries.contains(drawables[1]->getId()));
-  CHECK(cache.find(drawables[0]->getId()) == nullptr);
-  CHECK(cache.find(drawables[1]->getId()) == nullptr);
+  // Same object
+  CHECK(hash0 == hash1);
 
-  // Re-add mesh
-  cache.update(*drawables[0].get(), update);
-  CHECK(update.evictedEntries.empty());
-  CHECK(cache.find(drawables[0]->getId()) != nullptr);
-  CHECK(cache.find(meshes[0]->getId()) != nullptr);
+  drawables[1]->mesh = meshes[1];
+
+  // Check updated hash
+  hash1 = cache.update(drawables[1]);
+  CHECK(cache.find(drawables[1]->getId()) != nullptr);
+  CHECK(*cache.find(drawables[1]->getId()) == hash1);
+
+  CHECK(hash0 != hash1);
 }

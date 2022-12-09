@@ -9,18 +9,16 @@
 
 namespace gfx {
 
-DrawablePtr MeshDrawable::clone() const {
-  return cloneSelfWithId(this, getNextDrawableId());
-}
+DrawablePtr MeshDrawable::clone() const { return cloneSelfWithId(this, getNextDrawableId()); }
 IDrawableProcessor &MeshDrawable::getProcessor() const { return MeshDrawableProcessor::getInstance(); }
 
 void MeshDrawable::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
-  PipelineHashCollector.addReference(mesh);
+  PipelineHashCollector(mesh);
   if (material) {
-    PipelineHashCollector.addReference(material);
+    PipelineHashCollector(material);
   }
   for (auto &feature : features) {
-    PipelineHashCollector.addReference(feature);
+    PipelineHashCollector(feature);
   }
   parameters.pipelineHashCollect(PipelineHashCollector);
 }

@@ -1,5 +1,5 @@
 #include "material.hpp"
-#include "renderer_cache.hpp"
+#include "pipeline_hash_collector.hpp"
 #include "feature.hpp"
 #include "texture.hpp"
 
@@ -30,8 +30,7 @@ void MaterialParameters::pipelineHashCollect(PipelineHashCollector &PipelineHash
 
 void Material::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
   for (auto &feature : features) {
-    PipelineHashCollector(feature->getId());
-    PipelineHashCollector.addReference(feature);
+    PipelineHashCollector(feature);
   }
   parameters.pipelineHashCollect(PipelineHashCollector);
 }

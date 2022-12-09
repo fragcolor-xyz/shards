@@ -9,61 +9,27 @@
 
 namespace gfx::detail {
 
-struct PipelineCacheUpdate {
-  std::set<UniqueId> evictedEntries;
-
-  void reset() { evictedEntries.clear(); }
-};
-
-struct PipelineCache1 {
+struct PipelineHashCache final : public IPipelineHashStorage {
   struct Entry {
-    References references;
     Hash128 hash;
   };
   std::unordered_map<UniqueId, Entry> perType[magic_enum::enum_count<UniqueIdTag>()];
-  std::set<UniqueId> evictionQueue;
 
-  const Entry *find(UniqueId id) {
+  const Hash128 *find(UniqueId id) {
     auto &lut = perType[(uint8_t)id.getTag()];
     auto it = lut.find(id);
     if (it != lut.end()) {
-      return &it->second;
+      return &it->second.hash;
     } else {
       return nullptr;
     }
   }
 
-  void evict(UniqueId _id, PipelineCacheUpdate &update) {
-    evictionQueue.clear();
-    evictionQueue.insert(_id);
+  template <typename T> const Hash128 &update(const std::shared_ptr<T> &hashable) { return update(*hashable.get()); }
 
-    // Remove entries that reference this id
-    while (!evictionQueue.empty()) {
-      UniqueId id = evictionQueue.begin()->value;
-      evictionQueue.erase(id);
-
-      for (size_t i = 0; i < std::size(perType); i++) {
-        auto &lut = perType[i];
-        for (auto it = lut.begin(); it != lut.end(); ++it) {
-          if (it->second.references.contains(id)) {
-            // Add to the queue, so that items that reference this item also get evicted
-            evictionQueue.insert(it->first);
-          }
-        }
-      }
-
-      // Remove the originally evicted id
-      auto &lut = perType[(uint8_t)id.getTag()];
-      if (lut.erase(id) > 0)
-        update.evictedEntries.insert(id);
-    }
-  }
-
-  template <typename T> void update(const T &hashable, PipelineCacheUpdate &update) {
-    update.reset();
-
+  template <typename T> const Hash128 &update(const T &hashable) {
     UniqueId id = hashable.getId();
-    PipelineHashCollector collector;
+    PipelineHashCollector collector{.storage = this};
     hashable.pipelineHashCollect(collector);
 
     Hash128 hash = collector.hasher.getDigest();
@@ -71,19 +37,29 @@ struct PipelineCache1 {
     auto &lut = perType[(uint8_t)id.getTag()];
     auto it = lut.find(id);
     if (it != lut.end()) {
-      if (it->second.hash != hash) {
-        evict(id, update);
-      } else {
-        return; // Up-to-date
-      }
+      it->second.hash = hash;
     } else {
-      evict(id, update);
+      it = lut.insert(std::make_pair(id, Entry{.hash = hash})).first;
     }
 
-    lut.insert(std::make_pair(id, Entry{
-                                      .references = std::move(collector.references),
-                                      .hash = hash,
-                                  }));
+    return it->second.hash;
+  }
+
+  virtual std::optional<Hash128> getHash(UniqueId id) {
+    auto hash = find(id);
+    return hash ? std::make_optional(*hash) : std::nullopt;
+  }
+
+  virtual void addHash(UniqueId id, Hash128 hash) {
+    auto &lut = perType[(uint8_t)id.getTag()];
+    lut.insert(std::make_pair(id, Entry{.hash = hash}));
+  }
+
+  void reset() {
+    for (size_t i = 0; i < std::size(perType); i++) {
+      auto &lut = perType[i];
+      lut.clear();
+    }
   }
 };
 

@@ -7,6 +7,33 @@
 #include <set>
 
 namespace gfx {
+
+// Specialize this for custom types
+template <typename T, typename H, typename = void> struct PipelineHash {
+  static constexpr bool applies() { return false; }
+};
+
+template <typename T, typename H>
+struct PipelineHash<T, H, std::void_t<decltype(std::declval<T>().getPipelineHash(*(H *)0), bool())>> {
+  static constexpr bool applies() { return true; }
+  static void apply(const T &val, H &hasher) { val.getPipelineHash(hasher); }
+};
+
+template <typename H> struct PipelineHash<float4x4, H> {
+  static constexpr bool applies() { return true; }
+  static void apply(const float4x4 &val, H &hasher) {
+    hasher(val.x);
+    hasher(val.y);
+    hasher(val.z);
+    hasher(val.w);
+  }
+};
+
+struct PipelineHashVisitor {
+  template <typename T, typename H> static constexpr auto applies(...) { return PipelineHash<T, H>::applies(); }
+  template <typename T, typename H> void operator()(const T &val, H &hasher) { PipelineHash<T, H>::apply(val, hasher); }
+};
+
 struct References {
   std::set<UniqueId> set;
 
@@ -19,21 +46,53 @@ struct References {
   void clear() { set.clear(); }
 };
 
+// Interface to store and retrieve hashes
+struct IPipelineHashStorage {
+  virtual std::optional<Hash128> getHash(UniqueId id) = 0;
+  virtual void addHash(UniqueId id, Hash128 hash) = 0;
+};
+
 // Does 2 things while traversing gfx objects:
 // - Collect the pipeline hash to determine pipeline permutation
-// - Collect references to other gfx objects that the permutation depends on
+// - Whenever a reference is enountered to another shard object, hash that one too or used it's already computed hash
 struct PipelineHashCollector {
-  References references;
   HasherXXH128<PipelineHashVisitor> hasher;
 
-  void addReference(UniqueId id) { references.add(id); }
-  template <typename T> void addReference(const std::shared_ptr<T> &ref) { references.add(ref->getId()); }
+  // Used to store and retrieve hashes for already hashed objects
+  IPipelineHashStorage *storage{};
+
+  // Insert a reference to another shared object
+  template <typename T> void operator()(const std::shared_ptr<T> &ref) {
+    if (storage) {
+      auto id = ref->getId();
+      if (auto hash = storage->getHash(id)) {
+        hasher(hash.value());
+      } else {
+        PipelineHashCollector childCollector{.storage = storage};
+        childCollector.hashObject(ref);
+        Hash128 computedHash = childCollector.hasher.getDigest();
+        hasher(computedHash);
+
+        // Store for future usage
+        storage->addHash(id, computedHash);
+      }
+    } else {
+      PipelineHashCollector childCollector;
+      childCollector.hashObject(ref);
+      Hash128 computedHash = childCollector.hasher.getDigest();
+      hasher(computedHash);
+    }
+  }
+
+  template <typename T> void hashObject(const std::shared_ptr<T> &ref) { ref->pipelineHashCollect(*this); }
+
+  // Hash a regular value supported by PipelineHashVisitor
   template <typename T> void operator()(const T &val) { hasher(val); }
 
-  void reset() {
-    hasher.reset();
-    references.clear();
-  }
+  void reset() { hasher.reset(); }
+
+  std::optional<Hash128> getReferenceHash(UniqueId id);
+  std::optional<Hash128> insertReferenceHash(UniqueId id, Hash128);
 };
 } // namespace gfx
 

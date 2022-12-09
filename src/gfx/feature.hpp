@@ -7,6 +7,7 @@
 #include "params.hpp"
 #include "shader/types.hpp"
 #include "shader/entry_point.hpp"
+#include "pipeline_hash_collector.hpp"
 #include "unique_id.hpp"
 #include <functional>
 #include <memory>
@@ -201,6 +202,8 @@ struct Feature {
   virtual ~Feature() = default;
 
   UniqueId getId() const { return id; }
+
+  void pipelineHashCollect(PipelineHashCollector &) const;
 };
 typedef std::shared_ptr<Feature> FeaturePtr;
 
