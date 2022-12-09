@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="gfx::UniqueId">
+        <DisplayString>{gfx::UniqueIdTag((value &amp; ~((1llu &lt;&lt; (64-8)) - 1)) &gt;&gt; (64-8)), en} {value &amp; ( (1llu &lt;&lt; (64-8)) - 1 ), d}</DisplayString>
+        <Expand>
+            <Item Name="[Tag]" Optional="true">gfx::UniqueIdTag((value &amp; ~((1llu &lt;&lt; (64-8)) - 1)) &gt;&gt; (64-8))</Item>
+            <Item Name="[Id]" Optional="true">value &amp; ( (1llu &lt;&lt; (64-8)) - 1 )</Item>
+        </Expand>
+    </Type>
+</AutoVisualizer>
