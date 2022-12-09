@@ -8,46 +8,6 @@ To gain better control of the flow in your Shards program, you can employ some o
 ## Do / Dispatch ##
 [`Do`](../../../reference/shards/General/Do) and [`Dispatch`](../../../reference/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
 
-=== "Command"
-
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main) ;; (1)
-
-    (defwire take-an-apple ;; (2)
-      (Setup 10 >= .apples) ;; (3)
-      (Math.Dec .apples) ;; (4)
-      .apples (Log "Apples Remaining")) ;; (5)
-
-    (defwire john
-      (Msg "Taking an apple!") ;; (6)
-      (Dispatch take-an-apple))
-
-    (defwire lucy
-      (Msg "Taking an apple!")
-      (Dispatch take-an-apple))
-
-    (schedule main john) ;; (7)
-    (schedule main lucy)
-    (run main) ;; (8)
-    ```
-
-    1. [`defmesh`](../../../reference/functions/macros/#defmesh) is used to define a Mesh.
-    2. [`defwire`](../../../reference/functions/macros/#defwire) is used to define a Wire.
-    3. The [`Setup`](../../../reference/shards/General/Once/) shard will only be executed once, even within a Looped Wire. This makes it ideal to hold code that is only used once to ready the game.
-    4. [`Math.Dec`](../../../reference/shards/Math/Dec/) decreases the value passed in by 1.
-    5. ['Log'](../../../reference/shards/General/Log/) displays a value to the user's console. You can pass in a prefix that will be placed before the value.
-    6. [`Msg`](../../../reference/shards/General/Msg/) prints out the string passed into it.
-    7. [`schedule`](../../../reference/functions/misc/#schedule) queues a Wire on the Mesh.
-    8. [`run`](../../../reference/functions/misc/#run) executes Wires on the Mesh.
-
-=== "Output"
-
-    ```
-    [john] Taking an apple!
-    [take-an-apple] Apples Remaining: 9
-    [lucy] Taking an apple!
-    [take-an-apple] Apples Remaining: 8
-    ```
 `Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`.
 
 In the example below, John starts with five apples. He takes one, counts how many apples he has, and then takes another. We define two Wires - `add-apple` and `count-apples` to carry out these tasks.
@@ -75,15 +35,15 @@ In the example below, John starts with five apples. He takes one, counts how man
     (run main) ;; (9)
     ```
 
-    1. [`defmesh`](https://docs.fragcolor.xyz/docs/functions/macros/#defmesh) is used to define a Mesh.
-    2. [`defwire`](https://docs.fragcolor.xyz/docs/functions/macros/#defwire) is used to define a Wire.
-    3. [`Msg`](https://docs.fragcolor.xyz/docs/shards/General/Msg/) prints out the string passed into it.
-    4. [`Math.Add`](https://docs.fragcolor.xyz/docs/shards/Math/Add/) takes in a value and increments it by the number specified.
-    5. [`ToString`](https://docs.fragcolor.xyz/docs/shards/General/ToString/) converts a value into a string.
-    6. [`String.Join`](https://docs.fragcolor.xyz/docs/shards/String/Join/) joins a sequence of strings together to form a single string.
-    7. ['Log'](https://docs.fragcolor.xyz/docs/shards/General/Log/) displays a value to the user's console. You can pass in a prefix that will be placed before the value.
-    8. [`schedule`](https://docs.fragcolor.xyz/docs/functions/misc/#schedule) queues a Wire on the Mesh.
-    9. [`run`](https://docs.fragcolor.xyz/docs/functions/misc/#run) executes Wires on the Mesh.
+    1. [`defmesh`](../../../reference/functions/macros/#defmesh) is used to define a Mesh.
+    2. [`defwire`](../../../reference/functions/macros/#defwire) is used to define a Wire.
+    3. [`Msg`](../../../reference/shards/General/Msg/) prints out the string passed into it.
+    4. [`Math.Add`](../../../reference/shards/Math/Add/) takes in a value and increments it by the number specified.
+    5. [`ToString`](../../../reference/shards/General/ToString/) converts a value into a string.
+    6. [`String.Join`](../../../reference/shards/String/Join/) joins a sequence of strings together to form a single string.
+    7. ['Log'](../../../reference/shards/General/Log/) displays a value to the user's console.
+    8. [`schedule`](../../../reference/functions/misc/#schedule) queues a Wire on the Mesh.
+    9. [`run`](../../../reference/functions/misc/#run) executes Wires on the Mesh.
 
 === "Output"
 
@@ -115,7 +75,7 @@ Back to our previous example with apples, if John now requires some time to juic
 
     (defwire juice-apple
       = .name (Log "Actor")
-      (Msg "Juicing Apple...") (Pause 1)
+      (Msg "Juicing Apple...") (Pause 1) ;; (2)
       (Msg "Made some Apple Juice!"))
 
     (defloop john
@@ -134,6 +94,7 @@ Back to our previous example with apples, if John now requires some time to juic
     ```
 
     1. Save values passed into the Wire by associating them with a variable.
+    2. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
 
 === "Output"
 
