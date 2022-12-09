@@ -37,23 +37,45 @@
    :Key "up"
    :Action (Msg "up")))
 
+(defshards Button_Inputs []
+  (Inputs.KeyDown
+   :Key "left"
+   :Action (->
+            (Msg "left")))
+
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            (Msg "right")))
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            (Msg "up"))))
+
 (defloop main-wire
   (Setup
-   (innitialize-character))
+   (Innitialize_Character))
+
 
   (GFX.MainWindow
    :Title "MainWindow" :Width 1920 :Height 1080
-   :Contents
-   (-> (Setup
-        (GFX.DrawQueue) >= .ui-draw-queue
-        (GFX.UIPass .ui-draw-queue) >> .render-steps)
-       .ui-draw-queue (GFX.ClearQueue)
+   :Contents (-> (Setup
+                  (GFX.DrawQueue) >= .ui-draw-queue
+                  (GFX.UIPass .ui-draw-queue) >> .render-steps)
+                 .ui-draw-queue (GFX.ClearQueue)
 
-       (UI
-        .ui-draw-queue
-        (->))
+                 (UI
+                  .ui-draw-queue
+                  (->
+                   (UI.Area :Position (float2 0 0)
+                            :Anchor Anchor.Center
+                            :Contents (->
+                                       .Character_Image (UI.Image :Scale (float2 0.2))))))
 
-       (GFX.Render :Steps .render-steps))))
+                 (GFX.Render :Steps .render-steps)
+
+                 (Button_Inputs))))
 
 
 (defmesh main)
