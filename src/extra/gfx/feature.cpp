@@ -301,7 +301,7 @@ struct FeatureShard {
     return variant;
   }
 
-  static void applyDrawData(const FeatureCallbackContext &ctx, IDrawDataCollector &collector, const SHVar &input) {
+  static void applyDrawData(const FeatureCallbackContext &ctx, IParameterCollector &collector, const SHVar &input) {
     checkType(input.valueType, SHType::Table, ":DrawData wire output");
     const SHTable &inputTable = input.payload.tableValue;
 
@@ -350,7 +350,7 @@ struct FeatureShard {
 
       captured->wire.warmup(context);
 
-      feature.drawData.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IDrawDataCollector &collector) {
+      feature.drawableParameters.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
         ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
         SHContext *SHContext = contextUserData->shardsContext;
 

@@ -6,6 +6,7 @@
 #include "linalg.hpp"
 #include "params.hpp"
 #include "shader/types.hpp"
+#include "shader/entry_point.hpp"
 #include "unique_id.hpp"
 #include <functional>
 #include <memory>
@@ -167,15 +168,15 @@ struct NamedTextureParam {
 struct FeatureCallbackContext {
   Context &context;
   const View *view = nullptr;
-  const Drawable *drawable = nullptr;
+  const IDrawable *drawable = nullptr;
   const detail::CachedDrawable *cachedDrawable = nullptr;
   const detail::CachedView *cachedView = nullptr;
 };
 
 typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
 
-struct IDrawDataCollector;
-typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)> FeatureDrawDataFunction;
+struct IParameterCollector;
+typedef std::function<void(const FeatureCallbackContext &, IParameterCollector &)> FeatureParameterGenerator;
 
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature {
@@ -185,9 +186,9 @@ struct Feature {
   // Pipeline state flags
   FeaturePipelineState state;
   // Per drawable draw data
-  std::vector<FeatureDrawDataFunction> drawData;
+  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
   // Per view draw data
-  std::vector<FeatureDrawDataFunction> viewData;
+  std::vector<FeatureParameterGenerator> viewParameterGenerators;
   // Shader parameters read from per-instance buffer
   std::vector<NamedShaderParam> shaderParams;
   // Texture parameters
@@ -198,6 +199,8 @@ struct Feature {
   PipelineModifierPtr pipelineModifier;
 
   virtual ~Feature() = default;
+
+  UniqueId getId() const { return id; }
 };
 typedef std::shared_ptr<Feature> FeaturePtr;
 

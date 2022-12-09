@@ -6,6 +6,9 @@
 #include <gfx/mesh.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
+#include <vector>
+#include <string>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -113,7 +116,7 @@ static float4x4 convertNodeTransform(const tinygltf::Node &node) {
 
 struct Loader {
   struct Mesh {
-    std::vector<DrawablePtr> primitives;
+    std::vector<MeshDrawable::Ptr> primitives;
   };
 
   tinygltf::Model &model;
@@ -121,8 +124,8 @@ struct Loader {
   std::vector<Mesh> meshMap;
   std::vector<MaterialPtr> materialMap;
   std::vector<TexturePtr> textureMap;
-  std::vector<DrawableHierarchyPtr> nodeMap;
-  std::vector<DrawableHierarchyPtr> sceneMap;
+  std::vector<MeshTreeDrawable::Ptr> nodeMap;
+  std::vector<MeshTreeDrawable::Ptr> sceneMap;
 
   Loader(tinygltf::Model &model) : model(model) {}
 
@@ -168,7 +171,7 @@ struct Loader {
     }
   }
 
-  DrawablePtr loadPrimitive(tinygltf::Primitive &primitive) {
+  MeshDrawable::Ptr loadPrimitive(tinygltf::Primitive &primitive) {
     std::vector<const tinygltf::Accessor *> accessors;
     std::vector<size_t> offsets;
     size_t vertexStride{};
@@ -284,7 +287,7 @@ struct Loader {
     MeshPtr mesh = std::make_shared<gfx::Mesh>();
     mesh->update(format, std::move(vertexBuffer), std::move(indexBuffer));
 
-    DrawablePtr result = std::make_shared<Drawable>(mesh);
+    MeshDrawable::Ptr result = std::make_shared<MeshDrawable>(mesh);
     if (primitive.material >= 0) {
       result->material = materialMap[primitive.material];
     }
@@ -301,15 +304,15 @@ struct Loader {
 
       auto &gltfMesh = model.meshes[i];
       for (auto &gltfPrim : gltfMesh.primitives) {
-        DrawablePtr primitive = loadPrimitive(gltfPrim);
+        MeshDrawable::Ptr primitive = loadPrimitive(gltfPrim);
         mesh.primitives.push_back(primitive);
       }
     }
   }
 
   void initNode(size_t nodeIndex) {
-    DrawableHierarchyPtr &node = nodeMap[nodeIndex];
-    node = std::make_shared<DrawableHierarchy>();
+    MeshTreeDrawable::Ptr &node = nodeMap[nodeIndex];
+    node = std::make_shared<MeshTreeDrawable>();
 
     const Node &gltfNode = model.nodes[nodeIndex];
     node->label = gltfNode.name;
@@ -325,9 +328,9 @@ struct Loader {
 
     for (size_t i = 0; i < gltfNode.children.size(); i++) {
       int childNodeIndex = gltfNode.children[i];
-      DrawableHierarchyPtr &childNode = nodeMap[childNodeIndex];
+      MeshTreeDrawable::Ptr &childNode = nodeMap[childNodeIndex];
       if (!childNode) {
-        childNode = std::make_shared<DrawableHierarchy>();
+        childNode = std::make_shared<MeshTreeDrawable>();
         initNode(childNodeIndex);
       }
       node->children.push_back(childNode);
@@ -415,17 +418,17 @@ struct Loader {
     for (size_t i = 0; i < numScenes; i++) {
       const Scene &gltfScene = model.scenes[i];
 
-      DrawableHierarchyPtr &scene = sceneMap[i];
+      MeshTreeDrawable::Ptr &scene = sceneMap[i];
 
       if (gltfScene.nodes.size() == 1) {
         // Extract single model node
         scene = nodeMap[gltfScene.nodes[0]];
       } else {
         // Group into parent node
-        scene = std::make_shared<DrawableHierarchy>();
+        scene = std::make_shared<MeshTreeDrawable>();
         for (size_t i = 0; i < gltfScene.nodes.size(); i++) {
           int nodeIndex = gltfScene.nodes[i];
-          DrawableHierarchyPtr node = nodeMap[nodeIndex];
+          MeshTreeDrawable::Ptr node = nodeMap[nodeIndex];
           scene->children.push_back(node);
         }
       }
@@ -433,7 +436,7 @@ struct Loader {
   }
 };
 
-template <typename T> DrawableHierarchyPtr load(T loader) {
+template <typename T> MeshTreeDrawable::Ptr load(T loader) {
   tinygltf::Model model;
   loader(model);
 
@@ -447,7 +450,7 @@ template <typename T> DrawableHierarchyPtr load(T loader) {
   return gfxLoader.sceneMap[model.defaultScene];
 }
 
-DrawableHierarchyPtr loadGltfFromFile(const char *inFilepath) {
+MeshTreeDrawable::Ptr loadGltfFromFile(const char *inFilepath) {
   tinygltf::TinyGLTF context;
   auto loader = [&](tinygltf::Model &model) {
     fs::path filepath(inFilepath);
@@ -474,7 +477,7 @@ DrawableHierarchyPtr loadGltfFromFile(const char *inFilepath) {
   return load(loader);
 }
 
-DrawableHierarchyPtr loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
+MeshTreeDrawable::Ptr loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
   tinygltf::TinyGLTF context;
   auto loader = [&](tinygltf::Model &model) {
     std::string err;

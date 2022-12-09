@@ -20,13 +20,25 @@ struct HasherDefaultVisitor {
   template <typename T, typename THasher> void operator()(const T &value, THasher &&hasher) { value.hash(hasher); }
 };
 
-struct HashStaticVistor {
-  template <typename T, typename H>
-  static constexpr auto applies(...) -> decltype(std::declval<T>().hashStatic(*(H *)0), bool()) {
-    return true;
-  }
+// Specialize this for custom types
+template <typename T, typename H, typename = void> struct HashStaticApplier {
+  static constexpr bool applies() { return false; }
+};
 
-  template <typename T, typename THasher> void operator()(const T &val, THasher &hasher) { val.hashStatic(hasher); }
+template <typename T, typename H>
+struct HashStaticApplier<T, H, std::void_t<decltype(std::declval<T>().hashStatic(*(H *)0), bool())>> {
+  static constexpr bool applies() { return true; }
+  static void apply(const T &val, H &hasher) { val.hashStatic(hasher); }
+};
+
+struct HashStaticVistor {
+  // template <typename T, typename H>
+  // static constexpr auto applies(...) -> decltype(std::declval<T>().hashStatic(*(H *)0), bool()) {
+  //   return true;
+  // }
+
+  template <typename T, typename H> static constexpr auto applies(...) { return HashStaticApplier<T, H>::applies(); }
+  template <typename T, typename H> void operator()(const T &val, H &hasher) { HashStaticApplier<T, H>::apply(val, hasher); }
 };
 
 template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
@@ -48,12 +60,11 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 
   void operator()(const Hash128 &v) { (*this)(&v, sizeof(Hash128)); }
 
-  template <typename T> void operator()(const linalg::vec<T, 4> &v) { (*this)(&v.x, sizeof(T) * 4); }
-  template <typename T> void operator()(const linalg::vec<T, 2> &v) { (*this)(&v.x, sizeof(T) * 2); }
+  template <typename T, int N> void operator()(const linalg::vec<T, N> &v) { (*this)(&v.x, sizeof(T) * N); }
 
   template <typename TVal> void operator()(const std::optional<TVal> &v) {
     bool has_value = v.has_value();
-    (*this)(has_value);
+    (*this)(uint8_t(has_value));
     if (has_value)
       (*this)(v.value());
   }
@@ -88,6 +99,18 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
   }
   template <typename TVal> static constexpr auto canVisit(char) -> bool { return false; }
 };
+
+template <typename H>
+struct HashStaticApplier<float4x4, H> {
+  static constexpr bool applies() { return true; }
+  static void apply(const float4x4 &val, H &hasher) {
+    hasher(val.x);
+    hasher(val.y);
+    hasher(val.z);
+    hasher(val.w);
+  }
+};
+
 } // namespace gfx
 
 #endif // GFX_HASHERXXH128

@@ -1,64 +1,63 @@
-#ifndef GFX_DRAWABLE
-#define GFX_DRAWABLE
+#ifndef B908F41D_8437_47C0_B3F9_FA0AE98387FC
+#define B908F41D_8437_47C0_B3F9_FA0AE98387FC
 
 #include "fwd.hpp"
 #include "linalg.hpp"
-#include "linalg/linalg.h"
 #include "material.hpp"
+#include "hasherxxh128.hpp"
 #include <memory>
 #include <vector>
 
 namespace gfx {
-struct Drawable {
-  typedef std::shared_ptr<Drawable> Ptr;
 
-  MeshPtr mesh;
-  MaterialPtr material;
-  std::vector<FeaturePtr> features;
-  MaterialParameters parameters;
-  float4x4 transform;
+typedef size_t DrawableGeneration;
 
-  std::optional<float4x4> previousTransform;
+struct HashCollector;
+struct IDrawable {
+  virtual ~IDrawable() = default;
 
-  // Clipping rectangle as (min, max)
-  std::optional<int4> clipRect;
+  // Duplicate self
+  virtual DrawablePtr clone() const = 0;
 
-  Drawable(MeshPtr mesh, float4x4 transform = linalg::identity, MaterialPtr material = MaterialPtr())
-      : mesh(mesh), material(material), transform(transform) {}
+  // Get the processor used to render this drawable
+  virtual IDrawableProcessor &getProcessor() const = 0;
 
-  Ptr clone() const;
+  // Compute hash and collect references
+  // The drawable should not be modified while it is being processed by the renderer
+  // After Renderer::render returns you are free to change this drawable again
+  virtual void staticHashCollect(HashCollector &hashCollector) const = 0;
+
+  // Unique Id to identify this drawable
+  virtual UniqueId getId() const = 0;
 };
 
-// Wraps Drawable in a classic transform tree
-struct DrawableHierarchy {
-  typedef std::shared_ptr<DrawableHierarchy> Ptr;
+template <typename T> inline std::shared_ptr<T> clone(const std::shared_ptr<T> &other) {
+  return std::static_pointer_cast<T>(other->clone());
+}
 
-  std::vector<Ptr> children;
-  std::vector<DrawablePtr> drawables;
-  float4x4 transform = linalg::identity;
-  std::string label;
-
-  Ptr clone() const;
-
-  template <typename T> static inline void foreach (Ptr &item, T && callback) {
-    callback(item);
-    for (auto &child : item->children) {
-      foreach (child, callback);
-    }
-  }
-};
+UniqueId getNextDrawableId();
 
 struct DrawQueue {
 private:
-  std::vector<DrawablePtr> drawables;
+  std::vector<DrawablePtr> sharedDrawables;
+  std::vector<const IDrawable *> drawables;
 
 public:
-  void add(DrawablePtr drawable) { drawables.push_back(drawable); }
-  void add(DrawableHierarchyPtr hierarchy);
+  // Adds a managed drawable, automatically kept alive until the renderer is done with it
+  void add(const DrawablePtr &drawable) {
+    sharedDrawables.push_back(drawable);
+    drawables.push_back(drawable.get());
+  }
+
+  // Add an external drawable, you are responsible for keeping the object alive until it has been submitted to the renderer
+  void add(const IDrawable &drawable) { drawables.push_back(&drawable); }
+
   void clear() { drawables.clear(); }
-  const std::vector<DrawablePtr> &getDrawables() const { return drawables; }
+
+  const std::vector<DrawablePtr> &getSharedDrawables() const { return sharedDrawables; }
+  const std::vector<const IDrawable *> &getDrawables() const { return drawables; }
 };
 
 } // namespace gfx
 
-#endif // GFX_DRAWABLE
+#endif /* B908F41D_8437_47C0_B3F9_FA0AE98387FC */

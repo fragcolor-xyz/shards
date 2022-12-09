@@ -11,17 +11,17 @@ struct Pipeline;
 struct DrawQueue;
 typedef std::shared_ptr<DrawQueue> DrawQueuePtr;
 
-struct Drawable;
-typedef std::shared_ptr<Drawable> DrawablePtr;
-
-struct DrawableHierarchy;
-typedef std::shared_ptr<DrawableHierarchy> DrawableHierarchyPtr;
+struct IDrawable;
+typedef std::shared_ptr<IDrawable> DrawablePtr;
 
 struct Mesh;
 typedef std::shared_ptr<Mesh> MeshPtr;
 
 struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
+
+struct IDrawableProcessor;
+typedef std::shared_ptr<IDrawableProcessor> DrawableProcessorPtr;
 
 struct IPipelineModifier;
 typedef std::shared_ptr<IPipelineModifier> PipelineModifierPtr;

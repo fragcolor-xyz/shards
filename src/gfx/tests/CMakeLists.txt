@@ -14,6 +14,7 @@ add_executable(test-gfx
   test_comparison.cpp
   test_rendergraph.cpp
   test_multithreaded.cpp
+  test_caching.cpp
 )
 
 if(EMSCRIPTEN)

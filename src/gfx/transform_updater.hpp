@@ -1,7 +1,7 @@
 #ifndef E726D173_792B_489C_AD25_455528CCF0D0
 #define E726D173_792B_489C_AD25_455528CCF0D0
 
-#include "drawable.hpp"
+#include "drawables/mesh_tree_drawable.hpp"
 #include <cassert>
 #include <set>
 
@@ -10,22 +10,23 @@
 #endif
 
 namespace gfx {
-// Updates a transform hierarchy while collecting drawables
+
+// Updates a MeshTreeDrawable and all it's children while collecting drawables
 struct TransformUpdaterCollector {
   struct Node {
     float4x4 parentTransform;
-    DrawableHierarchy *node;
+    MeshTreeDrawable *node;
   };
   std::vector<Node> queue;
 
 #if GFX_TRANSFORM_UPDATER_TRACK_VISITED
-  std::set<DrawableHierarchy *> visited;
+  std::set<MeshTreeDrawable *> visited;
 #endif
 
   std::function<void(DrawablePtr)> collector = [](DrawablePtr) {};
 
-  void update(DrawableHierarchyPtr root) {
-    queue.push_back(Node{float4x4(linalg::identity), root.get()});
+  void update(MeshTreeDrawable& root) {
+    queue.push_back(Node{float4x4(linalg::identity), &root});
 
     while (!queue.empty()) {
       Node node = queue.back();

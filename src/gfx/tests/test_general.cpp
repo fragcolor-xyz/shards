@@ -7,6 +7,7 @@
 #include <gfx/drawable.hpp>
 #include <gfx/features/wireframe.hpp>
 #include <gfx/features/velocity.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/gizmos/wireframe.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/paths.hpp>
@@ -56,7 +57,7 @@ TEST_CASE("Renderer capture", "[General]") {
   Renderer &renderer = *testRenderer->renderer.get();
 
   MeshPtr mesh = createSphereMesh();
-  DrawablePtr drawable = std::make_shared<Drawable>(mesh);
+  DrawablePtr drawable = std::make_shared<MeshDrawable>(mesh);
   ViewPtr view = std::make_shared<View>();
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
@@ -145,7 +146,7 @@ TEST_CASE("Vertex storage formats", "[General]") {
   int Y = 0;
   auto appendMesh = [&](const MeshPtr &mesh) {
     float4x4 transform = linalg::translation_matrix(float3(spacing * (float(X) - 1.5f), spacing * (float(Y) - 1.0f), 0.0f));
-    DrawablePtr drawable = std::make_shared<Drawable>(mesh, transform);
+    DrawablePtr drawable = std::make_shared<MeshDrawable>(mesh, transform);
     queue->add(drawable);
 
     X += 1;
@@ -237,11 +238,11 @@ TEST_CASE("Pipeline states", "[General]") {
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
 
   float4x4 transform = linalg::translation_matrix(float3(-0.5f, 0.0f, -1.0f));
-  DrawablePtr drawable = std::make_shared<Drawable>(redSphereMesh, transform);
+  DrawablePtr drawable = std::make_shared<MeshDrawable>(redSphereMesh, transform);
   queue->add(drawable);
 
   transform = linalg::translation_matrix(float3(0.5f, 0.0f, -3.0f));
-  drawable = std::make_shared<Drawable>(greenSphereMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(greenSphereMesh, transform);
   queue->add(drawable);
 
   auto testBlendState = [&](const char *name, const BlendState &state) {
@@ -287,14 +288,14 @@ TEST_CASE("Shader parameters", "[General]") {
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   float4x4 transform;
-  DrawablePtr drawable;
+  MeshDrawable::Ptr drawable;
 
   transform = linalg::translation_matrix(float3(-2.0f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(sphereMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(sphereMesh, transform);
   queue->add(drawable);
 
   transform = linalg::translation_matrix(float3(0.0f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(sphereMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(sphereMesh, transform);
   drawable->parameters.set("baseColor", float4(1, 0, 0, 1));
   queue->add(drawable);
 
@@ -302,7 +303,7 @@ TEST_CASE("Shader parameters", "[General]") {
   material->parameters.set("baseColor", float4(0, 1, 0, 1));
 
   transform = linalg::translation_matrix(float3(2.0f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(sphereMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(sphereMesh, transform);
   drawable->material = material;
   queue->add(drawable);
 
@@ -329,7 +330,7 @@ TEST_CASE("Reference tracking", "[General]") {
   Context &context = *testRenderer->context.get();
 
   std::weak_ptr<Mesh> meshWeak;
-  std::weak_ptr<Drawable> drawableWeak;
+  std::weak_ptr<IDrawable> drawableWeak;
   std::weak_ptr<MeshContextData> meshContextData;
   {
     MeshPtr mesh = createSphereMesh();
@@ -338,7 +339,7 @@ TEST_CASE("Reference tracking", "[General]") {
     mesh->createContextDataConditional(context);
     meshContextData = mesh->contextData;
 
-    DrawablePtr drawable = std::make_shared<Drawable>(mesh);
+    DrawablePtr drawable = std::make_shared<MeshDrawable>(mesh);
     drawableWeak = std::weak_ptr(drawable);
 
     ViewPtr view = std::make_shared<View>();
@@ -388,7 +389,7 @@ TEST_CASE("Textures", "[General]") {
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   float4x4 transform;
-  DrawablePtr drawable;
+  MeshDrawable::Ptr drawable;
 
   // Texture with default sampler state (linear filtering)
   TexturePtr textureA = textureFromFile(resolveDataPath("src/gfx/tests/assets/pixely_sprite.png").string().c_str());
@@ -400,12 +401,12 @@ TEST_CASE("Textures", "[General]") {
   });
 
   transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(planeMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(planeMesh, transform);
   drawable->parameters.set("baseColor", textureA);
   queue->add(drawable);
 
   transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
-  drawable = std::make_shared<Drawable>(planeMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(planeMesh, transform);
   drawable->parameters.set("baseColor", textureB);
   queue->add(drawable);
 

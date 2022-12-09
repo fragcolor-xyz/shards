@@ -117,8 +117,9 @@ struct DrawGroupKey {
   std::optional<int4> clipRect{};
 
   DrawGroupKey() = default;
-  DrawGroupKey(const Drawable &drawable, const TextureIds &textureIds)
-      : meshData(drawable.mesh->contextData.get()), textures(textureIds), clipRect(drawable.clipRect) {}
+  DrawGroupKey(const IDrawable &drawable, const TextureIds &textureIds) {}
+  // TODO: Processor
+      // : meshData(drawable.mesh->contextData.get()), textures(textureIds), clipRect(drawable.clipRect) {}
 
   bool operator==(const DrawGroupKey &other) const {
     return meshData == other.meshData && textures == other.textures && clipRect == other.clipRect;
@@ -137,7 +138,7 @@ struct DrawGroupKey {
 };
 
 struct SortableDrawable {
-  const Drawable *drawable{};
+  const IDrawable *drawable{};
   const CachedDrawable *cachedDrawable{};
   TextureIds textureIds;
   DrawGroupKey key;
@@ -221,7 +222,7 @@ struct CachedPipeline {
   // Pool to allocate instance buffers from
   DynamicWGPUBufferPool instanceBufferPool;
 
-  DrawData baseDrawData;
+  ParameterStorage baseDrawData;
 
   size_t lastTouched{};
 
@@ -232,21 +233,21 @@ typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 struct PipelineDrawables {
   CachedPipelinePtr cachedPipeline;
 
-  std::vector<const Drawable *> drawables;
+  std::vector<const IDrawable *> drawables;
   std::vector<SortableDrawable> drawablesSorted;
   std::vector<DrawGroup> drawGroups;
   TextureIdMap textureIdMap;
 };
 
-inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout, const DrawData &drawData) {
+inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLayout &layout, const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
   for (auto &fieldName : layout.fieldNames) {
-    auto drawDataIt = drawData.data.find(fieldName);
-    if (drawDataIt != drawData.data.end()) {
+    auto drawDataIt = parameterStorage.data.find(fieldName);
+    if (drawDataIt != parameterStorage.data.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
       FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
-        SPDLOG_LOGGER_WARN(getLogger(), "WEBGPU: Field type mismatch layout:{} drawData:{}", itemLayout.type, drawDataFieldType);
+        SPDLOG_LOGGER_WARN(getLogger(), "WEBGPU: Field type mismatch layout:{} parameterStorage:{}", itemLayout.type, drawDataFieldType);
         continue;
       }
 

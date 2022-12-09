@@ -17,6 +17,8 @@ add_library(gfx
   utils.cpp
   feature.cpp
   texture.cpp
+  material.cpp
+  drawables/mesh_drawable.cpp
   gizmos/wireframe.cpp
   gizmos/shapes.cpp
   gizmos/gizmo_input.cpp
@@ -30,6 +32,7 @@ add_library(gfx
   render_target.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
+  unique_id.cpp
 )
 
 target_compile_features(gfx PUBLIC cxx_std_20)

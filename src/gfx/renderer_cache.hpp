@@ -3,7 +3,33 @@
 
 #include "renderer_types.hpp"
 #include "hasherxxh128.hpp"
+#include <magic_enum.hpp>
 #include <unordered_map>
+
+namespace gfx {
+
+struct References {
+  std::set<UniqueId> set;
+
+  void add(UniqueId id) { set.insert(id); }
+  template <typename T> void add(const std::shared_ptr<T> &ref) { add(ref->getId()); }
+
+  bool contains(UniqueId id) const { return set.contains(id); }
+  template <typename T> bool contains(const std::shared_ptr<T> &ref) const { return contains(ref->getId()); }
+};
+
+// Does 2 things while traversing gfx objects:
+// - Collect the static hash to determine pipeline permutation
+// - Collect references to other gfx objects that the permutation depends on
+struct HashCollector {
+  References references;
+  HasherXXH128<HashStaticVistor> hasher;
+
+  void addReference(UniqueId id) { references.add(id); }
+  template <typename T> void addReference(const std::shared_ptr<T> &ref) { references.add(ref->getId()); }
+  template <typename T> void operator()(const T &val) { hasher(val); }
+};
+} // namespace gfx
 
 namespace gfx::detail {
 struct PipelineCache {
@@ -32,11 +58,26 @@ template <typename TElem, typename TCache, typename K> std::shared_ptr<TElem> &g
   return getCacheEntry(cache, key, [](const K &key) { return std::make_shared<TElem>(); });
 }
 
+struct RenderCache {
+  struct Entry {
+    References references;
+  };
+  std::map<UniqueId, Entry> perType[magic_enum::enum_count<UniqueIdTag>()];
+
+  void evict(UniqueId id) {}
+  // Functions to compute the base hash for each type
+  // Hash128 hash(MeshPtr mesh) {}
+  // Hash128 hash(FeaturePtr mesh) {}
+  // Hash128 hash(MaterialPtr mesh) {}
+  // Hash128 hash(DrawablePtr mesh) {}
+  // Hash128 hash(DrawablePtr mesh, std::vector<const gfx::Feature *> features) {}
+};
+
 // Groups drawables into pipeline
 struct DrawableGrouper {
 private:
   // Cache variable
-  std::vector<const Feature *> features;
+  std::vector<const gfx::Feature *> features;
   const RenderTargetLayout &renderTargetLayout;
 
 public:
@@ -55,11 +96,12 @@ public:
   };
 
   GroupedDrawable groupByPipeline(PipelineCache &pipelineCache, Hash128 sharedHash, const std::vector<FeaturePtr> &baseFeatures,
-                                  const std::vector<const MaterialParameters *> &baseParameters, const Drawable &drawable) {
+                                  const std::vector<const MaterialParameters *> &baseParameters, const IDrawable &drawable) {
 
-    assert(drawable.mesh);
-    const Mesh &mesh = *drawable.mesh.get();
-    const Material *material = drawable.material.get();
+    // TODO: Processor
+    // assert(drawable.mesh);
+    // const Mesh &mesh = *drawable.mesh.get();
+    // const Material *material = drawable.material.get();
 
     features.clear();
     auto collectFeatures = [&](const std::vector<FeaturePtr> &inFeatures) {
@@ -68,11 +110,12 @@ public:
       }
     };
 
+    // TODO: Processor
     // Collect features from various sources
-    collectFeatures(baseFeatures);
-    collectFeatures(drawable.features);
-    if (material)
-      collectFeatures(material->features);
+    // collectFeatures(baseFeatures);
+    // collectFeatures(drawable.features);
+    // if (material)
+    //   collectFeatures(material->features);
 
     HasherXXH128 featureHasher;
     for (auto &feature : features) {
@@ -82,7 +125,7 @@ public:
 
     HasherXXH128<HashStaticVistor> hasher;
     hasher(sharedHash);
-    hasher(mesh.getFormat());
+    // hasher(mesh.getFormat());
     hasher(featureHash);
 
     // Collect material parameters from various sources
@@ -90,10 +133,14 @@ public:
       assert(baseParam);
       hasher(*baseParam);
     }
-    if (material) {
-      hasher(*material);
-    }
-    hasher(drawable.parameters);
+
+    // TODO: Processor
+    // if (material) {
+    //   hasher(*material);
+    // }
+
+    // TODO: processor
+    // hasher(drawable.parameters);
 
     Hash128 pipelineHash = hasher.getDigest();
 
@@ -101,7 +148,8 @@ public:
       auto result = std::make_shared<CachedPipeline>();
       auto &cachedPipeline = *result.get();
 
-      cachedPipeline.meshFormat = mesh.getFormat();
+      // TODO: Processor
+      // cachedPipeline.meshFormat = mesh.getFormat();
       cachedPipeline.features = features;
       cachedPipeline.renderTargetLayout = renderTargetLayout;
 
@@ -114,9 +162,11 @@ public:
       for (const MaterialParameters *baseParam : baseParameters) {
         collectMaterialParameters(*baseParam);
       }
-      if (material)
-        collectMaterialParameters(material->parameters);
-      collectMaterialParameters(drawable.parameters);
+
+      // TODO: Processor
+      // if (material)
+      //   collectMaterialParameters(material->parameters);
+      // collectMaterialParameters(drawable.parameters);
 
       return result;
     });
@@ -129,9 +179,9 @@ public:
 
   void groupByPipeline(PipelineDrawableCache &pipelineDrawableCache, PipelineCache &pipelineCache, Hash128 sharedHash,
                        const std::vector<FeaturePtr> &baseFeatures, const std::vector<const MaterialParameters *> &baseParameters,
-                       const std::vector<DrawablePtr> &drawables) {
+                       const std::vector<const IDrawable *> &drawables) {
     for (auto &drawable : drawables) {
-      GroupedDrawable grouped = groupByPipeline(pipelineCache, sharedHash, baseFeatures, baseParameters, *drawable.get());
+      GroupedDrawable grouped = groupByPipeline(pipelineCache, sharedHash, baseFeatures, baseParameters, *drawable);
 
       // Insert the result into the pipelineDrawableCache
       auto &pipelineDrawables = getCacheEntry(pipelineDrawableCache.map, grouped.pipelineHash, [&](const Hash128 &key) {
@@ -140,7 +190,7 @@ public:
         };
       });
 
-      pipelineDrawables.drawables.push_back(drawable.get());
+      pipelineDrawables.drawables.push_back(drawable);
     }
   }
 };

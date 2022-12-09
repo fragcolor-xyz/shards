@@ -3,12 +3,15 @@
 
 #include "fwd.hpp"
 #include "params.hpp"
+#include "unique_id.hpp"
 #include <map>
 #include <memory>
 #include <vector>
 #include <string_view>
 
 namespace gfx {
+
+struct HashCollector;
 
 // Container for shader parameters (basic/texture)
 /// <div rustbindgen opaque>
@@ -26,11 +29,16 @@ struct MaterialParameters {
       hash(pair.second.defaultTexcoordBinding);
     }
   }
+
+  void staticHashCollect(HashCollector &hashCollector) const;
 };
 
 /// <div rustbindgen opaque>
 struct Material {
 public:
+  UniqueId id = getNextId();
+  friend struct gfx::UpdateUniqueId<Material>;
+
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
 
@@ -40,6 +48,14 @@ public:
     }
     hash(parameters);
   }
+
+  void staticHashCollect(HashCollector &hashCollector) const;
+
+  UniqueId getId() const { return id; }
+  MaterialPtr clone() const { return cloneSelfWithId(this, getNextId()); }
+
+private:
+  static UniqueId getNextId();
 };
 
 } // namespace gfx

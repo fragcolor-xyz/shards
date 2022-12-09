@@ -34,7 +34,7 @@ size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &
 gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
-struct IDrawDataCollector {
+struct IParameterCollector {
   virtual void setParam(const std::string &name, ParamVariant &&value) = 0;
   void setParam(const std::string &name, const ParamVariant &value) { setParam(name, ParamVariant(value)); }
 
@@ -43,16 +43,16 @@ struct IDrawDataCollector {
 };
 
 /// <div rustbindgen hide></div>
-struct DrawData : public IDrawDataCollector {
+struct ParameterStorage : public IParameterCollector {
   std::unordered_map<std::string, ParamVariant> data;
   std::unordered_map<std::string, TextureParameter> textures;
 
-  using IDrawDataCollector::setParam;
-  using IDrawDataCollector::setTexture;
+  using IParameterCollector::setParam;
+  using IParameterCollector::setTexture;
   void setParam(const std::string &name, ParamVariant &&value) { data.insert_or_assign(name, std::move(value)); }
   void setTexture(const std::string &name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
 
-  void append(const DrawData &other) {
+  void append(const ParameterStorage &other) {
     for (auto &it : other.data) {
       data.insert_or_assign(it.first, it.second);
     }

@@ -189,7 +189,7 @@ void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTr
     mesh->update(impl->meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                  prim.numIndices * sizeof(uint32_t));
 
-    DrawablePtr drawable = std::make_shared<Drawable>(mesh);
+    DrawablePtr drawable = std::make_shared<MeshDrawable>(mesh);
     drawable->transform = rootTransform;
     TexturePtr texture = impl->textures.get(prim.textureId);
     if (texture) {

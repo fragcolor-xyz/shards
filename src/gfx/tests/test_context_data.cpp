@@ -54,3 +54,4 @@ TEST_CASE("Context data releaseContextData", "[Context]") {
   CHECK(testContextData);
   CHECK(testContextData->buffer == nullptr);
 }
+
