@@ -17,8 +17,10 @@ use crate::types::FLOAT_TYPES_SLICE;
 use crate::Shard;
 use crate::Types;
 use crate::Var;
-use rapier3d::dynamics::{CCDSolver, IntegrationParameters, JointSet, RigidBodySet};
-use rapier3d::geometry::{BroadPhase, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase};
+use rapier3d::dynamics::{
+  CCDSolver, ImpulseJointSet, IntegrationParameters, MultibodyJointSet, RigidBodySet,
+};
+use rapier3d::geometry::{BroadPhase, ColliderSet, CollisionEvent, NarrowPhase};
 use rapier3d::na::Vector3;
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsHooks, PhysicsPipeline, QueryPipeline};
 use rapier3d::prelude::IslandManager;
@@ -35,8 +37,7 @@ lazy_static! {
 
 impl Default for Simulation {
   fn default() -> Self {
-    let (contact_send, contact_recv) = crossbeam::channel::unbounded();
-    let (intersection_send, intersection_recv) = crossbeam::channel::unbounded();
+    let (collision_send, collision_recv) = crossbeam::channel::unbounded();
     let mut res = Simulation {
       pipeline: PhysicsPipeline::new(),
       islands_manager: IslandManager::new(),
@@ -47,11 +48,11 @@ impl Default for Simulation {
       narrow_phase: NarrowPhase::new(),
       bodies: RigidBodySet::new(),
       colliders: ColliderSet::new(),
-      joints: JointSet::new(),
+      impulse_joints: ImpulseJointSet::new(),
+      multibody_joints: MultibodyJointSet::new(),
       ccd_solver: CCDSolver::new(),
-      contacts_channel: contact_recv,
-      intersections_channel: intersection_recv,
-      event_handler: ChannelEventCollector::new(intersection_send, contact_send),
+      collisions_channel: collision_recv,
+      event_handler: ChannelEventCollector::new(collision_send),
       self_obj: ParamVar::new(().into()),
     };
     res.self_obj.set_name("Physics.Simulation");
@@ -130,7 +131,8 @@ impl Shard for Simulation {
       &mut self.narrow_phase,
       &mut self.bodies,
       &mut self.colliders,
-      &mut self.joints,
+      &mut self.impulse_joints,
+      &mut self.multibody_joints,
       &mut self.ccd_solver,
       &(),
       &self.event_handler,

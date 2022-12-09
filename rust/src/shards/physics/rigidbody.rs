@@ -42,11 +42,11 @@ use crate::Types;
 use crate::Var;
 use rapier3d::dynamics::RigidBodyBuilder;
 use rapier3d::dynamics::{
-  IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet, RigidBodyType,
+  ImpulseJointSet, IntegrationParameters, RigidBodyHandle, RigidBodySet, RigidBodyType,
 };
 use rapier3d::geometry::{
-  BroadPhase, ColliderBuilder, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent,
-  NarrowPhase, SharedShape,
+  BroadPhase, ColliderBuilder, ColliderHandle, ColliderSet, CollisionEvent, NarrowPhase,
+  SharedShape,
 };
 use rapier3d::math::Real;
 use rapier3d::na::Isometry3;
@@ -151,7 +151,9 @@ impl RigidBody {
           *rigid_body,
           &mut simulation.islands_manager,
           &mut simulation.colliders,
-          &mut simulation.joints,
+          &mut simulation.impulse_joints,
+          &mut simulation.multibody_joints,
+          true,
         );
       }
     }
@@ -476,7 +478,7 @@ impl Shard for StaticRigidBody {
     // just hit populate, it will be a noop if already populated, nothing else to do here
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      ._populate(RigidBodyType::Static)?;
+      ._populate(RigidBodyType::Fixed)?;
     Ok(*input)
   }
 }

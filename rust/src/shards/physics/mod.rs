@@ -18,11 +18,11 @@ use crate::types::Type;
 use crate::types::FRAG_CC;
 use crate::Var;
 use rapier3d::dynamics::{
-  CCDSolver, IntegrationParameters, JointSet, RigidBodyHandle, RigidBodySet,
+  CCDSolver, ImpulseJointSet, IntegrationParameters, MultibodyJointSet, RigidBodyHandle,
+  RigidBodySet,
 };
-use rapier3d::geometry::SharedShape;
 use rapier3d::geometry::{
-  BroadPhase, ColliderHandle, ColliderSet, ContactEvent, IntersectionEvent, NarrowPhase,
+  BroadPhase, ColliderHandle, ColliderSet, CollisionEvent, NarrowPhase, SharedShape,
 };
 use rapier3d::na::{Isometry3, Matrix3, Matrix4, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
@@ -96,10 +96,10 @@ struct Simulation {
   narrow_phase: NarrowPhase,
   bodies: RigidBodySet,
   colliders: ColliderSet,
-  joints: JointSet,
+  impulse_joints: ImpulseJointSet,
+  multibody_joints: MultibodyJointSet,
   ccd_solver: CCDSolver,
-  contacts_channel: crossbeam::channel::Receiver<ContactEvent>,
-  intersections_channel: crossbeam::channel::Receiver<IntersectionEvent>,
+  collisions_channel: crossbeam::channel::Receiver<CollisionEvent>,
   event_handler: ChannelEventCollector,
   self_obj: ParamVar,
 }
