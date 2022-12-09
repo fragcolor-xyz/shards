@@ -11,7 +11,7 @@
 
 namespace gfx {
 
-struct HashCollector;
+struct PipelineHashCollector;
 
 // Container for shader parameters (basic/texture)
 /// <div rustbindgen opaque>
@@ -23,14 +23,14 @@ struct MaterialParameters {
   void set(const std::string_view &key, ParamVariant &&param) { basic.insert_or_assign(std::string(key), std::move(param)); }
   void set(const std::string_view &key, const TextureParameter &param) { texture.insert_or_assign(std::string(key), (param)); }
 
-  template <typename THash> void hashStatic(THash &hash) const {
+  template <typename THash> void getPipelineHash(THash &hash) const {
     for (auto &pair : texture) {
       hash(pair.first);
       hash(pair.second.defaultTexcoordBinding);
     }
   }
 
-  void staticHashCollect(HashCollector &hashCollector) const;
+  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const;
 };
 
 /// <div rustbindgen opaque>
@@ -42,14 +42,14 @@ public:
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
 
-  template <typename THash> void hashStatic(THash &hash) const {
+  template <typename THash> void getPipelineHash(THash &hash) const {
     for (auto &feature : features) {
       hash(feature.get());
     }
     hash(parameters);
   }
 
-  void staticHashCollect(HashCollector &hashCollector) const;
+  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const;
 
   UniqueId getId() const { return id; }
   MaterialPtr clone() const { return cloneSelfWithId(this, getNextId()); }

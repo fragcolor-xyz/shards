@@ -28,7 +28,7 @@ struct MeshVertexAttribute {
     return numComponents == other.numComponents && type == other.type;
   }
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
     hasher(numComponents);
     hasher(type);
@@ -44,7 +44,7 @@ struct MeshFormat {
 
   size_t getVertexSize() const;
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(primitiveType);
     hasher(windingOrder);
     hasher(indexFormat);
@@ -98,6 +98,8 @@ public:
 
   UniqueId getId() const { return id; }
   MeshPtr clone() const;
+
+  void pipelineHashCollect(struct PipelineHashCollector&) const;
 
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);

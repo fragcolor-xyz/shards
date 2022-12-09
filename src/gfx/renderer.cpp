@@ -227,7 +227,7 @@ struct RendererImpl final : public ContextData {
 
   const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps,
                                            int2 referenceOutputSize) {
-    HasherXXH128<HashStaticVistor> hasher;
+    HasherXXH128<PipelineHashVisitor> hasher;
     for (auto &step : pipelineSteps) {
       std::visit([&](auto &step) { hasher(step.id); }, *step.get());
     }

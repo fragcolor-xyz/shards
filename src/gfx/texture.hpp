@@ -44,7 +44,7 @@ struct SamplerState {
   WGPUAddressMode addressModeW = WGPUAddressMode::WGPUAddressMode_Repeat;
   WGPUFilterMode filterMode = WGPUFilterMode::WGPUFilterMode_Linear;
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(addressModeU);
     hasher(addressModeV);
     hasher(addressModeW);

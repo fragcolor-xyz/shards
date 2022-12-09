@@ -2,36 +2,91 @@
 #define A2997EDF_4E03_48F4_AF46_10E0BEE1DFE3
 
 #include "renderer_types.hpp"
+#include "pipeline_hash_collector.hpp"
 #include "hasherxxh128.hpp"
 #include <magic_enum.hpp>
 #include <unordered_map>
 
-namespace gfx {
-
-struct References {
-  std::set<UniqueId> set;
-
-  void add(UniqueId id) { set.insert(id); }
-  template <typename T> void add(const std::shared_ptr<T> &ref) { add(ref->getId()); }
-
-  bool contains(UniqueId id) const { return set.contains(id); }
-  template <typename T> bool contains(const std::shared_ptr<T> &ref) const { return contains(ref->getId()); }
-};
-
-// Does 2 things while traversing gfx objects:
-// - Collect the static hash to determine pipeline permutation
-// - Collect references to other gfx objects that the permutation depends on
-struct HashCollector {
-  References references;
-  HasherXXH128<HashStaticVistor> hasher;
-
-  void addReference(UniqueId id) { references.add(id); }
-  template <typename T> void addReference(const std::shared_ptr<T> &ref) { references.add(ref->getId()); }
-  template <typename T> void operator()(const T &val) { hasher(val); }
-};
-} // namespace gfx
-
 namespace gfx::detail {
+
+struct PipelineCacheUpdate {
+  std::set<UniqueId> evictedEntries;
+
+  void reset() { evictedEntries.clear(); }
+};
+
+struct PipelineCache1 {
+  struct Entry {
+    References references;
+    Hash128 hash;
+  };
+  std::unordered_map<UniqueId, Entry> perType[magic_enum::enum_count<UniqueIdTag>()];
+  std::set<UniqueId> evictionQueue;
+
+  const Entry *find(UniqueId id) {
+    auto &lut = perType[(uint8_t)id.getTag()];
+    auto it = lut.find(id);
+    if (it != lut.end()) {
+      return &it->second;
+    } else {
+      return nullptr;
+    }
+  }
+
+  void evict(UniqueId _id, PipelineCacheUpdate &update) {
+    evictionQueue.clear();
+    evictionQueue.insert(_id);
+
+    // Remove entries that reference this id
+    while (!evictionQueue.empty()) {
+      UniqueId id = evictionQueue.begin()->value;
+      evictionQueue.erase(id);
+
+      for (size_t i = 0; i < std::size(perType); i++) {
+        auto &lut = perType[i];
+        for (auto it = lut.begin(); it != lut.end(); ++it) {
+          if (it->second.references.contains(id)) {
+            // Add to the queue, so that items that reference this item also get evicted
+            evictionQueue.insert(it->first);
+          }
+        }
+      }
+
+      // Remove the originally evicted id
+      auto &lut = perType[(uint8_t)id.getTag()];
+      if (lut.erase(id) > 0)
+        update.evictedEntries.insert(id);
+    }
+  }
+
+  template <typename T> void update(const T &hashable, PipelineCacheUpdate &update) {
+    update.reset();
+
+    UniqueId id = hashable.getId();
+    PipelineHashCollector collector;
+    hashable.pipelineHashCollect(collector);
+
+    Hash128 hash = collector.hasher.getDigest();
+
+    auto &lut = perType[(uint8_t)id.getTag()];
+    auto it = lut.find(id);
+    if (it != lut.end()) {
+      if (it->second.hash != hash) {
+        evict(id, update);
+      } else {
+        return; // Up-to-date
+      }
+    } else {
+      evict(id, update);
+    }
+
+    lut.insert(std::make_pair(id, Entry{
+                                      .references = std::move(collector.references),
+                                      .hash = hash,
+                                  }));
+  }
+};
+
 struct PipelineCache {
   std::unordered_map<Hash128, CachedPipelinePtr> map;
 
@@ -58,21 +113,6 @@ template <typename TElem, typename TCache, typename K> std::shared_ptr<TElem> &g
   return getCacheEntry(cache, key, [](const K &key) { return std::make_shared<TElem>(); });
 }
 
-struct RenderCache {
-  struct Entry {
-    References references;
-  };
-  std::map<UniqueId, Entry> perType[magic_enum::enum_count<UniqueIdTag>()];
-
-  void evict(UniqueId id) {}
-  // Functions to compute the base hash for each type
-  // Hash128 hash(MeshPtr mesh) {}
-  // Hash128 hash(FeaturePtr mesh) {}
-  // Hash128 hash(MaterialPtr mesh) {}
-  // Hash128 hash(DrawablePtr mesh) {}
-  // Hash128 hash(DrawablePtr mesh, std::vector<const gfx::Feature *> features) {}
-};
-
 // Groups drawables into pipeline
 struct DrawableGrouper {
 private:
@@ -85,7 +125,7 @@ public:
 
   // Generate hash for the part of the render step that is shared across all drawables
   Hash128 generateSharedHash() {
-    HasherXXH128<HashStaticVistor> sharedHasher;
+    HasherXXH128<PipelineHashVisitor> sharedHasher;
     sharedHasher(renderTargetLayout);
     return sharedHasher.getDigest();
   }
@@ -123,7 +163,7 @@ public:
     }
     Hash128 featureHash = featureHasher.getDigest();
 
-    HasherXXH128<HashStaticVistor> hasher;
+    HasherXXH128<PipelineHashVisitor> hasher;
     hasher(sharedHash);
     // hasher(mesh.getFormat());
     hasher(featureHash);

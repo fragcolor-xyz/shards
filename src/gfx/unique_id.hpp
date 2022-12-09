@@ -15,32 +15,36 @@ enum class UniqueIdTag : uint8_t {
 };
 
 typedef uint64_t UniqueIdValue;
+
+inline constexpr UniqueIdValue UniqueIdBits = 64;
+inline constexpr UniqueIdValue UniqueIdTagBits = 8;
+inline constexpr UniqueIdValue UniqueIdIdMask = (1llu << (UniqueIdBits - UniqueIdTagBits)) - 1llu;
+inline constexpr UniqueIdValue UniqueIdTagMask = ~UniqueIdIdMask;
+
+struct UniqueId;
 struct UniqueId {
   UniqueIdValue value;
 
   constexpr UniqueId() = default;
   constexpr UniqueId(UniqueIdValue v) : value(v) {}
   constexpr operator UniqueIdValue() const { return value; }
+  std::strong_ordering operator<=>(const UniqueId &) const = default;
+
+  constexpr UniqueId withTag(UniqueIdTag tag) {
+    UniqueIdValue tagPart = (UniqueIdValue(tag) << (UniqueIdBits - UniqueIdTagBits)) & UniqueIdTagMask;
+    UniqueIdValue idPart = value & UniqueIdIdMask;
+    return tagPart | idPart;
+  }
+
+  constexpr UniqueIdTag getTag() {
+    UniqueIdValue tagPart = value & UniqueIdTagMask;
+    return UniqueIdTag(tagPart >> (UniqueIdBits - UniqueIdTagBits));
+  }
 };
-
-inline constexpr UniqueId UniqueIdBits = 64;
-inline constexpr UniqueId UniqueIdTagBits = 8;
-inline constexpr UniqueId UniqueIdIdMask = (1llu << (UniqueIdBits - UniqueIdTagBits)) - 1llu;
-inline constexpr UniqueId UniqueIdTagMask = ~UniqueIdIdMask;
-
-inline constexpr UniqueId withTag(UniqueId id, UniqueIdTag tag) {
-  UniqueIdValue tagPart = (UniqueIdValue(tag) << (UniqueIdBits - UniqueIdTagBits)) & UniqueIdTagMask;
-  UniqueIdValue idPart = id & UniqueIdIdMask;
-  return tagPart | idPart;
-}
-inline constexpr UniqueIdTag getTag(UniqueId id) {
-  UniqueIdValue tagPart = id & UniqueIdTagMask;
-  return UniqueIdTag(tagPart >> (UniqueIdBits - UniqueIdTagBits));
-}
 
 // define: friend struct UpdateUniqueId<Type>;
 template <typename T> struct UpdateUniqueId {
-  void apply(T& elem, UniqueId newId) { elem.id = newId; }
+  void apply(T &elem, UniqueId newId) { elem.id = newId; }
 };
 
 template <typename T> std::shared_ptr<std::remove_cv_t<T>> cloneSelfWithId(T *_this, UniqueId newId) {
@@ -67,7 +71,7 @@ public:
   UniqueId getNext() {
     // No ordering, just needs to be atomic
     // https://en.cppreference.com/w/cpp/atomic/memory_order#Relaxed_ordering
-    return withTag(counter.fetch_add(1, std::memory_order_relaxed), tag);
+    return UniqueId(counter.fetch_add(1, std::memory_order_relaxed)).withTag(tag);
   }
 
   // Test function to reset ID counters
@@ -75,5 +79,9 @@ public:
   static void _register(std::weak_ptr<UniqueIdGenerator *> &&tracker);
 };
 } // namespace gfx
+
+template <> struct std::hash<gfx::UniqueId> {
+  size_t operator()(gfx::UniqueId v) const { return size_t(v.value); }
+};
 
 #endif /* F14E50FC_17BA_4A5F_BB8B_8CF2D95A9ECE */

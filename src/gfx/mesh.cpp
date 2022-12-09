@@ -1,6 +1,7 @@
 #include "mesh.hpp"
 #include "context.hpp"
 #include "math.hpp"
+#include "renderer_cache.hpp"
 #include <cassert>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
@@ -74,6 +75,10 @@ MeshPtr Mesh::clone() const {
   auto result = cloneSelfWithId(this, getNextId());
   result->contextData.reset();
   return result;
+}
+
+void Mesh::pipelineHashCollect(struct PipelineHashCollector &collector) const {
+  collector(format);
 }
 
 void Mesh::initContextData(Context &context, MeshContextData &contextData) {

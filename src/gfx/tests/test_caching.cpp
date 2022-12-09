@@ -22,8 +22,8 @@ TEST_CASE("Unique Ids", "[Caching]") {
     };
 
     // Check that counters have actually been reset
-    CHECK(drawables[0]->getId() == withTag(0, UniqueIdTag::Drawable));
-    CHECK(meshes[0]->getId() == withTag(0, UniqueIdTag::Mesh));
+    CHECK(drawables[0]->getId() == UniqueId(0).withTag(UniqueIdTag::Drawable));
+    CHECK(meshes[0]->getId() == UniqueId(0).withTag(UniqueIdTag::Mesh));
 
     CHECK(meshes[0]->getId() != meshes[1]->getId());
     CHECK(drawables[0]->getId() != drawables[1]->getId());
@@ -57,8 +57,8 @@ TEST_CASE("Unique Ids", "[Caching]") {
       auto mesh0 = make_shared<Mesh>();
       auto mesh1 = make_shared<Mesh>();
 
-      CHECK(mesh0->getId() == withTag(0, UniqueIdTag::Mesh));
-      CHECK(mesh1->getId() == withTag(1, UniqueIdTag::Mesh));
+      CHECK(mesh0->getId() == UniqueId(0).withTag(UniqueIdTag::Mesh));
+      CHECK(mesh1->getId() == UniqueId(1).withTag(UniqueIdTag::Mesh));
       prevIds.insert(mesh0->getId());
       prevIds.insert(mesh1->getId());
 
@@ -96,6 +96,81 @@ TEST_CASE("Drawable caching", "[Caching]") {
   FeaturePtr features[] = {
       make_shared<Feature>(),
       make_shared<Feature>(),
+  };
+
+  MeshPtr meshes[] = {
+      make_shared<Mesh>(),
+      make_shared<Mesh>(),
+  };
+
+  MeshDrawable::Ptr drawables[] = {
+      make_shared<MeshDrawable>(meshes[0]),
+      make_shared<MeshDrawable>(meshes[0]),
+  };
+
+  TexturePtr textures[] = {
+      make_shared<Texture>(),
+      make_shared<Texture>(),
+  };
+
+  MaterialPtr materials[] = {
+      make_shared<Material>(),
+  };
+
+  materials[0]->parameters.set("mainColor", textures[0]);
+
+  drawables[0]->features.push_back(features[0]);
+  drawables[0]->features.push_back(features[1]);
+  drawables[0]->material = materials[0];
+  drawables[0]->parameters.set("normalMap", textures[1]);
+
+  drawables[1] = clone(drawables[0]);
+
+  PipelineHashCollector collector0;
+  drawables[0]->pipelineHashCollect(collector0);
+
+  PipelineHashCollector collector1;
+  drawables[1]->pipelineHashCollect(collector1);
+
+  Hash128 hash0 = collector0.hasher.getDigest();
+  Hash128 hash1 = collector1.hasher.getDigest();
+  CHECK(hash0 == hash1);
+
+  SECTION("Dynamic change doesn't change hashes") {
+    collector1.reset();
+    drawables[1]->clipRect = int4(100, 200, 300, 400);
+    drawables[1]->pipelineHashCollect(collector1);
+    hash1 = collector1.hasher.getDigest();
+    CHECK(hash0 == hash1);
+
+    collector1.reset();
+    drawables[1]->parameters.set("SomeVariable", float4(1.0f));
+    drawables[1]->pipelineHashCollect(collector1);
+    hash1 = collector1.hasher.getDigest();
+    CHECK(hash0 == hash1);
+  }
+
+  SECTION("Changing references doesn't change hashes") {
+    collector1.reset();
+    drawables[1]->mesh = meshes[1];
+    drawables[1]->pipelineHashCollect(collector1);
+    hash1 = collector1.hasher.getDigest();
+    CHECK(hash0 == hash1);
+
+    collector1.reset();
+    drawables[1]->features.push_back(features[1]);
+    drawables[1]->pipelineHashCollect(collector1);
+    hash1 = collector1.hasher.getDigest();
+    CHECK(hash0 == hash1);
+  }
+}
+
+TEST_CASE("Pipeline cache evictions", "[Caching]") {
+  MaterialPtr materials[] = {
+      make_shared<Material>(),
+  };
+
+  FeaturePtr features[] = {
       make_shared<Feature>(),
       make_shared<Feature>(),
   };
@@ -105,43 +180,32 @@ TEST_CASE("Drawable caching", "[Caching]") {
       make_shared<Mesh>(),
   };
 
-  MeshDrawable::Ptr drawables[4] = {
+  MeshDrawable::Ptr drawables[] = {
       make_shared<MeshDrawable>(meshes[0]),
       make_shared<MeshDrawable>(meshes[0]),
-      make_shared<MeshDrawable>(meshes[0]),
-      make_shared<MeshDrawable>(meshes[1]),
   };
 
-  TexturePtr textures[4] = {
-      make_shared<Texture>(),
-      make_shared<Texture>(),
-      make_shared<Texture>(),
-      make_shared<Texture>(),
-  };
+  detail::PipelineCache1 cache;
+  detail::PipelineCacheUpdate update;
 
-  MaterialPtr materials[4] = {
-      make_shared<Material>(),
-      make_shared<Material>(),
-      make_shared<Material>(),
-      make_shared<Material>(),
-  };
+  cache.update(*drawables[0].get(), update);
+  CHECK(update.evictedEntries.empty());
+  CHECK(cache.find(drawables[0]->getId()) != nullptr);
 
-  materials[2]->parameters.set("mainColor", textures[1]);
+  cache.update(*drawables[1].get(), update);
+  CHECK(update.evictedEntries.empty());
+  CHECK(cache.find(drawables[1]->getId()) != nullptr);
 
-  drawables[0]->features.push_back(features[0]);
-  drawables[0]->features.push_back(features[2]);
-  drawables[0]->material = materials[2];
-  drawables[0]->parameters.set("normalMap", textures[3]);
+  // Since mesh is not in the cache, this should evict both drawables
+  cache.update(*meshes[0].get(), update);
+  CHECK(update.evictedEntries.contains(drawables[0]->getId()));
+  CHECK(update.evictedEntries.contains(drawables[1]->getId()));
+  CHECK(cache.find(drawables[0]->getId()) == nullptr);
+  CHECK(cache.find(drawables[1]->getId()) == nullptr);
 
-  drawables[1] = clone(drawables[0]);
-
-  HashCollector collector0;
-  drawables[0]->staticHashCollect(collector0);
-
-  HashCollector collector1;
-  drawables[1]->staticHashCollect(collector1);
-
-  Hash128 hash0 = collector0.hasher.getDigest();
-  Hash128 hash1 = collector1.hasher.getDigest();
-  CHECK(hash0 == hash1);
+  // Re-add mesh
+  cache.update(*drawables[0].get(), update);
+  CHECK(update.evictedEntries.empty());
+  CHECK(cache.find(drawables[0]->getId()) != nullptr);
+  CHECK(cache.find(meshes[0]->getId()) != nullptr);
 }

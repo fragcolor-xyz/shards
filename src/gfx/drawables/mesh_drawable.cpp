@@ -14,19 +14,15 @@ DrawablePtr MeshDrawable::clone() const {
 }
 IDrawableProcessor &MeshDrawable::getProcessor() const { return MeshDrawableProcessor::getInstance(); }
 
-void MeshDrawable::staticHashCollect(HashCollector &hashCollector) const {
-  hashCollector(mesh->getId());
-  hashCollector.addReference(mesh);
+void MeshDrawable::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
+  PipelineHashCollector.addReference(mesh);
   if (material) {
-    hashCollector(material->getId());
-    hashCollector.addReference(material);
+    PipelineHashCollector.addReference(material);
   }
   for (auto &feature : features) {
-    hashCollector(feature->getId());
-    hashCollector.addReference(feature);
+    PipelineHashCollector.addReference(feature);
   }
-  parameters.staticHashCollect(hashCollector);
-  hashCollector(transform);
+  parameters.pipelineHashCollect(PipelineHashCollector);
 }
 
 } // namespace gfx

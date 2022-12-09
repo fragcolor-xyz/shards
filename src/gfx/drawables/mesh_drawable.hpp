@@ -32,7 +32,7 @@ public:
   DrawablePtr clone() const override;
   IDrawableProcessor &getProcessor() const override;
 
-  void staticHashCollect(HashCollector &hashCollector) const override;
+  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const override;
 
   UniqueId getId() const override { return id; }
 

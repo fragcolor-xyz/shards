@@ -171,7 +171,7 @@ struct RenderTargetLayout {
 
     std::strong_ordering operator<=>(const Target &other) const = default;
 
-    template <typename T> void hashStatic(T &hasher) const {
+    template <typename T> void getPipelineHash(T &hasher) const {
       hasher(name);
       hasher(format);
     }
@@ -192,7 +192,7 @@ struct RenderTargetLayout {
 
   bool operator!=(const RenderTargetLayout &other) const { return !(*this == other); }
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(targets);
     hasher(depthTargetIndex);
   }

@@ -36,7 +36,7 @@ public:
 
   UniqueId getId() const override { return id; }
 
-  void staticHashCollect(HashCollector &hashCollector) const override { assert(false); }
+  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const override { assert(false); }
 
   // DrawableGeneration generation;
   // DrawableGeneration getGeneration() const override { return generation; }

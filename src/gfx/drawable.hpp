@@ -12,7 +12,7 @@ namespace gfx {
 
 typedef size_t DrawableGeneration;
 
-struct HashCollector;
+struct PipelineHashCollector;
 struct IDrawable {
   virtual ~IDrawable() = default;
 
@@ -25,7 +25,7 @@ struct IDrawable {
   // Compute hash and collect references
   // The drawable should not be modified while it is being processed by the renderer
   // After Renderer::render returns you are free to change this drawable again
-  virtual void staticHashCollect(HashCollector &hashCollector) const = 0;
+  virtual void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const = 0;
 
   // Unique Id to identify this drawable
   virtual UniqueId getId() const = 0;

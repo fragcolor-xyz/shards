@@ -31,7 +31,7 @@ struct BlendComponent {
   WGPUBlendFactor srcFactor{};
   WGPUBlendFactor dstFactor{};
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(srcFactor);
     hasher(dstFactor);
     hasher(operation);
@@ -54,7 +54,7 @@ struct BlendState {
   BlendComponent alpha;
 
   operator const WGPUBlendState &() const { return *reinterpret_cast<const WGPUBlendState *>(this); }
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(color);
     hasher(alpha);
   }
@@ -124,7 +124,7 @@ public:
     return hash;
   }
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
 #define PIPELINE_STATE(_name, _type) hasher(_name);
 #include "pipeline_states.def"
   }
@@ -145,7 +145,7 @@ struct NamedShaderParam {
                    ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(type);
     hasher(name);
     hasher(flags);
@@ -159,7 +159,7 @@ struct NamedTextureParam {
   NamedTextureParam() = default;
   NamedTextureParam(std::string name) : name(name) {}
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
     hasher(flags);
   }

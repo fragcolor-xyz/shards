@@ -9,30 +9,30 @@ UniqueId Material::getNextId() {
   return gen.getNext();
 }
 
-template <typename H> struct HashStaticApplier<ParamVariant, H> {
+template <typename H> struct PipelineHash<ParamVariant, H> {
   static constexpr bool applies() { return true; }
   static void apply(const ParamVariant &val, H &hasher) {
     std::visit([&](auto &&arg) { hasher(arg); }, val);
   }
 };
 
-void MaterialParameters::staticHashCollect(HashCollector &hashCollector) const {
+void MaterialParameters::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
   for (auto &pair : texture) {
-    hashCollector(pair.first);
+    PipelineHashCollector(pair.first);
     if (pair.second.texture) {
-      hashCollector(1u);
-      hashCollector(pair.second.defaultTexcoordBinding);
+      PipelineHashCollector(1u);
+      PipelineHashCollector(pair.second.defaultTexcoordBinding);
     } else {
-      hashCollector(0u);
+      PipelineHashCollector(0u);
     }
   }
 }
 
-void Material::staticHashCollect(HashCollector &hashCollector) const {
+void Material::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
   for (auto &feature : features) {
-    hashCollector(feature->getId());
-    hashCollector.addReference(feature);
+    PipelineHashCollector(feature->getId());
+    PipelineHashCollector.addReference(feature);
   }
-  parameters.staticHashCollect(hashCollector);
+  parameters.pipelineHashCollect(PipelineHashCollector);
 }
 } // namespace gfx

@@ -21,24 +21,19 @@ struct HasherDefaultVisitor {
 };
 
 // Specialize this for custom types
-template <typename T, typename H, typename = void> struct HashStaticApplier {
+template <typename T, typename H, typename = void> struct PipelineHash {
   static constexpr bool applies() { return false; }
 };
 
 template <typename T, typename H>
-struct HashStaticApplier<T, H, std::void_t<decltype(std::declval<T>().hashStatic(*(H *)0), bool())>> {
+struct PipelineHash<T, H, std::void_t<decltype(std::declval<T>().getPipelineHash(*(H *)0), bool())>> {
   static constexpr bool applies() { return true; }
-  static void apply(const T &val, H &hasher) { val.hashStatic(hasher); }
+  static void apply(const T &val, H &hasher) { val.getPipelineHash(hasher); }
 };
 
-struct HashStaticVistor {
-  // template <typename T, typename H>
-  // static constexpr auto applies(...) -> decltype(std::declval<T>().hashStatic(*(H *)0), bool()) {
-  //   return true;
-  // }
-
-  template <typename T, typename H> static constexpr auto applies(...) { return HashStaticApplier<T, H>::applies(); }
-  template <typename T, typename H> void operator()(const T &val, H &hasher) { HashStaticApplier<T, H>::apply(val, hasher); }
+struct PipelineHashVisitor {
+  template <typename T, typename H> static constexpr auto applies(...) { return PipelineHash<T, H>::applies(); }
+  template <typename T, typename H> void operator()(const T &val, H &hasher) { PipelineHash<T, H>::apply(val, hasher); }
 };
 
 template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
@@ -101,7 +96,7 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 };
 
 template <typename H>
-struct HashStaticApplier<float4x4, H> {
+struct PipelineHash<float4x4, H> {
   static constexpr bool applies() { return true; }
   static void apply(const float4x4 &val, H &hasher) {
     hasher(val.x);
