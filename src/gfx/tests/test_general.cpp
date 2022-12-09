@@ -122,6 +122,7 @@ TEST_CASE("Vertex storage formats", "[General]") {
   Renderer &renderer = *testRenderer->renderer.get();
 
   geom::SphereGenerator sphere;
+  sphere.radius = 1.0f;
   sphere.generate();
 
   struct BaseVert {
@@ -211,6 +212,7 @@ TEST_CASE("Pipeline states", "[General]") {
   Renderer &renderer = *testRenderer->renderer.get();
 
   geom::SphereGenerator sphere;
+  sphere.radius = 1.0f;
   sphere.generate();
 
   auto redSphereVerts = convertVertices<VertexPC>(sphere.vertices);
