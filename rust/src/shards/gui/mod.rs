@@ -78,6 +78,12 @@ impl EguiId {
   }
 }
 
+impl From<EguiId> for egui::Id {
+  fn from(value: EguiId) -> Self {
+    egui::Id::new(value)
+  }
+}
+
 struct EguiContext {
   context: Option<EguiNativeContext>,
   instance: ParamVar,
