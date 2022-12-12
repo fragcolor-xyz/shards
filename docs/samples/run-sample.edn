@@ -13,4 +13,4 @@
    (eval (read-string (str "(-> " (slurp name) ")")))))
 
 (schedule main (runSample sampleFile))
-(run main 0.02 100)
+(if (run main 0.02 100) nil (throw "Main tick failed"))
