@@ -52,6 +52,10 @@ Headset::Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanSha
   this->gfxWgpuVulkanShared = _gfxWgpuVulkanShared;//((ContextXrGfxBackend)gfxWgpuVulkanContext)->getWgpuVulkanShared();
   const VkDevice device = gfxWgpuVulkanShared->vkDevice;
 
+  //[t] TODO: we really should use this vulkan_core code instead of the weird hackery with vukan-hpp we're doing
+  //[t] expecially for multiview (single pass)
+  //[t] commenting this out for now because it's obscure and fucked up to try to convert this to vulkan-hpp 
+  /*
   // Create a render pass
   {
     constexpr uint32_t viewMask = 0b00000011;
@@ -94,7 +98,8 @@ Headset::Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanSha
 
     const std::array attachments = { colorAttachmentDescription, depthAttachmentDescription };
 
-    VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+    //VkRenderPassCreateInfo renderPassCreateInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+    vk::RenderPassCreateInfo renderPassCreateInfo;//{ VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
     if(isMultipass)
     {
       // [t] For multiview
@@ -121,14 +126,15 @@ Headset::Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanSha
     renderPassCreateInfo.pAttachments = attachments.data();
     renderPassCreateInfo.subpassCount = 1u;
     renderPassCreateInfo.pSubpasses = &subpassDescription; 
-    //if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
-    if (gfxWgpuVulkanShared->vkDevice.createRenderPass(&renderPassCreateInfo, nullptr, &renderPass, gfxWgpuVulkanShared->vkLoader) != VK_SUCCESS) 
+    //if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS)
+
+    if (gfxWgpuVulkanShared->vkDevice.createRenderPass(&renderPassCreateInfo, nullptr, &renderPass, gfxWgpuVulkanShared->vkLoader) != vk::Result::eSuccess) 
     {
       util::error(Error::GenericVulkan);
       valid = false;
       return;
     }
-  }
+  }*/
 
   // vukan context for openxr
   const XrInstance xrInstance = xrContext->getXrInstance(); 

@@ -417,14 +417,15 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
   
   //[t] The folloing are extension checks for vulkan instance from system and from openxr
   // Get all supported Vulkan instance extensions
-  std::vector<VkExtensionProperties> supportedVulkanInstanceExtensions;
+  //std::vector<VkExtensionProperties> supportedVulkanInstanceExtensions;
+  std::vector<vk::ExtensionProperties> supportedVulkanInstanceExtensions;
   {
     uint32_t instanceExtensionCount;
     auto res = vk::enumerateInstanceExtensionProperties(nullptr, 
                                                         &instanceExtensionCount, 
                                                         nullptr, 
                                                         wgpuUVulkanShared->vkLoader);
-    if ( res != VK_SUCCESS)
+    if ( res != vk::Result::eSuccess)
     {
       util::error(Error::GenericVulkan);
       valid = false;
@@ -435,7 +436,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     if (vk::enumerateInstanceExtensionProperties(nullptr, 
                                                 &instanceExtensionCount,
                                                 supportedVulkanInstanceExtensions.data(), 
-                                                wgpuUVulkanShared->vkLoader) != VK_SUCCESS)
+                                                wgpuUVulkanShared->vkLoader) != vk::Result::eSuccess)
     {
       util::error(Error::GenericVulkan);
       valid = false;
@@ -482,7 +483,8 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
   {
     bool extensionSupported = false;
 
-    for (const VkExtensionProperties& supportedExtension : supportedVulkanInstanceExtensions)
+    //for (const VkExtensionProperties& supportedExtension : supportedVulkanInstanceExtensions)
+    for (const vk::ExtensionProperties& supportedExtension : supportedVulkanInstanceExtensions)
     {
       if (strcmp(extension, supportedExtension.extensionName) == 0)
       {
