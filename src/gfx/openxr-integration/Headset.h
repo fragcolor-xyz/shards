@@ -54,7 +54,7 @@ public:
   bool isExitRequested() const;
   VkRenderPass getRenderPass() const;
   size_t getEyeCount() const;
-  VkExtent2D getEyeResolution(size_t eyeIndex) const;
+  VkExtent2D getEyeResolution(size_t eyeIndex);// const;
   //glm::mat4 
   linalg::aliases::float4x4 getEyeViewMatrix(size_t eyeIndex) const;
   //glm::mat4 
@@ -64,6 +64,7 @@ public:
 private:
   bool valid = true;
   bool exitRequested = false;
+  linalg::aliases::int2 linalgint2size;
 
   const Context_XR* xrContext = nullptr;
   //const gfx::Context* gfxWgpuVulkanContext = nullptr;

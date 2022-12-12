@@ -663,6 +663,10 @@ std::vector<WGPUTextureView> Headset::requestFrame() {
   
   swapchainRTTextureViews.at(eyeIndex) = getRenderTarget(swapchainImageIndex)->getRTTextureView();// of swapchainRTTextureViews matching internal swapchain index
   
+
+  VkExtent2D vke2d = getEyeResolution(0u);
+  linalgint2size = linalg::aliases::int2(vke2d.width, vke2d.height); 
+
   return swapchainRTTextureViews;
   
   /*
@@ -809,10 +813,9 @@ void Headset::endFrame() const
 
 
 const linalg::aliases::int2 &Headset::getSize() const { 
-  VkExtent2D vkextent2d = getEyeResolution(0u);
-  int w = vkextent2d.width;
-  int h = vkextent2d.height;
-  return linalg::aliases::int2(w, h); 
+  //VkExtent2D vkextent2d = getEyeResolution(0u);
+  
+  return linalgint2size;
 }
 
 bool Headset::isValid() const
@@ -835,7 +838,7 @@ size_t Headset::getEyeCount() const
   return eyeCount;
 }
 
-VkExtent2D Headset::getEyeResolution(size_t eyeIndex) const
+VkExtent2D Headset::getEyeResolution(size_t eyeIndex)// const
 {
   const XrViewConfigurationView& eyeInfo = eyeImageInfos.at(eyeIndex);
   return { eyeInfo.recommendedImageRectWidth, eyeInfo.recommendedImageRectHeight };
