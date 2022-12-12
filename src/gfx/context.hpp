@@ -40,6 +40,14 @@ struct AdapterRequest;
 
 /// <div rustbindgen opaque></div>
 struct Context {
+public:
+  WGPUInstance wgpuInstance = nullptr;
+  WGPUAdapter wgpuAdapter = nullptr;
+  WGPUDevice wgpuDevice = nullptr;
+  WGPUQueue wgpuQueue = nullptr;
+
+  TypedUserData userData;
+
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
@@ -48,15 +56,8 @@ private:
   ContextFrameState frameState = ContextFrameState::Ok;
   bool suspended = false;
 
-public:
-  WGPUInstance wgpuInstance = nullptr;
-  WGPUAdapter wgpuAdapter = nullptr;
-  WGPUDevice wgpuDevice = nullptr;
-  WGPUQueue wgpuQueue = nullptr;
   ContextCreationOptions options;
-
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
-  TypedUserData userData;
 
 public:
   Context();

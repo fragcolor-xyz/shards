@@ -151,8 +151,13 @@ struct ContextMainOutput {
     return wgpuWindowSurface;
   }
 
-  bool requestFrame() {
+  bool requestFrame(WGPUDevice device, WGPUAdapter adapter) {
     assert(!currentView);
+
+    int2 drawableSize = window->getDrawableSize();
+    if (drawableSize != currentSize)
+      resizeSwapchain(device, adapter, drawableSize);
+
     currentView = wgpuSwapChainGetCurrentTextureView(wgpuSwapchain);
 
     return currentView;
@@ -173,7 +178,7 @@ struct ContextMainOutput {
     FrameMark;
   }
 
-  void initSwapchain(WGPUAdapter adapter, WGPUDevice device) {
+  void initSwapchain(WGPUDevice device, WGPUAdapter adapter) {
     swapchainFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
     int2 mainOutputSize = window->getDrawableSize();
     resizeSwapchain(device, adapter, mainOutputSize);
@@ -335,10 +340,10 @@ bool Context::beginFrame() {
 
     // Try to request the swapchain texture, automatically recreate swapchain on failure
     for (size_t i = 0; !success && i < maxAttempts; i++) {
-      success = mainOutput->requestFrame();
+      success = mainOutput->requestFrame(wgpuDevice, wgpuAdapter);
       if (!success) {
         SPDLOG_LOGGER_INFO(logger, "Failed to get current swapchain texture, forcing recreate");
-        mainOutput->resizeSwapchain(wgpuDevice, wgpuAdapter, mainOutput->currentSize);
+        mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
       }
     }
 
@@ -452,7 +457,7 @@ void Context::deviceObtained() {
 
   if (mainOutput) {
     getOrCreateSurface();
-    mainOutput->initSwapchain(wgpuAdapter, wgpuDevice);
+    mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
   }
 
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
