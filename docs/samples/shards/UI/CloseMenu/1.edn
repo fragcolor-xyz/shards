@@ -1,25 +1,21 @@
-(defloop main-wire
-  (GFX.MainWindow
-   :Contents
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+  .ui-draw-queue (GFX.ClearQueue)
+
+  (UI
+   .ui-draw-queue
    (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
+    (UI.TopPanel
+     :Contents
+     (UI.MenuBar
+      (->
+       (UI.Menu
+        :Title "Menu"
+        :Contents
+        (UI.Button "Close" (UI.CloseMenu))))))))
 
-    (UI
-     .ui-draw-queue
-     (->
-      (UI.TopPanel
-       :Contents
-       (UI.MenuBar
-        (->
-         (UI.Menu
-          :Title "Menu"
-          :Contents
-          (UI.Button "Close" (UI.CloseMenu))))))))
-
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+  (GFX.Render :Steps .render-steps)))

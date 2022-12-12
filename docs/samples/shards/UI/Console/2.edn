@@ -7,36 +7,32 @@
   (String.Join) > .logs
   (Math.Inc .generation))
 
-(defloop main-wire
+(Setup
+ "" (Set .logs :Global true)
+ 0 (Set .generation :Global true)
+ (Detach capture))
+
+(GFX.MainWindow
+ :Contents
+ (->
   (Setup
-   "" (Set .logs :Global true)
-   0 (Set .generation :Global true)
-   (Detach capture))
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+  .ui-draw-queue (GFX.ClearQueue)
 
-  (GFX.MainWindow
-   :Contents
+  (UI
+   .ui-draw-queue
    (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
-
-    (UI
-     .ui-draw-queue
+    (UI.BottomPanel
+     :Contents
      (->
-      (UI.BottomPanel
-       :Contents
-       (->
-        (Get .generation :Global true)
-        (ToString) (UI.Label)))
-      (UI.CentralPanel
-       :Contents
-       (->
-        (UI.Button "Say Hello" (Msg "Hello!"))
-        (Get .logs :Global true)
-        (UI.Console :ShowFilters true)))))
+      (Get .generation :Global true)
+      (ToString) (UI.Label)))
+    (UI.CentralPanel
+     :Contents
+     (->
+      (UI.Button "Say Hello" (Msg "Hello!"))
+      (Get .logs :Global true)
+      (UI.Console :ShowFilters true)))))
 
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+  (GFX.Render :Steps .render-steps)))

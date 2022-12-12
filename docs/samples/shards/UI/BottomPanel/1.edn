@@ -1,5 +1,4 @@
-(defloop main-wire
-  (GFX.MainWindow
+(GFX.MainWindow
    :Contents
    (->
     (Setup
@@ -14,7 +13,4 @@
       (->
        "Bottom Panel" (UI.Label))))
 
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+    (GFX.Render :Steps .render-steps)))

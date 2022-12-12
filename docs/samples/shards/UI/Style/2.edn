@@ -1,47 +1,43 @@
-(defloop main-wire
-  (GFX.MainWindow
-   :Contents
-   (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+  .ui-draw-queue (GFX.ClearQueue)
 
-    (UI
-     .ui-draw-queue
-     (UI.CentralPanel
+  (UI
+   .ui-draw-queue
+   (UI.CentralPanel
+    (->
+     (Setup
+      64 >= .hue
+      0 >= .r >= .g
+      (color 0 0 0 0) >= .color
+      16.0 >= .size)
+
+     255 (Math.Subtract .hue) (Math.Multiply 2) (Min 255) > .r
+     .hue (Math.Multiply 2) (Min 255) > .g
+     [.r .g 0 255] (ToColor) > .color
+
+     (UI.Scope
       (->
-       (Setup
-        64 >= .hue
-        0 >= .r >= .g
-        (color 0 0 0 0) >= .color
-        16.0 >= .size)
+       {:override_text_style "MyStyle"
+        :text_styles
+        [{:name "MyStyle"
+          :size .size
+          :family "Monospace"}]
+        :visuals
+        {:override_text_color .color}}
+       (UI.Style)
+       (UI.IntSlider
+        :Variable .hue
+        :Min 0 :Max 255)
+       (UI.FloatSlider
+        :Variable .size
+        :Min 8.0 :Max 96.0)
+       "Hello Shards!" (UI.Label)))
 
-       255 (Math.Subtract .hue) (Math.Multiply 2) (Min 255) > .r
-       .hue (Math.Multiply 2) (Min 255) > .g
-       [.r .g 0 255] (ToColor) > .color
+     "This text is not affected" (UI.Label))))
 
-       (UI.Scope
-        (->
-         {:override_text_style "MyStyle"
-          :text_styles
-          [{:name "MyStyle"
-            :size .size
-            :family "Monospace"}]
-          :visuals
-          {:override_text_color .color}}
-         (UI.Style)
-         (UI.IntSlider
-          :Variable .hue
-          :Min 0 :Max 255)
-         (UI.FloatSlider
-          :Variable .size
-          :Min 8.0 :Max 96.0)
-         "Hello Shards!" (UI.Label)))
-
-       "This text is not affected" (UI.Label))))
-
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+  (GFX.Render :Steps .render-steps)))
