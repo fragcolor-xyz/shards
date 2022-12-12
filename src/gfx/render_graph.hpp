@@ -162,10 +162,10 @@ struct RenderTargetData {
         .texture = depthStencilBuffer.get(),
     };
 
-    references.push_back(mainOutput.texture);
+    references.push_back(mainOutput.payload.at(0).texture);//[t] TODO: guus / verify -- does this need a for loop?
     colorTargets.push_back(ColorTarget{
         .name = "color",
-        .texture = mainOutput.texture.get(),
+        .texture = mainOutput.payload.at(0).texture.get(),
     });
   }
 

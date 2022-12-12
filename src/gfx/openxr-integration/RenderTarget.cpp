@@ -2,15 +2,53 @@
 
 #include "Util.h"
 
-RenderTarget::RenderTarget(VkDevice device,
+
+RenderTarget::RenderTarget(WGPUDevice wgpuDevice,
                            VkImage image,
-                           VkImageView depthImageView,
+                           VkImageView depthImageView,//[t] TODO: to implement, if we need depth
                            VkExtent2D size,
-                           VkFormat format,
-                           VkRenderPass renderPass,
+                           WGPUTextureFormat format,
+                           //VkRenderPass renderPass,
                            uint32_t layerCount)
-: device(device), image(image)
+: wgpuDevice(wgpuDevice), image(image)
 {
+  valid = false; 
+  WGPUTextureDescriptor textureDesc{
+      .usage = WGPUTextureUsage::WGPUTextureUsage_CopyDst | WGPUTextureUsage::WGPUTextureUsage_RenderAttachment,
+      .dimension = WGPUTextureDimension_2D,
+      .size = WGPUExtent3D{.width = uint32_t(size.width), .height = uint32_t(size.height), .depthOrArrayLayers = 1},
+      .format = format,
+      .mipLevelCount = 1,
+      .sampleCount = 1,
+      .viewFormatCount = 0,
+  };
+
+  WGPUTextureViewDescriptor viewDesc{
+      .format = textureDesc.format,
+      .dimension = WGPUTextureViewDimension_2D,
+      .baseMipLevel = 0,
+      .mipLevelCount = 1,
+      .baseArrayLayer = 0,
+      .arrayLayerCount = layerCount,//[t] TODO: is this equivalent to vukan: imageViewCreateInfo.subresourceRange.layerCount = layerCount;
+      .aspect = WGPUTextureAspect_All,
+  };
+
+  WGPUExternalTextureDescriptorVK extDescVk{
+      .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_ExternalTextureDescriptorVK)},
+      .image = image,
+  };
+  WGPUExternalTextureDescriptor extDesc{
+      .nextInChain = &extDescVk.chain,
+  }; 
+
+  textureView = wgpuCreateExternalTextureView(wgpuDevice, &textureDesc, &viewDesc, &extDesc);
+  assert(textureView);  
+  valid = true;
+
+ 
+
+  // VK version
+  /*
   // Create an image view
   VkImageViewCreateInfo imageViewCreateInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   imageViewCreateInfo.image = image;
@@ -50,12 +88,15 @@ RenderTarget::RenderTarget(VkDevice device,
     valid = false;
     return;
   }
+  */
 }
 
 RenderTarget::~RenderTarget()
 {
+  /*
   vkDestroyFramebuffer(device, framebuffer, nullptr);
   vkDestroyImageView(device, imageView, nullptr);
+  */
 }
 
 bool RenderTarget::isValid() const
@@ -68,7 +109,13 @@ VkImage RenderTarget::getImage() const
   return image;
 }
 
+/*
 VkFramebuffer RenderTarget::getFramebuffer() const
 {
   return framebuffer;
+}*/
+
+WGPUTextureView RenderTarget::getRTTextureView() const
+{
+  return textureView;
 }

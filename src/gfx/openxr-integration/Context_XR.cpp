@@ -11,14 +11,6 @@
 #endif
 
 
-/*
-namespace
-{
-constexpr XrViewConfigurationType viewType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-constexpr XrEnvironmentBlendMode environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-constexpr XrFormFactor xrFormFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-} // namespace
-*/
 
 Context_XR::Context_XR()
 {
@@ -350,7 +342,7 @@ Context_XR::Context_XR()
   */
 }
 
-void Context_XR::checkXRDeviceReady(
+bool Context_XR::checkXRDeviceReady(
                                     XrViewConfigurationType viewType,
                                     XrEnvironmentBlendMode environmentBlendMode,
                                     XrFormFactor xrFormFactor
@@ -372,7 +364,7 @@ void Context_XR::checkXRDeviceReady(
     util::error(Error::HeadsetNotConnected);
     //[t] TODO: Perhaps here instead of throwing error, do something else? Wait for headset to be plugged in?
     valid = false;
-    return;
+    return false;
   }
 
   // Check the supported environment blend modes
@@ -383,7 +375,7 @@ void Context_XR::checkXRDeviceReady(
     {
       util::error(Error::GenericOpenXR);
       valid = false;
-      return;
+      return false;
     }
 
     std::vector<XrEnvironmentBlendMode> supportedEnvironmentBlendModes(environmentBlendModeCount);
@@ -393,7 +385,7 @@ void Context_XR::checkXRDeviceReady(
     {
       util::error(Error::GenericOpenXR);
       valid = false;
-      return;
+      return false;
     }
 
     bool modeFound = false;
@@ -410,14 +402,16 @@ void Context_XR::checkXRDeviceReady(
     {
       util::error(Error::FeatureNotSupported, "Environment blend mode");
       valid = false;
-      return;
+      return false;
     }
   }
 
+  return true;
 }
 
 void Context_XR::getVulkanExtensionsFromOpenXRInstance()
 {
+  std::vector<const char*> vulkanInstanceExtensions;
   
   //[t] The folloing are extension checks for vulkan instance from system and from openxr
   // Get all supported Vulkan instance extensions
