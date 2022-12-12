@@ -2,7 +2,7 @@
 
 #include <glm/include/glm/fwd.hpp>
 
-#include <vulkan/vulkan.h>
+#include <Vulkan-Headers/include/vulkan/vulkan.h>
 
 #define XR_USE_GRAPHICS_API_VULKAN
 #include <openxrsdk/include/openxr/openxr.h>

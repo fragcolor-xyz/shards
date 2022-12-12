@@ -5,8 +5,8 @@
 #include "wgpu_handle.hpp"
 
 
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_raii.hpp>
+#include <Vulkan-Headers/include/vulkan/vulkan.hpp>
+#include <Vulkan-Headers/include/vulkan/vulkan_raii.hpp>
 
 #include "linalg.hpp"
 #include <optional>

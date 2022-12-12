@@ -19,8 +19,8 @@
 */
 
 
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_raii.hpp>
+#include <Vulkan-Headers/include/vulkan/vulkan.hpp>
+#include <Vulkan-Headers/include/vulkan/vulkan_raii.hpp>
 
 #include <gfx_rust.h>
 
