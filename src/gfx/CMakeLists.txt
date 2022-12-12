@@ -40,8 +40,6 @@ add_library(gfx
   openxr-integration/Headset.cpp
   openxr-integration/OpenXRSystem.h
   openxr-integration/OpenXRSystem.cpp
-  openxr-integration/Pipeline.h
-  openxr-integration/Pipeline.cpp
   openxr-integration/RenderTarget.h
   openxr-integration/RenderTarget.cpp
   openxr-integration/Util.h
@@ -64,7 +62,7 @@ target_link_libraries(gfx
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::uuid
   shards-logging
   Vulkan::Headers
-  openxrsdk
+  openxr_loader
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 

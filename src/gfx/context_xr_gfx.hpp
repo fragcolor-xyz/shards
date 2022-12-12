@@ -262,18 +262,6 @@ namespace gfx {
     //[t] In other words, so what if you return "wgpuInstance"? It's not tied to the vkinstance xr updates, is it? I don't get it.
     WGPUInstance createInstance() override 
     {
-      
-      // create xr system things. moved in here instead of context.cpp to avooid circular dependency
-      {
-        OpenXRSystem openXRSystem = OpenXRSystem::getInstance();
-        if(openXRSystem.InitOpenXR(OpenXRSystem::defaultHeadset) == 1)
-          return nullptr;
-        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
-        if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset))
-          return nullptr;
-      }
-
-
 
       // Create gpu instance
       WGPUInstanceDescriptor desc{}; 
@@ -316,6 +304,25 @@ namespace gfx {
         break;
       }
       assert(wgpuVulkanShared->vkPhysicalDevice);
+
+
+
+      
+      //[t] create xr system things. moved in here instead of context.cpp to avoid circular dependency
+      //[t] this should be created first, before we call anything from context_xr_gfx. 
+      //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code... 
+      {
+        OpenXRSystem openXRSystem = OpenXRSystem::getInstance();
+        //std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
+        if(openXRSystem.InitOpenXR(wgpuVulkanShared, OpenXRSystem::defaultHeadset) == 1)
+          return nullptr;
+        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
+        if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset))
+          return nullptr;
+      }
+
+
+
 
       return wgpuVulkanShared->wgpuInstance;
     }
@@ -406,7 +413,7 @@ namespace gfx {
       OpenXRSystem openXRSystem = OpenXRSystem::getInstance();
       std::vector<std::shared_ptr<IContextMainOutput>> mainOutputs = 
       { 
-        openXRSystem.createHeadset(true, wgpuVulkanShared),
+        openXRSystem.createHeadset(true),
         std::make_shared<OpenXRMirrorView>(wgpuVulkanShared, window) 
       };
       return mainOutputs;

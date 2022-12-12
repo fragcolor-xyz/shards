@@ -18,20 +18,21 @@ class OpenXRSystem {
     static OpenXRSystem xrs;
     OpenXRSystem(){};
 
+    std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared;
     Context_XR* context_xr = nullptr;
     
     std::shared_ptr<Headset> headset = nullptr;
     
     
   public:    
-    static const HeadsetType defaultHeadset;
+    static const HeadsetType defaultHeadset; 
     static OpenXRSystem& getInstance();
 
     bool checkXRDeviceReady(HeadsetType heasetType);
 
-    int InitOpenXR(HeadsetType headsetType);
+    int InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, HeadsetType headsetType);
 
-    std::shared_ptr<gfx::IContextMainOutput> createHeadset(bool isMultipass, std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared);
+    std::shared_ptr<gfx::IContextMainOutput> createHeadset(bool isMultipass);
     int somethingSomethingMakeFrames();
 
     bool getIsMultipass();
