@@ -62,7 +62,12 @@
 (schedule Root
           (Wire
            "Download"
-           nil (Http.Get "https://ipfs.io/ipfs/QmSsba3SLnAEVGFaEcnpUeRuAb2vrJE2wpLpmRonf6aRrm" :Bytes true) = .avocado
+           nil
+           (Http.Get
+            :URL "https://ipfs.io/ipfs/QmSsba3SLnAEVGFaEcnpUeRuAb2vrJE2wpLpmRonf6aRrm"
+            :Bytes true
+            :Timeout 60)
+           = .avocado
            "avocado.glb" (FS.Write .avocado :Overwrite true)))
 (if (run Root 0.1) nil (throw "Root tick failed"))
 
