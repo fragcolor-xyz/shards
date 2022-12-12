@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <Vulkan-Headers/include/vulkan/vulkan.h>
 
 
 #include "platform_surface.hpp"
