@@ -237,4 +237,4 @@ add_subdirectory(glm)
 add_subdirectory(openxrsdk)
 #add_library(openxrsdk INTERFACE)
 #target_include_directories(openxrsdk INTERFACE openxrsdk)
-#target_link_libraries(
+#target_link_libraries(gfx openxr_loader)

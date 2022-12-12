@@ -121,7 +121,8 @@ Headset::Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanSha
     renderPassCreateInfo.pAttachments = attachments.data();
     renderPassCreateInfo.subpassCount = 1u;
     renderPassCreateInfo.pSubpasses = &subpassDescription; 
-    if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
+    //if (vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass) != VK_SUCCESS) 
+    if (gfxWgpuVulkanShared->vkDevice.createRenderPass(&renderPassCreateInfo, nullptr, &renderPass, gfxWgpuVulkanShared->vkLoader) != VK_SUCCESS) 
     {
       util::error(Error::GenericVulkan);
       valid = false;
@@ -489,10 +490,14 @@ Headset::~Headset()
 
   // Clean up Vulkan
   const VkDevice vkDevice = gfxWgpuVulkanShared->vkDevice;
-  vkDestroyImageView(vkDevice, depthImageView, nullptr);
-  vkFreeMemory(vkDevice, depthMemory, nullptr);
-  vkDestroyImage(vkDevice, depthImage, nullptr);
-  vkDestroyRenderPass(vkDevice, renderPass, nullptr);
+  //vkDestroyImageView(vkDevice, depthImageView, nullptr);
+  gfxWgpuVulkanShared->vkDevice.destroyImageView(depthImageView, nullptr, gfxWgpuVulkanShared->vkLoader);
+  //vkFreeMemory(vkDevice, depthMemory, nullptr);
+  gfxWgpuVulkanShared->vkDevice.freeMemory(depthMemory, nullptr, gfxWgpuVulkanShared->vkLoader);
+  //vkDestroyImage(vkDevice, depthImage, nullptr);
+  gfxWgpuVulkanShared->vkDevice.destroyImage(depthImage, nullptr, gfxWgpuVulkanShared->vkLoader);
+  //vkDestroyRenderPass(vkDevice, renderPass, nullptr);
+  gfxWgpuVulkanShared->vkDevice.destroyRenderPass(renderPass, nullptr, gfxWgpuVulkanShared->vkLoader);
 }
 
 //[t] Whether we render single pass (single swapchain with multiview) or multipass (multiple swapchains), 

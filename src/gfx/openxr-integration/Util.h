@@ -38,13 +38,13 @@ void error(Error error, const std::string& details = "");
 bool loadXrExtensionFunction(XrInstance instance, const std::string& name, PFN_xrVoidFunction* function);
 
 // Loads a Vulkan extension function by 'name', returns nullptr on error
-PFN_vkVoidFunction loadVkExtensionFunction(VkInstance instance, const std::string& name);
+//PFN_vkVoidFunction loadVkExtensionFunction(VkInstance instance, const std::string& name, std::shared_ptr<gfx::WGPUVulkanShared> gfxWgpuVulkanShared);
 
 // Unpacks an extension list in a single string into a vector of c-style strings
 std::vector<const char*> unpackExtensionString(const std::string& string);
 
 // Loads a shader from 'file' into 'shaderModule', returns false on error
-bool loadShaderFromFile(VkDevice device, const std::string& filename, VkShaderModule& shaderModule);
+//bool loadShaderFromFile(VkDevice device, const std::string& filename, VkShaderModule& shaderModule);
 
 // Creates an identity pose
 XrPosef makeIdentity();

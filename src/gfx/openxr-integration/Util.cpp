@@ -8,6 +8,8 @@
 #include <fstream>
 #include <sstream>
 
+//#include "context_xr_gfx_data.hpp"
+
 void util::error(Error error, const std::string& details)
 {
   std::stringstream s;
@@ -65,11 +67,13 @@ bool util::loadXrExtensionFunction(XrInstance instance, const std::string& name,
 
   return true;
 }
-
-PFN_vkVoidFunction util::loadVkExtensionFunction(VkInstance instance, const std::string& name)
+/*
+PFN_vkVoidFunction util::loadVkExtensionFunction(VkInstance instance, const std::string& name, std::shared_ptr<gfx::WGPUVulkanShared> gfxWgpuVulkanShared)
 {
-  return vkGetInstanceProcAddr(instance, name.c_str());
-}
+  //return vkGetInstanceProcAddr(instance, name.c_str());
+  return gfxWgpuVulkanShared->getInstanceProcAddr(instance, name.c_str(), gfxWgpuVulkanShared->vkLoader);
+  
+}*/
 
 std::vector<const char*> util::unpackExtensionString(const std::string& string)
 {
@@ -87,7 +91,8 @@ std::vector<const char*> util::unpackExtensionString(const std::string& string)
   return out;
 }
 
-bool util::loadShaderFromFile(VkDevice device, const std::string& filename, VkShaderModule& shaderModule)
+/*
+bool util::loadShaderFromFile(VkDevice device, const std::string& filename, VkShaderModule& shaderModule, std::shared_ptr<gfx::WGPUVulkanShared> gfxWgpuVulkanShared)
 {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
   if (!file.is_open())
@@ -107,13 +112,14 @@ bool util::loadShaderFromFile(VkDevice device, const std::string& filename, VkSh
   shaderModuleCreateInfo.flags = 0u;
   shaderModuleCreateInfo.codeSize = code.size();
   shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-  if (vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS)
+  //if (vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule) != VK_SUCCESS)
+  if (gfxWgpuVulkanShared->vkDevice.createShaderModule(&shaderModuleCreateInfo, nullptr, &shaderModule, gfxWgpuVulkanShared->vkLoader) != VK_SUCCESS)
   {
     return false;
   }
 
   return true;
-}
+}*/
 
 XrPosef util::makeIdentity()
 {

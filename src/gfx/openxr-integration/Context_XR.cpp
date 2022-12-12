@@ -12,9 +12,9 @@
 
 
 
-Context_XR::Context_XR()
+Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
 {
-  
+  this->wgpuUVulkanShared = wgpuUVulkanShared;
 
   // Get all supported OpenXR instance extensions
   std::vector<XrExtensionProperties> supportedOpenXRInstanceExtensions;
@@ -411,6 +411,8 @@ bool Context_XR::checkXRDeviceReady(
 
 void Context_XR::getVulkanExtensionsFromOpenXRInstance()
 {
+  //[t] TODO: guus: this needs to be uncommented, but I can't get this shit working vk::enumerateInstanceExtensionProperties
+  
   std::vector<const char*> vulkanInstanceExtensions;
   
   //[t] The folloing are extension checks for vulkan instance from system and from openxr
@@ -418,8 +420,11 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
   std::vector<VkExtensionProperties> supportedVulkanInstanceExtensions;
   {
     uint32_t instanceExtensionCount;
-    
-    if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr) != VK_SUCCESS)
+    auto res = vk::enumerateInstanceExtensionProperties(nullptr, 
+                                                        &instanceExtensionCount, 
+                                                        nullptr, 
+                                                        wgpuUVulkanShared->vkLoader);
+    if ( res != VK_SUCCESS)
     {
       util::error(Error::GenericVulkan);
       valid = false;
@@ -427,8 +432,10 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     }
 
     supportedVulkanInstanceExtensions.resize(instanceExtensionCount);
-    if (vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount,
-                                               supportedVulkanInstanceExtensions.data()) != VK_SUCCESS)
+    if (vk::enumerateInstanceExtensionProperties(nullptr, 
+                                                &instanceExtensionCount,
+                                                supportedVulkanInstanceExtensions.data(), 
+                                                wgpuUVulkanShared->vkLoader) != VK_SUCCESS)
     {
       util::error(Error::GenericVulkan);
       valid = false;
@@ -493,6 +500,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
       return;
     }
   }
+  
 }
 
 Context_XR::~Context_XR()
@@ -521,6 +529,7 @@ Context_XR::~Context_XR()
 
 //[t] we're not using this, we use the device data in WGPUVulkanShared instead. But it's good reference!
 // especially for multiview
+/*
 bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface to check compatibility
 {
   // Retrieve the physical device from OpenXR
@@ -764,11 +773,13 @@ bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface to chec
   }
 
   return true;
-}
+}*/
 
 void Context_XR::sync() const
 {
-  vkDeviceWaitIdle(vkDevice);
+  //vkDeviceWaitIdle(vkDevice);
+  //wgpuUVulkanShared->vkDevice.waitIdle(wgpuUVulkanShared->vkDevice, wgpuUVulkanShared->vkLoader);
+  wgpuUVulkanShared->vkDevice.waitIdle(wgpuUVulkanShared->vkLoader);
 }
 
 bool Context_XR::isValid() const

@@ -6,11 +6,12 @@
 #include <openxrsdk/include/openxr/openxr.h>
 #include <openxrsdk/include/openxr/openxr_platform.h>
 
+#include "context_xr_gfx_data.hpp"
 
 class Context_XR final
 {
 public:
-  Context_XR();
+  Context_XR( std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared);
   ~Context_XR();
 
   bool checkXRDeviceReady(
@@ -37,7 +38,7 @@ public:
 
 private:
   bool valid = true;
-
+  std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared;
   // Extension function pointers
   PFN_xrGetVulkanInstanceExtensionsKHR xrGetVulkanInstanceExtensionsKHR = nullptr;
   PFN_xrGetVulkanGraphicsDeviceKHR xrGetVulkanGraphicsDeviceKHR = nullptr;

@@ -1,5 +1,8 @@
 #include "OpenXRSystem.h"
 
+const OpenXRSystem::HeadsetType OpenXRSystem::defaultHeadset = {};
+
+
 
 // [t] it's instantiated a single time, and no need to check for null pointers
 // [t] BECAUSE OF MAGIC(STATICS): https://blog.mbedded.ninja/programming/languages/c-plus-plus/magic-statics/
@@ -17,10 +20,12 @@ bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
 }
 
 
-int OpenXRSystem::InitOpenXR(HeadsetType headsetType = defaultHeadset)
+//[t] this should be created before we call anything from context_xr_gfx. 
+//[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code...
+int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, HeadsetType headsetType = defaultHeadset)
 {
-  
-  context_xr = new Context_XR();
+  this->wgpuUVulkanShared = wgpuUVulkanShared;
+  context_xr = new Context_XR(wgpuUVulkanShared);
   if (!context_xr->isValid())
   {
     return EXIT_FAILURE;
@@ -49,7 +54,7 @@ int OpenXRSystem::InitOpenXR(HeadsetType headsetType = defaultHeadset)
 
 // Requires OpenXRSystem::InitOpenXR and ContextXrGfxBackend->createInstance() to be called first.
 //std::shared_ptr<gfx::Headset> OpenXRSystem::createHeadset(bool isMultipass, std::shared_ptr<gfx::WGPUVulkanShared> gfxContext)
-std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(bool isMultipass, std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
+std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(bool isMultipass)
 {
   this->isMultipass = isMultipass;
   headset = std::make_shared<Headset>(context_xr, wgpuUVulkanShared, isMultipass);
