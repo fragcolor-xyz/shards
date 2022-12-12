@@ -32,8 +32,6 @@ add_library(gfx
   uuid.cpp
   context_xr_gfx_data.hpp
   context_xr_gfx.hpp
-  openxr-integration/Buffer.cpp
-  openxr-integration/Buffer.h
   openxr-integration/Context_XR.h
   openxr-integration/Context_XR.cpp
   openxr-integration/Headset.h
