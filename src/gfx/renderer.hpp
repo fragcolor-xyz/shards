@@ -18,9 +18,16 @@ struct RendererImpl;
 struct Renderer {
   std::shared_ptr<RendererImpl> impl;
 
+  struct IMainOutputPayload{//[t]
+    TexturePtr texture; 
+    std::optional<bool> useMatrix = false;
+    std::optional<linalg::aliases::float4x4> eyeViewMatrix;
+    std::optional<linalg::aliases::float4x4> eyeProjectionMatrix;
+  };    
+
   /// <div rustbindgen hide></div>
   struct MainOutput {
-    TexturePtr texture;
+    std::vector<IMainOutputPayload> payload;
   };
 
 public:
@@ -36,7 +43,7 @@ public:
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);
 
   /// <div rustbindgen hide></div>
-  void setMainOutput(const MainOutput &output);
+  void setMainOutput(const std::vector<MainOutput> &output);
 
   ViewStack &getViewStack();
 

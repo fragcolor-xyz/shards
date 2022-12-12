@@ -1,13 +1,15 @@
 #include "Headset.h"
 
-#include "Context_XR.h"
-#include "context.hpp"
-#include "context_xr_gfx.hpp"
-#include "RenderTarget.h"
+
+
 #include "Util.h"
 
 #include <array>
 #include <sstream>
+
+#include <glm/include/glm/mat4x4.hpp>
+
+
 
 /*
 Based on https://github.com/janhsimon/openxr-vulkan-example
@@ -38,15 +40,17 @@ SOFTWARE.
 namespace
 {
 constexpr XrReferenceSpaceType spaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
-constexpr VkFormat colorFormat = VK_FORMAT_R8G8B8A8_SRGB;
+constexpr VkFormat colorFormat = VK_FORMAT_R8G8B8A8_SRGB; 
+constexpr WGPUTextureFormat colorFormat_wgpu = WGPUTextureFormat_RGBA8UnormSrgb;//[t] TODO: is this actually equiv to the above vkformat??
 constexpr VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 } // namespace
 
-Headset::Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxWgpuVulkanShared, bool isMultipass) 
+Headset::Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanShared> _gfxWgpuVulkanShared, bool isMultipass) 
 {
+  this->xrContext = xrContext;
   //gfxWgpuVulkanContext = gfxContext->getContextBackend();
-  gfxWgpuVulkanShared = gfxWgpuVulkanShared;//((ContextXrGfxBackend)gfxWgpuVulkanContext)->getWgpuVulkanShared();
-  const VkDevice device = gfxWgpuVulkanShared->device;
+  this->gfxWgpuVulkanShared = _gfxWgpuVulkanShared;//((ContextXrGfxBackend)gfxWgpuVulkanContext)->getWgpuVulkanShared();
+  const VkDevice device = gfxWgpuVulkanShared->vkDevice;
 
   // Create a render pass
   {
@@ -128,13 +132,13 @@ Headset::Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxWgpuVulk
   // vukan context for openxr
   const XrInstance xrInstance = xrContext->getXrInstance(); 
   const XrSystemId xrSystemId = xrContext->getXrSystemId();
-  const VkPhysicalDevice vkPhysicalDevice = gfxWgpuVulkanShared->physicalDevice;
+  const VkPhysicalDevice vkPhysicalDevice = gfxWgpuVulkanShared->vkPhysicalDevice;
   const uint32_t vkDrawQueueFamilyIndex = gfxWgpuVulkanShared->queueFamilyIndex;
 
   // Create a session with Vulkan graphics binding
   XrGraphicsBindingVulkanKHR graphicsBinding{ XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR };
   graphicsBinding.device = device;
-  graphicsBinding.instance = gfxWgpuVulkanShared->instance;
+  graphicsBinding.instance = gfxWgpuVulkanShared->vkInstance;
   graphicsBinding.physicalDevice = vkPhysicalDevice;
   graphicsBinding.queueFamilyIndex = vkDrawQueueFamilyIndex;
   graphicsBinding.queueIndex = gfxWgpuVulkanShared->queueIndex;//0u;
@@ -392,7 +396,7 @@ Headset::Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxWgpuVulk
 
       //[t] Retrieve the swapchain images, which can be one per layer of multiview
       std::vector<XrSwapchainImageVulkanKHR> swapchainImages;
-      swapchainImages.resize(swapchainImageCount);
+      swapchainImages.resize(swapchainImageCount); 
       for (XrSwapchainImageVulkanKHR& swapchainImage : swapchainImages) 
       {
         swapchainImage.type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR;
@@ -414,22 +418,32 @@ Headset::Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxWgpuVulk
       //[t] represents one of the 2 array layers in the swapchaincreateinfo (multiview).
       //[t] alternatively we set up 2 swapchains with one layer each.
       swapchainRenderTargets.resize(swapchainImages.size());
+      //swapchainRTTextureViews.clear();
       for (size_t renderTargetIndex = 0u; renderTargetIndex < swapchainRenderTargets.size(); ++renderTargetIndex)
       {
         RenderTarget*& renderTarget = swapchainRenderTargets.at(renderTargetIndex);
         //[t] image should be based on device/instance data of WGPUVukanShared if all is done right
         const VkImage image = swapchainImages.at(renderTargetIndex).image;
         //[t] One rendertarget for each swapchainImage (layer). All using the same renderpass.
-        //[t] depthImageView can be null 
+        //[t] depthImageView can be null  
         //[t] 2u is the layer count for multiview. The results of rendering with gl_ViewIndex (see other comment on gl_ViewIndex).
-        renderTarget = new RenderTarget(device, image, depthImageView, eyeResolution, colorFormat, renderPass, 2u); 
+        uint32_t layerCount = 2u;
+        if(isMultipass)
+          layerCount = 1u; 
+        //renderTarget = new RenderTarget(device, image, depthImageView, eyeResolution, colorFormat_wgpu, renderPass, layerCount); 
+        //[t] TODO: guus: can we really use wgpuDevice here if openxr is so far set up with vkDevice?
+        renderTarget = new RenderTarget(gfxWgpuVulkanShared->wgpuDevice, image, depthImageView, eyeResolution, colorFormat_wgpu, layerCount); 
+        //[t] TODO: Also, the vulkan code I've been using uses VKFormat instead of WGPUTextureFormat colorFormat_wgpu
+        
         if (!renderTarget->isValid()) 
         {
           valid = false;
           return;
         } 
-        //[t] TODO: Guus: Ok so far so good🤞, so how/where do we use the RenderTarget in your existing system? 🙂
+
+        //swapchainRTTextureViews.emplace_back(gfx::toWgpuHandle(renderTarget->getRTTextureView()));
       }
+
     }
   }
 
@@ -465,16 +479,16 @@ Headset::~Headset()
   for(size_t i=0; i< swapchainArr.size(); i++)
     xrDestroySwapchain(*(swapchainArr.at(i)));
 
-  for (const RenderTarget* renderTarget : swapchainRenderTargets)
+  for (const RenderTarget* swapchainRenderTarget: swapchainRenderTargets)
   {
-    delete renderTarget;
+    delete swapchainRenderTarget;
   }
 
   xrDestroySpace(space);
   xrDestroySession(session);
 
   // Clean up Vulkan
-  const VkDevice vkDevice = gfxWgpuVulkanShared->device;
+  const VkDevice vkDevice = gfxWgpuVulkanShared->vkDevice;
   vkDestroyImageView(vkDevice, depthImageView, nullptr);
   vkFreeMemory(vkDevice, depthMemory, nullptr);
   vkDestroyImage(vkDevice, depthImage, nullptr);
@@ -593,18 +607,127 @@ Headset::BeginFrameResult Headset::beginFrame()
 
     // Update the view and projection matrices
     const XrPosef& pose = eyeRenderInfo.pose;
-    eyeViewMatrices.at(eyeIndex) = util::poseToMatrix(pose);
-    eyeProjectionMatrices.at(eyeIndex) = util::createProjectionMatrix(eyeRenderInfo.fov, 0.1f, 250.0f);
+    eyeViewMatrices.at(eyeIndex) = util::glmToLinalgFloat4x4(util::poseToMatrix(pose)); 
+    eyeProjectionMatrices.at(eyeIndex) = util::glmToLinalgFloat4x4(util::createProjectionMatrix(eyeRenderInfo.fov, 0.1f, 250.0f));
   }
 
   // Request acquiring of current swapchain image, then after request full rendering of the frame on this swapchain, then afterwards releaseSwapchain() and endFrame()
   return BeginFrameResult::RenderFully; 
 }
 
+std::vector<WGPUTextureView> Headset::requestFrame() {
+  Headset::BeginFrameResult frameResult = beginFrame();
+  if (frameResult == Headset::BeginFrameResult::Error)
+  {
+    std::vector<WGPUTextureView> err;
+    return err; 
+  }
+
+  swapchainRTTextureViews.clear();
+
+  //TODO: try multipass, but, read dscription of acquireSwapchainForFrame, not sure you can call it twice per "frame"
+  /*
+    // for multipass, have 2 swapchains
+    uint32_t swapchainNumber = 1;
+    if(isMultipass){
+      swapchainNumber = 2u;
+    } 
+
+    for(size_t eyeIndex=0; eyeIndex< swapchainNumber; eyeIndex++)
+  */
+  uint32_t eyeCount = 1;
+  swapchainRTTextureViews.resize(eyeCount);
+  uint32_t eyeIndex= 0;
+  uint32_t swapchainImageIndex;
+  frameResult = acquireSwapchainForFrame(eyeIndex, swapchainImageIndex);
+   
+  if (frameResult == Headset::BeginFrameResult::Error)
+  {
+    std::vector<WGPUTextureView> err;
+    return err; 
+  }
+  else{
+    frameResult == Headset::BeginFrameResult::RenderFully;
+  } 
+  
+  swapchainRTTextureViews.at(eyeIndex) = getRenderTarget(swapchainImageIndex)->getRTTextureView();// of swapchainRTTextureViews matching internal swapchain index
+  
+  return swapchainRTTextureViews;
+  
+  /*
+  assert(!currentView); 
+
+  vk::ResultValue<uint32_t> result =
+      gfxWgpuVulkanShared->vkDevice.acquireNextImageKHR(mirrorSwapchain, UINT64_MAX, {}, fence, gfxWgpuVulkanShared->vkLoader);
+  if (result.result == vk::Result::eSuccess) { 
+    vk::Result waitResult = gfxWgpuVulkanShared->vkDevice.waitForFences(fence, true, UINT64_MAX, gfxWgpuVulkanShared->vkLoader);
+    assert(waitResult == vk::Result::eSuccess);
+
+    gfxWgpuVulkanShared->vkDevice.resetFences(fence, gfxWgpuVulkanShared->vkLoader);
+
+    currentImageIndex = result.value; // but 2 xr swapchains?
+    currentView = swapchainRTTextureViews[currentImageIndex];
+    return currentView;
+  } else 
+  {
+    return nullptr;
+  }*/
+}
+
+WGPUTextureFormat Headset::getFormat() const { 
+  return colorFormat_wgpu;
+}
+
+std::vector<gfx::IContextCurrentFramePayload> Headset::getCurrentFrame() const {
+  //assert(currentView);
+  //return currentView;
+  std::vector<gfx::IContextCurrentFramePayload> payload;
+  payload.resize(swapchainRTTextureViews.size());
+  for(size_t eyeIndex = 0; eyeIndex<swapchainRTTextureViews.size(); eyeIndex++){
+    payload.at(eyeIndex).wgpuTextureView = swapchainRTTextureViews.at(eyeIndex);
+    payload.at(eyeIndex).useMatrix = true;
+    payload.at(eyeIndex).eyeViewMatrix = getEyeViewMatrix(eyeIndex);
+    payload.at(eyeIndex).eyeProjectionMatrix = getEyeProjectionMatrix(eyeIndex);
+  }
+  return payload;
+}
+
+//[t] called from context; see: backend = std::make_shared<ContextXrGfxBackend>()
+void Headset::present() {
+  /*
+  WGPUExternalPresentVK wgpuPresent{};  
+  wgpuPrepareExternalPresentVK(gfxWgpuVulkanShared->wgpuQueue, &wgpuPresent);
+
+  vk::Semaphore waitSemaphore = wgpuPresent.waitSemaphore ? VkSemaphore(wgpuPresent.waitSemaphore) : nullptr;
+
+  vk::PresentInfoKHR presentInfo;
+  presentInfo.setSwapchainCount(1);
+  presentInfo.setPSwapchains(&mirrorSwapchain);
+  presentInfo.setPImageIndices(&currentImageIndex);
+  presentInfo.setPWaitSemaphores(&waitSemaphore);
+  presentInfo.setWaitSemaphoreCount(1);
+
+  // presentInfo.setWaitSemaphores(const vk::ArrayProxyNoTemporaries<const vk::Semaphore> &waitSemaphores_)
+  vk::Result result = gfxWgpuVulkanShared->vkQueue.presentKHR(&presentInfo, gfxWgpuVulkanShared->vkLoader);
+  assert(result == vk::Result::eSuccess);
+  */
+  // Increment image
+  currentView = nullptr;
+
+  //[t] for each headset swapchain, release swapchain
+  for(size_t i=0; i< swapchainRTTextureViews.size(); i++){
+    releaseSwapchain(i);
+  }
+  //[t] end xr frame
+  endFrame();
+}
+
 //[t] it's rendered per swapchain (and we should have one swapchain for single pass), 
 //if the swapchain has 2 images (single pass with multiview), both should reference a layered multiview image. 
 //OpenXR is set up with this swapchain image and internally assigns an index to it.
 //But still provides data for 2 eyes (matrixes etc).
+// TODO: guus: I don't know if this can be called twice (e.g. for both eyes at the same time, instead of rendering one and then rendering the other)
+// So I don't know if we can send  textures to the renderer at the same time 
 Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, uint32_t& swapchainImageIndex)
 {
   //[t] MULTIPASS from here 
@@ -673,6 +796,14 @@ void Headset::endFrame() const
   }
 }
 
+
+const linalg::aliases::int2 &Headset::getSize() const { 
+  VkExtent2D vkextent2d = getEyeResolution(0u);
+  int w = vkextent2d.width;
+  int h = vkextent2d.height;
+  return linalg::aliases::int2(w, h); 
+}
+
 bool Headset::isValid() const
 {
   return valid;
@@ -699,12 +830,14 @@ VkExtent2D Headset::getEyeResolution(size_t eyeIndex) const
   return { eyeInfo.recommendedImageRectWidth, eyeInfo.recommendedImageRectHeight };
 }
 
-glm::mat4 Headset::getEyeViewMatrix(size_t eyeIndex) const
+//glm::mat4 
+linalg::aliases::float4x4 Headset::getEyeViewMatrix(size_t eyeIndex) const
 {
   return eyeViewMatrices.at(eyeIndex);
 }
 
-glm::mat4 Headset::getEyeProjectionMatrix(size_t eyeIndex) const
+//glm::mat4
+linalg::aliases::float4x4 Headset::getEyeProjectionMatrix(size_t eyeIndex) const
 {
   return eyeProjectionMatrices.at(eyeIndex);
 }

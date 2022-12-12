@@ -1,6 +1,7 @@
 #include "Util.h"
 
 #include <glm/include/glm/gtx/quaternion.hpp>
+#include <glm/include/glm/mat4x4.hpp>
 
 //#include <boxer/boxer.h>
 
@@ -120,6 +121,18 @@ XrPosef util::makeIdentity()
   identity.position = { 0.0f, 0.0f, 0.0f };
   identity.orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
   return identity;
+}
+
+linalg::aliases::float4x4 util::glmToLinalgFloat4x4(const glm::mat4 glmmat){
+  //[t] these better have the same matrix orientation
+  linalg::aliases::float4x4 linalgmat;
+  linalgmat = {
+    {glmmat[0][0],glmmat[0][1],glmmat[0][2],glmmat[0][3]},
+    {glmmat[1][0],glmmat[1][1],glmmat[1][2],glmmat[1][3]},
+    {glmmat[2][0],glmmat[2][1],glmmat[2][2],glmmat[2][3]},
+    {glmmat[3][0],glmmat[3][1],glmmat[3][2],glmmat[3][3]}
+  };
+  return linalgmat;
 }
 
 glm::mat4 util::poseToMatrix(const XrPosef& pose)

@@ -2,27 +2,36 @@
 
 #include <vulkan/vulkan.h>
 
+
+#include "platform_surface.hpp"
+#include "wgpu_handle.hpp"
+
+#include <gfx_rust.h>
+
 class RenderTarget final
 {
 public:
-  RenderTarget(VkDevice device,
+  RenderTarget(WGPUDevice wgpuDevice,
                VkImage image,
                VkImageView depthImageView,
                VkExtent2D size,
-               VkFormat format,
-               VkRenderPass renderPass,
+               WGPUTextureFormat format,
+               //VkRenderPass renderPass,
                uint32_t layerCount);
   ~RenderTarget();
 
   bool isValid() const;
   VkImage getImage() const;
-  VkFramebuffer getFramebuffer() const;
+  //VkFramebuffer getFramebuffer() const;
+  WGPUTextureView getRTTextureView() const;
 
 private:
   bool valid = true;
 
-  VkDevice device = nullptr;
+  WGPUDevice wgpuDevice = nullptr;
   VkImage image = nullptr;
   VkImageView imageView = nullptr;
-  VkFramebuffer framebuffer = nullptr;
+  //VkFramebuffer framebuffer = nullptr;
+
+  WGPUTextureView textureView = nullptr;
 };

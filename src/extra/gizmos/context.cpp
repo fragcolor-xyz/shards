@@ -94,7 +94,8 @@ struct GizmosContextShard : public gfx::BaseConsumer {
     gfx::Context &gfxContext = getContext();
     gfx::MainWindowGlobals &mainWindowGlobals = getMainWindowGlobals();
     gfx::Window &window = getWindow();
-    int2 outputSize = gfxContext.getMainOutputSize();
+    std::shared_ptr<IContextMainOutput> contextMainOutput = gfxContext.getMainOutput().at(0).lock();
+    int2 outputSize = contextMainOutput->getSize();// outputSize = resolution
 
     handleGizmoInputEvents(mainWindowGlobals.events);
 

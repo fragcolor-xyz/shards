@@ -10,6 +10,8 @@
 #include <stdexcept>
 #include <SDL_stdinc.h>
 #include "context_xr_gfx.hpp"
+//#include <openxr-integration/OpenXRSystem.h>
+
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -37,8 +39,10 @@ void Context::release() {
   SPDLOG_LOGGER_DEBUG(logger, "release");
   state = ContextState::Uninitialized;
 
-  releaseAdapter();
-  mainOutput.reset();
+  releaseAdapter(); 
+  for(size_t i=0; i< mainOutput.size(); i++){
+    mainOutput.at(i).reset();
+  }
 
   WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface);
   WGPU_SAFE_RELEASE(wgpuInstanceRelease, wgpuInstance);
@@ -49,9 +53,18 @@ Window &Context::getWindow() {
   return *window;
 }
 
-bool Context::isHeadless() const { return !mainOutput; }
+bool Context::isHeadless() const { 
+  return !mainOutput.at(0); 
+}
 
-std::weak_ptr<IContextMainOutput> Context::getMainOutput() const { return mainOutput; }
+std::vector<std::weak_ptr<IContextMainOutput>> Context::getMainOutput() const {
+  std::vector<std::weak_ptr<IContextMainOutput>> mainOutputwk;
+  mainOutputwk.resize(mainOutput.size());
+  for(size_t i=0; i< mainOutput.size(); i++){
+    mainOutputwk.at(i) = mainOutput.at(i); 
+  }
+  return mainOutputwk;
+}
 
 void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
   assert(!ptr.expired());
@@ -102,16 +115,38 @@ bool Context::beginFrame() {
 
   collectContextData();
   if (!isHeadless()) {
-    const int maxAttempts = 2;
-    WGPUTextureView textureView{};
+    //[t] mainOutput is array because if it comes from VR it has headset, and mirror view.
+    for(size_t i=0; i< mainOutput.size(); i++){
+      const int maxAttempts = 2;
+      std::vector<WGPUTextureView> textureViewArr;
 
-    // Try to request the swapchain texture, automatically recreate swapchain on failure
-    for (size_t i = 0; !textureView && i < maxAttempts; i++) {
-      textureView = mainOutput->requestFrame();
+      // Try to request the swapchain texture, automatically recreate swapchain on failure
+      /*
+      for (size_t i = 0; !textureViewArr && i < maxAttempts; i++) {
+        textureViewArr = mainOutput.at(i)->requestFrame();
+      } */
+      size_t t = 0;
+      bool internalsNull = true;
+      do{
+        textureViewArr = mainOutput.at(i)->requestFrame(); 
+        internalsNull = true;
+        //[t] check if all the textures exist
+        for(size_t a=0; a< textureViewArr.size(); a++){
+          if(!textureViewArr.at(a)){
+            internalsNull = true;
+            break;
+          }
+          else{
+            internalsNull = false;
+          }
+        }
+        t++;
+      }while(internalsNull && t < maxAttempts);
+
+      //if (!textureView)
+      if(internalsNull)
+        return false;
     }
-
-    if (!textureView)
-      return false;
   }
 
   frameState = ContextFrameState::WaitingForEnd;
@@ -243,7 +278,9 @@ void Context::requestDevice() {
 void Context::releaseDevice() {
   releaseAllContextData();
 
-  mainOutput.reset();
+  for(size_t i=0; i< mainOutput.size(); i++){
+    mainOutput.at(i).reset();
+  }
 
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
   WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
@@ -293,7 +330,7 @@ void Context::initCommon() {
 
   assert(!isInitialized());
 
-#ifdef WEBGPU_NATIVE
+  #ifdef WEBGPU_NATIVE
   wgpuSetLogCallback(
       [](WGPULogLevel level, const char *msg, void *userData) {
         Context &context = *(Context *)userData;
@@ -324,26 +361,34 @@ void Context::initCommon() {
   } else {
     wgpuSetLogLevel(WGPULogLevel_Info);
   }
-#endif
-
+  #endif
+/*
+  
+  */
   //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
-  backend = std::make_shared<ContextXrGfxBackend>();  
-  wgpuInstance = backend->wgpuVkCreateInstance();
-
-  // Setup surface
+  backend = std::make_shared<ContextXrGfxBackend>();   
+  wgpuInstance = backend->createInstance(); 
+  
+  //[t] create mirror view with the context_xr_gfx.cpp
+  //[t] and check if MirrorView was successful at CreateMirrorSurface()
+  //[t] Setup surface
   if (window) { 
     assert(!wgpuSurface);
     wgpuSurface = backend->createSurface(getWindow(), options.overrideNativeWindowHandle);
   }
-
+  
   requestDevice(); 
+  //openXRSystem.createHeadset() moved into ContextXrGfxBackend's createMainOutput()
 }
 
 
 
 void Context::present() {
-  assert(mainOutput);
-  mainOutput->present();
+  for(size_t i=0; i< mainOutput.size(); i++)
+  {
+    assert(mainOutput.at(i));
+    mainOutput.at(i)->present();
+  }
 }
 
 } // namespace gfx

@@ -6,21 +6,30 @@
 #include <openxrsdk/include/openxr/openxr.h>
 #include <openxrsdk/include/openxr/openxr_platform.h>
 
-#include <glm/include/glm/mat4x4.hpp>
-
+//#include <glm/include/glm/mat4x4.hpp>
+#include "linalg.hpp"
+//#include "linalg.h"
 #include <vector>
 
-#include "../context.hpp"
-#include "../context_xr_gfx.hpp"
+
+//#include "context.hpp"
 #include "context_xr.h"
+#include "context_xr_gfx_data.hpp"
+
+
+//#include "wgpu_handle.hpp"
+//#include <gfx_rust.h>
+
+#include "RenderTarget.h"
+
 
 
 class RenderTarget;
 
-class Headset
+class Headset:public gfx::IContextMainOutput
 {
 public:
-  Headset(const Context_XR* xrContext, gfx::WGPUVulkanShared* gfxContext, bool isMultipass);
+  Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanShared> _gfxWgpuVulkanShared, bool isMultipass);
   ~Headset();
 
   enum class BeginFrameResult
@@ -35,13 +44,21 @@ public:
   void releaseSwapchain(uint32_t eyeIndex) const;
   void endFrame() const;
 
+  const linalg::aliases::int2 &getSize() const override;
+  WGPUTextureFormat getFormat() const override;
+  std::vector<WGPUTextureView> requestFrame() override;
+  std::vector<gfx::IContextCurrentFramePayload> getCurrentFrame() const override;
+  void present() override;
+
   bool isValid() const;
   bool isExitRequested() const;
   VkRenderPass getRenderPass() const;
   size_t getEyeCount() const;
   VkExtent2D getEyeResolution(size_t eyeIndex) const;
-  glm::mat4 getEyeViewMatrix(size_t eyeIndex) const;
-  glm::mat4 getEyeProjectionMatrix(size_t eyeIndex) const;
+  //glm::mat4 
+  linalg::aliases::float4x4 getEyeViewMatrix(size_t eyeIndex) const;
+  //glm::mat4 
+  linalg::aliases::float4x4 getEyeProjectionMatrix(size_t eyeIndex) const;
   RenderTarget* getRenderTarget(size_t swapchainImageIndex) const;
 
 private:
@@ -49,12 +66,14 @@ private:
   bool exitRequested = false;
 
   const Context_XR* xrContext = nullptr;
-  const gfx::Context* gfxWgpuVulkanContext = nullptr;
-  const gfx::WGPUVulkanShared* gfxWgpuVulkanShared = nullptr;
+  //const gfx::Context* gfxWgpuVulkanContext = nullptr;
+  std::shared_ptr<gfx::WGPUVulkanShared> gfxWgpuVulkanShared = nullptr;
 
   size_t eyeCount = 0u;
-  std::vector<glm::mat4> eyeViewMatrices;
-  std::vector<glm::mat4> eyeProjectionMatrices;
+  //std::vector<glm::mat4> 
+  std::vector<linalg::aliases::float4x4> eyeViewMatrices;
+  //std::vector<glm::mat4> 
+  std::vector<linalg::aliases::float4x4> eyeProjectionMatrices;
 
   XrSession session = nullptr;
   XrSessionState sessionState = XR_SESSION_STATE_UNKNOWN;
@@ -68,6 +87,10 @@ private:
 
   std::vector<XrSwapchain*> swapchainArr;// = nullptr;
   std::vector<RenderTarget*> swapchainRenderTargets;
+  //std::vector<gfx::WgpuHandle<WGPUTextureView>> swapchainRTTextureViews;
+  std::vector<WGPUTextureView> swapchainRTTextureViews;
+  
+  WGPUTextureView currentView{}; 
 
   VkRenderPass renderPass = nullptr;
 

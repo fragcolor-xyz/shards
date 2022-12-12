@@ -11,6 +11,10 @@
 #include <string>
 #include <vector>
 
+#include "linalg.hpp"
+//#include "linalg.h"
+
+
 // All the things that can go wrong
 enum class Error
 {
@@ -47,6 +51,8 @@ XrPosef makeIdentity();
 
 // Converts a pose to a transformation matrix
 glm::mat4 poseToMatrix(const XrPosef& pose);
+
+linalg::aliases::float4x4 glmToLinalgFloat4x4(const glm::mat4 glmmat);
 
 // Creates a projection matrix
 glm::mat4 createProjectionMatrix(XrFovf fov, float nearClip, float farClip);

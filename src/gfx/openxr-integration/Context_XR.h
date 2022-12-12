@@ -13,7 +13,7 @@ public:
   Context_XR();
   ~Context_XR();
 
-  void checkXRDeviceReady(
+  bool checkXRDeviceReady(
                             XrViewConfigurationType viewType,
                             XrEnvironmentBlendMode environmentBlendMode,
                             XrFormFactor xrFormFactor
