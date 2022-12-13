@@ -374,20 +374,28 @@ BUILTIN("nth") {
 }
 
 BUILTIN("range") {
-  CHECK_ARGS_IS(2);
+  int argCount = CHECK_ARGS_BETWEEN(2, 3);
+
   ARG(malNumber, arg0);
   ARG(malNumber, arg1);
   MAL_CHECK(arg0->isInteger(), "Not an integer");
   MAL_CHECK(arg1->isInteger(), "Not an integer");
-
   int start = arg0->value();
   int end = arg1->value();
-  auto length = end - start + 1;
+
+  int step = 1;
+  if (argCount == 3) {
+    ARG(malNumber, arg2);
+    MAL_CHECK(arg2->isInteger(), "Not an integer");
+    step = arg2->value();
+  }
+
+  auto length = (end - start + step) / step;
   MAL_CHECK(length > 0, "Negative range");
 
   malValueVec *items = new malValueVec(length);
   for (auto i = 0; i < length; i++) {
-    (*items)[i] = mal::number(i + start, true);
+    (*items)[i] = mal::number((i * step) + start, true);
   }
   return mal::list(items);
 }
