@@ -4,56 +4,55 @@ Wires are scheduled on the Mesh, and they are run in the order they are schedule
 
 To gain better control of the flow in your Shards program, you can employ some of the functions described here.
 
+## Do / Dispatch
 
-## Do / Dispatch ##
 [`Do`](../../../reference/shards/General/Do) and [`Dispatch`](../../../reference/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
 
 `Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`.
 
-In the example below, John starts with five apples. He takes one, counts how many apples he has, and then takes another. We define two Wires - `add-apple` and `count-apples` to carry out these tasks.
+In the example below, John starts with five apples. He wishes to share them equally with a friend, and thus checks if it can be divided by two. He then takes another apple and checks again. We define two Wires - `add-apple` and `can-it-be-shared` to carry out these tasks.
 
 === "Command"
 
     ```{.clojure .annotate linenums="1"}
-    (defmesh main) ;; (1)
+    (defmesh main)
     
-    (defwire add-apple ;; (2)
-      (Msg "Adding an apple...") ;; (3)
-      (Math.Add 1)) ;; (4)
+    (defwire add-apple
+      (Msg "Adding an apple...")
+      (Math.Add 1))
 
-    (defwire count-apples
-      (ToString) >= .count ;; (5)
-      ["I have " .count " apples!"] (String.Join) >= .message (Log)) ;; (6)(7)
+    (defwire can-it-be-shared 
+      (Math.Mod 2) ;; (1)
+      (If
+       :Predicate (Is 0) ;; (2)
+       :Then (Msg "Yes")
+       :Else (Msg "No")))
 
     (defwire john
       5 >= .apples
-      (Dispatch count-apples)
+      (Dispatch can-it-be-shared)
       (Do add-apple)
-      (Dispatch count-apples))
+      (Dispatch can-it-be-shared))
 
-    (schedule main john) ;; (8)
-    (run main) ;; (9)
+    (schedule main john)
+    (run main)
     ```
 
-    1. [`defmesh`](../../../reference/functions/macros/#defmesh) is used to define a Mesh.
-    2. [`defwire`](../../../reference/functions/macros/#defwire) is used to define a Wire.
-    3. [`Msg`](../../../reference/shards/General/Msg/) prints out the string passed into it.
-    4. [`Math.Add`](../../../reference/shards/Math/Add/) takes in a value and increments it by the number specified.
-    5. [`ToString`](../../../reference/shards/General/ToString/) converts a value into a string.
-    6. [`String.Join`](../../../reference/shards/String/Join/) joins a sequence of strings together to form a single string.
-    7. ['Log'](../../../reference/shards/General/Log/) displays a value to the user's console.
-    8. [`schedule`](../../../reference/functions/misc/#schedule) queues a Wire on the Mesh.
-    9. [`run`](../../../reference/functions/misc/#run) executes Wires on the Mesh.
+    1. [`Math.Mod`](../../../reference/shards/Math/Mod/) divides a value by the number specified and returns the remainder. 
 
 === "Output"
 
     ```
-    [count-apples] I have 5 apples!
+    [can-it-be-shared] No
     [add-apple] Adding an apple...
-    [count-apples] I have 6 apples!
+    [can-it-be-shared] Yes
+
     ```
 
-## Detach / Spawn ##
+![Do and Dispatch](assets/do-dispatch-example.png)
+
+## Detach / Spawn
+
 [`Detach`](../../../reference/shards/General/Detach) and [`Spawn`](../../../reference/shards/General/Spawn) schedules a Wire to run on the same Mesh.
 
 The difference between `Detach` and `Spawn` is that `Detach` schedules the original Wire itself, while `Spawn` schedules clones of the Wire. This means that there can only be one instance of the detached Wire running, while you can have many instances of the spawned Wire.
@@ -203,8 +202,13 @@ If you added `(Spawn bake-apple)` for Lucy, you will notice that Lucy starts to 
 
 Use cases would include spawning multiple same projectiles (such as bullets fired from a gun), or spawning monster mobs with many instances of one monster type.
 
-## Start / Resume ##
+## Start / Resume
+
+### Start
+
 [`Start`](../../../reference/shards/General/Start) schedules a Wire to run on the same Mesh, in place of the current Wire.
+
+### Resume
 
 [`Resume`](../../../reference/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
 
@@ -273,7 +277,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
     [take-an-apple] Apples Remaining: 5
     ```
 
-## Stop ##
+## Stop
 
 [`Stop`](../../../reference/shards/General/Stop) is used to end Wires. It is very useful for managing Wires created with `Detach` or `Spawn`.
 For example, if you have spawned multiple monsters, you could set them to `Stop` running once their health reaches 0.
@@ -325,14 +329,102 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
     [bake-apple-1] Started Baking
     [bake-apple-1] Time Baked: 1
     ```
+## Step
 
-<!-- ## Step / Branch / Stepmany ##
+[`Step`](../../../reference/shards/General/Step) schedules and run another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself.
 
-[`Step`](../../reference/shards/General/Step) schedules another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself. -->
+Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
-<!-- TODO: Clarify that understanding is correct first -->
+1. The flow is different.
 
-## Expand ##
+2. It shares the same environment and scope of the Wire which stepped it.
+
+3. It can affect variables on the Wire which stepped it.
+
+### Flow Difference
+
+The stepped Wire runs similar to how `Do`/`Dispatch` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
+
+For `Do`/`Dispatch`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
+
+![The difference between Step and Do/Dispatch.](assets/step-difference.png)
+
+### Shared Environment
+
+Being scheduled on a Wire allows the stepped Wire to share the same scope and environment as the Wire which stepped it. This is especially useful when working with `UI` shards that can only exist within a single `GFX` window. The topic on `UI` and `GFX` is beyond the scope of this tutorial, but the general idea is that when implementing `UI` elements, they can only be stepped from the Wire that holds the `GFX.MainWindow` shard in your program.
+
+### Shared Variables
+
+Most of the methods described in this chapter will only "snapshot" the variables of the Wire that called it. That is, it makes a copy of variables existing in the original Wire so that the Wire called knows what those variables are and can work with them.
+
+Changes made to variables that are copied will not be reflected on the original. `Step` is unique in the sense that it has access to the original variables. Changes made to variables from the Wire that called it will persist.
+
+### Example
+
+In the example below, we demonstrate how the main Looped Wired `john` continues to run and `Step` into the Wire `take-an-apple` even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` cannot be stepped into again when it is paused due to how it is still running.
+
+The example also showcases how variables defined in `john` are affected by changes made to it by the stepped Wires.
+
+=== "Command"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire take-an-apple ;; (1)
+      (Math.Inc .fresh-apples)
+      (Msg "Taking an apple...")
+      .fresh-apples (Log "Fresh Apple (+1)"))
+
+    (defwire bake-apple ;; (2)
+      (Math.Dec .fresh-apples)
+      (Msg "Baking apple...")
+      .fresh-apples (Log "Fresh Apple (-1)") 
+      (Pause 1)
+      (Math.Inc .baked-apples)
+      (Msg "Baking complete!")
+      .baked-apples (Log "Baked Apple (+1)"))
+
+    (defloop john
+      (Setup 
+       5 >= .fresh-apples
+       0 >= .baked-apples)
+
+      (Step take-an-apple)
+      (Step bake-apple))
+
+    (schedule main john)
+    (run main 1 5)
+
+    ```
+
+    1. This Wire increases the value of `.fresh-apples` every time it is stepped into.
+    2. This Wire decreases the value of `.fresh-apples`, pauses the Wire for 1 second, and increases the value of `.baked-apples` every time it is stepped into.
+
+=== "Output"
+
+    ```
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 6
+    [bake-apple] Baking apple...
+    [bake-apple] Fresh Apple (-1): 5
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 6
+    [bake-apple] Baking complete!
+    [bake-apple] Baked Apple (+1): 1
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 7
+    [bake-apple] Baking apple...
+    [bake-apple] Fresh Apple (-1): 6
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 7
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 8
+    [bake-apple] Baking complete!
+    [bake-apple] Baked Apple (+1): 2
+    ```
+
+<!-- TODO Branch / Stepmany --> 
+
+## Expand
 
 - Creates and schedules copies of a Wire
 
@@ -386,5 +478,17 @@ In our example below, we will be using `Expand` to teach John about multiplicati
 - Creates and schedules copies of a Wire -->
 
 <!-- TODO: TryMany is not working yet -->
+
+## Summary
+
+| Shard    | Uses Original Variables? | Restarts Wire? | Continues Loop?  | 1 Instance per run? |
+| :------- | :----------------------- | :------------- | :--------------- | :------------------ |
+| Do       | X                        | X              | O                | O                   | 
+| Dispatch | X                        | X              | O                | O                   | 
+| Detach   | X                        | O              | O                | O                   | 
+| Spawn    | X                        | O              | O                | X                   | 
+| Start    | X                        | O              | X                | X                   | 
+| Resume   | X                        | O              | O                | O                   |  
+| Step     | O                        | O              | O                | O                   | 
 
 --8<-- "includes/license.md"
