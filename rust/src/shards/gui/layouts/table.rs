@@ -321,7 +321,7 @@ impl Shard for Table {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       ui.push_id(EguiId::new(self, 0), |ui| {
-        use egui_extras::{Size, TableBuilder};
+        use egui_extras::{Column, TableBuilder};
 
         let seq = Seq::try_from(input)?;
         let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
@@ -343,9 +343,9 @@ impl Shard for Table {
           for column in columns.iter() {
             let column: crate::types::Table = column.as_ref().try_into()?;
             let mut size = if let Some(initial) = column.get_static(cstr!("Initial")) {
-              Size::initial(initial.try_into()?)
+              Column::initial(initial.try_into()?)
             } else {
-              Size::remainder()
+              Column::remainder()
             };
             if let Some(at_least) = column.get_static(cstr!("AtLeast")) {
               size = size.at_least(at_least.try_into()?);
@@ -357,7 +357,7 @@ impl Shard for Table {
           }
           // add unconfigured columns
           for _ in columns.len()..self.shards.len() {
-            builder = builder.column(Size::remainder());
+            builder = builder.column(Column::remainder());
           }
           // column headers
           builder.header(20.0, |mut header_row| {
@@ -396,7 +396,7 @@ impl Shard for Table {
         } else {
           // fallback to default columns with no header
           for _ in 0..seq.len() {
-            builder = builder.column(Size::remainder());
+            builder = builder.column(Column::remainder());
           }
           builder.header(0.0, |_| {})
         };
