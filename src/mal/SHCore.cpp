@@ -255,6 +255,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
       "args args-inner)))))",
       env);
   rep("(def || Await)", env);
+  rep("(defn for [from to pfn] (map (fn* [n] (apply pfn [n])) (range from to)))", env);
 #if defined(_WIN32)
   rep("(def platform \"windows\")", env);
 #elif defined(__ANDROID__)
