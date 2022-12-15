@@ -8,6 +8,7 @@
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
 #include "async.hpp"
+#include <tracy/Tracy.hpp>
 #include <scoped_allocator>
 
 namespace gfx::detail {
@@ -110,6 +111,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   void reset(size_t frameCounter) override {
+    ZoneScoped;
     for (auto &data : workerData)
       data.reset();
   }
@@ -141,6 +143,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline,
                             const IDrawable *drawable) {
+    ZoneScoped;
+
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
 
     data.drawable = drawable;
@@ -221,6 +225,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   static tf::Task generateBufferMapWaitTask(Context &context, PrepareData *prepareData, tf::Subflow &subflow,
                                             tf::Task &dependency) {
     auto waitForBufferMap = [=, &context]() -> int {
+      ZoneScopedN("waitForBufferMap");
+
       bool everythingMapped = true;
       auto check = [&](auto buffers) {
         for (auto &drawBuffer : buffers) {
@@ -250,8 +256,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     waitTask.precede(waitTask, continueWithPlaceholder);
     return continueWithPlaceholder;
   }
-
-  static int waitForBufferMap(Context &context, PrepareData *prepareData, tf::Subflow &subflow) {}
 
   ProcessorDynamicValue prepare(DrawablePrepareContext &context) override {
     auto &executor = context.context.executor;
@@ -332,6 +336,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto generateDrawableDataTask =
         subflow
             .emplace([=](tf::Subflow &subflow) {
+              ZoneScopedN("generateDrawableData");
               subflow.for_each_index(size_t(0), context.drawables.size(), size_t(1), generateDrawableData);
             })
             .succeed(createContextDataTask);
@@ -341,6 +346,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     // Sort and group drawables
     auto sortAndGroup = [=, &drawables = context.drawables, &cachedPipeline]() {
+      ZoneScopedN("sortAndGroup");
+
       auto &allocator = context.context.workerMemory.get();
 
       // Collect results from generate task
@@ -359,12 +366,17 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       prepareData->groups.emplace(allocator);
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
-      groupDrawables(prepareData->drawableData.size(), preparedGroupData.groups,
-                     [&](size_t index) { return prepareData->drawableData[index]->groupHash; });
-      preparedGroupData.groupData.resize(preparedGroupData.groups.size());
+      {
+        ZoneScopedN("groupDrawables");
+        groupDrawables(prepareData->drawableData.size(), preparedGroupData.groups,
+                       [&](size_t index) { return prepareData->drawableData[index]->groupHash; });
+        preparedGroupData.groupData.resize(preparedGroupData.groups.size());
+      }
 
       // Setup view buffer data
       {
+        ZoneScopedN("fillViewBuffer");
+
         ParameterStorage viewParameters(allocator);
         setViewParameters(viewParameters, context.viewData);
 
@@ -376,6 +388,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       // Setup draw buffer data
       {
+        ZoneScopedN("fillDrawBuffer");
+
         auto &buffer = prepareData->drawBuffers[0];
         auto &binding = cachedPipeline.drawBufferBindings[0];
         uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(buffer.buffer, 0, buffer.length);
@@ -397,7 +411,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       unmapBuffers(prepareData->viewBuffers);
 
       // Generate bind groups
-      WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
       WGPUBindGroupLayout viewBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()];
 
       BindGroupBuilder viewBindGroupBuilder(allocator);
@@ -405,10 +418,20 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         viewBindGroupBuilder.addBinding(cachedPipeline.viewBuffersBindings[i], prepareData->viewBuffers[i].buffer);
       }
       prepareData->viewBindGroup.reset(viewBindGroupBuilder.finalize(context.context.wgpuDevice, viewBindGroupLayout));
+    };
+    auto sortAndGroupTask = subflow.emplace(sortAndGroup).succeed(waitForBufferBindingTask);
 
-      for (size_t i = 0; i < preparedGroupData.groups.size(); i++) {
-        auto &group = preparedGroupData.groups[i];
-        auto &groupData = preparedGroupData.groupData[i];
+    auto createDrawBindGroups = [=, &cachedPipeline](tf::Subflow &subflow) {
+      ZoneScopedN("createDrawBindGroups");
+
+      PreparedGroupData &preparedGroupData = prepareData->groups.value();
+      WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
+
+      subflow.for_each_index(size_t(0), preparedGroupData.groups.size(), size_t(1), [=, &cachedPipeline, &preparedGroupData](size_t index) {
+        auto &allocator = context.context.workerMemory.get();
+
+        auto &group = preparedGroupData.groups[index];
+        auto &groupData = preparedGroupData.groupData[index];
         auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
 
         BindGroupBuilder drawBindGroupBuilder(allocator);
@@ -428,9 +451,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         }
 
         groupData.drawBindGroup.reset(drawBindGroupBuilder.finalize(context.context.wgpuDevice, drawBindGroupLayout));
-      }
+      });
     };
-    auto sortAndGroupTask = subflow.emplace(sortAndGroup).succeed(waitForBufferBindingTask);
+    auto createDrawBindGroupsTask = subflow.emplace(createDrawBindGroups).succeed(sortAndGroupTask);
 
     return prepareData;
   }

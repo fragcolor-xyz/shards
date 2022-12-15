@@ -29,6 +29,7 @@
 #include "worker_memory.hpp"
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
+#include <tracy/Tracy.hpp>
 #include <thread>
 #include <algorithm>
 #include <tracy/Tracy.hpp>
@@ -158,6 +159,8 @@ struct RendererImpl final : public ContextData {
   size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
 
   void updateMainOutputFromContext() {
+    ZoneScoped;
+
     if (!mainOutput.texture) {
       mainOutput.texture = std::make_shared<Texture>();
     }
@@ -196,6 +199,8 @@ struct RendererImpl final : public ContextData {
   }
 
   void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
+    ZoneScoped;
+
     ViewData viewData{
         .view = *view.get(),
         .cachedView = getCachedView(view),
@@ -231,6 +236,7 @@ struct RendererImpl final : public ContextData {
 
   void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
                         CachedRenderGraph &out) {
+    ZoneScoped;
 
     RenderGraphBuilder builder;
 
@@ -262,6 +268,8 @@ struct RendererImpl final : public ContextData {
 
   const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps,
                                            int2 referenceOutputSize) {
+    ZoneScoped;
+
     HasherXXH128<PipelineHashVisitor> hasher;
     for (auto &step : pipelineSteps) {
       std::visit([&](auto &step) { hasher(step.id); }, *step.get());
@@ -291,6 +299,7 @@ struct RendererImpl final : public ContextData {
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const ClearStep &step) {
     builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput);
   }
+
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const ClearStep &step) {
     auto &node = out.getNode(index);
     node.setupPass = [=](WGPURenderPassDescriptor &desc) {
@@ -316,6 +325,7 @@ struct RendererImpl final : public ContextData {
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderDrawablesStep &step) {
     builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput);
   }
+
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderDrawablesStep &step) {
     auto &node = out.getNode(index);
 
@@ -327,6 +337,8 @@ struct RendererImpl final : public ContextData {
 
   void evaluateDrawableStep(EvaluateNodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData,
                             const RenderTargetLayout &rtl) {
+    ZoneScoped;
+
     tf::Taskflow flow;
     DrawQueue &queue = *step.drawQueue.get();
 
@@ -343,6 +355,8 @@ struct RendererImpl final : public ContextData {
 
     // Compute drawable hashes
     auto groupTask = flow.emplace([&](tf::Subflow &sub) {
+      ZoneScopedN("pipelineGrouping");
+
       // Expand drawables
       for (auto &drawable : queue.getDrawables()) {
         if (!drawable->expand(expandedDrawables))
@@ -380,6 +394,8 @@ struct RendererImpl final : public ContextData {
     auto reduceDrawablesTask = flow.transform_reduce(
         workerData.begin(), workerData.end(), pipelineGroupsMerged,
         [&](decltype(pipelineGroupsMerged) result, const decltype(pipelineGroupsMerged) &b) {
+          ZoneScopedN("pipelineGrouping (combine)");
+
           for (auto &it : b) {
             auto it1 = result.find(it.first);
             if (it1 == result.end()) {
@@ -399,6 +415,8 @@ struct RendererImpl final : public ContextData {
 
     // Retrieve existing pipelines from cache
     auto retrievePipelinesFromCacheTask = flow.emplace([&]() {
+      ZoneScopedN("retrievePipelinesFromCache");
+
       for (auto &group : pipelineGroupsMerged) {
         auto it = pipelineCache.map.find(group.first);
         if (it != pipelineCache.map.end()) {
@@ -409,6 +427,8 @@ struct RendererImpl final : public ContextData {
     retrievePipelinesFromCacheTask.succeed(reduceDrawablesTask);
 
     auto buildPipeline = [&](PipelineGroup &group) {
+      ZoneScopedN("buildPipeline");
+
       const IDrawable &firstDrawable = *group.drawables[0];
 
       // Construct processor instance, or get existing one
@@ -437,6 +457,8 @@ struct RendererImpl final : public ContextData {
     };
 
     auto preparePipelineGroup = [&](tf::Subflow &subflow, PipelineGroup &group) {
+      ZoneScopedN("preparePipelineGroup");
+
       auto &cachedPipeline = *group.pipeline.get();
 
       DrawablePrepareContext prepareContext{
@@ -483,6 +505,8 @@ struct RendererImpl final : public ContextData {
 
     // Finally, encode render commands
     auto encodeRenderCommands = [&](tf::Subflow &subflow) {
+      ZoneScopedN("encodeRenderCommands");
+
       for (auto &it : pipelineGroupsMerged) {
         PipelineGroup &group = it.second;
         DrawableEncodeContext encodeCtx{
@@ -498,6 +522,8 @@ struct RendererImpl final : public ContextData {
 
     // Insert generated pipelines into cache and touch used pipeline frame counters
     auto updateCache = [&]() {
+      ZoneScopedN("updateCache");
+
       for (auto &group : pipelineGroupsMerged) {
         auto it = pipelineCache.map.find(group.first);
         if (it == pipelineCache.map.end()) {
@@ -527,6 +553,8 @@ struct RendererImpl final : public ContextData {
   }
 
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
+    ZoneScoped;
+
     RenderGraphNode &node = out.getNode(index);
 
     MeshDrawable::Ptr drawable = std::make_shared<MeshDrawable>(fullscreenQuad);
