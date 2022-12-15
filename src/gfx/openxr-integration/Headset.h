@@ -62,6 +62,9 @@ public:
   RenderTarget* getRenderTarget(size_t swapchainImageIndex) const;
 
 private:
+  uint32_t frame = 0; 
+  uint32_t debugs = 3;    
+
   bool valid = true;
   bool exitRequested = false;
   linalg::aliases::int2 linalgint2size;

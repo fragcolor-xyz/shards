@@ -10,10 +10,11 @@
   #include <iostream>
 #endif
 
-
+#include "spdlog/spdlog.h"
 
 Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
 {
+  spdlog::info("[log][t] Context_XR::Context_XR: Creating Context...");
   this->wgpuUVulkanShared = wgpuUVulkanShared;
 
   // Get all supported OpenXR instance extensions
@@ -25,6 +26,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::error("[log][t] Context_XR::Context_XR: error at xrEnumerateInstanceExtensionPropertiesxrEnumerateInstanceExtensionProperties(nullptr, 0u, &instanceExtensionCount, nullptr)");
       return;
     }
 
@@ -41,8 +43,10 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::error("[log][t] Context_XR::Context_XR: error at xrEnumerateInstanceExtensionProperties(nullptr, instanceExtensionCount, &instanceExtensionCount, supportedOpenXRInstanceExtensions.data())");
       return;
     }
+    spdlog::info("[log][t] Context_XR::Context_XR: Context created. vaid: {}", valid);
   }
 
   // Create an OpenXR instance
@@ -130,7 +134,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     return;
   }
 
-#ifdef DEBUG
+  #ifdef DEBUG
   // Create an OpenXR debug utils messenger for validation
   {
     if (!util::loadXrExtensionFunction(xrInstance, "xrCreateDebugUtilsMessengerEXT",
@@ -182,10 +186,9 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
       return;
     }
   }
-#endif
+  #endif
 
 
-//[t] TODO: TODO:
 
   
   //[t] we don't need this
@@ -411,6 +414,7 @@ bool Context_XR::checkXRDeviceReady(
 
 void Context_XR::getVulkanExtensionsFromOpenXRInstance()
 {
+  spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance()...");
   //[t] TODO: guus: this needs to be uncommented, but I can't get this shit working vk::enumerateInstanceExtensionProperties
   
   std::vector<const char*> vulkanInstanceExtensions;
@@ -429,6 +433,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericVulkan);
       valid = false;
+      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at vk::enumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount,nullptr,wgpuUVulkanShared->vkLoader);");
       return;
     }
 
@@ -440,6 +445,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericVulkan);
       valid = false;
+      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at vk::enumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, supportedVulkanInstanceExtensions.data(), wgpuUVulkanShared->vkLoader)");
       return;
     }
   }
@@ -453,6 +459,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);");
       return;
     }
 
@@ -463,6 +470,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, count, &count, buffer.data());");
       return;
     }
 
@@ -499,14 +507,17 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
       s << "Vulkan instance extension \"" << extension << "\"";
       util::error(Error::FeatureNotSupported, s.str());
       valid = false;
+      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at supportedExtension : supportedVulkanInstanceExtensions");
       return;
     }
   }
-  
+  spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() success. valid == true;");
 }
 
 Context_XR::~Context_XR()
 {
+  spdlog::info("[log][t] Context_XR::~Context_XR();");
+
   // Clean up OpenXR
 #ifdef DEBUG
   xrDestroyDebugUtilsMessengerEXT(xrDebugUtilsMessenger);
@@ -779,6 +790,7 @@ bool Context_XR::createDevice(VkSurfaceKHR mirrorSurface)//mirrorSurface to chec
 
 void Context_XR::sync() const
 {
+  spdlog::info("[log][t] Context_XR::sync()");
   //vkDeviceWaitIdle(vkDevice);
   //wgpuUVulkanShared->vkDevice.waitIdle(wgpuUVulkanShared->vkDevice, wgpuUVulkanShared->vkLoader);
   wgpuUVulkanShared->vkDevice.waitIdle(wgpuUVulkanShared->vkLoader);
@@ -786,50 +798,60 @@ void Context_XR::sync() const
 
 bool Context_XR::isValid() const
 {
+  spdlog::info("[log][t] Context_XR::isValid()");
   return valid;
 }
 
 XrViewConfigurationType Context_XR::getXrViewType() const
 {
+  spdlog::info("[log][t] Context_XR::getXrViewType()");
   return viewType;
 }
 
 XrInstance Context_XR::getXrInstance() const
 {
+  spdlog::info("[log][t] Context_XR::getXrInstance()");
   return xrInstance;
 }
 
 XrSystemId Context_XR::getXrSystemId() const
 {
+  spdlog::info("[log][t] Context_XR::getXrSystemId()");
   return systemId;
 }
 
 VkInstance Context_XR::getVkInstance() const
 {
+  spdlog::info("[log][t] Context_XR::getVkInstance()");
   return vkInstance;
 }
 
 VkPhysicalDevice Context_XR::getVkPhysicalDevice() const
 {
+  spdlog::info("[log][t] Context_XR::getVkPhysicalDevice()");
   return physicalDevice;
 }
 
 uint32_t Context_XR::getVkDrawQueueFamilyIndex() const
 {
+  spdlog::info("[t] Context_XR::getVkDrawQueueFamilyIndex()");
   return drawQueueFamilyIndex;
 }
 
 VkDevice Context_XR::getVkDevice() const
 {
+  spdlog::info("[log][t] Context_XR::getVkDevice()");
   return vkDevice;
 }
 
 VkQueue Context_XR::getVkDrawQueue() const
 {
+  spdlog::info("[log][t] Context_XR::getVkDrawQueue()");
   return drawQueue;
 }
 
 VkQueue Context_XR::getVkPresentQueue() const
 {
+  spdlog::info("[log][t] Context_XR::getVkPresentQueue()");
   return presentQueue;
 }
