@@ -1,4 +1,5 @@
 #include "OpenXRSystem.h"
+#include "spdlog/spdlog.h"
 
 const OpenXRSystem::HeadsetType OpenXRSystem::defaultHeadset = {};
 
@@ -24,10 +25,12 @@ bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
 //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code...
 int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, HeadsetType headsetType = defaultHeadset)
 {
+  spdlog::info("[log][t] OpenXRSystem::InitOpenXR...");
   this->wgpuUVulkanShared = wgpuUVulkanShared;
   context_xr = new Context_XR(wgpuUVulkanShared);
   if (!context_xr->isValid())
   {
+    spdlog::error("[log][t] OpenXRSystem::InitOpenXR: error at !headset->isValid().");
     return EXIT_FAILURE;
   }
 
@@ -49,6 +52,7 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
   //          for queue, surface, to know if we can render & present
   //    So if context.cpp Context::deviceObtained() passed.
 
+  spdlog::info("[log][t] OpenXRSystem::InitOpenXR... Success.");
   return EXIT_SUCCESS;
 }
 
@@ -56,14 +60,17 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
 //std::shared_ptr<gfx::Headset> OpenXRSystem::createHeadset(bool isMultipass, std::shared_ptr<gfx::WGPUVulkanShared> gfxContext)
 std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(bool isMultipass)
 {
+  spdlog::info("[log][t] OpenXRSystem::createHeadset(bool isMultipass[{}])...",isMultipass);
   this->isMultipass = isMultipass;
   headset = std::make_shared<Headset>(context_xr, wgpuUVulkanShared, isMultipass);
   //headset = new Headset(context_xr, gfxContext, isMultipass);
   if (!headset->isValid())
   {
+    spdlog::error("[log][t] OpenXRSystem::createHeadset: error at !headset->isValid().");
     return nullptr;
   }
 
+  spdlog::info("[log][t] OpenXRSystem::createHeadset(). Success.");
   return headset;
 }
 

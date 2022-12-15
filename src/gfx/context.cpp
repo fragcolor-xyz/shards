@@ -356,6 +356,8 @@ void Context::releaseAdapter() {
 }
 
 void Context::initCommon() {
+  spdlog::info("[log][t] Context::initCommon()");
+
   gfxTracyInitOnce();
 
   ZoneScoped;
@@ -389,19 +391,21 @@ void Context::initCommon() {
       },
       this);
 
+  //[t] TODO: what does each level control exactly? What is the usage of this?
   if (logger->level() <= spdlog::level::debug) {
     wgpuSetLogLevel(WGPULogLevel_Debug);
   } else {
     wgpuSetLogLevel(WGPULogLevel_Info);
   }
   #endif
-/*
   
-  */
+  spdlog::info("[log][t] Context::initCommon: Creating backend: ContextXrGfxBackend.");
   //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
   backend = std::make_shared<ContextXrGfxBackend>();   
   wgpuInstance = backend->createInstance(); 
   
+  
+  spdlog::info("[log][t] Context::initCommon: Creating window/surface.");
   //[t] create mirror view with the context_xr_gfx.cpp
   //[t] and check if MirrorView was successful at CreateMirrorSurface()
   //[t] Setup surface
@@ -412,6 +416,7 @@ void Context::initCommon() {
   
   requestDevice(); 
   //openXRSystem.createHeadset() moved into ContextXrGfxBackend's createMainOutput()
+  spdlog::info("[log][t] Context::initCommon: Success.");
 }
 
 
