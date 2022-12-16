@@ -613,10 +613,9 @@ struct RendererImpl final : public ContextData {
 
     clearOldCacheItems();
 
-<<<<<<< HEAD
+    processProcessorDynamicValueCleanupQueue();
+
     TracyPlot("Drawables Processed", int64_t(frameStats.numDrawables));
-    == == == = processProcessorDynamicValueCleanupQueue();
->>>>>>> 32eec0c5e ([WIP] All is good)
   }
 
   // Checks values in a map for the lastTouched member
