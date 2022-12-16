@@ -59,7 +59,7 @@ struct PipelineGroup {
   CachedPipelinePtr pipeline;
 
   // Data generator from drawable processor
-  ProcessorDynamicValue prepareData;
+  TransientPtr prepareData;
 
   void resetPreRender() { drawables.clear(); }
   void resetPostRender() { prepareData.destroy(); }
@@ -92,9 +92,6 @@ struct RendererImpl final : public ContextData {
   Renderer::MainOutput mainOutput;
   bool shouldUpdateMainOutputFromContext = false;
 
-  Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
-
-  std::unordered_map<const IDrawable *, CachedDrawablePtr> drawableCache;
   std::unordered_map<const View *, CachedViewDataPtr> viewCache;
   RenderGraphCache renderGraphCache;
   PipelineCache pipelineCache;
@@ -121,7 +118,7 @@ struct RendererImpl final : public ContextData {
   // Cache variables
   std::vector<TexturePtr> renderGraphOutputsTemp;
   std::unordered_map<Hash128, PipelineGroup> pipelineGroupsTemp;
-  std::list<ProcessorDynamicValue> processorDynamicValueCleanupQueue;
+  std::list<TransientPtr> processorDynamicValueCleanupQueue;
 
   RendererImpl(Context &context)
       : context(context), executor(context.executor), workerMemory(context.workerMemory), workerData(executor) {}
@@ -144,7 +141,6 @@ struct RendererImpl final : public ContextData {
     renderGraphCache.clear();
     pipelineCache.clear();
     viewCache.clear();
-    drawableCache.clear();
   }
 
   void processProcessorDynamicValueCleanupQueue() {
@@ -193,10 +189,6 @@ struct RendererImpl final : public ContextData {
   }
 
   CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(viewCache, view.get()).get(); }
-
-  CachedDrawable &getCachedDrawable(const IDrawable *drawable) {
-    return *getSharedCacheEntry<CachedDrawable>(drawableCache, drawable).get();
-  }
 
   void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     ZoneScoped;
@@ -332,10 +324,10 @@ struct RendererImpl final : public ContextData {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
 
-    node.body = [=, rtl = node.renderTargetLayout](EvaluateNodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData, rtl); };
+    node.encode = [=, rtl = node.renderTargetLayout](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData, rtl); };
   }
 
-  void evaluateDrawableStep(EvaluateNodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData,
+  void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData,
                             const RenderTargetLayout &rtl) {
     ZoneScoped;
 
@@ -568,7 +560,7 @@ struct RendererImpl final : public ContextData {
     }
     drawable->features.push_back(baseFeature);
 
-    node.body = [=](EvaluateNodeContext &ctx) {
+    node.encode = [=](RenderGraphEncodeContext &ctx) {
       for (auto &frameIndex : ctx.node.readsFrom) {
         auto &texture = ctx.evaluator.getTexture(frameIndex);
         auto &frame = ctx.graph.frames[frameIndex];
@@ -634,7 +626,6 @@ struct RendererImpl final : public ContextData {
   void clearOldCacheItems() {
     clearOldCacheItemsIn(pipelineCache.map, 16);
     clearOldCacheItemsIn(viewCache, 4);
-    clearOldCacheItemsIn(drawableCache, 4);
   }
 
   void ensureMainOutputCleared() {
@@ -653,16 +644,6 @@ struct RendererImpl final : public ContextData {
   void swapBuffers() {
     ++frameCounter;
     frameIndex = (frameIndex + 1) % maxBufferedFrames;
-  }
-
-  void collectReferencedRenderAttachments(const PipelineDrawables &pipelineDrawables, std::vector<Texture *> &outTextures) {
-    // TODO
-    // Find references to render textures
-    // pipelineDrawables.textureIdMap.forEachTexture([&](Texture *texture) {
-    //   if (textureFormatFlagsContains(texture->getFormat().flags, TextureFormatFlags::RenderAttachment)) {
-    //     outTextures.push_back(texture);
-    //   }
-    // });
   }
 };
 
@@ -710,7 +691,6 @@ void Renderer::dumpStats() {
   SPDLOG_LOGGER_INFO(logger, " Caches:");
   SPDLOG_LOGGER_INFO(logger, "  Render Graphs: {}", impl->renderGraphCache.map.size());
   SPDLOG_LOGGER_INFO(logger, "  Pipelines: {}", impl->pipelineCache.map.size());
-  SPDLOG_LOGGER_INFO(logger, "  Drawables: {}", impl->drawableCache.size());
   SPDLOG_LOGGER_INFO(logger, "  Views: {}", impl->viewCache.size());
 
   SPDLOG_LOGGER_INFO(logger, " Frame Index: {}", impl->frameIndex);

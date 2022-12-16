@@ -185,7 +185,7 @@ struct RenderTargetData {
 struct RenderGraph;
 struct RenderGraphNode;
 struct RenderGraphEvaluator;
-struct EvaluateNodeContext {
+struct RenderGraphEncodeContext {
   WGPURenderPassEncoder encoder;
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
@@ -213,7 +213,7 @@ struct RenderGraphNode {
   std::function<void(WGPURenderPassDescriptor &)> setupPass;
 
   // Writes the render pass
-  std::function<void(EvaluateNodeContext &)> body;
+  std::function<void(RenderGraphEncodeContext &)> encode;
 
   RenderGraphNode() = default;
   RenderGraphNode(RenderGraphNode &&) = default;
@@ -662,14 +662,14 @@ public:
       if (node.setupPass)
         node.setupPass(renderPassDesc);
       WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
-      EvaluateNodeContext ctx{
+      RenderGraphEncodeContext ctx{
           .encoder = renderPassEncoder,
           .evaluator = *this,
           .graph = graph,
           .node = node,
       };
-      if (node.body)
-        node.body(ctx);
+      if (node.encode)
+        node.encode(ctx);
       wgpuRenderPassEncoderEnd(renderPassEncoder);
     }
 

@@ -68,11 +68,6 @@ struct BufferBinding {
   size_t index;
 };
 
-struct InstanceBufferDesc {
-  size_t bufferLength;
-  size_t bufferStride;
-};
-
 struct RenderTargetLayout {
   struct Target {
     std::string name;
@@ -164,29 +159,6 @@ struct CachedView {
   }
 };
 typedef std::shared_ptr<CachedView> CachedViewDataPtr;
-
-struct CachedDrawable {
-  float4x4 previousTransform = linalg::identity;
-  float4x4 currentTransform = linalg::identity;
-
-  size_t lastTouched{};
-
-  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
-    if (frameCounter > lastTouched) {
-      previousTransform = currentTransform;
-      currentTransform = transform;
-
-      lastTouched = frameCounter;
-    }
-  }
-};
-
-typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
-
-struct FrameReferences {
-  std::vector<std::shared_ptr<ContextData>> contextDataReferences;
-  void clear() { contextDataReferences.clear(); }
-};
 
 struct ViewData {
   View &view;

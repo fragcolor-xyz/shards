@@ -13,6 +13,24 @@
 
 namespace gfx::detail {
 
+struct CachedDrawable {
+  float4x4 previousTransform = linalg::identity;
+  float4x4 currentTransform = linalg::identity;
+
+  size_t lastTouched{};
+
+  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
+    if (frameCounter > lastTouched) {
+      previousTransform = currentTransform;
+      currentTransform = transform;
+
+      lastTouched = frameCounter;
+    }
+  }
+};
+
+typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
+
 static std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
   return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
 }();
@@ -257,7 +275,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     return continueWithPlaceholder;
   }
 
-  ProcessorDynamicValue prepare(DrawablePrepareContext &context) override {
+  TransientPtr prepare(DrawablePrepareContext &context) override {
     auto &executor = context.context.executor;
     auto &rootTaskAllocator = context.context.workerMemory.get();
     auto &subflow = context.subflow;
@@ -427,31 +445,32 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
 
-      subflow.for_each_index(size_t(0), preparedGroupData.groups.size(), size_t(1), [=, &cachedPipeline, &preparedGroupData](size_t index) {
-        auto &allocator = context.context.workerMemory.get();
+      subflow.for_each_index(
+          size_t(0), preparedGroupData.groups.size(), size_t(1), [=, &cachedPipeline, &preparedGroupData](size_t index) {
+            auto &allocator = context.context.workerMemory.get();
 
-        auto &group = preparedGroupData.groups[index];
-        auto &groupData = preparedGroupData.groupData[index];
-        auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
+            auto &group = preparedGroupData.groups[index];
+            auto &groupData = preparedGroupData.groupData[index];
+            auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
 
-        BindGroupBuilder drawBindGroupBuilder(allocator);
-        for (size_t i = 0; i < prepareData->drawBuffers.size(); i++) {
-          auto &binding = cachedPipeline.drawBufferBindings[i];
-          drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances, group.startIndex);
-        }
-        for (size_t i = 0; i < cachedPipeline.textureBindingLayout.bindings.size(); i++) {
-          auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
-          auto texture = firstDrawableData.textures[i];
-          if (texture) {
-            drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
-          } else {
-            drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
-                                                   placeholderTextureContextData->sampler);
-          }
-        }
+            BindGroupBuilder drawBindGroupBuilder(allocator);
+            for (size_t i = 0; i < prepareData->drawBuffers.size(); i++) {
+              auto &binding = cachedPipeline.drawBufferBindings[i];
+              drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances, group.startIndex);
+            }
+            for (size_t i = 0; i < cachedPipeline.textureBindingLayout.bindings.size(); i++) {
+              auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
+              auto texture = firstDrawableData.textures[i];
+              if (texture) {
+                drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
+              } else {
+                drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
+                                                       placeholderTextureContextData->sampler);
+              }
+            }
 
-        groupData.drawBindGroup.reset(drawBindGroupBuilder.finalize(context.context.wgpuDevice, drawBindGroupLayout));
-      });
+            groupData.drawBindGroup.reset(drawBindGroupBuilder.finalize(context.context.wgpuDevice, drawBindGroupLayout));
+          });
     };
     auto createDrawBindGroupsTask = subflow.emplace(createDrawBindGroups).succeed(sortAndGroupTask);
 
