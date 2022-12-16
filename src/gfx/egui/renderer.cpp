@@ -10,7 +10,7 @@
 #include <gfx/texture.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/drawable.hpp>
-#include <gfx/resizable_item_pool.hpp>
+#include <gfx/sized_item_pool.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/view.hpp>
 #include <gfx/context.hpp>
@@ -30,7 +30,7 @@ struct MeshPoolOps {
   size_t getCapacity(MeshPtr &item) const { return item->getNumVertices() * item->getFormat().getVertexSize(); }
   void init(MeshPtr &item) const { item = std::make_shared<Mesh>(); }
 };
-typedef ResizableItemPool<MeshPtr, MeshPoolOps> MeshPool;
+typedef SizedItemPool<MeshPtr, MeshPoolOps> MeshPool;
 
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;

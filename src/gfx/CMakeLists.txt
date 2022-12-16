@@ -37,9 +37,8 @@ add_library(gfx
   unique_id.cpp
 )
 
-# Always optimize certain files
+# Always optimize files with hot-paths
 set_source_files_properties(
-  # renderer.cpp
   drawables/mesh_tree_drawable.cpp
   gltf/gltf.cpp
   texture_file/texture_file.cpp

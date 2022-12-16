@@ -25,7 +25,7 @@ public:
   std::string label;
 
   DrawablePtr clone() const override;
-  IDrawableProcessor &getProcessor() const override;
+  DrawableProcessorConstructor getProcessor() const override;
 
   template <typename T> static inline void foreach (Ptr &item, T && callback) {
     callback(item);
@@ -36,9 +36,9 @@ public:
 
   UniqueId getId() const override { return id; }
 
-  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const override { assert(false); }
+  void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const override { assert(false); }
 
-  bool expand(std::vector<const IDrawable *> &outDrawables) const override;
+  bool expand(std::pmr::vector<const IDrawable *> &outDrawables) const override;
 };
 } // namespace gfx
 

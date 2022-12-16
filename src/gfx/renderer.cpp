@@ -26,6 +26,7 @@
 #include "log.hpp"
 #include "geom.hpp"
 #include "async.hpp"
+#include "worker_memory.hpp"
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
 #include <thread>
@@ -51,10 +52,34 @@ static MeshPtr fullscreenQuad = []() {
   return createMesh(quadGen.vertices, std::vector<uint16_t>{});
 }();
 
-// Bound to unset texture parameter slots
-static std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
-  return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
-}();
+struct PipelineGroup {
+  std::vector<const IDrawable *> drawables;
+  std::vector<Feature *> baseFeatures;
+  CachedPipelinePtr pipeline;
+
+  // Data generator from drawable processor
+  ProcessorDynamicValue prepareData;
+
+  void resetPreRender() { drawables.clear(); }
+  void resetPostRender() { prepareData.destroy(); }
+};
+
+struct WorkerData {
+  PipelineHashCache hashCache;
+  std::unordered_map<Hash128, PipelineGroup> pipelineGroups;
+
+  // Reset worker data before rendering
+  void resetPreRender() {
+    hashCache.reset();
+    for (auto &it : pipelineGroups)
+      it.second.resetPreRender();
+  }
+
+  void resetPostRender() {
+    for (auto &it : pipelineGroups)
+      it.second.resetPostRender();
+  }
+};
 
 struct FrameStats {
   size_t numDrawables{};
@@ -72,7 +97,6 @@ struct RendererImpl final : public ContextData {
   bool shouldUpdateMainOutputFromContext = false;
 
   Swappable<std::vector<std::function<void()>>, GFX_RENDERER_MAX_BUFFERED_FRAMES> postFrameQueue;
-  Swappable<FrameReferences, GFX_RENDERER_MAX_BUFFERED_FRAMES> frameReferences;
 
   std::unordered_map<const IDrawable *, CachedDrawablePtr> drawableCache;
   std::unordered_map<const View *, CachedViewDataPtr> viewCache;
@@ -91,9 +115,15 @@ struct RendererImpl final : public ContextData {
 
   FrameStats frameStats;
 
-  GraphicsExecutor executor;
+  GraphicsExecutor &executor;
+  TWorkerThreadData<WorkerMemory> &workerMemory;
+  TWorkerThreadData<WorkerData> workerData;
 
-  RendererImpl(Context &context) : context(context) {}
+  std::shared_mutex drawableProcessorsMutex;
+  std::map<DrawableProcessorConstructor, std::shared_ptr<IDrawableProcessor>> drawableProcessors;
+
+  RendererImpl(Context &context)
+      : context(context), executor(context.executor), workerMemory(context.workerMemory), workerData(executor) {}
 
   ~RendererImpl() { releaseContextDataConditional(); }
 
@@ -155,15 +185,6 @@ struct RendererImpl final : public ContextData {
 
   CachedDrawable &getCachedDrawable(const IDrawable *drawable) {
     return *getSharedCacheEntry<CachedDrawable>(drawableCache, drawable).get();
-  }
-
-  void setViewData(ParameterStorage &outDrawData, const ViewData &viewData) {
-    outDrawData.setParam("view", viewData.view.view);
-    outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
-    outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
-    outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
-    outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y),
-                                            float(viewData.viewport.width), float(viewData.viewport.height)));
   }
 
   std::vector<TexturePtr> renderGraphOutputs;
@@ -278,20 +299,6 @@ struct RendererImpl final : public ContextData {
     };
   }
 
-  struct PipelineGroup {
-    std::vector<const IDrawable *> drawables;
-    IDrawableProcessor *processor{};
-    CachedPipelinePtr pipeline;
-  };
-
-  struct WorkerData {
-    PipelineHashCache hashCache;
-    std::unordered_map<Hash128, PipelineGroup> pipelineGroups;
-  };
-  std::vector<WorkerData> workerData{executor.getNumWorkers()};
-
-  std::vector<const IDrawable *> expandedDrawables;
-
   Hash128 generateSharedHash(RenderTargetLayout &rtl) {
     HasherXXH128<PipelineHashVisitor> sharedHasher;
     sharedHasher(rtl);
@@ -307,10 +314,11 @@ struct RendererImpl final : public ContextData {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
 
-    node.body = [=, rtl = node.renderTargetLayout](EvaluateNodeContext &ctx) { evaluateDrawableStep(step, rtl); };
+    node.body = [=, rtl = node.renderTargetLayout](EvaluateNodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData, rtl); };
   }
 
-  void evaluateDrawableStep(const RenderDrawablesStep &step, const RenderTargetLayout &rtl) {
+  void evaluateDrawableStep(EvaluateNodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData,
+                            const RenderTargetLayout &rtl) {
     tf::Taskflow flow;
     DrawQueue &queue = *step.drawQueue.get();
 
@@ -318,12 +326,12 @@ struct RendererImpl final : public ContextData {
     sharedHasher(rtl);
     Hash128 stepSharedHash = sharedHasher.getDigest();
 
-    for (auto &worker : workerData) {
-      worker.hashCache.reset();
-      for (auto &it : worker.pipelineGroups)
-        it.second.drawables.clear();
-      expandedDrawables.clear();
+    std::pmr::vector<const IDrawable *> expandedDrawables(workerMemory.get(0));
+
+    for (auto &workerData : this->workerData) {
+      workerData.resetPreRender();
     }
+    expandedDrawables.clear();
 
     // Compute drawable hashes
     auto groupTask = flow.emplace([&](tf::Subflow &sub) {
@@ -335,14 +343,25 @@ struct RendererImpl final : public ContextData {
 
       // Now hash them
       sub.for_each(expandedDrawables.begin(), expandedDrawables.end(), [&](const IDrawable *drawable) {
-        auto &worker = workerData[executor.getThisWorkerId()];
+        auto &workerData = this->workerData.get();
 
-        PipelineHashCollector collector{.storage = &worker.hashCache};
+        PipelineHashCollector collector{.storage = &workerData.hashCache};
+        collector(size_t(drawable->getProcessor())); // Hash processor to be sure it's tied to the pipeline grouping
         collector(stepSharedHash);
         collector.hashObject(*drawable);
         Hash128 pipelineHash = collector.getDigest();
 
-        auto &entry = getCacheEntry(worker.pipelineGroups, pipelineHash);
+        for (auto stepFeature : step.features)
+          collector.hashObject(stepFeature);
+
+        auto &entry = getCacheEntry(workerData.pipelineGroups, pipelineHash, [&](const Hash128 &hash) {
+          // Setup new PipelineGroup with features from step that apply
+          PipelineGroup newGroup;
+          for (auto stepFeature : step.features) {
+            newGroup.baseFeatures.push_back(stepFeature.get());
+          }
+          return newGroup;
+        });
         entry.drawables.push_back(drawable);
       });
     });
@@ -351,11 +370,17 @@ struct RendererImpl final : public ContextData {
     std::unordered_map<Hash128, PipelineGroup> pipelineGroups;
     auto reduceDrawablesTask = flow.transform_reduce(
         workerData.begin(), workerData.end(), pipelineGroups,
-        [&](decltype(pipelineGroups) result, decltype(pipelineGroups) b) {
+        [&](decltype(pipelineGroups) result, const decltype(pipelineGroups) &b) {
           for (auto &it : b) {
-            auto &entry = getCacheEntry(result, it.first);
-            for (auto &drawable : it.second.drawables) {
-              entry.drawables.push_back(drawable);
+            auto it1 = result.find(it.first);
+            if (it1 == result.end()) {
+              // Insert directly
+              result.insert(it);
+            } else {
+              // Merge into existing
+              for (auto &drawable : it.second.drawables) {
+                it1->second.drawables.push_back(drawable);
+              }
             }
           }
           return result;
@@ -374,65 +399,105 @@ struct RendererImpl final : public ContextData {
     });
     retrievePipelinesFromCacheTask.succeed(reduceDrawablesTask);
 
+    auto buildPipeline = [&](PipelineGroup &group) {
+      const IDrawable &firstDrawable = *group.drawables[0];
+
+      // Construct processor instance, or get existing one
+      drawableProcessorsMutex.lock();
+      auto constructor = firstDrawable.getProcessor();
+      auto it = drawableProcessors.find(constructor);
+      if (it == drawableProcessors.end()) {
+        it = drawableProcessors.emplace(constructor, constructor(context)).first;
+      }
+      drawableProcessorsMutex.unlock();
+      auto &processor = *it->second.get();
+
+      group.pipeline = std::make_shared<CachedPipeline>();
+      group.pipeline->drawableProcessor = &processor;
+
+      PipelineBuilder builder(*group.pipeline.get(), rtl, firstDrawable);
+
+      // Add base features
+      for (auto &baseFeature : group.baseFeatures) {
+        builder.features.push_back(baseFeature);
+      }
+
+      // Assume same processor
+      processor.buildPipeline(builder);
+      builder.build(context.wgpuDevice, deviceLimits.limits);
+    };
+
+    auto setupDrawData = [&](tf::Subflow &subflow, PipelineGroup &group) {
+      auto &cachedPipeline = *group.pipeline.get();
+
+      DrawablePrepareContext prepareContext{
+          .context = context,
+          .cachedPipeline = cachedPipeline,
+          .subflow = subflow,
+          .viewData = viewData,
+          .drawables = group.drawables,
+          .sortMode = step.sortMode,
+      };
+      auto prepareData = group.pipeline->drawableProcessor->prepare(prepareContext);
+      group.prepareData = prepareData;
+
+      // Record stats
+      frameStats.numDrawables += group.drawables.size();
+    };
+
     // Build new pipelines
-    auto buildPipelinesTask = flow.emplace([&](tf::Subflow &subflow) {
-                                    subflow.for_each(pipelineGroups.begin(), pipelineGroups.end(), [&](auto &it) {
-                                      PipelineGroup &group = it.second;
-                                      if (group.pipeline)
-                                        return; // Cached
+    auto buildPipelinesAndDrawData = [&](tf::Subflow &subflow) {
+      for (auto &it : pipelineGroups) {
+        PipelineGroup &group = it.second;
+        auto buildTask = subflow.emplace([&]() {
+          // Early out
+          if (group.drawables.empty())
+            return;
 
-                                      if (group.drawables.empty())
-                                        return;
-
-                                      const IDrawable &firstDrawable = *group.drawables[0];
-
-                                      group.pipeline = std::make_shared<CachedPipeline>();
-                                      PipelineBuilder builder(*group.pipeline.get(), firstDrawable);
-
-                                      // TODO: Move me
-                                      group.pipeline->renderTargetLayout = rtl;
-
-                                      // Assume same processor
-                                      group.processor = &firstDrawable.getProcessor();
-                                      group.processor->buildPipeline(builder, firstDrawable);
-                                      builder.build(context.wgpuDevice, deviceLimits.limits);
-                                    });
-                                  })
-                                  .succeed(retrievePipelinesFromCacheTask);
-
-    // Insert generated pipelines into cache
-    flow.emplace([&]() {
-          for (auto &group : pipelineGroups) {
-            auto it = pipelineCache.map.find(group.first);
-            if (it == pipelineCache.map.end()) {
-              pipelineCache.map.insert(std::make_pair(group.first, group.second.pipeline));
-              touchCacheItemPtr(group.second.pipeline, frameCounter);
-            }
+          if (!group.pipeline) {
+            // Build the pipeline
+            buildPipeline(group);
           }
-        })
-        .succeed(buildPipelinesTask);
+        });
+
+        auto prepareTask = subflow.emplace([&](tf::Subflow &subflow) {
+          // Build draw data
+          setupDrawData(subflow, group);
+        });
+        prepareTask.succeed(buildTask);
+      }
+    };
+    auto buildPipelinesAndDrawDataTask = flow.emplace(buildPipelinesAndDrawData).succeed(retrievePipelinesFromCacheTask);
+
+    // Finally, encode render commands
+    auto encodeRenderCommands = [&](tf::Subflow &subflow) {
+      for (auto &it : pipelineGroups) {
+        PipelineGroup &group = it.second;
+        DrawableEncodeContext encodeCtx{
+            .encoder = evaluateContext.encoder,
+            .cachedPipeline = *group.pipeline.get(),
+            .viewData = viewData,
+            .preparedData = group.prepareData,
+        };
+        encodeCtx.cachedPipeline.drawableProcessor->encode(encodeCtx);
+      }
+    };
+    auto encodeRenderCommandsTask = flow.emplace(encodeRenderCommands).succeed(buildPipelinesAndDrawDataTask);
+
+    // Insert generated pipelines into cache and touch used pipeline frame counters
+    auto updateCache = [&]() {
+      for (auto &group : pipelineGroups) {
+        auto it = pipelineCache.map.find(group.first);
+        if (it == pipelineCache.map.end()) {
+          pipelineCache.map.insert(std::make_pair(group.first, group.second.pipeline));
+        }
+        // Mark as used this frame
+        touchCacheItemPtr(group.second.pipeline, frameCounter);
+      }
+    };
+    auto updateCacheTask = flow.emplace(updateCache).succeed(buildPipelinesAndDrawDataTask);
 
     executor.run(flow).wait();
-
-    // pipelineDrawableCache->clear();
-
-    // static const std::vector<const MaterialParameters *> sharedParameters{};
-    // grouper->groupByPipeline(*pipelineDrawableCache.get(), pipelineCache, sharedHash, step.features, sharedParameters,
-    //                          drawQueue->getDrawables());
-
-    // // Sort draw commands, build pipelines
-    // for (auto &pair : pipelineDrawableCache->map) {
-    //   touchCacheItemPtr(pair.second.cachedPipeline, frameCounter);
-    //   preparePipelineDrawableForRenderGraph(pair.second, ctx.node, step.sortMode, viewData);
-    // }
-
-    // applyViewport(ctx.encoder, viewData);
-    // for (auto &pair : pipelineDrawableCache->map) {
-    //   renderPipelineDrawables(ctx.encoder, pair.second, viewData);
-    // }
-
-    // // Release references
-    // pipelineDrawableCache->clear();
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
@@ -470,21 +535,7 @@ struct RendererImpl final : public ContextData {
         drawable->parameters.set(frame.name, texture);
       }
 
-      DrawableGrouper grouper(ctx.node.renderTargetLayout);
-      Hash128 sharedHash = grouper.generateSharedHash();
-      auto groupedDrawable = grouper.groupByPipeline(pipelineCache, sharedHash, step.features,
-                                                     std::vector<const MaterialParameters *>{&step.parameters}, *drawable.get());
-      touchCacheItemPtr(groupedDrawable.cachedPipeline, frameCounter);
-
-      PipelineDrawables pipelineDrawables;
-      pipelineDrawables.cachedPipeline = groupedDrawable.cachedPipeline;
-      pipelineDrawables.drawables.push_back(drawable.get());
-
-      // TODO: builder
-      // preparePipelineDrawableForRenderGraph(pipelineDrawables, ctx.node, SortMode::Queue, viewData);
-
-      // applyViewport(ctx.encoder, viewData);
-      // renderPipelineDrawables(ctx.encoder, pipelineDrawables, viewData);
+      // TODO: Use drawable processor
     };
   }
 
@@ -498,84 +549,84 @@ struct RendererImpl final : public ContextData {
   //   sortAndBatchDrawables(pipelineDrawables, sortMode, viewData);
   // }
 
-  void applyViewport(WGPURenderPassEncoder passEncoder, const ViewData &viewData) {
-    auto viewport = viewData.viewport;
-    wgpuRenderPassEncoderSetViewport(passEncoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
-                                     (float)viewport.height, 0.0f, 1.0f);
-  }
+  // void applyViewport(WGPURenderPassEncoder passEncoder, const ViewData &viewData) {
+  //   auto viewport = viewData.viewport;
+  //   wgpuRenderPassEncoderSetViewport(passEncoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
+  //                                    (float)viewport.height, 0.0f, 1.0f);
+  // }
 
-  void setupFixedSizeBuffers(CachedPipeline &cachedPipeline) {
-    std::vector<WGPUBindGroupEntry> viewBindGroupEntries;
+  // void setupFixedSizeBuffers(CachedPipeline &cachedPipeline) {
+  //   std::vector<WGPUBindGroupEntry> viewBindGroupEntries;
 
-    // Setup view bindings since they don't change in size
-    cachedPipeline.viewBuffers.resize(cachedPipeline.viewBuffersBindings.size());
-    for (auto &binding : cachedPipeline.viewBuffersBindings) {
-      WGPUBufferDescriptor desc{};
-      desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform;
-      desc.size = binding.layout.size;
+  //   // Setup view bindings since they don't change in size
+  //   cachedPipeline.viewBuffers.resize(cachedPipeline.viewBuffersBindings.size());
+  //   for (auto &binding : cachedPipeline.viewBuffersBindings) {
+  //     WGPUBufferDescriptor desc{};
+  //     desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform;
+  //     desc.size = binding.layout.size;
 
-      WGPUBuffer buffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &desc);
-      cachedPipeline.viewBuffers[binding.index].reset(buffer);
+  //     WGPUBuffer buffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &desc);
+  //     cachedPipeline.viewBuffers[binding.index].reset(buffer);
 
-      auto &entry = viewBindGroupEntries.emplace_back();
-      entry.binding = binding.index;
-      entry.size = binding.layout.size;
-      entry.buffer = buffer;
-    }
+  //     auto &entry = viewBindGroupEntries.emplace_back();
+  //     entry.binding = binding.index;
+  //     entry.size = binding.layout.size;
+  //     entry.buffer = buffer;
+  //   }
 
-    // Determine number of draw bindings
-    size_t numDrawBindings{};
-    for (auto &binding : cachedPipeline.drawBufferBindings) {
-      numDrawBindings = std::max(numDrawBindings, binding.index + 1);
-    }
-    for (auto &binding : cachedPipeline.textureBindingLayout.bindings) {
-      numDrawBindings = std::max(numDrawBindings, binding.binding + 1);
-      numDrawBindings = std::max(numDrawBindings, binding.defaultSamplerBinding + 1);
-    }
-    cachedPipeline.drawBindGroupEntries.resize(numDrawBindings);
+  //   // Determine number of draw bindings
+  //   size_t numDrawBindings{};
+  //   for (auto &binding : cachedPipeline.drawBufferBindings) {
+  //     numDrawBindings = std::max(numDrawBindings, binding.index + 1);
+  //   }
+  //   for (auto &binding : cachedPipeline.textureBindingLayout.bindings) {
+  //     numDrawBindings = std::max(numDrawBindings, binding.binding + 1);
+  //     numDrawBindings = std::max(numDrawBindings, binding.defaultSamplerBinding + 1);
+  //   }
+  //   cachedPipeline.drawBindGroupEntries.resize(numDrawBindings);
 
-    // For each draw buffer, keep track of buffer size / stride
-    cachedPipeline.drawBufferInstanceDescriptions.resize(cachedPipeline.drawBufferBindings.size());
+  //   // For each draw buffer, keep track of buffer size / stride
+  //   cachedPipeline.drawBufferInstanceDescriptions.resize(cachedPipeline.drawBufferBindings.size());
 
-    WGPUBindGroupDescriptor desc{
-        .label = "perView",
-        .layout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()],
-        .entryCount = uint32_t(viewBindGroupEntries.size()),
-        .entries = viewBindGroupEntries.data(),
-    };
+  //   WGPUBindGroupDescriptor desc{
+  //       .label = "perView",
+  //       .layout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()],
+  //       .entryCount = uint32_t(viewBindGroupEntries.size()),
+  //       .entries = viewBindGroupEntries.data(),
+  //   };
 
-    cachedPipeline.viewBindGroup.reset(wgpuDeviceCreateBindGroup(context.wgpuDevice, &desc));
-    assert(cachedPipeline.viewBindGroup);
-  }
+  //   cachedPipeline.viewBindGroup.reset(wgpuDeviceCreateBindGroup(context.wgpuDevice, &desc));
+  //   assert(cachedPipeline.viewBindGroup);
+  // }
 
-  void setupBuffers(const PipelineDrawables &pipelineDrawables, const ViewData &viewData) {
-    CachedPipeline &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+  // void setupBuffers(const PipelineDrawables &pipelineDrawables, const ViewData &viewData) {
+  //   CachedPipeline &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
 
-    // Update view buffers
-    size_t index{};
-    for (auto &binding : cachedPipeline.viewBuffersBindings) {
-      fillViewBuffer(cachedPipeline.viewBuffers[index].handle, binding.layout, cachedPipeline, viewData);
-      index++;
-    }
+  //   // Update view buffers
+  //   size_t index{};
+  //   for (auto &binding : cachedPipeline.viewBuffersBindings) {
+  //     fillViewBuffer(cachedPipeline.viewBuffers[index].handle, binding.layout, cachedPipeline, viewData);
+  //     index++;
+  //   }
 
-    // Update draw instance buffers
-    index = 0;
-    for (auto &binding : cachedPipeline.drawBufferBindings) {
-      auto &instanceDesc = cachedPipeline.drawBufferInstanceDescriptions[index];
+  //   // Update draw instance buffers
+  //   index = 0;
+  //   for (auto &binding : cachedPipeline.drawBufferBindings) {
+  //     auto &instanceDesc = cachedPipeline.drawBufferInstanceDescriptions[index];
 
-      instanceDesc.bufferStride = binding.layout.getArrayStride();
-      instanceDesc.bufferLength = instanceDesc.bufferStride * pipelineDrawables.drawablesSorted.size();
-      auto &buffer = cachedPipeline.instanceBufferPool.allocateBuffer(instanceDesc.bufferLength);
-      fillInstanceBuffer(buffer, binding.layout, pipelineDrawables, viewData.view);
+  //     instanceDesc.bufferStride = binding.layout.getArrayStride();
+  //     instanceDesc.bufferLength = instanceDesc.bufferStride * pipelineDrawables.drawablesSorted.size();
+  //     auto &buffer = cachedPipeline.instanceBufferPool.allocateBuffer(instanceDesc.bufferLength);
+  //     fillInstanceBuffer(buffer, binding.layout, pipelineDrawables, viewData.view);
 
-      auto &entry = cachedPipeline.drawBindGroupEntries[binding.index];
-      entry.buffer = buffer;
-      entry.binding = binding.index;
-      entry.size = instanceDesc.bufferLength;
+  //     auto &entry = cachedPipeline.drawBindGroupEntries[binding.index];
+  //     entry.buffer = buffer;
+  //     entry.binding = binding.index;
+  //     entry.size = instanceDesc.bufferLength;
 
-      index++;
-    }
-  }
+  //     index++;
+  //   }
+  // }
 
   // void buildPipeline(CachedPipeline &cachedPipeline) {
   //   PipelineBuilder builder(cachedPipeline);
@@ -586,127 +637,121 @@ struct RendererImpl final : public ContextData {
   //   buildBaseDrawParameters(cachedPipeline);
   // }
 
-  WGPUBindGroup createDrawBindGroup(const PipelineDrawables &pipelineDrawables, size_t staringIndex,
-                                    const TextureIds &textureIds) {
-    CachedPipeline &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+  // WGPUBindGroup createDrawBindGroup(const PipelineDrawables &pipelineDrawables, size_t staringIndex,
+  //                                   const TextureIds &textureIds) {
+  //   CachedPipeline &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
 
-    // Shift all draw buffer bindings based on starting index
-    for (auto &binding : cachedPipeline.drawBufferBindings) {
-      auto &instanceDesc = cachedPipeline.drawBufferInstanceDescriptions[binding.index];
-      auto &entry = cachedPipeline.drawBindGroupEntries[binding.index];
+  //   // Shift all draw buffer bindings based on starting index
+  //   for (auto &binding : cachedPipeline.drawBufferBindings) {
+  //     auto &instanceDesc = cachedPipeline.drawBufferInstanceDescriptions[binding.index];
+  //     auto &entry = cachedPipeline.drawBindGroupEntries[binding.index];
 
-      size_t objectBufferOffset = staringIndex * instanceDesc.bufferStride;
-      size_t objectBufferRemainingSize = instanceDesc.bufferLength - objectBufferOffset;
-      entry.offset = objectBufferOffset;
-      entry.size = objectBufferRemainingSize;
-    }
+  //     size_t objectBufferOffset = staringIndex * instanceDesc.bufferStride;
+  //     size_t objectBufferRemainingSize = instanceDesc.bufferLength - objectBufferOffset;
+  //     entry.offset = objectBufferOffset;
+  //     entry.size = objectBufferRemainingSize;
+  //   }
 
-    // Update texture bindings
-    size_t index{};
-    for (auto &id : textureIds.textures) {
-      auto &binding = cachedPipeline.textureBindingLayout.bindings[index++];
+  //   // Update texture bindings
+  //   size_t index{};
+  //   for (auto &id : textureIds.textures) {
+  //     auto &binding = cachedPipeline.textureBindingLayout.bindings[index++];
 
-      auto &textureEntry = cachedPipeline.drawBindGroupEntries[binding.binding];
-      textureEntry.binding = binding.binding;
+  //     auto &textureEntry = cachedPipeline.drawBindGroupEntries[binding.binding];
+  //     textureEntry.binding = binding.binding;
 
-      auto &samplerEntry = cachedPipeline.drawBindGroupEntries[binding.defaultSamplerBinding];
-      samplerEntry.binding = binding.defaultSamplerBinding;
+  //     auto &samplerEntry = cachedPipeline.drawBindGroupEntries[binding.defaultSamplerBinding];
+  //     samplerEntry.binding = binding.defaultSamplerBinding;
 
-      TextureContextData *textureData = pipelineDrawables.textureIdMap.resolve(id);
-      if (textureData) {
-        textureEntry.textureView = textureData->defaultView;
-        samplerEntry.sampler = textureData->sampler;
-      } else {
-        PlaceholderTextureContextData &data = placeholderTexture->createContextDataConditional(context);
-        textureEntry.textureView = data.textureView;
-        samplerEntry.sampler = data.sampler;
-      }
-    }
+  //     TextureContextData *textureData = pipelineDrawables.textureIdMap.resolve(id);
+  //     if (textureData) {
+  //       textureEntry.textureView = textureData->defaultView;
+  //       samplerEntry.sampler = textureData->sampler;
+  //     } else {
+  //       PlaceholderTextureContextData &data = placeholderTexture->createContextDataConditional(context);
+  //       textureEntry.textureView = data.textureView;
+  //       samplerEntry.sampler = data.sampler;
+  //     }
+  //   }
 
-    WGPUBindGroupDescriptor desc{
-        .label = "perDraw",
-        .layout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()],
-        .entryCount = uint32_t(cachedPipeline.drawBindGroupEntries.size()),
-        .entries = cachedPipeline.drawBindGroupEntries.data(),
-    };
+  //   WGPUBindGroupDescriptor desc{
+  //       .label = "perDraw",
+  //       .layout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()],
+  //       .entryCount = uint32_t(cachedPipeline.drawBindGroupEntries.size()),
+  //       .entries = cachedPipeline.drawBindGroupEntries.data(),
+  //   };
 
-    WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &desc);
-    assert(result);
+  //   WGPUBindGroup result = wgpuDeviceCreateBindGroup(context.wgpuDevice, &desc);
+  //   assert(result);
 
-    return result;
-  }
+  //   return result;
+  // }
 
-  void renderPipelineDrawables(WGPURenderPassEncoder passEncoder, const PipelineDrawables &pipelineDrawables,
-                               const ViewData &viewData) {
-    CachedPipeline &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
-    if (pipelineDrawables.drawablesSorted.empty())
-      return;
+  // void renderPipelineDrawables(WGPURenderPassEncoder passEncoder, CachedPipeline &cachedPipeline,
+  //                              const PipelineDrawables &pipelineDrawables, const ViewData &viewData) {
+  //   assert(cachedPipeline.drawableProcessor);
 
-    setupBuffers(pipelineDrawables, viewData);
+  //   RenderEncodeContext context{
+  //       .encoder = passEncoder,
+  //       .cachedPipeline = cachedPipeline,
+  //       .pipelineDrawables = pipelineDrawables,
+  //       .viewData = viewData,
+  //   };
+  //   cachedPipeline.drawableProcessor->preEncode(context);
 
-    wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
+  //   for (auto &drawGroup : pipelineDrawables.drawGroups) {
+  //     context.drawGroup = &drawGroup;
+  //     cachedPipeline.drawableProcessor->preEncodeGroup(context);
+  //     cachedPipeline.drawableProcessor->postEncodeGroup(context);
+  //   }
 
-    // Set view bindgroup
-    wgpuRenderPassEncoderSetBindGroup(passEncoder, PipelineBuilder::getViewBindGroupIndex(), cachedPipeline.viewBindGroup, 0,
-                                      nullptr);
+  //   context.drawGroup = nullptr;
+  //   cachedPipeline.drawableProcessor->postEncode(context);
+  // if (pipelineDrawables.drawablesSorted.empty())
+  //   return;
 
-    for (auto &drawGroup : pipelineDrawables.drawGroups) {
-      if (drawGroup.key.clipRect) {
-        auto clipRect = drawGroup.key.clipRect.value();
+  // // TODO: Move to drawdata
+  // // setupBuffers(pipelineDrawables, viewData);
 
-        int2 viewportMin = int2(viewData.viewport.x, viewData.viewport.y);
-        int2 viewportMax = int2(viewData.viewport.getX1(), viewData.viewport.getY1());
+  // wgpuRenderPassEncoderSetPipeline(passEncoder, cachedPipeline.pipeline);
 
-        // Clamp to viewport
-        clipRect.x = linalg::clamp(clipRect.x, viewportMin.x, viewportMax.x);
-        clipRect.y = linalg::clamp(clipRect.y, viewportMin.y, viewportMax.y);
-        clipRect.z = linalg::clamp(clipRect.z, viewportMin.x, viewportMax.x);
-        clipRect.w = linalg::clamp(clipRect.w, viewportMin.y, viewportMax.y);
-        int w = clipRect.z - clipRect.x;
-        int h = clipRect.w - clipRect.y;
-        if (w == 0 || h == 0)
-          continue; // Discard draw call instead, wgpu doesn't allow w/h == 0
-        wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, w, h);
-      } else {
-        wgpuRenderPassEncoderSetScissorRect(passEncoder, viewData.viewport.x, viewData.viewport.y, viewData.viewport.width,
-                                            viewData.viewport.height);
-      }
+  // // TODO: Move to drawdata
+  // // Set view bindgroup
+  // // wgpuRenderPassEncoderSetBindGroup(passEncoder, PipelineBuilder::getViewBindGroupIndex(), cachedPipeline.viewBindGroup,
+  // 0,
+  // //                                   nullptr);
 
-      WGPUBindGroup drawBindGroup = createDrawBindGroup(pipelineDrawables, drawGroup.startIndex, drawGroup.key.textures);
-      wgpuRenderPassEncoderSetBindGroup(passEncoder, PipelineBuilder::getDrawBindGroupIndex(), drawBindGroup, 0, nullptr);
-      onFrameCleanup([drawBindGroup]() { wgpuBindGroupRelease(drawBindGroup); });
+  // for (auto &drawGroup : pipelineDrawables.drawGroups) {
+  //   if (drawGroup.key.clipRect) {
+  //     auto &clipRect = drawGroup.key.clipRect.value();
+  //     wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, clipRect.z - clipRect.x,
+  //                                         clipRect.w - clipRect.y);
+  //   } else {
+  //     wgpuRenderPassEncoderSetScissorRect(passEncoder, viewData.viewport.x, viewData.viewport.y, viewData.viewport.width,
+  //                                         viewData.viewport.height);
+  //   }
 
-      MeshContextData *meshContextData = drawGroup.key.meshData;
-      assert(meshContextData->vertexBuffer);
-      wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0, meshContextData->vertexBufferLength);
+  //   // TODO: Move to drawdata
+  //   WGPUBindGroup drawBindGroup{}; //= createDrawBindGroup(pipelineDrawables, drawGroup.startIndex, drawGroup.key.textures);
+  //   wgpuRenderPassEncoderSetBindGroup(passEncoder, PipelineBuilder::getDrawBindGroupIndex(), drawBindGroup, 0, nullptr);
+  //   onFrameCleanup([drawBindGroup]() { wgpuBindGroupRelease(drawBindGroup); });
 
-      if (meshContextData->indexBuffer) {
-        WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
-        wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0,
-                                            meshContextData->indexBufferLength);
+  //   MeshContextData *meshContextData = drawGroup.key.meshData;
+  //   assert(meshContextData->vertexBuffer);
+  //   wgpuRenderPassEncoderSetVertexBuffer(passEncoder, 0, meshContextData->vertexBuffer, 0,
+  //   meshContextData->vertexBufferLength);
 
-        wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0, 0);
-      } else {
-        wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0, 0);
-      }
-    }
-  }
+  //   if (meshContextData->indexBuffer) {
+  //     WGPUIndexFormat indexFormat = getWGPUIndexFormat(meshContextData->format.indexFormat);
+  //     wgpuRenderPassEncoderSetIndexBuffer(passEncoder, meshContextData->indexBuffer, indexFormat, 0,
+  //                                         meshContextData->indexBufferLength);
 
-  WGPUBuffer createTransientBuffer(size_t size, WGPUBufferUsageFlags flags, const char *label = nullptr) {
-    WGPUBufferDescriptor desc = {};
-    desc.size = size;
-    desc.label = label;
-    desc.usage = flags;
-    WGPUBuffer buffer = wgpuDeviceCreateBuffer(context.wgpuDevice, &desc);
-    onFrameCleanup([buffer]() { wgpuBufferRelease(buffer); });
-    return buffer;
-  }
-
-  void addFrameReference(std::shared_ptr<ContextData> &&contextData) {
-    frameReferences(frameIndex).contextDataReferences.emplace_back(std::move(contextData));
-  }
-
-  void onFrameCleanup(std::function<void()> &&callback) { postFrameQueue(frameIndex).emplace_back(std::move(callback)); }
+  //     wgpuRenderPassEncoderDrawIndexed(passEncoder, (uint32_t)meshContextData->numIndices, drawGroup.numInstances, 0, 0, 0);
+  //   } else {
+  //     wgpuRenderPassEncoderDraw(passEncoder, (uint32_t)meshContextData->numVertices, drawGroup.numInstances, 0, 0);
+  //   }
+  // }
+  // }
 
   void beginFrame() {
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
@@ -728,6 +773,10 @@ struct RendererImpl final : public ContextData {
         .viewport = Rect(mainOutputResolution),
         .referenceSize = mainOutputResolution,
     });
+
+    for (auto &drawableProcessor : drawableProcessors) {
+      drawableProcessor.second->reset(frameCounter);
+    }
   }
 
   void endFrame() {
@@ -776,241 +825,200 @@ struct RendererImpl final : public ContextData {
   void swapBuffers() {
     ++frameCounter;
     frameIndex = (frameIndex + 1) % maxBufferedFrames;
-
-    frameReferences(frameIndex).clear();
-    auto &postFrameQueue = this->postFrameQueue(frameIndex);
-    for (auto &cb : postFrameQueue) {
-      cb();
-    }
-    postFrameQueue.clear();
-
-    for (auto &pair : viewCache) {
-      pair.second->resetPools();
-    }
-
-    for (auto &pair : pipelineCache.map) {
-      pair.second->resetPools();
-    }
   }
 
   void fillInstanceBuffer(DynamicWGPUBuffer &instanceBuffer, const shader::UniformBufferLayout &layout,
                           const PipelineDrawables &pipelineDrawables, View &view) {
-    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
-    size_t numObjects = pipelineDrawables.drawablesSorted.size();
-    size_t stride = layout.getArrayStride();
+    // auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+    // size_t numObjects = pipelineDrawables.drawablesSorted.size();
+    // size_t stride = layout.getArrayStride();
 
-    size_t instanceBufferLength = numObjects * stride;
-    instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst,
-                          "instances");
+    // size_t instanceBufferLength = numObjects * stride;
+    // instanceBuffer.resize(context.wgpuDevice, instanceBufferLength, WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst,
+    //                       "instances");
 
-    std::vector<uint8_t> drawDataTempBuffer;
-    drawDataTempBuffer.resize(instanceBufferLength);
-    for (size_t i = 0; i < numObjects; i++) {
-      const SortableDrawable &sortableDrawable = pipelineDrawables.drawablesSorted[i];
-      const IDrawable *drawable = sortableDrawable.drawable;
+    // std::vector<uint8_t> drawDataTempBuffer;
+    // drawDataTempBuffer.resize(instanceBufferLength);
+    // for (size_t i = 0; i < numObjects; i++) {
+    //   const SortableDrawable &sortableDrawable = pipelineDrawables.drawablesSorted[i];
+    //   const IDrawable *drawable = sortableDrawable.drawable;
 
-      ParameterStorage objectDrawData = cachedPipeline.baseDrawData;
-
-      // TODO: Processor
-      // objectDrawData.setParam("world", drawable->transform);
-
-      // float4x4 worldInverse = linalg::inverse(drawable->transform);
-      // objectDrawData.setParam("invWorld", worldInverse);
-      // objectDrawData.setParam("invTransWorld", linalg::transpose(worldInverse));
-
-      // // Grab draw data from material
-      // if (Material *material = drawable->material.get()) {
-      //   for (auto &pair : material->parameters.basic) {
-      //     objectDrawData.setParam(pair.first, pair.second);
-      //   }
-      // }
-
-      // // Grab draw data from drawable
-      // for (auto &pair : drawable->parameters.basic) {
-      //   objectDrawData.setParam(pair.first, pair.second);
-      // }
-
-      // // Grab draw data from features
-      // FeatureCallbackContext callbackContext{context, &view, drawable, sortableDrawable.cachedDrawable};
-      // for (const Feature *feature : cachedPipeline.features) {
-      //   for (const FeatureParameterFunction &drawDataGenerator : feature->drawableParameters) {
-      //     // TODO: Catch mismatch errors here
-      //     drawDataGenerator(callbackContext, objectDrawData);
-      //   }
-      // }
-
-      size_t bufferOffset = stride * i;
-      size_t remainingBufferLength = instanceBufferLength - bufferOffset;
-
-      packDrawData(drawDataTempBuffer.data() + bufferOffset, remainingBufferLength, layout, objectDrawData);
-    }
-
-    wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
-  }
-
-  void buildBaseDrawParameters(CachedPipeline &cachedPipeline) {
-    for (const Feature *feature : cachedPipeline.features) {
-      for (auto &param : feature->shaderParams) {
-        cachedPipeline.baseDrawData.setParam(param.name, param.defaultValue);
-      }
-    }
-  }
-
-  void depthSortBackToFront(PipelineDrawables &pipelineDrawables, const View &view) {
-    const CachedView &cachedView = *viewCache[&view].get();
+    //   ParameterStorage objectDrawData = cachedPipeline.baseDrawData;
 
     // TODO: Processor
-    // size_t numDrawables = pipelineDrawables.drawablesSorted.size();
-    // for (size_t i = 0; i < numDrawables; i++) {
-    //   SortableDrawable &sortable = pipelineDrawables.drawablesSorted[i];
-    //   float4 projected = mul(cachedView.viewProjectionTransform, mul(sortable.drawable->transform, float4(0, 0, 0, 1)));
-    //   sortable.projectedDepth = projected.z;
-    // }
+    // objectDrawData.setParam("world", drawable->transform);
 
-    // auto compareBackToFront = [](const SortableDrawable &left, const SortableDrawable &right) {
-    //   return left.projectedDepth > right.projectedDepth;
-    // };
-    // std::stable_sort(pipelineDrawables.drawablesSorted.begin(), pipelineDrawables.drawablesSorted.end(), compareBackToFront);
-  }
+    // float4x4 worldInverse = linalg::inverse(drawable->transform);
+    // objectDrawData.setParam("invWorld", worldInverse);
+    // objectDrawData.setParam("invTransWorld", linalg::transpose(worldInverse));
 
-  void generateTextureIds(PipelineDrawables &pipelineDrawables, SortableDrawable &drawable) {
-    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
-
-    std::vector<TextureId> &textureIds = drawable.textureIds.textures;
-    textureIds.reserve(cachedPipeline.textureBindingLayout.bindings.size());
-
-    // TODO: Processor
-    // for (auto &binding : cachedPipeline.textureBindingLayout.bindings) {
-    //   auto &drawableParams = drawable.drawable->parameters.texture;
-
-    //   auto tryAssignTexture = [&](const std::map<std::string, TextureParameter> &params, const std::string &name) -> bool {
-    //     auto it = params.find(binding.name);
-    //     if (it != params.end()) {
-    //       const TexturePtr &texture = it->second.texture;
-    //       TextureContextData &contextData = texture->createContextDataConditional(context);
-    //       if (!contextData.defaultView)
-    //         return false; // Invalid texture
-
-    //       textureIds.push_back(pipelineDrawables.textureIdMap.assign(texture.get()));
-    //       return true;
-    //     }
-    //     return false;
-    //   };
-
-    //   if (tryAssignTexture(drawableParams, binding.name))
-    //     continue;
-
-    //   if (drawable.drawable->material) {
-    //     if (tryAssignTexture(drawable.drawable->material->parameters.texture, binding.name))
-    //       continue;
-    //   }
-
-    //   // Mark as unassigned texture
-    //   textureIds.push_back(TextureId(~0));
-    // }
-  }
-
-  SortableDrawable createSortableDrawable(PipelineDrawables &pipelineDrawables, const IDrawable &drawable,
-                                          const CachedDrawable &cachedDrawable) {
-    SortableDrawable sortableDrawable{};
-    sortableDrawable.drawable = &drawable;
-    sortableDrawable.cachedDrawable = &cachedDrawable;
-    generateTextureIds(pipelineDrawables, sortableDrawable);
-    sortableDrawable.key = DrawGroupKey(drawable, sortableDrawable.textureIds);
-
-    return sortableDrawable;
-  }
-
-  void sortAndBatchDrawables(PipelineDrawables &pipelineDrawables, SortMode sortMode, const ViewData &viewData) {
-    auto &view = viewData.view;
-    std::vector<SortableDrawable> &drawablesSorted = pipelineDrawables.drawablesSorted;
-
-    // Sort drawables based on mesh/texture bindings
-    // TODO: Processor
-    // for (auto &drawable : pipelineDrawables.drawables) {
-    //   drawable->mesh->createContextDataConditional(context);
-
-    //   // Filter out empty meshes here
-    //   if (drawable->mesh->contextData->numVertices == 0)
-    //     continue;
-
-    //   addFrameReference(drawable->mesh->contextData);
-
-    //   CachedDrawable &cachedDrawable = getCachedDrawable(drawable);
-    //   cachedDrawable.touchWithNewTransform(drawable->transform, frameCounter);
-    //   if (drawable->previousTransform) {
-    //     cachedDrawable.previousTransform = drawable->previousTransform.value();
-    //   }
-
-    //   SortableDrawable sortableDrawable = createSortableDrawable(pipelineDrawables, *drawable, cachedDrawable);
-
-    //   if (sortMode == SortMode::Queue) {
-    //     drawablesSorted.push_back(sortableDrawable);
-    //   } else {
-    //     auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
-    //     auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
-    //     drawablesSorted.insert(it, sortableDrawable);
+    // // Grab draw data from material
+    // if (Material *material = drawable->material.get()) {
+    //   for (auto &pair : material->parameters.basic) {
+    //     objectDrawData.setParam(pair.first, pair.second);
     //   }
     // }
 
-    if (sortMode == SortMode::BackToFront) {
-      depthSortBackToFront(pipelineDrawables, view);
-    }
+    // // Grab draw data from drawable
+    // for (auto &pair : drawable->parameters.basic) {
+    //   objectDrawData.setParam(pair.first, pair.second);
+    // }
 
-    // Creates draw call ranges based on DrawGroupKey
-    if (drawablesSorted.size() > 0) {
-      size_t groupStart = 0;
-      DrawGroupKey currentDrawGroupKey = drawablesSorted[0].key;
+    // // Grab draw data from features
+    // FeatureCallbackContext callbackContext{context, &view, drawable, sortableDrawable.cachedDrawable};
+    // for (const Feature *feature : cachedPipeline.features) {
+    //   for (const FeatureParameterFunction &drawDataGenerator : feature->drawableParameters) {
+    //     // TODO: Catch mismatch errors here
+    //     drawDataGenerator(callbackContext, objectDrawData);
+    //   }
+    // }
 
-      auto finishGroup = [&](size_t currentIndex) {
-        size_t groupLength = currentIndex - groupStart;
-        if (groupLength > 0) {
-          pipelineDrawables.drawGroups.emplace_back(currentDrawGroupKey, groupStart, groupLength);
-        }
-      };
-      for (size_t i = 1; i < drawablesSorted.size(); i++) {
-        DrawGroupKey drawGroupKey = drawablesSorted[i].key;
-        if (drawGroupKey != currentDrawGroupKey) {
-          finishGroup(i);
-          groupStart = i;
-          currentDrawGroupKey = drawGroupKey;
-        }
-      }
-      finishGroup(drawablesSorted.size());
-    }
+    //   size_t bufferOffset = stride * i;
+    //   size_t remainingBufferLength = instanceBufferLength - bufferOffset;
 
-    // Record statistics
-    frameStats.numDrawables += pipelineDrawables.drawables.size();
+    //   packDrawData(drawDataTempBuffer.data() + bufferOffset, remainingBufferLength, layout, objectDrawData);
+    // }
+
+    // wgpuQueueWriteBuffer(context.wgpuQueue, instanceBuffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
   }
 
-  void fillViewBuffer(WGPUBuffer &buffer, const shader::UniformBufferLayout &layout, CachedPipeline &cachedPipeline,
-                      const ViewData &viewData) {
-    std::vector<uint8_t> drawDataTempBuffer;
-    drawDataTempBuffer.resize(layout.size);
+  // void buildBaseDrawParameters(CachedPipeline &cachedPipeline) {
+  //   for (const Feature *feature : cachedPipeline.features) {
+  //     for (auto &param : feature->shaderParams) {
+  //       cachedPipeline.baseDrawData.setParam(param.name, param.defaultValue);
+  //     }
+  //   }
+  // }
 
-    ParameterStorage parameterStorage;
-    setViewData(parameterStorage, viewData);
+  // void depthSortBackToFront(PipelineDrawables &pipelineDrawables, const View &view) {
+  //   const CachedView &cachedView = *viewCache[&view].get();
 
-    // Grab draw data from features
-    FeatureCallbackContext callbackContext{.context = context, .view = &viewData.view, .cachedView = &viewData.cachedView};
-    for (const Feature *feature : cachedPipeline.features) {
-      for (const auto &drawDataGenerator : feature->viewParameterGenerators) {
-        drawDataGenerator(callbackContext, parameterStorage);
-      }
-    }
+  // TODO: Processor
+  // size_t numDrawables = pipelineDrawables.drawablesSorted.size();
+  // for (size_t i = 0; i < numDrawables; i++) {
+  //   SortableDrawable &sortable = pipelineDrawables.drawablesSorted[i];
+  //   float4 projected = mul(cachedView.viewProjectionTransform, mul(sortable.drawable->transform, float4(0, 0, 0, 1)));
+  //   sortable.projectedDepth = projected.z;
+  // }
 
-    packDrawData(drawDataTempBuffer.data(), layout.size, layout, parameterStorage);
+  // auto compareBackToFront = [](const SortableDrawable &left, const SortableDrawable &right) {
+  //   return left.projectedDepth > right.projectedDepth;
+  // };
+  // std::stable_sort(pipelineDrawables.drawablesSorted.begin(), pipelineDrawables.drawablesSorted.end(), compareBackToFront);
+  // }
 
-    wgpuQueueWriteBuffer(context.wgpuQueue, buffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
-  }
+  // void generateTextureIds(PipelineDrawables &pipelineDrawables, SortableDrawable &drawable) {
+  // auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+
+  // std::vector<TextureId> &textureIds = drawable.textureIds.textures;
+  // textureIds.reserve(cachedPipeline.textureBindingLayout.bindings.size());
+
+  // TODO: Processor
+  // for (auto &binding : cachedPipeline.textureBindingLayout.bindings) {
+  //   auto &drawableParams = drawable.drawable->parameters.texture;
+
+  //   auto tryAssignTexture = [&](const std::map<std::string, TextureParameter> &params, const std::string &name) -> bool {
+  //     auto it = params.find(binding.name);
+  //     if (it != params.end()) {
+  //       const TexturePtr &texture = it->second.texture;
+  //       TextureContextData &contextData = texture->createContextDataConditional(context);
+  //       if (!contextData.defaultView)
+  //         return false; // Invalid texture
+
+  //       textureIds.push_back(pipelineDrawables.textureIdMap.assign(texture.get()));
+  //       return true;
+  //     }
+  //     return false;
+  //   };
+
+  //   if (tryAssignTexture(drawableParams, binding.name))
+  //     continue;
+
+  //   if (drawable.drawable->material) {
+  //     if (tryAssignTexture(drawable.drawable->material->parameters.texture, binding.name))
+  //       continue;
+  //   }
+
+  //   // Mark as unassigned texture
+  //   textureIds.push_back(TextureId(~0));
+  // }
+  // }
+
+  // SortableDrawable createSortableDrawable(PipelineDrawables &pipelineDrawables, const IDrawable &drawable,
+  //                                         const CachedDrawable &cachedDrawable) {
+  //   SortableDrawable sortableDrawable{};
+  //   sortableDrawable.drawable = &drawable;
+  //   sortableDrawable.cachedDrawable = &cachedDrawable;
+  //   generateTextureIds(pipelineDrawables, sortableDrawable);
+
+  //   return sortableDrawable;
+  // }
+
+  // void sortAndBatchDrawables(PipelineDrawables &pipelineDrawables, SortMode sortMode, const ViewData &viewData) {
+  //   auto &view = viewData.view;
+  //   std::vector<SortableDrawable> &drawablesSorted = pipelineDrawables.drawablesSorted;
+
+  // Sort drawables based on mesh/texture bindings
+  // TODO: Processor
+  // for (auto &drawable : pipelineDrawables.drawables) {
+  //   drawable->mesh->createContextDataConditional(context);
+
+  //   // Filter out empty meshes here
+  //   if (drawable->mesh->contextData->numVertices == 0)
+  //     continue;
+
+  //   addFrameReference(drawable->mesh->contextData);
+
+  //   CachedDrawable &cachedDrawable = getCachedDrawable(drawable);
+  //   cachedDrawable.touchWithNewTransform(drawable->transform, frameCounter);
+  //   if (drawable->previousTransform) {
+  //     cachedDrawable.previousTransform = drawable->previousTransform.value();
+  //   }
+
+  //   SortableDrawable sortableDrawable = createSortableDrawable(pipelineDrawables, *drawable, cachedDrawable);
+
+  //   if (sortMode == SortMode::Queue) {
+  //     drawablesSorted.push_back(sortableDrawable);
+  //   } else {
+  //     auto comparison = [](const SortableDrawable &left, const SortableDrawable &right) { return left.key < right.key; };
+  //     auto it = std::upper_bound(drawablesSorted.begin(), drawablesSorted.end(), sortableDrawable, comparison);
+  //     drawablesSorted.insert(it, sortableDrawable);
+  //   }
+  // }
+
+  //   if (sortMode == SortMode::BackToFront) {
+  //     depthSortBackToFront(pipelineDrawables, view);
+  //   }
+  // }
+
+  // void fillViewBuffer(WGPUBuffer &buffer, const shader::UniformBufferLayout &layout, CachedPipeline &cachedPipeline,
+  //                     const ViewData &viewData) {
+  //   std::vector<uint8_t> drawDataTempBuffer;
+  //   drawDataTempBuffer.resize(layout.size);
+
+  //   ParameterStorage parameterStorage;
+  //   setViewData(parameterStorage, viewData);
+
+  //   // Grab draw data from features
+  //   FeatureCallbackContext callbackContext{.context = context, .view = &viewData.view, .cachedView = &viewData.cachedView};
+  //   for (const Feature *feature : cachedPipeline.features) {
+  //     for (const auto &drawDataGenerator : feature->viewParameterGenerators) {
+  //       drawDataGenerator(callbackContext, parameterStorage);
+  //     }
+  //   }
+
+  //   packDrawData(drawDataTempBuffer.data(), layout.size, layout, parameterStorage);
+
+  //   wgpuQueueWriteBuffer(context.wgpuQueue, buffer, 0, drawDataTempBuffer.data(), drawDataTempBuffer.size());
+  // }
 
   void collectReferencedRenderAttachments(const PipelineDrawables &pipelineDrawables, std::vector<Texture *> &outTextures) {
     // Find references to render textures
-    pipelineDrawables.textureIdMap.forEachTexture([&](Texture *texture) {
-      if (textureFormatFlagsContains(texture->getFormat().flags, TextureFormatFlags::RenderAttachment)) {
-        outTextures.push_back(texture);
-      }
-    });
+    // pipelineDrawables.textureIdMap.forEachTexture([&](Texture *texture) {
+    //   if (textureFormatFlagsContains(texture->getFormat().flags, TextureFormatFlags::RenderAttachment)) {
+    //     outTextures.push_back(texture);
+    //   }
+    // });
   }
 };
 
@@ -1038,4 +1046,30 @@ void Renderer::endFrame() { impl->endFrame(); }
 
 void Renderer::cleanup() { impl->releaseContextDataConditional(); }
 
+void Renderer::dumpStats() {
+  static constexpr size_t Megabyte = 1 << 20;
+
+  SPDLOG_LOGGER_INFO(logger, "== Renderer stats ==");
+
+  Context &context = impl->context;
+  auto &workerMemory = context.workerMemory;
+
+  size_t workerIndex{};
+  SPDLOG_LOGGER_INFO(logger, " Graphics worker allocators:");
+  for (auto &mem : workerMemory) {
+    SPDLOG_LOGGER_INFO(logger, "  Worker[{}]: {} MB (peak: {} MB, avg: {} MB)", workerIndex++,
+                       mem.getMemoryResource().preallocatedBlock.size() / Megabyte,
+                       mem.getMemoryResource().maxUsage.getMax() / Megabyte,
+                       mem.getMemoryResource().maxUsage.getAverage() / Megabyte);
+  }
+
+  SPDLOG_LOGGER_INFO(logger, " Caches:");
+  SPDLOG_LOGGER_INFO(logger, "  Render Graphs: {}", impl->renderGraphCache.map.size());
+  SPDLOG_LOGGER_INFO(logger, "  Pipelines: {}", impl->pipelineCache.map.size());
+  SPDLOG_LOGGER_INFO(logger, "  Drawables: {}", impl->drawableCache.size());
+  SPDLOG_LOGGER_INFO(logger, "  Views: {}", impl->viewCache.size());
+
+  SPDLOG_LOGGER_INFO(logger, " Frame Index: {}", impl->frameIndex);
+  SPDLOG_LOGGER_INFO(logger, " Frame Counter: {}", impl->frameCounter);
+}
 } // namespace gfx

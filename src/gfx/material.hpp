@@ -11,7 +11,9 @@
 
 namespace gfx {
 
+namespace detail {
 struct PipelineHashCollector;
+}
 
 // Container for shader parameters (basic/texture)
 /// <div rustbindgen opaque>
@@ -30,7 +32,7 @@ struct MaterialParameters {
     }
   }
 
-  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const;
+  void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const;
 };
 
 /// <div rustbindgen opaque>
@@ -49,7 +51,7 @@ public:
     hash(parameters);
   }
 
-  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const;
+  void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const;
 
   UniqueId getId() const { return id; }
   MaterialPtr clone() const { return cloneSelfWithId(this, getNextId()); }

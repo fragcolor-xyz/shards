@@ -13,6 +13,10 @@
 
 namespace gfx {
 
+namespace detail {
+struct PipelineHashCollector;
+}
+
 /// <div rustbindgen opaque></div>
 struct MeshVertexAttribute {
   std::string name;
@@ -99,7 +103,7 @@ public:
   UniqueId getId() const { return id; }
   MeshPtr clone() const;
 
-  void pipelineHashCollect(struct PipelineHashCollector&) const;
+  void pipelineHashCollect(detail::PipelineHashCollector&) const;
 
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);

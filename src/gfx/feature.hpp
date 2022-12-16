@@ -203,7 +203,7 @@ struct Feature {
 
   UniqueId getId() const { return id; }
 
-  void pipelineHashCollect(PipelineHashCollector &) const;
+  void pipelineHashCollect(detail::PipelineHashCollector &) const;
 };
 typedef std::shared_ptr<Feature> FeaturePtr;
 

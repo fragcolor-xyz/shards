@@ -6,6 +6,8 @@
 #include "platform.hpp"
 #include "types.hpp"
 #include "user_data.hpp"
+#include "async.hpp"
+#include "worker_memory.hpp"
 #include <cassert>
 #include <list>
 #include <map>
@@ -13,6 +15,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <shared_mutex>
 
 namespace gfx {
 struct ContextCreationOptions {
@@ -48,6 +51,12 @@ public:
 
   TypedUserData userData;
 
+  // Async task executor
+  detail::GraphicsExecutor executor;
+
+  // Transient local memory allocators for async workers
+  detail::TWorkerThreadData<detail::WorkerMemory> workerMemory;
+
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
@@ -57,7 +66,10 @@ private:
   bool suspended = false;
 
   ContextCreationOptions options;
+
+  // TODO: Remove
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
+  std::shared_mutex contextDataLock;
 
 public:
   Context();
@@ -121,6 +133,8 @@ private:
 
   void collectContextData();
   void releaseAllContextData();
+
+  void resetWorkerMemory();
 };
 
 } // namespace gfx

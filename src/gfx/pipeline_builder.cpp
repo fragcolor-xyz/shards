@@ -77,6 +77,14 @@ static FeaturePipelineState computePipelineState(const std::vector<const Feature
   return state;
 }
 
+static void buildBaseDrawParameters(ParameterStorage& params, const std::vector<const Feature*>& features) {
+  for (const Feature *feature : features) {
+    for (auto &param : feature->shaderParams) {
+      params.setParam(param.name, param.defaultValue);
+    }
+  }
+}
+
 BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(std::string &&name) {
   auto it = std::find_if(bufferBindings.begin(), bufferBindings.end(),
                          [&](const BufferBindingBuilder &builder) { return builder.name == name; });
@@ -125,7 +133,7 @@ void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &index
   }
 }
 
-WGPURenderPipeline PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
+void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
   auto &viewBinding = getOrCreateBufferBinding("view");
   viewBinding.frequency = BindingFrequency::View;
 
@@ -141,12 +149,12 @@ WGPURenderPipeline PipelineBuilder::build(WGPUDevice device, const WGPULimits &d
 
     // Apply modifiers
     if (feature->pipelineModifier) {
-      feature->pipelineModifier->buildPipeline(*this, firstDrawable);
+      feature->pipelineModifier->buildPipeline(*this);
     }
   }
 
   // Set shader generator input mesh format
-  generator.meshFormat = cachedPipeline.meshFormat;
+  generator.meshFormat = meshFormat;
 
   setupShaderOutputFields();
 
@@ -171,16 +179,18 @@ WGPURenderPipeline PipelineBuilder::build(WGPUDevice device, const WGPULimits &d
 
   buildPipelineLayout(device, deviceLimits);
 
+  buildBaseDrawParameters(output.baseDrawParameters, features);
+
   // Actually create the pipeline object
-  return finalize(device);
+  finalize(device);
 }
 
 size_t PipelineBuilder::getViewBindGroupIndex() { return 1; }
 size_t PipelineBuilder::getDrawBindGroupIndex() { return 0; }
 
 void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &deviceLimits) {
-  assert(!cachedPipeline.pipelineLayout);
-  assert(cachedPipeline.bindGroupLayouts.empty());
+  assert(!output.pipelineLayout);
+  assert(output.bindGroupLayouts.empty());
 
   std::vector<WGPUBindGroupLayoutEntry> bindGroupLayoutEntries;
 
@@ -189,7 +199,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
     describeBindGroup(generator.bufferBindings, getDrawBindGroupIndex(), bindGroupLayoutEntries, BindingFrequency::Draw);
 
     // Append texture bindings to per-draw bind group
-    cachedPipeline.textureBindingLayout = generator.textureBindingLayout;
+    output.textureBindingLayout = generator.textureBindingLayout;
     for (auto &desc : generator.textureBindingLayout.bindings) {
       // Interleaved Texture&Sampler bindings (1 each per texture slot)
       WGPUBindGroupLayoutEntry &textureBinding = bindGroupLayoutEntries.emplace_back();
@@ -210,7 +220,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
         .entryCount = uint32_t(bindGroupLayoutEntries.size()),
         .entries = bindGroupLayoutEntries.data(),
     };
-    cachedPipeline.bindGroupLayouts.emplace_back(wgpuDeviceCreateBindGroupLayout(device, &desc));
+    output.bindGroupLayouts.emplace_back(wgpuDeviceCreateBindGroupLayout(device, &desc));
   }
 
   // Create per-view bind group (1)
@@ -223,23 +233,23 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
         .entryCount = uint32_t(bindGroupLayoutEntries.size()),
         .entries = bindGroupLayoutEntries.data(),
     };
-    cachedPipeline.bindGroupLayouts.emplace_back(wgpuDeviceCreateBindGroupLayout(device, &desc));
+    output.bindGroupLayouts.emplace_back(wgpuDeviceCreateBindGroupLayout(device, &desc));
   }
 
   WGPUPipelineLayoutDescriptor pipelineLayoutDesc{};
-  pipelineLayoutDesc.bindGroupLayouts = reinterpret_cast<WGPUBindGroupLayout *>(cachedPipeline.bindGroupLayouts.data());
-  pipelineLayoutDesc.bindGroupLayoutCount = cachedPipeline.bindGroupLayouts.size();
-  cachedPipeline.pipelineLayout.reset(wgpuDeviceCreatePipelineLayout(device, &pipelineLayoutDesc));
+  pipelineLayoutDesc.bindGroupLayouts = reinterpret_cast<WGPUBindGroupLayout *>(output.bindGroupLayouts.data());
+  pipelineLayoutDesc.bindGroupLayoutCount = output.bindGroupLayouts.size();
+  output.pipelineLayout.reset(wgpuDeviceCreatePipelineLayout(device, &pipelineLayoutDesc));
 
   // Store run-time binding info
-  cachedPipeline.drawBufferBindings.reserve(drawBindings.size());
-  cachedPipeline.viewBuffersBindings.reserve(viewBindings.size());
+  output.drawBufferBindings.reserve(drawBindings.size());
+  output.viewBuffersBindings.reserve(viewBindings.size());
   for (auto &binding : generator.bufferBindings) {
     std::vector<gfx::detail::BufferBinding> *outArray{};
     if (binding.bindGroup == getDrawBindGroupIndex()) {
-      outArray = &cachedPipeline.drawBufferBindings;
+      outArray = &output.drawBufferBindings;
     } else {
-      outArray = &cachedPipeline.viewBuffersBindings;
+      outArray = &output.viewBuffersBindings;
     }
 
     auto &outBinding = (*outArray).emplace_back();
@@ -296,8 +306,8 @@ void PipelineBuilder::setupShaderOutputFields() {
   FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
   size_t index = 0;
-  size_t depthIndex = cachedPipeline.renderTargetLayout.depthTargetIndex.value_or(~0);
-  for (auto &target : cachedPipeline.renderTargetLayout.targets) {
+  size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
+  for (auto &target : renderTargetLayout.targets) {
     // Ignore depth target, it's implicitly bound to z depth
     if (index != depthIndex) {
       auto &formatDesc = getTextureFormatDescription(target.format);
@@ -310,7 +320,7 @@ void PipelineBuilder::setupShaderOutputFields() {
 
 shader::GeneratorOutput PipelineBuilder::generateShader() { return generator.build(shaderEntryPoints); }
 
-WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
+void PipelineBuilder::finalize(WGPUDevice device) {
   FeaturePipelineState pipelineState = computePipelineState(features);
 
   shader::GeneratorOutput generatorOutput = generateShader();
@@ -328,18 +338,20 @@ WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
   wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
   SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n {}", generatorOutput.wgslSource);
 
-  cachedPipeline.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
-  assert(cachedPipeline.shaderModule);
+  output.renderTargetLayout = renderTargetLayout;
+
+  output.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
+  assert(output.shaderModule);
 
   WGPURenderPipelineDescriptor desc = {};
-  desc.layout = cachedPipeline.pipelineLayout;
+  desc.layout = output.pipelineLayout;
 
   VertexStateBuilder vertStateBuilder;
-  vertStateBuilder.build(desc.vertex, cachedPipeline);
+  vertStateBuilder.build(desc.vertex, meshFormat, output.shaderModule);
 
   WGPUFragmentState fragmentState = {};
   fragmentState.entryPoint = "fragment_main";
-  fragmentState.module = cachedPipeline.shaderModule;
+  fragmentState.module = output.shaderModule;
 
   // Shared blend state for all color targets
   std::optional<WGPUBlendState> blendState{};
@@ -351,9 +363,9 @@ WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
   std::vector<WGPUColorTargetState> colorTargets;
   WGPUDepthStencilState depthStencilState{};
 
-  size_t depthIndex = cachedPipeline.renderTargetLayout.depthTargetIndex.value_or(~0);
-  for (size_t index = 0; index < cachedPipeline.renderTargetLayout.targets.size(); index++) {
-    auto &target = cachedPipeline.renderTargetLayout.targets[index];
+  size_t depthIndex = output.renderTargetLayout.depthTargetIndex.value_or(~0);
+  for (size_t index = 0; index < output.renderTargetLayout.targets.size(); index++) {
+    auto &target = output.renderTargetLayout.targets[index];
     if (index == depthIndex) {
       // Depth target
       depthStencilState.format = target.format;
@@ -379,24 +391,24 @@ WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
   desc.multisample.count = 1;
   desc.multisample.mask = ~0;
 
-  desc.primitive.frontFace = cachedPipeline.meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
+  desc.primitive.frontFace = meshFormat.windingOrder == WindingOrder::CCW ? WGPUFrontFace_CCW : WGPUFrontFace_CW;
   if (pipelineState.culling.value_or(true)) {
     desc.primitive.cullMode = pipelineState.flipFrontFace.value_or(false) ? WGPUCullMode_Front : WGPUCullMode_Back;
   } else {
     desc.primitive.cullMode = WGPUCullMode_None;
   }
 
-  switch (cachedPipeline.meshFormat.primitiveType) {
+  switch (meshFormat.primitiveType) {
   case PrimitiveType::TriangleList:
     desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
     break;
   case PrimitiveType::TriangleStrip:
     desc.primitive.topology = WGPUPrimitiveTopology_TriangleStrip;
-    desc.primitive.stripIndexFormat = getWGPUIndexFormat(cachedPipeline.meshFormat.indexFormat);
+    desc.primitive.stripIndexFormat = getWGPUIndexFormat(meshFormat.indexFormat);
     break;
   }
 
-  return wgpuDeviceCreateRenderPipeline(device, &desc);
+  output.pipeline.reset(wgpuDeviceCreateRenderPipeline(device, &desc));
 }
 
 void PipelineBuilder::collectTextureBindings() {
@@ -407,11 +419,9 @@ void PipelineBuilder::collectTextureBindings() {
   }
 
   // Update default texture coordinates based on material
-  for (auto &pair : cachedPipeline.materialTextureBindings) {
+  for (auto &pair : materialTextureBindings) {
     textureBindings.tryUpdateSlot(pair.first, pair.second.defaultTexcoordBinding);
   }
 }
-
-void PipelineBuilder::buildBufferBindingLayouts() {}
 
 } // namespace gfx

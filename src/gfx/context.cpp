@@ -225,7 +225,7 @@ struct ContextMainOutput {
   void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
 };
 
-Context::Context() {}
+Context::Context() : workerMemory(executor) {}
 Context::~Context() { release(); }
 
 void Context::init(Window &window, const ContextCreationOptions &inOptions) {
@@ -290,13 +290,18 @@ void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
 
   std::shared_ptr<ContextData> sharedPtr = ptr.lock();
   if (sharedPtr) {
+    std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
     contextDatas.insert_or_assign(sharedPtr.get(), ptr);
   }
 }
 
-void Context::removeContextDataInternal(ContextData *ptr) { contextDatas.erase(ptr); }
+void Context::removeContextDataInternal(ContextData *ptr) {
+  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
+  contextDatas.erase(ptr);
+}
 
 void Context::collectContextData() {
+  std::scoped_lock<std::shared_mutex> _lock(contextDataLock);
   for (auto it = contextDatas.begin(); it != contextDatas.end();) {
     if (it->second.expired()) {
       it = contextDatas.erase(it);
@@ -307,7 +312,9 @@ void Context::collectContextData() {
 }
 
 void Context::releaseAllContextData() {
+  contextDataLock.lock();
   auto contextDatas = std::move(this->contextDatas);
+  contextDataLock.unlock();
   for (auto &obj : contextDatas) {
     if (!obj.second.expired()) {
       obj.first->releaseContextDataConditional();
@@ -318,6 +325,8 @@ void Context::releaseAllContextData() {
 bool Context::beginFrame() {
   ZoneScoped;
   assert(frameState == ContextFrameState::Ok);
+
+  resetWorkerMemory();
 
   // Automatically request
   if (state == ContextState::Incomplete) {
@@ -595,6 +604,12 @@ void Context::present() {
   ZoneScoped;
   assert(mainOutput);
   mainOutput->present();
+}
+
+void Context::resetWorkerMemory() {
+  for (auto &workerMemory : this->workerMemory) {
+    workerMemory.reset();
+  }
 }
 
 } // namespace gfx

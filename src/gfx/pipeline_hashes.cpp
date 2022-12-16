@@ -5,39 +5,40 @@
 
 // This file groups all the pipeline hash functions so that they can be compiled -O3 even in debug
 
+using gfx::detail::PipelineHashCollector;
 namespace gfx {
-void MaterialParameters::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
+void MaterialParameters::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const {
   for (auto &pair : texture) {
-    PipelineHashCollector(pair.first);
+    pipelineHashCollector(pair.first);
     if (pair.second.texture) {
-      PipelineHashCollector(1u);
-      PipelineHashCollector(pair.second.defaultTexcoordBinding);
+      pipelineHashCollector(1u);
+      pipelineHashCollector(pair.second.defaultTexcoordBinding);
     } else {
-      PipelineHashCollector(0u);
+      pipelineHashCollector(0u);
     }
   }
 }
 
-void Material::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
+void Material::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const {
   for (auto &feature : features) {
-    PipelineHashCollector(feature);
+    pipelineHashCollector(feature);
   }
-  parameters.pipelineHashCollect(PipelineHashCollector);
+  parameters.pipelineHashCollect(pipelineHashCollector);
 }
 
-void MeshDrawable::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
-  PipelineHashCollector(mesh);
+void MeshDrawable::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const {
+  pipelineHashCollector(mesh);
   if (material) {
-    PipelineHashCollector(material);
+    pipelineHashCollector(material);
   }
   for (auto &feature : features) {
-    PipelineHashCollector(feature);
+    pipelineHashCollector(feature);
   }
-  parameters.pipelineHashCollect(PipelineHashCollector);
+  parameters.pipelineHashCollect(pipelineHashCollector);
 }
 
-void Feature::pipelineHashCollect(PipelineHashCollector &collector) const { collector(id); }
+void Feature::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const { pipelineHashCollector(id); }
 
-void Mesh::pipelineHashCollect(struct PipelineHashCollector &collector) const { collector(format); }
+void Mesh::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const { pipelineHashCollector(format); }
 
 } // namespace gfx

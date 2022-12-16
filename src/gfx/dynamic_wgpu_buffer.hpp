@@ -2,7 +2,7 @@
 #define CD738B07_92E4_4A3C_A3BA_674D87C141CF
 
 #include "gfx_wgpu.hpp"
-#include "resizable_item_pool.hpp"
+#include "sized_item_pool.hpp"
 #include "wgpu_handle.hpp"
 #include <cassert>
 #include <vector>
@@ -63,8 +63,6 @@ private:
     buffer.reset(wgpuDeviceCreateBuffer(device, &desc));
   }
 };
-
-typedef ResizableItemPool<DynamicWGPUBuffer> DynamicWGPUBufferPool;
 
 } // namespace gfx::detail
 

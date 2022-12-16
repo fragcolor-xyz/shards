@@ -20,9 +20,6 @@ typedef std::shared_ptr<Mesh> MeshPtr;
 struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
 
-struct IDrawableProcessor;
-typedef std::shared_ptr<IDrawableProcessor> DrawableProcessorPtr;
-
 struct IPipelineModifier;
 typedef std::shared_ptr<IPipelineModifier> PipelineModifierPtr;
 
@@ -41,6 +38,10 @@ typedef std::shared_ptr<RenderTargetAttachment> RenderTargetAttachmentPtr;
 struct RenderTarget;
 typedef std::shared_ptr<RenderTarget> RenderTargetPtr;
 
+namespace detail {
+struct IDrawableProcessor;
+typedef std::shared_ptr<IDrawableProcessor> DrawableProcessorPtr;
+} // namespace detail
 } // namespace gfx
 
 #endif // GFX_FWD

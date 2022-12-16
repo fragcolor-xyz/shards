@@ -10,8 +10,11 @@
 namespace gfx {
 
 DrawablePtr MeshDrawable::clone() const { return cloneSelfWithId(this, getNextDrawableId()); }
-IDrawableProcessor &MeshDrawable::getProcessor() const { return MeshDrawableProcessor::getInstance(); }
-
-
+DrawableProcessorConstructor MeshDrawable::getProcessor() const {
+  static DrawableProcessorConstructor fn = [](Context &context) -> detail::DrawableProcessorPtr {
+    return std::make_shared<detail::MeshDrawableProcessor>(context);
+  };
+  return fn;
+}
 
 } // namespace gfx

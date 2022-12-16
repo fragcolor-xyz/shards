@@ -10,28 +10,31 @@
 
 namespace gfx {
 
-typedef size_t DrawableGeneration;
-
+namespace detail {
 struct PipelineHashCollector;
+}
+
+typedef detail::DrawableProcessorPtr (*DrawableProcessorConstructor)(Context &);
+
 struct IDrawable {
   virtual ~IDrawable() = default;
 
   // Duplicate self
   virtual DrawablePtr clone() const = 0;
 
-  // Get the processor used to render this drawable
-  virtual IDrawableProcessor &getProcessor() const = 0;
-
-  // Compute hash and collect references
-  // The drawable should not be modified while it is being processed by the renderer
-  // After Renderer::render returns you are free to change this drawable again
-  virtual void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const = 0;
-
   // Unique Id to identify this drawable
   virtual UniqueId getId() const = 0;
 
   // If this is a group this function should extract it's contents and return true
-  virtual bool expand(std::vector<const IDrawable *> &outDrawables) const { return false; }
+  virtual bool expand(std::pmr::vector<const IDrawable *> &outDrawables) const { return false; }
+
+  // Get the processor used to render this drawable
+  virtual DrawableProcessorConstructor getProcessor() const = 0;
+
+  // Compute hash and collect references
+  // The drawable should not be modified while it is being processed by the renderer
+  // After Renderer::render returns you are free to change this drawable again
+  virtual void pipelineHashCollect(detail::PipelineHashCollector &PipelineHashCollector) const = 0;
 };
 
 template <typename T> inline std::shared_ptr<T> clone(const std::shared_ptr<T> &other) {

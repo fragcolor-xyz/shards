@@ -30,11 +30,12 @@ public:
       : mesh(mesh), material(material), transform(transform) {}
 
   DrawablePtr clone() const override;
-  IDrawableProcessor &getProcessor() const override;
-
-  void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const override;
 
   UniqueId getId() const override { return id; }
+
+  DrawableProcessorConstructor getProcessor() const override;
+
+  void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const override;
 
   // DrawableGeneration generation;
   // DrawableGeneration getGeneration() const override { return generation; }

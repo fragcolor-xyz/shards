@@ -5,49 +5,54 @@
 
 namespace gfx {
 
-struct MovingAverage {
-  std::vector<float> buffer;
+template <typename T = float> struct MovingAverage {
+  std::vector<T> buffer;
   size_t length;
   size_t maxLength;
   size_t offset;
 
-  inline MovingAverage(size_t length);
-  inline void add(float value);
-  inline void reset();
-  inline float getAverage() const;
+  MovingAverage(size_t inLength) {
+    length = 0;
+    maxLength = inLength;
+    buffer.resize(maxLength);
+    offset = 0;
+  }
+
+  void add(T value) {
+    if (length < maxLength) {
+      buffer[offset] = value;
+      ++length;
+    } else {
+      buffer[offset] = value;
+    }
+    offset = (offset + 1) % maxLength;
+  }
+
+  void reset() {
+    length = 0;
+    offset = 0;
+  }
+
+  T getAverage() const {
+    if (length == 0)
+      return T(0);
+    T sum(0);
+    for (int i = 0; i < length; i++) {
+      sum += buffer[i];
+    }
+    return T(sum / double(length));
+  }
+
+  T getMax(T init = 0) const {
+    T maxValue = init;
+    if (length == 0)
+      return maxValue;
+    for (int i = 0; i < length; i++) {
+      maxValue = std::max<T>(maxValue, buffer[i]);
+    }
+    return maxValue;
+  }
 };
-
-MovingAverage::MovingAverage(size_t inLength) {
-  length = 0;
-  maxLength = inLength;
-  buffer.resize(maxLength);
-  offset = 0;
-}
-
-void MovingAverage::add(float value) {
-  if (length < maxLength) {
-    buffer[offset] = value;
-    ++length;
-  } else {
-    buffer[offset] = value;
-  }
-  offset = (offset + 1) % maxLength;
-}
-
-void MovingAverage::reset() {
-  length = 0;
-  offset = 0;
-}
-
-float MovingAverage::getAverage() const {
-  if (length == 0)
-    return 0.0f;
-  float sum = 0.0f;
-  for (int i = 0; i < length; i++) {
-    sum += buffer[i];
-  }
-  return sum / float(length);
-}
 
 } // namespace gfx
 

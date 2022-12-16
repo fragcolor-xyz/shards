@@ -18,9 +18,9 @@ DrawablePtr MeshTreeDrawable::clone() const {
   return result;
 }
 
-IDrawableProcessor &MeshTreeDrawable::getProcessor() const { throw std::logic_error("not implemented"); }
+DrawableProcessorConstructor MeshTreeDrawable::getProcessor() const { throw std::logic_error("not implemented"); }
 
-bool MeshTreeDrawable::expand(std::vector<const IDrawable *> &outDrawables) const {
+bool MeshTreeDrawable::expand(std::pmr::vector<const IDrawable *> &outDrawables) const {
   TransformUpdaterCollector collector;
   collector.collector = [&](const DrawablePtr &drawable) { outDrawables.push_back(drawable.get()); };
   collector.update(const_cast<MeshTreeDrawable &>(*this));

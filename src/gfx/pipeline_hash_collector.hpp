@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <set>
 
-namespace gfx {
+namespace gfx::detail {
 
 // Specialize this for custom types
 template <typename T, typename H, typename = void> struct PipelineHash {

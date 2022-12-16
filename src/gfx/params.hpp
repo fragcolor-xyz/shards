@@ -7,7 +7,7 @@
 #include <memory>
 #include <stdint.h>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <variant>
 
 namespace gfx {
@@ -35,26 +35,49 @@ gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
 struct IParameterCollector {
-  virtual void setParam(const std::string &name, ParamVariant &&value) = 0;
-  void setParam(const std::string &name, const ParamVariant &value) { setParam(name, ParamVariant(value)); }
+  virtual void setParam(const char *name, ParamVariant &&value) = 0;
+  virtual void setTexture(const char *name, TextureParameter &&value) = 0;
 
-  virtual void setTexture(const std::string &name, TextureParameter &&value) = 0;
-  void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name, TextureParameter(value)); }
+  void setParam(const std::string &name, const ParamVariant &value) { setParam(name.c_str(), ParamVariant(value)); }
+  void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name.c_str(), TextureParameter(value)); }
 };
 
 /// <div rustbindgen hide></div>
 struct ParameterStorage : public IParameterCollector {
-  std::unordered_map<std::string, ParamVariant> data;
-  std::unordered_map<std::string, TextureParameter> textures;
+  using allocator_type = std::pmr::polymorphic_allocator<>;
+
+  struct KeyLess {
+    using is_transparent = std::true_type;
+    template <typename T, typename U> bool operator()(const T &a, const U &b) const {
+      return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
+    }
+  };
+
+  std::pmr::map<std::pmr::string, ParamVariant, KeyLess> data;
+  std::pmr::map<std::pmr::string, TextureParameter, KeyLess> textures;
 
   using IParameterCollector::setParam;
   using IParameterCollector::setTexture;
-  void setParam(const std::string &name, ParamVariant &&value) { data.insert_or_assign(name, std::move(value)); }
-  void setTexture(const std::string &name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
+
+  ParameterStorage() = default;
+  ParameterStorage(allocator_type allocator) : data(allocator), textures(allocator) {}
+  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : data(allocator), textures(allocator) {
+    *this = std::move(other);
+  }
+  ParameterStorage &operator=(ParameterStorage &&) = default;
+
+  void setParam(const char *name, ParamVariant &&value) { data.emplace(name, std::move(value)); }
+  void setTexture(const char *name, TextureParameter &&value) { textures.emplace(name, std::move(value)); }
+
+  void setParamIfUnset(const std::pmr::string& key, const ParamVariant &value) {
+    if (!data.contains(key)) {
+      data.emplace(key, value);
+    }
+  }
 
   void append(const ParameterStorage &other) {
     for (auto &it : other.data) {
-      data.insert_or_assign(it.first, it.second);
+      data.emplace(it);
     }
   }
 };
