@@ -52,11 +52,13 @@ struct IPipelineHashStorage {
   virtual void addHash(UniqueId id, Hash128 hash) = 0;
 };
 
+typedef HasherXXH128<PipelineHashVisitor> PipelineHasher;
+
 // Does 2 things while traversing gfx objects:
 // - Collect the pipeline hash to determine pipeline permutation
 // - Whenever a reference is enountered to another shard object, hash that one too or used it's already computed hash
 struct PipelineHashCollector {
-  HasherXXH128<PipelineHashVisitor> hasher;
+  PipelineHasher hasher;
 
   // Used to store and retrieve hashes for already hashed objects
   IPipelineHashStorage *storage{};
@@ -84,10 +86,13 @@ struct PipelineHashCollector {
     }
   }
 
-  template <typename T> void hashObject(const std::shared_ptr<T> &ref) { ref->pipelineHashCollect(*this); }
+  template <typename T> void hashObject(const std::shared_ptr<T> &ref) { hashObject(*ref.get()); }
+  template <typename T> void hashObject(const T &ref) { ref.pipelineHashCollect(*this); }
 
   // Hash a regular value supported by PipelineHashVisitor
   template <typename T> void operator()(const T &val) { hasher(val); }
+
+  Hash128 getDigest() const { return hasher.getDigest(); }
 
   void reset() { hasher.reset(); }
 

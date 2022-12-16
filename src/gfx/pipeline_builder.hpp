@@ -32,9 +32,12 @@ struct PipelineBuilder {
   std::vector<const shader::EntryPoint *> shaderEntryPoints;
   std::vector<BufferBindingBuilder *> drawBindings;
   std::vector<BufferBindingBuilder *> viewBindings;
+  std::vector<const Feature*> features;
   shader::Generator generator;
+  const IDrawable &firstDrawable;
 
-  PipelineBuilder(detail::CachedPipeline &cachedPipeline) : cachedPipeline(cachedPipeline) {}
+  PipelineBuilder(detail::CachedPipeline &cachedPipeline, const IDrawable &firstDrawable)
+      : cachedPipeline(cachedPipeline), firstDrawable(firstDrawable) {}
 
   BufferBindingBuilder &getOrCreateBufferBinding(std::string &&name);
   WGPURenderPipeline build(WGPUDevice device, const WGPULimits &deviceLimits);
@@ -64,7 +67,7 @@ private:
 // Low-level entry-point for modifying render pipelines
 struct IPipelineModifier {
   virtual ~IPipelineModifier() = default;
-  virtual void buildPipeline(PipelineBuilder &builder){};
+  virtual void buildPipeline(PipelineBuilder &builder, const IDrawable &referenceDrawable){};
 };
 
 } // namespace gfx

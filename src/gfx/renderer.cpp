@@ -2,7 +2,6 @@
 #include "context.hpp"
 #include "drawable.hpp"
 #include "feature.hpp"
-#include "hasherxxh128.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
 #include "mesh_utils.hpp"
@@ -19,14 +18,19 @@
 #include "shader/textures.hpp"
 #include "shader/uniforms.hpp"
 #include "steps/defaults.hpp"
+#include "drawable_processor.hpp"
 #include "texture.hpp"
 #include "texture_placeholder.hpp"
 #include "view.hpp"
 #include "render_target.hpp"
 #include "log.hpp"
 #include "geom.hpp"
-#include <tracy/Tracy.hpp>
+#include "async.hpp"
+#include <taskflow/taskflow.hpp>
+#include <taskflow/algorithm/reduce.hpp>
+#include <thread>
 #include <algorithm>
+#include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
@@ -86,6 +90,8 @@ struct RendererImpl final : public ContextData {
   size_t frameCounter = 0;
 
   FrameStats frameStats;
+
+  GraphicsExecutor executor;
 
   RendererImpl(Context &context) : context(context) {}
 
@@ -272,6 +278,26 @@ struct RendererImpl final : public ContextData {
     };
   }
 
+  struct PipelineGroup {
+    std::vector<const IDrawable *> drawables;
+    IDrawableProcessor *processor{};
+    CachedPipelinePtr pipeline;
+  };
+
+  struct WorkerData {
+    PipelineHashCache hashCache;
+    std::unordered_map<Hash128, PipelineGroup> pipelineGroups;
+  };
+  std::vector<WorkerData> workerData{executor.getNumWorkers()};
+
+  std::vector<const IDrawable *> expandedDrawables;
+
+  Hash128 generateSharedHash(RenderTargetLayout &rtl) {
+    HasherXXH128<PipelineHashVisitor> sharedHasher;
+    sharedHasher(rtl);
+    return sharedHasher.getDigest();
+  }
+
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderDrawablesStep &step) {
     builder.allocateOutputs(index, step.output ? step.output.value() : defaultRenderStepOutput);
   }
@@ -281,34 +307,132 @@ struct RendererImpl final : public ContextData {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
 
-    // Sort all draw commands into their respective pipeline
-    std::shared_ptr<PipelineDrawableCache> pipelineDrawableCache = std::make_shared<PipelineDrawableCache>();
+    node.body = [=, rtl = node.renderTargetLayout](EvaluateNodeContext &ctx) { evaluateDrawableStep(step, rtl); };
+  }
 
-    // Sort draw commands into pipeline
-    std::shared_ptr<DrawableGrouper> grouper = std::make_shared<DrawableGrouper>(node.renderTargetLayout);
-    Hash128 sharedHash = grouper->generateSharedHash();
+  void evaluateDrawableStep(const RenderDrawablesStep &step, const RenderTargetLayout &rtl) {
+    tf::Taskflow flow;
+    DrawQueue &queue = *step.drawQueue.get();
 
-    node.body = [=, this, drawQueue = step.drawQueue](EvaluateNodeContext &ctx) {
-      pipelineDrawableCache->clear();
+    HasherXXH128<PipelineHashVisitor> sharedHasher;
+    sharedHasher(rtl);
+    Hash128 stepSharedHash = sharedHasher.getDigest();
 
-      static const std::vector<const MaterialParameters *> sharedParameters{};
-      grouper->groupByPipeline(*pipelineDrawableCache.get(), pipelineCache, sharedHash, step.features, sharedParameters,
-                               drawQueue->getDrawables());
+    for (auto &worker : workerData) {
+      worker.hashCache.reset();
+      for (auto &it : worker.pipelineGroups)
+        it.second.drawables.clear();
+      expandedDrawables.clear();
+    }
 
-      // Sort draw commands, build pipelines
-      for (auto &pair : pipelineDrawableCache->map) {
-        touchCacheItemPtr(pair.second.cachedPipeline, frameCounter);
-        preparePipelineDrawableForRenderGraph(pair.second, ctx.node, step.sortMode, viewData);
+    // Compute drawable hashes
+    auto groupTask = flow.emplace([&](tf::Subflow &sub) {
+      // Expand drawables
+      for (auto &drawable : queue.getDrawables()) {
+        if (!drawable->expand(expandedDrawables))
+          expandedDrawables.push_back(drawable);
       }
 
-      applyViewport(ctx.encoder, viewData);
-      for (auto &pair : pipelineDrawableCache->map) {
-        renderPipelineDrawables(ctx.encoder, pair.second, viewData);
-      }
+      // Now hash them
+      sub.for_each(expandedDrawables.begin(), expandedDrawables.end(), [&](const IDrawable *drawable) {
+        auto &worker = workerData[executor.getThisWorkerId()];
 
-      // Release references
-      pipelineDrawableCache->clear();
-    };
+        PipelineHashCollector collector{.storage = &worker.hashCache};
+        collector(stepSharedHash);
+        collector.hashObject(*drawable);
+        Hash128 pipelineHash = collector.getDigest();
+
+        auto &entry = getCacheEntry(worker.pipelineGroups, pipelineHash);
+        entry.drawables.push_back(drawable);
+      });
+    });
+
+    // Combine all groups from workers
+    std::unordered_map<Hash128, PipelineGroup> pipelineGroups;
+    auto reduceDrawablesTask = flow.transform_reduce(
+        workerData.begin(), workerData.end(), pipelineGroups,
+        [&](decltype(pipelineGroups) result, decltype(pipelineGroups) b) {
+          for (auto &it : b) {
+            auto &entry = getCacheEntry(result, it.first);
+            for (auto &drawable : it.second.drawables) {
+              entry.drawables.push_back(drawable);
+            }
+          }
+          return result;
+        },
+        [](WorkerData &worker) { return std::move(worker.pipelineGroups); });
+    reduceDrawablesTask.succeed(groupTask);
+
+    // Retrieve existing pipelines from cache
+    auto retrievePipelinesFromCacheTask = flow.emplace([&]() {
+      for (auto &group : pipelineGroups) {
+        auto it = pipelineCache.map.find(group.first);
+        if (it != pipelineCache.map.end()) {
+          group.second.pipeline = it->second;
+        }
+      }
+    });
+    retrievePipelinesFromCacheTask.succeed(reduceDrawablesTask);
+
+    // Build new pipelines
+    auto buildPipelinesTask = flow.emplace([&](tf::Subflow &subflow) {
+                                    subflow.for_each(pipelineGroups.begin(), pipelineGroups.end(), [&](auto &it) {
+                                      PipelineGroup &group = it.second;
+                                      if (group.pipeline)
+                                        return; // Cached
+
+                                      if (group.drawables.empty())
+                                        return;
+
+                                      const IDrawable &firstDrawable = *group.drawables[0];
+
+                                      group.pipeline = std::make_shared<CachedPipeline>();
+                                      PipelineBuilder builder(*group.pipeline.get(), firstDrawable);
+
+                                      // TODO: Move me
+                                      group.pipeline->renderTargetLayout = rtl;
+
+                                      // Assume same processor
+                                      group.processor = &firstDrawable.getProcessor();
+                                      group.processor->buildPipeline(builder, firstDrawable);
+                                      builder.build(context.wgpuDevice, deviceLimits.limits);
+                                    });
+                                  })
+                                  .succeed(retrievePipelinesFromCacheTask);
+
+    // Insert generated pipelines into cache
+    flow.emplace([&]() {
+          for (auto &group : pipelineGroups) {
+            auto it = pipelineCache.map.find(group.first);
+            if (it == pipelineCache.map.end()) {
+              pipelineCache.map.insert(std::make_pair(group.first, group.second.pipeline));
+              touchCacheItemPtr(group.second.pipeline, frameCounter);
+            }
+          }
+        })
+        .succeed(buildPipelinesTask);
+
+    executor.run(flow).wait();
+
+    // pipelineDrawableCache->clear();
+
+    // static const std::vector<const MaterialParameters *> sharedParameters{};
+    // grouper->groupByPipeline(*pipelineDrawableCache.get(), pipelineCache, sharedHash, step.features, sharedParameters,
+    //                          drawQueue->getDrawables());
+
+    // // Sort draw commands, build pipelines
+    // for (auto &pair : pipelineDrawableCache->map) {
+    //   touchCacheItemPtr(pair.second.cachedPipeline, frameCounter);
+    //   preparePipelineDrawableForRenderGraph(pair.second, ctx.node, step.sortMode, viewData);
+    // }
+
+    // applyViewport(ctx.encoder, viewData);
+    // for (auto &pair : pipelineDrawableCache->map) {
+    //   renderPipelineDrawables(ctx.encoder, pair.second, viewData);
+    // }
+
+    // // Release references
+    // pipelineDrawableCache->clear();
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const RenderFullscreenStep &step) {
@@ -324,6 +448,7 @@ struct RendererImpl final : public ContextData {
     bool overwriteTargets = step.overlay ? false : true;
     builder.allocateOutputs(index, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);
   }
+
   void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
     RenderGraphNode &node = out.getNode(index);
 
@@ -355,22 +480,23 @@ struct RendererImpl final : public ContextData {
       pipelineDrawables.cachedPipeline = groupedDrawable.cachedPipeline;
       pipelineDrawables.drawables.push_back(drawable.get());
 
-      preparePipelineDrawableForRenderGraph(pipelineDrawables, ctx.node, SortMode::Queue, viewData);
+      // TODO: builder
+      // preparePipelineDrawableForRenderGraph(pipelineDrawables, ctx.node, SortMode::Queue, viewData);
 
-      applyViewport(ctx.encoder, viewData);
-      renderPipelineDrawables(ctx.encoder, pipelineDrawables, viewData);
+      // applyViewport(ctx.encoder, viewData);
+      // renderPipelineDrawables(ctx.encoder, pipelineDrawables, viewData);
     };
   }
 
-  void preparePipelineDrawableForRenderGraph(PipelineDrawables &pipelineDrawables, const RenderGraphNode &renderGraphNode,
-                                             SortMode sortMode, const ViewData &viewData) {
-    auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
-    if (!cachedPipeline.pipeline) {
-      buildPipeline(cachedPipeline);
-    }
+  // void preparePipelineDrawableForRenderGraph(PipelineDrawables &pipelineDrawables, const RenderGraphNode &renderGraphNode,
+  //                                            SortMode sortMode, const ViewData &viewData) {
+  //   auto &cachedPipeline = *pipelineDrawables.cachedPipeline.get();
+  //   if (!cachedPipeline.pipeline) {
+  //     buildPipeline(cachedPipeline);
+  //   }
 
-    sortAndBatchDrawables(pipelineDrawables, sortMode, viewData);
-  }
+  //   sortAndBatchDrawables(pipelineDrawables, sortMode, viewData);
+  // }
 
   void applyViewport(WGPURenderPassEncoder passEncoder, const ViewData &viewData) {
     auto viewport = viewData.viewport;
@@ -451,14 +577,14 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void buildPipeline(CachedPipeline &cachedPipeline) {
-    PipelineBuilder builder(cachedPipeline);
-    cachedPipeline.pipeline.reset(builder.build(context.wgpuDevice, deviceLimits.limits));
-    assert(cachedPipeline.pipeline);
+  // void buildPipeline(CachedPipeline &cachedPipeline) {
+  //   PipelineBuilder builder(cachedPipeline);
+  //   cachedPipeline.pipeline.reset(builder.build(context.wgpuDevice, deviceLimits.limits));
+  //   assert(cachedPipeline.pipeline);
 
-    setupFixedSizeBuffers(cachedPipeline);
-    buildBaseDrawParameters(cachedPipeline);
-  }
+  //   setupFixedSizeBuffers(cachedPipeline);
+  //   buildBaseDrawParameters(cachedPipeline);
+  // }
 
   WGPUBindGroup createDrawBindGroup(const PipelineDrawables &pipelineDrawables, size_t staringIndex,
                                     const TextureIds &textureIds) {

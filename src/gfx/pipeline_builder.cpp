@@ -89,7 +89,7 @@ BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(std::string &&na
 }
 
 void PipelineBuilder::collectShaderEntryPoints() {
-  for (auto &feature : cachedPipeline.features) {
+  for (const Feature *feature : features) {
     for (auto &entryPoint : feature->shaderEntryPoints) {
       shaderEntryPoints.push_back(&entryPoint);
     }
@@ -128,21 +128,12 @@ void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &index
 WGPURenderPipeline PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
   auto &viewBinding = getOrCreateBufferBinding("view");
   viewBinding.frequency = BindingFrequency::View;
-  auto &viewLayoutBuilder = viewBinding.layoutBuilder;
-  viewLayoutBuilder.push("view", FieldTypes::Float4x4);
-  viewLayoutBuilder.push("proj", FieldTypes::Float4x4);
-  viewLayoutBuilder.push("invView", FieldTypes::Float4x4);
-  viewLayoutBuilder.push("invProj", FieldTypes::Float4x4);
-  viewLayoutBuilder.push("viewport", FieldTypes::Float4);
 
   auto &objectBinding = getOrCreateBufferBinding("object");
   objectBinding.frequency = BindingFrequency::Draw;
-  auto &objectLayoutBuilder = objectBinding.layoutBuilder;
-  objectLayoutBuilder.push("world", FieldTypes::Float4x4);
-  objectLayoutBuilder.push("invWorld", FieldTypes::Float4x4);
-  objectLayoutBuilder.push("invTransWorld", FieldTypes::Float4x4);
 
-  for (const Feature *feature : cachedPipeline.features) {
+  auto &objectLayoutBuilder = objectBinding.layoutBuilder;
+  for (const Feature *feature : features) {
     // Object parameters
     for (auto &param : feature->shaderParams) {
       objectLayoutBuilder.push(param.name, param.type);
@@ -150,7 +141,7 @@ WGPURenderPipeline PipelineBuilder::build(WGPUDevice device, const WGPULimits &d
 
     // Apply modifiers
     if (feature->pipelineModifier) {
-      feature->pipelineModifier->buildPipeline(*this);
+      feature->pipelineModifier->buildPipeline(*this, firstDrawable);
     }
   }
 
@@ -317,12 +308,10 @@ void PipelineBuilder::setupShaderOutputFields() {
   }
 }
 
-shader::GeneratorOutput PipelineBuilder::generateShader() {
-  return generator.build(shaderEntryPoints);
-}
+shader::GeneratorOutput PipelineBuilder::generateShader() { return generator.build(shaderEntryPoints); }
 
 WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
-  FeaturePipelineState pipelineState = computePipelineState(cachedPipeline.features);
+  FeaturePipelineState pipelineState = computePipelineState(features);
 
   shader::GeneratorOutput generatorOutput = generateShader();
   if (generatorOutput.errors.size() > 0) {
@@ -411,7 +400,7 @@ WGPURenderPipeline PipelineBuilder::finalize(WGPUDevice device) {
 }
 
 void PipelineBuilder::collectTextureBindings() {
-  for (auto &feature : cachedPipeline.features) {
+  for (auto &feature : features) {
     for (auto &textureParam : feature->textureParams) {
       textureBindings.addOrUpdateSlot(textureParam.name, 0);
     }

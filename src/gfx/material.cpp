@@ -15,23 +15,4 @@ template <typename H> struct PipelineHash<ParamVariant, H> {
     std::visit([&](auto &&arg) { hasher(arg); }, val);
   }
 };
-
-void MaterialParameters::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
-  for (auto &pair : texture) {
-    PipelineHashCollector(pair.first);
-    if (pair.second.texture) {
-      PipelineHashCollector(1u);
-      PipelineHashCollector(pair.second.defaultTexcoordBinding);
-    } else {
-      PipelineHashCollector(0u);
-    }
-  }
-}
-
-void Material::pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const {
-  for (auto &feature : features) {
-    PipelineHashCollector(feature);
-  }
-  parameters.pipelineHashCollect(PipelineHashCollector);
-}
 } // namespace gfx

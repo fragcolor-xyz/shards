@@ -38,8 +38,7 @@ public:
 
   void pipelineHashCollect(PipelineHashCollector &PipelineHashCollector) const override { assert(false); }
 
-  // DrawableGeneration generation;
-  // DrawableGeneration getGeneration() const override { return generation; }
+  bool expand(std::vector<const IDrawable *> &outDrawables) const override;
 };
 } // namespace gfx
 

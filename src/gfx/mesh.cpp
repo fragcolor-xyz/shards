@@ -77,10 +77,6 @@ MeshPtr Mesh::clone() const {
   return result;
 }
 
-void Mesh::pipelineHashCollect(struct PipelineHashCollector &collector) const {
-  collector(format);
-}
-
 void Mesh::initContextData(Context &context, MeshContextData &contextData) {
   contextData.vertexBufferLength = 0;
   contextData.indexBufferLength = 0;

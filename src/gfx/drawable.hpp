@@ -29,6 +29,9 @@ struct IDrawable {
 
   // Unique Id to identify this drawable
   virtual UniqueId getId() const = 0;
+
+  // If this is a group this function should extract it's contents and return true
+  virtual bool expand(std::vector<const IDrawable *> &outDrawables) const { return false; }
 };
 
 template <typename T> inline std::shared_ptr<T> clone(const std::shared_ptr<T> &other) {
@@ -52,7 +55,10 @@ public:
   // Add an external drawable, you are responsible for keeping the object alive until it has been submitted to the renderer
   void add(const IDrawable &drawable) { drawables.push_back(&drawable); }
 
-  void clear() { drawables.clear(); }
+  void clear() {
+    drawables.clear();
+    sharedDrawables.clear();
+  }
 
   const std::vector<DrawablePtr> &getSharedDrawables() const { return sharedDrawables; }
   const std::vector<const IDrawable *> &getDrawables() const { return drawables; }

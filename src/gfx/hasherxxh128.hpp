@@ -29,7 +29,7 @@ template <typename TVisitor = HasherDefaultVisitor> struct HasherXXH128 {
 
   void reset() { XXH3_128bits_reset(&state); }
 
-  Hash128 getDigest() {
+  Hash128 getDigest() const {
     XXH128_hash_t hash = XXH3_128bits_digest(&state);
     return Hash128(hash.low64, hash.high64);
   }

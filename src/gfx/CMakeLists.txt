@@ -19,6 +19,7 @@ add_library(gfx
   texture.cpp
   material.cpp
   drawables/mesh_drawable.cpp
+  drawables/mesh_tree_drawable.cpp
   gizmos/wireframe.cpp
   gizmos/shapes.cpp
   gizmos/gizmo_input.cpp
@@ -32,8 +33,20 @@ add_library(gfx
   render_target.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
+  pipeline_hashes.cpp
   unique_id.cpp
 )
+
+# Always optimize certain files
+set_source_files_properties(
+  # renderer.cpp
+  drawables/mesh_tree_drawable.cpp
+  gltf/gltf.cpp
+  texture_file/texture_file.cpp
+  pipeline_hashes.cpp
+  PROPERTIES
+    COMPILE_FLAGS -O3
+    SKIP_PRECOMPILE_HEADERS ON)
 
 target_compile_features(gfx PUBLIC cxx_std_20)
 

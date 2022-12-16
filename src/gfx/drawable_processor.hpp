@@ -4,19 +4,15 @@
 #include "drawable.hpp"
 #include "pipeline_builder.hpp"
 #include "renderer_types.hpp"
-#include "hasherxxh128.hpp"
 
 namespace gfx {
 
 // TODO: Move me
 struct DrawData {};
 
-struct PipelineHasher {};
-
 struct IDrawableProcessor : public IPipelineModifier {
   virtual ~IDrawableProcessor() = default;
-  virtual void buildPipeline(PipelineBuilder &builder) override = 0;
-  virtual void computeDrawableHash(IDrawable &drawable, PipelineHasher &hasher) = 0;
+  virtual void buildPipeline(PipelineBuilder &builder, const IDrawable& referenceDrawable) override = 0;
 };
 
 }; // namespace gfx

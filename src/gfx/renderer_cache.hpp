@@ -85,6 +85,10 @@ typename TCache::mapped_type &getCacheEntry(TCache &cache, const K &key, TInit &
   return it->second;
 }
 
+template <typename TCache, typename K> typename TCache::mapped_type &getCacheEntry(TCache &cache, const K &key) {
+  return getCacheEntry(cache, key, [](const K &key) { return typename TCache::mapped_type(); });
+}
+
 template <typename TElem, typename TCache, typename K> std::shared_ptr<TElem> &getSharedCacheEntry(TCache &cache, const K &key) {
   return getCacheEntry(cache, key, [](const K &key) { return std::make_shared<TElem>(); });
 }
@@ -147,7 +151,8 @@ public:
     // Collect material parameters from various sources
     for (const MaterialParameters *baseParam : baseParameters) {
       assert(baseParam);
-      hasher(*baseParam);
+      // TODO: Processor
+      // hasher(*baseParam);
     }
 
     // TODO: Processor
