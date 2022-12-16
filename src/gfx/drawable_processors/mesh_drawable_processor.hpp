@@ -46,13 +46,21 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     WGPUBufferMapAsyncStatus mappingStatus = WGPUBufferMapAsyncStatus_Unknown;
   };
 
+  struct PreparedGroupData {
+    using allocator_type = pmr::polymorphic_allocator<>;
+
+    pmr::vector<DrawGroup> groups;    // the group ranges
+    pmr::vector<GroupData> groupData; // Data associated with groups
+
+    PreparedGroupData(allocator_type allocator) : groups(allocator), groupData(allocator) {}
+  };
+
   struct PrepareData {
     using allocator_type = pmr::polymorphic_allocator<>;
 
     pmr::vector<std::shared_ptr<ContextData>> referencedContextData; // Context data to keep alive
-    pmr::vector<DrawGroup> groups;                                   // the group ranges
-    pmr::vector<GroupData> groupData;                                // Data associated with groups
 
+    std::optional<PreparedGroupData> groups;
     pmr::vector<DrawableData *> drawableData{};
 
     pmr::vector<PreparedBuffer> drawBuffers;
@@ -60,16 +68,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     WgpuHandle<WGPUBindGroup> viewBindGroup;
 
-    PrepareData(std::allocator_arg_t, const allocator_type &allocator)
-        : referencedContextData(allocator), groups(allocator), groupData(allocator), drawBuffers(allocator),
-          viewBuffers(allocator) {}
-    PrepareData(PrepareData &&other, allocator_type allocator)
-        : referencedContextData(allocator), groups(allocator), groupData(allocator), drawBuffers(allocator),
-          viewBuffers(allocator) {
-      (*this) = std::move(other);
-    }
-    PrepareData &operator=(PrepareData &&other) = default;
-    ~PrepareData() { SPDLOG_INFO("Destroying prepare data"); }
+    PrepareData(allocator_type allocator) : referencedContextData(allocator), drawBuffers(allocator), viewBuffers(allocator) {}
   };
 
   struct WorkerData {
@@ -216,32 +215,43 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     data.groupHash = hasher.getDigest();
   }
 
-  static std::function<void(tf::Subflow &)> generateBufferMapWaitTask(Context &context, PrepareData *prepareData) {
-    using namespace std::placeholders;
-    std::function<void(tf::Subflow &)> task = std::bind(&waitForBufferMapRecursive, std::ref(context), prepareData, _1);
-    return task;
-  }
-
-  static void waitForBufferMapRecursive(Context &context, PrepareData *prepareData, tf::Subflow &subflow) {
-    bool everythingMapped = true;
-    auto check = [&](auto buffers) {
-      for (auto &drawBuffer : buffers) {
-        if (drawBuffer.mappingStatus == WGPUBufferMapAsyncStatus_Unknown)
-          everythingMapped = false;
-        else {
-          if (drawBuffer.mappingStatus != WGPUBufferMapAsyncStatus_Success)
-            throw std::runtime_error("Failed to map WGPUBuffer");
+  // Generate a wait for buffer mapping
+  // returns the (loop, done) tasks
+  // Add a start on loop and a continue dendency on done
+  static tf::Task generateBufferMapWaitTask(Context &context, PrepareData *prepareData, tf::Subflow &subflow,
+                                            tf::Task &dependency) {
+    auto waitForBufferMap = [=, &context]() -> int {
+      bool everythingMapped = true;
+      auto check = [&](auto buffers) {
+        for (auto &drawBuffer : buffers) {
+          if (drawBuffer.mappingStatus == WGPUBufferMapAsyncStatus_Unknown)
+            everythingMapped = false;
+          else {
+            if (drawBuffer.mappingStatus != WGPUBufferMapAsyncStatus_Success)
+              throw std::runtime_error("Failed to map WGPUBuffer");
+          }
         }
+      };
+      check(prepareData->drawBuffers);
+      check(prepareData->viewBuffers);
+
+      if (!everythingMapped) {
+        wgpuDevicePoll(context.wgpuDevice, false, nullptr);
+        // Repeat
+        return 0;
+      } else {
+        // Done
+        return 1;
       }
     };
-    check(prepareData->drawBuffers);
-    check(prepareData->viewBuffers);
-
-    if (!everythingMapped) {
-      wgpuDevicePoll(context.wgpuDevice, false, nullptr);
-      subflow.emplace(generateBufferMapWaitTask(context, prepareData));
-    }
+    auto waitTask = subflow.emplace(waitForBufferMap);
+    auto continueWithPlaceholder = subflow.emplace([]() {});
+    dependency.precede(waitTask);
+    waitTask.precede(waitTask, continueWithPlaceholder);
+    return continueWithPlaceholder;
   }
+
+  static int waitForBufferMap(Context &context, PrepareData *prepareData, tf::Subflow &subflow) {}
 
   ProcessorDynamicValue prepare(DrawablePrepareContext &context) override {
     auto &executor = context.context.executor;
@@ -285,7 +295,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     // Prepare mesh & texture buffers
     // TODO: Remove context data
-    bool *finished = rootTaskAllocator->new_object<bool>(false);
     auto createContextDataTask = subflow.emplace([=, &drawables = context.drawables, &context = context.context]() {
       for (auto &drawable : drawables) {
         const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
@@ -306,7 +315,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           }
         }
       }
-      *finished = true;
     });
 
     // Setup collectors
@@ -324,17 +332,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto generateDrawableDataTask =
         subflow
             .emplace([=](tf::Subflow &subflow) {
-              assert(*finished);
               subflow.for_each_index(size_t(0), context.drawables.size(), size_t(1), generateDrawableData);
             })
             .succeed(createContextDataTask);
 
     // Wait for draw buffer to be mapped so we can fill them in the next task
-    auto waitForBufferBindingTask =
-        subflow.emplace(generateBufferMapWaitTask(context.context, prepareData)).succeed(generateDrawableDataTask);
+    auto waitForBufferBindingTask = generateBufferMapWaitTask(context.context, prepareData, subflow, generateDrawableDataTask);
 
     // Sort and group drawables
-    auto sortAndGroup = [=, &cachedPipeline]() {
+    auto sortAndGroup = [=, &drawables = context.drawables, &cachedPipeline]() {
       auto &allocator = context.context.workerMemory.get();
 
       // Collect results from generate task
@@ -344,16 +350,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           prepareData->drawableData[insertIndex++] = &data;
         }
       }
-      assert(insertIndex == context.drawables.size());
+      assert(insertIndex == drawables.size());
 
       if (context.sortMode == SortMode::Batch) {
         auto comparison = [](const DrawableData *left, const DrawableData *right) { return left->groupHash < right->groupHash; };
         std::sort(prepareData->drawableData.begin(), prepareData->drawableData.end(), comparison);
       }
 
-      groupDrawables(prepareData->drawableData.size(), prepareData->groups,
+      prepareData->groups.emplace(allocator);
+      PreparedGroupData &preparedGroupData = prepareData->groups.value();
+      groupDrawables(prepareData->drawableData.size(), preparedGroupData.groups,
                      [&](size_t index) { return prepareData->drawableData[index]->groupHash; });
-      prepareData->groupData.resize(prepareData->groups.size());
+      preparedGroupData.groupData.resize(preparedGroupData.groups.size());
 
       // Setup view buffer data
       {
@@ -371,7 +379,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         auto &buffer = prepareData->drawBuffers[0];
         auto &binding = cachedPipeline.drawBufferBindings[0];
         uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(buffer.buffer, 0, buffer.length);
-        for (auto &group : prepareData->groups) {
+        for (auto &group : preparedGroupData.groups) {
           size_t offset = buffer.stride * group.startIndex;
           for (size_t i = 0; i < group.numInstances; i++) {
             packDrawData(bufferData + offset, buffer.stride, binding.layout,
@@ -398,9 +406,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
       prepareData->viewBindGroup.reset(viewBindGroupBuilder.finalize(context.context.wgpuDevice, viewBindGroupLayout));
 
-      for (size_t i = 0; i < prepareData->groups.size(); i++) {
-        auto &group = prepareData->groups[i];
-        auto &groupData = prepareData->groupData[i];
+      for (size_t i = 0; i < preparedGroupData.groups.size(); i++) {
+        auto &group = preparedGroupData.groups[i];
+        auto &groupData = preparedGroupData.groupData[i];
         auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
 
         BindGroupBuilder drawBindGroupBuilder(allocator);
@@ -428,7 +436,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   void encode(DrawableEncodeContext &context) override {
-    return;
     const PrepareData &prepareData = context.preparedData.get<PrepareData>();
     const ViewData &viewData = context.viewData;
     auto encoder = context.encoder;
@@ -436,9 +443,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     wgpuRenderPassEncoderSetPipeline(encoder, context.cachedPipeline.pipeline);
     wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getViewBindGroupIndex(), prepareData.viewBindGroup, 0, nullptr);
 
-    for (size_t i = 0; i < prepareData.groups.size(); i++) {
-      auto &group = prepareData.groups[i];
-      auto &groupData = prepareData.groupData[i];
+    auto &groups = prepareData.groups.value();
+    for (size_t i = 0; i < groups.groups.size(); i++) {
+      auto &group = groups.groups[i];
+      auto &groupData = groups.groupData[i];
       auto &firstDrawable = *prepareData.drawableData[group.startIndex];
 
       if (firstDrawable.clipRect) {

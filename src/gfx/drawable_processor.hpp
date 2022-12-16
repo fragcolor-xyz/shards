@@ -6,6 +6,7 @@
 #include "renderer_types.hpp"
 #include <taskflow/taskflow.hpp>
 #include <memory_resource>
+#include <memory>
 
 namespace gfx::detail {
 
@@ -25,7 +26,7 @@ private:
 
 public:
   ProcessorDynamicValue() = default;
-  template <typename T> ProcessorDynamicValue(T *ptr) : ptr(ptr), deleter([](void *v) { delete (T *)v; }) {}
+  template <typename T> ProcessorDynamicValue(T *ptr) : ptr(ptr), deleter([](void *v) { std::destroy_at((T *)v); }) {}
   ProcessorDynamicValue(void *ptr, Deleter &&deleter) : ptr(ptr), deleter(deleter) {}
   ProcessorDynamicValue(ProcessorDynamicValue &&other) : ptr(other.ptr), deleter(other.deleter) {
     other.ptr = nullptr;

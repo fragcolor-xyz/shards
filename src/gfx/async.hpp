@@ -30,7 +30,7 @@ private:
   static inline size_t getNumWorkersToCreate() {
 #if GFX_THREADING_SUPPORT
     constexpr size_t minThreads = 1;
-    const size_t maxThreads = std::thread::hardware_concurrency() - 1;
+    const size_t maxThreads = std::thread::hardware_concurrency();
     return std::clamp<size_t>(std::thread::hardware_concurrency(), minThreads, maxThreads);
 #else
     return 0;
