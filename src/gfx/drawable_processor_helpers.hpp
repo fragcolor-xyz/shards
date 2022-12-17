@@ -20,10 +20,6 @@ struct BindGroupBuilder {
   BindGroupBuilder(allocator_type allocator) : entries(allocator) {}
 
   void addBinding(const detail::BufferBinding &binding, WGPUBuffer buffer, size_t numArrayElements = 1, size_t arrayIndex = 0) {
-    WGPUBufferDescriptor desc{};
-    desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform;
-    desc.size = binding.layout.size;
-
     auto &entry = entries.emplace_back();
     entry.binding = binding.index;
     entry.size = binding.layout.getArrayStride() * numArrayElements;

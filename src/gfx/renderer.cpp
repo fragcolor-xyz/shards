@@ -109,7 +109,7 @@ struct RendererImpl final : public ContextData {
   FrameStats frameStats;
 
   GraphicsExecutor &executor;
-  TWorkerThreadData<WorkerMemory> &workerMemory;
+  TWorkerThreadData<WorkerMemory> workerMemory;
   TWorkerThreadData<WorkerData> workerData;
 
   std::shared_mutex drawableProcessorsMutex;
@@ -121,9 +121,11 @@ struct RendererImpl final : public ContextData {
   std::list<TransientPtr> processorDynamicValueCleanupQueue;
 
   RendererImpl(Context &context)
-      : context(context), executor(context.executor), workerMemory(context.workerMemory), workerData(executor) {}
+      : context(context), executor(context.getGraphicsExecutor()), workerMemory(executor), workerData(executor) {}
 
   ~RendererImpl() { releaseContextDataConditional(); }
+
+  WorkerMemories &getWorkerMemoriesForCurrentFrame() { return workerMemory; }
 
   void initializeContextData() {
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
@@ -324,12 +326,16 @@ struct RendererImpl final : public ContextData {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
 
-    node.encode = [=, rtl = node.renderTargetLayout](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData, rtl); };
+    node.encode = [=, rtl = node.renderTargetLayout](RenderGraphEncodeContext &ctx) {
+      evaluateDrawableStep(ctx, step, viewData, rtl);
+    };
   }
 
   void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData,
                             const RenderTargetLayout &rtl) {
     ZoneScoped;
+
+    WorkerMemories &workerMemories = getWorkerMemoriesForCurrentFrame();
 
     tf::Taskflow flow;
     DrawQueue &queue = *step.drawQueue.get();
@@ -338,16 +344,15 @@ struct RendererImpl final : public ContextData {
     sharedHasher(rtl);
     Hash128 stepSharedHash = sharedHasher.getDigest();
 
-    std::pmr::vector<const IDrawable *> expandedDrawables(workerMemory.get(0));
-
     for (auto &workerData : this->workerData) {
       workerData.resetPreRender();
     }
-    expandedDrawables.clear();
 
     // Compute drawable hashes
     auto groupTask = flow.emplace([&](tf::Subflow &sub) {
       ZoneScopedN("pipelineGrouping");
+
+      std::pmr::vector<const IDrawable *> expandedDrawables(workerMemories.get());
 
       // Expand drawables
       for (auto &drawable : queue.getDrawables()) {
@@ -455,6 +460,7 @@ struct RendererImpl final : public ContextData {
 
       DrawablePrepareContext prepareContext{
           .context = context,
+          .workerMemory = workerMemories,
           .cachedPipeline = cachedPipeline,
           .subflow = subflow,
           .viewData = viewData,
@@ -595,6 +601,14 @@ struct RendererImpl final : public ContextData {
     for (auto &drawableProcessor : drawableProcessors) {
       drawableProcessor.second->reset(frameCounter);
     }
+
+    resetWorkerMemory();
+  }
+
+  void resetWorkerMemory() {
+    for (auto &workerMemory : this->workerMemory) {
+      workerMemory.reset();
+    }
   }
 
   void endFrame() {
@@ -676,8 +690,7 @@ void Renderer::dumpStats() {
 
   SPDLOG_LOGGER_INFO(logger, "== Renderer stats ==");
 
-  Context &context = impl->context;
-  auto &workerMemory = context.workerMemory;
+  auto &workerMemory = impl->workerMemory;
 
   size_t workerIndex{};
   SPDLOG_LOGGER_INFO(logger, " Graphics worker allocators:");

@@ -17,12 +17,14 @@ enum class BindingFrequency {
 
 // Describes a buffer binding being built
 struct BufferBindingBuilder {
-  BindingFrequency frequency;
+  BindingFrequency frequency = BindingFrequency::Draw;
   std::string name;
   shader::UniformBufferLayoutBuilder layoutBuilder;
   bool unused = false;
-  size_t bindGroup;
-  size_t binding;
+  shader::BufferType bufferType = shader::BufferType::Uniform;
+  bool hasDynamicOffset = false;
+  size_t bindGroup{};
+  size_t binding{};
 };
 
 struct PipelineBuilder {
@@ -55,7 +57,7 @@ struct PipelineBuilder {
   std::vector<BufferBindingBuilder *> viewBindings;
   shader::Generator generator;
 
-  PipelineBuilder(detail::CachedPipeline &output, const detail::RenderTargetLayout& rtl, const IDrawable &firstDrawable)
+  PipelineBuilder(detail::CachedPipeline &output, const detail::RenderTargetLayout &rtl, const IDrawable &firstDrawable)
       : output(output), renderTargetLayout(rtl), firstDrawable(firstDrawable) {}
 
   BufferBindingBuilder &getOrCreateBufferBinding(std::string &&name);

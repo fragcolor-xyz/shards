@@ -49,11 +49,15 @@ inline void GraphicsFuture::wait() {
 #endif
 }
 
+// Provides thread local storage for each worker thread in a GraphicsExecutor
+// from within a worker, call get() to retrieve the data for the current thread
 template <typename T> struct TWorkerThreadData {
   using allocator_type = std::pmr::polymorphic_allocator<>;
+private:
   std::vector<T> data;
   GraphicsExecutor &executor;
 
+public:
   TWorkerThreadData() = default;
   TWorkerThreadData(GraphicsExecutor &executor) : executor(executor) { data.resize(executor.getNumWorkers()); }
   template <typename... TArgs> TWorkerThreadData(GraphicsExecutor &executor, TArgs... args) : executor(executor) {
@@ -64,19 +68,28 @@ template <typename T> struct TWorkerThreadData {
   TWorkerThreadData(TWorkerThreadData &&) = default;
   TWorkerThreadData &operator=(TWorkerThreadData &&) = default;
 
+  // Get the contained data for the current thread
   T &get() { return get(executor.getThisWorkerId()); }
-  T &get(size_t workerIndex) { return data[workerIndex]; }
+
+  GraphicsExecutor &getExecutor() const { return executor; }
 
   auto begin() { return data.begin(); }
   auto end() { return data.end(); }
   auto cbegin() const { return data.cbegin(); }
   auto cend() const { return data.cend(); }
+
+private:
+  T &get(size_t workerIndex) { return data[workerIndex]; }
+
+  template <typename T1> friend struct TLazyWorkerThreadData;
 };
 
-// Provides a structure for collecting data accumulated from multiple workers
-// there will be a unique instance of T for each worker, lazily created
-// each instance will be assigned it's own worker memory based on the constructor value
-template <typename T> struct TWorkerCollector {
+// Similar to TWorkerThreadData
+// from within a worker, call get() to retrieve the data for the current thread
+// Unline TWorkerThreadData, this structure's element types support std::uses_allocator construction
+// if the element type has a uses_allocator constructor, it will receive the thread-local allocator based on it's thread
+// this is done lazily through get on the worker thread
+template <typename T> struct TLazyWorkerThreadData {
   using allocator_type = std::pmr::polymorphic_allocator<>;
 
   struct Iterator {
@@ -85,7 +98,7 @@ template <typename T> struct TWorkerCollector {
     size_t max;
 
     Iterator &untilNextNonEmpty() {
-       while (index < max && !getOpt().has_value()) {
+      while (index < max && !getOpt().has_value()) {
         index++;
       }
       return *this;
@@ -105,21 +118,22 @@ private:
   TWorkerThreadData<WorkerMemory> &memories;
 
 public:
-  TWorkerCollector(GraphicsExecutor &executor, TWorkerThreadData<WorkerMemory> &memories, allocator_type allocator)
+  TLazyWorkerThreadData(GraphicsExecutor &executor, TWorkerThreadData<WorkerMemory> &memories, allocator_type allocator)
       : executor(executor), memories(memories) {
     size_t arrayLen = sizeof(std::optional<T>) * executor.getNumWorkers();
     perWorker = reinterpret_cast<std::optional<T> *>(allocator.allocate_bytes(arrayLen, 8));
     memset(perWorker, 0, arrayLen);
   }
-  TWorkerCollector(TWorkerCollector &&other, allocator_type allocator)
+  TLazyWorkerThreadData(TLazyWorkerThreadData &&other, allocator_type allocator)
       : perWorker(other.perWorker), executor(other.executor), memories(other.memories) {
     other.perWorker = nullptr;
     *this = std::move(other);
   }
-  TWorkerCollector(TWorkerCollector &&other) : perWorker(other.perWorker), executor(other.executor), memories(other.memories) {
+  TLazyWorkerThreadData(TLazyWorkerThreadData &&other)
+      : perWorker(other.perWorker), executor(other.executor), memories(other.memories) {
     other.perWorker = nullptr;
   }
-  TWorkerCollector &operator=(TWorkerCollector &&other) {
+  TLazyWorkerThreadData &operator=(TLazyWorkerThreadData &&other) {
     perWorker = other.perWorker;
     other.perWorker = nullptr;
   }
@@ -137,7 +151,7 @@ public:
     return elem.value();
   }
   operator T &() { return get(); }
-  T* operator->() { return &get(); }
+  T *operator->() { return &get(); }
 
   Iterator begin() { return Iterator{perWorker, 0, executor.getNumWorkers()}.untilNextNonEmpty(); }
   Iterator end() { return Iterator{perWorker, executor.getNumWorkers(), executor.getNumWorkers()}; }

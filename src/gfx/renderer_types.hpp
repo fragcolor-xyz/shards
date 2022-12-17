@@ -11,11 +11,13 @@
 #include "shader/uniforms.hpp"
 #include "shader/textures.hpp"
 #include "shader/fmt.hpp"
-#include "dynamic_wgpu_buffer.hpp"
 #include "renderer.hpp"
 #include "log.hpp"
 #include "graph.hpp"
 #include "hasherxxh128.hpp"
+#include "sized_item_pool.hpp"
+#include "async.hpp"
+#include "worker_memory.hpp"
 #include <cassert>
 #include <vector>
 #include <map>
@@ -40,11 +42,21 @@ inline auto getLogger() {
 
 // Wraps an object that is swapped per frame for double+ buffered rendering
 template <typename TInner, size_t MaxSize> struct Swappable {
-  TInner elems[MaxSize];
+private:
+  std::optional<TInner> elems[MaxSize];
+
+public:
+  template <typename... TArgs> Swappable(TArgs... args) {
+    for (size_t i = 0; i < MaxSize; i++) {
+      elems.emplace(std::forward<TArgs>(args)...);
+    }
+  }
+
   TInner &get(size_t frameNumber) {
     assert(frameNumber <= MaxSize);
-    return elems[frameNumber];
+    return elems[frameNumber].value();
   }
+
   TInner &operator()(size_t frameNumber) { return get(frameNumber); }
 };
 
@@ -224,6 +236,9 @@ template <> struct SizedItemOps<PooledWGPUBuffer> {
 
 // Pool of WGPUBuffers with custom initializer
 using WGPUBufferPool = SizedItemPool<PooledWGPUBuffer>;
+
+// Transient local memory allocators for async workers
+typedef detail::TWorkerThreadData<detail::WorkerMemory> WorkerMemories;
 
 } // namespace gfx::detail
 

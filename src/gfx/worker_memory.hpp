@@ -5,6 +5,9 @@
 #include "moving_average.hpp"
 #include "math.hpp"
 
+// Enable to check for allocation from wrong thread
+#define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 1
+
 namespace gfx::detail {
 
 // An implementation of memory_resource
@@ -20,6 +23,11 @@ struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
 
   std::optional<std::pmr::monotonic_buffer_resource> baseAllocator;
   std::pmr::monotonic_buffer_resource *baseAllocatorPtr{};
+
+#if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
+  std::optional<std::thread::id> boundThread;
+  bool autoBindToThread = false;
+#endif
 
   MonotonicGrowableAllocator() { reset(); }
   MonotonicGrowableAllocator(MonotonicGrowableAllocator &&) {}
@@ -42,13 +50,31 @@ struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
     baseAllocatorPtr = &baseAllocator.value();
   }
 
+  void bindToCurrentThread() {
+#if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
+    boundThread.emplace(std::this_thread::get_id());
+#endif
+  }
+
   __attribute__((always_inline)) void *do_allocate(size_t _Bytes, size_t _Align) override {
+#if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
+    // Check for allocations from threads other than the owner of this memory pool
+    // since these allocators are not thread safe and meant to be used from a single thread
+    // this helps find issues
+    if (boundThread) {
+      auto callerTid = std::this_thread::get_id();
+      if (callerTid != boundThread.value())
+        throw std::logic_error("Allocation from non-owning thread");
+    } else if (autoBindToThread) {
+      bindToCurrentThread();
+    }
+#endif
     totalRequestedBytes += _Bytes;
     return baseAllocatorPtr->allocate(_Bytes, _Align);
   }
 
   __attribute__((always_inline)) void do_deallocate(void *_Ptr, size_t _Bytes, size_t _Align) override {
-    return baseAllocatorPtr->deallocate(_Ptr, _Bytes, _Align);
+    // Using monotonic_buffer_resource, so safe to no-op
   }
 
   __attribute__((always_inline)) bool do_is_equal(const memory_resource &_That) const noexcept override { return &_That == this; }
@@ -63,16 +89,24 @@ private:
   Allocator allocator;
 
 public:
-  WorkerMemory() : allocator(&memoryResource) {}
-  WorkerMemory(WorkerMemory &&) : allocator(&memoryResource) {}
+  WorkerMemory() : allocator(&memoryResource) { initCommon(); }
+  WorkerMemory(WorkerMemory &&) : allocator(&memoryResource) { initCommon(); }
 
   void reset() { memoryResource.reset(); }
 
-  template<typename T>
-  operator std::pmr::polymorphic_allocator<T> &() { return reinterpret_cast<std::pmr::polymorphic_allocator<T>&>(allocator); }
+  template <typename T> operator std::pmr::polymorphic_allocator<T> &() {
+    return reinterpret_cast<std::pmr::polymorphic_allocator<T> &>(allocator);
+  }
   Allocator *operator->() { return &allocator; }
 
   const MonotonicGrowableAllocator &getMemoryResource() const { return memoryResource; }
+
+private:
+  void initCommon() {
+#if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
+    memoryResource.autoBindToThread = true;
+#endif
+  }
 };
 } // namespace gfx::detail
 

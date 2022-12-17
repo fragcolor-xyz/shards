@@ -6,8 +6,6 @@
 #include "platform.hpp"
 #include "types.hpp"
 #include "user_data.hpp"
-#include "async.hpp"
-#include "worker_memory.hpp"
 #include <cassert>
 #include <list>
 #include <map>
@@ -40,6 +38,9 @@ struct ContextData;
 struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
+namespace detail {
+struct GraphicsExecutor;
+}
 
 /// <div rustbindgen opaque></div>
 struct Context {
@@ -51,16 +52,11 @@ public:
 
   TypedUserData userData;
 
-  // Async task executor
-  detail::GraphicsExecutor executor;
-
-  // Transient local memory allocators for async workers
-  detail::TWorkerThreadData<detail::WorkerMemory> workerMemory;
-
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
   std::shared_ptr<ContextMainOutput> mainOutput;
+  std::shared_ptr<detail::GraphicsExecutor> graphicsExecutor;
   ContextState state = ContextState::Uninitialized;
   ContextFrameState frameState = ContextFrameState::Ok;
   bool suspended = false;
@@ -96,6 +92,8 @@ public:
   WGPUTextureView getMainOutputTextureView();
   WGPUTextureFormat getMainOutputFormat() const;
   bool isHeadless() const;
+
+  detail::GraphicsExecutor &getGraphicsExecutor();
 
   // Returns when a frame can be rendered
   // Returns false while device is lost an can not be rerequestd
@@ -133,8 +131,6 @@ private:
 
   void collectContextData();
   void releaseAllContextData();
-
-  void resetWorkerMemory();
 };
 
 } // namespace gfx

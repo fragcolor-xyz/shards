@@ -22,6 +22,9 @@ struct DrawablePrepareContext {
   using Allocator = pmr::polymorphic_allocator<>;
 
   Context &context;
+
+  WorkerMemories& workerMemory;
+
   const CachedPipeline &cachedPipeline;
 
   // The flow that this request runs in

@@ -5,6 +5,7 @@
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
+#include "async.hpp"
 #include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -225,7 +226,9 @@ struct ContextMainOutput {
   void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapchain); }
 };
 
-Context::Context() : workerMemory(executor) {}
+Context::Context()  {
+  graphicsExecutor = std::make_shared<detail::GraphicsExecutor>();
+}
 Context::~Context() { release(); }
 
 void Context::init(Window &window, const ContextCreationOptions &inOptions) {
@@ -284,6 +287,10 @@ WGPUTextureFormat Context::getMainOutputFormat() const {
 
 bool Context::isHeadless() const { return !mainOutput; }
 
+detail::GraphicsExecutor &Context::getGraphicsExecutor() {
+  return *graphicsExecutor.get();
+}
+
 void Context::addContextDataInternal(const std::weak_ptr<ContextData> &ptr) {
   ZoneScoped;
   assert(!ptr.expired());
@@ -325,8 +332,6 @@ void Context::releaseAllContextData() {
 bool Context::beginFrame() {
   ZoneScoped;
   assert(frameState == ContextFrameState::Ok);
-
-  resetWorkerMemory();
 
   // Automatically request
   if (state == ContextState::Incomplete) {
@@ -604,12 +609,6 @@ void Context::present() {
   ZoneScoped;
   assert(mainOutput);
   mainOutput->present();
-}
-
-void Context::resetWorkerMemory() {
-  for (auto &workerMemory : this->workerMemory) {
-    workerMemory.reset();
-  }
 }
 
 } // namespace gfx

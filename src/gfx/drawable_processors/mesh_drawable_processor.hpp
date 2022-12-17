@@ -55,7 +55,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   };
 
   struct GroupData {
-    WgpuHandle<WGPUBindGroup> drawBindGroup;
+    WGPUBindGroup drawBindGroup{};
+    Hash128 bindGroupHash;
+    WgpuHandle<WGPUBindGroup> ownedDrawBindGroup;
   };
 
   struct PreparedBuffer {
@@ -90,6 +92,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     PrepareData(allocator_type allocator) : referencedContextData(allocator), drawBuffers(allocator), viewBuffers(allocator) {}
   };
 
+  static inline std::mutex test{};
+
   struct WorkerData {
     using construct_with_thread_index = std::true_type;
 
@@ -98,6 +102,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     WorkerData(Context &context) {
       drawBufferPool = WGPUBufferPool([device = context.wgpuDevice](size_t bufferSize) {
+        std::scoped_lock<std::mutex> _lock(test);
         WGPUBufferDescriptor desc{
             .label = "<object buffer>",
             .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Storage,
@@ -106,6 +111,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         return wgpuDeviceCreateBuffer(device, &desc);
       });
       viewBufferPool = WGPUBufferPool([device = context.wgpuDevice](size_t bufferSize) {
+        std::scoped_lock<std::mutex> _lock(test);
         WGPUBufferDescriptor desc{
             .label = "<view buffer>",
             .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Uniform,
@@ -124,7 +130,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   TWorkerThreadData<WorkerData> workerData;
   WGPUSupportedLimits limits{};
 
-  MeshDrawableProcessor(Context &context) : workerData(context.executor, std::ref(context)) {
+  MeshDrawableProcessor(Context &context) : workerData(context.getGraphicsExecutor(), std::ref(context)) {
     wgpuDeviceGetLimits(context.wgpuDevice, &limits);
   }
 
@@ -146,6 +152,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     viewLayoutBuilder.push("viewport", FieldTypes::Float4);
 
     auto &objectBinding = builder.getOrCreateBufferBinding("object");
+    objectBinding.bufferType = shader::BufferType::Storage;
+    objectBinding.hasDynamicOffset = true;
     auto &objectLayoutBuilder = objectBinding.layoutBuilder;
     objectLayoutBuilder.push("world", FieldTypes::Float4x4);
     objectLayoutBuilder.push("invWorld", FieldTypes::Float4x4);
@@ -260,6 +268,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       check(prepareData->viewBuffers);
 
       if (!everythingMapped) {
+        std::scoped_lock<std::mutex> _lock(test);
         wgpuDevicePoll(context.wgpuDevice, false, nullptr);
         // Repeat
         return 0;
@@ -276,8 +285,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   TransientPtr prepare(DrawablePrepareContext &context) override {
-    auto &executor = context.context.executor;
-    auto &rootTaskAllocator = context.context.workerMemory.get();
+    auto &executor = context.workerMemory.getExecutor();
+    auto &rootTaskAllocator = context.workerMemory.get();
     auto &subflow = context.subflow;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
 
@@ -298,9 +307,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (size_t i = 0; i < bindings.size(); i++) {
         auto &binding = bindings[i];
         PreparedBuffer &preparedBuffer = outBuffers[i];
-        preparedBuffer.stride = alignTo(binding.layout.size, limits.limits.minStorageBufferOffsetAlignment);
+        preparedBuffer.stride = binding.layout.getArrayStride();
         preparedBuffer.length = preparedBuffer.stride * numElements;
         preparedBuffer.buffer = pool.allocateBuffer(preparedBuffer.length);
+        std::scoped_lock<std::mutex> _lock(test);
         wgpuBufferMapAsync(preparedBuffer.buffer, WGPUMapMode_Write, 0, preparedBuffer.length, bufferMapCallback,
                            &preparedBuffer);
       }
@@ -340,8 +350,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     });
 
     // Setup collectors
-    auto *collector = rootTaskAllocator->new_object<TWorkerCollector<pmr::list<DrawableData>>>(
-        std::ref(executor), std::ref(context.context.workerMemory));
+    auto *collector = rootTaskAllocator->new_object<TLazyWorkerThreadData<pmr::list<DrawableData>>>(
+        std::ref(executor), std::ref(context.workerMemory));
 
     // Does the following:
     // - Build mesh data
@@ -366,7 +376,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto sortAndGroup = [=, &drawables = context.drawables, &cachedPipeline]() {
       ZoneScopedN("sortAndGroup");
 
-      auto &allocator = context.context.workerMemory.get();
+      auto &allocator = context.workerMemory.get();
 
       // Collect results from generate task
       size_t insertIndex{};
@@ -389,6 +399,19 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         groupDrawables(prepareData->drawableData.size(), preparedGroupData.groups,
                        [&](size_t index) { return prepareData->drawableData[index]->groupHash; });
         preparedGroupData.groupData.resize(preparedGroupData.groups.size());
+
+        for (size_t i = 0; i < preparedGroupData.groups.size(); i++) {
+          auto &group = preparedGroupData.groups[i];
+          auto &groupData = preparedGroupData.groupData[i];
+          auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
+
+          // Generate texture binding hash
+          HasherXXH128<HasherDefaultVisitor> hasher;
+          for (auto &texture : firstDrawableData.textures)
+            hasher(texture ? size_t(texture) : size_t(0));
+          hasher(group.numInstances);
+          groupData.bindGroupHash = hasher.getDigest();
+        }
       }
 
       // Setup view buffer data
@@ -439,37 +462,50 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     };
     auto sortAndGroupTask = subflow.emplace(sortAndGroup).succeed(waitForBufferBindingTask);
 
-    auto createDrawBindGroups = [=, &cachedPipeline](tf::Subflow &subflow) {
+    auto createDrawBindGroups = [=, &cachedPipeline, &executor,
+                                 &workerMemory = context.workerMemory](tf::Subflow &subflow) {
       ZoneScopedN("createDrawBindGroups");
 
+      auto &allocator = workerMemory.get();
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
 
+      auto cachedBindGroups =
+          allocator->new_object<TLazyWorkerThreadData<pmr::map<Hash128, WGPUBindGroup>>>(executor, workerMemory);
       subflow.for_each_index(
           size_t(0), preparedGroupData.groups.size(), size_t(1), [=, &cachedPipeline, &preparedGroupData](size_t index) {
-            auto &allocator = context.context.workerMemory.get();
+            auto &allocator = context.workerMemory.get();
+            pmr::map<Hash128, WGPUBindGroup> &cache = cachedBindGroups->get();
 
             auto &group = preparedGroupData.groups[index];
             auto &groupData = preparedGroupData.groupData[index];
             auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
 
-            BindGroupBuilder drawBindGroupBuilder(allocator);
-            for (size_t i = 0; i < prepareData->drawBuffers.size(); i++) {
-              auto &binding = cachedPipeline.drawBufferBindings[i];
-              drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances, group.startIndex);
-            }
-            for (size_t i = 0; i < cachedPipeline.textureBindingLayout.bindings.size(); i++) {
-              auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
-              auto texture = firstDrawableData.textures[i];
-              if (texture) {
-                drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
-              } else {
-                drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
-                                                       placeholderTextureContextData->sampler);
+            auto it = cache.find(groupData.bindGroupHash);
+            if (it == cache.end()) {
+              BindGroupBuilder drawBindGroupBuilder(allocator);
+              for (size_t i = 0; i < prepareData->drawBuffers.size(); i++) {
+                auto &binding = cachedPipeline.drawBufferBindings[i];
+                // Drawable buffers are mapped entirely, dynamic offset is applied during encoding
+                drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances);
               }
-            }
+              for (size_t i = 0; i < cachedPipeline.textureBindingLayout.bindings.size(); i++) {
+                auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
+                auto texture = firstDrawableData.textures[i];
+                if (texture) {
+                  drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
+                } else {
+                  drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
+                                                         placeholderTextureContextData->sampler);
+                }
+              }
 
-            groupData.drawBindGroup.reset(drawBindGroupBuilder.finalize(context.context.wgpuDevice, drawBindGroupLayout));
+              groupData.ownedDrawBindGroup.reset(drawBindGroupBuilder.finalize(context.context.wgpuDevice, drawBindGroupLayout));
+              groupData.drawBindGroup = groupData.ownedDrawBindGroup;
+              cache.emplace(groupData.bindGroupHash, groupData.drawBindGroup);
+            } else {
+              groupData.drawBindGroup = it->second;
+            }
           });
     };
     auto createDrawBindGroupsTask = subflow.emplace(createDrawBindGroups).succeed(sortAndGroupTask);
@@ -480,9 +516,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   void encode(DrawableEncodeContext &context) override {
     const PrepareData &prepareData = context.preparedData.get<PrepareData>();
     const ViewData &viewData = context.viewData;
+    const CachedPipeline &cachedPipeline = context.cachedPipeline;
     auto encoder = context.encoder;
 
-    wgpuRenderPassEncoderSetPipeline(encoder, context.cachedPipeline.pipeline);
+    wgpuRenderPassEncoderSetPipeline(encoder, cachedPipeline.pipeline);
     wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getViewBindGroupIndex(), prepareData.viewBindGroup, 0, nullptr);
 
     auto &groups = prepareData.groups.value();
@@ -512,7 +549,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
                                             viewData.viewport.height);
       }
 
-      wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getDrawBindGroupIndex(), groupData.drawBindGroup, 0, nullptr);
+      auto &binding = cachedPipeline.drawBufferBindings[0];
+      uint32_t dynamicOffsets[] = {uint32_t(group.startIndex * binding.layout.getArrayStride())};
+      assert(dynamicOffsets[0] < binding.layout.getArrayStride() * prepareData.drawableData.size());
+      wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getDrawBindGroupIndex(), groupData.drawBindGroup,
+                                        std::size(dynamicOffsets), dynamicOffsets);
 
       MeshContextData *meshContextData = firstDrawable.mesh;
       assert(meshContextData->vertexBuffer);
