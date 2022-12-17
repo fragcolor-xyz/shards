@@ -348,20 +348,27 @@ struct RendererImpl final : public ContextData {
       workerData.resetPreRender();
     }
 
+    std::optional<std::pmr::vector<const IDrawable *>> expandedDrawablesOpt;
+
     // Compute drawable hashes
     auto groupTask = flow.emplace([&](tf::Subflow &sub) {
       ZoneScopedN("pipelineGrouping");
 
-      std::pmr::vector<const IDrawable *> expandedDrawables(workerMemories.get());
+      expandedDrawablesOpt.emplace(workerMemories.get());
+      auto &expandedDrawables = expandedDrawablesOpt.value();
 
-      // Expand drawables
-      for (auto &drawable : queue.getDrawables()) {
-        if (!drawable->expand(expandedDrawables))
-          expandedDrawables.push_back(drawable);
+      {
+        // Expand drawables
+        ZoneScopedN("expandDrawables");
+        for (auto &drawable : queue.getDrawables()) {
+          if (!drawable->expand(expandedDrawables))
+            expandedDrawables.push_back(drawable);
+        }
       }
 
       // Now hash them
       sub.for_each(expandedDrawables.begin(), expandedDrawables.end(), [&](const IDrawable *drawable) {
+        ZoneScopedN("hashDrawable");
         auto &workerData = this->workerData.get();
 
         PipelineHashCollector collector{.storage = &workerData.hashCache};

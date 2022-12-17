@@ -94,50 +94,60 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   static inline std::mutex test{};
 
-  struct WorkerData {
-    using construct_with_thread_index = std::true_type;
+  struct SharedBufferPool {
+  private:
+    WGPUBufferPool bufferPool;
+    std::mutex mutex;
 
-    WGPUBufferPool drawBufferPool;
-    WGPUBufferPool viewBufferPool;
+  public:
+    SharedBufferPool(std::function<WGPUBuffer(size_t)> &&init) : bufferPool(std::move(init)) {}
 
-    WorkerData(Context &context) {
-      drawBufferPool = WGPUBufferPool([device = context.wgpuDevice](size_t bufferSize) {
-        std::scoped_lock<std::mutex> _lock(test);
-        WGPUBufferDescriptor desc{
-            .label = "<object buffer>",
-            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Storage,
-            .size = bufferSize,
-        };
-        return wgpuDeviceCreateBuffer(device, &desc);
-      });
-      viewBufferPool = WGPUBufferPool([device = context.wgpuDevice](size_t bufferSize) {
-        std::scoped_lock<std::mutex> _lock(test);
-        WGPUBufferDescriptor desc{
-            .label = "<view buffer>",
-            .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Uniform,
-            .size = bufferSize,
-        };
-        return wgpuDeviceCreateBuffer(device, &desc);
-      });
+    WGPUBuffer allocate(size_t size) {
+      std::lock_guard<std::mutex> _lock(mutex);
+      return bufferPool.allocateBuffer(size);
     }
 
     void reset() {
-      drawBufferPool.reset();
-      viewBufferPool.reset();
+      std::lock_guard<std::mutex> _lock(mutex);
+      bufferPool.reset();
     }
   };
 
-  TWorkerThreadData<WorkerData> workerData;
+  SharedBufferPool drawBufferPool;
+  SharedBufferPool viewBufferPool;
   WGPUSupportedLimits limits{};
 
-  MeshDrawableProcessor(Context &context) : workerData(context.getGraphicsExecutor(), std::ref(context)) {
+  MeshDrawableProcessor(Context &context)
+      : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)) {
     wgpuDeviceGetLimits(context.wgpuDevice, &limits);
+  }
+
+  static std::function<WGPUBuffer(size_t)> getDrawBufferInitializer(Context &context) {
+    return [device = context.wgpuDevice](size_t bufferSize) {
+      WGPUBufferDescriptor desc{
+          .label = "<object buffer>",
+          .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Storage,
+          .size = bufferSize,
+      };
+      return wgpuDeviceCreateBuffer(device, &desc);
+    };
+  }
+
+  static std::function<WGPUBuffer(size_t)> getViewBufferInitializer(Context &context) {
+    return [device = context.wgpuDevice](size_t bufferSize) {
+      WGPUBufferDescriptor desc{
+          .label = "<view buffer>",
+          .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Uniform,
+          .size = bufferSize,
+      };
+      return wgpuDeviceCreateBuffer(device, &desc);
+    };
   }
 
   void reset(size_t frameCounter) override {
     ZoneScoped;
-    for (auto &data : workerData)
-      data.reset();
+    drawBufferPool.reset();
+    viewBufferPool.reset();
   }
 
   void buildPipeline(PipelineBuilder &builder) override {
@@ -302,27 +312,24 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto bufferMapCallback = [](WGPUBufferMapAsyncStatus status, void *userData) {
       ((PreparedBuffer *)userData)->mappingStatus = status;
     };
-    auto allocateBuffers = [&](WGPUBufferPool &pool, auto &outBuffers, const auto &bindings, size_t numElements) {
+    auto allocateBuffers = [&](SharedBufferPool &pool, auto &outBuffers, const auto &bindings, size_t numElements) {
       outBuffers.resize(bindings.size());
       for (size_t i = 0; i < bindings.size(); i++) {
         auto &binding = bindings[i];
         PreparedBuffer &preparedBuffer = outBuffers[i];
         preparedBuffer.stride = binding.layout.getArrayStride();
         preparedBuffer.length = preparedBuffer.stride * numElements;
-        preparedBuffer.buffer = pool.allocateBuffer(preparedBuffer.length);
-        std::scoped_lock<std::mutex> _lock(test);
+        preparedBuffer.buffer = pool.allocate(preparedBuffer.length);
         wgpuBufferMapAsync(preparedBuffer.buffer, WGPUMapMode_Write, 0, preparedBuffer.length, bufferMapCallback,
                            &preparedBuffer);
       }
     };
 
     // Allocate and map buffers (per view)
-    auto &viewBufferPool = workerData.get().viewBufferPool;
     allocateBuffers(viewBufferPool, prepareData->viewBuffers, cachedPipeline.viewBuffersBindings, 1);
 
     // Allocate and map buffers (per draw)
     size_t numDrawables = context.drawables.size();
-    auto &drawBufferPool = workerData.get().drawBufferPool;
     allocateBuffers(drawBufferPool, prepareData->drawBuffers, cachedPipeline.drawBufferBindings, numDrawables);
 
     // Prepare mesh & texture buffers
@@ -462,8 +469,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     };
     auto sortAndGroupTask = subflow.emplace(sortAndGroup).succeed(waitForBufferBindingTask);
 
-    auto createDrawBindGroups = [=, &cachedPipeline, &executor,
-                                 &workerMemory = context.workerMemory](tf::Subflow &subflow) {
+    auto createDrawBindGroups = [=, &cachedPipeline, &executor, &workerMemory = context.workerMemory](tf::Subflow &subflow) {
       ZoneScopedN("createDrawBindGroups");
 
       auto &allocator = workerMemory.get();

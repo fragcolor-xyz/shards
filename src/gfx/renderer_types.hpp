@@ -230,7 +230,7 @@ template <> struct SizedItemOps<PooledWGPUBuffer> {
 
   void init(PooledWGPUBuffer &item, size_t size) {
     item.capacity = alignTo(size, 512);
-    item.buffer.reset(initFn(size));
+    item.buffer.reset(initFn(item.capacity));
   }
 };
 

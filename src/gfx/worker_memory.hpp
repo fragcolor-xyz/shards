@@ -5,8 +5,14 @@
 #include "moving_average.hpp"
 #include "math.hpp"
 
+#include <mutex>
+
 // Enable to check for allocation from wrong thread
+#ifdef NDEBUG
+#define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 0
+#else
 #define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 1
+#endif
 
 namespace gfx::detail {
 
@@ -69,6 +75,7 @@ struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
       bindToCurrentThread();
     }
 #endif
+
     totalRequestedBytes += _Bytes;
     return baseAllocatorPtr->allocate(_Bytes, _Align);
   }
