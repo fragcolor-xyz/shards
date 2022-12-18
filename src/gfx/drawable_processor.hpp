@@ -6,7 +6,7 @@
 #include "renderer_types.hpp"
 #include "transient_ptr.hpp"
 #include <taskflow/taskflow.hpp>
-#include <memory_resource>
+#include "pmr_wrapper.hpp"
 #include <memory>
 
 namespace gfx::detail {

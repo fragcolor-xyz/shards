@@ -5,6 +5,7 @@
 #include "linalg.hpp"
 #include "material.hpp"
 #include "hasherxxh128.hpp"
+#include "pmr_wrapper.hpp"
 #include <memory>
 #include <vector>
 

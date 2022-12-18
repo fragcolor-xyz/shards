@@ -1,7 +1,7 @@
 #ifndef D091EB18_DFAE_45E4_B017_6040A9F8C103
 #define D091EB18_DFAE_45E4_B017_6040A9F8C103
 
-#include <memory_resource>
+#include "pmr_wrapper.hpp"
 #include "moving_average.hpp"
 #include "math.hpp"
 
