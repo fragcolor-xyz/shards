@@ -52,7 +52,8 @@ inline void GraphicsFuture::wait() {
 // Provides thread local storage for each worker thread in a GraphicsExecutor
 // from within a worker, call get() to retrieve the data for the current thread
 template <typename T> struct TWorkerThreadData {
-  using allocator_type = std::pmr::polymorphic_allocator<>;
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
 private:
   std::vector<T> data;
   GraphicsExecutor &executor;
@@ -90,7 +91,7 @@ private:
 // if the element type has a uses_allocator constructor, it will receive the thread-local allocator based on it's thread
 // this is done lazily through get on the worker thread
 template <typename T> struct TLazyWorkerThreadData {
-  using allocator_type = std::pmr::polymorphic_allocator<>;
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
   struct Iterator {
     std::optional<T> *base;
@@ -121,7 +122,8 @@ public:
   TLazyWorkerThreadData(GraphicsExecutor &executor, TWorkerThreadData<WorkerMemory> &memories, allocator_type allocator)
       : executor(executor), memories(memories) {
     size_t arrayLen = sizeof(std::optional<T>) * executor.getNumWorkers();
-    perWorker = reinterpret_cast<std::optional<T> *>(allocator.allocate_bytes(arrayLen, 8));
+    auto &elemAllocator = reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
+    perWorker = reinterpret_cast<std::optional<T> *>(elemAllocator.allocate(arrayLen));
     memset(perWorker, 0, arrayLen);
   }
   TLazyWorkerThreadData(TLazyWorkerThreadData &&other, allocator_type allocator)

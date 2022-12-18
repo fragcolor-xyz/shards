@@ -38,7 +38,7 @@ public:
 
   void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const override { assert(false); }
 
-  bool expand(std::pmr::vector<const IDrawable *> &outDrawables) const override;
+  bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const override;
 };
 } // namespace gfx
 

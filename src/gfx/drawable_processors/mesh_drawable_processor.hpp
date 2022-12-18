@@ -8,8 +8,8 @@
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
 #include "async.hpp"
+#include "pmr/list.hpp"
 #include <tracy/Tracy.hpp>
-#include <scoped_allocator>
 
 namespace gfx::detail {
 
@@ -37,13 +37,13 @@ static std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
 
 struct MeshDrawableProcessor final : public IDrawableProcessor {
   struct DrawableData {
-    using allocator_type = pmr::polymorphic_allocator<>;
+    using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
     Hash128 groupHash;
     const IDrawable *drawable{};
     MeshContextData *mesh{};
     std::optional<int4> clipRect{};
-    pmr::vector<TextureContextData *> textures;
+    shards::pmr::vector<TextureContextData *> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
 
     DrawableData() = default;
@@ -68,24 +68,24 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   };
 
   struct PreparedGroupData {
-    using allocator_type = pmr::polymorphic_allocator<>;
+    using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-    pmr::vector<DrawGroup> groups;    // the group ranges
-    pmr::vector<GroupData> groupData; // Data associated with groups
+    shards::pmr::vector<DrawGroup> groups;    // the group ranges
+    shards::pmr::vector<GroupData> groupData; // Data associated with groups
 
     PreparedGroupData(allocator_type allocator) : groups(allocator), groupData(allocator) {}
   };
 
   struct PrepareData {
-    using allocator_type = pmr::polymorphic_allocator<>;
+    using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-    pmr::vector<std::shared_ptr<ContextData>> referencedContextData; // Context data to keep alive
+    shards::pmr::vector<std::shared_ptr<ContextData>> referencedContextData; // Context data to keep alive
 
     std::optional<PreparedGroupData> groups;
-    pmr::vector<DrawableData *> drawableData{};
+    shards::pmr::vector<DrawableData *> drawableData{};
 
-    pmr::vector<PreparedBuffer> drawBuffers;
-    pmr::vector<PreparedBuffer> viewBuffers;
+    shards::pmr::vector<PreparedBuffer> drawBuffers;
+    shards::pmr::vector<PreparedBuffer> viewBuffers;
 
     WgpuHandle<WGPUBindGroup> viewBindGroup;
 
@@ -357,7 +357,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     });
 
     // Setup collectors
-    auto *collector = rootTaskAllocator->new_object<TLazyWorkerThreadData<pmr::list<DrawableData>>>(
+    auto *collector = rootTaskAllocator->new_object<TLazyWorkerThreadData<shards::pmr::list<DrawableData>>>(
         std::ref(executor), std::ref(context.workerMemory));
 
     // Does the following:
@@ -477,11 +477,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
 
       auto cachedBindGroups =
-          allocator->new_object<TLazyWorkerThreadData<pmr::map<Hash128, WGPUBindGroup>>>(executor, workerMemory);
+          allocator->new_object<TLazyWorkerThreadData<shards::pmr::map<Hash128, WGPUBindGroup>>>(std::ref(executor), std::ref(workerMemory));
       subflow.for_each_index(
           size_t(0), preparedGroupData.groups.size(), size_t(1), [=, &cachedPipeline, &preparedGroupData](size_t index) {
             auto &allocator = context.workerMemory.get();
-            pmr::map<Hash128, WGPUBindGroup> &cache = cachedBindGroups->get();
+            shards::pmr::map<Hash128, WGPUBindGroup> &cache = cachedBindGroups->get();
 
             auto &group = preparedGroupData.groups[index];
             auto &groupData = preparedGroupData.groupData[index];

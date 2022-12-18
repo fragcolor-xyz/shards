@@ -5,7 +5,8 @@
 #include "linalg.hpp"
 #include "material.hpp"
 #include "hasherxxh128.hpp"
-#include "pmr_wrapper.hpp"
+#include "pmr/wrapper.hpp"
+#include "pmr/vector.hpp"
 #include <memory>
 #include <vector>
 
@@ -27,7 +28,7 @@ struct IDrawable {
   virtual UniqueId getId() const = 0;
 
   // If this is a group this function should extract it's contents and return true
-  virtual bool expand(std::pmr::vector<const IDrawable *> &outDrawables) const { return false; }
+  virtual bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const { return false; }
 
   // Get the processor used to render this drawable
   virtual DrawableProcessorConstructor getProcessor() const = 0;

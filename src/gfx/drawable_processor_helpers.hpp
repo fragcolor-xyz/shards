@@ -7,15 +7,11 @@
 
 namespace gfx::detail {
 
-namespace pmr {
-using namespace std::pmr;
-}
-
 // Defines some helper functions for implementing drawable processors
 struct BindGroupBuilder {
-  using allocator_type = std::pmr::polymorphic_allocator<>;
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-  std::pmr::vector<WGPUBindGroupEntry> entries;
+  shards::pmr::vector<WGPUBindGroupEntry> entries;
 
   BindGroupBuilder(allocator_type allocator) : entries(allocator) {}
 

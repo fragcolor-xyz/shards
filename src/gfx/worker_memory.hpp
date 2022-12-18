@@ -1,7 +1,7 @@
 #ifndef D091EB18_DFAE_45E4_B017_6040A9F8C103
 #define D091EB18_DFAE_45E4_B017_6040A9F8C103
 
-#include "pmr_wrapper.hpp"
+#include "pmr/wrapper.hpp"
 #include "moving_average.hpp"
 #include "math.hpp"
 
@@ -19,7 +19,7 @@ namespace gfx::detail {
 // An implementation of memory_resource
 // This behaves like monotonic_buffer_resource
 //  with the addition that it updates the preallocated memory block based on previous peak usage
-struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
+struct MonotonicGrowableAllocator : public shards::pmr::memory_resource {
   static constexpr size_t Megabyte = 1 << 20;
   static constexpr size_t MinPreallocatedSize = Megabyte * 8;
 
@@ -27,8 +27,8 @@ struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
   size_t totalRequestedBytes{};
   std::vector<uint8_t> preallocatedBlock;
 
-  std::optional<std::pmr::monotonic_buffer_resource> baseAllocator;
-  std::pmr::monotonic_buffer_resource *baseAllocatorPtr{};
+  std::optional<shards::pmr::monotonic_buffer_resource> baseAllocator;
+  shards::pmr::monotonic_buffer_resource *baseAllocatorPtr{};
 
 #if GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
   std::optional<std::thread::id> boundThread;
@@ -52,7 +52,7 @@ struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
       preallocatedBlock.resize(targetSize);
     }
 
-    baseAllocator.emplace(preallocatedBlock.data(), preallocatedBlock.size(), std::pmr::new_delete_resource());
+    baseAllocator.emplace(preallocatedBlock.data(), preallocatedBlock.size(), shards::pmr::new_delete_resource());
     baseAllocatorPtr = &baseAllocator.value();
   }
 
@@ -89,7 +89,7 @@ struct MonotonicGrowableAllocator : public std::pmr::memory_resource {
 
 // Thread-local data for graphics workers
 struct WorkerMemory {
-  using Allocator = std::pmr::polymorphic_allocator<>;
+  using Allocator = shards::pmr::PolymorphicAllocator<>;
 
 private:
   MonotonicGrowableAllocator memoryResource;
@@ -101,8 +101,8 @@ public:
 
   void reset() { memoryResource.reset(); }
 
-  template <typename T> operator std::pmr::polymorphic_allocator<T> &() {
-    return reinterpret_cast<std::pmr::polymorphic_allocator<T> &>(allocator);
+  template <typename T> operator shards::pmr::PolymorphicAllocator<T> &() {
+    return reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
   }
   Allocator *operator->() { return &allocator; }
 

@@ -6,20 +6,16 @@
 #include "renderer_types.hpp"
 #include "transient_ptr.hpp"
 #include <taskflow/taskflow.hpp>
-#include "pmr_wrapper.hpp"
+#include "pmr/wrapper.hpp"
 #include <memory>
 
 namespace gfx::detail {
 
 struct AsyncGraphicsContext;
 
-namespace pmr {
-using namespace std::pmr;
-}
-
 // Context data when evaluating rendering commands
 struct DrawablePrepareContext {
-  using Allocator = pmr::polymorphic_allocator<>;
+  using Allocator = shards::pmr::PolymorphicAllocator<>;
 
   Context &context;
 

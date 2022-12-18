@@ -18,7 +18,9 @@
 #include "sized_item_pool.hpp"
 #include "async.hpp"
 #include "worker_memory.hpp"
-#include "pmr_wrapper.hpp"
+#include "pmr/wrapper.hpp"
+#include "pmr/map.hpp"
+#include "pmr/string.hpp"
 #include <cassert>
 #include <vector>
 #include <map>
@@ -26,10 +28,6 @@
 #include <spdlog/spdlog.h>
 
 namespace gfx::detail {
-
-namespace pmr {
-using namespace std::pmr;
-}
 
 using shader::FieldType;
 using shader::TextureBindingLayout;
@@ -64,9 +62,9 @@ public:
 typedef uint16_t TextureId;
 
 struct TextureBindings {
-  using allocator_type = std::pmr::polymorphic_allocator<>;
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-  pmr::vector<TextureContextData *> textures;
+  shards::pmr::vector<TextureContextData *> textures;
 
   TextureBindings() = default;
   TextureBindings(allocator_type allocator) : textures(allocator) {}
@@ -112,6 +110,46 @@ struct RenderTargetLayout {
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(targets);
     hasher(depthTargetIndex);
+  }
+};
+
+/// <div rustbindgen hide></div>
+struct ParameterStorage : public IParameterCollector {
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
+  struct KeyLess {
+    using is_transparent = std::true_type;
+    template <typename T, typename U> bool operator()(const T &a, const U &b) const {
+      return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
+    }
+  };
+
+  shards::pmr::map<shards::pmr::string, ParamVariant, KeyLess> data;
+  shards::pmr::map<shards::pmr::string, TextureParameter, KeyLess> textures;
+
+  using IParameterCollector::setParam;
+  using IParameterCollector::setTexture;
+
+  ParameterStorage() = default;
+  ParameterStorage(allocator_type allocator) : data(allocator), textures(allocator) {}
+  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : data(allocator), textures(allocator) {
+    *this = std::move(other);
+  }
+  ParameterStorage &operator=(ParameterStorage &&) = default;
+
+  void setParam(const char *name, ParamVariant &&value) { data.emplace(name, std::move(value)); }
+  void setTexture(const char *name, TextureParameter &&value) { textures.emplace(name, std::move(value)); }
+
+  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) {
+    if (!data.contains(key)) {
+      data.emplace(key, value);
+    }
+  }
+
+  void append(const ParameterStorage &other) {
+    for (auto &it : other.data) {
+      data.emplace(it);
+    }
   }
 };
 
@@ -205,46 +243,6 @@ struct VertexStateBuilder {
     vertex.constantCount = 0;
     vertex.entryPoint = "vertex_main";
     vertex.module = shaderModule;
-  }
-};
-
-/// <div rustbindgen hide></div>
-struct ParameterStorage : public IParameterCollector {
-  using allocator_type = std::pmr::polymorphic_allocator<>;
-
-  struct KeyLess {
-    using is_transparent = std::true_type;
-    template <typename T, typename U> bool operator()(const T &a, const U &b) const {
-      return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
-    }
-  };
-
-  std::pmr::map<std::pmr::string, ParamVariant, KeyLess> data;
-  std::pmr::map<std::pmr::string, TextureParameter, KeyLess> textures;
-
-  using IParameterCollector::setParam;
-  using IParameterCollector::setTexture;
-
-  ParameterStorage() = default;
-  ParameterStorage(allocator_type allocator) : data(allocator), textures(allocator) {}
-  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : data(allocator), textures(allocator) {
-    *this = std::move(other);
-  }
-  ParameterStorage &operator=(ParameterStorage &&) = default;
-
-  void setParam(const char *name, ParamVariant &&value) { data.emplace(name, std::move(value)); }
-  void setTexture(const char *name, TextureParameter &&value) { textures.emplace(name, std::move(value)); }
-
-  void setParamIfUnset(const std::pmr::string& key, const ParamVariant &value) {
-    if (!data.contains(key)) {
-      data.emplace(key, value);
-    }
-  }
-
-  void append(const ParameterStorage &other) {
-    for (auto &it : other.data) {
-      data.emplace(it);
-    }
   }
 };
 

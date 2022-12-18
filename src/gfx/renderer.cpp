@@ -27,6 +27,7 @@
 #include "geom.hpp"
 #include "async.hpp"
 #include "worker_memory.hpp"
+#include "pmr/vector.hpp"
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
 #include <tracy/Tracy.hpp>
@@ -348,7 +349,7 @@ struct RendererImpl final : public ContextData {
       workerData.resetPreRender();
     }
 
-    std::optional<std::pmr::vector<const IDrawable *>> expandedDrawablesOpt;
+    std::optional<shards::pmr::vector<const IDrawable *>> expandedDrawablesOpt;
 
     // Compute drawable hashes
     auto groupTask = flow.emplace([&](tf::Subflow &sub) {
