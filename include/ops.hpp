@@ -148,7 +148,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case SHType::Int:
     return a.payload.intValue == b.payload.intValue;
   case SHType::Float:
-    return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= FLT_EPSILON;
+    return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= DBL_EPSILON;
   case SHType::Int2: {
     SHInt2 vec = a.payload.int2Value == b.payload.int2Value;
     for (auto i = 0; i < 2; i++)
@@ -185,7 +185,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     return true;
   }
   case SHType::Float2: {
-    const SHFloat2 vepsi = {FLT_EPSILON, FLT_EPSILON};
+    const SHFloat2 vepsi = {DBL_EPSILON, DBL_EPSILON};
     SHFloat2 diff = a.payload.float2Value - b.payload.float2Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
