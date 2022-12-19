@@ -5,13 +5,7 @@ const OpenXRSystem::HeadsetType OpenXRSystem::defaultHeadset = {};
 
 
 
-// [t] it's instantiated a single time, and no need to check for null pointers
-// [t] BECAUSE OF MAGIC(STATICS): https://blog.mbedded.ninja/programming/languages/c-plus-plus/magic-statics/
-// [t] it should also be thread safe
-OpenXRSystem& OpenXRSystem::getInstance(){
-  static OpenXRSystem xrs;
-  return xrs;
-}
+
 
 //[t] checkXRDeviceReady can be called at any time to check if a certain headset is connected.
 bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
@@ -23,11 +17,12 @@ bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
 
 //[t] this should be created before we call anything from context_xr_gfx. 
 //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code...
-int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, HeadsetType headsetType = defaultHeadset)
+int OpenXRSystem::InitOpenXR(const std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, HeadsetType headsetType = defaultHeadset)
 {
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR...");
-  this->wgpuUVulkanShared = wgpuUVulkanShared;
-  context_xr = new Context_XR(wgpuUVulkanShared);
+
+  //context_xr = new Context_XR(wgpuUVulkanShared); 
+  context_xr = std::make_shared<Context_XR>(wgpuUVulkanShared); 
   if (!context_xr->isValid())
   {
     spdlog::error("[log][t] OpenXRSystem::InitOpenXR: error at !headset->isValid().");
@@ -43,7 +38,10 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
   // maybe move some of this to gfx
   context_xr->getVulkanExtensionsFromOpenXRInstance();
   //[t] Our WGPUVulkanShared for the purposes of using XR, doesn't need to be created unless the ^above XR specific setup succeeds.
-  
+  if (!context_xr->isValid())
+  {
+    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::InitOpenXR: error at context_xr.");
+  }
 
   //[t] Create Mirror View in / with the gfx context
   //[t] from context.cpp?
@@ -52,17 +50,25 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
   //          for queue, surface, to know if we can render & present
   //    So if context.cpp Context::deviceObtained() passed.
 
-  spdlog::info("[log][t] OpenXRSystem::InitOpenXR... Success.");
+  spdlog::info("[log][t] OpenXRSystem::InitOpenXR... End.");
   return EXIT_SUCCESS;
 }
 
 // Requires OpenXRSystem::InitOpenXR and ContextXrGfxBackend->createInstance() to be called first.
 //std::shared_ptr<gfx::Headset> OpenXRSystem::createHeadset(bool isMultipass, std::shared_ptr<gfx::WGPUVulkanShared> gfxContext)
-std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(bool isMultipass)
+std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, bool isMultipass)
 {
-  spdlog::info("[log][t] OpenXRSystem::createHeadset(bool isMultipass[{}])...",isMultipass);
+  spdlog::info("[log][t] OpenXRSystem::createHeadset(wgpuUVulkanShared, bool isMultipass[{}])...",isMultipass);
   this->isMultipass = isMultipass;
-  headset = std::make_shared<Headset>(context_xr, wgpuUVulkanShared, isMultipass);
+
+  if(context_xr == nullptr)
+    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::createHeadset: context_xr == nullptr.");
+  if (!context_xr->isValid())
+  {
+    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::createHeadset: error at context_xr.");
+  }
+  
+  headset = std::make_shared<Headset>(context_xr, wgpuUVulkanShared, isMultipass); 
   //headset = new Headset(context_xr, gfxContext, isMultipass);
   if (!headset->isValid())
   {
@@ -70,7 +76,7 @@ std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(bool isMult
     return nullptr;
   }
 
-  spdlog::info("[log][t] OpenXRSystem::createHeadset(). Success.");
+  spdlog::info("[log][t] OpenXRSystem::createHeadset(). End.");
   return headset;
 }
 
@@ -193,6 +199,7 @@ int OpenXRSystem::somethingSomethingMakeFrames(){
 }*/
 
 OpenXRSystem::~OpenXRSystem(){
+  spdlog::info("[log][t] OpenXRSystem::~OpenXRSystem()");
 }
 
 

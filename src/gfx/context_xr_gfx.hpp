@@ -64,7 +64,7 @@ namespace gfx {
       createMirrorSwapchain();
 
       fence = wgpuVulkanShared->vkDevice.createFence(vk::FenceCreateInfo(), nullptr, wgpuVulkanShared->vkLoader);
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::OpenXRMirrorView: Success.");
+      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::OpenXRMirrorView: End.");
     }
 
     void createMirrorSwapchain(VkSwapchainKHR oldSwapchain = nullptr) {
@@ -162,17 +162,18 @@ namespace gfx {
   
         mirrorTextureViews.emplace_back(toWgpuHandle(textureView));
       }
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSwapchain: Success.");
+      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSwapchain: End.");
     }
 
 
     void createMirrorSurface() {
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface().");
+      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface()...");
       #if VK_USE_PLATFORM_WIN32_KHR //[t] NOTE: I replaced "GFX_WINDOWS" with VK_USE_PLATFORM_WIN32_KHR, and disabled the GFX_WINDOWS define from up top because it was giving an error. 
       vk::Win32SurfaceCreateInfoKHR surfInfo;
       surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));
       mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);
       if (!mirrorSurface)
+        spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);");
         throw std::runtime_error("Failed to create surface");
       #else
       static_assert("Platform surface not implemented");
@@ -184,7 +185,7 @@ namespace gfx {
         spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at Unsupported surface.");
         throw std::runtime_error("Unsupported surface");
       }
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: Success.");
+      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: End.");
     }
 
     const int2 &getSize() const override { return currentSize; }
@@ -211,13 +212,13 @@ namespace gfx {
         views = {currentView};
         if(frame<debugs){
         
-          spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame: Success.");
+          spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame: End.");
         }
         return views;
       } else {
         if(frame<debugs){
          
-          spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame: Success.");
+          spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame: End.");
         }
         return views;
       }
@@ -240,7 +241,7 @@ namespace gfx {
       /*
       if(frame<debugs){
         
-        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::getCurrentFrame; Success.");
+        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::getCurrentFrame; End.");
       }*/
       return payload;
     }
@@ -271,7 +272,7 @@ namespace gfx {
       currentView = nullptr;
       if(frame<debugs){
         
-        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::present: Success.");
+        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::present: end.");
       }
     }
   };
@@ -354,25 +355,7 @@ namespace gfx {
       }
       assert(wgpuVulkanShared->vkPhysicalDevice);
 
-
-
-      
-      //[t] create xr system things. moved in here instead of context.cpp to avoid circular dependency
-      //[t] this should be created first, before we call anything from context_xr_gfx. 
-      //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code... 
-      {
-        OpenXRSystem openXRSystem = OpenXRSystem::getInstance();
-        //std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
-        if(openXRSystem.InitOpenXR(wgpuVulkanShared, OpenXRSystem::defaultHeadset) == 1)
-          return nullptr;
-        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
-        if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset))
-          return nullptr;
-      }
-
-
-
-
+      spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: End.");
       return wgpuVulkanShared->wgpuInstance;
     }
 
@@ -425,6 +408,8 @@ namespace gfx {
       wgpuVulkanShared->vkQueue = vk::Queue(VkQueue(propsVk.queue));
       wgpuVulkanShared->queueIndex = propsVk.queueIndex;
       wgpuVulkanShared->queueFamilyIndex = propsVk.queueFamilyIndex;
+
+      spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::deviceCreated: VkDevice, vkQueue created. End.");
     }
 
     std::shared_ptr<DeviceRequest> requestDevice() override {
@@ -444,7 +429,29 @@ namespace gfx {
       deviceDesc.requiredLimits = &requiredLimits;
 
       auto cb = [&](WGPURequestDeviceStatus status, WGPUDevice device, const char *msg) { deviceCreated(device); };
-      return DeviceRequest::create(wgpuVulkanShared->wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
+      
+      std::shared_ptr<DeviceRequest> devReq = DeviceRequest::create(wgpuVulkanShared->wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
+      spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::requestDevice() returning DeviceRequest.");
+
+      
+      //[t] create xr system things. moved in here instead of context.cpp to avoid circular dependency
+      //[t] this should be created first, before we call anything from context_xr_gfx. 
+      //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code... 
+      {
+        OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
+        //std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
+        if(openXRSystem.InitOpenXR(wgpuVulkanShared, OpenXRSystem::defaultHeadset) == 1){
+          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.InitOpenXR(.");
+          return nullptr;
+        }
+        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
+        if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset)){
+          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.checkXRDeviceReady(.");
+          return nullptr;
+        }
+      }
+
+      return devReq;
     }
     /*
     std::shared_ptr<WGPUVulkanShared> getWgpuVulkanShared() const {
@@ -455,7 +462,7 @@ namespace gfx {
     //[t] TODO: figure out how to modify this to create not only the OpenXRMirrorView but also (link to) the headset views?
     //[t] NODE: this is tied to createSurface( as well
     std::vector<std::shared_ptr<IContextMainOutput>> createMainOutput(Window &window) override { 
-      spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput().");
+      spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput(): Creating Headset and mirrorView.");
       // return std::make_shared<ContextWindowOutput>(wgpuInstance, wgpuAdapter, wgpuDevice, wgpuSurface, window);
       // return std::make_shared<OpenXRMirrorView>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
       //return std::make_shared<OpenXRMirrorView>(wgpuVulkanShared.wgpuInstance, wgpuVulkanShared.wgpuAdapter, wgpuVulkanShared.wgpuDevice, window);
@@ -463,12 +470,13 @@ namespace gfx {
       
       //TODO: headset with both eyes
       //TODO: also mirrorview
-      OpenXRSystem openXRSystem = OpenXRSystem::getInstance();
+      OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
       std::vector<std::shared_ptr<IContextMainOutput>> mainOutputs = 
       { 
-        openXRSystem.createHeadset(true),
+        openXRSystem.createHeadset(wgpuVulkanShared, true), 
         std::make_shared<OpenXRMirrorView>(wgpuVulkanShared, window) 
       };
+      spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput: returning mainOutputs: Headset and mirrorView.");
       return mainOutputs;
     } 
 

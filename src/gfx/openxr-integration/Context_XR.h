@@ -38,6 +38,7 @@ public:
 
 private:
   bool valid = true;
+  bool created = false;
   std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared;
   // Extension function pointers
   PFN_xrGetVulkanInstanceExtensionsKHR xrGetVulkanInstanceExtensionsKHR = nullptr;

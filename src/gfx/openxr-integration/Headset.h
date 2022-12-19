@@ -29,7 +29,7 @@ class RenderTarget;
 class Headset:public gfx::IContextMainOutput
 {
 public:
-  Headset(const Context_XR* xrContext, std::shared_ptr<gfx::WGPUVulkanShared> _gfxWgpuVulkanShared, bool isMultipass);
+  Headset(const std::shared_ptr<Context_XR> xrContext, std::shared_ptr<gfx::WGPUVulkanShared> _gfxWgpuVulkanShared, bool isMultipass);
   ~Headset();
 
   enum class BeginFrameResult
@@ -69,7 +69,7 @@ private:
   bool exitRequested = false;
   linalg::aliases::int2 linalgint2size;
 
-  const Context_XR* xrContext = nullptr;
+  std::shared_ptr<Context_XR> xrContext = nullptr;
   //const gfx::Context* gfxWgpuVulkanContext = nullptr;
   std::shared_ptr<gfx::WGPUVulkanShared> gfxWgpuVulkanShared = nullptr;
 
