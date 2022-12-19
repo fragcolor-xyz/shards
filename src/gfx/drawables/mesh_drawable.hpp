@@ -26,6 +26,7 @@ public:
   // Clipping rectangle as (min, max)
   std::optional<int4> clipRect;
 
+  MeshDrawable() = default;
   MeshDrawable(MeshPtr mesh, float4x4 transform = linalg::identity, MaterialPtr material = MaterialPtr())
       : mesh(mesh), material(material), transform(transform) {}
 

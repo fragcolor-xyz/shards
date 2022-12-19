@@ -97,8 +97,8 @@ MeshPtr WireframeMeshGenerator::generate() {
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) { wireframeFeature = features::Wireframe::create(showBackfaces); }
 
-void WireframeRenderer::overlayWireframe(DrawQueue &queue, DrawablePtr drawable) {
-  if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(drawable.get())) {
+void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable& drawable) {
+  if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
     Mesh *meshPtr = meshDrawable->mesh.get();
     auto it = meshCache.find(meshPtr);
     if (it == meshCache.end()) {
@@ -118,9 +118,9 @@ void WireframeRenderer::overlayWireframe(DrawQueue &queue, DrawablePtr drawable)
     clone->mesh = it->second.wireMesh;
     clone->features.push_back(wireframeFeature);
     queue.add(clone);
-  } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(drawable.get())) {
+  } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
     TransformUpdaterCollector collector;
-    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, drawable); };
+    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get()); };
     collector.update(*treeDrawable);
   }
 }

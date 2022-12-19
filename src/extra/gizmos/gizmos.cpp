@@ -12,7 +12,7 @@ using linalg::aliases::float4x4;
 
 struct TranslationGizmo : public BaseConsumer {
   static SHTypesInfo inputTypes() {
-    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable, gfx::Types::DrawableHierarchy}};
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable, gfx::Types::TreeDrawable}};
     return inputTypes;
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -41,17 +41,17 @@ struct TranslationGizmo : public BaseConsumer {
           inputMat = (shards::Mat4)drawable->transformVar.get();
           applyOutputMat = [&](float4x4 &outMat) { cloneVar(drawable->transformVar.get(), (shards::Mat4)outMat); };
         } else {
-          inputMat = (shards::Mat4)drawable->drawable->transform;
-          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable->transform = outMat; };
+          inputMat = (shards::Mat4)drawable->drawable.transform;
+          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable.transform = outMat; };
         }
-      } else if (objectType == gfx::Types::DrawableHierarchy) {
-        gfx::SHDrawableHierarchy *drawable = reinterpret_cast<gfx::SHDrawableHierarchy *>(input.payload.objectValue);
+      } else if (objectType == gfx::Types::TreeDrawable) {
+        gfx::SHTreeDrawable *drawable = reinterpret_cast<gfx::SHTreeDrawable *>(input.payload.objectValue);
         if (drawable->transformVar.isVariable()) {
           inputMat = (shards::Mat4)drawable->transformVar.get();
           applyOutputMat = [&](float4x4 &outMat) { cloneVar(drawable->transformVar.get(), (shards::Mat4)outMat); };
         } else {
-          inputMat = (shards::Mat4)drawable->drawableHierarchy->transform;
-          applyOutputMat = [&](float4x4 &outMat) { drawable->drawableHierarchy->transform = outMat; };
+          inputMat = (shards::Mat4)drawable->drawable->transform;
+          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable->transform = outMat; };
         }
       } else {
         throw std::invalid_argument("input type");

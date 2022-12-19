@@ -20,7 +20,7 @@ struct GLTFShard {
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static SHTypesInfo outputTypes() { return Types::DrawableHierarchy; }
+  static SHTypesInfo outputTypes() { return Types::TreeDrawable; }
 
   PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use", {CoreInfo::NoneType, TransformVarType});
   PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup",
@@ -36,20 +36,20 @@ struct GLTFShard {
   };
 
   LoadMode _loadMode{};
-  DrawableHierarchyPtr _staticModel;
+  MeshTreeDrawable::Ptr _staticModel;
   bool _hasConstTransform{};
-  SHDrawableHierarchy *_returnVar{};
+  SHTreeDrawable *_returnVar{};
   std::vector<FeaturePtr> _features;
 
   void releaseReturnVar() {
     if (_returnVar)
-      Types::DrawableHierarchyObjectVar.Release(_returnVar);
+      Types::TreeDrawableObjectVar.Release(_returnVar);
     _returnVar = {};
   }
 
   void makeNewReturnVar() {
     releaseReturnVar();
-    _returnVar = Types::DrawableHierarchyObjectVar.New();
+    _returnVar = Types::TreeDrawableObjectVar.New();
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -82,7 +82,7 @@ struct GLTFShard {
       _loadMode = LoadMemory;
       OVERRIDE_ACTIVATE(data, activateBytes);
     } else if (copyType) {
-      if (*copyType != Types::DrawableHierarchy)
+      if (*copyType != Types::TreeDrawable)
         throw ComposeError("Copy should be an already loaded glTF model");
       _loadMode = LoadCopy;
       OVERRIDE_ACTIVATE(data, activateCopy);
@@ -108,7 +108,7 @@ struct GLTFShard {
         throw ComposeError("Transform should be a Float4x4");
     }
 
-    return Types::DrawableHierarchy;
+    return Types::TreeDrawable;
   }
 
   void warmup(SHContext *context) {
@@ -131,7 +131,7 @@ struct GLTFShard {
   }
 
   // Set & link transform
-  void initModel(SHContext *context, SHDrawableHierarchy &shDrawable, const SHVar &input) {
+  void initModel(SHContext *context, SHTreeDrawable &shDrawable, const SHVar &input) {
     const SHTable &inputTable = input.payload.tableValue;
 
     // Set constant transform
@@ -140,7 +140,7 @@ struct GLTFShard {
       getFromTable(context, inputTable, "Transform", transformVar);
       float4x4 transform = shards::Mat4(transformVar);
 
-      shDrawable.drawableHierarchy->transform = transform;
+      shDrawable.drawable->transform = transform;
     }
 
     // Link transform variable
@@ -153,7 +153,7 @@ struct GLTFShard {
     SHVar featuresVar;
     if (getFromTable(context, inputTable, "Features", featuresVar)) {
       applyFeatures(context, _features, featuresVar);
-      DrawableHierarchy::foreach (shDrawable.drawableHierarchy, [&](DrawableHierarchyPtr item) {
+      MeshTreeDrawable::foreach (shDrawable.drawable, [&](MeshTreeDrawable::Ptr item) {
         for (auto &drawable : item->drawables) {
           drawable->features = _features;
         }
@@ -167,18 +167,18 @@ struct GLTFShard {
     makeNewReturnVar();
     try {
       if (_staticModel) {
-        _returnVar->drawableHierarchy = _staticModel->clone();
+        _returnVar->drawable = std::static_pointer_cast<MeshTreeDrawable>(_staticModel->clone());
       } else {
         throw ActivationError("No glTF model was loaded");
       }
 
     } catch (...) {
-      Types::DrawableHierarchyObjectVar.Release(_returnVar);
+      Types::TreeDrawableObjectVar.Release(_returnVar);
       throw;
     }
 
     initModel(context, *_returnVar, input);
-    return Types::DrawableHierarchyObjectVar.Get(_returnVar);
+    return Types::TreeDrawableObjectVar.Get(_returnVar);
   }
 
   SHVar activatePath(SHContext *context, const SHVar &input) {
@@ -188,10 +188,10 @@ struct GLTFShard {
     getFromTable(context, input.payload.tableValue, "Path", pathVar);
 
     makeNewReturnVar();
-    _returnVar->drawableHierarchy = loadGltfFromFile(pathVar.payload.stringValue);
+    _returnVar->drawable = loadGltfFromFile(pathVar.payload.stringValue);
 
     initModel(context, *_returnVar, input);
-    return Types::DrawableHierarchyObjectVar.Get(_returnVar);
+    return Types::TreeDrawableObjectVar.Get(_returnVar);
   }
 
   SHVar activateBytes(SHContext *context, const SHVar &input) {
@@ -201,10 +201,10 @@ struct GLTFShard {
     getFromTable(context, input.payload.tableValue, "Bytes", bytesVar);
 
     makeNewReturnVar();
-    _returnVar->drawableHierarchy = loadGltfFromMemory(bytesVar.payload.bytesValue, bytesVar.payload.bytesSize);
+    _returnVar->drawable = loadGltfFromMemory(bytesVar.payload.bytesValue, bytesVar.payload.bytesSize);
 
     initModel(context, *_returnVar, input);
-    return Types::DrawableHierarchyObjectVar.Get(_returnVar);
+    return Types::TreeDrawableObjectVar.Get(_returnVar);
   }
 
   SHVar activateCopy(SHContext *context, const SHVar &input) {
@@ -213,15 +213,15 @@ struct GLTFShard {
     SHVar sourceVar{};
     getFromTable(context, input.payload.tableValue, "Copy", sourceVar);
 
-    SHDrawableHierarchy *source = reinterpret_cast<SHDrawableHierarchy *>(sourceVar.payload.objectValue);
+    SHTreeDrawable *source = reinterpret_cast<SHTreeDrawable *>(sourceVar.payload.objectValue);
     if (!source)
       throw ActivationError("Undefined glTF model passed to Copy");
 
-    SHDrawableHierarchy *result = Types::DrawableHierarchyObjectVar.New();
-    result->drawableHierarchy = source->drawableHierarchy->clone();
+    SHTreeDrawable *result = Types::TreeDrawableObjectVar.New();
+    result->drawable = std::static_pointer_cast<MeshTreeDrawable>(source->drawable->clone());
 
     initModel(context, *result, input);
-    return Types::DrawableHierarchyObjectVar.Get(result);
+    return Types::TreeDrawableObjectVar.Get(result);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { throw std::logic_error("invalid activation"); }

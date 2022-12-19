@@ -165,7 +165,7 @@ struct Evolve {
   void cleanup() {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
-      cleanupFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+      cleanupFlow.for_each(_population.begin(), _population.end(), [&](Individual &i) {
         // Free and release wire
         i.mesh->terminate();
         auto wire = SHWire::sharedFromRef(i.wire.payload.wireValue);
@@ -210,7 +210,7 @@ struct Evolve {
             _nelites = size_t(double(_popsize) * _elitism);
 
             tf::Taskflow initFlow;
-            initFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+            initFlow.for_each(_population.begin(), _population.end(), [&](Individual &i) {
               Serialization deserial;
               std::stringstream i1Stream(wireStr);
               Reader r1(i1Stream);
@@ -307,14 +307,13 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
+            flow.for_each(
                 _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   // Evaluate our brain wire
                   auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
                   i->mesh->schedule(wire);
-                },
-                _coros);
+                });
 
             _exec->run(flow).get();
           }
@@ -322,13 +321,12 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
+            flow.for_each(
                 _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   if (!i->mesh->empty())
                     i->mesh->tick();
-                },
-                _coros);
+                });
 
             _exec
                 ->run_until(flow,
@@ -346,7 +344,7 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
+            flow.for_each(
                 _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   // reset fitness
@@ -359,8 +357,7 @@ struct Evolve {
                   auto fitwire = SHWire::sharedFromRef(i->fitnessWire.payload.wireValue);
                   auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
                   i->mesh->schedule(obs, fitwire, wire->finishedOutput);
-                },
-                _coros);
+                });
 
             _exec->run(flow).get();
           }
@@ -368,15 +365,14 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
+            flow.for_each(
                 _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
                 [](auto &i) {
                   if (!i->mesh->empty()) {
                     TickObserver obs{*i};
                     i->mesh->tick(obs);
                   }
-                },
-                _coros);
+                });
 
             _exec
                 ->run_until(flow,
@@ -427,7 +423,7 @@ struct Evolve {
           { // Stop all the population wires
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(_population.begin(), _population.end(), [](Individual &i) {
+            flow.for_each(_population.begin(), _population.end(), [](Individual &i) {
               auto wire = SHWire::sharedFromRef(i.wire.payload.wireValue);
               auto fitwire = SHWire::sharedFromRef(i.fitnessWire.payload.wireValue);
               stop(wire.get());
@@ -468,7 +464,7 @@ struct Evolve {
           // since we might need them
           {
             tf::Taskflow mutFlow;
-            mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites, _sortedPopulation.end(), [&](auto &i) {
+            mutFlow.for_each(_sortedPopulation.begin() + _nelites, _sortedPopulation.end(), [&](auto &i) {
               // reset the individual if extinct
               if (i->extinct) {
                 resetState(*i);

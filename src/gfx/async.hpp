@@ -1,6 +1,10 @@
 #ifndef F419C89A_4B33_40F5_8442_21873D009676
 #define F419C89A_4B33_40F5_8442_21873D009676
 
+// Remove define from winspool.h
+#ifdef MAX_PRIORITY
+#undef MAX_PRIORITY
+#endif
 #include <taskflow/taskflow.hpp>
 #include "worker_memory.hpp"
 

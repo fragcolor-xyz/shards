@@ -350,7 +350,7 @@ struct FeatureShard {
 
       captured->wire.warmup(context);
 
-      feature.drawableParameters.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
+      feature.drawableParameterGenerators.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
         ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
         SHContext *SHContext = contextUserData->shardsContext;
 

@@ -1,7 +1,12 @@
 #ifndef F14E50FC_17BA_4A5F_BB8B_8CF2D95A9ECE
 #define F14E50FC_17BA_4A5F_BB8B_8CF2D95A9ECE
 
+#include <stdint.h>
+
+#ifndef RUST_BINDGEN
 #include <atomic>
+#include <compare>
+#endif
 
 namespace gfx {
 
@@ -25,9 +30,11 @@ struct UniqueId;
 struct UniqueId {
   UniqueIdValue value;
 
+#ifndef RUST_BINDGEN
   constexpr UniqueId() = default;
   constexpr UniqueId(UniqueIdValue v) : value(v) {}
   constexpr operator UniqueIdValue() const { return value; }
+
   std::strong_ordering operator<=>(const UniqueId &) const = default;
 
   constexpr UniqueId withTag(UniqueIdTag tag) {
@@ -40,8 +47,10 @@ struct UniqueId {
     UniqueIdValue tagPart = value & UniqueIdTagMask;
     return UniqueIdTag(tagPart >> (UniqueIdBits - UniqueIdTagBits));
   }
+#endif
 };
 
+#ifndef RUST_BINDGEN
 // define: friend struct UpdateUniqueId<Type>;
 template <typename T> struct UpdateUniqueId {
   void apply(T &elem, UniqueId newId) { elem.id = newId; }
@@ -83,5 +92,6 @@ public:
 template <> struct std::hash<gfx::UniqueId> {
   size_t operator()(gfx::UniqueId v) const { return size_t(v.value); }
 };
+#endif
 
 #endif /* F14E50FC_17BA_4A5F_BB8B_8CF2D95A9ECE */

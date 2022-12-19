@@ -9,7 +9,7 @@
 #include <gfx/mesh.hpp>
 #include <gfx/texture.hpp>
 #include <gfx/fwd.hpp>
-#include <gfx/drawable.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/sized_item_pool.hpp>
 #include <gfx/feature.hpp>
 #include <gfx/view.hpp>
@@ -28,9 +28,9 @@ static auto logger = getLogger();
 
 struct MeshPoolOps {
   size_t getCapacity(MeshPtr &item) const { return item->getNumVertices() * item->getFormat().getVertexSize(); }
-  void init(MeshPtr &item) const { item = std::make_shared<Mesh>(); }
+  void init(MeshPtr &item, size_t size) const { item = std::make_shared<Mesh>(); }
 };
-typedef SizedItemPool<MeshPtr, MeshPoolOps> MeshPool;
+typedef detail::SizedItemPool<MeshPtr, MeshPoolOps> MeshPool;
 
 struct TextureManager {
   std::map<uint64_t, TexturePtr> textures;
@@ -144,6 +144,7 @@ struct EguiRendererImpl {
   MeshPool meshPool;
   TextureManager textures;
   std::vector<egui::TextureId> pendingTextureFrees;
+  std::vector<MeshDrawable> drawables;
 
   MeshFormat meshFormat;
 
@@ -182,6 +183,8 @@ void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTr
   }
 
   // Update meshes & generate drawables
+  auto &drawables = impl->drawables;
+  impl->drawables.resize(output.numPrimitives);
   for (size_t i = 0; i < output.numPrimitives; i++) {
     auto &prim = output.primitives[i];
 
@@ -189,17 +192,18 @@ void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTr
     mesh->update(impl->meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                  prim.numIndices * sizeof(uint32_t));
 
-    DrawablePtr drawable = std::make_shared<MeshDrawable>(mesh);
-    drawable->transform = rootTransform;
+    MeshDrawable &drawable = drawables[i];
+    drawable.mesh = mesh;
+    drawable.transform = rootTransform;
     TexturePtr texture = impl->textures.get(prim.textureId);
     if (texture) {
-      drawable->parameters.set("color", texture);
+      drawable.parameters.set("color", texture);
       if (texture->getFormat().pixelFormat == WGPUTextureFormat_R8Unorm) {
-        drawable->parameters.set("flags", uint32_t(0x1));
+        drawable.parameters.set("flags", uint32_t(0x1));
       }
     }
 
-    drawable->clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
+    drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
 
     drawQueue->add(drawable);
   }

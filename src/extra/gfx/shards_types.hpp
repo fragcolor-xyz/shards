@@ -8,6 +8,8 @@
 #include <gfx/pipeline_step.hpp>
 #include <gfx/shader/entry_point.hpp>
 #include <gfx/shader/types.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
+#include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <memory>
 #include <shards.hpp>
 #include <vector>
@@ -28,7 +30,7 @@ struct SHShaderParameters {
 };
 
 struct SHDrawable {
-  DrawablePtr drawable;
+  MeshDrawable drawable;
   shards::ParamVar transformVar;
   shards::ParamVar materialVar;
   SHShaderParameters shaderParameters;
@@ -36,8 +38,8 @@ struct SHDrawable {
   void updateVariables();
 };
 
-struct SHDrawableHierarchy {
-  DrawableHierarchyPtr drawableHierarchy;
+struct SHTreeDrawable {
+  MeshTreeDrawable::Ptr drawable;
   shards::ParamVar transformVar;
 
   void updateVariables();
@@ -76,7 +78,7 @@ struct Container {
   static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
   static inline ObjectVar<_type> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
-  OBJECT('drah', "GFX.DrawableHierarchy", DrawableHierarchy, SHDrawableHierarchy)
+  OBJECT('drah', "GFX.TreeDrawable", TreeDrawable, SHTreeDrawable)
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
@@ -196,9 +198,12 @@ struct Container {
   static inline Type TexturesTable = Type::TableOf(TextureTypes);
 
   static inline std::map<std::string, Type> DrawableInputTableTypes = {
-      std::make_pair("Transform", CoreInfo::Float4x4Type), std::make_pair("Mesh", Mesh),
-      std::make_pair("Params", ShaderParamTable),   std::make_pair("Textures", TexturesTable),
-      std::make_pair("Material", Material), std::make_pair("Features", FeatureSeq),
+      std::make_pair("Transform", CoreInfo::Float4x4Type),
+      std::make_pair("Mesh", Mesh),
+      std::make_pair("Params", ShaderParamTable),
+      std::make_pair("Textures", TexturesTable),
+      std::make_pair("Material", Material),
+      std::make_pair("Features", FeatureSeq),
   };
 
 #undef ENUM

@@ -120,6 +120,7 @@ struct RendererImpl final : public ContextData {
   std::vector<TexturePtr> renderGraphOutputsTemp;
   std::unordered_map<Hash128, PipelineGroup> pipelineGroupsTemp;
   std::list<TransientPtr> processorDynamicValueCleanupQueue;
+  std::vector<Feature *> evaluateFeaturesTemp;
 
   RendererImpl(Context &context)
       : context(context), executor(context.getGraphicsExecutor()), workerMemory(executor), workerData(executor) {}
@@ -327,19 +328,27 @@ struct RendererImpl final : public ContextData {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
 
-    node.encode = [=, rtl = node.renderTargetLayout](RenderGraphEncodeContext &ctx) {
-      evaluateDrawableStep(ctx, step, viewData, rtl);
-    };
+    node.encode = [=](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData); };
   }
 
-  void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData,
-                            const RenderTargetLayout &rtl) {
+  void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step,
+                            const ViewData &viewData) {
+    DrawQueue &queue = *step.drawQueue.get();
+    evaluateFeaturesTemp.clear();
+    for (auto &feature : step.features)
+      evaluateFeaturesTemp.push_back(feature.get());
+    renderDrawables(evaluateContext, queue.getDrawables(), evaluateFeaturesTemp, step.sortMode, viewData);
+  }
+
+  void renderDrawables(RenderGraphEncodeContext &evaluateContext, const std::vector<const IDrawable *> &drawables,
+                       const std::vector<Feature *> &features, SortMode sortMode, const ViewData &viewData) {
     ZoneScoped;
+
+    const RenderTargetLayout &rtl = evaluateContext.node.renderTargetLayout;
 
     WorkerMemories &workerMemories = getWorkerMemoriesForCurrentFrame();
 
     tf::Taskflow flow;
-    DrawQueue &queue = *step.drawQueue.get();
 
     HasherXXH128<PipelineHashVisitor> sharedHasher;
     sharedHasher(rtl);
@@ -361,7 +370,7 @@ struct RendererImpl final : public ContextData {
       {
         // Expand drawables
         ZoneScopedN("expandDrawables");
-        for (auto &drawable : queue.getDrawables()) {
+        for (auto &drawable : drawables) {
           if (!drawable->expand(expandedDrawables))
             expandedDrawables.push_back(drawable);
         }
@@ -378,14 +387,14 @@ struct RendererImpl final : public ContextData {
         collector.hashObject(*drawable);
         Hash128 pipelineHash = collector.getDigest();
 
-        for (auto stepFeature : step.features)
-          collector.hashObject(stepFeature);
+        for (auto stepFeature : features)
+          collector.hashObject(*stepFeature);
 
         auto &entry = getCacheEntry(workerData.pipelineGroups, pipelineHash, [&](const Hash128 &hash) {
           // Setup new PipelineGroup with features from step that apply
           PipelineGroup newGroup;
-          for (auto stepFeature : step.features) {
-            newGroup.baseFeatures.push_back(stepFeature.get());
+          for (auto stepFeature : features) {
+            newGroup.baseFeatures.push_back(stepFeature);
           }
           return newGroup;
         });
@@ -473,7 +482,7 @@ struct RendererImpl final : public ContextData {
           .subflow = subflow,
           .viewData = viewData,
           .drawables = group.drawables,
-          .sortMode = step.sortMode,
+          .sortMode = sortMode,
       };
       auto prepareData = group.pipeline->drawableProcessor->prepare(prepareContext);
       group.prepareData = prepareData;
@@ -563,25 +572,41 @@ struct RendererImpl final : public ContextData {
 
     RenderGraphNode &node = out.getNode(index);
 
-    MeshDrawable::Ptr drawable = std::make_shared<MeshDrawable>(fullscreenQuad);
+    struct StepData {
+      MeshDrawable::Ptr drawable;
+      FeaturePtr baseFeature;
+      std::vector<const IDrawable *> drawables;
+      std::vector<Feature *> features;
+    };
+
+    std::shared_ptr<StepData> data = std::make_shared<StepData>();
+    MeshDrawable::Ptr &drawable = data->drawable = std::make_shared<MeshDrawable>(fullscreenQuad);
+    FeaturePtr &baseFeature = data->baseFeature = std::make_shared<Feature>();
+    data->drawables.push_back(drawable.get());
+
+    data->features.push_back(baseFeature.get());
+    for (auto &feature : step.features) {
+      data->features.push_back(feature.get());
+    }
+
+    // Set parameters from step
     drawable->parameters = step.parameters;
 
     // Setup node outputs as texture slots
-    FeaturePtr baseFeature = std::make_shared<Feature>();
     for (auto &frameIndex : node.readsFrom) {
       auto &frame = out.renderGraph.frames[frameIndex];
       baseFeature->textureParams.emplace_back(frame.name);
     }
-    drawable->features.push_back(baseFeature);
 
-    node.encode = [=](RenderGraphEncodeContext &ctx) {
+    node.encode = [this, data, viewData](RenderGraphEncodeContext &ctx) {
+      // Connect texture inputs
       for (auto &frameIndex : ctx.node.readsFrom) {
         auto &texture = ctx.evaluator.getTexture(frameIndex);
         auto &frame = ctx.graph.frames[frameIndex];
-        drawable->parameters.set(frame.name, texture);
+        data->drawable->parameters.set(frame.name, texture);
       }
 
-      // TODO: Use drawable processor
+      renderDrawables(ctx, data->drawables, data->features, SortMode::Queue, viewData);
     };
   }
 

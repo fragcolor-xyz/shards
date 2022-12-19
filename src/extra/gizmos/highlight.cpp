@@ -7,9 +7,9 @@ using namespace gfx;
 
 struct HighlightShard : public BaseConsumer {
   // TODO: Merge with DrawShard type
-  static inline shards::Types SingleDrawableTypes = shards::Types{gfx::Types::Drawable, gfx::Types::DrawableHierarchy};
+  static inline shards::Types SingleDrawableTypes = shards::Types{gfx::Types::Drawable, gfx::Types::TreeDrawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
-  static inline shards::Types DrawableTypes{gfx::Types::Drawable, gfx::Types::DrawableHierarchy, DrawableSeqType};
+  static inline shards::Types DrawableTypes{gfx::Types::Drawable, gfx::Types::TreeDrawable, DrawableSeqType};
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
@@ -31,9 +31,9 @@ struct HighlightShard : public BaseConsumer {
     if (gfx::Types::Drawable == inputType) {
       SHDrawable *dPtr = static_cast<SHDrawable *>(input.payload.objectValue);
       helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), dPtr->drawable);
-    } else if (gfx::Types::DrawableHierarchy == inputType) {
-      SHDrawableHierarchy *dhPtr = static_cast<SHDrawableHierarchy *>(input.payload.objectValue);
-      helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), dhPtr->drawableHierarchy);
+    } else if (gfx::Types::TreeDrawable == inputType) {
+      SHTreeDrawable *dhPtr = static_cast<SHTreeDrawable *>(input.payload.objectValue);
+      helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), *dhPtr->drawable.get());
     }
 
     return SHVar{};
