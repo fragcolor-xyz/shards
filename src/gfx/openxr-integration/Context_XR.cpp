@@ -5,17 +5,17 @@
 
 #include <sstream>
 
-#ifdef DEBUG
+#ifdef DEBUG_XR
   #include <array>
   #include <iostream>
 #endif
 
 #include "spdlog/spdlog.h"
-
-Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
+                       
+Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared)
 {
   spdlog::info("[log][t] Context_XR::Context_XR: Creating Context...");
-  this->wgpuUVulkanShared = wgpuUVulkanShared;
+  wgpuUVulkanShared = _wgpuUVulkanShared;
 
   // Get all supported OpenXR instance extensions
   std::vector<XrExtensionProperties> supportedOpenXRInstanceExtensions;
@@ -60,8 +60,8 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
 
     std::vector<const char*> extensions = { XR_KHR_VULKAN_ENABLE_EXTENSION_NAME };
 
-    #ifdef DEBUG
-    // Add the OpenXR debug instance extension
+    #ifdef DEBUG_XR
+    // Add the OpenXR DEBUG_XR instance extension
     extensions.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
     #endif
 
@@ -84,6 +84,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
         s << "OpenXR instance extension \"" << extension << "\"";
         util::error(Error::FeatureNotSupported, s.str());
         valid = false;
+        spdlog::error("[log][t] Context_XR::Context_XR: error at supportedExtension : supportedOpenXRInstanceExtensions");
         return;
       }
     }
@@ -97,59 +98,60 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     {
       util::error(Error::HeadsetNotConnected);
       valid = false;
+      spdlog::error("[log][t] Context_XR::Context_XR: error at xrCreateInstance(&instanceCreateInfo, &xrInstance); ");
       return;
     }
   }
 
   // Load the required OpenXR extension functions
-  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanInstanceExtensionsKHR",
-                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanInstanceExtensionsKHR)))
+  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanInstanceExtensionsKHR", reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanInstanceExtensionsKHR)))
   {
     util::error(Error::FeatureNotSupported, "OpenXR extension function \"xrGetVulkanInstanceExtensionsKHR\"");
     valid = false;
+    spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrGetVulkanInstanceExtensionsKHR', reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanInstanceExtensionsKHR)))");
     return;
   }
 
-  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanGraphicsDeviceKHR",
-                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanGraphicsDeviceKHR)))
+  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanGraphicsDeviceKHR", reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanGraphicsDeviceKHR)))
   {
     util::error(Error::FeatureNotSupported, "OpenXR extension function \"xrGetVulkanGraphicsDeviceKHR\"");
     valid = false;
+    spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrGetVulkanGraphicsDeviceKHR', reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanGraphicsDeviceKHR)))");
     return;
   }
 
-  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanDeviceExtensionsKHR",
-                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanDeviceExtensionsKHR)))
+  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanDeviceExtensionsKHR", reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanDeviceExtensionsKHR)))
   {
     util::error(Error::FeatureNotSupported, "OpenXR extension function \"xrGetVulkanDeviceExtensionsKHR\"");
     valid = false;
+    spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrGetVulkanDeviceExtensionsKHR', reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanDeviceExtensionsKHR)))");
     return;
   }
 
-  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanGraphicsRequirementsKHR",
-                                     reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanGraphicsRequirementsKHR)))
+  if (!util::loadXrExtensionFunction(xrInstance, "xrGetVulkanGraphicsRequirementsKHR", reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanGraphicsRequirementsKHR)))
   {
     util::error(Error::FeatureNotSupported, "OpenXR extension function \"xrGetVulkanGraphicsRequirementsKHR\"");
     valid = false;
+    spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrGetVulkanGraphicsRequirementsKHR', reinterpret_cast<PFN_xrVoidFunction*>(&xrGetVulkanGraphicsRequirementsKHR)))");
     return;
   }
 
-  #ifdef DEBUG
-  // Create an OpenXR debug utils messenger for validation
+  #ifdef DEBUG_XR
+  // Create an OpenXR DEBUG_XR utils messenger for validation
   {
-    if (!util::loadXrExtensionFunction(xrInstance, "xrCreateDebugUtilsMessengerEXT",
-                                       reinterpret_cast<PFN_xrVoidFunction*>(&xrCreateDebugUtilsMessengerEXT)))
+    if (!util::loadXrExtensionFunction(xrInstance, "xrCreateDebugUtilsMessengerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&xrCreateDebugUtilsMessengerEXT)))
     {
       util::error(Error::FeatureNotSupported, "OpenXR extension function \"xrCreateDebugUtilsMessengerEXT\"");
       valid = false;
+      spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrCreateDebugUtilsMessengerEXT', reinterpret_cast<PFN_xrVoidFunction*>(&xrCreateDebugUtilsMessengerEXT)))");
       return;
     }
 
-    if (!util::loadXrExtensionFunction(xrInstance, "xrDestroyDebugUtilsMessengerEXT",
-                                       reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyDebugUtilsMessengerEXT)))
+    if (!util::loadXrExtensionFunction(xrInstance, "xrDestroyDebugUtilsMessengerEXT", reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyDebugUtilsMessengerEXT)))
     {
       util::error(Error::FeatureNotSupported, "OpenXR extension function \"xrDestroyDebugUtilsMessengerEXT\"");
       valid = false;
+      spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrDestroyDebugUtilsMessengerEXT', reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyDebugUtilsMessengerEXT)))");
       return;
     }
 
@@ -169,7 +171,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
       {
         std::cerr << "[OpenXR] " << callbackData->message << "\n";
       }
-
+      spdlog::error("[log][t] Context_XR::Context_XR: error at messageSeverity >= XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT");
       return XR_FALSE; // Returning XR_TRUE will force the calling function to fail
     };
 
@@ -183,6 +185,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::error("[log][t] Context_XR::Context_XR: error at loadXrExtensionFunction(xrInstance, 'xrDestroyDebugUtilsMessengerEXT', reinterpret_cast<PFN_xrVoidFunction*>(&xrDestroyDebugUtilsMessengerEXT)))");
       return;
     }
   }
@@ -230,7 +233,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(vulkanInstanceExtensions.size());
     instanceCreateInfo.ppEnabledExtensionNames = vulkanInstanceExtensions.data();
 
-    #ifdef DEBUG
+    #ifdef DEBUG_XR
     constexpr std::array layers = { "VK_LAYER_KHRONOS_validation" };
 
     // Get all supported Vulkan instance layers
@@ -286,8 +289,8 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
     }
   }
 
-  #ifdef DEBUG
-  // Create a Vulkan debug utils messenger for validation
+  #ifdef DEBUG_XR
+  // Create a Vulkan DEBUG_XR utils messenger for validation
   {
     vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
       util::loadVkExtensionFunction(vkInstance, "vkCreateDebugUtilsMessengerEXT"));
@@ -343,6 +346,8 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared)
   }
   #endif
   */
+
+  created = true;
 }
 
 bool Context_XR::checkXRDeviceReady(
@@ -367,6 +372,7 @@ bool Context_XR::checkXRDeviceReady(
     util::error(Error::HeadsetNotConnected);
     //[t] TODO: Perhaps here instead of throwing error, do something else? Wait for headset to be plugged in?
     valid = false;
+    spdlog::error("[log][t] Context_XR::checkXRDeviceReady: error at xrGetSystem(xrInstance, &systemGetInfo, &systemId);");
     return false;
   }
 
@@ -378,16 +384,17 @@ bool Context_XR::checkXRDeviceReady(
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::error("[log][t] Context_XR::checkXRDeviceReady: error at xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, 0u, &environmentBlendModeCount, nullptr)");
       return false;
     }
 
     std::vector<XrEnvironmentBlendMode> supportedEnvironmentBlendModes(environmentBlendModeCount);
-    result = xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, environmentBlendModeCount,
-                                              &environmentBlendModeCount, supportedEnvironmentBlendModes.data());
+    result = xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, environmentBlendModeCount, &environmentBlendModeCount, supportedEnvironmentBlendModes.data());
     if (XR_FAILED(result))
     {
       util::error(Error::GenericOpenXR);
       valid = false;
+      spdlog::error("[log][t] Context_XR::checkXRDeviceReady: error at xrEnumerateEnvironmentBlendModes(xrInstance, systemId, viewType, environmentBlendModeCount, &environmentBlendModeCount, supportedEnvironmentBlendModes.data());");
       return false;
     }
 
@@ -405,6 +412,7 @@ bool Context_XR::checkXRDeviceReady(
     {
       util::error(Error::FeatureNotSupported, "Environment blend mode");
       valid = false;
+      spdlog::error("[log][t] Context_XR::checkXRDeviceReady: error at !modeFound in for (const XrEnvironmentBlendMode& mode : supportedEnvironmentBlendModes)");
       return false;
     }
   }
@@ -433,7 +441,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericVulkan);
       valid = false;
-      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at vk::enumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount,nullptr,wgpuUVulkanShared->vkLoader);");
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at vk::enumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount,nullptr,wgpuUVulkanShared->vkLoader);");
       return;
     }
 
@@ -445,21 +453,20 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericVulkan);
       valid = false;
-      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at vk::enumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, supportedVulkanInstanceExtensions.data(), wgpuUVulkanShared->vkLoader)");
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at vk::enumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, supportedVulkanInstanceExtensions.data(), wgpuUVulkanShared->vkLoader)");
       return;
     }
   }
 
-  
   // Get the required Vulkan instance extensions from OpenXR and add them
   {
     uint32_t count;
-    XrResult result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
+    XrResult result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr); 
     if (XR_FAILED(result))
     {
-      util::error(Error::GenericOpenXR);
+      util::error(Error::GenericOpenXR);   
       valid = false;
-      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);");
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId[{0}], 0u, &count[{1}], nullptr);",systemId,count);
       return;
     }
 
@@ -470,7 +477,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericOpenXR);
       valid = false;
-      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, count, &count, buffer.data());");
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at 2nd xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId[{0}], count[{1}], &count, buffer.data());",systemId,count);
       return;
     }
 
@@ -481,8 +488,8 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     }
   }
 
-  #ifdef DEBUG
-  // Add the Vulkan debug instance extension
+  #ifdef DEBUG_XR
+  // Add the Vulkan DEBUG_XR instance extension
   vulkanInstanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   #endif
 
@@ -511,7 +518,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
       return;
     }
   }
-  spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() success. valid == true;");
+  spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() End. valid == {0};",valid);
 }
 
 Context_XR::~Context_XR()
@@ -519,7 +526,7 @@ Context_XR::~Context_XR()
   spdlog::info("[log][t] Context_XR::~Context_XR();");
 
   // Clean up OpenXR
-#ifdef DEBUG
+#ifdef DEBUG_XR
   xrDestroyDebugUtilsMessengerEXT(xrDebugUtilsMessenger);
 #endif
 
@@ -529,7 +536,7 @@ Context_XR::~Context_XR()
   // Clean up Vulkan
   vkDestroyDevice(vkDevice, nullptr);
 
-#ifdef DEBUG
+#ifdef DEBUG_XR
   if (vkInstance)
   {
     vkDestroyDebugUtilsMessengerEXT(vkInstance, vkDebugUtilsMessenger, nullptr);
@@ -798,8 +805,8 @@ void Context_XR::sync() const
 
 bool Context_XR::isValid() const
 {
-  spdlog::info("[log][t] Context_XR::isValid()");
-  return valid;
+  spdlog::info("[log][t] Context_XR::isValid() valid[{0}] created[{1}]", valid, created);
+  return valid && created;
 }
 
 XrViewConfigurationType Context_XR::getXrViewType() const

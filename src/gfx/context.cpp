@@ -416,7 +416,7 @@ void Context::initCommon() {
   
   requestDevice(); 
   //openXRSystem.createHeadset() moved into ContextXrGfxBackend's createMainOutput()
-  spdlog::info("[log][t] Context::initCommon: Success.");
+  spdlog::info("[log][t] Context::initCommon: End.");
 }
 
 
