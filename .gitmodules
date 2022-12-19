@@ -67,6 +67,9 @@
 [submodule "deps/snappy"]
 	path = deps/snappy
 	url = https://github.com/shards-lang/snappy.git
+[submodule "deps/tracy"]
+	path = deps/tracy
+	url = https://github.com/wolfpld/tracy.git
 [submodule "src/gfx/wgpu-native"]
 	path = src/gfx/rust/wgpu-native
 	url = https://github.com/shards-lang/wgpu-native.git
@@ -80,3 +83,6 @@
 [submodule "src/gfx/rust/naga"]
 	path = src/gfx/rust/naga
 	url = https://github.com/shards-lang/naga
+[submodule "src/gfx/rust/profiling"]
+	path = src/gfx/rust/profiling
+	url = https://github.com/shards-lang/rust-profiling.git

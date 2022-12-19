@@ -1,6 +1,7 @@
 #include "texture.hpp"
 #include "context.hpp"
 #include "error_utils.hpp"
+#include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <map>
 
@@ -98,6 +99,8 @@ static WGPUTextureView createView(const TextureFormat &format, WGPUTexture textu
 
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
+  ZoneScoped;
+
   const TextureFormatDesc &inputFormat = getTextureFormatDescription(format.pixelFormat);
   uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
 
@@ -119,6 +122,8 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
 }
 
 void Texture::initContextData(Context &context, TextureContextData &contextData) {
+  ZoneScoped;
+
   WGPUDevice device = context.wgpuDevice;
   assert(device);
 

@@ -24,6 +24,7 @@
 #include "render_target.hpp"
 #include "log.hpp"
 #include "geom.hpp"
+#include <tracy/Tracy.hpp>
 #include <algorithm>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
@@ -49,6 +50,12 @@ static MeshPtr fullscreenQuad = []() {
 static std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
   return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
 }();
+
+struct FrameStats {
+  size_t numDrawables{};
+
+  void reset() { numDrawables = 0; }
+};
 
 struct RendererImpl final : public ContextData {
   Context &context;
@@ -76,6 +83,8 @@ struct RendererImpl final : public ContextData {
 
   // Increments forever
   size_t frameCounter = 0;
+
+  FrameStats frameStats;
 
   RendererImpl(Context &context) : context(context) {}
 
@@ -571,6 +580,8 @@ struct RendererImpl final : public ContextData {
       updateMainOutputFromContext();
     }
 
+    frameStats.reset();
+
     renderGraphEvaluator.reset(frameCounter);
 
     auto mainOutputResolution = mainOutput.texture->getResolution();
@@ -587,6 +598,8 @@ struct RendererImpl final : public ContextData {
     ensureMainOutputCleared();
 
     clearOldCacheItems();
+
+    TracyPlot("Drawables Processed", int64_t(frameStats.numDrawables));
   }
 
   // Checks values in a map for the lastTouched member
@@ -821,6 +834,9 @@ struct RendererImpl final : public ContextData {
       }
       finishGroup(drawablesSorted.size());
     }
+
+    // Record statistics
+    frameStats.numDrawables += pipelineDrawables.drawables.size();
   }
 
   void fillViewBuffer(WGPUBuffer &buffer, const shader::UniformBufferLayout &layout, CachedPipeline &cachedPipeline,
