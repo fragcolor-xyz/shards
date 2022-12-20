@@ -34,14 +34,9 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
   if(!checkXRDeviceReady(headsetType)){
     return EXIT_FAILURE;
   }*/
+  //context_xr->getVulkanExtensionsFromOpenXRInstance();
   
   
-  context_xr->getVulkanExtensionsFromOpenXRInstance();
-  //[t] Our WGPUVulkanShared for the purposes of using XR, doesn't need to be created unless the ^above XR specific setup succeeds.
-  if (!context_xr->isValid())
-  {
-    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::InitOpenXR: error at context_xr.");
-  }
 
   //[t] Create Mirror View in / with the gfx context
   //[t] from context.cpp?
@@ -55,6 +50,18 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
 
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR... End.");
   return EXIT_SUCCESS;
+}
+
+bool OpenXRSystem::GetVulkanExtensionsFromOpenXRInstance(){
+  context_xr->getVulkanExtensionsFromOpenXRInstance();
+  //[t] Our WGPUVulkanShared for the purposes of using XR, doesn't need to be created unless the xr context creation and checkXRDeviceReady systemid succeed.
+  if (!context_xr->isValid())
+  {
+    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::InitOpenXR: error at context_xr.");
+    return false;
+  }
+
+  return true;
 }
 
 bool OpenXRSystem::CreatePhysicalDevice(){

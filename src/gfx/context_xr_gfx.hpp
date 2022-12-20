@@ -352,7 +352,7 @@ namespace gfx {
       assert(wgpuVulkanShared->vkPhysicalDevice);
       */
       
-      //[t] xr
+      //[t] xr system 
       //[t] this should be created first/early, within the IContextBackend context_xr_gfx. 
       //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code... 
       //[t] And also we have weird stuff here with deviceCreated(device)'s queue & wgpuDeviceGetPropertiesEx 
@@ -364,10 +364,15 @@ namespace gfx {
           return nullptr;
         }
 
-        if(!openXRSystem.CreatePhysicalDevice()){
-          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem->CreatePhysicalDevice()");
+        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
+        if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset)){
+          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.checkXRDeviceReady(.");
           return nullptr;
         }
+        
+        openXRSystem.GetVulkanExtensionsFromOpenXRInstance();
+ 
+        
 
         
       }
@@ -395,6 +400,15 @@ namespace gfx {
     }
 
     std::shared_ptr<AdapterRequest> requestAdapter() override {
+      //[t] xr system 
+      {
+        OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
+        if(!openXRSystem.CreatePhysicalDevice()){
+          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem->CreatePhysicalDevice()");
+          return nullptr;
+        }
+      }
+
       WGPURequestAdapterOptionsVK optionsVk{
           .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_RequestAdapterOptionsVK)},
           .physicalDevice = wgpuVulkanShared->vkPhysicalDevice,
@@ -433,7 +447,7 @@ namespace gfx {
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::requestDevice().");
       std::vector<const char *> requiredExtensions = {};
 
-      //[t] xr
+      //[t] xr system 
       OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
       {
         requiredExtensions = openXRSystem.GetVulkanXrExtensions();
@@ -452,7 +466,7 @@ namespace gfx {
       deviceDesc.requiredLimits = &requiredLimits;
 
       auto cb = [&](WGPURequestDeviceStatus status, WGPUDevice device, const char *msg) { 
-        //[t] xr
+        //[t] xr system 
         { 
           openXRSystem.CheckXrGraphicsRequirementsVulkanKHR();
         }
@@ -462,14 +476,7 @@ namespace gfx {
       std::shared_ptr<DeviceRequest> devReq = DeviceRequest::create(wgpuVulkanShared->wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::requestDevice() returning DeviceRequest.");
 
-      //[t] xr
-      { 
-        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
-        if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset)){
-          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.checkXRDeviceReady(.");
-          return nullptr;
-        }
-      }
+      
 
       return devReq;
     }
