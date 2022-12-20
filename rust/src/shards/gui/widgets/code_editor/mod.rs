@@ -86,7 +86,7 @@ impl Shard for CodeEditor {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("A TextInput with support for highlighting"))
+    OptionalString(shccstr!("A TextInput with support for highlighting."))
   }
 
   fn inputTypes(&mut self) -> &Types {

@@ -63,7 +63,7 @@ impl Shard for Indent {
 
   fn help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "Creates a child ui which is indented to the right."
+      "Creates a child UI which is indented to the right."
     ))
   }
 

@@ -26,7 +26,7 @@ lazy_static! {
   static ref BAR_PARAMETERS: Parameters = vec![
     (
       cstr!("Color"),
-      shccstr!("Stroke color"),
+      shccstr!("Stroke color."),
       COLOR_VAR_OR_NONE_SLICE,
     )
       .into(),

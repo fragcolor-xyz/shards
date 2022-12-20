@@ -23,7 +23,7 @@ lazy_static! {
   static ref TEXTURE_TYPES: Vec<Type> = vec![*image_util::TEXTURE_TYPE];
   static ref RENDER_TARGET_PARAMETERS: Parameters = vec![(
     cstr!("Scale"),
-    shccstr!("Scaling to apply to the source texture"),
+    shccstr!("Scaling to apply to the source texture."),
     FLOAT2_VAR_SLICE,
   )
     .into(),];

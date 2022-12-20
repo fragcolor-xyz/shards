@@ -23,7 +23,7 @@ use crate::types::Var;
 lazy_static! {
   static ref IMAGE_PARAMETERS: Parameters = vec![(
     cstr!("Scale"),
-    shccstr!("Scaling to apply to the source image"),
+    shccstr!("Scaling to apply to the source image."),
     FLOAT2_VAR_SLICE,
   )
     .into(),];

@@ -39,7 +39,7 @@ lazy_static! {
       .into(),
     (
       cstr!("Scale"),
-      shccstr!("Scaling to apply to the source image"),
+      shccstr!("Scaling to apply to the source image."),
       FLOAT2_VAR_SLICE,
     )
       .into(),

@@ -28,7 +28,7 @@ lazy_static! {
   static ref LINK_PARAMETERS: Parameters = vec![
     (
       cstr!("Label"),
-      shccstr!("Optional label for the link"),
+      shccstr!("Optional label for the link."),
       STRING_OR_NONE_SLICE,
     )
       .into(),

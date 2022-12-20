@@ -85,7 +85,7 @@ impl Shard for ColorInput {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The selected color"))
+    OptionalString(shccstr!("The selected color."))
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

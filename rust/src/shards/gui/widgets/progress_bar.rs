@@ -76,7 +76,7 @@ impl Shard for ProgressBar {
 
   fn inputHelp(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The progress amount in the [0.0, 1.0] range, where 1 means completed."
+      "The progress amount ranging from 0.0 (no progress) to 1.0 (completed)."
     ))
   }
 

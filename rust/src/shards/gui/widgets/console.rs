@@ -82,7 +82,7 @@ impl Shard for Console {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The raw logs"))
+    OptionalString(shccstr!("The raw logs."))
   }
 
   fn outputTypes(&mut self) -> &Types {

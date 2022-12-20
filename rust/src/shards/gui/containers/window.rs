@@ -123,7 +123,7 @@ impl Shard for Window {
 
   fn help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "Creates a floating window which can be dragged, closed, collapsed, resized."
+      "Creates a floating window which can be dragged, closed, collapsed, and resized."
     ))
   }
 
