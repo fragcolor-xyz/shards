@@ -88,7 +88,7 @@ After scheduling our Wires, we can finally run the Mesh... and that is when Shar
 ![A Mesh.](assets/what-is-a-mesh.png)
 
 !!! note
-    If the scheduling of Wires seems rigid to you, fret not! We will be learning more about manipulating the flow of Shards later.
+    If the scheduling of Wires seems rigid to you, fret not! We will be learning more about manipulating [the flow of Shards](the-flow.md) later.
 
 Now that you have a basic understanding of what Shards are, let us take a look at how coding with Shards work.
 

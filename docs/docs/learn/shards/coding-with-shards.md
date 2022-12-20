@@ -6,42 +6,47 @@ In this chapter, we will be learning how to code with Shards so that you can wri
 
 A shard can take in data, process it, and output the results.
 
+![A shard takes in an input and produces an output.](assets/what-is-a-shard.png)
+
 There are many different types of data in the Shards language, and each shard will have specific data types that it can work with. 
 
 For example, the [`Math.Add`](../../../reference/shards/Math/Add/) shard can only work with numeric data types, while the [`Log`](../../../reference/shards/General/Log/) shard that prints information to the console can work with `Any` data type.
 
 Here are some of the data types found in Shards:
 
-| Data Type   | Description                                            | Example         |
-| :---------- | :----------------------------------------------------- | :-------------- |
-| `Any`       | Any data type.                                         |                 |
-| `Bool`      | Evaluates to either `true` or `false`.                 | `true`, `false` |
-| `Float`     | A numerical value with a decimal point.                | `2.53`, `9.124` |
-| `Int`       | A numerical value with no decimals. Read as "integer". | `2`, `9`        |
-| `None`      | No data type.                                          |                 |
-| `Sequence`  | A collection of values.                                | `[3, 25, 9]`    |
-| `String`    | Characters enclosed by double quotes.                  | "A string!"     |
-| `Wire`      | A sequence of shards.                                  |                 |
+| Data Type   | Description                                            | Example           |
+| :---------- | :----------------------------------------------------- | :---------------- |
+| `Any`       | Any data type.                                         |                   |
+| `None`      | No data type.                                          |                   |
+| `Bool`      | Evaluates to either `true` or `false`.                 | `true`, `false`   |
+| `Float`     | A numerical value with a decimal point.                | `2.53`, `-9.124`  |
+| `Int`       | A numerical value with no decimals. Read as "integer". | `2`, `-9`         |
+| `Sequence`  | A collection of values.                                | `[-3.2, "abc", 9]`|
+| `String`    | Characters enclosed by double quotes.                  | "A string!"       |
+| `Wire`      | A sequence of shards.                                  |                   |
+
+!!! note
+    The input and output of a shard can be made up of multiple data types. This is done by encapsulating the different types within a sequence. For example `["a string", 1.04, true]` is a sequence made up of a string, a float, and a boolean value.
 
 For the full list of data types and more in-depth reading, check out the `Types` documentation page [here](../../../reference/shards/types/).
 
 ## Variables
 
-To better work with data across your code, we can assign them to data containers known as *variables*. Imagine a scenario where you have a float `3.141592653589793238` that you need to reuse in code multiple times. Instead of typing the entire float out each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever its needed.
+To better work with data across your code, we can assign them to data containers known as *variables*. Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing the entire float out each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever its needed.
 
 === "Without Variables"
 
     ```{.clojure .annotate linenums="1"}
-    3.141592653589793238 (Math.Add 3.141592653589793238) (Math.Multiply 3.141592653589793238) (Math.Subtract 3.141592653589793238)
+    3.141592653589793 (Math.Add 3.141592653589793) (Math.Multiply 3.141592653589793) (Math.Subtract 3.141592653589793)
     ```
 === "With Variables"
 
     ```{.clojure .annotate linenums="1"}
-    3.141592653589793238 = .pi-value ;; (1)
+    3.141592653589793 = .pi-value ;; (1)
     .pi-value (Math.Add .pi-value) (Math.Multiply .pi-value) (Math.Subtract .pi-value)
     ```
 
-    1. 3.141592653589793238 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
+    1. 3.141592653589793 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
   
 Variable names always start with a `.` period.
 
@@ -53,7 +58,7 @@ Some example of variable names:
 
 - `.is-verified` 
 
-How you assign data to variables depends on the variable type. The main difference between variables are as follows:
+How you assign data to variables depends on the variable type. The main differences between variables are as follows:
 
 - Constant vs Mutable
 
@@ -120,14 +125,14 @@ For example, the `Repeat` shard has four parameters: `Action`, `Times`, `Forever
 
 We can utilize the `Repeat` shard with its different parameters as shown:
 
-=== "1 Parameter"
+=== "1 Parameter (Implied)"
 
     ```{.clojure .annotate linenums="1"}
     (Repeat
         (-> (Msg "Hello World!"))) ;; (1)(2)
     ```
 
-    1. When no parameters are specified, the default parameter will be the first parameter the shard has. In this case, `Action` is the default parameter for `Repeat` and we set `(Msg "Hello World")` to it.
+    1. When no parameters are specified, parameters are treated as *implied* and are resolved in order. In this case, `Action` is the implied parameter for `Repeat` and we set `(Msg "Hello World")` to it.
     2. Since the other parameters are not defined, they will assume their default values. In this case, the `Repeat` shard will not run at all as `Times` has a default value of 0.
 
 === "2 Parameters (Fully Declared)"
@@ -141,16 +146,24 @@ We can utilize the `Repeat` shard with its different parameters as shown:
     1. The parameters are fully declared for clarity.
     2. Repeats the `Action` twice.
 
+=== "2 Parameters (Implied)"
+    
+    ```{.clojure .annotate linenums="1"}
+    (Repeat 
+        (-> (Msg "Hello World!")) 2) ;; (1)
+    ```
+
+    1. Both parameters can be implied since they are resolved in order. In this case, `Action` is the first implied parameter, and `Times` is the second implied parameter.
+
 === "2 Parameters (Implied 1st)"
     
     ```{.clojure .annotate linenums="1"}
     (Repeat 
-        (-> (Msg "Hello World!")) ;; (1)(2)
+        (-> (Msg "Hello World!")) ;; (1)
         :Times 2)
     ```
 
-    1. It is optional to define the first parameter as it can be implicitly declared. Note that implicit declaration will only work for the first parameter of the shard.
-    2. This shard behaves exactly the same as the shard in "2 Parameters (Fully Declared)".
+    1. You can still implicitly declare the first parameter, while fully declaring the other parameters. Note that it does not work vice versa. You cannot implicitly declare parameters if the parameter before it has been fully declared.
 
 === "3 Parameters (Fully Declared)"
     
@@ -166,18 +179,17 @@ We can utilize the `Repeat` shard with its different parameters as shown:
        :Until (-> .x (Is 2))) ;; (4)(5)
     ```
 
-    1. We are placing two shards within the `:Action` parameter this time.
-    2. [`Math.Inc`](../../../reference/shards/Math/Inc/) increases the value of the specified variable by 1. 
-    3. The `:Times` parameter is skipped and `:Forever` is declared instead.
-    4. `:Until` takes a shard that returns `true` or `false`. `Repeat` will loop forever until the shard specified in `:Until` evaluates to `true`.
-    5. In this case, each time `Repeat` repeats its `:Action`, `.x` increases by 1. `Repeat` stops when `.x` has a value of 2.
+    1. We are placing two shards within the `Action` parameter this time.
+    2. [`Math.Inc`](../../../reference/shards/Math/Inc/) increases the value of the specified variable by 1.
+    3. The `Times` parameter is skipped and `Forever` is declared instead. Since we are skipping a parameter, we must fully declare the parameters that come after it.
+    4. `Until` takes a shard that returns `true` or `false`. `Repeat` will loop forever until the shard specified in `Until` evaluates to `true`.
+    5. In this case, each time `Repeat` repeats its `Action`, `.x` increases by 1. `Repeat` stops when `.x` has a value of 2.
     6. We assigned `.x` to have a value of 0 at the start.
 
 !!! note "`->`"
-    When using shards for a parameter (e.g.`:Action`), you must always place `->` before the first shard.
+    When using shards for a parameter (e.g.`Action`), you must always place `->` before the first shard.
 
     [`->`](../../../reference/functions/misc/) is a shard container used to group multiple shards together.
-
 
 To find out more about the input/output/parameter of a shard, you can search for the shard in the search bar above and check out its documentation page.
 
