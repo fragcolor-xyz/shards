@@ -364,15 +364,14 @@ namespace gfx {
           return nullptr;
         }
 
-        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? 
+        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? Or just say it's not connected.
+        //[t] (If a headset is sleeping but present, it works successfully)
         if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset)){
           spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.checkXRDeviceReady(.");
           return nullptr;
         }
         
         openXRSystem.GetVulkanExtensionsFromOpenXRInstance();
- 
-        
 
         
       }
