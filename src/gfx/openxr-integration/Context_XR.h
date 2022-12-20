@@ -20,7 +20,7 @@ public:
                             XrFormFactor xrFormFactor
                           );
   void getVulkanExtensionsFromOpenXRInstance();
-  bool createDevice(VkSurfaceKHR mirrorSurface);
+  bool createDevice( bool isMultiview);//VkSurfaceKHR mirrorSurface);
   void sync() const;
 
   bool isValid() const;

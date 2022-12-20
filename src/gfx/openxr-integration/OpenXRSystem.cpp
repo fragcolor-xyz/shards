@@ -17,7 +17,7 @@ bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
 
 //[t] this should be created before we call anything from context_xr_gfx. 
 //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code...
-int OpenXRSystem::InitOpenXR(const std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, HeadsetType headsetType = defaultHeadset)
+int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, bool isMultipass, HeadsetType headsetType)
 {
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR...");
 
@@ -35,7 +35,7 @@ int OpenXRSystem::InitOpenXR(const std::shared_ptr<gfx::WGPUVulkanShared> wgpuUV
     return EXIT_FAILURE;
   }*/
   
-  // maybe move some of this to gfx
+  
   context_xr->getVulkanExtensionsFromOpenXRInstance();
   //[t] Our WGPUVulkanShared for the purposes of using XR, doesn't need to be created unless the ^above XR specific setup succeeds.
   if (!context_xr->isValid())
@@ -45,6 +45,8 @@ int OpenXRSystem::InitOpenXR(const std::shared_ptr<gfx::WGPUVulkanShared> wgpuUV
 
   //[t] Create Mirror View in / with the gfx context
   //[t] from context.cpp?
+
+  context_xr->createDevice(isMultipass);
   
   //[t] TODO: We also need to verify that OpenXRMirrorView was successful at CreateMirrorSurface() and createMirrorSwapchain() 
   //          for queue, surface, to know if we can render & present
