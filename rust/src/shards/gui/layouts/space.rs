@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use std::convert::TryInto;
-
 use super::Space;
 use crate::shard::Shard;
 use crate::shards::gui::util;

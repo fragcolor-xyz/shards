@@ -27,8 +27,6 @@ use crate::types::Var;
 use crate::types::WireState;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
-use egui::Context as EguiNativeContext;
-use egui::RawInput;
 use std::ffi::CStr;
 
 lazy_static! {
@@ -192,7 +190,7 @@ impl Shard for EguiContext {
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.context = Some(EguiNativeContext::default());
+    self.context = Some(egui::Context::default());
     self.instance.warmup(ctx);
     self.queue.warmup(ctx);
     self.contents.warmup(ctx)?;

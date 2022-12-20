@@ -27,7 +27,6 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
-use egui::Context as EguiNativeContext;
 
 lazy_static! {
   static ref AREA_PARAMETERS: Parameters = vec![

@@ -29,7 +29,6 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 use crate::types::FLOAT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
-use egui::Context as EguiNativeContext;
 
 lazy_static! {
   static ref CENTRALPANEL_PARAMETERS: Parameters = vec![(
