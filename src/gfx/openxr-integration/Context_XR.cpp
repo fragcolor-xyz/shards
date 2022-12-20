@@ -192,7 +192,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
   #endif
 
 
-  std::vector<const char*> vulkanInstanceExtensions;
+  //std::vector<const char*> vulkanInstanceExtensions;
   
   //[t] we don't need this
   /*
