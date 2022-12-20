@@ -309,7 +309,7 @@ namespace gfx {
     //[t] Would have REALLY helped me if you added a few comments explaining a bit what the idea is here.
     //[t] In other words, so what if you return "wgpuInstance"? It's not tied to the vkinstance xr updates, is it? I don't get it.
     WGPUInstance createInstance() override 
-    {
+    { 
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createInstance().");
       // Create gpu instance
       WGPUInstanceDescriptor desc{}; 
@@ -437,10 +437,11 @@ namespace gfx {
       //[t] create xr system things. moved in here instead of context.cpp to avoid circular dependency
       //[t] this should be created first, before we call anything from context_xr_gfx. 
       //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code... 
+      //[t] And also we have weird stuff here with deviceCreated(device)'s queue & wgpuDeviceGetPropertiesEx 
       {
         OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
         //std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
-        if(openXRSystem.InitOpenXR(wgpuVulkanShared, OpenXRSystem::defaultHeadset) == 1){
+        if(openXRSystem.InitOpenXR(wgpuVulkanShared, true, OpenXRSystem::defaultHeadset) == 1){
           spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.InitOpenXR(.");
           return nullptr;
         }
