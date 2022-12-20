@@ -368,12 +368,13 @@ bool Context_XR::checkXRDeviceReady(
   XrSystemGetInfo systemGetInfo{ XR_TYPE_SYSTEM_GET_INFO };
   systemGetInfo.formFactor = xrFormFactor;
   XrResult result = xrGetSystem(xrInstance, &systemGetInfo, &systemId);
+  
   if (XR_FAILED(result))
   {
     util::error(Error::HeadsetNotConnected);
     //[t] TODO: Perhaps here instead of throwing error, do something else? Wait for headset to be plugged in?
     valid = false;
-    spdlog::error("[log][t] Context_XR::checkXRDeviceReady: error at xrGetSystem(xrInstance, &systemGetInfo, &systemId);");
+    spdlog::error("[log][t] Context_XR::checkXRDeviceReady: error at xrGetSystem(xrInstance, &systemGetInfo, &systemId[{0}]);",systemId);
     return false;
   }
 
@@ -460,7 +461,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
 
   // Get the required Vulkan instance extensions from OpenXR and add them
   {
-    uint32_t count;
+    uint32_t count; 
     XrResult result = xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr); 
     if (XR_FAILED(result))
     {
@@ -632,6 +633,8 @@ bool Context_XR::CheckXrGraphicsRequirementsVulkanKHR(){
     spdlog::error("[log][t] Context_XR::CheckXrGraphicsRequirementsVulkanKHR: error [{}] at xrGetVulkanGraphicsRequirementsKHR(xrInstance, systemId, &graphicsRequirements);", result);
     return false;
   }
+
+  return true;
 }
 
 /*
