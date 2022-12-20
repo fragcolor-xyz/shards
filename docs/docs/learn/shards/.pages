@@ -1,6 +1,5 @@
 nav:
   - index.md
-  - introduction.md
   - what-is-shards.md
   - the-flow.md
   - working-with-data.md
