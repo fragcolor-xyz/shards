@@ -20,6 +20,9 @@ public:
                             XrFormFactor xrFormFactor
                           );
   void getVulkanExtensionsFromOpenXRInstance();
+  bool CreatePhysicalDevice();
+  std::vector<const char*> GetVulkanXrExtensions();
+  bool CheckXrGraphicsRequirementsVulkanKHR();
   bool createDevice( bool isMultiview);//VkSurfaceKHR mirrorSurface);
   void sync() const;
 

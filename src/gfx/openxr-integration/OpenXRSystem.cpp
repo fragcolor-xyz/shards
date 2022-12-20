@@ -46,7 +46,8 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
   //[t] Create Mirror View in / with the gfx context
   //[t] from context.cpp?
 
-  context_xr->createDevice(isMultipass);
+  //instead of this, created a couple specific functions to be called by IContextBackend
+  //context_xr->createDevice(isMultipass);
   
   //[t] TODO: We also need to verify that OpenXRMirrorView was successful at CreateMirrorSurface() and createMirrorSwapchain() 
   //          for queue, surface, to know if we can render & present
@@ -54,6 +55,18 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
 
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR... End.");
   return EXIT_SUCCESS;
+}
+
+bool OpenXRSystem::CreatePhysicalDevice(){
+  return context_xr->CreatePhysicalDevice();
+}
+
+std::vector<const char*> OpenXRSystem::GetVulkanXrExtensions(){
+  return context_xr->GetVulkanXrExtensions();
+}
+
+bool OpenXRSystem::CheckXrGraphicsRequirementsVulkanKHR(){
+  return context_xr->CheckXrGraphicsRequirementsVulkanKHR();
 }
 
 // Requires OpenXRSystem::InitOpenXR and ContextXrGfxBackend->createInstance() to be called first.

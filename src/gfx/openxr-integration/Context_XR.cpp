@@ -213,9 +213,8 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
     }
   }*/
 
-
+  /*
   //[t] boilerplate for gfx vk instance, which we should (already) have in context_xr_gfx.hpp
-  //[t] nope, we create it here and send it to wgpuUVulkanShared->vkInstance
   // Create a Vulkan instance with all required extensions
   {
     VkApplicationInfo applicationInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
@@ -286,6 +285,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
     }
     wgpuUVulkanShared->vkInstance = vkInstance;
   }
+  */
 
   /*
 
@@ -350,6 +350,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
   created = true;
 }
 
+//should be called after all the context devices created
 bool Context_XR::checkXRDeviceReady(
                                     XrViewConfigurationType viewType,
                                     XrEnvironmentBlendMode environmentBlendMode,
@@ -465,8 +466,8 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericOpenXR);   
       valid = false;
-      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId[{0}], 0u, &count[{1}], nullptr);",systemId,count);
-      return;
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error [{0}] at xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId[{1}], 0u, &count[{2}], nullptr);", result, systemId,count);
+      //return;
     }
 
     std::string buffer;
@@ -476,8 +477,8 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
     {
       util::error(Error::GenericOpenXR);
       valid = false;
-      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at 2nd xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId[{0}], count[{1}], &count, buffer.data());",systemId,count);
-      return;
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error [{0}] at 2nd xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId[{1}], count[{2}], &count, buffer.data());", result, systemId,count);
+      //return;
     }
 
     const std::vector<const char*> instanceExtensions = util::unpackExtensionString(buffer);
@@ -513,7 +514,7 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
       s << "Vulkan instance extension \"" << extension << "\"";
       util::error(Error::FeatureNotSupported, s.str());
       valid = false;
-      spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at supportedExtension : supportedVulkanInstanceExtensions");
+      spdlog::error("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() Error at supportedExtension : supportedVulkanInstanceExtensions");
       return;
     }
   }
@@ -530,10 +531,10 @@ Context_XR::~Context_XR()
 #endif
 
   xrDestroyInstance(xrInstance);
-//[t] this is boilerplate for gfx vk isntance
+
 
   // Clean up Vulkan
-  vkDestroyDevice(vkDevice, nullptr);
+  //vkDestroyDevice(vkDevice, nullptr);
 
 #ifdef DEBUG_XR
   if (vkInstance)
@@ -542,14 +543,102 @@ Context_XR::~Context_XR()
   }
 #endif
 
-  vkDestroyInstance(vkInstance, nullptr);
+  //vkDestroyInstance(vkInstance, nullptr);
   
 }
 
-//[t] this should be called at the beginning of IContextBackend's equivalent device creation functions.
+bool Context_XR::CreatePhysicalDevice(){
+  spdlog::info("[log][t] Context_XR::CreatePhysicalDevice()");
+  // Retrieve the physical device from OpenXR
+  XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice); 
+  if (XR_FAILED(result))
+  {
+    util::error(Error::GenericOpenXR);
+    spdlog::error("[log][t] Context_XR::CreatePhysicalDevice: error [{0}] at xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice);",result);
+    return false;
+  }
+
+  wgpuUVulkanShared->vkPhysicalDevice = physicalDevice;
+
+  spdlog::info("[log][t] Context_XR::CreatePhysicalDevice: end.");
+  return true;
+}
+
+std::vector<const char*> Context_XR::GetVulkanXrExtensions(){
+  spdlog::info("[log][t] Context_XR::GetVulkanXrExtensions()");
+  // Get the required Vulkan device extensions from OpenXR
+  std::vector<const char*> vulkanDeviceExtensions;
+  {
+    uint32_t count; 
+    XrResult result = xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
+    if (XR_FAILED(result))
+    {
+      util::error(Error::GenericOpenXR);
+      spdlog::error("[log][t] Context_XR::GetVulkanXrExtensions: error [{0}] at xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);", result);
+      return vulkanDeviceExtensions;//false;
+    }
+
+    std::string buffer;
+    buffer.resize(count);
+    result = xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, count, &count, buffer.data());
+    if (XR_FAILED(result))
+    {
+      util::error(Error::GenericOpenXR);
+      spdlog::error("[log][t] Context_XR::GetVulkanXrExtensions: error at [{0}] xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, count, &count, buffer.data());", result);
+      return vulkanDeviceExtensions;//false;
+    }
+
+    vulkanDeviceExtensions = util::unpackExtensionString(buffer);
+  }
+
+  // can't do this check because supportedVulkanDeviceExtensions is not vk:: compatible and prolly needs to be set up in context_xr_gfx.hpp anyway
+  /*
+  // Check that all Vulkan device extensions are supported
+  {
+    for (const char* extension : vulkanDeviceExtensions)
+    {
+      bool extensionSupported = false;
+      for (const VkExtensionProperties& supportedExtension : supportedVulkanDeviceExtensions)
+      { 
+        if (strcmp(extension, supportedExtension.extensionName) == 0)
+        {
+          extensionSupported = true;
+          break;
+        }
+      }
+
+      if (!extensionSupported)
+      {
+        std::stringstream s;
+        s << "Vulkan device extension \"" << extension << "\"";
+        util::error(Error::FeatureNotSupported, s.str());
+        spdlog::error("[log][t] Context_XR::createDevice: error at (!extensionSupported)  vulkanDeviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);");
+        return vulkanDeviceExtensions;
+      }
+    }
+  }*/
+
+  spdlog::info("[log][t] Context_XR::GetVulkanXrExtensions: end. Returning vulkanDeviceExtensions.");
+  return vulkanDeviceExtensions;
+}
+
+bool Context_XR::CheckXrGraphicsRequirementsVulkanKHR(){
+  // Check the graphics requirements for Vulkan
+  XrGraphicsRequirementsVulkanKHR graphicsRequirements{ XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR };
+  XrResult result = xrGetVulkanGraphicsRequirementsKHR(xrInstance, systemId, &graphicsRequirements);
+  if (XR_FAILED(result))
+  {
+    util::error(Error::GenericOpenXR);
+    spdlog::error("[log][t] Context_XR::CheckXrGraphicsRequirementsVulkanKHR: error [{}] at xrGetVulkanGraphicsRequirementsKHR(xrInstance, systemId, &graphicsRequirements);", result);
+    return false;
+  }
+}
+
+/*
+//[t] this should be called after contextxr is created.
 //[t] We are creating vkPhysicalDevice, vkDevice, vkDrawQueue, vkPresentQueue here.
 //[t] Then sending them to context_xr_gfx in order to interface with our wgpu rendering engine.
-//[t] This is written for both multiview (singlepass) and multipass
+//[t] This is adapted for both multiview (singlepass) and multipass
 bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mirrorSurface to check compatibility
 { 
   spdlog::info("[log][t] Context_XR::createDevice()");
@@ -625,30 +714,30 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
         continue;
       }
 
-      /*
-      // Check the queue family for presenting support
-      VkBool32 presentSupport = false;
-      if (vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, static_cast<uint32_t>(queueFamilyIndexCandidate),
-                                               mirrorSurface, &presentSupport) != VK_SUCCESS)
-      {
-        continue;
-      }
-
-      if (!presentQueueFamilyIndexFound && presentSupport)
-      {
-        presentQueueFamilyIndex = static_cast<uint32_t>(queueFamilyIndexCandidate);
-        presentQueueFamilyIndexFound = true;
-        break;
-      }*/
+      
+      //// Check the queue family for presenting support
+      //VkBool32 presentSupport = false;
+      //if (vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, static_cast<uint32_t>(queueFamilyIndexCandidate),
+      //                                         mirrorSurface, &presentSupport) != VK_SUCCESS)
+      //{
+      //  continue;
+      //}
+//
+      //if (!presentQueueFamilyIndexFound && presentSupport)
+      //{
+      //  presentQueueFamilyIndex = static_cast<uint32_t>(queueFamilyIndexCandidate);
+      //  presentQueueFamilyIndexFound = true;
+      //  break;
+      //}
     }
 
-    /*
-    if (!presentQueueFamilyIndexFound)
-    {
-      util::error(Error::FeatureNotSupported, "Present queue family index");
-      spdlog::error("[log][t] Context_XR::createDevice: error at (!presentQueueFamilyIndexFound) Present queue family index.");
-      return false;
-    }*/
+    
+    //if (!presentQueueFamilyIndexFound)
+    //{
+    //  util::error(Error::FeatureNotSupported, "Present queue family index");
+    //  spdlog::error("[log][t] Context_XR::createDevice: error at (!presentQueueFamilyIndexFound) Present queue family index.");
+    //  return false;
+    //}
   }
 
   // Get all supported Vulkan device extensions
@@ -674,7 +763,7 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
   // Get the required Vulkan device extensions from OpenXR
   std::vector<const char*> vulkanDeviceExtensions;
   {
-    uint32_t count;
+    uint32_t count; 
     result = xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, 0u, &count, nullptr);
     if (XR_FAILED(result))
     {
@@ -697,7 +786,7 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
   }
 
   // Add the required swapchain extension for mirror view
-  vulkanDeviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+  //vulkanDeviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
   // Check that all Vulkan device extensions are supported
   {
@@ -744,10 +833,10 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
       }
 
       VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
-      /*
-      VkPhysicalDeviceMultiviewFeatures physicalDeviceMultiviewFeatures{
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
-      };*/
+      
+      //VkPhysicalDeviceMultiviewFeatures physicalDeviceMultiviewFeatures{
+      //  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
+      //};
       physicalDeviceFeatures2.pNext = &physicalDeviceMultiviewFeatures;
       vkGetPhysicalDeviceFeatures2(physicalDevice, &physicalDeviceFeatures2);
       if (!physicalDeviceMultiviewFeatures.multiview)
@@ -822,7 +911,7 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
 
   spdlog::error("[log][t] Context_XR::createDevice: end; ");
   return true;
-}
+}*/
 
 void Context_XR::sync() const
 {
