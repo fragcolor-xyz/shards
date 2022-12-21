@@ -96,12 +96,11 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
       const UniformLayout &itemLayout = layout.items[layoutIndex];
       FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
-        SPDLOG_LOGGER_WARN(getLogger(), "WEBGPU: Field type mismatch layout:{} parameterStorage:{}", itemLayout.type,
-                           drawDataFieldType);
-        continue;
+        SPDLOG_LOGGER_WARN(getLogger(), "Shader field \"{}\" type mismatch layout:{} parameterStorage:{}", fieldName,
+                           itemLayout.type, drawDataFieldType);
+      } else {
+        packParamVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
       }
-
-      packParamVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
     }
     layoutIndex++;
   }
@@ -114,6 +113,20 @@ inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &vie
   outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
   outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y), float(viewData.viewport.width),
                                           float(viewData.viewport.height)));
+}
+
+inline void collectGeneratedDrawParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
+                                           IParameterCollector &collector) {
+  for (auto &gen : pipeline.drawableParameterGenerators) {
+    gen(ctx, collector);
+  }
+}
+
+inline void collectGeneratedViewParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
+                                           IParameterCollector &collector) {
+  for (auto &gen : pipeline.viewParameterGenerators) {
+    gen(ctx, collector);
+  }
 }
 
 } // namespace gfx::detail

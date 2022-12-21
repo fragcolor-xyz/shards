@@ -18,6 +18,7 @@ add_library(gfx
   feature.cpp
   texture.cpp
   material.cpp
+  async.cpp
   drawables/mesh_drawable.cpp
   drawables/mesh_tree_drawable.cpp
   gizmos/wireframe.cpp

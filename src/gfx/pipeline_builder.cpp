@@ -80,7 +80,11 @@ static FeaturePipelineState computePipelineState(const std::vector<const Feature
 static void buildBaseDrawParameters(ParameterStorage &params, const std::vector<const Feature *> &features) {
   for (const Feature *feature : features) {
     for (auto &param : feature->shaderParams) {
-      params.setParam(param.name, param.defaultValue);
+      if (param.defaultValue.index() == 0) {
+        // Not set (monostate)
+      } else {
+        params.setParam(param.name, param.defaultValue);
+      }
     }
   }
 }
@@ -151,6 +155,12 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
     if (feature->pipelineModifier) {
       feature->pipelineModifier->buildPipeline(*this);
     }
+
+    // Store parameter generators
+    for (auto &gen : feature->drawableParameterGenerators)
+      output.drawableParameterGenerators.push_back(gen);
+    for (auto &gen : feature->viewParameterGenerators)
+      output.viewParameterGenerators.push_back(gen);
   }
 
   // Set shader generator input mesh format

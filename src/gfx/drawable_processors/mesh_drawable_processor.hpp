@@ -228,6 +228,14 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       setTextureParameter(pair.first.c_str(), pair.second.texture);
     }
 
+    // Generate dynamic parameters
+    collectGeneratedDrawParameters(
+        FeatureCallbackContext{
+            .context = context,
+            .drawable = drawable,
+        },
+        cachedPipeline, parameters);
+
     // Set base parameters where unset
     for (auto &baseParam : cachedPipeline.baseDrawParameters.data) {
       parameters.setParamIfUnset(baseParam.first, baseParam.second);
@@ -425,8 +433,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       {
         ZoneScopedN("fillViewBuffer");
 
+        // Set hard-coded view parameters (view/projection matrix)
         ParameterStorage viewParameters(allocator);
         setViewParameters(viewParameters, context.viewData);
+
+        // Collect dynamic view parameters
+        collectGeneratedViewParameters(
+            FeatureCallbackContext{
+                .context = context.context,
+                .view = &context.viewData.view,
+                .cachedView = &context.viewData.cachedView,
+            },
+            cachedPipeline, viewParameters);
 
         auto &buffer = prepareData->viewBuffers[0];
         auto &binding = cachedPipeline.viewBuffersBindings[0];
@@ -476,8 +494,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
 
-      auto cachedBindGroups =
-          allocator->new_object<TLazyWorkerThreadData<shards::pmr::map<Hash128, WGPUBindGroup>>>(std::ref(executor), std::ref(workerMemory));
+      auto cachedBindGroups = allocator->new_object<TLazyWorkerThreadData<shards::pmr::map<Hash128, WGPUBindGroup>>>(
+          std::ref(executor), std::ref(workerMemory));
       subflow.for_each_index(
           size_t(0), preparedGroupData.groups.size(), size_t(1), [=, &cachedPipeline, &preparedGroupData](size_t index) {
             auto &allocator = context.workerMemory.get();

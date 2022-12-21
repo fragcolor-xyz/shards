@@ -127,7 +127,8 @@
   (Setup
    0.0 >= .time
 
-   {:Params [{:Name "time"}] :DrawData (-> {:time .time})} (GFX.Feature) >> .features
+   {:Params [{:Name "time" :Type ShaderFieldBaseType.Float32}]
+    :DrawData (-> {:time .time})} (GFX.Feature) >> .features
    {:EntryPoint (-> (shader-main)) :Features .features} (GFX.EffectPass) >> .render-steps)
 
   (GFX.Render :Steps .render-steps)

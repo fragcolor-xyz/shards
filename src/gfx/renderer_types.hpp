@@ -178,6 +178,10 @@ struct CachedPipeline {
   std::vector<BufferBinding> viewBuffersBindings;
   std::vector<BufferBinding> drawBufferBindings;
 
+  // Collected parameter generator
+  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
+  std::vector<FeatureParameterGenerator> viewParameterGenerators;
+
   size_t lastTouched{};
 
   ParameterStorage baseDrawParameters;
