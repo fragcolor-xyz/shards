@@ -8,7 +8,7 @@
 #include <stddef.h>  // size_t
 #include <stdint.h>  // ints
 
-#if defined(__cplusplus)
+#if defined(__cplusplus) && !defined(RUST_BINDGEN)
 #define SH_ENUM_CLASS enum class
 #else
 #define SH_ENUM_CLASS enum
