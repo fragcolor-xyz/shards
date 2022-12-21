@@ -218,7 +218,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     vars.clear();
     vars.append(url.get().payload.stringValue);
-    if (input.valueType == Table) {
+    if (input.valueType == SHType::Table) {
       vars.append("?");
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
         auto sv_value = SHSTRVIEW(value);
@@ -232,7 +232,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     // add custom headers
     headersCArray.clear();
-    if (headers.get().valueType == Table) {
+    if (headers.get().valueType == SHType::Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         auto sv_value = SHSTRVIEW(value);
@@ -300,7 +300,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
     // add custom headers
     bool hasContentType = false;
     headersCArray.clear();
-    if (headers.get().valueType == Table) {
+    if (headers.get().valueType == SHType::Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         std::string data(key);
@@ -567,7 +567,7 @@ struct Read {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_peerVar->valueType == Object);
+    assert(_peerVar->valueType == SHType::Object);
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
@@ -613,7 +613,7 @@ struct Read {
     _output["body"] = Var(request.body());
 
     auto res = SHVar();
-    res.valueType = Table;
+    res.valueType = SHType::Table;
     res.payload.tableValue.opaque = &_output;
     res.payload.tableValue.api = &GetGlobals().TableInterface;
     return res;
@@ -667,7 +667,7 @@ struct Response {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_peerVar->valueType == Object);
+    assert(_peerVar->valueType == SHType::Object);
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
     _response.clear();
@@ -678,7 +678,7 @@ struct Response {
     _response.body() = input_view;
 
     // add custom headers
-    if (_headers.get().valueType == Table) {
+    if (_headers.get().valueType == SHType::Table) {
       auto htab = _headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         _response.set(key, value.payload.stringValue);
@@ -796,7 +796,7 @@ struct SendFile {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_peerVar->valueType == Object);
+    assert(_peerVar->valueType == SHType::Object);
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
@@ -829,7 +829,7 @@ struct SendFile {
       _response.body() = std::move(file);
 
       // add custom headers
-      if (_headers.get().valueType == Table) {
+      if (_headers.get().valueType == SHType::Table) {
         auto htab = _headers.get().payload.tableValue;
         ForEach(htab, [&](auto key, auto &value) {
           _response.set(key, value.payload.stringValue);

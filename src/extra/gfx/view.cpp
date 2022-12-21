@@ -108,7 +108,7 @@ struct RegionShard : public BaseConsumer {
     SHVar viewportVar{};
     if (getFromTable(shContext, inputTable, "Viewport", viewportVar)) {
       auto &v = viewportVar.payload.float4Value;
-      // Read Float4 rect as (X0, Y0, X1, Y1)
+      // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
       viewItem.viewport = Rect::fromCorners(v[0], v[1], v[2], v[3]);
     }
 
@@ -122,7 +122,7 @@ struct RegionShard : public BaseConsumer {
     // (optional) Push window region for input
     SHVar windowRegionVar{};
     if (getFromTable(shContext, inputTable, "WindowRegion", windowRegionVar)) {
-      // Read Float4 rect as (X0, Y0, X1, Y1)
+      // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
       auto &v = windowRegionVar.payload.float4Value;
       int4 region(v[0], v[1], v[2], v[3]);
 

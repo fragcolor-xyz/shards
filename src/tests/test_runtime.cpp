@@ -1244,7 +1244,7 @@ TEST_CASE("Vector types") {
   VectorTypeLookup Typelookup;
 
   SHType typesToCheck[] = {
-      Int, Int2, Int3, Int4, Int8, Int16, Float, Float2, Float3, Float4, Color,
+      SHType::Int, SHType::Int2, SHType::Int3, SHType::Int4, SHTypes::Int8, SHTypes::Int16, SHType::Float, SHType::Float2, SHType::Float3, SHType::Float4, SHType::Color,
   };
 
   for (const SHType &typeToCheck : typesToCheck) {

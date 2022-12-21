@@ -45,7 +45,7 @@ struct Base {
       res = value;
       break;
     case 1:
-      res.valueType = Bool;
+      res.valueType = SHType::Bool;
       res.payload.boolValue = aborting;
       break;
     default:

@@ -68,7 +68,7 @@ template <SHType ToType> struct ToNumber {
       _numberConversion =
           NumberTypeLookup::getInstance().getConversion(_inputVectorType->numberType, _outputVectorType->numberType);
       shassert(_numberConversion);
-    } else if (data.inputType.basicType == Seq) {
+    } else if (data.inputType.basicType == SHType::Seq) {
       const NumberTypeTraits *fixedNumberType = determineFixedSeqNumberType(data.inputType);
       if (fixedNumberType) {
         _numberConversion = fixedNumberType->conversionTable.get(_outputNumberType->type);
@@ -179,13 +179,13 @@ template <SHType ToType> struct ToNumber {
     output.valueType = _outputVectorType->shType;
 
     switch (input.valueType) {
-    case Seq:
+    case SHType::Seq:
       parseSeqElements(output, input.payload.seqValue);
       break;
-    case Enum:
+    case SHType::Enum:
       parseEnumValue(output, input.payload.enumValue);
       break;
-    case String:
+    case SHType::String:
       parseStringElements(output, input.payload.stringValue, input.payload.stringLen);
       break;
     default:

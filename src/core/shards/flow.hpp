@@ -111,7 +111,7 @@ struct Cond {
       _conditions.clear();
       _actions.clear();
       cloneVar(_wires, value);
-      if (value.valueType == Seq) {
+      if (value.valueType == SHType::Seq) {
         auto counter = value.payload.seqValue.len;
         if (counter % 2)
           throw SHException("Cond: first parameter must contain a sequence of "
@@ -123,13 +123,13 @@ struct Cond {
         for (uint32_t i = 0; i < counter; i++) {
           auto val = value.payload.seqValue.elements[i];
           if (i % 2) { // action
-            if (val.valueType == ShardRef) {
+            if (val.valueType == SHType::ShardRef) {
               assert(!val.payload.shardValue->owned);
               val.payload.shardValue->owned = true;
               _actions[idx].push_back(val.payload.shardValue);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
-                assert(val.payload.seqValue.elements[y].valueType == ShardRef);
+                assert(val.payload.seqValue.elements[y].valueType == SHType::ShardRef);
                 auto blk = val.payload.seqValue.elements[y].payload.shardValue;
                 assert(!blk->owned);
                 blk->owned = true;
@@ -139,13 +139,13 @@ struct Cond {
 
             idx++;
           } else { // condition
-            if (val.valueType == ShardRef) {
+            if (val.valueType == SHType::ShardRef) {
               assert(!val.payload.shardValue->owned);
               val.payload.shardValue->owned = true;
               _conditions[idx].push_back(val.payload.shardValue);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
-                assert(val.payload.seqValue.elements[y].valueType == ShardRef);
+                assert(val.payload.seqValue.elements[y].valueType == SHType::ShardRef);
                 auto blk = val.payload.seqValue.elements[y].payload.shardValue;
                 assert(!blk->owned);
                 blk->owned = true;
@@ -424,7 +424,7 @@ struct Maybe : public BaseSubFlow {
       _composition = {};
 
     const auto nextIsNone =
-        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == None);
+        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
 
     if (!nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
       SHLOG_ERROR("{} != {}", _composition.outputType, elseComp.outputType);
@@ -616,7 +616,7 @@ template <bool COND> struct When {
     auto ares = _action.compose(data);
 
     const auto nextIsNone =
-        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == None);
+        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
 
     if (!nextIsNone && !ares.flowStopper && !_passth) {
       if (cres.outputType != data.inputType) {
@@ -714,7 +714,7 @@ struct IfBlock {
     const auto eres = _else.compose(data);
 
     const auto nextIsNone =
-        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == None);
+        data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
 
     if (!nextIsNone && !tres.flowStopper && !eres.flowStopper && !_passth) {
       if (tres.outputType != eres.outputType) {
@@ -831,7 +831,7 @@ struct Match {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     for (auto &case_ : _pcases) {
-      if (case_.valueType != None) {
+      if (case_.valueType != SHType::None) {
         // must compare deeply
         // also pass vector to ensure we get context var info (even if we don't use it)
         std::vector<SHExposedTypeInfo> types;
@@ -894,7 +894,7 @@ struct Match {
     for (auto i = 0; i < _ncases; i++) {
       auto &case_ = _cases[i];
       auto &action = _actions[i];
-      if (case_ == input || case_.valueType == None) {
+      if (case_ == input || case_.valueType == SHType::None) {
         action.activate(context, input, finalOutput);
         matched = true;
         break;

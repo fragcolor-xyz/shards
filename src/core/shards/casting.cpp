@@ -324,23 +324,23 @@ template <SHType ET> struct ExpectX {
   RUNTIME_SHARD_activate(Expect##_name_);              \
   RUNTIME_SHARD_END(Expect##_name_);
 
-EXPECT_SHARD(None, None);
+EXPECT_SHARD(None, SHType::None);
 EXPECT_SHARD(Any, SHType::Any);
-EXPECT_SHARD(Float, Float);
-EXPECT_SHARD(Float2, Float2);
-EXPECT_SHARD(Float3, Float3);
-EXPECT_SHARD(Float4, Float4);
-EXPECT_SHARD(Bool, Bool);
-EXPECT_SHARD(Color, Color);
-EXPECT_SHARD(Int, Int);
-EXPECT_SHARD(Int2, Int2);
-EXPECT_SHARD(Int3, Int3);
-EXPECT_SHARD(Int4, Int4);
-EXPECT_SHARD(Bytes, Bytes);
-EXPECT_SHARD(String, String);
-EXPECT_SHARD(Image, Image);
-EXPECT_SHARD(Seq, Seq);
-EXPECT_SHARD(Table, Table);
+EXPECT_SHARD(Float, SHType::Float);
+EXPECT_SHARD(Float2, SHType::Float2);
+EXPECT_SHARD(Float3, SHType::Float3);
+EXPECT_SHARD(Float4, SHType::Float4);
+EXPECT_SHARD(Bool, SHType::Bool);
+EXPECT_SHARD(Color, SHType::Color);
+EXPECT_SHARD(Int, SHType::Int);
+EXPECT_SHARD(Int2, SHType::Int2);
+EXPECT_SHARD(Int3, SHType::Int3);
+EXPECT_SHARD(Int4, SHType::Int4);
+EXPECT_SHARD(Bytes, SHType::Bytes);
+EXPECT_SHARD(String, SHType::String);
+EXPECT_SHARD(Image, SHType::Image);
+EXPECT_SHARD(Seq, SHType::Seq);
+EXPECT_SHARD(Table, SHType::Table);
 EXPECT_SHARD(Wire, SHType::Wire);
 
 template <Type &ET> struct ExpectXComplex {
@@ -411,7 +411,7 @@ struct ExpectLike {
   }
 
   void destroy() {
-    if (_expectedType.basicType != None && _dispose) {
+    if (_expectedType.basicType != SHType::None && _dispose) {
       freeDerivedInfo(_expectedType);
       _expectedType = {};
       _dispose = false;
@@ -422,7 +422,7 @@ struct ExpectLike {
     if (_example.isVariable()) {
       throw ComposeError("The example value of ExpectLike cannot be a variable");
     } else {
-      if (_expectedType.basicType != None && _dispose) {
+      if (_expectedType.basicType != SHType::None && _dispose) {
         freeDerivedInfo(_expectedType);
         _expectedType = {};
         _dispose = false;
@@ -464,7 +464,7 @@ struct ToBase64 {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   SHVar activate(SHContext *context, const SHVar &input) {
     output.clear();
-    if (input.valueType == Bytes) {
+    if (input.valueType == SHType::Bytes) {
       auto req = boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
       output.resize(req);
       auto written = boost::beast::detail::base64::encode(output.data(), input.payload.bytesValue, input.payload.bytesSize);
@@ -572,27 +572,27 @@ struct ImageToBytes {
 };
 
 void registerCastingShards() {
-  REGISTER_SHARD("ToInt", ToNumber<Int>);
-  REGISTER_SHARD("ToInt2", ToNumber<Int2>);
-  REGISTER_SHARD("ToInt3", ToNumber<Int3>);
-  REGISTER_SHARD("ToInt4", ToNumber<Int4>);
-  REGISTER_SHARD("ToInt8", ToNumber<Int8>);
-  REGISTER_SHARD("ToInt16", ToNumber<Int16>);
-  REGISTER_SHARD("ToColor", ToNumber<Color>);
-  REGISTER_SHARD("ToFloat", ToNumber<Float>);
-  REGISTER_SHARD("ToFloat2", ToNumber<Float2>);
-  REGISTER_SHARD("ToFloat3", ToNumber<Float3>);
-  REGISTER_SHARD("ToFloat4", ToNumber<Float4>);
+  REGISTER_SHARD("ToInt", ToNumber<SHType::Int>);
+  REGISTER_SHARD("ToInt2", ToNumber<SHType::Int2>);
+  REGISTER_SHARD("ToInt3", ToNumber<SHType::Int3>);
+  REGISTER_SHARD("ToInt4", ToNumber<SHType::Int4>);
+  REGISTER_SHARD("ToInt8", ToNumber<SHType::Int8>);
+  REGISTER_SHARD("ToInt16", ToNumber<SHType::Int16>);
+  REGISTER_SHARD("ToColor", ToNumber<SHType::Color>);
+  REGISTER_SHARD("ToFloat", ToNumber<SHType::Float>);
+  REGISTER_SHARD("ToFloat2", ToNumber<SHType::Float2>);
+  REGISTER_SHARD("ToFloat3", ToNumber<SHType::Float3>);
+  REGISTER_SHARD("ToFloat4", ToNumber<SHType::Float4>);
 
-  REGISTER_SHARD("MakeInt2", MakeVector<Int2>);
-  REGISTER_SHARD("MakeInt3", MakeVector<Int3>);
-  REGISTER_SHARD("MakeInt4", MakeVector<Int4>);
-  REGISTER_SHARD("MakeInt8", MakeVector<Int8>);
-  REGISTER_SHARD("MakeInt16", MakeVector<Int16>);
-  REGISTER_SHARD("MakeColor", MakeVector<Color>);
-  REGISTER_SHARD("MakeFloat2", MakeVector<Float2>);
-  REGISTER_SHARD("MakeFloat3", MakeVector<Float3>);
-  REGISTER_SHARD("MakeFloat4", MakeVector<Float4>);
+  REGISTER_SHARD("MakeInt2", MakeVector<SHType::Int2>);
+  REGISTER_SHARD("MakeInt3", MakeVector<SHType::Int3>);
+  REGISTER_SHARD("MakeInt4", MakeVector<SHType::Int4>);
+  REGISTER_SHARD("MakeInt8", MakeVector<SHType::Int8>);
+  REGISTER_SHARD("MakeInt16", MakeVector<SHType::Int16>);
+  REGISTER_SHARD("MakeColor", MakeVector<SHType::Color>);
+  REGISTER_SHARD("MakeFloat2", MakeVector<SHType::Float2>);
+  REGISTER_SHARD("MakeFloat3", MakeVector<SHType::Float3>);
+  REGISTER_SHARD("MakeFloat4", MakeVector<SHType::Float4>);
 
   REGISTER_CORE_SHARD(ToString);
   REGISTER_CORE_SHARD(ToHex);

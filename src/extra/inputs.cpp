@@ -300,7 +300,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
-      if (value.valueType == None) {
+      if (value.valueType == SHType::None) {
         _key.clear();
       } else {
         _key = value.payload.stringValue;

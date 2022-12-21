@@ -164,12 +164,12 @@ struct DrawablePassShard {
     :Outputs [
       {:Name <string> :Format <format>}
       {:Name <string> :Format <format> :Clear true}
-      {:Name <string> :Format <format> :Clear (Float4 0 0 0 0)}
+      {:Name <string> :Format <format> :Clear (SHType::Float4 0 0 0 0)}
       {:Name <string> :Format <format> :ClearDepth 1.0 :ClearStencil 0}
       {:Name <string> :Texture <texture>}
       ...
     ]
-    :OutputScale (Float2 1.0 1.0)
+    :OutputScale (SHType::Float2 1.0 1.0)
     :Queue <queue>
     :Features [<feature> <feature> ...]
   }
@@ -223,7 +223,7 @@ struct EffectPassShard {
   /* Input table
   {
     :Outputs <same as drawable pass>
-    :OutputScale (Float2 1.0 1.0)
+    :OutputScale (SHType::Float2 1.0 1.0)
     :Inputs [<name1> <name2> ...]
     :EntryPoint <shader code>
     :Params {:name <value> ...}

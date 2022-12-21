@@ -725,7 +725,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == Seq); }
+  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == SHType::Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -761,7 +761,7 @@ public:
   }
 
   IterableArray &operator=(SHVar &var) {
-    assert(var.valueType == Seq);
+    assert(var.valueType == SHType::Seq);
     _seq = var.payload.seqValue;
     _owned = false;
     return *this;
@@ -848,29 +848,29 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src);
 
 ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   switch (var.valueType) {
-  case Table:
+  case SHType::Table:
   case SHType::Set:
-  case Seq:
+  case SHType::Seq:
     _destroyVarSlow(var);
     break;
   case SHType::Path:
   case SHType::String:
-  case ContextVar:
+  case SHType::ContextVar:
     delete[] var.payload.stringValue;
     break;
-  case Image:
+  case SHType::Image:
     delete[] var.payload.imageValue.data;
     break;
-  case Audio:
+  case SHType::Audio:
     delete[] var.payload.audioValue.samples;
     break;
-  case Bytes:
+  case SHType::Bytes:
     delete[] var.payload.bytesValue;
     break;
   case SHType::Array:
     arrayFree(var.payload.arrayValue);
     break;
-  case Object:
+  case SHType::Object:
     if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->release) {
       // in this case the custom object needs actual destruction
       var.objectInfo->release(var.payload.objectValue);
@@ -888,10 +888,10 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(SHVar &dst, const SHVar &src) {
-  if (src.valueType < EndOfBlittableTypes && dst.valueType < EndOfBlittableTypes) {
+  if (src.valueType < SHType::EndOfBlittableTypes && dst.valueType < SHType::EndOfBlittableTypes) {
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(SHVarPayload));
-  } else if (src.valueType < EndOfBlittableTypes) {
+  } else if (src.valueType < SHType::EndOfBlittableTypes) {
     destroyVar(dst);
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(SHVarPayload));
@@ -1231,13 +1231,13 @@ struct VarStringStream {
     if (var != previousValue) {
       cache.reset();
       std::ostream stream(&cache);
-      if (var.valueType == Int) {
+      if (var.valueType == SHType::Int) {
         stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << var.payload.intValue;
-      } else if (var.valueType == Bytes) {
+      } else if (var.valueType == SHType::Bytes) {
         stream << "0x" << std::hex;
         for (uint32_t i = 0; i < var.payload.bytesSize; i++)
           stream << std::setw(2) << std::setfill('0') << (int)var.payload.bytesValue[i];
-      } else if (var.valueType == String) {
+      } else if (var.valueType == SHType::String) {
         stream << "0x" << std::hex;
         auto len = var.payload.stringLen;
         if (len == 0 && var.payload.stringValue) {

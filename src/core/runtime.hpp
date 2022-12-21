@@ -882,7 +882,7 @@ struct Serialization {
       for (uint32_t i = 0; i < len; i++) {
         SHVar shardVar{};
         deserialize(read, shardVar);
-        assert(shardVar.valueType == ShardRef);
+        assert(shardVar.valueType == SHType::ShardRef);
         wire->addShard(shardVar.payload.shardValue);
         // blow's owner is the wire
       }

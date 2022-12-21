@@ -108,11 +108,11 @@ struct BinaryBase : public Base {
 
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     OpType opType = OpType::Invalid;
-    if (rhs != Seq && lhs.basicType == Seq) {
+    if (rhs != SHType::Seq && lhs.basicType == SHType::Seq) {
       if (lhs.seqTypes.len != 1 || rhs != lhs.seqTypes.elements[0].basicType)
         throw formatTypeError(lhs.seqTypes.elements[0].basicType, rhs);
       opType = Seq1;
-    } else if (rhs == Seq && lhs.basicType == Seq) {
+    } else if (rhs == SHType::Seq && lhs.basicType == SHType::Seq) {
       // TODO need to have deeper types compatibility at least
       opType = SeqSeq;
     }
@@ -122,7 +122,7 @@ struct BinaryBase : public Base {
   template <typename TValidator> SHTypeInfo genericCompose(TValidator &validator, const SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     SHVar operandSpec = _operand;
-    if (operandSpec.valueType == ContextVar) {
+    if (operandSpec.valueType == SHType::ContextVar) {
       bool variableFound = false;
       for (uint32_t i = 0; i < data.shared.len; i++) {
         // normal variable
@@ -149,7 +149,7 @@ struct BinaryBase : public Base {
 
   SHExposedTypesInfo requiredVariables() {
     SHVar operandSpec = _operand;
-    if (operandSpec.valueType == ContextVar) {
+    if (operandSpec.valueType == SHType::ContextVar) {
       _requiredInfo = ExposedInfo(
           ExposedInfo::Variable(operandSpec.payload.stringValue, SHCCSTR("The required operand."), CoreInfo::AnyType));
       return SHExposedTypesInfo(_requiredInfo);
@@ -187,7 +187,7 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
 
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     OpType opType = OpType::Invalid;
-    if (rhs != Seq && lhs.basicType != Seq) {
+    if (rhs != SHType::Seq && lhs.basicType != SHType::Seq) {
       _lhsVecType = VectorTypeLookup::getInstance().get(lhs.basicType);
       _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
       if (_lhsVecType || _rhsVecType) {
@@ -281,9 +281,9 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
     if (opType == Broadcast) {
       op.operateBroadcast(output, a, b);
     } else if (opType == SeqSeq) {
-      if (output.valueType != Seq) {
+      if (output.valueType != SHType::Seq) {
         destroyVar(output);
-        output.valueType = Seq;
+        output.valueType = SHType::Seq;
       }
       // TODO auto-parallelize with taskflow (should be optional)
       auto olen = b.payload.seqValue.len;
@@ -292,9 +292,9 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
         const auto &sa = a.payload.seqValue.elements[i];
         const auto &sb = b.payload.seqValue.elements[i % olen];
         auto type = Direct;
-        if (likely(sa.valueType == Seq && sb.valueType == Seq)) {
+        if (likely(sa.valueType == SHType::Seq && sb.valueType == SHType::Seq)) {
           type = SeqSeq;
-        } else if (sa.valueType == Seq && sb.valueType != Seq) {
+        } else if (sa.valueType == SHType::Seq && sb.valueType != SHType::Seq) {
           type = Seq1;
         }
         const auto len = output.payload.seqValue.len;
@@ -302,7 +302,7 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
         operate(type, output.payload.seqValue.elements[len], sa, sb);
       }
     } else {
-      if (opType == Direct && output.valueType == Seq) {
+      if (opType == Direct && output.valueType == SHType::Seq) {
         // something changed, avoid leaking
         // this should happen only here, because compose of SeqSeq is loose
         // we are going from an seq to a regular value, this could be expensive!
@@ -318,9 +318,9 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
     if (likely(opType == Direct)) {
       op.operateDirect(output, a, b);
     } else if (opType == Seq1) {
-      if (output.valueType != Seq) {
+      if (output.valueType != SHType::Seq) {
         destroyVar(output);
-        output.valueType = Seq;
+        output.valueType = SHType::Seq;
       }
 
       shards::arrayResize(output.payload.seqValue, 0);
@@ -410,9 +410,9 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
     if (likely(_opType == OpType::Direct)) {
       op.operateDirect(output, a);
     } else if (_opType == OpType::Seq1) {
-      if (output.valueType != Seq) {
+      if (output.valueType != SHType::Seq) {
         destroyVar(output);
-        output.valueType = Seq;
+        output.valueType = SHType::Seq;
       }
 
       shards::arrayResize(output.payload.seqValue, 0);

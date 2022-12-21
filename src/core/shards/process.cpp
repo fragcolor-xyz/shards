@@ -94,7 +94,7 @@ struct Run {
           // add any arguments we have
           std::vector<std::string> argsArray;
           auto argsVar = _arguments.get();
-          if (argsVar.valueType == Seq) {
+          if (argsVar.valueType == SHType::Seq) {
             for (auto &arg : argsVar) {
               if (arg.payload.stringLen > 0) {
                 argsArray.emplace_back(arg.payload.stringValue, arg.payload.stringLen);

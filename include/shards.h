@@ -8,9 +8,15 @@
 #include <stddef.h>  // size_t
 #include <stdint.h>  // ints
 
+#if defined(__cplusplus)
+#define SH_ENUM_CLASS enum class
+#else
+#define SH_ENUM_CLASS enum
+#endif
+
 // All the available types
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-enum SHType : uint8_t {
+SH_ENUM_CLASS SHType : uint8_t {
   // Blittables
   None,
   Any,
@@ -47,7 +53,7 @@ enum SHType : uint8_t {
   Audio,
 };
 
-enum SHWireState : uint8_t {
+SH_ENUM_CLASS SHWireState : uint8_t {
   Continue, // Nothing happened, continue
   Return,   // Control flow, end this wire/flow and return previous output
   Rebase,   // Continue but put the local wire initial input as next input
@@ -304,7 +310,7 @@ struct SHSetInterface {
 
 struct SHTypeInfo {
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  enum SHType basicType;
+  SH_ENUM_CLASS SHType basicType;
 #else
   SHType basicType;
 #endif
@@ -376,7 +382,7 @@ struct SHTypeInfo {
   // Should not be considered when hashing this type
   uint32_t fixedSize;
   // Used by Array type, which is still not implemented properly and unstable.
-  enum SHType innerType;
+  SH_ENUM_CLASS SHType innerType;
   // used internally to make our live easy when types are recursive (aka Self is
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
@@ -561,8 +567,8 @@ struct SHVarPayload {
 struct SHVar {
   struct SHVarPayload payload;
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  enum SHType valueType;
-  enum SHType innerType;
+  SH_ENUM_CLASS SHType valueType;
+  SH_ENUM_CLASS SHType innerType;
 #else
   SHType valueType;
   SHType innerType;
@@ -575,11 +581,11 @@ struct SHVar {
 #endif
 } __attribute__((aligned(16)));
 
-enum SHRunWireOutputState { Running, Restarted, Stopped, Failed };
+SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
 
 struct SHRunWireOutput {
   struct SHVar output;
-  enum SHRunWireOutputState state;
+  SH_ENUM_CLASS SHRunWireOutputState state;
 } __attribute__((aligned(16)));
 
 struct SHComposeResult {
@@ -797,8 +803,8 @@ typedef void(__cdecl *SHReleaseVariable)(struct SHVar *variable);
 typedef void(__cdecl *SHAbortWire)(struct SHContext *context, SHString errorText);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef enum SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
-typedef enum SHWireState(__cdecl *SHGetState)(struct SHContext *context);
+typedef SH_ENUM_CLASS SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
+typedef SH_ENUM_CLASS SHWireState(__cdecl *SHGetState)(struct SHContext *context);
 #else
 typedef SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
 typedef SHWireState(__cdecl *SHGetState)(struct SHContext *context);
@@ -815,7 +821,7 @@ typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValida
                                                          struct SHInstanceData data);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef enum SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SH_ENUM_CLASS SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                                struct SHVar *output);
 #else
 typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
@@ -823,7 +829,7 @@ typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *conte
 #endif
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef enum SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SH_ENUM_CLASS SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                                      struct SHVar *output, struct SHVar *outHash);
 #else
 typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,

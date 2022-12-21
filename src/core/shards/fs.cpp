@@ -191,7 +191,7 @@ struct Read {
   }
 
   static inline ParamsInfo params =
-      ParamsInfo(ParamsInfo::Param("Bytes", SHCCSTR("If the output should be Bytes instead of String."), CoreInfo::BoolType));
+      ParamsInfo(ParamsInfo::Param("Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
@@ -296,7 +296,7 @@ struct Write {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto contents = _contents.get();
-    if (contents.valueType != None) {
+    if (contents.valueType != SHType::None) {
       fs::path p(input.payload.stringValue);
       if (!_overwrite && !_append && fs::exists(p)) {
         throw ActivationError("FS.Write, file already exists and overwrite flag is not on!.");
@@ -312,7 +312,7 @@ struct Write {
         flags |= std::ios::app;
       }
       std::ofstream file(p.string(), flags);
-      if (contents.valueType == String) {
+      if (contents.valueType == SHType::String) {
         auto len = contents.payload.stringLen > 0 || contents.payload.stringValue == nullptr
                        ? contents.payload.stringLen
                        : strlen(contents.payload.stringValue);
@@ -388,7 +388,7 @@ struct Copy {
     }
 
     const auto dstVar = _destination.get();
-    if (dstVar.valueType != String && dstVar.valueType != Path)
+    if (dstVar.valueType != SHType::String && dstVar.valueType != SHType::Path)
       throw ActivationError("Destination is not a valid");
     const auto dst = fs::path(dstVar.payload.stringValue);
 
