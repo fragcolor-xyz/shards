@@ -2297,6 +2297,9 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output =
       shards::cloneVar(*output, scriptVal);
     }
     return true;
+  } catch (MalString &str) {
+    SHLOG_WARNING("Eval error: {}", str.c_str());
+    return false;
   } catch (...) {
     return false;
   }
