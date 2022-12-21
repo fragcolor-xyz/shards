@@ -25,7 +25,7 @@ use rapier3d::geometry::{
   BroadPhase, ColliderSet, CollisionEvent, InteractionGroups, NarrowPhase, Ray,
 };
 use rapier3d::na::{Point3, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
+use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline};
 use std::convert::TryInto;
 
 lazy_static! {
@@ -99,12 +99,12 @@ impl Shard for CastRay {
 
     let closest = simulation.query_pipeline.cast_ray(
       // TODO other type of queries enum
+      &simulation.bodies,
       &simulation.colliders,
       &ray,
       f32::MAX,
-      true,                     // TODO
-      InteractionGroups::all(), // TODO
-      None,                     // TODO
+      true,                        // TODO
+      QueryFilter::only_dynamic(), // TODO
     );
 
     if let Some(closest) = closest {

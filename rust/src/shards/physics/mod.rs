@@ -18,15 +18,15 @@ use crate::types::Type;
 use crate::types::FRAG_CC;
 use crate::Var;
 use rapier3d::dynamics::{
-  CCDSolver, ImpulseJointSet, IntegrationParameters, MultibodyJointSet, RigidBodyHandle,
-  RigidBodySet,
+  CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
+  RigidBodyHandle, RigidBodySet,
 };
 use rapier3d::geometry::{
-  BroadPhase, ColliderHandle, ColliderSet, CollisionEvent, NarrowPhase, SharedShape,
+  BroadPhase, ColliderHandle, ColliderSet, CollisionEvent, ContactForceEvent, NarrowPhase,
+  SharedShape,
 };
 use rapier3d::na::{Isometry3, Matrix3, Matrix4, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
-use rapier3d::prelude::IslandManager;
 
 lazy_static! {
   static ref SIMULATION_TYPE: Type = {
@@ -100,6 +100,7 @@ struct Simulation {
   multibody_joints: MultibodyJointSet,
   ccd_solver: CCDSolver,
   collisions_channel: crossbeam::channel::Receiver<CollisionEvent>,
+  contact_force_channel: crossbeam::channel::Receiver<ContactForceEvent>,
   event_handler: ChannelEventCollector,
   self_obj: ParamVar,
 }

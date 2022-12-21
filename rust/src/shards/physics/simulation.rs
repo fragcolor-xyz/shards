@@ -38,6 +38,7 @@ lazy_static! {
 impl Default for Simulation {
   fn default() -> Self {
     let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+    let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
     let mut res = Simulation {
       pipeline: PhysicsPipeline::new(),
       islands_manager: IslandManager::new(),
@@ -52,7 +53,8 @@ impl Default for Simulation {
       multibody_joints: MultibodyJointSet::new(),
       ccd_solver: CCDSolver::new(),
       collisions_channel: collision_recv,
-      event_handler: ChannelEventCollector::new(collision_send),
+      contact_force_channel: contact_force_recv,
+      event_handler: ChannelEventCollector::new(collision_send, contact_force_send),
       self_obj: ParamVar::new(().into()),
     };
     res.self_obj.set_name("Physics.Simulation");
