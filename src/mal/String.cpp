@@ -13,9 +13,9 @@
 #include <string.h>
 
 // Adapted from: http://stackoverflow.com/questions/2342162
-String stringPrintf(const char *fmt, ...) {
+MalString stringPrintf(const char *fmt, ...) {
   int size = strlen(fmt); // make a guess
-  String str;
+  MalString str;
   va_list ap;
   while (1) {
     str.resize(size);
@@ -34,14 +34,14 @@ String stringPrintf(const char *fmt, ...) {
   return str;
 }
 
-String copyAndFree(char *mallocedString) {
-  String ret(mallocedString);
+MalString copyAndFree(char *mallocedString) {
+  MalString ret(mallocedString);
   free(mallocedString);
   return ret;
 }
 
-String escape(const String &in) {
-  String out;
+MalString escape(const MalString &in) {
+  MalString out;
   out.reserve(in.size() * 2 + 2); // each char may get escaped + two "'s
   out += '"';
   for (auto it = in.begin(), end = in.end(); it != end; ++it) {
@@ -81,8 +81,8 @@ static char unescape(char c) {
   }
 }
 
-String unescape(const String &in) {
-  String out;
+MalString unescape(const MalString &in) {
+  MalString out;
   out.reserve(in.size()); // unescaped string will always be shorter
 
   // in will have double-quotes at either end, so move the iterators in

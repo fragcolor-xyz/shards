@@ -21,17 +21,17 @@ typedef RefCountedPtr<malEnv> malEnvPtr;
 
 // step*.cpp
 extern malValuePtr APPLY(malValuePtr op, malValueIter argsBegin, malValueIter argsEnd);
-extern malValuePtr READ(const String &input);
+extern malValuePtr READ(const MalString &input);
 extern malValuePtr EVAL(malValuePtr ast, malEnvPtr env);
-extern malValuePtr readline(const String &prompt);
-extern String rep(const String &input, malEnvPtr env);
+extern malValuePtr readline(const MalString &prompt);
+extern MalString rep(const MalString &input, malEnvPtr env);
 
 // Core.cpp
 extern void installCore(malEnvPtr env);
 extern void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath);
 
 // Reader.cpp
-extern malValuePtr readStr(const String &input);
+extern malValuePtr readStr(const MalString &input);
 
 // Extras
 extern void malinit(malEnvPtr env, const char *exePath, const char *scriptPath);

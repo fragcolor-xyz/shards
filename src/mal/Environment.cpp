@@ -29,7 +29,7 @@ malEnv::malEnv(malEnvPtr outer, const StringVec &bindings, malValueIter argsBegi
 
 malEnv::~malEnv() { TRACE_ENV("Destroying malEnv %p, outer=%p\n", this, m_outer.ptr()); }
 
-malEnvPtr malEnv::find(const String &symbol) {
+malEnvPtr malEnv::find(const MalString &symbol) {
   for (malEnvPtr env = this; env; env = env->m_outer) {
     if (env->m_map.find(symbol) != env->m_map.end()) {
       return env;
@@ -38,8 +38,8 @@ malEnvPtr malEnv::find(const String &symbol) {
   return NULL;
 }
 
-malValuePtr malEnv::get(const String &symbol) {
-  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != String::npos ? symbol : m_prefix + "/" + symbol);
+malValuePtr malEnv::get(const MalString &symbol) {
+  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != MalString::npos ? symbol : m_prefix + "/" + symbol);
   for (malEnvPtr env = this; env; env = env->m_outer) {
     auto it = env->m_map.find(name);
     if (it != env->m_map.end()) {
@@ -58,8 +58,8 @@ malValuePtr malEnv::get(const String &symbol) {
   MAL_FAIL("'%s' not found", symbol.c_str());
 }
 
-malValuePtr malEnv::set(const String &symbol, malValuePtr value) {
-  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != String::npos ? symbol : m_prefix + "/" + symbol);
+malValuePtr malEnv::set(const MalString &symbol, malValuePtr value) {
+  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != MalString::npos ? symbol : m_prefix + "/" + symbol);
   m_map[name] = value;
   return value;
 }

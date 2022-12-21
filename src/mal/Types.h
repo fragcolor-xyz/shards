@@ -28,7 +28,7 @@ public:
 
   virtual malValuePtr eval(malEnvPtr env);
 
-  virtual String print(bool readably) const = 0;
+  virtual MalString print(bool readably) const = 0;
 
   size_t line{0};
 
@@ -53,10 +53,10 @@ template <class T> T *value_cast(malValuePtr obj, const char *typeName) {
 
 class malConstant : public malValue {
 public:
-  malConstant(String name) : m_name(name) {}
+  malConstant(MalString name) : m_name(name) {}
   malConstant(const malConstant &that, malValuePtr meta) : malValue(meta), m_name(that.m_name) {}
 
-  virtual String print(bool readably) const { return m_name; }
+  virtual MalString print(bool readably) const { return m_name; }
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
     return this == rhs; // these are singletons
@@ -65,7 +65,7 @@ public:
   WITH_META(malConstant);
 
 private:
-  const String m_name;
+  const MalString m_name;
 };
 
 class malNumber : public malValue {
@@ -73,7 +73,7 @@ public:
   malNumber(double value, bool isInteger) : m_value(value), m_integer(isInteger) {}
   malNumber(const malNumber &that, malValuePtr meta) : malValue(meta), m_value(that.m_value), m_integer(that.m_integer) {}
 
-  virtual String print(bool readably) const {
+  virtual MalString print(bool readably) const {
     if (m_integer)
       return std::to_string(static_cast<int64_t>(m_value));
     else
@@ -94,27 +94,27 @@ private:
 
 class malStringBase : public malValue {
 public:
-  malStringBase(const String &token) : m_value(token) {}
+  malStringBase(const MalString &token) : m_value(token) {}
   malStringBase(const malStringBase &that, malValuePtr meta) : malValue(meta), m_value(that.value()) {}
 
-  virtual String print(bool readably) const { return m_value; }
+  virtual MalString print(bool readably) const { return m_value; }
 
-  String value() const { return m_value; }
+  MalString value() const { return m_value; }
 
-  const String &ref() const { return m_value; }
+  const MalString &ref() const { return m_value; }
 
 private:
-  const String m_value;
+  const MalString m_value;
 };
 
 class malString : public malStringBase {
 public:
-  malString(const String &token) : malStringBase(token) {}
+  malString(const MalString &token) : malStringBase(token) {}
   malString(const malString &that, malValuePtr meta) : malStringBase(that, meta) {}
 
-  virtual String print(bool readably) const;
+  virtual MalString print(bool readably) const;
 
-  String escapedValue() const;
+  MalString escapedValue() const;
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return value() == static_cast<const malString *>(rhs)->value(); }
 
@@ -123,7 +123,7 @@ public:
 
 class malKeyword : public malStringBase {
 public:
-  malKeyword(const String &token) : malStringBase(token) {}
+  malKeyword(const MalString &token) : malStringBase(token) {}
   malKeyword(const malKeyword &that, malValuePtr meta) : malStringBase(that, meta) {}
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return value() == static_cast<const malKeyword *>(rhs)->value(); }
@@ -133,7 +133,7 @@ public:
 
 class malSymbol : public malStringBase {
 public:
-  malSymbol(const String &token) : malStringBase(token) {}
+  malSymbol(const MalString &token) : malStringBase(token) {}
   malSymbol(const malSymbol &that, malValuePtr meta) : malStringBase(that, meta) {}
 
   virtual malValuePtr eval(malEnvPtr env);
@@ -150,7 +150,7 @@ public:
   malSequence(const malSequence &that, malValuePtr meta);
   virtual ~malSequence();
 
-  virtual String print(bool readably) const;
+  virtual MalString print(bool readably) const;
 
   malValueVec *evalItems(malEnvPtr env) const;
   int count() const { return m_items->size(); }
@@ -177,7 +177,7 @@ public:
   malList(malValueIter begin, malValueIter end) : malSequence(begin, end) {}
   malList(const malList &that, malValuePtr meta) : malSequence(that, meta) {}
 
-  virtual String print(bool readably) const;
+  virtual MalString print(bool readably) const;
   virtual malValuePtr eval(malEnvPtr env);
 
   virtual malValuePtr conj(malValueIter argsBegin, malValueIter argsEnd) const;
@@ -192,7 +192,7 @@ public:
   malVector(const malVector &that, malValuePtr meta) : malSequence(that, meta) {}
 
   virtual malValuePtr eval(malEnvPtr env);
-  virtual String print(bool readably) const;
+  virtual MalString print(bool readably) const;
 
   virtual malValuePtr conj(malValueIter argsBegin, malValueIter argsEnd) const;
 
@@ -209,7 +209,7 @@ public:
 
 class malHash : public malValue {
 public:
-  typedef std::map<String, malValuePtr> Map;
+  typedef std::map<MalString, malValuePtr> Map;
 
   malHash(malValueIter argsBegin, malValueIter argsEnd, bool isEvaluated);
   malHash(const malHash::Map &map);
@@ -223,7 +223,7 @@ public:
   malValuePtr keys() const;
   malValuePtr values() const;
 
-  virtual String print(bool readably) const;
+  virtual MalString print(bool readably) const;
 
   virtual bool doIsEqualTo(const malValue *rhs) const;
 
@@ -237,26 +237,26 @@ private:
 
 class malBuiltIn : public malApplicable {
 public:
-  typedef malValuePtr(ApplyFunc)(const String &name, malValueIter argsBegin, malValueIter argsEnd);
+  typedef malValuePtr(ApplyFunc)(const MalString &name, malValueIter argsBegin, malValueIter argsEnd);
 
-  malBuiltIn(const String &name, ApplyFunc *handler) : m_name(name), m_handler(handler) {}
+  malBuiltIn(const MalString &name, ApplyFunc *handler) : m_name(name), m_handler(handler) {}
 
   malBuiltIn(const malBuiltIn &that, malValuePtr meta) : malApplicable(meta), m_name(that.m_name), m_handler(that.m_handler) {}
 
   virtual malValuePtr apply(malValueIter argsBegin, malValueIter argsEnd) const;
 
-  virtual String print(bool readably) const { return STRF("#builtin-function(%s)", m_name.c_str()); }
+  virtual MalString print(bool readably) const { return STRF("#builtin-function(%s)", m_name.c_str()); }
 
   virtual bool doIsEqualTo(const malValue *rhs) const {
     return this == rhs; // these are singletons
   }
 
-  String name() const { return m_name; }
+  MalString name() const { return m_name; }
 
   WITH_META(malBuiltIn);
 
 private:
-  const String m_name;
+  const MalString m_name;
   ApplyFunc *m_handler;
 };
 
@@ -275,7 +275,7 @@ public:
     return this == rhs; // do we need to do a deep inspection?
   }
 
-  virtual String print(bool readably) const { return STRF("#user-%s(%p)", m_isMacro ? "macro" : "function", this); }
+  virtual MalString print(bool readably) const { return STRF("#user-%s(%p)", m_isMacro ? "macro" : "function", this); }
 
   bool isMacro() const { return m_isMacro; }
 
@@ -295,7 +295,7 @@ public:
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return this->m_value->isEqualTo(rhs); }
 
-  virtual String print(bool readably) const { return "(atom " + m_value->print(readably) + ")"; };
+  virtual MalString print(bool readably) const { return "(atom " + m_value->print(readably) + ")"; };
 
   malValuePtr deref() const { return m_value; }
 
@@ -310,14 +310,14 @@ private:
 namespace mal {
 malValuePtr atom(malValuePtr value);
 malValuePtr boolean(bool value);
-malValuePtr builtin(const String &name, malBuiltIn::ApplyFunc handler);
+malValuePtr builtin(const MalString &name, malBuiltIn::ApplyFunc handler);
 malValuePtr falseValue();
 malValuePtr hash(malValueIter argsBegin, malValueIter argsEnd, bool isEvaluated);
 malValuePtr hash(const malHash::Map &map);
 malValuePtr number(double value, bool isInteger);
-malValuePtr number(const String &token, bool isInteger);
-malValuePtr numberHex(const String &token);
-malValuePtr keyword(const String &token);
+malValuePtr number(const MalString &token, bool isInteger);
+malValuePtr numberHex(const MalString &token);
+malValuePtr keyword(const MalString &token);
 malValuePtr lambda(const StringVec &, malValuePtr, malEnvPtr);
 malValuePtr list(malValueVec *items);
 malValuePtr list(malValueIter begin, malValueIter end);
@@ -326,12 +326,12 @@ malValuePtr list(malValuePtr a, malValuePtr b);
 malValuePtr list(malValuePtr a, malValuePtr b, malValuePtr c);
 malValuePtr macro(const malLambda &lambda);
 malValuePtr nilValue();
-malValuePtr string(const String &token);
-malValuePtr symbol(const String &token);
+malValuePtr string(const MalString &token);
+malValuePtr symbol(const MalString &token);
 malValuePtr trueValue();
 malValuePtr vector(malValueVec *items);
 malValuePtr vector(malValueIter begin, malValueIter end);
-malValuePtr contextVar(const String &name);
+malValuePtr contextVar(const MalString &name);
 }; // namespace mal
 
 #endif // INCLUDE_TYPES_H

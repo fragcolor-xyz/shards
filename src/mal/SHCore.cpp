@@ -2,12 +2,10 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "shards.hpp"
-#define String MalString
 #include "Environment.h"
 #include "MAL.h"
 #include "StaticList.h"
 #include "Types.h"
-#undef String
 #include "../core/shards/shared.hpp"
 #include "../core/runtime.hpp"
 #include <algorithm>

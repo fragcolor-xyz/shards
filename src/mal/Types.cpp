@@ -15,7 +15,7 @@ malValuePtr atom(malValuePtr value) { return malValuePtr(new malAtom(value)); };
 
 malValuePtr boolean(bool value) { return value ? trueValue() : falseValue(); }
 
-malValuePtr builtin(const String &name, malBuiltIn::ApplyFunc handler) { return malValuePtr(new malBuiltIn(name, handler)); };
+malValuePtr builtin(const MalString &name, malBuiltIn::ApplyFunc handler) { return malValuePtr(new malBuiltIn(name, handler)); };
 
 malValuePtr falseValue() {
   static malValuePtr c(new malConstant("false"));
@@ -30,19 +30,19 @@ malValuePtr hash(malValueIter argsBegin, malValueIter argsEnd, bool isEvaluated)
 
 malValuePtr number(double value, bool isInteger) { return malValuePtr(new malNumber(value, isInteger)); };
 
-malValuePtr number(const String &token, bool isInteger) {
+malValuePtr number(const MalString &token, bool isInteger) {
   if (isInteger)
     return number(double(std::stoll(token)), isInteger);
   else
     return number(std::stod(token), isInteger);
 };
 
-malValuePtr numberHex(const String &token) {
+malValuePtr numberHex(const MalString &token) {
   auto n = std::stoull(token, nullptr, 16);
   return number(double(n), true);
 };
 
-malValuePtr keyword(const String &token) { return malValuePtr(new malKeyword(token)); };
+malValuePtr keyword(const MalString &token) { return malValuePtr(new malKeyword(token)); };
 
 malValuePtr lambda(const StringVec &bindings, malValuePtr body, malEnvPtr env) {
   return malValuePtr(new malLambda(bindings, body, env));
@@ -80,9 +80,9 @@ malValuePtr nilValue() {
   return malValuePtr(c);
 };
 
-malValuePtr string(const String &token) { return malValuePtr(new malString(token)); }
+malValuePtr string(const MalString &token) { return malValuePtr(new malString(token)); }
 
-malValuePtr symbol(const String &token) { return malValuePtr(new malSymbol(token)); };
+malValuePtr symbol(const MalString &token) { return malValuePtr(new malSymbol(token)); };
 
 malValuePtr trueValue() {
   static malValuePtr c(new malConstant("true"));
@@ -98,7 +98,7 @@ malValuePtr malBuiltIn::apply(malValueIter argsBegin, malValueIter argsEnd) cons
   return m_handler(m_name, argsBegin, argsEnd);
 }
 
-static String makeHashKey(malValuePtr key) {
+static MalString makeHashKey(malValuePtr key) {
   if (const malString *skey = DYNAMIC_CAST(malString, key)) {
     return skey->print(true);
   } else if (const malKeyword *kkey = DYNAMIC_CAST(malKeyword, key)) {
@@ -110,7 +110,7 @@ static String makeHashKey(malValuePtr key) {
 static malHash::Map addToMap(malHash::Map &map, malValueIter argsBegin, malValueIter argsEnd) {
   // This is intended to be called with pre-evaluated arguments.
   for (auto it = argsBegin; it != argsEnd; ++it) {
-    String key = makeHashKey(*it++);
+    MalString key = makeHashKey(*it++);
     map[key] = *it;
   }
 
@@ -144,7 +144,7 @@ bool malHash::contains(malValuePtr key) const {
 malValuePtr malHash::dissoc(malValueIter argsBegin, malValueIter argsEnd) const {
   malHash::Map map(m_map);
   for (auto it = argsBegin; it != argsEnd; ++it) {
-    String key = makeHashKey(*it);
+    MalString key = makeHashKey(*it);
     map.erase(key);
   }
   return mal::hash(map);
@@ -189,8 +189,8 @@ malValuePtr malHash::values() const {
   return mal::list(keys);
 }
 
-String malHash::print(bool readably) const {
-  String s = "{";
+MalString malHash::print(bool readably) const {
+  MalString s = "{";
 
   auto it = m_map.begin(), end = m_map.end();
   if (it != end) {
@@ -265,7 +265,7 @@ malValuePtr malList::eval(malEnvPtr env) {
   return APPLY(op, ++it, items->end());
 }
 
-String malList::print(bool readably) const { return '(' + malSequence::print(readably) + ')'; }
+MalString malList::print(bool readably) const { return '(' + malSequence::print(readably) + ')'; }
 
 malValuePtr malValue::eval(malEnvPtr env) {
   // Default case of eval is just to return the object itself.
@@ -321,8 +321,8 @@ malValueVec *malSequence::evalItems(malEnvPtr env) const {
 
 malValuePtr malSequence::first() const { return count() == 0 ? mal::nilValue() : item(0); }
 
-String malSequence::print(bool readably) const {
-  String str;
+MalString malSequence::print(bool readably) const {
+  MalString str;
   auto end = m_items->cend();
   auto it = m_items->cbegin();
   if (it != end) {
@@ -341,14 +341,14 @@ malValuePtr malSequence::rest() const {
   return mal::list(start, end());
 }
 
-String malString::escapedValue() const { return escape(value()); }
+MalString malString::escapedValue() const { return escape(value()); }
 
-String malString::print(bool readably) const { return readably ? escapedValue() : value(); }
+MalString malString::print(bool readably) const { return readably ? escapedValue() : value(); }
 
 malValuePtr malSymbol::eval(malEnvPtr env) {
   try {
     return env->get(value());
-  } catch (String &s) {
+  } catch (MalString &s) {
     s += ", line: " + std::to_string(line);
     throw;
   }
@@ -367,4 +367,4 @@ malValuePtr malVector::conj(malValueIter argsBegin, malValueIter argsEnd) const 
 
 malValuePtr malVector::eval(malEnvPtr env) { return mal::vector(evalItems(env)); }
 
-String malVector::print(bool readably) const { return '[' + malSequence::print(readably) + ']'; }
+MalString malVector::print(bool readably) const { return '[' + malSequence::print(readably) + ']'; }

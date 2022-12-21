@@ -16,17 +16,17 @@ public:
 
   ~malEnv();
 
-  malValuePtr get(const String &symbol);
-  malEnvPtr find(const String &symbol);
-  malValuePtr set(const String &symbol, malValuePtr value);
+  malValuePtr get(const MalString &symbol);
+  malEnvPtr find(const MalString &symbol);
+  malValuePtr set(const MalString &symbol, malValuePtr value);
   malEnvPtr getRoot();
 
-  void setPrefix(const String &prefix) { m_prefix = prefix; }
+  void setPrefix(const MalString &prefix) { m_prefix = prefix; }
   void unsetPrefix() { m_prefix.clear(); }
 
 private:
-  typedef std::map<String, malValuePtr> Map;
-  String m_prefix;
+  typedef std::map<MalString, malValuePtr> Map;
+  MalString m_prefix;
   Map m_map;
   malEnvPtr m_outer;
 };
