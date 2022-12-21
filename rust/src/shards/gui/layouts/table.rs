@@ -6,6 +6,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHType_Int;
@@ -37,31 +38,31 @@ lazy_static! {
   static ref TABLE_PARAMETERS: Parameters = vec![
     (
       cstr!("Rows"),
-      cstr!("Sequence of shards to build the rows."),
+      shccstr!("Sequence of shards to build the rows."),
       &SEQ_OF_SHARDS_TYPES[..]
     )
       .into(),
     (
       cstr!("Columns"),
-      cstr!("Configuration of the columns."),
+      shccstr!("Configuration of the columns."),
       &SEQ_OF_ANY_TABLE_TYPES[..]
     )
       .into(),
     (
       cstr!("Striped"),
-      cstr!("Whether to alternate a subtle background color to every other row."),
+      shccstr!("Whether to alternate a subtle background color to every other row."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Resizable"),
-      cstr!("Whether columns can be resized within their specified range."),
+      shccstr!("Whether columns can be resized within their specified range."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("RowIndex"),
-      cstr!("Variable to hold the row index, to be used within Rows."),
+      shccstr!("Variable to hold the row index, to be used within Rows."),
       INT_VAR_OR_NONE_SLICE,
     )
       .into(),
@@ -116,8 +117,18 @@ impl Shard for Table {
     &ANYS_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Columns and Rows shards of the table."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANYS_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

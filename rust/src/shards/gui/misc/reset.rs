@@ -4,9 +4,12 @@
 use super::Reset;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Types;
 use crate::types::Var;
@@ -42,12 +45,24 @@ impl Shard for Reset {
     "UI.Reset"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Forgets UI scroll, position, size changes, etc."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    *HELP_VALUE_IGNORED
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {

@@ -8,11 +8,13 @@ use crate::shards::gui::util;
 use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHColor;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Seq;
 use crate::types::Table;
@@ -69,12 +71,24 @@ impl Shard for Style {
     "UI.Style"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Apply style changes to the current UI scope."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TABLE_VAR_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A table describing the style to apply."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {

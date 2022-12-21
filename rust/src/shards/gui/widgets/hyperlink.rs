@@ -6,6 +6,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::text_util;
 use crate::shards::gui::ANY_TABLE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -21,11 +22,11 @@ lazy_static! {
   static ref HYPERLINK_PARAMETERS: Parameters = vec![
     (
       cstr!("Label"),
-      cstr!("Optional label for the hyperlink"),
+      shccstr!("Optional label for the hyperlink."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
-    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+    (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -78,7 +79,7 @@ impl Shard for Hyperlink {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

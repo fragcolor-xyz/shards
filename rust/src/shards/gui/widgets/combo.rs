@@ -33,23 +33,23 @@ lazy_static! {
   static ref COMBO_PARAMETERS: Parameters = vec![
     (
       cstr!("Label"),
-      cstr!("The text label of this checkbox."),
+      shccstr!("The text label of this combobox."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Index"),
-      cstr!("The index of the selected item."),
+      shccstr!("The index of the selected item."),
       INT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Width"),
-      cstr!("The width of the button and menu."),
+      shccstr!("The width of the button and menu."),
       FLOAT_VAR_SLICE,
     )
       .into(),
-    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+    (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 
@@ -88,6 +88,10 @@ impl Shard for Combo {
 
   fn name(&mut self) -> &str {
     "UI.Combo"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A drop-down selection menu with a label."))
   }
 
   fn inputTypes(&mut self) -> &Types {

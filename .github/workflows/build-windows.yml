@@ -342,7 +342,7 @@ jobs:
           for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
           do
             echo "Running sample $i";
-            ../../build/shards.exe run-sample.edn --file "$i";
+            ../../build/shards.exe run-sample.edn --looped true --file "$i";
           done
       - name: Graphics Test (64bits)
         # NOTE: Graphics backend doesn't run on 32bits

@@ -4,6 +4,7 @@
 use super::ScrollArea;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -23,25 +24,25 @@ lazy_static! {
   static ref AREA_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Horizontal"),
-      cstr!("Enable horizontal scrolling."),
+      shccstr!("Enable horizontal scrolling."),
       &BOOL_TYPES[..],
     )
       .into(),
     (
       cstr!("Vertical"),
-      cstr!("Enable vertical scrolling."),
+      shccstr!("Enable vertical scrolling."),
       &BOOL_TYPES[..],
     )
       .into(),
     (
       cstr!("AlwaysShow"),
-      cstr!("Always show the enabled scroll bars even if not needed."),
+      shccstr!("Always show the enabled scroll bars even if not needed."),
       &BOOL_TYPES[..],
     )
       .into(),
@@ -104,7 +105,7 @@ impl Shard for ScrollArea {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

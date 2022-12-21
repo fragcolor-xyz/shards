@@ -8,6 +8,7 @@ use super::EGUI_CTX_TYPE;
 use super::EGUI_UI_SEQ_TYPE;
 use super::GFX_GLOBALS_TYPE;
 use super::GFX_QUEUE_VAR_TYPES;
+use super::HELP_OUTPUT_EQUAL_INPUT;
 use super::PARENTS_UI_NAME;
 use crate::shard::Shard;
 use crate::shardsc;
@@ -34,13 +35,13 @@ lazy_static! {
   static ref CONTEXT_PARAMETERS: Parameters = vec![
     (
       cstr!("Queue"),
-      cstr!("The draw queue"),
+      shccstr!("The draw queue."),
       &GFX_QUEUE_VAR_TYPES[..]
     )
       .into(),
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
@@ -96,8 +97,18 @@ impl Shard for EguiContext {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the UI."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -176,6 +187,7 @@ impl Shard for EguiContext {
       return Ok(outputType);
     }
 
+    // Always passthrough the input
     Ok(data.inputType)
   }
 
@@ -238,7 +250,6 @@ impl Shard for EguiContext {
       Ok(raw_input) => {
         let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
-        let mut output = Var::default();
         let mut error: Option<&str> = None;
         let egui_output = gui_ctx.run(raw_input, |ctx| {
           error = (|| -> Result<(), &str> {
@@ -247,9 +258,10 @@ impl Shard for EguiContext {
               seq.push(Var::default());
             })?;
 
+            let mut _output = Var::default();
             let wire_state =
               util::with_object_stack_var(&mut self.instance, ctx, &EGUI_CTX_TYPE, || {
-                Ok(self.contents.activate(context, input, &mut output))
+                Ok(self.contents.activate(context, input, &mut _output))
               })?;
 
             if wire_state == WireState::Error {
@@ -289,7 +301,7 @@ impl Shard for EguiContext {
           )?;
         }
 
-        Ok(output)
+        Ok(*input)
       }
     }
   }

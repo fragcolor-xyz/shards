@@ -5,6 +5,8 @@ use super::Spinner;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::FLOAT_VAR_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
+use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -19,7 +21,7 @@ lazy_static! {
   static ref SPINNER_PARAMETERS: Parameters = vec![
     (
       cstr!("Size"),
-      cstr!("Overrides the size of the spinner. This sets both the height and width, as the spinner is always square."),
+      shccstr!("Overrides the size of the spinner. This sets both the height and width, as the spinner is always square."),
       FLOAT_VAR_SLICE,
     )
       .into(),
@@ -66,7 +68,7 @@ impl Shard for Spinner {
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value is ignored."))
+    *HELP_VALUE_IGNORED
   }
 
   fn outputTypes(&mut self) -> &Types {
@@ -74,7 +76,7 @@ impl Shard for Spinner {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

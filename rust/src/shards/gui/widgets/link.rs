@@ -28,17 +28,17 @@ lazy_static! {
   static ref LINK_PARAMETERS: Parameters = vec![
     (
       cstr!("Label"),
-      cstr!("Optional label for the link"),
+      shccstr!("Optional label for the link."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Action"),
-      cstr!("The shards to execute when the link is clicked."),
+      shccstr!("The shards to execute when the link is clicked."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
-    (cstr!("Style"), cstr!("The text style."), ANY_TABLE_SLICE,).into(),
+    (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
   ];
 }
 

@@ -4,6 +4,7 @@
 use super::Columns;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -22,7 +23,7 @@ use crate::types::SEQ_OF_SHARDS_TYPES;
 lazy_static! {
   static ref COLUMNS_PARAMETERS: Parameters = vec![(
     cstr!("Contents"),
-    cstr!("A sequence of UI contents."),
+    shccstr!("A sequence of UI contents."),
     &SEQ_OF_SHARDS_TYPES[..],
   )
     .into(),];
@@ -80,7 +81,7 @@ impl Shard for Columns {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
