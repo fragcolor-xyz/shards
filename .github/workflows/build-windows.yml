@@ -366,6 +366,17 @@ jobs:
           ./shards ../src/tests/egui-demo.edn
           echo "Running test: egui-plot"
           ./shards ../src/tests/egui-plot.edn
+      - name: Physics Test (64bits)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+        env:
+          GFX_BACKEND: D3D12
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          echo "Running test: physics"
+          ./shards ../src/tests/physics.edn
       - name: Test (64bits)
         if: ${{ steps.setup.outputs.bitness == '64bits' }}
         env:
