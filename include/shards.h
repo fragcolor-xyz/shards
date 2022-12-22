@@ -10,8 +10,10 @@
 
 #if defined(__cplusplus) && !defined(RUST_BINDGEN)
 #define SH_ENUM_CLASS enum class
+#define SH_ENUM_DECL
 #else
 #define SH_ENUM_CLASS enum
+#define SH_ENUM_DECL enum
 #endif
 
 // All the available types
@@ -310,7 +312,7 @@ struct SHSetInterface {
 
 struct SHTypeInfo {
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  SH_ENUM_CLASS SHType basicType;
+  SH_ENUM_DECL SHType basicType;
 #else
   SHType basicType;
 #endif
@@ -382,7 +384,7 @@ struct SHTypeInfo {
   // Should not be considered when hashing this type
   uint32_t fixedSize;
   // Used by Array type, which is still not implemented properly and unstable.
-  SH_ENUM_CLASS SHType innerType;
+  SH_ENUM_DECL SHType innerType;
   // used internally to make our live easy when types are recursive (aka Self is
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
@@ -567,8 +569,8 @@ struct SHVarPayload {
 struct SHVar {
   struct SHVarPayload payload;
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  SH_ENUM_CLASS SHType valueType;
-  SH_ENUM_CLASS SHType innerType;
+  SH_ENUM_DECL SHType valueType;
+  SH_ENUM_DECL SHType innerType;
 #else
   SHType valueType;
   SHType innerType;
@@ -585,7 +587,7 @@ SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
 
 struct SHRunWireOutput {
   struct SHVar output;
-  SH_ENUM_CLASS SHRunWireOutputState state;
+  SH_ENUM_DECL SHRunWireOutputState state;
 } __attribute__((aligned(16)));
 
 struct SHComposeResult {
@@ -803,8 +805,8 @@ typedef void(__cdecl *SHReleaseVariable)(struct SHVar *variable);
 typedef void(__cdecl *SHAbortWire)(struct SHContext *context, SHString errorText);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_CLASS SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
-typedef SH_ENUM_CLASS SHWireState(__cdecl *SHGetState)(struct SHContext *context);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHGetState)(struct SHContext *context);
 #else
 typedef SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
 typedef SHWireState(__cdecl *SHGetState)(struct SHContext *context);
@@ -821,7 +823,7 @@ typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValida
                                                          struct SHInstanceData data);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_CLASS SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                                struct SHVar *output);
 #else
 typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
@@ -829,7 +831,7 @@ typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *conte
 #endif
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_CLASS SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                                      struct SHVar *output, struct SHVar *outHash);
 #else
 typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
