@@ -208,7 +208,7 @@ struct Pack : public StructBase {
     memcpy(&_storage.front() + offset, &x, sizeof(T));
   }
 
-  template <typename T, SH_ENUM_CLASS SHType SHT, typename CT>
+  template <typename T, enum SHType SHT, typename CT>
   void writeMany(const SHSeq &input, CT SHVarPayload::*value, size_t offset, size_t len) {
     if (len != (size_t)input.len) {
       throw ActivationError("Expected " + std::to_string(len) + " size sequence as value");
