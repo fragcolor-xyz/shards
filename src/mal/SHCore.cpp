@@ -2,12 +2,10 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "shards.hpp"
-#define String MalString
 #include "Environment.h"
 #include "MAL.h"
 #include "StaticList.h"
 #include "Types.h"
-#undef String
 #include "../core/shards/shared.hpp"
 #include "../core/runtime.hpp"
 #include <algorithm>
@@ -2299,6 +2297,9 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output =
       shards::cloneVar(*output, scriptVal);
     }
     return true;
+  } catch (MalString &str) {
+    SHLOG_WARNING("Eval error: {}", str.c_str());
+    return false;
   } catch (...) {
     return false;
   }

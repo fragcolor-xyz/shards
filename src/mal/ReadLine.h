@@ -9,13 +9,13 @@
 
 class ReadLine {
 public:
-  ReadLine(const String &historyFile);
+  ReadLine(const MalString &historyFile);
   ~ReadLine();
 
-  bool get(const String &prompt, String &line);
+  bool get(const MalString &prompt, MalString &line);
 
 private:
-  String m_historyPath;
+  MalString m_historyPath;
 };
 
 #endif // INCLUDE_READLINE_H

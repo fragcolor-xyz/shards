@@ -8,11 +8,11 @@
 
 static replxx::Replxx rx{};
 
-ReadLine::ReadLine(const String &historyFile) : m_historyPath(historyFile) { rx.history_load(m_historyPath.c_str()); }
+ReadLine::ReadLine(const MalString &historyFile) : m_historyPath(historyFile) { rx.history_load(m_historyPath.c_str()); }
 
 ReadLine::~ReadLine() {}
 
-bool ReadLine::get(const String &prompt, String &out) {
+bool ReadLine::get(const MalString &prompt, MalString &out) {
   const char *line = rx.input(prompt);
   if (line == NULL) {
     return false;

@@ -28,16 +28,16 @@ static const Regex tokenRegexes[] = {
 
 class Tokeniser {
 public:
-  Tokeniser(const String &input);
+  Tokeniser(const MalString &input);
 
-  String peek() const {
+  MalString peek() const {
     ASSERT(!eof(), "Tokeniser reading past EOF in peek\n");
     return m_token;
   }
 
-  String next() {
+  MalString next() {
     ASSERT(!eof(), "Tokeniser reading past EOF in next\n");
-    String ret = peek();
+    MalString ret = peek();
     nextToken();
     return ret;
   }
@@ -52,16 +52,16 @@ private:
 
   bool matchRegex(const Regex &regex);
 
-  typedef String::const_iterator StringIter;
+  typedef MalString::const_iterator StringIter;
 
-  String m_token;
+  MalString m_token;
   StringIter m_iter;
   StringIter m_begin;
   StringIter m_end;
   size_t m_currentLine{1};
 };
 
-Tokeniser::Tokeniser(const String &input) : m_iter(input.begin()), m_begin(input.begin()), m_end(input.end()) { nextToken(); }
+Tokeniser::Tokeniser(const MalString &input) : m_iter(input.begin()), m_begin(input.begin()), m_end(input.end()) { nextToken(); }
 
 bool Tokeniser::matchRegex(const Regex &regex) {
   if (eof()) {
@@ -102,7 +102,7 @@ void Tokeniser::nextToken() {
     }
   }
 
-  String mismatch(m_iter, m_end);
+  MalString mismatch(m_iter, m_end);
   if (mismatch[0] == '"') {
     MAL_CHECK(false, "expected '\"', got EOF, line: %i", line());
   } else {
@@ -125,10 +125,10 @@ void Tokeniser::skipWhitespace() {
 
 static malValuePtr readAtom(Tokeniser &tokeniser);
 static malValuePtr readForm(Tokeniser &tokeniser);
-static void readList(Tokeniser &tokeniser, malValueVec *items, const String &end);
-static malValuePtr processMacro(Tokeniser &tokeniser, const String &symbol);
+static void readList(Tokeniser &tokeniser, malValueVec *items, const MalString &end);
+static malValuePtr processMacro(Tokeniser &tokeniser, const MalString &symbol);
 
-malValuePtr readStr(const String &input) {
+malValuePtr readStr(const MalString &input) {
   Tokeniser tokeniser(input);
   if (tokeniser.eof()) {
     throw malEmptyInputException();
@@ -138,7 +138,7 @@ malValuePtr readStr(const String &input) {
 
 static malValuePtr readForm(Tokeniser &tokeniser) {
   MAL_CHECK(!tokeniser.eof(), "expected form, got EOF, line: %i", tokeniser.line());
-  String token = tokeniser.peek();
+  MalString token = tokeniser.peek();
 
   MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s', line: %i", token.c_str(), tokeniser.line());
 
@@ -184,7 +184,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
       {"true", mal::trueValue()},
   };
 
-  String token = tokeniser.next();
+  MalString token = tokeniser.next();
 
   if (token[0] == '"') {
     return mal::string(unescape(token));
@@ -236,7 +236,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
   return mal::symbol(token);
 }
 
-static void readList(Tokeniser &tokeniser, malValueVec *items, const String &end) {
+static void readList(Tokeniser &tokeniser, malValueVec *items, const MalString &end) {
   while (1) {
     MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF, line: %i", end.c_str(), tokeniser.line());
     if (tokeniser.peek() == end) {
@@ -247,6 +247,6 @@ static void readList(Tokeniser &tokeniser, malValueVec *items, const String &end
   }
 }
 
-static malValuePtr processMacro(Tokeniser &tokeniser, const String &symbol) {
+static malValuePtr processMacro(Tokeniser &tokeniser, const MalString &symbol) {
   return mal::list(mal::symbol(symbol), readForm(tokeniser));
 }

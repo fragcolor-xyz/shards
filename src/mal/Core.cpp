@@ -15,7 +15,7 @@
 
 namespace fs = boost::filesystem;
 
-static String printValues(malValueIter begin, malValueIter end, const String &sep, bool readably);
+static MalString printValues(malValueIter begin, malValueIter end, const MalString &sep, bool readably);
 
 static StaticList<malBuiltIn *> handlers;
 
@@ -26,7 +26,7 @@ static StaticList<malBuiltIn *> handlers;
 #define BUILTIN_DEF(uniq, symbol)                                                                         \
   static malBuiltIn::ApplyFunc FUNCNAME(uniq);                                                            \
   static StaticList<malBuiltIn *>::Node HRECNAME(uniq)(handlers, new malBuiltIn(symbol, FUNCNAME(uniq))); \
-  malValuePtr FUNCNAME(uniq)(const String &name, malValueIter argsBegin, malValueIter argsEnd)
+  malValuePtr FUNCNAME(uniq)(const MalString &name, malValueIter argsBegin, malValueIter argsEnd)
 
 #define BUILTIN(symbol) BUILTIN_DEF(__LINE__, symbol)
 
@@ -439,7 +439,7 @@ BUILTIN("seq") {
     return seq->isEmpty() ? mal::nilValue() : mal::list(seq->begin(), seq->end());
   }
   if (const malString *strVal = DYNAMIC_CAST(malString, arg)) {
-    const String str = strVal->value();
+    const MalString str = strVal->value();
     int length = str.length();
     if (length == 0)
       return mal::nilValue();
@@ -462,7 +462,7 @@ BUILTIN("slurp") {
   std::ifstream file(filepath.c_str(), std::ios::binary);
   MAL_CHECK(!file.fail(), "Cannot open %s", filename->value().c_str());
 
-  String data;
+  MalString data;
   data.assign(std::istreambuf_iterator<char>(file), {});
 
   return mal::string(data);
@@ -537,8 +537,8 @@ void installCore(malEnvPtr env) {
   }
 }
 
-static String printValues(malValueIter begin, malValueIter end, const String &sep, bool readably) {
-  String out;
+static MalString printValues(malValueIter begin, malValueIter end, const MalString &sep, bool readably) {
+  MalString out;
 
   if (begin != end) {
     out += (*begin)->print(readably);
