@@ -141,6 +141,12 @@ struct ListBox {
   tmp: usize,
 }
 
+struct MarkdownViewer {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  cache: egui_commonmark::CommonMarkCache,
+}
+
 struct ProgressBar {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -249,6 +255,7 @@ mod image_button;
 mod label;
 mod link;
 mod listbox;
+mod markdown_viewer;
 mod numeric_input;
 mod numeric_slider;
 mod plots;
@@ -290,6 +297,7 @@ pub fn registerShards() {
   registerShard::<Int3Slider>();
   registerShard::<Int4Slider>();
   plots::registerShards();
+  registerShard::<MarkdownViewer>();
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<Spinner>();

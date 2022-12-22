@@ -1,100 +1,69 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Space;
+use super::MarkdownViewer;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::FLOAT_VAR_SLICE;
+use crate::shards::gui::EguiId;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
-use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::OptionalString;
 use crate::types::ParamVar;
-use crate::types::Parameters;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::ANY_TYPES;
+use crate::types::STRING_TYPES;
 
-lazy_static! {
-  static ref SPACE_PARAMETERS: Parameters = vec![(
-    cstr!("Amount"),
-    shccstr!("The amount of space to insert."),
-    FLOAT_VAR_SLICE
-  )
-    .into(),];
-}
-
-impl Default for Space {
+impl Default for MarkdownViewer {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
     Self {
       parents,
       requiring: Vec::new(),
-      amount: ParamVar::default(),
+      cache: egui_commonmark::CommonMarkCache::default(),
     }
   }
 }
 
-impl Shard for Space {
+impl Shard for MarkdownViewer {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.Space")
+    cstr!("UI.MarkdownViewer")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Space-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.MarkdownViewer-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.Space"
+    "UI.MarkdownViewer"
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Inserts an empty space before the next widget. The direction will depend on the layout."
-    ))
+    OptionalString(shccstr!("Renders a markdown text."))
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &ANY_TYPES
+    &STRING_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
-    *HELP_VALUE_IGNORED
+    OptionalString(shccstr!("The markdown text to render."))
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &ANY_TYPES
+    &STRING_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
     *HELP_OUTPUT_EQUAL_INPUT
-  }
-
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&SPACE_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => Ok(self.amount.set_param(value)),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.amount.get_param(),
-      _ => Var::default(),
-    }
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
@@ -106,15 +75,13 @@ impl Shard for Space {
     Some(&self.requiring)
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
-    self.amount.warmup(ctx);
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.parents.warmup(context);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.amount.cleanup();
     self.parents.cleanup();
 
     Ok(())
@@ -122,7 +89,8 @@ impl Shard for Space {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
-      ui.add_space(self.amount.get().try_into()?);
+      let text: &str = input.try_into()?;
+      egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0)).show(ui, &mut self.cache, text);
 
       Ok(*input)
     } else {

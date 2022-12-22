@@ -14,7 +14,6 @@ use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 use crate::types::FRAG_CC;
-use egui::Context as EguiNativeContext;
 use std::ffi::c_void;
 use std::ffi::CStr;
 
@@ -92,7 +91,7 @@ impl From<EguiId> for egui::Id {
 }
 
 struct EguiContext {
-  context: Option<EguiNativeContext>,
+  context: Option<egui::Context>,
   instance: ParamVar,
   requiring: ExposedTypes,
   queue: ParamVar,

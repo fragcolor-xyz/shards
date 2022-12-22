@@ -132,7 +132,7 @@
                .sample-out-md-fn (getFilename (str basePath shardsSamplePath) "" true) (FS.IsFile) = .sample-have-out-md
 
                "=== \"Code\"\r\n\r\n" >> .o
-               "    ```clojure linenums=\"1\"\r\n" >> .o
+               "    ```clj linenums=\"1\"\r\n" >> .o
                "    --8<-- \"" >> .o .sample-script-fn (getFilename shardsSamplePath "" true) >> .o "\"\r\n" >> .o
                "    ```\r\n\r\n" >> .o
 
