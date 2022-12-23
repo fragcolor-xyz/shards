@@ -1854,7 +1854,7 @@ struct Branch {
     _sharedCopy = shared;
     _mesh->instanceData.shared = _sharedCopy;
 
-    return data.inputType;
+    return MeshType;
   }
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
