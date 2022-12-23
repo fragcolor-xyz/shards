@@ -1094,7 +1094,7 @@ ENUM_HELP(WaitUntil, WaitUntil::FirstSuccess, SHCCSTR("Will wait until the first
 ENUM_HELP(WaitUntil, WaitUntil::AllSuccess, SHCCSTR("Will wait until all complete, will stop and fail on any failure"));
 ENUM_HELP(WaitUntil, WaitUntil::SomeSuccess, SHCCSTR("Will wait until all complete but won't fail if some of the wires failed"));
 
-namespace shards{
+namespace shards {
 struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   uint32_t index;
   std::shared_ptr<SHWire> wire;
@@ -1563,6 +1563,7 @@ struct Spawn : public CapturingSpawners {
     CapturingSpawners::compose(data, data.inputType);
 
     // wire should be populated now and such
+    assert(wire);
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
 
     // copy input type
@@ -1724,19 +1725,26 @@ struct StepMany : public TryMany {
 };
 
 struct Branch {
+  static constexpr uint32_t TypeId = 'brcM';
+  static inline Type MeshType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}}};
+
   enum BranchFailureBehavior { Everything, Known, Ignore };
   DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return MeshType; }
 
   static SHParametersInfo parameters() {
-    static Parameters params{{"Wires",
-                              SHCCSTR("The wires to schedule and run on this branch."),
-                              {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}},
-                             {"FailureBehavior",
-                              SHCCSTR("The behavior to take when some of the wires running on this branch mesh fail."),
-                              {BranchFailureEnumInfo::Type}}};
+    static Parameters params{
+        {"Wires",
+         SHCCSTR("The wires to schedule and run on this branch."),
+         {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}},
+        {"FailureBehavior",
+         SHCCSTR("The behavior to take when some of the wires running on this branch mesh fail."),
+         {BranchFailureEnumInfo::Type}},
+        {"CaptureAll",
+         SHCCSTR("If all of the existing context variables should be captured, no matter if being used or not."),
+         {CoreInfo::BoolType}}};
     return params;
   }
 
@@ -1747,6 +1755,9 @@ struct Branch {
       break;
     case 1:
       _failureBehavior = BranchFailureBehavior(value.payload.enumValue);
+      break;
+    case 2:
+      _captureAll = value.payload.boolValue;
       break;
     default:
       break;
@@ -1759,6 +1770,8 @@ struct Branch {
       return _wires;
     case 1:
       return Var::Enum(_failureBehavior, BranchFailureEnumInfo::VendorId, BranchFailureEnumInfo::TypeId);
+    case 2:
+      return Var(_captureAll);
     default:
       return Var::Empty;
     }
@@ -1802,11 +1815,18 @@ struct Branch {
       arrayPush(_mergedReqs, req);
     }
 
-    for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
+    if (_captureAll) {
+      for (auto &avail : data.shared) {
         SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-        arrayPush(_mergedReqs, it->second);
+        arrayPush(_mergedReqs, avail);
+      }
+    } else {
+      for (auto &avail : data.shared) {
+        auto it = requirements.find(avail.name);
+        if (it != requirements.end()) {
+          SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          arrayPush(_mergedReqs, it->second);
+        }
       }
     }
 
@@ -1834,7 +1854,7 @@ struct Branch {
     _sharedCopy = shared;
     _mesh->instanceData.shared = _sharedCopy;
 
-    return data.inputType;
+    return MeshType;
   }
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
@@ -1880,11 +1900,12 @@ struct Branch {
         break;
       }
     }
-    return input;
+    return Var::Object(_mesh.get(), CoreCC, TypeId);
   }
 
 private:
   OwnedVar _wires{Var::Empty};
+  bool _captureAll = false;
   std::shared_ptr<SHMesh> _mesh = SHMesh::make();
   IterableExposedInfo _sharedCopy;
   SHExposedTypesInfo _mergedReqs;
