@@ -1725,7 +1725,7 @@ struct StepMany : public TryMany {
 };
 
 struct Branch {
-  static constexpr uint32_t TypeId = 'mesh';
+  static constexpr uint32_t TypeId = 'brcM';
   static inline Type MeshType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}}};
 
   enum BranchFailureBehavior { Everything, Known, Ignore };
