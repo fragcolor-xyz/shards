@@ -353,7 +353,8 @@ struct EnumRegisterImpl {
     info.values.len = uint32_t(result.values.size());
     assert(info.values.len == info.labels.len);
 
-    magic_enum::enum_for_each<typename TEnumInfo::Enum>([&](auto Value) { result.cdescriptions.emplace_back(TEnumHelp<typename TEnumInfo::Enum, Value>::help); });
+    magic_enum::enum_for_each<typename TEnumInfo::Enum>(
+        [&](auto Value) { result.cdescriptions.emplace_back(TEnumHelp<typename TEnumInfo::Enum, Value>::help); });
     info.descriptions.elements = &result.cdescriptions[0];
     info.descriptions.len = uint32_t(result.cdescriptions.size());
 

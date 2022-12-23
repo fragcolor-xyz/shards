@@ -526,7 +526,7 @@ void from_json(const json &j, SHVar &var) {
     var.payload.objectVendorId = SHEnum(j.at("vendorId").get<int32_t>());
     var.payload.objectTypeId = SHEnum(j.at("typeId").get<int32_t>());
     var.payload.objectValue = nullptr;
-    SHObjectInfo* objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
+    SHObjectInfo *objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
     if (objectInfo) {
       auto data = j.at("data").get<std::vector<uint8_t>>();
       var.payload.objectValue = objectInfo->deserialize(&data.front(), data.size());

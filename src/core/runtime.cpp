@@ -430,7 +430,6 @@ SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId) {
   return nullptr;
 }
 
-
 void registerRunLoopCallback(std::string_view eventName, SHCallback callback) {
   shards::GetGlobals().RunLoopHooks[eventName] = callback;
 }

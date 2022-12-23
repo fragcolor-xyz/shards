@@ -751,7 +751,7 @@ struct Lerp final {
     SHVar b = _second.get();
     SHVar result{.valueType = a.valueType};
     dispatchType<DispatchType::NumberTypes>(a.valueType, ApplyLerp{}, result.payload, a.payload, b.payload,
-                                           input.payload.floatValue);
+                                            input.payload.floatValue);
     return result;
   }
 };
