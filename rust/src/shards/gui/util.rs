@@ -58,7 +58,7 @@ pub(crate) fn activate_ui_contents<'a>(
   input: &Var,
   ui: &mut egui::Ui,
   parents_stack_var: &mut ParamVar,
-  contents: &mut ShardsVar,
+  contents: &ShardsVar,
 ) -> Result<Var, &'a str> {
   let mut output = Var::default();
 

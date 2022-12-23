@@ -231,6 +231,10 @@ impl ShardRef {
       (*self.0).setParam.unwrap()(self.0, index, &value);
     }
   }
+
+  pub fn get_parameter(&self, index: i32) -> Var {
+    unsafe { (*self.0).getParam.unwrap()(self.0, index) }
+  }
 }
 
 #[derive(PartialEq)]
@@ -3302,7 +3306,7 @@ impl ShardsVar {
     }
   }
 
-  pub fn cleanup(&mut self) {
+  pub fn cleanup(&self) {
     for shard in self.shards.iter().rev() {
       if let Err(e) = shard.cleanup() {
         shlog!("Errors during shard cleanup: {}", e);
@@ -3310,8 +3314,8 @@ impl ShardsVar {
     }
   }
 
-  pub fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    for shard in &mut self.shards {
+  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+    for shard in self.shards.iter() {
       if let Err(e) = shard.warmup(context) {
         shlog!("Errors during shard warmup: {}", e);
         return Err(e);
@@ -3320,7 +3324,7 @@ impl ShardsVar {
     Ok(())
   }
 
-  pub fn set_param(&mut self, value: &Var) -> Result<(), &str> {
+  pub fn set_param(&mut self, value: &Var) -> Result<(), &'static str> {
     self.destroy(); // destroy old blocks
 
     self.param = value.into(); // clone it
@@ -3390,7 +3394,7 @@ impl ShardsVar {
     }
   }
 
-  pub fn activate(&mut self, context: &Context, input: &Var, output: &mut Var) -> WireState {
+  pub fn activate(&self, context: &Context, input: &Var, output: &mut Var) -> WireState {
     if self.param.0.is_none() {
       return WireState::Continue;
     }
@@ -3407,7 +3411,7 @@ impl ShardsVar {
   }
 
   pub fn activate_handling_return(
-    &mut self,
+    &self,
     context: &Context,
     input: &Var,
     output: &mut Var,
@@ -3766,6 +3770,18 @@ impl Iterator for SeqIterator {
     res
   }
   type Item = Var;
+}
+
+impl DoubleEndedIterator for SeqIterator {
+    fn next_back(&mut self) -> Option<Self::Item> {
+      let res = if self.i < self.s.s.len {
+        unsafe { Some(*self.s.s.elements.offset((self.s.s.len - self.i - 1).try_into().unwrap())) }
+      } else {
+        None
+      };
+      self.i += 1;
+      res
+    }
 }
 
 impl IntoIterator for Seq {

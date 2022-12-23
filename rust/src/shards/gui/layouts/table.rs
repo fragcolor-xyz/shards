@@ -141,7 +141,7 @@ impl Shard for Table {
         let seq = Seq::try_from(value)?;
         for shard in seq.iter() {
           let mut s = ShardsVar::default();
-          s.set_param(&shard).unwrap();
+          s.set_param(&shard)?;
           self.shards.push(s);
         }
         Ok(self.rows.set_param(value))
@@ -157,7 +157,7 @@ impl Shard for Table {
               }
               SHType_ShardRef | SHType_Seq => {
                 let mut s = ShardsVar::default();
-                s.set_param(&header).unwrap();
+                s.set_param(&header)?;
                 self.header_shards.push(Some(s));
               }
               _ => unreachable!(),
