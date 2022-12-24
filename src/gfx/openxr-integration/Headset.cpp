@@ -169,7 +169,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
   XrSessionCreateInfo sessionCreateInfo{ XR_TYPE_SESSION_CREATE_INFO };
   sessionCreateInfo.next = &graphicsBinding;
   sessionCreateInfo.systemId = xrSystemId;
+  spdlog::info("[log][t] Headset::Headset: Create session:");
   XrResult result = xrCreateSession(xrInstance, &sessionCreateInfo, &session);
+  spdlog::info("[log][t] Headset::Headset: Create session: result: {0} <- zero means success..", result);
   if (XR_FAILED(result))
   {
     util::error(Error::GenericOpenXR);
