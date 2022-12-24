@@ -17,12 +17,12 @@ bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
 
 //[t] this should be created before we call anything from context_xr_gfx. 
 //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code...
-int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, bool isMultipass, HeadsetType headsetType)
+int OpenXRSystem::InitOpenXR(bool isMultipass, HeadsetType headsetType)
 {
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR...");
 
   //context_xr = new Context_XR(wgpuUVulkanShared); 
-  context_xr = std::make_shared<Context_XR>(wgpuUVulkanShared); 
+  context_xr = std::make_shared<Context_XR>(); 
   if (!context_xr->isValid())
   {
     spdlog::error("[log][t] OpenXRSystem::InitOpenXR: error at !headset->isValid().");
@@ -50,6 +50,11 @@ int OpenXRSystem::InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanS
 
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR... End.");
   return EXIT_SUCCESS;
+}
+
+void OpenXRSystem::SetWgpuVulkanShared(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared){
+  if(context_xr!=nullptr)
+    context_xr->SetWgpuVulkanShared(wgpuUVulkanShared);
 }
 
 bool OpenXRSystem::GetVulkanExtensionsFromOpenXRInstance(){

@@ -43,7 +43,8 @@ class OpenXRSystem {
 
     bool checkXRDeviceReady(HeadsetType heasetType);
 
-    int InitOpenXR(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, bool isMultipass, HeadsetType headsetType = defaultHeadset);
+    int InitOpenXR(bool isMultipass, HeadsetType headsetType = defaultHeadset);
+    void SetWgpuVulkanShared(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared);
     bool GetVulkanExtensionsFromOpenXRInstance();
     bool CreatePhysicalDevice();
     std::vector<const char*> GetVulkanXrExtensions();

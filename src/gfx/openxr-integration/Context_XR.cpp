@@ -12,10 +12,10 @@
 
 #include "spdlog/spdlog.h"
                        
-Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared)
+Context_XR::Context_XR()
 {
   spdlog::info("[log][t] Context_XR::Context_XR: Creating Context...");
-  wgpuUVulkanShared = _wgpuUVulkanShared;
+  //wgpuUVulkanShared = _wgpuUVulkanShared;
 
   // Get all supported OpenXR instance extensions
   std::vector<XrExtensionProperties> supportedOpenXRInstanceExtensions;
@@ -171,7 +171,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
       {
         std::cerr << "[OpenXR] " << callbackData->message << "\n";
       }
-      spdlog::error("[log][t] Context_XR::Context_XR: error at messageSeverity >= XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT");
+      spdlog::error("[log][t] Context_XR::Context_XR: error at messageSeverity >= XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT. Message: {}",callbackData->message);
       return XR_FALSE; // Returning XR_TRUE will force the calling function to fail
     };
 
@@ -288,7 +288,7 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
   */
 
   /*
-
+  // commented this out because I couldn't convert it to vk::
   #ifdef DEBUG_XR
   // Create a Vulkan DEBUG_XR utils messenger for validation
   {
@@ -348,6 +348,10 @@ Context_XR::Context_XR(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared
   */
 
   created = true;
+}
+
+void Context_XR::SetWgpuVulkanShared(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared){
+  wgpuUVulkanShared = _wgpuUVulkanShared;
 }
 
 //should be called after all the context devices created
@@ -550,7 +554,7 @@ Context_XR::~Context_XR()
 
 bool Context_XR::CreatePhysicalDevice(){
   spdlog::info("[log][t] Context_XR::CreatePhysicalDevice()");
-  // Retrieve the physical device from OpenXR
+  // Retrieve the vulkan physical device from OpenXR
   XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice); 
   if (XR_FAILED(result))
   {

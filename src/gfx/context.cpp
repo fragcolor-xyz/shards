@@ -369,6 +369,7 @@ void Context::initCommon() {
   
   spdlog::info("[log][t] Context::initCommon: Creating backend: ContextXrGfxBackend.");
   //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
+
   backend = std::make_shared<ContextXrGfxBackend>();   
   wgpuInstance = backend->createInstance(); 
   
