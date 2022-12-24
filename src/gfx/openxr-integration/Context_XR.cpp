@@ -344,7 +344,7 @@ Context_XR::Context_XR()
       return;
     }
   }
-  #endif
+  #endif 
   */
 
   created = true;
@@ -352,6 +352,7 @@ Context_XR::Context_XR()
 
 void Context_XR::SetWgpuVulkanShared(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared){
   wgpuUVulkanShared = _wgpuUVulkanShared;
+  
 }
 
 //should be called after all the context devices created
@@ -542,24 +543,24 @@ Context_XR::~Context_XR()
   //vkDestroyDevice(vkDevice, nullptr);
 
 #ifdef DEBUG_XR
-  if (vkInstance)
+  if (wgpuUVulkanShared->vkInstance)
   {
-    vkDestroyDebugUtilsMessengerEXT(vkInstance, vkDebugUtilsMessenger, nullptr);
+    vkDestroyDebugUtilsMessengerEXT(wgpuUVulkanShared->vkInstance, vkDebugUtilsMessenger, nullptr);
   }
 #endif
 
-  //vkDestroyInstance(vkInstance, nullptr);
+  //vkDestroyInstance(wgpuUVulkanShared->vkInstance, nullptr);
   
 }
 
 bool Context_XR::CreatePhysicalDevice(){
   spdlog::info("[log][t] Context_XR::CreatePhysicalDevice()");
   // Retrieve the vulkan physical device from OpenXR
-  XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice); 
-  if (XR_FAILED(result))
+  XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, wgpuUVulkanShared->vkInstance, &physicalDevice); 
+  if (XR_FAILED(result)) 
   {
     util::error(Error::GenericOpenXR);
-    spdlog::error("[log][t] Context_XR::CreatePhysicalDevice: error [{0}] at xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice);",result);
+    spdlog::error("[log][t] Context_XR::CreatePhysicalDevice: error [{0}] at xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, wgpuUVulkanShared->vkInstance, &physicalDevice);",result);
     return false;
   }
 
@@ -650,11 +651,11 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
 { 
   spdlog::info("[log][t] Context_XR::createDevice()");
   // Retrieve the physical device from OpenXR
-  XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice); 
+  XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, wgpuUVulkanShared->vkInstance, &physicalDevice); 
   if (XR_FAILED(result))
   {
     util::error(Error::GenericOpenXR);
-    spdlog::error("[log][t] Context_XR::createDevice: error at xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, vkInstance, &physicalDevice);");
+    spdlog::error("[log][t] Context_XR::createDevice: error at xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, wgpuUVulkanShared->vkInstance, &physicalDevice);");
     return false;
   }
 
@@ -955,7 +956,7 @@ XrSystemId Context_XR::getXrSystemId() const
 VkInstance Context_XR::getVkInstance() const
 {
   spdlog::info("[log][t] Context_XR::getVkInstance()");
-  return vkInstance;
+  return wgpuUVulkanShared->vkInstance;
 }
 
 VkPhysicalDevice Context_XR::getVkPhysicalDevice() const
