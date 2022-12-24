@@ -8,12 +8,15 @@
 
 #include "context_xr_gfx_data.hpp"
 
+#define DEBUG_XR
+
 class Context_XR final
 {
 public:
-  Context_XR( std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared);
+  Context_XR();// std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared
   ~Context_XR();
 
+  void SetWgpuVulkanShared(std::shared_ptr<gfx::WGPUVulkanShared> _wgpuUVulkanShared);
   bool checkXRDeviceReady(
                             XrViewConfigurationType viewType,
                             XrEnvironmentBlendMode environmentBlendMode,
@@ -60,7 +63,7 @@ private:
   VkDevice vkDevice = nullptr;
   VkQueue drawQueue = nullptr, presentQueue = nullptr;
 
-#ifdef DEBUG
+#ifdef DEBUG_XR
   PFN_xrCreateDebugUtilsMessengerEXT xrCreateDebugUtilsMessengerEXT = nullptr;
   PFN_xrDestroyDebugUtilsMessengerEXT xrDestroyDebugUtilsMessengerEXT = nullptr;
   XrDebugUtilsMessengerEXT xrDebugUtilsMessenger = nullptr;

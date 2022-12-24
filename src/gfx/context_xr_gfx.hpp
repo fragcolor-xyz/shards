@@ -306,6 +306,20 @@ namespace gfx {
     WGPUInstance createInstance() override 
     { 
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createInstance().");
+      
+      
+      //[t] xr system 
+      {
+        OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
+        //std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
+        if(openXRSystem.InitOpenXR(true, OpenXRSystem::defaultHeadset) == 1){
+          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.InitOpenXR(.");
+          return nullptr;
+        }
+      }
+      
+      
+      
       // Create gpu instance
       WGPUInstanceDescriptor desc{}; 
       WGPUInstanceDescriptorVK descVk{};
@@ -353,18 +367,10 @@ namespace gfx {
       */
       
       //[t] xr system 
-      //[t] this should be created first/early, within the IContextBackend context_xr_gfx. 
-      //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code... 
-      //[t] And also we have weird stuff here with deviceCreated(device)'s queue & wgpuDeviceGetPropertiesEx 
       {
         OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
-        //std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared = std::make_shared<WGPUVulkanShared>();
-        if(openXRSystem.InitOpenXR(wgpuVulkanShared, true, OpenXRSystem::defaultHeadset) == 1){
-          spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.InitOpenXR(.");
-          return nullptr;
-        }
-
-        //[t] TODO: maybe have a loop here to wait / ask user to plug it in? Or just say it's not connected.
+        openXRSystem.SetWgpuVulkanShared(wgpuVulkanShared);
+        //[t] TODO: print some message to the user to say it's not connected.
         //[t] (If a headset is sleeping but present, it works successfully)
         if(!openXRSystem.checkXRDeviceReady(OpenXRSystem::defaultHeadset)){
           spdlog::error("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: error at openXRSystem.checkXRDeviceReady(.");
@@ -372,8 +378,6 @@ namespace gfx {
         }
         
         openXRSystem.GetVulkanExtensionsFromOpenXRInstance();
-
-        
       }
 
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: End.");
