@@ -101,6 +101,16 @@ jobs:
 
           echo "Running onnx test"
           build/shards src/tests/onnx.edn
+      - name: Test Physics
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          set -e
+          export DISPLAY=:1
+          Xvfb "$DISPLAY" &          
+          
+          echo "Running physics"
+          build/shards src/tests/physics.edn
       - name: Test doc samples (GFX)
         env:
           RUST_BACKTRACE: 1

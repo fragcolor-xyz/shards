@@ -57,6 +57,7 @@ template <typename T> std::vector<T> convertVertices(const std::vector<geom::Ver
 
 inline MeshPtr createSphereMesh() {
   geom::SphereGenerator gen;
+  gen.radius = 1.0f;
   gen.generate();
   return createMesh(gen.vertices, gen.indices);
 }

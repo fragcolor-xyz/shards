@@ -23,9 +23,9 @@ use crate::types::ANY_TYPES;
 use crate::Shard;
 use crate::Types;
 use crate::Var;
-use rapier3d::dynamics::{IntegrationParameters, JointSet, RigidBodySet};
+use rapier3d::dynamics::{ImpulseJointSet, IntegrationParameters, RigidBodySet};
 use rapier3d::geometry::{
-  BroadPhase, ColliderSet, ContactEvent, InteractionGroups, IntersectionEvent, NarrowPhase, Ray,
+  BroadPhase, ColliderSet, CollisionEvent, InteractionGroups, NarrowPhase, Ray,
 };
 use rapier3d::na::{Point3, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
