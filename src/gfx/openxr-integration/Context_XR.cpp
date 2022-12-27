@@ -555,6 +555,7 @@ Context_XR::~Context_XR()
 
 bool Context_XR::CreatePhysicalDevice(){
   spdlog::info("[log][t] Context_XR::CreatePhysicalDevice()");
+
   // Retrieve the vulkan physical device from OpenXR
   XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, wgpuUVulkanShared->vkInstance, &physicalDevice); 
   if (XR_FAILED(result)) 
@@ -828,18 +829,19 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
     VkPhysicalDeviceMultiviewFeatures physicalDeviceMultiviewFeatures{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES
     };
+
     // Verify that the required physical device features are supported
     VkPhysicalDeviceFeatures physicalDeviceFeatures;
+    //vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
+    vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
+    if (!physicalDeviceFeatures.shaderStorageImageMultisample)
+    {
+      util::error(Error::FeatureNotSupported, "Vulkan physical device feature \"shaderStorageImageMultisample\"");
+      spdlog::error("[log][t] Context_XR::createDevice: error at Vulkan physical device feature \"shaderStorageImageMultisample\"");
+      return false;
+    } 
     if(!isMultipass){
-      //vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
-      vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
-      if (!physicalDeviceFeatures.shaderStorageImageMultisample)
-      {
-        util::error(Error::FeatureNotSupported, "Vulkan physical device feature \"shaderStorageImageMultisample\"");
-        spdlog::error("[log][t] Context_XR::createDevice: error at Vulkan physical device feature \"shaderStorageImageMultisample\"");
-        return false;
-      }
-
+      
       VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
       
       //VkPhysicalDeviceMultiviewFeatures physicalDeviceMultiviewFeatures{
@@ -854,9 +856,9 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
         return false;
       }
 
-      physicalDeviceFeatures.shaderStorageImageMultisample = VK_TRUE; // Needed for some OpenXR implementations
-      physicalDeviceMultiviewFeatures.multiview = VK_TRUE;            
+      physicalDeviceMultiviewFeatures.multiview = VK_TRUE;  
     }
+    physicalDeviceFeatures.shaderStorageImageMultisample = VK_TRUE; // Needed for some OpenXR implementations
     constexpr float queuePriority = 1.0f;
 
     std::vector<VkDeviceQueueCreateInfo> deviceQueueCreateInfos;

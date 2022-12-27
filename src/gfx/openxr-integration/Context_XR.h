@@ -8,7 +8,7 @@
 
 #include "context_xr_gfx_data.hpp"
 
-#define DEBUG_XR
+//#define DEBUG_XR
 
 class Context_XR final
 {
