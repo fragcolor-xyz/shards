@@ -47,6 +47,8 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#include <entt/entt.hpp>
+
 // TODO make it into a run-time param
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
@@ -403,8 +405,15 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     return reinterpret_cast<SHWireRef>(res);
   }
 
-  std::vector<std::function<void()>> onStart;
-  std::vector<std::function<void()>> onStop;
+  struct OnStartEvent {
+    const SHWire* wire;
+  };
+
+  struct OnStopEvent {
+    const SHWire* wire;
+  };
+
+  entt::dispatcher dispatcher{};
 
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }

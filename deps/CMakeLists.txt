@@ -222,6 +222,9 @@ target_include_directories(utf8.h INTERFACE utf8.h)
 add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
 
+add_library(entt INTERFACE)
+target_include_directories(entt INTERFACE entt/single_include)
+
 # Tracy profiler, default off
 option(TRACY_ENABLE "Enable profiling" OFF)
 

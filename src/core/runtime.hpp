@@ -221,9 +221,7 @@ inline void start(SHWire *wire, SHVar input = {}) {
   shards::cloneVar(wire->rootTickInput, input);
   wire->state = SHWire::State::Starting;
 
-  for (auto &call : wire->onStart) {
-    call();
-  }
+  wire->dispatcher.trigger(SHWire::OnStartEvent{wire});
 }
 
 inline bool stop(SHWire *wire, SHVar *result = nullptr) {
@@ -236,6 +234,8 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   }
 
   SHLOG_TRACE("stopping wire: {}", wire->name);
+
+  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
 
   if (wire->coro) {
     // Run until exit if alive, need to propagate to all suspended shards!
@@ -274,10 +274,6 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   // Clone the results if we need them
   if (result)
     cloneVar(*result, wire->finishedOutput);
-
-  for (auto &call : wire->onStop) {
-    call();
-  }
 
   return res;
 }

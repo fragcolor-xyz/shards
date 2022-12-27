@@ -7,6 +7,8 @@
 #include <memory>
 #include <deque>
 
+#include <entt/entt.hpp>
+
 namespace shards {
 
 enum RunWireMode { Inline, Detached, Stepped };
@@ -120,6 +122,8 @@ struct BaseRunner : public WireBase {
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
+  std::optional<entt::connection> onStopConnection;
+
   void cleanup() {
     if (capturing) {
       for (auto &v : _vars) {
@@ -136,7 +140,23 @@ struct BaseRunner : public WireBase {
       }
     }
 
+    if (onStopConnection) {
+      onStopConnection->release();
+      onStopConnection.reset();
+    }
+
     WireBase::cleanup();
+  }
+
+  void wireOnStop(const SHWire::OnStopEvent &e) {
+    SHLOG_TRACE("BaseRunner: wireOnStop {}", wire->name);
+
+    assert(e.wire == wire.get());
+
+    for (auto &v : _vars) {
+      // notice, this should be already destroyed by the wire releaseVariable
+      destroyVar(wire->variables[v.variableName()]);
+    }
   }
 
   void warmup(SHContext *ctx) {
@@ -145,13 +165,12 @@ struct BaseRunner : public WireBase {
         v.warmup(ctx);
       }
 
-      wire->onStop.clear();
-      wire->onStop.emplace_back([this]() {
-        for (auto &v : _vars) {
-          // notice, this should be already destroyed by the wire releaseVariable
-          destroyVar(wire->variables[v.variableName()]);
-        }
-      });
+      if (onStopConnection) {
+        onStopConnection->release();
+        onStopConnection.reset();
+      }
+
+      onStopConnection = wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
     }
   }
 

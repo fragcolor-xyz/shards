@@ -1105,6 +1105,12 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<SHMesh> mesh; // used only if MT
   bool done;
+  std::optional<entt::connection> onStopConnection;
+
+  ~ManyWire() {
+    if (onStopConnection)
+      onStopConnection->release();
+  }
 };
 
 struct ParallelBase : public CapturingSpawners {
@@ -1624,20 +1630,30 @@ struct Spawn : public CapturingSpawners {
     WireBase::cleanup();
   }
 
+  std::unordered_map<const SHWire *, std::weak_ptr<ManyWire>> _wireContainers;
+
+  void wireOnStop(const SHWire::OnStopEvent &e) {
+    SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
+
+    auto container = _wireContainers[e.wire].lock();
+    for (auto &v : _vars) {
+      // notice, this should be already destroyed by the wire releaseVariable
+      destroyVar(container->wire->variables[v.variableName()]);
+    }
+
+    _pool->release(container);
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
     auto c = _pool->acquire(_composer);
-    c->wire->onStop.clear(); // we have a fresh recycled wire here
-    std::weak_ptr<ManyWire> wc(c);
-    c->wire->onStop.emplace_back([this, wc]() {
-      if (auto c = wc.lock()) {
-        for (auto &v : _vars) {
-          // notice, this should be already destroyed by the wire releaseVariable
-          destroyVar(c->wire->variables[v.variableName()]);
-        }
-        _pool->release(c);
-      }
-    });
+
+    // Assume that we recycle containers so the connection might already exist!
+    if (!c->onStopConnection) {
+      SHLOG_TRACE("Spawn::activate: connecting wireOnStop to {}", c->wire->name);
+      _wireContainers[c->wire.get()] = c;
+      c->onStopConnection = c->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Spawn::wireOnStop>(this);
+    }
 
     for (auto &v : _vars) {
       auto &var = v.get();
