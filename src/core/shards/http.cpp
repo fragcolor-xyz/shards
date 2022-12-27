@@ -401,6 +401,12 @@ struct Peer : public std::enable_shared_from_this<Peer> {
 
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<tcp::socket> socket;
+  std::optional<entt::connection> onStopConnection;
+
+  ~Peer() {
+    if (onStopConnection)
+      onStopConnection->release();
+  }
 };
 
 struct PeerError {
@@ -459,15 +465,25 @@ struct Server {
     return data.inputType;
   }
 
+  std::unordered_map<const SHWire *, std::weak_ptr<Peer>> _wireContainers;
+
+  void wireOnStop(const SHWire::OnStopEvent &e) {
+    SHLOG_TRACE("Wire {} stopped", e.wire->name);
+
+    auto container = _wireContainers[e.wire].lock();
+    _pool->release(container);
+  }
+
   // "Loop" forever accepting new connections.
   void accept_once(SHContext *context) {
     auto peer = _pool->acquire(_composer);
-    peer->wire->onStop.clear(); // we have a fresh recycled wire here
-    std::weak_ptr<Peer> weakPeer(peer);
-    peer->wire->onStop.emplace_back([this, weakPeer]() {
-      if (auto p = weakPeer.lock())
-        _pool->release(p);
-    });
+
+    // Assume that we recycle containers so the connection might already exist!
+    if (!peer->onStopConnection) {
+      _wireContainers[peer->wire.get()] = peer;
+      peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+    }
+
     peer->socket.reset(new tcp::socket(*_ioc));
     _acceptor->async_accept(*peer->socket, [context, peer, this](beast::error_code ec) {
       if (!ec) {
@@ -577,7 +593,7 @@ struct Read {
     buffer.clear();
     http::async_read(*peer->socket, buffer, request, [&, peer](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
-        // notice there is likehood of done not being valid
+        // notice there is likelihood of done not being valid
         // anymore here
         throw PeerError{"Read", ec, peer};
       } else {
