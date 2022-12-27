@@ -86,3 +86,6 @@
 [submodule "src/gfx/rust/profiling"]
 	path = src/gfx/rust/profiling
 	url = https://github.com/shards-lang/rust-profiling.git
+[submodule "deps/entt"]
+	path = deps/entt
+	url = https://github.com/shards-lang/entt.git
