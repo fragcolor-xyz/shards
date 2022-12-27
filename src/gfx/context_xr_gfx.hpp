@@ -432,7 +432,18 @@ namespace gfx {
       wgpuVulkanShared->wgpuDevice = inDevice;
       wgpuVulkanShared->wgpuQueue = wgpuDeviceGetQueue(wgpuVulkanShared->wgpuDevice);
 
-      WGPUDevicePropertiesVK propsVk{
+
+
+
+      //---------------
+      // probably required physical device featurs for xr
+      //added in adapter.rs: 
+      //.shader_storage_image_multisample(
+      //              true,
+      //          )
+      //---------------
+      
+      WGPUDevicePropertiesVK propsVk{ 
           .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_DevicePropertiesVK)},
       };
       WGPUDeviceProperties props{.nextInChain = &propsVk.chain};
