@@ -65,7 +65,7 @@ typedef RefCountedPtr<malSHMesh> malSHMeshPtr;
 typedef RefCountedPtr<malSHVar> malSHVarPtr;
 
 void registerKeywords(malEnvPtr env);
-malSHVarPtr varify(const malValuePtr &arg);
+malSHVarPtr varify(const malValuePtr &arg, bool consumeShard = true);
 
 namespace fs = boost::filesystem;
 
@@ -974,7 +974,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
 
 std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end);
 
-malSHVarPtr varify(const malValuePtr &arg) {
+malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     SHVar var{};
@@ -1078,7 +1078,8 @@ malSHVarPtr varify(const malValuePtr &arg) {
     var.valueType = SHType::ShardRef;
     var.payload.shardValue = shard;
     auto bvar = new malSHVar(var, false);
-    v->consume();
+    if (consumeShard)
+      v->consume();
     bvar->reference(v);
     bvar->line = arg->line;
     return malSHVarPtr(bvar);
@@ -2296,7 +2297,7 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output) 
       res = maleval(str, cenv);
     }
     if (output) {
-      auto mvar = varify(res);
+      auto mvar = varify(res, false); // don't consume if it's a shard
       auto scriptVal = mvar->value();
       shards::cloneVar(*output, scriptVal);
     }
