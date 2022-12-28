@@ -2301,6 +2301,14 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output) 
       shards::cloneVar(*output, scriptVal);
     }
     return true;
+  } catch (malEmptyInputException &) {
+    return false;
+  } catch (malValuePtr &mv) {
+    SHLOG_WARNING("Eval error: {} line: {}", mv->print(true), std::to_string(mv->line));
+    return false;
+  } catch (std::exception &e) {
+    SHLOG_WARNING("Eval error: {}", e.what());
+    return false;
   } catch (MalString &str) {
     SHLOG_WARNING("Eval error: {}", str.c_str());
     return false;

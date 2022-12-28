@@ -47,6 +47,7 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 
 // TODO make it into a run-time param
