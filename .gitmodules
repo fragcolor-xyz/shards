@@ -76,7 +76,7 @@
 [submodule "src/gfx/rust/wgpu"]
 	path = src/gfx/rust/wgpu
 	url = https://github.com/shards-lang/wgpu.git
-	branch = master
+	branch = master-xr
 [submodule "src/gfx/rust/naga"]
 	path = src/gfx/rust/naga
 	url = https://github.com/shards-lang/naga
