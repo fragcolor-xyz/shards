@@ -129,6 +129,7 @@ jobs:
           ./shards ../src/tests/pure.edn
           ./shards ../src/tests/shell.clj
           ./shards ../src/tests/infos.clj
+          ./shards ../src/tests/many.clj
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
