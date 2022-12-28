@@ -1628,34 +1628,7 @@ BUILTIN("stop") {
   return malValuePtr(new malSHVar(res, true));
 }
 
-BUILTIN("run") {
-  CHECK_ARGS_AT_LEAST(1);
-  SHMesh *mesh = nullptr;
-  SHWire *wire = nullptr;
-  auto first = *argsBegin++;
-  if (const malSHWire *v = DYNAMIC_CAST(malSHWire, first)) {
-    auto cs = SHWire::sharedFromRef(v->value());
-    wire = cs.get();
-  } else if (const malSHMesh *v = DYNAMIC_CAST(malSHMesh, first)) {
-    mesh = v->value();
-  } else {
-    throw shards::SHException("tick Expected Mesh or Wire");
-  }
-
-  auto sleepTime = -1.0;
-  if (argsBegin != argsEnd) {
-    ARG(malNumber, argSleepTime);
-    sleepTime = argSleepTime->value();
-  }
-
-  int times = 1;
-  bool dec = false;
-  if (argsBegin != argsEnd) {
-    ARG(malNumber, argTimes);
-    times = argTimes->value();
-    dec = true;
-  }
-
+bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
   SHDuration dsleep(sleepTime);
 
   if (mesh) {
@@ -1667,7 +1640,7 @@ BUILTIN("run") {
       // other wires might be not in error tho...
       // so return only if empty
       if (!noErrors && mesh->empty()) {
-        return mal::boolean(false);
+        return false;
       }
 
       if (dec) {
@@ -1677,7 +1650,7 @@ BUILTIN("run") {
           break;
         }
       }
-      // We on purpose run terminate (evenutally)
+      // We on purpose run terminate (eventually)
       // before sleep
       // cos during sleep some shards
       // swap states and invalidate stuff
@@ -1712,9 +1685,94 @@ BUILTIN("run") {
     }
   }
 
+  return true;
+}
+
+BUILTIN("run") {
+  CHECK_ARGS_AT_LEAST(1);
+  SHMesh *mesh = nullptr;
+  SHWire *wire = nullptr;
+  auto first = *argsBegin++;
+  if (const malSHWire *v = DYNAMIC_CAST(malSHWire, first)) {
+    auto cs = SHWire::sharedFromRef(v->value());
+    wire = cs.get();
+  } else if (const malSHMesh *v = DYNAMIC_CAST(malSHMesh, first)) {
+    mesh = v->value();
+  } else {
+    throw shards::SHException("tick Expected Mesh or Wire");
+  }
+
+  auto sleepTime = -1.0;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argSleepTime);
+    sleepTime = argSleepTime->value();
+  }
+
+  int times = 1;
+  bool dec = false;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argTimes);
+    times = argTimes->value();
+    dec = true;
+  }
+
+  auto noErrors = run(mesh, wire, sleepTime, times, dec);
+
   spdlog::default_logger()->flush();
 
-  return mal::boolean(true);
+  return mal::boolean(noErrors);
+}
+
+BUILTIN("run-many") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malSequence, mMeshes);
+
+  std::vector<SHMesh *> meshes;
+
+  auto count = mMeshes->count();
+  for (auto i = 0; i < count; i++) {
+    auto mMesh = mMeshes->item(i);
+    if (const malSHMesh *v = DYNAMIC_CAST(malSHMesh, mMesh)) {
+      meshes.push_back(v->value());
+    } else {
+      throw shards::SHException("run-many expects Mesh only");
+    }
+  }
+
+  auto sleepTime = -1.0;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argSleepTime);
+    sleepTime = argSleepTime->value();
+  }
+
+  int times = 1;
+  bool dec = false;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argTimes);
+    times = argTimes->value();
+    dec = true;
+  }
+
+  std::vector<std::future<bool>> futures;
+  for (auto mesh : meshes) {
+    auto fut = std::async(std::launch::async, [=]() {
+      return run(mesh, nullptr, sleepTime, times, dec);
+    });
+    futures.push_back(std::move(fut));
+  }
+
+  assert(futures.size() == size_t(count));
+
+  // wait for all futures to finish
+  bool noErrors = true;
+  for (auto &fut : futures) {
+    if (!fut.get())
+      noErrors = false;
+  }
+
+  spdlog::default_logger()->flush();
+
+  return mal::boolean(noErrors);
 }
 
 BUILTIN("sleep") {
