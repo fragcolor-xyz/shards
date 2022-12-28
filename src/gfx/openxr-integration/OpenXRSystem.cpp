@@ -9,6 +9,7 @@ const OpenXRSystem::HeadsetType OpenXRSystem::defaultHeadset = {};
 
 //[t] checkXRDeviceReady can be called at any time to check if a certain headset is connected.
 bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
+  spdlog::info("[log][t] OpenXRSystem::checkXRDeviceReady: xr eye information: heasetType.viewType: {0}, heasetType.environmentBlendMode: {1}, heasetType.xrFormFactor {2}",heasetType.viewType, heasetType.environmentBlendMode, heasetType.xrFormFactor);
   return context_xr->checkXRDeviceReady(heasetType.viewType, 
                                     heasetType.environmentBlendMode, 
                                     heasetType.xrFormFactor);
