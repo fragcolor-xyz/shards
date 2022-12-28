@@ -146,12 +146,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
 
   spdlog::info("[log][t] Headset::Headset: vukan context for openxr");
   // vukan context for openxr
-  if(xrContext == nullptr)
-    spdlog::error("[[[[[[[[[[[log][t] Headset::Headset(xrContext, gfxWgpuVulkanShared): xrContext false");
-  if (!xrContext->isValid())
-  {
-    spdlog::error("x[[[[[[[[[[[[log][t] OpenXRSystem::InitOpenXR: error at xrContext.");
-  }
+  
   const XrInstance xrInstance = xrContext->getXrInstance(); 
   const XrSystemId xrSystemId = xrContext->getXrSystemId();
   const VkPhysicalDevice vkPhysicalDevice = gfxWgpuVulkanShared->vkPhysicalDevice;
@@ -201,10 +196,10 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
   result = xrEnumerateViewConfigurationViews(xrInstance, xrSystemId, viewType, 0u,
                                              reinterpret_cast<uint32_t*>(&eyeCount), nullptr);
   if (XR_FAILED(result))
-  {
+  { 
     util::error(Error::GenericOpenXR);
     valid = false;
-    spdlog::error("[log][t] Headset::Headset: error at xrEnumerateViewConfigurationViews(xrInstance, xrSystemId, viewType, 0u, reinterpret_cast<uint32_t*>(&eyeCount), nullptr); result: {0}, eyeCount: {1}",result, eyeCount);
+    spdlog::error("[log][t] Headset::Headset: error at xrEnumerateViewConfigurationViews(xrInstance, xrSystemId, viewType, 0u, reinterpret_cast<uint32_t*>(&eyeCount), nullptr); result: {0}, eyeCount: {1}, viewType: {2}",result, eyeCount, viewType);
     return;
   }
 
@@ -405,13 +400,30 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       swapchainCreateInfo.arraySize = swapchainImageCount;//static_cast<uint32_t>(eyeCount);
       swapchainCreateInfo.faceCount = 1u;
       swapchainCreateInfo.mipCount = 1u;
+      //[t] TODO: is this needed: 
+      swapchainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+      
+      spdlog::info("[log][t] Headset::Headset: swapchainCreateInfo: swapchainCreateInfo.format: {}\r\n, swapchainCreateInfo.sampleCount: {}\r\n, swapchainCreateInfo.width: {}\r\n, swapchainCreateInfo.height: {}\r\n, swapchainCreateInfo.arraySize (this is in case you have subimages inside each swapchain): {}\r\n, swapchainCreateInfo.faceCount: {}\r\n, swapchainCreateInfo.mipCount: {}\r\n, swapchainCreateInfo.usageFlags: XR_SWAPCHAIN_USAGE_SAMPLED_BIT[{}] | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT[{}]: {}\r\n",
+      swapchainCreateInfo.format,
+      swapchainCreateInfo.sampleCount,
+      swapchainCreateInfo.width, 
+      swapchainCreateInfo.height,
+      swapchainCreateInfo.arraySize,
+      swapchainCreateInfo.faceCount,
+      swapchainCreateInfo.mipCount,
+      XR_SWAPCHAIN_USAGE_SAMPLED_BIT,
+      XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+      swapchainCreateInfo.usageFlags
+      );
+        
 
       result = xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i)); // [t] &swapchain.handle?
       if (XR_FAILED(result)) 
       { 
         util::error(Error::GenericOpenXR);
         valid = false;
-        spdlog::error("[log][t] Headset::Headset: error at xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i));");
+        XrSessionState sessionState = XR_SESSION_STATE_UNKNOWN;
+        spdlog::error("[log][t] Headset::Headset: error at xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i)); result: {}, i: {}, swapchainNumber: {}, sessionState: {}", result, i, swapchainNumber, sessionState);
         return;
       }
 

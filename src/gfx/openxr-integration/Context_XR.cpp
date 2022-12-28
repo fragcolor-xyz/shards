@@ -367,7 +367,7 @@ bool Context_XR::checkXRDeviceReady(
   // XrEnvironmentBlendMode environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
   // XrFormFactor xrFormFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
-  viewType = viewType;
+  this->viewType = viewType;
 
   // Get the system ID
   XrSystemGetInfo systemGetInfo{ XR_TYPE_SYSTEM_GET_INFO };
@@ -939,7 +939,7 @@ bool Context_XR::isValid() const
 
 XrViewConfigurationType Context_XR::getXrViewType() const
 {
-  spdlog::info("[log][t] Context_XR::getXrViewType()");
+  spdlog::info("[log][t] Context_XR::getXrViewType(): {}", viewType);
   return viewType;
 }
 
@@ -951,7 +951,7 @@ XrInstance Context_XR::getXrInstance() const
 
 XrSystemId Context_XR::getXrSystemId() const
 {
-  spdlog::info("[log][t] Context_XR::getXrSystemId()");
+  spdlog::info("[log][t] Context_XR::getXrSystemId(): {}", systemId);
   return systemId;
 }
 
